@@ -1,0 +1,118 @@
+function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square
+  inam = 'red::polarim : '
+                                ;
+                                ; Search for folders with reduced data
+                                ;
+  if(~keyword_set(dir)) then begin
+     dir = file_search(self.out_dir + '/momfbd/*', /test_dir, count = ndir)
+                                ;
+     if(ndir eq 0) then begin
+        print, inam+'no directories found in '+self.out_dir+'/momfbd'
+        return, 0
+     endif
+                                ;
+     idx = 0L
+     if(ndir gt 1) then begin
+        print, inam + 'found '+red_stri(ndir)+' sub-folders:'
+        for jj = 0, ndir - 1 do print, red_stri(jj,ni='(I2)')+' -> '+dir[jj]
+        read,idx,prompt = inam+'Please select state ID: '
+        dir = dir[idx]
+     endif
+
+     dir = file_search(dir + '/*', /test_dir, count = ndir)
+     idx = 0L
+     if(ndir gt 1) then begin
+        print, inam + 'found '+red_stri(ndir)+' sub-folders:'
+        for jj = 0, ndir - 1 do print, red_stri(jj,ni='(I2)')+' -> '+file_basename(dir[jj])
+        read,idx,prompt = inam+'Please select state ID: '
+        dir = dir[idx]
+     endif
+
+     dir+= '/cfg/results/' 
+     print, inam + 'Processing state -> '+dir
+  endif
+  self -> getcamtags, dir = self.data_dir
+                                ;
+                                ; get files (right now, only momfbd is supported)
+                                ;
+  tfiles = file_search(dir+'/'+self.camttag+'.*.momfbd', count = nimt)
+  rfiles = file_search(dir+'/'+self.camrtag+'.*.momfbd', count = nimr)
+                                ;
+  if(nimt NE nimr) then begin
+                                ;
+     print, inam + 'WARNING, different number of images found for each camera:'
+     print, self.camttag+' -> '+red_stri(nimt)
+     print, self.camrtag+' -> '+red_stri(nimr)
+                                ;
+  endif
+                                ;
+                                ; get states that are common to both cameras (object)
+                                ;
+  pol = red_getstates_polarim(tfiles, rfiles, self.out_dir,camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag)
+  nstat = n_elements(pol)
+                                ;
+                                ; Modulations matrices
+                                ;
+                                ; T-Cam
+  If(~keyword_set(mmt)) then begin
+                                ;
+     search = self.out_dir+'/polcal/'+self.camttag+'.'+pol[0]->getvar(7)+'.polcal.f0'
+     if(file_test(search)) then begin
+        immt = (f0(search))[0:15,*,*]
+        immt = ptr_new(red_invert_mmatrix(temporary(immt)))
+     endif else begin
+        print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
+        return, 0
+     endelse
+                                ;
+  endif else begin
+     immt = red_invert_mmatrix(temporary(mmt))
+  endelse
+                                ;
+                                ; R-Cam
+  If(~keyword_set(mmr)) then begin
+                                ;
+     search = self.out_dir+'/polcal/'+self.camrtag+'.'+pol[0]->getvar(7)+'.polcal.f0'
+     if(file_test(search)) then begin
+        immr = (f0(search))[0:15,*,*]
+        immr = ptr_new(red_invert_mmatrix(temporary(immr)))
+     endif else begin
+        print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
+        return, 0
+     endelse
+                                ;
+  endif else begin
+     immr = red_invert_mmatrix(temporary(mmr))
+  endelse
+                                ;
+                                ; Pointers to immt and immr
+                                ;
+  for ii = 0L, nstat - 1 do begin
+     pol[ii]->setvar, 5, value = ptr_new(immt)
+     pol[ii]->setvar, 6, value = ptr_new(immr)
+  endfor
+                                ;
+                                ; fill border imformation (based of 1st image)
+                                ;
+  print, inam + 'reading file -> ' + (pol[0]->getvar(9))[0]
+  tmp = red_mozaic(momfbd_read((pol[0]->getvar(9))[0]))
+
+  dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
+  for ii = 0L, nstat - 1 do pol[ii]->fillclip, x0, x1, y0, y1
+                                ;
+                                ; telog
+                                ;
+  telfiles = file_search(self.out_dir+'/positionLog*', count = ct)
+                                ;
+  if(ct eq 1) then begin
+     print, inam + 'Using SST position LOG -> ' + telfiles
+     for ii = 0L, nstat - 1 do pol[ii]->setvar, 18, value = telfiles
+  endif
+                                ;
+                                ; Print states
+                                ;
+  print, inam + 'Found '+red_stri(nstat)+' state(s) to demodulate:'
+  for ii = 0L, nstat-1 do print, red_stri(ii, ni='(I5)') + ' -> '+ pol[ii] -> state()
+                                ;
+  return, pol
+end
