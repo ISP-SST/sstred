@@ -89,7 +89,7 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
                                 ; do fits and save
                                 ;
      data = f0(f[0])
-     mm = cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=threads)
+     mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=threads)
      file_mkdir, outdir
      oname = outdir + ucam[0]+'.'+pref+'.polcal.f0'
      print, inam + 'saving '+oname
@@ -97,7 +97,7 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      fzwrite, reform(temporary(mm), [16,dim[2],dim[3]]), oname ,' '
 
      data = f0(f[1])
-     mm = cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=threads)
+     mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=threads)
      oname = outdir + ucam[1]+'.'+pref+'.polcal.f0'
      print, inam + 'saving '+oname
      dim = size(mm,/dim)

@@ -250,8 +250,8 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
      telpos = read_azel( self.telog,mdate)
      print, inam + 'time_obs = '+time_obs
      if(line eq '6300') then begin
-        mtel = telmat('6302', telpos, time_obs, /no_zero)
-     endif else mtel = telmat(line, telpos, time_obs, /no_zero)
+        mtel = red_telmat('6302', telpos, time_obs, /no_zero)
+     endif else mtel = red_telmat(line, telpos, time_obs, /no_zero)
                                 ;
      imtel = invert(mtel)
      imtel /= imtel[0]

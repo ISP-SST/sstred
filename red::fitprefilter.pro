@@ -68,22 +68,22 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
                                 ;
                                 ; Get CRISP transmission profile
                                 ;
-  fpi = get_fpi_par(line = prefs)
+  fpi = red_get_fpi_par(line = prefs)
   dw = xs[1] - xs[0]
   np = long((max(xs) - min(xs)) / dw) - 2
   if(np/2*2 eq np) then np -= 1L
   tw = (dindgen(np) - np/2) * dw
-  tr = get_fpi_trans(fpi, tw + fpi.w0, ecl = 0.0, ech = 0.0, erh = -0.01)
+  tr = red_get_fpi_trans(fpi, tw + fpi.w0, ecl = 0.0, ech = 0.0, erh = -0.01)
                                 ; 
   dum = max(tr, p)
   cc = poly_fit(tw[p-1:p+1] * 100.d0, tr[p-1: p+1], 2, /double)
   off = -0.005d0 * cc[1] / cc[2]
-  tr = get_fpi_trans(fpi, tw + fpi.w0 + off, ecl = 0.0, ech = 0.0, erh = -0.01)
+  tr = red_get_fpi_trans(fpi, tw + fpi.w0 + off, ecl = 0.0, ech = 0.0, erh = -0.01)
   
                                 ;
                                 ; Convolve Solar Atlas with the FPI transmission profile
                                 ;
-  ys = fpi_convl(ys, tr, /usefft)
+  ys = red_convl(ys, tr, /usefft)
   
                                 ;
                                 ; Pack variables for mpfit

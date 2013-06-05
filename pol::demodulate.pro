@@ -200,7 +200,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      mdate = strjoin(strsplit((*self.timg[0]).date,'-',/extra),'/')
      telpos = read_azel( self.telog,mdate)
      print, inam + 'time_obs = '+time_obs
-     mtel = telmat(line, telpos, time_obs, /no_zero)
+     mtel = red_telmat(line, telpos, time_obs, /no_zero)
                                 ;
      imtel = invert(mtel)
      imtel /= imtel[0]
