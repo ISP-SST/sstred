@@ -67,39 +67,25 @@
 ;         jaime.cruz@physics.uu.se, jaime@astro.uio.no
 ;
 ;   Michiel van Noort (Max Plank - Lindau):
-;
-;         red_matrix2momfbd (adapted)
-;
-;         C++ polcal curves (adapted)
-;
-;         MOMFBD image format DLM
-;
+;         red_matrix2momfbd (adapted),
+;         C++ polcal curves (adapted),
+;         MOMFBD image format DLMm
 ;         fillpix adapted from Mat's (IDL) and Michiel's (c++)
 ;
 ;   Pit Suetterlin (ISP-KVA):
-;
-;         red::polcal (interface for the C++ code). 
-;
-;         red::getalignclips
-;
-;         red::getoffsets
-;
+;         red::polcal (interface for the C++ code),
+;         red::getalignclips,
+;         red::getoffsets,
 ;         and dependencies
 ;
 ;   Tomas Berger (LMSAL):
-;
 ;         destretch IDL module and routines.
 ;
 ;   Mats Löfdahl (ISP-KVA):
-;
-;         red::taper
-;
-;         red::offsets
-;
-;         red_findpinholegrid
-;
-;         fillpix adapted from Mat's (IDL) and Michiel's (c++)
-;
+;         red::taper,
+;         red::offsets,
+;         red_findpinholegrid,
+;         fillpix adapted from Mats' (IDL) and Michiel's (c++),
 ;         shift-and-sum in red_sumfiles for summing pinholes
 ;
 ; 
