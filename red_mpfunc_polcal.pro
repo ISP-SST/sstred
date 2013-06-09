@@ -1,3 +1,5 @@
+; docformat = 'rst'
+
 FUNCTION red_mpfunc_polcal, par, X=x, Y=y, NORM=norm,  EXTINCTION=elp, STOKES_IN=sp0
 
   sq = size(X.qq, /dim)
