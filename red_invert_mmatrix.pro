@@ -18,7 +18,7 @@
 ; 
 ; :Params:
 ; 
-;    mm : 
+;    mm : in, type="fltarr(4,4,n,m)"
 ;   
 ;   
 ;   
