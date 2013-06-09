@@ -1,3 +1,46 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    pref  : 
+;   
+;   
+;   
+;    scan  : 
+;   
+;   
+;   
+;    cam  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_intdif_gains, pref = pref, scan = scan, cam = cam
   inam = 'red::make_intdif_gains : '
   outdir = self.out_dir + '/gaintables/'

@@ -1,3 +1,90 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    wb_states  : 
+;   
+;   
+;   
+;    outformat  : 
+;   
+;   
+;   
+;    numpoints  : 
+;   
+;   
+;   
+;    modes  : 
+;   
+;   
+;   
+;    date_obs  : 
+;   
+;   
+;   
+;    state  : 
+;   
+;   
+;   
+;    descatter  : 
+;   
+;   
+;   
+;    global_keywords  : 
+;   
+;   
+;   
+;    unpol  : 
+;   
+;   
+;   
+;    skip  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+;    escan  : 
+;   
+;   
+;   
+;    div  : 
+;   
+;   
+;   
+;    nremove : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $

@@ -1,3 +1,46 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    img : 
+;   
+;   
+;   
+;    x : 
+;   
+;   
+;   
+;    y : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_getclips, img, x, y
                                 ;
   dx = -img.patch[x,y].offx

@@ -1,6 +1,54 @@
+; docformat = 'rst'
+
+;+
+; Computes the az/el of the sun in radians given ha in hours and dec in degrees
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;    Dick Shine, LMSAL (ANA routine lapalma_azel.ana)
+;
+;    Jaime de la Cruz Rodriguez (Ported to IDL)
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;   ha : 
+;   
+;   
+;   
+;   dec : 
+;   
+;   
+;   
+;   az : 
+;   
+;   
+;   
+;   el : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red_get_azel,ha,dec,az,el
-;computes the az/el of the sun in radians given ha in hours and dec in degrees
-;CONVERTED FROM ANA ROUTINE LAPALMA_AZEL
 
 ;  latitude of obs.
   drrat=!pi/180.d0              ;deg to rad rate

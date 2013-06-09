@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    rot_dir  : 
+;   
+;   
+;   
+;    square  : 
+;   
+;   
+;   
+;    tiles : 
+;   
+;   
+;   
+;    clips : 
+;   
+;   
+;   
+;    scans_only  : 
+;   
+;   
+;   
+;    overwrite  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite
   inam = 'red::make_unpol_crispex : '
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B

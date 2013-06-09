@@ -1,3 +1,42 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    t : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    dir  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_time2double, t, dir = dir
 ;
   if(~keyword_set(dir)) then begin

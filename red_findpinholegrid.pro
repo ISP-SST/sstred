@@ -1,8 +1,49 @@
-pro red_findpinholegrid, pinholeimage, simx, simy
-;; Find SIMX and SIMY grid coordinates for pinhole array image. Assume
-;; the grid is fairly well aligned to the image X and Y directions.
+; docformat = 'rst'
 
-;; From Pit's setup_ph.pro
+;+
+; Find SIMX and SIMY grid coordinates for pinhole array image. Assume
+; the grid is fairly well aligned to the image X and Y directions.
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;    From Pit's setup_ph.pro
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    pinholeimage : 
+;   
+;   
+;   
+;    simx : 
+;   
+;   
+;   
+;    simy : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
+pro red_findpinholegrid, pinholeimage, simx, simy
 
   ;;; each pinhole gets a unique number
   mask = red_separate_mask(pinholeimage gt .05*max(pinholeimage))

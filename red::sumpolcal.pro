@@ -1,3 +1,46 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    remove  : 
+;   
+;   
+;   
+;    ucam  : 
+;   
+;   
+;   
+;    check : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::sumpolcal, remove = remove, ucam = ucam, check=check
   inam = 'red::sumpolcal : '
                                 ;

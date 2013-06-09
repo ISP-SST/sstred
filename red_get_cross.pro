@@ -1,3 +1,38 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    cub : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_get_cross, cub
                                 ;
   inam = 'get_red_cross : '

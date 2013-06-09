@@ -1,3 +1,42 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    wav : 
+;   
+;   
+;   
+;    imean : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_select_spoints, wav, imean
   !p.multi = [0,1,1]
                                 ;

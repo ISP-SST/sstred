@@ -1,3 +1,42 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    xl : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    thres  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_densegrid, xl, thres = thres
                                 ;
   if(n_elements(thres) eq 0) then thres = 0.2

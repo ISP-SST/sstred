@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    img : 
+;   
+;   
+;   
+;    fgain : 
+;   
+;   
+;   
+;    fpsf : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    nthreads  : 
+;   
+;   
+;   
+;    verbose  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_cdescatter, img, fgain, fpsf, nthreads = nthreads, verbose = verbose
   dim = size(img, /dimension)
   nx = dim[0]

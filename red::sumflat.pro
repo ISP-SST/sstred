@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    overwrite  : 
+;   
+;   
+;   
+;    ustat  : 
+;   
+;   
+;   
+;    old  : 
+;   
+;   
+;   
+;    remove  : 
+;   
+;   
+;   
+;   check : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove,check=check
                                 ;
   if(self.doflat eq 0B) then begin

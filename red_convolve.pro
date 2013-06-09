@@ -1,3 +1,62 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    image : 
+;   
+;   
+;   
+;    psf : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    FT_PSF : 
+;   
+;   
+;   
+;    FT_IMAGE : 
+;   
+;   
+;   
+;    NO_FT : 
+;   
+;   
+;   
+;    CORRELATE : 
+;   
+;   
+;   
+;    AUTO_CORRELATION : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_convolve, image, psf, FT_PSF=psf_FT, FT_IMAGE=imFT, NO_FT=noft, $
                        CORRELATE=correlate, AUTO_CORRELATION=auto
 ; HISTORY:

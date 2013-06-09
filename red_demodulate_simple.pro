@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;   immt1 : 
+;   
+;   
+;   
+;    l0 : 
+;   
+;   
+;   
+;    l1 : 
+;   
+;   
+;   
+;    l2 : 
+;   
+;   
+;   
+;    l3 : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_demodulate_simple,immt1, l0, l1, l2, l3
   inam = 'red_demodulate_simple'
   dim = size(l0 ,/dimension)

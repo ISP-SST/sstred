@@ -1,23 +1,57 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    filename : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::initialize, filename
-                                ;
-                                ; Test file
+                                
+  ;; Test file
   if(~file_test(filename)) then begin
      print, 'red::initialize : ERROR : file not found: ', filename
      return
   endif
   self.filename = filename
   
-                                ;
-                                ; Init vars
+  ;; Init vars
   self.dark_dir = '' 
   self.flat_dir = '' 
-                                ; self.data_dir = ''
+  ;; self.data_dir = ''
   self.pinh_dir = '' 
   self.polcal_dir = ''
   self.camt = '' 
   self.camr = '' 
   self.camwb = '' 
-                                ;
+   
   self.dodata = 1B
   self.doflat = 1B
   self.dopinh = 1B
@@ -27,21 +61,21 @@ pro red::initialize, filename
   self.docamwb = 1B
   self.dopolcal = 1B
   self.dodescatter = 1B
-                                ;
-                                ; open file and get fields
+   
+  ;; open file and get fields
   openr, lun, filename, /get_lun
   nl = 0L
   while(~eof(lun)) do begin
      line = ''
      readf, lun, line                          ; read line
      field = (strsplit(line,' =',/extract))[0] ; extract field
-                                ;
+   
      if(strmid(line, 0, 1) eq '#') then begin
         print, 'red::initialize : Skipping commented-out line'
         continue
      endif
-                                ;
-                                ; get fields
+   
+     ;; get fields
      case field of
         'root_dir': begin
            self.root_dir = (strsplit(line,' =',/extract))[1] + '/' ; extract value
@@ -131,8 +165,7 @@ pro red::initialize, filename
   if(strlen(self.camsz) eq 0) then self.camsz = '1024'
   print, 'red::initialize : camsz = '+self.camsz
 
-                                ;
-                                ; check available fields
+  ;; check available fields
   if(self.descatter_dir eq '') then begin
      print, 'red::initialize : WARNING : descatter_dir is undefined!'
      self.dodescatter = 0B
@@ -149,10 +182,10 @@ pro red::initialize, filename
      print, 'red::initialize : ERROR : out_dir is undefined!'
      return
   endif
-                                ;if(self.data_dir eq '') then begin
-                                ;   print, 'red::initialize : WARNING : data_dir is undefined!'
-                                ;   self.dodata = 0B
-                                ;endif
+  ;;if(self.data_dir eq '') then begin
+  ;;   print, 'red::initialize : WARNING : data_dir is undefined!'
+  ;;   self.dodata = 0B
+  ;;endif
   if(self.pinh_dir eq '') then begin
      print, 'red::initialize : WARNING : pinh_dir is undefined!'
      self.dopinh = 0B
@@ -173,8 +206,8 @@ pro red::initialize, filename
      print, 'red::initialize : WARNING : cam_wb is undefined!'
      self.docamwb = 0B
   endif
-                                ;
-                                ; print fields
+
+  ;; print fields
   if(self.dodark) then print, 'red::initialize : dark_dir = '+ self.dark_dir
   if(self.doflat) then print, 'red::initialize : flat_dir = '+ self.flat_dir
   if(self.dopinh) then print, 'red::initialize : pinh_dir = '+ self.pinh_dir
@@ -188,7 +221,7 @@ pro red::initialize, filename
         print, 'red::initialize : data_dirs :'
         for k = 0, nn-1 do print, string(k, format='(I5)') + ' -> ' + self.data_list[k]
         id = 0
-                                ; read, id, prompt = "red::initialize : select default folder's id :"
+        ;; read, id, prompt = "red::initialize : select default folder's id :"
         self.data_dir = self.data_list[id]
      endelse
   endif
@@ -198,6 +231,6 @@ pro red::initialize, filename
   if(self.dodescatter) then print, 'red::initialize : descatter_dir = '+ self.descatter_dir
 
   print, 'red::initialize : out_dir = '+ self.out_dir
-                                ;
+                                
   return
 end

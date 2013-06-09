@@ -1,3 +1,46 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    fname : 
+;   
+;   
+;   
+;    head : 
+;   
+;   
+;   
+;    count : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_dark_h2h, fname, head, count
                                 ;
   tmp = strsplit(file_basename(fname), '_.', /extract)

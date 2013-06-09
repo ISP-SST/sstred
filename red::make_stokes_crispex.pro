@@ -1,3 +1,46 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    timecor  : 
+;   
+;   
+;   
+;    out_dir  : 
+;   
+;   
+;   
+;    rot_dir  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_stokes_crispex, timecor = timecor, out_dir = out_dir, rot_dir = rot_dir
   inam = 'red::make_stokes_crispex : '
   if(~keyword_set(rot_dir)) then rot_dir = 0

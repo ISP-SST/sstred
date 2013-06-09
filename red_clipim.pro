@@ -1,7 +1,44 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;    Pit Sütterlin (as momfbd_clip.pro)
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    pic : 
+;   
+;   
+;   
+;    cl : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_clipim, pic, cl
-                                ;
-                                ; Same as momfbd_clip (Pit Sutterlin)
-                                ;
+                                
   IF cl[0] GT cl[1] THEN BEGIN
      mi_x = cl[1]-1
      ma_x = cl[0]-1
@@ -32,7 +69,3 @@ function red_clipim, pic, cl
   return, rotate(pic[mi_x:ma_x, mi_y:ma_y], r)
 END
 
-;
-function red_camtag, file
-  return, (strsplit(file_basename(file),'.',/extract))[0]
-end

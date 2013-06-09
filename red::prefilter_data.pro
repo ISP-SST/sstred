@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    folder  : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    step  : 
+;   
+;   
+;   
+;    cam  : 
+;   
+;   
+;   
+;    lre  : 
+;   
+;   
+;   
+;    oname  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::prefilter_data, folder , step = step, cam = cam, lre = lre, oname = oname
                                 ;
   if(~keyword_set(step)) then step = 1L

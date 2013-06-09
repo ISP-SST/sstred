@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    flatdir  : 
+;   
+;   
+;   
+;    descatter  : 
+;   
+;   
+;   
+;    nthreads  : 
+;   
+;   
+;   
+;    cam  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nthreads, cam = cam, pref = pref
                                 ;
   inam = 'red::prepflatcubes : '

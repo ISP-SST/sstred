@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    wav : 
+;   
+;   
+;   
+;    dat : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    x0  : 
+;   
+;   
+;   
+;    x1  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_initcmap, wav, dat, x0 = x0, x1 = x1
   dim = size(dat, /dim)
   nt3 = dim[0]-2

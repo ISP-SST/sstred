@@ -1,29 +1,62 @@
-function red_get_fpi_par,line=line
+; docformat = 'rst'
+
+;+
+;    Returns a structure with the nominal reflectivities and cavity
+;    separations of the CRISP spectropolarimeter.
+; 
+; 
+; :Categories:
 ;
-; FUNCTION red_get_fpi_par
-;    INPUT:
-;           line = (string)
-;
-;   OUTPUT:
-;           it returns a structure with the nominal reflectivities
-;           and cavity separations of the CRISP spectropolarimeter.
-;
-; Author: Jaime de la Cruz Rodriguez (ISP-KVA 2010)
-;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;    Jaime de la Cruz Rodriguez, ISP-KVA, 2010
+; 
+; 
+; :returns:
+; 
 ; Creates the structure 'fpi':
+; 
 ;     w0:   nominal center of the trans peak
+; 
 ;    rhr:   reflectivity hre
+; 
 ;    rlh:   reflectivity lre
+; 
 ;    shr:   separation of the hre
+; 
 ;    slr:   separation of the lre
+; 
 ;     fr:   f number for the incident beam (f=165 for CRISP)
+; 
 ;    prw:   prefilter FWHM
+; 
 ;   pfw0:   prefilter central wavelength
+; 
 ;   calp:   quadrature for the integration of Tr
+; 
 ;    wng:   weights of the quadrature points
-;  
-; --
-;
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;   line : type=string
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
+function red_get_fpi_par,line=line
 
   pi2 = 6.28318530779d0    ; 2.d0 * PI
   calp = cos(sqrt([0.1127017, 0.5000000, 0.8872983] * (0.5/165.)^2.)) * pi2

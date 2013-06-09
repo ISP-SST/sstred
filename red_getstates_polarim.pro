@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    tfiles : 
+;   
+;   
+;   
+;    rfiles : 
+;   
+;   
+;   
+;    fdir : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;   camt  : 
+;   
+;   
+;   
+;    camr  : 
+;   
+;   
+;   
+;    camwb  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, camwb = camwb
                                 ;
   inam = 'red_getstates_polarim : '

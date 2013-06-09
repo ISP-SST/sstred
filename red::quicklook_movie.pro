@@ -1,3 +1,62 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    dark  : 
+;   
+;   
+;   
+;    gain  : 
+;   
+;   
+;   
+;    clip  : 
+;   
+;   
+;   
+;    overwrite  : 
+;   
+;   
+;   
+;    x_flip  : 
+;   
+;   
+;   
+;    y_flip  : 
+;   
+;   
+;   
+;    cam  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam
                                 ;
   inam = 'quicklook_movie : '

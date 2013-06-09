@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    dat : 
+;   
+;   
+;   
+;    qq : 
+;   
+;   
+;   
+;    lp : 
+;   
+;   
+;   
+;    guess : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    chisq  : 
+;   
+;   
+;   
+;    NTHREADS : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, NTHREADS=nt
 ;+
 ; NAME:

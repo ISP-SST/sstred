@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;   a : 
+;   
+;   
+;   
+;   b : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;   plot : 
+;   
+;   
+;   
+;   usefft : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_convl,a,b,plot=plot,usefft=usefft
 ;
 ; FFT based convolver

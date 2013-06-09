@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    cmap : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    rot_dir  : 
+;   
+;   
+;   
+;    out_dir  : 
+;   
+;   
+;   
+;    result  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_time_cmap, cmap, rot_dir = rot_dir, out_dir = out_dir, result = cm
   inam = 'red::make_time_cmap : '
   if(~keyword_set(rot_dir)) then rot_dir = 0

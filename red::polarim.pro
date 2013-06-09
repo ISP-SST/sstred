@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    mmt  : 
+;   
+;   
+;   
+;    mmr  : 
+;   
+;   
+;   
+;    filter  : 
+;   
+;   
+;   
+;    destretch  : 
+;   
+;   
+;   
+;    dir  : 
+;   
+;   
+;   
+;    square  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square
   inam = 'red::polarim : '
                                 ;

@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    cub : 
+;   
+;   
+;   
+;    np : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    xbd  : 
+;   
+;   
+;   
+;    ybd  : 
+;   
+;   
+;   
+;    cubic  : 
+;   
+;   
+;   
+;    aligncube  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_aligncube, cub, np, xbd = xbd, ybd = ybd, cubic = cubic, aligncube = aligncube
   if n_elements(xbd) eq 0 then xbd = 255
   if n_elements(ybd) eq 0 then ybd = 255

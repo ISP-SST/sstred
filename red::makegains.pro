@@ -1,3 +1,70 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    descatter  : 
+;   
+;   
+;   
+;    nthreads  : 
+;   
+;   
+;   
+;    cam  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+;    min  : 
+;   
+;   
+;   
+;    max  : 
+;   
+;   
+;   
+;    bad : 
+;   
+;   
+;   
+;    preserve : 
+;   
+;   
+;   
+;    smoothsize  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::makegains, descatter = descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize
                                 ;
   tosearch = self.out_dir+'/flats/*.flat'

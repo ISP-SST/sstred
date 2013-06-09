@@ -8,9 +8,8 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
-; 
-; 
+; :author: 
+;
 ; 
 ; 
 ; :returns:
@@ -18,8 +17,7 @@
 ; 
 ; :Params:
 ; 
-;   function pol::state : 
-;   
+;    file : 
 ;   
 ;   
 ; 
@@ -33,6 +31,6 @@
 ; 
 ; 
 ;-
-function pol::state
-  return, self.state
+function red_camtag, file
+  return, (strsplit(file_basename(file),'.',/extract))[0]
 end

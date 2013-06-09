@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    var : 
+;   
+;   
+;   
+;    dx : 
+;   
+;   
+;   
+;    dy : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    cubic  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_shift_im, var, dx, dy, cubic = cubic 
   if(n_elements(cubic) eq 0) then cubic = -0.5 
 

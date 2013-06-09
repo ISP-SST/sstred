@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    file : 
+;   
+;   
+;   
+;    head : 
+;   
+;   
+;   
+;    nsum : 
+;   
+;   
+;   
+;    state : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    date  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_get_polcalheader, file, head, nsum, state, date = date
   res = ''
                                 ;

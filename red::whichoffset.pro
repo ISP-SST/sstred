@@ -1,3 +1,46 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    state : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    xoff  : 
+;   
+;   
+;   
+;    yoff  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::whichoffset, state, xoff = xoff, yoff = yoff
                                 ; method name
   inam = 'red::whichoffset : '

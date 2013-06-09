@@ -1,3 +1,82 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    xbd  : 
+;   
+;   
+;   
+;    ybd  : 
+;   
+;   
+;   
+;    np  : 
+;   
+;   
+;   
+;    clip  : 
+;   
+;   
+;   
+;    tile  : 
+;   
+;   
+;   
+;    tstep  : 
+;   
+;   
+;   
+;    scale  : 
+;   
+;   
+;   
+;    ang  : 
+;   
+;   
+;   
+;    shift  : 
+;   
+;   
+;   
+;    square : 
+;   
+;   
+;   
+;    negang  : 
+;   
+;   
+;   
+;    crop : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
                          ang = ang, shift = shift, square=square, negang = negang, $

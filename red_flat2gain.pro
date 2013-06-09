@@ -1,3 +1,62 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    flat : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    badthreshold  : 
+;   
+;   
+;   
+;    mingain  : 
+;   
+;   
+;   
+;    maxgain  : 
+;   
+;   
+;   
+;    smoothsize  : 
+;   
+;   
+;   
+;    preserve  : 
+;   
+;   
+;   
+;    gain_nozero  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, smoothsize = smoothparameter, preserve = preserve, gain_nozero = gain_nozero
   if(n_elements(bad) eq 0) then bad = 1.0
   if(n_elements(min) eq 0) then min = 0.1

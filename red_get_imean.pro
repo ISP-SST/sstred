@@ -1,3 +1,74 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    wav : 
+;   
+;   
+;   
+;    dat : 
+;   
+;   
+;   
+;    pp : 
+;   
+;   
+;   
+;    npar : 
+;   
+;   
+;   
+;    iter : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    xl  : 
+;   
+;   
+;   
+;    rebin  : 
+;   
+;   
+;   
+;    densegrid  : 
+;   
+;   
+;   
+;    thres  : 
+;   
+;   
+;   
+;    myg  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg
   inam = 'red_get_imean : '
                                 ;

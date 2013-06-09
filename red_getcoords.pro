@@ -1,5 +1,45 @@
+; docformat = 'rst'
+
+;+
+; Calculates the shifts relative to the new reference
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    var : 
+;   
+;   
+;   
+;    pos : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_getcoords, var, pos
-                                ;Calculates the shifts relative to the new reference
+                                
   dim1=size(var,/dimension)
   ref=reform(var[*,*, pos])
   show,ref,/nowin

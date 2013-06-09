@@ -1,3 +1,5 @@
+; docformat = 'rst'
+
 ;; Load class definitions
 @pol::assign_states.pro
 @pol::demodulate2.pro
@@ -47,6 +49,39 @@
 @red::sumprefilter.pro
 @red::whichoffset.pro
 
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;   Jaime de la Cruz Rodriguez
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;   filename : in, optional, type=string, default=config.txt
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function crispred, filename
                                 ;
                                 ; device, decompose=0

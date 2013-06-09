@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    cub : 
+;   
+;   
+;   
+;    platescale : 
+;   
+;   
+;   
+;    grids : 
+;   
+;   
+;   
+;    clips : 
+;   
+;   
+;   
+;    tstep : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_destretch_tseries, cub, platescale, grids, clips, tstep
                                 ;
                                 ; T. Bergers (LMSAL) routine, adapted to work with cubes instead of 

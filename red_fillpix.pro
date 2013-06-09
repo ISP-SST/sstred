@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    img : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    val  : 
+;   
+;   
+;   
+;    mask  : 
+;   
+;   
+;   
+;    nthreads  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_fillpix, img, val = val, mask = mask, nthreads = nthreads
   inam = 'red_fillpix : '
   if(n_elements(val) eq 0) then val = 0.0001

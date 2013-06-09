@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    nthreads  : 
+;   
+;   
+;   
+;    descatter  : 
+;   
+;   
+;   
+;    ustat  : 
+;   
+;   
+;   
+;    pref : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat ;, pref=pref
                                 ;
   inam = 'red::sumpinh : '

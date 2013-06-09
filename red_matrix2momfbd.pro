@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    lc0 : 
+;   
+;   
+;   
+;    lc1 : 
+;   
+;   
+;   
+;    lc2 : 
+;   
+;   
+;   
+;    lc3 : 
+;   
+;   
+;   
+;    imodmat : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_matrix2momfbd, lc0, lc1, lc2, lc3, imodmat
                                 ;
   inam = 'red_matrix2momfbd : '

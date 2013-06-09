@@ -1,3 +1,42 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    rot_dir  : 
+;   
+;   
+;   
+;    square  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_stokes_crispex2, rot_dir = rot_dir, square = square
   inam = 'red::make_stokes_crispex : '
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B

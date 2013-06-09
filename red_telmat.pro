@@ -1,54 +1,85 @@
+; docformat = 'rst'
+
+;+
+; Compute the SST telescope Mueller matrix.
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;    2012-04-01  Peter Sütterlin, ISP
+; 
+; 
+; :returns:
+; 
+;    M_TEL:  (float) a 4x4 array with the Mueller Matrix of the telescope 
+;
+; :Params:
+; 
+;    lam : in, type=string
+;   
+;      Wavelength range identifier. Currently allowed values are: 5250
+;      5380 6173 6302 7772 8542
+;   
+;    telpos : in, type="Structure{TIME, AZ, ELEV, TILT}"
+;
+;      Either an array (as e.g. returned by routine READ_AZEL), in
+;      this case TIME also has to be specified and will be used to
+;      interpolate the correct values, or an one-element strucure with
+;      already interpolated data. In this case, TELPOS.TIME is not
+;      used and may be empty
+;   
+;   
+;   
+;    time : in, optional, type="string or float"
+;   
+;      Either (string) in format 'HH:MM:SS.sss' or (float) in seconds
+;      since midnight.
+;   
+; 
+; :Keywords:
+; 
+;    no_zero_offset : in, optional, type=boolean
+;   
+;      If set, do not set the angle offset between polarimeter
+;      coordinates and telescope coordinates to zero. See RESTRICTIONS
+;      below.
+;      
+;    old_polcal :  in, optional, type=boolean
+;
+;      If the focal plane Stokes vector had been computed using the
+;      old polcal whis has opposite handedness, set this keyword to
+;      convert to the proper orientation.
+;   
+;    no_solar_north : in, optional, type=boolean
+;   
+;      If set, do not correct for the rotation angle between last
+;      mirror and solar north direction.
+;   
+; :restrictions:
+;
+;       The mount of the linear polarizer (LP) of the calibration unit
+;       had been lose, definitely in 2011, probably also in 2010.
+;       Therefore all model calculations have been made using the
+;       quarter wave plate as a reference, which results in a 10.7
+;       degree offset between polarimeter and telescope coordinates.
+;       For normal operation with a well-aligned LP this angle is
+;       zero. But for 2011 (and maybe 2010) data one should use the
+;       QWP as reference and then call red_telmat with
+;       NO_ZERO_OFFSET=1
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 FUNCTION red_telmat, lam, telpos, time, NO_ZERO_OFFSET=nzo, OLD_POLCAL=oldpc, $
                   NO_SOLAR_NORTH=nsn
-;+
-; NAME:
-;       RED_TELMAT
-; PURPOSE:
-;       copmute the SST telescope Mueller matrix
-; CALLING SEQUENCE:
-;       M_TEL = RED_TELMAT(LAMBDA, TELPOS [, TIME] [, <Keywords>])
-; INPUTS:
-;       LAMBDA: (string) Wavelength range identifier.  Currently allowed
-;               values are:
-;               5250  5380  6173  6302  7772  8542
-;       TELPOS: Structure {TIME, AZ, ELEV, TILT}.  Either an array (as
-;               e.g. returned by routine READ_AZEL), in this case TIME also
-;               has to be specified and will be used to interpolate the
-;               correct values, or an one-element strucure with already
-;               interpolated data.  In this case, TELPOS.TIME is not used and
-;               may be empty
-; OPTIONAL PARAMETERS:
-;       TIME:   Either (string) in format 'HH:MM:SS.sss' or (float) in seconds
-;               since midnight 
-; KEYWORDS:
-;       NO_SOLAR_NORTH: (bool) Do not correct for the rotation angle between
-;                       last mirror and solar north direction
-;       NO_ZERO_OFFSET: (bool) Do not set the angle offset between polarimeter
-;                       coordinates and telescope coordinates to zero.  See
-;                       RESTRICTIONS below.
-;       OLD_POLCAL:     (bool) If the focal plane Stokes vector had been
-;                       computed using the old polcal whis has opposite
-;                       handedness, use this keyword to convert to the proper
-;                       orientation.
-; OUTPUTS:
-;       M_TEL:  (float) a 4x4 array with the Mueller Matrix of the telescope
-; COMMON BLOCKS:
-;       
-; SIDE EFFECTS:
-;       
-; RESTRICTIONS:
-;       The mount of the linear polarizer (LP) of the calibration unit had been
-;       lose, definitely in 2011, probably also in 2010.  Therefore all model
-;       calculations have been made using the quarter wave plate as a
-;       reference, which results in a 10.7 degree offset between polarimeter
-;       and telescope coordinates.  For normal operation with a well-aligned
-;       LP this angle is zero.  But for 2011 (and maybe 2010) data one should
-;       use the QWP as reference and then call red_telmat with NO_ZERO_OFFSET=1
-; PROCEDURE:
-;       
-; MODIFICATION HISTORY:
-;        1-Apr-2012  P.Suetterlin, ISP
-;-
 
 on_error, 2
 

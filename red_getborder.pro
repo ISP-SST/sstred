@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    var : 
+;   
+;   
+;   
+;    x0 : 
+;   
+;   
+;   
+;    x1 : 
+;   
+;   
+;   
+;    y0 : 
+;   
+;   
+;   
+;    y1 : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    square  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_getborder, var, x0, x1, y0, y1, square = square
   inam = 'red_getborder : '
   dim = size(var, /dimension)

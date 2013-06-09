@@ -1,3 +1,54 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    cams  : 
+;   
+;   
+;   
+;    offset  : 
+;   
+;   
+;   
+;    nthreads : 
+;   
+;   
+;   
+;    nodual  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref
   inam = 'red::polcal : '
   outdir = self.out_dir + '/polcal/'

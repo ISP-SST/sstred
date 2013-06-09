@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    pp : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    xs  : 
+;   
+;   
+;   
+;    ys  : 
+;   
+;   
+;   
+;    dpr  : 
+;   
+;   
+;   
+;    mm  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref
   device, decompose=0
   

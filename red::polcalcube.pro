@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    cam  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+;    descatter  : 
+;   
+;   
+;   
+;    nthreads  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = nthreads
   inam = 'red::polcalcube : '
   cams = [self.camt, self.camr]

@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    img : 
+;   
+;   
+;   
+;    psf : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    nthreads  : 
+;   
+;   
+;   
+;    verbose  : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_cconvolve, img, psf, nthreads = nthreads, verbose = verbose
                                 ;
   dim = size(img, /dimension)

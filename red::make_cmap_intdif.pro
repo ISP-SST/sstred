@@ -1,3 +1,62 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    scan  : 
+;   
+;   
+;   
+;    cam  : 
+;   
+;   
+;   
+;    pref  : 
+;   
+;   
+;   
+;    debug  : 
+;   
+;   
+;   
+;    lc  : 
+;   
+;   
+;   
+;    psf  : 
+;   
+;   
+;   
+;    nthreads : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, lc = lc, psf = psf, nthreads=nthreads
 ;
   inam = 'red::make_cmap_intdif : '

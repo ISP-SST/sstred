@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;    wbpsf  : 
+;   
+;   
+;   
+;    reflected  : 
+;   
+;   
+;   
+;    square : 
+;   
+;   
+;   
+;    rot_dir  : 
+;   
+;   
+;   
+;    fwhm  : 
+;   
+;   
+;   
+;    only_scans : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans
 
   inam  = 'red::make_cmaps : '

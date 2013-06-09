@@ -1,3 +1,82 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    data_r : 
+;   
+;   
+;   
+;    qq : 
+;   
+;   
+;   
+;    lp : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    NORM : 
+;   
+;   
+;   
+;    init : 
+;   
+;   
+;   
+;    INI_NORM : 
+;   
+;   
+;   
+;    CHISQR : 
+;   
+;   
+;   
+;    FIX_QL : 
+;   
+;   
+;   
+;    PAR1 : 
+;   
+;   
+;   
+;    EXTINCTION : 
+;   
+;   
+;   
+;    STOKES_IN : 
+;   
+;   
+;   
+;    DOUBLE : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 FUNCTION red_polcal_fit, data_r, qq, lp, NORM=norm, init=par0, INI_NORM=inrm, $
                          CHISQR=chi, FIX_QL=fql, PAR1=par1, EXTINCTION=elp, $
                          STOKES_IN=sp0, DOUBLE=dbl

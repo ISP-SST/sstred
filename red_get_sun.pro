@@ -1,7 +1,62 @@
-pro red_get_sun,iy,im,id,sday,ha,dec
+; docformat = 'rst'
 
-;RETURNS THE HOUR ANGLE AND DECLINATION OF THE SUN AT LA PALMA SSO
-;CONVERTED FROM ANA ROUTINE LAPALMASUN.ANA
+;+
+; Returns the hour angle and declination of the Sun at La Palma SSO
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+;   Dick Shine, LMSAL (ANA original: lapalmasun.ana)
+;
+;   Jaime de la Cruz Rodriguez (IDL version)
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;   iy : 
+;   
+;   
+;   
+;   im : 
+;   
+;   
+;   
+;   id : 
+;   
+;   
+;   
+;   sday : 
+;   
+;   
+;   
+;   ha : 
+;   
+;   
+;   
+;   dec : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
+pro red_get_sun,iy,im,id,sday,ha,dec
 
 ;  time variable for Newcomb's folmulae:
 ;  fraction of Julian centuries elapsed since 1900.05 (noon 1st of January)

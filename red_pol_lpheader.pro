@@ -1,3 +1,50 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    nx : 
+;   
+;   
+;   
+;    ny : 
+;   
+;   
+;   
+;    nz : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    float : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_pol_lpheader, nx, ny, nz, float=float
                                 ;
                                 ; Create lp header for image cube

@@ -1,3 +1,58 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    par : 
+;   
+;   
+;   
+;    wav : 
+;   
+;   
+;   
+;    dat : 
+;   
+;   
+;   
+;    xl : 
+;   
+;   
+;   
+;    yl : 
+;   
+;   
+;   
+;    ratio : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 pro red_cfitgain, par, wav, dat, xl, yl, ratio
   npar = (size(par, /dim))[0]
   dim = size(dat, /dim)

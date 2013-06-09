@@ -1,3 +1,62 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;    files_list : 
+;   
+;   
+;   
+; 
+; :Keywords:
+; 
+;    time  : 
+;   
+;   
+;   
+;    summed  : 
+;   
+;   
+;   
+;    old  : 
+;   
+;   
+;   
+;    check  : 
+;   
+;   
+;   
+;    lun  : 
+;   
+;   
+;   
+;    notime : 
+;   
+;   
+;   
+; 
+; 
+; :history:
+; 
+;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+; 
+;-
 function red_sumfiles, files_list, time = time, summed = summed, old = old, check = check, lun = lun, notime=notime
                                 ;
   new = 1B
