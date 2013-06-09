@@ -10,6 +10,9 @@
 ; 
 ; :author:
 ; 
+;	Frank Varosi, NASA/GSFC 1992.
+;
+;       Converted to IDL V5.0 W. Landsman September 1997
 ; 
 ; 
 ; 
@@ -59,10 +62,7 @@
 ;-
 function red_convolve, image, psf, FT_PSF=psf_FT, FT_IMAGE=imFT, NO_FT=noft, $
                        CORRELATE=correlate, AUTO_CORRELATION=auto
-; HISTORY:
-;	written, Frank Varosi, NASA/GSFC 1992.
-;	Converted to IDL V5.0   W. Landsman   September 1997
-;-
+
   sp = size( psf_FT )  &  sif = size( imFT )
   sim = size( image )  &  sc = sim/2  &  npix = N_elements( image )
   

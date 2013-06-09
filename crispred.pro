@@ -70,7 +70,7 @@
 ;         red_matrix2momfbd (adapted),
 ;         C++ polcal curves (adapted),
 ;         MOMFBD image format DLMm
-;         fillpix adapted from Mat's (IDL) and Michiel's (c++)
+;         fillpix adapted from Mats' (IDL) and Michiel's (c++)
 ;
 ;   Pit Suetterlin (ISP-KVA):
 ;         red::polcal (interface for the C++ code),

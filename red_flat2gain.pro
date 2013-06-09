@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Make (inverse) gain table from flat field (or sum thereof). 
 ; 
 ; :Categories:
 ;
@@ -10,7 +10,7 @@
 ; 
 ; :author:
 ; 
-; 
+;    Mats Löfdahl, 2008
 ; 
 ; 
 ; :returns:
@@ -25,29 +25,29 @@
 ; 
 ; :Keywords:
 ; 
-;    badthreshold  : 
+;    badthreshold : in, type=float
 ;   
+;      Unsharp masking threshold for bad pixels .
 ;   
+;    mingain : in, type=float
 ;   
-;    mingain  : 
+;      Thresholds on the gain itself
 ;   
+;    maxgain : in, type=float
 ;   
+;      Threshold on the gain itself
 ;   
-;    maxgain  : 
+;    smoothsize : in, type=float
 ;   
+;      Unsharp masking smoothing kernel width.
 ;   
+;    preserve : in, optional, boolean
 ;   
-;    smoothsize  : 
+;      If set, don't zero borders between Sarnoff taps.
 ;   
+;    gain_nozero : out, optional
 ;   
-;   
-;    preserve  : 
-;   
-;   
-;   
-;    gain_nozero  : 
-;   
-;   
+;      The gain before zeroing the bad pixels.
 ;   
 ; 
 ; 
@@ -57,10 +57,17 @@
 ; 
 ; 
 ;-
-function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, smoothsize = smoothparameter, preserve = preserve, gain_nozero = gain_nozero
-  if(n_elements(bad) eq 0) then bad = 1.0
-  if(n_elements(min) eq 0) then min = 0.1
-  if(n_elements(max) eq 0) then max = 4.0
+function red_flat2gain, flat $
+                        , badthreshold = badthreshold $
+                        , mingain = mingain $
+                        , maxgain = maxgain $
+                        , smoothsize = smoothparameter $
+                        , preserve = preserve $
+                        , gain_nozero = gain_nozero
+
+  if(n_elements(badthreshold) eq 0) then badthreshold = 1.0
+  if(n_elements(mingain) eq 0) then mingain = 0.1
+  if(n_elements(maxgain) eq 0) then maxgain = 4.0
   if(n_elements(smoothparameter) eq 0) then smoothparameter = 7
 
   g = 0.0*flat
@@ -71,7 +78,7 @@ function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, 
   ;; dgain = g - smooth(g, smoothparameter, /edge_truncate)
   psf = red_get_psf(round(3*smoothparameter), round(3*smoothparameter), smoothparameter, smoothparameter)
   dgain = g - red_convolve(g, psf / total(psf))
-  mask = g GE min and g LE max and dgain LT bad AND finite(g)
+  mask = g GE mingain and g LE maxgain and dgain LT badthreshold AND finite(g)
 
   ker = replicate(1B, [5, 5])
   mask = morph_open(mask, ker)
