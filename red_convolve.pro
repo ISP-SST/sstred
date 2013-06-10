@@ -10,54 +10,61 @@
 ; 
 ; :author:
 ; 
-;	Frank Varosi, NASA/GSFC 1992.
+;     Frank Varosi, NASA/GSFC 1992.
 ;
-;       Converted to IDL V5.0 W. Landsman September 1997
-; 
-; 
 ; 
 ; :returns:
 ; 
 ; 
 ; :Params:
 ; 
-;    image : 
+;    image : in, type="2D array", optional
 ;   
+;      The image to be convolved. (Not needed if Fourier transform is
+;      sent in through FT_IMAGE.)
 ;   
+;    psf : in, type="2D array", optional
 ;   
-;    psf : 
-;   
-;   
+;      The kernel or PSF to convolve with. (Not needed if
+;      AUTO_CORRELATION keyword is set or Fourier transform is sent in
+;      through FT_PSF.)
 ;   
 ; 
 ; :Keywords:
 ; 
-;    FT_PSF : 
+;    FT_PSF : in, out
 ;   
+;      The Fourier transform of the PSF. Can be given as input to save
+;      computing time, otherwise will give the FT as output. Ignored
+;      if NO_FT.
 ;   
+;    FT_IMAGE : in, out
 ;   
-;    FT_IMAGE : 
+;      The Fourier transform of the image. Can be given as input to
+;      save computing time, otherwise will give the FT as output.
+;      Ignored if NO_FT.
 ;   
+;    NO_FT : in, boolean
 ;   
+;      Set this if you do not want to use FFT for the convolution.
 ;   
-;    NO_FT : 
+;    CORRELATE : in, boolean
+;    
+;      Set this to do correlation rather than convolution.
 ;   
+;    AUTO_CORRELATION : in, boolean
 ;   
-;   
-;    CORRELATE : 
-;   
-;   
-;   
-;    AUTO_CORRELATION : 
-;   
-;   
+;     Set this to do auto-correlation. Incompatible with NO_FT.
 ;   
 ; 
 ; 
 ; :history:
 ; 
+;   1997-10-?? : Converted to IDL V5.0. W. Landsman. 
+; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-06-10 : Added documentation. Mats Löfdahl (MGL).
 ; 
 ;-
 function red_convolve, image, psf, FT_PSF=psf_FT, FT_IMAGE=imFT, NO_FT=noft, $
@@ -104,4 +111,5 @@ function red_convolve, image, psf, FT_PSF=psf_FT, FT_IMAGE=imFT, NO_FT=noft, $
   sc = sc + (sim MOD 2)         ;shift correction for odd size images.
   
   return, shift( conv, sc[1], sc[2] )
+
 end
