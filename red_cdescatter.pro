@@ -33,13 +33,13 @@
 ; 
 ; :Keywords:
 ; 
-;    nthreads  : 
+;    nthreads  : in, optional, type=integer, default=4
 ;   
+;      Number of threads to use.
 ;   
+;    verbose  : in, optional, boolean
 ;   
-;    verbose  : 
-;   
-;   
+;      Set this to get verbose info about what's going on.
 ;   
 ; 
 ; 

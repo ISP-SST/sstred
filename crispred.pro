@@ -94,9 +94,10 @@
 ; 
 ; :Params:
 ; 
-;   filename : in, optional, type=string, default=config.txt
+;   filename : in, optional, type=string, default="config.txt"
 ;   
-;   
+;     The name of the configuration file, that describes the location
+;     of the science and calibration data (and a few other things).
 ;   
 ; 
 ; :Keywords:

@@ -10,7 +10,7 @@
 ; 
 ; :author:
 ; 
-;    Mats Löfdahl, 2008
+;    Mats Löfdahl (MGL), 2008
 ; 
 ; 
 ; :returns:
@@ -18,9 +18,9 @@
 ; 
 ; :Params:
 ; 
-;    flat : 
+;    flat : in, type="2D array"
 ;   
-;   
+;      A flat field image.
 ;   
 ; 
 ; :Keywords:
@@ -54,6 +54,8 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+;   2013-06-09 : Added documentation. MGL.
 ; 
 ; 
 ;-

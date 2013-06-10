@@ -58,5 +58,5 @@ function red_shift_im, var, dx, dy, cubic = cubic
                                 ;
                                 ; Interpolate
                                 ; 
-  return, interpolate(var, xgrid, ygrid, missi = median(var), cubic = cubic)
+  return, interpolate(var, xgrid, ygrid, missing = median(var), cubic = cubic)
 end

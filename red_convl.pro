@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Convolve a function with a kernel (1D), optionally using FFT.
 ; 
 ; :Categories:
 ;
@@ -10,7 +10,7 @@
 ; 
 ; :author:
 ; 
-; 
+;    Jaime de la Cruz Rodriguez (ISP-KVA 2010)
 ; 
 ; 
 ; :returns:
@@ -18,24 +18,24 @@
 ; 
 ; :Params:
 ; 
-;   a : 
+;   A : in, 
 ;   
+;      The "function" A. A is padded to n_elements(B)/2+2 points.
 ;   
+;   B : 
 ;   
-;   b : 
-;   
-;   
+;      The "kernel". Must be on the same grid as A.
 ;   
 ; 
 ; :Keywords:
 ; 
-;   plot : 
+;   plot : in, boolean
 ;   
+;     Set this to make a plot.
 ;   
+;   usefft : in, boolean
 ;   
-;   usefft : 
-;   
-;   
+;     Set this to use FFT, otherwise use convol() from IDL.
 ;   
 ; 
 ; 
@@ -45,25 +45,14 @@
 ; 
 ; 
 ;-
-function red_convl,a,b,plot=plot,usefft=usefft
-;
-; FFT based convolver
-; A and B must be in the same grid
-; A is padded to n_elements(b)/2+2 points
-;
-; Jaime de la Cruz Rodriguez (ISP-KVA 2010)
-;
-; a: function
-; b: kernel of the convolution
-;
+function red_convl, A, B, plot=plot, usefft=usefft
+
   n0=size(a,/dim)
   n1=size(b,/dim)
 
-;
-; Pads a with half of the size of b.
-; First/last value are repeated.
-; Can use fft based convolution or just convol() from idl
-;
+  ;; Pads A with half of the size of B.
+  ;; First/last value are repeated.
+
   if not keyword_set(usefft) then begin
      res=convol(a,b/total(b),/edge_truncate)
   endif else begin
@@ -74,14 +63,15 @@ function red_convl,a,b,plot=plot,usefft=usefft
      bb/=total(bb)
      res=double((fft(fft(aa,1)*fft(bb,1),-1))[npad0:npad0+n0-1])
   endelse
-;
-; Plot original and result
-;
+
+  ;; Optionally plot original and result
+
   if keyword_set(plot) then begin
      plot,a,line=1,xtitle='X [grid point]',ytitle='Y [values]'
      oplot,res
      legend,['Convolved','Original'],line=[0,1],/right,/bottom
   endif
-;
-  return,res
+
+  return, res
+
 end

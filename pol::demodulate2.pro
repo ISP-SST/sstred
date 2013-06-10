@@ -158,7 +158,7 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
                            (*self.rimg[2]),(*self.rimg[3]), immr)
 
   ;; Create arrays for the mozaics
-   
+
   ;;tmp = red_mozaic(*self.timg[0])
   ;;dim = red_getborder(tmp, x0, x1, y0, y1)
   ;;dim = size(tmp, /dim)
@@ -173,6 +173,7 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
      y0 = 0L
      y1 = tmp[1] - 1
   endif
+  
   dim = [x1 - x0 + 1, y1 - y0 + 1]
                                 ;
   img_t = fltarr(dim[0], dim[1], 4)
@@ -181,11 +182,11 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
   mymr = fltarr(4,4,dim[0], dim[1])
 
   ;; Printout
-                                
+
   print, inam + 'Image dimensions after clipping:'
   print, ' -> Nx = ' + red_stri(dim[0])
   print, ' -> Ny = ' + red_stri(dim[1])
-  
+
   ;; Mozaic images and demodulation matrix
    
   for ii = 0L, 3 do begin
@@ -212,7 +213,7 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
   endif
       
   ;; filter ?
-                                
+   
   if(~keyword_set(no_filter)) then begin
      filterf = file_dirname(self.tfiles[0])+'/filter.'+red_stri(dim[0])+'.f0'
      if(file_test(filterf)) then begin
@@ -225,16 +226,16 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
         for ii = 0L, 3 do img_t[*,*,ii] = red_fftfilt(reform(img_t[*,*,ii]), filter)
         for ii = 0L, 3 do img_r[*,*,ii] = red_fftfilt(reform(img_r[*,*,ii]), filter)
         print, 'done'
-                                ;
+   
      endif
   endif
-
+   
   ;; Destretch ?
-
+   
   if(destretch) then begin
    
      ;; Load WB images
-      
+   
      img_wb = fltarr(dim[0], dim[1], 4)
      for jj = 0L, 3 do img_wb[*,*,jj] = (red_mozaic(momfbd_read(self.wbfiles[jj])))[x0:x1, y0:y1]
      wb = (red_mozaic(momfbd_read(self.wb)))[x0:x1, y0:y1]
@@ -250,13 +251,13 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
 
      rest = fltarr(dim[0], dim[1], 4)
      resr = fltarr(dim[0], dim[1], 4)
-     
+      
      for ii = 0L, 3 do begin
         rest[*,*,ii] = stretch(reform(mymt[0,ii,*,*]) * img_t[*,*,0], grid0)  + $
                        stretch(reform(mymt[1,ii,*,*]) * img_t[*,*,1], grid1)  + $
                        stretch(reform(mymt[2,ii,*,*]) * img_t[*,*,2], grid2)  + $
                        stretch(reform(mymt[3,ii,*,*]) * img_t[*,*,3], grid3) 
-     
+ 
         resr[*,*,ii] = stretch(reform(mymr[0,ii,*,*]) * img_r[*,*,0], grid0)  + $
                        stretch(reform(mymr[1,ii,*,*]) * img_r[*,*,1], grid1)  + $
                        stretch(reform(mymr[2,ii,*,*]) * img_r[*,*,2], grid2)  + $
@@ -315,9 +316,10 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
   time_obs = 0.d0
   for ii = 0L, 3 do time_obs+= red_time2double((*self.timg[ii]).time)
   time_obs = red_time2double(time_obs * 0.25d0, /dir)
+
    
   ;; telescope model
-                                
+   
   line = (strsplit(self.state,'.',/extract))[1]
   print, inam+'Detected spectral line -> '+line
   if(file_test(self.telog)) then begin
@@ -334,10 +336,10 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
      
      imtel = invert(mtel)
      imtel /= imtel[0]
-     
+
      ;; Apply the matrix
-      
-     res1 = fltarr(dim[0], dim[1],4)
+
+     res1 = fltarr(dim[0], dim[1], 4)
      FOR j=0, 3 DO FOR i=0, 3 DO res1[*, *, j] += res[*, *, i] * imtel[i, j]
      res = temporary(res1)
      
@@ -379,14 +381,14 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
         fzwrite, float(cmap), odir+ofile, head + ''
      endif
   endif
-                                
-  ;; Do not remove! otherwise the IDL session will eat a lot of
-  ;; memory! At least the images need to be unloaded
-  
-  self -> unloadimages          ;; Deallocate pointers
-     
+
+  ;; Do not remove! otherwise the IDL session will eat a lot of memory!
+  ;; At least the images need to be unloaded
+
+  self -> unloadimages          ; Deallocate pointers
+
   ;; Is this needed?
-   
+
   immt = 0B
   immr = 0B
   img_t = 0B
@@ -399,6 +401,6 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
   tiles = 0B
   clip = 0B
   ;;res = 0B
-     
+   
   return
 end

@@ -84,7 +84,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
   inam = 'pol::demodulate : '
 
   ;; shall the state be demodulated?
-
+   
   if(keyword_set(state)) then begin
      bla = strjoin((strsplit(self.state, '.',/extract))[1:*], '.')
      if(state NE bla) then begin
@@ -92,7 +92,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
         return
      endif     
   endif
-                                ;
+
   if(~keyword_set(tiles) OR (~keyword_set(clip))) then begin
      tiles = [8,16,32,64]
      clip = [8,4,4,2]
@@ -102,7 +102,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
    
   outdir = file_dirname(self.tfiles[0]) + '/stokes/'
   outname = 'stokesIQUV.'+self.state+'.f0'
-                                ;
+   
   if(~keyword_set(overwrite)) then begin
      if file_test(outdir + outname) then begin
         print, inam + 'WARNING, output file exists -> skipping'
@@ -110,17 +110,17 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
         return
      endif
   endif
-
+   
   destretch = 1B
   if(keyword_set(no_destretch) OR (self.destretch eq 0)) then destretch = 0B
-
+   
   ;; load images into the object
    
   self -> loadimages
   
   ;; Convert the demodulation matrix into patches (like the momfbd
   ;; images) and convolve with the PSFs from the patches.
-
+   
   immt = red_matrix2momfbd((*self.timg[0]), (*self.timg[1]),$
                            (*self.timg[2]),(*self.timg[3]),*(*self.immt))
   immr = red_matrix2momfbd((*self.rimg[0]), (*self.rimg[1]),$
@@ -220,7 +220,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
       
      if(keyword_set(cmap)) then cmap = stretch(temporary(cmap), grid1)
 
-           rest = fltarr(dim[0], dim[1], 4)
+     rest = fltarr(dim[0], dim[1], 4)
      resr = fltarr(dim[0], dim[1], 4)
       
      for ii = 0L, 3 do begin
@@ -238,22 +238,22 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      img_r = temporary(resr)
   endif else begin
      print, inam + 'Demodulating data without de-stretching'
-                                ;
+                                
      rest = fltarr(dim[0], dim[1], 4)
      resr = fltarr(dim[0], dim[1], 4)
-                                ;
+                                
      for ii = 0L, 3 do begin
         rest[*,*,ii] = reform(mymt[0,ii,*,*]) * img_t[*,*,0] + $
                        reform(mymt[1,ii,*,*]) * img_t[*,*,1] + $
                        reform(mymt[2,ii,*,*]) * img_t[*,*,2] + $
                        reform(mymt[3,ii,*,*]) * img_t[*,*,3]
-                                ;
+                                
         resr[*,*,ii] = reform(mymr[0,ii,*,*]) * img_r[*,*,0] + $
                        reform(mymr[1,ii,*,*]) * img_r[*,*,1] + $
                        reform(mymr[2,ii,*,*]) * img_r[*,*,2] + $
                        reform(mymr[3,ii,*,*]) * img_r[*,*,3]
      endfor
-                                ;
+                                
      img_t = temporary(rest)
      img_r = temporary(resr)
   endelse
@@ -280,7 +280,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
       
      imtel = invert(mtel)
      imtel /= imtel[0]
-      
+
      ;; Apply the matrix
       
      res1 = fltarr(dim[0], dim[1], 4)
@@ -326,7 +326,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      print, inam + 'saving file -> '+ outdir + outname
      head = 'TIME_OBS='+time_obs+' DATE_OBS='+(*self.timg[0]).date
      fzwrite, res, outdir + outname, head+''
-                                ;
+                                
      if(keyword_set(cmap)) then begin
         odir = file_dirname(self.tfiles[0]) + '/cavity_map/'
         file_mkdir, odir
@@ -335,14 +335,14 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
         fzwrite, float(cmap), odir+ofile, head + ''
      endif
   endif
-   
+
   ;; Do not remove! otherwise the IDL session will eat a lot of memory!
   ;; At least the images need to be unloaded
-   
+
   self -> unloadimages          ; Deallocate pointers
-  
+
   ;; Is this needed?
-  
+
   immt = 0B
   immr = 0B
   img_t = 0B

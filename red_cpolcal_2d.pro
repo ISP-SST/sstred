@@ -6,7 +6,7 @@
 ; Performs a Levenberg-Marquardt fit for the optimum MM of the CRISP
 ; instrument. The actual computation is performed in an external C
 ; routine that uses the C version of MPFIT by Craig Markward. The
-; external code is based on a routine by Jaime de la Cruz
+; external code is based on a routine by Jaime de la Cruz.
 ; 
 ; :Categories:
 ;

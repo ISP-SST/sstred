@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Sort file names so frame numbers are ascending.
 ; 
 ; :Categories:
 ;
@@ -15,12 +15,14 @@
 ; 
 ; :returns:
 ; 
+;    The sorted array of file names.
+; 
 ; 
 ; :Params:
 ; 
-;    files : 
+;    files : in, type=strarr
 ;   
-;   
+;      An array of file names.
 ;   
 ; 
 ; :Keywords:

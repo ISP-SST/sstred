@@ -1,14 +1,58 @@
+; docformat = 'rst'
+
 ;+
+; Calculate how images need to be clipped for a rough alignment.
 ;
+; 
+; 
+; :Categories:
 ;
+;    CRISP pipeline
+; 
+; 
+; :author:
+; 
+; 
+; 
+; :returns:
+; 
+; 
+; :Params:
+; 
+;   
+; 
+; :Keywords:
+;    
+;    refrot :  
+;    
+;    
+;    
+;    thres : 
+;    
+;    
+;    extraclip : 
+;    
+;    
+;    maxshift : 
+;    
+; 
+;    
+; 
+;    dx : in, optional, type="array[2]", default="[0, 0]"
+; 
+;       Set dx to the shifts needed to approximately align the NB
+;       cameras in X to the WB (ref) after applying the correct
+;       flipping. Use only if there are large misalignments, like a
+;       whole row or column of pinholes.
+; 
+;    dy : in, optional, type="array[2]", default="[0, 0]"
+; 
+;       As dx but refers to the Y direction.
+;
+; 
 ; :history:
 ;
-;   2013-05-?? : Keywords dx and dy added by MGL, use these if there
-;                are large misalignments, like a whole row or column
-;                of pinholes. Set dx to the shifts needed to
-;                approximately align the NB cameras in X to the WB
-;                (ref) after applying the correct flipping. Similar
-;                for dy.
+;   2013-05-?? : Keywords dx and dy added by MGL
 ;
 ;-
 PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
