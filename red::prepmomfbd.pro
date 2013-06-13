@@ -77,8 +77,11 @@
 ;   
 ;   
 ;   
+;    newgains :
 ; 
-; 
+;
+;
+;
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
