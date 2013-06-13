@@ -82,13 +82,14 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-; 
+;   2013-06-13, JdlCR : added support for scan-dependent gains -> 
+;                       using keyword "/newgains".
 ; 
 ;-
 pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $
-                     pref = pref, escan = escan, div = div, nremove=nremove
+                     pref = pref, escan = escan, div = div, nremove=nremove, newgains=newgains
                                 ;
   inam = 'red::prepmomfbd : '
                                 ;
@@ -302,7 +303,11 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               printf, lun, '    FILENAME_TEMPLATE='+self.camttag+'.'+istate+'.%07d'
                                 ;  printf, lun, '    DIVERSITY=0.0 mm'
               if(~keyword_set(unpol)) then begin
-                 search = self.out_dir+'/gaintables/'+self.camttag + '.' + ustat1[ii] + '*.gain'
+                 if(keyword_set(newgains)) then begin
+                    search = self.out_dir+'/gaintables/'+self.camttag + '.' + istate+'.gain'
+                 endif else begin
+                    search = self.out_dir+'/gaintables/'+self.camttag + '.' + ustat1[ii] + '*.gain'
+                 endelse
               endif Else begin
 
                                 ;
@@ -352,7 +357,11 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               printf, lun, '    FILENAME_TEMPLATE='+self.camrtag+'.'+istate+'.%07d'
                                 ;   printf, lun, '    DIVERSITY=0.0 mm' 
               if(~keyword_set(unpol)) then begin
-                 search = self.out_dir+'/gaintables/'+self.camrtag + '.' + ustat1[ii] + '*.gain'
+                 if(keyword_set(newgains)) then begin
+                    search = self.out_dir+'/gaintables/'+self.camrtag + '.' + istate+'.gain'
+                 endif else begin
+                    search = self.out_dir+'/gaintables/'+self.camrtag + '.' + ustat1[ii] + '*.gain'
+                 endelse
               endif Else begin
                  idx = strsplit(ustat1[ii],'.')
                  nidx = n_elements(idx)
