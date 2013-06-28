@@ -136,6 +136,7 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      par_t = red_polcal_fit(t1d, tqw, tlp-da, norm=4, fix=ql)
      par_r = red_polcal_fit(r1d, rqw, rlp-da, norm=4, fix=ql)
      
+     
                                 ;
                                 ; do fits and save
                                 ;

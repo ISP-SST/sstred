@@ -1,4 +1,4 @@
-function get_psf,nx,ny,cx,cy
+function red_get_psf,nx,ny,cx,cy
   psf=dblarr(nx,ny)
   nx2=double(nx/2)
   ny2=double(ny/2)

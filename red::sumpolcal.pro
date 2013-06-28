@@ -41,7 +41,7 @@
 ; 
 ; 
 ;-
-pro red::sumpolcal, remove = remove, ucam = ucam, check=check
+pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
   inam = 'red::sumpolcal : '
                                 ;
   if(~self.dopolcal) then begin
@@ -99,7 +99,7 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check
                                 ;
                                 ; sum images
      outdir = self.out_dir + '/polcal_sums/' + cam+'/'
-     outdir1 = self.out_dir + '/polcal_summed/' + cam+'/'
+     if(keyword_set(old)) then outdir1 = self.out_dir + '/polcal_old/' + cam+'/'
      camtag = (strsplit(file_basename(files[0]), '.',/extract))[0]
      file_mkdir, outdir
      file_mkdir, outdir1
@@ -129,15 +129,17 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check
                                 ;
                                 ; Save un-normalized sums for polcal
                                 ;
-        h1 = red_get_polcalheader(files[pos[0]], head, n_elements(pos), pstat, date = date)
-        namout1 = camtag + '_im' + date + '.fp0.1234.1234.'+$
-                  strcompress(string(float(strmid(pstat.qw[pos[0]],2,3)),format='(F6.2)'),/remove)+'.'+ $
-                  pstat.lc[pos[0]]+'.'+pstat.nums[pos[0]]
-        print, inam + 'saving ' + outdir1 + namout1
-        pref = pstat.pref[pos[0]]
-        outdir2 = outdir1 + pref + '/'
-        file_mkdir, outdir2 
-        fzwrite, polcalsum, outdir2 + namout1, h1
+        if(keyword_set(old)) then begin
+           h1 = red_get_polcalheader(files[pos[0]], head, n_elements(pos), pstat, date = date)
+           namout1 = camtag + '_im' + date + '.fp0.1234.1234.'+$
+                     strcompress(string(float(strmid(pstat.qw[pos[0]],2,3)),format='(F6.2)'),/remove)+'.'+ $
+                     pstat.lc[pos[0]]+'.'+pstat.nums[pos[0]]
+           print, inam + 'saving ' + outdir1 + namout1
+           pref = pstat.pref[pos[0]]
+           outdir2 = outdir1 + pref + '/'
+           file_mkdir, outdir2 
+           fzwrite, polcalsum, outdir2 + namout1, h1
+        endif
                                 ;
         if(firsttime eq 1B) then begin
            openw, lun, outdir2+'/'+camtag+'_lg'+date, /get_lun, width = 300

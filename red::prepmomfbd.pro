@@ -87,12 +87,14 @@
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;   2013-06-13, JdlCR : added support for scan-dependent gains -> 
 ;                       using keyword "/newgains".
-; 
+;   2013-06-28, JdlCR : added NF (object) option 
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $
-                     pref = pref, escan = escan, div = div, nremove=nremove, newgains=newgains
+                     pref = pref, escan = escan, div = div, nremove=nremove, $
+                     newgains=newgains, nf = nfac
                                 ;
   inam = 'red::prepmomfbd : '
                                 ;
@@ -105,6 +107,9 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
   if(~keyword_set(outformat)) then outformat = 'MOMFBD'
   if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
   if(n_elements(nremove) eq 0) then nremove=1
+  if(n_elements(nfac) gt 0) then begin
+     if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
+  endif
 
                                 ;
                                 ; get states from the data folder
@@ -254,6 +259,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
                                 ;
                                 ; printf, lun, '    INCOMPLETE'
+           if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[0])
            printf, lun, '  }'
            printf, lun, '}'
                                 ;
@@ -346,6 +352,8 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               if(keyword_set(div)) then begin
                  printf, lun, '    DIVERSITY='+string(div[1])+' mm'
               endif
+              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[1])
+           
               printf, lun, '    INCOMPLETE'
               printf, lun, '  }'
               printf, lun, '}'  
@@ -401,6 +409,8 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               if(keyword_set(div)) then begin
                  printf, lun, '    DIVERSITY='+string(div[2])+' mm'
               endif
+              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[2])
+
               printf, lun, '    INCOMPLETE'
               printf, lun, '  }'
               printf, lun, '}'
@@ -439,6 +449,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
                  yofile = self.out_dir+'/calib/'+self.camwbtag+'.'+yoff
                  if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
                  if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
+                 if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[0])
 
                  printf, lun, '    INCOMPLETE'
                  printf, lun, '  }'

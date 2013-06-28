@@ -54,10 +54,10 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-; 
+;   2013-06-27 : JdlCR: Fixed bug with cam_t, it used files from cam_r
 ; 
 ;-
-pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, lc = lc, psf = psf, nthreads=nthreads
+pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, lc = lc, psf = psf, nthreads=nthreads, verbose = verbose
 ;
   inam = 'red::make_cmap_intdif : '
 
@@ -162,6 +162,9 @@ pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, l
               continue
            endif
         end
+        tempdir=self.data_dir + '/' + ucam[cc]+'/'
+        longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
+        mmfiles = tempdir + ctag[cc]+strmid(mfiles,longi,200)
         
                                 ;
                                 ; load dark file
@@ -234,12 +237,14 @@ pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, l
                  stop
               endelse
               
+              if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
+
               if(ww eq 0) then begin
-                 tmp = red_fillpix(((red_sumfiles(mfiles[idx], /check) - dd)*g))
+                 tmp = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g))
                  dim = size(tmp, /dim)
                  cub = fltarr(nw,dim[0], dim[1])
                  cub[ww,*,*] = temporary(tmp)
-              endif else cub[ww,*,*] = red_fillpix(((red_sumfiles(mfiles[idx], /check) - dd)*g))
+              endif else cub[ww,*,*] = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g))
               
               
            endfor               ; kk
@@ -258,7 +263,7 @@ pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, l
            
            for ww =  0, nw-1 do begin
               if(keyword_set(psf)) then begin
-                 rat[ww,*,*] = red_cconvolve(reform(rat[ww,*,*]), psf/total(psf), nthreads=nthreads)
+                 rat[ww,*,*] = red_convolve(reform(rat[ww,*,*]), psf/total(psf))
               endif
 
               outname = outdir + '/' + ctag[cc] + '.' + scstate[ww] + '.intdiff'

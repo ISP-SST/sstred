@@ -19,6 +19,7 @@
 @red::getstats.pro
 @red::initialize.pro
 @red::link_data.pro
+@red::getalignclips
 @red::make_cmap_intdif2.pro
 @red::make_cmap_intdif.pro
 @red::make_cmaps.pro

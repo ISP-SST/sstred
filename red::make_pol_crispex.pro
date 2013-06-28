@@ -267,7 +267,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      if(ss eq 0) then begin
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,0,ii])
-        cscl = 15000./max(imean)
+        if(~keyword_set(float)) then cscl = 15000./max(imean) else cscl = 1.0
      endif
      
      if(~keyword_set(scans_only)) then begin

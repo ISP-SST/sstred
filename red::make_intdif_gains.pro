@@ -41,7 +41,7 @@
 ; 
 ; 
 ;-
-pro red::make_intdif_gains, pref = pref, scan = scan, cam = cam
+pro red::make_intdif_gains, pref = pref, scan = scan, cam = cam, bad=bad, preserve=preserve, smooth=smooth, min=mingain, max=maxgain
   inam = 'red::make_intdif_gains : '
   outdir = self.out_dir + '/gaintables/'
   file_mkdir, outdir
@@ -126,8 +126,8 @@ pro red::make_intdif_gains, pref = pref, scan = scan, cam = cam
            for ss = 0L, nscan-1 do begin
               if(keyword_set(scan)) then begin
                  if(uscan[ss] ne scan) then begin
-                    print, inam + 'skipping ' + scan[ss] + ' != '+scan
-                    continue
+                    print, inam + 'skipping ' + uscan[ss] + ' != '+scan
+                     continue
                  endif
               endif
               
@@ -141,7 +141,7 @@ pro red::make_intdif_gains, pref = pref, scan = scan, cam = cam
                                 ;
                  print, inam + 'loading -> '+f[idx]
                  rat = f0(f[idx]) * 1.e-4
-                 gain = red_flat2gain(flat*rat) 
+                 gain = red_flat2gain(flat*rat,bad=bad, preserve=preserve, smooth=smooth, mingain=mingain, maxgain=maxgain) 
                  
                                 ;
                                 ; Save result
