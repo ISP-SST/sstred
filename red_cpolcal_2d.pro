@@ -6,7 +6,7 @@
 ; Performs a Levenberg-Marquardt fit for the optimum MM of the CRISP
 ; instrument. The actual computation is performed in an external C
 ; routine that uses the C version of MPFIT by Craig Markward. The
-; external code is based on a routine by Jaime de la Cruz.
+; external C code by Jaime de la Cruz R.(IFA-UU).
 ; 
 ; :Categories:
 ;
@@ -15,7 +15,7 @@
 ; 
 ; :author:
 ; 
-;    2012-01-20 : P.Suetterlin, ISP
+;    2012-01-20 : P.Suetterlin, ISP 
 ; 
 ; 
 ; 
@@ -57,7 +57,7 @@
 ;   
 ; :restrictions:
 ;
-;       The external C library cpolcal_simple.so has to be available.
+;       The external C library creduc.so has to be available.
 ; 
 ; 
 ; :history:
@@ -77,14 +77,14 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
   
   ;;; locate the library.  Either in the same dir as the procedure, in the DLM
   ;;; path or the normal search path 
-  libname = 'cpolcal_simple.so'
+  libname = 'creduc.so'
   dir = file_dirname((routine_info('cpolcal_2d',/func,/source)).path)
   libfile = file_search(dir, libname)
   libfile = file_search(strsplit(!DLM_PATH, ':', /extr), libname)
   IF libfile EQ '' THEN $
      libfile = file_search(strsplit(!PATH, ':', /extr), libname)
   IF libfile EQ '' THEN $
-     message, 'Could not locate library file cpolcal_simple.so; Exiting'
+     message, 'Could not locate library file '+libname+'; Exiting'
   libfile = libfile(0)
   
   ;;; Need parameter type checking, else things might (will) break
@@ -116,7 +116,7 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
   FOR ii=0, 17 DO res[ii, *, *] = guess[ii]
   chisq = fltarr(nx, ny)
   
-  
+  print, 'red_cpolcal_2d : using libfile -> '+libfile
   dum = call_external(libfile, 'cpolcal_2d', nlc, nqq, nlp, npix, $
                       dat, qq, lp, res, chisq, nt)
                                 ;

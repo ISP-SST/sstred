@@ -87,7 +87,8 @@
 ;-
 pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = no_destretch, $
                       no_filter = no_filter, overwrite = overwrite, img = res, sp = sp, power_sp = power_sp, $
-                      cmap = cmap, nosave=nosave, noclip = noclip, savecams = savecams, mdate = mdate
+                      cmap = cmap, nosave=nosave, noclip = noclip, savecams = savecams, mdate = mdate, $
+                      noflat = noflat
    
   inam = 'pol::demodulate2 : '
    
@@ -127,27 +128,30 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
   self -> loadimages
   
   ;; load files
-   
-  utflat = f0(self.utflat)
-  urflat = f0(self.urflat)
-  tgain = fltarr([size(utflat,/dim), 4])
-  rgain = fltarr([size(urflat,/dim), 4])
-  for ii = 0,3 do begin
-     print, inam + 'loading -> '+self.ftfiles[ii]
-     tgain[*,*,ii] = f0(self.ftfiles[ii])
-     print, inam + 'loading -> '+self.frfiles[ii]
-     rgain[*,*,ii] = f0(self.frfiles[ii])
-  endfor
-  
+  if(~keyword_set(noflat)) then begin
+     utflat = f0(self.utflat)
+     urflat = f0(self.urflat)
+     tgain = fltarr([size(utflat,/dim), 4])
+     rgain = fltarr([size(urflat,/dim), 4])
+     for ii = 0,3 do begin
+        print, inam + 'loading -> '+self.ftfiles[ii]
+        tgain[*,*,ii] = f0(self.ftfiles[ii])
+        print, inam + 'loading -> '+self.frfiles[ii]
+        rgain[*,*,ii] = f0(self.frfiles[ii])
+     endfor
+  endif
+
   ;; Apply flat ratio to IMMT (remember! -> IMMT = Inverse Modulation Matrix!)
    
   immt = *(*self.immt)
   immr = *(*self.immr)
   
-  print, inam + 'applying flat ratios to the inverse modulation matrix (s) ... ', format='(A,$)'
-  immt = red_demat(tgain, utflat, temporary(immt))
-  immr = red_demat(rgain, urflat, temporary(immr))
-  print, 'done'
+  if(~keyword_set(noflat)) then begin
+     print, inam + 'applying flat ratios to the inverse modulation matrix (s) ... ', format='(A,$)'
+     immt = red_demat(tgain, utflat, temporary(immt))
+     immr = red_demat(rgain, urflat, temporary(immr))
+     print, 'done'
+  endif
 
   ;; Convert the demodulation matrix into patches (like the momfbd
   ;; images) and convolve with the PSFs from the patches.

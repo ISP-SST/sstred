@@ -57,7 +57,7 @@
 ;   2013-06-27 : JdlCR: Fixed bug with cam_t, it used files from cam_r
 ; 
 ;-
-pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, lc = lc, psf = psf, nthreads=nthreads, verbose = verbose
+pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, lc = lc, psf = psf, nthreads=nthreads, verbose = verbose, overwrite=overwrite
 ;
   inam = 'red::make_cmap_intdif : '
 
@@ -240,11 +240,11 @@ pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, l
               if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
 
               if(ww eq 0) then begin
-                 tmp = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g))
+                 tmp = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g), nthreads=nthreads)
                  dim = size(tmp, /dim)
                  cub = fltarr(nw,dim[0], dim[1])
                  cub[ww,*,*] = temporary(tmp)
-              endif else cub[ww,*,*] = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g))
+              endif else cub[ww,*,*] = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g), nthreads=nthreads)
               
               
            endfor               ; kk

@@ -47,7 +47,7 @@ pro red_flagtunning, stat, nremove
      if(stat.wav[ii] ne os) then begin
                                 ;print, os, stat.state[ii]
         os = stat.wav[ii]
-        stat.star[ii:ii:ii+nremove-1] = 1B
+        stat.star[ii:ii+nremove-1] = 1B
      endif
   endfor
                                 ;

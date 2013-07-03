@@ -24,8 +24,10 @@
 @red::make_cmap_intdif.pro
 @red::make_cmaps.pro
 @red::makegains.pro
+@red::make_intdif_gains3.pro
 @red::make_intdif_gains2.pro
 @red::make_intdif_gains.pro
+@red::sum_data_intdif.pro
 @red::make_pol_crispex.pro
 @red::make_stokes_crispex2.pro
 @red::make_stokes_crispex.pro

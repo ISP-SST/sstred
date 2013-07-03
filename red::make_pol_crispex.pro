@@ -175,6 +175,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   ;;
   ;; Create temporary cube and open output file
   ;;
+  if(n_elements(crop) eq 0) then crop = [0,0,0,0]
   dimim = size(f0(tfiles[0]), /dim)
   x0 = 0L + crop[0]
   x1 = dimim[0]-crop[1]-1
@@ -284,7 +285,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         if(keyword_set(float)) then begin
            writeu, lun, transpose(float(d), [0,1,3,2])
         endif else begin
-           writeu, lun, transpose(fix(round(d*sclc)), [0,1,3,2])
+           writeu, lun, transpose(fix(round(d*cslc)), [0,1,3,2])
         endelse
         free_lun, lun
      endelse
