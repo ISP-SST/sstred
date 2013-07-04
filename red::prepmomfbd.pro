@@ -313,7 +313,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
                                 ;  printf, lun, '    DIVERSITY=0.0 mm'
               if(~keyword_set(unpol)) then begin
                  if(keyword_set(newgains)) then begin
-                    search = self.out_dir+'/gaintables/'+self.camttag + '.' + istate+'.gain'
+                    search = self.out_dir+'/gaintables/'+folder_tag+'/'+self.camttag + '.' + istate+'.gain'
                  endif else begin
                     search = self.out_dir+'/gaintables/'+self.camttag + '.' + ustat1[ii] + '*.gain'
                  endelse
@@ -369,7 +369,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
                                 ;   printf, lun, '    DIVERSITY=0.0 mm' 
               if(~keyword_set(unpol)) then begin
                  if(keyword_set(newgains)) then begin
-                    search = self.out_dir+'/gaintables/'+self.camrtag + '.' + istate+'.gain'
+                    search = self.out_dir+'/gaintables/'+folder_tag+'/'+self.camrtag + '.' + istate+'.gain'
                  endif else begin
                     search = self.out_dir+'/gaintables/'+self.camrtag + '.' + ustat1[ii] + '*.gain'
                  endelse
