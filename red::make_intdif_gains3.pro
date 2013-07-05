@@ -159,17 +159,6 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      endif
      t0 = idx[0]
      t1 = idx[n_elements(idx)-1]
-     if(keyword_set(scan)) then begin
-        pos = where(uscan eq scan, count)
-        if(count eq 1) then begin
-           if(done[pos] eq 1B) then begin
-              t0 = pos
-              t1 = pos
-           endif
-        endif
-     endif
-
-
      print, inam + 't0 = '+stri(t0)+', t1 = '+stri(t1)
      print, inam + 'Looping through scans'
      print, ' '
@@ -177,6 +166,11 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      ;; sum images
      ;;
      for ss = t0, t1 do begin 
+        if(n_elements(scan) gt 0) then begin
+           if(uscan[ss] ne scan) then begin
+              print, inam + 'skipping scan -> '+uscan[ss]
+           endif
+        endif
 
         ;;
         ;; Get timeaver bounds
