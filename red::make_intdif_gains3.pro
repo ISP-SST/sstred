@@ -187,7 +187,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
         ;;
         ;; read data
         ;;
-        if(ss eq t0) then begin
+        if((ss eq t0) or (n_elements(cub) eq 0)) then begin
            for ii = x0, x1 do begin
               print, string(13B),inam +'adding t = '+stri(ii)+' / '+stri(x1), format='(A,A,I0,A,I0,$)' 
               if(ii eq x0) then cub = float(dat[ii]) else cub += dat[ii]
