@@ -249,6 +249,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         ;;
         ;; Load image and apply prefilter correction
         ;;
+        print, inam + 'loading -> '+file_basename(st.ofiles[ww,ss])
         tmp = (f0(st.ofiles[ww,ss]))[x0:x1,y0:y1,*] * tpref[ww]
         if(keyword_set(filter)) then begin
            tmp = red_fftfilt(temporary(tmp), filter)

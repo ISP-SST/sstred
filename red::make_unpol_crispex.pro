@@ -50,17 +50,14 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-; 
+;   2013-07-05 : allow to bypass flat-ratio operations
 ; 
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan
   inam = 'red::make_unpol_crispex : '
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
 
-  if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
-     tiles = [8,16,32,64]
-     clips = [8,4,4,2]
-  endif
+ 
   ;;
   ;; select folder
   ;;
@@ -187,55 +184,58 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   ;;
   ;; Load clean flats and gains
   ;;
-  for ii = 0, nwav-1 do begin
+  if(~keyword_set(noflats)) then begin
+     for ii = 0, nwav-1 do begin
+        
+        tff = self.out_dir + 'flats/'+self.camttag + '.'+pref+'.'+st.uwav[ii]+'.unpol.flat'
+        rff = self.out_dir + 'flats/'+self.camrtag + '.'+pref+'.'+st.uwav[ii]+'.unpol.flat'
+        tgg = self.out_dir + 'gaintables/'+self.camttag + '.'+pref+'.'+st.uwav[ii]+'.lc4.gain'
+        rgg = self.out_dir + 'gaintables/'+self.camrtag + '.'+pref+'.'+st.uwav[ii]+'.lc4.gain'
+        if(ii eq 0) then print, inam + 'Loading: '
+        print,' -> '+tff
+        print,' -> '+rff
+        print,' -> '+tgg
+        print,' -> '+rgg
+        
+        if(~file_test(tff) OR ~file_test(rff) OR ~file_test(tgg) OR ~file_test(rgg)) then begin
+           print, inam + 'ERROR -> Flat/gain files not found'
+           return
+        endif
+        
+        if(ii eq 0) then begin
+           dim = size(f0(tff),/dimen)
+           tratio = fltarr(dim[0], dim[1], nwav)
+           rratio = fltarr(dim[0], dim[1], nwav)
+        endif 
+        
+        tmp = f0(tff)
+        tmp1 = f0(tgg)
+        idx = where(tmp1 gt 0.0001, count, complement = idx1)
+        mask = bytarr(dim) + 1B
+        tmp[idx] = mean(tmp[idx]) / tmp[idx]
+        tmp[idx] = tmp[idx] / tmp1[idx]
+        if(n_elements(idx1) gt 0) then begin
+           tmp[idx1] = 0.0d0
+           mask[idx1] = 0B
+        endif
+        tmp = red_fillpix(tmp, mask=red_cleanmask(mask),nthreads=6)
+        tratio[*,*,ii] = temporary(tmp)
+        
+        tmp = f0(rff)
+        tmp1 = f0(rgg)
+        idx = where(tmp1 gt 0.0001, count, complement = idx1)
+        mask = bytarr(dim) + 1B
+        tmp[idx] = mean(tmp[idx]) / tmp[idx]
+        tmp[idx] = tmp[idx] / tmp1[idx]
+        if(n_elements(idx1) gt 0) then begin
+           tmp[idx1] = 0.0d0
+           mask[idx1] = 0B
+        endif
+        tmp = red_fillpix(tmp, mask = red_cleanmask(mask),nthreads=6)
+        rratio[*,*,ii] = temporary(tmp)
+     endfor
+  endif
 
-     tff = self.out_dir + 'flats/'+self.camttag + '.'+pref+'.'+st.uwav[ii]+'.unpol.flat'
-     rff = self.out_dir + 'flats/'+self.camrtag + '.'+pref+'.'+st.uwav[ii]+'.unpol.flat'
-     tgg = self.out_dir + 'gaintables/'+self.camttag + '.'+pref+'.'+st.uwav[ii]+'.lc4.gain'
-     rgg = self.out_dir + 'gaintables/'+self.camrtag + '.'+pref+'.'+st.uwav[ii]+'.lc4.gain'
-     if(ii eq 0) then print, inam + 'Loading: '
-     print,' -> '+tff
-     print,' -> '+rff
-     print,' -> '+tgg
-     print,' -> '+rgg
-
-     if(~file_test(tff) OR ~file_test(rff) OR ~file_test(tgg) OR ~file_test(rgg)) then begin
-        print, inam + 'ERROR -> Flat/gain files not found'
-        return
-     endif
-
-     if(ii eq 0) then begin
-        dim = size(f0(tff),/dimen)
-        tratio = fltarr(dim[0], dim[1], nwav)
-        rratio = fltarr(dim[0], dim[1], nwav)
-     endif 
-
-     tmp = f0(tff)
-     tmp1 = f0(tgg)
-     idx = where(tmp1 gt 0.0001, count, complement = idx1)
-     mask = bytarr(dim) + 1B
-     tmp[idx] = mean(tmp[idx]) / tmp[idx]
-     tmp[idx] = tmp[idx] / tmp1[idx]
-     if(n_elements(idx1) gt 0) then begin
-        tmp[idx1] = 0.0d0
-        mask[idx1] = 0B
-     endif
-     tmp = red_fillpix(tmp, mask=red_cleanmask(mask),nthreads=6)
-     tratio[*,*,ii] = temporary(tmp)
-     
-     tmp = f0(rff)
-     tmp1 = f0(rgg)
-     idx = where(tmp1 gt 0.0001, count, complement = idx1)
-     mask = bytarr(dim) + 1B
-     tmp[idx] = mean(tmp[idx]) / tmp[idx]
-     tmp[idx] = tmp[idx] / tmp1[idx]
-     if(n_elements(idx1) gt 0) then begin
-        tmp[idx1] = 0.0d0
-        mask[idx1] = 0B
-     endif
-     tmp = red_fillpix(tmp, mask = red_cleanmask(mask),nthreads=6)
-     rratio[*,*,ii] = temporary(tmp)
-  endfor
 
   ;;
   ;; Load WB image and define the image border
@@ -279,7 +279,15 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   ;;
   ;; start processing data
   ;; 
+
+  if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
+     tiles = [8,16,32,64]
+     clips = [8,4,2,1]
+  endif
+
   for ss = 0L, nscan-1 do begin
+     if(n_elements(iscan) gt 0) then if(iscan ne st.uscan[ss]) then continue
+     print, inam + 'processing scan -> '+st.uscan[ss]
 
      IF(SS EQ 0) THEN BEGIN
         fzwrite, wav, odir + '/' + 'wav.'+pref+'.f0',' '
@@ -308,18 +316,14 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         rrf = f + '/' + self.camrtag+'.'+state
         wwf = f + '/' + self.camwbtag+'.'+state
         print, inam + 'processing state -> '+state 
-        ;;
-        ;; Load flats used and compute ration with the clean one
-        ;;
-        tgain = self.out_dir + '/gaintables/'+self.camttag + '.' + st.ostate[ww,ss]
-
+     
 
         ;;
         ;; Get destretch to anchor camera (residual seeing)
         ;;
-        
-        grid1 = dsgridnest(wb, (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1], tiles, clips)
-        
+        wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
+        grid1 = dsgridnest(wb, wwi, tiles, clips)
+        print, 'computed grid'
         tmp_raw0 = momfbd_read(ttf)
         tmp_raw1 = momfbd_read(rrf)
 
@@ -327,12 +331,15 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         ;; Apply flat ratio after convolving with the PSF
         ;; of the patch: red_img2momfbd
         ;;
-        tmp0 = (red_mozaic(tmp_raw0))[x0:x1, y0:y1]
-        tmp1 = (red_mozaic(tmp_raw1))[x0:x1, y0:y1]
-        trat = (red_mozaic(red_img2momfbd(tmp_raw0, tratio[*,*,ww])))[x0:x1, y0:y1]
-        rrat = (red_mozaic(red_img2momfbd(tmp_raw1, rratio[*,*,ww])))[x0:x1, y0:y1]
-        tmp0 = temporary(tmp0) * temporary(trat) * tpref[ww]
-        tmp1 = temporary(tmp1) * temporary(rrat) * rpref[ww]
+        tmp0 = (red_mozaic(tmp_raw0))[x0:x1, y0:y1] * tpref[ww]
+        tmp1 = (red_mozaic(tmp_raw1))[x0:x1, y0:y1] * rpref[ww]
+        if(~keyword_set(noflats)) then begin
+           trat = (red_mozaic(red_img2momfbd(tmp_raw0, tratio[*,*,ww])))[x0:x1, y0:y1]
+           rrat = (red_mozaic(red_img2momfbd(tmp_raw1, rratio[*,*,ww])))[x0:x1, y0:y1]
+           
+           tmp0 = temporary(tmp0) * temporary(trat) 
+           tmp1 = temporary(tmp1) * temporary(rrat) 
+        endif
 
         ;;
         ;; combine cameras, compute scale factor avoiding borders...
@@ -346,14 +353,15 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         me = mean(tmp0[xx0:xx1,yy0:yy1] + tmp1[xx0:xx1,yy0:yy1]) * 0.5
         sclt = me / (mean(tmp0[xx0:xx1,yy0:yy1]))
         sclr = me / (mean(tmp1[xx0:xx1,yy0:yy1]))
+        
         tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) * tmean[ss]
-
+        
         ;;
         ;; Apply destretch to anchor camera and prefilter correction
         ;;
 
         tmp = stretch(temporary(tmp), grid1)
-
+        
         ;;
         ;; Apply derot, align, dewarp
         ;;
