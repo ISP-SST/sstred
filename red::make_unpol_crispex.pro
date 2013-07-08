@@ -380,6 +380,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         dat[ss] = fix(round(d*cscl))
      endif else begin
         ;; Write this scan's data cube as an individual file.
+        print, inam + 'saving to '+ odir + '/' + ofile
         openw, lun, odir + '/' + ofile, /get_lun
         writeu, lun, head
         writeu, lun, fix(round(d))

@@ -57,7 +57,8 @@
 ;
 ;-
 pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, debug = debug, cam = cam, $
-                             min=min, max=max, bad=bad, smooth=smooth, preserve=preserve, psfw=psfw, scan=scan
+                             min=min, max=max, bad=bad, smooth=smooth, preserve=preserve, psfw=psfw, scan=scan, $
+                             smallscale = smallscale
 
   inam = 'red::make_intdif_gains3 : '
   if(n_elements(timeaver) eq 0) then timeaver = 1L
@@ -133,6 +134,22 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      cmap = reform((temporary(fit)).pars[1,*,*])
      udwav = double(udwav)
 
+     ;;
+     ;; The real cavity-map has quite large shifts, but only the local
+     ;; fine structure affects momfbd. With this option, we only
+     ;; compensate for the fine local structure, removing the large
+     ;; scale features
+     ;;
+     if(keyword_set(smallscale)) then begin
+        print, inam+'correcting only for local line shifts ... ', format='(A,$)'
+        npix = 35
+        cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+        cpsf /= total(cpsf, /double)
+        lscale = red_convolve(cmap, cpsf)
+        cmap -= lscale
+        print, 'done'
+     endif
+
 
      ;;
      ;; load cavity-error free flats
@@ -169,6 +186,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
         if(n_elements(scan) gt 0) then begin
            if(uscan[ss] ne scan) then begin
               print, inam + 'skipping scan -> '+uscan[ss]
+              continue
            endif
         endif
 
@@ -226,7 +244,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
               if(keyword_set(psfw)) then begin
                  print, inam + 'convolving data ... ', format='(A,$)'
                  for ww = 0, nw-1 do begin
-                    cub1[ww,*,*] = red_convolve(reform(cub1[ww,*,*]), psf)
+                    cub1[ww,*,*] = red_convolve(reform(cub1[ww,*,*]), psf) 
                     cub2[ww,*,*] = red_convolve(reform(cub2[ww,*,*]), psf)
                  endfor
                  print, 'done'
@@ -266,6 +284,10 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
 
      endfor
      
-
   endfor
+  cub = 0B
+  cub1 = 0B
+  rat = 0B
+  flats = 0B
+
 end
