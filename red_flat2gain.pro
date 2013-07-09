@@ -77,7 +77,7 @@ function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, 
 
 
  ;; dgain = g - smooth(g, smoothparameter, /edge_truncate)
-  psf = get_psf(round(3*smoothparameter), round(3*smoothparameter),double( smoothparameter), double(smoothparameter))
+  psf = red_get_psf(round(3*smoothparameter), round(3*smoothparameter),double( smoothparameter), double(smoothparameter))
   dgain = g - red_convolve(g, psf / total(psf))
   mask = g GE min and g LE max and dgain LT bad AND finite(g)
 
