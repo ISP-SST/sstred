@@ -39,6 +39,10 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-09 : MGL. Worked around outdir1, outdir2, and lun when not
+;                specifying /old.
+; 
+; 
 ; 
 ;-
 pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
@@ -99,10 +103,12 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
                                 ;
                                 ; sum images
      outdir = self.out_dir + '/polcal_sums/' + cam+'/'
-     if(keyword_set(old)) then outdir1 = self.out_dir + '/polcal_old/' + cam+'/'
-     camtag = (strsplit(file_basename(files[0]), '.',/extract))[0]
      file_mkdir, outdir
-     file_mkdir, outdir1
+     if(keyword_set(old)) then begin
+        outdir1 = self.out_dir + '/polcal_old/' + cam+'/'
+        file_mkdir, outdir1
+     endif
+     camtag = (strsplit(file_basename(files[0]), '.',/extract))[0]
                                 ;
      ddf = self.out_dir+'/darks/'+camtag+'.summed.0000001'
      if(file_test(ddf)) then begin
@@ -142,20 +148,25 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
         endif
                                 ;
         if(firsttime eq 1B) then begin
-           openw, lun, outdir2+'/'+camtag+'_lg'+date, /get_lun, width = 300
+           if(keyword_set(old)) then begin
+              openw, lun, outdir2+'/'+camtag+'_lg'+date, /get_lun, width = 300
+           endif
            firsttime = 0B
         endif
-        printf,lun, h1
+        if(keyword_set(old)) then printf,lun, h1
      endfor                     ; (ss)
      ;; ;
      if(file_test(ddf)) then begin
-        ddlink = camtag+'_dd'+date+'.'+red_stri(long((strsplit(ddh,' ',/extract))[0]), ni='(I07)')
-        if(file_test(outdir2+ddlink)) then spawn,'rm '+outdir2+ddlink
-        spawn, 'ln -s '+ddf+' '+outdir2+ddlink
+        if(keyword_set(old)) then begin
+           ddlink = camtag+'_dd'+date+'.'+red_stri(long((strsplit(ddh,' ',/extract))[0]), ni='(I07)')
+          if(file_test(outdir2+ddlink)) then spawn,'rm '+outdir2+ddlink
+          spawn, 'ln -s '+ddf+' '+outdir2+ddlink
+       endif
      endif
-     printf, lun, ddh
-     free_lun, lun
-
+     if(keyword_set(old)) then begin
+        printf, lun, ddh
+        free_lun, lun
+     endif
   endfor                        ;(ic)
   return
 end

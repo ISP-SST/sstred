@@ -139,10 +139,10 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat ;, p
      endelse
 
 
-     tflatf = self.out_dir + 'flats/' + strjoin([tcam, ustat[ii], 'flat'],'.')
-     rflatf = self.out_dir + 'flats/' + strjoin([rcam, ustat[ii], 'flat'],'.')
+     tflatf = self.out_dir + '/flats/' + strjoin([tcam, ustat[ii], 'flat'],'.')
+     rflatf = self.out_dir + '/flats/' + strjoin([rcam, ustat[ii], 'flat'],'.')
      pref = (strsplit(ustat[ii], '.',/extract))[0]
-     wflatf = self.out_dir + 'flats/' + strjoin([wcam, pref, 'flat'],'.')
+     wflatf = self.out_dir + '/flats/' + strjoin([wcam, pref, 'flat'],'.')
 
      if(file_test(tflatf)) then begin
         tflat = f0(tflatf)
