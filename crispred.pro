@@ -45,6 +45,7 @@
 @red::prepmomfbd.pro
 @red::quicklook_movie.pro
 @red::setflatdir.pro
+@red::setpinhdir.pro
 @red::sumdark.pro
 @red::sumflat.pro
 @red::sumpinh.pro
@@ -128,6 +129,9 @@
 ;                with Pit's modifications and his interface.
 ;
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+;   2013-06-09 : MGL. Added red::setpinhdir.pro to list of included
+;                files.
 ; 
 ; 
 ;-
