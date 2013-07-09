@@ -157,8 +157,8 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
      endfor                     ; (ss)
      ;; ;
      if(file_test(ddf)) then begin
-        ddlink = camtag+'_dd'+date+'.'+red_stri(long((strsplit(ddh,' ',/extract))[0]), ni='(I07)')
-       if(keyword_set(old)) then begin
+        if(keyword_set(old)) then begin
+           ddlink = camtag+'_dd'+date+'.'+red_stri(long((strsplit(ddh,' ',/extract))[0]), ni='(I07)')
           if(file_test(outdir2+ddlink)) then spawn,'rm '+outdir2+ddlink
           spawn, 'ln -s '+ddf+' '+outdir2+ddlink
        endif
