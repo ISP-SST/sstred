@@ -6,7 +6,7 @@
 ; Performs a Levenberg-Marquardt fit for the optimum MM of the CRISP
 ; instrument. The actual computation is performed in an external C
 ; routine that uses the C version of MPFIT by Craig Markward. The
-; external C code by Jaime de la Cruz R.(IFA-UU).
+; external C code by Jaime de la Cruz Rodriguez (IFA-UU).
 ; 
 ; :Categories:
 ;
@@ -78,7 +78,7 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
   ;;; locate the library.  Either in the same dir as the procedure, in the DLM
   ;;; path or the normal search path 
   libname = 'creduc.so'
-  dir = file_dirname((routine_info('cpolcal_2d',/func,/source)).path)
+  dir = file_dirname((routine_info('red_cpolcal_2d',/func,/source)).path)
   libfile = file_search(dir, libname)
   libfile = file_search(strsplit(!DLM_PATH, ':', /extr), libname)
   IF libfile EQ '' THEN $
@@ -120,7 +120,7 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
   dum = call_external(libfile, 'cpolcal_2d', nlc, nqq, nlp, npix, $
                       dat, qq, lp, res, chisq, nt)
                                 ;
-  res = float(reform(res(0:15, *, *), 4, 4, nx, ny))
+  res = float(reform(res[0:15, *, *], 4, 4, nx, ny))
   
   return, res
   
