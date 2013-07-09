@@ -283,9 +283,9 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
         
 
      endfor
-     
+     dum = size(temporary(cub))
+     free_lun, lun
   endfor
-  cub = 0B
   cub1 = 0B
   rat = 0B
   flats = 0B
