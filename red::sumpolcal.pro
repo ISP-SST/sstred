@@ -39,6 +39,10 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-09 : MGL. Worked around outdir1, outdir2, and lun when not
+;                specifying /old.
+; 
+; 
 ; 
 ;-
 pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
