@@ -43,7 +43,10 @@
 ;                specifying /old.
 ; 
 ; 
-; 
+;   2013-07-10 : MGL. Worked around fzhead bug by using fzread
+;                instead. 
+;
+;
 ;-
 pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
   inam = 'red::sumpolcal : '
@@ -112,7 +115,8 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
                                 ;
      ddf = self.out_dir+'/darks/'+camtag+'.summed.0000001'
      if(file_test(ddf)) then begin
-        ddh = fzhead(ddf) 
+        ;; ddh = fzhead(ddf) 
+        fzread, tmp, ddf, ddh   ; Work around fzhead bug.
         pos = strsplit(ddh,' ')
         ddh = strmid(ddh, pos[1], pos[n_elements(pos)-1])
      endif else ddh = ' '
@@ -124,7 +128,8 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
         print, inam+'adding frames for '+cam+' -> '+ustate[ss]
         pcal = red_sumfiles(files[pos], time = time, summed = polcalsum,check=check)
                                 ;
-        head = fzhead(files[pos[count/2-1]])
+        ;; head = fzhead(files[pos[count/2-1]])
+        fzread, tmp, files[pos[count/2-1]], head ; Work around fzhead bug.
         h = head
                                 ;
                                 ; Save average of the sum (for IDL polcal)
