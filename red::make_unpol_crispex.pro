@@ -50,7 +50,12 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-;   2013-07-05 : allow to bypass flat-ratio operations
+;
+;   2013-07-05 : Allow to bypass flat-ratio operations
+;
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+; 
 ; 
 ;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan
@@ -178,8 +183,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   ;;
   ;; Interpolate prefilters to the observed grid 
   ;;
-  tpref = 1./intepf(twav, tpref, wav)
-  rpref = 1./intepf(rwav, rpref, wav)
+  tpref = 1./red_intepf(twav, tpref, wav)
+  rpref = 1./red_intepf(rwav, rpref, wav)
 
   ;;
   ;; Load clean flats and gains

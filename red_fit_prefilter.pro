@@ -51,6 +51,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+; 
 ; 
 ;-
 function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref
@@ -67,7 +70,7 @@ function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pre
                                 ;
 ;  wav = mm.wav * p7
   xs *= p7
-  ys1 = intepf(xs, ys, mm.wav - p4, /linear)
+  ys1 = red_intepf(xs, ys, mm.wav - p4, /linear)
   pref =  1.d0 / (1.d0+((2.d0*(mm.wav - p1) / p2)^2.)^p3) * (1.d0 + (mm.wav * p5) + (mm.wav^3. * p6))
                                 ;
   res = p0 * pref * ys1 
