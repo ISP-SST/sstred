@@ -51,6 +51,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_satlas rather than satlas.
+; 
+; 
 ; 
 ;-
 pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = noasy, shift = shift
@@ -114,7 +117,7 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
 
   ;; load satlas
    
-  satlas, min(fit.xl) + dpr - 1.0, max(fit.xl) + dpr + 1.0, xs, ys
+  red_satlas, min(fit.xl) + dpr - 1.0, max(fit.xl) + dpr + 1.0, xs, ys
   xs -= dpr
   
   ;; Get CRISP transmission profile
