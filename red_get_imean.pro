@@ -67,6 +67,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+; 
 ; 
 ;-
 function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg
@@ -105,7 +108,7 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
      imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
   
-  if(keyword_set(myg) AND iter GE 0) then  imean = intepf(wav-median(pp[1,*,*]),imean, iwav)
+  if(keyword_set(myg) AND iter GE 0) then  imean = red_intepf(wav-median(pp[1,*,*]),imean, iwav)
 
 
                                 ;
@@ -144,7 +147,7 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
                                 ;
   if(keyword_set(densegrid) AND (iter ge 1)) then begin
      iwav1 = red_densegrid(iwav, thres = thres)
-     imean = intepf(iwav, imean , iwav1)
+     imean = red_intepf(iwav, imean , iwav1)
      iwav = iwav1
      print, inam + 'Using denser grid of points to fit mean spectrum: '+red_stri(dim[0]) +$
             ' -> '+ red_stri(n_elements(iwav1))
@@ -177,7 +180,7 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
   pwl = findgen(np) / (np - 1.0) * pr + min(iwav)
   functargs = 0B 
                                 ;
-  oplot, pwl, intepf(xl, yl, pwl, /linear), color = 180
+  oplot, pwl, red_intepf(xl, yl, pwl, /linear), color = 180
   loadct, 0, /silent
   wait, 0.2                     ; otherwise IDL does not update the plot (?)
                                 ;

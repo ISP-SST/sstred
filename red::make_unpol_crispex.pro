@@ -44,16 +44,26 @@
 ;    overwrite  : 
 ;   
 ;   
-;   
+;    wbwrite : in, type=boolean
+;
+;       Set this to write also the global wideband image to the
+;       crispex directory. (So far only implemented for /scans_only.) 
 ; 
 ; 
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-;   2013-07-05 : allow to bypass flat-ratio operations
+;
+;   2013-07-05 : Allow to bypass flat-ratio operations
+;
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+;   2013-07-11 : MGL. Added keyword wbwrite. Set this to write also
+;                the global wideband image to disk. So far only
+;                implemented for /scans_only. 
 ; 
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite
   inam = 'red::make_unpol_crispex : '
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
 
@@ -178,8 +188,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   ;;
   ;; Interpolate prefilters to the observed grid 
   ;;
-  tpref = 1./intepf(twav, tpref, wav)
-  rpref = 1./intepf(rwav, rpref, wav)
+  tpref = 1./red_intepf(twav, tpref, wav)
+  rpref = 1./red_intepf(rwav, rpref, wav)
 
   ;;
   ;; Load clean flats and gains
@@ -295,6 +305,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
 
      if(keyword_set(scans_only)) then begin
         ofile = 'crispex.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+'.icube'
+        ofilewb = 'wb.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+'.fz' 
         if file_test(odir + '/' + ofile) then begin
            if keyword_set(overwrite) then begin
               print, 'Overwriting existing data cube:'
@@ -385,6 +396,10 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         writeu, lun, head
         writeu, lun, fix(round(d))
         free_lun, lun
+        if keyword_set(wbwrite) then begin
+           print, inam + 'saving to '+ odir + '/' + ofilewb
+           fzwrite, wb, odir + '/' + ofilewb, ' '
+        endif
      endelse
   endfor
   

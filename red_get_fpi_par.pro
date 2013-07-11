@@ -54,6 +54,8 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_get_fpi_sep, not get_fpi_sep.
+; 
 ; 
 ;-
 function red_get_fpi_par,line=line
@@ -229,7 +231,7 @@ function red_get_fpi_par,line=line
   ;
   ; center the cavities on fpi.w0
   ;
-  get_fpi_sep,fpi
+  red_get_fpi_sep,fpi
   ;
   return,fpi
 end

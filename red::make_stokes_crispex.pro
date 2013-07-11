@@ -39,6 +39,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+; 
 ; 
 ;-
 pro red::make_stokes_crispex, timecor = timecor, out_dir = out_dir, rot_dir = rot_dir
@@ -181,7 +184,7 @@ pro red::make_stokes_crispex, timecor = timecor, out_dir = out_dir, rot_dir = ro
      stop
   endelse
   
-  prefilter = float(2.0 / (intepf(twav, tpref, st.uiwav*1.d-3) + intepf(rwav, rpref, st.uiwav*1.d-3)))
+  prefilter = float(2.0 / (red_intepf(twav, tpref, st.uiwav*1.d-3) + red_intepf(rwav, rpref, st.uiwav*1.d-3)))
 
   plot, st.uiwav * 1.e-3, 1. / prefilter, ytitle = 'Prefilter', xtitle = 'Wavelength'
                                 ;

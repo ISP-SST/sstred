@@ -47,6 +47,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+; 
 ; 
 ;-
 pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter
@@ -170,7 +173,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   ;;
   ;; Interpolate prefilters to the observed grid 
   ;;
-  tpref = 1./(intepf(twav, tpref, wav) + intepf(rwav, rpref, wav))
+  tpref = 1./(red_intepf(twav, tpref, wav) + red_intepf(rwav, rpref, wav))
 
   ;;
   ;; Create temporary cube and open output file

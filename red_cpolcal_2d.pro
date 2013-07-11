@@ -64,6 +64,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_polcal_fit, not polcal_fit.
+; 
+; 
 ; 
 ;-
 FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
@@ -100,7 +103,7 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
  ;;; If no initial guess is supplied, create one from averaged data
   IF n_params() LT 4 THEN BEGIN
      d1d = total(total(dat, 5), 4)
-     guess = polcal_fit(d1d, qq, lp, norm=4)
+     guess = red_polcal_fit(d1d, qq, lp, norm=4)
   ENDIF
   
   nqq = n_elements(qq)

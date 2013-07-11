@@ -35,6 +35,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-11 : MGL. Use red_intepf, not intepf.
+; 
+; 
 ; 
 ;-
 pro red::make_stokes_crispex2, rot_dir = rot_dir, square = square
@@ -148,7 +151,7 @@ pro red::make_stokes_crispex2, rot_dir = rot_dir, square = square
   ;;
   ;; Interpolate prefilters to the observed grid 
   ;;
-  pref = 2.0 / (intepf(twav, tpref, wav) +  1./intepf(rwav, rpref, wav))
+  pref = 2.0 / (red_intepf(twav, tpref, wav) +  1./red_intepf(rwav, rpref, wav))
   stop
   ;;
   ;; Load clean flats and gains
