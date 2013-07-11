@@ -53,7 +53,7 @@
 ; 
 ; 
 ;-
-function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square
+function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square, newflats = newflats
   inam = 'red::polarim : '
                                 ;
                                 ; Search for folders with reduced data
@@ -103,7 +103,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
                                 ; get states that are common to both cameras (object)
                                 ;
-  pol = red_getstates_polarim(tfiles, rfiles, self.out_dir,camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag)
+  pol = red_getstates_polarim(tfiles, rfiles, self.out_dir,camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag, newflats=newflats)
   nstat = n_elements(pol)
                                 ;
                                 ; Modulations matrices

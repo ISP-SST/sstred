@@ -53,7 +53,7 @@
 ; 
 ; 
 ;-
-function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, camwb = camwb
+function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, camwb = camwb, newflats=newflats
                                 ;
   inam = 'red_getstates_polarim : '
   nt = n_elements(tfiles)
@@ -148,7 +148,7 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
 
      idx = where(stattnlc eq ustattnlc[ii], count)
      pol[ii] -> assign_states, ustattnlc[ii], tfiles[idx], rfiles[idx], $
-        (pref[idx])[0], fdir,camt = camt, camr = camr, camwb = camwb
+        (pref[idx])[0], fdir,camt = camt, camr = camr, camwb = camwb, newflats=newflats
   endfor
                                 ;
   return, pol
