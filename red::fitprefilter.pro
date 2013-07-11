@@ -51,7 +51,8 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2013-07-11 : MGL. Use red_satlas rather than satlas.
+;   2013-07-11 : MGL. Use red_satlas rather than satlas. Use
+;                red_intepf rather than intepf.
 ; 
 ; 
 ; 
@@ -140,7 +141,7 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   
   ;; Pack variables for mpfit
                                 
-  yl1 = intepf(fit.xl, fit.yl, wav[w0:w1])
+  yl1 = red_intepf(fit.xl, fit.yl, wav[w0:w1])
   mm = {xl:fit.xl, yl:fit.yl, wav:wav[w0:w1], yl1:yl1}
   functargs = {xs:xs, ys:ys, dpr:dpr, mm:mm}
   
