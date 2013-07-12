@@ -40,6 +40,12 @@
 ;    filter : 
 ;   
 ;   
+;    wbwrite : in, type=boolean
+;
+;       Set this to write also the global wideband image to the
+;       crispex directory. (So far only implemented for /scans_only.) 
+;   
+;   
 ;   
 ; 
 ; 
@@ -49,10 +55,15 @@
 ; 
 ;   2013-07-11 : MGL. Use red_intepf, not intepf.
 ; 
+;   2013-07-11 : MGL. Added keyword wbwrite. Set this to write also
+;                the global wideband image to disk. So far only
+;                implemented for /scans_only. 
 ; 
+;   2013-07-12 : MGL. Bugfixes. Calculate cscl also when we skip the
+;                first scan because it's already been processed.
 ; 
 ;-
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite
   inam = 'red::make_pol_crispex : '
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
   if(keyword_set(float)) then exten = '.fcube' else exten='.icube'
@@ -162,7 +173,9 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      print, inam + 'Error, no images found in:'
      print, f+'/stokes'
   endif
-  
+
+  wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.momfbd', count = wbf)
+
   st = red_get_stkstates(tfiles)
 
   
@@ -178,6 +191,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   ;;
   ;; Create temporary cube and open output file
   ;;
+
   if(n_elements(crop) eq 0) then crop = [0,0,0,0]
   dimim = size(f0(tfiles[0]), /dim)
   x0 = 0L + crop[0]
@@ -233,6 +247,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
 
      if(keyword_set(scans_only)) then begin
         ofile = 'crispex.stokes.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+exten
+        ofilewb = 'wb.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+'.fz' 
         if file_test(odir + '/' + ofile) then begin
            if keyword_set(overwrite) then begin
               print, 'Overwriting existing data cube:'
@@ -269,7 +284,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         
      endfor
      
-     if(ss eq 0) then begin
+     if n_elements(imean) eq 0 then begin 
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,0,ii])
         if(~keyword_set(float)) then cscl = 15000./max(imean) else cscl = 1.0
@@ -289,9 +304,15 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         if(keyword_set(float)) then begin
            writeu, lun, transpose(float(d), [0,1,3,2])
         endif else begin
-           writeu, lun, transpose(fix(round(d*cslc)), [0,1,3,2])
+           writeu, lun, transpose(fix(round(d*cscl)), [0,1,3,2]) 
         endelse
         free_lun, lun
+        if keyword_set(wbwrite) then begin
+           wb = (red_mozaic(momfbd_read(wbfiles[ss])))
+           dimwb = red_getborder(wb, x0wb, x1wb, y0wb, y1wb, square=square)
+           print, inam + 'saving to '+ odir + '/' + ofilewb
+           fzwrite, wb[x0wb:x1wb, y0wb:y1wb], odir + '/' + ofilewb, ' '
+        endif
      endelse
   endfor
 

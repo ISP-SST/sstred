@@ -62,6 +62,9 @@
 ;                the global wideband image to disk. So far only
 ;                implemented for /scans_only. 
 ; 
+;   2013-07-12 : MGL. Bugfixes. Calculate cscl also when we skip the
+;                first scan because it's already been processed.
+;
 ;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite
   inam = 'red::make_unpol_crispex : '
@@ -380,7 +383,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         
      endfor
      
-     if(ss eq 0) then begin
+     if n_elements(imean) eq 0 then begin 
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,ii])
         cscl = 15000./max(imean)
