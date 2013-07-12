@@ -75,6 +75,10 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-12 : MGL. Use red_m_*.pro rather than m_*.pro.
+;                These are Pit's Mueller matrix routines. Also
+;                use red_time_conv rather than time_conv.
+;
 ; 
 ;-
 function red_telmat, lam, telpos, time, NO_ZERO_OFFSET=nzo, OLD_POLCAL=oldpc, $
@@ -95,7 +99,7 @@ function red_telmat, lam, telpos, time, NO_ZERO_OFFSET=nzo, OLD_POLCAL=oldpc, $
      IF N_PARAMS() NE 3 THEN $
         message, 'If TELPOS is an array you also must specify the time'
      tp = {TIME: 0., AZ: 0., ELEV:0., TILT:0.}
-     IF size(time, /type) EQ 7 THEN tim = time_conv(time) ELSE tim = time
+     IF size(time, /type) EQ 7 THEN tim = red_time_conv(time) ELSE tim = time
      tp.time = tim
      tp.az = interpol(telpos.az, telpos.time, tim)
      tp.elev = interpol(telpos.elev, telpos.time, tim)
@@ -156,13 +160,13 @@ function red_telmat, lam, telpos, time, NO_ZERO_OFFSET=nzo, OLD_POLCAL=oldpc, $
   
   IF NOT keyword_set(nzo) THEN par(14) = 0.
   
-  m_tel = m_sst2(tp.az, tp.elev, par, /deg)
+  m_tel = red_m_sst2(tp.az, tp.elev, par, /deg)
   
   IF keyword_set(oldpc) THEN $
-     m_tel = m_tel#m_free_mirror(1., 0.)
+     m_tel = m_tel#red_m_free_mirror(1., 0.)
   
   IF NOT keyword_set(nsn) THEN $
-     m_tel = m_rot(tp.tilt, /deg)#m_tel
+     m_tel = red_m_rot(tp.tilt, /deg)#m_tel
   
   return, m_tel
   

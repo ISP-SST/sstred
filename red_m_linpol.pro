@@ -1,3 +1,6 @@
+;       2013-07-12 : MGL. Renamed to red_m_linpol for inclusion in
+;                    crispred pipeline.
+;
 FUNCTION red_m_linpol, K
 
 H = 2*sqrt(K)

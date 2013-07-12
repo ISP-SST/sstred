@@ -1,3 +1,6 @@
+;       2013-07-12 : MGL. Renamed to red_m_retard for inclusion in
+;                    crispred pipeline.
+;
 FUNCTION red_m_retard, dd, aa, DEGREE=deg
 
 IF n_params() EQ 1 THEN aa = 0
