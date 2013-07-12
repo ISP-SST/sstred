@@ -60,7 +60,9 @@
 ;                implemented for /scans_only. 
 ; 
 ;   2013-07-12 : MGL. Bugfixes. Calculate cscl also when we skip the
-;                first scan because it's already been processed.
+;                first scan because it's already been processed. Write
+;                the wav array to disk, just like for unpolarized
+;                data. 
 ; 
 ;-
 pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite
@@ -244,6 +246,10 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   ;; start processing data
   ;; 
   for ss = 0L, nscan-1 do begin
+
+     IF(SS EQ 0) THEN BEGIN
+        fzwrite, wav, odir + '/' + 'wav.'+pref+'.f0',' '
+     endif
 
      if(keyword_set(scans_only)) then begin
         ofile = 'crispex.stokes.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+exten
