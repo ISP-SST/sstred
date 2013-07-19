@@ -392,10 +392,6 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
                                 ;
-              if((upref[pp] EQ '8542') AND (keyword_set(descatter))) then begin
-                 printf, lun, '    PSF='+self.descatter_dir+'/'+self.camrtag+'.psf.f0'
-                 printf, lun, '    BACK_GAIN='+self.descatter_dir+'/'+self.camrtag+'.backgain.f0'
-              endif 
               if((upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND (keyword_set(descatter))) then begin
                  psff = self.descatter_dir+'/'+self.camrtag+'.psf.f0'
                  bgf = self.descatter_dir+'/'+self.camrtag+'.backgain.f0'

@@ -57,12 +57,15 @@
 ;
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
-                          verbose = verbose, overwrite=overwrite
+                          verbose = verbose, overwrite=overwrite, $
+                          min = min, max = ma, smooth = smooth, bad = bad, $
+                          descatter = descatter, show=show
 
   inam = 'red::sum_data_intdif : '
 
   outdir = self.out_dir + '/cmap_intdif/'
   ucam = [self.camr, self.camt]
+
 
 ;
 ; Search files
@@ -178,6 +181,22 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
            continue
         endif
      end
+     
+     ;;
+     ;; Descatter?
+     ;;
+     if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+        pf = self.descatter_dir+ '/' + ctag[cc] + '.psf.f0'
+        bf = self.descatter_dir+ '/' + ctag[cc] + '.backgain.f0'
+        if(~file_test(pf) OR ~file_test(bf)) then begin
+           print, inam + 'ERROR, descattering data not found, returning.'
+           return
+        endif 
+        pff = f0(pf)
+        bff = f0(bf)
+     endif
+
+
      tempdir=self.data_dir + '/' + ucam[cc]+'/'
      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
      mmfiles = tempdir + ctag[cc]+strmid(mfiles,longi,200)
@@ -257,18 +276,32 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
                                 ;
                                 ; Load flat
                                 ;
-              if(file_test(gf)) then g =  red_flat2gain(f0(gf),/preserve) else begin
+              if(file_test(gf)) then g =  red_flat2gain(f0(gf),/preserve, mi=mi,ma=ma,smooth=smooth,bad=bad) else begin
                  print, inam + 'ERROR, gain file not found -> ', gf
                  stop
               endelse
               
               if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
+              tmp = red_sumfiles(mmfiles[idx], /check) - dd
 
-              tmp = red_fillpix(((red_sumfiles(mmfiles[idx], /check) - dd)*g), $
-                                nthreads=nthreads)
+              if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+                 tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
+              endif
               
+              tmp = red_fillpix((temporary(tmp)*g), $
+                                nthreads=nthreads)
+
+            
               ele = ss*nlc*nw + ll*nw + ww
               dat[ele] = fix(round(7.0 * tmp))
+
+              if(keyword_set(show)) then begin
+                 if n_elements(mydum) eq 0 then begin
+                    mydum = 1
+                    show, histo_opt(tmp)
+                 endif
+                 show, histo_opt(tmp),/now
+              endif
            endfor
         endfor
         done[ss] = 1B

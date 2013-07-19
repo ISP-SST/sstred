@@ -53,7 +53,7 @@
 ; 
 ; 
 ;-
-function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square, newflats = newflats
+function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square, newflats = newflats, no_ccdtabs=no_ccdtabs
   inam = 'red::polarim : '
                                 ;
                                 ; Search for folders with reduced data
@@ -114,6 +114,19 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
      search = self.out_dir+'/polcal/'+self.camttag+'.'+pol[0]->getvar(7)+'.polcal.f0'
      if(file_test(search)) then begin
         immt = (f0(search))[0:15,*,*]
+
+        ;; interpolate CCD tabs?
+        if(~keyword_set(ccdtabs)) then begin
+           for ii = 0, 15 do immt[ii,*,*] = red_mask_ccd_tabs(reform(immt[ii,*,*]))
+        endif
+
+        ;; Check NaNs
+        for ii = 0, 15 do begin
+           mask = ~finite(immt[ii,*,*])
+           idx = where(mask, count)
+           if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask)
+        endfor
+
         immt = ptr_new(red_invert_mmatrix(temporary(immt)))
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
@@ -130,6 +143,20 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
      search = self.out_dir+'/polcal/'+self.camrtag+'.'+pol[0]->getvar(7)+'.polcal.f0'
      if(file_test(search)) then begin
         immr = (f0(search))[0:15,*,*]
+
+        ;; interpolate CCD tabs?
+        if(~keyword_set(ccdtabs)) then begin
+           for ii = 0, 15 do immr[ii,*,*] = red_mask_ccd_tabs(reform(immr[ii,*,*]))
+        endif
+
+
+        ;; Check NaNs
+        for ii = 0, 15 do begin
+           mask = ~finite(immr[ii,*,*])
+           idx = where(mask, count)
+           if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask)
+        endfor
+
         immr = ptr_new(red_invert_mmatrix(temporary(immr)))
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'

@@ -45,7 +45,7 @@
 ; 
 ; 
 ;-
-pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat ;, pref=pref
+pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat , pref=epref
                                 ;
   inam = 'red::sumpinh : '
                                 ;
@@ -58,9 +58,9 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat ;, p
                                 ;
                                 ;
                                 ; create file list for each camera
-  spawn, 'find ' + self.pinh_dir + '/' + self.camt + '/ | grep im.ex', tfiles
-  spawn, 'find ' + self.pinh_dir + '/' + self.camr + '/ | grep im.ex', rfiles
-  spawn, 'find ' + self.pinh_dir + '/' + self.camwb + '/ | grep im.ex', wfiles
+  spawn, 'find ' + self.pinh_dir + '/' + self.camt + "/ | grep im.ex |  grep -v '.lcd.'", tfiles
+  spawn, 'find ' + self.pinh_dir + '/' + self.camr + "/ | grep im.ex |  grep -v '.lcd.'", rfiles
+  spawn, 'find ' + self.pinh_dir + '/' + self.camwb + "/ | grep im.ex | grep -v '.lcd.'", wfiles
   nt = n_elements(tfiles)
   nr = n_elements(rfiles)
   nw = n_elements(wfiles)
@@ -118,7 +118,11 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat ;, p
                                 ;
   firsttime = 1B
   ns = n_elements(ustat)
-  for ii = 0L, ns-1 do begin
+  for ii = 0L, ns-1 do BEGIN
+     IF(n_elements(epref) GT 0) THEN BEGIN
+        IF ((strsplit(ustat[ii],'.',/extract))[0] NE epref) THEN CONTINUE
+     endif
+
      print, 'red::sumpinh : summing pinh for state -> ' + ustat[ii]
                                 ;
      pos = where((state eq ustat[ii]), count)

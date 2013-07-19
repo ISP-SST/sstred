@@ -82,7 +82,7 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
      endif
                                 ;
                                 ; find files
-     spawn, 'find ' + self.polcal_dir + '/' + cam + '/ | grep im.ex', files
+     spawn, 'find ' + self.polcal_dir + '/' + cam + "/ | grep im.ex | grep -v '.lcd.'", files
      
      nt = n_elements(files)
      if(files[0] eq '') then begin

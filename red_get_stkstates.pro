@@ -38,6 +38,7 @@ function red_get_stkstates, f
   pref = strarr(nt)
   wav = strarr(nt)
   iwav = intarr(nt)
+  dwav = dblarr(nt)
   scan = strarr(nt)
   lscan = lonarr(nt)
   ord = lindgen(nt)
@@ -52,14 +53,18 @@ function red_get_stkstates, f
      pref[ii] = tmp[2]
      wav[ii] = tmp[3]
      iwav[ii] = fix((strsplit(tmp[3],'_',/extract))[1])
+     dwav[ii] = iwav[ii]*1.d-3 + double((strsplit(tmp[3],'_',/extract))[0])
      state[ii] = strjoin(tmp[1:3],'.')
   endfor
+  
                                 ;
                                 ; Uniq scan numbers and wavelengths
                                 ;
   uscan = scan[uniq(lscan, sort(lscan))]
-  uwav = wav[uniq(iwav, sort(iwav))]
-  uiwav = iwav[uniq(iwav, sort(iwav))]
+  idx = uniq(dwav, sort(dwav))
+  uwav = wav[idx]
+  uiwav = iwav[idx]
+  udwav = dwav[idx]
   nscan = n_elements(uscan)
   nwav = n_elements(uwav)
                                 ;
