@@ -36,7 +36,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2013-07-24 : Use red_show rather than show.
+;   2013-07-24 : MGL. Use red_show rather than show. Changed dimension
+;                check from dim1[0] to dim1[2] when deciding whether
+;                to call align.
 ;
 ; 
 ;-
@@ -53,7 +55,7 @@ function red_getcoords, var, pos
 
   res=dblarr(dim1)
   offs=dblarr(2,dim1[2])
-  if dim1[0] eq 1 then begin
+  if dim1[2] eq 1 then begin
      offs[*,0]=[0.d0,0.d0]
   endif else begin
      for l=0,n_elements(pos1)-1 do begin
