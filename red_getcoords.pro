@@ -36,13 +36,15 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-07-24 : Use red_show rather than show.
+;
 ; 
 ;-
 function red_getcoords, var, pos
                                 
   dim1=size(var,/dimension)
   ref=reform(var[*,*, pos])
-  show,ref,/nowin
+  red_show,ref,/nowin
   if(n_elements(dim1) eq 2) then dim1 = [dim1, 1L] 
   dum=indgen(dim1[2])
   

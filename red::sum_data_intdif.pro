@@ -52,7 +52,10 @@
 ; 
 ; 
 ; :history:
+;
 ;   2013-07-01: JdlCR : Created!
+; 
+;   2013-07-24 : Use red_show rather than show.
 ;
 ;
 ;-
@@ -298,9 +301,9 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
               if(keyword_set(show)) then begin
                  if n_elements(mydum) eq 0 then begin
                     mydum = 1
-                    show, histo_opt(tmp)
+                    red_show, histo_opt(tmp)
                  endif
-                 show, histo_opt(tmp),/now
+                 red_show, histo_opt(tmp),/now
               endif
            endfor
         endfor

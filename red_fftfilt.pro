@@ -52,6 +52,6 @@ function red_fftfilt, img, filter
                                 ; win = red_taper(dim[0]*[1.,0.,1./24.])
   win = red_taper2(dim[0], dim[1],1./24.)
                                 ;
-;  show, (img-me)*win
+;  red_show, (img-me)*win
   return, float(fft(fft((img - me) * win, 1) * filter, -1)) + me
 end
