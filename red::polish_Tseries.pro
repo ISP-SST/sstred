@@ -75,12 +75,13 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-; 
+;   2014-07-24 : MGL. Limited tstep to length of scan.
+;
 ;-
 pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
-                         ang = ang, shift = shift, square=square, negang = negang, $
-                         crop=crop
+                         ang = ang, shift = shift, square=square, $
+                         negang = negang, crop=crop
   nostokes = 0B
   if(keyword_set(no_stokes)) then nostokes = 1B
   inam = 'red::polish_tseries : '
@@ -238,7 +239,7 @@ pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   if(~keyword_set(tstep)) then begin
      dts = dblarr(ct)
      for ii = 0L, ct - 1 do dts[ii] = red_time2double(time[ii])
-     tstep = fix(round(180. / median(abs(dts[0:ct-2] - dts[1:*]))))
+     tstep = fix(round(180. / median(abs(dts[0:ct-2] - dts[1:*])))) <ct
   endif
                                 ;
   print, inam + 'Using the following parameters for de-stretching the time-series: '
