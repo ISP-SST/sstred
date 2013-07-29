@@ -65,7 +65,7 @@ function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, 
   if(n_elements(bad) eq 0) then bad = 1.0
   if(n_elements(min) eq 0) then min = 0.1
   if(n_elements(max) eq 0) then max = 4.0
-  if(n_elements(smoothparameter) eq 0) then smoothparameter = 7
+  if(n_elements(smoothparameter) eq 0) then smoothparameter = 7.0d0
 
   g = median(flat) / flat
   mask1 = ~finite(g)

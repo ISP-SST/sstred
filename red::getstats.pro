@@ -41,7 +41,7 @@ pro red::getstats, pref = pref, files=files
   inam = 'red::getstats : '
   if(n_elements(files) eq 0) then begin
      print, inam+'working dir -> '+self.data_dir
-     spawn, 'find '+' '+self.data_dir+'/'+self.camwb+'/ | grep camX', files 
+     spawn, 'find '+' '+self.data_dir+'/'+self.camwb+'/ | grep camX | grep -v ".lcd."', files 
   endif
   if(n_elements(files) lt 1) then begin
      print, inam + 'ERROR, no files found -> '+self.data_dir

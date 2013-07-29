@@ -122,9 +122,9 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
 
         ;; Check NaNs
         for ii = 0, 15 do begin
-           mask = ~finite(immt[ii,*,*])
+           mask = 1B -( ~finite(reform(immt[ii,*,*])))
            idx = where(mask, count)
-           if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask)
+           if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask=mask)
         endfor
 
         immt = ptr_new(red_invert_mmatrix(temporary(immt)))
@@ -152,9 +152,9 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
 
         ;; Check NaNs
         for ii = 0, 15 do begin
-           mask = ~finite(immr[ii,*,*])
+           mask = 1B - ( ~finite(reform(immr[ii,*,*])))
            idx = where(mask, count)
-           if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask)
+           if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask=mask)
         endfor
 
         immr = ptr_new(red_invert_mmatrix(temporary(immr)))

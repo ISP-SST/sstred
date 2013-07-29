@@ -82,7 +82,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
   outdir += '/'+imdir[n_elements(imdir)-1]+'/'
   file_mkdir, outdir
 
-  spawn, 'find ' + dir + '/' + self.camr + '/ | grep camX', files
+  spawn, 'find ' + dir + '/' + self.camr + '/ | grep camX | grep -v ".lcd."', files
   nf = n_elements(files)
   if(nf eq 0) then begin
      print, inam + 'ERROR, data folder is empty'

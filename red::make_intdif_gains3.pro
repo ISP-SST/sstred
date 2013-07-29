@@ -100,7 +100,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      ;; search files
      ;;
      cfile = file_search(dir + '/' + cams[cc]+'.*.intdif.icube', count = count)
-     dfile = dir+'/'+file_basename(cfile,'icube')+'save'
+     dfile = replicate(dir,count)+'/'+file_basename(cfile,'icube')+'save'
      
      idx = intarr(count)
      k = 0L

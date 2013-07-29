@@ -117,7 +117,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
 
   for fff = 0, self.ndir - 1 do begin
      data_dir = self.data_list[fff]
-     spawn, 'find ' + data_dir + '/' + self.camt + '/ | grep im.ex', files
+     spawn, 'find ' + data_dir + '/' + self.camt + '/ | grep im.ex | grep -v ".lcd."', files
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]
@@ -138,6 +138,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
      ustat = stat.state[pos]
      ustatp = stat.pref[pos]
                                 ;ustats = stat.scan[pos]
+
      ntt = n_elements(ustat)
      hscans = stat.hscan[pos]
                                 ;

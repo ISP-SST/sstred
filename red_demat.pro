@@ -51,10 +51,10 @@ function red_demat, g, flat, imm
   
 
 
-  gf0 = red_fillnan(me/red_fillzero(g[*,*,0] * flat))
-  gf1 = red_fillnan(me/red_fillzero(g[*,*,1] * flat))
-  gf2 = red_fillnan(me/red_fillzero(g[*,*,2] * flat))
-  gf3 = red_fillnan(me/red_fillzero(g[*,*,3] * flat))
+  gf0 = red_fillnan(me/red_fillpix(red_mask_ccd_tabs(g[*,*,0] * flat)))
+  gf1 = red_fillnan(me/red_fillpix(red_mask_ccd_tabs(g[*,*,1] * flat)))
+  gf2 = red_fillnan(me/red_fillpix(red_mask_ccd_tabs(g[*,*,2] * flat)))
+  gf3 = red_fillnan(me/red_fillpix(red_mask_ccd_tabs(g[*,*,3] * flat)))
 
   for ii = 0, 3 do begin
                                 ; Transmitted

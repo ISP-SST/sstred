@@ -94,7 +94,7 @@ pro red::link_data, no_remove = noremove, link_dir = link_dir, uscan = uscan, nr
         
         if(~doit) then continue
 
-        spawn, 'find ' + data_dir + '/' + cam + '/ | grep im.ex', files
+        spawn, 'find ' + data_dir + '/' + cam + '/ | grep im.ex | grep -v ".lcd."', files
         nf = n_elements(files)
 
         if(files[0] eq '') then begin
