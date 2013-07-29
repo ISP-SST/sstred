@@ -53,6 +53,8 @@
 ; :history:
 ;
 ;   2013-05-?? : Keywords dx and dy added by MGL
+; 
+;   2013-07-24 : Use red_show rather than show.
 ;
 ;-
 PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
@@ -332,7 +334,7 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      sy = abs(cl[3,0] - cl[2,0]) + 1L
 
      dum = red_clipim(pics[*,*,0], cl[*,1])
-     show, bytscl(dum, 0, 20), /nosc
+     red_show, bytscl(dum, 0, 20), /nosc
 
 
      
