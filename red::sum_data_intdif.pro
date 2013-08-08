@@ -200,7 +200,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
      endif
 
 
-     tempdir=self.data_dir + '/' + ucam[cc]+'/'
+     tempdir=dir + '/' + ucam[cc]+'/'
      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
      mmfiles = tempdir + ctag[cc]+strmid(mfiles,longi,200)
      cfile = outdir + '/' + ctag[cc] + '.'+ pref + '.intdif.icube'

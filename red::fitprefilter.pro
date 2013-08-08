@@ -165,14 +165,15 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   fitpars[3].LIMITS = [1.4d0, 2.4d0]
   fitpars[3].LIMITED = [1,1]
   fitpars[7].FIXED =1B
-   
+  fitpars[6].fixed = 1
+
   If(keyword_set(fixcav)) then begin
      pp[3] = fixcav
      fitpars[3].fixed = 1
   endif
   If(keyword_set(noasy)) then begin
      fitpars[5].fixed = 1
-     fitpars[5].fixed = 1
+     fitpars[6].fixed = 1
      pp[5] = 0.
      pp[6] = 0.
   endif
