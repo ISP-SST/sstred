@@ -57,7 +57,7 @@
 ; 
 ; 
 ;-
-pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam
+pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam, no_histo_opt = no_histo_opt
                                 ;
   inam = 'quicklook_movie : '
 
@@ -210,7 +210,9 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
      if(keyword_set(x_flip)) then im = reverse(temporary(im), 1)
      if(keyword_set(y_flip)) then im = reverse(temporary(im), 2)
                                 ;
-     write_png, outdir+namout, bytscl(histo_opt((temporary(im))[x0:x1, y0:y1]))
+     dum  = (temporary(im))[x0:x1, y0:y1]
+     if(~keyword_set(no_histo_opt)) then dum = histo_opt(temporary(dum))
+     write_png, outdir+namout, bytscl(temporary(dum))
                                 ;
      print, bb,'red::quicklook_movie : done -> ',ii*ntot,'%', format='(A,A,F5.1,A,$)'
   endfor

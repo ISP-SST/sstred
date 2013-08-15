@@ -57,7 +57,7 @@
 ; 
 ; 
 ;-
-pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = noasy, shift = shift
+pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = noasy, shift = shift, init=init
   inam = 'red::fitprefilter : '
   
                                 ;
@@ -148,31 +148,34 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   ;; Init guess model
    
   pp = dblarr(8)
-  pp[0] = fac                   ; Scale factor
-  pp[1] = -0.5d0                ; Pref. shift
-  pp[2] = 6.0d0                 ; Pref. FWHM
-  pp[3] = 2.d0                  ; Pref. ncav
-  pp[4] = -0.001d0              ; Line shift (satlas-obs)
-  pp[5] = 0.001d0
-  pp[6] = 0.001d0
-  pp[7] = 1.0d0
+  if(n_elements(init) gt 0) then pp[0]=init else begin
+     pp[0] = fac                ; Scale factor
+     pp[1] = -0.5d0             ; Pref. shift
+     pp[2] = 6.0d0              ; Pref. FWHM
+     pp[3] = 2.d0               ; Pref. ncav
+     pp[4] = -0.001d0           ; Line shift (satlas-obs)
+     pp[5] = 0.001d0
+     pp[6] = 0.001d0
+     pp[7] = 1.0d0
+  endelse
 
   fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0}, 8)
    
   fitpars[2].LIMITED = [1,1]
-  fitpars[2].LIMITS = [1.d0, 11.d0]
+  fitpars[2].LIMITS = [1.d0, 10.2d0]
   pp[3] = 2.0d0
   fitpars[3].LIMITS = [1.4d0, 2.4d0]
   fitpars[3].LIMITED = [1,1]
   fitpars[7].FIXED =1B
-   
+  fitpars[6].fixed = 0
+
   If(keyword_set(fixcav)) then begin
      pp[3] = fixcav
      fitpars[3].fixed = 1
   endif
   If(keyword_set(noasy)) then begin
      fitpars[5].fixed = 1
-     fitpars[5].fixed = 1
+     fitpars[6].fixed = 1
      pp[5] = 0.
      pp[6] = 0.
   endif

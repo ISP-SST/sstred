@@ -47,12 +47,13 @@ function red_getstates, files
                                 ;
   for ii = 0L, nt -1 do begin
      tmp = strsplit(file_basename(files[ii]), '._', /extract)
+     
      n = n_elements(tmp)
                                 ;
      nums[ii] = tmp[n -1]
-     wav[ii] = tmp[5]+'_'+tmp[6]
-     pref[ii] = tmp[4]
-     lc[ii] = tmp[7]
+     wav[ii] = tmp[n-5]+'_'+tmp[n-4]
+     pref[ii] = tmp[n-6]
+     lc[ii] = tmp[n-3]
      scan[ii] = tmp[1]
      rscan[ii] = red_decode_scan(scan[ii], hscan=hs)
      hscan[ii] = hs

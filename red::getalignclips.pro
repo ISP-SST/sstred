@@ -333,7 +333,8 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      sx = abs(cl[1,0] - cl[0,0]) + 1L
      sy = abs(cl[3,0] - cl[2,0]) + 1L
 
-     dum = red_clipim(pics[*,*,0], cl[*,1])
+     mid = 0
+     dum = red_clipim(pics[*,*,mid], cl[*,mid+1])
      red_show, bytscl(dum, 0, 20), /nosc
 
 
