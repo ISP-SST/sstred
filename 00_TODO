@@ -1,0 +1,22 @@
+Action items
+
+
+* Make each step in the pipeline write to a log file with (at least)
+  the following information: 
+
+  - The moment it was last checked in (and/or it's own version number).
+  - How it was called, including keywords and relevant config file information
+  - Any useful parameters and numbers calculated from the config file
+    info and/or log info downloaded from the observatory web site or elsewhere.
+
+
+* Pinhole calibration stuff (Mats):
+
+  - Remove dependence on the python script. Do it all from within the
+    pipeline IDL session. 
+  - Integrate image scale determination. Need new info from config
+    file: pinhole spacing in arcsec. Need to output the image scale of
+    the crisp cameras in a) the log file and b) the momfbd config files.
+
+* The new flat field procedure (Jaime)
+
