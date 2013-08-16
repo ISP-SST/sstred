@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Convert a time string to the number of seconds after midnight (or
+; the reverse operation).
 ; 
 ; :Categories:
 ;
@@ -15,25 +16,30 @@
 ; 
 ; :returns:
 ; 
+;    The number of seconds after midnight or (if the dir keyword is
+;    set) the time as a string.
 ; 
 ; :Params:
 ; 
-;    t : 
+;    t : in
 ;   
-;   
+;       Either a time as a string or (if the dir keyword is set) the
+;       number of seconds after midnight.
 ;   
 ; 
 ; :Keywords:
 ; 
-;    dir  : 
+;    dir  : in, optional, type=boolean
 ;   
-;   
+;       Set this to do the reverse operation, make a string.
 ;   
 ; 
 ; 
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+;   2013-08-16 : MGL. Added documentation.
 ; 
 ; 
 ;-
