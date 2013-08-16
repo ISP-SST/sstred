@@ -511,8 +511,8 @@ void polcal_2d(pol_t pol, int32_t nthreads, float32_t *dat2d, float64_t *res,flo
     for(i=0;i<16;++i){
       pars[i].limited[0] = 1;
       pars[i].limited[1] = 1;
-      pars[i].limits[0] = -1.2;
-      pars[i].limits[1] = 1.2;
+      pars[i].limits[0] = -1.5;
+      pars[i].limits[1] = 1.5;
     }
     // Fix the retardance and offset angle
     pars[16].fixed = 1;
@@ -527,7 +527,7 @@ void polcal_2d(pol_t pol, int32_t nthreads, float32_t *dat2d, float64_t *res,flo
     //
     mp_config config;
     memset(&config,0,sizeof(config));
-    config.maxiter = 15;
+    config.maxiter = 40;
     //
     tid = omp_get_thread_num();
     pol.tid = tid;
