@@ -186,9 +186,11 @@ pro red::fitgains_ng, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = y
      yl = red_get_imean(wav, dat, res, npar, it, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg)
       
      ;; Pixel-to-pixel fits using a C++ routine to speed-up things
-      
-     red_cfitgain, res, wav, dat, xl, yl, ratio
-
+     if(it eq 0) then begin
+        res1 = res[0:1,*,*]
+        red_cfitgain, res1, wav, dat, xl, yl, ratio
+        res[0:1,*,*] = temporary(res1)
+     endif else red_cfitgain, res, wav, dat, xl, yl, ratio
   endfor
   yl = red_get_imean(wav, dat, res, npar, it, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg)
 
