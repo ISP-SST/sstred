@@ -318,7 +318,7 @@ void get_ratio(int32_t &nwav, int32_t &npar, int32_t &nmean, float32_t *wav, flo
   delete [] spec;
 }
 //
-void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t *xl, float32_t *yl, float32_t *wav, float32_t *dat1, float64_t *pars1, float32_t *ratio1){
+void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t *xl, float32_t *yl, float32_t *wav, float32_t *dat1, float64_t *pars1, float32_t *ratio1, int32_t nt){
   fprintf(stderr, "cfitgain : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
   // return;
   //
@@ -354,44 +354,60 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
   //
   float64_t ntot = 100. / (npix - 1.0);
   //
+  int tid = 0;
+  bool master = false;
+  //
   int32_t nskip = 0;
-  int32_t oper = -1, per=0;
-  for(int32_t ix = 0;ix<npix;++ix){
-    //
-    // Avoid masked pixels (pixel = 0.0)
-    //
-    tmp.idat = dat[ix];
-    float64_t sum = 0.0;
-    for(int32_t ww=0;ww<nwav;++ww) sum += tmp.idat[ww];
-    //
-    if(sum >= 1.E-3){
+  int32_t oper = -1, per=0, ix=  0, ww=0;
+  //
+#pragma omp parallel default(shared) firstprivate(ww,ix,tid,master,per,oper,status,result,tmp) num_threads(nt)  
+  {
+    tid = omp_get_thread_num();
+    if(tid == 0) {
+      master = true;
+      int ntp = omp_get_num_threads();
+      fprintf(stderr,"cfitgain : nthreads -> %d\n", ntp);
+    }
+#pragma omp for schedule(dynamic, 1)
+    for(ix = 0;ix<npix;++ix){
       //
-      // Fit pixel
+      // Avoid masked pixels (pixel = 0.0)
       //
-      status = mpfit(fitgain_model, nwav, npar, pars[ix], fitpars, 0, (void*) &tmp, &result);
+      tmp.idat = dat[ix];
+      float64_t sum = 0.0;
+      for(ww=0;ww<nwav;++ww) sum += tmp.idat[ww];
       //
-      // Get ratio dat / model
+      if(sum >= 1.E-1){
+	//
+	// Fit pixel
+	//
+	status = mpfit(fitgain_model, nwav, npar, pars[ix], fitpars, 0, (void*) &tmp, &result);
+	//
+	// Get ratio dat / model
+	//
+	get_ratio(nwav, npar, nmean, wav, dat[ix], pars[ix], xl, yl, ratio[ix]);
+      } else{nskip += 1;}
       //
-      get_ratio(nwav, npar, nmean, wav, dat[ix], pars[ix], xl, yl, ratio[ix]);
-    } else{nskip += 1;}
-    //
-    // Progress counter
-    // 
-    per = (int32_t)(ntot * ix);
-    if(oper != per){
-      oper = per;
-      fprintf(stderr, "\rcfitgain : fitting data -> %d%s", per, "%");
+      // Progress counter
+      // 
+      per = (int32_t)(ntot * ix);
+      if(oper != per && master){
+	oper = per;
+	fprintf(stderr, "\rcfitgain : fitting data -> %d%s", per, "%");
+      }
     }
   }
   fprintf(stderr, " \n");
   fprintf(stderr, "cfitgain : %d (%g %s) skipped pixels\n", nskip, (float32_t)(nskip)/npix * 100.0, "%");
-  //
-  // Clean-up
-  //
-  delete [] dat;
-  delete [] pars;
-  delete [] ratio;
-  //
+
+    //
+    // Clean-up
+    //
+    delete [] dat;
+    delete [] pars;
+    delete [] ratio;
+    //
+
 }
 
 void sim_polcal(float64_t *p, pol_t *pol){
