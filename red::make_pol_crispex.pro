@@ -64,6 +64,9 @@
 ;                the wav array to disk, just like for unpolarized
 ;                data. 
 ; 
+;   2013-08-19 : JdlCR. Spectfile is created along with the crispex
+;                cubes.
+;
 ;-
 pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite
   inam = 'red::make_pol_crispex : '
@@ -203,10 +206,10 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   dimim[0] = x1 - x0 + 1
   dimim[1] = y1 - y0 + 1
 
-  print, 'nscan = ', nscan
-  print, 'nwav = ', nwav
-  print, 'nx = ', dimim[0]
-  print, 'ny = ', dimim[1]
+  print, '   nscan = ', nscan
+  print, '   nwav = ', nwav
+  print, '   nx = ', dimim[0]
+  print, '   ny = ', dimim[1]
 
   d = fltarr(dimim[0], dimim[1], 4, nwav)  
   if(~keyword_set(scans_only)) then begin
@@ -242,6 +245,14 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,4,/nozero), 512)
      endelse
   endif 
+
+  ;;
+  ;; Prepare spect-file for crispex
+  ;;
+  norm_spect = fltarr(nwav,4)
+  spect_pos = wav + double(pref)
+  norm_factor = fltarr(4)
+
   ;;
   ;; start processing data
   ;; 
@@ -294,6 +305,9 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,0,ii])
         if(~keyword_set(float)) then cscl = 15000./max(imean) else cscl = 1.0
+        norm_spect[*,0] = imean/max(imean)
+        norm_factor[*] = cscl*max(imean)
+        save, file=odir + '/spectfile.'+pref+'.idlsave', norm_spect, norm_factor, spect_pos
      endif
      
      if(~keyword_set(scans_only)) then begin

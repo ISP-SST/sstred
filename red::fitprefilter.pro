@@ -154,8 +154,8 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
      pp[2] = 6.0d0              ; Pref. FWHM
      pp[3] = 2.d0               ; Pref. ncav
      pp[4] = -0.001d0           ; Line shift (satlas-obs)
-     pp[5] = 0.001d0
-     pp[6] = 0.001d0
+     pp[5] = 0.0001d0
+     pp[6] = 0.0001d0
      pp[7] = 1.0d0
   endelse
 
@@ -166,8 +166,8 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   pp[3] = 2.0d0
   fitpars[3].LIMITS = [1.4d0, 2.4d0]
   fitpars[3].LIMITED = [1,1]
-  fitpars[7].FIXED =1B
-  fitpars[6].fixed = 0
+  fitpars[7].FIXED = 1B
+  fitpars[6].fixed = 1
 
   If(keyword_set(fixcav)) then begin
      pp[3] = fixcav

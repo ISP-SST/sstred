@@ -65,6 +65,10 @@
 ;   2013-07-12 : MGL. Bugfixes. Calculate cscl also when we skip the
 ;                first scan because it's already been processed.
 ;
+;   2013-08-19 : JdlCR. Spectfile is created along with the crispex
+;                cubes.
+;
+;
 ;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite
   inam = 'red::make_unpol_crispex : '
@@ -386,7 +390,12 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      if n_elements(imean) eq 0 then begin 
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,ii])
-        cscl = 15000./max(imean)
+        cscl = 10000./max(imean)
+        if(keyword_set(scans_only)) then cscl = 1.0
+        norm_spect = imean / max(imean)
+        norm_factor = cscl * max(imean)
+        spect_pos = wav + double(pref)
+        save, file=odir + '/spectfile.'+pref+'.idlsave', norm_spect, norm_factor, spect_pos
      endif
      
      if(~keyword_set(scans_only)) then begin

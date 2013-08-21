@@ -53,7 +53,8 @@
 ; 
 ; 
 ;-
-pro red_cfitgain, par, wav, dat, xl, yl, ratio
+pro red_cfitgain, par, wav, dat, xl, yl, ratio, nthreads = nthreads
+  if(n_elements(nthreads) eq 0) then nthreads = 4L 
   npar = (size(par, /dim))[0]
   dim = size(dat, /dim)
   npix = dim[1] * dim[2]
@@ -62,7 +63,7 @@ pro red_cfitgain, par, wav, dat, xl, yl, ratio
                                 ;
   dir=getenv('CREDUC')
                                 ;
-  b = call_external(dir+'/creduc.so', 'cfitgain', long(nwav), long(nl), long(npar), long(npix), float(xl), float(yl), float(wav), dat, par, ratio)
+  b = call_external(dir+'/creduc.so', 'cfitgain', long(nwav), long(nl), long(npar), long(npix), float(xl), float(yl), float(wav), dat, par, ratio, long(nthreads))
                                 ;
   return
 end
