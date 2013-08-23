@@ -42,7 +42,8 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-; 
+;   2013-08-23 : JdlCR : make sure the C binary gets long(nthreads),
+;                        otherwise it can crash.
 ; 
 ;-
 function red_fillpix, img, val = val, mask = mask, nthreads = nthreads
@@ -71,7 +72,7 @@ function red_fillpix, img, val = val, mask = mask, nthreads = nthreads
 
   res = float(img)
   b = call_external(dir+'/creduc.so', 'cfillpix', long(nx), $
-                    long(ny), res, mask, nthreads)
+                    long(ny), res, mask, long(nthreads))
   
   return, res
 end

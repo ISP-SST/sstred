@@ -57,7 +57,7 @@
 ; 
 ; 
 ;-
-pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = noasy, shift = shift, init=init
+pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = noasy, shift = shift, init=init, stretch=stretch
   inam = 'red::fitprefilter : '
   
                                 ;
@@ -166,7 +166,7 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   pp[3] = 2.0d0
   fitpars[3].LIMITS = [1.4d0, 2.4d0]
   fitpars[3].LIMITED = [1,1]
-  fitpars[7].FIXED = 1B
+  if(~keyword_set(stretch)) then fitpars[7].FIXED = 1B
   fitpars[6].fixed = 1
 
   If(keyword_set(fixcav)) then begin
