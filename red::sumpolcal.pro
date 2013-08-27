@@ -46,16 +46,25 @@
 ;   2013-07-10 : MGL. Worked around fzhead bug by using fzread
 ;                instead. 
 ;
+;   2013-08-27 : MGL. Added support for logging. Let the subprogram
+;                find out its own name.
+; 
 ;
 ;-
 pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
-  inam = 'red::sumpolcal : '
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
+  ;; Logging
+  help, /obj, self, output = selfinfo 
+  red_writelog, selfinfo = selfinfo
                                 ;
   if(~self.dopolcal) then begin
-     print, inam + 'Error -> undefined polcal_dir in '+self.filename
+     print, inam + ' : Error -> undefined polcal_dir in '+self.filename
   endif
-                                ;
-                                ; loop cameras
+
+  ;; Loop cameras
   for ic = 0, 1 do begin
      firsttime = 1B
      case ic of
@@ -63,48 +72,47 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
            cam = self.camt
            doit = self.docamt
         end
-                                ;
+
         1 : begin
            cam = self.camr
            doit = self.docamr
         end
      endcase
-                                ;
+
      IF(keyword_set(ucam)) THEN BEGIN
         IF cam NE ucam THEN BEGIN
-           print, inam + 'skipping '+cam
+           print, inam + ' : skipping '+cam
            continue
         endif
      endif
      if(~doit) then begin
-        print, inam+'nothing to do for '+cam
+        print, inam+' : nothing to do for '+cam
         continue
      endif
-                                ;
-                                ; find files
+
+     ;; Find files
      spawn, 'find ' + self.polcal_dir + '/' + cam + "/ | grep im.ex | grep -v '.lcd.'", files
      
      nt = n_elements(files)
      if(files[0] eq '') then begin
-        print, inam+'no files found in '+self.polcal_dir+'/'+cam+', skipping camera!'
+        print, inam+' : no files found in '+self.polcal_dir+'/'+cam+', skipping camera!'
         continue
      endif
-                                ;
-                                ; sort files based on image number
+
+     ;; Sort files based on image number
      files = red_sortfiles(files)
 
-                                ;
-                                ; get image states
+     ;; Get image states
      pstat = red_getstates_polcal(files)
      if(keyword_set(remove)) then pstat.star[*] = red_flagchange(pstat.qw)
-                                ;
-                                ; unique states
+
+     ;; Unique states
      ustate = pstat.state[uniq(pstat.state, sort(pstat.state))]
      ns = n_elements(ustate)
-                                ;
-     print, inam+'found '+red_stri(ns)+' states for '+cam
-                                ;
-                                ; sum images
+
+     print, inam+' : found '+red_stri(ns)+' states for '+cam
+
+     ;; Sum images
      outdir = self.out_dir + '/polcal_sums/' + cam+'/'
      file_mkdir, outdir
      if(keyword_set(old)) then begin
@@ -112,7 +120,7 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
         file_mkdir, outdir1
      endif
      camtag = (strsplit(file_basename(files[0]), '.',/extract))[0]
-                                ;
+
      ddf = self.out_dir+'/darks/'+camtag+'.summed.0000001'
      if(file_test(ddf)) then begin
         ;; ddh = fzhead(ddf) 
@@ -120,38 +128,36 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
         pos = strsplit(ddh,' ')
         ddh = strmid(ddh, pos[1], pos[n_elements(pos)-1])
      endif else ddh = ' '
-                                ;
+
      for ss = 0L, ns - 1 do begin ;ns-1
         pos = where((pstat.state eq ustate[ss]) AND (pstat.star eq 0B), count)
         if(count eq 0) then continue
-                                ;
-        print, inam+'adding frames for '+cam+' -> '+ustate[ss]
+
+        print, inam+' : adding frames for '+cam+' -> '+ustate[ss]
         pcal = red_sumfiles(files[pos], time = time, summed = polcalsum,check=check)
-                                ;
+
         ;; head = fzhead(files[pos[count/2-1]])
         fzread, tmp, files[pos[count/2-1]], head ; Work around fzhead bug.
         h = head
-                                ;
-                                ; Save average of the sum (for IDL polcal)
-                                ;
+
+        ;; Save average of the sum (for IDL polcal)
         namout = camtag+'.'+ustate[ss]+'.'+pstat.nums[pos[0]]
-        print, inam+'saving '+outdir+namout 
+        print, inam+' : saving '+outdir+namout 
         fzwrite, float(pcal), outdir+namout, h
-                                ;
-                                ; Save un-normalized sums for polcal
-                                ;
+
+        ;; Save un-normalized sums for polcal
         if(keyword_set(old)) then begin
            h1 = red_get_polcalheader(files[pos[0]], head, n_elements(pos), pstat, date = date)
            namout1 = camtag + '_im' + date + '.fp0.1234.1234.'+$
                      strcompress(string(float(strmid(pstat.qw[pos[0]],2,3)),format='(F6.2)'),/remove)+'.'+ $
                      pstat.lc[pos[0]]+'.'+pstat.nums[pos[0]]
-           print, inam + 'saving ' + outdir1 + namout1
+           print, inam + ' : saving ' + outdir1 + namout1
            pref = pstat.pref[pos[0]]
            outdir2 = outdir1 + pref + '/'
            file_mkdir, outdir2 
            fzwrite, polcalsum, outdir2 + namout1, h1
         endif
-                                ;
+
         if(firsttime eq 1B) then begin
            if(keyword_set(old)) then begin
               openw, lun, outdir2+'/'+camtag+'_lg'+date, /get_lun, width = 300
@@ -160,7 +166,7 @@ pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
         endif
         if(keyword_set(old)) then printf,lun, h1
      endfor                     ; (ss)
-     ;; ;
+
      if(file_test(ddf)) then begin
         if(keyword_set(old)) then begin
            ddlink = camtag+'_dd'+date+'.'+red_stri(long((strsplit(ddh,' ',/extract))[0]), ni='(I07)')

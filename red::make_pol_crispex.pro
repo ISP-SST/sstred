@@ -66,116 +66,114 @@
 ; 
 ;   2013-08-19 : JdlCR. Spectfile is created along with the crispex
 ;                cubes.
+; 
+;   2013-08-27 : MGL. Added support for logging. Let the subprogram
+;                find out its own name.
 ;
 ;-
 pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite
-  inam = 'red::make_pol_crispex : '
+ 
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
+  ;; Logging
+  help, /obj, self, output = selfinfo 
+  red_writelog, selfinfo = selfinfo
+
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
   if(keyword_set(float)) then exten = '.fcube' else exten='.icube'
   if(n_elements(filter) gt 0) then cfilter = dcomplex(filter,filter)
 
-  ;;
-  ;; select folder
-  ;;
+  ;; Select folder
   search = self.out_dir +'/momfbd/'
   f = file_search(search+'*', count = ct, /test_dir)
   if(ct eq 0) then begin
-     print, inam + 'No sub-folders found in: ' + search
+     print, inam + ' : No sub-folders found in: ' + search
      return
   endif
 
   if(ct gt 1) then begin
-     print, inam + 'Found folders(s): '
+     print, inam + ' : Found folders(s): '
      for ii = 0L, ct-1 do print, red_stri(ii) + '  -> '+f[ii]
      idx = 0L
-     read, idx, prompt = inam + 'Select folder ID: '
+     read, idx, prompt = inam + ' : Select folder ID: '
      idx = idx>0 < (ct-1)
      f = f[idx]
   endif
 
-  print, inam + 'Selected -> '+ f
+  print, inam + ' : Selected -> '+ f
   time_stamp = strsplit(f, '/', /extract)
   time_stamp = time_stamp[n_elements(time_stamp)-1]
 
-  ;;
   ;; Search prefilters in folder
-  ;;
   search = f
   f = file_search(f+'/*', /test_dir, count = ct)
   if(ct eq 0) then begin
-     print, inam + 'No sub-folders found in: ' + search
+     print, inam + ' : No sub-folders found in: ' + search
      return
   endif
   
   if(ct gt 1) then begin
-     print, inam + 'Found prefilters(s): '
+     print, inam + ' : Found prefilters(s): '
      for ii = 0L, ct-1 do print, red_stri(ii) + '  -> '+file_basename(f[ii])
      idx = 0L
-     read, idx, prompt = inam + 'Select folder ID: '
+     read, idx, prompt = inam + ' : Select folder ID: '
      idx = idx>0 < (ct-1)
      f = f[idx]
   endif
-  print, inam + 'Selected -> '+ f
+  print, inam + ' : Selected -> '+ f
   pref = strsplit(f, '/', /extract)
   pref = pref[n_elements(pref)-1]
 
-
   f += '/cfg/results/'
   
-  ;;
   ;; Look for time-series calib file
-  ;;
   if(~keyword_set(scans_only)) then begin
      cfile = self.out_dir + '/calib_tseries/tseries.'+pref+'.'+time_stamp+'.calib.sav'
      if(~file_test(cfile)) then begin
-        print, inam + 'Could not find calibration file: ' + cfile
-        print, inam + 'Try to execute red::polish_tseries on this dataset first!'
+        print, inam + ' : Could not find calibration file: ' + cfile
+        print, inam + ' : Try to execute red::polish_tseries on this dataset first!'
         return
-     endif else print, inam + 'Loading calibration file -> '+file_basename(cfile)
+     endif else print, inam + ' : Loading calibration file -> '+file_basename(cfile)
      restore, cfile
      tmean = mean(tmean) / tmean
   endif else tmean = replicate(1.0, 10000) ; Dummy time correction
 
-  ;;
   ;; Camera tags
-  ;;
   self->getcamtags, dir = self.data_dir
 
-
-  ;;
   ;; Load prefilter
-  ;;
   tpfile = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter.f0'
   tpwfile = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter_wav.f0'
   rpfile = self.out_dir + '/prefilter_fits/'+self.camrtag+'.'+pref+'.prefilter.f0'
   rpwfile = self.out_dir + '/prefilter_fits/'+self.camrtag+'.'+pref+'.prefilter_wav.f0'
 
   if(file_test(tpfile) AND file_test(tpwfile)) then begin
-     print, inam + 'Loading:'
+     print, inam + ' : Loading:'
      print, '  -> ' + file_basename(tpfile)
      tpref = f0(tpfile)
      print, '  -> ' + file_basename(tpwfile)
      twav = f0(tpwfile)
   endif else begin
-     print, inam + 'prefilter files not found!'
+     print, inam + ' : prefilter files not found!'
      return
   endelse
 
   if(file_test(rpfile) AND file_test(rpwfile)) then begin
-     print, inam + 'Loading:'
+     print, inam + ' : Loading:'
      print, '  -> ' + file_basename(rpfile)
      rpref = f0(tpfile)
      print, '  -> ' + file_basename(rpwfile)
      rwav = f0(tpwfile)
   endif else begin
-     print, inam + 'prefilter files not found!'
+     print, inam + ' : prefilter files not found!'
      return
   endelse
 
   tfiles = file_search(f+'/stokes/'+'stokesIQUV.?????.'+pref+'.????_*f0', count=tf)
 ;  rfiles = file_search(f+'/'+self.camrtag+'.?????.'+pref+'.????_*momfbd', count=rf)
   if(tf eq 0) then begin
-     print, inam + 'Error, no images found in:'
+     print, inam + ' : Error, no images found in:'
      print, f+'/stokes'
   endif
 
@@ -188,15 +186,10 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   nscan = st.nscan
   wav = st.uiwav * 1.e-3
 
-  ;;
   ;; Interpolate prefilters to the observed grid 
-  ;;
   tpref = 1./(red_intepf(twav, tpref, wav) + red_intepf(rwav, rpref, wav))
 
-  ;;
   ;; Create temporary cube and open output file
-  ;;
-
   if(n_elements(crop) eq 0) then crop = [0,0,0,0]
   dimim = size(f0(tfiles[0]), /dim)
   x0 = 0L + crop[0]
@@ -246,16 +239,12 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      endelse
   endif 
 
-  ;;
   ;; Prepare spect-file for crispex
-  ;;
   norm_spect = fltarr(nwav,4)
   spect_pos = wav + double(pref)
   norm_factor = fltarr(4)
 
-  ;;
   ;; start processing data
-  ;; 
   for ss = 0L, nscan-1 do begin
 
      IF(SS EQ 0) THEN BEGIN
@@ -277,25 +266,22 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         endif
      endif
      
-
      for ww = 0L, nwav - 1 do begin 
         state = strjoin((strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*],'.')
         
-        ;;
         ;; Load image and apply prefilter correction
-        ;;
-        print, inam + 'loading -> '+file_basename(st.ofiles[ww,ss])
+        print, inam + ' : loading -> '+file_basename(st.ofiles[ww,ss])
         tmp = (f0(st.ofiles[ww,ss]))[x0:x1,y0:y1,*] * tpref[ww]
         if(keyword_set(filter)) then begin
            tmp = red_fftfilt(temporary(tmp), filter)
         endif 
 
-        ;;
         ;; Apply derot, align, dewarp
-        ;;
         if(~keyword_set(scans_only)) then begin
            for stk = 0,3 do begin
-              d[*,*,stk,ww] = rotate(stretch(red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir) 
+              d[*,*,stk,ww] = rotate(stretch(red_rotation(tmp[*,*,stk], ang[ss] $
+                                                          , total(shift[0,ss]), total(shift[1,ss])) $
+                                             , reform(grid[ss,*,*,*])), rot_dir) 
            endfor
         endif else for stk=0,3 do d[*,*,stk,ww] = rotate(tmp[*,*,stk], rot_dir)
         
@@ -330,7 +316,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         if keyword_set(wbwrite) then begin
            wb = (red_mozaic(momfbd_read(wbfiles[ss])))
            dimwb = red_getborder(wb, x0wb, x1wb, y0wb, y1wb, square=square)
-           print, inam + 'saving to '+ odir + '/' + ofilewb
+           print, inam + ' : saving to '+ odir + '/' + ofilewb
            fzwrite, wb[x0wb:x1wb, y0wb:y1wb], odir + '/' + ofilewb, ' '
         endif
      endelse
@@ -338,14 +324,12 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
 
   if(~keyword_set(scans_only)) then begin
      free_lun, lun
-     print, inam + 'done'
-     print, inam + 'result saved to -> '+odir+'/'+ofile 
+     print, inam + ' : done'
+     print, inam + ' : result saved to -> '+odir+'/'+ofile 
      if(keyword_set(float)) then begin
         flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav
      endif else flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav,/icube
   endif
-  
-  
   
   return
 end
