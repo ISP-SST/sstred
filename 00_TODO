@@ -16,7 +16,10 @@ Action items
     pipeline IDL session. 
   - Integrate image scale determination. Need new info from config
     file: pinhole spacing in arcsec. Need to output the image scale of
-    the crisp cameras in a) the log file and b) the momfbd config files.
+    the crisp cameras in a) the log file and b) the momfbd config files. 
+  - Run Alexander's code on some more data. We have 6302 data
+    (Alexander used 5576) of the same target, needs to be momfbded
+    first. Should look also for other data sets with suitable targets.
 
 * The new flat field procedure (Jaime)
 
