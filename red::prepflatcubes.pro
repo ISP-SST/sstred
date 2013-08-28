@@ -79,7 +79,7 @@ pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nth
 
   for cc = 0, nc -1 do begin
      f = file_search(flatdir+'/'+cam[cc]+'.*lc0*.flat', count = count)
-     print, inam + ' : ' red_stri(count)+' wavelenghts found for '+cam[cc]
+     print, inam + ' : ' + red_stri(count)+' wavelenghts found for '+cam[cc]
      if count eq 0 then begin
         print, inam+' : WARNING, skipping camera '+cam[cc]+' -> no files found'
         continue
