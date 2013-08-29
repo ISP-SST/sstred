@@ -1,7 +1,9 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Return the average (sum/number) of the image frames defined by a
+; list of file names. 
+;
 ; 
 ; :Categories:
 ;
@@ -10,62 +12,116 @@
 ; 
 ; :author:
 ; 
-; 
+;    Mats Löfdahl, ISP
 ; 
 ; 
 ; :returns:
 ; 
+;    The average image. 
+; 
 ; 
 ; :Params:
 ; 
-;    files_list : 
+;    files_list : in, type=strarr
 ;   
-;   
+;      The list of image files, the contents of which to sum.
 ;   
 ; 
 ; :Keywords:
 ; 
-;    time  : 
+;    time  : out, optional, type=double
 ;   
 ;   
+;    summed  : out, optional, type=dblarr
 ;   
-;    summed  : 
+;       The summed frames, without division with the number of summed frames.
 ;   
+;    old :  in, optional, type=boolean 
 ;   
+;       Set this for data with the "old" header format.
 ;   
-;    old  : 
+;    check  : in, optional, type=boolean
 ;   
+;       Check for bad frames before summing.
 ;   
+;    lun : in, optional, type=integer 
 ;   
-;    check  : 
+;       Logical unit number for where to store checking results.
 ;   
-;   
-;   
-;    lun  : 
-;   
-;   
-;   
-;    notime : 
-;   
-;   
-;   
+;    gain : in, optional
 ; 
+;       Gain frame with bad pixels zeroed. If backscatter correction
+;       is supposed to be performed, the gain must have been
+;       calculated from a backscatter corrected flat.
+; 
+;    dark : in, optional
+; 
+;       Dark frame.
+; 
+;    pinhole_align : in, optional, type=boolean
+; 
+;       Align before summing if set. Assumes pinholes. 
+;
+;    nthreads  : in, optional, type=integer
+;   
+;       The number of threads to use for backscatter correction.
+;   
+;    backscatter_gain : in, optional
+;   
+;       The gain needed to do backscatter correction. Iff
+;       backscatter_gain and backscatter_psf are given, do the
+;       correction. 
+;   
+;    backscatter_psf : in, optional
+;   
+;       The psf needed to do backscatter correction. Iff
+;       backscatter_gain and backscatter_psf are given, do the
+;       correction.
+;   
 ; 
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-08-15 : MGL. Added documentation. Code from last year that
+;                allows subpixel alignment before summing.
+;
+;   2013-08-16 : MGL. New code to optionally do backscatter
+;                correction, as well as gain and dark correction, and
+;                filling of bad pixels. Removed unused keyword
+;                "notime". Use red_time2double rather than
+;                time2double.
+; 
+;   2013-08-27 : MGL. Let the subprogram find out its own name.
 ; 
 ;-
-function red_sumfiles, files_list, time = time, summed = summed, old = old, check = check, lun = lun, notime=notime
-                                ;
-  new = 1B
-  If(keyword_set(old)) then new = 0B
-                                ;
-  nt = n_elements(files_list)
+function red_sumfiles, files_list $
+                       , time = time $
+                       , summed = summed $
+                       , old = old $     
+                       , check = check $ 
+                       , lun = lun $ 
+                       , pinhole_align = pinhole_align $ 
+                       , gain = gain $   
+                       , dark = dark $   
+                       , backscatter_gain = backscatter_gain $
+                       , backscatter_psf = backscatter_psf $
+                       , nthreads = nthreads 
+  
+  ;; Name of this subprogram
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  
+  new = ~keyword_set(old)
+
+  if n_elements(nthreads) eq 0 then nthreads = 2 else nthreads = nthreads
+
+  DoDescatter = n_elements(backscatter_gain) gt 0 and n_elements(backscatter_psf) gt 0
+
+  Nfiles = n_elements(files_list)
   fzread, tmp, files_list[0], h
+  dim = size(tmp, /dim)
   tmp = long(tmp)
-                                ;
+
   dum = fzhead(files_list[0])
   dum = strsplit(dum, ' =', /extract)
   if(new) then begin
@@ -73,168 +129,219 @@ function red_sumfiles, files_list, time = time, summed = summed, old = old, chec
      t2 = dum[21]
      time = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
   endif else time = red_time2double(dum[2])
-                                ;
-  if(nt gt 1) then begin
-     ntot = 100. / (nt - 1.0)
-     bb = string(13B)
-                                ;
-     if(~keyword_set(check)) then begin
-        for ii = 1L, nt -1 do begin
-           tmp+= f0(files_list[ii])
-           dum = fzhead(files_list[ii])
-           dum = strsplit(dum, ' =', /extract)
-           if(new) then begin
-              t1 = dum[18]
-              t2 = dum[21]
-              time+= (red_time2double(t1) + red_time2double(t2)) * 0.5d0
-           endif else time += red_time2double(dum[2])
-                                ;
-           print, bb, 'red_sumfiles : adding files -> ', ntot * ii, '%', $
-                  FORMAT = '(A,A,F5.1,A,$)'
-        endfor
-        print, ' '
-        summed = tmp
-        tmp = float(double(tmp) / double(nt))
-        time = red_time2double(time / double(nt), /dir)
 
-     endif else begin
-        dim = size(tmp, /dim)
-        cub = intarr(dim[0], dim[1], nt)
-        times = dblarr(nt)
-        mval = fltarr(nt)
-                                ;
-        for ii = 0L, nt -1 do begin
-           cub[*,*,ii] = f0(files_list[ii])
-           mval[ii] = mean(cub[*,*,ii])
-                                ;
-           dum = fzhead(files_list[ii])
-           dum = strsplit(dum, ' =', /extract)
-           
-           if(new) then begin
-              t1 = dum[18]
-              t2 = dum[21]
-              times[ii] = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
-           endif else times[ii] = red_time2double(dum[2])
-           print, bb, 'red_sumfiles : loading files in memory -> ', ntot * ii, '%', $
-                  FORMAT = '(A,A,F5.1,A,$)'
-        endfor
-        print, ' '
-        
-        if(n_elements(lim) eq 0) then lim = 0.0175 ; Allow 2% deviation from the mean value
-        tmean = median(mval)
-        mmval = median(mval, 3)
-        idx = where(abs(mval - mmval) LE lim * tmean, count, complement = idx1)
-                                ;tt = times - times[0]
-                                ; plot, tt, abs(mval-mmval), psym=3, ystyle = 3, xstyle = 3
-                                ; oplot, tt,replicate(tmean + tmean*lim, nt), /line
-                                ; loadct,3,/silent
-                                ; if(count ne nt) then oplot, tt,(abs(mval-mmval))[idx1], psym=7, color = 165
-                                ; loadct,0,/silent
-        
-        if(count ne nt) then begin
-           print, 'red_sumfiles : rejected frames :'
-           print, transpose((files_list[idx1]))
-           IF(keyword_set(lun)) THEN BEGIN
-              printf, lun, files_list[idx1]
-           endif
-        endif else print, 'red_sumfiles : all files seem to be fine'
-                                ;stop
-                                ;summed = total((temporary(cub))[*,*,idx], 3, /preserve) 
-        summed = lonarr(dim[0], dim[1])
-        for ii = 0, n_elements(idx)-1 do begin
-           summed += cub[*,*,idx[ii]]
-           print, string(13b), 'red_sumfiles : summing checked frames -> ', 100./(count-1.0) * ii, '%',FORMAT='(A,A,F5.1,A,$)'
-        endfor
-        print, ' '
-        tmp = summed / float(count)
-        time = red_time2double(mean(times[idx]), /dir)
-     endelse
+  if keyword_set(check) then docheck = 1B else docheck = 0B
+  if docheck and Nfiles lt 10 then begin
+     print, inam+" : Not enough statistics, don't do checking."
+     docheck = 0B
   endif
 
-  return, tmp
-END
+  if keyword_set(pinhole_align) then begin
+     if n_elements(gain) eq 0 or n_elements(dark) eq 0 then begin
+        print, inam+' : Need to specify gain and dark when doing /pinhole_align'
+        help, gain, dark
+        stop
+     endif
+  endif
 
+  if n_elements(gain) eq 0 then begin
+     ;; Default gain is unity
+     gain = dblarr(dim)+1D
+  endif else begin
+     ;; Make a mask for fillpixing. We want to exclude really large
+     ;; areas along the border of the image and therefore irrelevant
+     ;; for pinhole calibration.
+     mask = red_cleanmask(gain)
+  endelse 
 
-;; Make (inverse) gain table from flat field (or sum thereof). MLö 2008
-;; function red_flat2gain, flat $
-;;                         , gain_nozero = gain_nozero $
-;;                         , smoothsize = smoothsize $
-;;                         , badthreshold = badthreshold $
-;;                         , maxgain = maxgain $
-;;                         , mingain = mingain $
-;;                         , preserve_sarnoff_taps = preserve_sarnoff_taps 
+  if n_elements(dark) eq 0 then begin
+     ;; Default zero dark correction
+     dark = dblarr(dim)
+  endif 
 
-;;   ;; If preserve_sarnoff_taps is set, don't zero borders
-;;   ;; between Sarnoff taps.
+  ;; If just a single frame, return it now! 
+  if Nfiles eq 1 then begin
+     ;; Include gain, dark, fillpix, backscatter here? This case
+     ;; should really never happen...
+     return, tmp
+  endif
 
-;;   ;; Unsharp masking smoothing kernel width
-;;   if n_elements(smoothsize) eq 0 then smoothsize = 7.    
+  ;; Needed for warning messages and progress bars.
+  ntot = 100. / (Nfiles - 1.0)
+  bb = string(13B)
 
-;;   ;; Unsharp masking threshold for bad pixels 
-;;   if n_elements(badthreshold) eq 0 then badthreshold = .8 
+  times = dblarr(Nfiles)
 
-;;   ;; Another pair of thresholds, this one on the gain itself
-;;   if n_elements(maxgain) eq 0 then maxgain = 5.
-;;   if n_elements(mingain) eq 0 then mingain = 0.
+  if docheck then begin
 
-;;   ;; First make the basic gain table, which is a normalized inverse
-;;   ;; flat. 
+     ;; Set up for checking
+     cub = intarr(dim[0], dim[1], Nfiles)
+     mval = fltarr(Nfiles)
+     for ii = 0L, Nfiles-1 do begin
 
-;;   indx = where(flat)
-;;   mq = median(flat(indx))
-;;   gain = 0.0*flat
-;;   gain(indx) = mq/flat(indx)    
+        cub[*,*,ii] = f0(files_list[ii])
+        mval[ii] = mean(cub[*,*,ii])
+                                ;
+        dum = fzhead(files_list[ii])
+        dum = strsplit(dum, ' =', /extract)
+        
+        if(new) then begin
+           t1 = dum[18]
+           t2 = dum[21]
+           times[ii] = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
+        endif else times[ii] = red_time2double(dum[2])
+        print, bb, inam+' : loading files in memory -> ', ntot * ii, '%' $
+               , FORMAT = '(A,A,F5.1,A,$)'
 
-;;   ;; Then find bad pixels.
+     endfor                     ; ii
+     print, ' '
 
-;;   ;; Unsharp masking
-;;   ;psf = get_psf(smoothsize*7, smoothsize*7,smoothsize,smoothsize)
-;;   ;psf /= total(psf, /double)
-;;   ;smgain = red_convolve(gain, psf)
-;;   smgain = smooth(gain, smoothsize, /edge, /nan)
-;;   dgain = abs(gain - smgain)
+     ;; Find bad frames
+     if n_elements(lim) eq 0 then lim = 0.0175 ; Allow 2% deviation from the mean value
+     tmean = median(mval)
+     mmval = median(mval, 3)
+     goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
+     idx = where(goodones, Nsum, complement = idx1)
+     
+     if(Nsum ne Nfiles) then begin
+        print, inam+' : rejected frames :'
+        print, transpose((files_list[idx1]))
+        if(keyword_set(lun)) then begin
+           printf, lun, files_list[idx1]
+        endif
+     endif else print, inam+' : all files seem to be fine'
 
-;;   ;; Find bad pixels
-;;   if keyword_set(preserve_sarnoff_taps) then begin
-;;      badindex = where((dgain gt badthreshold) $ ; array with badpixels
-;;                       or (gain le mingain) $ 
-;;                       or (gain gt maxgain) $
-;;                       , complement = goodindx) ; and the good ones
-;;   endif else begin
-;;      ;; Zero borders between Sarnoff taps
-;;      xx = indgen(size(gain,/dim), /long) mod (size(gain,/dim))[0]  
-;;      yy = indgen(size(gain,/dim), /long) / (size(gain,/dim))[0]  
+  endif else begin              ; docheck
 
-;;      badindex = where((dgain gt badthreshold) $ ; array with badpixels
-;;                       or (gain le mingain) $ 
-;;                       or (gain gt maxgain) $
-;;                       or ((xx mod 128) eq 0) or ((yy mod 512) eq 0) $ ; taps
-;;                       , complement = goodindx) ; and the good ones
-;;   endelse
-;;   print, 'There are ', (size(badindex, /dim))[0], ' bad pixels.'
+     ;; Set up for NOT checking
+     for ii = 1L, Nfiles -1 do begin
+        dum = fzhead(files_list[ii])
+        dum = strsplit(dum, ' =', /extract)
+        if(new) then begin
+           t1 = dum[18]
+           t2 = dum[21]
+           times[ii] = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
+        endif else times[ii] = red_time2double(dum[2])
 
-;;   ;; Normalize with respect to the good pixels
-;;   gain = gain/mean(gain[goodindx])
+     endfor
 
-;;   ;; If requested:
-;;   IF arg_present(gain_nozero) then gain_nozero = gain
+     ;; All frames are considered OK.
+     goodones = replicate(1, Nfiles) 
+     idx = where(goodones, Nsum, complement = idx1)
 
-;;   ;; Set the bad pixels to zero.
-;;   if (size(badindex, /dim))[0] gt 0 then gain[badindex] = 0.0 
+  endelse                       ; docheck
 
-;;   return, gain
+  ;; Do the summing
+  summed = dblarr(dim)
+  time = 0.0d
 
-;; end                             ; red_flat2gain
-;
-function red_get_psf,nx,ny,cx,cy
-  psf=dblarr(nx,ny)
-  nx2=double(nx/2)
-  ny2=double(ny/2)
-  cyy=cy/(2.d0*sqrt(2.d0*alog(2.d0)))
-  cxx=cx/(2.d0*sqrt(2.d0*alog(2.d0)))
-  for yy=0.,ny-1. do for xx=0.,nx-1 do begin
-     u=((xx-nx2)/cxx)^2.+((yy-ny2)/cyy)^2.
-     psf[xx,yy]=exp(-u*0.5d0)
-  endfor
-  return,psf
-end
+  firstframe = 1B               ; When doing alignment we use the first (good) frame as reference. 
+  for ii = 0L, Nfiles-1 do begin
+     
+     if goodones[ii] then begin ; Sum only OK frames
+
+        if docheck then begin
+           thisframe = double(cub[*,*,ii])
+           print, bb, inam+' : summing checked frames -> ' $
+                  , ntot * ii, '%' $
+                  , FORMAT='(A,A,F5.1,A,$)'
+        endif else begin
+           thisframe = double(f0(files_list[ii]))
+           print, bb, inam+' : adding files -> ' $
+                  , ntot * ii, '%' $
+                  , FORMAT = '(A,A,F5.1,A,$)'
+        endelse
+
+        thisframe = (thisframe - dark)*gain
+        if DoDescatter then begin
+           thisframe = red_cdescatter(thisframe, backscatter_gain, backscatter_psf $
+                                    , /verbose, nthreads = nthreads)
+        endif
+
+        if keyword_set(pinhole_align) then begin
+           
+           if firstframe then begin
+              
+              ;; Find brightest spot that is reasonably centered in
+              ;; the FOV.
+              marg = 100
+              subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
+              mx = max(subim, maxloc)
+              ncol = dim[1]-2*marg+1
+              xyc = lonarr(2)
+              xyc[0] = maxloc MOD ncol
+              xyc[1] = maxloc / ncol
+
+              xyc += marg       ; Position of brightest spot in original image
+
+              ;; Establish subfield size sz, shrunk to fit.
+              sz = 99              
+              subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
+              tot_init = total(subim/max(subim) gt 0.2)
+              repeat begin
+                 sz -= 2
+                 subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
+                 tot = total(subim/max(subim) gt 0.2)
+              endrep until tot lt tot_init
+              sz += 4           ; Loosen up a little
+           endif                ; firstframe
+
+           ;; Fill bad pixels 
+           print
+           thisframe = red_fillpix(thisframe, mask = mask)
+
+           ;; Iteratively calculate centroid of thisframe, and then
+           ;; shift the frame so it aligns with the first frame.
+           
+           ;; Iteratively shift the image to get the spot centered in
+           ;; the subfield, because that's where the centroiding is
+           ;; most accurate.
+           dc1 = [0.0,0.0]
+           repeat begin
+              print, 'Shift:', dc1
+              im_shifted = red_shift_im(thisframe, dc1[0], dc1[1])                  ; Shift the image
+              subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2] ; New subimage
+
+              subim0 = subim0 / stdev(subim0)
+              cnt = centroid(subim0) ; Centroid after shift
+              dcold = dc1            ; Old shift
+              dc1 = dc1 + (sz/2.0 - cnt)
+              print, 'Shift change vector length:', sqrt(total((dc1-dcold)^2))
+           endrep until sqrt(total((dc1-dcold)^2)) lt 0.01
+           ;; Iterate until shift changes less than 0.01 pixel
+
+           if firstframe then begin
+              ;; Keep as reference
+              dc0 = dc1
+           endif else begin
+              dc = dc1-dc0      ; This is the shift!
+              thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
+           endelse
+
+        endif                   ; keyword_set(pinhole_align)
+
+        summed += thisframe
+        time += times[ii]
+
+        firstframe = 0B
+     endif                      ; goodones[ii] 
+
+  endfor                        ; ii
+  print, ' '
+
+  average = summed / Nsum
+  time = red_time2double(time / Nsum, /dir)
+
+  if ~keyword_set(pinhole_align) then begin
+     ;; Dark and gain correction (done already for pinholes)
+     thisframe = (thisframe - dark)*gain
+     if DoDescatter then begin
+        ;; Backscatter correction (done already for pinholes)
+        average = red_cdescatter(average, backscatter_gain, backscatter_psf $
+                                 , /verbose, nthreads = nthreads)
+     endif
+  endif
+
+  return, average
+ 
+end                             ; red_sumfiles
