@@ -48,7 +48,10 @@
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
-;                find out its own name.
+;                find out its own name. Added self.done to the
+;                selfinfo.
+; 
+;   2013-08-29 : MGL. Remove *lcd* files from file list.
 ; 
 ;-
 pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove,check=check
@@ -57,8 +60,9 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+  help, /obj, self, output = selfinfo1
+  help, /struct, self.done, output = selfinfo2 
+  red_writelog, selfinfo = [selfinfo1, selfinfo2]
 
   if(self.doflat eq 0B) then begin
      print, inam+' : ERROR : undefined flat_dir'
@@ -90,8 +94,9 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
      endcase
      if(~doit) then continue
 
-     spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep "camX"', files
+     spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep "camX" | grep -v ".lcd."', files
      nf = n_elements(files)
+
      print, inam+' : Found '+red_stri(nf)+' files in '+ self.flat_dir + '/' + cam + '/'
 
      if(files[0] eq '') then begin
