@@ -75,6 +75,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;
+;   2013-07-12 : MGL. Use red_read_azel rather than read_azel.
+;
 ; 
 ;-
 pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = no_destretch, $
@@ -274,7 +277,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      ;; mtel =
      ;; sst_mueller_all((*self.timg[0]).date, time_obs, self.telog, line)
      mdate = strjoin(strsplit((*self.timg[0]).date,'-',/extra),'/')
-     telpos = read_azel( self.telog,mdate)
+     telpos = red_read_azel( self.telog,mdate)
      print, inam + 'time_obs = '+time_obs
      mtel = red_telmat(line, telpos, time_obs, /no_zero)
       
