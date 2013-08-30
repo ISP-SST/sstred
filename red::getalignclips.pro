@@ -55,11 +55,23 @@
 ;   2013-05-?? : Keywords dx and dy added by MGL
 ; 
 ;   2013-07-24 : Use red_show rather than show.
+; 
+;   2013-08-30 : MGL. Added support for logging. Let the subprogram
+;                find out its own name. Get camtags from self.pinh_dir
+;                rather than self.data_dir, in case (the first) data
+;                directory does not have data from all cameras.
 ;
 ;-
 PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
                         maxshift = maxshift, $
                         dx = dx, dy = dy  
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  
+  ;; Logging
+  help, /obj, self, output = selfinfo 
+  red_writelog, selfinfo = selfinfo
 
   if n_elements(dx) eq 0 then dx = [0, 0] else dx = round(dx)
   if n_elements(dy) eq 0 then dy = [0, 0] else dy = round(dy)
@@ -69,9 +81,8 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
    
   ;; Procedure pinhcalib based on Pit Sutterlin's setup_ph.pro
    
-  ;; Seach summed pinh images and camtag
+  ;; Search summed pinh images and camtag
    
-  inam = 'red::getalignclips : '
   if(n_elements(extraclip) eq 0) then extraclip = [0L, 0L, 0L, 0L]
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
@@ -86,26 +97,26 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
   ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camr+'/|grep cam',f
   ;;    camr = red_camtag(f[0])    
   ;; endif else begin
-  ;;    print, inam+' ERROR, undefined pinh_dir'
+  ;;    print, inam+' : ERROR, undefined pinh_dir'
   ;;    return
   ;; endelse
 
-  self -> getcamtags, dir = self.data_dir
+  ;;  self -> getcamtags, dir = self.data_dir
+  self -> getcamtags, dir = self.pinh_dir
   camt = self.camttag
   camr = self.camrtag
   camw = self.camwbtag
-                                ;
+
   ft = file_search(self.out_dir+'/pinh/' + camt +'.*.pinh', count = ct)
   fr = file_search(self.out_dir+'/pinh/' + camr +'.*.pinh', count = cr)
   fw = file_search(self.out_dir+'/pinh/' + camw +'.*.pinh', count = cw)
-                                ;
-                                ; Get image states
+
+  ;; Get image states
   tstat = red_getstates_pinh(ft, lam = lams)
   rstat = red_getstates_pinh(fr)
   wstat = red_getstates_pinh(fw)
-                                ;
-                                ; Select state to align
-                                ;
+                                
+  ;; Select state to align
   allowed = [-1]
   for ii = 0L, n_elements(ft) -1 do BEGIN
      pr = where(rstat eq tstat[ii], count0)
@@ -115,36 +126,36 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      allowed = [temporary(allowed), ii]
   endfor
   if n_elements(allowed) gt 1 then allowed = allowed[1:*]
-                                ;
+
   toread = 0
-  read, toread, prompt = inam+'choose state to align: '
-                                ;
+  read, toread, prompt = inam+' : choose state to align: '
+
   pos = where(allowed eq toread, count)
   if count eq 0 then begin
-     print, inam + 'Error -> incorrect state number: ',toread
+     print, inam + ' : Error -> incorrect state number: ',toread
      return
   endif
-                                ;
-  print, inam+'selected state '+tstat[toread]
+
+  print, inam+' : selected state '+tstat[toread]
   pstate = tstat[toread]
 
   pref = (strsplit(pstate, '.',/extract))[0]
   
-                                ;
-                                ; load states 
-                                ; ref = cam_t
-                                ; slaves = camr and camw
+  
+  ;; Load states 
+  ;; ref = cam_t
+  ;; slaves = camr and camw
   pos2 = where(wstat eq tstat[toread])
   ref = f0(fw[pos2])
   refs = ref
   dim = size(ref,/dim)
-                                ;
+
   pics = fltarr(dim[0], dim[1], 2)
   pics[*,*,0]= f0(ft[toread])
   pos1 = where(rstat eq tstat[toread])
   pics[*,*,1]= f0(fr[pos1])
-                                ;
-  print, inam+'images to be calibrated:'
+
+  print, inam+' : images to be calibrated:'
   print, ' -> '+ft[toread]
   print, ' -> '+fr[pos1]
   print, ' -> '+fw[pos2]
@@ -152,27 +163,25 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
   rfil = fr[pos1]
   wfil = fw[pos2]
   lam = lams[toread]
-                                ;
+
   rots = [0, 2, 5, 7]
-                                ;
-                                ; Rotate ref?
-                                ;
+
+  ;; Rotate ref?
   if(keyword_set(refrot)) then begin
      pp = where(rots eq refrot, count)
      if count eq 0 then begin
-        print, inam+'invalid supplied refrot'
-        print, inam+'valid orientations:'
+        print, inam+' : invalid supplied refrot'
+        print, inam+' : valid orientations:'
         print,' -> 0 - same,   2 - flip X+Y,   5 - flip X,   7 - flip Y'
-        print, inam+'ignoring refrot keyword!'
+        print, inam+' : ignoring refrot keyword!'
         wait, 2
      endif else begin
-        print, inam+'rotating reference to position -> '+red_stri(refrot)
+        print, inam+' : rotating reference to position -> '+red_stri(refrot)
         ref = rotate(temporary(ref), refrot)
      endelse
   endif else refrot = 0
-                                ;
-                                ; define arrays to store stuff
-                                ;
+
+  ;; Define arrays to store stuff
   np = 2
   sr = dim
   nr = n_elements(rots)
@@ -181,13 +190,12 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
   ssh = intarr(2, np+1)
   i_rot = intarr(np+1)
   i_rot[0] = refrot
-                                ;
-                                ; Search orientation!
-                                ;
+
+  ;; Search orientation!
   dim-= 1
-                                ;
+
   ;; Find pinhole grid for reference image
-  print, inam + 'red_findpinholegrid ... ', format='(A,$)'
+  print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
   red_findpinholegrid, ref, simx_orig, simy_orig
   print, 'done'
 
@@ -243,9 +251,9 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
               peaks[igrid, jgrid] = max(thispeak)
            endfor
         endfor
-
-                                ;  tvscl, rebin(refpeaks,10*Ngridx,10*Ngridy,/samp) , 0
-                                ;  tvscl, rebin(peaks,10*Ngridx,10*Ngridy,/samp) , 2
+        
+        ;;  tvscl, rebin(refpeaks,10*Ngridx,10*Ngridy,/samp) , 0
+        ;;  tvscl, rebin(peaks,10*Ngridx,10*Ngridy,/samp) , 2
 
         rotpeaks = rotate(peaks, rots[n])
         cor[n] = correlate(refpeaks, rotpeaks)
@@ -263,7 +271,7 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      ssh[*, im+1] = ssh[*, im+1] + [dx[im], dy[im]]
 
      if(im eq 0) then cam=camt else cam=camr
-     print, inam+cam+' orientation ', strtrim(i_rot[im+1], 2), $
+     print, inam+cam+' : orientation ', strtrim(i_rot[im+1], 2), $
             ' -> shift: x,y=', strtrim(ssh[0, im+1], 2), ', ', strtrim(ssh[1, im+1], 2)
 
 
@@ -276,17 +284,16 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
                  sh[1, n] > 0:dim[1]+(sh[1, n] < 0)]
         p1 = p1[(-sh[0, n]) > 0:dim[0]-(sh[0, n] > 0), $
                 (-sh[1, n]) > 0:dim[1]-(sh[1, n] > 0)]
-                                ;  window, 0, xsize = (size(ref, /dim))[0], ysize = (size(ref, /dim))[1]
-                                ;  tvscl, r1
-                                ;  window, 1, xsize = (size(p1, /dim))[0], ysize = (size(p1, /dim))[1]
-                                ; tvscl, p1  
+        ;;  window, 0, xsize = (size(ref, /dim))[0], ysize = (size(ref, /dim))[1]
+        ;;  tvscl, r1
+        ;;  window, 1, xsize = (size(p1, /dim))[0], ysize = (size(p1, /dim))[1]
+        ;; tvscl, p1  
 
      endif
 
   ENDFOR
-                                ;
-                                ; Clip images
-                                ;
+
+  ;; Clip images
   ssh= -ssh
   ssh[0, *]-= min(ssh[0, *])
   ssh[1, *]-= min(ssh[1, *])
@@ -297,7 +304,7 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
   cl = rebin(ssh, 4, np+1, /sam)
   cl[1, *]+= sx-1
   cl[3, *]+= sy-1
-                                ;
+
   FOR i = 0, np DO BEGIN
      IF i_rot[i] EQ 2 OR i_rot[i] EQ 5 THEN cl[0:1, i] = sr[0]-cl[0:1, i] $
      ELSE cl[0:1, i] += 1
@@ -305,12 +312,10 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      ELSE cl[2:3, i] += 1
   ENDFOR
 
-  ;;
   ;; Extra border clip?
-  ;;
   if(total(extraclip) gt 0) then begin
-     print, inam + 'extra border clip in X -> '+red_stri(extraclip[0])+' pixels'
-     print, inam + 'extra border clip in Y -> '+red_stri(extraclip[1])+' pixels'
+     print, inam + ' : extra border clip in X -> '+red_stri(extraclip[0])+' pixels'
+     print, inam + ' : extra border clip in Y -> '+red_stri(extraclip[1])+' pixels'
 
      for ii = 0, 2 do begin
         if(cl[0,ii] lt cl[1,ii]) then begin
@@ -336,8 +341,6 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      mid = 0
      dum = red_clipim(pics[*,*,mid], cl[*,mid+1])
      red_show, bytscl(dum, 0, 20), /nosc
-
-
      
   endif
 
@@ -345,8 +348,8 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
 ;tighttv, red_clipim(rotate(temporary(ref), refrot), cl[*,0]), 1
 ;print, 555
 ;stop
-                                ;
-                                ; Align clips
+
+  ;; Align clips
   acl = 'ALIGN_CLIP='+strjoin(strtrim(cl, 2), ',')
   file_mkdir, self.out_dir +'/calib'
   openw, lun, self.out_dir+'/calib/align_clips.'+pref+'.txt', /get_lun
@@ -355,8 +358,8 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
      print, '  -> Align CLIP: '+acl[ii]
   endfor
   free_lun, lun
-                                ;
+
   save, file = self.out_dir + '/calib/align_clips.'+pref+'.sav', acl, cl, refrot, sx, sy, ssh
-                                ;
+
   return
 end
