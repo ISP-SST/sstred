@@ -1,8 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Logs parameter and version info for a pipeline step.
-; 
+; Make a time stamp for the current time.
 ; 
 ; :Categories:
 ;
@@ -15,7 +14,10 @@
 ; 
 ;    Parts stolen from The Coyote Graphics timestamp command, see
 ;    http://www.idlcoyote.com/.
+;
+; :Returns:
 ; 
+;    A timestamp string formatted like: YYYYMMDD@hh:mm:ss. 
 ; 
 ; :Params:
 ; 
