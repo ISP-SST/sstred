@@ -54,6 +54,8 @@
 ; 
 ;   2013-08-23 : MGL. First version.
 ; 
+;   2013-09-02 : MGL. Use red_timestamp rather than the Coyote
+;                Graphics timestamp program.
 ; 
 ;-
 pro red_writelog $
@@ -71,7 +73,7 @@ pro red_writelog $
   file_mkdir, logdir
  
   ;; Time-stamp
-  time = cgtimestamp(/utc,/no,11)
+  time = red_timestamp(/utc)
 
   ;; 
   fname = logdir+time+'_'+name+'.log'
