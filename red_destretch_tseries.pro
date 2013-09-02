@@ -36,7 +36,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep
   IF num GT 0 THEN delta(idx) = 0.0
 
 ;Detrend and unsharp mask the displacements:
-  delta = destretch_gridprep(delta, tstep)
+  delta = red_destretch_gridprep(delta, tstep)
 
   RETURN, delta
 END
