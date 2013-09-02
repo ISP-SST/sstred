@@ -73,7 +73,7 @@ pro red_writelog $
   file_mkdir, logdir
  
   ;; Time-stamp
-  time = red_timestamp(/utc,/no,11)
+  time = red_timestamp(/utc)
 
   ;; 
   fname = logdir+time+'_'+name+'.log'
