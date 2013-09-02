@@ -79,7 +79,7 @@ function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pre
   plot, mm.wav, res, psym = -4, yrange=[0,2] * median(mm.yl1), /ystyle
   oplot, mm.wav, mm.yl1, /line, psym=-1
   oplot, mm.wav, pref*median(mm.yl1), color = 175, thick = 1, psym= -1
-  legend, ['Model', 'Observed', 'Prefilter'], line = [0, 1, 0], psym = [-4, -1, -1], color = [255, 255, 175], $
+  red_legend, ['Model', 'Observed', 'Prefilter'], line = [0, 1, 0], psym = [-4, -1, -1], color = [255, 255, 175], $
           /bottom, /right, charsize=2
   loadct,0,/silent
                                 ;

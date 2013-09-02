@@ -325,7 +325,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
 
         ;; Get destretch to anchor camera (residual seeing)
         wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
-        grid1 = dsgridnest(wb, wwi, tiles, clips)
+        grid1 = red_dsgridnest(wb, wwi, tiles, clips)
         print, 'computed grid'
         tmp_raw0 = momfbd_read(ttf)
         tmp_raw1 = momfbd_read(rrf)

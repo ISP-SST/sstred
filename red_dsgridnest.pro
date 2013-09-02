@@ -1,9 +1,3 @@
-; docformat = 'rst'
-
-;+
-;
-;   2013-07-24 : Renamed for inclusion in the crispred pipeline.
-;-
 FUNCTION red_dsgridnest,m1,m2,vg,clips
 
 ; 2/10/93	does a series of gridmatch calculations with grid sizes
@@ -33,9 +27,16 @@ for k=0,nest-1 do begin
   stretch_clip = clips(k) 
   ngw = FIX(2.*nx/n)
   nw = FIX(1.25*ngw)
-  nxg = n
-  nyg = LONG(FLOAT(n)*ny/nx +0.5)	;1/3/94 allow for rectangular images
-                                        ;note the wx calculation should be FP, 3/18/89
+  if(nx gt ny) then begin
+     nxg = n
+     nyg = LONG(FLOAT(n)*ny/nx +0.5) ;1/3/94 allow for rectangular images
+                                    ;note the wx calculation should be FP, 3/18/89
+  endif else begin
+     nyg = n
+     nxg = LONG(FLOAT(n)*nx/ny +0.5) ;1/3/94 allow for rectangular images
+                                ;note the wx calculation should be FP, 3/18/89
+  endelse
+
   wx = FLOAT(nx)/nxg
   wy = FLOAT(ny)/nyg
   ;this is supposed to compute the grid the same way as Stu's programs

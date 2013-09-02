@@ -214,7 +214,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
         im = momfbd_read(st.ofiles[ww,ss])
         
         ;; get dewarp from WB
-        igrid = dsgridnest(wb, iwb, itiles, iclip)
+        igrid = red_dsgridnest(wb, iwb, itiles, iclip)
         
         ;; Convolve CMAP and apply wavelength dep. de-warp
         cmap2 =  stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)

@@ -23,7 +23,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep
 
   for i=1, dim[2]-1 do begin
      im = cub[*,*,i]
-     dq = dsgridnest(refim, im, grids, clips)
+     dq = red_dsgridnest(refim, im, grids, clips)
      badg = WHERE(dq gt maxstr, num)
      if num gt 0 then begin
         dq[badg] = 0.0
@@ -33,7 +33,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep
   end
 
   idx = WHERE(~FINITE(delta), num)
-  IF num GT 0 THEN delta(idx) = 0.0
+  IF num GT 0 THEN delta[idx] = 0.0
 
 ;Detrend and unsharp mask the displacements:
   delta = red_destretch_gridprep(delta, tstep)

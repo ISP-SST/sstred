@@ -216,10 +216,10 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
       
      ;; measure offsets and apply
       
-     grid0 = dsgridnest(wb, img_wb[*,*,0], tiles, clip)
-     grid1 = dsgridnest(wb, img_wb[*,*,1], tiles, clip)
-     grid2 = dsgridnest(wb, img_wb[*,*,2], tiles, clip)
-     grid3 = dsgridnest(wb, img_wb[*,*,3], tiles, clip)
+     grid0 = red_dsgridnest(wb, img_wb[*,*,0], tiles, clip)
+     grid1 = red_dsgridnest(wb, img_wb[*,*,1], tiles, clip)
+     grid2 = red_dsgridnest(wb, img_wb[*,*,2], tiles, clip)
+     grid3 = red_dsgridnest(wb, img_wb[*,*,3], tiles, clip)
       
      if(keyword_set(cmap)) then cmap = stretch(temporary(cmap), grid1)
 

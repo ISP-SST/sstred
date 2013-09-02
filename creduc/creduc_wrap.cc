@@ -65,6 +65,29 @@ extern "C" {
     //
     return 0;
   }
+  short cfitgain2(int argc, void *argv[]){
+    //
+    int32_t nwav = ARG_INT(argv, 0);
+    int32_t nmean = ARG_INT(argv, 1);
+    int32_t npar = ARG_INT(argv, 2);
+    int32_t npix = ARG_INT(argv, 3);
+    int32_t nt = ARG_INT(argv, 10);
+
+    //
+    float32_t *xl = ARG_FLOAT_ARRAY(argv,4);
+    float32_t *yl = ARG_FLOAT_ARRAY(argv,5);
+    float32_t *wav = ARG_FLOAT_ARRAY(argv,6);
+    float32_t *dat1 = ARG_FLOAT_ARRAY(argv,7);
+    //
+    float64_t *pars1 = ARG_FLOAT64_ARRAY(argv,8); // At input contains the guess parameters to init L-M
+    float32_t *ratio1 = ARG_FLOAT_ARRAY(argv,9); // At input contains the guess parameters to init L-M
+
+    //
+    fitgain2(nwav, nmean, npar, npix, xl, yl, wav, dat1, pars1, ratio1, nt); 
+    //
+    return 0;
+  }
+
   /*
   short cpolcal_1d(int argc, void *argv[]){
     //

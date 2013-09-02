@@ -69,7 +69,7 @@ function red_convl, A, B, plot=plot, usefft=usefft
   if keyword_set(plot) then begin
      plot,a,line=1,xtitle='X [grid point]',ytitle='Y [values]'
      oplot,res
-     legend,['Convolved','Original'],line=[0,1],/right,/bottom
+     red_legend,['Convolved','Original'],line=[0,1],/right,/bottom
   endif
 
   return, res
