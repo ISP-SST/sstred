@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Sum pinhole images.
 ; 
 ; :Categories:
 ;
@@ -12,26 +12,19 @@
 ; 
 ; 
 ; 
-; 
-; :returns:
-; 
-; 
-; :Params:
-; 
-; 
 ; :Keywords:
 ; 
-;    nthreads  : 
+;    nthreads : in, optional, type=integer, default=2
 ;   
+;      The number of threads to use for bad-pixel filling.
 ;   
+;    descatter : in, optional, type=boolean 
 ;   
-;    descatter  : 
+;      Do back-scatter compensation.
 ;   
+;    ustat : in, optional, type=string
 ;   
-;   
-;    ustat  : 
-;   
-;   
+;      Do only for this state.
 ;   
 ;    pref : in, optional, type=string
 ;   
@@ -43,9 +36,16 @@
 ;       If true, then perform subpixel alignment of pinholes before
 ;       summing. 
 ; 
+;    brightest_only : in, optional, type=boolean
+;
+;       Set this to only sum (one of) the brightest tunings for each
+;       prefilter. 
+;
+;    lc_ignore : in, optional, type=boolean
+;
+;       Set this to treat all lc states as if they were the same.
 ; 
-; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -62,11 +62,19 @@
 ;                red_sumfiles do: dark, flat, fillpix, alignment
 ;                before summing.
 ; 
+;   2013-09-02 : MGL. Two new keywords, brightest_only and lc_ignore
+;                (but they don't actually do anything yet).
 ; 
+;   2013-09-03 : MGL. Fixed descattering bug.
 ; 
 ;-
-pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat, pref=epref $
-                  , pinhole_align = pinhole_align
+pro red::sumpinh, nthreads = nthreads $
+                  , descatter = descatter $
+                  , ustat = ustat $
+                  , pref = epref $
+                  , pinhole_align = pinhole_align $
+                  , brightest_only = brightest_only $
+                  , lc_ignore = lc_ignore
 
   if ~keyword_set(pinhole_align) then pinhole_align = 0
   
@@ -155,7 +163,8 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat, pre
         if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
            if(firsttime) then begin
               
-              ;; This code does not seem to know what prefilter we are using!
+              ;; This code does not seem to know what prefilter we are
+              ;; using! (Unless that knowledge is in descatter_dir.)
 
               descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
               descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
@@ -186,9 +195,8 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat, pre
               firsttime = 0B
            endif
 
-           if(et) then begin
+           if et then begin
               flat = red_cdescatter(flat, bgt, Psft, /verbose, nthreads = nthread)
-              c = red_cdescatter(c, bgt, Psft, /verbose, nthreads = nthread)
            endif
         endif
         
@@ -212,9 +220,16 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat, pre
 
            endif else begin
               
-              ;; Dark and flat correction and bad-pixel filling done
-              ;; here after summing.
+              ;; Dark and flat correction, possibly descattering, and
+              ;; then bad-pixel filling done here after summing.
               c = red_sumfiles(stat.files[pos]) - dark
+              
+              if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+                 if et then begin
+                    c = red_cdescatter(c, bgt, Psft, /verbose, nthreads = nthread)
+                 endif
+              endif
+
               print, inam + ' : Filling pixels'
               c = red_fillpix(temporary(c) * gain, mask=gain ne 0, nthreads = nthread)
 
