@@ -23,3 +23,8 @@ Action items
 
 * The new flat field procedure (Jaime)
 
+* Implement optional post-restoration low-pass filtering. (Mats) 
+
+  - Two reasons to do this: 1) Remove some unwanted artifacts from
+    mosaicking. 2) Reduce false signals in differential quantities. 
+  - Base on procedure from tilt-filter paper.

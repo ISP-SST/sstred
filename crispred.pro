@@ -52,6 +52,7 @@
 @red::sumpolcal.pro
 @red::sumprefilter.pro
 @red::whichoffset.pro
+@red::pinholecalib.pro
 
 ;+
 ; Class crispred and subroutines, class polarim and subroutines.
@@ -133,6 +134,9 @@
 ;   2013-06-09 : MGL. Added red::setpinhdir.pro to list of included
 ;                files.
 ; 
+;   2013-09-04 : MGL. Added red::pinholecalib.pro to list of included
+;                files.
+; 
 ; 
 ;-
 function crispred, filename
@@ -172,7 +176,8 @@ function crispred, filename
             image_scale:'',$
             pixel_size:'',$
             camsz:'',$
-            done:done}
+            done:done $
+           }
                                 ;
   tmp = obj_new('red')
                                 ;

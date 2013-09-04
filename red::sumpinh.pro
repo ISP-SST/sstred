@@ -67,6 +67,9 @@
 ; 
 ;   2013-09-03 : MGL. Fixed descattering bug.
 ; 
+;   2013-09-04 : MGL. Store also in floating point. This is the
+;                version used in red::pinholecalib.pro.
+; 
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , descatter = descatter $
@@ -237,9 +240,14 @@ pro red::sumpinh, nthreads = nthreads $
 
            ;; Save
            head = 'n_aver=' + red_stri(count)
+
            namout = cam+'.' +ustat[ii]+'.pinh'
            print, inam+' : saving ' + outdir + namout
            fzwrite, fix(round(10. * c)), outdir+namout, head
+
+           namout = cam+'.' +ustat[ii]+'.fpinh'
+           print, inam+' : saving ' + outdir + namout
+           fzwrite, c, outdir+namout, head
 
         endelse                 ; count
      endfor                     ; ii

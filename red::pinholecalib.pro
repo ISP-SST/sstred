@@ -106,7 +106,12 @@
 ; 
 ; :History:
 ; 
-; 
+;   2013-09-04 : MGL. Use red_momfbd_setup, not momfbd_setup. Improve
+;                the procedure for measuring the residual dark level.
+;                Now works with median and stdev instead of
+;                biweight_mean and robust_sigma. Implement avoiding
+;                certain patch sizes because they crash the momfbd
+;                slaves.
 ; 
 ; 
 ;-
@@ -145,13 +150,14 @@ pro red::pinholecalib, STATE = state $
   
   if n_elements(nslaves) eq 0 then nslaves=6
   if n_elements(nthreads) eq 0 then nthreads=1
+  if n_elements(maxit) eq 0 then maxit=400
 
 
   ;; Where the summed pinhole images are:
-  pinhdir = self.out_dir + '/pinh_test/'
+  pinhdir = self.out_dir + '/pinh/'
 
   ;; Calib directory
-  calibdir = self.out_dir + '/calib_test/'
+  calibdir = self.out_dir + '/calib/'
   if ~file_test(calibdir) then begin
      file_mkdir, calibdir
      ;; Use initial offset files from ordinary calib dir.
@@ -178,27 +184,31 @@ pro red::pinholecalib, STATE = state $
      print, 'No prefilter given.' ;    <----------------------------
      retall
   endif
-  ;; If not, should we find all prefilters and loop over them?
+  ;; If not, should we find all prefilters and loop over them? YES
 
   ;; Get list of states (and transmitted file names)  
   cam = cams[1]                   ; Transmitted camera
-  spawn, 'cd ' + pinhdir + '; find  | cut -d/ -f2 | grep "'+cam+'." | grep ".pinh" | grep '+prefilter, files
-  nf = n_elements(files)
+  files = file_search(pinhdir+cam+'.'+prefilter+'.*.fpinh', count = nf)
 
-
+  
   ;; These file names have less "fields" than the raw files, so
-  ;; we can't use red_getstates. But we'll do something similar.
-  fullstate = strarr(nf)
-  for ii = 0L, nf -1 do begin
-     tmp = strsplit(file_basename(files[ii]), '._', /extract)
-     n = n_elements(tmp)
-     wav = tmp[2]+'_'+tmp[3]
-     pref = tmp[1]
-     lc = tmp[4]
-     fullstate[ii] = pref+'.'+wav + '.' + lc
-  endfor
-  ustat = fullstate[uniq(fullstate, sort(fullstate))]
+  ;; we add one field when using red_getstates.
+  states = red_getstates(files+'.dum')
+  ustat = states.state[uniq(states.state, sort(states.state))]
   ns = n_elements(ustat)
+
+
+;  fullstate = strarr(nf)
+;  for ii = 0L, nf -1 do begin
+;     tmp = strsplit(file_basename(files[ii]), '._', /extract)
+;     n = n_elements(tmp)
+;     wav = tmp[2]+'_'+tmp[3]
+;     pref = tmp[1]
+;     lc = tmp[4]
+;     fullstate[ii] = pref+'.'+wav + '.' + lc
+;  endfor
+;  ustat = fullstate[uniq(fullstate, sort(fullstate))]
+;  ns = n_elements(ustat)
 
   if n_elements(state) ne 0 then begin
 
@@ -228,14 +238,13 @@ pro red::pinholecalib, STATE = state $
 
   endelse
 
-
   ;; File names for the full-FOV pinhole images and offsets.
   pnames = cams + '.' + stat + '.fpinh' 
   xnames = cams + '.' + stat + '.xoffs'
   ynames = cams + '.' + stat + '.yoffs'
   
   ;, File name templates for the subfield-size images and offsets.
-  ptemplates = cams + '.fpinh.%03d' 
+  ptemplates = cams + '.pinh.%03d' 
   xtemplates = cams + '.xoffs.%03d'
   ytemplates = cams + '.yoffs.%03d'
 
@@ -243,7 +252,7 @@ pro red::pinholecalib, STATE = state $
   if n_elements(diversity) eq 0 then diversity = fltarr(Nch)
 
   ;; Get align_clips and apply them to images. 
-  clipfile = self.out_dir + '/calib/align_clips.'+pref+'.sav'
+  clipfile = self.out_dir + '/calib/align_clips.'+prefilter+'.sav'
   IF(~file_test(clipfile)) THEN BEGIN
      print, inam + ' : ERROR -> align_clip file not found'
      print, inam + ' : -> you must run red::getalignclips first!'
@@ -270,21 +279,23 @@ pro red::pinholecalib, STATE = state $
   endfor
 
   ;; Find pinhole grid.
-  findpinholegrid, images[*, *, 0], simx, simy
+  red_findpinholegrid, images[*, *, 0], simx, simy
   simx = simx[1:(size(simx, /dim))[0]-2] ; Skip outermost rows and columns?
-  simy = simy[1:(size(simx, /dim))[0]-2]
+  simy = simy[1:(size(simy, /dim))[0]-2]
   ;; Set subimage size to mean distance between spots:
   sz = round(median([deriv(simx),deriv(simy)])) ;>128
   ;; Make sure sz is an even number:
   sz += (sz mod 2)
 
-
+  ;; Avoid sizes that makes the momfbd slaves crash.
+  badsizes = [90]
+  while total(sz eq badsizes) gt 0 do sz += 2
 
   ;; Remove rows and columns that are too close to the border
   simx = simx[where(simx gt sz/2 and simy lt sx-sz/2-1)]
   simy = simy[where(simy gt sz/2 and simy lt sx-sz/2-1)]
-  Npinhx = (size(simx, /dim))[0]
-  Npinhy = (size(simy, /dim))[0]
+  Npinhx = n_elements(simx)
+  Npinhy = n_elements(simy)
 
 
   ;; Preprocess pinholes
@@ -300,7 +311,7 @@ pro red::pinholecalib, STATE = state $
         ;; Fine tune dark level and normalization for each subfield.
         ;; Get the bias by fitting a Gaussian to the histogram peak.
         ;; Then write to files with imno in name
-        Nbins = 10000
+        Nbins = 1000
         for ich = 0, Nch-1 do begin
            
            fname = workdir+string(format = '(%"'+ptemplates[ich]+'")', imno)
@@ -309,18 +320,23 @@ pro red::pinholecalib, STATE = state $
 
               subfields[*, *, ich] = subfields[*, *, ich]/max(subfields[*, *, ich])
 
-              mn = biweight_mean(subfields[*,*,ich])
-              st = robust_sigma(subfields[*,*,ich])
+              ;; Calculate some statistics on the background
+              sindx = where(subfields[*,*,ich] lt 0.01*max(subfields[*,*,ich]))
+              mn = median((subfields[*,*,ich])[sindx])
+              st = stdev((subfields[*,*,ich])[sindx])
 
-              hmax = mn + 400.*st
-              hmin = mn - 400.*st
+              ;;mn = biweight_mean(subfields[*,*,ich])
+              ;;st = robust_sigma(subfields[*,*,ich])
+
+              hmax = mn + 30.*st
+              hmin = mn - 30.*st
 
               hh = histogram(subfields[*, *, ich], min = hmin, max = hmax $
                              , Nbins = Nbins, locations = locations)
               binsize = (hmax - hmin) / (Nbins - 1)
               intensities = locations + binsize/2.
               
-              plot,intensities,hh,/xstyle,xrange=[-.001,.001], /ystyle
+              plot,intensities,hh,/xstyle, /ystyle
               
               print,max(smooth(hh,15),ml)  
               Nfit = 51
@@ -368,7 +384,7 @@ pro red::pinholecalib, STATE = state $
 
   ;; Start iterations
   ;; Set up manager and slaves.
-  momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, /FREE, NTHREADS=nthreads
+  red_momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, /FREE, NTHREADS=nthreads
 
   xconvergence = fltarr(Nch, MaxIt)
   yconvergence = fltarr(Nch, MaxIt)
@@ -611,7 +627,7 @@ pro red::pinholecalib, STATE = state $
   endif                         ; finddiversity
 
   ;; Kill manager and slaves
-  momfbd_setup, PORT = port, NMANAGERS=0
+  red_momfbd_setup, PORT = port, NMANAGERS=0
   ;;  spawn,'rm -f '+workdir
 
   ;; Crop convergence arrays.
