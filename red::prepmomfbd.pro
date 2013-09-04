@@ -257,7 +257,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
 
                                 ; printf, lun, '    INCOMPLETE'
-           if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[0])
+           if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
            printf, lun, '  }'
            printf, lun, '}'
 
@@ -341,7 +341,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               if(keyword_set(div)) then begin
                  printf, lun, '    DIVERSITY='+string(div[1])+' mm'
               endif
-              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[1])
+              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[1])
            
               printf, lun, '    INCOMPLETE'
               printf, lun, '  }'
@@ -392,7 +392,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               if(keyword_set(div)) then begin
                  printf, lun, '    DIVERSITY='+string(div[2])+' mm'
               endif
-              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[2])
+              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[2])
 
               printf, lun, '    INCOMPLETE'
               printf, lun, '  }'
@@ -432,7 +432,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
                  yofile = self.out_dir+'/calib/'+self.camwbtag+'.'+yoff
                  if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
                  if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
-                 if(n_elements(nfac) gt 0) then printf,lun,'    NF=',stri(nfac[0])
+                 if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
 
                  printf, lun, '    INCOMPLETE'
                  printf, lun, '  }'
