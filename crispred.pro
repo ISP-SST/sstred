@@ -43,6 +43,7 @@
 @red::prepflatcubes.pro
 @red::prepmomfbd2.pro
 @red::prepmomfbd.pro
+@red::prepmfbd.pro
 @red::quicklook_movie.pro
 @red::setflatdir.pro
 @red::setpinhdir.pro
@@ -135,6 +136,9 @@
 ;                files.
 ; 
 ;   2013-09-04 : MGL. Added red::pinholecalib.pro to list of included
+;                files.
+; 
+;   2013-09-06 : MGL. Added red::prepmfbd.pro to list of included
 ;                files.
 ; 
 ; 
