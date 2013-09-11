@@ -14,8 +14,6 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
-; 
-; 
 ; :Params:
 ; 
 ;   name : in, type=string
@@ -49,6 +47,17 @@
 ;      parameter_name2:parameter_value2, ...}. Will be pretty printed
 ;      into the log file. 
 ; 
+;  logfile : in, out, optional, type=string
+; 
+;      The name (including path) of the log file.
+; 
+;  add : in, optional, type=boolean
+; 
+;      Set this to add info to an already existing logfile. The
+;      contents of the keywords *_info_strings will be used, in order.
+;      (Everything is written after any pre-existing text, though.)
+; 
+; 
 ; 
 ; :history:
 ; 
@@ -57,32 +66,57 @@
 ;   2013-09-02 : MGL. Use red_timestamp rather than the Coyote
 ;                Graphics timestamp program.
 ; 
+;   2013-09-11 : MGL. Added keywords "add" and "logfile" to make it
+;                possible to add info with a later call. Git info is
+;                now written to a separate file. Rearranged calls to
+;                scope_varfetch in order to reduce risk of it throwing
+;                an error when the variable being fetched is
+;                undefined. 
+; 
+; 
 ;-
 pro red_writelog $
    , selfinfo = selfinfo $
    , top_info_strings = top_info_strings $
    , mid_info_strings = mid_info_strings $
-   , bottom_info_strings = bottom_info_strings
+   , bottom_info_strings = bottom_info_strings $
+   , logfile = logfile $
+   , add = add
+
+ 
+  ;; Time-stamp
+  time = red_timestamp(/utc)
 
   ;; The name of the program that wants to be logged
   sctrace = scope_traceback(/structure)
   Nlevels = n_elements(sctrace)
   name = strlowcase(sctrace[(Nlevels-2) >0].routine)
 
-  logdir = './pipeline-log/'
-  file_mkdir, logdir
- 
-  ;; Time-stamp
-  time = red_timestamp(/utc)
+  if keyword_set(add) then begin
+     openu, lu, logfile, /get_lun
+     printf, lu, ' '
+     printf, lu, 'Info added by "'+name+'" at : '+time
+     printf, lu, ' '
+     if n_elements(top_info_strings) gt 0 then printf, lu, top_info_strings, format='(a0)'
+     printf, lu, ' '
+     if n_elements(mid_info_strings) gt 0 then printf, lu, mid_info_strings, format='(a0)'
+     printf, lu, ' '
+     if n_elements(bottom_info_strings) gt 0 then printf, lu, bottom_info_strings, format='(a0)'
+     printf, lu, ' '
+     free_lun, lu
+     return
+  endif
 
-  ;; 
-  fname = logdir+time+'_'+name+'.log'
 
   ;; Location of the crispred source files:
   findpro, 'crispred', /NoPrint, dirlist = srcdir
 
-  openw, lu, fname, /get_lun
-  
+  ;; Open the log file
+  logdir = './pipeline-log/'
+  file_mkdir, logdir
+  logfile = logdir+time+'_'+name+'.log'
+  openw, lu, logfile, /get_lun
+
 ;  printf, lu, whoami()
 
   ;; Some initial info
@@ -104,10 +138,10 @@ pro red_writelog $
      printf, lu, '------------------ ARGUMENT INFO -----------------'
      printf, lu, ' '
      for i = 0, anames.num_args-1 do begin
-        printf, lu, anames.args[i]
-        printf, lu, 'size() : ', size(SCOPE_VARFETCH(anames.args[i],level=-1))
         defined = n_elements(SCOPE_VARFETCH(anames.args[i],level=-1))
         if defined then begin
+           printf, lu, anames.args[i]
+           printf, lu, 'size() : ', size(SCOPE_VARFETCH(anames.args[i],level=-1))
            tmp = SCOPE_VARFETCH(anames.args[i],level=-1)
            if n_elements(tmp) ne 0 then begin
               if n_elements(tmp) gt 10 then begin
@@ -116,7 +150,9 @@ pro red_writelog $
                  printf, lu, tmp
               endelse
            endif
-        endif
+        endif else begin
+           printf, lu, anames.args[i], '  (Not defined.)'
+        endelse
         printf, lu, ' '
      endfor
      printf, lu, '---------------------------------------------------'
@@ -128,17 +164,19 @@ pro red_writelog $
      printf, lu, '------------------ KEYWORD INFO -----------------'
      printf, lu, ' '
      for i = 0, anames.num_kw_args-1 do begin
-        printf, lu, anames.kw_args[i]
-        printf, lu, 'size() : ', size(SCOPE_VARFETCH(anames.kw_args[i],level=-1))
         defined = n_elements(SCOPE_VARFETCH(anames.kw_args[i],level=-1))
         if defined then begin
+           printf, lu, anames.kw_args[i]
+           printf, lu, 'size() : ', size(SCOPE_VARFETCH(anames.kw_args[i],level=-1))
            tmp = SCOPE_VARFETCH(anames.kw_args[i],level=-1)
            if n_elements(tmp) gt 10 then begin
               printf, lu, tmp[0:9]+'...'
            endif else begin
               printf, lu, tmp
            endelse
-        endif
+        endif else begin
+           printf, lu, anames.kw_args[i], '  (Not defined.)'
+        endelse
         printf, lu, ' '
      endfor
      printf, lu, '---------------------------------------------------'
@@ -146,7 +184,8 @@ pro red_writelog $
   endif
 
   ;; SELF info
-;  help, self, /obj, output=selfinfo, level = -1 ; This does not work
+;  help, self, /obj, output=selfinfo, level = -1 ; This does not work,
+;  therefore needs selfinfo as a keyword to this routine.
   if n_elements(selfinfo) gt 0 then begin
      printf, lu, ' '
      printf, lu, '------------------ SELF INFO -----------------'
@@ -161,26 +200,28 @@ pro red_writelog $
 
 
   ;; Git info
-  printf, lu, ' '
-  printf, lu, '------------------ GIT INFO -----------------'
-  printf, lu, ' '
+  gitlogfile = logdir+time+'_'+name+'.git.log'
+  openw, glu, gitlogfile, /get_lun
+  printf, glu, ' '
+  printf, glu, '------------------ GIT INFO -----------------'
+  printf, glu, ' '
   gitcmd = 'cd '+srcdir+'; git rev-parse HEAD'
-  printf, lu, '$ '+gitcmd
+  printf, glu, '$ '+gitcmd
   spawn, gitcmd, gitinfo
-  printf, lu, gitinfo, format='(a0)'
-  printf, lu, ' '
+  printf, glu, gitinfo, format='(a0)'
+  printf, glu, ' '
   gitcmd = 'cd '+srcdir+'; git rev-parse origin'
-  printf, lu, '$ '+gitcmd
+  printf, glu, '$ '+gitcmd
   spawn, gitcmd, gitinfo
-  printf, lu, gitinfo, format='(a0)'
-  printf, lu, ' '
+  printf, glu, gitinfo, format='(a0)'
+  printf, glu, ' '
   gitcmd = 'cd '+srcdir+'; git diff origin'
-  printf, lu, '$ '+gitcmd
+  printf, glu, '$ '+gitcmd
   spawn, gitcmd, gitinfo
-  printf, lu, gitinfo, format='(a0)'
-  printf, lu, ' '
-  printf, lu, '---------------------------------------------'
-  printf, lu, ' '
+  printf, glu, gitinfo, format='(a0)'
+  printf, glu, ' '
+  free_lun, glu
+
 
   ;; Bottom strings
   if n_elements(bottom_info_strings) gt 0 then printf, lu, bottom_info_strings, format='(a0)'
