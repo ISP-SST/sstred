@@ -80,6 +80,8 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ;
+;   2013-09-11 : MGL. Use red_lp_write rather than lp_write.
+;
 ;-
 pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
@@ -268,7 +270,7 @@ pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   ofil = 'wb.'+pref+'.'+time_stamp+'.corrected.icube'
   print, inam + ' : saving WB corrected cube -> ' + odir + ofil
                                 ;fcwrite, fix(round(temporary(cub))), odir + ofil, ' '
-  lp_write, fix(round(temporary(cub))), odir + ofil
+  red_lp_write, fix(round(temporary(cub))), odir + ofil
 
   return
 end

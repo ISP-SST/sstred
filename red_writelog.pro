@@ -71,7 +71,7 @@
 ;                now written to a separate file. Rearranged calls to
 ;                scope_varfetch in order to reduce risk of it throwing
 ;                an error when the variable being fetched is
-;                undefined. 
+;                undefined. Use red_findpro rather than findpro.
 ; 
 ; 
 ;-
@@ -109,7 +109,7 @@ pro red_writelog $
 
 
   ;; Location of the crispred source files:
-  findpro, 'crispred', /NoPrint, dirlist = srcdir
+  red_findpro, 'crispred', /NoPrint, dirlist = srcdir
 
   ;; Open the log file
   logdir = './pipeline-log/'

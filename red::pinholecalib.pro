@@ -117,7 +117,8 @@
 ;                the associated dark level refinement) to
 ;                red_pinh_run_momfbd. 
 ;
-;   2013-09-11 : MGL. Use red_findmax2qi, not findmax2qi.
+;   2013-09-11 : MGL. Use red_findmax2qi, not findmax2qi. Also
+;                red_stats rather than stats.
 ;
 ;-
 pro red::pinholecalib, STATE = state $                   
@@ -144,9 +145,9 @@ pro red::pinholecalib, STATE = state $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
-  ;; Logging (move to end of file so we can log the clipfile?)
+  ;; Logging
   help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+  red_writelog, selfinfo = selfinfo, logfile = logfile
 
   if n_elements(mtol) eq 0 then mtol = 1e-6 ; Metric tolerance
   if n_elements(dtol) eq 0 then dtol = 1e-6 ; Diversity tolerance
@@ -264,6 +265,7 @@ pro red::pinholecalib, STATE = state $
      return
   endif
   restore, clipfile             
+
   ;; The clipfile provides:      
   ;; ACL             STRING    = Array[3] - CLIP strings for config file
   ;; CL              INT       = Array[4, 3] - CLIPs as numbers
@@ -271,6 +273,17 @@ pro red::pinholecalib, STATE = state $
   ;; SSH             INT       = Array[2, 3] ????
   ;; SX              LONG      = clipped X size
   ;; SY              LONG      = clipped Y size
+  ;; 
+  ;; Put this info in the log file:
+  clipinfo = strarr(7)
+  clipinfo[0] = 'Clip info:'
+  clipinfo[1:3] = ACL
+  clipinfo[4] = 'refrot: '+red_stri(refrot)
+  clipinfo[5] = 'sx: '+red_stri(sx)
+  clipinfo[6] = 'sy: '+red_stri(sy)
+  red_writelog, /add, logfile = logfile, top_info_strings = clipinfo
+
+
 
   ;; Read summed pinhole array images for the selected state. These
   ;; images are already corrected for dark and flat as well as
@@ -426,11 +439,11 @@ pro red::pinholecalib, STATE = state $
      dxoffs = xoffs-oldxoffs
      dyoffs = yoffs-oldyoffs
 
-     stats, xoffs, name = 'xoffs'
-     stats, dxoffs, name = 'dxoffs'
+     red_stats, xoffs, name = 'xoffs'
+     red_stats, dxoffs, name = 'dxoffs'
 
-     stats, yoffs, name = 'yoffs'
-     stats, dyoffs, name = 'dyoffs'
+     red_stats, yoffs, name = 'yoffs'
+     red_stats, dyoffs, name = 'dyoffs'
 
 
      ;; Convergence
