@@ -46,13 +46,15 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
-;   2013-09-11 : MGL. Fixed default values for no_remove and nremove.
+;   2013-09-11 : MGL. Fixed default values for keywords.
 ; 
 ;-
 pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, nremove=nremove
 
-  if(n_elements(no_remove) eq 0) then no_remove=0
-  if(n_elements(nremove) eq 0) then nremove=1
+  if n_elements(no_remove) eq 0 then no_remove=0
+  if n_elements(nremove) eq 0 then nremove=1
+  if n_elements(link_dir) eq 0 then link_dir = 'data/'
+  if n_elements(uscan) eq 0 then uscan = ''
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -65,7 +67,6 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, n
      print, inam+' : ERROR : undefined data_dir'
      return
   endif
-  if(~keyword_set(link_dir)) then link_dir = 'data/'
                                 
   ;; Create file list
   for ff = 0L, self.ndir - 1 do begin
@@ -144,7 +145,7 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, n
          
         for ii = 0L, nt - 1 do begin
            if(stat.star[ii]) then continue
-           if(keyword_set(uscan)) then if(stat.scan[ii] NE uscan) then continue
+           if uscan ne '' then if stat.scan[ii] NE uscan then continue
                                 ;
            namout = outdir + camtag + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
          
