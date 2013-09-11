@@ -46,10 +46,12 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
+;   2013-09-11 : MGL. Fixed default values for no_remove and nremove.
 ; 
 ;-
-pro red::link_data, no_remove = noremove, link_dir = link_dir, uscan = uscan, nremove=nremove
+pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, nremove=nremove
 
+  if(n_elements(no_remove) eq 0) then no_remove=0
   if(n_elements(nremove) eq 0) then nremove=1
 
   ;; Name of this method
@@ -119,7 +121,7 @@ pro red::link_data, no_remove = noremove, link_dir = link_dir, uscan = uscan, nr
         stat = red_getstates(files)
         
         ;; Flag first frame after tunning
-        if(~keyword_set(noremove)) then begin
+        if(~keyword_set(no_remove)) then begin
            print, inam+' : Flagging first frame after tunning'
            red_flagtunning, stat, nremove
         endif
