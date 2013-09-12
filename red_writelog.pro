@@ -14,15 +14,6 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
-; :Params:
-; 
-;   name : in, type=string
-;   
-;      The name of the step. (Typically the name of the subroutine
-;      performing the step.) Is used to create the log file name.
-;   
-;   
-; 
 ; :Keywords:
 ; 
 ;  top_info_strings : in, optional, type=strarr
@@ -73,6 +64,7 @@
 ;                an error when the variable being fetched is
 ;                undefined. Use red_findpro rather than findpro.
 ; 
+;   2013-09-12 : MGL. Documentation fix.
 ; 
 ;-
 pro red_writelog $
@@ -199,6 +191,13 @@ pro red_writelog $
   if n_elements(mid_info_strings) gt 0 then printf, lu, mid_info_strings, format='(a0)'
 
 
+
+  ;; Bottom strings
+  if n_elements(bottom_info_strings) gt 0 then printf, lu, bottom_info_strings, format='(a0)'
+
+  free_lun, lu
+
+
   ;; Git info
   gitlogfile = logdir+time+'_'+name+'.git.log'
   openw, glu, gitlogfile, /get_lun
@@ -221,12 +220,5 @@ pro red_writelog $
   printf, glu, gitinfo, format='(a0)'
   printf, glu, ' '
   free_lun, glu
-
-
-  ;; Bottom strings
-  if n_elements(bottom_info_strings) gt 0 then printf, lu, bottom_info_strings, format='(a0)'
-
-  free_lun, lu
-
 
 end
