@@ -39,7 +39,8 @@
 ; 
 ; :History:
 ; 
-;    2013-09-12 : MGL. Brought into red_ namespace.
+;    2013-09-12 : MGL. Brought into red_ namespace. Use red_lpheader
+;                 rather than lp_header.
 ; 
 ;-
 pro red_flipthecube, file, nw = nw, nt = nt, maxsize=maxsize, icube = icube
@@ -53,7 +54,7 @@ pro red_flipthecube, file, nw = nw, nt = nt, maxsize=maxsize, icube = icube
      print, inam + 'file not found -> ', file
      return
   endif
-  lp_header, file, nx = nx, ny = ny, nt = tmp
+  red_lp_header, file, nx = nx, ny = ny, nt = tmp
   
   ntot = nt * nw * 4LL
   if(ntot ne tmp) then begin
