@@ -43,6 +43,8 @@
 ;
 ;   2013-08-30 : MGL. Renamed for inclusion in crispred pipeline.
 ;
+;   2013-09-04 : MGL. Use red_momfbd_check, not momfbd_check.
+;
 ;-
 pro red_momfbd_setup, port = port, nslaves = nslaves, nmanagers=nmanagers, free=free, nthreads=nthreads
   
@@ -62,10 +64,10 @@ pro red_momfbd_setup, port = port, nslaves = nslaves, nmanagers=nmanagers, free=
   if n_elements(nthreads) eq 0 then nthreads=1
      
   if n_elements(port) eq 0 then begin
-     momfbd_check, NSLAVES = nslavesrunning, NMANAGERS=nmanagersrunning,MANAGERPID=managerpid, SLAVEIDS=slaveids
+     red_momfbd_check, NSLAVES = nslavesrunning, NMANAGERS=nmanagersrunning,MANAGERPID=managerpid, SLAVEIDS=slaveids
      portstring=' '
   end else begin
-     momfbd_check, PORT = port, NSLAVES = nslavesrunning, NMANAGERS=nmanagersrunning,MANAGERPID=managerpid, SLAVEIDS=slaveids
+     red_momfbd_check, PORT = port, NSLAVES = nslavesrunning, NMANAGERS=nmanagersrunning,MANAGERPID=managerpid, SLAVEIDS=slaveids
      portstring=' -p '+strtrim(string(port),2)+' '
   end
 

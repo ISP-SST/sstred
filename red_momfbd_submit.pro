@@ -57,6 +57,8 @@
 ;
 ;   2013-08-30 : MGL. Renamed for inclusion in crispred pipeline.
 ;
+;   2013-09-04 : MGL. Use red_momfbd_check, not momfbd_check.
+;
 ;-
 pro red_momfbd_submit, imno $
                        , port=port $
@@ -69,10 +71,10 @@ pro red_momfbd_submit, imno $
   jobname='momfbd_submit.'+strtrim(string(imno),2)
 
   if n_elements(port) ne 0 then begin
-     momfbd_check, PORT = port, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning
+     red_momfbd_check, PORT = port, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning
      portstring=' -p '+strtrim(string(port),2)+' '
   end else begin
-     momfbd_check, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning
+     red_momfbd_check, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning
      portstring=' '
   end
 
@@ -121,6 +123,7 @@ pro red_momfbd_submit, imno $
   spawnstring='cd '+dir+'; jsub '+portstring+' -cfg '+thiscfgfile+' -name '+jobname+' -n '+strtrim(string(imno), 2)+' -lg '+logfile
   if keyword_set(force) then spawnstring += ' -f '
 
+  print, spawnstring
   spawn, spawnstring
 
 end

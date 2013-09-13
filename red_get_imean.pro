@@ -72,7 +72,7 @@
 ; 
 ; 
 ;-
-function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg
+function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg, reflect = reflect, bezier=bezier
   inam = 'red_get_imean : '
                                 ;
   If(n_elements(rebin) eq 0) then rebin = 10L
@@ -104,13 +104,17 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
   fl = dat                      ;fltarr(dim[0], dim[1], dim[2])
   for ii = 0L, dim[0] - 1 do begin
      mask = reform(dat[ii,*,*]) ge 1.e-3
-     fl[ii,*,*] /= reform(pp[0,*,*]) * red_get_linearcomp(wav[ii], pp, npar)
+     fl[ii,*,*] /= reform(pp[0,*,*]) * red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
      imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
   
-  if(keyword_set(myg) AND iter GE 0) then  imean = red_intepf(wav-median(pp[1,*,*]),imean, iwav)
-
-
+  if(keyword_set(myg) AND iter GE 0) then  begin
+     if(~keyword_set(bezier)) then begin
+        imean = red_intepf(wav-median(pp[1,*,*]),imean, iwav)
+     endif else begin
+        imean = red_bezier3(wav-median(pp[1,*,*]),imean, iwav)
+     endelse
+  endif
                                 ;
   fl = reform(temporary(fl), dim[0]*dim[1]*dim[2])
   count = dim[0]*dim[1]*dim[2]
@@ -161,13 +165,16 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
   mmmi = min(fl) > 0
   mmma = max(fl) < 3
   plot, wl, fl, psym = 3, xtitle = 'Wavelength', ytitle = 'Normalized intensity', $
-        ystyle = 1, xstyle = 3,yrange=[mmmi,mmma]
+        ystyle = 1, xstyle = 3,yrange=[mmmi-abs(mmma-mmmi)*0.1,mmma+abs(mmma-mmmi)*0.1]
                                 ;
   oplot, iwav, imean, psym = 1 , color = 175
                                 ;
   print, inam + 'fitting data to Hermitian spline with '+red_stri(n_elements(imean))+$
          ' node(s) points (this might take a while) ... ', FORMAT = '(A,$)'
-  functargs = {wl:temporary(wl), fl:temporary(fl), iwav:iwav}
+
+  if(keyword_set(bezier)) then dobezier=1 else dobezier = 0
+
+  functargs = {wl:temporary(wl), fl:temporary(fl), iwav:iwav, bezier:dobezier}
   if(iter gt 0) then  yl = mpfit('red_fit_hspline', imean, functargs = functargs, /quiet) else yl = imean
   xl = iwav
   print, 'done'
@@ -179,8 +186,11 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
   pr = (max(iwav) - min(iwav))
   pwl = findgen(np) / (np - 1.0) * pr + min(iwav)
   functargs = 0B 
+   
                                 ;
-  oplot, pwl, red_intepf(xl, yl, pwl, /linear), color = 180
+  if(keyword_set(bezier)) then begin
+       oplot, pwl, red_bezier3(xl, yl, pwl, /linear), color = 180
+    endif else  oplot, pwl, red_intepf(xl, yl, pwl, /linear), color = 180
   loadct, 0, /silent
   wait, 0.2                     ; otherwise IDL does not update the plot (?)
                                 ;

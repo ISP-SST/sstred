@@ -98,17 +98,28 @@
 ;    strehl : out, optional      
 ;
 ;        Strehl number
-;
-;    cams : in, optional    
-;
-;        Cam tags in correct order
-; 
 ; 
 ; :History:
 ; 
+;   2013-09-04 : MGL. Use red_momfbd_setup, not momfbd_setup. Improve
+;                the procedure for measuring the residual dark level.
+;                Now works with median and stdev instead of
+;                biweight_mean and robust_sigma. Implement avoiding
+;                certain patch sizes because they crash the momfbd
+;                slaves.
 ; 
-; 
-; 
+;   2013-09-06 : MGL. Warning and stop when keyword finddiversity is
+;                set. This part is not ready for common use. Removed
+;                keyword cams. Do initialization of the offsets, so we
+;                don't have to do the red::getoffsets step anymore.
+;
+;   2013-09-10 : MGL. Moved writing of subfield images to disk (and
+;                the associated dark level refinement) to
+;                red_pinh_run_momfbd. 
+;
+;   2013-09-11 : MGL. Use red_findmax2qi, not findmax2qi. Also
+;                red_stats rather than stats.
+;
 ;-
 pro red::pinholecalib, STATE = state $                   
                        , PREFILTER = prefilter $         
@@ -129,15 +140,14 @@ pro red::pinholecalib, STATE = state $
                        , MTOL = mtol $                 
                        , DTOL = dtol $                 
                        , TTOL = ttol $                 
-                       , STREHL = strehl $             
-                       , CAMS = cams                   
+                       , STREHL = strehl
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
-  ;; Logging (move to end of file so we can log the clipfile?)
+  ;; Logging
   help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+  red_writelog, selfinfo = selfinfo, logfile = logfile
 
   if n_elements(mtol) eq 0 then mtol = 1e-6 ; Metric tolerance
   if n_elements(dtol) eq 0 then dtol = 1e-6 ; Diversity tolerance
@@ -145,17 +155,18 @@ pro red::pinholecalib, STATE = state $
   
   if n_elements(nslaves) eq 0 then nslaves=6
   if n_elements(nthreads) eq 0 then nthreads=1
+  if n_elements(maxit) eq 0 then maxit=400
 
 
   ;; Where the summed pinhole images are:
-  pinhdir = self.out_dir + '/pinh_test/'
+  pinhdir = self.out_dir + '/pinh/'
 
   ;; Calib directory
-  calibdir = self.out_dir + '/calib_test/'
+  calibdir = self.out_dir + '/calibnew/'
   if ~file_test(calibdir) then begin
      file_mkdir, calibdir
      ;; Use initial offset files from ordinary calib dir.
-     spawn, 'cp -f '+self.out_dir + '/calib/*offs ' + calibdir
+;     spawn, 'cp -f '+ self.out_dir + '/calib/*offs ' + calibdir
   endif
 
 
@@ -164,12 +175,13 @@ pro red::pinholecalib, STATE = state $
   file_mkdir, workdir
   file_mkdir, workdir+'data'
 
-  if n_elements(cams) eq 0 then begin
-     ;; Something like this to get camera labels:
-     self -> getcamtags, dir = self.pinh_dir 
-     cams = [self.camwbtag, self.camttag, self.camrtag] 
-  endif
-
+  ;; Get camera labels:
+  self -> getcamtags, dir = self.pinh_dir 
+  camt = self.camttag
+  camr = self.camrtag
+  camw = self.camwbtag
+  cams = [camw, camt, camr] 
+  
   xsz = self.camsz              ; CCD size in pixels
   ysz = self.camsz              ; CCD size in pixels
 
@@ -178,27 +190,31 @@ pro red::pinholecalib, STATE = state $
      print, 'No prefilter given.' ;    <----------------------------
      retall
   endif
-  ;; If not, should we find all prefilters and loop over them?
+  ;; If not, should we find all prefilters and loop over them? YES
 
   ;; Get list of states (and transmitted file names)  
-  cam = cams[1]                   ; Transmitted camera
-  spawn, 'cd ' + pinhdir + '; find  | cut -d/ -f2 | grep "'+cam+'." | grep ".pinh" | grep '+prefilter, files
-  nf = n_elements(files)
+  cam = camt                    ; Transmitted camera
+  files = file_search(pinhdir+cam+'.'+prefilter+'.*.fpinh', count = nf)
 
-
+  
   ;; These file names have less "fields" than the raw files, so
-  ;; we can't use red_getstates. But we'll do something similar.
-  fullstate = strarr(nf)
-  for ii = 0L, nf -1 do begin
-     tmp = strsplit(file_basename(files[ii]), '._', /extract)
-     n = n_elements(tmp)
-     wav = tmp[2]+'_'+tmp[3]
-     pref = tmp[1]
-     lc = tmp[4]
-     fullstate[ii] = pref+'.'+wav + '.' + lc
-  endfor
-  ustat = fullstate[uniq(fullstate, sort(fullstate))]
+  ;; we add one field when using red_getstates.
+  states = red_getstates(files+'.dum')
+  ustat = states.state[uniq(states.state, sort(states.state))]
   ns = n_elements(ustat)
+
+
+;  fullstate = strarr(nf)
+;  for ii = 0L, nf -1 do begin
+;     tmp = strsplit(file_basename(files[ii]), '._', /extract)
+;     n = n_elements(tmp)
+;     wav = tmp[2]+'_'+tmp[3]
+;     pref = tmp[1]
+;     lc = tmp[4]
+;     fullstate[ii] = pref+'.'+wav + '.' + lc
+;  endfor
+;  ustat = fullstate[uniq(fullstate, sort(fullstate))]
+;  ns = n_elements(ustat)
 
   if n_elements(state) ne 0 then begin
 
@@ -228,14 +244,13 @@ pro red::pinholecalib, STATE = state $
 
   endelse
 
-
   ;; File names for the full-FOV pinhole images and offsets.
   pnames = cams + '.' + stat + '.fpinh' 
   xnames = cams + '.' + stat + '.xoffs'
   ynames = cams + '.' + stat + '.yoffs'
   
   ;, File name templates for the subfield-size images and offsets.
-  ptemplates = cams + '.fpinh.%03d' 
+  ptemplates = cams + '.pinh.%03d' 
   xtemplates = cams + '.xoffs.%03d'
   ytemplates = cams + '.yoffs.%03d'
 
@@ -243,13 +258,14 @@ pro red::pinholecalib, STATE = state $
   if n_elements(diversity) eq 0 then diversity = fltarr(Nch)
 
   ;; Get align_clips and apply them to images. 
-  clipfile = self.out_dir + '/calib/align_clips.'+pref+'.sav'
+  clipfile = self.out_dir + '/calib/align_clips.'+prefilter+'.sav'
   IF(~file_test(clipfile)) THEN BEGIN
      print, inam + ' : ERROR -> align_clip file not found'
      print, inam + ' : -> you must run red::getalignclips first!'
      return
   endif
   restore, clipfile             
+
   ;; The clipfile provides:      
   ;; ACL             STRING    = Array[3] - CLIP strings for config file
   ;; CL              INT       = Array[4, 3] - CLIPs as numbers
@@ -257,6 +273,17 @@ pro red::pinholecalib, STATE = state $
   ;; SSH             INT       = Array[2, 3] ????
   ;; SX              LONG      = clipped X size
   ;; SY              LONG      = clipped Y size
+  ;; 
+  ;; Put this info in the log file:
+  clipinfo = strarr(7)
+  clipinfo[0] = 'Clip info:'
+  clipinfo[1:3] = ACL
+  clipinfo[4] = 'refrot: '+red_stri(refrot)
+  clipinfo[5] = 'sx: '+red_stri(sx)
+  clipinfo[6] = 'sy: '+red_stri(sy)
+  red_writelog, /add, logfile = logfile, top_info_strings = clipinfo
+
+
 
   ;; Read summed pinhole array images for the selected state. These
   ;; images are already corrected for dark and flat as well as
@@ -270,105 +297,100 @@ pro red::pinholecalib, STATE = state $
   endfor
 
   ;; Find pinhole grid.
-  findpinholegrid, images[*, *, 0], simx, simy
+  red_findpinholegrid2, images[*, *, 0], simx, simy
   simx = simx[1:(size(simx, /dim))[0]-2] ; Skip outermost rows and columns?
-  simy = simy[1:(size(simx, /dim))[0]-2]
+  simy = simy[1:(size(simy, /dim))[0]-2]
   ;; Set subimage size to mean distance between spots:
   sz = round(median([deriv(simx),deriv(simy)])) ;>128
   ;; Make sure sz is an even number:
   sz += (sz mod 2)
 
-
+  ;; Avoid sizes that make the momfbd slaves crash.
+  badsizes = [90]
+  while total(sz eq badsizes) gt 0 do sz += 2
 
   ;; Remove rows and columns that are too close to the border
   simx = simx[where(simx gt sz/2 and simy lt sx-sz/2-1)]
   simy = simy[where(simy gt sz/2 and simy lt sx-sz/2-1)]
-  Npinhx = (size(simx, /dim))[0]
-  Npinhy = (size(simy, /dim))[0]
+  Npinhx = n_elements(simx)
+  Npinhy = n_elements(simy)
 
 
-  ;; Preprocess pinholes
-  imno = 0
-  d=sz/2
+  ;; Measure positions used for calculating initial offsets.
+  d = sz/2
   strehl = fltarr(Npinhx, Npinhy, Nch)
+  pos = fltarr(2, Nch, Npinhx, Npinhy) ; Peak positions within subfield
   for ix=0,Npinhx-1 do begin
      for iy=0,Npinhy-1 do begin
 
         ;; Read out subfield (ix,iy) from images
         subfields = images[simx[ix]-d:simx[ix]+d-1,simy[iy]-d:simy[iy]+d-1, *]
 
-        ;; Fine tune dark level and normalization for each subfield.
-        ;; Get the bias by fitting a Gaussian to the histogram peak.
-        ;; Then write to files with imno in name
-        Nbins = 10000
         for ich = 0, Nch-1 do begin
+
+           strehl[ix, iy, ich] = max(subfields[*, *, ich])/mean(subfields[*, *, ich])
            
-           fname = workdir+string(format = '(%"'+ptemplates[ich]+'")', imno)
+           ;; Peak position
+           maxloc = (where(subfields[*,*,ich] eq max(subfields[*,*,ich])) )[0]
+           pos[*, ich, ix, iy] = [maxloc mod sz, maxloc/sz]
+           
+           print, 'pos', [maxloc mod sz, maxloc/sz]
 
-           if ~file_test(fname) or arg_present(strehl) then begin
-
-              subfields[*, *, ich] = subfields[*, *, ich]/max(subfields[*, *, ich])
-
-              mn = biweight_mean(subfields[*,*,ich])
-              st = robust_sigma(subfields[*,*,ich])
-
-              hmax = mn + 400.*st
-              hmin = mn - 400.*st
-
-              hh = histogram(subfields[*, *, ich], min = hmin, max = hmax $
-                             , Nbins = Nbins, locations = locations)
-              binsize = (hmax - hmin) / (Nbins - 1)
-              intensities = locations + binsize/2.
-              
-              plot,intensities,hh,/xstyle,xrange=[-.001,.001], /ystyle
-              
-              print,max(smooth(hh,15),ml)  
-              Nfit = 51
-              indx = ml + indgen(Nfit) - (Nfit-1)/2
-              
-              plot,intensities[indx],hh[indx], /XSTYLE, /YSTYLE
-              
-              yfit=MPFITPEAK(float(intensities[indx]), float(hh[indx]), a, Nterms = 5)
-              oplot,intensities[indx],yfit,color=fsc_color('yellow')
-              oplot,[0,0]+a[1],[0,1]*max(hh),color=fsc_color('yellow')
-              oplot,[0,0]+mn,[0,1]*max(hh),color=fsc_color('cyan')
-              print,intensities[ml]  
-              
-              ;; Subtract the fitted dark level and renormalize to unit
-              ;; max. The momfbd program will then renormalize all
-              ;; channels to the same total energy.
-              subfields[*, *, ich] = subfields[*, *, ich] - a[1]
-              subfields[*, *, ich] = subfields[*, *, ich]/max(subfields[*, *, ich])
-
-              fzwrite, fix(round(subfields[*, *, ich]*15000.)), fname, ''
-
-              strehl[ix, iy, ich] = max(subfields[*, *, ich])/mean(subfields[*, *, ich])
-
-           endif                ; if file_test
         endfor                  ; for ich
-
-        imno += 1
-
      endfor                     ; for iy
   endfor                        ; for ix
 
-  xoffs = fltarr(sx, sy, Nch)
-  yoffs = fltarr(sx, sy, Nch)
-  ;; Read the existing offset files if present
+ ; oldxoffs = fltarr(sx, sy, Nch)
+ ; oldyoffs = fltarr(sx, sy, Nch)
+ ; oldcalibdir = self.out_dir + '/calib/'
+ ;;; Read the existing offset files if present
+ ; for ich = 1, Nch-1 do begin
+ ;    if file_test(oldcalibdir + xnames[ich]) then begin
+ ;       print, 'Reading  and clipping' + oldcalibdir + xnames[ich]
+ ;       oldxoffs[*, *, ich] = f0(oldcalibdir + xnames[ich])
+ ;    endif
+ ;    if file_test(oldcalibdir + ynames[ich]) then begin
+ ;       print, 'Reading  and clipping' + oldcalibdir + ynames[ich]
+ ;       oldyoffs[*, *, ich] = f0(oldcalibdir + ynames[ich])
+ ;    endif
+ ; endfor
+
+  ;; Make the tilts in units of 1/100 pixel.
+  xtilts = fltarr(Nch, Npinhx, Npinhy)
+  xtilts[1, *, *] = (pos[0, 1, *, *] - pos[0, 0, *, *])*100
+  xtilts[2, *, *] = (pos[0, 2, *, *] - pos[0, 0, *, *])*100
+
+  ytilts = fltarr(Nch, Npinhx, Npinhy)
+  ytilts[1, *, *] = (pos[1, 1, *, *] - pos[1, 0, *, *])*100
+  ytilts[2, *, *] = (pos[1, 2, *, *] - pos[1, 0, *, *])*100
+
+;; Test!
+;  xtilts += +300
+;  ytilts += -200
+
+  ;; Make fits to the "tilts" in units of 1/100 pixel.
+  red_pinh_make_fits, simx, simy, sx, sy $
+                      , XTILTS = xtilts $ ; Input
+                      , YTILTS = ytilts $ ; Input
+                      , dxoffs = xoffs $  ; Output
+                      , dyoffs = yoffs    ; Output
+  
+;   help, oldxoffs, xoffs 
+;   cgplot,oldxoffs[*,*,2],xoffs[*,*,2],psym=3, /aspect
+;   cgplot,/over,color='red',[-1000,1000],[-1000,1000]                    
+; stop  
+  ;; Write the initial offsets to files
   for ich = 1, Nch-1 do begin
-     if file_test(calibdir + xnames[ich]) then begin
-        print, 'Reading  and clipping' + calibdir + xnames[ich]
-        xoffs[*, *, ich] = f0(calibdir + xnames[ich])
-     endif
-     if file_test(calibdir + ynames[ich]) then begin
-        print, 'Reading  and clipping' + calibdir + ynames[ich]
-        yoffs[*, *, ich] = f0(calibdir + ynames[ich])
-     endif
+     print, 'Writing ' + calibdir + xnames[ich]+'.init'
+     fzwrite, fix(round(xoffs[*, *, ich])), calibdir + xnames[ich]+'.init', ''
+     print, 'Writing ' + calibdir + ynames[ich]+'.init'
+     fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich]+'.init', ''
   endfor
 
+
   ;; Start iterations
   ;; Set up manager and slaves.
-  momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, /FREE, NTHREADS=nthreads
+  red_momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, /FREE, NTHREADS=nthreads
 
   xconvergence = fltarr(Nch, MaxIt)
   yconvergence = fltarr(Nch, MaxIt)
@@ -378,12 +400,11 @@ pro red::pinholecalib, STATE = state $
      dvalues = fltarr(Nch, MaxIt)
   endif
 
-
   ;; Iterate tilts only
   for it = 0, MaxIt-1 do begin
 
      ;; Run momfbd on the pinholes and read back the results
-     red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
+     red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                           , xtemplates, ytemplates, ptemplates $
                           , stat $
                           , self.telescope_d, self.image_scale, self.pixel_size $
@@ -393,20 +414,37 @@ pro red::pinholecalib, STATE = state $
                           , PORT = port $
                           , NSLAVES = nslaves $
                           , NTHREADS = nthreads $
-                          , XTILTS = xtilts $           ; Output
-                          , YTILTS = ytilts $           ; Output
+                          , XTILTS = dxtilts $           ; Output
+                          , YTILTS = dytilts $           ; Output
                           , METRICS = metrics           ; Output
+
+     ;; Updates
+     xtilts += dxtilts
+     ytilts += dytilts
+
+     oldxoffs = xoffs
+     oldyoffs = yoffs
 
      ;; Make fits to the tilts 
      red_pinh_make_fits, simx, simy, sx, sy $
                          , XTILTS = xtilts $ ; Input
                          , YTILTS = ytilts $ ; Input
-                         , dxoffs = dxoffs $ ; Output
-                         , dyoffs = dyoffs   ; Output
+                         , dxoffs = xoffs $ ; Output
+                         , dyoffs = yoffs   ; Output
      
-     ;; Updates
-     xoffs += dxoffs
-     yoffs += dyoffs
+;     ;; Updates
+;     xoffs += dxoffs
+;     yoffs += dyoffs
+
+     dxoffs = xoffs-oldxoffs
+     dyoffs = yoffs-oldyoffs
+
+     red_stats, xoffs, name = 'xoffs'
+     red_stats, dxoffs, name = 'dxoffs'
+
+     red_stats, yoffs, name = 'yoffs'
+     red_stats, dyoffs, name = 'dyoffs'
+
 
      ;; Convergence
      for ich = 1, Nch-1 do begin
@@ -434,9 +472,20 @@ pro red::pinholecalib, STATE = state $
   endfor                        ; for it
   
 
-  ;; Do we want to refine the diversity?
-
   if keyword_set(finddiversity) then begin
+
+     print, inam+' : Do you want to refine the diversity?'
+     print, inam+' : '
+     print, inam+' : This part is not well tested because we currently do not have'
+     print, inam+' : a CRISP diversity camera. It was written for the purpose of  '
+     print, inam+' : finding small diversity differences between nominally focused'
+     print, inam+' : cameras. We never were able to make this work in a way we    '
+     print, inam+' : trusted.                                                     '
+     print, inam+' : '
+     print, inam+' : Be prepared to do some debugging work or possibly rewriting  '
+     print, inam+' : this functionality completely. /MGL '
+
+     stop
 
      ;; Try some combinations of diversities, find min(metric).
      makegrid = n_elements(test_diversities) eq 0
@@ -466,7 +515,7 @@ pro red::pinholecalib, STATE = state $
            
 
            ;; Run momfbd on the pinholes and read back the results
-           red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
+           red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                                 , xtemplates, ytemplates, ptemplates $
                                 , stat $
                                 , self.telescope_d, self.image_scale, self.pixel_size $
@@ -512,7 +561,7 @@ pro red::pinholecalib, STATE = state $
         ;; Improve best_diversity by interpolation before considering
         ;; them "found".
         c = test_metrics2[ii-1:ii+1, jj-1:jj+1]
-        aaa = findmax2qi(-c, /verbose) ; "subpixel" minimum
+        aaa = red_findmax2qi(-c, /verbose) ; "subpixel" minimum
         cmin = Interpolate(c, aaa[0], aaa[1], cubic = -0.5)
         print, 'Subpixel min metric: ', cmin, ' at ', aaa
         for ich = 1, Nch-1 do best_diversity[ich] $
@@ -531,7 +580,7 @@ pro red::pinholecalib, STATE = state $
      for it = 0, MaxIt-1 do begin
 
         ;; Run momfbd on the pinholes and read back the results
-        red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
+        red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                              , xtemplates, ytemplates, ptemplates $
                              , stat $
                              , self.telescope_d, self.image_scale, self.pixel_size $
@@ -609,9 +658,10 @@ pro red::pinholecalib, STATE = state $
      endfor                     ; for it
 
   endif                         ; finddiversity
+
 
   ;; Kill manager and slaves
-  momfbd_setup, PORT = port, NMANAGERS=0
+  red_momfbd_setup, PORT = port, NMANAGERS=0
   ;;  spawn,'rm -f '+workdir
 
   ;; Crop convergence arrays.
@@ -622,9 +672,9 @@ pro red::pinholecalib, STATE = state $
 
   ;; Write the updated offsets to files
   for ich = 1, Nch-1 do begin
-     print, 'Writing ' + pinhdir + xnames[ich]
+     print, 'Writing ' + calibdir + xnames[ich]
      fzwrite, fix(round(xoffs[*, *, ich])), calibdir + xnames[ich], ''
-     print, 'Writing ' + pinhdir + ynames[ich]
+     print, 'Writing ' + calibdir + ynames[ich]
      fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich], ''
   endfor
 

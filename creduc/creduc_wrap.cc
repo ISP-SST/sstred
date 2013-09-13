@@ -13,14 +13,14 @@
 
 extern "C" {
   short cdescatter(int argc,void *argv[]){
-    int32_t nx = ARG_INT(argv, 0);
-    int32_t ny = ARG_INT(argv, 1);
-    int32_t nthreads = ARG_INT(argv, 6);
-    int32_t verbose = ARG_INT(argv, 7);
-    float32_t *timg = ARG_FLOAT_ARRAY(argv,2);
-    float32_t *tfgain = ARG_FLOAT_ARRAY(argv,3);
-    float32_t *tfpsf = ARG_FLOAT_ARRAY(argv,4);
-    float32_t *res = ARG_FLOAT_ARRAY(argv,5);
+    int nx = ARG_INT(argv, 0);
+    int ny = ARG_INT(argv, 1);
+    int nthreads = ARG_INT(argv, 6);
+    int verbose = ARG_INT(argv, 7);
+    float *timg = ARG_FLOAT_ARRAY(argv,2);
+    float *tfgain = ARG_FLOAT_ARRAY(argv,3);
+    float *tfpsf = ARG_FLOAT_ARRAY(argv,4);
+    float *res = ARG_FLOAT_ARRAY(argv,5);
     //
     descatter(nx, ny, timg, tfgain, tfpsf, res, nthreads, verbose);
     //
@@ -28,16 +28,16 @@ extern "C" {
   }
   short cconvolve(int argc, void *argv[]){
     //
-    int32_t nx = ARG_INT(argv, 0);
-    int32_t ny = ARG_INT(argv, 1);
-    int32_t nx1 = ARG_INT(argv, 2);
-    int32_t ny1 = ARG_INT(argv, 3);
-    int32_t nthreads = ARG_INT(argv, 7);
-    int32_t verbose = ARG_INT(argv, 8);
+    int nx = ARG_INT(argv, 0);
+    int ny = ARG_INT(argv, 1);
+    int nx1 = ARG_INT(argv, 2);
+    int ny1 = ARG_INT(argv, 3);
+    int nthreads = ARG_INT(argv, 7);
+    int verbose = ARG_INT(argv, 8);
     //
-    float32_t *timg = ARG_FLOAT_ARRAY(argv,4);
-    float32_t *tfpsf = ARG_FLOAT_ARRAY(argv,5);
-    float32_t *res1 = ARG_FLOAT_ARRAY(argv,6);
+    float *timg = ARG_FLOAT_ARRAY(argv,4);
+    float *tfpsf = ARG_FLOAT_ARRAY(argv,5);
+    float *res1 = ARG_FLOAT_ARRAY(argv,6);
     //
     convolve(nx, ny, nx1, ny1, timg, tfpsf, res1, nthreads, verbose);
     //
@@ -45,20 +45,20 @@ extern "C" {
   }
   short cfitgain(int argc, void *argv[]){
     //
-    int32_t nwav = ARG_INT(argv, 0);
-    int32_t nmean = ARG_INT(argv, 1);
-    int32_t npar = ARG_INT(argv, 2);
-    int32_t npix = ARG_INT(argv, 3);
-    int32_t nt = ARG_INT(argv, 10);
+    int nwav = ARG_INT(argv, 0);
+    int nmean = ARG_INT(argv, 1);
+    int npar = ARG_INT(argv, 2);
+    int npix = ARG_INT(argv, 3);
+    int nt = ARG_INT(argv, 10);
 
     //
-    float32_t *xl = ARG_FLOAT_ARRAY(argv,4);
-    float32_t *yl = ARG_FLOAT_ARRAY(argv,5);
-    float32_t *wav = ARG_FLOAT_ARRAY(argv,6);
-    float32_t *dat1 = ARG_FLOAT_ARRAY(argv,7);
+    float *xl = ARG_FLOAT_ARRAY(argv,4);
+    float *yl = ARG_FLOAT_ARRAY(argv,5);
+    float *wav = ARG_FLOAT_ARRAY(argv,6);
+    float *dat1 = ARG_FLOAT_ARRAY(argv,7);
     //
-    float64_t *pars1 = ARG_FLOAT64_ARRAY(argv,8); // At input contains the guess parameters to init L-M
-    float32_t *ratio1 = ARG_FLOAT_ARRAY(argv,9); // At input contains the guess parameters to init L-M
+    double *pars1 = ARG_FLOAT64_ARRAY(argv,8); // At input contains the guess parameters to init L-M
+    float *ratio1 = ARG_FLOAT_ARRAY(argv,9); // At input contains the guess parameters to init L-M
 
     //
     fitgain(nwav, nmean, npar, npix, xl, yl, wav, dat1, pars1, ratio1, nt); 
@@ -67,23 +67,24 @@ extern "C" {
   }
   short cfitgain2(int argc, void *argv[]){
     //
-    int32_t nwav = ARG_INT(argv, 0);
-    int32_t nmean = ARG_INT(argv, 1);
-    int32_t npar = ARG_INT(argv, 2);
-    int32_t npix = ARG_INT(argv, 3);
-    int32_t nt = ARG_INT(argv, 10);
+    int nwav = ARG_INT(argv, 0);
+    int nmean = ARG_INT(argv, 1);
+    int npar = ARG_INT(argv, 2);
+    int npix = ARG_INT(argv, 3);
+    int nt = ARG_INT(argv, 10);
+    int line = ARG_INT(argv, 11);
 
     //
-    float32_t *xl = ARG_FLOAT_ARRAY(argv,4);
-    float32_t *yl = ARG_FLOAT_ARRAY(argv,5);
-    float32_t *wav = ARG_FLOAT_ARRAY(argv,6);
-    float32_t *dat1 = ARG_FLOAT_ARRAY(argv,7);
+    float *xl = ARG_FLOAT_ARRAY(argv,4);
+    float *yl = ARG_FLOAT_ARRAY(argv,5);
+    float *wav = ARG_FLOAT_ARRAY(argv,6);
+    float *dat1 = ARG_FLOAT_ARRAY(argv,7);
     //
-    float64_t *pars1 = ARG_FLOAT64_ARRAY(argv,8); // At input contains the guess parameters to init L-M
-    float32_t *ratio1 = ARG_FLOAT_ARRAY(argv,9); // At input contains the guess parameters to init L-M
+    double *pars1 = ARG_FLOAT64_ARRAY(argv,8); // At input contains the guess parameters to init L-M
+    float *ratio1 = ARG_FLOAT_ARRAY(argv,9);
 
     //
-    fitgain2(nwav, nmean, npar, npix, xl, yl, wav, dat1, pars1, ratio1, nt); 
+    fitgain2(nwav, nmean, npar, npix, xl, yl, wav, dat1, pars1, ratio1, nt, line); 
     //
     return 0;
   }
@@ -141,14 +142,14 @@ extern "C" {
     pol.nlp = ARG_INT(argv, 2);
     pol.npix = ARG_INT(argv, 3);
     //
-    float32_t *dat2d = ARG_FLOAT_ARRAY(argv,4);
-    float32_t *qwp =  ARG_FLOAT_ARRAY(argv,5);
-    float32_t *lp =  ARG_FLOAT_ARRAY(argv,6);
+    float *dat2d = ARG_FLOAT_ARRAY(argv,4);
+    float *qwp =  ARG_FLOAT_ARRAY(argv,5);
+    float *lp =  ARG_FLOAT_ARRAY(argv,6);
     //
-    float64_t *res =  ARG_FLOAT64_ARRAY(argv,7);
-    float32_t *cs =  ARG_FLOAT_ARRAY(argv,8);
+    double *res =  ARG_FLOAT64_ARRAY(argv,7);
+    float *cs =  ARG_FLOAT_ARRAY(argv,8);
     //
-    int32_t nthreads = ARG_INT(argv, 9);
+    int nthreads = ARG_INT(argv, 9);
     //
     pol.ndata = pol.nlc * pol.nqwp * pol.nlp;
     //

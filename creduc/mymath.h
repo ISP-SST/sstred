@@ -6,16 +6,17 @@
 //
 // Overview
 //
-template <class T> T *intep(int32_t &np, float32_t *x, float32_t *y, int32_t &nxp, T *xp);
+template <class T> T *intep(int &np, float *x, float *y, int &nxp, T *xp);
 template <class T> T *invert4x4(T *a);
 template <class T> void Shipley_Inversion(T **M,int m);
-
+template <class T> T *intep(int &np, double *x, double *y, int &nxp, T *xp);
+template <class T> void intep(int &np, float *x, float *y, int &nxp, T *xp, T *yp);
 //
 // Definitions
 //
-template <class T> T *intep(int32_t &np, float32_t *x, float32_t *y, int32_t &nxp, T *xp){
+template <class T> T *intep(int &np, float *x, float *y, int &nxp, T *xp){
   //
-  int32_t np1 = np - 1;
+  int np1 = np - 1;
   T *yp  = new T [nxp];
   T *lp1 = new T [np1];
   T *lp2 = new T [np1];
@@ -24,26 +25,26 @@ template <class T> T *intep(int32_t &np, float32_t *x, float32_t *y, int32_t &nx
   //
   // Compute interpolation coefficients
   //
-  for(int32_t ii=0;ii<=np-2;++ii) lp1[ii] = 1.0 / (x[ii] - x[ii+1]);
-  for(int32_t ii=0;ii<=np-2;++ii) lp2[ii] = 1.0 / (x[ii+1] - x[ii]);
+  for(int ii=0;ii<=np-2;++ii) lp1[ii] = 1.0 / (x[ii] - x[ii+1]);
+  for(int ii=0;ii<=np-2;++ii) lp2[ii] = 1.0 / (x[ii+1] - x[ii]);
   //
-  for(int32_t ii=1;ii<=np-2;++ii) fp1[ii] = (y[ii+1] - y[ii-1]) / (x[ii+1] - x[ii-1]);
+  for(int ii=1;ii<=np-2;++ii) fp1[ii] = (y[ii+1] - y[ii-1]) / (x[ii+1] - x[ii-1]);
   fp1[0] = (y[1] - y[0]) / (x[1] - x[0]);
   //
   fp2[np-2] = (y[np-1] - y[np-2]) / (x[np-1] - x[np-2]);
-  for(int32_t ii=0;ii<=np-3;++ii) fp2[ii] = fp1[ii+1];
+  for(int ii=0;ii<=np-3;++ii) fp2[ii] = fp1[ii+1];
   //
   // output dependent part
   //
-  int32_t i, i1;
+  int i, i1;
   T xpi, xpi1, l1, l2;
-  for(int32_t ii=1;ii<=np;++ii){
+  for(int ii=1;ii<=np;++ii){
     i = ii - 1;
     i1 = i - 1;
     if(i < 0) i = 0;
     if(i1 < 0) i1 = 0;
     //
-    for(int32_t jj = 0;jj<=nxp-1;++jj){
+    for(int jj = 0;jj<=nxp-1;++jj){
       if((xp[jj] <= x[i]) && (xp[jj] >= x[i1])){
 	//
 	xpi = xp[jj] - x[i1];
@@ -70,7 +71,7 @@ template <class T> T *intep(int32_t &np, float32_t *x, float32_t *y, int32_t &nx
   T a1 = fp2[np-2]; // (y[np-2] - y[np-1]) / (x[np-2] - x[np-1]);
   T b1 = y[np-1] - a1 * x[np-1];
   //
-  for(int32_t ii = 0;ii<=nxp-1;++ii){
+  for(int ii = 0;ii<=nxp-1;++ii){
     if(xp[ii] < x[0]) yp[ii] = a0 * xp[ii] + b0;
     if(xp[ii] > x[np-1]) yp[ii] = a1 * xp[ii] + b1;
   }
@@ -84,6 +85,151 @@ template <class T> T *intep(int32_t &np, float32_t *x, float32_t *y, int32_t &nx
   //
   return yp;
 }
+
+template <class T> void intep(int &np, float *x, float *y, int &nxp, T *xp, T *yp){
+  //
+  int np1 = np - 1;
+  // T *yp  = new T [nxp];
+  T *lp1 = new T [np1];
+  T *lp2 = new T [np1];
+  T *fp1 = new T [np1];
+  T *fp2 = new T [np1];
+  //
+  // Compute interpolation coefficients
+  //
+  for(int ii=0;ii<=np-2;++ii) lp1[ii] = 1.0 / (x[ii] - x[ii+1]);
+  for(int ii=0;ii<=np-2;++ii) lp2[ii] = 1.0 / (x[ii+1] - x[ii]);
+  //
+  for(int ii=1;ii<=np-2;++ii) fp1[ii] = (y[ii+1] - y[ii-1]) / (x[ii+1] - x[ii-1]);
+  fp1[0] = (y[1] - y[0]) / (x[1] - x[0]);
+  //
+  fp2[np-2] = (y[np-1] - y[np-2]) / (x[np-1] - x[np-2]);
+  for(int ii=0;ii<=np-3;++ii) fp2[ii] = fp1[ii+1];
+  //
+  // output dependent part
+  //
+  int i, i1;
+  T xpi, xpi1, l1, l2;
+  for(int ii=1;ii<=np;++ii){
+    i = ii - 1;
+    i1 = i - 1;
+    if(i < 0) i = 0;
+    if(i1 < 0) i1 = 0;
+    //
+    for(int jj = 0;jj<=nxp-1;++jj){
+      if((xp[jj] <= x[i]) && (xp[jj] >= x[i1])){
+	//
+	xpi = xp[jj] - x[i1];
+	xpi1 = xp[jj] - x[i];
+	//
+	l1 = xpi1 * lp1[i1];
+	l1*= l1;
+	//
+	l2 = xpi * lp2[i1];
+	l2*= l2;
+	//
+	yp[jj] = y[i1] * (1.0 - (2.0 * lp1[i1] * xpi)) * l1 + 
+	  y[i] * (1.0 - (2.0 * lp2[i1] * xpi1)) * l2 + 
+	  fp2[i1] * xpi1 * l2 + fp1[i1] * xpi * l1;
+      }
+    }
+  }
+  //
+  // any point outside bounds? -> linear extrapolation
+  //
+  T a0 = fp1[0]; //(y[0] - y[1]) / (x[0] - x[1]);
+  T b0 = y[0] - a0 * x[0];
+  //
+  T a1 = fp2[np-2]; // (y[np-2] - y[np-1]) / (x[np-2] - x[np-1]);
+  T b1 = y[np-1] - a1 * x[np-1];
+  //
+  for(int ii = 0;ii<=nxp-1;++ii){
+    if(xp[ii] < x[0]) yp[ii] = a0 * xp[ii] + b0;
+    if(xp[ii] > x[np-1]) yp[ii] = a1 * xp[ii] + b1;
+  }
+  //
+  // Clean-up
+  //
+  delete [] lp1;
+  delete [] lp2;
+  delete [] fp1;
+  delete [] fp2;
+  //
+}
+
+
+template <class T> T *intep(int &np, double *x, double *y, int &nxp, T *xp){
+  //
+  int np1 = np - 1;
+  T *yp  = new T [nxp];
+  T *lp1 = new T [np1];
+  T *lp2 = new T [np1];
+  T *fp1 = new T [np1];
+  T *fp2 = new T [np1];
+  //
+  // Compute interpolation coefficients
+  //
+  for(int ii=0;ii<=np-2;++ii) lp1[ii] = 1.0 / (x[ii] - x[ii+1]);
+  for(int ii=0;ii<=np-2;++ii) lp2[ii] = 1.0 / (x[ii+1] - x[ii]);
+  //
+  for(int ii=1;ii<=np-2;++ii) fp1[ii] = (y[ii+1] - y[ii-1]) / (x[ii+1] - x[ii-1]);
+  fp1[0] = (y[1] - y[0]) / (x[1] - x[0]);
+  //
+  fp2[np-2] = (y[np-1] - y[np-2]) / (x[np-1] - x[np-2]);
+  for(int ii=0;ii<=np-3;++ii) fp2[ii] = fp1[ii+1];
+  //
+  // output dependent part
+  //
+  int i, i1;
+  T xpi, xpi1, l1, l2;
+  for(int ii=1;ii<=np;++ii){
+    i = ii - 1;
+    i1 = i - 1;
+    if(i < 0) i = 0;
+    if(i1 < 0) i1 = 0;
+    //
+    for(int jj = 0;jj<=nxp-1;++jj){
+      if((xp[jj] <= x[i]) && (xp[jj] >= x[i1])){
+	//
+	xpi = xp[jj] - x[i1];
+	xpi1 = xp[jj] - x[i];
+	//
+	l1 = xpi1 * lp1[i1];
+	l1*= l1;
+	//
+	l2 = xpi * lp2[i1];
+	l2*= l2;
+	//
+	yp[jj] = y[i1] * (1.0 - (2.0 * lp1[i1] * xpi)) * l1 + 
+	  y[i] * (1.0 - (2.0 * lp2[i1] * xpi1)) * l2 + 
+	  fp2[i1] * xpi1 * l2 + fp1[i1] * xpi * l1;
+      }
+    }
+  }
+  //
+  // any point outside bounds? -> linear extrapolation
+  //
+  T a0 = fp1[0]; //(y[0] - y[1]) / (x[0] - x[1]);
+  T b0 = y[0] - a0 * x[0];
+  //
+  T a1 = fp2[np-2]; // (y[np-2] - y[np-1]) / (x[np-2] - x[np-1]);
+  T b1 = y[np-1] - a1 * x[np-1];
+  //
+  for(int ii = 0;ii<=nxp-1;++ii){
+    if(xp[ii] < x[0]) yp[ii] = a0 * xp[ii] + b0;
+    if(xp[ii] > x[np-1]) yp[ii] = a1 * xp[ii] + b1;
+  }
+  //
+  // Clean-up
+  //
+  delete [] lp1;
+  delete [] lp2;
+  delete [] fp1;
+  delete [] fp2;
+  //
+  return yp;
+}
+
 /*
   Invert 4x4 matrix. Adapted from the fortran code NICOLE.
  */
