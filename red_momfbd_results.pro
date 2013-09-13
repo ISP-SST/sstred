@@ -56,6 +56,9 @@
 ;
 ;   2013-08-30 : MGL. Renamed for inclusion in crispred pipeline.
 ;
+;   2013-09-04 : MGL. Use red_momfbd_check, not momfbd_check.
+;
+;
 ;-
 function red_momfbd_results, imno $
                              , port=port $
@@ -80,7 +83,7 @@ function red_momfbd_results, imno $
 
   ;; Wait for momfbd to finish
   repeat begin
-     momfbd_check, PORT = port, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning, NJOBS = njobs
+     red_momfbd_check, PORT = port, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning, NJOBS = njobs
      print, 'njobs=', njobs
      if ~keyword_set(nowait) then wait, 3
   endrep until njobs eq 0

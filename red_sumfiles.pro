@@ -94,6 +94,12 @@
 ; 
 ;   2013-08-27 : MGL. Let the subprogram find out its own name.
 ; 
+;   2013-09-09 : MGL. Move per-frame correction for dark, gain, and
+;                back scatter to inside of conditional for pinhole
+;                alignment. 
+; 
+; 
+; 
 ;-
 function red_sumfiles, files_list $
                        , time = time $
@@ -107,7 +113,7 @@ function red_sumfiles, files_list $
                        , backscatter_gain = backscatter_gain $
                        , backscatter_psf = backscatter_psf $
                        , nthreads = nthreads 
-  
+ 
   ;; Name of this subprogram
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
@@ -223,9 +229,9 @@ function red_sumfiles, files_list $
            times[ii] = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
         endif else times[ii] = red_time2double(dum[2])
 
-     endfor
+     endfor                     ; ii
 
-     ;; All frames are considered OK.
+     ;; If no checking, all frames are considered OK.
      goodones = replicate(1, Nfiles) 
      idx = where(goodones, Nsum, complement = idx1)
 
@@ -252,14 +258,22 @@ function red_sumfiles, files_list $
                   , FORMAT = '(A,A,F5.1,A,$)'
         endelse
 
-        thisframe = (thisframe - dark)*gain
-        if DoDescatter then begin
-           thisframe = red_cdescatter(thisframe, backscatter_gain, backscatter_psf $
-                                    , /verbose, nthreads = nthreads)
-        endif
-
+  
         if keyword_set(pinhole_align) then begin
            
+           ;; If we are doing sub-pixel alignment, then we need to
+           ;; correct each frame for dark and gain.
+           thisframe = (thisframe - dark)*gain
+
+           ;; We also need to do any descattering correction of each frame.
+           if DoDescatter then begin
+              thisframe = red_cdescatter(thisframe, backscatter_gain, backscatter_psf $
+                                         , /verbose, nthreads = nthreads)
+           endif
+
+           ;; And fill the bad pixels 
+           thisframe = red_fillpix(thisframe, mask = mask)
+
            if firstframe then begin
               
               ;; Find brightest spot that is reasonably centered in
@@ -283,12 +297,10 @@ function red_sumfiles, files_list $
                  subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
                  tot = total(subim/max(subim) gt 0.2)
               endrep until tot lt tot_init
-              sz += 4           ; Loosen up a little
-           endif                ; firstframe
 
-           ;; Fill bad pixels 
-           print
-           thisframe = red_fillpix(thisframe, mask = mask)
+              sz += 4           ; A bit of margin
+
+           endif                ; firstframe
 
            ;; Iteratively calculate centroid of thisframe, and then
            ;; shift the frame so it aligns with the first frame.
@@ -333,13 +345,22 @@ function red_sumfiles, files_list $
   time = red_time2double(time / Nsum, /dir)
 
   if ~keyword_set(pinhole_align) then begin
-     ;; Dark and gain correction (done already for pinholes)
+
+     ;; Some actions already done for each frame in the case of
+     ;; pinhole alignment.
+
+     ;; Dark and gain correction 
      thisframe = (thisframe - dark)*gain
+
      if DoDescatter then begin
         ;; Backscatter correction (done already for pinholes)
         average = red_cdescatter(average, backscatter_gain, backscatter_psf $
                                  , /verbose, nthreads = nthreads)
      endif
+
+     ;; Fill the bad pixels 
+     if n_elements(mask) then thisframe = red_fillpix(thisframe, mask = mask)
+
   endif
 
   return, average

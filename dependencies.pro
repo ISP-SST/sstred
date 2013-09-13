@@ -36,6 +36,7 @@ coyotestring = '*Fanning/coyote*'
 astrolibstring = '*astronomy_users_library*'
 
 okstrings = [pwdstring, idlstring, coyotestring, astrolibstring]
+okstrings = [pwdstring, idlstring]
 
 spawn, 'rm -f dependencies.grep'
 openw, lun, 'dependencies.out', /get_lun
@@ -79,7 +80,7 @@ repeat begin
       if Nfunc gt 0 then funcinpath = bytarr(Nfunc)+1 else funcinpath = 0
       
       for i = 0, Nnames-1 do begin
-         findpro, names[i], /NoPrint, dirlist = dirlist ;, prolist = prolist
+         red_findpro, names[i], /NoPrint, dirlist = dirlist ;, prolist = prolist
          ; Could also use 
          ;   pth=routine_info(names[i],/source)
          ; but then we don't get info about name collisions.
@@ -88,6 +89,7 @@ repeat begin
             if i lt Nsubr then begin
                prnt, 'Subroutine not in path: '+names[i], lun
                subrinpath[i] = 0
+               printblankline = 0
             endif else begin
                prnt, 'Function not in path: '+names[i], lun
                funcinpath[i-Nsubr] = 0

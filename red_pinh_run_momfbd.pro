@@ -109,6 +109,7 @@
 ; 
 ; :History:
 ; 
+;   2013-09-04 : MGL. Use red_momfbd_*, not momfbd_*.
 ; 
 ; 
 ; 
@@ -141,7 +142,7 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
   if n_elements(nthreads) eq 0 then nthreads = 1
 
   ;; Restart manager and slaves if needed.
-  momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, NTHREADS=nthreads
+  red_momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, NTHREADS=nthreads
   
   ;; Remove old metric files if needed.
   spawn, 'cd '+workdir+' ; rm -f metric.*'
@@ -208,7 +209,7 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
         cfglines = [cfglines, 'GET_METRIC']
 
         ;; Submit to momfbd
-        momfbd_submit, imno, PORT=port, CFGLINES=cfglines, DIR=workdir, /FORCE
+        red_momfbd_submit, imno, PORT=port, CFGLINES=cfglines, DIR=workdir, /FORCE
         
         imno += 1
         
@@ -227,7 +228,7 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
   ;; Pre-read the metric files. They are numbered with the momfbd
   ;; job numbers, not imno.
   repeat begin
-     momfbd_check, PORT = port, NJOBS = njobs
+     red_momfbd_check, PORT = port, NJOBS = njobs
      print, 'njobs=', njobs
      wait, 3
   endrep until njobs eq 0
@@ -261,7 +262,7 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
 
               endfor
            endif else begin     ; ana_output
-              *mrpointers[imno] = momfbd_results(imno, PORT=port, DIR=workdir, /NOWAIT)
+              *mrpointers[imno] = red_momfbd_results(imno, PORT=port, DIR=workdir, /NOWAIT)
               
               xtilts[*, ix, iy] = (*mrpointers[imno]).patch.alpha[0, *]
               ytilts[*, ix, iy] = (*mrpointers[imno]).patch.alpha[1, *]
