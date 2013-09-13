@@ -370,7 +370,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      if n_elements(imean) eq 0 then begin 
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,ii])
-        cscl = 10000./max(imean)
+        cscl = 8.0 ; 32768 / 4096
         if(keyword_set(scans_only)) then cscl = 1.0
         norm_spect = imean / max(imean)
         norm_factor = cscl * max(imean)
@@ -400,6 +400,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      free_lun, lun
      print, inam + ' : done'
      print, inam + ' : result saved to -> '+odir+'/'+ofile 
+     red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = nscan, nw = nwav
   endif
 
 end

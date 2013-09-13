@@ -11,51 +11,52 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <omp.h>
+#include <complex.h>
 #include "types.h"
 #include "fftw3.h"
 #include "mymath.h"
 #include "mmem.h"
 #include "mpfit.h"
 #include "physc.h"
-
+#include "fpi.h"
 /*
 #include "Genetic.h"
 #include "Tools.h"
 using namespace ROYAC;
 */
-float64_t sqr(float64_t var){
+double sqr(double var){
   return var * var;
 }
-float64_t sqr(float64_t &var){
+double sqr(double &var){
   return var * var;
 }
 
-inline int32_t ind(int32_t x, int32_t y, int32_t nx){
+inline int32_t ind(int x, int y, int nx){
   return (y*nx + x);
 }
 //
 // descatter
 //
-void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tfpsf, float32_t *res, int32_t nthreads, int32_t verbose){
+void descatter(int nx, int ny, float *timg, float *tfgain, float *tfpsf, float *res, int nthreads, int verbose){
   //
   // Init variables
   //
   char inam[] = "descatter :";
-  float32_t **img = var2dim<float32_t>(timg,ny,nx);
-  float32_t **fgain = var2dim<float32_t>(tfgain,ny,nx);
-  float32_t **fpsf = var2dim<float32_t>(tfpsf,ny,nx);
+  float **img = var2dim<float>(timg,ny,nx);
+  float **fgain = var2dim<float>(tfgain,ny,nx);
+  float **fpsf = var2dim<float>(tfpsf,ny,nx);
   //
-  float64_t **psf=mat2d<float64_t>(2*ny, 2*nx);
-  memset(psf[0], 0, 4 * nx * ny * sizeof(float64_t));
-  float64_t **gain = mat2d<float64_t>(ny, nx);
+  double **psf=mat2d<double>(2*ny, 2*nx);
+  memset(psf[0], 0, 4 * nx * ny * sizeof(double));
+  double **gain = mat2d<double>(ny, nx);
   //
-  int32_t nx2 = nx/2;
-  int32_t ny2 = ny/2;
-  float64_t suma = 0.0;
-  for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) gain[y][x]=fgain[y][x];
-  for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) suma+=fpsf[y][x];
-  for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) psf[y+ny2][x+nx2]=fpsf[y][x]/suma;
-  psf_reorder<float64_t>(psf, 2*ny);
+  int nx2 = nx/2;
+  int ny2 = ny/2;
+  double suma = 0.0;
+  for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) gain[y][x]=fgain[y][x];
+  for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) suma+=fpsf[y][x];
+  for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) psf[y+ny2][x+nx2]=fpsf[y][x]/suma;
+  psf_reorder<double>(psf, 2*ny);
   if(verbose){
     fprintf(stderr, "%s nx=%d, ny=%d, nthreads=%d, psf_integral=%g \n",inam,nx, ny, nthreads, suma );
   }
@@ -75,9 +76,9 @@ void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tf
   //
   // Temporary arrays for FFTW
   //
-  float64_t **im = mat2d<float64_t>(2*ny, 2*nx);
-  float64_t **cim = mat2d<float64_t>(2*ny, 2*nx);
-  memset(im[0],0,4*nx*ny*sizeof(float64_t));
+  double **im = mat2d<double>(2*ny, 2*nx);
+  double **cim = mat2d<double>(2*ny, 2*nx);
+  memset(im[0],0,4*nx*ny*sizeof(double));
   complex_t **ft=mat2d<complex_t>(2*ny,nx+1);
   //
   // FFTW Plans
@@ -85,21 +86,21 @@ void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tf
   fftw_plan fplan=fftw_plan_dft_r2c_2d(2*ny,2*nx,im[0],(fftw_complex*)(ft[0]),FFTW_ESTIMATE);
   fftw_plan bplan=fftw_plan_dft_c2r_2d(2*ny,2*nx,(fftw_complex*)(ft[0]),cim[0],FFTW_ESTIMATE);
   //
-  float64_t np = nx * ny;
-  float64_t np4 = 4.0 * np;
-  for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) {
+  double np = nx * ny;
+  double np4 = 4.0 * np;
+  for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) {
       im[y+ny2][x+nx2]=img[y][x]/(1.0+gain[y][x] * gain[y][x]);
     }
   
   //
   // Iterate solution
   //
-  float64_t cs = 1E11, ocs;
-  int32_t i = 0, iter_max = 50;
+  double cs = 1E11, ocs;
+  int i = 0, iter_max = 50;
   //
   do{
-    memcpy(cim[0],im[0],4*nx*ny*sizeof(float64_t));
-    for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) cim[y+ny2][x+nx2]*=gain[y][x];
+    memcpy(cim[0],im[0],4*nx*ny*sizeof(double));
+    for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) cim[y+ny2][x+nx2]*=gain[y][x];
     //
     // Forward transform
     //
@@ -107,9 +108,9 @@ void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tf
     //
     // convolve with OTF
     //
-    for(int32_t y=0;y<2*ny;++y) 
-      for(int32_t x=0;x<nx+1;++x){
-	float64_t tmp=ft[y][x].re;
+    for(int y=0;y<2*ny;++y) 
+      for(int x=0;x<nx+1;++x){
+	double tmp=ft[y][x].re;
 	ft[y][x].re=otf[y][x].re*tmp-otf[y][x].im*ft[y][x].im;
         ft[y][x].im=otf[y][x].im*tmp+otf[y][x].re*ft[y][x].im;
       }
@@ -120,20 +121,20 @@ void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tf
     //
     // Normalize result (FFTW does not include the 1/N factor)
     //
-    for(int32_t y=0;y<2*ny;++y) for(int32_t x=0;x<2*nx;++x) cim[y][x]/=np4;
+    for(int y=0;y<2*ny;++y) for(int x=0;x<2*nx;++x) cim[y][x]/=np4;
     //
-    for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) cim[y+ny2][x+nx2]*=gain[y][x];
+    for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) cim[y+ny2][x+nx2]*=gain[y][x];
     //
     // Compute Chisq
     //
     cs=0.0;
-    for(int32_t y=0;y<ny;++y) 
-      for(int32_t x=0;x<nx;++x){
-	float64_t bla=img[y][x]-cim[y+ny2][x+nx2];
+    for(int y=0;y<ny;++y) 
+      for(int x=0;x<nx;++x){
+	double bla=img[y][x]-cim[y+ny2][x+nx2];
         cs+=sqr(im[y+ny2][x+nx2]-bla);
         im[y+ny2][x+nx2]=bla;
       }
-    cs/= (float64_t)(np);
+    cs/= (double)(np);
     if(verbose) fprintf(stderr, "%s iter = %d, ChiSq = %e \n", inam, i,cs);
   }while((cs>1E-10)&&(++i<iter_max));
   //
@@ -145,17 +146,17 @@ void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tf
   //
   //  Write result to res array
   //
-  for(int32_t y=0;y<ny;++y) for(int32_t x=0;x<nx;++x) res[(y*nx+x)] = im[y+ny2][x+nx2];
+  for(int y=0;y<ny;++y) for(int x=0;x<nx;++x) res[(y*nx+x)] = im[y+ny2][x+nx2];
   //
   // Clean-up
   //
-  //del_mat2d<float32_t>(img);
-  //del_mat2d<float32_t>(fgain);
-  //del_mat2d<float32_t>(fpsf);
-  del_mat2d<float64_t>(im);
-  del_mat2d<float64_t>(cim);
-  del_mat2d<float64_t>(psf);
-  del_mat2d<float64_t>(gain);
+  //del_mat2d<float>(img);
+  //del_mat2d<float>(fgain);
+  //del_mat2d<float>(fpsf);
+  del_mat2d<double>(im);
+  del_mat2d<double>(cim);
+  del_mat2d<double>(psf);
+  del_mat2d<double>(gain);
   del_mat2d<complex_t>(otf);
   del_mat2d<complex_t>(ft);
   //
@@ -164,18 +165,18 @@ void descatter(int nx, int ny, float32_t *timg, float32_t *tfgain, float32_t *tf
   delete [] fgain;
   //
 }
-void convolve(int32_t inx, int32_t iny, int32_t pnx, int32_t pny, float32_t *img, float32_t *fpsf, float32_t *res1, int32_t nthreads, int32_t verbose){
+void convolve(int inx, int iny, int pnx, int pny, float *img, float *fpsf, float *res1, int nthreads, int verbose){
   char inam[] = "convolve :";
   //
   // reshape 2D arrays
   //
-  //float32_t **img = var2dim<float32_t>(timg,iny,inx);
-  //float32_t **fpsf = var2dim<float32_t>(tfpsf,pny,pnx);
+  //float **img = var2dim<float>(timg,iny,inx);
+  //float **fpsf = var2dim<float>(tfpsf,pny,pnx);
   //
   // Allocate arrays with extra-space for padding
   //
-  int32_t npadx = inx + pnx;
-  int32_t npady = iny + pny;
+  int npadx = inx + pnx;
+  int npady = iny + pny;
   //
   if(verbose){
     fprintf(stderr, "%s Image -> nx=%d, ny=%d\n",inam,inx, iny);
@@ -183,36 +184,36 @@ void convolve(int32_t inx, int32_t iny, int32_t pnx, int32_t pny, float32_t *img
     fprintf(stderr, "%s FFT -> npad_x=%d, npad_y=%d, nthreads=%d\n",inam, npadx, npady, nthreads);
   }
   //
-  float64_t **pimg = mat2d<float64_t>(npady, npadx);
-  float64_t **ppsf= mat2d<float64_t>(npady, npadx);
-  memset(ppsf[0], 0, npadx * npady * sizeof(float64_t));
+  double **pimg = mat2d<double>(npady, npadx);
+  double **ppsf= mat2d<double>(npady, npadx);
+  memset(ppsf[0], 0, npadx * npady * sizeof(double));
   //
   // Pad with the mean of the image
   //
-  float64_t suma = 0.0;
-  for(int32_t y=0;y<iny;++y) for(int32_t x=0;x<inx;++x) suma += img[ind(x,y,inx)];
-  suma/= (float64_t)(inx*iny);
-  for(int32_t y=0;y<npady;++y) for(int32_t x=0;x<npadx;++x) pimg[y][x] = suma;
+  double suma = 0.0;
+  for(int y=0;y<iny;++y) for(int x=0;x<inx;++x) suma += img[ind(x,y,inx)];
+  suma/= (double)(inx*iny);
+  for(int y=0;y<npady;++y) for(int x=0;x<npadx;++x) pimg[y][x] = suma;
   //
   // Copy image onto padded array
   //
-  for(int32_t y=0;y<iny;++y) for(int32_t x=0;x<inx;++x) pimg[y][x] = img[ind(x,y,inx)];
+  for(int y=0;y<iny;++y) for(int x=0;x<inx;++x) pimg[y][x] = img[ind(x,y,inx)];
   //
   // Copy PSF to new array
   //
-  int32_t pny2 = pny/2;
-  int32_t pnx2 = pnx/2;
+  int pny2 = pny/2;
+  int pnx2 = pnx/2;
   //
   suma = 0;
-  for(int32_t y=0;y<pny;++y) for(int32_t x=0;x<pnx;++x) suma += fpsf[ind(x,y,pnx)];
+  for(int y=0;y<pny;++y) for(int x=0;x<pnx;++x) suma += fpsf[ind(x,y,pnx)];
 
-  for(int32_t y=0;y<pny2;++y) for(int32_t x=0;x<pnx2;++x) ppsf[y][x] = fpsf[ind(x+pnx2,y+pny2,pnx)]/suma; // first
+  for(int y=0;y<pny2;++y) for(int x=0;x<pnx2;++x) ppsf[y][x] = fpsf[ind(x+pnx2,y+pny2,pnx)]/suma; // first
   //
-  int32_t x0 = npadx - pnx2;
-  int32_t y0 = npady - pny2;
-  for(int32_t y=0;y<pny2;++y) for(int32_t x=0;x<pnx2;++x) ppsf[y+y0][x+x0] = fpsf[ind(x,y,pnx)]/suma;  // Fourth
-  for(int32_t y=0;y<pny2;++y) for(int32_t x=0;x<pnx2;++x) ppsf[y][x+x0] = fpsf[ind(x,y+pny2, pnx)]/suma; // third
-  for(int32_t y=0;y<pny2;++y) for(int32_t x=0;x<pnx2;++x) ppsf[y+y0][x] = fpsf[ind(x+pnx2,y,pnx)]/suma; // second
+  int x0 = npadx - pnx2;
+  int y0 = npady - pny2;
+  for(int y=0;y<pny2;++y) for(int x=0;x<pnx2;++x) ppsf[y+y0][x+x0] = fpsf[ind(x,y,pnx)]/suma;  // Fourth
+  for(int y=0;y<pny2;++y) for(int x=0;x<pnx2;++x) ppsf[y][x+x0] = fpsf[ind(x,y+pny2, pnx)]/suma; // third
+  for(int y=0;y<pny2;++y) for(int x=0;x<pnx2;++x) ppsf[y+y0][x] = fpsf[ind(x+pnx2,y,pnx)]/suma; // second
   //
   // FFTW plans, otf and other vars
   //
@@ -236,8 +237,8 @@ void convolve(int32_t inx, int32_t iny, int32_t pnx, int32_t pny, float32_t *img
   //
   // Convolve in Fourier space
   //
-  for(int32_t y=0;y<npady;++y) for(int32_t x=0;x<npadx/2+1;++x){
-      float64_t tmp=ft[y][x].re;
+  for(int y=0;y<npady;++y) for(int x=0;x<npadx/2+1;++x){
+      double tmp=ft[y][x].re;
       ft[y][x].re=otf[y][x].re*tmp-otf[y][x].im*ft[y][x].im;
       ft[y][x].im=otf[y][x].im*tmp+otf[y][x].re*ft[y][x].im;
     }
@@ -251,13 +252,13 @@ void convolve(int32_t inx, int32_t iny, int32_t pnx, int32_t pny, float32_t *img
   //
   // Copy to output array
   //
-  float64_t np4 = npadx * npady;
-  for(int32_t y=0;y<iny;++y) for(int32_t x=0;x<inx;++x) res1[ind(x,y,inx)] = pimg[y][x] / np4;
+  double np4 = npadx * npady;
+  for(int y=0;y<iny;++y) for(int x=0;x<inx;++x) res1[ind(x,y,inx)] = pimg[y][x] / np4;
   //
   // Clean-up
   //
-  del_mat2d<float64_t>(pimg);
-  del_mat2d<float64_t>(ppsf);
+  del_mat2d<double>(pimg);
+  del_mat2d<double>(ppsf);
   del_mat2d<complex_t>(otf);
   del_mat2d<complex_t>(ft);
   //
@@ -266,14 +267,14 @@ void convolve(int32_t inx, int32_t iny, int32_t pnx, int32_t pny, float32_t *img
 }
 
 
-float64_t get_polcomp(int32_t &nwav, int32_t &npar, float32_t wav, float64_t *&pars){
+double get_polcomp(int &nwav, int &npar, float wav, double *&pars){
   //
-  float64_t res = 1.0;
-  float64_t twav = 1.0;
+  double res = 1.0;
+  double twav = 1.0;
   //
   if(npar <= 2) return res;
   //
-  int32_t ii = 2;
+  int ii = 2;
   while(ii<npar){
     twav *= wav;
     res += pars[ii] * twav;
@@ -282,20 +283,20 @@ float64_t get_polcomp(int32_t &nwav, int32_t &npar, float32_t wav, float64_t *&p
   //
   return res;
 }
-int32_t fitgain_model(int32_t nwav, int32_t npar, float64_t *pars, float64_t *dev, float64_t **derivs, void *tmp1){
+int fitgain_model(int nwav, int npar, double *pars, double *dev, double **derivs, void *tmp1){
   //
   fgd_t *tmp = (fgd_t*) tmp1;
   //
   // interpolate to shifted grid (cavity error)
   // 
-  float64_t *twav = new float64_t [nwav];
-  for(int32_t ii = 0;ii<nwav;++ii) twav[ii] = tmp->wav[ii] - pars[1];
+  double *twav = new double [nwav];
+  for(int ii = 0;ii<nwav;++ii) twav[ii] = tmp->wav[ii] - pars[1];
   //
-  float64_t *spec = intep<float64_t>(tmp->nmean, tmp->xl, tmp->yl, nwav, twav);
+  double *spec = intep<double>(tmp->nmean, tmp->xl, tmp->yl, nwav, twav);
   //
   // Compute difference between model and observations
   //
-  for(int32_t ii=0;ii<nwav;++ii) dev[ii] = (pars[0] * spec[ii] * get_polcomp(nwav, npar, tmp->wav[ii], pars)) - tmp->idat[ii]; 
+  for(int ii=0;ii<nwav;++ii) dev[ii] = (pars[0] * spec[ii] * get_polcomp(nwav, npar, tmp->wav[ii], pars)) - tmp->idat[ii]; 
   //
   // Clean-up
   //
@@ -304,33 +305,33 @@ int32_t fitgain_model(int32_t nwav, int32_t npar, float64_t *pars, float64_t *de
   //
   return 0;
 }
-void get_ratio(int32_t &nwav, int32_t &npar, int32_t &nmean, float32_t *wav, float32_t *dat, float64_t *pars, float32_t *xl, float32_t *yl, float32_t *ratio){
-  float64_t *twav = new float64_t [nwav];
-  for(int32_t ii = 0;ii<nwav;++ii) twav[ii] = wav[ii] - pars[1];
+void get_ratio(int &nwav, int &npar, int &nmean, float *wav, float *dat, double *pars, float *xl, float *yl, float *ratio){
+  double *twav = new double [nwav];
+  for(int ii = 0;ii<nwav;++ii) twav[ii] = wav[ii] - pars[1];
   //
-  float64_t *spec = intep<float64_t>(nmean, xl, yl, nwav, twav);
+  double *spec = intep<double>(nmean, xl, yl, nwav, twav);
   //
   // Compute difference between model and observations
   //
-  for(int32_t ii=0;ii<nwav;++ii) ratio[ii] = dat[ii] / (pars[0] * spec[ii] * get_polcomp(nwav, npar, wav[ii], pars));
+  for(int ii=0;ii<nwav;++ii) ratio[ii] = dat[ii] / (pars[0] * spec[ii] * get_polcomp(nwav, npar, wav[ii], pars));
   //
   delete [] twav;
   delete [] spec;
 }
 //
-void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t *xl, float32_t *yl, float32_t *wav, float32_t *dat1, float64_t *pars1, float32_t *ratio1, int32_t nt){
+void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, int nt){
   fprintf(stderr, "cfitgain : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
   // return;
   //
   // Reshape vars
   //
-  float32_t **dat = var2dim<float32_t>(dat1, npix, nwav);
-  float64_t **pars = var2dim<float64_t>(pars1, npix, npar);
-  float32_t **ratio = var2dim<float32_t>(ratio1, npix, nwav);
+  float **dat = var2dim<float>(dat1, npix, nwav);
+  double **pars = var2dim<double>(pars1, npix, npar);
+  float **ratio = var2dim<float>(ratio1, npix, nwav);
   //
   // Init MPFIT struct and loop
   //
-  int32_t status;
+  int status;
   mp_result result;
   memset(&result,0,sizeof(result));
   //
@@ -344,7 +345,7 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
   fitpars[1].limited[1] = 1;
   fitpars[1].limits[0] = -0.1;
   fitpars[1].limits[1] = 0.1;
-  for(int32_t ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
+  for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
   //
   fgd_t tmp;
   tmp.xl = xl;
@@ -352,13 +353,13 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
   tmp.wav = wav;
   tmp.nmean = nmean;
   //
-  float64_t ntot = 100. / (npix - 1.0);
+  double ntot = 100. / (npix - 1.0);
   //
   int tid = 0;
   bool master = false;
   //
-  int32_t nskip = 0;
-  int32_t oper = -1, per=0, ix=  0, ww=0;
+  int nskip = 0;
+  int oper = -1, per=0, ix=  0, ww=0;
   //
 #pragma omp parallel default(shared) firstprivate(ww,ix,tid,master,per,oper,status,result,tmp) num_threads(nt)  
   {
@@ -374,7 +375,7 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
       // Avoid masked pixels (pixel = 0.0)
       //
       tmp.idat = dat[ix];
-      float64_t sum = 0.0;
+      double sum = 0.0;
       for(ww=0;ww<nwav;++ww) sum += tmp.idat[ww];
       //
       if(sum >= 1.E-1){
@@ -390,7 +391,7 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
       //
       // Progress counter
       // 
-      per = (int32_t)(ntot * ix);
+      per = (int)(ntot * ix);
       if(oper != per && master){
 	oper = per;
 	fprintf(stderr, "\rcfitgain : fitting data -> %d%s", per, "%");
@@ -398,7 +399,7 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
     }
   }
   fprintf(stderr, " \n");
-  fprintf(stderr, "cfitgain : %d (%g %s) skipped pixels\n", nskip, (float32_t)(nskip)/npix * 100.0, "%");
+  fprintf(stderr, "cfitgain : %d (%g %s) skipped pixels\n", nskip, (float)(nskip)/npix * 100.0, "%");
 
     //
     // Clean-up
@@ -410,19 +411,99 @@ void fitgain(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t 
 
 }
 
-void fitgain2(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t *xl, float32_t *yl, float32_t *wav, float32_t *dat1, float64_t *pars1, float32_t *ratio1, int32_t nt){
+double get_polcomp2(int &nwav, int &npar, float wav, double *&pars){
+  //
+  double res = 1.0;
+  double twav = 1.0;
+  //
+  if(npar <= 3) return res;
+  //
+  int ii = 3;
+  while(ii<npar){
+    twav *= wav;
+    res += pars[ii] * twav;
+    ii += 1;
+  }
+  //
+  return res;
+}
+int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **derivs, void *tmp1){
+
+  fpi_t *fpi = (fpi_t*) tmp1;
+  
+
+  //
+  // If reflectivity changes, recompute CRISP profile and 
+  // re-apply ratio. Also init Bezier control points
+  //
+  bool ref = false;
+  if(pars[2] != fpi->orh){
+    dual_fpi(fpi,pars[2]);
+    for(int ii=0;ii<fpi->npad/2+1;ii++) fpi->otf[ii] *= fpi->ft[ii];
+    fftw_execute(fpi->bplan);
+    bezier3_control(fpi->npad, fpi->xlp, fpi->ylp, fpi->c1, fpi->c2);
+    ref = true;
+  }
+
+  //
+  // Shift line profile (interpolating)
+  //
+  if((fpi->ech != pars[1]) || ref){
+    double *wav1 = new double [fpi->nwav];
+    for(int ww=0;ww<fpi->nwav;ww++) wav1[ww] = fpi->wav[ww] - pars[1];
+    bezier3(fpi->npad, fpi->xlp, fpi->ylp, fpi->nwav, wav1, fpi->imean, fpi->c1, fpi->c2);
+    delete [] wav1;
+    fpi->ech = pars[1];
+  }
+
+  
+  //
+  // Linear component and scale factor
+  //
+  bool flag = false;
+  for(int ww=0;ww<fpi->nwav;ww++){
+    double mtmp = get_polcomp2(nwav,npar,fpi->wav[ww],pars) * fpi->imean[ww];
+    dev[ww] = (pars[0] * mtmp) - fpi->idat[ww];
+    if(derivs && ww == 0) if(derivs[0]) flag=true;
+    if(flag) derivs[0][ww] = mtmp;
+  }
+
+  return 0;
+}
+
+
+
+void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, int nt, int line){
+
+
   fprintf(stderr, "cfitgain2 : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
-  // return;
+ 
+
   //
-  // Reshape vars
+  // fpi init
   //
-  float32_t **dat = var2dim<float32_t>(dat1, npix, nwav);
-  float64_t **pars = var2dim<float64_t>(pars1, npix, npar);
-  float32_t **ratio = var2dim<float32_t>(ratio1, npix, nwav);
+  fpi_t fpi;
+  init_fpi(fpi, line);
+  init_fftw(fpi,nmean,xl,yl);
+  dual_fpi(&fpi,fpi.rhr);
+
+  //
+  fpi.imean = new double [nwav];
+  fpi.orh = fpi.rhr - 0.001; // Just set it to any value so it is recalculated in the loop;
+  fpi.ech = -1.0;
+  
+  //
+  // Deconvolve spectrum (in reality we multiply it with the ratio of the two 
+  // CRISP profiles Tcrisp/Tcrisp_0).
+  //
+  for(int ii=0;ii<fpi.npad/2+1;ii++) {
+    fpi.ft[ii] /= fpi.otf[ii];
+  }
+
   //
   // Init MPFIT struct and loop
   //
-  int32_t status;
+  int status;
   mp_result result;
   memset(&result,0,sizeof(result));
   //
@@ -434,93 +515,88 @@ void fitgain2(int32_t nwav, int32_t nmean, int32_t npar, int32_t npix, float32_t
   fitpars[0].limits[1] = 4096;
   fitpars[1].limited[0] = 1;
   fitpars[1].limited[1] = 1;
-  fitpars[1].limits[0] = -0.1;
-  fitpars[1].limits[1] = 0.1;
-  for(int32_t ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
+  fitpars[1].limits[0] = -0.3;
+  fitpars[1].limits[1] = 0.3;
+  if(npar > 2){
+    fitpars[2].limits[0] = fpi.rhr-0.1;
+    fitpars[2].limits[1] = 0.98;
+    fitpars[2].limited[0] = 1;
+    fitpars[2].limited[1] = 1;
+  }
+  //for(int ii=1;ii<=npar-1;++ii) fitpars[ii].side = 0;
+  //fitpars[0].side = 3;
   //
-  fgd_t tmp;
-  tmp.xl = xl;
-  tmp.yl = yl;
-  tmp.wav = wav;
-  tmp.nmean = nmean;
+  fpi.wav = wav;
+  fpi.xl = xl;
+  fpi.yl = yl;
+  fpi.nmean = nmean;
+  fpi.nwav = nwav;
   //
-  float64_t ntot = 100. / (npix - 1.0);
+  double ntot = 100. / (npix - 1.0);
   //
   int tid = 0;
-  bool master = false;
+  bool master = true;
   //
-  int32_t nskip = 0;
-  int32_t oper = -1, per=0, ix=  0, ww=0;
+  int nskip = 0;
+  int oper = -1, per=0, ix=  0, ww=0;
   //
-/*
-#pragma omp parallel default(shared) firstprivate(ww,ix,tid,master,per,oper,status,result,tmp) num_threads(nt)  
-  {
-    tid = omp_get_thread_num();
-    if(tid == 0) {
-      master = true;
-      int ntp = omp_get_num_threads();
-      fprintf(stderr,"cfitgain : nthreads -> %d\n", ntp);
-    }
-#pragma omp for schedule(dynamic, 1)
-*/
     for(ix = 0;ix<npix;++ix){
       //
       // Avoid masked pixels (pixel = 0.0)
       //
-      tmp.idat = dat[ix];
-      float64_t sum = 0.0;
-      for(ww=0;ww<nwav;++ww) sum += tmp.idat[ww];
+      fpi.idat = &dat1[ix*nwav];
+      double sum = 0.0;
+      for(ww=0;ww<nwav;++ww) sum += fpi.idat[ww];
       //
       if(sum >= 1.E-1){
 	//
 	// Fit pixel
 	//
-	status = mpfit(fitgain_model, nwav, npar, pars[ix], fitpars, 0, (void*) &tmp, &result);
+	if(pars1[ix*npar+2] <0.5) pars1[ix*npar+2] = fpi.rhr;
+	if(pars1[ix*npar+1] == 0.0) pars1[ix*npar+1] = 0.001;
+
+	status = mpfit(fitgain_model2, nwav, npar, &pars1[ix*npar], fitpars, 0, (void*) &fpi, &result);
+
 	//
 	// Get ratio dat / model
 	//
-	get_ratio(nwav, npar, nmean, wav, dat[ix], pars[ix], xl, yl, ratio[ix]);
+	get_ratio(nwav, npar, nmean, wav, &dat1[ix*nwav], &pars1[npar*ix], xl, yl, &ratio1[ix*nwav]);
       } else{nskip += 1;}
       //
       // Progress counter
       // 
-      per = (int32_t)(ntot * ix);
+      per = (int)(ntot * ix);
       if(oper != per && master){
 	oper = per;
 	fprintf(stderr, "\rcfitgain : fitting data -> %d%s", per, "%");
       }
     }
-    // }
   fprintf(stderr, " \n");
-  fprintf(stderr, "cfitgain2 : %d (%g %s) skipped pixels\n", nskip, (float32_t)(nskip)/npix * 100.0, "%");
+  fprintf(stderr, "cfitgain2 : %d (%g %s) skipped pixels\n", nskip, (float)(nskip)/npix * 100.0, "%");
 
     //
     // Clean-up
     //
-    delete [] dat;
-    delete [] pars;
-    delete [] ratio;
-    //
-
+    clean_fpi(fpi);
 }
 
-void sim_polcal(float64_t *p, pol_t *pol){
+void sim_polcal(double *p, pol_t *pol){
   //
   char inam[] = "sim_polcal :";
   //
   //pol_t *pol = (pol_t *) polv;
   //
-  float64_t cd = cos(p[16] * dtor);
-  float64_t sd = sin(p[16] * dtor);
+  double cd = cos(p[16] * dtor);
+  double sd = sin(p[16] * dtor);
   //
   // Invert matrix
   //
-  float64_t *mi = invert4x4<float64_t>(p);
+  double *mi = invert4x4<double>(p);
 
   //
   // Normalize inverse matrix
   //
-  float64_t scl = 0.0;
+  double scl = 0.0;
   for(uint8_t jj = 0; jj<pol->nlc;jj++) scl += mi[jj];
 
   scl = 1.0 / scl;
@@ -528,9 +604,9 @@ void sim_polcal(float64_t *p, pol_t *pol){
   //
   // compute observed curves
   //
-  float64_t Q, U, a, ca, sa, A, B, C, tmp, C0, C1, C2, C3, ca2, sa2;
+  double Q, U, a, ca, sa, A, B, C, tmp, C0, C1, C2, C3, ca2, sa2;
   //
-  int32_t Nsum = 0, ele = 0;
+  int Nsum = 0, ele = 0;
   //
 
 
@@ -573,7 +649,7 @@ void sim_polcal(float64_t *p, pol_t *pol){
   delete [] mi;
 }
 //
-int32_t compute_chisq_lm(int32_t ndata, int32_t npar, float64_t *p, float64_t *dev, float64_t **derivs, void *polv){
+int compute_chisq_lm(int ndata, int npar, double *p, double *dev, double **derivs, void *polv){
   //
   pol_t *pol = (pol_t *) polv;
   //
@@ -585,31 +661,31 @@ int32_t compute_chisq_lm(int32_t ndata, int32_t npar, float64_t *p, float64_t *d
   //
   pol->Chisq = 0.0;
   //
-  for(int32_t ii=0;ii<ndata;ii++) {
+  for(int ii=0;ii<ndata;ii++) {
     dev[ii] = pol->cur[ii] -  pol->dat[ii];
     pol->Chisq += dev[ii] * dev[ii];
   }
   //
-  pol->Chisq /= (float64_t)(pol->ndata);
+  pol->Chisq /= (double)(pol->ndata);
   //
   return 0;
 }
 
-void polcal_2d(pol_t pol, int32_t nthreads, float32_t *dat2d, float64_t *res,float32_t *cs, float32_t *qwp, float32_t *lp){
+void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, float *qwp, float *lp){
   //
-  //float32_t **bla = var2dim<float32_t>(dat2d, pol.npix, pol.ndata);
+  //float **bla = var2dim<float>(dat2d, pol.npix, pol.ndata);
   //
   char inam[] = "polcal_2d :";
   fprintf(stderr, "%s ndata=%d, npix=%d, nlc=%d, nqwp=%d, nlp=%d, nele=%d\n",inam,pol.ndata, pol.npix, pol.nlc, pol.nqwp, pol.nlp,pol.npix*pol.ndata);
   //
-  int32_t i, tid;
-  int32_t npix = pol.npix, ndata = pol.ndata;
+  int i, tid;
+  int npix = pol.npix, ndata = pol.ndata;
   //
   // Prepare L-M settings
   //
-  int32_t status, chunk = 10;
-  int32_t per=0, oper=-1;
-  float32_t ntot = 100.0 / (pol.npix - 1.0);
+  int status, chunk = 10;
+  int per=0, oper=-1;
+  float ntot = 100.0 / (pol.npix - 1.0);
   //
   //shared(pol, bla,nthreads,chunk, ndone, pars, npar, ndata, npix)
 #pragma omp parallel shared(cs, res, dat2d, qwp, lp, npix, ndata, inam, ntot, nthreads, per, oper, chunk) private(i, tid, status) firstprivate(pol) num_threads(nthreads)
@@ -644,7 +720,7 @@ void polcal_2d(pol_t pol, int32_t nthreads, float32_t *dat2d, float64_t *res,flo
     if (tid == 0){
 	fprintf(stderr,"%s %d threads\n", inam, nthreads);
       }
-    pol.cur = new float64_t [ndata];;
+    pol.cur = new double [ndata];;
     pol.qwp = qwp;
     pol.lp = lp;
     //
@@ -660,7 +736,7 @@ void polcal_2d(pol_t pol, int32_t nthreads, float32_t *dat2d, float64_t *res,flo
 	cs[i] = pol.Chisq;     
 	//
 	if(pol.tid==0){
-	  per = (int32_t)(ntot*i);
+	  per = (int)(ntot*i);
 	  if(per != oper){
 	    oper = per;
 	    fprintf(stderr, "\r%s fitting data -> %d%s",inam, per, "%");
