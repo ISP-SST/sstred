@@ -1,12 +1,14 @@
+#ifndef __TYPES_H__  // __TYPES_H__
+#define __TYPES_H__
 typedef float float32_t;
 typedef double float64_t;
 typedef float fp_t;
 
-struct complex{
-  float64_t re;
-  float64_t im;
+struct mcomplex{
+  double re;
+  double im;
 };
-typedef struct complex complex_t;
+typedef struct mcomplex complex_t;
 
 struct fgd{
   float32_t *xl;
@@ -28,3 +30,4 @@ struct pol{
 };
 typedef struct fgd fgd_t;
 typedef struct pol pol_t;
+#endif               // __TYPES_H__
