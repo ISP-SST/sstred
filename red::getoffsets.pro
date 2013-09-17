@@ -41,30 +41,40 @@
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ; 
+;   2013-09-09 : MGL. Added support for logging. Let the subprogram
+;                find out its own name. Get camtags from self.pinh_dir
+;                rather than self.data_dir, in case (the first) data
+;                directory does not have data from all cameras.
+;
+; 
 ;-
 pro red::getoffsets, thres = thres, state = state, pref=pref
   if(~keyword_set(thres)) then tr = 0.1 else tr = thres
-                                
-  ;; Seach summed pinh images and camtag
-   
-  inam = 'red::getoffsets : '
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  
+  ;; Logging
+  help, /obj, self, output = selfinfo 
+  red_writelog, selfinfo = selfinfo
 
   ;; clips exist?
    
   if(~self.dopinh) then begin
-     print, inam+' ERROR, undefined pinh_dir'
+     print, inam+' : ERROR, undefined pinh_dir'
      return
   endif
   if(n_elements(pref) eq 0) then pref = '*'
 
-  self -> getcamtags, dir = self.data_dir
+;  self -> getcamtags, dir = self.data_dir
+  self -> getcamtags, dir = self.pinh_dir
   camt = self.camttag
   camr = self.camrtag
   camw = self.camwbtag
 
-  ft = file_search(self.out_dir+'/pinh/' + camt + '.' + pref + '.*pinh', count = ct)
-  fr = file_search(self.out_dir+'/pinh/' + camr + '.' + pref + '.*pinh', count = cr)
-  fw = file_search(self.out_dir+'/pinh/' + camw + '.' + pref + '.*pinh', count = cw)
+  ft = file_search(self.out_dir+'/pinh/' + camt + '.' + pref + '.*.pinh', count = ct)
+  fr = file_search(self.out_dir+'/pinh/' + camr + '.' + pref + '.*.pinh', count = cr)
+  fw = file_search(self.out_dir+'/pinh/' + camw + '.' + pref + '.*.pinh', count = cw)
 
   ;; Get image states
   tstat = red_getstates_pinh(ft, lam = lams)
@@ -77,15 +87,15 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
   for ii = 0L, n_elements(ft) -1 do BEGIN
      if(keyword_set(state)) then begin
         if(tstat[ii] ne state) then begin
-           print, inam + 'Skipping state -> '+tstat[ii]
+           print, inam + ' : Skipping state -> '+tstat[ii]
            continue
         endif
      endif
      pref = (strsplit(tstat[ii], '.',/extract))[0]
      
      IF(~file_test(self.out_dir+'/calib/align_clips.'+pref+'.sav')) THEN BEGIN
-        print, inam + 'ERROR -> align clips file not found'
-        print, inam + '      -> you must execute red::getalignclips first!'
+        print, inam + ' : ERROR -> align clips file not found'
+        print, inam + ' :       -> you must execute red::getalignclips first!'
         continue
      ENDIF ELSE restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
 
@@ -98,15 +108,15 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
      if n_elements(allowed) gt 1 then allowed = allowed[1:*]
       
      ;;toread = 0
-     ;;read, toread, prompt = inam+'choose state to align: '
+     ;;read, toread, prompt = inam+' : choose state to align: '
       
      pos = where(allowed eq toread, count)
      if count eq 0 then begin
-        print, inam + 'Error -> incorrect state number: ',toread
+        print, inam + ' : Error -> incorrect state number: ',toread
         return
      endif
       
-     ;;print, inam+'selected state '+tstat[toread]
+     ;;print, inam+' : selected state '+tstat[toread]
      pstate = tstat[toread]
                                 
      ;; load states 
@@ -121,7 +131,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
      pos1 = where(rstat eq tstat[toread])
      pics[*,*,1]= f0(fr[pos1])
                                 
-     print, inam+'images to be calibrated:'
+     print, inam+' : images to be calibrated:'
      print, ' -> '+ft[toread]
      print, ' -> '+fr[pos1]
      print, ' -> '+fw[pos2]
@@ -269,11 +279,11 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
         ;; File links for momfbd -> files  need a number!
         nout =  self.out_dir+'/calib/'+file_basename(wfil, 'pinh') + red_stri(im, ni='(I07)')
         if(file_test(nout)) then spawn, 'rm '+nout
-        print, inam+'creating '+file_basename(nout)
+        print, inam+' : creating '+file_basename(nout)
         file_link, wfil, nout
         nout =  self.out_dir+'/calib/'+file_basename(fil, 'pinh') + red_stri(im, ni='(I07)')
         if(file_test(nout)) then spawn, 'rm '+nout
-        print, inam+'creating '+file_basename(nout)
+        print, inam+' : creating '+file_basename(nout)
         file_link, fil, nout
      endfor
 
