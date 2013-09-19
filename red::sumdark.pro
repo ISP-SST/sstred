@@ -102,7 +102,7 @@ pro red::sumdark, overwrite = overwrite, check = check
      
      ;;If everything is ok, sum the darks.
      head = fzhead(files[0])
-     dark = long(red_sumfiles(files, check = check, summed = tmp))
+     dark = red_sumfiles(files, check = check, summed = darksum)
 
 
      ;; Normalize dark
@@ -119,7 +119,7 @@ pro red::sumdark, overwrite = overwrite, check = check
      fzwrite, dark, namout, 'mean dark'
 
      print, inam+' : saving ', namout_sum
-     fzwrite, tmp, namout_sum, outheader
+     fzwrite, long(darksum), namout_sum, outheader
 
   endfor                        ; (ic loop)
 
