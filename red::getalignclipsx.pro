@@ -126,6 +126,18 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
   pics[*,*,icamnonrefs[0]]= f0(fw[pos0])
   pics[*,*,icamnonrefs[1]]= f0(fr[pos1])
 
+  ;; Read gain tables
+  gains = fltarr(dim[0], dim[1], Ncams)
+  gname = strreplace(strreplace(ft[toread], '/pinh/', '/gaintables/'), '.pinh', '.gain')
+  gains[*,*,icamref]  = f0(gname)
+  ;; The WB gain file name has no tuning info
+  gname = strreplace(strreplace(fw[pos0], '/pinh/', '/gaintables/'), '.pinh', '.gain')
+  gname = strsplit(gname, '.', count = nn, /extr)
+  gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
+  gains[*,*,icamnonrefs[0]] = f0(gname)
+  gname = strreplace(strreplace(fr[pos1], '/pinh/', '/gaintables/'), '.pinh', '.gain')
+  gains[*,*,icamnonrefs[1]] = f0(gname)
+
   print, inam+' : images to be calibrated:'
   print, ' -> '+fw[pos0]
   print, ' -> '+ft[toread] + ' (reference)'
@@ -320,11 +332,26 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
 
   print, 'Please check that the displayed images are aligned and oriented properly.'
 
+  szx_disp = dim[0]/2
+  szy_disp = dim[1]/2
+
+  title = '        '
+  for icam = 0, Ncams-1 do title = title+labs[icam]+' : '+cams[icam]+'        '
+  
+  window, xs = szx_disp*Ncams+Ncams-1, ys = szy_disp, title = title, 0
+  erase, 255
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(pics[*,*,icam], cl[*,icam])
-;     dispim = congrid(dispim, dim[0]/2, dim[1]/2, cubic = -0.5)
-;     mx = max(dispim)
-     red_show, dispim <20 >0, wnum = icam, title = labs[icam]+' : '+cams[icam]
+     dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+     tvscl, dispim, icam*(szx_disp+1), 0
+  endfor
+
+  window, xs = szx_disp*Ncams+Ncams-1, ys = szy_disp, 1
+  erase, 255
+  for icam = 0, Ncams-1 do begin
+     dispim = red_clipim(gains[*,*,icam], cl[*,icam])
+     dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+     tvscl, dispim, icam*(szx_disp+1), 0
   endfor
 
   return
