@@ -354,5 +354,18 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
      tvscl, dispim, icam*(szx_disp+1), 0
   endfor
 
+  ;; Print out some info about blocked rows/columns.
+  gg = red_clipim(gains[*,*,icamref], cl[*,icamref]) ne 0 
+  blockedrows = where(total(gg,1) lt .5, Nblock)
+  if Nblock ne 0 then begin
+     print, 'The following rows are significantly blocked: '
+     print, blockedrows
+  endif
+  blockedcolumns = where(total(gg,2) lt .5, Nblock)
+  if Nblock ne 0 then begin
+     print, 'The following columns are significantly blocked: '
+     print, blockedcolumns
+  endif
+
   return
 end
