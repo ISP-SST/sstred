@@ -37,8 +37,10 @@
 ; 
 ;   2013-08-23 : MGL. Added support for logging.
 ; 
-;   2013-08-27 : MGL. Let the subprogram find out its own name.
+;   2013-08-27 : MGL. Let the subprogram find out its own name. Added
+;                self.done to the selfinfo.
 ; 
+;   2013-09-19 : MGL. Make the sum long integer.
 ; 
 ;-
 pro red::sumdark, overwrite = overwrite, check = check
@@ -51,8 +53,9 @@ pro red::sumdark, overwrite = overwrite, check = check
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+  help, /obj, self, output = selfinfo1
+  help, /struct, self.done, output = selfinfo2 
+  red_writelog, selfinfo = [selfinfo1, selfinfo2]
 
   if(self.dodark eq 0B) then begin
      print, inam+' : ERROR : undefined dark_dir'
@@ -99,7 +102,7 @@ pro red::sumdark, overwrite = overwrite, check = check
      
      ;;If everything is ok, sum the darks.
      head = fzhead(files[0])
-     dark = red_sumfiles(files, check = check, summed = tmp)
+     dark = red_sumfiles(files, check = check, summed = darksum)
 
 
      ;; Normalize dark
@@ -116,7 +119,7 @@ pro red::sumdark, overwrite = overwrite, check = check
      fzwrite, dark, namout, 'mean dark'
 
      print, inam+' : saving ', namout_sum
-     fzwrite, tmp, namout_sum, outheader
+     fzwrite, long(darksum), namout_sum, outheader
 
   endfor                        ; (ic loop)
 

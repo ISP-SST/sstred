@@ -245,9 +245,11 @@ pro red::sumpinh, nthreads = nthreads $
            print, inam+' : saving ' + outdir + namout
            fzwrite, fix(round(10. * c)), outdir+namout, head
 
-           namout = cam+'.' +ustat[ii]+'.fpinh'
-           print, inam+' : saving ' + outdir + namout
-           fzwrite, c, outdir+namout, head
+           if keyword_set(pinhole_align) then begin
+              namout = cam+'.' +ustat[ii]+'.fpinh'
+              print, inam+' : saving ' + outdir + namout
+              fzwrite, c, outdir+namout, head
+           endif
 
         endelse                 ; count
      endfor                     ; ii

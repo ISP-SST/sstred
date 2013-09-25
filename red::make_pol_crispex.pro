@@ -70,6 +70,8 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ;
+;   2013-09-12 : MGL. Use red_flipthecube rather than flipthecube.
+;
 ;-
 pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite
  
@@ -327,8 +329,8 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      print, inam + ' : done'
      print, inam + ' : result saved to -> '+odir+'/'+ofile 
      if(keyword_set(float)) then begin
-        flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav
-     endif else flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav,/icube
+        red_flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav
+     endif else red_flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav,/icube
   endif
   
   return

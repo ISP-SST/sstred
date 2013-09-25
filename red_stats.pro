@@ -36,6 +36,7 @@
 ;      2013-09-11 : MGL. Renamed red_stats for inclusion in crispred
 ;                   pipeline. 
 ;
+;      2013-09-12 : MGL. Substituted "print" for ANA-ism "type".
 ;
 ;-
 pro red_stats, x, name=name			   ; Show statistics about x
@@ -85,14 +86,14 @@ print,datastring
     NameLength = strlen(NameString)
     NameString = NameString + Blanks(DataLength-NameLength-1) + '|'
     NameLength = strlen(NameString)
-    Type, strmid(DivisorString,0,NameLength-1)
-    Type,NameString
-    Type, strmid(DivisorString,0,NameLength-1)
-  END ELSE Type, strmid(DivisorString,0,DataLength-1)
+    print, strmid(DivisorString,0,NameLength-1)
+    print,NameString
+    print, strmid(DivisorString,0,NameLength-1)
+  END ELSE print, strmid(DivisorString,0,DataLength-1)
   
-  Type, TitleString
-  Type, DataString
-  Type, strmid(DivisorString,0,DataLength-1)
+  print, TitleString
+  print, DataString
+  print, strmid(DivisorString,0,DataLength-1)
 
 
 END; Stats

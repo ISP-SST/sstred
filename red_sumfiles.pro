@@ -98,6 +98,9 @@
 ;                back scatter to inside of conditional for pinhole
 ;                alignment. 
 ; 
+;   2013-09-13 : MGL. Lower the limit for least number of frames
+;                needed to do checking from 10 to 3.
+; 
 ; 
 ; 
 ;-
@@ -137,7 +140,7 @@ function red_sumfiles, files_list $
   endif else time = red_time2double(dum[2])
 
   if keyword_set(check) then docheck = 1B else docheck = 0B
-  if docheck and Nfiles lt 10 then begin
+  if docheck and Nfiles lt 3 then begin
      print, inam+" : Not enough statistics, don't do checking."
      docheck = 0B
   endif
@@ -187,7 +190,7 @@ function red_sumfiles, files_list $
 
         cub[*,*,ii] = f0(files_list[ii])
         mval[ii] = mean(cub[*,*,ii])
-                                ;
+                                
         dum = fzhead(files_list[ii])
         dum = strsplit(dum, ' =', /extract)
         

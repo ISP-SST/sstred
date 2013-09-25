@@ -36,12 +36,19 @@
 ;        the screen so compensates for the menubar and so on.
 ;
 ;
+;     title : in, optional, type=string
+;
+;        If a window is created, it will have this title.
+;
+;
 ; :history:
 ;
 ;    2013-07-24 : Renamed red_show for inclusion in crispred pipeline.
 ;
+;    2013-09-20 : MGL. Added title keyword.
+;
 ;-
-pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale
+pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale, title = title
 
   ;Initializes some variables
   if not keyword_set(wnum) then wnum=0
@@ -60,7 +67,7 @@ pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale
   if dim[0] eq 3 then begin
      ;If both dimensions are smaller than window dimensions
      if sdim[0] ge dim[2] AND sdim[1] ge dim[3] then begin
-        if not keyword_set(nowin) then window,wnum,xsize=dim[2],ysize=dim[3]
+        if not keyword_set(nowin) then window,wnum,xsize=dim[2],ysize=dim[3], title = title
         tvscl,var,/true
      endif else begin
         asp=float(dim[2])/float(dim[3])
@@ -73,7 +80,7 @@ pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale
            xsiz=sdim[1]*asp
            ysiz=sdim[1]
         endelse
-        if not keyword_set(nowin) then window,wnum,xsize=xsiz,ysize=ysiz
+        if not keyword_set(nowin) then window,wnum,xsize=xsiz,ysize=ysiz, title = title
         tvscl,congrid(var,3,xsiz,ysiz),/true
      endelse
   endif
@@ -81,7 +88,7 @@ pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale
   ;2D Array
   if dim[0] eq 2 then begin
       if sdim[0] ge dim[1] AND sdim[1] ge dim[2] then begin
-         if not keyword_set(nowin) then window,wnum,xsize=dim[1],ysize=dim[2]
+         if not keyword_set(nowin) then window,wnum,xsize=dim[1],ysize=dim[2], title = title
          tvscl,var
       endif else begin
          asp=float(dim[1])/float(dim[2])
@@ -94,7 +101,7 @@ pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale
             ysiz=sdim[1]
          endelse
          print, xsiz, ysiz, asp, sasp
-         if not keyword_set(nowin) then window,wnum,xsize=xsiz,ysize=ysiz
+         if not keyword_set(nowin) then window,wnum,xsize=xsiz,ysize=ysiz, title = title
          var=congrid(var,xsiz,ysiz)        
          if keyword_set(opt) then var=histo_opt(var)
          if not keyword_set(noscale) then var=bytscl(var)
