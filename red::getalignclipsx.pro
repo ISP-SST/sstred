@@ -129,8 +129,6 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
   ;; Read gain tables
   gains = fltarr(dim[0], dim[1], Ncams)
 
-stop
-
   print, strjoin(strsplit(ft[toread], '/pinh/', /extr), '/gaintables/')
   gname = strjoin(strsplit(ft[toread], '\.pinh', /extr,/preserve,/rege), '.gain')
   gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
