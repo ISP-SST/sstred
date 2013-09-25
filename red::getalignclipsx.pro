@@ -339,24 +339,25 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
 
   szx_disp = dim[0]/2
   szy_disp = dim[1]/2
+  disp_spacing = 5
 
   title = '        '
   for icam = 0, Ncams-1 do title = title+labs[icam]+' : '+cams[icam]+'        '
   
-  window, xs = szx_disp*Ncams+Ncams+1, ys = szy_disp, title = title, 0
+  window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 0
   erase, 255
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(pics[*,*,icam], cl[*,icam])
      dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
-     tvscl, dispim, icam*(szx_disp+1)+1, 0
+     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
   endfor
 
-  window, xs = szx_disp*Ncams+Ncams+1, ys = szy_disp, 1
+  window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
   erase, 255
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(gains[*,*,icam], cl[*,icam])
      dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
-     tvscl, dispim, icam*(szx_disp+1)+1, 0
+     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
   endfor
 
   ;; Print out some info about blocked rows/columns.
