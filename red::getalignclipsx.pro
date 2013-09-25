@@ -128,15 +128,22 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
 
   ;; Read gain tables
   gains = fltarr(dim[0], dim[1], Ncams)
-  gname = strreplace(strreplace(ft[toread], '/pinh/', '/gaintables/'), '.pinh', '.gain')
+
+stop
+
+  print, strjoin(strsplit(ft[toread], '/pinh/', /extr), '/gaintables/')
+  gname = strjoin(strsplit(ft[toread], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
   gains[*,*,icamref]  = f0(gname)
+  gname = strjoin(strsplit(fr[pos1], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  gains[*,*,icamnonrefs[1]] = f0(gname)
   ;; The WB gain file name has no tuning info
-  gname = strreplace(strreplace(fw[pos0], '/pinh/', '/gaintables/'), '.pinh', '.gain')
+  gname = strjoin(strsplit(fw[pos0], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
   gname = strsplit(gname, '.', count = nn, /extr)
   gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
   gains[*,*,icamnonrefs[0]] = f0(gname)
-  gname = strreplace(strreplace(fr[pos1], '/pinh/', '/gaintables/'), '.pinh', '.gain')
-  gains[*,*,icamnonrefs[1]] = f0(gname)
 
   print, inam+' : images to be calibrated:'
   print, ' -> '+fw[pos0]
