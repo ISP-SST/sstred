@@ -12,6 +12,7 @@
 @pol::unloadimages.pro
 @red::count2diskcenter.pro
 @red::fitgains_ng.pro
+@red::fitgains.pro
 @red::fitprefilter.pro
 @red::getcamtags.pro
 @red::getoffsets.pro
