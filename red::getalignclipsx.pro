@@ -64,21 +64,6 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  ;; if(self.dopinh) then begin
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camt+'/|grep cam',f
-  ;;    camt = red_camtag(f[0])
-  ;;    ;
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camwb+'/|grep cam',f
-  ;;    camw = red_camtag(f[0])
-  ;;    ;
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camr+'/|grep cam',f
-  ;;    camr = red_camtag(f[0])    
-  ;; endif else begin
-  ;;    print, inam+' : ERROR, undefined pinh_dir'
-  ;;    return
-  ;; endelse
-
-  ;;  self -> getcamtags, dir = self.data_dir
   self -> getcamtags, dir = self.pinh_dir
   camw = self.camwbtag
   camt = self.camttag
@@ -315,8 +300,8 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
      sy = abs(cl[3,0] - cl[2,0]) + 1L
 
      mid = 0
-     dum = red_clipim(pics[*,*,mid], cl[*,mid+1])
-     red_show, bytscl(dum, 0, 20), /nosc
+     dum = red_clipim(pics[*,*,mid], cl[*,mid])
+;     red_show, bytscl(dum, 0, 20), /nosc, wnum = 10
      
   endif
 
@@ -337,8 +322,9 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
 
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(pics[*,*,icam], cl[*,icam])
-     dispim = congrid(dispim, dim[0]/2, dim[1]/2, cubic = -0.5)
-     red_show, dispim, wnum = icam, title = labs[icam]+' : '+cams[icam]
+;     dispim = congrid(dispim, dim[0]/2, dim[1]/2, cubic = -0.5)
+;     mx = max(dispim)
+     red_show, dispim <20 >0, wnum = icam, title = labs[icam]+' : '+cams[icam]
   endfor
 
   return
