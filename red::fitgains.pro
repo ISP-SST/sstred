@@ -152,7 +152,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   pref = prefs[idx]
   print, inam + ' : selected -> '+states[idx]
   restore, files[idx]
-  ;cub = cub[*,100:300,100:300]
+ ; cub = cub[*,100:400,100:400]
 
 
   if(keyword_set(w0)) then begin
@@ -178,7 +178,9 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   nwav = dim[0]
    
   res[0,*,*] = total(dat,1) / nwav
-   
+  if(npar gt 3) then res[3:*,*,*] = 1.e-4
+
+
   ;; Init cavity map?   
   if(keyword_set(initcmap)) then begin
      print, inam + ' : Initializing cavity-errors with parabola-fit'
@@ -191,24 +193,25 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
      ;; Get mean spectrum using Hermitian Spline
      yl = red_get_imean(wav, dat, res, npar, it $
                         , xl = xl, rebin = rebin, densegrid = densegrid, $
-                        thres = thres, myg = myg,/reflec,/bezier)
+                        thres = thres, myg = myg,/reflec)
       
      ;; Pixel-to-pixel fits using a C++ routine to speed-up things
      if(it eq 0) then begin
-        res1 = res[0:2,*,*]
-        red_cfitgain2, res1, wav, dat, xl, yl, ratio, pref,nthreads=nthreads
-        res[0:2,*,*] = temporary(res1)
+        res1 = res[0:1,*,*]
+        red_cfitgain, res1, wav, dat, xl, yl, ratio,nthreads=nthreads
+        res[0:1,*,*] = temporary(res1)
      endif else red_cfitgain2, res, wav, dat, xl, yl, ratio, pref,nthreads=nthreads
+     
   endfor
   yl = red_get_imean(wav, dat, res, npar, it $
                      , xl = xl, rebin = rebin, densegrid = densegrid, $
-                     thres = thres, myg = myg, /reflec, /bezier)
+                     thres = thres, myg = myg, /reflec)
 
   ;; Create cavity-error-free flat (save in "ratio" variable)
   print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
    
   for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $
-     reform(red_get_linearcomp(wav[ii], res, npar,/ref))
+     reform(red_get_linearcomp(wav[ii], res, npar,/reflect))
    
   print, 'done'
   ;; stop

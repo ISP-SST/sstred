@@ -73,7 +73,7 @@
 ;   2013-09-12 : MGL. Use red_flipthecube rather than flipthecube.
 ;
 ;-
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch
  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -281,9 +281,9 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         ;; Apply derot, align, dewarp
         if(~keyword_set(scans_only)) then begin
            for stk = 0,3 do begin
-              d[*,*,stk,ww] = rotate(stretch(red_rotation(tmp[*,*,stk], ang[ss] $
-                                                          , total(shift[0,ss]), total(shift[1,ss])) $
-                                             , reform(grid[ss,*,*,*])), rot_dir) 
+              bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]))
+              if(~keyword_set(nostretch)) then bla = stretch( temporary(bla), reform(grid[ss,*,*,*]))
+              d[*,*,stk,ww] = rotate( temporary(bla), rot_dir) 
            endfor
         endif else for stk=0,3 do d[*,*,stk,ww] = rotate(tmp[*,*,stk], rot_dir)
         
