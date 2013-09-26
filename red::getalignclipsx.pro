@@ -45,6 +45,14 @@
 ;   2013-09-18 : MGL. Make the transmitted camera the reference and
 ;                remove the refroot keyword.
 ;
+;   2013-09-25 : MGL. Display all three properly clipped and flipped
+;                pinhole images in a single window to make checking of
+;                alignment and coarse alignment easier to check.
+;                Bugfixed the extraclip feature. Read and display also
+;                properly clipped gaintables in ordet to make it
+;                easier to see if extra clipping is needed. 
+;
+;
 ;-
 PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
                         maxshift = maxshift
