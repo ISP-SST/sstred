@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <omp.h>
 #include <complex.h>
+#include <iostream>
 #include "types.h"
 #include "fftw3.h"
 #include "mymath.h"
@@ -19,7 +20,10 @@
 #include "mpfit.h"
 #include "physc.h"
 #include "fpi.h"
+
+using namespace std;
 /*
+
 #include "Genetic.h"
 #include "Tools.h"
 using namespace ROYAC;
@@ -266,7 +270,22 @@ void convolve(int inx, int iny, int pnx, int pny, float *img, float *fpsf, float
   //
 }
 
-
+double get_polcomp2(int &nwav, int &npar, float wav, double *pars){
+  //
+  double res = 1.0;
+  double twav = 1.0;
+  //
+  if(npar <= 3) return res;
+  //
+  int ii0 = 3;
+  for(int ii=ii0;ii<npar;ii++){
+    twav *= wav;
+    res += pars[ii] * twav;
+  }
+  //
+ 
+  return res;
+}
 double get_polcomp(int &nwav, int &npar, float wav, double *&pars){
   //
   double res = 1.0;
@@ -314,6 +333,19 @@ void get_ratio(int &nwav, int &npar, int &nmean, float *wav, float *dat, double 
   // Compute difference between model and observations
   //
   for(int ii=0;ii<nwav;++ii) ratio[ii] = dat[ii] / (pars[0] * spec[ii] * get_polcomp(nwav, npar, wav[ii], pars));
+  //
+  delete [] twav;
+  delete [] spec;
+}
+void get_ratio2(int &nwav, int &npar, int &nmean, float *wav, float *dat, double *pars, float *xl, float *yl, float *ratio){
+  double *twav = new double [nwav];
+  for(int ii = 0;ii<nwav;++ii) twav[ii] = wav[ii] - pars[1];
+  //
+  double *spec = intep<double>(nmean, xl, yl, nwav, twav);
+  //
+  // Compute difference between model and observations
+  //
+  for(int ii=0;ii<nwav;++ii) ratio[ii] = dat[ii] / (pars[0] * spec[ii] * get_polcomp2(nwav, npar, wav[ii], pars));
   //
   delete [] twav;
   delete [] spec;
@@ -411,25 +443,9 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
 
 }
 
-double get_polcomp2(int &nwav, int &npar, float wav, double *&pars){
-  //
-  double res = 1.0;
-  double twav = 1.0;
-  //
-  if(npar <= 3) return res;
-  //
-  int ii = 3;
-  while(ii<npar){
-    twav *= wav;
-    res += pars[ii] * twav;
-    ii += 1;
-  }
-  //
-  return res;
-}
 int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **derivs, void *tmp1){
 
-  fpi_t *fpi = (fpi_t*) tmp1;
+  fpi_t *fpip = (fpi_t*) tmp1;
   
 
   //
@@ -437,35 +453,31 @@ int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **deriv
   // re-apply ratio. Also init Bezier control points
   //
   bool ref = false;
-  if(pars[2] != fpi->orh){
-    dual_fpi(fpi,pars[2]);
-    for(int ii=0;ii<fpi->npad/2+1;ii++) fpi->otf[ii] *= fpi->ft[ii];
-    fftw_execute(fpi->bplan);
-    bezier3_control(fpi->npad, fpi->xlp, fpi->ylp, fpi->c1, fpi->c2);
+  if(pars[2] != fpip->orh){
+    dual_fpi(fpip,pars[2]);
+    for(int ii=0;ii<fpip->npad/2+1;ii++) fpip->otf[ii] *= fpip->ft[ii];
+    fftw_execute(fpip->bplan);
+    hermite_control(fpip->npad, fpip->xlp, fpip->ylp, fpip->lp1, fpip->lp2, fpip->fp1, fpip->fp2);
     ref = true;
   }
 
   //
   // Shift line profile (interpolating)
   //
-  if((fpi->ech != pars[1]) || ref){
-    double *wav1 = new double [fpi->nwav];
-    for(int ww=0;ww<fpi->nwav;ww++) wav1[ww] = fpi->wav[ww] - pars[1];
-    bezier3(fpi->npad, fpi->xlp, fpi->ylp, fpi->nwav, wav1, fpi->imean, fpi->c1, fpi->c2);
+  if((fpip->ech != pars[1]) || ref){
+    double *wav1 = new double [fpip->nwav];
+    for(int ww=0;ww<fpip->nwav;ww++) wav1[ww] = fpip->wav[ww] - pars[1];
+    hermite(fpip->npad, fpip->xlp, fpip->ylp, fpip->nwav, wav1, fpip->imean, fpip->lp1, fpip->lp2, fpip->fp1, fpip->fp2);
     delete [] wav1;
-    fpi->ech = pars[1];
+    fpip->ech = pars[1];
   }
 
   
   //
   // Linear component and scale factor
   //
-  bool flag = false;
-  for(int ww=0;ww<fpi->nwav;ww++){
-    double mtmp = get_polcomp2(nwav,npar,fpi->wav[ww],pars) * fpi->imean[ww];
-    dev[ww] = (pars[0] * mtmp) - fpi->idat[ww];
-    if(derivs && ww == 0) if(derivs[0]) flag=true;
-    if(flag) derivs[0][ww] = mtmp;
+  for(int ww=0;ww<fpip->nwav;ww++){
+    dev[ww] = (pars[0] * get_polcomp2(nwav,npar,fpip->wav[ww],pars) * fpip->imean[ww]) - fpip->idat[ww];
   }
 
   return 0;
@@ -475,40 +487,27 @@ int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **deriv
 
 void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, int nt, int line){
 
+  bool master = false;
+  int tid = 0;
+  int ix = 0;
+  int status=0;
+  int ww=0, per, oper;
+  double sum = 0;
+  mp_result result;
+  mp_par fitpars[npar];
 
+  
+  memset(&fitpars[0], 0, sizeof(fitpars));
+
+  
   fprintf(stderr, "cfitgain2 : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
+
  
 
-  //
-  // fpi init
-  //
-  fpi_t fpi;
-  init_fpi(fpi, line);
-  init_fftw(fpi,nmean,xl,yl);
-  dual_fpi(&fpi,fpi.rhr);
-
-  //
-  fpi.imean = new double [nwav];
-  fpi.orh = fpi.rhr - 0.001; // Just set it to any value so it is recalculated in the loop;
-  fpi.ech = -1.0;
-  
-  //
-  // Deconvolve spectrum (in reality we multiply it with the ratio of the two 
-  // CRISP profiles Tcrisp/Tcrisp_0).
-  //
-  for(int ii=0;ii<fpi.npad/2+1;ii++) {
-    fpi.ft[ii] /= fpi.otf[ii];
-  }
-
+ 
   //
   // Init MPFIT struct and loop
   //
-  int status;
-  mp_result result;
-  memset(&result,0,sizeof(result));
-  //
-  mp_par fitpars[npar];
-  memset(&fitpars[0], 0, sizeof(fitpars));
   fitpars[0].limited[0] = 1;
   fitpars[0].limited[1] = 1;
   fitpars[0].limits[0] = 0;
@@ -518,49 +517,100 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
   fitpars[1].limits[0] = -0.3;
   fitpars[1].limits[1] = 0.3;
   if(npar > 2){
-    fitpars[2].limits[0] = fpi.rhr-0.1;
-    fitpars[2].limits[1] = 0.98;
+    fitpars[2].limits[0] = 0.78;
+    fitpars[2].limits[1] = 0.97;
     fitpars[2].limited[0] = 1;
     fitpars[2].limited[1] = 1;
+    fitpars[2].fixed = 1;
   }
-  //for(int ii=1;ii<=npar-1;++ii) fitpars[ii].side = 0;
+  for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
   //fitpars[0].side = 3;
   //
-  fpi.wav = wav;
-  fpi.xl = xl;
-  fpi.yl = yl;
-  fpi.nmean = nmean;
-  fpi.nwav = nwav;
-  //
-  double ntot = 100. / (npix - 1.0);
-  //
-  int tid = 0;
-  bool master = true;
+ 
   //
   int nskip = 0;
-  int oper = -1, per=0, ix=  0, ww=0;
+  double *ipar = NULL;
+
+
   //
+  //#pragma omp parallel default(shared) firstprivate(ww,ix,tid,master,per,oper,status,result,tmp) num_threads(nt)  
+  fpi_t fpi[nt];
+  //shared(nskip, fpi, nwav, nmean, npar, npix, xl, yl, wav, dat1, pars1, ratio1, nt, line, stderr, fitpars)
+#pragma omp parallel default(shared) firstprivate(master, per, oper) private(status, result, ipar, sum, ww, ix, tid) num_threads(nt)  
+  {
+    memset(&result,0,sizeof(result));
+    double ntot = 100. / (npix - 1.0);
+    per = 0;
+    oper = -1;
+
+    tid = omp_get_thread_num();
+
+    if(tid == 0) {
+      master = true;
+      int ntp = omp_get_num_threads();
+      fprintf(stderr,"cfitgain2 : nthreads -> %d\n", ntp);
+      
+      for(int kk=0;kk<ntp;kk++){
+	fpi[kk].tid = kk;
+	init_fpi(fpi[kk], line);
+	init_fftw(fpi[kk],nmean,xl,yl);
+	dual_fpi(&fpi[kk],fpi[kk].rhr);
+      }
+    }
+#pragma omp barrier
+    
+    //fprintf(stderr,"cfitgain2 : thread -> %d, hello!\n", tid);
+    
+    
+    
+  //
+  fpi[tid].wav = wav;
+  fpi[tid].xl = xl;
+  fpi[tid].yl = yl;
+  fpi[tid].nmean = nmean;
+  fpi[tid].nwav = nwav;
+
+  //
+  fpi[tid].imean = new double [nwav];
+  fpi[tid].orh = fpi[tid].rhr - 0.001; // Just set it to any value so it is recalculated in the loop;
+  fpi[tid].ech = -1.0;
+  
+  //
+  // Deconvolve spectrum (in reality we multiply it with the ratio of the two 
+  // CRISP profiles Tcrisp/Tcrisp_0).
+  //
+  for(int ii=0;ii<fpi[tid].npad/2+1;ii++) {
+    fpi[tid].ft[ii] /= fpi[tid].otf[ii];
+  }
+
+
+
+
+#pragma omp for schedule(dynamic, 2) reduction(+:nskip)
     for(ix = 0;ix<npix;++ix){
       //
       // Avoid masked pixels (pixel = 0.0)
       //
-      fpi.idat = &dat1[ix*nwav];
-      double sum = 0.0;
-      for(ww=0;ww<nwav;++ww) sum += fpi.idat[ww];
+      fpi[tid].idat = &dat1[ix*nwav];
+      ipar = &pars1[ix*npar];
+      sum = 0.0;
+      for(ww=0;ww<nwav;ww++) sum += fpi[tid].idat[ww];
       //
-      if(sum >= 1.E-1){
+      if(sum >= 1.){
 	//
 	// Fit pixel
 	//
-	if(pars1[ix*npar+2] <0.5) pars1[ix*npar+2] = fpi.rhr;
-	if(pars1[ix*npar+1] == 0.0) pars1[ix*npar+1] = 0.001;
+	if(pars1[ix*npar+2] < 0.5) pars1[ix*npar+2] = fpi[tid].rhr;
+	if(fabsl(pars1[ix*npar+1]) < 1.e-3) pars1[ix*npar+1] = 0.01;
 
-	status = mpfit(fitgain_model2, nwav, npar, &pars1[ix*npar], fitpars, 0, (void*) &fpi, &result);
-
+	status = mpfit(fitgain_model2, nwav, npar, ipar, fitpars, 0, (void*) &fpi[tid], &result);
+	//fprintf(stderr,"thread -> %d, processing pix -> %d -> status %d -> %f %f %f \n", tid, ix, status, fpi[tid].w0,pars1[ix*npar+1], pars1[ix*npar+2] );
+	//	if(ix > 150) exit(0);
 	//
 	// Get ratio dat / model
 	//
-	get_ratio(nwav, npar, nmean, wav, &dat1[ix*nwav], &pars1[npar*ix], xl, yl, &ratio1[ix*nwav]);
+	get_ratio2(nwav, npar, nmean, wav, fpi[tid].idat, ipar, xl, yl, &ratio1[ix*nwav]);
+	ipar = NULL;
       } else{nskip += 1;}
       //
       // Progress counter
@@ -568,16 +618,20 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
       per = (int)(ntot * ix);
       if(oper != per && master){
 	oper = per;
-	fprintf(stderr, "\rcfitgain : fitting data -> %d%s", per, "%");
+	fprintf(stderr, "\rcfitgain2 : fitting data -> %d%s", per, "%");
       }
     }
-  fprintf(stderr, " \n");
-  fprintf(stderr, "cfitgain2 : %d (%g %s) skipped pixels\n", nskip, (float)(nskip)/npix * 100.0, "%");
 
     //
     // Clean-up
     //
-    clean_fpi(fpi);
+    if(master){
+      for(int ii=0;ii<nt;ii++) clean_fpi(fpi[ii]);
+    }
+#pragma omp barrier
+  }
+  fprintf(stderr, "\rcfitgain2 : fitting data -> %d%s", (int)100, "%");
+  fprintf(stderr, "cfitgain2 : %d (%g %s) skipped pixels\n", nskip, (float)(nskip)/npix * 100.0, "%");
 }
 
 void sim_polcal(double *p, pol_t *pol){

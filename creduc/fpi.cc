@@ -13,10 +13,17 @@ const double calp[5] = {0.04691007703067,0.23076534494716,0.50,0.76923465505284,
 const int nang = 5;
 const double pi2 = 2.0 * 3.14159265358979323846;
 
-void init_fpi(fpi_t &fpi, int32_t line){
+void init_fpi(fpi_t &fpi, int line){
   fpi.calp = NULL;
   fpi.c1 = NULL;
   fpi.c2 = NULL;
+  fpi.fp1 = NULL;
+  fpi.fp2 = NULL;
+  fpi.lp1 = NULL;
+  fpi.lp2 = NULL;
+  fpi.otf = NULL;
+  fpi.ft = NULL;
+  fpi.ylp = NULL;
   fpi.line = line;
 
   switch (fpi.line)
@@ -56,7 +63,7 @@ void init_fpi(fpi_t &fpi, int32_t line){
       exit(0);
       break;
     }
-  fprintf(stderr,"init_fpi : Initializing FPI for spectral line %d\n",line);
+  if(fpi.tid == 0) fprintf(stderr,"init_fpi : Initializing FPI for spectral line %d\n",line);
   fpi.scl = true;
 
   //
@@ -104,7 +111,7 @@ void init_fftw(fpi_t &fpi, int nmean, float *xl, float *yl){
   //
   // Init plan for the spectrum and PSF
   //
-  fprintf(stderr,"fft_init : initializing FFTW plans with npad=%d ...", fpi.npad);
+  fprintf(stderr,"fft_init : initializing FFTW plans for thread %d with npad=%d ... ",fpi.tid, fpi.npad);
   //
   fpi.fplan = fftw_plan_dft_r2c_1d(fpi.npad, (double*)fpi.ylp,(fftw_complex*)(fpi.ft), FFTW_MEASURE);
   fpi.otfplan=fftw_plan_dft_r2c_1d(fpi.npad, (double*)fpi.tr, (fftw_complex*)(fpi.otf),FFTW_MEASURE);
@@ -263,7 +270,80 @@ void bezier3(int n, double *x, double *y, int np, double *xp, double *yp,double 
 
 }
 
+void hermite_control(int np, double *x, double *y, double *&lp1, double *&lp2, double *&fp1, double *&fp2){
+  // Allocate arrays?
+  int np1 = np - 1;
+  if(lp1 == NULL) lp1 = new double [np1];
+  if(lp2 == NULL) lp2 = new double [np1];
+  if(fp1 == NULL) fp1 = new double [np1];
+  if(fp2 == NULL) fp2 = new double [np1];
+
+  //
+  // Compute interpolation coefficients
+  //
+  for(int ii=0;ii<=np-2;++ii){
+    lp1[ii] = 1.0 / (x[ii] - x[ii+1]);
+    lp2[ii] = 1.0 / (x[ii+1] - x[ii]);
+  }
+  //
+  for(int ii=1;ii<np1;++ii) fp1[ii] = (y[ii+1] - y[ii-1]) / (x[ii+1] - x[ii-1]);
+  fp1[0] = (y[1] - y[0]) / (x[1] - x[0]);
+  //
+  fp2[np-2] = (y[np-1] - y[np-2]) / (x[np-1] - x[np-2]);
+  for(int ii=0;ii<=np-3;++ii) fp2[ii] = fp1[ii+1];
+}
+
+
+void hermite(int n, double *x, double *y, int np, double *xp, double *yp, double *lp1, double *lp2, double *fp1, double *fp2){
+   
+  int pos = 0;
+  double xpi, xpi1, l1, l2;
+  
+  for(int i=0;i<n;i++){
+
+    int i1 = i - 1;
+    if(i < 0) i = 0;
+    if(i1 < 0) i1 = 0;
+
+    for(int j=pos;j<np;j++){
+      if(xp[j] <= x[i] && xp[j] > x[i1]){
+	xpi = xp[j] - x[i1];
+	xpi1 = xp[j] - x[i];
+	//
+	l1 = (xpi1 * lp1[i1]);
+	l1 *= l1;
+	//
+	l2 = xpi * lp2[i1];
+	l2 *= l2;
+	//
+	yp[j] = y[i1] * (1.0 - (2.0 * lp1[i1] * xpi)) * l1 + 
+	  y[i] * (1.0 - (2.0 * lp2[i1] * xpi1)) * l2 + 
+	  fp2[i1] * xpi1 * l2 + fp1[i1] * xpi * l1;
+	pos += 1;
+
+      }
+    }
+  }
+  //
+  // any point outside bounds? -> linear extrapolation
+  //
+  double a0 = fp1[0]; //(y[0] - y[1]) / (x[0] - x[1]);
+  double b0 = y[0] - a0 * x[0];
+  //
+  double a1 = fp2[np-2]; // (y[np-2] - y[np-1]) / (x[np-2] - x[np-1]);
+  double b1 = y[n-1] - a1 * x[n-1];
+  //
+  for(int ii = 0;ii<=np-1;++ii){
+    if(xp[ii] <= x[0]) yp[ii] = a0 * xp[ii] + b0;
+    if(xp[ii] >= x[n-1]) yp[ii] = a1 * xp[ii] + b1;
+  }
+  
+}
+
+
+
 void clean_fpi(fpi_t &fpi){
+  fprintf(stderr,"clean_fpi: cleaning up...");
   fftw_destroy_plan(fpi.otfplan);
   fftw_destroy_plan(fpi.fplan);
   fftw_destroy_plan(fpi.bplan);
@@ -274,7 +354,13 @@ void clean_fpi(fpi_t &fpi){
   delete [] fpi.ft;
   delete [] fpi.ylp;
   delete [] fpi.xlp;
-  delete [] fpi.c1;
-  delete [] fpi.c2;
+  if(fpi.c1 != NULL) delete [] fpi.c1;
+  if(fpi.c2 != NULL) delete [] fpi.c2;
+  if(fpi.lp1 != NULL) delete [] fpi.lp1;
+  if(fpi.lp2 != NULL) delete [] fpi.lp2;
+  if(fpi.fp1 != NULL) delete [] fpi.fp1;
+  if(fpi.fp2 != NULL) delete [] fpi.fp2;
   delete [] fpi.imean;
+  fprintf(stderr,"done\n");
+
 }

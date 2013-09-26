@@ -45,7 +45,9 @@ function red_get_linearcomp, iwav, pp, npar, reflect = reflect
                                 ;
   dim = size(pp, /dimension)
   res = fltarr(dim[1], dim[2]) + 1.0
-  if(npar le 3) then return, res
+  if(npar le 2 AND ~keyword_set(reflect)) then return, res
+  if(npar le 3 AND keyword_set(reflect)) then return, res
+
                                 ;
   wavf = 1.0
                                 ;
@@ -55,7 +57,7 @@ function red_get_linearcomp, iwav, pp, npar, reflect = reflect
 
   for ii = ii0, npar - 1 do begin
      wavf *= iwav
-     res += pp[ii,*,*] * wavf
+     res += reform(pp[ii,*,*]) * wavf
   endfor
                                 ;
   return, res
