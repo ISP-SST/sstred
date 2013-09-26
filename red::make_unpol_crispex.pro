@@ -73,7 +73,7 @@
 ;
 ;
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -359,11 +359,12 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         tmp = stretch(temporary(tmp), grid1)
         
         ;; Apply derot, align, dewarp
-        if(~keyword_set(scans_only)) $
-        then d[*,*,ww] = rotate(stretch(red_rotation(temporary(tmp), ang[ss] $
-                                                     , total(shift[0,ss]), total(shift[1,ss])) $
-                                        , reform(grid[ss,*,*,*])), rot_dir) $
-        else d[*,*,ww] = rotate( temporary(tmp), rot_dir)
+        if(~keyword_set(scans_only)) then begin
+           bla = red_rotation(temporary(tmp), ang[ss] , total(shift[0,ss]), total(shift[1,ss]))
+           if(~keyword_set(nostretch)) then bla = stretch(temporary(bla), reform(grid[ss,*,*,*]))
+           d[*,*,ww] = rotate(temporary(bla), rot_dir) 
+
+        endif else d[*,*,ww] = rotate( temporary(tmp), rot_dir)
         
      endfor
      
