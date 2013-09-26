@@ -121,10 +121,10 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, n
         ;; Get states
         stat = red_getstates(files)
         
-        ;; Flag first frame after tunning
+        ;; Flag first frame after tuning
         if(~keyword_set(no_remove)) then begin
-           print, inam+' : Flagging first frame after tunning'
-           red_flagtunning, stat, nremove
+           print, inam+' : Flagging first frame after tuning'
+           red_flagtuning, stat, nremove
         endif
          
         camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]

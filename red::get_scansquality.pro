@@ -32,9 +32,9 @@ pro red::get_scansquality
   ;; get states
   stat = red_getstates(wfiles)
   
-  ;; flag first frame after tunning
-  print, 'red::link_data : Flagging first frame after tunning'
-  red_flagtunning, stat
+  ;; flag first frame after tuning
+  print, 'red::link_data : Flagging first frame after tuning'
+  red_flagtuning, stat
    
   camtag = (strsplit(file_basename(wfiles[0]), '.', /extract))[0]
    

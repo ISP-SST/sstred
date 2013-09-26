@@ -118,7 +118,7 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
 
      ;; Get image unique states
      stat = red_getstates(files)
-     red_flagtunning, stat, nremove
+     red_flagtuning, stat, nremove
      states = stat.hscan+'.'+stat.state
      pos = uniq(states, sort(states))
      ustat = stat.state[pos]
