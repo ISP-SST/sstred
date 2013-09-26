@@ -36,7 +36,7 @@ void init_fpi(fpi_t &fpi, int line){
       fpi.slr  = 295.5E4;
       fpi.dhr  = 0.267;
       fpi.dlr  = 0.731;
-      fpi.dw   = 0.005;
+      fpi.dw   = 0.025;
       break;
     case 8542:
       fpi.w0   = 8542.091;
@@ -190,11 +190,18 @@ void dual_fpi(fpi_t *fpi, double erh){
   // Normalize to the total number of elements (the area of the 
   // CRISP profile is accounted for when computing the ratio).
   //
+  double sum = 0.0;
+  for(int ww=0;ww<fpi->npad;ww++) sum += fpi->tr[ww];
+  for(int ww=0;ww<fpi->npad;ww++) fpi->tr[ww] /= sum;
+  
+
+  // Only needed first time (the FFTW library does not normalize the FFTs, here it is applied
+  // the first time when computing the mean spectrum for the ratio).
   if(fpi->scl){
     for(int ww=0;ww<fpi->npad;ww++) fpi->tr[ww] *= (double)fpi->npad;
     fpi->scl=false;
   }
-
+  
   //
   // FFT
   // 

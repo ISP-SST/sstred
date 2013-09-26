@@ -270,7 +270,7 @@ void convolve(int inx, int iny, int pnx, int pny, float *img, float *fpsf, float
   //
 }
 
-double get_polcomp2(int &nwav, int &npar, float wav, double *pars){
+double get_polcomp2(int nwav, int npar, float wav, double *pars){
   //
   double res = 1.0;
   double twav = 1.0;
@@ -286,7 +286,7 @@ double get_polcomp2(int &nwav, int &npar, float wav, double *pars){
  
   return res;
 }
-double get_polcomp(int &nwav, int &npar, float wav, double *&pars){
+double get_polcomp(int &nwav, int &npar, float wav, double *pars){
   //
   double res = 1.0;
   double twav = 1.0;
@@ -477,7 +477,7 @@ int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **deriv
   // Linear component and scale factor
   //
   for(int ww=0;ww<fpip->nwav;ww++){
-    dev[ww] = (pars[0] * get_polcomp2(nwav,npar,fpip->wav[ww],pars) * fpip->imean[ww]) - fpip->idat[ww];
+    dev[ww] = (pars[0] * get_polcomp2(nwav, npar, fpip->wav[ww], pars) * fpip->imean[ww]) - fpip->idat[ww];
   }
 
   return 0;
@@ -502,28 +502,7 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
   
   fprintf(stderr, "cfitgain2 : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
 
- 
 
- 
-  //
-  // Init MPFIT struct and loop
-  //
-  fitpars[0].limited[0] = 1;
-  fitpars[0].limited[1] = 1;
-  fitpars[0].limits[0] = 0;
-  fitpars[0].limits[1] = 4096;
-  fitpars[1].limited[0] = 1;
-  fitpars[1].limited[1] = 1;
-  fitpars[1].limits[0] = -0.3;
-  fitpars[1].limits[1] = 0.3;
-  if(npar > 2){
-    fitpars[2].limits[0] = 0.78;
-    fitpars[2].limits[1] = 0.97;
-    fitpars[2].limited[0] = 1;
-    fitpars[2].limited[1] = 1;
-    fitpars[2].fixed = 1;
-  }
-  for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
   //fitpars[0].side = 3;
   //
  
@@ -556,6 +535,28 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
 	init_fftw(fpi[kk],nmean,xl,yl);
 	dual_fpi(&fpi[kk],fpi[kk].rhr);
       }
+ 
+      //
+      // Init MPFIT struct and loop
+      //
+      fitpars[0].limited[0] = 1;
+      fitpars[0].limited[1] = 1;
+      fitpars[0].limits[0] = 0;
+      fitpars[0].limits[1] = 4096;
+      fitpars[1].limited[0] = 1;
+      fitpars[1].limited[1] = 1;
+      fitpars[1].limits[0] = -0.3;
+      fitpars[1].limits[1] = 0.3;
+      if(npar > 2){
+	fitpars[2].limits[0] = fpi[0].rhr -0.04;
+	double imax = fpi[0].rhr + 0.04;
+	if(imax > 0.98) imax = 0.98;
+	fitpars[2].limits[1] = imax;
+	fitpars[2].limited[0] = 1;
+	fitpars[2].limited[1] = 1;
+      }
+      for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
+      
     }
 #pragma omp barrier
     
@@ -600,12 +601,10 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
 	//
 	// Fit pixel
 	//
-	if(pars1[ix*npar+2] < 0.5) pars1[ix*npar+2] = fpi[tid].rhr;
-	if(fabsl(pars1[ix*npar+1]) < 1.e-3) pars1[ix*npar+1] = 0.01;
+	if(ipar[2] < 0.5) ipar[2] = fpi[tid].rhr;
 
 	status = mpfit(fitgain_model2, nwav, npar, ipar, fitpars, 0, (void*) &fpi[tid], &result);
-	//fprintf(stderr,"thread -> %d, processing pix -> %d -> status %d -> %f %f %f \n", tid, ix, status, fpi[tid].w0,pars1[ix*npar+1], pars1[ix*npar+2] );
-	//	if(ix > 150) exit(0);
+
 	//
 	// Get ratio dat / model
 	//
