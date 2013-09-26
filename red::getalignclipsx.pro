@@ -64,21 +64,6 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  ;; if(self.dopinh) then begin
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camt+'/|grep cam',f
-  ;;    camt = red_camtag(f[0])
-  ;;    ;
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camwb+'/|grep cam',f
-  ;;    camw = red_camtag(f[0])
-  ;;    ;
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camr+'/|grep cam',f
-  ;;    camr = red_camtag(f[0])    
-  ;; endif else begin
-  ;;    print, inam+' : ERROR, undefined pinh_dir'
-  ;;    return
-  ;; endelse
-
-  ;;  self -> getcamtags, dir = self.data_dir
   self -> getcamtags, dir = self.pinh_dir
   camw = self.camwbtag
   camt = self.camttag
@@ -140,6 +125,23 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
 
   pics[*,*,icamnonrefs[0]]= f0(fw[pos0])
   pics[*,*,icamnonrefs[1]]= f0(fr[pos1])
+
+  ;; Read gain tables
+  gains = fltarr(dim[0], dim[1], Ncams)
+
+  print, strjoin(strsplit(ft[toread], '/pinh/', /extr), '/gaintables/')
+  gname = strjoin(strsplit(ft[toread], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  gains[*,*,icamref]  = f0(gname)
+  gname = strjoin(strsplit(fr[pos1], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  gains[*,*,icamnonrefs[1]] = f0(gname)
+  ;; The WB gain file name has no tuning info
+  gname = strjoin(strsplit(fw[pos0], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  gname = strsplit(gname, '.', count = nn, /extr)
+  gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
+  gains[*,*,icamnonrefs[0]] = f0(gname)
 
   print, inam+' : images to be calibrated:'
   print, ' -> '+fw[pos0]
@@ -315,8 +317,8 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
      sy = abs(cl[3,0] - cl[2,0]) + 1L
 
      mid = 0
-     dum = red_clipim(pics[*,*,mid], cl[*,mid+1])
-     red_show, bytscl(dum, 0, 20), /nosc
+     dum = red_clipim(pics[*,*,mid], cl[*,mid])
+;     red_show, bytscl(dum, 0, 20), /nosc, wnum = 10
      
   endif
 
@@ -335,11 +337,41 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
 
   print, 'Please check that the displayed images are aligned and oriented properly.'
 
+  szx_disp = dim[0]/2
+  szy_disp = dim[1]/2
+  disp_spacing = 5
+
+  title = '        '
+  for icam = 0, Ncams-1 do title = title+labs[icam]+' : '+cams[icam]+'        '
+  
+  window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 0
+  erase, 255
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(pics[*,*,icam], cl[*,icam])
-     dispim = congrid(dispim, dim[0]/2, dim[1]/2, cubic = -0.5)
-     red_show, dispim, wnum = icam, title = labs[icam]+' : '+cams[icam]
+     dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
   endfor
+
+  window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
+  erase, 255
+  for icam = 0, Ncams-1 do begin
+     dispim = red_clipim(gains[*,*,icam], cl[*,icam])
+     dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+  endfor
+
+  ;; Print out some info about blocked rows/columns.
+  gg = red_clipim(gains[*,*,icamref], cl[*,icamref]) ne 0 
+  blockedrows = where(total(gg,1) lt .5, Nblock)
+  if Nblock ne 0 then begin
+     print, 'The following rows are significantly blocked: '
+     print, blockedrows
+  endif
+  blockedcolumns = where(total(gg,2) lt .5, Nblock)
+  if Nblock ne 0 then begin
+     print, 'The following columns are significantly blocked: '
+     print, blockedcolumns
+  endif
 
   return
 end
