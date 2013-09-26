@@ -37,7 +37,7 @@
 ; 
 ; 
 ;-
-pro red_flagtunning, stat, nremove
+pro red_flagtuning, stat, nremove
   if(n_elements(nremove) eq 0) then nremove=1
   if nremove eq 0 then return
                                 ;

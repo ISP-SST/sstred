@@ -138,7 +138,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
                                 ;
                                 ; states
                                 ;
-  if(cam ne self.camwb) then red_flagtunning, stat
+  if(cam ne self.camwb) then red_flagtuning, stat
                                 ;
   pos = where((stat.state eq ustat[toread]) AND (stat.star eq 0B), count)
   scan = stat.scan[pos]

@@ -65,7 +65,7 @@ pro red::sumprefilter, step = step
                                 ;
                                 ; get states
   pfstat = red_getstates_pref(files)
-  red_flagtunning, pfstat
+  red_flagtuning, pfstat
                                 ;
                                 ; get unique states
   ustate = pfstat.state[uniq(pfstat.state, sort(pfstat.state))]

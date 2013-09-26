@@ -121,8 +121,8 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
      if(~keyword_set(ustat)) then ustat = stat.state[uniq(stat.state, sort(stat.state))]
      ns = n_elements(ustat)
 
-     ;; Flag first frame after tunning the FPI
-     if(keyword_set(remove)) then red_flagtunning, stat
+     ;; Flag first frame after tuning the FPI
+     if(keyword_set(remove)) then red_flagtuning, stat
      
      ;; Loop and sum
      for ss = 0L, ns - 1 do begin
