@@ -52,6 +52,8 @@
 ;                properly clipped gaintables in ordet to make it
 ;                easier to see if extra clipping is needed. 
 ;
+;   2013-09-25 : MGL. Now checks for existence of gaintables before
+;                reading. 
 ;
 ;-
 PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
@@ -134,22 +136,6 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
   pics[*,*,icamnonrefs[0]]= f0(fw[pos0])
   pics[*,*,icamnonrefs[1]]= f0(fr[pos1])
 
-  ;; Read gain tables
-  gains = fltarr(dim[0], dim[1], Ncams)
-
-  print, strjoin(strsplit(ft[toread], '/pinh/', /extr), '/gaintables/')
-  gname = strjoin(strsplit(ft[toread], '\.pinh', /extr,/preserve,/rege), '.gain')
-  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
-  gains[*,*,icamref]  = f0(gname)
-  gname = strjoin(strsplit(fr[pos1], '\.pinh', /extr,/preserve,/rege), '.gain')
-  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
-  gains[*,*,icamnonrefs[1]] = f0(gname)
-  ;; The WB gain file name has no tuning info
-  gname = strjoin(strsplit(fw[pos0], '\.pinh', /extr,/preserve,/rege), '.gain')
-  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
-  gname = strsplit(gname, '.', count = nn, /extr)
-  gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
-  gains[*,*,icamnonrefs[0]] = f0(gname)
 
   print, inam+' : images to be calibrated:'
   print, ' -> '+fw[pos0]
@@ -360,8 +346,40 @@ PRO red::getalignclipsx, thres = thres, extraclip = extraclip, $
      tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
   endfor
 
+  ;; Display gain tables?
   window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
   erase, 255
+  gains = fltarr(dim[0], dim[1], Ncams)
+
+;  print, strjoin(strsplit(ft[toread], '/pinh/', /extr), '/gaintables/')
+  gname = strjoin(strsplit(ft[toread], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  if file_test(gname) then begin
+     gains[*,*,icamref]  = f0(gname)
+  endif else begin
+     print, inam+' : Could not find gaintable '+gname
+     print, inam+' : Need to run a->makegains'
+  endelse
+  gname = strjoin(strsplit(fr[pos1], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  if file_test(gname) then begin
+     gains[*,*,icamnonrefs[1]] = f0(gname)
+  endif else begin
+     print, inam+' : Could not find gaintable '+gname
+     print, inam+' : Need to run a->makegains'
+  endelse
+  ;; The WB gain file name has no tuning info
+  gname = strjoin(strsplit(fw[pos0], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  gname = strsplit(gname, '.', count = nn, /extr)
+  gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
+  if file_test(gname) then begin
+     gains[*,*,icamnonrefs[0]] = f0(gname)
+  endif else begin
+     print, inam+' : Could not find gaintable '+gname
+     print, inam+' : Need to run a->makegains'
+  endelse
+
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(gains[*,*,icam], cl[*,icam])
      dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
