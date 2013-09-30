@@ -1,8 +1,8 @@
 ARCH     = $(shell uname -m)
 ARCHF    = $(shell uname -a)
 CXX = g++
-MDIR = /usr
-CPPFLAGS = -flto -O4 -O5 -ffast-math -fPIC -fopenmp -I$(MDIR)/include #-no-cpp-precomp -dynamic -m64
+MDIR = /mn/xsan/d9/jaime/local/x86_64/
+CPPFLAGS = -O4 -O5 -ffast-math -fPIC -fopenmp -I$(MDIR)/include #-no-cpp-precomp -dynamic -m64
 #CPPFLAGS = -O0 -g3 -fPIC -fopenmp -I$(MDIR)/include
 OFILES = mpfit.o fpi.o creduc.o creduc_wrap.o
 INSTFILES = creduc.so
@@ -17,7 +17,7 @@ ifneq (,$(findstring Darwin,$(ARCH))) #
 endif
 
 creduc.so: $(OFILES)
-	$(CXX) -flto -shared -o creduc.so $(OFILES) -L$(MDIR)/lib -lfftw3 -lfftw3_threads -lpthread -fopenmp
+	$(CXX) -shared -o creduc.so $(OFILES) -L$(MDIR)/lib -lfftw3 -lfftw3_threads -lpthread -fopenmp
 
 install: $(INSTFILES)
 	cp $(INSTFILES) $(IDIR)
