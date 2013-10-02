@@ -116,7 +116,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         immt = (f0(search))[0:15,*,*]
 
         ;; interpolate CCD tabs?
-        if(~keyword_set(ccdtabs)) then begin
+        if(~keyword_set(no_ccdtabs)) then begin
            for ii = 0, 15 do immt[ii,*,*] = red_mask_ccd_tabs(reform(immt[ii,*,*]))
         endif
 
@@ -145,7 +145,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         immr = (f0(search))[0:15,*,*]
 
         ;; interpolate CCD tabs?
-        if(~keyword_set(ccdtabs)) then begin
+        if(~keyword_set(no_ccdtabs)) then begin
            for ii = 0, 15 do immr[ii,*,*] = red_mask_ccd_tabs(reform(immr[ii,*,*]))
         endif
 

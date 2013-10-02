@@ -61,7 +61,7 @@
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
                           verbose = verbose, overwrite=overwrite, $
-                          min = min, max = ma, smooth = smooth, bad = bad, $
+                                ; min = min, max = ma, smooth = smooth, bad = bad, $
                           descatter = descatter, show=show
 
   inam = 'red::sum_data_intdif : '
@@ -279,7 +279,15 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
                                 ;
                                 ; Load flat
                                 ;
-              if(file_test(gf)) then g =  red_flat2gain(f0(gf),/preserve, mi=mi,ma=ma,smooth=smooth,bad=bad) else begin
+              ;;if(file_test(gf)) then g =
+              ;;red_flat2gain(f0(gf),/preserve,
+              ;;mi=mi,ma=ma,smooth=smooth,bad=bad) else begin
+              if(file_test(gf)) then begin
+                 g = f0(gf)
+                 g = median(g) / g
+                 badpixels = where(~finite(g), count)
+                 if(count gt 0) then g[badpixels] = 0.0
+              endif else begin
                  print, inam + 'ERROR, gain file not found -> ', gf
                  stop
               endelse
