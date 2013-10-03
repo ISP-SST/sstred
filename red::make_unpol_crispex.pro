@@ -372,10 +372,11 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,ii])
         cscl = 8.0 ; 32768 / 4096
-        if(keyword_set(scans_only)) then cscl = 1.0
-        norm_spect = imean / max(imean)
-        norm_factor = cscl * max(imean)
+       ; if(keyword_set(scans_only)) then cscl = 1.0
+        norm_spect = imean / cscl ;/ max(imean)
+        norm_factor = cscl ;* max(imean)
         spect_pos = wav + double(pref)
+        print, inam + 'saving -> '+odir + '/spectfile.'+pref+'.idlsave'
         save, file=odir + '/spectfile.'+pref+'.idlsave', norm_spect, norm_factor, spect_pos
      endif
      
