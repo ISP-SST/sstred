@@ -110,8 +110,8 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      npix = 35
      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
      cpsf /= total(cpsf, /double)
-     lscale = red_convolve(cmap, cpsf)
-     cmap -= lscale
+     cmap = red_convolve(temporary(cmap), cpsf)
+     ;cmap -= lscale
   endif
   
 
