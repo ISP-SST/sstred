@@ -53,7 +53,7 @@
 ; 
 ; 
 ;-
-pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans, /remove_smallscale
+pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans, remove_smallscale = remove_smallscale
 
   inam  = 'red::make_cmaps : '
 ;  if(n_elements(cmap) eq 0) then begin
