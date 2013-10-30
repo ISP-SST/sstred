@@ -53,7 +53,7 @@
 ; 
 ; 
 ;-
-pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans
+pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans, remove_smallscale = remove_smallscale
 
   inam  = 'red::make_cmaps : '
 ;  if(n_elements(cmap) eq 0) then begin
@@ -103,6 +103,18 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   restore, cfile
   cmap = reform(fit.pars[1,*,*])
   fit = 0B
+  
+  ;;
+  ;; Small scale already corrected?
+  if(keyword_set(remove_smallscale)) then begin
+     npix = 35
+     cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+     cpsf /= total(cpsf, /double)
+     cmap = red_convolve(temporary(cmap), cpsf)
+     ;cmap -= lscale
+  endif
+  
+
   
   ;;
   ;; time calibration data
