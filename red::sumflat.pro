@@ -53,8 +53,11 @@
 ; 
 ;   2013-08-29 : MGL. Remove *lcd* files from file list.
 ; 
+;   2013-10-30 : MGL. Get correct prefilter state for WB flats in the
+;                presence of the focus file name field. 
+; 
 ;-
-pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove,check=check
+pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove, check=check
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -195,7 +198,8 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
   wstat = strarr(nt)
   for jj = 0L, nt - 1 do begin
      dum = strsplit(file_basename(files[jj]), '.', /extract)
-     wstat[jj] = dum[4]
+     Ndum = n_elements(dum)
+     wstat[jj] = dum[Ndum-5]
   endfor
   uwstat = wstat[uniq(wstat, sort(wstat))]
 
