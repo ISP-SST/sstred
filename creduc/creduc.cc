@@ -99,7 +99,7 @@ void descatter(int nx, int ny, float *timg, float *tfgain, float *tfpsf, float *
   //
   // Iterate solution
   //
-  double cs = 1E11, ocs;
+  double cs = 1E8, ocs;
   int i = 0, iter_max = 50;
   //
   do{
