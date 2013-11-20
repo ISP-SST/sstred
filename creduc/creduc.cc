@@ -99,7 +99,7 @@ void descatter(int nx, int ny, float *timg, float *tfgain, float *tfpsf, float *
   //
   // Iterate solution
   //
-  double cs = 1E11, ocs;
+  double cs = 1E10, ocs;
   int i = 0, iter_max = 50;
   //
   do{
@@ -140,7 +140,7 @@ void descatter(int nx, int ny, float *timg, float *tfgain, float *tfpsf, float *
       }
     cs/= (double)(np);
     if(verbose) fprintf(stderr, "%s iter = %d, ChiSq = %e \n", inam, i,cs);
-  }while((cs>1E-10)&&(++i<iter_max));
+  }while((cs>1E-8)&&(++i<iter_max));
   //
   // Destroy FFTW plans
   //
