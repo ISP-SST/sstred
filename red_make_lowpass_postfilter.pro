@@ -27,6 +27,10 @@
 ;      The images on which the filter should be based. (But see
 ;      keyword fft_done)
 ;   
+;   limfreq : in, optional, type=scalar, default="sz/2"
+;   
+;      The radial coordinate of the diffraction limit in pixels.
+;   
 ; 
 ; :Keywords:
 ; 
@@ -82,7 +86,7 @@
 ;                 doplot.
 ;
 ;-
-function red_make_lowpass_postfilter, ims $
+function red_make_lowpass_postfilter, ims, limfreq $
                                  , apodisation = apodisation $
                                  , fft_done = fft_done $
                                  , isotropic = isotropic $
@@ -93,6 +97,8 @@ function red_make_lowpass_postfilter, ims $
   dims = size(ims, /dim)
   sz = dims[0]
   if n_elements(dims) lt 3 then Nims = 1 else Nims = dims[2]
+
+  if n_elements(limfreq) eq 0 then limfreq = sz/2
 
   xx = (findgen(sz/2))
 
@@ -155,7 +161,7 @@ function red_make_lowpass_postfilter, ims $
 
         ;; Average power in 20 degree wide sectors around +/-45 degrees
         ;; from the axes.
-        pow1d = total(exp(sectormean(alog(shiftfft(pow)), sz/2 $
+        pow1d = total(exp(red_sectormean(alog(shiftfft(pow)), sz/2 $
                                      , angles = [-45., 45.]*!pi/180. $
                                      , width = 20*!pi/180.) $
                          ), 2)/2.
@@ -172,7 +178,7 @@ function red_make_lowpass_postfilter, ims $
         endif
 
         ;; First find the constant part between ilo_noise and ihi_noise
-        ihi_noise = round(sz*0.430)
+        ihi_noise = limfreq*.99
         minval = min(pow1d[0:ihi_noise])
         ilo_noise = min(where(abs(pow1d[0:ihi_noise]-minval)/minval lt .04))
         Noise_fit = median(pow1d[ilo_noise:ihi_noise])
