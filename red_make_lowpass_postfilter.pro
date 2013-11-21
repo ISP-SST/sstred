@@ -71,6 +71,19 @@
 ;       The Fourier transforms of the input images. Will not be
 ;       returned if fft_done is set.
 ;
+;   wiener : in, optional, type=boolean
+;
+;       If this keyword is set, the filter generated is the classical
+;       Wiener filter, P_signal/(P_signal+P_noise). The signal and
+;       noise parts will be identified using an assumption that the
+;       power spectrum of the image consists of an exponential falloff
+;       "signal" part at low to mid frequencies and a constant "noise"
+;       level at high frequencies. If not set, the assumption is that
+;       the original noise is all filtered away in image restoration
+;       and the ramaining noise is a much weaker component. So the
+;       filter cutoff will be set by looking for a steep drop in
+;       power.
+;
 ;
 ; :History:
 ; 
@@ -84,6 +97,9 @@
 ;                 filtercube. Fourier transforms of images can be
 ;                 returned in keyword fouriercube. Also added keyword
 ;                 doplot.
+;
+;    2013-11-21 : MGL. Added wiener keyword and implemented
+;                 (isotropic) filters based on drop in power.
 ;
 ;-
 function red_make_lowpass_postfilter, ims, limfreq $
@@ -157,7 +173,7 @@ function red_make_lowpass_postfilter, ims, limfreq $
 
      if keyword_set(isotropic) then begin
         
-        ;; Make a circularly symmetric Wiener filter
+        ;; Make a circularly symmetric filter 
 
         ;; Average power in 20 degree wide sectors around +/-45 degrees
         ;; from the axes.
@@ -167,44 +183,82 @@ function red_make_lowpass_postfilter, ims, limfreq $
                          ), 2)/2.
         mx = max(pow1d)
         mn = min(pow1d)
-
-        ;; Fit logarithm of 1D power to a model consisting of a constant
-        ;; level and an exponential falloff. Exclude lowest and highest
-        ;; spatial frequencies
-
+        
         if keyword_set(doplot) then begin
            window, iim <9
            cgplot,pow1d, /ylog
         endif
 
-        ;; First find the constant part between ilo_noise and ihi_noise
-        ihi_noise = limfreq*.99
-        minval = min(pow1d[0:ihi_noise])
-        ilo_noise = min(where(abs(pow1d[0:ihi_noise]-minval)/minval lt .04))
-        Noise_fit = median(pow1d[ilo_noise:ihi_noise])
+        if keyword_set(wiener) then begin
 
-        if keyword_set(doplot) then begin
-           cgplot, xx[ilo_noise]*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'blue', /over
-           cgplot, ihi_noise*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'blue', /over
-           cgplot, xx, Noise_fit+0*xx, color = 'blue', /over
-        endif
+           ;; Wiener filter, P_signal/(P_signal+P_noise).
 
-        ;; Then the exponential part between ilo_signal and ihi_signal
-        ilo_signal = round(sz*0.150)
-        ihi_signal = ilo_noise*0.7
-        Pstart = [0, -1]
-        errs = 1.+0*xx[ilo_signal:ihi_signal]
-        P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal], alog(pow1d[ilo_signal:ihi_signal]), errs, Pstart)
-        Signal_fit = exp(P[0]+P[1]*xx)
+           ;; Fit logarithm of 1D power to a model consisting of a constant
+           ;; level and an exponential falloff. Exclude lowest and highest
+           ;; spatial frequencies
 
-        if keyword_set(doplot) then begin
-           cgplot, ilo_signal*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'red', /over
-           cgplot, xx[ihi_signal]*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'red', /over
-           cgplot, xx, Signal_fit, color = 'red', /over        
-           cgplot, xx, Signal_fit+Noise_fit, color = 'green', /over
-        endif
+           ;; First find the constant part between ilo_noise and ihi_noise
+           ihi_noise = limfreq*.99
+           minval = min(pow1d[0:ihi_noise])
+           ilo_noise = min(where(abs(pow1d[0:ihi_noise]-minval)/minval lt .04))
+           Noise_fit = median(pow1d[ilo_noise:ihi_noise])
 
-        filtercube[*, *, iim] = red_roundmatrix(signal_fit/(signal_fit+noise_fit), sz/2)
+           if keyword_set(doplot) then begin
+              cgplot, xx[ilo_noise]*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'blue', /over
+              cgplot, ihi_noise*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'blue', /over
+              cgplot, xx, Noise_fit+0*xx, color = 'blue', /over
+           endif
+
+           ;; Then the exponential part between ilo_signal and ihi_signal
+           ilo_signal = round(sz*0.150)
+           ihi_signal = ilo_noise*0.7
+           Pstart = [0, -1]
+           errs = 1.+0*xx[ilo_signal:ihi_signal]
+           P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal], alog(pow1d[ilo_signal:ihi_signal]), errs, Pstart)
+           Signal_fit = exp(P[0]+P[1]*xx)
+
+           if keyword_set(doplot) then begin
+              cgplot, ilo_signal*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'red', /over
+              cgplot, xx[ihi_signal]*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'red', /over
+              cgplot, xx, Signal_fit, color = 'red', /over        
+              cgplot, xx, Signal_fit+Noise_fit, color = 'green', /over
+           endif
+
+           filtercube[*, *, iim] = red_roundmatrix(signal_fit/(signal_fit+noise_fit), sz/2)
+        endif else begin
+
+           ;; Non-Wiener. Find sudden drop in power, corresponding to
+           ;; a bump in the derivative of the log.
+
+           hicut = round(limfreq*.96)
+           locut = round(hicut/3.)
+           ld = deriv(smooth(alog(pow1d),15))
+           indx = (indgen(hicut))[locut:*]
+
+           ;; Location of the bump
+           r = gaussfit(float(indx), ld[indx], gcoeff, nterms = 6)
+           rc = gcoeff[1] 
+
+           ;; Make the filter
+           filt = aperture(sz/2, rc)
+           kern = red_get_psf(sz, sz, sz/20., sz/20.)
+           filtercube[*, *, iim] =  red_convolve(filt, kern)
+
+           if keyword_set(doplot) then begin
+              window, (iim+10) <19
+              cgplot, indx, ld[indx]
+              cgplot, indx, r, color = 'red',/over
+              cgplot, rc*[1., 1.], [max(ld), min(ld)], color = 'blue',/over
+
+              cgplot, indx, rc-indx, color = 'cyan', /over
+
+              window, iim <9
+              cgplot,pow1d, /ylog
+              cgplot, rc*[1., 1.], [mn/2, mx*2], color = 'blue',/over
+              
+           endif
+
+        endelse
 
      endif else begin
 
