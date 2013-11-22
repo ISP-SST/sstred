@@ -103,12 +103,13 @@
 ;
 ;-
 function red_make_lowpass_postfilter, ims, limfreq $
-                                 , apodisation = apodisation $
-                                 , fft_done = fft_done $
-                                 , isotropic = isotropic $
-                                 , doplot = doplot $
-                                 , filtercube = filtercube $
-                                 , fouriercube = fouriercube
+                                      , apodisation = apodisation $
+                                      , fft_done = fft_done $
+                                      , isotropic = isotropic $
+                                      , doplot = doplot $
+                                      , filtercube = filtercube $
+                                      , fouriercube = fouriercube $
+                                      , wiener = wiener
   
   dims = size(ims, /dim)
   sz = dims[0]
@@ -190,14 +191,14 @@ function red_make_lowpass_postfilter, ims, limfreq $
         endif
 
         if keyword_set(wiener) then begin
-
            ;; Wiener filter, P_signal/(P_signal+P_noise).
 
-           ;; Fit logarithm of 1D power to a model consisting of a constant
-           ;; level and an exponential falloff. Exclude lowest and highest
-           ;; spatial frequencies
+           ;; Fit logarithm of 1D power to a model consisting of a
+           ;; constant level and an exponential falloff. Exclude
+           ;; lowest and highest spatial frequencies
 
-           ;; First find the constant part between ilo_noise and ihi_noise
+           ;; First find the constant part between ilo_noise and
+           ;; ihi_noise
            ihi_noise = limfreq*.99
            minval = min(pow1d[0:ihi_noise])
            ilo_noise = min(where(abs(pow1d[0:ihi_noise]-minval)/minval lt .04))
@@ -209,7 +210,8 @@ function red_make_lowpass_postfilter, ims, limfreq $
               cgplot, xx, Noise_fit+0*xx, color = 'blue', /over
            endif
 
-           ;; Then the exponential part between ilo_signal and ihi_signal
+           ;; Then the exponential part between ilo_signal and
+           ;; ihi_signal
            ilo_signal = round(sz*0.150)
            ihi_signal = ilo_noise*0.7
            Pstart = [0, -1]
@@ -225,8 +227,8 @@ function red_make_lowpass_postfilter, ims, limfreq $
            endif
 
            filtercube[*, *, iim] = red_roundmatrix(signal_fit/(signal_fit+noise_fit), sz/2)
-        endif else begin
 
+        endif else begin
            ;; Non-Wiener. Find sudden drop in power, corresponding to
            ;; a bump in the derivative of the log.
 
@@ -255,46 +257,118 @@ function red_make_lowpass_postfilter, ims, limfreq $
               window, iim <9
               cgplot,pow1d, /ylog
               cgplot, rc*[1., 1.], [mn/2, mx*2], color = 'blue',/over
-              
            endif
 
-        endelse
+        endelse                 ; Wiener
 
      endif else begin
 
-        ;; Cutoff levels to try
-        Nlevels = 100
-        mx = max(pow)
-        mn = min(pow)
-        ;; Equidistant in log space
-        levels = exp(findgen(Nlevels+1)*(alog(mx)-alog(mn))/Nlevels+alog(mn))
+        ;; Make a filter that is not necessarily circularly symmetric
+        if keyword_set(wiener) then begin
+           ;; Wiener filter, P_signal/(P_signal+P_noise).
 
-        ;; Collect thresholded areas based on the levels
-        areas = fltarr(Nlevels)
-        for i = 0, Nlevels-1 do areas[i] = total(pow gt levels[i])
-        print, min(deriv(areas), iselect)
+           Nangles = 16
+           Nangles = 32
 
-
-        if keyword_set(doplot) then begin
-           cgplot,areas                        
-           cgplot,-deriv(areas)*10,/over,color='blue'
-           cgplot,deriv(deriv(areas))*100,/over,color='red'
+           pow1d = exp(red_sectormean(alog(shiftfft(pow)), sz/2, Nangles $
+                                      , angles = angles))
            
-           cgplot, roundmean(alog(pow))
-        endif
+           filt1d = 0.0*pow1d
 
-        ;; ... select level
-        
-        ;; Make a psf for smoothing the filter 
-        fwhm = sz/32.
-        psf = red_get_psf(sz, sz, fwhm, fwhm)
+           for ia = 0, Nangles-1 do begin
+              
+              mx = max(pow1d[*, ia])
+              mn = min(pow1d[*, ia])
+              
+              if keyword_set(doplot) then begin
+                 window, 0
+                 cgplot,pow1d[*, ia], /ylog
+              endif
 
-        filter = pow gt levels[iselect]            ; Threshold
-        filter = shift(filter, sz/2, sz/2)         ; Origin in the center
-        filter = morph_close(filter,replicate(1,5,5)) ; Close holes and remove isolated pixels
-        filter = red_convolve(filter, psf)            ; Smooth the filter
-        filter = shift(filter, sz/2, sz/2)            ; Origin in the corner
-     endelse
+              ;; Fit logarithm of 1D power to a model consisting of a
+              ;; constant (?) level and an exponential falloff. Exclude
+              ;; lowest and highest spatial frequencies
+
+              ;; First find the constant part between ilo_noise and
+              ;; ihi_noise
+              ihi_noise = limfreq*.99
+              minval = min(pow1d[0:ihi_noise, ia])
+              ilo_noise = min(where(abs(pow1d[0:ihi_noise, ia]-minval)/minval lt .04))
+              ;;Noise_fit = median(pow1d[ilo_noise:ihi_noise, ia])
+              Noise_fit = min(exp((smooth(alog(pow1d[*, ia]), 5))[ilo_noise:ihi_noise]))
+
+              if keyword_set(doplot) then begin
+                 cgplot, exp(smooth(alog(pow1d[*, ia]), 5)), color = 'cyan', /over
+                 cgplot, xx, minval+0*xx, linestyle = 2, color = 'blue', /over
+                 cgplot, xx[ilo_noise]*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'blue', /over
+                 cgplot, ihi_noise*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'blue', /over
+                 cgplot, xx, Noise_fit+0*xx, color = 'blue', /over
+              endif
+
+              ;; Then the exponential part between ilo_signal and
+              ;; ihi_signal
+              ilo_signal = round(sz*0.150)
+              ihi_signal = ilo_noise*0.7
+              Pstart = [0, -1]
+              errs = 1.+0*xx[ilo_signal:ihi_signal]
+              P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal], alog(pow1d[ilo_signal:ihi_signal, ia]), errs, Pstart)
+              Signal_fit = exp(P[0]+P[1]*xx)
+
+              if keyword_set(doplot) then begin
+                 cgplot, ilo_signal*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'red', /over
+                 cgplot, xx[ihi_signal]*[1, 1], [mn/10, mx*2], linestyle = 3, color = 'red', /over
+                 cgplot, xx, Signal_fit, color = 'red', /over        
+                 cgplot, xx, Signal_fit+Noise_fit, color = 'green', /over
+              endif
+
+              filt1d[0, ia] = signal_fit/(signal_fit+noise_fit)
+
+           endfor               ; ia
+
+           ;;filtercube[*, *, iim] = red_roundmatrix(signal_fit/(signal_fit+noise_fit), sz/2)
+           filtercube[*, *, iim] = red_sectormatrix(filt1d, sz/2)
+          
+        endif else begin
+           ;; Non-Wiener. 
+
+           print, '2D non-Wiener filter not implemented yet.'
+           stop
+
+           ;; Cutoff levels to try
+           Nlevels = 100
+           mx = max(pow)
+           mn = min(pow)
+           ;; Equidistant in log space
+           levels = exp(findgen(Nlevels+1)*(alog(mx)-alog(mn))/Nlevels+alog(mn))
+
+           ;; Collect thresholded areas based on the levels
+           areas = fltarr(Nlevels)
+           for i = 0, Nlevels-1 do areas[i] = total(pow gt levels[i])
+           print, min(deriv(areas), iselect)
+
+
+           if keyword_set(doplot) then begin
+              cgplot,areas                        
+              cgplot,-deriv(areas)*10,/over,color='blue'
+              cgplot,deriv(deriv(areas))*100,/over,color='red'
+              
+              cgplot, roundmean(alog(pow))
+           endif
+
+           ;; ... select level
+           
+           ;; Make a psf for smoothing the filter 
+           fwhm = sz/32.
+           psf = red_get_psf(sz, sz, fwhm, fwhm)
+
+           filter = pow gt levels[iselect]            ; Threshold
+           filter = shift(filter, sz/2, sz/2)         ; Origin in the center
+           filter = morph_close(filter,replicate(1,5,5)) ; Close holes and remove isolated pixels
+           filter = red_convolve(filter, psf)            ; Smooth the filter
+           filter = shift(filter, sz/2, sz/2)            ; Origin in the corner
+           
+        endelse                 ; Wiener
+     endelse                    ; isotropic
   endfor                        ; iim
 
   return, min(filtercube, dim = 3)
