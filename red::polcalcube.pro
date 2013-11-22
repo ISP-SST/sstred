@@ -157,19 +157,22 @@ pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = n
      ;; Save data
      outdir = self.out_dir + '/polcal_cubes/'
      file_mkdir, outdir
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.3d.f0'
-     fzwrite, temporary(d), outdir+icam+'.'+ipref+'.3d.f0',' '
+     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.3d.fits'
+    ; fzwrite, temporary(d), outdir+icam+'.'+ipref+'.3d.fits',' '
+     writefits,  outdir+icam+'.'+ipref+'.3d.fits', temporary(d)
 
      ;; 1D data and states
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.1d.f0'
-     fzwrite, d1d, outdir+icam+'.'+ipref+'.1d.f0',' '
+     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.1d.fits'
+     ;fzwrite, d1d, outdir+icam+'.'+ipref+'.1d.fits',' '
+     writefits,outdir+icam+'.'+ipref+'.1d.fits', d1d
      qw = float(strmid(uqw,2))
      lp = float(strmid(ulp,2))
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.qw.f0'
-     fzwrite, qw, outdir+icam+'.'+ipref+'.qw.f0', ' '
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.lp.f0'
-     fzwrite, lp, outdir+icam+'.'+ipref+'.lp.f0', ' '
-
+     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.qw.fits'
+     ;fzwrite, qw, outdir+icam+'.'+ipref+'.qw.fits', ' '
+     writefits, outdir+icam+'.'+ipref+'.qw.fits', qw
+     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.lp.fits'
+;     fzwrite, lp, outdir+icam+'.'+ipref+'.lp.fits', ' '
+     writefits,  outdir+icam+'.'+ipref+'.lp.fits', lp
   endfor
   
 end
