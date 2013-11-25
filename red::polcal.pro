@@ -65,9 +65,9 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
   if(keyword_set(nthreads)) then threads = nthreads else threads = 7
 
   ;; Search for cubes
-  root = self.out_dir + '/polcal_cubes/camX*.????.3d.f0'
+  root = self.out_dir + '/polcal_cubes/camX*.????.3d.f*'
   f = file_search(root, count = ct)
-  if(ct eq 0) then begin
+  if(ct eq 0) then begin    
      print, inam + ' : ERROR, no valid polcal files found in '+self.out_dir + '/polcal_cubes/'
      return
   endif
@@ -115,12 +115,26 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      ;; Load 1D data
      dir = self.out_dir + '/polcal_cubes/'
      root = '.'+pref+'.'
-     r1d = f0(dir+ucam[0]+root+'1d.f0')
-     t1d = f0(dir+ucam[1]+root+'1d.f0')
-     rqw = f0(dir+ucam[0]+root+'qw.f0')
-     tqw = f0(dir+ucam[1]+root+'qw.f0')
-     rlp = f0(dir+ucam[0]+root+'lp.f0')
-     tlp = f0(dir+ucam[1]+root+'lp.f0')
+     
+     test = file_search(dir+'*.fits', count = ct)
+     if(ct gt 0) then begin
+        r1d = readfits(dir+ucam[0]+root+'1d.fits')
+        t1d = readfits(dir+ucam[1]+root+'1d.fits')
+        rqw = readfits(dir+ucam[0]+root+'qw.fits')
+        tqw = readfits(dir+ucam[1]+root+'qw.fits')
+        rlp = readfits(dir+ucam[0]+root+'lp.fits')
+        tlp = readfits(dir+ucam[1]+root+'lp.fits')
+        ex = 'fits'
+     endif else begin
+        r1d = f0(dir+ucam[0]+root+'1d.f0')
+        t1d = f0(dir+ucam[1]+root+'1d.f0')
+        rqw = f0(dir+ucam[0]+root+'qw.f0')
+        tqw = f0(dir+ucam[1]+root+'qw.f0')
+        rlp = f0(dir+ucam[0]+root+'lp.f0')
+        tlp = f0(dir+ucam[1]+root+'lp.f0')
+        ex = 'f0'
+     endelse
+
 
      ;; Get offset and delta (using QWP angle as reference)
      qlt = (red_polcal_fit(t1d, tqw, tlp, norm=4))[16:17]
@@ -135,7 +149,12 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      par_r = red_polcal_fit(r1d, rqw, rlp-da, norm=4, fix=ql)
      
      ;; Do fits and save
-     data = f0(f[0])
+     if(ex eq 'fits') then begin
+        data = readfits(f[0])
+     endif else begin
+        data = f0(f[0])
+     endelse
+
      mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=threads)
      file_mkdir, outdir
      oname = outdir + ucam[0]+'.'+pref+'.polcal.f0'
@@ -143,7 +162,12 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      dim = size(mm,/dim)
      fzwrite, reform(temporary(mm), [16,dim[2],dim[3]]), oname ,' '
 
-     data = f0(f[1])
+     if(ex eq 'fits') then begin
+        data = readfits(f[1])
+     endif else begin
+        data = f0(f[1])
+     endelse
+
      mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=threads)
      oname = outdir + ucam[1]+'.'+pref+'.polcal.f0'
      print, inam + ' : saving '+oname
