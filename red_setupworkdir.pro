@@ -74,6 +74,11 @@
 ;                 "date", "lapalma" and "stockholm". Made root_dir a
 ;                 keyword. 
 ; 
+;    2013-11-26 : MGL. Various improvements. The "new" flat field
+;                 procedure. Find out which cameras and wavelengths
+;                 are present in the raw flats directories.
+; 
+; 
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -216,7 +221,18 @@ pro red_setupworkdir, root_dir = root_dir $
         dirarr = [dirarr, strreplace(flatdirs[i], root_dir, '')]
         Nflat += 1
         printf, Clun, 'flat_dir = '+strreplace(flatdirs[i], root_dir, '')
-        printf, Slun, 'a -> setflatdir, root_dir+"'+strreplace(flatdirs[i], root_dir, '')+'"'
+        ;; Camera dirs and wavelengths to print to script file
+        camdirs = strarr(Nsubdirs)
+        wavelengths = strarr(Nsubdirs)
+        for idir = 0, Nsubdirs-1 do begin
+           camdirs[idir] = (strsplit(flatsubdirs[idir],  '/',/extract,count=nn))[nn-1]
+           if camdirs[idir] eq 'Crisp-W' then rf = '3' else rf = '5'
+           spawn, "ls "+flatsubdirs[idir]+"|rev|cut -d. -f"+rf+"|uniq|rev", wls
+           wavelengths[idir] = strjoin(wls, ' ')
+        endfor
+        ;; Print to script file
+        printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatdirs[i], root_dir, '') $
+                + '"  ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
         printf, Slun, 'a -> sumflat, /check'
      endif else begin
         flatsubdirs = file_search(flatdirs[i]+'/*', count = Nsubdirs)
@@ -226,16 +242,28 @@ pro red_setupworkdir, root_dir = root_dir $
               dirarr = [dirarr, strreplace(flatsubdirs[j], root_dir, '')]
               Nflat += 1
               printf, Clun, 'flat_dir = '+strreplace(flatsubdirs[j], root_dir, '')
-              printf, Slun, 'a -> setflatdir, root_dir+"'+strreplace(flatsubdirs[j], root_dir, '')+'"'
+              ;; Camera dirs and wavelengths to print to script file
+              camdirs = strarr(Nsubsubdirs)
+              wavelengths = strarr(Nsubsubdirs)
+              for idir = 0, Nsubsubdirs-1 do begin
+                 camdirs[idir] = (strsplit(flatsubsubdirs[idir],  '/',/extract,count=nn))[nn-1]
+                 if camdirs[idir] eq 'Crisp-W' then rf = '3' else rf = '5'
+                 spawn, "ls "+flatsubsubdirs[idir]+"|rev|cut -d. -f"+rf+"|uniq|rev", wls
+                 wavelengths[idir] = strjoin(wls, ' ')
+              endfor
+              ;; Print to script file
+              printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatsubdirs[j], root_dir, '') $
+                      + '" ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
               printf, Slun, 'a -> sumflat, /check'
               ;; The following does not give the right result, 6300
               ;; instead of 6302! 
-              prefilters = [prefilters, (strsplit(flatdirs[i],'/',/extract, count = nn))[nn]]
+              prefilters = [prefilters, (strsplit(flatdirs[i],'/',/extract, count = nn))[nn-1]]
               Nprefilters += 1
            endif
         endfor
      endelse
   endfor
+  prefilters = prefilters[1:*]
   printf, Slun, 'a -> makegains' 
 
 
@@ -353,7 +381,12 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, 'stop'          
   printf, Slun, ''
 
-  printf, Slun, 'bash> pinholecalib.py -s N *.cfg' 
+  printf, Slun, ';; Outside IDL:'
+  printf, Slun, ';; $ cd calib'
+  printf, Slun, ';; $ pinholecalib.py -s N *.cfg' 
+  printf, Slun, ';; $ cd ..'
+  printf, Slun, ''
+
   if Npol gt 0 then begin
      printf, Slun, 'a -> sumpolcal,/check, ucam="Crisp-T"' 
      printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
@@ -371,32 +404,33 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#descatter_dir = '
   printf, Clun, '#'
 
+  printf, Slun, 'a -> link_data' 
 
+  printf, Slun, 'a -> prepflatcubes' 
   printf, Slun, 'a -> prepflatcubes_lc4' 
   printf, Slun, 'a -> fitgains_ng, npar = 3' 
-  if Nprefilters gt 0 then begin
-     for iline = 1, Nprefilters do begin
-        printf, Slun, ";a -> sum_data_intdif, pref = '"+prefilters[iline]+"', cam = 'Crisp-T', /descatter, /verbose, /show, /overwrite"
-        printf, Slun, ";a -> make_intdif_gains3, min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale"
-        if strmid(prefilters[iline], 0, 2) eq '63' then begin
-           printf, Slun, ";a -> fitprefilter, pref = '"+prefilters[iline]+"', shift=-0.5"
-        endif else begin
-           printf, Slun, ";a -> fitprefilter, pref = '"+prefilters[iline]+"'"
-        endelse
-     endfor
-  endif
-  printf, Slun, 'a -> link_data' 
-  if Nprefilters gt 0 then begin
-     for iline = 1, Nprefilters do begin
-        printf, Slun, ";a -> prepmomfbd, /newgains, /wb_states, date_obs = "+date_momfbd+", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[iline]+"'"
-     endfor
-  endif
-  printf, Slun, ';  Post-MOMFBD stuff:' 
+  for iline = 0, Nprefilters-1 do begin
+     printf, Slun, "a -> sum_data_intdif, pref = '"+prefilters[iline]+"', cam = 'Crisp-T', /descatter, /verbose, /show, /overwrite"
+     printf, Slun, "a -> make_intdif_gains3, pref = '"+prefilters[iline]+"', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale"
+     if strmid(prefilters[iline], 0, 2) eq '63' then begin
+        printf, Slun, "a -> fitprefilter, pref = '"+prefilters[iline]+"', shift=-0.5"
+     endif else begin
+        printf, Slun, "a -> fitprefilter, pref = '"+prefilters[iline]+"'"
+     endelse
+     printf, Slun, "a -> prepmomfbd, /newgains, /wb_states, date_obs = "+date_momfbd+", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[iline]+"'"
+  endfor
+
+
+  printf, Slun, ''
+  printf, Slun, ';; Run MOMFBD outside IDL.'
+  printf, Slun, ''
+
+  printf, Slun, ';; Post-MOMFBD stuff:' 
   printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
   if Npol gt 0 then begin
      printf, Slun, 'pol = a->polarim(/new)' 
-     printf, Slun, 'for i = 0, ??, ?? do pol[i]->demodulate2,/noflat' 
-     printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]]          ; For polarized data'
+     printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate2,/noflat' 
+     printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
   endif
   printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
   
