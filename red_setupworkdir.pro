@@ -78,6 +78,10 @@
 ;                 procedure. Find out which cameras and wavelengths
 ;                 are present in the raw flats directories.
 ; 
+;    2013-11-29 : MGL. Changed the order of some commands in the
+;                 doit.pro file. Add "/descatter" keyword to
+;                 sum_data_intdif call only for wavelengths > 7700. 
+; 
 ; 
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -372,20 +376,7 @@ pro red_setupworkdir, root_dir = root_dir $
   endfor
   if Nsci gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr[1:*], "','")+"']"
 
-  printf, Slun, 'a -> getalignclips' 
-  printf, Slun, 'a -> getoffsets' 
-
-  printf, Slun, ''
-  printf, Slun, ';; -----------------------------------------------------'
-  printf, Slun, ';; This is how far we should be able to run unsupervised'
-  printf, Slun, 'stop'          
-  printf, Slun, ''
-
-  printf, Slun, ';; Outside IDL:'
-  printf, Slun, ';; $ cd calib'
-  printf, Slun, ';; $ pinholecalib.py -s N *.cfg' 
-  printf, Slun, ';; $ cd ..'
-  printf, Slun, ''
+  printf, Slun, 'a -> link_data' 
 
   if Npol gt 0 then begin
      printf, Slun, 'a -> sumpolcal,/check, ucam="Crisp-T"' 
@@ -393,9 +384,23 @@ pro red_setupworkdir, root_dir = root_dir $
      printf, Slun, 'a -> sumpolcal,/check, ucam="Crisp-R"' 
      printf, Slun, 'a -> polcalcube, cam = "Crisp-R"' 
      printf, Slun, 'a -> polcal' 
-     printf, Slun, 'a -> prepflatcubes' 
   endif
 
+  printf, Slun, ''
+  printf, Slun, ';; -----------------------------------------------------'
+  printf, Slun, ';; This is how far we should be able to run unsupervised'
+  printf, Slun, 'stop'          
+  printf, Slun, ''
+
+  printf, Slun, 'a -> getalignclips' 
+  printf, Slun, 'a -> getoffsets' 
+
+  printf, Slun, ''
+  printf, Slun, ';; Outside IDL:'
+  printf, Slun, ';; $ cd calib'
+  printf, Slun, ';; $ pinholecalib.py -s N *.cfg' 
+  printf, Slun, ';; $ cd ..'
+  printf, Slun, ''
 
   print, 'Descatter (not implemented yet)'
   printf, Clun, '#'
@@ -404,20 +409,29 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#descatter_dir = '
   printf, Clun, '#'
 
-  printf, Slun, 'a -> link_data' 
+  if Npol gt 0 then begin
+     printf, Slun, 'a -> prepflatcubes          ; For polarimetry data sets' 
+  endif
+  if Npol ne Nprefilters then begin
+     printf, Slun, 'a -> prepflatcubes_lc4      ; For non-polarimetry data sets' 
+  endif
 
-  printf, Slun, 'a -> prepflatcubes' 
-  printf, Slun, 'a -> prepflatcubes_lc4' 
   printf, Slun, 'a -> fitgains_ng, npar = 3' 
   for iline = 0, Nprefilters-1 do begin
-     printf, Slun, "a -> sum_data_intdif, pref = '"+prefilters[iline]+"', cam = 'Crisp-T', /descatter, /verbose, /show, /overwrite"
-     printf, Slun, "a -> make_intdif_gains3, pref = '"+prefilters[iline]+"', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale"
+     if long(prefilters[iline]) gt 7700 then maybedescatter = ', /descatter' else maybedescatter = ''
+     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[iline] $
+             + "', cam = 'Crisp-T', /verbose, /show, /overwrite" + maybedescatter
+     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[iline] $
+             + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybedescatter
+     printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[iline] $
+             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale"
      if strmid(prefilters[iline], 0, 2) eq '63' then begin
-        printf, Slun, "a -> fitprefilter, pref = '"+prefilters[iline]+"', shift=-0.5"
+        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[iline]+"', shift=-0.5"
      endif else begin
-        printf, Slun, "a -> fitprefilter, pref = '"+prefilters[iline]+"'"
+        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[iline]+"'"
      endelse
-     printf, Slun, "a -> prepmomfbd, /newgains, /wb_states, date_obs = "+date_momfbd+", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[iline]+"'"
+     printf, Slun, "a -> prepmomfbd, /newgains, /wb_states, date_obs = " + date_momfbd $
+             + ", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[iline]+"'"
   endfor
 
 
