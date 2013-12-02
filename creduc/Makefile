@@ -1,7 +1,7 @@
 ARCH     = $(shell uname -m)
 ARCHF    = $(shell uname -a)
 CXX = g++
-MDIR = /mn/xsan/d9/jaime/local/x86_64/
+MDIR = /usr/
 CPPFLAGS = -O4 -O5 -ffast-math -fPIC -fopenmp -I$(MDIR)/include #-no-cpp-precomp -dynamic -m64
 #CPPFLAGS = -O0 -g3 -fPIC -fopenmp -I$(MDIR)/include
 OFILES = mpfit.o fpi.o creduc.o creduc_wrap.o
