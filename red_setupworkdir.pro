@@ -151,6 +151,7 @@ pro red_setupworkdir, root_dir = root_dir $
   
   if Nfound eq 1 then begin
      root_dir = found_dir
+     if ~strmatch(root_dir,'*/') then root_dir += '/'
   endif else if Nfound eq 0 then begin
      print, 'Cannot fine data from '+date+' in '+search_dir
      return
@@ -206,6 +207,7 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      darksubdirs = file_search(darkdirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
+stop
         printf, Clun, 'dark_dir = '+strreplace(darkdirs[i], root_dir, '')
      endif
   endfor
