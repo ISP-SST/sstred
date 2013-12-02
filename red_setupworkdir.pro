@@ -207,7 +207,6 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      darksubdirs = file_search(darkdirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-stop
         printf, Clun, 'dark_dir = '+strreplace(darkdirs[i], root_dir, '')
      endif
   endfor
