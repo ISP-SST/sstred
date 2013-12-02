@@ -179,8 +179,6 @@ pro red_setupworkdir, root_dir = root_dir $
   ;; printf, Slun, '.r crispred'
   printf, Slun, 'a = crispred("config.txt")' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
-  printf, Slun, 'a -> sumdark, /check' 
-  
 
   print, 'Cameras'
   printf, Clun, '#'
@@ -210,6 +208,8 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Clun, 'dark_dir = '+strreplace(darkdirs[i], root_dir, '')
      endif
   endfor
+  printf, Slun, 'a -> sumdark, /check' 
+  
 
   print, 'Flats'
   printf, Clun, '#'
@@ -232,8 +232,11 @@ pro red_setupworkdir, root_dir = root_dir $
         for idir = 0, Nsubdirs-1 do begin
            camdirs[idir] = (strsplit(flatsubdirs[idir],  '/',/extract,count=nn))[nn-1]
            if camdirs[idir] eq 'Crisp-W' then rf = '3' else rf = '5'
-           spawn, "ls "+flatsubdirs[idir]+"|rev|cut -d. -f"+rf+"|uniq|rev", wls
-           wavelengths[idir] = strjoin(wls, ' ')
+           spawn, "ls "+flatsubdirs[idir]+"|grep cam|wc -l", Nfiles
+           if long(Nfiles) gt 0 then begin
+              spawn, "ls "+flatsubdirs[idir]+"|grep cam|rev|cut -d. -f"+rf+"|uniq|rev", wls
+              wavelengths[idir] = strjoin(wls, ' ')
+           endif
         endfor
         ;; Print to script file
         printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatdirs[i], root_dir, '') $
@@ -253,9 +256,12 @@ pro red_setupworkdir, root_dir = root_dir $
               for idir = 0, Nsubsubdirs-1 do begin
                  camdirs[idir] = (strsplit(flatsubsubdirs[idir],  '/',/extract,count=nn))[nn-1]
                  if camdirs[idir] eq 'Crisp-W' then rf = '3' else rf = '5'
-                 spawn, "ls "+flatsubsubdirs[idir]+"|rev|cut -d. -f"+rf+"|uniq|rev", wls
-                 wavelengths[idir] = strjoin(wls, ' ')
-              endfor
+                 spawn, "ls "+flatsubsubdirs[idir]+"|grep cam|wc -l", Nfiles      
+                 if long(Nfiles) gt 0 then begin
+                    spawn, "ls "+flatsubsubdirs[idir]+"|grep cam|rev|cut -d. -f"+rf+"|uniq|rev", wls
+                    wavelengths[idir] = strjoin(wls, ' ')
+                 endif
+             endfor
               ;; Print to script file
               printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatsubdirs[j], root_dir, '') $
                       + '" ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
