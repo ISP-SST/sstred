@@ -235,7 +235,12 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
    
      endif
   endif
-   
+
+  ; Filter states together?
+  
+  
+
+
   ;; Destretch ?
    
   if(destretch) then begin
