@@ -82,7 +82,10 @@
 ;                 doit.pro file. Add "/descatter" keyword to
 ;                 sum_data_intdif call only for wavelengths > 7700. 
 ; 
-; 
+;    2013-12-02 : MGL. Bugfixes. Add slash at end of root_dir. Can now
+;                 deal with empty raw flats directories. Gets the
+;                 prefilters from the summed flats instead.
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -261,7 +264,7 @@ pro red_setupworkdir, root_dir = root_dir $
                     spawn, "ls "+flatsubsubdirs[idir]+"|grep cam|rev|cut -d. -f"+rf+"|uniq|rev", wls
                     wavelengths[idir] = strjoin(wls, ' ')
                  endif
-             endfor
+              endfor
               ;; Print to script file
               printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatsubdirs[j], root_dir, '') $
                       + '" ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
@@ -274,7 +277,15 @@ pro red_setupworkdir, root_dir = root_dir $
         endfor
      endelse
   endfor
-  prefilters = prefilters[1:*]
+  if Nprefilters eq 0 then begin
+     ;; This can happen if flats were already summed in La Palma. Look
+     ;; for prefilters in the summed flats directory instead.
+     spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
+     Nprefilters = n_elements(prefilters)
+  endif else begin
+     prefilters = prefilters[1:*]
+  endelse
+
   printf, Slun, 'a -> makegains' 
 
 
