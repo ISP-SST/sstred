@@ -55,7 +55,7 @@
 ; 
 ; 
 ;-
-pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat, pref=epref $
+pro red::sumpinh_new, nthreads = nthreads, descatter = descatter, ustat = ustat, pref=epref $
                   , pinhole_align = pinhole_align
   
   inam = 'red::sumpinh : '
