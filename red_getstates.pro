@@ -51,7 +51,7 @@ function red_getstates, files
      n = n_elements(tmp)
                                 ;
      nums[ii] = tmp[n -1]
-     pref[ii] = tmp[n-6]
+     pref[ii] = tmp[n-5]
      lc[ii] = tmp[n-3]
      scan[ii] = tmp[1]
      wav[ii] = tmp[n-4]
