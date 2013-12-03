@@ -237,7 +237,7 @@ pro red::sumpinh_new, nthreads = nthreads, descatter = descatter, ustat = ustat,
               ;;
               ;; Save
               ;;
-              head = 'n_aver=' + stri(count)
+              head = 'n_aver=' + red_stri(count)
               print, inam + 'saving ' + outdir + pnames[icam]
               fzwrite, fix(round(10. * psum)), outdir+pnames[icam], head
               print, inam + 'saving ' + outdir + pfnames[icam]
