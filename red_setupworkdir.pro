@@ -299,7 +299,8 @@ pro red_setupworkdir, root_dir = root_dir $
      if Nsubdirs gt 0 then begin
         printf, Clun, 'pinh_dir = '+strreplace(pinhdirs[i], root_dir, '')
         printf, Slun, 'a -> setpinhdir, root_dir+"'+strreplace(pinhdirs[i], root_dir, '')+'"'
-        printf, Slun, 'a -> sumpinh_new'
+;        printf, Slun, 'a -> sumpinh_new'
+        printf, Slun, 'a -> sumpinh'
      endif else begin
         pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -307,7 +308,8 @@ pro red_setupworkdir, root_dir = root_dir $
            if Nsubsubdirs gt 0 then begin
               printf, Clun, 'pinh_dir = '+strreplace(pinhsubdirs[j], root_dir, '')
               printf, Slun, 'a -> setpinhdir, root_dir+"'+strreplace(pinhsubdirs[j], root_dir, '')+'"'
-              printf, Slun, 'a -> sumpinh_new'
+;              printf, Slun, 'a -> sumpinh_new'
+              printf, Slun, 'a -> sumpinh'
            endif
         endfor
      endelse
