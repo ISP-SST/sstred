@@ -193,7 +193,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
         simy = simy_orig
      endif else begin
         print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-        red_findpinholegrid, pics[*,*,icam], simx, simy
+        red_findpinholegrid, pics[*,*,icam], simx, simy, thres=thres
         print, 'done'
         simx = simx(where(simx gt border and simx lt dim[0]-border))
         simy = simy(where(simy gt border and simy lt dim[1]-border))
