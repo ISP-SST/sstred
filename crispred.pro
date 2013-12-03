@@ -51,6 +51,7 @@
 @red::sumdark.pro
 @red::sumflat.pro
 @red::sumpinh.pro
+@red::sumpinh_new.pro
 @red::sumpolcal.pro
 @red::sumprefilter.pro
 @red::whichoffset.pro

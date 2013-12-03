@@ -152,7 +152,7 @@ pro red::sumpinh, nthreads = nthreads, descatter = descatter, ustat = ustat, pre
      endfor
 
      ;; Boolean for if we want to do descatter for this prefilter
-     DoDescatter = keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) 
+     DoDescatter = keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')
 
      ;;
      ;; Read descatter data?
