@@ -43,10 +43,10 @@
 ; 
 ; 
 ;-
-pro red_findpinholegrid, pinholeimage, simx, simy
-
+pro red_findpinholegrid, pinholeimage, simx, simy, thres = thres
+  if(n_elements(thres) eq 0) then thres = 0.05
   ;; Each pinhole gets a unique number
-  mask = red_separate_mask(pinholeimage gt .05*max(pinholeimage))
+  mask = red_separate_mask(pinholeimage gt thres*max(pinholeimage))
   ;; # pinholes found
   nph = max(mask)
 

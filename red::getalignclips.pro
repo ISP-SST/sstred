@@ -66,7 +66,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-;  if(n_elements(thres) eq 0) then tr = 0.1 ; Not used?? MGL
+  if(n_elements(thres) eq 0) then tr = 0.05 ; Not used?? MGL
   if(n_elements(maxshift) eq 0) THEN maxshift = 35
    
   ;; Search summed pinh images and camtag
@@ -167,7 +167,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
 
   ;; Find pinhole grid for reference image
   print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-  red_findpinholegrid, pics[*,*,icamref], simx_orig, simy_orig
+  red_findpinholegrid, pics[*,*,icamref], simx_orig, simy_orig, thres = thres
   print, 'done'
 
   gridspacing = median([deriv(simx_orig),deriv(simy_orig)])
