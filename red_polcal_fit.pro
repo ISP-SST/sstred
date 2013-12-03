@@ -142,7 +142,7 @@ FUNCTION red_polcal_fit, data_r, qq, lp, NORM=norm, init=par0, INI_NORM=inrm, $
   f_args={X:xx, y:one*data_r, norm: norm, EXTINCTION: elp, STOKES_IN: sp0}
 
   par2 = mpfit('red_mpfunc_polcal', par1, functargs=f_args, $
-               parinfo=parinfo, best=chi, /quiet)
+               parinfo=parinfo, bestnorm=chi, /quiet)
 
  ;;; final normalization
 
