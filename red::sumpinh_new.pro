@@ -105,7 +105,7 @@ pro red::sumpinh_new, nthreads = nthreads, descatter = descatter, ustat = ustat,
   ;;
   ;; Output dir
   ;;
-  outdir = self.out_dir+ '/pinh_test/'
+  outdir = self.out_dir+ '/pinh/'
   file_mkdir, outdir
 
   ;;
