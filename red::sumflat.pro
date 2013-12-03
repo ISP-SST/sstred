@@ -199,7 +199,7 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
   for jj = 0L, nt - 1 do begin
      dum = strsplit(file_basename(files[jj]), '.', /extract)
      Ndum = n_elements(dum)
-     wstat[jj] = dum[Ndum-5]
+     if(Ndum eq 7) then wstat[jj] = dum[Ndum-3] else wstat[jj] = dum[Ndum-5]
   endfor
   uwstat = wstat[uniq(wstat, sort(wstat))]
 
