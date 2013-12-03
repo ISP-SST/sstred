@@ -60,7 +60,7 @@ function red_getstates, files
      hscan[ii] = hs
      
      dum = strsplit(wav[ii],'_',/extract)
-     if(n_elements(dum) eq 1) then dwav[ii] = double(dum[0])+double(dum[1])*1.0d-3
+     if(n_elements(dum) eq 2) then dwav[ii] = double(dum[0])+double(dum[1])*1.0d-3
                                 ;
      fullstate[ii] = pref[ii]+'.'+wav[ii] + '.' + lc[ii]
                                 ;
