@@ -23,10 +23,6 @@
 ; 
 ; :Keywords:
 ;    
-;    refrot :  
-;    
-;    
-;    
 ;    thres : 
 ;    
 ;    
@@ -36,24 +32,9 @@
 ;    maxshift : 
 ;    
 ; 
-;    
-; 
-;    dx : in, optional, type="array[2]", default="[0, 0]"
-; 
-;       Set dx to the shifts needed to approximately align the NB
-;       cameras in X to the WB (ref) after applying the correct
-;       flipping. Use only if there are large misalignments, like a
-;       whole row or column of pinholes.
-; 
-;    dy : in, optional, type="array[2]", default="[0, 0]"
-; 
-;       As dx but refers to the Y direction.
-;
 ; 
 ; :history:
 ;
-;   2013-05-?? : Keywords dx and dy added by MGL
-; 
 ;   2013-07-24 : Use red_show rather than show.
 ; 
 ;   2013-08-30 : MGL. Added support for logging. Let the subprogram
@@ -61,10 +42,22 @@
 ;                rather than self.data_dir, in case (the first) data
 ;                directory does not have data from all cameras.
 ;
+;   2013-09-18 : MGL. Make the transmitted camera the reference and
+;                remove the refroot keyword.
+;
+;   2013-09-25 : MGL. Display all three properly clipped and flipped
+;                pinhole images in a single window to make checking of
+;                alignment and coarse alignment easier to check.
+;                Bugfixed the extraclip feature. Read and display also
+;                properly clipped gaintables in ordet to make it
+;                easier to see if extra clipping is needed. 
+;
+;   2013-09-25 : MGL. Now checks for existence of gaintables before
+;                reading. 
+;
 ;-
-PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
-                        maxshift = maxshift, $
-                        dx = dx, dy = dy  
+PRO red::getalignclips, thres = thres, extraclip = extraclip, $
+                        maxshift = maxshift
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -73,49 +66,30 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if n_elements(dx) eq 0 then dx = [0, 0] else dx = round(dx)
-  if n_elements(dy) eq 0 then dy = [0, 0] else dy = round(dy)
-
-  if(n_elements(thres) eq 0) then tr = 0.1 ; Not used?? MGL
+;  if(n_elements(thres) eq 0) then tr = 0.1 ; Not used?? MGL
   if(n_elements(maxshift) eq 0) THEN maxshift = 35
    
-  ;; Procedure pinhcalib based on Pit Sutterlin's setup_ph.pro
-   
   ;; Search summed pinh images and camtag
-   
   if(n_elements(extraclip) eq 0) then extraclip = [0L, 0L, 0L, 0L]
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  ;; if(self.dopinh) then begin
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camt+'/|grep cam',f
-  ;;    camt = red_camtag(f[0])
-  ;;    ;
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camwb+'/|grep cam',f
-  ;;    camw = red_camtag(f[0])
-  ;;    ;
-  ;;    spawn, 'find ' +self.pinh_dir+'/'+self.camr+'/|grep cam',f
-  ;;    camr = red_camtag(f[0])    
-  ;; endif else begin
-  ;;    print, inam+' : ERROR, undefined pinh_dir'
-  ;;    return
-  ;; endelse
-
-  ;;  self -> getcamtags, dir = self.data_dir
   self -> getcamtags, dir = self.pinh_dir
+  camw = self.camwbtag
   camt = self.camttag
   camr = self.camrtag
-  camw = self.camwbtag
+  cams = [camw, camt, camr]
+  labs = ['WB', 'NBT', 'NBR']
 
+  fw = file_search(self.out_dir+'/pinh/' + camw +'.*.pinh', count = cw)
   ft = file_search(self.out_dir+'/pinh/' + camt +'.*.pinh', count = ct)
   fr = file_search(self.out_dir+'/pinh/' + camr +'.*.pinh', count = cr)
-  fw = file_search(self.out_dir+'/pinh/' + camw +'.*.pinh', count = cw)
 
   ;; Get image states
+  wstat = red_getstates_pinh(fw)
   tstat = red_getstates_pinh(ft, lam = lams)
   rstat = red_getstates_pinh(fr)
-  wstat = red_getstates_pinh(fw)
-                                
+
   ;; Select state to align
   allowed = [-1]
   for ii = 0L, n_elements(ft) -1 do BEGIN
@@ -138,228 +112,292 @@ PRO red::getalignclips, refrot = refrot, thres = thres, extraclip = extraclip, $
 
   print, inam+' : selected state '+tstat[toread]
   pstate = tstat[toread]
-
+  lam = lams[toread]
   pref = (strsplit(pstate, '.',/extract))[0]
   
-  
-  ;; Load states 
+  ;; Prepare for putting everything in arrays
+  Ncams = 3
   ;; ref = cam_t
-  ;; slaves = camr and camw
-  pos2 = where(wstat eq tstat[toread])
-  ref = f0(fw[pos2])
-  refs = ref
+  icamref = 1
+  ;; slaves = camw and camr
+  icamnonrefs = [0, 2]
+  
+  ;; Read ref image
+  ref = f0(ft[toread])
   dim = size(ref,/dim)
 
-  pics = fltarr(dim[0], dim[1], 2)
-  pics[*,*,0]= f0(ft[toread])
+  pics = fltarr(dim[0], dim[1], Ncams)
+  pics[*,*,icamref] = ref
+
+  ;; Read slave images
+  pos0 = where(wstat eq tstat[toread])
   pos1 = where(rstat eq tstat[toread])
-  pics[*,*,1]= f0(fr[pos1])
+
+  pics[*,*,icamnonrefs[0]]= f0(fw[pos0])
+  pics[*,*,icamnonrefs[1]]= f0(fr[pos1])
+
 
   print, inam+' : images to be calibrated:'
-  print, ' -> '+ft[toread]
+  print, ' -> '+fw[pos0]
+  print, ' -> '+ft[toread] + ' (reference)'
   print, ' -> '+fr[pos1]
-  print, ' -> '+fw[pos2]
-  tfil = ft[toread]
-  rfil = fr[pos1]
-  wfil = fw[pos2]
-  lam = lams[toread]
 
+  ;; Define the search space, rotation, shifts in x and y.
   rots = [0, 2, 5, 7]
+  xshifts = [-1, 0, 1]
+  yshifts = [-1, 0, 1]
 
-  ;; Rotate ref?
-  if(keyword_set(refrot)) then begin
-     pp = where(rots eq refrot, count)
-     if count eq 0 then begin
-        print, inam+' : invalid supplied refrot'
-        print, inam+' : valid orientations:'
-        print,' -> 0 - same,   2 - flip X+Y,   5 - flip X,   7 - flip Y'
-        print, inam+' : ignoring refrot keyword!'
-        wait, 2
-     endif else begin
-        print, inam+' : rotating reference to position -> '+red_stri(refrot)
-        ref = rotate(temporary(ref), refrot)
-     endelse
-  endif else refrot = 0
+  ;; Search space dimensions
+  Nsearchr = n_elements(rots)   
+  Nsearchx = n_elements(xshifts)
+  Nsearchy = n_elements(yshifts)
 
   ;; Define arrays to store stuff
   np = 2
-  sr = dim
-  nr = n_elements(rots)
-  sh = intarr(2, nr)
-  cor = fltarr(nr)
-  ssh = intarr(2, np+1)
-  i_rot = intarr(np+1)
-  i_rot[0] = refrot
+
+;  sh = intarr(2, Nsearchr)
+  cor = fltarr(Nsearchr, Nsearchx, Nsearchy)      ; Correlation coefficients
+  ssh = intarr(2, Ncams)
+  i_rot = intarr(Ncams)
+  i_xshift = intarr(Ncams)
+  i_yshift = intarr(Ncams)
 
   ;; Search orientation!
-  dim-= 1
+;  dim -= 1
 
   ;; Find pinhole grid for reference image
   print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-  red_findpinholegrid, ref, simx_orig, simy_orig
+  red_findpinholegrid, pics[*,*,icamref], simx_orig, simy_orig
   print, 'done'
+
+  gridspacing = median([deriv(simx_orig),deriv(simy_orig)])
 
   ;; Remove rows and columns of pinholes that are close enough to the
   ;; FOV borders in the reference channel, that they could be outside
   ;; the FOV in some other channel.
-  simx_orig = simx_orig(where(simx_orig gt maxshift and simx_orig lt (size(ref, /dim))[0]-maxshift))
-  simy_orig = simy_orig(where(simy_orig gt maxshift and simy_orig lt (size(ref, /dim))[1]-maxshift))
-  
-  Ngridx = (size(simx_orig, /dim))[0]
-  Ngridy = (size(simy_orig, /dim))[0]
-
-  ;; Make array with ref pinhole peak intensities.
-  refpeaks = fltarr(Ngridx, Ngridy)
+  border = gridspacing/2
+  simx_orig = simx_orig(where(simx_orig gt border and simx_orig lt dim[0]-border))
+  simy_orig = simy_orig(where(simy_orig gt border and simy_orig lt dim[1]-border))
   simx = simx_orig
   simy = simy_orig
-  for igrid = 0, Ngridx-1 do begin
-     for jgrid = 0, Ngridy-1 do begin
-        thispeak = ref[simx[igrid]-maxshift:simx[igrid]+maxshift, simy[jgrid]-maxshift:simy[jgrid]+maxshift]
-        refpeaks[igrid, jgrid] = max(thispeak)
-     endfor
-  endfor
+  
+  Nsimx = (size(simx_orig, /dim))[0] 
+  Nsimy = (size(simy_orig, /dim))[0]  
 
-  FOR im = 0, np-1 DO BEGIN
+  ;; Make array with peak intensities for all cameras
+  peaks = fltarr(Nsimx, Nsimy, Ncams)
+  for icam = 0, Ncams-1 do begin
 
-     ;; Make array with pinhole peak intensities
-     peaks = fltarr(Ngridx, Ngridy)
+     if icam eq icamref then begin
+        simx = simx_orig
+        simy = simy_orig
+     endif else begin
+        print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
+        red_findpinholegrid, pics[*,*,icam], simx, simy
+        print, 'done'
+        simx = simx(where(simx gt border and simx lt dim[0]-border))
+        simy = simy(where(simy gt border and simy lt dim[1]-border))
+       ;; May have to reduce the grid size
+        Nsimx = Nsimx < (size(simx, /dim))[0] 
+        Nsimy = Nsimy < (size(simy, /dim))[0] 
+     endelse
 
-     ;; This pic, optionally shifted.  MGL May 2013
-     thispic = shift(pics[*, *, im], dx[im], dy[im])
+     for isim = 0, Nsimx-1 do begin
+        for jsim = 0, Nsimy-1 do begin
+           peaks[isim, jsim, icam] = max(pics[simx[isim]-border:simx[isim]+border $
+                                              , simy[jsim]-border:simy[jsim]+border $
+                                              , icam])
+        endfor                  ; jsim
+     endfor                     ; isim
+  endfor                        ; icam
 
-     ;; Find matching orientation.
-     ;; We could implement ABS DIFF on these matrices, this would
-     ;; remove the need for the "maxshift" parameter. Which would
-     ;; probably be nice for the blue tilt filter, which shifts images
-     ;; quite a bit for large angles.
-     FOR n = 0, nr-1 DO BEGIN
-        if rots[n] eq 0 or rots[n] eq 7 then begin 
-           simx = simx_orig
-        endif else begin
-           simx = (size(ref, /dim))[0]-reverse(simx_orig)
-        endelse
-        if rots[n] eq 0 or rots[n] eq 5 then begin
-           simy = simy_orig
-        endif else begin
-           simy = (size(ref, /dim))[0]-reverse(simy_orig)
-        endelse
+  ;; Possibly reduce peaks array size
+  peaks = peaks[0:Nsimx-1, 0:Nsimy-1, *]
+  
+  ;; Match reference peaks with other cameras
+  refpeaks = peaks[Nsearchx/2:Nsimx-Nsearchx/2-1, Nsearchy/2:Nsimy-Nsearchy/2-1, icamref]
+  for im = 0, Ncams-2 do begin
+     
+     icam = icamnonrefs[im]
 
-        for igrid = 0, Ngridx-1 do begin
-           for jgrid = 0, Ngridy-1 do begin
-              ;;thispeak = pics[simx[igrid]-maxshift:simx[igrid]+maxshift, simy[jgrid]-maxshift:simy[jgrid]+maxshift, im]
-              thispeak = thispic[simx[igrid]-maxshift:simx[igrid]+maxshift, simy[jgrid]-maxshift:simy[jgrid]+maxshift] 
-              peaks[igrid, jgrid] = max(thispeak)
-           endfor
-        endfor
-        
-        ;;  tvscl, rebin(refpeaks,10*Ngridx,10*Ngridy,/samp) , 0
-        ;;  tvscl, rebin(peaks,10*Ngridx,10*Ngridy,/samp) , 2
+     ;; Find matching orientation and shift.
+     for irot = 0, Nsearchr-1 do begin        ; Loop over orientations
 
-        rotpeaks = rotate(peaks, rots[n])
-        cor[n] = correlate(refpeaks, rotpeaks)
+        rotpeaks = rotate(peaks[*, *, icam], rots[irot])
+      
+        for ix = 0, Nsearchx-1 do begin     ; Loop over x shifts
+           for iy = 0, Nsearchy-1 do begin ; Loop over y shifts
 
-     ENDFOR
-     cm = max(cor, w)
-     i_rot[im+1] = rots[w]
+              shiftpeaks = rotpeaks[xshifts[ix]+Nsearchx/2:xshifts[ix]+Nsimx-Nsearchx/2-1 $
+                                    , yshifts[iy]+Nsearchy/2:yshifts[iy]+Nsimy-Nsearchy/2-1]
+              cor[irot, ix, iy] = correlate(refpeaks, shiftpeaks)
+;              
+           endfor               ; iy
+        endfor                  ; ix
 
+     endfor                     ; irot
+
+     ;; Find best correlation
+     cm = max(cor, maxloc)
+     maxindx = array_indices(cor,maxloc)
+
+     ;; Find rot and shifts that correspond to best correlation
+     i_rot[icam] = rots[maxindx[0]]
+     i_xshift[icam] = xshifts[maxindx[1]]
+     i_yshift[icam] = yshifts[maxindx[2]]
 
      ;; Use the found orientation and find shifts
-     p1 = rotate(reform(pics[*, *, im]), i_rot[im+1])
-     ssh[*, im+1] = shc(ref, p1, RANGE = maxshift)
+     p1 = rotate(reform(pics[*, *, icam]), i_rot[icam])
 
-     ;; Compensate for optional shifts. MGL May 2013
-     ssh[*, im+1] = ssh[*, im+1] + [dx[im], dy[im]]
+     mxsh = maxshift+max(abs([i_xshift[icam], i_yshift[icam]]))*gridspacing
+     print, 'Max shift allowed: ', mxsh
+     print, maxindx
 
-     if(im eq 0) then cam=camt else cam=camr
-     print, inam+cam+' : orientation ', strtrim(i_rot[im+1], 2), $
-            ' -> shift: x,y=', strtrim(ssh[0, im+1], 2), ', ', strtrim(ssh[1, im+1], 2)
+     ssh[*, icam] = shc(pics[*,*,icamref], p1, RANGE = mxsh)
 
+     print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam], 2), $
+            ' -> shift: x,y=', strtrim(ssh[0, icam], 2), ', ', strtrim(ssh[1, icam], 2)
 
-     if 1 then begin            ; This is only for testing, can be removed!
-        n = w
-;        p1 = reform(pics[*, *, im])
-        p1 = rotate(reform(pics[*, *, im]), rots[n])
-        sh[*, n] = shc(ref, p1, RANGE = 50)
-        r1 = ref[sh[0, n] > 0:dim[0]+(sh[0, n] < 0), $
-                 sh[1, n] > 0:dim[1]+(sh[1, n] < 0)]
-        p1 = p1[(-sh[0, n]) > 0:dim[0]-(sh[0, n] > 0), $
-                (-sh[1, n]) > 0:dim[1]-(sh[1, n] > 0)]
-        ;;  window, 0, xsize = (size(ref, /dim))[0], ysize = (size(ref, /dim))[1]
-        ;;  tvscl, r1
-        ;;  window, 1, xsize = (size(p1, /dim))[0], ysize = (size(p1, /dim))[1]
-        ;; tvscl, p1  
-
-     endif
-
-  ENDFOR
+  endfor                        ; im (icam)
 
   ;; Clip images
-  ssh= -ssh
-  ssh[0, *]-= min(ssh[0, *])
-  ssh[1, *]-= min(ssh[1, *])
-  sx = sr[0]-max(ssh[0, *])
-  sy = sr[1]-max(ssh[1, *])
+  ssh = -ssh
+  ssh[0, *] -= min(ssh[0, *])
+  ssh[1, *] -= min(ssh[1, *])
+  sx = dim[0] - max(ssh[0, *])
+  sy = dim[1] - max(ssh[1, *])
   sx = 2 * (sx / 2)
   sy = 2 * (sy / 2)
-  cl = rebin(ssh, 4, np+1, /sam)
+  cl = rebin(ssh, 4, Ncams, /sam)
   cl[1, *]+= sx-1
   cl[3, *]+= sy-1
 
-  FOR i = 0, np DO BEGIN
-     IF i_rot[i] EQ 2 OR i_rot[i] EQ 5 THEN cl[0:1, i] = sr[0]-cl[0:1, i] $
-     ELSE cl[0:1, i] += 1
-     IF i_rot[i] EQ 2 OR i_rot[i] EQ 7 THEN cl[2:3, i] = sr[1]-cl[2:3, i] $
-     ELSE cl[2:3, i] += 1
-  ENDFOR
+  for i = 0, Ncams-1 do begin
+     if i_rot[i] eq 2 or i_rot[i] eq 5 then begin
+        cl[0:1, i] = dim[0]-cl[0:1, i] 
+     endif else begin
+        cl[0:1, i] += 1
+     endelse
+     if i_rot[i] eq 2 or i_rot[i] eq 7 then begin
+        cl[2:3, i] = dim[1]-cl[2:3, i] 
+     endif else begin
+        cl[2:3, i] += 1
+     endelse
+  endfor
 
   ;; Extra border clip?
   if(total(extraclip) gt 0) then begin
      print, inam + ' : extra border clip in X -> '+red_stri(extraclip[0])+' pixels'
      print, inam + ' : extra border clip in Y -> '+red_stri(extraclip[1])+' pixels'
 
-     for ii = 0, 2 do begin
-        if(cl[0,ii] lt cl[1,ii]) then begin
-           cl[0,ii] += extraclip[0]
-           cl[1,ii] -= extraclip[1]
+     for icam = 0, Ncams-1 do begin
+        if(cl[0,icam] lt cl[1,icam]) then begin
+           cl[0,icam] += extraclip[0]
+           cl[1,icam] -= extraclip[1]
         endif else begin
-           cl[0,ii] -= extraclip[0]
-           cl[1,ii] += extraclip[1]
+           cl[0,icam] -= extraclip[0]
+           cl[1,icam] += extraclip[1]
         endelse
-        if(cl[2,ii] lt cl[3,ii]) then begin
-           cl[2,ii] += extraclip[2]
-           cl[3,ii] -= extraclip[3]
+        if(cl[2,icam] lt cl[3,icam]) then begin
+           cl[2,icam] += extraclip[2]
+           cl[3,icam] -= extraclip[3]
         endif else begin
-           cl[2,ii] -= extraclip[2]
-           cl[3,ii] += extraclip[3]
+           cl[2,icam] -= extraclip[2]
+           cl[3,icam] += extraclip[3]
         endelse
-        
      endfor
 
      sx = abs(cl[1,0] - cl[0,0]) + 1L
      sy = abs(cl[3,0] - cl[2,0]) + 1L
 
      mid = 0
-     dum = red_clipim(pics[*,*,mid], cl[*,mid+1])
-     red_show, bytscl(dum, 0, 20), /nosc
+     dum = red_clipim(pics[*,*,mid], cl[*,mid])
+;     red_show, bytscl(dum, 0, 20), /nosc, wnum = 10
      
   endif
-
-;tighttv, red_clipim(pics[*,*,0], cl[*,1]), 0
-;tighttv, red_clipim(rotate(temporary(ref), refrot), cl[*,0]), 1
-;print, 555
-;stop
 
   ;; Align clips
   acl = 'ALIGN_CLIP='+strjoin(strtrim(cl, 2), ',')
   file_mkdir, self.out_dir +'/calib'
   openw, lun, self.out_dir+'/calib/align_clips.'+pref+'.txt', /get_lun
-  for ii = 0L, 2 do begin
-     printf, lun, acl[ii]
-     print, '  -> Align CLIP: '+acl[ii]
+  for icam = 0L, Ncams-1 do begin
+     printf, lun, acl[icam]
+     print, '  -> Align CLIP: '+acl[icam]
   endfor
   free_lun, lun
 
+  refrot = 0
   save, file = self.out_dir + '/calib/align_clips.'+pref+'.sav', acl, cl, refrot, sx, sy, ssh
+
+  print, 'Please check that the displayed images are aligned and oriented properly.'
+
+  szx_disp = dim[0]/2
+  szy_disp = dim[1]/2
+  disp_spacing = 5
+
+  title = '        '
+  for icam = 0, Ncams-1 do title = title+labs[icam]+' : '+cams[icam]+'        '
+  
+  window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 0
+  erase, 255
+  for icam = 0, Ncams-1 do begin
+     dispim = red_clipim(pics[*,*,icam], cl[*,icam])
+     dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+  endfor
+
+  ;; Display gain tables?
+  window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
+  erase, 255
+  gains = fltarr(dim[0], dim[1], Ncams)
+
+;  print, strjoin(strsplit(ft[toread], '/pinh/', /extr), '/gaintables/')
+  gname = strjoin(strsplit(ft[toread], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  if file_test(gname) then begin
+     gains[*,*,icamref]  = f0(gname)
+  endif else begin
+     print, inam+' : Could not find gaintable '+gname
+     print, inam+' : Need to run a->makegains'
+  endelse
+  gname = strjoin(strsplit(fr[pos1], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  if file_test(gname) then begin
+     gains[*,*,icamnonrefs[1]] = f0(gname)
+  endif else begin
+     print, inam+' : Could not find gaintable '+gname
+     print, inam+' : Need to run a->makegains'
+  endelse
+  ;; The WB gain file name has no tuning info
+  gname = strjoin(strsplit(fw[pos0], '\.pinh', /extr,/preserve,/rege), '.gain')
+  gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
+  gname = strsplit(gname, '.', count = nn, /extr)
+  gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
+  if file_test(gname) then begin
+     gains[*,*,icamnonrefs[0]] = f0(gname)
+  endif else begin
+     print, inam+' : Could not find gaintable '+gname
+     print, inam+' : Need to run a->makegains'
+  endelse
+
+  for icam = 0, Ncams-1 do begin
+     dispim = red_clipim(gains[*,*,icam], cl[*,icam])
+     dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+  endfor
+
+  ;; Print out some info about blocked rows/columns.
+  gg = red_clipim(gains[*,*,icamref], cl[*,icamref]) ne 0 
+  blockedrows = where(total(gg,1) lt .5, Nblock)
+  if Nblock ne 0 then begin
+     print, 'The following rows are significantly blocked: '
+     print, blockedrows
+  endif
+  blockedcolumns = where(total(gg,2) lt .5, Nblock)
+  if Nblock ne 0 then begin
+     print, 'The following columns are significantly blocked: '
+     print, blockedcolumns
+  endif
 
   return
 end
