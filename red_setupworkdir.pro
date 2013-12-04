@@ -86,6 +86,12 @@
 ;                 deal with empty raw flats directories. Gets the
 ;                 prefilters from the summed flats instead.
 ;
+;    2013-12-02 : MGL. Move prepflatcubes[_lc4] to the unsupervised
+;                 part. Default parameters for fitgains[_ng]. Deal
+;                 with data sets with more than a single polcal
+;                 directory and prefilter.
+;
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -326,6 +332,11 @@ pro red_setupworkdir, root_dir = root_dir $
      if Nsubdirs gt 0 then begin
         printf, Clun, 'polcal_dir = '+strreplace(polcaldirs[i], root_dir, '')
         Npol += 1
+        printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcaldirs[i], root_dir, '')
+        printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
+        printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
+        printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
+        printf, Slun, 'a -> polcalcube, cam = "Crisp-R"' 
      endif else begin
         polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -333,10 +344,21 @@ pro red_setupworkdir, root_dir = root_dir $
            if Nsubsubdirs gt 0 then begin
               printf, Clun, 'polcal_dir = '+strreplace(polcalsubdirs[j], root_dir, '')
               Npol += 1
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcalsubdirs[i], root_dir, '')
+              printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
+              printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
+              printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
+              printf, Slun, 'a -> polcalcube, cam = "Crisp-R"' 
            endif
         endfor
      endelse
   endfor
+  ;; Find out the prefilters for which polcal needs to be run
+  if Npol gt 0 then begin
+     printf, Slun, "spawn, 'ls polcal_cubes/* | grep 3d.f | cut -d. -f 2 | sort| uniq', polprefs"
+     for i = 0, n_elements(polprefs)-1 do printf, Slun, 'a -> polcal, pref='+polprefs[i] + ', nthreads=5'
+  endif
+
 
   print, 'PSF scan'
   printf, Clun, '#'
@@ -399,12 +421,12 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, 'a -> link_data' 
 
   if Npol gt 0 then begin
-     printf, Slun, 'a -> sumpolcal,/check, ucam="Crisp-T"' 
-     printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
-     printf, Slun, 'a -> sumpolcal,/check, ucam="Crisp-R"' 
-     printf, Slun, 'a -> polcalcube, cam = "Crisp-R"' 
-     printf, Slun, 'a -> polcal' 
+     printf, Slun, 'a -> prepflatcubes          ; For polarimetry data sets' 
   endif
+  if Npol ne Nprefilters then begin
+     printf, Slun, 'a -> prepflatcubes_lc4      ; For non-polarimetry data sets' 
+  endif
+
 
   printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
@@ -429,14 +451,9 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#descatter_dir = '
   printf, Clun, '#'
 
-  if Npol gt 0 then begin
-     printf, Slun, 'a -> prepflatcubes          ; For polarimetry data sets' 
-  endif
-  if Npol ne Nprefilters then begin
-     printf, Slun, 'a -> prepflatcubes_lc4      ; For non-polarimetry data sets' 
-  endif
+  printf, Slun, 'a -> fitgains_ng, npar = 3, res=res' 
+  printf, Slun, '; a -> fitgains, npar = 4, res=res'   ; Try this if you want but fitgains_ng is safer.
 
-  printf, Slun, 'a -> fitgains_ng, npar = 3' 
   for iline = 0, Nprefilters-1 do begin
      if long(prefilters[iline]) gt 7700 then maybedescatter = ', /descatter' else maybedescatter = ''
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[iline] $
