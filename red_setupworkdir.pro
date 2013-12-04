@@ -344,7 +344,7 @@ pro red_setupworkdir, root_dir = root_dir $
            if Nsubsubdirs gt 0 then begin
               printf, Clun, 'polcal_dir = '+strreplace(polcalsubdirs[j], root_dir, '')
               Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcalsubdirs[i], root_dir, '')
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcalsubdirs[j], root_dir, '')
               printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
               printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
               printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
