@@ -74,7 +74,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 ; Search files
 ;
   if self.ndir gt 1 then begin
-     for ii = 0, self.ndir-1 do print, stri(ii)+$
+     for ii = 0, self.ndir-1 do print, red_stri(ii)+$
                                        ' -> '+file_basename(self.data_list[ii])
      idx = 0L
      read, idx, prom = inam + 'Please select folder : '
