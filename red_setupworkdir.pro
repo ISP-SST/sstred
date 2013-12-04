@@ -356,7 +356,7 @@ pro red_setupworkdir, root_dir = root_dir $
   ;; Find out the prefilters for which polcal needs to be run
   if Npol gt 0 then begin
      printf, Slun, "spawn, 'ls polcal_cubes/* | grep 3d.f | cut -d. -f 2 | sort| uniq', polprefs"
-     for i = 0, n_elements(polprefs)-1 do printf, Slun, 'a -> polcal, pref='+polprefs[i] + ', nthreads=5'
+     printf, Slun, "for i = 0, n_elements(polprefs)-1 do a -> polcal, pref=polprefs[i], nthreads=5"
   endif
 
 
