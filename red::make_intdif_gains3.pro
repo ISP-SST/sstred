@@ -62,7 +62,11 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
 
   inam = 'red::make_intdif_gains3 : '
   if(n_elements(timeaver) eq 0) then timeaver = 1L
-  
+  if(n_elements(min) eq 0) then min = 0.1
+  if(n_elements(max) eq 0) then max = 4.0
+  if(n_elements(smooth) eq 0) then smooth = 3.0
+  if(n_elements(bad) eq 0) then bad = 1.0
+
 
   ;;
   ;; Search directories

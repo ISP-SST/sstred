@@ -109,7 +109,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
 
   if(~keyword_set(npar)) then npar = 3L 
   if(~keyword_set(niter)) then niter = 3L
-  if(~keyword_set(rebin)) then rebin = 10L
+  if(~keyword_set(rebin)) then rebin = 100L
 
   ;; Restore data
   files = self.out_dir + 'flats/spectral_flats/cam*.flats.sav'

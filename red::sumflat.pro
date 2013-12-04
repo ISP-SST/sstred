@@ -57,7 +57,7 @@
 ;                presence of the focus file name field. 
 ; 
 ;-
-pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove, check=check
+pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove, check=check, cam = ucam
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -96,6 +96,13 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
         end
      endcase
      if(~doit) then continue
+
+     if(n_elements(ucam) ne 0) then begin
+        if(ucam ne cam) then begin
+           print, inam + 'skipping camera -> '+cam+' (!= '+ucam+')'
+           continue
+        endif
+     endif
 
      spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep "camX" | grep -v ".lcd."', files
      nf = n_elements(files)
@@ -182,6 +189,14 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
 
   ;; Search files
   cam = self.camwb
+
+  if(n_elements(ucam) ne 0) then begin
+     if(ucam ne cam) then begin
+        print, inam + 'skipping camera -> '+cam+' (!= '+ucam+')'
+        return
+     endif
+  endif
+
   spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep camX', files
 
   if(files[0] eq '') then begin
