@@ -89,7 +89,8 @@
 ;    2013-12-02 : MGL. Move prepflatcubes[_lc4] to the unsupervised
 ;                 part. Default parameters for fitgains[_ng]. Deal
 ;                 with data sets with more than a single polcal
-;                 directory and prefilter.
+;                 directory and prefilter. Set number of threads to
+;                 use based on the number of CPUs.
 ;
 ;
 ;-
@@ -173,7 +174,8 @@ pro red_setupworkdir, root_dir = root_dir $
      ;; Could happen in La Palma
   endelse
 
-
+  Ncpu = !cpu.hw_ncpu
+  If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
 
 ;  ;; Download position log
 ;  pfile = 'positionLog_'+date
@@ -332,7 +334,7 @@ pro red_setupworkdir, root_dir = root_dir $
      if Nsubdirs gt 0 then begin
         printf, Clun, 'polcal_dir = '+strreplace(polcaldirs[i], root_dir, '')
         Npol += 1
-        printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcaldirs[i], root_dir, '')
+        printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcaldirs[i], root_dir, '')+'"'
         printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
         printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
         printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
@@ -344,7 +346,7 @@ pro red_setupworkdir, root_dir = root_dir $
            if Nsubsubdirs gt 0 then begin
               printf, Clun, 'polcal_dir = '+strreplace(polcalsubdirs[j], root_dir, '')
               Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcalsubdirs[j], root_dir, '')
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcalsubdirs[j], root_dir, '')+'"'
               printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
               printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
               printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
@@ -356,7 +358,7 @@ pro red_setupworkdir, root_dir = root_dir $
   ;; Find out the prefilters for which polcal needs to be run
   if Npol gt 0 then begin
      printf, Slun, "spawn, 'ls polcal_cubes/* | grep 3d.f | cut -d. -f 2 | sort| uniq', polprefs"
-     printf, Slun, "for i = 0, n_elements(polprefs)-1 do a -> polcal, pref=polprefs[i], nthreads=5"
+     printf, Slun, "for i = 0, n_elements(polprefs)-1 do a -> polcal, pref=polprefs[i], nthreads="+strtrim(Nthreads, 2)
   endif
 
 
