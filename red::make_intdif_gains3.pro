@@ -77,7 +77,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      return
   endif
   if(count gt 1) then begin
-     for ii = 0L, count -1 do print, stri(ii)+' -> '+dir[ii]
+     for ii = 0L, count -1 do print, red_stri(ii)+' -> '+dir[ii]
      idx = 0L
      read, idx, prom = inam+'Select folder : '
      dir = dir[idx]
@@ -112,7 +112,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      k = 0L
      for ii = 0L, count-1 do begin
         if(~file_test(dfile[ii])) then continue
-        print, stri(k)+' -> '+dfile[k]
+        print, red_stri(k)+' -> '+dfile[k]
         idx[k] = ii
         k+=1
      endfor
@@ -182,7 +182,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      endif
      t0 = idx[0]
      t1 = idx[n_elements(idx)-1]
-     print, inam + 't0 = '+stri(t0)+', t1 = '+stri(t1)
+     print, inam + 't0 = '+red_stri(t0)+', t1 = '+red_stri(t1)
      print, inam + 'Looping through scans'
      print, ' '
      ;;
@@ -206,14 +206,14 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
            x0 = (t1-timeaver+1)>t0
            x1 = t1
         endif
-        print, inam + 'x0 = '+stri(x0)+', x1 = '+stri(x1)
+        print, inam + 'x0 = '+red_stri(x0)+', x1 = '+red_stri(x1)
 
         ;;
         ;; read data
         ;;
         if((ss eq t0) or (n_elements(cub) eq 0)) then begin
            for ii = x0, x1 do begin
-              print, string(13B),inam +'adding t = '+stri(ii)+' / '+stri(x1), format='(A,A,I0,A,I0,$)' 
+              print, string(13B),inam +'adding t = '+red_stri(ii)+' / '+red_stri(x1), format='(A,A,I0,A,I0,$)' 
               if(ii eq x0) then cub = float(dat[ii]) else cub += dat[ii]
            endfor
            print, ' '
@@ -221,11 +221,11 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
            if(ox0 ne x0 OR ox1 NE x1) then print, inam + 'correcting loaded cube:' else $
               print, inam + 'time-average window has not changed -> not loading data for this scan'
            if(ox0 ne x0) then begin
-              print, '   -> x0(='+stri(x0)+') != ox0(='+stri(ox0)+') -> removing t='+stri( ox0)
+              print, '   -> x0(='+red_stri(x0)+') != ox0(='+red_stri(ox0)+') -> removing t='+red_stri( ox0)
               cub -= dat[ox0]
            endif
            if(ox1 ne x1) then begin
-              print, '   -> x1(='+stri(x1)+') != ox1(='+stri(ox1)+') -> adding t='+stri( x1)
+              print, '   -> x1(='+red_stri(x1)+') != ox1(='+red_stri(ox1)+') -> adding t='+red_stri( x1)
               cub += dat[x1]
            endif
         endelse
