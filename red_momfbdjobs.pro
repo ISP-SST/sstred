@@ -105,33 +105,39 @@ pro red_momfbdjobs, dir = dir, port = port, nthreads = nthreads, scriptfile = sc
   endfor
   
   default = red_collapserange(where(defaultindx),ld='',rd='')
-  cfiles = red_select_subset(selectionlist, qstring = 'Submit some jobs?' $
-                             , default = default, count = Nselect)
-  print, Nselect
-  
-  openw, slun, scriptfile, /get_lun
-  printf, slun, 'cd '+cdir
+  tmp = red_select_subset(selectionlist, qstring = 'Submit some jobs?' $
+                          , default = default, count = Nselect, indx = sindx)
 
-  for i = 0, Nselect-1 do begin
+  if Nselect gt 0 then begin
 
-     cdir = file_dirname(cfiles[i])+'/'
-     cfile = file_basename(cfiles[i])
-     lfile = file_basename(cfiles[i], '.cfg', /FOLD_CASE)+'.log'
+     cfiles = cfiles[sindx]
 
-     spawn, 'grep DATE_OBS '+cfiles[i]+' | cut -d= -f2', date_obs 
+     openw, slun, scriptfile, /get_lun
+     printf, slun, 'cd '+cdir
 
-     ;; The name tag shown in "jsub -j"
-     name = date_obs + '/' + strjoin((strsplit(cdir,'/',/extract))[1:2],'/') + '/' $
-            + strjoin((strsplit(cfile,'.',/extract))[3],'.')
-     cmd = 'sleep 0.5 ; jsub' + portstring + ' -s -v -mt ' + strtrim(Nthreads, 2) $
-           + ' -cfg ' + cfile + ' -name ' + name + ' -lg ' + lfile
+     for i = 0, Nselect-1 do begin
 
-     print, cmd
-     printf, slun, cmd
+        cdir = file_dirname(cfiles[i])+'/'
+        cfile = file_basename(cfiles[i])
+        lfile = file_basename(cfiles[i], '.cfg', /FOLD_CASE)+'.log'
 
-  endfor
+        spawn, 'grep DATE_OBS '+cfiles[i]+' | cut -d= -f2', date_obs 
 
-  free_lun, slun
-  spawn, 'chmod a+x '+scriptfile
+        ;; The name tag shown in "jsub -j"
+        name = date_obs + '/' + strjoin((strsplit(cdir,'/',/extract))[1:2],'/') + '/' $
+               + strjoin((strsplit(cfile,'.',/extract))[3],'.')
+        cmd = 'sleep 0.5 ; jsub' + portstring + ' -s -v -mt ' + strtrim(Nthreads, 2) $
+              + ' -cfg ' + cfile + ' -name ' + name + ' -lg ' + lfile
+
+        print, cmd
+        printf, slun, cmd
+
+     endfor
+
+     free_lun, slun
+     spawn, 'chmod a+x '+scriptfile
+  endif else begin
+     print,  'None selected.'
+  endelse
 
 end
