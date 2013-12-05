@@ -33,11 +33,16 @@
 ;
 ;    2013-12-05 : MGL. Removed dryrun keyword. New keyword scriptfile.
 ;                 Now write jsub commands to a script file instead of
-;                 submitting them right away.
+;                 submitting them right away. Now does pushd and popd
+;                 for each config file instead of just once before the
+;                 whole set of jsub commands.
 ;
 ;
 ;-
-pro red_momfbdjobs, dir = dir, port = port, nthreads = nthreads, scriptfile = scriptfile
+pro red_momfbdjobs, dir = dir $
+                    , port = port $
+                    , nthreads = nthreads $
+                    , scriptfile = scriptfile
 
   if n_elements(nthreads) eq 0 then begin
      Ncpu = !cpu.hw_ncpu
@@ -113,7 +118,6 @@ pro red_momfbdjobs, dir = dir, port = port, nthreads = nthreads, scriptfile = sc
      cfiles = cfiles[sindx]
 
      openw, slun, scriptfile, /get_lun
-     printf, slun, 'cd '+cdir
 
      for i = 0, Nselect-1 do begin
 
@@ -126,11 +130,15 @@ pro red_momfbdjobs, dir = dir, port = port, nthreads = nthreads, scriptfile = sc
         ;; The name tag shown in "jsub -j"
         name = date_obs + '/' + strjoin((strsplit(cdir,'/',/extract))[1:2],'/') + '/' $
                + strjoin((strsplit(cfile,'.',/extract))[3],'.')
-        cmd = 'sleep 0.5 ; jsub' + portstring + ' -s -v -mt ' + strtrim(Nthreads, 2) $
+        cmd = 'jsub' + portstring + ' -s -v -mt ' + strtrim(Nthreads, 2) $
               + ' -cfg ' + cfile + ' -name ' + name + ' -lg ' + lfile
 
         print, cmd
+
+        printf, slun, 'sleep 0.5'
+        printf, slun, 'pushd '+cdir
         printf, slun, cmd
+        printf, slun, 'popd'
 
      endfor
 
