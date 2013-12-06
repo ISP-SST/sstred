@@ -48,7 +48,7 @@ function red_extract_wav, state, lc = lc
 
      tmp = tmp[1]
      if(strpos(tmp,'_') eq -1) then res[ii] = double(0.0d0) else begin
-        tmp = strsplit(tmp[1], '_', /extract)
+        tmp = strsplit(tmp[0], '_', /extract)
         res[ii] = double(tmp[0]) + double(tmp[1]) * 0.001d0
      endelse
 
