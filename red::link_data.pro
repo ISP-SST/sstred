@@ -52,7 +52,7 @@
 pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, nremove=nremove
 
   if n_elements(no_remove) eq 0 then no_remove=0
-  if n_elements(nremove) eq 0 then nremove=1
+  if n_elements(nremove) eq 0 then nremove=0
   if n_elements(link_dir) eq 0 then link_dir = 'data/'
   if n_elements(uscan) eq 0 then uscan = ''
 
