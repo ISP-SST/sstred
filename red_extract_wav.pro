@@ -41,10 +41,17 @@ function red_extract_wav, state, lc = lc
   nt = n_elements(state)
   res = dblarr(nt)
   lc = strarr(nt)
+
   for ii = 0L, nt - 1 do begin
-     tmp = strsplit(state[ii],'._',/extract)
-     res[ii] = double(tmp[1]) + double(tmp[2]) * 0.001d0
-     lc[ii] = tmp[3]
+     tmp = strsplit(state[ii],'.',/extract)
+     lc[ii] = tmp[2]
+
+     tmp = tmp[1]
+     if(strpos(tmp,'_') eq -1) then res[ii] = double(0.0d0) else begin
+        tmp = strsplit(tmp[1], '_', /extract)
+        res[ii] = double(tmp[0]) + double(tmp[1]) * 0.001d0
+     endelse
+
   endfor
   return, res
 end
