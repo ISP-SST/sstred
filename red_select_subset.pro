@@ -69,11 +69,11 @@ function red_select_subset, list, count = count, help = help, qstring = qstring,
      print, '  4. An dash to select nothing.'
   endif 
   read, qstring+' [default='+default+']: ', selection
+  if selection eq '' then selection = default
   if selection eq '-' then begin
      count = 0
      return, ''
   endif
-  if selection eq '' then selection = default
   if selection eq '*' then selection = '0-'+strtrim(string(Nelements-1), 2)
   indx = red_expandrange(selection)
    
