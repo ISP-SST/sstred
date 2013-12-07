@@ -61,14 +61,13 @@
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
                           verbose = verbose, overwrite=overwrite, $
-                                ; min = min, max = ma, smooth = smooth, bad = bad, $
-                          descatter = descatter, show=show
+                          descatter = descatter, show=show, nremove = nremove
 
   inam = 'red::sum_data_intdif : '
 
   outdir = self.out_dir + '/cmap_intdif/'
   ucam = [self.camr, self.camt]
-
+  if(n_elements(nremove) eq 0) then nremove = 0
 
 ;
 ; Search files
@@ -96,7 +95,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 ; Extract tags from file names
 ; 
   state = red_getstates(files)
-
+  red_flagtuning, state, nremove
 
 ;
 ; build my states
@@ -134,7 +133,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 ;
 ; Isolate files from prefilter
 ;
-  idx = where(mpref eq pref, count)
+  idx = where(mpref eq pref and state.star eq 0, count)
   mwav = state.wav[idx]
   mdwav = state.dwav[idx]
   mlc = state.lc[idx]
@@ -292,6 +291,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
                  stop
               endelse
               
+
               if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
               tmp = red_sumfiles(mmfiles[idx], /check) - dd
 
