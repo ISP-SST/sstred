@@ -42,12 +42,13 @@ pro red_flagtuning, stat, nremove
   if nremove eq 0 then return
                                 ;
   os = stat.wav[0]
+  np = n_elements(stat.wav)-1
                                 ;
-  for ii = 1L, n_elements(stat.wav) - 1 do begin
+  for ii = 1L, np  do begin
      if(stat.wav[ii] ne os) then begin
                                 ;print, os, stat.state[ii]
         os = stat.wav[ii]
-        stat.star[ii:ii+nremove-1] = 1B
+        stat.star[ii:(ii+nremove-1)<np] = 1B
      endif
   endfor
                                 ;
