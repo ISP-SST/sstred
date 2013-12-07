@@ -86,6 +86,8 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 
   spawn, 'find ' + dir + '/' + self.camr + '/ | grep camX | grep -v ".lcd."', files
   nf = n_elements(files)
+  files = red_sortfiles(temporary(files))
+
   if(nf eq 0) then begin
      print, inam + 'ERROR, data folder is empty'
      if(debug) then stop else return
@@ -133,13 +135,14 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 ;
 ; Isolate files from prefilter
 ;
-  idx = where(mpref eq pref and state.star eq 0, count)
+  idx = where(mpref eq pref, count)
   mwav = state.wav[idx]
   mdwav = state.dwav[idx]
   mlc = state.lc[idx]
   mscan = state.scan[idx]
   mnum = state.nums[idx]
   mfiles = state.files[idx]
+  mstar = state.star[idx]
 ; 
   uscan = mscan[uniq(mscan, sort(mscan))]
   ulc = mlc[uniq(mlc, sort(mlc))]
@@ -263,7 +266,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
               scstate[ww] = istate
               
               idx = where((mwav EQ uwav[ww]) AND (mlc EQ ulc[ll]) AND $
-                          (mscan EQ uscan[ss]), count)
+                          (mscan EQ uscan[ss]) AND mstar eq 0, count)
               
               
               
@@ -291,7 +294,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
                  stop
               endelse
               
-
+              help, mmfiles[idx]
               if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
               tmp = red_sumfiles(mmfiles[idx], /check) - dd
 

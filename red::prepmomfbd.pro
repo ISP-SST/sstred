@@ -214,6 +214,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            file_mkdir, rdir
            ddir = self.out_dir + '/momfbd/'+folder_tag+'/'+upref[pp]+'/cfg/data/'
            file_mkdir, ddir
+           if(n_elements(lun) gt 0) then free_lun, lun
            openw, lun, outdir + cfg_file, /get_lun, width=2500
 
            ;; Image numbers

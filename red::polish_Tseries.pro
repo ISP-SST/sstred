@@ -160,7 +160,7 @@ pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
            cub = fltarr(nx, ny, ct)
         endif
 
-        cub[*,*,ii] = red_fillzero((temporary(tmp))[x0:x1, y0:y1])
+        cub[*,*,ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads=4L)
         dum = strsplit(h, ' =',/extract)
         time[ii] = dum[1]
         date[ii] = dum[3]
@@ -182,7 +182,7 @@ pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
            cub = fltarr(nx, ny, ct)
         endif
         
-        cub[*,*,ii] = red_fillzero((temporary(tmp))[x0:x1, y0:y1])
+        cub[*,*,ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads=4L)
         time[ii] = dum.time + ''
         date[ii] = strmid(dum.date, 0, 10) + ''
      endif
