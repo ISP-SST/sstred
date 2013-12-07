@@ -66,6 +66,11 @@ pro red_momfbdjobs, dir = dir $
   searchdir = strjoin(direlements, '/')+'/'        
   cfiles = file_search(searchdir+'*.cfg', COUNT = Ncfg)
 
+  if Ncfg eq 0 then begin
+     print, 'red_momfbdjobs : No config files found in '+searchdir
+     return
+  endif
+
   ;; Find out the status of jobs corresponding to the config files.
   ;; Use that to build a list of cfg files to select from.
   selectionlist = strarr(Ncfg)
@@ -89,7 +94,7 @@ pro red_momfbdjobs, dir = dir $
      ;; Currently in queue? Look for momfbd name tag given when submiting.
      name = date_obs + '/' + strjoin((strsplit(cdir,'/',/extract))[1:2],'/') + '/' $
             + strjoin((strsplit(cfile,'.',/extract))[3],'.')
-     Nqueue = round(total(strmatch(joblist, name)))
+     Nqueue = round(total(strmatch(joblist, '*'+name+'*')))
      if Nqueue gt 0 then sel += 'Q:' + strtrim(Nqueue, 2)
 
      
@@ -109,7 +114,11 @@ pro red_momfbdjobs, dir = dir $
 
   endfor
   
-  default = red_collapserange(where(defaultindx),ld='',rd='')
+  if total(defaultindx) eq 0 then begin
+     default = '-'
+  endif else begin
+     default = red_collapserange(where(defaultindx),ld='',rd='')
+  endelse
   tmp = red_select_subset(selectionlist, qstring = 'Submit some jobs?' $
                           , default = default, count = Nselect, indx = sindx)
 
