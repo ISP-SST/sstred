@@ -60,7 +60,7 @@ function red_getcoords, var, pos
   endif else begin
      for l=0,n_elements(pos1)-1 do begin
         t=reform(var[*,*,pos1[l]])
-        offs[*,pos1[l]]=align(ref,t)
+        offs[*,pos1[l]]=red_align(ref,t)
      endfor
   endelse
   return,offs
