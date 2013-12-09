@@ -99,7 +99,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $
                      pref = pref, escan = escan, div = div, nremove=nremove, $
-                     newgains=newgains, nf = nfac
+                     newgains=newgains, nf = nfac, weight = weight
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -120,7 +120,8 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
   if(n_elements(nfac) gt 0) then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
   endif
-
+  
+  
   ;; Get states from the data folder
   for fff = 0, self.ndir - 1 do begin
      data_dir = self.data_list[fff]
@@ -229,6 +230,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            printf, lun, 'object{'
            printf, lun, '  WAVELENGTH=' + lam
            printf, lun, '  OUTPUT_FILE=results/'+self.camwbtag+'.'+scan+'.'+upref[pp]
+           if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[0])
            printf, lun, '  channel{'
            printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwbtag+'_nostate/'
            printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+scan+'.'+upref[pp]+'.%07d'
@@ -256,7 +258,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            
            if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
            if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
-
+           
                                 ; printf, lun, '    INCOMPLETE'
            if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
            printf, lun, '  }'
@@ -300,6 +302,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               printf, lun, 'object{'
               printf, lun, '  WAVELENGTH=' + lam
               printf, lun, '  OUTPUT_FILE=results/'+self.camttag+'.'+istate 
+              if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[1])
               printf, lun, '  channel{'
               printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camttag+'/'
               printf, lun, '    FILENAME_TEMPLATE='+self.camttag+'.'+istate+'.%07d'
@@ -352,6 +355,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               printf, lun, 'object{'
               printf, lun, '  WAVELENGTH=' + lam
               printf, lun, '  OUTPUT_FILE=results/'+self.camrtag+'.'+istate 
+              if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[2])
               printf, lun, '  channel{'
               printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camrtag+'/'
               printf, lun, '    FILENAME_TEMPLATE='+self.camrtag+'.'+istate+'.%07d'
