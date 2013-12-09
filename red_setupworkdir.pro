@@ -153,10 +153,15 @@ pro red_setupworkdir, root_dir = root_dir $
      if keyword_set(stockholm) then begin
         search_dir = "/mnt/sand??/Incoming/"
      endif else begin
-        if ~strmatch(root_dir,'*/') then root_dir += '/'
+         if ~strmatch(root_dir,'*/') then root_dir += '/'
         search_dir = root_dir
      endelse
-     found_dir = file_search(search_dir+date, count=Nfound)
+        ;;; is search_dir already the one we look for?
+     IF file_basename(search_dir) EQ date THEN BEGIN
+         found_dir = search_dir
+         Nfound = 1
+     ENDIF ELSE $
+       found_dir = file_search(search_dir+date, count=Nfound)
   endelse
   
   if Nfound eq 1 then begin
