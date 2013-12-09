@@ -78,17 +78,7 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
      return, -1
   ENDIF
   
-  ;;; locate the library.  Either in the same dir as the procedure, in the DLM
-  ;;; path or the normal search path 
-  libname = 'creduc.so'
-  dir = file_dirname((routine_info('red_cpolcal_2d',/func,/source)).path)
-  libfile = file_search(dir, libname)
-  libfile = file_search(strsplit(!DLM_PATH, ':', /extr), libname)
-  IF libfile EQ '' THEN $
-     libfile = file_search(strsplit(!PATH, ':', /extr), libname)
-  IF libfile EQ '' THEN $
-     message, 'Could not locate library file '+libname+'; Exiting'
-  libfile = libfile(0)
+  libfile = red_libfile('creduc.so')
   
   ;;; Need parameter type checking, else things might (will) break
   IF (size(dat, /type) NE 4) OR $

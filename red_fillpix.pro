@@ -51,7 +51,7 @@ function red_fillpix, img, val = val, mask = mask, nthreads = nthreads
   if(n_elements(val) eq 0) then val = 0.0001
   if(n_elements(nthreads) eq 0) then nthreads = min([!cpu.TPOOL_NTHREADS,6L]) else nthreads = round(nthreads) 
 
-  dir=getenv('CREDUC')
+  libfile = red_libfile('creduc.so')
 
   dim = size(img, /dim)
   nx = dim[0]
@@ -71,7 +71,7 @@ function red_fillpix, img, val = val, mask = mask, nthreads = nthreads
   endif else mask = byte(temporary(mask))
 
   res = float(img)
-  b = call_external(dir+'/creduc.so', 'cfillpix', long(nx), $
+  b = call_external(libfile, 'cfillpix', long(nx), $
                     long(ny), res, mask, long(nthreads))
   
   return, res

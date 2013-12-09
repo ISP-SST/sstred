@@ -59,10 +59,10 @@ function red_cconvolve, img, psf, nthreads = nthreads, verbose = verbose
                                 ;
   if(n_elements(verbose) eq 0) then verbose = 0L
   if(n_elements(nthreads) eq 0) then nthreads = 1L
-  assign                        ;
-  dir=getenv('CREDUC')
-                                ;
-  dum = call_external(dir+'/creduc.so', 'cconvolve', long(nx), long(ny), $
+
+  libfile = red_libfile('creduc.so')
+
+  dum = call_external(libfile, 'cconvolve', long(nx), long(ny), $
                       long(nx1), long(ny1), float(img), float(psf), co_img, $
                       long(nthreads), long(verbose))
                                 ;
