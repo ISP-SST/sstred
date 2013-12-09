@@ -21,7 +21,7 @@ pro red_lp_write, image, filename, extraheader=extraheader
  if dims eq 3 then nt = sZ[3]
  datatype = sZ[dims+1]
 
- bheader = make_lp_header(image)
+ bheader = red_make_lp_header(image)
  message, /info, bheader
  header = extraheader +' : ' + bheader
 
