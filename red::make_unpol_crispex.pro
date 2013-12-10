@@ -289,7 +289,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   endif 
 
   print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro'
-  openw, lunf, odir + '/' + file_basename(ofile,exten)+'.assoc.pro', /get_lun
+  openw, lunf, odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro', /get_lun
   printf,lunf, 'nx=', dimim[0]
   printf,lunf, 'ny=', dimim[1]
   printf,lunf, 'nw=', nwav
