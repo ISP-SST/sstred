@@ -179,7 +179,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
 
   st = red_get_stkstates(tfiles)
 
-  if((tf NE rf) OR (tf NE wf)) then begin
+  if((tf NE rf)) then begin
      print, inam + ' : ERROR -> Irregular number of images:'
      print, '  '+self.camttag+' -> '+red_stri(tf)
      print, '  '+self.camrtag+' -> '+red_stri(rf)
@@ -187,6 +187,10 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      return
   endif
   
+  ;; Do WB correction?
+  if(wf eq tf) then wbcor = 1B else wbcor = 0B
+
+
   nwav = st.nwav
   nscan = st.nscan
   wav = st.uiwav * 1.e-3
@@ -334,9 +338,12 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         print, inam + ' : processing state -> '+state 
 
         ;; Get destretch to anchor camera (residual seeing)
-        wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
-        grid1 = red_dsgridnest(wb, wwi, tiles, clips)
-        print, 'computed grid'
+        if(wbcor) then begin
+           wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
+           grid1 = red_dsgridnest(wb, wwi, tiles, clips)
+           print, 'computed grid'
+        endif
+        
         tmp_raw0 = momfbd_read(ttf)
         tmp_raw1 = momfbd_read(rrf)
 
@@ -366,7 +373,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) * tmean[ss]
         
         ;; Apply destretch to anchor camera and prefilter correction
-        tmp = stretch(temporary(tmp), grid1)
+        if(wbcor) then tmp = stretch(temporary(tmp), grid1)
         
         ;; Apply derot, align, dewarp
         if(~keyword_set(scans_only)) then begin
