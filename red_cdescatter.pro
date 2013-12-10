@@ -59,9 +59,9 @@ function red_cdescatter, img, fgain, fpsf, nthreads = nthreads, verbose = verbos
   if(n_elements(verbose) eq 0) then verbose = 0L
   if(n_elements(nthreads) eq 0) then nthreads = 4L
                                 ;
-  dir=getenv('CREDUC')
+  libfile = red_libfile('creduc.so')
                                 ;
-  b = call_external(dir+'/creduc.so', 'cdescatter', long(nx), $
+  b = call_external(libfile, 'cdescatter', long(nx), $
                     long(ny), float(img), float(fgain), float(fpsf), $
                     dimg, long(nthreads), long(verbose))
                                 ;

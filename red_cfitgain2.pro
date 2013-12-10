@@ -61,10 +61,12 @@ pro red_cfitgain2, par, wav, dat, xl, yl, ratio, line,nthreads = nthreads
   nwav = dim[0]
   nl = n_elements(xl)
                                 ;
-  dir=getenv('CREDUC')
+  libfile = red_libfile('creduc.so')
                                 ;
 
-  b = call_external(dir+'/creduc.so', 'cfitgain2', long(nwav), long(nl), long(npar), long(npix), float(xl), float(yl), float(wav), dat, par, ratio, long(nthreads), long(line))
+  b = call_external(libfile, 'cfitgain2', long(nwav), long(nl), long(npar), $
+                    long(npix), float(xl), float(yl), float(wav), dat, par, $
+                    ratio, long(nthreads), long(line))
                                 ;
   return
 end
