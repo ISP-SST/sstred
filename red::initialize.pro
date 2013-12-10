@@ -31,6 +31,7 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2013-12-10 : PS  adapt for multiple flat_dir
 ; 
 ;-
 pro red::initialize, filename
@@ -44,7 +45,7 @@ pro red::initialize, filename
   
   ;; Init vars
   self.dark_dir = '' 
-  self.flat_dir = '' 
+  ;; self.flat_dir = '' 
   ;; self.data_dir = ''
   self.pinh_dir = '' 
   self.polcal_dir = ''
@@ -78,7 +79,9 @@ pro red::initialize, filename
      ;; get fields
      case field of
         'root_dir': begin
-           self.root_dir = (strsplit(line,' =',/extract))[1] + '/' ; extract value
+            self.root_dir = (strsplit(line,' =',/extract))[1] ; extract value
+            IF strmid(self.root_dir, strlen(self.root_dir)-1) NE '/' THEN $
+              self.root_dir += '/'
         end
         'descatter_dir': begin
            self.descatter_dir = (strsplit(line,' =',/extract))[1] ; extract value
@@ -86,8 +89,10 @@ pro red::initialize, filename
         'dark_dir': begin
            self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
-        'flat_dir': begin
-           self.flat_dir = (strsplit(line,' =',/extract))[1] ; extract value
+        'flat_dir': BEGIN
+            dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1])
+            ptr_free, self.flat_dir
+            self.flat_dir = ptr_new(tmp, /NO_COPY)
         end
         'out_dir': begin
            self.out_dir = (strsplit(line,' =',/extract))[1] ; extract value
@@ -145,7 +150,9 @@ pro red::initialize, filename
   if(strlen(self.root_dir) gt 0) then begin
      if(self.docamt) then print, 'red::initialize : root_dir = '+ self.root_dir
      if(strmid(self.data_dir, 0, 1) NE '/' AND strlen(self.data_dir) gt 0) then self.data_dir = self.root_dir + self.data_dir
-     if(strmid(self.flat_dir, 0, 1) NE '/' AND strlen(self.flat_dir) gt 0) then self.flat_dir = self.root_dir + self.flat_dir
+     FOR i = 0, n_elements(*self.flat_dir)-1 DO $
+       IF strmid((*self.flat_dir)[i], 0, 1) NE '/' AND strlen((*self.flat_dir)[i]) GT 0 $
+       THEN (*self.flat_dir)[i] = self.root_dir + (*self.flat_dir)[i]
      if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
      if(strmid(self.pinh_dir, 0, 1) NE '/' AND strlen(self.pinh_dir) gt 0) then self.pinh_dir = self.root_dir + self.pinh_dir
      if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then self.prefilter_dir = self.root_dir + self.prefilter_dir
@@ -174,7 +181,7 @@ pro red::initialize, filename
      print, 'red::initialize : WARNING : dark_dir is undefined!'
      self.dodark = 0B
   endif
-  if(self.flat_dir eq '') then begin
+  IF ~ptr_valid(self.flat_dir) then begin
      print, 'red::initialize : WARNING : flat_dir is undefined!'
      self.doflat = 0B
   endif
@@ -209,7 +216,7 @@ pro red::initialize, filename
 
   ;; print fields
   if(self.dodark) then print, 'red::initialize : dark_dir = '+ self.dark_dir
-  if(self.doflat) then print, 'red::initialize : flat_dir = '+ self.flat_dir
+  if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
   if(self.dopinh) then print, 'red::initialize : pinh_dir = '+ self.pinh_dir
   if(self.dopolcal) then print, 'red::initialize : polcal_dir = '+ self.polcal_dir
   if(self.dodata) then begin

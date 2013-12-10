@@ -56,8 +56,11 @@
 ;   2013-10-30 : MGL. Get correct prefilter state for WB flats in the
 ;                presence of the focus file name field. 
 ; 
+;   2013-12-10 : PS  Adapt for multiple flat directories; add lim
+;                keyword (passthrough to red_sumfiles)
 ;-
-pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remove, check=check, cam = ucam
+pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
+                  remove = remove, cam = ucam, check = check, lim = lim
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -104,14 +107,19 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
         endif
      endif
 
-     spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep "camX" | grep -v ".lcd."', files
-     nf = n_elements(files)
-
-     print, inam+' : Found '+red_stri(nf)+' files in '+ self.flat_dir + '/' + cam + '/'
+ ;    spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep "camX" | grep -v ".lcd."', files
+ ;    nf = n_elements(files)
+     
+     files = file_search(*self.flat_dir + '/' + cam + '/camX*')
+     files = files(where(strpos(files, '.lcd.') LT 0, nf))
+     
+     print, inam+' : Found '+red_stri(nf)+' files in: '
+     print, '         '+ *self.flat_dir + '/' + cam + '/'
 
      if(files[0] eq '') then begin
-        print, inam+' : ERROR : '+cam+': no files found in: '+$
-               self.flat_dir+' : skipping camera!'
+         print, inam+' : ERROR : '+cam+': no files found in: '
+         print, inam+'                      '+*self.flat_dir
+         print, inam+' : ERROR : '+cam+': skipping camera!'
         continue
      endif
 
@@ -151,7 +159,15 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
            endif
            
            ;; Sum files
-           IF(keyword_set(check)) THEN flat = red_sumfiles(files[pos], time = time, check = check, lun = lun) ELSE flat = red_sumfiles(files[pos], time = time)
+           IF(keyword_set(check)) THEN BEGIN
+                 ;;; if summing from two directories, same frame
+                 ;;; numbers from two directories are consecutive ans
+                 ;;; produce false drop info.  Re-sort them
+               tmplist = files[pos]
+               tmplist = tmplist(sort(tmplist))
+               flat = red_sumfiles(tmplist, time = time, check = check, lun = lun, lim = lim)
+           ENDIF ELSE $
+             flat = red_sumfiles(files[pos], time = time)
            
            ;; Remove dark
            flat1 = flat
@@ -197,11 +213,13 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, remove = remo
      endif
   endif
 
-  spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep camX', files
-
+;  spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep camX', files
+  files = file_search(*self.flat_dir + '/' + cam + '/camX*')
+  
   if(files[0] eq '') then begin
-     print, inam+' : ERROR : '+cam+': no files found in: '+$
-            self.flat_dir+' : skipping camera!'
+      print, inam+' : ERROR : '+cam+': no files found in:'
+      print, inam+'                      '+*self.flat_dir
+      print, inam+' : ERROR : '+cam+': skipping camera!'
      self.done.sumflat = 1B
      return
   endif

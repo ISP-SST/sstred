@@ -101,6 +101,7 @@
 ;   2013-09-13 : MGL. Lower the limit for least number of frames
 ;                needed to do checking from 10 to 3.
 ; 
+;   2013-12-10 : PS  keyword lim
 ; 
 ; 
 ;-
@@ -109,6 +110,7 @@ function red_sumfiles, files_list $
                        , summed = summed $
                        , old = old $     
                        , check = check $ 
+                       , lim = lim $
                        , lun = lun $ 
                        , pinhole_align = pinhole_align $ 
                        , gain = gain $   

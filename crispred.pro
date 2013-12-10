@@ -143,6 +143,7 @@
 ;   2013-09-06 : MGL. Added red::prepmfbd.pro to list of included
 ;                files.
 ; 
+;   2013-12-10 : PS  adapt for multiple flat_dir
 ; 
 ;-
 function crispred, filename
@@ -152,7 +153,7 @@ function crispred, filename
                                 ;
   struct = {red, $
             dark_dir:'',$
-            flat_dir:'',$
+            flat_dir:ptr_new(),$
             data_dir:'',$
             data_list:strarr(100),$
             ndir:0B, $
