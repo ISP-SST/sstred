@@ -92,6 +92,7 @@
 ;                 directory and prefilter. Set number of threads to
 ;                 use based on the number of CPUs.
 ;
+;    2013-12-09 : Pit. Allow root_dir to be the actual date directory.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $

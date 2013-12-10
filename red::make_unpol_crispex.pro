@@ -284,6 +284,16 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,/nozero), 512)
   endif 
 
+  print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro'
+  openw, lunf, odir + '/' + file_basename(ofile,exten)+'.assoc.pro', /get_lun
+  printf,lunf, 'nx=', dimim[0]
+  printf,lunf, 'ny=', dimim[1]
+  printf,lunf, 'nw=', nwav
+  printf,lunf, 'nt=', nscan
+  printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
+  printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+  free_lun, lunf
+
   ;; Start processing data
   if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
      tiles = [8,16,32,64]
