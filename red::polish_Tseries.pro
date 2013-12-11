@@ -184,7 +184,7 @@ pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
         
         cub[*,*,ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads=4L)
        
-        if(n_elements(ext_time) ge ii+1) then time[ii] = et[ii] else time[ii] = dum.time + ''
+        if(n_elements(et) gt 0) then time[ii] = et[ii] else time[ii] = dum.time + ''
         date[ii] = strmid(dum.date, 0, 10) + ''
      endif
   endfor
