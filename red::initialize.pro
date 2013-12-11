@@ -45,7 +45,7 @@ pro red::initialize, filename
   
   ;; Init vars
   self.dark_dir = '' 
-  ;; self.flat_dir = '' 
+  self.flat_dir = ptr_new('') 
   ;; self.data_dir = ''
   self.pinh_dir = '' 
   self.polcal_dir = ''

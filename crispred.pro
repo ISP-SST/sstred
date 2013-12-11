@@ -153,7 +153,7 @@ function crispred, filename
                                 ;
   struct = {red, $
             dark_dir:'',$
-            flat_dir:ptr_new(''),$
+            flat_dir:ptr_new(),$
             data_dir:'',$
             data_list:strarr(100),$
             ndir:0B, $
