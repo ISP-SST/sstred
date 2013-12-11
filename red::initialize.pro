@@ -149,7 +149,6 @@ pro red::initialize, filename
 
   if(strlen(self.root_dir) gt 0) then begin
      if(self.docamt) then print, 'red::initialize : root_dir = '+ self.root_dir
-     if(strmid(self.data_dir, 0, 1) NE '/' AND strlen(self.data_dir) gt 0) then self.data_dir = self.root_dir + self.data_dir
      FOR i = 0, n_elements(*self.flat_dir)-1 DO $
        IF strmid((*self.flat_dir)[i], 0, 1) NE '/' AND strlen((*self.flat_dir)[i]) GT 0 $
        THEN (*self.flat_dir)[i] = self.root_dir + (*self.flat_dir)[i]
