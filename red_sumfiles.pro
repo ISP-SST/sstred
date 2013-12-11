@@ -36,6 +36,8 @@
 ;   
 ;       The summed frames, without division with the number of summed frames.
 ;   
+;    nsum : out, optional, number of frames actually summed
+;
 ;    old :  in, optional, type=boolean 
 ;   
 ;       Set this for data with the "old" header format.
@@ -103,11 +105,13 @@
 ; 
 ;   2013-12-10 : PS  keyword lim
 ; 
+;   2013-12-11 : PS  also pass back the number of summed frames
 ; 
 ;-
 function red_sumfiles, files_list $
                        , time = time $
                        , summed = summed $
+                       , nsum = nsum $
                        , old = old $     
                        , check = check $ 
                        , lim = lim $

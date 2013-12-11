@@ -45,7 +45,7 @@ pro red::initialize, filename
   
   ;; Init vars
   self.dark_dir = '' 
-  ;; self.flat_dir = '' 
+  self.flat_dir = ptr_new('') 
   ;; self.data_dir = ''
   self.pinh_dir = '' 
   self.polcal_dir = ''
@@ -90,7 +90,10 @@ pro red::initialize, filename
            self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
         'flat_dir': BEGIN
-            dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1])
+            if(strpos(line,"'") ne -1) THEN $
+              dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1]) $
+            ELSE $
+              tmp = (strsplit(line,' =',/extract))[1]
             ptr_free, self.flat_dir
             self.flat_dir = ptr_new(tmp, /NO_COPY)
         end
@@ -149,7 +152,6 @@ pro red::initialize, filename
 
   if(strlen(self.root_dir) gt 0) then begin
      if(self.docamt) then print, 'red::initialize : root_dir = '+ self.root_dir
-     if(strmid(self.data_dir, 0, 1) NE '/' AND strlen(self.data_dir) gt 0) then self.data_dir = self.root_dir + self.data_dir
      FOR i = 0, n_elements(*self.flat_dir)-1 DO $
        IF strmid((*self.flat_dir)[i], 0, 1) NE '/' AND strlen((*self.flat_dir)[i]) GT 0 $
        THEN (*self.flat_dir)[i] = self.root_dir + (*self.flat_dir)[i]
