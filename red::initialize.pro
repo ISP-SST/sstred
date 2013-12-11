@@ -90,7 +90,10 @@ pro red::initialize, filename
            self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
         'flat_dir': BEGIN
-            dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1])
+            if(strpos(line,"'") ne -1) THEN $
+              dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1]) $
+            ELSE $
+              tmp = (strsplit(line,' =',/extract))[1]
             ptr_free, self.flat_dir
             self.flat_dir = ptr_new(tmp, /NO_COPY)
         end
