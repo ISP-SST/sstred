@@ -137,7 +137,7 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
             immt:ptr_new(), immr:ptr_new(), pref:' ', destretch:0B, wb:' ',$
             wbfiles:strarr(nlc), camt:' ', camr:' ', camwb:' ',$
             x0:0L, x1:0L, y0:0L, y1:0L, telog:' ', ftfiles:strarr(nlc), $
-            frfiles:strarr(nlc), utflat:' ', urflat:' '}
+            frfiles:strarr(nlc), utflat:' ', urflat:' ', scan:' '}
                                 ;
   pol = objarr(nstat)
   for ii = 0L, nstat - 1 do pol[ii] = obj_new('pol')

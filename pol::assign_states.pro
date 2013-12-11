@@ -69,6 +69,7 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
   self.camt = camt
   self.camr = camr
   self.camwb = camwb
+  self.scan = (strsplit(state,'.',/extract))[0]
 
   ;; Wb images?
 
