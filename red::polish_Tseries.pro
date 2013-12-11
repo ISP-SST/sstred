@@ -86,7 +86,7 @@
 pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
                          ang = ang, shift = shift, square=square, $
-                         negang = negang, crop=crop
+                         negang = negang, crop=crop, ext_time = et
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -183,7 +183,8 @@ pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
         endif
         
         cub[*,*,ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads=4L)
-        time[ii] = dum.time + ''
+       
+        if(n_elements(ext_time) ge ii+1) then time[ii] = et[ii] else time[ii] = dum.time + ''
         date[ii] = strmid(dum.date, 0, 10) + ''
      endif
   endfor
