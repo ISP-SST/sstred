@@ -15,7 +15,7 @@ function red_lp_read, filename, header=header
  if ARG_PRESENT(header) then printheader=0 else printheader=1
  ; print header if header is not asked for as keyword
  
- lp_header, filename, header=header, datatype=datatype, $
+ red_lp_header, filename, header=header, datatype=datatype, $
             dims=dims, nx=nx, ny=ny, nt=nt, endian=endian_file
 
 if ((byte(1L, 0, 1))[0] eq 1) then endian = 'l' else endian='b'
