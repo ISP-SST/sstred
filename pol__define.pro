@@ -1,4 +1,5 @@
 PRO pol__define
+nlc = 4
 states = {pol, tfiles:strarr(nlc), rfiles:strarr(nlc),state:' ', $
             timg:ptrarr(nlc,/allocate_heap), rimg:ptrarr(nlc,/allocate_heap), $
             immt:ptr_new(), immr:ptr_new(), pref:' ', destretch:0B, wb:' ',$
