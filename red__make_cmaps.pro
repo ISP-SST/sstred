@@ -73,6 +73,9 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   root = self.out_dir + 'momfbd/'
   dir = red_select_sub(root)
   if(~file_test(dir+'/cfg')) then dir = red_select_sub(dir)
+  time = (strsplit(dir,'/',/extract))
+  time = time[n_elements(time)-2]
+
 
   ;;
   ;; Search files
@@ -98,7 +101,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   cfile = self.out_dir+'flats/spectral_flats/'+cam+'.'+pref+'.fit_results.sav'
   if(~file_test(cfile)) then begin
      print, inam + 'Error, calibration file not found -> '+cfile
-     return
+     stop
   endif
   restore, cfile
   cmap = reform(fit.pars[1,*,*])
@@ -120,10 +123,10 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;; time calibration data
   ;;
   if(~keyword_set(only_scans)) then begin
-     cfile = self.out_dir + 'calib_tseries/tseries.'+pref+'.calib.sav'
+     cfile = self.out_dir + 'calib_tseries/tseries.'+pref+'.'+time+'.calib.sav'
      if(~file_test(cfile)) then begin
         print, inam + 'Error: Could not find calibration file -> '+cfile
-        return
+        stop
      endif
      restore, cfile
   endif
