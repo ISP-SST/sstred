@@ -90,7 +90,7 @@
 pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = no_destretch, $
                       no_filter = no_filter, overwrite = overwrite, img = res, sp = sp, power_sp = power_sp, $
                       cmap = cmap, nosave=nosave, noclip = noclip, savecams = savecams, mdate = mdate, $
-                      noflat = noflat
+                      noflat = noflat, ext_time = ext_time
    
   inam = 'pol::demodulate2 : '
    
@@ -327,7 +327,11 @@ pro pol::demodulate2, state = state, tiles = tiles, clip = clip, no_destretch = 
   time_obs = 0.d0
   for ii = 0L, 3 do time_obs+= red_time2double((*self.timg[ii]).time)
   time_obs = red_time2double(time_obs * 0.25d0, /dir)
-
+  
+  if(n_elements(ext_time) gt 0) then begin
+     iscan = long(self.scan)
+     if(n_elements(ext_time) gt iscan + 1) then time_obs = ext_time[iscan]
+  endif
    
   ;; telescope model
    
