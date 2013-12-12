@@ -53,7 +53,7 @@
 ; 
 ; 
 ;-
-pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans, remove_smallscale = remove_smallscale
+pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans, remove_smallscale = remove_smallscale, wavelength_cube = wavelength_cube
 
   inam  = 'red::make_cmaps : '
 ;  if(n_elements(cmap) eq 0) then begin
@@ -66,7 +66,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      iclip = [8,4,4,2]
   endif
   if(n_elements(fwhm) eq 0) then fwhm = 7.0
-  
+  if(keyword_set(wavelenth_cube)) then dowav=1B else dowav=0B
   ;;
   ;; Search directories
   ;;
@@ -150,7 +150,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;;
   ;; get image border
   ;;
-  dimim = red_getborder(red_mozaic(momfbd_read(st.ofiles[0,0])), x0, x1, y0, y1, square=square)
+  dimim = red_getborder(red_mozaic(momfbd_read(wbf[0])), x0, x1, y0, y1, square=square)
   nx = x1 - x0 + 1L
   ny = y1 - y0 + 1L
 
@@ -179,7 +179,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   root3 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)
 
   file1 = odir + 'cmap.'+pref+'.'+root1+'.simple.icube'
-  file2 = odir + 'cmap.'+pref+'.'+root2+'.allwav.icube'
+  if(dowav) then file2 = odir + 'cmap.'+pref+'.'+root2+'.allwav.icube'
 
 
   
@@ -194,9 +194,9 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;; Lp format header
   ;;
   openw, lun1, file1, /get_lun
-  openw, lun2, file2, /get_lun
+  if(dowav) then openw, lun2, file2, /get_lun
   writeu, lun1, red_unpol_lpheader(nx, ny, nscan)
-  writeu, lun2, red_unpol_lpheader(nx, ny, nscan*nw)
+  if(dowav) then writeu, lun2, red_unpol_lpheader(nx, ny, nscan*nw)
   
   for ss = 0L, nscan-1 do begin
      
@@ -218,44 +218,45 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      ;;
      ;; CASE 2
      ;;
-     wb = (red_mozaic(momfbd_read(wbf[ss])))[x0:x1,y0:y1]
-     for ww = 0L, nw - 1 do begin
-        
-        iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
-        iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
-        
-        ;; Load images
-        iwb = (red_mozaic(momfbd_read(iwbf)))[x0:x1,y0:y1]
-        im = momfbd_read(st.ofiles[ww,ss])
-        
-        ;; get dewarp from WB
-        igrid = red_dsgridnest(wb, iwb, itiles, iclip)
-        
-        ;; Convolve CMAP and apply wavelength dep. de-warp
-        cmap2 =  stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
-        
-        ;; Derotate and shift
-        cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), total(shift[1,ss]))
-        
-        ;; Time de-warp
-        cmap2 = stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
-        
-        ;; Flip any of the axes?
-        cmap2 = rotate(temporary(cmap2), rot_dir)
-        
-        ;; write to disk
-        writeu, lun2, fix(round(temporary(cmap2)*1000.))
-     endfor
-     
+     if(dowav) then begin
+        wb = (red_mozaic(momfbd_read(wbf[ss])))[x0:x1,y0:y1]
+        for ww = 0L, nw - 1 do begin
+           
+           iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
+           iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
+           
+           ;; Load images
+           iwb = (red_mozaic(momfbd_read(iwbf)))[x0:x1,y0:y1]
+           im = momfbd_read(st.ofiles[ww,ss])
+           
+           ;; get dewarp from WB
+           igrid = red_dsgridnest(wb, iwb, itiles, iclip)
+           
+           ;; Convolve CMAP and apply wavelength dep. de-warp
+           cmap2 =  stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
+           
+           ;; Derotate and shift
+           cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), total(shift[1,ss]))
+           
+           ;; Time de-warp
+           cmap2 = stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+           
+           ;; Flip any of the axes?
+           cmap2 = rotate(temporary(cmap2), rot_dir)
+           
+           ;; write to disk
+           writeu, lun2, fix(round(temporary(cmap2)*1000.))
+        endfor
+     endif
   endfor
   
   ;; 
   ;; Close files
   ;;
   free_lun, lun1
-  free_lun, lun2
+  if(dowav) then free_lun, lun2
   
   print, inam + 'Output file created -> '+ file1
-  print, inam + 'Output file created -> '+ file2
+  if(dowav) then print, inam + 'Output file created -> '+ file2
 
 end
