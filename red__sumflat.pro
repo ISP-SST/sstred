@@ -58,9 +58,14 @@
 ; 
 ;   2013-12-10 : PS  Adapt for multiple flat directories; add lim
 ;                keyword (passthrough to red_sumfiles)
+;
+;   2013-12-13 : PS  Only store raw sums if requested.  Save
+;                unnormalized sum and add correct number of summed
+;                files in header
 ;-
-pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
-                  remove = remove, cam = ucam, check = check, lim = lim
+PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
+                  remove = remove, cam = ucam, check = check, lim = lim, $
+                  store_rawsum = store_rawsum
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -77,7 +82,7 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
   outdir = self.out_dir + '/' + 'flats/'
   file_mkdir, outdir
   outdir1 = self.out_dir + '/' + 'flats/summed/'
-  file_mkdir, outdir1
+  IF keyword_set(store_rawsum) THEN file_mkdir, outdir1
 
   ;; Create file list
   for ic = 0L, 1 do begin
@@ -165,25 +170,25 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                  ;;; produce false drop info.  Re-sort them
                tmplist = files[pos]
                tmplist = tmplist(sort(tmplist))
-               flat = red_sumfiles(tmplist, time = time, check = check, lun = lun, lim = lim)
-           ENDIF ELSE $
-             flat = red_sumfiles(files[pos], time = time)
+               flat = red_sumfiles(tmplist, time = time, check = check, $
+                                   lun = lun, lim = lim, summed = summed, NSUM = nsum)
+           ENDIF ELSE BEGIN 
+               flat = red_sumfiles(files[pos], time = time, summed = summed, NSUM = nsum)
+           ENDELSE
            
            ;; Remove dark
-           flat1 = flat
+           flat1 = long(temporary(summed))
            flat-= dd
            
-           ;; Header for output file
-           headerout = 't='+time+' n_aver='+red_stri(count)
+           ;; Output the raw (if requested) and averaged flats
+
+           IF keyword_set(store_rawsum) THEN BEGIN
+               headerout = 't='+time+' n_sum='+red_stri(nsum)
+               print, inam+' : saving ' + outdir1+outname1
+               fzwrite, flat1, outdir1+outname1, headerout
+           ENDIF
            
-           ;; Output the average flat
-           file_mkdir, outdir
-           file_mkdir, outdir1
-
-           print, inam+' : saving ' + outdir1+outname1
-           fzwrite, float(flat1), outdir1+outname1, headerout
-
-           headerout+= ' darkcorrected'
+           headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
            print, inam+' : saving ' + outdir+outname
            fzwrite, float(flat), outdir+outname, headerout
 
@@ -265,25 +270,28 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      endif
 
      print, inam+' : adding flats for WB state -> '+uwstat[ss]
-     flat = red_sumfiles(files[pos], time = time, check=check)
+     flat = red_sumfiles(files[pos], time = time, check=check, summed = summed, NSUM = nsum)
 
      ;; Remove dark
-     flat1 = flat
-     flat-= dd
+     flat1 = long(temporary(summed))
+     flat -= dd
 
      ;;Header for output file
-     headerout = 't='+time+' n_aver='+red_stri(count)
      
 
      
-     ;; Output the average flat
-     file_mkdir, outdir
+     ;; Output the raw (if requested) and averaged flats
+     IF keyword_set(store_rawsum) THEN BEGIN
+         headerout = 't='+time+' n_sum='+red_stri(nsum)
+         print, inam+' : saving ' + outdir1+outname1
+         fzwrite, flat1, outdir1+outname1, headerout
+     ENDIF
      
+     headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
      print, inam+' : saving ' + outdir+outname
      fzwrite, float(flat), outdir+outname, headerout
 
-     print, inam+' : saving ' + outdir1+outname1
-     fzwrite, float(flat), outdir1+outname1, headerout
+     
   endfor
   self.done.sumflat = 1B
 
