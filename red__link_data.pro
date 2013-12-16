@@ -35,9 +35,9 @@
 ;   
 ;    nremove : 
 ;   
+;    all_data    : Not only link complete sequences, but everything found 
 ;   
-;   
-; 
+;    pref        : Only process prefilter 'pref'
 ; 
 ; :history:
 ; 
@@ -48,12 +48,15 @@
 ; 
 ;   2013-09-11 : MGL. Fixed default values for keywords.
 ; 
+;   2013-12-16 : PS  keyword ALL_DATA, by default only link complete scans
+;                    keyword PREF
 ;-
-pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, nremove=nremove
+pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, $
+                    nremove = nremove, ALL_DATA = all_data, PREF = pref
 
-  if n_elements(no_remove) eq 0 then no_remove=0
-  if n_elements(nremove) eq 0 then nremove=0
-  if n_elements(link_dir) eq 0 then link_dir = 'data/'
+  if n_elements(no_remove) eq 0 then no_remove = 0
+  if n_elements(nremove) eq 0 then nremove = 0
+  if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
 
   ;; Name of this method
@@ -106,9 +109,9 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, n
         
         if(~doit) then continue
 
-        spawn, 'find ' + data_dir + '/' + cam + '/ | grep im.ex | grep -v ".lcd."', files
-        nf = n_elements(files)
-
+        files = file_search(data_dir + '/' + cam + '/camX*')
+        files = files(where(strpos(files, '.lcd.') LT 0, nf))
+        
         if(files[0] eq '') then begin
            print, inam+' : ERROR : '+cam+': no files found in: '+$
                   data_dir +' : skipping camera!'
@@ -121,6 +124,39 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, n
         ;; Get states
         stat = red_getstates(files)
         
+        ;; only one prefilter?
+        IF keyword_set(pref) THEN BEGIN
+            idx = where(stat.pref EQ pref, np)
+            IF np EQ 0 THEN BEGIN
+                print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
+                CONTINUE
+            ENDIF
+            files = files(idx)
+            nf = np
+            stat = red_getstates(files)
+        ENDIF
+        
+        ;;; check for complete scans only
+        IF ~keyword_set(all_data) THEN BEGIN
+            scans = stat.scan(uniq(stat.scan))
+            n_scans = n_elements(scans)
+            f_scan = lonarr(n_scans)
+            FOR i = 0, n_scans-1 DO $
+              f_scan(i) = n_elements(where(stat.scan EQ scans(i)))
+            idx = replicate(1b, nf)
+            FOR i = 1, n_scans-1 DO BEGIN
+                IF f_scan(i)-f_scan(0) LT 0 THEN BEGIN
+                    print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans(i)
+                    print, inam+'             only '+strtrim(f_scan(i), 2)+' of '+strtrim(f_scan(0), 2)+' files.  Skipping it'
+                    idx(where(stat.scan EQ scans(i))) = 0
+                ENDIF
+            ENDFOR
+              ;;; re-generate stats, numbers
+            files = (temporary(files))(where(idx))
+            nf = n_elements(files)
+            stat = red_getstates(files)
+        ENDIF
+        
         ;; Flag first frame after tuning
         if(~keyword_set(no_remove)) then begin
            print, inam+' : Flagging first frame after tuning'
@@ -131,7 +167,7 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, n
         
         ;; Create linker script
         nt = n_elements(files)
-         
+
         linkername = self.out_dir + '/' + camtag + '_science_linker_'+folder_tag+'.sh'
         openw, lun, linkername, /get_lun
         printf, lun, '#!/bin/bash'
