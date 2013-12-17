@@ -185,11 +185,11 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, $
                                 ;
            namout = outdir + camtag + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
          
-           printf, lun, 'ln -s '+ files[ii] + ' ' + namout
+           printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
          
            if(wb) then begin
               namout = outdir1 + camtag + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
-              printf, lun, 'ln -s '+ files[ii] + ' ' + namout
+              printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
            endif
          
            print, bb, inam+' : creating linker for '+camtag+$
