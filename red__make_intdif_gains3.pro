@@ -54,11 +54,13 @@
 ; :history:
 ;   2013-07-01: JdlCR : Created!
 ;
+;   2013-12-17  PS make smallscale default
+;                  if SUMLC is given, don't recompute the gain and use links
 ;
 ;-
-pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, debug = debug, cam = cam, $
-                             min=min, max=max, bad=bad, smooth=smooth, preserve=preserve, psfw=psfw, scan=scan, $
-                             smallscale = smallscale
+pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, debug = debug, $
+                             cam = cam, min=min, max=max, bad=bad, smooth=smooth, psfw = psfw, $
+                             preserve = preserve, scan = scan, smallscale = smallscale
 
   inam = 'red::make_intdif_gains3 : '
   if(n_elements(timeaver) eq 0) then timeaver = 1L
@@ -66,7 +68,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
   if(n_elements(max) eq 0) then max = 4.0
   if(n_elements(smooth) eq 0) then smooth = 3.0
   if(n_elements(bad) eq 0) then bad = 1.0
-
+  if(n_elements(smallscale) EQ 0) THEN smallscale = 1
 
   ;;
   ;; Search directories
@@ -81,10 +83,9 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      idx = 0L
      read, idx, prom = inam+'Select folder : '
      dir = dir[idx]
-  endif
+ ENDIF ELSE dir = dir[0]
 
-  imdir = strsplit(dir,'/',/extract)
-  imdir = imdir[n_elements(imdir)-1]
+  imdir = file_basename(dir)
   print, inam + 'Using folder -> '+imdir
   outdir = self.out_dir + '/gaintables/'+imdir+'/'
   file_mkdir, outdir
@@ -103,10 +104,12 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      ;;
      ;; search files
      ;;
-     search = dir + '/' + cams[cc]+'.*.intdif.icube'
-     if(keyword_set(pref)) then search = dir + '/' + cams[cc]+'.'+pref+'.intdif.icube'
+     IF (keyword_set(pref)) THEN $
+       search = dir + '/' + cams[cc]+'.'+pref+'.intdif.icube' $
+     ELSE $
+       search = dir + '/' + cams[cc]+'.*.intdif.icube'
      cfile = file_search(search, count = count)
-     dfile = replicate(dir,count)+'/'+file_basename(cfile,'icube')+'save'
+     dfile = dir+'/'+file_basename(cfile,'icube')+'save'
      
      idx = intarr(count)
      k = 0L
@@ -128,6 +131,8 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      ;; Open files
      ;;
      restore, dfile
+       ;; variables in there:  
+       ;;  done, uwav, ulc, uscan, nw, nlc, ns, pref, nx, ny, udwav
      openr, lun, cfile, /get_lun
      dat = assoc(lun, intarr(nx, ny, nw, nlc,/nozero), 512)
      fff = self.out_dir +'/flats/spectral_flats/'+cams[cc]+'.'+pref+'.fit_results.sav'
@@ -271,20 +276,25 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
            ;;
            ;; Compute new gains
            ;;
-           for ww = 0, nw-1 do begin
-              rat = flats[*,*,ww] * reform(cub2[ww,*,*]/cub1[ww,*,*])
+           FOR ww = 0, nw-1 DO BEGIN
+               ofile = strjoin([cams[cc],uscan[ss],pref,uwav[ww], ulc[ll]],'.')+'.gain'
+               
+               IF keyword_set(sumlc) AND ll GT 0 THEN BEGIN
+                   print, 'creating link '+outdir+ofile
+                   file_delete, outdir+ofile, /ALLOW_NONEXISTENT
+                   ofile_0 = strjoin([cams[cc],uscan[ss],pref,uwav[ww], ulc[0]],'.')+'.gain'
+                   file_link, outdir+ofile_0, outdir+ofile
+               ENDIF ELSE BEGIN 
+                   rat = flats[*, *, ww] * reform(cub2[ww, *, *]/cub1[ww, *, *])
 
-
-              g = float(red_flat2gain(temporary(rat), min=min, max=max, bad=bad, smooth=smooth,$
-                                      preserve=preserve))
-
-              ;;
-              ;; Save gains
-              ;;
-              ofile = strjoin([cams[cc],uscan[ss],pref,uwav[ww], ulc[ll]],'.')+'.gain'
-              print, 'saving '+ outdir+ofile
-              fzwrite, float(g), outdir+ofile,' '
-              
+                   g = float(red_flat2gain(temporary(rat), min = min, max = max, bad = bad, $
+                                           smooth = smooth, preserve = preserve))
+                   ;;
+                   ;; Save gains
+                   ;;
+                   print, 'saving '+ outdir+ofile
+                   fzwrite, float(g), outdir+ofile, ' '
+               ENDELSE
            endfor
            
         endfor
