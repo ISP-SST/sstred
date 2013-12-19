@@ -12,6 +12,9 @@
 ; 
 ;    Mats Löfdahl, 2013-12-19
 ; 
+; :Returns:
+; 
+;    Returns a boolean value, true if download worked, false if it didn't.
 ; 
 ; :Params:
 ; 
@@ -54,10 +57,7 @@ function red_geturl, url, file = file, dir = dir, overwrite = overwrite, link = 
 
   urlComponents = parse_url(url)
 
-;  url_scheme = (strsplit(url, ':',/extract))[0]                 ; http, ftp, etc.
   tmp = (strsplit(url,'/',/extract, count = n))
-;  url_hostname = tmp[1]
-;  url_path = strjoin(tmp[2:*], '/')
   if n_elements(file) eq 0 then begin
      file = (strsplit(urlComponents.path,'/',/extract, count = n))[n-1]
   endif
@@ -66,6 +66,12 @@ function red_geturl, url, file = file, dir = dir, overwrite = overwrite, link = 
      print, 'red_geturl : Do not download, file already exists (or use /overwrite):'
      print, '             '+url
      print, '             '+dir+file
+     if n_elements(link) ne 0 then begin
+        ;; Link anyway
+        file_delete, link, /allow_nonexistent
+        file_link, dir+file, link
+        print, 'red_geturl : Linked to ' + link
+     endif
      ;; Return true (for OK) anyway since the file is there to be
      ;; used:
      return, 1 
