@@ -94,6 +94,9 @@
 ;
 ;    2013-12-09 : Pit. Allow root_dir to be the actual date directory.
 ;
+;    2013-12-19 : MGL. Download SST logfiles and some other data from
+;                 the web. 
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -496,4 +499,8 @@ pro red_setupworkdir, root_dir = root_dir $
   free_lun, Clun
   free_lun, Slun
   
+
+  ;; Download SST log file and some other data from the web.
+  red_download, /all
+
 end
