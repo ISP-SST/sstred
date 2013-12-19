@@ -182,9 +182,8 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
 
      ;; Choose offset state
      for ss = 0L, ns - 1 do begin
-        if(keyword_set(escan)) then if(ss ne escan) then continue
-        
-        scan = uscan[ss]
+         IF n_elements(escan) NE 0 THEN IF ss NE escan THEN CONTINUE 
+ 	 scan = uscan[ss]
 
         for pp = 0L, np - 1 do begin
            if(keyword_set(pref)) then begin
