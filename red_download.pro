@@ -56,7 +56,8 @@
 ; :History:
 ; 
 ;    2013-12-19 : MGL. Let red_geturl do more of the testing. And also
-;                 make softlinks to the log files.
+;                 make softlinks to the log files. Make the overwrite
+;                 keyword work.
 ; 
 ;
 ;
@@ -97,14 +98,14 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
      r0file = 'r0.data.full-'+strjoin(datearr, '')
      tmp = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
                       , file = r0file $
-                      , dir = logdir, link = 'log_r0') 
+                      , dir = logdir, link = 'log_r0', overwrite = overwrite) 
   endif
 
   ;; PIG log file
   if keyword_set(pig) then begin
      pigfile = 'rmslog_guidercams'
      DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate + '/' + pigfile $
-                             , file = pigfile, dir = logdir)
+                             , file = pigfile, dir = logdir, overwrite = overwrite)
      ;; Convert the logfile to time and x/y coordinates (in
      ;; arcseconds).
      if DownloadOK then begin
@@ -123,14 +124,14 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
   if keyword_set(turret) then begin
      turretfile = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
      tmp = red_geturl('http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile $
-                      , file = turretfile, dir = logdir, link = 'log_turret') 
+                      , file = turretfile, dir = logdir, link = 'log_turret', overwrite = overwrite) 
   endif
   
   ;; Active regions map
   arfile = strjoin(datearr, '')+'.1632_armap.png'
   if keyword_set(armap) then begin
      tmp = red_geturl('http://kopiko.ifa.hawaii.edu/ARMaps/Archive/' + datearr[0]+'/'+arfile $
-                      , file = arfile, dir = dir) 
+                      , file = arfile, dir = dir, overwrite = overwrite) 
   endif
 
   ;; HMI images and movies
@@ -143,14 +144,14 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
         for j = 0, n_elements(hmitypes)-1 do begin
            hmifile = strjoin(datearr, '')+'_'+hmitimestamps[i]+'_'+hmitypes[j]+'.jpg'
            tmp = red_geturl(hmisite+hmidir+hmifile $ 
-                            , file = hmifile, dir = dir+'/HMI/') 
+                            , file = hmifile, dir = dir+'/HMI/', overwrite = overwrite) 
         endfor
      endfor
      hmimovies = ['Ic_flat_2d', 'M_2d', 'M_color_2d']+'.mpg'
      for i = 0, n_elements(hmimovies)-1 do begin
         hmifile = hmimovies[i]
         tmp = red_geturl(hmisite+hmidir+hmifile $
-                         , file = hmifile, dir = dir+'/HMI/') 
+                         , file = hmifile, dir = dir+'/HMI/', overwrite = overwrite) 
      endfor
   endif
   
