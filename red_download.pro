@@ -55,7 +55,8 @@
 ;
 ; :History:
 ; 
-; 
+;    2013-12-19 : MGL. Let red_geturl do more of the testing. And also
+;                 make softlinks to the log files.
 ; 
 ;
 ;
@@ -74,8 +75,9 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
   any = keyword_set(pig) or keyword_set(turret) or keyword_set(armap) or keyword_set(hmi) or keyword_set(r0)
 
   dir = 'downloads/'            ; Make this part of the crispred class structure?
+  logdir = dir+'sstlogs/'
 
-  if any then file_mkdir, dir
+  if any then file_mkdir, logdir
 
   if n_elements(date) gt 0 then begin
      isodate = strreplace(date, '.', '-', n = 2)
@@ -93,82 +95,45 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
   ;; R0 log file
   if keyword_set(r0) then begin
      r0file = 'r0.data.full-'+strjoin(datearr, '')
-     if file_test(dir+r0file) and ~keyword_set(overwrite) then begin
-        print, 'red_download : R0 log file already downloaded.'
-     endif else begin
-        print, 'red_download : Trying to download R0 log file.'
-        url = 'http://www.royac.iac.es/Logfiles/R0/' + r0file
-        print, url
-        if red_geturl(url, file = r0file, dir = dir) then begin
-           print, 'Downloaded OK.'
-        endif else begin
-           print, 'Download failed.'
-        endelse
-     endelse
+     tmp = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
+                      , file = r0file $
+                      , dir = logdir, link = 'log_r0') 
   endif
 
   ;; PIG log file
-  pigfile = 'rmslog_guidercams'
   if keyword_set(pig) then begin
-     if file_test(dir+pigfile) and ~keyword_set(overwrite) then begin
-        print, 'red_download : PIG log file already downloaded.'
-     endif else begin
-        print, 'red_download : Trying to download PIG log file.'
-        url = 'http://www.royac.iac.es/Logfiles/PIG/' + isodate + '/' + pigfile
-        print, url
-        if red_geturl(url, file = pigfile, dir = dir) then begin
-           print, 'Downloaded OK.'
-        endif else begin
-           print, 'Download failed.'
-        endelse
-        ;; Convert the logfile to time and x/y coordinates (in
-        ;; arcseconds).
+     pigfile = 'rmslog_guidercams'
+     DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate + '/' + pigfile $
+                             , file = pigfile, dir = logdir)
+     ;; Convert the logfile to time and x/y coordinates (in
+     ;; arcseconds).
+     if DownloadOK then begin
         pig_N = 16              ; # of positions to average when converting. Originally ~16 pos/s.
-        convertcmd = 'cd '+dir+'; convertlog --dx 31.92 --dy 14.81' $
+        convertcmd = 'cd '+logdir+'; convertlog --dx 31.92 --dy 14.81' $
                      + ' --rotation 84.87 --scale 4.935 '
         if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
-        print, 'Converting PIG log file...'
+        print, 'red_download : Converting PIG log file...'
         spawn, convertcmd+' rmslog_guidercams > '+pigfile+'_'+isodate+'_converted'
-     endelse
+        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
+        print, 'red_download : Linked to ' + link
+     endif
   endif
 
   ;; Turret log file
-  turretfile = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
   if keyword_set(turret) then begin
-     if file_test(dir+turretfile) and ~keyword_set(overwrite) then begin
-        print, 'red_download : Turret log file already downloaded.'
-     endif else begin
-        print, 'red_download : Trying to download Turret log file.'
-        url = 'http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile
-        print, url
-        if red_geturl(url, file = turretfile, dir = dir) then begin
-           print, 'Downloaded OK.'
-        endif else begin
-           print, 'Download failed.'
-        endelse
-     endelse
+     turretfile = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
+     tmp = red_geturl('http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile $
+                      , file = turretfile, dir = logdir, link = 'log_turret') 
   endif
   
   ;; Active regions map
   arfile = strjoin(datearr, '')+'.1632_armap.png'
   if keyword_set(armap) then begin
-     if file_test(dir+arfile) and ~keyword_set(overwrite) then begin
-        print, 'red_download : AR map already downloaded.'
-     endif else begin
-        print, 'red_download : Trying to download AR map.'
-        url = 'http://kopiko.ifa.hawaii.edu/ARMaps/Archive/' + datearr[0]+'/'+arfile
-        print, url
-        if red_geturl(url, file = arfile, dir = dir) then begin
-           print, 'Downloaded OK.'
-        endif else begin
-           print, 'Download failed.'
-        endelse
-     endelse
+     tmp = red_geturl('http://kopiko.ifa.hawaii.edu/ARMaps/Archive/' + datearr[0]+'/'+arfile $
+                      , file = arfile, dir = dir) 
   endif
 
   ;; HMI images and movies
-;  months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-;  hmidate = datearr[2]+months[long(datearr[1])-1]+strmid(datearr[0], 2, 2)
   if keyword_set(hmi) then begin
      hmidir = '/data/hmi/images/'+strjoin(datearr, '/')+'/'
      hmisite = 'http://jsoc.stanford.edu'
@@ -177,36 +142,16 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
      for i = 0, n_elements(hmitimestamps)-1 do begin
         for j = 0, n_elements(hmitypes)-1 do begin
            hmifile = strjoin(datearr, '')+'_'+hmitimestamps[i]+'_'+hmitypes[j]+'.jpg'
-          if file_test(dir+'/HMI/'+hmifile) and ~keyword_set(overwrite) then begin
-              print, 'red_download : SDO/HMI image '+hmifile+' already downloaded.'
-           endif else begin
-              print, 'red_download : Trying to download SDO/HMI image '+hmifile+'.'
-              url = hmisite+hmidir+hmifile
-              print, url
-              if red_geturl(url, file = hmifile, dir = dir+'/HMI/') then begin
-                 print, 'Downloaded OK.'
-              endif else begin
-                 print, 'Download failed.'
-              endelse
-           endelse
+           tmp = red_geturl(hmisite+hmidir+hmifile $ 
+                            , file = hmifile, dir = dir+'/HMI/') 
         endfor
      endfor
      hmimovies = ['Ic_flat_2d', 'M_2d', 'M_color_2d']+'.mpg'
      for i = 0, n_elements(hmimovies)-1 do begin
         hmifile = hmimovies[i]
-        if file_test(dir+'/HMI/'+hmifile) and ~keyword_set(overwrite) then begin
-           print, 'red_download : SDO/HMI movie '+hmifile+' already downloaded.'
-        endif else begin
-           print, 'red_download : Trying to download SDO/HMI movie '+hmifile+'.'
-           url = hmisite+hmidir+hmifile
-           print, url
-           if red_geturl(url, file = hmifile, dir = dir+'/HMI/') then begin
-              print, 'Downloaded OK.'
-           endif else begin
-              print, 'Download failed.'
-           endelse
-        endelse
+        tmp = red_geturl(hmisite+hmidir+hmifile $
+                         , file = hmifile, dir = dir+'/HMI/') 
      endfor
   endif
-
+  
 end
