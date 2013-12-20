@@ -123,7 +123,7 @@ pro red_download, date = date $
      isodate = strreplace(date, '.', '-', n = 2)
   endelse
 
-  datearr = strsplit(isodate, '-', /extr)
+  datearr = strsplit(isodate, '-', /extract)
 
   ;; R0 log file
   if keyword_set(r0) then begin
@@ -133,7 +133,7 @@ pro red_download, date = date $
                              , dir = logdir $
                              , overwrite = overwrite $
                              , path = pathr0) 
- endif
+  endif
 
   ;; PIG log file
   if keyword_set(pig) then begin
@@ -143,19 +143,30 @@ pro red_download, date = date $
                              , dir = logdir $
                              , overwrite = overwrite $
                              , path = pathpig)
-     ;; Convert the logfile to time and x/y coordinates (in
-     ;; arcseconds).
+
      if DownloadOK then begin
-        pig_N = 16              ; # of positions to average when converting. Originally ~16 pos/s.
-        convertcmd = 'cd '+logdir+'; convertlog --dx 31.92 --dy 14.81' $
-                     + ' --rotation 84.87 --scale 4.935 '
-        if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
-        print, 'red_download : Converting PIG log file...'
-        spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+isodate+'_converted'
+        ;; We actually want the logfile converted to time and x/y
+        ;; coordinates (in arcseconds).
         pathpig += '_'+isodate+'_converted'
+        if ~file_test(pathpig) then begin
+           pig_N = 16           ; # of positions to average when converting. Originally ~16 pos/s.
+           convertcmd = 'cd '+logdir+'; convertlog --dx 31.92 --dy 14.81' $
+                        + ' --rotation 84.87 --scale 4.935 '
+           if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
+           print, 'red_download : Converting PIG log file...'
+           spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+isodate+'_converted'
 ;        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
 ;        print, 'red_download : Linked to ' + link
-     endif else pathpig = ''
+        endif else begin
+           print, 'red_download : Converted PIG log file already exists.'
+        endelse
+     endif else begin
+        ;; We tried to download but failed. So any existing files may
+        ;; be corrupt or not correspond to the current state.
+        file_delete, pathpig, /allow_nonexistent
+        file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
+        pathpig = ''
+     endelse
   endif
 
   ;; Turret log file
