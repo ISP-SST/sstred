@@ -98,7 +98,7 @@
 ;                 the web. 
 ;
 ;    2013-12-20 : MGL. Change calls from fitgains/fitgains_ng to
-;                 fitgains/fitgains,/fit_reflectivity and with npar=1.  
+;                 fitgains/fitgains,/fit_reflectivity and with npar=2.   
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -465,8 +465,8 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#descatter_dir = '
   printf, Clun, '#'
 
-  printf, Slun, 'a -> fitgains, npar = 1, res=res' 
-  printf, Slun, '; a -> fitgains, npar = 1, res=res, /fit_reflectivity   ; Try this if you want but without /fit_reflectivity is safer.'
+  printf, Slun, 'a -> fitgains, npar = 2, res=res' 
+  printf, Slun, '; a -> fitgains, npar = 2, res=res, /fit_reflectivity   ; Try this if you want but without /fit_reflectivity is safer.'
 
   for iline = 0, Nprefilters-1 do begin
      if long(prefilters[iline]) gt 7700 then maybedescatter = ', /descatter' else maybedescatter = ''
