@@ -31,15 +31,33 @@
 ;
 ;    pig : in, optional, type=boolean
 ;
-;      Try to download the SST/PIG log file.
+;      Try to download the SST/PIG log file. Returns with the
+;      downloaded file name (or empty string in case download failed).
+;
+;    pathpig : out, optional, type=string
+;
+;      The path to where the pig log file was saved (or the empty
+;      string).
 ;
 ;    r0 : in, optional, type=boolean
 ;
-;      Try to download the SST/AO r0 log file.
+;      Try to download the SST/AO r0 log file. Returns with the
+;      downloaded file name (or empty string in case download failed).
+;
+;    pathr0 : out, optional, type=string
+;
+;      The path to where the r0 log file was saved (or the empty
+;      string).
 ;
 ;    turret : in, optional, type=boolean
 ;
-;      Try to download the SST/Turret log file. 
+;      Try to download the SST/Turret log file. Returns with the
+;      downloaded file name (or empty string in case download failed).
+;
+;    pathturret : out, optional, type=string
+;
+;      The path to where the turret log file was saved (or the empty
+;      string).
 ;
 ;    armap : in, optional, type=boolean
 ;
@@ -59,11 +77,25 @@
 ;                 make softlinks to the log files. Make the overwrite
 ;                 keyword work.
 ; 
+;    2013-12-20 : MGL. Optionally return file names in r0file,
+;                 turretfile, and pigfile keywords. Do not make soft
+;                 links.
+;
 ;
 ;
 ;
 ;-
-pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 = r0, turret = turret, armap = armap, hmi = hmi
+pro red_download, date = date $
+                  , overwrite = overwrite $
+                  , all = all $
+                  , pig = pig $
+                  , pathpig  = pathpig  $
+                  , r0 = r0 $
+                  , pathr0  = pathr0  $
+                  , pathturret = pathturret  $
+                  , turret = turret $
+                  , armap = armap $
+                  , hmi = hmi
 
   if keyword_set(all) then begin
      pig = 1
@@ -96,16 +128,21 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
   ;; R0 log file
   if keyword_set(r0) then begin
      r0file = 'r0.data.full-'+strjoin(datearr, '')
-     tmp = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
-                      , file = r0file $
-                      , dir = logdir, link = 'log_r0', overwrite = overwrite) 
-  endif
+     downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
+                             , file = r0file $
+                             , dir = logdir $
+                             , overwrite = overwrite $
+                             , path = pathr0) 
+ endif
 
   ;; PIG log file
   if keyword_set(pig) then begin
      pigfile = 'rmslog_guidercams'
      DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate + '/' + pigfile $
-                             , file = pigfile, dir = logdir, overwrite = overwrite)
+                             , file = pigfile $
+                             , dir = logdir $
+                             , overwrite = overwrite $
+                             , path = pathpig)
      ;; Convert the logfile to time and x/y coordinates (in
      ;; arcseconds).
      if DownloadOK then begin
@@ -114,17 +151,21 @@ pro red_download, date = date, overwrite = overwrite, all = all, pig = pig, r0 =
                      + ' --rotation 84.87 --scale 4.935 '
         if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
         print, 'red_download : Converting PIG log file...'
-        spawn, convertcmd+' rmslog_guidercams > '+pigfile+'_'+isodate+'_converted'
-        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
-        print, 'red_download : Linked to ' + link
-     endif
+        spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+isodate+'_converted'
+        pathpig += '_'+isodate+'_converted'
+;        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
+;        print, 'red_download : Linked to ' + link
+     endif else pathpig = ''
   endif
 
   ;; Turret log file
   if keyword_set(turret) then begin
      turretfile = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
-     tmp = red_geturl('http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile $
-                      , file = turretfile, dir = logdir, link = 'log_turret', overwrite = overwrite) 
+     downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile $
+                             , file = turretfile $
+                             , dir = logdir $
+                             , overwrite = overwrite $
+                             , path = pathturret) 
   endif
   
   ;; Active regions map
