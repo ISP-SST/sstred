@@ -97,6 +97,9 @@
 ;    2013-12-19 : MGL. Download SST logfiles and some other data from
 ;                 the web. 
 ;
+;    2013-12-20 : MGL. Change calls from fitgains/fitgains_ng to
+;                 fitgains/fitgains,/fit_reflectivity and with npar=1.  
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -462,8 +465,8 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#descatter_dir = '
   printf, Clun, '#'
 
-  printf, Slun, 'a -> fitgains_ng, npar = 3, res=res' 
-  printf, Slun, '; a -> fitgains, npar = 4, res=res'   ; Try this if you want but fitgains_ng is safer.
+  printf, Slun, 'a -> fitgains, npar = 1, res=res' 
+  printf, Slun, '; a -> fitgains, npar = 1, res=res, /fit_reflectivity   ; Try this if you want but without /fit_reflectivity is safer.'
 
   for iline = 0, Nprefilters-1 do begin
      if long(prefilters[iline]) gt 7700 then maybedescatter = ', /descatter' else maybedescatter = ''
