@@ -79,7 +79,7 @@
 ; 
 ;    2013-12-20 : MGL. Optionally return file names in r0file,
 ;                 turretfile, and pigfile keywords. Do not make soft
-;                 links.
+;                 links. 
 ;
 ;
 ;
@@ -170,6 +170,12 @@ pro red_download, date = date $
   endif
 
   ;; Turret log file
+
+  ;; The turret log data for a particular day can actually be in the
+  ;; turret log file of an earlier day. So if todays file does not
+  ;; exist we should search days backwards until we find one. Then we
+  ;; should filter it to get rid of data for aother days and header
+  ;; info that are interspersed with the data. Not implemented yet.
   if keyword_set(turret) then begin
      turretfile = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile $
