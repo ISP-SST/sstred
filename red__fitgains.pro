@@ -111,10 +111,12 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  device, decompose = 0  ;; this should not be here!
+    ;;; get_imean uses colortables.  Save old graphics setting
+  device, get_decompose = odc
+  device, decompose = 0
 
   if(~keyword_set(npar)) then npar = 1L
-  npar_t = npar + (keyword_set(fit_reflectivity ? 3 : 2))
+  npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
 
   if(~keyword_set(niter)) then niter = 3L
   if(~keyword_set(rebin)) then rebin = 100L
@@ -199,14 +201,17 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
         res[0:1,*,*] = temporary(res1)
      ENDIF ELSE BEGIN
          IF keyword_set(fit_reflectivity) THEN $
-           red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads $
+           red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads $
          ELSE $
-           red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads
+           red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads
      ENDELSE
   endfor
   yl = red_get_imean(wav, dat, res, npar_t, it, xl = xl, rebin = rebin, densegrid = densegrid, $
                        thres = thres, myg = myg, reflec = fit_reflectivity)
 
+   ;;; reset the color setting
+  device, decompose = odc
+  
   ;; Create cavity-error-free flat (save in "ratio" variable)
   print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
    
