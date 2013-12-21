@@ -96,6 +96,8 @@
 ; 
 ;   2013-12-20 : PS npar is number of *additional* terms (default: 1 = linear)
 ; 
+;   2013-12-21 : MGL. Changed default npar to 2.
+;
 ;-
 pro red::fitgains_ng, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, $
                       densegrid = densegrid, res = res, thres = thres, initcmap = initcmap, $
@@ -114,7 +116,7 @@ pro red::fitgains_ng, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = y
   device, get_decompose = odc
   device, decompose = 0
 
-  if(~keyword_set(npar)) then npar = 1L
+  if(~keyword_set(npar)) then npar = 2L
   npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
 
   if(~keyword_set(niter)) then niter = 3L

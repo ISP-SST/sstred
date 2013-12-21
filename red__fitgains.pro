@@ -94,8 +94,11 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
-;   2013-12-20 : PS join with _ng version:  reflectivity as keyword,
-;                   npar is number of *additional* terms (default: 1 = linear)
+;   2013-12-20 : PS join with _ng version: reflectivity as keyword,
+;                npar is number of *additional* terms (default: 1 =
+;                linear)
+; 
+;   2013-12-21 : MGL. Changed default npar to 2.
 ; 
 ;-
 pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, $
@@ -115,7 +118,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   device, get_decompose = odc
   device, decompose = 0
 
-  if(~keyword_set(npar)) then npar = 1L
+  if(~keyword_set(npar)) then npar = 2L
   npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
 
   if(~keyword_set(niter)) then niter = 3L
