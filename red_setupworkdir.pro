@@ -27,6 +27,11 @@
 ; 
 ;      The name of the generated config file.
 ; 
+;    download_all : in, optional, type=boolean
+;
+;      Set this to download auxiliary data, like SDO/HMI images and AR
+;      maps. Otherwise download SST log file only.
+;
 ;    scriptfile : in, optional, type=string, default='doit.pro'
 ; 
 ;      The name of the generated script file. The script file can be
@@ -97,14 +102,20 @@
 ;    2013-12-19 : MGL. Download SST logfiles and some other data from
 ;                 the web. 
 ;
-;    2013-12-20 : MGL. Change calls from fitgains/fitgains_ng to
-;                 fitgains/fitgains,/fit_reflectivity and with npar=2.   
+;    2013-12-20 : MGL. Change calls from fitgains or fitgains_ng to
+;                 fitgains or fitgains,/fit_reflectivity and with
+;                 npar=2.
+;
+;    2013-12-22 : MGL. New keyword: download_all. Make downloading log
+;                 files only the default.
+;
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
                       , cfgfile = cfgfile $
                       , scriptfile = scriptfile $
+                      , download_all = download_all $
                       , sand = sand $
                       , date = date $
                       , stockholm = stockholm $
@@ -504,6 +515,9 @@ pro red_setupworkdir, root_dir = root_dir $
   
 
   ;; Download SST log file and some other data from the web.
-  red_download, /all
-
+  if keyword_set(download_all) then begin
+     red_download, /all
+  end else begin
+     red_download, /logs
+  end
 end

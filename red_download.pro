@@ -29,6 +29,10 @@
 ;
 ;      Try to download all types of data.
 ;
+;    logs : in, optional, type=boolean
+;
+;      Try to download SST log files.
+;
 ;    pig : in, optional, type=boolean
 ;
 ;      Try to download the SST/PIG log file. Returns with the
@@ -88,6 +92,7 @@
 pro red_download, date = date $
                   , overwrite = overwrite $
                   , all = all $
+                  , logs = logs $
                   , pig = pig $
                   , pathpig  = pathpig  $
                   , r0 = r0 $
@@ -103,6 +108,12 @@ pro red_download, date = date $
      turret = 1
      armap = 1
      hmi = 1
+  endif
+
+  if keyword_set(logs) then begin
+     pig = 1
+     r0 = 1
+     turret = 1
   endif
 
   any = keyword_set(pig) or keyword_set(turret) or keyword_set(armap) or keyword_set(hmi) or keyword_set(r0)
