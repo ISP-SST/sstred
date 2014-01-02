@@ -21,19 +21,11 @@
 ; 
 ; :Keywords:
 ; 
-;    no_remove  : 
-;   
-;   
-;   
 ;    link_dir  : 
-;   
 ;   
 ;   
 ;    uscan  : 
 ;   
-;   
-;   
-;    nremove : 
 ;   
 ;    all_data    : Not only link complete sequences, but everything found 
 ;   
@@ -50,12 +42,13 @@
 ; 
 ;   2013-12-16 : PS  keyword ALL_DATA, by default only link complete scans
 ;                    keyword PREF
+;
+;   2014-01-02 : PS  Change subdirectory names to also use cam, not camtag
+;                    remove nremove and no_remove keywords (all done in prepmomfbd)
+;   
 ;-
-pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, $
-                    nremove = nremove, ALL_DATA = all_data, PREF = pref
+pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PREF = pref
 
-  if n_elements(no_remove) eq 0 then no_remove = 0
-  if n_elements(nremove) eq 0 then nremove = 0
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
 
@@ -157,18 +150,10 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, $
             stat = red_getstates(files)
         ENDIF
         
-        ;; Flag first frame after tuning
-        if(~keyword_set(no_remove)) then begin
-           print, inam+' : Flagging first frame after tuning'
-           red_flagtuning, stat, nremove
-        endif
-         
-        camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
-        
         ;; Create linker script
         nt = n_elements(files)
 
-        linkername = self.out_dir + '/' + camtag + '_science_linker_'+folder_tag+'.sh'
+        linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
         openw, lun, linkername, /get_lun
         printf, lun, '#!/bin/bash'
          
@@ -176,23 +161,23 @@ pro red::link_data, no_remove = no_remove, link_dir = link_dir, uscan = uscan, $
         ntot = 100. / (nt - 1.0)
         bb = string(13b)
          
-        outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + camtag + '/'
-        outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + camtag + '_nostate/'
+        outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '/'
+        outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
          
         for ii = 0L, nt - 1 do begin
            if(stat.star[ii]) then continue
            if uscan ne '' then if stat.scan[ii] NE uscan then continue
                                 ;
-           namout = outdir + camtag + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
+           namout = outdir + cam + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
          
            printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
          
            if(wb) then begin
-              namout = outdir1 + camtag + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
+              namout = outdir1 + cam + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
               printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
            endif
          
-           print, bb, inam+' : creating linker for '+camtag+$
+           print, bb, inam+' : creating linker for '+cam+$
                   ' -> ', ii * ntot, '%', FORMAT = '(A,A,F5.1,A,$)'
         endfor
         free_lun, lun
