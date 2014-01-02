@@ -55,49 +55,59 @@
 ;
 ;   2013-07-01: JdlCR : Created!
 ; 
-;   2013-07-24 : Use red_show rather than show.
+;   2013-07-24: Use red_show rather than show.
 ;
-;
+;   2014-01-02: PS take out nremove (selection only done in prepmomfbd)
+;                  use linked data, to skip incomplete scans
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
                           verbose = verbose, overwrite=overwrite, $
-                          descatter = descatter, show=show, nremove = nremove
+                          descatter = descatter, show=show, LINK_DIR = link_dir
 
   inam = 'red::sum_data_intdif : '
-
+  
+  IF NOT keyword_set(link_dir) THEN link_dir = 'data'
+  
   outdir = self.out_dir + '/cmap_intdif/'
   ucam = [self.camr, self.camt]
-  if(n_elements(nremove) eq 0) then nremove = 0
+  
+    ;;; Search files.  Use links created by link_data
 
-;
-; Search files
-;
-  if self.ndir gt 1 then begin
-     for ii = 0, self.ndir-1 do print, red_stri(ii)+$
-                                       ' -> '+file_basename(self.data_list[ii])
-     idx = 0L
-     read, idx, prom = inam + 'Please select folder : '
-     print, inam + 'Using -> '+self.data_list[idx]
-     dir = self.data_list[idx]
-  endif else dir = self.data_list[0]
-  imdir = strsplit(dir,'/',/extract)
-  outdir += '/'+imdir[n_elements(imdir)-1]+'/'
+  dir = file_search(self.out_dir + link_dir+'/*', COUNT = nd)
+  IF nd EQ 0 THEN BEGIN
+      print, inam + 'ERROR: No data found - did you run link_data?'
+      if(debug) then stop else return
+  ENDIF
+  IF nd GT 1 THEN BEGIN
+      FOR ii = 0, nd-1 DO print, red_stri(ii)+' -> '+ $
+                                 file_basename(self.data_list[ii])
+      idx = 0L
+      read, idx, prom = inam + 'Please select folder : '
+      print, inam + 'Using -> '+dir[idx]
+      dir = dir[idx]
+  ENDIF ELSE $
+    dir = dir[0]
+
+   ; Get camera tags
+  self -> getcamtags, dir = dir
+  ctag = [self.camrtag, self.camttag]
+  
+  outdir += file_basename(dir)+'/'
   file_mkdir, outdir
-
-  spawn, 'find ' + dir + '/' + self.camr + '/ | grep camX | grep -v ".lcd."', files
-  nf = n_elements(files)
-  files = red_sortfiles(temporary(files))
+  
+  files = file_search(dir+ '/' + self.camr + '/cam*', count = nf)
 
   if(nf eq 0) then begin
      print, inam + 'ERROR, data folder is empty'
      if(debug) then stop else return
   endif
+  
+  files = red_sortfiles(temporary(files))
 
 ;
 ; Extract tags from file names
 ; 
-  state = red_getstates(files)
-  red_flagtuning, state, nremove
+  state = red_getstates(files, /LINKS)
 
 ;
 ; build my states
@@ -152,11 +162,6 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
   nw = n_elements(uwav)
   nlc = n_elements(ulc)
 
-;
-; Get camera tags
-;
-  self -> getcamtags, dir = self.data_dir
-  ctag = [self.camrtag, self.camttag]
 
 ;
 ; Start summing 
@@ -200,7 +205,6 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
         pff = f0(pf)
         bff = f0(bf)
      endif
-
 
      tempdir=dir + '/' + ucam[cc]+'/'
      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
