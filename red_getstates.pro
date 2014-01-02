@@ -30,10 +30,10 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
-; 
+;   2013-12-16 : PS  Keyword LINKS to process data linked by red__link_data
 ; 
 ;-
-function red_getstates, files
+function red_getstates, files, LINKS = links
   nt = n_elements(files)
   fullstate = strarr(nt)
   nums = strarr(nt)
@@ -50,12 +50,20 @@ function red_getstates, files
      
      n = n_elements(tmp)
                                 ;
-     nums[ii] = tmp[n -1]
-     pref[ii] = tmp[n-5]
-     lc[ii] = tmp[n-3]
-     scan[ii] = tmp[1]
-     wav[ii] = tmp[n-4]
-
+     IF keyword_set(links) THEN BEGIN
+         nums[ii] = tmp[n-1]
+         pref[ii] = tmp[n-4]
+         lc[ii] = tmp[n-2]
+         scan[ii] = tmp[1]
+         wav[ii] = tmp[n-3]
+     ENDIF ELSE BEGIN
+         nums[ii] = tmp[n -1]
+         pref[ii] = tmp[n-5]
+         lc[ii] = tmp[n-3]
+         scan[ii] = tmp[1]
+         wav[ii] = tmp[n-4]
+     ENDELSE
+     
      rscan[ii] = red_decode_scan(scan[ii], hscan=hs)
      hscan[ii] = hs
      
