@@ -77,7 +77,7 @@
 ;   
 ;   
 ;   
-;    newgains :
+;    oldgains :
 ; 
 ;
 ;
@@ -94,12 +94,17 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ;
+;   2013-12-19   PS  Work based on the link directory
+;                    guess date before asking
+;                    adapt to changed link directory names
+;                    NEWGAINS is the default now (removed), use OLDGAINS
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $
-                     pref = pref, escan = escan, div = div, nremove=nremove, $
-                     newgains=newgains, nf = nfac, weight = weight
+                     pref = pref, escan = escan, div = div, nremove = nremove, $
+                     oldgains = oldgains, nf = nfac, weight = weight
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -109,38 +114,51 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
   red_writelog, selfinfo = selfinfo
 
   ;; Get keywords
-  if(~keyword_set(date_obs)) then begin
-     date_obs = ' '
-     read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
-  endif
+  IF ~keyword_set(date_obs) THEN BEGIN
+        ;;; guess it from root_dir
+      date_obs = strjoin(strsplit(file_basename(self.root_dir), '.', /extract), '-')
+      IF ~strmatch(date_obs, '????-??-??') THEN $
+        read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
+  ENDIF
   if(~keyword_set(numpoints)) then numpoints = '88'
   if(~keyword_set(outformat)) then outformat = 'MOMFBD'
   if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
-  if(n_elements(nremove) eq 0) then nremove=1
+  if(n_elements(nremove) eq 0) then nremove=0
   if(n_elements(nfac) gt 0) then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
   endif
   
   
   ;; Get states from the data folder
-  for fff = 0, self.ndir - 1 do begin
-     data_dir = self.data_list[fff]
-     spawn, 'find ' + data_dir + '/' + self.camt + '/ | grep im.ex | grep -v ".lcd."', files
-     folder_tag = strsplit(data_dir,'/',/extract)
-     nn = n_elements(folder_tag) - 1
-     folder_tag = folder_tag[nn]
+  d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = nd)
+  IF nd EQ 0 THEN BEGIN
+      print, inam + ' : ERROR -> no frames found in '+self.out_dir+'/data'
+      print, inam + '   Did you run link_data?'
+      return
+  ENDIF
+  
+  self -> getcamtags, dir = self.data_dir
+  
+  for fff = 0, nd - 1 do begin
 
-     nf = n_elements(files)
-     if(files[0] eq '') then begin
-        print, inam + ' : ERROR -> no frames found in '+data_dir
-        return
-     endif
+     folder_tag = file_basename(d_dirs[fff])
+     
+     search = self.out_dir+'/data/'+folder_tag+'/'+self.camt
+     files = file_search(search+'/*', count = nf)
+     
+     IF nf EQ 0 THEN BEGIN
+         print, inam + ' : ERROR -> no frames found in '+search
+         print, inam + '   Did you run link_data?'
+         return
+     ENDIF 
 
      files = red_sortfiles(temporary(files))
-
+     
      ;; Get image unique states
-     stat = red_getstates(files)
-     red_flagtuning, stat, nremove
+     stat = red_getstates(files, /LINKS)
+      ;;; skip leading frames?
+     IF nremove GT 0 THEN red_flagtuning, stat, nremove
+     
      states = stat.hscan+'.'+stat.state
      pos = uniq(states, sort(states))
      ustat = stat.state[pos]
@@ -162,8 +180,6 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
      outdir = self.out_dir + '/momfbd/' + folder_tag
      file_mkdir, outdir
 
-     self -> getcamtags, dir = data_dir
-
      ;; Print cams
      print, inam + ' : cameras found:'
      print, ' WB   -> '+self.camwbtag
@@ -183,7 +199,8 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
      ;; Choose offset state
      for ss = 0L, ns - 1 do begin
          IF n_elements(escan) NE 0 THEN IF ss NE escan THEN CONTINUE 
- 	 scan = uscan[ss]
+
+        scan = uscan[ss]
 
         for pp = 0L, np - 1 do begin
            if(keyword_set(pref)) then begin
@@ -231,9 +248,8 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            printf, lun, '  OUTPUT_FILE=results/'+self.camwbtag+'.'+scan+'.'+upref[pp]
            if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[0])
            printf, lun, '  channel{'
-           printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwbtag+'_nostate/'
+           printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwb+'_nostate/'
            printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+scan+'.'+upref[pp]+'.%07d'
-                                ; printf, lun, '    DIVERSITY=0.0 mm'
            printf, lun, '    GAIN_FILE=' + file_search(self.out_dir+'gaintables/'+self.camwbtag + $
                                                        '.' + upref[pp]+'*.gain')
            printf, lun, '    DARK_TEMPLATE='+self.out_dir+'darks/'+self.camwbtag+'.summed.0000001'
@@ -258,7 +274,6 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
            if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
            
-                                ; printf, lun, '    INCOMPLETE'
            if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
            printf, lun, '  }'
            printf, lun, '}'
@@ -303,14 +318,14 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               printf, lun, '  OUTPUT_FILE=results/'+self.camttag+'.'+istate 
               if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[1])
               printf, lun, '  channel{'
-              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camttag+'/'
+              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camt+'/'
               printf, lun, '    FILENAME_TEMPLATE='+self.camttag+'.'+istate+'.%07d'
-                                ;  printf, lun, '    DIVERSITY=0.0 mm'
+
               if(~keyword_set(unpol)) then begin
-                 if(keyword_set(newgains)) then begin
-                    search = self.out_dir+'/gaintables/'+folder_tag+'/'+self.camttag + '.' + istate+'.gain'
-                 endif else begin
+                 if(keyword_set(oldgains)) then begin
                     search = self.out_dir+'/gaintables/'+self.camttag + '.' + ustat1[ii] + '*.gain'
+                 endif else begin
+                    search = self.out_dir+'/gaintables/'+folder_tag+'/'+self.camttag + '.' + istate+'.gain'
                  endelse
               endif Else begin
 
@@ -356,14 +371,14 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
               printf, lun, '  OUTPUT_FILE=results/'+self.camrtag+'.'+istate 
               if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[2])
               printf, lun, '  channel{'
-              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camrtag+'/'
+              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camr+'/'
               printf, lun, '    FILENAME_TEMPLATE='+self.camrtag+'.'+istate+'.%07d'
                                 ;   printf, lun, '    DIVERSITY=0.0 mm' 
               if(~keyword_set(unpol)) then begin
-                 if(keyword_set(newgains)) then begin
-                    search = self.out_dir+'/gaintables/'+folder_tag+'/'+self.camrtag + '.' + istate+'.gain'
-                 endif else begin
+                 if(keyword_set(oldgains)) then begin
                     search = self.out_dir+'/gaintables/'+self.camrtag + '.' + ustat1[ii] + '*.gain'
+                 endif else begin
+                    search = self.out_dir+'/gaintables/'+folder_tag+'/'+self.camrtag + '.' + istate+'.gain'
                  endelse
               endif Else begin
                  idx = strsplit(ustat1[ii],'.')
@@ -411,7 +426,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
                  printf, lun, '  WEIGHT=0.00'
                  printf, lun, '  OUTPUT_FILE=results/'+self.camwbtag+'.'+istate 
                  printf, lun, '  channel{'
-                 printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwbtag+'/'
+                 printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwb+'/'
                  printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+istate+'.%07d'
                                 ; printf, lun, '    DIVERSITY=0.0 mm'
                  printf, lun, '    GAIN_FILE=' + file_search(self.out_dir+'/gaintables/'+self.camwbtag + $
@@ -447,7 +462,7 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            ;; Global keywords
            printf, lun, 'PROG_DATA_DIR=./data/'
            printf, lun, 'DATE_OBS='+date_obs
-           printf, lun, 'IMAGE_NUMS='+nall ;n0+'-'+n1
+           printf, lun, 'IMAGE_NUMS='+nall       ;;  n0+'-'+n1
            printf, lun, 'BASIS=Karhunen-Loeve'
            printf, lun, 'MODES='+modes
            printf, lun, 'NUM_POINTS='+numpoints
