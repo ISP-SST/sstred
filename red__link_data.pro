@@ -152,7 +152,8 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
         
         ;; Create linker script
         nt = n_elements(files)
-
+        camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
+        
         linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
         openw, lun, linkername, /get_lun
         printf, lun, '#!/bin/bash'
@@ -168,12 +169,12 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
            if(stat.star[ii]) then continue
            if uscan ne '' then if stat.scan[ii] NE uscan then continue
                                 ;
-           namout = outdir + cam + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
+           namout = outdir + camtag + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
          
            printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
          
            if(wb) then begin
-              namout = outdir1 + cam + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
+              namout = outdir1 + camtag + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
               printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
            endif
          
