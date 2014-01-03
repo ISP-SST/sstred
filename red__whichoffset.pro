@@ -39,7 +39,7 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-; 
+;   2014-01-03 : PS  fix computation of nearest state
 ;-
 pro red::whichoffset, state, xoff = xoff, yoff = yoff
                                 ; method name
@@ -74,20 +74,23 @@ pro red::whichoffset, state, xoff = xoff, yoff = yoff
   ENDIF ELSE BEGIN
      ws = red_extract_wav(state, lc = lc)
      wss = red_extract_wav(states, lc = lcs)
-     p = where((wss - ws) EQ min(wss-ws), ct1)
+     wss = abs(wss-ws[0])
+     p = where(wss EQ min(wss), ct1)
      IF ct1 GT 1 THEN BEGIN
-        pos = (where(lcs[p] EQ lc))[0]
-        xoff = states[p[pos]]+'.xoffs'
-        yoff = states[p[pos]]+'.yoffs'
+         IF ct1 EQ 2 THEN BEGIN
+               ;;; This is two wavelengths in same distance.  Just pick the first
+             xoff = states[p[0]]+'.xoffs'
+             yoff = states[p[0]]+'.yoffs'
+         ENDIF ELSE BEGIN 
+               ;;; one wavelength with 4 lc states
+             pos = (where(lcs[p] EQ lc))[0]
+             xoff = states[p[pos]]+'.xoffs'
+             yoff = states[p[pos]]+'.yoffs'
+         ENDELSE
      ENDIF ELSE BEGIN
         xoff = states[p]+'.xoffs'
         yoff = states[p]+'.yoffs'
      endelse
-                                ;
-     
-                                ;
   endelse
-                                ;
-  
   return
 end
