@@ -71,10 +71,7 @@ pro red::initialize, filename
      readf, lun, line                          ; read line
      field = (strsplit(line,' =',/extract))[0] ; extract field
    
-     if(strmid(line, 0, 1) eq '#') then begin
-        print, 'red::initialize : Skipping commented-out line'
-        continue
-     endif
+     if(strmid(line, 0, 1) eq '#') then continue
    
      ;; get fields
      case field of
