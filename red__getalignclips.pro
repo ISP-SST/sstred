@@ -310,10 +310,6 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
      sx = abs(cl[1,0] - cl[0,0]) + 1L
      sy = abs(cl[3,0] - cl[2,0]) + 1L
 
-     mid = 0
-     dum = red_clipim(pics[*,*,mid], cl[*,mid])
-;     red_show, bytscl(dum, 0, 20), /nosc, wnum = 10
-     
   endif
 
   ;; Align clips
