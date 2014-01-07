@@ -85,7 +85,12 @@
 ;                 turretfile, and pigfile keywords. Do not make soft
 ;                 links. 
 ;
-;
+;    2014-01-04 : MGL. For turret, now downloads the file for the
+;                 specified date as well as the first existing file
+;                 earlier in time. Do this without writing to disk.
+;                 Concatenate the downloaded turret data, select only
+;                 the relevant lines, and save to the turret file to
+;                 be used by the pipeline.
 ;
 ;
 ;-
@@ -182,20 +187,82 @@ pro red_download, date = date $
 
   ;; Turret log file
 
-  ;; The turret log data for a particular day can actually be in the
-  ;; turret log file of an earlier day. So if todays file does not
-  ;; exist we should search days backwards until we find one. Then we
-  ;; should filter it to get rid of data for aother days and header
-  ;; info that are interspersed with the data. Not implemented yet.
   if keyword_set(turret) then begin
-     turretfile = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
-     downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/turret/' + datearr[0]+'/'+turretfile $
-                             , file = turretfile $
-                             , dir = logdir $
-                             , overwrite = overwrite $
-                             , path = pathturret) 
-  endif
+
+     ;; Turret log data for a particular day can actually be in the
+     ;; turret log file of an earlier day. So we need to search days
+     ;; backwards until we find one. Then we should concatenate the
+     ;; two files and filter the result to get rid of data for another
+     ;; days and header info that are interspersed with the data.
+
+     ;; The name of the concatenated and filtered file
+     turretfile = logdir+'positionLog_'+strreplace(isodate, '-', '.', n = 2)+'_final'
+     if ~file_test(turretfile) or keyword_set(overwrite) then begin
+        
+        ;; First try the particular date:
+        
+        turretfile1 = 'positionLog_'+strreplace(isodate, '-', '.', n = 2)
+        OK1 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
+                         + datearr[0]+'/'+turretfile1 $
+                         , contents = contents1 $
+;                         , dir = logdir $
+                         , /overwrite $
+                        ) 
+
+        ;; Try previous days until one is found
+        predatearr = datearr
+        repeat begin
+           
+           ;; Make isodate for one day earlier
+           predatearr[2] = string(predatearr[2]-1, format = '(i2)')
+           if predatearr[2] eq 0 then begin
+              predatearr[2] = '31'
+              predatearr[1] = string(predatearr[1]-1, format = '(i2)')
+              if predatearr[1] eq 0 then begin
+                 predatearr[2] = '12'
+                 predatearr[0] += string(predatearr[0]-1, format = '(i4)')
+              endif
+           endif
+           preisodate = strjoin(predatearr, '-')
+           
+           ;; Try to download
+           turretfile2 = 'positionLog_'+strreplace(preisodate, '-', '.', n = 2)
+           print, 'Try '+turretfile2
+           OK2 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
+                            + datearr[0]+'/'+turretfile2 $
+                            , contents = contents2 $
+;                            , dir = logdir $
+                            , /overwrite $
+                           ) 
+           
+        endrep until OK2
+
+        ;; Concatenate the downloaded files (if needed)
+        if OK1 then contents = [contents2, contents1] else contents = contents2
+        ;; Filter on date
+        turretdate = strjoin(datearr, '/')
+        contents = contents(where(strmatch(contents, turretdate+'*')))
+        ;; Filter on line type, don't want the RA/Decl lines
+        contents = contents(where(~strmatch(contents, '*h*m*')))
+
+        ;; Write to disk
+        openw, wlun, /get_lun, turretfile
+        printf, wlun, contents, format = '(a0)'
+        free_lun, wlun
+        
+;     grepdate = strjoin(datearr, '/')
+;     cmd = 'cd downloads/sstlogs ;'       ; Go to download directory
+;     cmd += ' cat positionLog_????.??.??' ; Concatenate the turret files
+;     cmd += ' | grep '+grepdate           ; Only lines from the relevant day
+;     cmd += ' | grep -v h '               ; Remove RA/Decl lines
+;     cmd += ' > positionLog'              ; Output to file to be used
+;     print, cmd
+     
+     endif                      ; non-existent or overwrite
+     
+  endif                         ; keyword_set(turret)
   
+     
   ;; Active regions map
   arfile = strjoin(datearr, '')+'.1632_armap.png'
   if keyword_set(armap) then begin
