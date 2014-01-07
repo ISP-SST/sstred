@@ -83,7 +83,7 @@
 ;   2013-09-11 : MGL. Use red_lp_write rather than lp_write.
 ;
 ;-
-pro red::polish_Tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
+pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
                          ang = ang, shift = shift, square=square, $
                          negang = negang, crop=crop, ext_time = ext_time
