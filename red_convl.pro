@@ -43,7 +43,7 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-; 
+;   2014-01-07 : PS red_legend -> al_legend (from astron)
 ;-
 function red_convl, A, B, plot=plot, usefft=usefft
 
@@ -69,7 +69,7 @@ function red_convl, A, B, plot=plot, usefft=usefft
   if keyword_set(plot) then begin
      plot,a,line=1,xtitle='X [grid point]',ytitle='Y [values]'
      oplot,res
-     red_legend,['Convolved','Original'],line=[0,1],/right,/bottom
+     al_legend,['Convolved','Original'],line=[0,1],/right,/bottom
   endif
 
   return, res

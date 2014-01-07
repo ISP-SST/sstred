@@ -53,11 +53,13 @@
 ; 
 ;   2013-07-11 : MGL. Use red_intepf, not intepf.
 ; 
-; 
-; 
+;   2014-01-07 : PS red_legend -> al_legend (from astron)
+;                   color handling
 ;-
 function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref
-  device, decompose=0
+
+  device, get_decomposed = odc
+  device, decomposed = 0
   
   p0 = pp[0]
   p1 = pp[1]
@@ -75,13 +77,14 @@ function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pre
                                 ;
   res = p0 * pref * ys1 
                                 ;
-  loadct,1,/silent
+  loadct, 1, /silent
   plot, mm.wav, res, psym = -4, yrange=[0,2] * median(mm.yl1), /ystyle
   oplot, mm.wav, mm.yl1, /line, psym=-1
   oplot, mm.wav, pref*median(mm.yl1), color = 175, thick = 1, psym= -1
-  red_legend, ['Model', 'Observed', 'Prefilter'], line = [0, 1, 0], psym = [-4, -1, -1], color = [255, 255, 175], $
-          /bottom, /right, charsize=2
-  loadct,0,/silent
-                                ;
+  al_legend, ['Model', 'Observed', 'Prefilter'], line = [0, 1, 0], psym = [-4, -1, -1], $
+             color = [255, 255, 175], /bottom, /right, charsize=2
+  loadct, 0, /silent
+  device, decomposed = odc
+  
   return, res - mm.yl1
 end
