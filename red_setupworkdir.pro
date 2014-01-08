@@ -109,6 +109,10 @@
 ;    2013-12-22 : MGL. New keyword: download_all. Make downloading log
 ;                 files only the default.
 ;
+;    2014-01-08 : MGL. Don't do downloading of log files
+;                 directly, put the command to do it in the script
+;                 file. 
+;
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -209,6 +213,18 @@ pro red_setupworkdir, root_dir = root_dir $
   ;; file and Slun for a Script file.
   openw, Clun, cfgfile, /get_lun
   openw, Slun, scriptfile, /get_lun
+
+ ;; Download SST log files and optionally some other data from the web.
+  print, 'Log files'
+  printf, Clun, '#'
+  printf, Clun, '# --- Download SST log files'
+  printf, Clun, '#'
+  printf, Slun, 'red_download ; add ", /all" to get also HMI images and AR maps.'
+;  if keyword_set(download_all) then begin
+;     red_download, /all
+;  end else begin
+;     red_download, /logs
+;  end
 
   ;; printf, Slun, '.r crispred'
   printf, Slun, 'a = crispred("config.txt")' 
@@ -512,12 +528,5 @@ pro red_setupworkdir, root_dir = root_dir $
   
   free_lun, Clun
   free_lun, Slun
-  
-
-  ;; Download SST log file and some other data from the web.
-  if keyword_set(download_all) then begin
-     red_download, /all
-  end else begin
-     red_download, /logs
-  end
+ 
 end
