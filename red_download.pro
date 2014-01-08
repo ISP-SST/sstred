@@ -31,7 +31,9 @@
 ;
 ;    logs : in, optional, type=boolean
 ;
-;      Try to download SST log files.
+;      Try to download SST log files. This is the default operation in
+;      case no particular target is specified and all is also not
+;      specified. 
 ;
 ;    pig : in, optional, type=boolean
 ;
@@ -92,6 +94,8 @@
 ;                 the relevant lines, and save to the turret file to
 ;                 be used by the pipeline.
 ;
+;    2014-01-08 : MGL. Make downloading logs the default.
+;
 ;
 ;-
 pro red_download, date = date $
@@ -107,6 +111,16 @@ pro red_download, date = date $
                   , armap = armap $
                   , hmi = hmi
 
+  any = keyword_set(pig) $
+        or keyword_set(turret)  $
+        or keyword_set(armap)  $
+        or keyword_set(hmi)  $
+        or keyword_set(r0)  $
+        or keyword_set(all)  $
+        or keyword_set(logs)
+
+  if ~any then logs = 1
+
   if keyword_set(all) then begin
      pig = 1
      r0 = 1
@@ -121,7 +135,6 @@ pro red_download, date = date $
      turret = 1
   endif
 
-  any = keyword_set(pig) or keyword_set(turret) or keyword_set(armap) or keyword_set(hmi) or keyword_set(r0)
 
   dir = 'downloads/'            ; Make this part of the crispred class structure?
   logdir = dir+'sstlogs/'
