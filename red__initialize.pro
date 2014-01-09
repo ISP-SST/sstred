@@ -32,6 +32,8 @@
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2013-12-10 : PS  adapt for multiple flat_dir
+;
+;   2014-01-08 : MGL. Initialize new fields: isodate, log_dir, telog, pinhole_spacing.
 ; 
 ;-
 pro red::initialize, filename
@@ -62,7 +64,7 @@ pro red::initialize, filename
   self.docamwb = 1B
   self.dopolcal = 1B
   self.dodescatter = 1B
-   
+
   ;; open file and get fields
   openr, lun, filename, /get_lun
   nl = 0L
@@ -137,6 +139,12 @@ pro red::initialize, filename
         'camsz':begin
            self.camsz =  (strsplit(line,' =',/extract))[1] ; extract value
         end
+        'isodate':begin
+           self.isodate =  (strsplit(line,' =',/extract))[1] ; extract value
+        end
+        'pinhole_spacing': begin
+            self.pinhole_spacing = float((strsplit(line,' =',/extract))[1]) ; extract value
+        end
         else: begin
            print, 'red::initialize : Skipping line ',$
                   strcompress(string(nl),/remove_all), ': ',line
@@ -170,6 +178,13 @@ pro red::initialize, filename
 
   if(strlen(self.camsz) eq 0) then self.camsz = '1024'
   print, 'red::initialize : camsz = '+self.camsz
+
+  if self.pinhole_spacing eq 0.0 then begin
+     ;; Default value (5.12 arcseconds between pinholes) was
+     ;; measured in 2013 by comparison with SDO/HMI images.
+     self.pinhole_spacing = 5.12
+  endif 
+  print, 'red::initialize : pinhole_spacing = '+strtrim(self.pinhole_spacing, 2)
 
   ;; check available fields
   if(self.descatter_dir eq '') then begin
@@ -212,6 +227,24 @@ pro red::initialize, filename
      print, 'red::initialize : WARNING : cam_wb is undefined!'
      self.docamwb = 0B
   endif
+  if(self.isodate eq '') then begin
+     print, 'red::initialize : WARNING : isodate is undefined!'
+     print, '                  Try to get it from PWD!'
+     date = stregex(getenv('PWD'),'[12][0-9][0-9][0-9][-.][0-1][0-9][-.][0-3][0-9]',/extr)
+     if date eq '' then begin
+        print, 'red::initialize : WARNING : No recognizable date in PWD. Giving up.'
+     endif else begin
+        ;; Do a strreplace in case the found date uses dots rather
+        ;; than dashes.
+        self.isodate = strreplace(date, '.', '-', n = 2)
+     endelse
+  endif
+ 
+  ;; Fields that depend on fields defined above:
+  self.log_dir = self.out_dir+'/downloads/sstlogs/'
+  self.telog = self.log_dir+'positionLog_'+strreplace(self.isodate, '-', '.', n = 2)+'_final'
+
+
 
   ;; print fields
   if(self.dodark) then print, 'red::initialize : dark_dir = '+ self.dark_dir
