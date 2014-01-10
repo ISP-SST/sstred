@@ -113,7 +113,10 @@
 ;                 directly, put the command to do it in the script
 ;                 file. Add isodate to the config file.
 ;
-;    2014-01-08 : MGL. Bugfix isodate in config file.
+;    2014-01-09 : MGL. Bugfix isodate in config file.
+;
+;    2014-01-10 : MGL. The download command is now a method, make it
+;                 so in the script.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -224,21 +227,16 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
 
+  ;; printf, Slun, '.r crispred'
+  printf, Slun, 'a = crispred("config.txt")' 
+  printf, Slun, 'root_dir = "' + root_dir + '"'
+
  ;; Download SST log files and optionally some other data from the web.
   print, 'Log files'
   printf, Clun, '#'
   printf, Clun, '# --- Download SST log files'
   printf, Clun, '#'
-  printf, Slun, 'red_download ; add ", /all" to get also HMI images and AR maps.'
-;  if keyword_set(download_all) then begin
-;     red_download, /all
-;  end else begin
-;     red_download, /logs
-;  end
-
-  ;; printf, Slun, '.r crispred'
-  printf, Slun, 'a = crispred("config.txt")' 
-  printf, Slun, 'root_dir = "' + root_dir + '"'
+  printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
 
   print, 'Cameras'
   printf, Clun, '#'
