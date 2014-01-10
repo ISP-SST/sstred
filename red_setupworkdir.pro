@@ -115,8 +115,8 @@
 ;
 ;    2014-01-09 : MGL. Bugfix isodate in config file.
 ;
-;    2014-01-10 : MGL. The download command is now a method, make it
-;                 so in the script.
+;    2014-01-10 : MGL. The download command is now a method, write it
+;                 in that form in the script.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
