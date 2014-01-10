@@ -73,13 +73,15 @@
 ;                that have to do with the narrowband cameras. New
 ;                keyword nimages. Change subdirectory to "mfbd".
 ;
+;   2014-01-10   MGL. Follow Pit's lead and remove keyword
+;                outformat, use self.filetype instead. 
 ;
 ;-
-pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
-                     modes = modes, date_obs = date_obs, descatter = descatter, $
-                     global_keywords = global_keywords, skip = skip, $
-                     pref = pref, $
-                     newgains=newgains, nf = nfac, nimages = nimages
+pro red::prepmfbd, numpoints = numpoints, $
+                   modes = modes, date_obs = date_obs, descatter = descatter, $
+                   global_keywords = global_keywords, skip = skip, $
+                   pref = pref, $
+                   newgains=newgains, nf = nfac, nimages = nimages
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -94,7 +96,6 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
      read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
   endif
   if(~keyword_set(numpoints)) then numpoints = '88'
-  if(~keyword_set(outformat)) then outformat = 'MOMFBD'
   if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
   if(n_elements(nfac) gt 0) then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
@@ -123,7 +124,6 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
      pos = uniq(states, sort(states))
      ustat = stat.state[pos]
      ustatp = stat.pref[pos]
-                                ;ustats = stat.scan[pos]
 
      ntt = n_elements(ustat)
      hscans = stat.hscan[pos]
@@ -144,16 +144,6 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
 
      ;; Print cams
      print, ' WB  -> '+self.camwbtag
-
-     ;; Extensions
-     case outformat of
-        'ANA': exten = '.f0'
-        'MOMFBD': exten = '.momfbd'
-        ELSE: begin
-           print, inam+' : WARNING -> could not determine a file type for the output'
-           exten = ''
-        end
-     endcase
 
      ;; Loop over scans
      for ss = 0L, ns - 1 do begin
@@ -214,8 +204,6 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
                  oname = self.camwbtag+'.'+scan+':'+subscan+'.'+upref[pp]
               endelse
               
-
-
               ;; Open config file for writing
               openw, lun, outdir + cfg_file, /get_lun, width=2500
 
@@ -242,7 +230,6 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
 
               printf, lun, '    INCOMPLETE'
 
-
               if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
               printf, lun, '  }'
               printf, lun, '}'
@@ -261,11 +248,12 @@ pro red::prepmfbd, outformat = outformat, numpoints = numpoints, $
               printf, lun, 'GRADIENT=gradient_diff'
               printf, lun, 'MAX_LOCAL_SHIFT=30'
               printf, lun, 'NEW_CONSTRAINTS'
-              printf, lun, 'FILE_TYPE='+outformat
+              printf, lun, 'FILE_TYPE='+self.filetype
               printf, lun, 'FAST_QR'
-              if(outformat eq 'MOMFBD') then printf, lun, 'GET_PSF'
-              if(outformat eq 'MOMFBD') then printf, lun, 'GET_PSF_AVG'
-
+              if self.filetype eq 'MOMFBD' then begin
+                 printf, lun, 'GET_PSF'
+                 printf, lun, 'GET_PSF_AVG'
+              endif
               ;; External keywords?
               if(keyword_set(global_keywords)) then begin
                  nk = n_elements(global_keywords)
