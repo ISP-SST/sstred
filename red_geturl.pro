@@ -72,6 +72,8 @@
 ;     2014-01-02 : MGL. New keyword "contents". Some new logic for
 ;                  when to save a file to disk and to avoid reading
 ;                  the contents into IDL unless necessary.
+;
+;     2014-01-10 : MGL. Add some error handling.
 ; 
 ;-
 function red_geturl, url $
@@ -156,8 +158,19 @@ function red_geturl, url $
      ;; overwrite an existing version.
      tmpfile = String('tmp_', Bin_Date(SysTime()), format='(A, I4, 5I2.2)')
      
-     retrievedFilePath = oUrl -> Get(FILENAME=tmpfile) 
-  
+     CATCH, Error_status
+     if Error_status ne 0 then begin
+        
+        print, 'Caught an error'
+        CATCH, /CANCEL
+
+     endif else begin
+        
+        retrievedFilePath = oUrl -> Get(FILENAME=tmpfile) 
+
+     endelse
+
+
      oUrl -> GetProperty, RESPONSE_CODE=RespCode ; 200 = OK
 
      ;; Beware that some web servers return 200 in spite of failure! The
@@ -188,8 +201,11 @@ function red_geturl, url $
 
         path = ''
         file_delete, tmpfile
-        print, 'red_geturl : Download failed with code '+respcode
-
+        if n_elements(respcode) eq 0 then begin
+           print, 'red_geturl : Download failed.'
+        endif else begin
+           print, 'red_geturl : Download failed with code '+strtrim(respcode, 2)
+        endelse
         ;; Should we make a link if there is an already existing file?
         
      endelse
@@ -213,7 +229,17 @@ function red_geturl, url $
                     , URL_PORT = urlComponents.port $
                    ) 
 
-     contents = oUrl -> Get(/STRING_ARRAY) 
+     CATCH, Error_status
+     if Error_status ne 0 then begin
+        
+        print, 'Caught an error'
+        CATCH, /CANCEL
+
+     endif else begin
+        
+        contents = oUrl -> Get(/STRING_ARRAY) 
+
+     endelse
 
      oUrl -> GetProperty, RESPONSE_CODE=RespCode ; 200 = OK
 
