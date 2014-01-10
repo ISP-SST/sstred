@@ -111,8 +111,9 @@
 ;
 ;    2014-01-08 : MGL. Don't do downloading of log files
 ;                 directly, put the command to do it in the script
-;                 file. 
+;                 file. Add isodate to the config file.
 ;
+;    2014-01-08 : MGL. Bugfix isodate in config file.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -159,8 +160,10 @@ pro red_setupworkdir, root_dir = root_dir $
 ;     root_dir = root_dir+date+'/'
   endif
 
-  date_momfbd = strreplace(date, '.', '-', n = 2)
-  date = strreplace(date_momfbd, '-', '.', n = 2)
+  isodate = strreplace(date, '.', '-', n = 2)
+
+  date_momfbd = isodate
+  date = strreplace(isodate, '-', '.', n = 2)
   
   ;; Where to look for data?
   if ~keyword_set(lapalma) and ~keyword_set(stockholm) and n_elements(root_dir) eq 0 then stockholm = 1
@@ -213,6 +216,13 @@ pro red_setupworkdir, root_dir = root_dir $
   ;; file and Slun for a Script file.
   openw, Clun, cfgfile, /get_lun
   openw, Slun, scriptfile, /get_lun
+
+  ;; Specify the date in the config file, ISO format.
+  print, 'Date'
+  printf, Clun, '#'
+  printf, Clun, '# --- Date'
+  printf, Clun, '#'
+  printf, Clun,'isodate = '+isodate
 
  ;; Download SST log files and optionally some other data from the web.
   print, 'Log files'
