@@ -11,10 +11,13 @@
 ; 
 ;   2014-01-09 : MGL. Added some documentation.
 ; 
+;   2014-01-10 : PS  New config variable filtype
+;
 ;-
 PRO red__define
+
   done = {done, sumdark:0B, sumflat:0B, cleandata:0B, sumpolcal:0B, polcal:0B, makegains:0B}
-                                ;
+                                
   struct = {red, $
             dark_dir:'',$           ; The directory where raw dark frames are stored
             flat_dir:ptr_new(),$    ; The directories where raw flat fields are stored
@@ -29,6 +32,7 @@ PRO red__define
             camwb:'', $             ;
             out_dir:'',$            ; The directory where all output is stored
             filename:'',$           ;
+            filetype:'', $          ;
             dopolcal:0B, $          ;
             dodata:0B, $            ;
             doflat:0B, $            ;
