@@ -33,6 +33,8 @@
 ; 
 ;   2013-12-10 : PS  adapt for multiple flat_dir
 ; 
+;   2014-01-10 : PS  New config variable filtype
+;
 ;-
 pro red::initialize, filename
                                 
@@ -42,6 +44,7 @@ pro red::initialize, filename
      return
   endif
   self.filename = filename
+  self.filetype = 'MOMFBD'
   
   ;; Init vars
   self.dark_dir = '' 
@@ -112,6 +115,9 @@ pro red::initialize, filename
         end
         'polcal_dir': begin
            self.polcal_dir =  (strsplit(line,' =',/extract))[1] ; extract value
+        end
+        'filetype': begin
+           self.filetype = (strsplit(line,' =',/extract))[1]
         end
         'cam_t': begin
            self.camt =  (strsplit(line,' =',/extract))[1] ; extract value

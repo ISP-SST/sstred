@@ -5,6 +5,8 @@
 ;
 ;   2013-12-12 : move class definition to own file
 ; 
+;   2014-01-10 : PS  New config variable filtype
+;
 ;-
 
 PRO red__define
@@ -24,6 +26,7 @@ PRO red__define
             camwb:'', $
             out_dir:'',$
             filename:'',$
+            filetype:'', $
             dopolcal:0B, $
             dodata:0B, $
             doflat:0B, $

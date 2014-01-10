@@ -25,10 +25,6 @@
 ;   
 ;   
 ;   
-;    outformat  : 
-;   
-;   
-;   
 ;    numpoints  : 
 ;   
 ;   
@@ -99,8 +95,9 @@
 ;                    adapt to changed link directory names
 ;                    NEWGAINS is the default now (removed), use OLDGAINS
 ;
+;   2014-01-10   PS  remove keyword outformat, use self.filetype
 ;-
-pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
+pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $
                      pref = pref, escan = escan, div = div, nremove = nremove, $
@@ -121,7 +118,6 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
         read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
   ENDIF
   if(~keyword_set(numpoints)) then numpoints = '88'
-  if(~keyword_set(outformat)) then outformat = 'MOMFBD'
   if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
   if(n_elements(nremove) eq 0) then nremove=0
   if(n_elements(nfac) gt 0) then begin
@@ -185,16 +181,6 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
      print, ' WB   -> '+self.camwbtag
      print, ' NB_T -> '+self.camttag
      print, ' NB_R -> '+self.camrtag
-
-     ;; Extensions
-     case outformat of
-        'ANA': exten = '.f0'
-        'MOMFBD': exten = '.momfbd'
-        ELSE: begin
-           print, inam+' : WARNING -> could not determine a file type for the output'
-           exten = ''
-        end
-     endcase
 
      ;; Choose offset state
      for ss = 0L, ns - 1 do begin
@@ -473,11 +459,12 @@ pro red::prepmomfbd, wb_states = wb_states, outformat = outformat, numpoints = n
            printf, lun, 'GRADIENT=gradient_diff'
            printf, lun, 'MAX_LOCAL_SHIFT=30'
            printf, lun, 'NEW_CONSTRAINTS'
-           printf, lun, 'FILE_TYPE='+outformat
+           printf, lun, 'FILE_TYPE='+self.filetype
            printf, lun, 'FAST_QR'
-           if(outformat eq 'MOMFBD') then printf, lun, 'GET_PSF'
-           if(outformat eq 'MOMFBD') then printf, lun, 'GET_PSF_AVG'
-
+           IF self.filetype EQ 'MOMFBD' THEN BEGIN
+               printf, lun, 'GET_PSF'
+               printf, lun, 'GET_PSF_AVG'
+           ENDIF
            ;; External keywords?
            if(keyword_set(global_keywords)) then begin
               nk = n_elements(global_keywords)
