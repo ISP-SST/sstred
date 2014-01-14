@@ -253,7 +253,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
      print, 'Max shift allowed: ', mxsh
      print, maxindx
 
-     ssh[*, icam] = shc(pics[*,*,icamref], p1, RANGE = mxsh)
+     ssh[*, icam] = red_shc(pics[*,*,icamref], p1, RANGE = mxsh)
 
      print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam], 2), $
             ' -> shift: x,y=', strtrim(ssh[0, icam], 2), ', ', strtrim(ssh[1, icam], 2)

@@ -108,7 +108,7 @@ function red_aligncube, cub, np, xbd = xbd, ybd = ybd, cubic = cubic, aligncube 
      endif Else begin
         nref = cube[sec[0]:sec[1],sec[2]:sec[3],idx]
         tempoff = red_getcoords(cube[sec[0]:sec[1],sec[2]:sec[3], *], idx)
-        refoffs+=red_align(oldref,nref) ;Alignment between old reference and new reference
+        refoffs+=red_shc(oldref,nref, /filt, /int) ;Alignment between old reference and new reference
         dim2=size(tempoff,/dimension)
         if n_elements(dim2) eq 1 then shifts[*,last]=refoffs $ ;Case when it is only one image in the subset
         else begin
