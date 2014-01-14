@@ -40,28 +40,23 @@
 ;                check from dim1[0] to dim1[2] when deciding whether
 ;                to call align.
 ;
-; 
+;   2014-01-14 : PS Code cleanup, move image display to calling routine
 ;-
 function red_getcoords, var, pos
                                 
-  dim1=size(var,/dimension)
-  ref=reform(var[*,*, pos])
-  red_show,ref,/nowin
-  if(n_elements(dim1) eq 2) then dim1 = [dim1, 1L] 
-  dum=indgen(dim1[2])
+  dim1 = size(var, /dimension)
+  ref = reform(var[*, *, pos])
+
+  IF n_elements(dim1) EQ 2 THEN $
+    offs = dblarr(2) $
+  ELSE $
+    offs = dblarr(2, dim1[2])
   
-  pos1=where(dum ne total(pos))
-
-
-  res=dblarr(dim1)
-  offs=dblarr(2,dim1[2])
-  if dim1[2] eq 1 then begin
-     offs[*,0]=[0.d0,0.d0]
-  endif else begin
-     for l=0,n_elements(pos1)-1 do begin
-        t=reform(var[*,*,pos1[l]])
-        offs[*,pos1[l]]=red_align(ref,t)
-     endfor
-  endelse
-  return,offs
-end
+  FOR l = 0, n_elements(offs)/2-1 DO BEGIN  
+      IF l EQ pos THEN CONTINUE
+      offs[*, l] = red_shc(ref, var[*, *, l], /filt, /int)
+  ENDFOR
+  
+  return, offs
+  
+END

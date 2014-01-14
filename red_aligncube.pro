@@ -107,6 +107,7 @@ function red_aligncube, cub, np, xbd = xbd, ybd = ybd, cubic = cubic, aligncube 
         noref = 0
      endif Else begin
         nref = cube[sec[0]:sec[1],sec[2]:sec[3],idx]
+        tvscl, nref
         tempoff = red_getcoords(cube[sec[0]:sec[1],sec[2]:sec[3], *], idx)
         refoffs+=red_shc(oldref,nref, /filt, /int) ;Alignment between old reference and new reference
         dim2=size(tempoff,/dimension)
