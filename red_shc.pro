@@ -1,5 +1,5 @@
-FUNCTION Shc, d1, d2, FILTER=filt, INTERPOLATE=int_max, N2=n2, $
-              POLY=pfit, RANGE=range
+FUNCTION red_shc, d1, d2, FILTER=filt, INTERPOLATE=int_max, N2=n2, $
+                  POLY = pfit, RANGE = range
 ;+
 ; NAME:
 ;       SHC
@@ -10,7 +10,7 @@ FUNCTION Shc, d1, d2, FILTER=filt, INTERPOLATE=int_max, N2=n2, $
 ; CATEGORY:
 ;       
 ; CALLING SEQUENCE:
-;       RESULT = SHC ( IMG1, IMG2 )
+;       RESULT = RED_SHC ( IMG1, IMG2 )
 ; INPUTS:
 ;       IMG1,IMG2 : 2-d arrays of same size
 ; KEYWORDS:
