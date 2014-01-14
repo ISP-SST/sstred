@@ -82,6 +82,7 @@
 ;
 ;   2013-09-11 : MGL. Use red_lp_write rather than lp_write.
 ;
+;   2014-01-14 : PS  Code cleanup.  Use self.filetype.  
 ;-
 pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
@@ -95,11 +96,8 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  nostokes = 0B
-  if(keyword_set(no_stokes)) then nostokes = 1B
-
   ;; Get time stamp
-  data_dir = file_search(self.out_dir + '/momfbd/*', count = nf)
+  data_dir = file_search(self.out_dir + '/momfbd/*', /test_directory, count = nf)
   if(nf GT 1) then begin
      print, inam + ' : Available folders: '
      for ii = 0L, nf - 1 do print, '  '+red_stri(ii)+' -> '+ data_dir[ii]
@@ -107,8 +105,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
      read, idx, prompt='Select folder ID: '
      data_dir = data_dir[idx]
   endif 
-  time_stamp = strsplit(data_dir, '/', /extract)
-  time_stamp = time_stamp[n_elements(time_stamp)-1]
+  time_stamp = file_basename(data_dir)
 
   ;; Search reduction folders
   fold = file_search(data_dir+'/*', /test_directory, count = ct)
@@ -127,10 +124,21 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   fold = fold[iread]
   pref = file_basename(fold)
   print, inam + ' : selected state -> '+ pref
+  
+    ;; Extensions
+  case self.filetype of
+      'ANA': exten = '.f0'
+      'MOMFBD': exten = '.momfbd'
+      'FITS': exten =  '.fits'
+      ELSE: begin
+          print, inam+' : WARNING -> could not determine a file type for the output'
+          exten = ''
+      END
+  endcase
 
   ;; Search files
   self->getcamtags, dir = self.data_dir
-  wfiles = file_search(fold+'/cfg/results/'+self.camwbtag+'.?????.'+pref+'.{momfbd,f0}', count = ct)
+  wfiles = file_search(fold+'/cfg/results/'+self.camwbtag+'.?????.'+pref+exten, count = ct)
   if(ct eq 0) then begin
      print, inam + ' : Error, no WB files found in -> '+ fold+'/cfg/results/'
      stop
@@ -139,55 +147,45 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   time = strarr(ct)
   date = strarr(ct)
 
-  ;; Read headers to get obs_time and load the images into a cube
-  for ii = 0L, ct -1 do begin
-     dum = strsplit(wfiles[ii],'.',/extract)
-     ex =  dum[n_elements(dum)-1]
-     print, ex
-     if(ex eq 'f0') then begin 
-        fzread, tmp, wfiles[ii], h
-        if(n_elements(crop) ne 4) then crop = [0,0,0,0]
-
-        if(ii eq 0) then begin
-           dim = size(tmp, /dimension)
-           dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
-           x0 += crop[0]
-           x1 -= crop[1]
-           y0 += crop[2]
-           y1 -= crop[3]
-           nx = x1 - x0 + 1
-           ny = y1 - y0 + 1
-           cub = fltarr(nx, ny, ct)
-        endif
-
-        cub[*,*,ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads=4L)
-        dum = strsplit(h, ' =',/extract)
-        time[ii] = dum[1]
-        date[ii] = dum[3]
-     endif 
-     if(ex eq 'momfbd') then begin
-        dum = momfbd_read(wfiles[ii])
-        tmp = red_mozaic(dum)
-        if(n_elements(crop) ne 4) then crop = [0,0,0,0] ; Added by MGL 2013-06-04
-
-        if(ii eq 0) then begin
-           dim = size(tmp, /dimension)
-           dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
-           x0 += crop[0]
-           x1 -= crop[1]
-           y0 += crop[2]
-           y1 -= crop[3]
-           nx = x1 - x0 + 1
-           ny = y1 - y0 + 1
-           cub = fltarr(nx, ny, ct)
-        endif
-        
-        cub[*,*,ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads=4L)
-       
-        if(n_elements(ext_time) gt 0) then time[ii] = ext_time[ii] else time[ii] = dum.time + ''
-        date[ii] = strmid(dum.date, 0, 10) + ''
-     endif
-  endfor
+    ;; Read headers to get obs_time and load the images into a cube
+  FOR ii = 0L, ct -1 DO BEGIN
+      
+      CASE self.filetype OF
+          'ANA': BEGIN
+              fzread, tmp, wfiles[ii], h
+              dum = strsplit(h, ' =', /extract)
+              time[ii] = dum[1]
+              date[ii] = dum[3]
+          END
+          'MOMFBD': BEGIN
+              tmp = red_mozaic((dum =  momfbd_read(wfiles[ii])))
+              IF n_elements(ext_time) GT 0 THEN $
+                time[ii] = ext_time[ii] $
+              ELSE $
+                time[ii] = dum.time + ''
+              date[ii] = strmid(dum.date, 0, 10) + ''
+          END
+          'FITS': tmp = readfits(wfiles[ii], h)
+      ENDCASE
+      
+      IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
+      
+      IF ii EQ 0 THEN BEGIN
+          dim = size(tmp, /dimension)
+          dimim = red_getborder(tmp, x0, x1, y0, y1, square = square)
+          x0 += crop[0]
+          x1 -= crop[1]
+          y0 += crop[2]
+          y1 -= crop[3]
+          nx = x1 - x0 + 1
+          ny = y1 - y0 + 1
+          cub = fltarr(nx, ny, ct)
+      ENDIF
+      
+      cub[*, *, ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads = 4L)
+      
+  ENDFOR
+  
 
   ;; Get derotation angles
   if(~keyword_set(ang)) then begin
@@ -228,7 +226,8 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
      endif 
 
      for ii = 0L, ct - 1 do cub[*,*,ii] = red_shift_im(cub[*,*,ii], reform(shift[0,ii]), reform(shift[1,ii]))
-
+;     FOR ii = 0L, ct-1 DO cub[*, *, i] = $
+;       poly_2d(cub[*, *, ii], [-shift[0, ii], 0, 1., 0.], [-shift[1, ii], 1., 0., 0.], 2, CUBIC = -0.5)
   endelse
 
   ;; De-stretch
