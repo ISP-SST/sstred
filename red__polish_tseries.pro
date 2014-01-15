@@ -83,6 +83,7 @@
 ;   2013-09-11 : MGL. Use red_lp_write rather than lp_write.
 ;
 ;   2014-01-14 : PS  Code cleanup.  Use self.filetype.  
+;   2014-01-15 : PS  Proper FITS header parsing.  Support EXT_TIME for all formats
 ;-
 pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
@@ -154,7 +155,10 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
           'ANA': BEGIN
               fzread, tmp, wfiles[ii], h
               dum = strsplit(h, ' =', /extract)
-              time[ii] = dum[1]
+              IF n_elements(ext_time) GT 0 THEN $
+                time[ii] = ext_time[ii] $
+              ELSE $
+                time[ii] = dum[1]
               date[ii] = dum[3]
           END
           'MOMFBD': BEGIN
@@ -165,7 +169,17 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                 time[ii] = dum.time + ''
               date[ii] = strmid(dum.date, 0, 10) + ''
           END
-          'FITS': tmp = readfits(wfiles[ii], h)
+          'FITS': BEGIN
+              tmp = readfits(wfiles[ii], h, /SILENT)
+              IF n_elements(ext_time) GT 0 THEN $
+                time[ii] = ext_time[ii] $
+              ELSE BEGIN
+                  idx = where(strpos(h, 'TIME-OBS') GE 0)
+                  ok = execute('time[ii] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
+              ENDELSE
+              idx = where(strpos(h, 'DATE-OBS') GE 0)
+              ok = execute('date[ii] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
+          END
       ENDCASE
       
       IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
