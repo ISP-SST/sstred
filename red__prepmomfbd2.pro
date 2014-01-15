@@ -402,7 +402,7 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
            printf, lun, 'MODES='+modes
            printf, lun, 'NUM_POINTS='+numpoints
            printf, lun, 'TELESCOPE_D=0.97'
-           printf, lun, 'ARCSECPERPIX=0.0592'
+           printf, lun, 'ARCSECPERPIX='+self.image_scale
            printf, lun, 'PIXELSIZE=16.0E-6'
            printf, lun, 'GETSTEP=getstep_conjugate_gradient'
            printf, lun, 'GRADIENT=gradient_diff'
