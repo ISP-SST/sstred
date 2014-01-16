@@ -810,96 +810,127 @@ void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, flo
 }
 
 
-#define beta 4.0
-#define deltasqr 4.0
+namespace {
 
-template <class T> T inv_dist_wght(T **a,int xl,int xh,int yl,int yh,int xb,int yb)
-{
-  T weight=0.0,res=0.0;
-  for(int y=yl;y<=yh;++y)
-    for(int x=xl;x<=xh;++x)
-      if(a[y][x]){
-        T c = pow(sqrt((T)sqr(x-xb)+(T)sqr(y-yb)+deltasqr),-beta);
-        res+= c * a[y][x];
-        weight += c;
-      }
-  return(res/weight);
+    const int cacheSize = 128;
+    const float deltasqr = 4;
+    const float beta = 4;
+
+    float distanceCache[cacheSize*cacheSize];
+
+    bool calculateCache( void ) {
+        double i2,j2;
+        for( int i=0; i<cacheSize; ++i ) {
+            i2 = i*i;
+            for( int j=0; j<cacheSize; ++j ) {
+                j2 = j*j;
+                distanceCache[i*cacheSize + j] = pow( sqrt( i2+j2+deltasqr ), -beta );
+            }
+        }
+
+        return true;
+    }
+
+    float inverseDistanceWeight( float **a, int xl, int xh, int yl, int yh, int xb, int yb ) {
+
+        static bool dummy = calculateCache();
+
+        float sum=0.0, weighted_values=0.0, tmp;
+        int xabs, yabs;
+        for( int y=yl; y<=yh; ++y ) {
+            yabs = abs(y-yb);
+            for( int x=xl; x<=xh; ++x ) {
+                xabs = abs(x-xb);
+                if( a[y][x] ) {
+                    tmp = distanceCache[yabs*cacheSize + xabs];
+                    weighted_values += tmp*a[y][x];
+                    sum += tmp;
+                }
+            }
+        }
+
+        return weighted_values/sum;
+    }
+
 }
 
-#undef beta
-#undef deltasqr
+void fillpix( int nx, int ny, float *img, uint8_t *mask, int nt ) {
 
-void fillpix(int nx, int ny, float *img, uint8_t *mask, int nt){
-  int maxsize = 128;
-  int npix = nx*ny;
+    int npix = nx * ny;
 
-  float **img2d = var2dim<float>(img, ny, nx);
-  uint8_t **mask2d = var2dim<uint8_t>(mask, ny, nx);
+    float **img2d = var2dim<float>( img, ny, nx );
+    uint8_t **mask2d = var2dim<uint8_t>( mask, ny, nx );
 
-  int nbad = nx*ny;
-  for(int yy=0;yy<ny;yy++) for(int xx=0;xx<nx;xx++) nbad -= mask2d[yy][xx];
-  fprintf(stderr,"cfillpix : There are %d bad pixels\n", nbad);
-  if(nbad <= 0) return;  
-  
-  int *idx = new int [nbad];
-  int *idy = new int [nbad];
-  float *bp = new float [nbad];
-  memset(idx,0, nbad*sizeof(int));
-  memset(idy,0, nbad*sizeof(int));
-  memset(bp,0, nbad*sizeof(float));
+    int nbad = nx * ny;
+    for( int yy=0; yy<ny; yy++ ) for( int xx=0; xx<nx; xx++ ) nbad -= mask2d[yy][xx];
+    fprintf( stderr, "cfillpix2 : There are %d bad pixels\n", nbad );
+    if( nbad<=0 ) return;
 
-  int k = 0;
-  for(int yy=0;yy<ny;yy++){
-    for(int xx=0;xx<nx;xx++){
-      if(mask2d[yy][xx] == 0){
-	idx[k] = xx;
-	idy[k] = yy;
-	k++;
-      }
-    }
-  }
-  
-  int dl = maxsize / 2;
-  float ntot = 100. / (nbad - 1.0);
-  int ch = 1;
-  int tid=0,per=0,oper=-1;
-  uint8_t master=0;
-  k = 0;
-#pragma omp parallel default(shared) firstprivate(k, tid, master, per, oper) num_threads(nt)
-  {
-    tid = omp_get_thread_num();
-    master = 0;
-    if(tid == 0){
-      fprintf(stderr,"cfillpix : nthreads -> %d\n",nt);
-      master = 1;
-    }
+    int *idx = new int[nbad];
+    int *idy = new int[nbad];
+    float *bp = new float[nbad];
+    memset( idx, 0, nbad*sizeof( int ) );
+    memset( idy, 0, nbad*sizeof( int ) );
+    memset( bp, 0, nbad*sizeof( float ) );
+
     
-#pragma omp for schedule(dynamic, ch)
-    for(k = 0; k<nbad; k++){
-      bp[k] = inv_dist_wght<float>(img2d,std::max(idx[k]-dl,0),std::min(idx[k]+dl,nx-1),std::max(idy[k]-dl,0),std::min(idy[k]+dl,ny-1), idx[k],idy[k]);
-      
-      if(master) {
-	per = ntot * k;
-	if(per > oper){
-	  fprintf(stderr,"\rcfillpix : %d %s",per,"%");
-	  oper = per;
-	}
-      }
+    int k = 0;
+    for( int yy=0; yy<ny; yy++ ) {
+        for( int xx=0; xx<nx; xx++ ) {
+            if( mask2d[yy][xx] == 0 ) {
+                idx[k] = xx;
+                idy[k] = yy;
+                k++;
+            }
+        }
     }
-    
-  }//end parallel block
-  
-  fprintf(stderr,"\rcfillpix : %d %s\n",100,"%");
-  
-  for(int ii = 0; ii<nbad; ii++){
-    img2d[idy[ii]][idx[ii]] = bp[ii];
-  }
 
-  delete [] bp;
-  delete [] idx;
-  delete [] idy;
-  delete [] img2d;
-  delete [] mask2d;
-  //
-  return;
+    int dl = cacheSize / 2;
+    float ntot = nbad>1 ? 100. / (nbad-1.0): 100.0;
+    int ch=1;
+    int tid=0, per=0, oper=-1;
+    uint8_t master=0;
+    k = 0;
+    #pragma omp parallel default(shared) firstprivate(k, tid, master, per, oper) num_threads(nt)
+    {
+        tid = omp_get_thread_num();
+        master = 0;
+        if( tid == 0 ) {
+            fprintf( stderr, "cfillpix2 : nthreads -> %d\n", nt );
+            master = 1;
+        }
+
+        #pragma omp for schedule(dynamic, ch)
+        for( k=0; k<nbad; k++ ) {
+            bp[k] = inverseDistanceWeight( img2d, std::max( idx[k]-dl, 0 ), std::min( idx[k]+dl, nx-1 ),
+                                                  std::max( idy[k]-dl, 0 ), std::min( idy[k]+dl, ny-1 ), idx[k], idy[k] );
+
+            if( master ) {
+                per = ntot*k;
+                if( per > oper ) {
+                    fprintf( stderr, "\rcfillpix2 : %d %s", per, "%" );
+                    oper = per;
+                }
+            }
+        }
+
+    }//end parallel block
+
+    fprintf( stderr, "\rcfillpix : %d %s\n", 100, "%" );
+
+    for( int ii=0; ii<nbad; ii++ ) {
+        img2d[idy[ii]][idx[ii]] = bp[ii];
+    }
+
+    delete[] bp;
+    delete[] idx;
+    delete[] idy;
+    delete[] img2d;
+    delete[] mask2d;
+
+    return;
 }
+
+
+
+
