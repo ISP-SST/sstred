@@ -47,6 +47,11 @@
 ;
 ;       Set this to process all lc states one by one, otherwise just
 ;       pick one.
+;
+;    overwrite : in, optional, type=boolean
+;
+;       Overwrite existing output files.
+; 
 ; 
 ; :History:
 ; 
@@ -89,6 +94,10 @@
 ;                be known at the point where we select states.
 ;                Simplify use of nthreads keyword.
 ; 
+;   2014-01-15 : MGL. New keyword: overwrite. Save gain in the pinh/
+;                subdirectory to be used for display during the
+;                getalignclips step.
+; 
 ; 
 ; 
 ;-
@@ -98,7 +107,8 @@ pro red::sumpinh_new, nthreads = nthreads $
                       , pref = epref $
                       , pinhole_align = pinhole_align $
                       , all_tunings = all_tunings $
-                      , all_lcstates = all_lcstates 
+                      , all_lcstates = all_lcstates $
+                      , overwrite = overwrite
 
   ;; TODO:
   ;;
@@ -264,7 +274,7 @@ pro red::sumpinh_new, nthreads = nthreads $
            pfname = cam + name_tags[ii] + '.fpinh'
            
            AlreadyDone =  file_test(outdir+pname) and (file_test(outdir+pfname) or ~keyword_set(pinhole_align))
-           if AlreadyDone then begin
+           if AlreadyDone and ~keyword_set(overwrite) then begin
               
               print, inam + ' : Already done:'
               print, pname
@@ -361,13 +371,17 @@ pro red::sumpinh_new, nthreads = nthreads $
               ;;namout = cam+'.' +selected_states[ii]+'.pinh'
               print, inam+' : saving ' + outdir + pname
               fzwrite, fix(round(10. * c)), outdir+pname, head
-              
+
               if keyword_set(pinhole_align) then begin
                  ;;namout = cam+'.' +selected_states[ii]+'.fpinh'
                  print, inam+' : saving ' + outdir + pfname
                  fzwrite, c, outdir+pfname, head
               endif
               
+              ;; Save gain to be used for displaying during the
+              ;; getalignclips step.
+              fzwrite, gain, outdir+cam + name_tags[ii] + '.gain', ' '
+
            endelse              ; count
         endfor                  ; ii
      endfor                     ; ipref
