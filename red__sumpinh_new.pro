@@ -94,7 +94,7 @@
 ;                be known at the point where we select states.
 ;                Simplify use of nthreads keyword.
 ; 
-;   2014-01-15 : MGL. New keyword: overwrite. Save gain in the pinh/
+;   2014-01-16 : MGL. New keyword: overwrite. Save gain in the pinh/
 ;                subdirectory to be used for display during the
 ;                getalignclips step.
 ; 
