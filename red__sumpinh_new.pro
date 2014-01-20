@@ -223,6 +223,11 @@ pro red::sumpinh_new, nthreads = nthreads $
            ;; Base selction on status of keywords all_tunings and all_lcstates.
            possible_indx = uniq(state, sort(state))
            possible_states = state[possible_indx]
+           ;; Filter valid states according to current prefilter (pref)
+           filtered_states = where(strmatch(possible_states, '*'+pref+'*'))
+           if n_elements(filtered_states) eq 0 or filtered_states[0] eq -1 then continue
+           possible_states = possible_states[filtered_states]
+           possible_indx = possible_indx[filtered_states]
            if keyword_set(all_tunings) and keyword_set(all_lcstates) then begin
               ;; Process all possible states
               selected_states = possible_states
