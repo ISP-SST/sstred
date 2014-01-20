@@ -250,7 +250,8 @@ function red_sumfiles, files_list $
   summed = dblarr(dim)
   time = 0.0d
 
-  firstframe = 1B               ; When doing alignment we use the first (good) frame as reference. 
+  firstframe = 1B               ; When doing alignment we use the first (good) frame as reference.
+  dc_sum = [0.0, 0.0]
   for ii = 0L, Nfiles-1 do begin
      
      if goodones[ii] then begin ; Sum only OK frames
@@ -336,6 +337,7 @@ function red_sumfiles, files_list $
               dc0 = dc1
            endif else begin
               dc = dc1-dc0      ; This is the shift!
+              dc_sum += dc      ; ...add it to the total
               thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
            endelse
 
@@ -350,7 +352,8 @@ function red_sumfiles, files_list $
   endfor                        ; ii
   print, ' '
 
-  average = summed / Nsum
+  average = red_shift_im(summed/Nsum, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum)             ; shift average image back, to ensure
+                                                                                    ; an average shift of 0.
   time = red_time2double(time / Nsum, /dir)
 
   if ~keyword_set(pinhole_align) then begin
