@@ -362,7 +362,7 @@ function red_sumfiles, files_list $
      ;; pinhole alignment.
 
      ;; Dark and gain correction 
-     thisframe = (thisframe - dark)*gain
+     average = (average - dark)*gain
 
      if DoDescatter then begin
         ;; Backscatter correction (done already for pinholes)
@@ -371,7 +371,7 @@ function red_sumfiles, files_list $
      endif
 
      ;; Fill the bad pixels 
-     if n_elements(mask) then thisframe = red_fillpix(thisframe, mask = mask)
+     if n_elements(mask) then average = red_fillpix(average, mask = mask)
 
   endif
 
