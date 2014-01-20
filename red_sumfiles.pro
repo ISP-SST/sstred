@@ -324,7 +324,7 @@ function red_sumfiles, files_list $
               subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2] ; New subimage
 
               subim0 = subim0 / stdev(subim0)
-              cnt = centroid(subim0) ; Centroid after shift
+              cnt = red_centroid(subim0) ; Centroid after shift
               dcold = dc1            ; Old shift
               dc1 = dc1 + (sz/2.0 - cnt)
               print, 'Shift change vector length:', sqrt(total((dc1-dcold)^2))
