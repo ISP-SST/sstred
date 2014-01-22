@@ -67,6 +67,11 @@
 ;                prefilter loop. If more than one pinhole image per
 ;                prefilter, select the one that would be brightest.
 ;
+;   2014-01-22 : MGL. Replace red_getstates with red_extractstates.
+;                Implemented automatic selection of a bright tuning
+;                when there are more than one. Fixed display of gain
+;                tables as saved by red::sumpinh. 
+;
 ;-
 PRO red::getalignclips_new, thres = thres $
                             , pref = pref $
@@ -125,93 +130,58 @@ PRO red::getalignclips_new, thres = thres $
   endif
   Npref = n_elements(prefilters)
 
-
   for ipref = 0, Npref-1 do begin
 
-     fw = file_search(self.out_dir+'/pinh/' + camw +'.'+prefilters[ipref]+'*.pinh', count = cw)
-     ft = file_search(self.out_dir+'/pinh/' + camt +'.'+prefilters[ipref]+'*.pinh', count = ct)
-     fr = file_search(self.out_dir+'/pinh/' + camr +'.'+prefilters[ipref]+'*.pinh', count = cr)
+     wfiles = file_search(self.out_dir+'/pinh/' + camw +'.'+prefilters[ipref]+'*.pinh', count = cw)
+     tfiles = file_search(self.out_dir+'/pinh/' + camt +'.'+prefilters[ipref]+'*.pinh', count = ct)
+     rfiles = file_search(self.out_dir+'/pinh/' + camr +'.'+prefilters[ipref]+'*.pinh', count = cr)
   
-     if cw eq 1 and ct eq 1 and cr eq 1 then begin
+     if (cw ne ct) or (cw ne cr) then begin
         
-        istate = 0                
+        print, inam+' : Mismatch in available states for the different cameras.'
+        print, '  Number of states for cameras WB, NBT, NBR:', cw, ct, cr
+        retall
 
-        ;; Read ref image
-        ref = f0(ft[istate])
-        dim = size(ref,/dim)
-        pics = fltarr(dim[0], dim[1], Ncams)
-        pics[*,*,icamref] = ref
+     endif
 
-        ;; Read slave images
-        pics[*,*,icamnonrefs[0]]= f0(fw[istate])
-        pics[*,*,icamnonrefs[1]]= f0(fr[istate])
+     if cw ne 1 then begin
 
-        print, inam+' : images to be calibrated:'
-        print, ' -> '+fw[istate]
-        print, ' -> '+ft[istate] + ' (reference)'
-        print, ' -> '+fr[istate]
+        ;; More than a single pinhole image per camera, select the one
+        ;; expected to be the brightest based on its (tuning) state.
 
-     endif else begin
+        red_extractstates, wfiles, wav = wav, dwav = dwav, /basename
+;        wstat = red_getstates(wfiles)
+;        state = wstat.state
+        tmp = max(abs(dwav-double(wav)), ml)           
+;        state = wstat.state[ml]
+    
+        wfiles = wfiles[ml]
+        tfiles = tfiles[ml]
+        rfiles = rfiles[ml]
 
-        ;; More than a single pinhole image, select the one expected
-        ;; to be the brightest based on its (tuning) state.
-      
-        ;; But for now, just have the user select one. <-------------------------- FIX THIS!
+     endif
 
-        ;; Get image states
-        wstat = red_getstates_pinh(fw)
-        tstat = red_getstates_pinh(ft, lam = lams)
-        rstat = red_getstates_pinh(fr)
+     pnames = [wfiles, tfiles, rfiles]
 
-        ;; Select state to align
-        allowed = [-1]
-        for ii = 0L, n_elements(ft) -1 do BEGIN
-           pr = where(rstat eq tstat[ii], count0)
-           pw = where(wstat eq tstat[ii], count1)
-           If(~(count0 gt 0) OR ~(count1 gt 0)) then continue
-           print, red_stri(ii) +' '+tstat[ii]
-           allowed = [temporary(allowed), ii]
-        endfor
-        if n_elements(allowed) gt 1 then allowed = allowed[1:*]
-        
-        istate = 0                
-        read, istate, prompt = inam+' : choose state to align: '
-        
-        pos = where(allowed eq istate, count)
-        if count eq 0 then begin
-           print, inam + ' : Error -> incorrect state number: ',istate
-           return
-        endif
+     print, inam+' : images to be calibrated:'
+;     print, ' -> '+wfiles
+;     print, ' -> '+tfiles + ' (reference)'
+;     print, ' -> '+rfiles
+;
+     for icam = 0, Ncams-1 do begin
+        ostring = ' -> '+pnames[icam]
+        if icam eq icamref then ostring += ' (reference)'
+        print, ostring
+     endfor
 
-        print, inam+' : selected state '+tstat[istate]
+     ref = f0(pnames[icamref])
+     dim = size(ref,/dim)
+     pics = fltarr(dim[0], dim[1], Ncams)
+     pics[*,*,icamref] = ref
 
-        
-        ;; Read ref image
-        ref = f0(ft[istate])
-        dim = size(ref,/dim)
-
-        pics = fltarr(dim[0], dim[1], Ncams)
-        pics[*,*,icamref] = ref
-
-        ;; Read slave images
-        pos0 = where(wstat eq tstat[istate])
-        pos1 = where(rstat eq tstat[istate])
-
-        pics[*,*,icamnonrefs[0]]= f0(fw[pos0])
-        pics[*,*,icamnonrefs[1]]= f0(fr[pos1])
-
-;        pstate = tstat[istate]
-;        pref = (strsplit(pstate, '.',/extract))[0]
-;        lam = lams[istate]
-
-        print, inam+' : images to be calibrated:'
-        print, ' -> '+fw[pos0]
-        print, ' -> '+ft[istate] + ' (reference)'
-        print, ' -> '+fr[pos1]
-
-     endelse
-
-
+     ;; Read slave images
+     pics[*,*,icamnonrefs[0]]= f0(pnames[icamnonrefs[0]])
+     pics[*,*,icamnonrefs[1]]= f0(pnames[icamnonrefs[1]])
 
      ;; Define the search space for rotation and shifts in x and y.
      rots = [0, 2, 5, 7]
@@ -224,17 +194,11 @@ PRO red::getalignclips_new, thres = thres $
      Nsearchy = n_elements(yshifts)
 
      ;; Define arrays to store stuff
-;     np = 2
-
-;  sh = intarr(2, Nsearchr)
      cor = fltarr(Nsearchr, Nsearchx, Nsearchy) ; Correlation coefficients
      ssh = intarr(2, Ncams)
      i_rot = intarr(Ncams)
      i_xshift = intarr(Ncams)
      i_yshift = intarr(Ncams)
-
-     ;; Search orientation!
-;  dim -= 1
 
      ;; Find pinhole grid for reference image
      print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
@@ -297,16 +261,16 @@ PRO red::getalignclips_new, thres = thres $
 
            rotpeaks = rotate(peaks[*, *, icam], rots[irot])
            
-           for ix = 0, Nsearchx-1 do begin ; Loop over x shifts
+           for ix = 0, Nsearchx-1 do begin    ; Loop over x shifts
               for iy = 0, Nsearchy-1 do begin ; Loop over y shifts
 
                  shiftpeaks = rotpeaks[xshifts[ix]+Nsearchx/2:xshifts[ix]+Nsimx-Nsearchx/2-1 $
                                        , yshifts[iy]+Nsearchy/2:yshifts[iy]+Nsimy-Nsearchy/2-1]
                  cor[irot, ix, iy] = correlate(refpeaks, shiftpeaks)
-;              
+              
               endfor            ; iy
            endfor               ; ix
-
+           
         endfor                  ; irot
 
         ;; Find best correlation
@@ -418,48 +382,13 @@ PRO red::getalignclips_new, thres = thres $
      window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
      erase, 255
      gains = fltarr(dim[0], dim[1], Ncams)
-     gnames = strarr(Ncams)
-
-     if cw eq 1 and ct eq 1 and cr eq 1 then begin
-
-        for icam = 0, Ncams-1 do gnames[icam] = self.out_dir+'/pinh/'+cams[icam]+'.'+prefilters[ipref]+'.gain'
-
-     endif else begin
-
-        ;; We should be able to use gain tables stored in the pinh/
-        ;; subdir here also. Just need to be smarter about file names,
-        ;; e.g., for files with no LC info.
-
-        ;; We should probably do something similar to the code below
-        ;; for all cases, but look for gain file names matching the pinhole
-        ;; file names in the pinh/ subdir. No need to treat NB and WB
-        ;; differently. 
-
-        ;; Reference
-        gname = strjoin(strsplit(ft[istate], '\.pinh', /extr,/preserve,/rege), '.gain')
-        gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
-        gnames[icamref] = gname
-
-        ;; NB non-reference
-        gname = strjoin(strsplit(fr[pos1], '\.pinh', /extr,/preserve,/rege), '.gain')
-        gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
-        gnames[icamnonrefs[1]] = gname
-
-        ;; The WB gain file name has no tuning info
-        gname = strjoin(strsplit(fw[pos0], '\.pinh', /extr,/preserve,/rege), '.gain')
-        gname = strjoin(strsplit(gname, '/pinh/', /extr,/preserve,/rege), '/gaintables/')
-        gname = strsplit(gname, '.', count = nn, /extr)
-        gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
-        gnames[icamnonrefs[0]] = gname
-
-     endelse
-
      for icam = 0, Ncams-1 do begin
 
-        if file_test(gnames[icam]) then begin
-           gains[*,*,icam]  = f0(gnames[icam])
+        gname = strreplace(pnames[icam], '.pinh', '.gain')
+        if file_test(gname) then begin
+           gains[*,*,icam]  = f0(gname)
         endif else begin
-           print, inam+' : Could not find gaintable '+gnames[icam]
+           print, inam+' : Could not find gaintable '+gname
         endelse
 
         dispim = red_clipim(gains[*,*,icam], cl[*,icam])
