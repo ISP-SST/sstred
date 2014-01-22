@@ -83,7 +83,7 @@ pro red::whichoffset, state, xoff = xoff, yoff = yoff
              yoff = states[p[0]]+'.yoffs'
          ENDIF ELSE BEGIN 
                ;;; one wavelength with 4 lc states
-             pos = (where(lcs[p] EQ lc))[0]
+             pos = (where(lcs[p] EQ lc[0]))[0]
              xoff = states[p[pos]]+'.xoffs'
              yoff = states[p[pos]]+'.yoffs'
          ENDELSE

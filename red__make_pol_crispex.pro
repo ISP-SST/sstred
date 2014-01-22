@@ -239,18 +239,18 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      endif else begin
         dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,4,/nozero), 512)
      endelse
-  endif 
 
-  print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,exten)+'.assoc.pro'
-  openw, lunf, odir + '/' + file_basename(ofile,exten)+'.assoc.pro', /get_lun
-  printf,lunf, 'nx=', dimim[0]
-  printf,lunf, 'ny=', dimim[1]
-  printf,lunf, 'nw=', nwav
-  printf,lunf, 'nt=', nscan
-  printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
-  if(keyword_set(float)) then printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,4,/nozer), 512)" else $
-      printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,4,/nozer), 512)"
-   free_lun, lunf
+     print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,exten)+'.assoc.pro'
+     openw, lunf, odir + '/' + file_basename(ofile,exten)+'.assoc.pro', /get_lun
+     printf,lunf, 'nx=', dimim[0]
+     printf,lunf, 'ny=', dimim[1]
+     printf,lunf, 'nw=', nwav
+     printf,lunf, 'nt=', nscan
+     printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
+     if(keyword_set(float)) then printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,4,/nozer), 512)" else $
+        printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,4,/nozer), 512)"
+     free_lun, lunf
+  endif 
 
   ;; Prepare spect-file for crispex
   norm_spect = fltarr(nwav,4)
