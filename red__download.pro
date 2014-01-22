@@ -96,6 +96,9 @@
 ;    2014-01-10 : MGL. Do not try to remove files if the file name is
 ;                 the empty string.
 ;
+;    2014-01-22 : MGL. Adapt to string functions moved to the str_
+;                 namespace.
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
@@ -140,14 +143,14 @@ pro red::download, overwrite = overwrite $
   if any then file_mkdir, self.log_dir
 
 ;  if n_elements(date) gt 0 then begin
-;     isodate = strreplace(date, '.', '-', n = 2)
+;     isodate = red_strreplace(date, '.', '-', n = 2)
 ;  endif else begin
 ;     date = stregex(getenv('PWD'),'[12][0-9][0-9][0-9][-.][0-1][0-9][-.][0-3][0-9]',/extr)
 ;     if date eq '' then begin
 ;        print, 'red_download : No date given and PWD does not contain a date.'
 ;        return
 ;     endif
-;     isodate = strreplace(date, '.', '-', n = 2)
+;     isodate = red_strreplace(date, '.', '-', n = 2)
 ;  endelse
 
   datearr = strsplit(self.isodate, '-', /extract)
@@ -211,12 +214,12 @@ pro red::download, overwrite = overwrite $
      ;; days and header info that are interspersed with the data.
 
      ;; The name of the concatenated and filtered file
-;     turretfile = self.log_dir+'positionLog_'+strreplace(self.isodate, '-', '.', n = 2)+'_final'
+;     turretfile = self.log_dir+'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)+'_final'
      if ~file_test(self.telog) or keyword_set(overwrite) then begin
         
         ;; First try the particular date:
         
-        turretfile1 = 'positionLog_'+strreplace(self.isodate, '-', '.', n = 2)
+        turretfile1 = 'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)
         OK1 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
                          + datearr[0]+'/'+turretfile1 $
                          , contents = contents1 $
@@ -241,7 +244,7 @@ pro red::download, overwrite = overwrite $
            preisodate = strjoin(predatearr, '-')
            
            ;; Try to download
-           turretfile2 = 'positionLog_'+strreplace(preisodate, '-', '.', n = 2)
+           turretfile2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
            print, 'Try '+turretfile2
            OK2 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
                             + datearr[0]+'/'+turretfile2 $

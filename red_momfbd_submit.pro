@@ -59,6 +59,10 @@
 ;
 ;   2013-09-04 : MGL. Use red_momfbd_check, not momfbd_check.
 ;
+;   2014-01-22 : MGL. Adapt to string functions moved to the str_
+;                namespace.
+;
+;
 ;-
 pro red_momfbd_submit, imno $
                        , port=port $
@@ -118,7 +122,7 @@ pro red_momfbd_submit, imno $
      retall
   end
   
-  logfile = strreplace(thiscfgfile, '.cfg', '.log')
+  logfile = red_strreplace(thiscfgfile, '.cfg', '.log')
 
   spawnstring='cd '+dir+'; jsub '+portstring+' -cfg '+thiscfgfile+' -name '+jobname+' -n '+strtrim(string(imno), 2)+' -lg '+logfile
   if keyword_set(force) then spawnstring += ' -f '

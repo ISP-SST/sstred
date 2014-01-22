@@ -37,6 +37,9 @@
 ; 
 ;   2014-01-10 : PS  New config variable filtype
 ;
+;   2014-01-22 : MGL. Adapt to string functions moved to the str_
+;                namespace.
+;
 ;-
 pro red::initialize, filename
                                 
@@ -240,15 +243,15 @@ pro red::initialize, filename
      if date eq '' then begin
         print, 'red::initialize : WARNING : No recognizable date in PWD. Giving up.'
      endif else begin
-        ;; Do a strreplace in case the found date uses dots rather
+        ;; Do a red_strreplace in case the found date uses dots rather
         ;; than dashes.
-        self.isodate = strreplace(date, '.', '-', n = 2)
+        self.isodate = red_strreplace(date, '.', '-', n = 2)
      endelse
   endif
  
   ;; Fields that depend on fields defined above:
   self.log_dir = self.out_dir+'/downloads/sstlogs/'
-  self.telog = self.log_dir+'positionLog_'+strreplace(self.isodate, '-', '.', n = 2)+'_final'
+  self.telog = self.log_dir+'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)+'_final'
 
 
 

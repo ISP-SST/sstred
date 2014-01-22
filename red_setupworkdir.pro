@@ -116,7 +116,10 @@
 ;    2014-01-09 : MGL. Bugfix isodate in config file.
 ;
 ;    2014-01-10 : MGL. The download command is now a method, write it
-;                 in that form in the script.
+;                 in that form in the script.; 
+;
+;    2014-01-22 : MGL. Adapt to string functions moved to the str_
+;                 namespace. 
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -159,14 +162,14 @@ pro red_setupworkdir, root_dir = root_dir $
         retall
      endif
      date = strmid(out_dir, pos+1, 10)
-     date = strreplace(date, '-', '.', n = 2)
+     date = red_strreplace(date, '-', '.', n = 2)
 ;     root_dir = root_dir+date+'/'
   endif
 
-  isodate = strreplace(date, '.', '-', n = 2)
+  isodate = red_strreplace(date, '.', '-', n = 2)
 
   date_momfbd = isodate
-  date = strreplace(isodate, '-', '.', n = 2)
+  date = red_strreplace(isodate, '-', '.', n = 2)
   
   ;; Where to look for data?
   if ~keyword_set(lapalma) and ~keyword_set(stockholm) and n_elements(root_dir) eq 0 then stockholm = 1
@@ -263,7 +266,7 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      darksubdirs = file_search(darkdirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-        printf, Clun, 'dark_dir = '+strreplace(darkdirs[i], root_dir, '')
+        printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[i], root_dir, '')
      endif
   endfor
   printf, Slun, 'a -> sumdark, /check' 
@@ -281,9 +284,9 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      flatsubdirs = file_search(flatdirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-        dirarr = [dirarr, strreplace(flatdirs[i], root_dir, '')]
+        dirarr = [dirarr, red_strreplace(flatdirs[i], root_dir, '')]
         Nflat += 1
-        printf, Clun, 'flat_dir = '+strreplace(flatdirs[i], root_dir, '')
+        printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[i], root_dir, '')
         ;; Camera dirs and wavelengths to print to script file
         camdirs = strarr(Nsubdirs)
         wavelengths = strarr(Nsubdirs)
@@ -297,7 +300,7 @@ pro red_setupworkdir, root_dir = root_dir $
            endif
         endfor
         ;; Print to script file
-        printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatdirs[i], root_dir, '') $
+        printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[i], root_dir, '') $
                 + '"  ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
         printf, Slun, 'a -> sumflat, /check'
      endif else begin
@@ -305,9 +308,9 @@ pro red_setupworkdir, root_dir = root_dir $
         for j = 0, Nsubdirs-1 do begin
            flatsubsubdirs = file_search(flatsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
            if Nsubsubdirs gt 0 then begin
-              dirarr = [dirarr, strreplace(flatsubdirs[j], root_dir, '')]
+              dirarr = [dirarr, red_strreplace(flatsubdirs[j], root_dir, '')]
               Nflat += 1
-              printf, Clun, 'flat_dir = '+strreplace(flatsubdirs[j], root_dir, '')
+              printf, Clun, 'flat_dir = '+red_strreplace(flatsubdirs[j], root_dir, '')
               ;; Camera dirs and wavelengths to print to script file
               camdirs = strarr(Nsubsubdirs)
               wavelengths = strarr(Nsubsubdirs)
@@ -321,7 +324,7 @@ pro red_setupworkdir, root_dir = root_dir $
                  endif
               endfor
               ;; Print to script file
-              printf, Slun, 'a -> setflatdir, root_dir+"' + strreplace(flatsubdirs[j], root_dir, '') $
+              printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatsubdirs[j], root_dir, '') $
                       + '" ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
               printf, Slun, 'a -> sumflat, /check'
               ;; The following does not give the right result, 6300
@@ -352,8 +355,8 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-        printf, Clun, 'pinh_dir = '+strreplace(pinhdirs[i], root_dir, '')
-        printf, Slun, 'a -> setpinhdir, root_dir+"'+strreplace(pinhdirs[i], root_dir, '')+'"'
+        printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
+        printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
         printf, Slun, 'a -> sumpinh'
      endif else begin
@@ -361,8 +364,8 @@ pro red_setupworkdir, root_dir = root_dir $
         for j = 0, Nsubdirs-1 do begin
            pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
            if Nsubsubdirs gt 0 then begin
-              printf, Clun, 'pinh_dir = '+strreplace(pinhsubdirs[j], root_dir, '')
-              printf, Slun, 'a -> setpinhdir, root_dir+"'+strreplace(pinhsubdirs[j], root_dir, '')+'"'
+              printf, Clun, 'pinh_dir = '+red_strreplace(pinhsubdirs[j], root_dir, '')
+              printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
               printf, Slun, 'a -> sumpinh'
            endif
@@ -379,9 +382,9 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      polcalsubdirs = file_search(polcaldirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-        printf, Clun, 'polcal_dir = '+strreplace(polcaldirs[i], root_dir, '')
+        printf, Clun, 'polcal_dir = '+red_strreplace(polcaldirs[i], root_dir, '')
         Npol += 1
-        printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcaldirs[i], root_dir, '')+'"'
+        printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcaldirs[i], root_dir, '')+'"'
         printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
         printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
         printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
@@ -391,9 +394,9 @@ pro red_setupworkdir, root_dir = root_dir $
         for j = 0, Nsubdirs-1 do begin
            polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
            if Nsubsubdirs gt 0 then begin
-              printf, Clun, 'polcal_dir = '+strreplace(polcalsubdirs[j], root_dir, '')
+              printf, Clun, 'polcal_dir = '+red_strreplace(polcalsubdirs[j], root_dir, '')
               Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' + strreplace(polcalsubdirs[j], root_dir, '')+'"'
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
               printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
               printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
               printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
@@ -418,14 +421,14 @@ pro red_setupworkdir, root_dir = root_dir $
   for i = 0, Ndirs-1 do begin
      pfscansubdirs = file_search(pfscandirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-        printf, Clun, '# pfscan_dir = '+strreplace(pfscandirs[i], root_dir, '')
+        printf, Clun, '# pfscan_dir = '+red_strreplace(pfscandirs[i], root_dir, '')
         Npfs += 1
      endif else begin
         pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
            pfscansubsubdirs = file_search(pfscansubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
            if Nsubsubdirs gt 0 then begin
-              printf, Clun, '# pfscan_dir = '+strreplace(pfscansubdirs[j], root_dir, '')
+              printf, Clun, '# pfscan_dir = '+red_strreplace(pfscansubdirs[j], root_dir, '')
               Npfs += 1
            endif
         endfor
@@ -451,14 +454,14 @@ pro red_setupworkdir, root_dir = root_dir $
 
         sciencesubdirs = file_search(sciencedirs[i]+'/crisp*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
-           dirarr = [dirarr, strreplace(sciencedirs[i], root_dir, '')]
+           dirarr = [dirarr, red_strreplace(sciencedirs[i], root_dir, '')]
            Nsci += 1
         endif else begin
            sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
            for j = 0, Nsubdirs-1 do begin
               sciencesubsubdirs = file_search(sciencesubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
               if Nsubsubdirs gt 0 then begin
-                 dirarr = [dirarr, strreplace(sciencesubdirs[j], root_dir, '')]
+                 dirarr = [dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')]
                  Nsci += 1
               endif
            endfor               ; j

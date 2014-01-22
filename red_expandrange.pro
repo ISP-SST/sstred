@@ -28,7 +28,8 @@
 ; 
 ;     2013-10-03 : MGL. Renamed to the red_ namespace.
 ; 
-; 
+;     2014-01-22 : MGL. Adapt to string functions moved to the str_
+;                  namespace. 
 ; 
 ;-
 function red_expandrange,st_in
@@ -42,8 +43,8 @@ function red_expandrange,st_in
   while st(0) lt byte('0') or st(0) gt byte('9') do st = st(1:*)
   st = string(reverse(st)) ; Reverse string
 
-  n_commas = strcount(st,',')
-  n_dashes = strcount(st,'-')
+  n_commas = red_strcount(st,',')
+  n_dashes = red_strcount(st,'-')
   n_sep = n_commas+n_dashes
   
   st=st+',-'
@@ -52,11 +53,11 @@ function red_expandrange,st_in
   for i=0,n_sep-1 do begin
     if strpos(st,',') lt strpos(st,'-') then begin
       ; Comma: Just append the number
-      st=strskp(st,',')
+      st=red_strskp(st,',')
       range = [range,long(st)]
     end else begin
       ; Dash, append range
-      st=strskp(st,'-')
+      st=red_strskp(st,'-')
       first_number = range((size(range,/dimensions))[0]-1)
       last_number  = long(st)
       new_range = IndGen(last_number-first_number) + long(first_number+1)
