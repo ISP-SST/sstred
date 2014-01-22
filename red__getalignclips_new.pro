@@ -150,10 +150,7 @@ PRO red::getalignclips_new, thres = thres $
         ;; expected to be the brightest based on its (tuning) state.
 
         red_extractstates, wfiles, wav = wav, dwav = dwav, /basename
-;        wstat = red_getstates(wfiles)
-;        state = wstat.state
         tmp = max(abs(dwav-double(wav)), ml)           
-;        state = wstat.state[ml]
     
         wfiles = wfiles[ml]
         tfiles = tfiles[ml]
@@ -164,9 +161,6 @@ PRO red::getalignclips_new, thres = thres $
      pnames = [wfiles, tfiles, rfiles]
 
      print, inam+' : images to be calibrated:'
-;     print, ' -> '+wfiles
-;     print, ' -> '+tfiles + ' (reference)'
-;     print, ' -> '+rfiles
 ;
      for icam = 0, Ncams-1 do begin
         ostring = ' -> '+pnames[icam]
@@ -398,7 +392,7 @@ PRO red::getalignclips_new, thres = thres $
      endfor
 
      ;; Print out some info about blocked rows/columns.
-     ;; One could add intelligence here, suggest a new setting for extraclip.      <-------------
+     ;; One could add intelligence here, suggesting a new setting for extraclip.      <-------------
      gg = red_clipim(gains[*,*,icamref], cl[*,icamref]) ne 0 
      blockedrows = where(total(gg,1) lt .5, Nblock)
      if Nblock ne 0 then begin
