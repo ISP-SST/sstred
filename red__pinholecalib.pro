@@ -335,8 +335,6 @@ pro red::pinholecalib, STATE = state $
         endfor                  ; ich
      endfor                     ; ihole
 
-     stop
-
      
                                 ; oldxoffs = fltarr(sx, sy, Nch)
                                 ; oldyoffs = fltarr(sx, sy, Nch)
@@ -372,7 +370,7 @@ pro red::pinholecalib, STATE = state $
                          , ytilts = ytilts $ ; Input
                          , dxoffs = xoffs $  ; Output
                          , dyoffs = yoffs    ; Output
-     
+stop     
 ;   help, oldxoffs, xoffs 
 ;   cgplot,oldxoffs[*,*,2],xoffs[*,*,2],psym=3, /aspect
 ;   cgplot,/over,color='red',[-1000,1000],[-1000,1000]                    
