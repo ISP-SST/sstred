@@ -38,7 +38,7 @@
 ; 
 ;-
 pro red_flagtuning, stat, nremove
-  if(n_elements(nremove) eq 0) then nremove=1
+  if(n_elements(nremove) eq 0) then nremove=0
   if nremove eq 0 then return
                                 ;
   os = stat.wav[0]
