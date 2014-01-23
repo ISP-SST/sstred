@@ -1,8 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Find SIMX and SIMY grid coordinates for pinhole array image. Assume
-; the grid is fairly well aligned to the image X and Y directions.
+; Find X and Y coordinates for pinholes in an image. 
 ; 
 ; 
 ; :Categories:
@@ -22,22 +21,35 @@
 ; 
 ;    pinholeimage : in, type=array
 ;   
+;      The image with pinholes.
 ;   
+;    x : out, type=fltarr
 ;   
-;    x : out
+;      The X coordinates of the found pinholes.
 ;   
+;    y : out, type=fltarr
 ;   
-;   
-;    y : out
-;   
-;   
+;      The Y coordinates of the found pinholes.
 ;   
 ; 
 ; :Keywords:
 ; 
-;    thres : in, optional, type=float
+;    thres : in, optional, type=float, default=0.05
 ; 
-;       Threshold.
+;       Threshold for identifying a strong enough pinhole.
+; 
+;    dx : out, optional, type=float
+;   
+;       The average grid spacing in X. 
+; 
+;    dy : out, optional, type=float
+;   
+;       The average grid spacing in Y. 
+; 
+;    Npinh : out, optional, type=integer
+; 
+;       The number of pinholes found.
+; 
 ; 
 ; :history:
 ; 
@@ -47,22 +59,28 @@
 ;                for a regular grid. Remove pinholes that are closer
 ;                to an edge than half the grid spacing.
 ;
-;   2014-01-23 : MGL. New keyword thres.
+;   2014-01-23 : MGL. New keywords thres, dx, dy, Npinh.
+;                Documentation. 
 ; 
 ; 
 ;-
-pro red_findpinholegrid_new, pinholeimage, x, y, thres = thres
+pro red_findpinholegrid_new, pinholeimage, x, y, dx = dx, dy = dy, Npinh = Npinh, thres = thres
 
   if n_elements(thres) eq 0 then thres = 0.05
 
-  ;; Each pinhole gets a unique number
+  ;; Each pinhole gets a unique ROI number
   mask = red_separate_mask(pinholeimage gt thres*max(pinholeimage))
   ;; # pinholes found
   nph = max(mask)
-stop
+
   ;; Compute PH positions
   cc = fltarr(2, nph)
   FOR i=0, nph-1 DO cc(*, i) = red_com(mask EQ i+1)
+
+
+  ;; Calculation of grid spacing -----
+  ;; Should be rewritten to take rotational misorientation into account.
+
   cx = reform(cc(0, *))
   cy = reform(cc(1, *))
 
@@ -87,15 +105,21 @@ stop
   dx = median(deriv(simx))
   dy = median(deriv(simy))
   
+  dd = (dx+dy)/2.
+
+  ;; Selection of pinholes to return ------
+
   ;; Pick only pinholes that are at least half a grid spacing away
   ;; from the array border.
   dim = size(pinholeimage, /dim)
-  indx = where(cc(0, *) gt dx/2 and cc(1, *) gt dy/2 $
-               and  (dim[0] - cc(0, *)) gt dx/2 $
-               and  (dim[1] - cc(1, *)) gt dy/2)
+  indx = where(cc(0, *) gt dd/2 and cc(1, *) gt dd/2 $
+               and  (dim[0] - cc(0, *)) gt dd/2 $
+               and  (dim[1] - cc(1, *)) gt dd/2)
   
   ;; The returned coordinates:
-  x = cc[0, indx]
-  y = cc[1, indx]
+  x = reform(cc[0, indx])
+  y = reform(cc[1, indx])
+
+  Npinh = n_elements(x)
 
 end 
