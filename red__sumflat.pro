@@ -62,6 +62,10 @@
 ;   2013-12-13 : PS  Only store raw sums if requested.  Save
 ;                unnormalized sum and add correct number of summed
 ;                files in header
+;
+;   2014-01-23 : MGL. Use red_extractstates instead of red_getstates
+;                and local extraction of info from file names.
+;
 ;-
 PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                   remove = remove, cam = ucam, check = check, lim = lim, $
@@ -84,8 +88,9 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
   outdir1 = self.out_dir + '/' + 'flats/summed/'
   IF keyword_set(store_rawsum) THEN file_mkdir, outdir1
 
-  ;; Create file list
+  ;; NB cameras
   for ic = 0L, 1 do begin
+
      case ic of
 
         0: begin
@@ -129,9 +134,11 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      endif
 
      files = red_sortfiles(files)
-
-     stat = red_getstates(files)
-
+stop
+     ;; We do not actually need all the fields in the stat structure. The
+     ;; fullstate and star fields are enough.
+     red_extractstates, files, /basename, states = stat, fullstate = fullstate
+;     stat = red_getstates(files)
      camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
 
      if(~file_test(self.out_dir+'/darks/'+camtag+'.dark')) then begin
@@ -141,10 +148,12 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      dd = f0(self.out_dir+'/darks/'+camtag+'.dark')
 
      ;; Unique states
-     if(~keyword_set(ustat)) then ustat = stat.state[uniq(stat.state, sort(stat.state))]
+     if(~keyword_set(ustat)) then ustat = fullstate[uniq(fullstate,sort(fullstate))]
+;     if(~keyword_set(ustat)) then ustat = stat.state[uniq(stat.state, sort(stat.state))]
      ns = n_elements(ustat)
 
      ;; Flag first frame after tuning the FPI
+;     if(keyword_set(remove)) then red_flagtuning, states
      if(keyword_set(remove)) then red_flagtuning, stat
      
      ;; Loop and sum
@@ -177,8 +186,8 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
            ENDELSE
            
            ;; Remove dark
+           flat -= dd
            flat1 = long(temporary(summed))
-           flat-= dd
            
            ;; Output the raw (if requested) and averaged flats
 
@@ -218,7 +227,6 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      endif
   endif
 
-;  spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep camX', files
   files = file_search(*self.flat_dir + '/' + cam + '/camX*')
   
   if(files[0] eq '') then begin
@@ -233,15 +241,17 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
   nt = n_elements(files)
 
   ;; Get prefilters state
-  wstat = strarr(nt)
-  for jj = 0L, nt - 1 do begin
-     dum = strsplit(file_basename(files[jj]), '.', /extract)
-     Ndum = n_elements(dum)
-     if(Ndum eq 7) then wstat[jj] = dum[Ndum-3] else wstat[jj] = dum[Ndum-5]
-  endfor
+;  wstat = strarr(nt)
+;  for jj = 0L, nt - 1 do begin
+;     dum = strsplit(file_basename(files[jj]), '.', /extract)
+;     Ndum = n_elements(dum)
+;     if(Ndum eq 7) then wstat[jj] = dum[Ndum-3] else wstat[jj] = dum[Ndum-5]
+;  endfor
+  red_extractstates, files, /basename, pref = wstat, cam = camtag
   uwstat = wstat[uniq(wstat, sort(wstat))]
+  camtag = camtag[0]
 
-  camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
+;  camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
   outdir = self.out_dir + '/' + 'flats/'
 
   ;; Load dark
@@ -276,10 +286,6 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      flat1 = long(temporary(summed))
      flat -= dd
 
-     ;;Header for output file
-     
-
-     
      ;; Output the raw (if requested) and averaged flats
      IF keyword_set(store_rawsum) THEN BEGIN
          headerout = 't='+time+' n_sum='+red_stri(nsum)
