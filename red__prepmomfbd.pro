@@ -464,7 +464,9 @@ pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
            IF self.filetype EQ 'MOMFBD' THEN BEGIN
                printf, lun, 'GET_PSF'
                printf, lun, 'GET_PSF_AVG'
-           ENDIF
+            ENDIF
+           printf, lun, 'FPMETHOD=horint'
+
            ;; External keywords?
            if(keyword_set(global_keywords)) then begin
               nk = n_elements(global_keywords)
