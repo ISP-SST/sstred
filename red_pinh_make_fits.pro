@@ -31,7 +31,17 @@
 ; 
 ;      The Y dimension of the fitted surface.
 ; 
-;
+;    D : in, type=float
+; 
+;      The telescoep pupil diamter in meters.
+; 
+;    lambda : in, type=float
+; 
+;      The wavelength in meters.
+; 
+;    image_scale : in, type=float
+; 
+;      The image scale in arcseconds/pixel.  
 ;
 ; :Keywords:
 ; 
@@ -70,7 +80,8 @@
 ;                grid.
 ;
 ;   2014-01-24 : MGL. Renamed the dxoffs and dyoffs keywords to xoffs
-;                and yoffs. Added documentation. 
+;                and yoffs. Added documentation. Conversion factor
+;                from tilts to shift offsets.
 ; 
 ; 
 ; 
@@ -82,6 +93,7 @@ function red_pinh_make_fits_planefunct, x, y, p
 end
 
 pro red_pinh_make_fits, x, y, sx, sy $
+                        , D, lambda, image_scale, $
                         , XTILTS = xtilts $ 
                         , YTILTS = ytilts $ 
                         , XOFFS = xoffs $ 
@@ -89,14 +101,19 @@ pro red_pinh_make_fits, x, y, sx, sy $
                         , FOC = foc $       
                         , DFOC = dfoc $     
                         , DDIV = ddiv       
-
-;  use_robust = 1                ; Use robust means and plane fitting
-
+  
   Nch = (size(xtilts, /dim))[0] 
   Npinh = (size(x, /dim))[0]
 
   xoffs = fltarr(sx, sy, Nch)
   yoffs = fltarr(sx, sy, Nch)
+
+  ;; Conversion from shift in pixels to tilt parameters in radians,
+  ;; multiply by (pi*h)/(2*lambda*F#), where h is the pixel pitch,
+  ;; lambda is the wavelength, and F# is the focal ratio. This can be
+  ;; rewritten as (pi^2 * D * arcsecperpix)/(lambda*360*3600), where D
+  ;; is the pupil diameter.
+  conv_fact = (!pi*!pi * D * image_scale)/(lambda*360.*3600.)
 
   ;; Coordinates for the offset files
   sxx=transpose(reform(rebin(findgen(sx),sx*sy,/samp),sy, sx))
