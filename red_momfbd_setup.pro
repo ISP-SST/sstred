@@ -68,15 +68,7 @@ pro red_momfbd_setup, HOST = host, $
 
   ; find a free port to use
   if n_elements(free) ne 0 then begin
-     ;; Find a free port
-     spawn,'netstat -atn',netstat
-     Nn = dimen(netstat, 0)
-     ports = lonarr(Nn)
-     for i = 2, Nn-1 do ports[i] = long(last(strsplit(token(netstat[i],4),':',/extract)))
-     ports = ports[uniq(ports,sort(ports))] ; Uniquify
-     freeport = 32765
-     while inset(freeport, ports) do freeport += -1 
-     port = strtrim(string(freeport), 2)
+     port = red_freeport(port=32765)
   end
 
   if n_elements(nthreads) eq 0 then nthreads=1
@@ -85,18 +77,7 @@ pro red_momfbd_setup, HOST = host, $
 
   ; if the check didn't return a port-number, find a free one
   if n_elements(port) eq 0 then begin
-     ;; Find a free port
-     spawn,'netstat -atn',netstat
-     ;Nn = dimen(netstat, 0)
-     Nn = (size(netstat, /dim))[0]
-     used_ports = lonarr(Nn)
-     for i = 2, Nn-1 do begin
-         tmp = last(strsplit(token(netstat[i],4),':',/extract))
-         if strnumber(tmp) then used_ports[i] = long(tmp)
-     endfor
-     used_ports = used_ports[uniq(used_ports,sort(used_ports))] ; Uniquify
-     port = 32765
-     while inset(port, used_ports) do port -= 1 
+     port = red_freeport(port=32765)
   end
   
   portstring='-p '+strtrim(string(port),2)
