@@ -50,37 +50,63 @@
 ;
 ;   2013-08-30 : MGL. Renamed for inclusion in crispred pipeline.
 ;
+;   2014-01-24 : TH. Added HOST keyword to allow for using (already running)
+;                remote managers.
+;
 ;-
-pro red_momfbd_check, port = port $
-                      , nslaves = nslaves $
-                      , njobs=njobs $
-                      , nmanagers=nmanagers $
-                      , managerpid=managerpid $
-                      , slaveids=slaveids $
-                      , jobids=jobids
+pro red_momfbd_check, HOST = host $
+                    , PORT = port $
+                    , NSLAVES = nslaves $
+                    , NJOBS = njobs $
+                    , NMANAGERS = nmanagers $
+                    , MANAGERPID = managerpid $
+                    , SLAVEIDS = slaveids $
+                    , JOBIDS = jobids
+
+  hoststring=''
+  portstring=''
   
-  if n_elements(port) eq 0 then begin
-     spawn, 'ps aux | grep "[[:space:]]manager[[:space:]]" | grep -v "\-p"', psout
-     portstring=' '
-  endif else begin
-     spawn, 'ps aux |grep "[[:space:]]manager[[:space:]].*-p[[:space:]]'+strtrim(string(PORT), 2)+'\$"', psout
-     portstring=' -p '+strtrim(string(port),2)+' '
-  endelse
+  if n_elements(host) ne 0 then begin   ; use a remote manager
+      hoststring=' -m '+host
+      if n_elements(port) ne 0 then begin
+          portstring=' -p '+strtrim(string(port),2)
+      end
+  end else begin        ; no host given -> check for local manager
+      info = get_login_info()
+      spawn, 'ps aux | grep "[[:space:]]manager[[:space:]]" | grep '+info.user_name, psout
+      if n_elements(port) ne 0 then begin
+          indices = where(strmatch(psout,'*-p '+strtrim(string(port),2)+'*') eq 1, count)
+          if count gt 0 then begin
+              psout = psout[indices]
+              portstring=' -p '+strtrim(string(port),2)
+          end else psout=''     ; no match to specified port, zero out the list
+      endif
+      ;help, psout
+      ;print, psout
+      
+      nmanagers = (size(psout, /dim))[0] gt 0
+      ;print, nmanagers
 
-;  help, psout
-;  print, psout
+      if nmanagers eq 0 then begin
+         print,'No local manager found'
+         nslaves=0
+         njobs=0
+         slaveids=0
+         return
+      end 
+      
+      ;; Manager
+      managerpid = (token(psout[0]))[1]
+      if n_elements(port) eq 0 then begin        ; no port specified, get it from the pid
+          spawn, 'netstat -atnpl | grep LISTEN | grep '+managerpid+'/', netstat
+          if strmatch(netstat,'') eq 0 then begin
+              port = long((strsplit((strsplit(netstat,/EXTRACT))[3],':',/EXTRACT))[1])      ; returns the port number if an empty port variable was provided
+              portstring = ' -p '+strtrim(string(port),2)
+          end
+      end
 
-  nmanagers = (size(psout, /dim))[0] ne 0
 
-  if nmanagers eq 0 then begin
-
-     print,'No manager is running'
-
-     nslaves=0
-     njobs=0
-     slaveids=0
-
-  end else begin
+  end
 
      ;; Do we really want to return output?
 
@@ -92,18 +118,15 @@ pro red_momfbd_check, port = port $
                  or arg_present(nmanagers) $
                 )
 
-     ;; Manager
-
-     if arg_present(managerpid) then managerpid = (token(psout))[1]
-     
      ;; Slaves
-
      if no_args or arg_present(nslaves) or arg_present(slaveids) then begin
-        spawn, 'jstat  '+portstring+' -s', jstats
+        spawn, 'jstat '+hoststring+' '+portstring+' -s', jstats
      end
 
-     if arg_present(nslaves) then nslaves = (size(jstats,/dim))[0] - 2
-
+     ;if arg_present(nslaves) then
+     nslaves = (size(jstats,/dim))[0] - 2
+     nmanagers = 1    ; should be set if the reply is ok, popssibly use a timeout-check with spawn ??
+     
      if arg_present(slaveids) and  arg_present(nslaves) then begin
         if nslaves gt 0 then begin
            slaveids = strarr(nslaves)
@@ -114,7 +137,7 @@ pro red_momfbd_check, port = port $
      ;; Jobs
 
      if no_args or arg_present(njobs) or arg_present(jobids) then begin
-        spawn, 'jstat  '+portstring+' -j', jstatj
+        spawn, 'jstat '+hoststring+' '+portstring+' -j', jstatj
      end
 
      if arg_present(njobs) then njobs = (size(jstatj,/dim))[0] - 1
@@ -134,6 +157,5 @@ pro red_momfbd_check, port = port $
         print,'--------------------------------------------------------------------------------------------'
      end
 
-  end  
 
 end
