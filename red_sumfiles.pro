@@ -107,6 +107,9 @@
 ; 
 ;   2013-12-11 : PS  also pass back the number of summed frames
 ; 
+;   2014-01-27 : MGL. Use red_com rather than red_centroid.
+; 
+; 
 ;-
 function red_sumfiles, files_list $
                        , time = time $
@@ -325,8 +328,8 @@ function red_sumfiles, files_list $
               subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2] ; New subimage
 
               subim0 = subim0 / stdev(subim0)
-              cnt = red_centroid(subim0) ; Centroid after shift
-              dcold = dc1            ; Old shift
+              cnt = red_com(subim0) ; Centroid after shift
+              dcold = dc1           ; Old shift
               dc1 = dc1 + (sz/2.0 - cnt)
               print, 'Shift change vector length:', sqrt(total((dc1-dcold)^2))
            endrep until sqrt(total((dc1-dcold)^2)) lt 0.01

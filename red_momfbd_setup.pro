@@ -45,30 +45,47 @@
 ;
 ;   2013-09-04 : MGL. Use red_momfbd_check, not momfbd_check.
 ;
+;   2014-01-24 : TH. Added HOST keyword to allow for using (already running)
+;                remote managers. 
+;
 ;-
-pro red_momfbd_setup, port = port, nslaves = nslaves, nmanagers=nmanagers, free=free, nthreads=nthreads
+pro red_momfbd_setup, HOST = host, $
+                      PORT = port, $
+                      NSLAVES = nslaves, $
+                      NMANAGERS = nmanagers, $
+                      FREE = free, $
+                      NTHREADS = nthreads
   
-  if keyword_set(free) then begin
-     ;; Find a free port
-     spawn,'netstat -atn',netstat
-     Nn = dimen(netstat, 0)
-     ports = lonarr(Nn)
-     for i = 2, Nn-1 do ports[i] = long(last(strsplit(token(netstat[i],4),':',/extract)))
-     ports = ports[uniq(ports,sort(ports))] ; Uniquify
-     freeport = 32765
-     while inset(freeport, ports) do freeport += -1 
-     port = strtrim(string(freeport), 2)
+  hoststring=''
+  portstring=''
+  if keyword_set(host) then begin
+      if n_elements(port) eq 0 then begin
+          print, 'You have to specify a port when using a remote manager.'
+          return
+      end
+      hoststring='-m '+host
   end
 
-  if n_elements(nslaves) eq 0 then nslaves=0
+  ; find a free port to use
+  if n_elements(free) ne 0 then begin
+     port = red_freeport(port=32765)
+  end
+
   if n_elements(nthreads) eq 0 then nthreads=1
      
+  red_momfbd_check, HOST=host, PORT=port, NSLAVES=nslavesrunning, NMANAGERS=nmanagersrunning, MANAGERPID=managerpid, SLAVEIDS=slaveids
+
+  ; if the check didn't return a port-number, find a free one
   if n_elements(port) eq 0 then begin
-     red_momfbd_check, NSLAVES = nslavesrunning, NMANAGERS=nmanagersrunning,MANAGERPID=managerpid, SLAVEIDS=slaveids
-     portstring=' '
+     port = red_freeport(port=32765)
+  end
+  
+  portstring='-p '+strtrim(string(port),2)
+  
+  if n_elements(nslavesrunning) ne 0 then begin
+      if n_elements(nslaves) eq 0 then nslaves = nslavesrunning
   end else begin
-     red_momfbd_check, PORT = port, NSLAVES = nslavesrunning, NMANAGERS=nmanagersrunning,MANAGERPID=managerpid, SLAVEIDS=slaveids
-     portstring=' -p '+strtrim(string(port),2)+' '
+      if n_elements(nslaves) eq 0 then nslaves = 0
   end
 
   if keyword_set(nmanagers) then begin ; We want a manager running
@@ -77,12 +94,13 @@ pro red_momfbd_setup, port = port, nslaves = nslaves, nmanagers=nmanagers, free=
         print,'Start a manager'
         if n_elements(port) ne 0 then print, '  on port ', port
         spawn,'nohup manager -v '+portstring+' &'
+        hoststring=''
      end
 
      if nslaves gt nslavesrunning then begin
         print,'Start ',nslaves - nslavesrunning,' slaves with ',nthreads,' threads each.'
         for i=0,nslaves - nslavesrunning - 1 do begin
-           spawn, 'momfbd_slave '+portstring+' -n '+strtrim(string(nthreads), 2)+' &'
+           spawn, 'momfbd_slave '+hoststring+' '+portstring+' -n '+strtrim(string(nthreads), 2)+' &'
         end
      end else if nslaves lt nslavesrunning then begin
         print,'Stop ',nslavesrunning - nslaves,' slaves.'
@@ -90,13 +108,13 @@ pro red_momfbd_setup, port = port, nslaves = nslaves, nmanagers=nmanagers, free=
         for i=0,nslavesrunning - nslaves - 1 do begin
            ;; Kill from end of list so slave IDs don't grow unnecessarily
            print,'Kill slave # ',slaveids[nslavesrunning-1-i]
-           spawn, 'sdel '+portstring+' '+slaveids[nslavesrunning-1-i]
+           spawn, 'sdel '+hoststring+' '+portstring+' '+slaveids[nslavesrunning-1-i]
         end
      end
 
   end else begin                ; We don't want a manager running
 
-     if nslavesrunning gt 0 then begin
+     if n_elements(nslavesrunning) ne 0 and nslavesrunning gt 0 then begin
         print,'Stop ',nslavesrunning,' slaves'
         print,'Slaveids:',slaveids
         for i=0,nslavesrunning - 1 do begin
@@ -105,13 +123,11 @@ pro red_momfbd_setup, port = port, nslaves = nslaves, nmanagers=nmanagers, free=
         end
      end
 
-     if nmanagers eq 0 then begin
+     if n_elements(nmanagersrunning) ne 0 and nmanagersrunning ne 0 and n_elements(managerpid) ne 0 then begin
         print,'Kill the manager with PID=',managerpid
         spawn,'kill '+managerpid
      end
 
   end
-
-  print
 
 end

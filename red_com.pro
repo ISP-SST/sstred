@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Find center of mass of a one, two, or three dimensional array
 ; 
 ; :Categories:
 ;
@@ -10,17 +10,18 @@
 ; 
 ; :author:
 ; 
-; 
+;    P.Suetterlin, KIS, 14-Jul-1992
 ; 
 ; 
 ; :returns:
-; 
+;
+;    1, 2, or 3 element vector with index of the COM.
 ; 
 ; :Params:
 ; 
-;    data : 
+;    data : in, type="fltarr(nx[,ny[,nz]])"
 ;   
-;   
+;       The input data array.
 ;   
 ; 
 ; :Keywords:
@@ -29,7 +30,7 @@
 ; 
 ; :history:
 ; 
-;   2013-06-04 : Split from monolithic version of crispred.pro.
+;    
 ; 
 ; 
 ;-
