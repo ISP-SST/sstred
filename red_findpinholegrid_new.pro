@@ -49,6 +49,10 @@
 ;    Npinh : out, optional, type=integer
 ; 
 ;       The number of pinholes found.
+;
+;    margin : in, optional, type=integer
+; 
+;       Margin for momfbd to use for swapping tilts for image shifts.
 ; 
 ; 
 ; :history:
@@ -61,12 +65,20 @@
 ;
 ;   2014-01-23 : MGL. New keywords thres, dx, dy, Npinh.
 ;                Documentation. 
+;
+;   2014-01-27 : MGL. New keyword: margin.
 ; 
 ; 
 ;-
-pro red_findpinholegrid_new, pinholeimage, x, y, dx = dx, dy = dy, Npinh = Npinh, thres = thres
+pro red_findpinholegrid_new, pinholeimage, x, y $
+                             , dx = dx $
+                             , dy = dy $
+                             , Npinh = Npinh $
+                             , thres = thres $
+                             , margin = margin
 
   if n_elements(thres) eq 0 then thres = 0.05
+  if n_elements(margin) eq 0 then margin = 0
 
   ;; Each pinhole gets a unique ROI number
   mask = red_separate_mask(pinholeimage gt thres*max(pinholeimage))
@@ -109,12 +121,12 @@ pro red_findpinholegrid_new, pinholeimage, x, y, dx = dx, dy = dy, Npinh = Npinh
 
   ;; Selection of pinholes to return ------
 
-  ;; Pick only pinholes that are at least half a grid spacing away
-  ;; from the array border.
+  ;; Pick only pinholes that are at least half a grid spacing (plus
+  ;; margin) away from the array border.
   dim = size(pinholeimage, /dim)
-  indx = where(cc(0, *) gt dd/2 and cc(1, *) gt dd/2 $
-               and  (dim[0] - cc(0, *)) gt dd/2 $
-               and  (dim[1] - cc(1, *)) gt dd/2)
+  indx = where(cc(0, *) gt (dd/2+margin) and cc(1, *) gt (dd/2+margin) $
+               and  (dim[0] - cc(0, *)) gt (dd/2+margin) $
+               and  (dim[1] - cc(1, *)) gt (dd/2+margin) )
   
   ;; The returned coordinates:
   x = reform(cc[0, indx])
