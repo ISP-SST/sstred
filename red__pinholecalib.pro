@@ -123,6 +123,8 @@
 ;   2014-01-23 : MGL. Use red_extractstates instead of red_getstates
 ;                and local extraction of info from file names.
 ;
+;   2014-01-24 : MGL. Removed diversity part of the code. 
+;
 ;-
 pro red::pinholecalib, STATE = state $                   
                        , PREFILTER = prefilter $         
@@ -154,12 +156,14 @@ pro red::pinholecalib, STATE = state $
 
   if n_elements(mtol) eq 0 then mtol = 1e-6 ; Metric tolerance
   if n_elements(dtol) eq 0 then dtol = 1e-6 ; Diversity tolerance
-  if n_elements(ttol) eq 0 then ttol = 1e-3 ; Tilt tolerance
+;  if n_elements(ttol) eq 0 then ttol = 1e-3 ; Tilt tolerance
+  if n_elements(ttol) eq 0 then ttol = 1 ; Tilt tolerance (1/100 of a pixel)
   
   if n_elements(nslaves) eq 0 then nslaves=6
   if n_elements(nthreads) eq 0 then nthreads=1
   if n_elements(maxit) eq 0 then maxit=400
 
+  margin = 10
 
   ;; Where the summed pinhole images are:
   pinhdir = self.out_dir + '/pinh/'
@@ -248,6 +252,7 @@ pro red::pinholecalib, STATE = state $
   for istat = 0, n_elements(ustat)-1 do begin
 
      stat = ustat[istat]
+     red_extractstates, stat, lam = lambda
 
      ;; File names for the full-FOV pinhole images and offsets.
      pnames = cams + '.' + stat + '.fpinh' 
@@ -302,7 +307,7 @@ pro red::pinholecalib, STATE = state $
      endfor
 
      ;; Find pinhole grid.
-     red_findpinholegrid_new, images[*, *, 0], simx, simy, dx = dx, dy = dy, Npinh = Npinh
+     red_findpinholegrid_new, images[*, *, 0], simx, simy, dx = dx, dy = dy, Npinh = Npinh, margin = margin
      ;; Set subimage size to mean distance between spots.
      sz = round((dx+dy)/2.)
      ;; Make sure sz is an even number:
@@ -368,13 +373,9 @@ pro red::pinholecalib, STATE = state $
      red_pinh_make_fits, simx, simy, sx, sy $
                          , xtilts = xtilts $ ; Input
                          , ytilts = ytilts $ ; Input
-                         , dxoffs = xoffs $  ; Output
-                         , dyoffs = yoffs    ; Output
-stop     
-;   help, oldxoffs, xoffs 
-;   cgplot,oldxoffs[*,*,2],xoffs[*,*,2],psym=3, /aspect
-;   cgplot,/over,color='red',[-1000,1000],[-1000,1000]                    
-; stop  
+                         , xoffs = xoffs $  ; Output
+                         , yoffs = yoffs    ; Output
+
      ;; Write the initial offsets to files
      for ich = 1, Nch-1 do begin
         print, 'Writing ' + calibdir + xnames[ich]+'.init'
@@ -390,7 +391,7 @@ stop
 
      xconvergence = fltarr(Nch, MaxIt)
      yconvergence = fltarr(Nch, MaxIt)
-     mconvergence = fltarr(Npinhx, Npinhy, MaxIt)
+     mconvergence = fltarr(Npinh, MaxIt)
      if keyword_set(finddiversity) then begin
         dconvergence = fltarr(Nch, MaxIt)
         dvalues = fltarr(Nch, MaxIt)
@@ -399,24 +400,29 @@ stop
      ;; Iterate tilts only
      for it = 0, MaxIt-1 do begin
 
-        ;; Run momfbd on the pinholes and read back the results
+        ;; Run momfbd on the pinholes and read back the results.
+        ;; Momfbd is run with the CALIBRATE keyword, so the output
+        ;; tilts are in pixels. No need to convert from radians.
         red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                              , xtemplates, ytemplates, ptemplates $
                              , stat $
-                             , self.telescope_d, self.image_scale, self.pixel_size $
+                             , self.telescope_d $
+                             , self.image_scale $
+                             , self.pixel_size $
                              , DIVERSITY = diversity $
                              , FINDDIVERSITY = 0 $
                              , WORKDIR = workdir $
                              , PORT = port $
                              , NSLAVES = nslaves $
                              , NTHREADS = nthreads $
-                             , XTILTS = dxtilts $ ; Output
-                             , YTILTS = dytilts $ ; Output
-                             , METRICS = metrics  ; Output
+                             , XTILTS = dxtilts $  ; Output
+                             , YTILTS = dytilts $  ; Output
+                             , METRICS = metrics $ ; Output
+                             , margin = margin
 
-        ;; Updates
-        xtilts += dxtilts
-        ytilts += dytilts
+        ;; Updates, note 100ths of a pixel
+        xtilts += dxtilts*100
+        ytilts += dytilts*100
 
         oldxoffs = xoffs
         oldyoffs = yoffs
@@ -425,8 +431,8 @@ stop
         red_pinh_make_fits, simx, simy, sx, sy $
                             , XTILTS = xtilts $ ; Input
                             , YTILTS = ytilts $ ; Input
-                            , dxoffs = xoffs $  ; Output
-                            , dyoffs = yoffs    ; Output
+                            , xoffs = xoffs $  ; Output
+                            , yoffs = yoffs    ; Output
         
 ;     ;; Updates
 ;     xoffs += dxoffs
@@ -447,7 +453,10 @@ stop
            xconvergence[ich, it] = max(dxoffs[*, *, ich])-min(dxoffs[*, *, ich])
            yconvergence[ich, it] = max(dyoffs[*, *, ich])-min(dyoffs[*, *, ich])
         endfor
-        mconvergence[*, *, it] = metrics
+
+        xconvergence[*, it] = max(max(dxoffs, dim=1), dim=1) - min(min(dxoffs, dim=1), dim=1)
+        yconvergence[*, it] = max(max(dyoffs, dim=1), dim=1) - min(min(dyoffs, dim=1), dim=1)
+        mconvergence[*, it] = metrics
 
         red_pinh_plot_convergence, IT = it $ ; # of iterations so far
                                    , DTOL = dtol $
@@ -458,200 +467,38 @@ stop
         
         ;; If converged, then get out of the it loop.
         if max(abs(xconvergence[*, it])) lt ttol and $
-           max(abs(yconvergence[*, it])) lt ttol then break
-        if it gt 0 then begin
-           dm = max(mconvergence[*, *, it]-mconvergence[*, *, it-1])
-           sm = max(mconvergence[*, *, it]+mconvergence[*, *, it-1])
-           if dm/sm lt mtol then break
+           max(abs(yconvergence[*, it])) lt ttol then begin
+           print, inam + ' : Converged due to small shifts.'
+           break
         endif
+;        if it gt 0 then begin
+;           dm = max(mconvergence[*, it]-mconvergence[*, it-1])
+;           sm = max(mconvergence[*, it]+mconvergence[*, it-1])
+;           if dm/sm lt mtol then begin
+;              print, inam + ' : Converged due to small change in metric.'
+;              break
+;           endif
+;        endif
 
-     endfor                     ; for it
+     endfor                     ; it
      
 
      if keyword_set(finddiversity) then begin
 
         print, inam+' : Do you want to refine the diversity?'
         print, inam+' : '
-        print, inam+' : This part is not well tested because we currently do not have'
-        print, inam+' : a CRISP diversity camera. It was written for the purpose of  '
+        print, inam+' : There is some code in red__pinholecalib_diversity.pro, that  '
+        print, inam+' : could be used as inspiration for what should go here. That   '
+        print, inam+' : code is not well tested because we currently do not have a   '
+        print, inam+' : CRISP diversity camera. It was written for the purpose of    '
         print, inam+' : finding small diversity differences between nominally focused'
         print, inam+' : cameras. We never were able to make this work in a way we    '
         print, inam+' : trusted.                                                     '
         print, inam+' : '
         print, inam+' : Be prepared to do some debugging work or possibly rewriting  '
-        print, inam+' : this functionality completely. /MGL '
+        print, inam+' : of that code. /MGL '
 
         stop
-
-        ;; Try some combinations of diversities, find min(metric).
-        makegrid = n_elements(test_diversities) eq 0
-
-
-        if makegrid then begin
-           if n_elements(deltadiversity) eq 0 then deltadiversity = .5 ; focus step length [mm]
-           if n_elements(maxdiversity) eq 0 then Nf = 10 else Nf = maxdiversity/deltadiversity 
-           test_diversities = fltarr(Nch, Nf+1, 2*Nf+1)
-           for ii = 0, Nf do begin
-              for jj = -Nf, Nf do begin
-                 test_diversities[*, ii, jj+Nf] = diversity + [0., ii*deltadiversity, jj*deltadiversity]
-              endfor
-           endfor
-           domirror = 1
-        endif else domirror = 0
-
-        Nf0 = (size(test_diversities, /dim))[1]
-        Nf1 = (size(test_diversities, /dim))[2]
-        test_metrics = fltarr(Nf0, Nf1)
-
-        ;; This loop assumes there are only two diversities to vary!
-        for ii = 0, Nf0-1 do begin
-           for jj = 0, Nf1-1 do begin
-              
-              print, 'Test diversity ', test_diversities[*, ii, jj], ' mm.'
-              
-
-              ;; Run momfbd on the pinholes and read back the results
-              red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
-                                   , xtemplates, ytemplates, ptemplates $
-                                   , stat $
-                                   , self.telescope_d, self.image_scale, self.pixel_size $
-                                   , DIVERSITY = test_diversities[*, ii, jj] $
-                                   , FINDDIVERSITY = 0 $
-                                   , WORKDIR = workdir $
-                                   , PORT = port $
-                                   , NSLAVES = nslaves $
-                                   , NTHREADS = nthreads $
-                                   , FOC = foc $    ; Output
-                                   , METRICS = metrics ; Output
-
-              test_metrics[ii, jj] = median(metrics)
-
-              print, test_metrics
-
-           endfor
-        endfor
-
-        if domirror then begin
-           ;; Exploit mirror symmetry
-           test_metrics2 = [reverse(test_metrics[1:*,*],1),test_metrics]
-           ss = size(test_metrics2, /dim)
-           test_diversities2 = fltarr([Nch, ss])
-           test_diversities2[*, 0:Nf0-2, *] = reverse(test_diversities[*, 1:*,*], 2)
-           test_diversities2[*, Nf0-1:*, *] = test_diversities
-        endif else begin
-           test_metrics2 = test_metrics
-           test_diversities2 = test_diversities
-           ss = size(test_metrics2, /dim)
-        endelse
-        
-        
-        tmp = min(test_metrics2, minloc)
-        ii = minloc MOD ss[0]
-        jj = minloc / ss[0]
-        print, 'Min metric: ', test_metrics2[ii, jj], ' at ', [ii, jj]
-        best_diversity = fltarr(Nch)
-        for ich = 1, Nch-1 do best_diversity[ich] = test_diversities2[ich, ii, jj]
-        print, 'Best diversity: ', best_diversity
-        
-        if 1 then begin
-           ;; Improve best_diversity by interpolation before considering
-           ;; them "found".
-           c = test_metrics2[ii-1:ii+1, jj-1:jj+1]
-           aaa = red_findmax2qi(-c, /verbose) ; "subpixel" minimum
-           cmin = Interpolate(c, aaa[0], aaa[1], cubic = -0.5)
-           print, 'Subpixel min metric: ', cmin, ' at ', aaa
-           for ich = 1, Nch-1 do best_diversity[ich] $
-              = Interpolate(reform(test_diversities2[ich, ii-1:ii+1, jj-1:jj+1]) $
-                            , aaa[0], aaa[1], cubic = -0.5)
-           
-           print, 'Best subpixel diversity: ', best_diversity
-           ;;Best subpixel diversity:       0.00000     0.784720     -3.08438
-        endif 
-
-        ;; Use the found diversities
-        diversity = best_diversity
-
-        
-        ;; Now iterate to finalize the offsets
-        for it = 0, MaxIt-1 do begin
-
-           ;; Run momfbd on the pinholes and read back the results
-           red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
-                                , xtemplates, ytemplates, ptemplates $
-                                , stat $
-                                , self.telescope_d, self.image_scale, self.pixel_size $
-                                , DIVERSITY = diversity $
-;                             , FINDDIVERSITY = finddiversity $
-                                , WORKDIR = workdir $
-                                , PORT = port $
-                                , NSLAVES = nslaves $
-                                , NTHREADS = nthreads $
-                                , XTILTS = xtilts $ ; Output
-                                , YTILTS = ytilts $ ; Output
-                                , FOC = foc $       ; Output
-                                , METRICS = metrics ; Output
-
-           ;; Make fits to the tilts and average the diversity
-           red_pinh_make_fits, simx, simy, sx, sy $
-                               , XTILTS = xtilts $ ; Input
-                               , YTILTS = ytilts $ ; Input
-;                            , FOC = foc $       ; Input
-;                            , dfoc = dfoc $     ; Output
-;                            , ddiv = ddiv $       ; Output
-                               , dxoffs = dxoffs $ ; Output
-                               , dyoffs = dyoffs   ; Output
-           
-
-           ;; Updates
-           xoffs += dxoffs
-           yoffs += dyoffs
-;        diversity += -ddiv
-
-           ;; Convergence
-           for ich = 1, Nch-1 do begin
-              xconvergence[ich, it] = max(dxoffs[*, *, ich])-min(dxoffs[*, *, ich])
-              yconvergence[ich, it] = max(dyoffs[*, *, ich])-min(dyoffs[*, *, ich])
-           endfor
-;        dconvergence[*, it] = ddiv
-;        dvalues[*, it] = diversity
-           mconvergence[*, *, it] = metrics
-
-
-;        if keyword_set(finddiversity) then begin
-;           red_pinh_plot_convergence, IT = it $ ; # of iterations so far
-;                                      , DTOL = dtol $
-;                                      , TTOL = ttol $
-;                                      , XCONVERGENCE = xconvergence $ ; X tilt convergence (out)
-;                                      , YCONVERGENCE = yconvergence $ ; Y tilt convergence (out)
-;                                      , DCONVERGENCE = dconvergence $ ; Diversity convergence (out)
-;                                      , DVALUES = dvalues $      ; Diversity convergence (out)
-;                                      , MCONVERGENCE = mconvergence ; Metric convergence (out)     
-;        endif else begin
-           red_pinh_plot_convergence, IT = it $ ; # of iterations so far
-                                      , DTOL = dtol $
-                                      , TTOL = ttol $
-                                      , XCONVERGENCE = xconvergence $ ; X tilt convergence (out)
-                                      , YCONVERGENCE = yconvergence $ ; Y tilt convergence (out)
-                                      , MCONVERGENCE = mconvergence   ; Metric convergence (out)     
-;        endelse
-
-           ;; If converged, then get out of the it loop.
-;        if keyword_set(finddiversity) then begin
-;           if max(abs(xconvergence[*, it])) lt ttol and $
-;              max(abs(yconvergence[*, it])) lt ttol and $
-;              max(abs(dconvergence[*, it])) lt dtol then break
-;        endif else begin
-;           if max(abs(xconvergence[*, it])) lt ttol and $
-;              max(abs(yconvergence[*, it])) lt ttol then break
-;        endelse
-
-           if it gt 0 then begin
-              dm = max(mconvergence[*, *, it]-mconvergence[*, *, it-1])
-              sm = max(mconvergence[*, *, it]+mconvergence[*, *, it-1])
-              if dm/sm lt mtol then break
-           endif
-
-        endfor                  ; for it
 
      endif                      ; finddiversity
      
@@ -663,6 +510,7 @@ stop
      ;; Crop convergence arrays.
      xconvergence = xconvergence[*, 0:it-1]
      yconvergence = yconvergence[*, 0:it-1]
+     mconvergence = mconvergence[*, 0:it-1]
      if keyword_set(finddiversity) then dconvergence = dconvergence[*, 0:it-1]
      
 
@@ -674,7 +522,6 @@ stop
         fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich], ''
      endfor
 
-     fzwrite, diversity, calibdir+'diversity.fz', ''
 
   endfor                        ; istat
 
