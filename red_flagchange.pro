@@ -33,14 +33,16 @@
 ; 
 ; 
 ;-
-function red_flagchange, st
+function red_flagchange, st, remove = remove
   nt = n_elements(st)
   star = bytarr(nt)
+  if(n_elements(remove) eq 0) then return, temporary(star)
+
                                 ;
   os = st[0]
   for ii = 0L, nt - 1 do begin
      if(st[ii] ne os) then begin
-        star[ii] = 1B
+        for jj = 0, remove-1 do star[ii+jj] = 1B
         os = st[ii]
      endif
   endfor
