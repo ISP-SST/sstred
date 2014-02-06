@@ -73,7 +73,7 @@
 ;   2013-09-12 : MGL. Use red_flipthecube rather than flipthecube.
 ;
 ;-
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan
  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -265,6 +265,11 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      endif
 
      if(keyword_set(scans_only)) then begin
+        if(n_elements(iscan) gt 0) then begin
+           if(st.uscan[ss] ne iscan) then begin
+              print,inam + 'skipping scan -> '+st.uscan[ss]
+           endif
+        endif
         ofile = 'crispex.stokes.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+exten
         ofilewb = 'wb.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+'.fz' 
         if file_test(odir + '/' + ofile) then begin
