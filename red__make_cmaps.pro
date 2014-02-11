@@ -66,7 +66,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      iclip = [8,4,4,2]
   endif
   if(n_elements(fwhm) eq 0) then fwhm = 7.0
-  if(keyword_set(wavelenth_cube)) then dowav=1B else dowav=0B
+  if(keyword_set(wavelength_cube)) then dowav=1B else dowav=0B
   ;;
   ;; Search directories
   ;;
@@ -122,6 +122,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;;
   ;; time calibration data
   ;;
+  time1 = time
   if(~keyword_set(only_scans)) then begin
      cfile = self.out_dir + 'calib_tseries/tseries.'+pref+'.'+time+'.calib.sav'
      if(~file_test(cfile)) then begin
@@ -178,8 +179,8 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   root2 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)+'_nwav='+red_stri(nw)+'_nt='+red_stri(nscan)
   root3 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)
 
-  file1 = odir + 'cmap.'+pref+'.'+root1+'.simple.icube'
-  if(dowav) then file2 = odir + 'cmap.'+pref+'.'+root2+'.allwav.icube'
+  file1 = odir + 'cmap.'+pref+'_'+time1+'.'+root1+'.simple.icube'
+  if(dowav) then file2 = odir + 'cmap.'+pref+'_'+time1+'.'+root2+'.allwav.icube'
 
 
   
