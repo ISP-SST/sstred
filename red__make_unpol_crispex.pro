@@ -73,7 +73,7 @@
 ;
 ;
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -286,17 +286,18 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      writeu, lun, head
      point_lun, lun, 0L
      dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,/nozero), 512)
+     print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro'
+     openw, lunf, odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro', /get_lun
+     printf,lunf, 'nx=', dimim[0]
+     printf,lunf, 'ny=', dimim[1]
+     printf,lunf, 'nw=', nwav
+     printf,lunf, 'nt=', nscan
+     printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
+     printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+     free_lun, lunf
   endif 
 
-  print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro'
-  openw, lunf, odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro', /get_lun
-  printf,lunf, 'nx=', dimim[0]
-  printf,lunf, 'ny=', dimim[1]
-  printf,lunf, 'nw=', nwav
-  printf,lunf, 'nt=', nscan
-  printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
-  printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
-  free_lun, lunf
+
 
   ;; Start processing data
   if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
@@ -366,9 +367,9 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         yy0 = round(dim[1] * 0.15)
         yy1 = round(dim[1] * 0.85)
         
-        me = mean(tmp0[xx0:xx1,yy0:yy1] + tmp1[xx0:xx1,yy0:yy1]) * 0.5
-        sclt = me / (mean(tmp0[xx0:xx1,yy0:yy1]))
-        sclr = me / (mean(tmp1[xx0:xx1,yy0:yy1]))
+        me = median(tmp0[xx0:xx1,yy0:yy1] + tmp1[xx0:xx1,yy0:yy1]) * 0.5
+        sclt = me / (median(tmp0[xx0:xx1,yy0:yy1]))
+        sclr = me / (median(tmp1[xx0:xx1,yy0:yy1]))
         
         tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) * tmean[ss]
         
@@ -388,7 +389,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      if n_elements(imean) eq 0 then begin 
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,ii])
-        cscl = 8.0 ; 32768 / 4096
+        cscl = 4.0 ; 32768 / 4096
        ; if(keyword_set(scans_only)) then cscl = 1.0
         norm_spect = imean / cscl ;/ max(imean)
         norm_factor = cscl ;* max(imean)
@@ -397,9 +398,15 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         save, file=odir + '/spectfile.'+pref+'.idlsave', norm_spect, norm_factor, spect_pos
      endif
      
+     
      if(~keyword_set(scans_only)) then begin
         ;; Write this scan's data cube to assoc file
-        dat[ss] = fix(round(d*cscl))
+        d1 = round(d*cscl)
+        dat[ss] = fix(d1)
+        if(keyword_set(verbose)) then begin
+           print, inam +'scan=',ss,', max=', max(d1)
+           
+        endif
      endif else begin
         ;; Write this scan's data cube as an individual file.
         print, inam + ' : saving to '+ odir + '/' + ofile
