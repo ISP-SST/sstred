@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <omp.h>
-#include <complex.h>
+//#include <complex.h>
 #include <iostream>
 #include "types.h"
 #include "fftw3.h"
