@@ -25,6 +25,8 @@ void init_fpi(fpi_t &fpi, int line){
   fpi.ft = NULL;
   fpi.ylp = NULL;
   fpi.line = line;
+  fpi.sin2p_h = NULL;
+  fpi.sin2p_l = NULL;
 
   switch (fpi.line)
     {
@@ -36,7 +38,7 @@ void init_fpi(fpi_t &fpi, int line){
       fpi.slr  = 295.5E4;
       fpi.dhr  = 0.267;
       fpi.dlr  = 0.731;
-      fpi.dw   = 0.025;
+      fpi.dw   = 0.01;
       break;
     case 8542:
       fpi.w0   = 8542.091;
@@ -56,7 +58,16 @@ void init_fpi(fpi_t &fpi, int line){
       fpi.slr  = 295.5E4;
       fpi.dhr  = 0.267;
       fpi.dlr  = 0.731;
-      fpi.dw   = 0.005;
+      fpi.dw   = 0.01;
+   case 5576:
+      fpi.w0   = 5576.5;
+      fpi.rhr  = 0.9457e0;
+      fpi.rlr  = 0.8903e0;
+      fpi.shr  = 787.0E4;
+      fpi.slr  = 295.5E4;
+      fpi.dhr  = 0.237e0;
+      fpi.dlr  = 0.647e0;
+      fpi.dw   = 0.01;
       break;
     default:
       fprintf(stderr,"init_fpi : ERROR -> data not found for spectral line %d\n",fpi.line);
@@ -104,9 +115,12 @@ void init_fftw(fpi_t &fpi, int nmean, float *xl, float *yl){
 
   fpi.tr = new double [fpi.npad];
   fpi.tw = new double [fpi.npad];
+  fpi.sin2p_h = new double [fpi.npad];
+  fpi.sin2p_l = new double [fpi.npad];
+
   //
-  fpi.ft = new double complex [fpi.npad/2+2];
-  fpi.otf = new double complex [fpi.npad/2+2];
+  fpi.ft = new complex_t [fpi.npad/2+2];
+  fpi.otf = new complex_t [fpi.npad/2+2];
 
   //
   // Init plan for the spectrum and PSF
@@ -144,8 +158,26 @@ void init_fftw(fpi_t &fpi, int nmean, float *xl, float *yl){
   // 
   fftw_execute(fpi.fplan);
 }
-
+void compute_phase(fpi_t *&fpi){
+  //
+  // Phase difference for each ethalon
+  //
+  double phr = pi2 * fpi->shr; //* cos(angle) = 1.0 in this case
+  double plr = pi2 * fpi->slr; //* cos(angle) = 1.0 in this case 
+  
+  //
+  for(int jj = 0;jj<fpi->npad;jj++){
+    fpi->sin2p_h[jj] = sqr<double>(sin(phr / fpi->tw[jj]));
+    fpi->sin2p_l[jj] = sqr<double>(sin(plr / fpi->tw[jj]));
+  }
+}
 void dual_fpi(fpi_t *fpi, double erh){
+  //
+  // Firsttime? compute phase array
+  //
+  if(fpi->scl) compute_phase(fpi);
+
+
   //
   // reflectivities + error
   //
@@ -159,13 +191,6 @@ void dual_fpi(fpi_t *fpi, double erh){
   double fhr = 4.0 * mrhr / sqr<double>(1.0 - mrhr);
   double flr = 4.0 * mrlr / sqr<double>(1.0 - mrlr);
   
-  
-  //
-  // Phase difference for each ethalon
-  //
-  double phr = pi2 * fpi->shr; //* cos(angle) = 1.0 in this case
-  double plr = pi2 * fpi->slr; //* cos(angle) = 1.0 in this case 
-  
 
   //
   // Transmission peaks
@@ -173,8 +198,8 @@ void dual_fpi(fpi_t *fpi, double erh){
   int npad2 = fpi->npad/2;
   for(int jj = 0;jj<=npad2;jj++){
     //
-    fpi->tr[jj] =  1.0 / (1.0 + fhr * sqr<double>(sin(phr / fpi->tw[jj+npad2])));
-    fpi->tr[jj] *= 1.0 / (1.0 + flr * sqr<double>(sin(plr / fpi->tw[jj+npad2])));
+    fpi->tr[jj] =  (1.0 / (1.0 + fhr * fpi->sin2p_h[jj+npad2])) * 
+                   (1.0 / (1.0 + flr * fpi->sin2p_l[jj+npad2]));
 
     //
   }
@@ -367,6 +392,9 @@ void clean_fpi(fpi_t &fpi){
   if(fpi.lp2 != NULL) delete [] fpi.lp2;
   if(fpi.fp1 != NULL) delete [] fpi.fp1;
   if(fpi.fp2 != NULL) delete [] fpi.fp2;
+  if(fpi.sin2p_h != NULL) delete [] fpi.sin2p_h;
+  if(fpi.sin2p_l != NULL) delete [] fpi.sin2p_l;
+
   delete [] fpi.imean;
   fprintf(stderr,"done\n");
 
