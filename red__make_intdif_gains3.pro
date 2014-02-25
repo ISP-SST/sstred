@@ -153,7 +153,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      ;;
      if(keyword_set(smallscale)) then begin
         print, inam+'correcting only for local line shifts ... ', format='(A,$)'
-        npix = 35
+        npix = 72
         cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
         cpsf /= total(cpsf, /double)
         lscale = red_convolve(cmap, cpsf)

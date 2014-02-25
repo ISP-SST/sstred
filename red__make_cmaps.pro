@@ -110,7 +110,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;;
   ;; Small scale already corrected?
   if(keyword_set(remove_smallscale)) then begin
-     npix = 35
+     npix = 72
      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
      cpsf /= total(cpsf, /double)
      cmap = red_convolve(temporary(cmap), cpsf)
