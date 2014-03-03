@@ -16,6 +16,10 @@
 ;
 ; :Params:
 ;
+;   images : 
+;
+;      The full-FOV pinhole images.
+;
 ;    xoffs : 
 ;
 ;
@@ -32,9 +36,9 @@
 ;
 ;
 ;
-;    sz :                           
+;    sz : in, type=integer                     
 ;
-;
+;       Subfield size used for momfbding.
 ;
 ;    xtemplates : 
 ;
@@ -104,17 +108,30 @@
 ; 
 ; 
 ;    metrics : out, optional 
+;
+;    margin : in, optional, type=integer
+; 
+;       Margin for momfbd to use for swapping tilts for image shifts.
 ; 
 ; 
 ; 
 ; :History:
 ; 
 ;   2013-09-04 : MGL. Use red_momfbd_*, not momfbd_*.
+;
+;   2013-09-10 : MGL. Moved writing of subfield images to disk (and
+;                the associated dark level refinement) from
+;                red::pinholecalib. Add a margin to the subfields
+;                written to disk.  
+;
+;   2014-01-27 : MGL. New keyword: margin. Adapt to input simx, simy,
+;                etc., being 1D arrays.
+; 
 ; 
 ; 
 ; 
 ;-
-pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
+pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                          , xtemplates, ytemplates, ptemplates $
                          , stat $
                          , telescope_d, image_scale, pixel_size $
@@ -127,14 +144,15 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
                          , XTILTS = xtilts $ 
                          , YTILTS = ytilts $ 
                          , FOC = foc $       
-                         , METRICS = metrics 
+                         , METRICS = metrics  $ 
+                         , margin = margin
 
   ana_output = 1                ; Otherwise use MOMFBD format output (for development/debugging).
 
   Nch = (size(xoffs, /dim))[2] 
-  Npinhx = (size(simx, /dim))[0]
-  Npinhy = (size(simy, /dim))[0]
+  Npinh = (size(simx, /dim))[0]
 
+  if n_elements(margin) eq 0 then margin = 0
   if n_elements(diversity) eq 0 then diversity = replicate(0.0, Nch)
   if n_elements(finddiversity) eq 0 then finddiversity = 0
   if n_elements(workdir) eq 0 then workdir = './'
@@ -147,83 +165,130 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
   ;; Remove old metric files if needed.
   spawn, 'cd '+workdir+' ; rm -f metric.*'
 
+  window, 0
   
   ;; New subfield offsets, submit jobs
-  imno = 0
-  d=sz/2
-  for ix=0,Npinhx-1 do begin
-     for iy=0,Npinhy-1 do begin
+  d = sz/2 + margin
 
-        ;; Read out subfield (ix,iy) from offsets
-        xosubfields = xoffs[simx[ix]-d:simx[ix]+d-1,simy[iy]-d:simy[iy]+d-1, *]
-        yosubfields = yoffs[simx[ix]-d:simx[ix]+d-1,simy[iy]-d:simy[iy]+d-1, *]
-
-        for ich = 0, Nch-1 do begin
-           if ich gt 0 then begin
-              fname = workdir+string(format = '(%"'+xtemplates[ich]+'")', imno)
-              fzwrite, fix(round(xosubfields[*, *, ich])), fname, ''
-              fname = workdir+string(format = '(%"'+ytemplates[ich]+'")', imno)
-              fzwrite, fix(round(yosubfields[*, *, ich])), fname, ''
-           endif
-        endfor
-
-        ;; Construct a config file for pinhole calibration. 
-        cfglines = ['object{']
-        cfglines = [cfglines, '  WAVELENGTH='+strtrim(string(long(stat)*1e-10),2)] 
-        for ich = 0, Nch-1 do begin
-           cfglines = [cfglines, '  channel{']
-           cfglines = [cfglines, '    IMAGE_DATA_DIR=' + workdir]
-           cfglines = [cfglines, '    FILENAME_TEMPLATE=' + ptemplates[ich]]
-           cfglines = [cfglines, '    DIVERSITY='+strtrim(string(diversity[ich]), 2)+' mm']
-;           cfglines = [cfglines, '    '+acl[ich]]
-           if ich gt 0 then begin
-              cfglines = [cfglines, '    XOFFSET='+ workdir $
-                          + string(format = '(%"'+xtemplates[ich]+'")', imno)]
-              cfglines = [cfglines, '    YOFFSET='+ workdir $
-                          + string(format = '(%"'+ytemplates[ich]+'")', imno)]
-           endif
-           cfglines = [cfglines, '  }']
-        endfor
-        cfglines = [cfglines, '}']
-        cfglines = [cfglines, 'BASIS=Zernike']
-        cfglines = [cfglines, 'GRADIENT=gradient_diff']
-        cfglines = [cfglines, 'GETSTEP=getstep_steepest_descent']
-        cfglines = [cfglines, 'PROG_DATA_DIR=./data/']
-        if keyword_set(finddiversity) then begin
-           cfglines = [cfglines, 'MODES=2-4']                               ;; Tilts + focus
-        endif else begin
-           cfglines = [cfglines, 'MODES=2-3']                               ;; Tilts 
-        endelse
-        cfglines = [cfglines, 'NUM_POINTS='+strtrim(string(round(sz)),2)]
-        cfglines = [cfglines, 'TELESCOPE_D='+strtrim(string(telescope_d),2)]
-        cfglines = [cfglines, 'ARCSECPERPIX='+strtrim(string(image_scale),2)]
-        cfglines = [cfglines, 'PIXELSIZE='+strtrim(string(pixel_size),2)]
-        if ana_output then begin
-           cfglines = [cfglines, 'FILE_TYPE=ANA']
-        endif else begin
-           cfglines = [cfglines, 'FILE_TYPE=MOMFBD']
-        endelse
-        cfglines = [cfglines, 'CALIBRATE']
-        cfglines = [cfglines, 'IMAGE_NUMS='+string(imno, format = '(i0)')]
-        cfglines = [cfglines, 'BORDER_CLIP=0']
-        cfglines = [cfglines, 'GET_METRIC']
-
-        ;; Submit to momfbd
-        red_momfbd_submit, imno, PORT=port, CFGLINES=cfglines, DIR=workdir, /FORCE
+  for ihole=0,Npinh-1 do begin
+     
+     ;; Read out subfield from images and offsets
+     xosubfields = xoffs[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
+     yosubfields = yoffs[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
+     pinhsubfields = images[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
+     
+     Nbins = 1000
+     for ich = 0, Nch-1 do begin
         
-        imno += 1
+        pinhsubfields[*, *, ich] = pinhsubfields[*, *, ich]/max(pinhsubfields[*, *, ich])
         
-     endfor                     ; for iy
-  endfor                        ; for ix
+        ;; Fine tune dark level and normalization for each subfield.
+        ;; Get the bias by fitting a Gaussian to the histogram peak.
+        
+        ;; Calculate some statistics on the background
+        sindx = where(pinhsubfields[*,*,ich] lt 0.01*max(pinhsubfields[*,*,ich]))
+        mn = median((pinhsubfields[*,*,ich])[sindx])
+        st = stdev((pinhsubfields[*,*,ich])[sindx])
+        
+        ;;mn = biweight_mean(pinhsubfields[*,*,ich])
+        ;;st = robust_sigma(pinhsubfields[*,*,ich])
+        
+        hmax = mn + 30.*st
+        hmin = mn - 30.*st
+        
+        hh = histogram(pinhsubfields[*, *, ich], min = hmin, max = hmax $
+                       , Nbins = Nbins, locations = locations)
+        binsize = (hmax - hmin) / (Nbins - 1)
+        intensities = locations + binsize/2.
+        
+        plot,intensities,hh,/xstyle, /ystyle
+        
+        print,max(smooth(hh,15),ml)  
+        Nfit = 51
+        indx = ml + indgen(Nfit) - (Nfit-1)/2
+        
+        plot,intensities[indx],hh[indx], /xstyle, /ystyle
+        
+        yfit=mpfitpeak(float(intensities[indx]), float(hh[indx]), a, Nterms = 5)
+        oplot,intensities[indx],yfit,color=fsc_color('yellow')
+        oplot,[0,0]+a[1],[0,1]*max(hh),color=fsc_color('yellow')
+        oplot,[0,0]+mn,[0,1]*max(hh),color=fsc_color('cyan')
+        print,intensities[ml]  
+        
+        ;; Subtract the fitted dark level and renormalize to unit max.
+        ;; The momfbd program will then renormalize all channels to
+        ;; the same total energy.
+        pinhsubfields[*, *, ich] = pinhsubfields[*, *, ich] - a[1]
+        pinhsubfields[*, *, ich] = pinhsubfields[*, *, ich]/max(pinhsubfields[*, *, ich])
+        
+        fname = workdir+string(format = '(%"'+ptemplates[ich]+'")', ihole)
+        fzwrite, fix(round(pinhsubfields[*, *, ich]*15000.)), fname, ''
+
+        if ich gt 0 then begin
+           fname = workdir+string(format = '(%"'+xtemplates[ich]+'")', ihole)
+           fzwrite, fix(round(xosubfields[*, *, ich])), fname, ''
+           fname = workdir+string(format = '(%"'+ytemplates[ich]+'")', ihole)
+           fzwrite, fix(round(yosubfields[*, *, ich])), fname, ''
+        endif
+
+     endfor                     ; ich
+
+     ;; Construct a config file for pinhole calibration. 
+     cfglines = ['object{']
+     cfglines = [cfglines, '  WAVELENGTH='+strtrim(string(long(stat)*1e-10),2)] 
+     for ich = 0, Nch-1 do begin
+        cfglines = [cfglines, '  channel{']
+        cfglines = [cfglines, '    IMAGE_DATA_DIR=' + workdir]
+        cfglines = [cfglines, '    FILENAME_TEMPLATE=' + ptemplates[ich]]
+        cfglines = [cfglines, '    DIVERSITY='+strtrim(string(diversity[ich]), 2)+' mm']
+        if ich gt 0 then begin
+           cfglines = [cfglines, '    XOFFSET='+ workdir $
+                       + string(format = '(%"'+xtemplates[ich]+'")', ihole)]
+           cfglines = [cfglines, '    YOFFSET='+ workdir $
+                       + string(format = '(%"'+ytemplates[ich]+'")', ihole)]
+        endif
+        cfglines = [cfglines, '  }']
+     endfor
+     cfglines = [cfglines, '}']
+     cfglines = [cfglines, 'BASIS=Zernike']
+     cfglines = [cfglines, 'GRADIENT=gradient_diff']
+     cfglines = [cfglines, 'GETSTEP=getstep_steepest_descent']
+     cfglines = [cfglines, 'PROG_DATA_DIR=./data/']
+     if keyword_set(finddiversity) then begin
+        cfglines = [cfglines, 'MODES=2-4']                               ;; Tilts + focus
+     endif else begin
+        cfglines = [cfglines, 'MODES=2-3']                               ;; Tilts 
+     endelse
+     cfglines = [cfglines, 'NUM_POINTS='+strtrim(string(round(sz)),2)]
+     cfglines = [cfglines, 'TELESCOPE_D='+strtrim(string(telescope_d),2)]
+     cfglines = [cfglines, 'ARCSECPERPIX='+strtrim(string(image_scale),2)]
+     cfglines = [cfglines, 'PIXELSIZE='+strtrim(string(pixel_size),2)]
+     if ana_output then begin
+        cfglines = [cfglines, 'FILE_TYPE=ANA']
+     endif else begin
+        cfglines = [cfglines, 'FILE_TYPE=MOMFBD']
+     endelse
+     cfglines = [cfglines, 'CALIBRATE']
+     ;; Want to process this pinhole only once, centered.
+     cfglines = [cfglines, 'SIM_X='+red_stri(d)]
+     cfglines = [cfglines, 'SIM_Y='+red_stri(d)]
+;        cfglines = [cfglines, 'IMAGE_NUMS='+string(ihole, format = '(i0)')]
+     cfglines = [cfglines, 'BORDER_CLIP=0']
+     cfglines = [cfglines, 'GET_METRIC']
+     
+     ;; Submit to momfbd
+     red_momfbd_submit, ihole, PORT=port, CFGLINES=cfglines, DIR=workdir, /FORCE
+
+  endfor                        ; for ihole
   
 
   ;; Loop through pinholes and read results
-  xtilts = fltarr(Nch, Npinhx, Npinhy)
-  ytilts = fltarr(Nch, Npinhx, Npinhy)
-  foc = fltarr(Nch, Npinhx, Npinhy)
-  metrics = fltarr(Npinhx, Npinhy)
+  xtilts = fltarr(Nch, Npinh)
+  ytilts = fltarr(Nch, Npinh)
+  foc = fltarr(Nch, Npinh)
+  metrics = fltarr(Npinh)
   imno = 0
-  if ~ana_output then mrpointers = ptrarr(Npinhx*Npinhy, /allocate_heap)
+  if ~ana_output then mrpointers = ptrarr(Npinh, /allocate_heap)
 
   ;; Pre-read the metric files. They are numbered with the momfbd
   ;; job numbers, not imno.
@@ -234,50 +299,47 @@ pro red_pinh_run_momfbd, xoffs, yoffs, simx, simy, sz $
   endrep until njobs eq 0
   spawn, 'cd '+workdir+' ; cat metric.*', metriclist
 
-  for ix=0, Npinhx-1 do begin
-     for iy=0, Npinhy-1 do begin
 
-        metrics[ix, iy] = float(metriclist[imno])
+  for ihole=0,Npinh-1 do begin
+     
+     metrics[ihole] = float(metriclist[imno])
         
-        if arg_present(xtilts) or arg_present(ytilts) then begin
+     if arg_present(xtilts) or arg_present(ytilts) then begin
 
-           ;; Read momfbd output
-           print, 'Read results for ', ix, iy
+        ;; Read momfbd output
+        print, 'Read results for ', ihole
 
-           if ana_output then begin
-              for ich = 0, Nch-1 do begin
+        if ana_output then begin
+           for ich = 0, Nch-1 do begin
 
-                 fname = 'momfbd_submit.'+strtrim(string(imno), 2)+'.alpha.'+strtrim(string(ich+1), 2)+'.1'
-
-                 openr, flun, /get_lun, workdir+fname
-                 oneline = ''
-                 readf, flun, oneline
-                 readf, flun, oneline
-                 free_lun, flun
-
-                 tmp = strsplit(oneline, ' ', /extract)
-                 xtilts[ich, ix, iy] = float(tmp[2])
-                 ytilts[ich, ix, iy] = float(tmp[3])
-                 if keyword_set(finddiversity) then foc[ich, ix, iy] = float(tmp[4])
-
-              endfor
-           endif else begin     ; ana_output
-              *mrpointers[imno] = red_momfbd_results(imno, PORT=port, DIR=workdir, /NOWAIT)
+              fname = 'momfbd_submit.'+strtrim(string(ihole), 2)+'.alpha.'+strtrim(string(ich+1), 2)+'.1'
               
-              xtilts[*, ix, iy] = (*mrpointers[imno]).patch.alpha[0, *]
-              ytilts[*, ix, iy] = (*mrpointers[imno]).patch.alpha[1, *]
-              if keyword_set(finddiversity) then foc[*, ix, iy] = (*mrpointers[imno]).patch.alpha[2, *]
+              openr, flun, /get_lun, workdir+fname
+              oneline = ''
+              readf, flun, oneline
+              readf, flun, oneline
+              free_lun, flun
+              
+              tmp = strsplit(oneline, ' ', /extract)
+              xtilts[ich, ihole] = float(tmp[2])
+              ytilts[ich, ihole] = float(tmp[3])
+              if keyword_set(finddiversity) then foc[ich, ihole] = float(tmp[4])
+              
+           endfor
+        endif else begin        ; end ana_output, begin momfbd_output
+           *mrpointers[ihole] = red_momfbd_results(ihole, PORT=port, DIR=workdir, /NOWAIT)
+           
+           xtilts[*, ihole] = (*mrpointers[ihole]).patch.alpha[0, *]
+           ytilts[*, ihole] = (*mrpointers[ihole]).patch.alpha[1, *]
+           if keyword_set(finddiversity) then foc[*, ihole] = (*mrpointers[ihole]).patch.alpha[2, *]
+           
+        endelse                 ; end momfbd_output
+        
+     endif                      ; arg_present
+     
+  endfor                        ; for ihole
 
-           endelse              ; momfbd_output
-
-        endif                   ; arg_present
-
-        imno += 1
-
-     endfor                     ; for iy
-  endfor                        ; for ix
-
-  ;; ptr_free, mrpointers
+  ;;  if ~ana_output then ptr_free, mrpointers
   
 end
 
