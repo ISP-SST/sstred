@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <omp.h>
-#include <complex.h>
+//#include <complex.h>
 #include <iostream>
 #include "types.h"
 #include "fftw3.h"
@@ -454,10 +454,18 @@ int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **deriv
   //
   bool ref = false;
   if(pars[2] != fpip->orh){
-    dual_fpi(fpip,pars[2]);
-    for(int ii=0;ii<fpip->npad/2+1;ii++) fpip->otf[ii] *= fpip->ft[ii];
-    fftw_execute(fpip->bplan);
-    hermite_control(fpip->npad, fpip->xlp, fpip->ylp, fpip->lp1, fpip->lp2, fpip->fp1, fpip->fp2);
+    dual_fpi(fpip,pars[2]); // CRISP profile
+    //
+    //for(int ii=0;ii<fpip->npad/2+1;ii++) fpip->otf[ii] *= fpip->ft[ii];//Convolution
+    for(int ii=0;ii<fpip->npad/2+1;ii++) {
+      double tmp = fpip->otf[ii].re;
+      fpip->otf[ii].re = (fpip->ft[ii].re * fpip->otf[ii].re) - (fpip->ft[ii].im * fpip->otf[ii].im);
+      fpip->otf[ii].im = (fpip->ft[ii].re * fpip->otf[ii].im) + (fpip->ft[ii].im * tmp);
+    }
+
+    //
+    fftw_execute(fpip->bplan);// FFT back
+    hermite_control(fpip->npad, fpip->xlp, fpip->ylp, fpip->lp1, fpip->lp2, fpip->fp1, fpip->fp2);//Compute interpolation coeff again
     ref = true;
   }
 
@@ -466,8 +474,11 @@ int fitgain_model2(int nwav, int npar, double *pars, double *dev, double **deriv
   //
   if((fpip->ech != pars[1]) || ref){
     double *wav1 = new double [fpip->nwav];
+    //
     for(int ww=0;ww<fpip->nwav;ww++) wav1[ww] = fpip->wav[ww] - pars[1];
-    hermite(fpip->npad, fpip->xlp, fpip->ylp, fpip->nwav, wav1, fpip->imean, fpip->lp1, fpip->lp2, fpip->fp1, fpip->fp2);
+    //
+    hermite(fpip->npad, fpip->xlp, fpip->ylp, fpip->nwav, wav1, fpip->imean, 
+	    fpip->lp1, fpip->lp2, fpip->fp1, fpip->fp2);
     delete [] wav1;
     fpip->ech = pars[1];
   }
@@ -548,10 +559,8 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
       fitpars[1].limits[0] = -0.3;
       fitpars[1].limits[1] = 0.3;
       if(npar > 2){
-	fitpars[2].limits[0] = fpi[0].rhr -0.04;
-	double imax = fpi[0].rhr + 0.04;
-	if(imax > 0.98) imax = 0.98;
-	fitpars[2].limits[1] = imax;
+	fitpars[2].limits[0] = fpi[0].rhr -0.1;
+	fitpars[2].limits[1] = 0.99;
 	fitpars[2].limited[0] = 1;
 	fitpars[2].limited[1] = 1;
       }
@@ -581,7 +590,11 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
   // CRISP profiles Tcrisp/Tcrisp_0).
   //
   for(int ii=0;ii<fpi[tid].npad/2+1;ii++) {
-    fpi[tid].ft[ii] /= fpi[tid].otf[ii];
+    //fpi[tid].ft[ii] /= fpi[tid].otf[ii];
+    double r = fpi[tid].otf[ii].im*fpi[tid].otf[ii].im + fpi[tid].otf[ii].re*fpi[tid].otf[ii].re;
+    double tmp = fpi[tid].ft[ii].re;
+    fpi[tid].ft[ii].re = (fpi[tid].ft[ii].re * fpi[tid].otf[ii].re + fpi[tid].ft[ii].im * fpi[tid].otf[ii].im) / r;
+    fpi[tid].ft[ii].im = (fpi[tid].ft[ii].im * fpi[tid].otf[ii].re - tmp * fpi[tid].otf[ii].im) / r;
   }
 
 

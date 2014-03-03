@@ -62,7 +62,8 @@
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
                           verbose = verbose, overwrite=overwrite, $
-                          descatter = descatter, show=show, LINK_DIR = link_dir
+                          descatter = descatter, show=show, LINK_DIR = link_dir, $
+                          nremove = remove
 
   inam = 'red::sum_data_intdif : '
   
@@ -108,6 +109,13 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 ; Extract tags from file names
 ; 
   state = red_getstates(files, /LINKS)
+
+
+  ;
+  ; Remove frames
+  ;
+  red_flagtuning, state, remove
+  
 
 ;
 ; build my states

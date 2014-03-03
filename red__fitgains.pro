@@ -119,7 +119,8 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   device, decompose = 0
 
   if(~keyword_set(npar)) then npar = 2L
-  npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
+  ;npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
+  if(keyword_set(fit_reflectivity)) then npar_t = max([npar,3]) else npar_t = max([npar,2])
 
   if(~keyword_set(niter)) then niter = 3L
   if(~keyword_set(rebin)) then rebin = 100L
