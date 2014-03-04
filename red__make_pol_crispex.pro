@@ -266,7 +266,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
 
      if(keyword_set(scans_only)) then begin
         if(n_elements(iscan) gt 0) then begin
-           if(st.uscan[ss] ne iscan) then begin
+           if(st.uscan[ss] ne string(iscan,format='(I05)')) then begin
               print,inam + 'skipping scan -> '+st.uscan[ss]
               continue
            endif
