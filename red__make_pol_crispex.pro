@@ -268,6 +268,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         if(n_elements(iscan) gt 0) then begin
            if(st.uscan[ss] ne iscan) then begin
               print,inam + 'skipping scan -> '+st.uscan[ss]
+              continue
            endif
         endif
         ofile = 'crispex.stokes.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+exten
