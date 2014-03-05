@@ -4,6 +4,8 @@
 ; otherwise do it once.  
 
 ; 2014-01-22 : MGL. Renamed for inclusion in the red_ namespace.
+;
+; 2014-03-05 : THI. Handle both arrays of strings and single strings.
 
 FUNCTION red_strreplace,st,pat1,pat2,n=n
 
@@ -11,17 +13,19 @@ FUNCTION red_strreplace,st,pat1,pat2,n=n
 
   m = red_strcount(st,pat1)
 
-  if m eq 0 then return,st
+  if max(m) le 0 then return,st
 
-  ;;print,m,n
+  idx = where(m gt n, count)
+  if count gt 0 then m[idx] = n
 
   st0 = st
-
-  for i=0,min([m,n])-1 do begin
-     pos = strpos(st0,pat1)
-     st0 = strmid(st0,0,pos)+pat2+red_strskp(st0,pat1)
-     ;;print,i,' ',st0
-  end
+  
+  while max(m) gt 0 do begin
+      idx = where(m gt 0)
+      pos = strpos(st0[idx],pat1)
+      st0 = strmid(st0[idx],0,transpose(pos))+pat2+red_strskp(st0[idx],pat1)
+      m -= 1
+  endwhile
 
   return,st0
 
