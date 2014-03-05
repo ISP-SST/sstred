@@ -66,6 +66,8 @@
 ; 
 ;   2013-09-12 : MGL. Documentation fix.
 ; 
+;   2014-03-05 : THI. Descriptive info about current commit, diff against master
+; 
 ;-
 pro red_writelog $
    , selfinfo = selfinfo $
@@ -204,17 +206,17 @@ pro red_writelog $
   printf, glu, ' '
   printf, glu, '------------------ GIT INFO -----------------'
   printf, glu, ' '
-  gitcmd = 'cd '+srcdir+'; git rev-parse HEAD'
+  gitcmd = 'cd '+srcdir+'; git describe --always --abbrev=12 --long --dirty=\ \(Modified\)'
   printf, glu, '$ '+gitcmd
   spawn, gitcmd, gitinfo
   printf, glu, gitinfo, format='(a0)'
   printf, glu, ' '
-  gitcmd = 'cd '+srcdir+'; git rev-parse origin'
+  gitcmd = 'cd '+srcdir+'; git rev-parse master'
   printf, glu, '$ '+gitcmd
   spawn, gitcmd, gitinfo
   printf, glu, gitinfo, format='(a0)'
   printf, glu, ' '
-  gitcmd = 'cd '+srcdir+'; git diff origin'
+  gitcmd = 'cd '+srcdir+'; git diff master'
   printf, glu, '$ '+gitcmd
   spawn, gitcmd, gitinfo
   printf, glu, gitinfo, format='(a0)'
