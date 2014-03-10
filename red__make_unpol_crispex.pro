@@ -73,7 +73,7 @@
 ;
 ;
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, timecor=timecor
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -401,7 +401,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      
      if(~keyword_set(scans_only)) then begin
         ;; Write this scan's data cube to assoc file
-        d1 = round(d*cscl)
+        if keyword_set(timecor) then tscl = tmean[ss] else tscl = 1
+        d1 = round(d*cscl*tscl)
         dat[ss] = fix(d1)
         if(keyword_set(verbose)) then begin
            print, inam +'scan=',ss,', max=', max(d1)
