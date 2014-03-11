@@ -73,7 +73,7 @@
 ;
 ;
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, timecor=timecor
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -371,7 +371,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         sclt = me / (median(tmp0[xx0:xx1,yy0:yy1]))
         sclr = me / (median(tmp1[xx0:xx1,yy0:yy1]))
         
-        tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) * tmean[ss]
+        tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
         
         ;; Apply destretch to anchor camera and prefilter correction
         if(wbcor) then tmp = stretch(temporary(tmp), grid1)
@@ -401,7 +401,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      
      if(~keyword_set(scans_only)) then begin
         ;; Write this scan's data cube to assoc file
-        if keyword_set(timecor) then tscl = tmean[ss] else tscl = 1
+        if keyword_set(no_timecor) then tscl = 1 else tscl = tmean[ss]
         d1 = round(d*cscl*tscl)
         dat[ss] = fix(d1)
         if(keyword_set(verbose)) then begin

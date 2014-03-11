@@ -73,7 +73,7 @@
 ;   2013-09-12 : MGL. Use red_flipthecube rather than flipthecube.
 ;
 ;-
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, timecor=timecor
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor
  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -317,12 +317,13 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      
      if(~keyword_set(scans_only)) then begin
         ;; Write this scan's data cube to assoc file
+        tscl = tmean[ss]
+        if(keyword_set(no_timecor)) then tscl = 1
+        ;;
         if(keyword_set(float)) then begin
-           if(keyword_set(timecor)) then dat[ss] = transpose(float(d)*tmean[ss], [0,1,3,2]) $
-           else dat[ss] = transpose(float(d), [0,1,3,2]) 
+           dat[ss] = transpose(float(d)*tscl, [0,1,3,2]) 
         endif else begin
-           if(keyword_set(timecor)) then dat[ss] = transpose(fix(round(d*cscl*tmean[ss])), [0,1,3,2]) $
-           else dat[ss] = transpose(fix(round(d*cscl)), [0,1,3,2]) 
+           dat[ss] = transpose(fix(round(d*cscl*tscl)), [0,1,3,2]) 
         endelse
      end else begin
         ;; Write this scan's data cube as an individual file.
