@@ -4,23 +4,22 @@
 ; Could make it more general using strskp.
 
 ; 2014-01-22 : MGL. Renamed for inclusion in the red_ namespace.
+;
+; 2014-03-05 : THI. Handle both arrays of strings and single strings.
 
 function red_strcount,st,pat1
 
   if strlen(pat1) eq 0 then return,0
-  if strlen(pat1) eq 1 then return,long(total(byte(st) eq (byte(pat1))[0]))
 
   ;; pat1 is not a single character
 
-  cnt=0
+  cnt=intarr(size([st],/dim))
   st0 = st
   st1 = red_strskp(st0,pat1)
 
-  while st0 ne st1 do begin
+  while not array_equal(st0,st1) do begin
      
-     cnt += 1
-
-     if strlen(st1) eq 0 then return,cnt
+     cnt += (st0 ne st1)
 
      st0 = st1
      st1 = red_strskp(st0,pat1)
