@@ -40,6 +40,8 @@
 ;   2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                namespace.
 ;
+;   2014-03-21 : MGL. Allow for multiple dark_dir.
+;
 ;-
 pro red::initialize, filename
                                 
@@ -52,7 +54,7 @@ pro red::initialize, filename
   self.filetype = 'MOMFBD'
   
   ;; Init vars
-  self.dark_dir = '' 
+  self.dark_dir = ptr_new('') 
   self.flat_dir = ptr_new('') 
   ;; self.data_dir = ''
   self.pinh_dir = '' 
@@ -91,8 +93,16 @@ pro red::initialize, filename
         'descatter_dir': begin
            self.descatter_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
-        'dark_dir': begin
-           self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
+;        'dark_dir': begin
+;           self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
+;        end
+        'dark_dir': BEGIN
+            if(strpos(line,"'") ne -1) THEN $
+              dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1]) $
+            ELSE $
+              tmp = (strsplit(line,' =',/extract))[1]
+            ptr_free, self.dark_dir
+            self.dark_dir = ptr_new(tmp, /NO_COPY)
         end
         'flat_dir': BEGIN
             if(strpos(line,"'") ne -1) THEN $
@@ -169,7 +179,10 @@ pro red::initialize, filename
      FOR i = 0, n_elements(*self.flat_dir)-1 DO $
        IF strmid((*self.flat_dir)[i], 0, 1) NE '/' AND strlen((*self.flat_dir)[i]) GT 0 $
        THEN (*self.flat_dir)[i] = self.root_dir + (*self.flat_dir)[i]
-     if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
+     FOR i = 0, n_elements(*self.dark_dir)-1 DO $
+       IF strmid((*self.dark_dir)[i], 0, 1) NE '/' AND strlen((*self.dark_dir)[i]) GT 0 $
+       THEN (*self.dark_dir)[i] = self.root_dir + (*self.dark_dir)[i]
+;     if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
      if(strmid(self.pinh_dir, 0, 1) NE '/' AND strlen(self.pinh_dir) gt 0) then self.pinh_dir = self.root_dir + self.pinh_dir
      if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then self.prefilter_dir = self.root_dir + self.prefilter_dir
      if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
@@ -200,7 +213,8 @@ pro red::initialize, filename
      print, 'red::initialize : WARNING : descatter_dir is undefined!'
      self.dodescatter = 0B
   endif
-  if(self.dark_dir eq '') then begin
+;  if(self.dark_dir eq '') then begin
+  IF ~ptr_valid(self.dark_dir) then begin
      print, 'red::initialize : WARNING : dark_dir is undefined!'
      self.dodark = 0B
   endif
@@ -256,7 +270,7 @@ pro red::initialize, filename
 
 
   ;; print fields
-  if(self.dodark) then print, 'red::initialize : dark_dir = '+ self.dark_dir
+  if(self.dodark) then print, 'red::initialize : dark_dir = '+ strjoin(*self.dark_dir, '  ')
   if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
   if(self.dopinh) then print, 'red::initialize : pinh_dir = '+ self.pinh_dir
   if(self.dopolcal) then print, 'red::initialize : polcal_dir = '+ self.polcal_dir
