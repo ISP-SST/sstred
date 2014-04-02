@@ -73,8 +73,10 @@
 ;                that have to do with the narrowband cameras. New
 ;                keyword nimages. Change subdirectory to "mfbd".
 ;
-;   2014-01-10   MGL. Follow Pit's lead and remove keyword
+;   2014-01-10 : MGL. Follow Pit's lead and remove keyword
 ;                outformat, use self.filetype instead. 
+;
+;   2014-04-02 : MGL. Fixed bug in IMAGE_DATA_DIR.
 ;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
@@ -212,7 +214,8 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, '  WAVELENGTH=' + lam
               printf, lun, '  OUTPUT_FILE=results/'+oname
               printf, lun, '  channel{'
-              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwbtag+'_nostate/'
+              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwb+'_nostate/'
+              ;printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwbtag+'_nostate/'
               printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+scan+'.'+upref[pp]+'.%07d'
                                 ; printf, lun, '    DIVERSITY=0.0 mm'
               printf, lun, '    GAIN_FILE=' + file_search(self.out_dir+'gaintables/'+self.camwbtag + $
