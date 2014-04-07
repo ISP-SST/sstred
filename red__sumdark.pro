@@ -113,11 +113,11 @@ pro red::sumdark, overwrite = overwrite, check = check, cams = cams
      if strmatch(cam,'Crisp-?') then begin
         ;; Matches Crisp cameras
 ;        spawn, 'find ' + *self.dark_dir + '/' + cam + '/|grep im.ex', files
-        files = file_search(*self.flat_dir + '/' + cam + '/cam*.im.ex.*', count = nf)
+        files = file_search(*self.dark_dir + '/' + cam + '/cam*.im.ex.*', count = nf)
     endif else begin
         ;; Matches blue cameras
 ;        spawn, 'find ' + *self.dark_dir + '/' + cam + '/|grep im.im', files
-        files = file_search(*self.flat_dir + '/' + cam + '/cam*.im.im.*', count = nf)
+        files = file_search(*self.dark_dir + '/' + cam + '/cam*.im.im.*', count = nf)
    endelse
 ;    nf = n_elements(files)
 
