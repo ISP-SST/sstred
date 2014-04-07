@@ -23,7 +23,7 @@
 ; 
 ; :Keywords:
 ;    
-;    thres : 
+;    thres : Threshold for pinhole detection
 ;    
 ;    
 ;    extraclip : 
@@ -73,6 +73,11 @@
 ;                tables as saved by red::sumpinh. 
 ;
 ;   2014-04-07 : THI. Use red_strreplace. Correct path for gains.
+;                Fix threshold bug. Loop over all present states and use
+;                average.
+;
+;
+;   TODO:  This routine is not particularly efficient, should be tweaked/optimized.
 ;
 ;-
 PRO red::getalignclips_new, thres = thres $
@@ -87,7 +92,7 @@ PRO red::getalignclips_new, thres = thres $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if(n_elements(thres) eq 0) then tr = 0.05 
+  if(n_elements(thres) eq 0) then thres = 0.05 
   if(n_elements(maxshift) eq 0) THEN maxshift = 35
    
   ;; Prepare for putting the different cameras in arrays
@@ -146,39 +151,10 @@ PRO red::getalignclips_new, thres = thres $
 
      endif
 
-     if cw ne 1 then begin
-
-        ;; More than a single pinhole image per camera, select the one
-        ;; expected to be the brightest based on its (tuning) state.
-
-        red_extractstates, wfiles, wav = wav, dwav = dwav, /basename
-        tmp = max(abs(dwav-double(wav)), ml)
-              
-        wfiles = wfiles[ml]
-        tfiles = tfiles[ml]
-        rfiles = rfiles[ml]
-
-     endif
-
-     pnames = [wfiles, tfiles, rfiles]
-
-     print, inam+' : images to be calibrated:'
-;
-     for icam = 0, Ncams-1 do begin
-        ostring = ' -> '+pnames[icam]
-        if icam eq icamref then ostring += ' (reference)'
-        print, ostring
-     endfor
-
-     ref = f0(pnames[icamref])
-     dim = size(ref,/dim)
-     pics = fltarr(dim[0], dim[1], Ncams)
-     pics[*,*,icamref] = ref
-
-     ;; Read slave images
-     pics[*,*,icamnonrefs[0]]= f0(pnames[icamnonrefs[0]])
-     pics[*,*,icamnonrefs[1]]= f0(pnames[icamnonrefs[1]])
-
+     tmp = f0(wfiles[0])
+     dim = size(tmp,/dim)
+     pics = fltarr(dim[0], dim[1], Ncams, cw)
+     
      ;; Define the search space for rotation and shifts in x and y.
      rots = [0, 2, 5, 7]
      xshifts = [-1, 0, 1]
@@ -191,106 +167,144 @@ PRO red::getalignclips_new, thres = thres $
 
      ;; Define arrays to store stuff
      cor = fltarr(Nsearchr, Nsearchx, Nsearchy) ; Correlation coefficients
-     ssh = intarr(2, Ncams)
-     i_rot = intarr(Ncams)
-     i_xshift = intarr(Ncams)
-     i_yshift = intarr(Ncams)
-
-     ;; Find pinhole grid for reference image
-     print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-     red_findpinholegrid, pics[*,*,icamref], simx_orig, simy_orig, thres = thres
-     print, 'done'
-
-     gridspacing = median([deriv(simx_orig),deriv(simy_orig)])
-
-     ;; Remove rows and columns of pinholes that are close enough to the
-     ;; FOV borders in the reference channel, that they could be outside
-     ;; the FOV in some other channel.
-     border = gridspacing/2
-     simx_orig = simx_orig(where(simx_orig gt border and simx_orig lt dim[0]-border))
-     simy_orig = simy_orig(where(simy_orig gt border and simy_orig lt dim[1]-border))
-     simx = simx_orig
-     simy = simy_orig
+     ssh = intarr(2, Ncams,cw)
+     i_rot = intarr(Ncams,cw)
+     i_xshift = intarr(Ncams,cw)
+     i_yshift = intarr(Ncams,cw)
      
-     Nsimx = (size(simx_orig, /dim))[0] 
-     Nsimy = (size(simy_orig, /dim))[0]  
+     Nsimx = 0
+     Nsimy = 0
 
-     ;; Make array with peak intensities for all cameras
-     peaks = fltarr(Nsimx, Nsimy, Ncams)
-     for icam = 0, Ncams-1 do begin
+     for istate = 0, cw-1 do begin
+     
+         pnames = [wfiles[istate], tfiles[istate], rfiles[istate]]
 
-        if icam eq icamref then begin
-           simx = simx_orig
-           simy = simy_orig
-        endif else begin
-           print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-           red_findpinholegrid, pics[*,*,icam], simx, simy, thres=thres
-           print, 'done'
-           simx = simx(where(simx gt border and simx lt dim[0]-border))
-           simy = simy(where(simy gt border and simy lt dim[1]-border))
-           ;; May have to reduce the grid size
-           Nsimx = Nsimx < (size(simx, /dim))[0] 
-           Nsimy = Nsimy < (size(simy, /dim))[0] 
-        endelse
+         print, inam+' : images to be calibrated:'
+    ;
+         for icam = 0, Ncams-1 do begin
+            ostring = ' -> '+pnames[icam]
+            if icam eq icamref then ostring += ' (reference)'
+            print, ostring
+         endfor
 
-        for isim = 0, Nsimx-1 do begin
-           for jsim = 0, Nsimy-1 do begin
-              peaks[isim, jsim, icam] = max(pics[simx[isim]-border:simx[isim]+border $
-                                                 , simy[jsim]-border:simy[jsim]+border $
-                                                 , icam])
-           endfor               ; jsim
-        endfor                  ; isim
+         ;; Read reference image
+         pics[*,*,icamref,istate]= f0(pnames[icamref])
 
-     endfor                     ; icam
+         ;; Read slave images
+         pics[*,*,icamnonrefs[0],istate]= f0(pnames[icamnonrefs[0]])
+         pics[*,*,icamnonrefs[1],istate]= f0(pnames[icamnonrefs[1]])
 
+         ;; Find pinhole grid for reference image
+         print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
+         red_findpinholegrid, pics[*,*,icamref,istate], simx_orig, simy_orig, thres = thres
+         print, 'done'
+
+         gridspacing = median([deriv(simx_orig),deriv(simy_orig)])
+
+         ;; Remove rows and columns of pinholes that are close enough to the
+         ;; FOV borders in the reference channel, that they could be outside
+         ;; the FOV in some other channel.
+         border = gridspacing/2
+         simx_orig = simx_orig(where(simx_orig gt border and simx_orig lt dim[0]-border))
+         simy_orig = simy_orig(where(simy_orig gt border and simy_orig lt dim[1]-border))
+         simx = simx_orig
+         simy = simy_orig
+         
+         Nsimx = (size(simx_orig, /dim))[0] 
+         Nsimy = (size(simy_orig, /dim))[0]  
+
+         ;; Make array with peak intensities for all cameras
+         peaks = fltarr(Nsimx, Nsimy, Ncams, cw)
+         for icam = 0, Ncams-1 do begin
+
+            if icam eq icamref then begin
+               simx = simx_orig
+               simy = simy_orig
+            endif else begin
+               print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
+               red_findpinholegrid, pics[*,*,icam,istate], simx, simy, thres=thres
+               print, 'done'
+               simx = simx(where(simx gt border and simx lt dim[0]-border))
+               simy = simy(where(simy gt border and simy lt dim[1]-border))
+               ;; May have to reduce the grid size
+               Nsimx = Nsimx < (size(simx, /dim))[0] 
+               Nsimy = Nsimy < (size(simy, /dim))[0] 
+            endelse
+
+            for isim = 0, Nsimx-1 do begin
+               for jsim = 0, Nsimy-1 do begin
+                  peaks[isim, jsim, icam, *] = max(pics[simx[isim]-border:simx[isim]+border $
+                                                     , simy[jsim]-border:simy[jsim]+border $
+                                                     , icam, istate])
+               endfor               ; jsim
+            endfor                  ; isim
+
+         endfor                     ; icam
+
+     endfor                         ; istate
+     
      ;; Possibly reduce peaks array size
-     peaks = peaks[0:Nsimx-1, 0:Nsimy-1, *]
+     peaks = peaks[0:Nsimx-1, 0:Nsimy-1, *, *]
      
      ;; Match reference peaks with other cameras
-     refpeaks = peaks[Nsearchx/2:Nsimx-Nsearchx/2-1, Nsearchy/2:Nsimy-Nsearchy/2-1, icamref]
-     for im = 0, Ncams-2 do begin
-        
-        icam = icamnonrefs[im]
+     for istate = 0, cw-1 do begin
+     
+         refpeaks = peaks[Nsearchx/2:Nsimx-Nsearchx/2-1, Nsearchy/2:Nsimy-Nsearchy/2-1, icamref, istate]
+     
+         for im = 0, Ncams-2 do begin
+            
+            icam = icamnonrefs[im]
 
-        ;; Find matching orientation and shift.
-        for irot = 0, Nsearchr-1 do begin ; Loop over orientations
+            ;; Find matching orientation and shift.
+            for irot = 0, Nsearchr-1 do begin ; Loop over orientations
 
-           rotpeaks = rotate(peaks[*, *, icam], rots[irot])
-           
-           for ix = 0, Nsearchx-1 do begin    ; Loop over x shifts
-              for iy = 0, Nsearchy-1 do begin ; Loop over y shifts
+               rotpeaks = rotate(peaks[*, *, icam, istate], rots[irot])
+               
+               for ix = 0, Nsearchx-1 do begin    ; Loop over x shifts
+                  for iy = 0, Nsearchy-1 do begin ; Loop over y shifts
 
-                 shiftpeaks = rotpeaks[xshifts[ix]+Nsearchx/2:xshifts[ix]+Nsimx-Nsearchx/2-1 $
-                                       , yshifts[iy]+Nsearchy/2:yshifts[iy]+Nsimy-Nsearchy/2-1]
-                 cor[irot, ix, iy] = correlate(refpeaks, shiftpeaks)
-              
-              endfor            ; iy
-           endfor               ; ix
-           
-        endfor                  ; irot
+                     shiftpeaks = rotpeaks[xshifts[ix]+Nsearchx/2:xshifts[ix]+Nsimx-Nsearchx/2-1 $
+                                           , yshifts[iy]+Nsearchy/2:yshifts[iy]+Nsimy-Nsearchy/2-1]
+                     cor[irot, ix, iy] = correlate(refpeaks, shiftpeaks)
+                  
+                  endfor            ; iy
+               endfor               ; ix
+               
+            endfor                  ; irot
 
-        ;; Find best correlation
-        cm = max(cor, maxloc)
-        maxindx = array_indices(cor,maxloc)
+            ;; Find best correlation
+            cm = max(cor, maxloc)
+            maxindx = array_indices(cor,maxloc)
 
-        ;; Find rot and shifts that correspond to best correlation
-        i_rot[icam] = rots[maxindx[0]]
-        i_xshift[icam] = xshifts[maxindx[1]]
-        i_yshift[icam] = yshifts[maxindx[2]]
+            ;; Find rot and shifts that correspond to best correlation
+            i_rot[icam,istate] = rots[maxindx[0]]
+            i_xshift[icam,istate] = xshifts[maxindx[1]]
+            i_yshift[icam,istate] = yshifts[maxindx[2]]
 
-        ;; Use the found orientation and find shifts
-        p1 = rotate(reform(pics[*, *, icam]), i_rot[icam])
+            ;; Use the found orientation and find shifts
+            p1 = rotate(reform(pics[*, *, icam, istate]), i_rot[icam,istate])
 
-        mxsh = maxshift+max(abs([i_xshift[icam], i_yshift[icam]]))*gridspacing
-        print, 'Max shift allowed: ', mxsh
-        print, maxindx
+            mxsh = maxshift+max(abs([i_xshift[icam,istate], i_yshift[icam,istate]]))*gridspacing
+            print, 'Max shift allowed: ', mxsh
+            print, maxindx
 
-        ssh[*, icam] = red_shc(pics[*,*,icamref], p1, RANGE = mxsh)
+            ssh[*, icam, istate] = red_shc(pics[*,*, icamref, istate], p1, RANGE = mxsh)
 
-        print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam], 2), $
-               ' -> shift: x,y=', strtrim(ssh[0, icam], 2), ', ', strtrim(ssh[1, icam], 2)
+            print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam,istate], 2), $
+                   ' -> shift: x,y=', strtrim(ssh[0, icam, istate], 2), ', ', strtrim(ssh[1, icam, istate], 2)
 
-     endfor                     ; im (icam)
+         endfor                     ; im (icam)
+
+     endfor                         ; istate
+
+     ; THI: saving fitted parameters for all states to see the variance.
+     ;save, file = self.out_dir + '/calib/align_clips.'+prefilters[ipref]+'_allstates.sav', ssh, i_rot
+
+     ;; Simply average over the states and save one alignment-file per camera/prefilter,
+     ;; for wide lines we may need to store several files and interpolate when they are used.
+     ssh = round(total(ssh,3)/cw)
+     pics = round(total(pics,4)/cw)
+     i_rot = round(total(i_rot,2)/cw)
 
      ;; Clip images
      ssh = -ssh
