@@ -72,7 +72,7 @@
 ;                when there are more than one. Fixed display of gain
 ;                tables as saved by red::sumpinh. 
 ;
-;   2014-04-07 : THI. Use red_strreplace.
+;   2014-04-07 : THI. Use red_strreplace. Correct path for gains.
 ;
 ;-
 PRO red::getalignclips_new, thres = thres $
@@ -152,8 +152,8 @@ PRO red::getalignclips_new, thres = thres $
         ;; expected to be the brightest based on its (tuning) state.
 
         red_extractstates, wfiles, wav = wav, dwav = dwav, /basename
-        tmp = max(abs(dwav-double(wav)), ml)           
-    
+        tmp = max(abs(dwav-double(wav)), ml)
+              
         wfiles = wfiles[ml]
         tfiles = tfiles[ml]
         rfiles = rfiles[ml]
@@ -381,6 +381,12 @@ PRO red::getalignclips_new, thres = thres $
      for icam = 0, Ncams-1 do begin
 
         gname = red_strreplace(pnames[icam], '.pinh', '.gain')
+        gname = red_strreplace(gname, '/pinh/', '/gaintables/')
+        if cams[icam] EQ self.camwbtag then begin
+            ;; The WB gain file name has no tuning info
+            gname = strsplit(gname, '.', count = nn, /extr)
+            gname = strjoin([gname[0:nn-4], gname[nn-1]], '.')
+        endif
         if file_test(gname) then begin
            gains[*,*,icam]  = f0(gname)
         endif else begin
