@@ -378,7 +378,7 @@ PRO red::getalignclips_new, thres = thres $
      gains = fltarr(dim[0], dim[1], Ncams)
      for icam = 0, Ncams-1 do begin
 
-        gname = strreplace(pnames[icam], '.pinh', '.gain')
+        gname = red_strreplace(pnames[icam], '.pinh', '.gain')
         if file_test(gname) then begin
            gains[*,*,icam]  = f0(gname)
         endif else begin
