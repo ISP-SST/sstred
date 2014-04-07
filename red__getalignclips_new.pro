@@ -72,6 +72,8 @@
 ;                when there are more than one. Fixed display of gain
 ;                tables as saved by red::sumpinh. 
 ;
+;   2014-04-07 : THI. Use red_strreplace.
+;
 ;-
 PRO red::getalignclips_new, thres = thres $
                             , pref = pref $

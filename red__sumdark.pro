@@ -47,6 +47,8 @@
 ;   2014-03-21 : MGL. Allow for multiple dark_dir. Make it work for
 ;                blue cameras. New keyword cams.
 ;
+;   2014-04-07 : THI. Bugfix: look for darks in dark_dir.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, check = check, cams = cams
 

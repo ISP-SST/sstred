@@ -83,7 +83,8 @@
 ;                and yoffs. Added documentation. 
 ; 
 ; 
-; 
+;   2014-04-07 : THI. Allow cross-term when fitting plane.
+;
 ;-
 function red_pinh_make_fits_planefunct, x, y, p
 
