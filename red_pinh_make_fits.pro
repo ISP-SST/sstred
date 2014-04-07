@@ -87,7 +87,7 @@
 ;-
 function red_pinh_make_fits_planefunct, x, y, p
 
-  return, p[0] + p[1]*x + p[2]*y
+  return, p[0] + p[1]*x + p[2]*y + p[3]*x*y
 
 end
 
@@ -126,7 +126,7 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;     endelse
      err = dxtilts[ich, *]*0.+1.
      dxtiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dxtilts[ich, *]) $
-                              , err, [0., 0., 0.]) 
+                              , err, [0., 0., 0., 0.], WEIGHTS=1D) 
      xoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dxtiltsc)
 
      ;; Y tilts, differential to anchor channel
@@ -138,7 +138,7 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;     endelse 
      err = dytilts[ich, *]*0.+1.
      dytiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dytilts[ich, *]) $
-                              , err, [0., 0., 0.]) 
+                              , err, [0., 0., 0., 0.], WEIGHTS=1D) 
      yoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dytiltsc)
 
      if n_elements(foc) ne 0 then begin
