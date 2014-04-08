@@ -128,7 +128,8 @@
 ;                etc., being 1D arrays.
 ; 
 ; 
-; 
+;   2014-04-08 : THI. New keyword show_plots, change default to not
+;                display plots
 ; 
 ;-
 pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
@@ -145,7 +146,8 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                          , YTILTS = ytilts $ 
                          , FOC = foc $       
                          , METRICS = metrics  $ 
-                         , margin = margin
+                         , margin = margin $
+                         , show_plots = show_plots
 
   ana_output = 1                ; Otherwise use MOMFBD format output (for development/debugging).
 
@@ -165,7 +167,9 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
   ;; Remove old metric files if needed.
   spawn, 'cd '+workdir+' ; rm -f metric.*'
 
-  window, 0
+  if keyword_set(show_plots) then begin 
+      window, 0
+  endif
   
   ;; New subfield offsets, submit jobs
   d = sz/2 + margin
@@ -201,19 +205,20 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
         binsize = (hmax - hmin) / (Nbins - 1)
         intensities = locations + binsize/2.
         
-        plot,intensities,hh,/xstyle, /ystyle
+        dummy = max(smooth(hh,15),ml)
         
-        print,max(smooth(hh,15),ml)  
         Nfit = 51
         indx = ml + indgen(Nfit) - (Nfit-1)/2
         
-        plot,intensities[indx],hh[indx], /xstyle, /ystyle
-        
         yfit=mpfitpeak(float(intensities[indx]), float(hh[indx]), a, Nterms = 5)
-        oplot,intensities[indx],yfit,color=fsc_color('yellow')
-        oplot,[0,0]+a[1],[0,1]*max(hh),color=fsc_color('yellow')
-        oplot,[0,0]+mn,[0,1]*max(hh),color=fsc_color('cyan')
-        print,intensities[ml]  
+        if keyword_set(show_plots) then begin 
+            plot,intensities[indx],hh[indx], /xstyle, /ystyle
+            oplot,intensities[indx],yfit,color=fsc_color('yellow')
+            oplot,[0,0]+a[1],[0,1]*max(hh),color=fsc_color('yellow')
+            oplot,[0,0]+mn,[0,1]*max(hh),color=fsc_color('cyan')
+        endif
+        
+        ;print,intensities[ml]
         
         ;; Subtract the fitted dark level and renormalize to unit max.
         ;; The momfbd program will then renormalize all channels to
@@ -307,7 +312,7 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
      if arg_present(xtilts) or arg_present(ytilts) then begin
 
         ;; Read momfbd output
-        print, 'Read results for ', ihole
+        ;print, 'Read results for ', ihole
 
         if ana_output then begin
            for ich = 0, Nch-1 do begin

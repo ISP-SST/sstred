@@ -127,7 +127,7 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;     endelse
      err = dxtilts[ich, *]*0.+1.
      dxtiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dxtilts[ich, *]) $
-                              , err, [0., 0., 0., 0.], WEIGHTS=1D) 
+                              , err, [0., 0., 0., 0.], WEIGHTS=1D, /QUIET) 
      xoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dxtiltsc)
 
      ;; Y tilts, differential to anchor channel
@@ -139,7 +139,7 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;     endelse 
      err = dytilts[ich, *]*0.+1.
      dytiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dytilts[ich, *]) $
-                              , err, [0., 0., 0., 0.], WEIGHTS=1D) 
+                              , err, [0., 0., 0., 0.], WEIGHTS=1D, /QUIET) 
      yoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dytiltsc)
 
      if n_elements(foc) ne 0 then begin
@@ -159,7 +159,7 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;        endelse
         err = foc[ich, *]*0.+1.
         dfocc = MPFIT2DFUN('red_pinh_make_fits_planefunct', xx, yy, dfoc[ich, *] $
-                              , err, [0., 0., 0.]) 
+                              , err, [0., 0., 0.], /QUIET) 
         ddiv[ich] = mean(dfoc[ich, *]) 
 
 ;        mnn = min(dfocfit)*3
