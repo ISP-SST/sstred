@@ -72,9 +72,9 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
   camr = self.camrtag
   camw = self.camwbtag
 
-  ft = file_search(self.out_dir+'/pinh/' + camt + '.' + pref + '.*.pinh', count = ct)
-  fr = file_search(self.out_dir+'/pinh/' + camr + '.' + pref + '.*.pinh', count = cr)
-  fw = file_search(self.out_dir+'/pinh/' + camw + '.' + pref + '.*.pinh', count = cw)
+  ft = file_search(self.out_dir+'/pinh_align/' + camt + '.' + pref + '.*.pinh', count = ct)
+  fr = file_search(self.out_dir+'/pinh_align/' + camr + '.' + pref + '.*.pinh', count = cr)
+  fw = file_search(self.out_dir+'/pinh_align/' + camw + '.' + pref + '.*.pinh', count = cw)
 
   ;; Get image states
   tstat = red_getstates_pinh(ft, lam = lams)
