@@ -83,7 +83,8 @@
 PRO red::getalignclips_new, thres = thres $
                             , pref = pref $
                             , extraclip = extraclip $
-                            , maxshift = maxshift
+                            , maxshift = maxshift $
+                            , show_plots = show_plots
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -108,6 +109,10 @@ PRO red::getalignclips_new, thres = thres $
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
   self -> getcamtags, dir = self.pinh_dir
+  ph_dir = self.out_dir+'/pinh_align/'
+  gt_dir = self.out_dir+'/gaintables/'
+  ph_dir = red_strreplace(ph_dir,'//','/')
+  gt_dir = red_strreplace(gt_dir,'//','/')
   camw = self.camwbtag
   camt = self.camttag
   camr = self.camrtag
@@ -115,9 +120,9 @@ PRO red::getalignclips_new, thres = thres $
   labs = ['WB', 'NBT', 'NBR']
 
   ;; Selected prefilter or all prefilters?
-  fw = file_search(self.out_dir+'/pinh/' + camw +'.*.pinh', count = cw)
+  fw = file_search( ph_dir + camw +'.*.pinh', count = cw)
   if cw eq 0 then begin
-     print, inam, ' : ERROR : No wideband pinholes found in ', self.out_dir+'/pinh/'
+     print, inam, ' : ERROR : No wideband pinholes found in ', ph_dir
      retall
   endif
   prefilters = strarr(cw)
@@ -139,9 +144,9 @@ PRO red::getalignclips_new, thres = thres $
 
   for ipref = 0, Npref-1 do begin
 
-     wfiles = file_search(self.out_dir+'/pinh/' + camw +'.'+prefilters[ipref]+'*.pinh', count = cw)
-     tfiles = file_search(self.out_dir+'/pinh/' + camt +'.'+prefilters[ipref]+'*.pinh', count = ct)
-     rfiles = file_search(self.out_dir+'/pinh/' + camr +'.'+prefilters[ipref]+'*.pinh', count = cr)
+     wfiles = file_search(ph_dir + camw +'.'+prefilters[ipref]+'*.pinh', count = cw)
+     tfiles = file_search(ph_dir + camt +'.'+prefilters[ipref]+'*.pinh', count = ct)
+     rfiles = file_search(ph_dir + camr +'.'+prefilters[ipref]+'*.pinh', count = cr)
   
      if (cw ne ct) or (cw ne cr) then begin
         
@@ -285,13 +290,13 @@ PRO red::getalignclips_new, thres = thres $
             p1 = rotate(reform(pics[*, *, icam, istate]), i_rot[icam,istate])
 
             mxsh = maxshift+max(abs([i_xshift[icam,istate], i_yshift[icam,istate]]))*gridspacing
-            print, 'Max shift allowed: ', mxsh
-            print, maxindx
+            ;print, 'Max shift allowed: ', mxsh
+            ;print, maxindx
 
             ssh[*, icam, istate] = red_shc(pics[*,*, icamref, istate], p1, RANGE = mxsh)
 
-            print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam,istate], 2), $
-                   ' -> shift: x,y=', strtrim(ssh[0, icam, istate], 2), ', ', strtrim(ssh[1, icam, istate], 2)
+            ;print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam,istate], 2), $
+            ;       ' -> shift: x,y=', strtrim(ssh[0, icam, istate], 2), ', ', strtrim(ssh[1, icam, istate], 2)
 
          endfor                     ; im (icam)
 
@@ -370,32 +375,11 @@ PRO red::getalignclips_new, thres = thres $
 
      refrot = 0
      save, file = self.out_dir + '/calib/align_clips.'+prefilters[ipref]+'.sav', acl, cl, refrot, sx, sy, ssh
-
-     print, 'Please check that the displayed images are aligned and oriented properly.'
-
-     szx_disp = dim[0]/2
-     szy_disp = dim[1]/2
-     disp_spacing = 5
-
-     title = '        '+prefilters[ipref]+':      '
-     for icam = 0, Ncams-1 do title = title+labs[icam]+' = '+cams[icam]+'        '
      
-     window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 0
-     erase, 255
-     for icam = 0, Ncams-1 do begin
-        dispim = red_clipim(pics[*,*,icam], cl[*,icam])
-        dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
-        tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
-     endfor
-
-     ;; Display gain tables?
-     window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
-     erase, 255
      gains = fltarr(dim[0], dim[1], Ncams)
      for icam = 0, Ncams-1 do begin
-
         gname = red_strreplace(pnames[icam], '.pinh', '.gain')
-        gname = red_strreplace(gname, '/pinh/', '/gaintables/')
+        gname = red_strreplace(gname, ph_dir, gt_dir)
         if cams[icam] EQ self.camwbtag then begin
             ;; The WB gain file name has no tuning info
             gname = strsplit(gname, '.', count = nn, /extr)
@@ -406,13 +390,36 @@ PRO red::getalignclips_new, thres = thres $
         endif else begin
            print, inam+' : Could not find gaintable '+gname
         endelse
-
-        dispim = red_clipim(gains[*,*,icam], cl[*,icam])
-        dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
-        tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
-
      endfor
 
+     if keyword_set(show_plots) then begin
+     
+         print, 'Please check that the displayed images are aligned and oriented properly.'
+
+         szx_disp = dim[0]/2
+         szy_disp = dim[1]/2
+         disp_spacing = 5
+
+         title = '        '+prefilters[ipref]+':      '
+         for icam = 0, Ncams-1 do title = title+labs[icam]+' = '+cams[icam]+'        '
+         
+         window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 0
+         erase, 255
+         for icam = 0, Ncams-1 do begin
+            dispim = red_clipim(pics[*,*,icam], cl[*,icam])
+            dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+            tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+         endfor
+
+         ;; Display gain tables?
+         window, xs = szx_disp*Ncams+(Ncams+1)*disp_spacing, ys = szy_disp+2*disp_spacing, title = title, 1
+         erase, 255
+         for icam = 0, Ncams-1 do begin
+            dispim = red_clipim(gains[*,*,icam], cl[*,icam])
+            dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
+            tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+         endfor
+     endif
      ;; Print out some info about blocked rows/columns.
      ;; One could add intelligence here, suggesting a new setting for extraclip.      <-------------
      gg = red_clipim(gains[*,*,icamref], cl[*,icamref]) ne 0 
