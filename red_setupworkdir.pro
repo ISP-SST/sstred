@@ -358,7 +358,7 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
         printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
-        printf, Slun, 'a -> sumpinh'
+        printf, Slun, 'a -> sumpinh,/pinhole_align'
      endif else begin
         pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -367,7 +367,7 @@ pro red_setupworkdir, root_dir = root_dir $
               printf, Clun, 'pinh_dir = '+red_strreplace(pinhsubdirs[j], root_dir, '')
               printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
-              printf, Slun, 'a -> sumpinh'
+              printf, Slun, 'a -> sumpinh,/pinhole_align'
            endif
         endfor
      endelse
@@ -385,10 +385,7 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Clun, 'polcal_dir = '+red_strreplace(polcaldirs[i], root_dir, '')
         Npol += 1
         printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-        printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
-        printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
-        printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
-        printf, Slun, 'a -> polcalcube, cam = "Crisp-R"' 
+        printf, Slun, 'a -> sumpolcal, /check'
      endif else begin
         polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -397,16 +394,14 @@ pro red_setupworkdir, root_dir = root_dir $
               printf, Clun, 'polcal_dir = '+red_strreplace(polcalsubdirs[j], root_dir, '')
               Npol += 1
               printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-              printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-T"' 
-              printf, Slun, 'a -> polcalcube, cam = "Crisp-T"' 
-              printf, Slun, 'a -> sumpolcal, /check, ucam="Crisp-R"' 
-              printf, Slun, 'a -> polcalcube, cam = "Crisp-R"' 
+              printf, Slun, 'a -> sumpolcal, /check' 
            endif
         endfor
      endelse
   endfor
   ;; Find out the prefilters for which polcal needs to be run
   if Npol gt 0 then begin
+     printf, Slun, 'a -> polcalcube' 
      printf, Slun, "spawn, 'ls polcal_cubes/* | grep 3d.f | cut -d. -f 2 | sort| uniq', polprefs"
      printf, Slun, "for i = 0, n_elements(polprefs)-1 do a -> polcal, pref=polprefs[i], nthreads="+strtrim(Nthreads, 2)
   endif
@@ -481,19 +476,16 @@ pro red_setupworkdir, root_dir = root_dir $
 
 
   printf, Slun, ''
+  printf, Slun, 'a -> getalignclips_new' 
+  printf, Slun, 'a -> getoffsets' 
+  
+  printf, Slun, ''
+  printf, Slun, 'a -> pinholecalib'
+  
+  printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
   printf, Slun, ';; This is how far we should be able to run unsupervised'
   printf, Slun, 'stop'          
-  printf, Slun, ''
-
-  printf, Slun, 'a -> getalignclips' 
-  printf, Slun, 'a -> getoffsets' 
-
-  printf, Slun, ''
-  printf, Slun, ';; Outside IDL:'
-  printf, Slun, ';; $ cd calib'
-  printf, Slun, ';; $ pinholecalib.py -s N *.cfg' 
-  printf, Slun, ';; $ cd ..'
   printf, Slun, ''
 
   print, 'Descatter (not implemented yet)'
