@@ -110,69 +110,70 @@ pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = n
               print, inam + ' : Available prefilters are:'
               for ii = 0, npref-1 do print, ii, +' -> '+upref[ii], FORMAT='(I3,A)'
               read, ii, prompt = 'Select prefilter number: '
-              ipref = upref[ii]
-              
-           endif else ipref = pref
-           
-        endif else begin
-           if(npref gt 1) then begin
-              print, inam + ' : Found prefilters:'
-              for ii = 0, npref-1 do print, ii, +' -> '+upref[ii], FORMAT='(I3,A)'
-              read, ii, prompt = 'Select prefilter number: '
-              ipref = upref[ii]
-           endif else begin
-              ipref = upref[0]
-           endelse 
-        endelse
+              upref = upref[ii]
+           endif else upref = upref[idx]
+        endif ; else begin
+;            if(npref gt 1) then begin
+;               print, inam + ' : Found prefilters:'
+;               for ii = 0, npref-1 do print, ii, +' -> '+upref[ii], FORMAT='(I3,A)'
+;               read, ii, prompt = 'Select prefilter number: '
+;               ipref = upref[ii]
+;            endif else begin
+;               ipref = upref[0]
+;            endelse 
+;         endelse
      endif
 
-     print, inam + ' : Selected prefilter -> '+ipref
-     if(keyword_set(descatter) AND (ipref eq '8542' OR ipref eq '7772')) then begin
-        print, inam + ' : loading descatter data for '+icam
-        bg =  f0(self.descatter_dir + '/' + icam + '.backgain.f0')
-        psf = f0(self.descatter_dir + '/' + icam + '.psf.f0')
-     endif
+     npref = n_elements(upref)
+     for ii = 0, npref-1 do begin
+         print, inam + ' : Processing prefilter -> '+upref[ii]
+         if(keyword_set(descatter) AND (upref[ii] eq '8542' OR upref[ii] eq '7772')) then begin
+            print, inam + ' : loading descatter data for '+icam
+            bg =  f0(self.descatter_dir + '/' + icam + '.backgain.f0')
+            psf = f0(self.descatter_dir + '/' + icam + '.psf.f0')
+         endif
 
-     ;; Read data
-     dim = size(f0(f[0]), /dimension)
-     nx = dim[0]
-     ny = dim[1]
-     d = fltarr(nlc, nqw, nlp, nx, ny)
-     d1d = fltarr(nlc, nqw, nlp)
+         ;; Read data
+         dim = size(f0(f[0]), /dimension)
+         nx = dim[0]
+         ny = dim[1]
+         d = fltarr(nlc, nqw, nlp, nx, ny)
+         d1d = fltarr(nlc, nqw, nlp)
 
-     for pp = 0, nlp - 1 do for qq = 0, nqw - 1 do for ll = 0, nlc-1 do begin
-        istate = ulp[pp]+'.'+uqw[qq]+'.'+ipref+'.'+ulc[ll]
-        idx = where(stat.state eq istate, count)
-        if count ne 1 then begin
-           print, inam + ' : ERROR, irregular state -> '+ istate
-           stop
-        endif else print, inam + ' : loading -> '+cams[cc]+'.'+istate
-        d[ll,qq,pp,*,*] = f0(f[idx]) - dd
-        if(keyword_set(descatter) and (ipref eq '8542' or ipref eq '7772')) then $
-           d[ll,qq,pp,*,*] = red_cdescatter(reform(d[ll,qq,pp,*,*]), bg, psf, /verbose, nthreads = nthreads)
+         for pp = 0, nlp - 1 do for qq = 0, nqw - 1 do for ll = 0, nlc-1 do begin
+            istate = ulp[pp]+'.'+uqw[qq]+'.'+upref[ii]+'.'+ulc[ll]
+            idx = where(stat.state eq istate, count)
+            if count ne 1 then begin
+               print, inam + ' : ERROR, irregular state -> '+ istate
+               stop
+            endif else print, inam + ' : loading -> '+cams[cc]+'.'+istate
+            d[ll,qq,pp,*,*] = f0(f[idx]) - dd
+            if(keyword_set(descatter) and (upref[ii] eq '8542' or upref[ii] eq '7772')) then $
+               d[ll,qq,pp,*,*] = red_cdescatter(reform(d[ll,qq,pp,*,*]), bg, psf, /verbose, nthreads = nthreads)
 
-        d1d[ll,qq,pp] = mean(red_fillnan(d[ll,qq,pp,100:nx-101,100:ny-101]))
+            d1d[ll,qq,pp] = mean(red_fillnan(d[ll,qq,pp,100:nx-101,100:ny-101]))
+         endfor
+
+         ;; Save data
+         outdir = self.out_dir + '/polcal_cubes/'
+         file_mkdir, outdir
+         print, inam + ' : saving '+outdir+icam+'.'+upref[ii]+'.3d.fits'
+        ; fzwrite, temporary(d), outdir+icam+'.'+upref[ii]+'.3d.fits',' '
+         writefits,  outdir+icam+'.'+upref[ii]+'.3d.fits', temporary(d)
+
+         ;; 1D data and states
+         print, inam + ' : saving '+outdir+icam+'.'+upref[ii]+'.1d.fits'
+         ;fzwrite, d1d, outdir+icam+'.'+upref[ii]+'.1d.fits',' '
+         writefits,outdir+icam+'.'+upref[ii]+'.1d.fits', d1d
+         qw = float(strmid(uqw,2))
+         lp = float(strmid(ulp,2))
+         print, inam + ' : saving '+outdir+icam+'.'+upref[ii]+'.qw.fits'
+         ;fzwrite, qw, outdir+icam+'.'+upref[ii]+'.qw.fits', ' '
+         writefits, outdir+icam+'.'+upref[ii]+'.qw.fits', qw
+         print, inam + ' : saving '+outdir+icam+'.'+upref[ii]+'.lp.fits'
+    ;     fzwrite, lp, outdir+icam+'.'+upref[ii]+'.lp.fits', ' '
+         writefits,  outdir+icam+'.'+upref[ii]+'.lp.fits', lp
      endfor
-
-     ;; Save data
-     outdir = self.out_dir + '/polcal_cubes/'
-     file_mkdir, outdir
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.3d.fits'
-    ; fzwrite, temporary(d), outdir+icam+'.'+ipref+'.3d.fits',' '
-     writefits,  outdir+icam+'.'+ipref+'.3d.fits', temporary(d)
-
-     ;; 1D data and states
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.1d.fits'
-     ;fzwrite, d1d, outdir+icam+'.'+ipref+'.1d.fits',' '
-     writefits,outdir+icam+'.'+ipref+'.1d.fits', d1d
-     qw = float(strmid(uqw,2))
-     lp = float(strmid(ulp,2))
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.qw.fits'
-     ;fzwrite, qw, outdir+icam+'.'+ipref+'.qw.fits', ' '
-     writefits, outdir+icam+'.'+ipref+'.qw.fits', qw
-     print, inam + ' : saving '+outdir+icam+'.'+ipref+'.lp.fits'
-;     fzwrite, lp, outdir+icam+'.'+ipref+'.lp.fits', ' '
-     writefits,  outdir+icam+'.'+ipref+'.lp.fits', lp
   endfor
   
 end
