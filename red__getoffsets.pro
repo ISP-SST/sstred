@@ -46,7 +46,10 @@
 ;                rather than self.data_dir, in case (the first) data
 ;                directory does not have data from all cameras.
 ;
+;   2014-01-23 : MGL. Use red_extractstates instead of red_getstates
+;                and local extraction of info from file names.
 ; 
+;   2014-04-09 : TH. Use pinh_align directory.
 ;-
 pro red::getoffsets, thres = thres, state = state, pref=pref
   if(~keyword_set(thres)) then tr = 0.1 else tr = thres
@@ -72,19 +75,22 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
   camr = self.camrtag
   camw = self.camwbtag
 
-  ft = file_search(self.out_dir+'/pinh_align/' + camt + '.' + pref + '.*.pinh', count = ct)
-  fr = file_search(self.out_dir+'/pinh_align/' + camr + '.' + pref + '.*.pinh', count = cr)
-  fw = file_search(self.out_dir+'/pinh_align/' + camw + '.' + pref + '.*.pinh', count = cw)
+  tfiles = file_search(self.out_dir+'/pinh_align/' + camt + '.' + pref + '.*.pinh', count = ct)
+  rfiles = file_search(self.out_dir+'/pinh_align/' + camr + '.' + pref + '.*.pinh', count = cr)
+  wfiles = file_search(self.out_dir+'/pinh_align/' + camw + '.' + pref + '.*.pinh', count = cw)
 
   ;; Get image states
-  tstat = red_getstates_pinh(ft, lam = lams)
-  rstat = red_getstates_pinh(fr)
-  wstat = red_getstates_pinh(fw)
+  red_extractstates, tfiles, /basename, fullstate = tstat, lambda = lams
+  red_extractstates, rfiles, /basename, fullstate = rstat 
+  red_extractstates, wfiles, /basename, fullstate = wstat 
+;  tstat = red_getstates_pinh(tfiles, lam = lams)
+;  rstat = red_getstates_pinh(rfiles)
+;  wstat = red_getstates_pinh(wfiles)
    
   ;; Select state to align
    
   allowed = [-1]
-  for ii = 0L, n_elements(ft) -1 do BEGIN
+  for ii = 0L, n_elements(tfiles) -1 do BEGIN
      if(keyword_set(state)) then begin
         if(tstat[ii] ne state) then begin
            print, inam + ' : Skipping state -> '+tstat[ii]
@@ -123,21 +129,21 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
      ;; ref = cam_t
      ;; slaves = camr and camw
      pos2 = where(wstat eq tstat[toread])
-     ref = f0(fw[pos2])
+     ref = f0(wfiles[pos2])
      dim = size(ref,/dim)
                                 
      pics = fltarr(dim[0], dim[1], 2)
-     pics[*,*,0]= f0(ft[toread])
+     pics[*,*,0]= f0(tfiles[toread])
      pos1 = where(rstat eq tstat[toread])
-     pics[*,*,1]= f0(fr[pos1])
+     pics[*,*,1]= f0(rfiles[pos1])
                                 
      print, inam+' : images to be calibrated:'
-     print, ' -> '+ft[toread]
-     print, ' -> '+fr[pos1]
-     print, ' -> '+fw[pos2]
-     tfil = ft[toread]
-     rfil = fr[pos1]
-     wfil = fw[pos2]
+     print, ' -> '+tfiles[toread]
+     print, ' -> '+rfiles[pos1]
+     print, ' -> '+wfiles[pos2]
+     tfil = tfiles[toread]
+     rfil = rfiles[pos1]
+     wfil = wfiles[pos2]
      lam = lams[toread]
                                 
      rots = [0, 2, 5, 7]
