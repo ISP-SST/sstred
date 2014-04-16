@@ -53,6 +53,9 @@ FUNCTION Red_remap_image, ref, pic, cs, sw, ALIGN=al, MAP=d_map, PLOT=plot, QUIN
 ;       04-Mar-2002  Smoothing of images before calculation of shifts
 ;       13-Jan-2014  Option to refine (large) shifts
 ;       15-Jan-2014  include in crispred as red_remap_image
+;       16-Apr-2014  Change /edge to /edge_truncate in call to smooth
+;                    becasue in IDL v.8 there are two new keywords
+;                    that start with "edge".
 ;-
 
  ;;; raw centering of images
@@ -102,8 +105,8 @@ xout = float(xref)
 yout = float(yref)
 
 IF keyword_set(sm) THEN BEGIN
-    sh_ref = smooth(ref, sm, /edge)
-    sh_tmp = smooth(tmp, sm, /edge)
+    sh_ref = smooth(ref, sm, /edge_truncate)
+    sh_tmp = smooth(tmp, sm, /edge_truncate)
 ENDIF ELSE BEGIN
     sh_ref = ref
     sh_tmp = tmp
