@@ -51,7 +51,7 @@
 ;    lapalma : in, optional, type=boolean
 ; 
 ;       If this is set, will search for root_dir's date in
-;       "/data/disk?/*/" and "/data/store?/*/" (where data is usually
+;       "/data/disk?/*/" and "/data/camera?/*/" (where data is usually
 ;       found in La Palma)'
 ; 
 ;    stockholm : in, optional, type=boolean
@@ -177,7 +177,7 @@ pro red_setupworkdir, root_dir = root_dir $
      search_dir = "/data/disk?/*/"
      found_dir = file_search(search_dir+date, count=Nfound)
      if Nfound eq 0 then begin
-        search_dir = "/data/store?/*/"
+        search_dir = "/data/camera?/*/"
         found_dir = file_search(search_dir+date, count=Nfound)
      endif
   endif else begin
