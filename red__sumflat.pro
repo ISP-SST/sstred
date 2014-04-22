@@ -134,7 +134,7 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      endif
 
      files = red_sortfiles(files)
-stop
+
      ;; We do not actually need all the fields in the stat structure. The
      ;; fullstate and star fields are enough.
      red_extractstates, files, /basename, states = stat, fullstate = fullstate
