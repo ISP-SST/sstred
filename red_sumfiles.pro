@@ -60,9 +60,16 @@
 ; 
 ;       Dark frame.
 ; 
+;    select_align : in, optional, type=boolean
+; 
+;       Align before summing if set. User gets to select feature to
+;       align on. 
+;
 ;    pinhole_align : in, optional, type=boolean
 ; 
-;       Align before summing if set. Assumes pinholes. 
+;       Align before summing if set. Use brightest feature (assumed to
+;       be a pinhole) to align on. If both select_align and
+;       pinhole_align are set, pinhole_align is ignored.
 ;
 ;    nthreads  : in, optional, type=integer
 ;   
@@ -79,6 +86,10 @@
 ;       The psf needed to do backscatter correction. Iff
 ;       backscatter_gain and backscatter_psf are given, do the
 ;       correction.
+;   
+;   xyc : out, optional, type="lonarr(2)" 
+;   
+;       The (x,y) coordinates of the feature used for alignment.
 ;   
 ; 
 ; :history:
@@ -109,6 +120,10 @@
 ; 
 ;   2014-01-27 : MGL. Use red_com rather than red_centroid.
 ; 
+;   2014-04-11 : MGL. New keywords select_align and xyc. Limit number
+;                of repeats in the alignment so bad data can
+;                terminate.
+; 
 ; 
 ;-
 function red_sumfiles, files_list $
@@ -120,8 +135,10 @@ function red_sumfiles, files_list $
                        , lim = lim $
                        , lun = lun $ 
                        , pinhole_align = pinhole_align $ 
+                       , select_align = select_align $ 
                        , gain = gain $   
                        , dark = dark $   
+                       , xyc = xyc $   
                        , backscatter_gain = backscatter_gain $
                        , backscatter_psf = backscatter_psf $
                        , nthreads = nthreads 
@@ -154,9 +171,9 @@ function red_sumfiles, files_list $
      docheck = 0B
   endif
 
-  if keyword_set(pinhole_align) then begin
+  if keyword_set(pinhole_align) or keyword_set(select_align) then begin
      if n_elements(gain) eq 0 or n_elements(dark) eq 0 then begin
-        print, inam+' : Need to specify gain and dark when doing /pinhole_align'
+        print, inam+' : Need to specify gain and dark when doing /pinhole_align or /select_align'
         help, gain, dark
         stop
      endif
@@ -272,7 +289,7 @@ function red_sumfiles, files_list $
         endelse
 
   
-        if keyword_set(pinhole_align) then begin
+        if keyword_set(pinhole_align) or keyword_set(select_align) then begin
            
            ;; If we are doing sub-pixel alignment, then we need to
            ;; correct each frame for dark and gain.
@@ -280,7 +297,8 @@ function red_sumfiles, files_list $
 
            ;; We also need to do any descattering correction of each frame.
            if DoDescatter then begin
-              thisframe = red_cdescatter(thisframe, backscatter_gain, backscatter_psf $
+              thisframe = red_cdescatter(thisframe $
+                                         , backscatter_gain, backscatter_psf $
                                          , /verbose, nthreads = nthreads)
            endif
 
@@ -289,17 +307,29 @@ function red_sumfiles, files_list $
 
            if firstframe then begin
               
-              ;; Find brightest spot that is reasonably centered in
-              ;; the FOV.
               marg = 100
-              subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
-              mx = max(subim, maxloc)
-              ncol = dim[1]-2*marg+1
-              xyc = lonarr(2)
-              xyc[0] = maxloc MOD ncol
-              xyc[1] = maxloc / ncol
-
-              xyc += marg       ; Position of brightest spot in original image
+              if keyword_set(select_align) then begin
+                 ;; Select feature to align on with mouse.
+                 if max(dim) gt 1000 then fac = max(dim)/1000. else fac = 1
+                 window, 0, xs = 1000, ys = 1000
+                 tvscl, congrid(thisframe, dim[0]/fac, dim[1]/fac, cubic = -0.5)
+                 print, 'Use the mouse to click on feature to align on.'
+                 cursor, xc, yc, /device
+                 xyc = round([xc, yc]*fac) >marg <(dim-marg-1)
+                 subsz = 300
+                 subim = thisframe[xyc[0]-subsz/2:xyc[0]+subsz/2-1, xyc[1]-subsz/2:xyc[1]+subsz/2-1]
+                 tvscl, subim
+              end else begin
+                 ;; Find brightest pinhole spot that is reasonably centered in
+                 ;; the FOV.
+                 subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
+                 mx = max(subim, maxloc)
+                 ncol = dim[1]-2*marg+1
+                 xyc = lonarr(2)
+                 xyc[0] = maxloc MOD ncol
+                 xyc[1] = maxloc / ncol
+                 xyc += marg    ; Position of brightest spot in original image
+              endelse
 
               ;; Establish subfield size sz, shrunk to fit.
               sz = 99              
@@ -322,6 +352,7 @@ function red_sumfiles, files_list $
            ;; the subfield, because that's where the centroiding is
            ;; most accurate.
            dc1 = [0.0,0.0]
+           Nrep = 0
            repeat begin
               ;print, 'Shift:', dc1
               im_shifted = red_shift_im(thisframe, dc1[0], dc1[1])                  ; Shift the image
@@ -331,8 +362,10 @@ function red_sumfiles, files_list $
               cnt = red_com(subim0) ; Centroid after shift
               dcold = dc1           ; Old shift
               dc1 = dc1 + (sz/2.0 - cnt)
-              ;print, 'Shift change vector length:', sqrt(total((dc1-dcold)^2))
-           endrep until sqrt(total((dc1-dcold)^2)) lt 0.01
+                                ;print, 'Shift change vector length:',
+                                ;sqrt(total((dc1-dcold)^2))
+              Nrep += 1
+           endrep until sqrt(total((dc1-dcold)^2)) lt 0.01 or Nrep eq 100
            ;; Iterate until shift changes less than 0.01 pixel
 
            if firstframe then begin
@@ -359,7 +392,7 @@ function red_sumfiles, files_list $
                                                                                     ; an average shift of 0.
   time = red_time2double(time / Nsum, /dir)
 
-  if ~keyword_set(pinhole_align) then begin
+  if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
 
      ;; Some actions already done for each frame in the case of
      ;; pinhole alignment.
