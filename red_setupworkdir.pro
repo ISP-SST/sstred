@@ -121,6 +121,9 @@
 ;    2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                 namespace. 
 ;
+;    2014-01-23 : MGL. No need to give /lapalma keyword, we'll
+;                 know by examining the host name.
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -170,15 +173,26 @@ pro red_setupworkdir, root_dir = root_dir $
 
   date_momfbd = isodate
   date = red_strreplace(isodate, '-', '.', n = 2)
-  
+
   ;; Where to look for data?
-  if ~keyword_set(lapalma) and ~keyword_set(stockholm) and n_elements(root_dir) eq 0 then stockholm = 1
+  known_site = keyword_set(lapalma) $
+               or keyword_set(stockholm)
+  
+  if ~known_site and n_elements(root_dir) eq 0 then begin
+     hostname = getenv('HOSTNAME')
+     if strpos(hostname,'royac.iac.es') ne -1 then begin
+        lapalma = 1
+     endif else begin
+        stockholm = 1
+     endelse
+  endif
+  
   if keyword_set(lapalma) then begin
      search_dir = "/data/disk?/*/"
-     found_dir = file_search(search_dir+date, count=Nfound)
+     found_dir = file_search(search_dir+date, count = Nfound)
      if Nfound eq 0 then begin
         search_dir = "/data/camera?/*/"
-        found_dir = file_search(search_dir+date, count=Nfound)
+        found_dir = file_search(search_dir+date, count = Nfound)
      endif
   endif else begin
      if keyword_set(stockholm) then begin
@@ -192,7 +206,7 @@ pro red_setupworkdir, root_dir = root_dir $
          found_dir = search_dir
          Nfound = 1
      ENDIF ELSE $
-       found_dir = file_search(search_dir+date, count=Nfound)
+       found_dir = file_search(search_dir+date, count = Nfound)
   endelse
   
   if Nfound eq 1 then begin
