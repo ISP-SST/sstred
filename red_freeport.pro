@@ -16,7 +16,8 @@
 ;
 ;   2014-01-24 : TH: Made into a free function
 ;
-;   2014-04-26 : MGL. Remove dependence on "token" function.
+;   2014-04-26 : MGL. Remove dependence on token() and inset()
+;                functions. 
 ;
 ;-
 function red_freeport, port=port
@@ -24,9 +25,10 @@ function red_freeport, port=port
     if keyword_set(port) then begin 
         freeport = long(port)
     end else begin 
-        freeport = long(32765)          ; some arbitrary default value > 1024
+       freeport = 32765L        ; some arbitrary default value > 1024
     end
-    
+
+    ;; Find used ports
     spawn,'netstat -atn',netstat
     Nn = dimen(netstat, 0)
     used_ports = lonarr(Nn)
@@ -34,11 +36,13 @@ function red_freeport, port=port
        used_ports[i] = long((strsplit((strsplit(netstat[i],/extract))[3] $
                                       , ':', /extract $
                                       , count = Nsplit))[Nsplit-1])
-       
-    used_ports = used_ports[uniq(used_ports,sort(used_ports))] ; Uniquify
-    
-    while inset(freeport, used_ports) do freeport += 1 
 
+    ;; Uniquify
+    used_ports = used_ports[uniq(used_ports,sort(used_ports))] 
+
+    ;; Increment freeport until it is no longer in used_ports
+    while min(abs(freeport-used_ports)) eq 0 do freeport += 1
+    
     return, freeport
 
 end
