@@ -64,6 +64,10 @@
 ;
 ;        The tuning in decimal form [Å].
 ; 
+;     lambda : out, optional, type=fltarr
+;
+;        The prefilter wavelength in decimal form [m].
+; 
 ;     cam : out, optional, type=strarr
 ;
 ;        The camera name.
@@ -92,6 +96,8 @@
 ; 
 ;   2014-01-22 : First version.
 ; 
+;   2014-04-?? : Added keyword lambda.
+; 
 ;-
 pro red_extractstates, strings $
                        , states = states $
@@ -107,6 +113,7 @@ pro red_extractstates, strings $
                        , pref = pref $
                        , scan = scan $
                        , dwav = dwav $
+                       , lambda = lambda $
                        , rscan = rscan $
                        , hscan = hscan  $
                        , focus = focus $
@@ -149,7 +156,7 @@ pro red_extractstates, strings $
      focus = reform((stregex(strlist,'(\.|^)(F[+-][0-9]+)(\.|$)', /extr, /subexp, /fold_case))[2,*])
 
   ;; The prefilter is the only field that is exactly four digits
-  if arg_present(pref) or arg_present(fullstate) or $
+  if arg_present(pref) or arg_present(fullstate) or arg_present(lambda) or $
      arg_present(states) or arg_present(pstates) or arg_present(pstates_out) then $
         pref = reform((stregex(strlist,'(\.|^)([0-9]{4})(\.|$)', /extr, /subexp))[2,*])
   
@@ -210,6 +217,8 @@ pro red_extractstates, strings $
   if arg_present(fullstate) or arg_present(states) then $
      fullstate = strjoin(transpose([[pref], [wav], [lc]]), '.')
 
+  if arg_present(lambda) then lambda = float(pref)*1e-10
+
   ;; Create structures with collections of states
 
   if arg_present(states) then states = { files:strlist $
@@ -234,7 +243,7 @@ pro red_extractstates, strings $
                                            , lc:lc $
                                            , nums:nums $
                                            , files:strlist $
-                                           , star:bytarr(nt) $
+                                           , star:bytarr(nt) $ ; Empty field, see red_flagtuning.
                                          }
   
   ;; For polarimetry out (?)
