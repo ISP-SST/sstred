@@ -100,7 +100,7 @@ pro red_momfbd_check, HOST = host $
       
       ;; Manager
 ;      managerpid = (token(psout[0]))[1]
-      managerpid = (strsplit(psout[0], /extract))[0]
+      managerpid = (strsplit(psout[0], /extract))[1]
       if n_elements(port) eq 0 then begin        ; no port specified, get it from the pid
           spawn, 'netstat -atnpl | grep LISTEN | grep '+managerpid+'/', netstat
           if strmatch(netstat,'') eq 0 then begin
