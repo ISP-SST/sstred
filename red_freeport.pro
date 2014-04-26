@@ -16,6 +16,8 @@
 ;
 ;   2014-01-24 : TH: Made into a free function
 ;
+;   2014-04-26 : MGL. Remove dependence on "token" function.
+;
 ;-
 function red_freeport, port=port
   
@@ -28,7 +30,11 @@ function red_freeport, port=port
     spawn,'netstat -atn',netstat
     Nn = dimen(netstat, 0)
     used_ports = lonarr(Nn)
-    for i = 2, Nn-1 do used_ports[i] = long(last(strsplit(token(netstat[i],4),':',/extract)))
+    for i = 2, Nn-1 do $
+       used_ports[i] = long((strsplit((strsplit(netstat[i],/extract))[3] $
+                                      , ':', /extract $
+                                      , count = Nsplit))[Nsplit-1])
+       
     used_ports = used_ports[uniq(used_ports,sort(used_ports))] ; Uniquify
     
     while inset(freeport, used_ports) do freeport += 1 
