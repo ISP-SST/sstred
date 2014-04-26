@@ -50,6 +50,10 @@
 ;                and local extraction of info from file names.
 ; 
 ;   2014-04-09 : TH. Use pinh_align directory.
+;
+;   2014-04-26 : MGL. Bugfix: lam has to be a string when written to
+;                config file.
+;
 ;-
 pro red::getoffsets, thres = thres, state = state, pref=pref
   if(~keyword_set(thres)) then tr = 0.1 else tr = thres
@@ -252,7 +256,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
         opinh = file_basename(fil,'pinh')
         openw, unit, self.out_dir+'/calib/'+file_basename(fil,'.pinh')+'.cfg'
         printf, unit, 'object{'
-        printf, unit, '  WAVELENGTH='+lam
+        printf, unit, '  WAVELENGTH='+strtrim(lam, 2)
         printf, unit, '  channel{'
         printf, unit, '    FILENAME_TEMPLATE='+tfilo+'%07d'
         printf, unit, '    IMAGE_NUM='+strtrim(im, 2)
