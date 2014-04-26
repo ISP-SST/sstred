@@ -53,6 +53,9 @@
 ;   2014-01-24 : TH. Added HOST keyword to allow for using (already running)
 ;                remote managers.
 ;
+;   2014-04-26 : MGL. Remove dependence on token() function. 
+;
+;
 ;-
 pro red_momfbd_check, HOST = host $
                     , PORT = port $
@@ -96,7 +99,8 @@ pro red_momfbd_check, HOST = host $
       end 
       
       ;; Manager
-      managerpid = (token(psout[0]))[1]
+;      managerpid = (token(psout[0]))[1]
+      managerpid = (strsplit(psout[0], /extract))[0]
       if n_elements(port) eq 0 then begin        ; no port specified, get it from the pid
           spawn, 'netstat -atnpl | grep LISTEN | grep '+managerpid+'/', netstat
           if strmatch(netstat,'') eq 0 then begin
@@ -130,7 +134,8 @@ pro red_momfbd_check, HOST = host $
      if arg_present(slaveids) and  arg_present(nslaves) then begin
         if nslaves gt 0 then begin
            slaveids = strarr(nslaves)
-           for i=0,nslaves-1 do slaveids[i] = (token(jstats[i+2]))[1]
+;           for i=0,nslaves-1 do slaveids[i] = (token(jstats[i+2]))[1]
+           for i=0,nslaves-1 do slaveids[i] = (strsplit(jstats[i+2], /extract))[1]
         endif
      endif
 
@@ -144,7 +149,8 @@ pro red_momfbd_check, HOST = host $
 
      if arg_present(jobids) then begin     
         jobids = strarr(njobs)
-        for i=0,njobs-1 do jobids[i] = (token(jstatj[i+2]))[1]
+;        for i=0,njobs-1 do jobids[i] = (token(jstatj[i+2]))[1]
+        for i=0,njobs-1 do jobids[i] = (strsplit(jstatj[i+2], /extract))[1]
      end
 
      if no_args then begin
