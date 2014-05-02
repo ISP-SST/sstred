@@ -79,6 +79,11 @@
 ;
 ;       Solar distance in meters.
 ;
+;   zenithangle : out, optional, type=float
+;
+;       Pointing angular distance from zenith (= 1-elevation) in
+;       degrees. 
+;
 ;
 ; :History:
 ; 
@@ -105,6 +110,9 @@
 ;    2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                 namespace.
 ;
+;    2014-04-30 : MGL. Implemented the turret keyword, added and
+;                 implemented the zenithangle keyword.
+;
 ;
 ;-
 pro red_logdata, date, time $
@@ -115,6 +123,7 @@ pro red_logdata, date, time $
                  , Rsun = Rsun $
                  , Sundist = Sundist $
                  , turret = turret $
+                 , zenithangle = zenithangle $
                  , pointing = pointing
 
   ;; Date in ISO format
@@ -344,14 +353,64 @@ pro red_logdata, date, time $
 
 
   ;; Turret log
-  if arg_present(turret) or arg_present(mu) or arg_present(pointing) then begin
-     
+  if arg_present(turret) $
+     or arg_present(mu) $
+     or arg_present(pointing) $
+     or arg_present(zenithangle) then begin
+ 
      red_download, /turret, pathturret = turretfile
 
      if turretfile then begin
 
-        turretdata = mgl_rd_tfile(turretfile, /auto, /convert, /double)
-stop
+        turretdata = mgl_rd_tfile(turretfile, /auto)
+
+        ;; Turretdata is a 12 by N string array. Row contents: [date
+        ;; YYYY/MM/DD, time HH:MM:SS, az, el, N or S, Stonyhurst N/S,
+        ;; E or W, Stonyhurst E/W, parala. angle, solar local tilt,
+        ;; Az(th), El(th)]. Angles are in degrees.
+        
+        ;; Az(th), El(th) are the coordinates where you want to point? 
+        
+        ;; In the Stonyhurst system the zero point is set at the
+        ;; intersection of the Sun's equator and central meridian as
+        ;; seen from the Earth. Longitude increases towards the Sun's
+        ;; western limb. A solar feature will have a fixed latitude as
+        ;; it rotates across the solar disk, but its longitude will
+        ;; increase. This is in contrast to the Carrington
+        ;; heliographic coordinate system, where the longitude remains
+        ;; approximately fixed in time.
+        ;; (http://en.wikipedia.org/wiki/Stonyhurst_Observatory#Stonyhurst_heliographic_coordinates) 
+        
+        turret_time = red_time2double(turretdata[1, *])
+
+        
+        if n_elements(T) eq 0 then begin
+           ;; Return all values
+           Ntimes = (size(turretdata, /dim))[1]
+           turret = fltarr(2, Ntimes)
+           T = turret_time
+           time = T
+           turret = float(turretdata[2:3, *]) ; az/el on sky
+
+           turret_StonyN = float(turretdata[5, *])
+           negindx = where(turretdata[4, *] eq 'S')
+           turret_StonyN[negindx] *= -1
+
+           turret_StonyW = float(turretdata[5, *])
+           negindx = where(turretdata[6, *] eq 'E')
+           turret_StonyW[negindx] *= -1
+
+        endif else begin
+           ;; Get interpolated values
+           turret = fltarr(2, Ntimes) ; az/el on sky
+           turret[0, *] = interpol(float(turretdata[2,*]), turret_time, t)
+           turret[1, *] = interpol(float(turretdata[3,*]), turret_time, t)
+        endelse 
+
+        if arg_present(zenithangle) then begin
+           zenithangle = 90.0 - reform(turret[1, *])
+        endif
+        
      endif else begin
 
         print, 'sst_logdata : No Turret log file'
@@ -367,6 +426,9 @@ stop
   ;; (old data) or b) the PIG lost tracking for an extended period of
   ;; time. 
   if arg_present(pointing) then begin
+
+     print, 'red_logdata : keyword "pointing" is not implemented yet.'
+     stop
      
   endif
 
