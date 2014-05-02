@@ -99,6 +99,8 @@
 ;    2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                 namespace.
 ;
+;    2014-04-28 : MGL. An earlier name change of keyword turretfile to
+;                 pathturret was apparently not complete.
 ;
 ;-
 pro red_download, date = date $
@@ -212,14 +214,15 @@ pro red_download, date = date $
      ;; days and header info that are interspersed with the data.
 
      ;; The name of the concatenated and filtered file
-     turretfile = logdir+'positionLog_'+red_strreplace(isodate, '-', '.', n = 2)+'_final'
-     if ~file_test(turretfile) or keyword_set(overwrite) then begin
+     pathturret = logdir+'positionLog_'+red_strreplace(isodate, '-', '.', n = 2)+'_final'
+     
+     if ~file_test(pathturret) or keyword_set(overwrite) then begin
         
         ;; First try the particular date:
         
-        turretfile1 = 'positionLog_'+red_strreplace(isodate, '-', '.', n = 2)
+        pathturret1 = 'positionLog_'+red_strreplace(isodate, '-', '.', n = 2)
         OK1 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
-                         + datearr[0]+'/'+turretfile1 $
+                         + datearr[0]+'/'+pathturret1 $
                          , contents = contents1 $
 ;                         , dir = logdir $
                          , /overwrite $
@@ -242,10 +245,10 @@ pro red_download, date = date $
            preisodate = strjoin(predatearr, '-')
            
            ;; Try to download
-           turretfile2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
-           print, 'Try '+turretfile2
+           pathturret2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
+           print, 'Try '+pathturret2
            OK2 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
-                            + datearr[0]+'/'+turretfile2 $
+                            + datearr[0]+'/'+pathturret2 $
                             , contents = contents2 $
 ;                            , dir = logdir $
                             , /overwrite $
@@ -262,7 +265,7 @@ pro red_download, date = date $
         contents = contents(where(~strmatch(contents, '*h*m*')))
 
         ;; Write to disk
-        openw, wlun, /get_lun, turretfile
+        openw, wlun, /get_lun, pathturret
         printf, wlun, contents, format = '(a0)'
         free_lun, wlun
         
