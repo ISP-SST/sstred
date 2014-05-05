@@ -48,6 +48,9 @@
 ; 
 ;    2013-06-10 : Made using bicubic interpolation with -0.5 the
 ;    default and introduced a new flag for linear interpolation. MGL
+;
+;   2014-05-05 : Error in the definition of dx, dy found. The shifts
+;   should be applied inside the parenthesis. JdlCR.
 ; 
 ; 
 ;-
@@ -67,9 +70,11 @@ function red_rotation, img, angle, sdx, sdy, linear = linear
 
   xsi = dim[0] * 0.5
   ysi = dim[1] * 0.5
-  dx = cos(angle) * (xgrid - xsi) - sin(angle) * (ygrid - ysi) + xsi - sdx
-  dy = sin(angle) * (xgrid - xsi) + cos(angle) * (ygrid - ysi) + ysi - sdy
-  
+  ;dx = cos(angle) * (xgrid - xsi) - sin(angle) * (ygrid - ysi) + xsi - sdx
+ ; dy = sin(angle) * (xgrid - xsi) + cos(angle) * (ygrid - ysi) + ysi - sdy
+  dx = cos(angle) * (xgrid - xsi - sdx) -  sin(angle) * (ygrid - ysi-sdy) +  xsi
+  dy = sin(angle)  * (xgrid - xsi - sdx) + cos(angle) * (ygrid - ysi-sdy) + ysi
+
   ;; Interpolation onto new grid
   if keyword_set(linear) then begin
      return, interpolate(img, dx, dy, missing = median(img))
