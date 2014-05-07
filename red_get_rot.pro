@@ -14,59 +14,63 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;   Göran Hosinsky (ANA version)
 ;
 ;   Jaime de la Cruz Rodriguez (ported to IDL)
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
 ; 
 ;   az : in, type=float
 ;   
-;     Azimuth of Sun in radians
+;     Azimuth angle of Sun in radians
 ;   
 ;   el : in, type=float
 ;   
-;     Elevation of Sun in radians
+;     Elevation angle of Sun in radians
 ;   
 ;   dec : 
 ;   
-;   
+;     Declination angle of Sun in radians.
 ;   
 ; 
 ; :Keywords:
 ; 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+;   2014-05-07 : MGL. Use !dpi since everything else is in double
+;                precision. Some cleanup in the comments.
 ; 
 ; 
 ;-
 function red_get_rot,az,el,dec
 
-  drrat=!pi/180.d0              ;deg to rad rate
-  LAT=28.758d0*drrat            ;observatory latitude (La Palma)
-  TC=318.0d0*drrat              ;table constant
+  drrat = !dpi/180.d0           ;deg to rad rate
+  lat = 28.758d0*drrat          ;observatory latitude (La Palma)
+  tc = 318.0d0*drrat            ;table constant
+  
+  ;; TC is the table constant in radians a constant depending on which
+  ;; observation table is used. TC is about 48 to give the angle
+  ;; between the table surface and the N-S direction at the first
+  ;; observation table.
+  
+  ;; According to spherical astronomy the angle between the N-S great
+  ;; circle and the vertical great circle in an AZ-EL telescope varies
+  ;; as:
+  ra1=asin(cos(lat)*sin(az)/cos(dec*drrat))
 
-; TC is the table constant in radians a constant depending on which
-; observation table is used. TC is about 48 to give the angle between
-; the table surface and the N-S direction at the first observation
-; table.
+  ;; In the image plane the angle of the movement in Elevation varies
+  ;; as:
+  ra=az+(atan(cos(el),sin(el)))+tc-ra1
 
-; According to spherical astronomy the angle between the N-S
-; great circle and the vertical great circle in an AZ-EL 
-; telescope varies as:
-
-  ra1=asin(cos(LAT)*sin(AZ)/cos(dec*drrat))
-; In the image plane the angle of the movement in Elevation
-; varies as:
-
-  ra=az+(atan(cos(EL),sin(EL)))+TC-ra1
   return,ra
+
 end
