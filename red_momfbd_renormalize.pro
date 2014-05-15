@@ -38,6 +38,8 @@
 ;
 ;   2013-08-30 : MGL. Renamed for inclusion in crispred pipeline.
 ;
+;   2014-05-15 : MGL. Don't use non-standard function "dimen". 
+;   
 ;   
 ;-
 pro red_momfbd_renormalize, mr, verbose = verbose
@@ -53,7 +55,7 @@ pro red_momfbd_renormalize, mr, verbose = verbose
      if keyword_set(verbose) then print,'Pass '+strtrim(string(ip), 2)
 
      ;; Loop over all modes
-     for ii=0, dimen(mr.mode, 2)-1 do begin
+     for ii=0, (size(mr.mode, /dim))[2]-1 do begin
         
         ;; Calculate the RMS for mode ii:
         modestdev = stdev((mr.mode[*,*,ii])[pupindx])

@@ -19,6 +19,8 @@
 ;   2014-04-26 : MGL. Remove dependence on token() and inset()
 ;                functions. 
 ;
+;   2014-05-15 : MGL. Don't use non-standard function "dimen". 
+;   
 ;-
 function red_freeport, port=port
   
@@ -30,7 +32,7 @@ function red_freeport, port=port
 
     ;; Find used ports
     spawn,'netstat -atn',netstat
-    Nn = dimen(netstat, 0)
+    Nn = n_elements(netstat)
     used_ports = lonarr(Nn)
     for i = 2, Nn-1 do $
        used_ports[i] = long((strsplit((strsplit(netstat[i],/extract))[3] $

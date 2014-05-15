@@ -1,7 +1,7 @@
 ;	   File: 	sectormean_f.ana
 ;	   Created:	<2002-08-15 16:50:26 mats>
 ;	   Author: 	mats@astro.su.se
-;	   Time-stamp: <2013-11-20 14:49:31 mats>
+;	   Time-stamp: <2014-05-15 09:59:21 mats>
 
 ; Returns angular averages of |u| from zero frequency to limfreq in na
 ; sectors of the half plane from -90 to 90 degrees.
@@ -14,8 +14,8 @@
 ; If <width> zero or not specified, then compute default based on
 ; number of angles and return in keyword.
 
-; Number of angles is given by dimen(angles,0) (or
-; min(dimen(angles,0),na) if <na> given). 
+; Number of angles is given by the length of the first dimension in
+; <angles> (or the smaller of that and <na> if <na> given).
 
 FUNCTION red_sectormean, u, limfreq, na, mask=mask, xOffset=xOffset, yOffset=yOffset, angles = angles, width = width
   
