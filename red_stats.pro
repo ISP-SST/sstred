@@ -48,7 +48,7 @@ pro red_stats, x, name=name			   ; Show statistics about x
   MeanString = strtrim(String(Mean(float(x))),2)
   DevString  = strtrim(String(StDev(float(x))),2)
 
-  IF defined(name) THEN BEGIN
+  IF n_elements(name) gt 0 THEN BEGIN
      print,DivisorString
      print,'Min, Mean, Max, StDev of '+name+':'  
   end else begin
@@ -81,7 +81,7 @@ print,datastring
   
   DivisorString = '------------------------------------------------------------------'
 
-  IF defined(name) THEN BEGIN
+  IF n_elements(name) gt 0 THEN BEGIN
     NameString = '| Statistics for '+name+':'
     NameLength = strlen(NameString)
     NameString = NameString + Blanks(DataLength-NameLength-1) + '|'
