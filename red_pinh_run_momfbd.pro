@@ -227,13 +227,13 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
         pinhsubfields[*, *, ich] = pinhsubfields[*, *, ich]/max(pinhsubfields[*, *, ich])
         
         fname = workdir+string(format = '(%"'+ptemplates[ich]+'")', ihole)
-        fzwrite, fix(round(pinhsubfields[*, *, ich]*15000.)), fname, ''
+        fzwrite, fix(round(pinhsubfields[*, *, ich]*15000.)), fname, ' '
 
         if ich gt 0 then begin
            fname = workdir+string(format = '(%"'+xtemplates[ich]+'")', ihole)
-           fzwrite, fix(round(xosubfields[*, *, ich])), fname, ''
+           fzwrite, fix(round(xosubfields[*, *, ich])), fname, ' '
            fname = workdir+string(format = '(%"'+ytemplates[ich]+'")', ihole)
-           fzwrite, fix(round(yosubfields[*, *, ich])), fname, ''
+           fzwrite, fix(round(yosubfields[*, *, ich])), fname, ' '
         endif
 
      endfor                     ; ich
