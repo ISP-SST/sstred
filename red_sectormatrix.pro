@@ -7,7 +7,6 @@ function red_SectorMatrix, arrs, r, angles = angles;, xOffset=xOffset, yOffset=y
   na = (size(arrs, /dim))[1]
 
   ;; Same default angles as red_sectormean
-  if not defined(angles) then angles = (indgen(na)/float(na)*!pi)-!pi/2
   if n_elements(angles) eq 0 then angles = (indgen(na)/float(na)*!pi)-!pi/2
   
   da = !pi/na
