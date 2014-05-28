@@ -113,6 +113,8 @@
 ;    2014-04-30 : MGL. Implemented the turret keyword, added and
 ;                 implemented the zenithangle keyword.
 ;
+;    2014-05-28 : MGL. Give the date when calling red_download.
+;
 ;
 ;-
 pro red_logdata, date, time $
@@ -138,7 +140,7 @@ pro red_logdata, date, time $
         print, 'sst_logdata : No date given.'
         date = stregex(getenv('PWD'),'[12][0-9][0-9][0-9][-.][0-1][0-9][-.][0-3][0-9]',/extract)
         if date eq '' then begin
-           print, 'red_download : No date given and PWD does not contain a date.'
+           print, 'red_logdata : No date given and PWD does not contain a date.'
            retall
         endif
         isodate = red_strreplace(date, '.', '-', n = 2)
@@ -268,7 +270,7 @@ pro red_logdata, date, time $
 
   if arg_present(r0) then begin
 ;     r0file =  'r0.data.full-'+strjoin(strsplit(isodate,'-',/extr))
-     red_download, /r0, pathr0 = r0file
+     red_download, date = isodate, /r0, pathr0 = r0file
      if r0file then begin
 
         ;; Read r0 file
@@ -309,7 +311,7 @@ pro red_logdata, date, time $
 
   if arg_present(pig) or arg_present(mu) or arg_present(pointing) then begin
      
-     red_download, /pig, pathpig = pigfile
+     red_download, date = isodate, /pig, pathpig = pigfile
 
      if pigfile then begin
 
@@ -358,7 +360,7 @@ pro red_logdata, date, time $
      or arg_present(pointing) $
      or arg_present(zenithangle) then begin
  
-     red_download, /turret, pathturret = turretfile
+     red_download, date = isodate, /turret, pathturret = turretfile
 
      if turretfile then begin
 
