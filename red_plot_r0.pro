@@ -78,7 +78,7 @@
 ;
 ;       Limit time interval to when data were collected.
 ;
-;    dt_mean : in, optional, type=scalar, default=1
+;    dt_mean : in, optional, type=scalar, default=3
 ;
 ;       Time window for running mean in minutes. 
 ;
@@ -109,7 +109,7 @@ pro red_plot_r0, dir = dir, today = today, date = date $
   if n_elements(tmin) eq 0 then tmin =  7
   if n_elements(extension) eq 0 then extension = 'jpg'  
   if n_elements(plotvertical) eq 0 then plotvertical = 0
-  if n_elements(dt_mean) eq 0 then dt_mean = 1.
+  if n_elements(dt_mean) eq 0 then dt_mean = 3.
 
   ;; Colors to use for plotting
   color_8       = 'black'
