@@ -113,7 +113,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
   ;
   ; Remove frames
   ;
-  red_flagtuning, state, remove
+  ;red_flagtuning, state, remove
   
 
 ;
