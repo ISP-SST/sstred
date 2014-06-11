@@ -62,26 +62,25 @@
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
                           verbose = verbose, overwrite=overwrite, $
-                          descatter = descatter, show=show, LINK_DIR = link_dir, $
-                          nremove = remove
+                          descatter = descatter, show=show, LINK_DIR = link_dir
 
   inam = 'red::sum_data_intdif : '
   
-  IF NOT keyword_set(link_dir) THEN link_dir = 'data'
+  IF NOT keyword_set(link_dir) THEN link_dir = '/data'
   
   outdir = self.out_dir + '/cmap_intdif/'
   ucam = [self.camr, self.camt]
   
     ;;; Search files.  Use links created by link_data
 
-  dir = file_search(self.out_dir + link_dir+'/*', COUNT = nd)
+  dir = file_search(self.out_dir + link_dir+'/*', COUNT = nd,/test_dir)
   IF nd EQ 0 THEN BEGIN
       print, inam + 'ERROR: No data found - did you run link_data?'
       if(debug) then stop else return
   ENDIF
   IF nd GT 1 THEN BEGIN
       FOR ii = 0, nd-1 DO print, red_stri(ii)+' -> '+ $
-                                 file_basename(self.data_list[ii])
+                                 file_basename(dir[ii])
       idx = 0L
       read, idx, prom = inam + 'Please select folder : '
       print, inam + 'Using -> '+dir[idx]
