@@ -235,10 +235,10 @@ pro red::pinholecalib, STATE = state $
         nStates = n_elements(fullstates)
         if (nStates eq 0) then continue
         
-        ;; Set up manager and slaves.
-        red_momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, /FREE, NTHREADS=nthreads
-
         for istat = 0, nStates-1 do begin
+
+            ;; Set up manager and slaves.
+            red_momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, /FREE, NTHREADS=nthreads
 
             stat = fullstates[istat]
             red_extractstates, stat, lam = lambda
@@ -471,11 +471,11 @@ pro red::pinholecalib, STATE = state $
                 fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich], ''
             endfor         
 
+           ;; Kill manager and slaves
+           red_momfbd_setup, PORT = port, NMANAGERS=0
+
         endfor                       ; istat
         
-        ;; Kill manager and slaves
-        red_momfbd_setup, PORT = port, NMANAGERS=0
-
     endfor                       ; ipref
 
     ;;spawn,'rm -f '+workdir
