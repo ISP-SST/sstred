@@ -354,9 +354,9 @@ pro red::pinholecalib, STATE = state $
             ;; Write the initial offsets to files
             for ich = 1, Nch-1 do begin
                 print, 'Writing ' + calibdir + xnames[ich]+'.init'
-                fzwrite, fix(round(xoffs[*, *, ich])), calibdir + xnames[ich]+'.init', ''
+                fzwrite, fix(round(xoffs[*, *, ich])), calibdir + xnames[ich]+'.init', ' '
                 print, 'Writing ' + calibdir + ynames[ich]+'.init'
-                fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich]+'.init', ''
+                fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich]+'.init', ' '
             endfor
 
             ;; Start iterations
@@ -466,9 +466,9 @@ pro red::pinholecalib, STATE = state $
             ;; Write the updated offsets to files
             for ich = 1, Nch-1 do begin
                 print, 'Writing ' + calibdir + xnames[ich]
-                fzwrite, fix(round(xoffs[*, *, ich])), calibdir + xnames[ich], ''
+                fzwrite, fix(round(xoffs[*, *, ich])), calibdir + xnames[ich], ' '
                 print, 'Writing ' + calibdir + ynames[ich]
-                fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich], ''
+                fzwrite, fix(round(yoffs[*, *, ich])), calibdir + ynames[ich], ' '
             endfor         
 
         endfor                       ; istat
