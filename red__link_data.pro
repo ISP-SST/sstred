@@ -47,7 +47,7 @@
 ;                    remove nremove and no_remove keywords (all done in prepmomfbd)
 ;   
 ;-
-pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PREF = pref
+pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PREF = pref, nremove=nremove
 
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
@@ -117,6 +117,7 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
         ;; Get states
         stat = red_getstates(files)
         
+
         ;; only one prefilter?
         IF keyword_set(pref) THEN BEGIN
             idx = where(stat.pref EQ pref, np)
@@ -128,7 +129,8 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
             nf = np
             stat = red_getstates(files)
         ENDIF
-        
+
+
         ;;; check for complete scans only
         IF ~keyword_set(all_data) THEN BEGIN
             scans = stat.scan(uniq(stat.scan))
@@ -150,6 +152,10 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
             stat = red_getstates(files)
         ENDIF
         
+        
+        ;; Flag nremove
+        red_flagtuning, stat, nremove
+            
         ;; Create linker script
         nt = n_elements(files)
         camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
