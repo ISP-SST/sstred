@@ -73,7 +73,7 @@
 ;
 ;
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor, float = float
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -259,17 +259,18 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   ;; Create temporary cube and open output file
   d = fltarr(dimim[0], dimim[1], nwav)  
   if(~keyword_set(scans_only)) then begin
-     head =  red_unpol_lpheader(dimim[0], dimim[1], nwav*nscan)
+     head =  red_unpol_lpheader(dimim[0], dimim[1], nwav*nscan, float = float)
   endif else begin
-     head = red_unpol_lpheader(dimim[0], dimim[1], nwav)
+     head = red_unpol_lpheader(dimim[0], dimim[1], nwav, float = float)
   endelse
+  if keyword_set(float) then extent = '.fcube' else extent = '.icube'
   
   if(n_elements(odir) eq 0) then odir = self.out_dir + '/crispex/' + time_stamp + '/'
   file_mkdir, odir
 
   if(~keyword_set(scans_only)) then begin
      ;; Open assoc file for output of multi-scan data cube.
-     ofile = 'crispex.'+pref+'.'+time_stamp+'.time_corrected.icube'
+     ofile = 'crispex.'+pref+'.'+time_stamp+'.time_corrected'+extent
 
      if file_test(odir + '/' + ofile) then begin
         if keyword_set(overwrite) then begin
@@ -286,8 +287,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      writeu, lun, head
      point_lun, lun, 0L
      dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,/nozero), 512)
-     print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro'
-     openw, lunf, odir + '/' + file_basename(ofile,'.icube')+'.assoc.pro', /get_lun
+     print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
+     openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
      printf,lunf, 'nx=', dimim[0]
      printf,lunf, 'ny=', dimim[1]
      printf,lunf, 'nw=', nwav
@@ -314,7 +315,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      endif
 
      if(keyword_set(scans_only)) then begin
-        ofile = 'crispex.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+'.icube'
+        ofile = 'crispex.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+extent
         ofilewb = 'wb.'+pref+'.'+time_stamp+'_scan='+st.uscan[ss]+'.fz' 
         if file_test(odir + '/' + ofile) then begin
            if keyword_set(overwrite) then begin
@@ -402,8 +403,10 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      if(~keyword_set(scans_only)) then begin
         ;; Write this scan's data cube to assoc file
         if keyword_set(no_timecor) then tscl = 1 else tscl = tmean[ss]
-        d1 = round(d*cscl*tscl)
-        dat[ss] = fix(d1)
+        if(keyword_set(float)) then dat[ss] = d*cscl*tscl else begin
+           d1 = round(d*cscl*tscl)
+           dat[ss] = fix(d1)
+        endelse
         if(keyword_set(verbose)) then begin
            print, inam +'scan=',ss,', max=', max(d1)
            
@@ -413,7 +416,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         print, inam + ' : saving to '+ odir + '/' + ofile
         openw, lun, odir + '/' + ofile, /get_lun
         writeu, lun, head
-        writeu, lun, fix(round(d))
+        if(keyword_set(float)) then dat[ss] = d else writeu, lun, fix(d + 0.5)
         free_lun, lun
         if keyword_set(wbwrite) then begin
            print, inam + ' : saving to '+ odir + '/' + ofilewb

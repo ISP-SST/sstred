@@ -56,7 +56,7 @@
 ;   2014-01-07 : PS red_legend -> al_legend (from astron)
 ;                   color handling
 ;-
-function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref
+function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref, w=w
 
   device, get_decomposed = odc
   device, decomposed = 0
@@ -86,5 +86,5 @@ function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pre
   loadct, 0, /silent
   device, decomposed = odc
   
-  return, res - mm.yl1
+  return, (res - mm.yl1)*w
 end

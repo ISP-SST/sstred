@@ -144,7 +144,8 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   
   ;; Pack variables for mpfit                                
   yl1 = red_intepf(fit.xl, fit.yl, wav[w0:w1])
-  if(n_elements(weight) eq 0) then weight=dblarr(fit.yl)+1.0d0
+
+  if(n_elements(weight) eq 0) then weight=dblarr(n_elements(fit.yl))+1.0d0
   
   mm = {xl:fit.xl, yl:fit.yl, wav:wav[w0:w1], yl1:yl1}
   functargs = {xs:xs, ys:ys, dpr:dpr, mm:mm, w:weight}

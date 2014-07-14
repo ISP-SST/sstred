@@ -246,7 +246,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
 
   ;; De-stretch
   if(~keyword_set(clip)) then clip = [12,4,2,1]
-  if(~keyword_set(tile)) then tile = [6,8,8,14]
+  if(~keyword_set(tile)) then tile = [6,8,14,24]
   if(~keyword_set(scale)) then scale = 1.0 / float(self.image_scale)
   if(~keyword_set(tstep)) then begin
      dts = dblarr(ct)
