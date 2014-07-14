@@ -103,7 +103,11 @@ pro red_lp_header, filename, header=header, datatype=datatype, $
          message, /info, 'unknown number of pixels in t-direction'
          print, '  header: '+header
          return
-     endif else nt = fix(strmid(header, pos+strlen(searchstring), 4))
+     endif else begin
+        ;nt = fix(strmid(header, pos+strlen(searchstring), 4))
+        bla = strsplit(strmid(header,pos,200),'=,',/extract)
+        nt = long(bla[1])
+     endelse
 ; endif
      searchstring = 'endian='
      pos = strpos(header, searchstring)
