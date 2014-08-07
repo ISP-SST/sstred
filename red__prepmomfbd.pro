@@ -101,7 +101,7 @@ pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
                      global_keywords = global_keywords, unpol = unpol, skip = skip, $
                      pref = pref, escan = escan, div = div, nremove = nremove, $
-                     oldgains = oldgains, nf = nfac, weight = weight
+                     oldgains = oldgains, nf = nfac, weight = weight, maxshift=msh
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -110,6 +110,8 @@ pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
+
+  if(n_elements(msh) eq 0) then msh='30'
   ;; Get keywords
   IF ~keyword_set(date_obs) THEN BEGIN
         ;;; guess it from root_dir
@@ -457,7 +459,7 @@ pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
            printf, lun, 'PIXELSIZE=16.0E-6'
            printf, lun, 'GETSTEP=getstep_conjugate_gradient'
            printf, lun, 'GRADIENT=gradient_diff'
-           printf, lun, 'MAX_LOCAL_SHIFT=30'
+           printf, lun, 'MAX_LOCAL_SHIFT='+string(msh,format='(I0)')
            printf, lun, 'NEW_CONSTRAINTS'
            printf, lun, 'FILE_TYPE='+self.filetype
            printf, lun, 'FAST_QR'
