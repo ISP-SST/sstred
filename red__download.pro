@@ -232,13 +232,13 @@ pro red::download, overwrite = overwrite $
         repeat begin
            
            ;; Make isodate for one day earlier
-           predatearr[2] = string(predatearr[2]-1, format = '(i2)')
+           predatearr[2] = string(predatearr[2]-1, format = '(i02)')
            if predatearr[2] eq 0 then begin
               predatearr[2] = '31'
-              predatearr[1] = string(predatearr[1]-1, format = '(i2)')
+              predatearr[1] = string(predatearr[1]-1, format = '(i02)')
               if predatearr[1] eq 0 then begin
                  predatearr[2] = '12'
-                 predatearr[0] += string(predatearr[0]-1, format = '(i4)')
+                 predatearr[0] += string(predatearr[0]-1, format = '(i04)')
               endif
            endif
            preisodate = strjoin(predatearr, '-')
