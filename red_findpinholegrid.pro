@@ -35,7 +35,9 @@
 ; 
 ; :Keywords:
 ; 
+;    thres : in, optional, type=float, default=0.1
 ; 
+;       Threshold for identifying a strong enough pinhole.
 ; 
 ; :history:
 ; 
@@ -44,7 +46,7 @@
 ; 
 ;-
 pro red_findpinholegrid, pinholeimage, simx, simy, thres = thres
-  if(n_elements(thres) eq 0) then thres = 0.05
+  if(n_elements(thres) eq 0) then thres = 0.1
   ;; Each pinhole gets a unique number
   mask = red_separate_mask(pinholeimage gt thres*max(pinholeimage))
   ;; # pinholes found

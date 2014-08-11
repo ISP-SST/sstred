@@ -23,8 +23,9 @@
 ; 
 ; :Keywords:
 ;    
-;    thres : Threshold for pinhole detection
-;    
+;    thres : in, optional, type=float, default=0.1
+; 
+;       Threshold for identifying a strong enough pinhole.
 ;    
 ;    extraclip : 
 ;    
@@ -93,7 +94,7 @@ PRO red::getalignclips_new, thres = thres $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if(n_elements(thres) eq 0) then thres = 0.05 
+  if(n_elements(thres) eq 0) then thres = 0.1
   if(n_elements(maxshift) eq 0) THEN maxshift = 35
    
   ;; Prepare for putting the different cameras in arrays
@@ -201,7 +202,7 @@ PRO red::getalignclips_new, thres = thres $
 
          ;; Find pinhole grid for reference image
          print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-         red_findpinholegrid, pics[*,*,icamref,istate], simx_orig, simy_orig, thres = thres
+         red_findpinholegrid_new, pics[*,*,icamref,istate], simx_orig, simy_orig, thres = thres
          print, 'done'
 
          gridspacing = median([deriv(simx_orig),deriv(simy_orig)])
@@ -227,7 +228,7 @@ PRO red::getalignclips_new, thres = thres $
                simy = simy_orig
             endif else begin
                print, inam + ' : red_findpinholegrid ... ', format='(A,$)'
-               red_findpinholegrid, pics[*,*,icam,istate], simx, simy, thres=thres
+               red_findpinholegrid_new, pics[*,*,icam,istate], simx, simy, thres=thres
                print, 'done'
                simx = simx(where(simx gt border and simx lt dim[0]-border))
                simy = simy(where(simy gt border and simy lt dim[1]-border))

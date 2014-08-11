@@ -34,7 +34,7 @@
 ; 
 ; :Keywords:
 ; 
-;    thres : in, optional, type=float, default=0.05
+;    thres : in, optional, type=float, default=0.1
 ; 
 ;       Threshold for identifying a strong enough pinhole.
 ; 
@@ -77,7 +77,7 @@ pro red_findpinholegrid_new, pinholeimage, x, y $
                              , thres = thres $
                              , margin = margin
 
-  if n_elements(thres) eq 0 then thres = 0.05
+  if n_elements(thres) eq 0 then thres = 0.1
   if n_elements(margin) eq 0 then margin = 0
 
   ;; Each pinhole gets a unique ROI number
