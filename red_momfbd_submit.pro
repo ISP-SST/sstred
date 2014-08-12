@@ -62,6 +62,8 @@
 ;   2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                namespace.
 ;
+;   2014-08-12 : MGL. Don't use last().
+;
 ;
 ;-
 pro red_momfbd_submit, imno $
@@ -94,7 +96,7 @@ pro red_momfbd_submit, imno $
   if n_elements(dir) eq 0 then begin
      dir = './'
   end else begin
-     if last(dir) ne '/' then dir += '/'
+     if strmid(dir,strlen(dir)-1,1) ne '/' then dir += '/'
   end
 
   if n_elements(cfgfile) ne 0 then begin
