@@ -302,7 +302,7 @@ pro red::pinholecalib, STATE = state $
 
             ;; Avoid sizes that make the momfbd slaves crash.
             badsizes = [90]
-            while total(sz eq badsizes) gt 0 do sz += 2
+            while total(sz eq badsizes) gt 0 do sz -= 2
 
             ;; Measure positions used for calculating initial offsets.
             d = sz/2
