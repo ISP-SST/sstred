@@ -58,6 +58,9 @@
 ;
 ;   2013-09-04 : MGL. Use red_momfbd_check, not momfbd_check.
 ;
+;   2014-08-12 : MGL. Don't use last().
+;
+;
 ;
 ;-
 function red_momfbd_results, imno $
@@ -78,7 +81,7 @@ function red_momfbd_results, imno $
   if n_elements(dir) eq 0 then begin
      dir = './'
   end else begin
-     if last(dir) ne '/' then dir += '/'
+     if strmid(dir,strlen(dir)-1,1) ne '/' then dir += '/'
   end
 
   ;; Wait for momfbd to finish

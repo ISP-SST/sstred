@@ -23,8 +23,9 @@
 ; 
 ; :Keywords:
 ;    
-;    thres : 
-;    
+;    thres : in, optional, type=float, default=0.1
+; 
+;       Threshold for identifying a strong enough pinhole.
 ;    
 ;    extraclip : 
 ;    
@@ -66,7 +67,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if(n_elements(thres) eq 0) then tr = 0.05 ; Not used?? MGL
+  if(n_elements(thres) eq 0) then tr = 0.1
   if(n_elements(maxshift) eq 0) THEN maxshift = 35
    
   ;; Search summed pinh images and camtag

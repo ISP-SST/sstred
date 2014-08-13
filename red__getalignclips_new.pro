@@ -23,8 +23,9 @@
 ; 
 ; :Keywords:
 ;    
-;    thres : Threshold for pinhole detection
-;    
+;    thres : in, optional, type=float, default=0.1
+; 
+;       Threshold for identifying a strong enough pinhole.
 ;    
 ;    extraclip : 
 ;    
@@ -93,7 +94,7 @@ PRO red::getalignclips_new, thres = thres $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if(n_elements(thres) eq 0) then thres = 0.05 
+  if(n_elements(thres) eq 0) then thres = 0.1
   if(n_elements(maxshift) eq 0) THEN maxshift = 35
    
   ;; Prepare for putting the different cameras in arrays
