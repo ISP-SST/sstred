@@ -73,7 +73,7 @@
 ;   2013-09-12 : MGL. Use red_flipthecube rather than flipthecube.
 ;
 ;-
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor, no_cross_talk = no_cross_talk, mask = mask
  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -315,6 +315,17 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         save, file=odir + '/spectfile.'+pref+'.idlsave', norm_spect, norm_factor, spect_pos
      endif
      
+
+ ;; Mask spectra and FOV for crosstalk?
+     if(~keyword_set(no_cross_talk)) then begin
+        if(keyword_set(mask) AND ss eq 0) then begin
+           ppc = red_select_spoints(wav, imean)
+        endif else ppc = indgen(nwav)
+        crt = red_get_ctalk(d, idx=ppc)
+        for ss=1,3 do for ww = 0, nwav-1 do d[*,*,ss,ww] -= crt[ss]*d[*,*,0,ww]
+     endif
+    
+
      if(~keyword_set(scans_only)) then begin
         ;; Write this scan's data cube to assoc file
         tscl = tmean[ss]
