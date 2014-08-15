@@ -322,7 +322,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
            ppc = red_select_spoints(wav, imean)
         endif else ppc = indgen(nwav)
         crt = red_get_ctalk(d, idx=ppc)
-        for ss=1,3 do for ww = 0, nwav-1 do d[*,*,ss,ww] -= crt[ss]*d[*,*,0,ww]
+        for tt=1,3 do for ww = 0, nwav-1 do d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
      endif
     
 
