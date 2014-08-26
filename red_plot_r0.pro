@@ -92,7 +92,9 @@
 ;                  (red and blue, but also darks, flats, polcal).
 ;
 ;     2014-06-09 : MGL. Speed up directory search by using new routine
-;                  red_find_matching_dirs.
+;                  red_find_matching_dirs. 
+; 
+;     2014-08-18 : MGL. Use red_strreplace(), not strreplace(). 
 ; 
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
@@ -205,7 +207,7 @@ pro red_plot_r0, dir = dir, today = today, date = date $
    endif
   endif
   if n_elements(date) ne 0 then begin
-     isodate = (strsplit(date_conv(strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
+     isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
   endif else begin
      print, 'red_plot_r0 : No date given.'
      help, date, dnames[0]
@@ -248,7 +250,7 @@ pro red_plot_r0, dir = dir, today = today, date = date $
 
      print, timedirs[i]
 
-     tdir = strreplace(timedirs[i],'/./','/')
+     tdir = red_strreplace(timedirs[i],'/./','/')
      spawn, 'cd '+tdir+' ; ls', cdirs
      
      if n_elements(cdirs) gt 0 then begin
