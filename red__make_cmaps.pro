@@ -53,7 +53,9 @@
 ; 
 ; 
 ;-
-pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, fwhm = fwhm, only_scans=only_scans, remove_smallscale = remove_smallscale, wavelength_cube = wavelength_cube
+pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_dir = rot_dir, $
+                      fwhm = fwhm, only_scans=only_scans, remove_smallscale = remove_smallscale, $
+                      wavelength_cube = wavelength_cube, float=float
 
   inam  = 'red::make_cmaps : '
 ;  if(n_elements(cmap) eq 0) then begin
@@ -110,7 +112,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;;
   ;; Small scale already corrected?
   if(keyword_set(remove_smallscale)) then begin
-     npix = 72
+     npix = 30
      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
      cpsf /= total(cpsf, /double)
      cmap = red_convolve(temporary(cmap), cpsf)
@@ -142,6 +144,8 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   endif
   restore, cfile
   
+
+
   ;;
   ;; loop case wavelength dep.
   ;;
@@ -156,18 +160,37 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ny = y1 - y0 + 1L
 
   ;;
+  ;; load offsets file
+  ;;
+  cfile = file_search(self.out_dir + '/calib/'+cam+'.*.xoffs', count = ct)
+  if(ct eq 0) then begin
+     print, inam + 'Could not find offset files, skipping correction may result in small errors at the edges'
+     xoffs = cmap *0.
+     yoffs = cmap *0.
+  endif else begin
+     cfile = cfile[ct-1] ;; just pick one close to continuum (last state?)
+     print, inam+'loading offset files:'
+     print, '  -> '+file_basename(cfile)
+     print, '  -> '+file_basename(cfile,'xoffs')+'yoffs'
+     xoffs = f0(cfile)
+     yoffs = f0(file_dirname(cfile)+'/'+file_basename(cfile,'xoffs')+'yoffs')
+  endelse
+
+  ;;
   ;; init cmap2 for simple case
   ;;
   idx = 1
   if(keyword_set(reflected)) then idx = 2
-  npsf = round(fwhm * 7.)
-  if((npsf/2)*2 eq npsf) then npsf += 1L
+  if(~keyword_set(remove_smallscale)) then begin
+     npsf = round(fwhm * 7.)
+     if((npsf/2)*2 eq npsf) then npsf += 1L
 
-  psf = red_get_psf(npsf, npsf, fwhm, fwhm)
-  psf /= total(psf, /double)
-  cmap1 = red_convolve(cmap, psf)
-  cmap1 = (red_clipim(temporary(cmap1), cl[*,idx]))[x0:x1,y0:y1]
-
+     psf = red_get_psf(npsf, npsf, fwhm, fwhm)
+     psf /= total(psf, /double)
+     cmap1 = red_convolve(cmap, psf)
+  endif else cmap1 = cmap
+  cmap1 = (red_applyoffsets(red_clipim(temporary(cmap1), cl[*,idx]), xoffs,yoffs))[x0:x1,y0:y1]
+  
 
 
   ;;
@@ -179,8 +202,10 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   root2 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)+'_nwav='+red_stri(nw)+'_nt='+red_stri(nscan)
   root3 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)
 
-  file1 = odir + 'cmap.'+pref+'_'+time1+'.'+root1+'.simple.icube'
-  if(dowav) then file2 = odir + 'cmap.'+pref+'_'+time1+'.'+root2+'.allwav.icube'
+  if(keyword_set(float)) then exten='.fcube' else exten='.icube'
+  
+  file1 = odir + 'cmap.'+pref+'_'+time1+'.'+root1+'.simple'+exten
+  if(dowav) then file2 = odir + 'cmap.'+pref+'_'+time1+'.'+root2+'.allwav'+exten
 
 
   
@@ -196,11 +221,10 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;;
   openw, lun1, file1, /get_lun
   if(dowav) then openw, lun2, file2, /get_lun
-  writeu, lun1, red_unpol_lpheader(nx, ny, nscan)
-  if(dowav) then writeu, lun2, red_unpol_lpheader(nx, ny, nscan*nw)
-  
+  writeu, lun1, red_unpol_lpheader(nx, ny, nscan,float=float)
+  if(dowav) then writeu, lun2, red_unpol_lpheader(nx, ny, nscan*nw, float=float)
+
   for ss = 0L, nscan-1 do begin
-     
      ;;
      ;; CASE 1
      ;;
@@ -213,8 +237,10 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      ;; Flip any of the axes? (case 1)
      cmap11 = rotate(temporary(cmap11), rot_dir)
      
+     print, string(13B)+ inam+'processing scan '+string(ss, format='(I0)')+' of '+string(nscan-1, format='(I0)'), format='(A,$)'
+     
      ;; write to disk (case 1)
-     writeu, lun1, fix(round(temporary(cmap11)*1000.))
+     if(~keyword_set(float)) then writeu, lun1, fix(round(temporary(cmap11)*1000.)) else  writeu, lun1, float(temporary(cmap11)*1000.)
      
      ;;
      ;; CASE 2
@@ -247,10 +273,11 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
            
            ;; write to disk
            writeu, lun2, fix(round(temporary(cmap2)*1000.))
+           if(~keyword_set(float)) then writeu, lun2, writeu, lun2, fix(round(temporary(cmap2)*1000.)) else  writeu, lun2, float((temporary(cmap2)*1000.))
         endfor
      endif
   endfor
-  
+  print, ' '
   ;; 
   ;; Close files
   ;;
