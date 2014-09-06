@@ -69,6 +69,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   endif
   if(n_elements(fwhm) eq 0) then fwhm = 7.0
   if(keyword_set(wavelength_cube)) then dowav=1B else dowav=0B
+
   ;;
   ;; Search directories
   ;;
@@ -76,6 +77,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   dir = red_select_sub(root)
   if(~file_test(dir+'/cfg')) then dir = red_select_sub(dir)
   time = (strsplit(dir,'/',/extract))
+  pref = time[n_elements(time)-1]
   time = time[n_elements(time)-2]
 
 
@@ -86,16 +88,19 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   
   cam = self.camttag
   if(keyword_set(reflected)) then cam = self.camrtag
-  nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc1.momfbd', count = cn)
-  wbf = file_search(dir+'/cfg/results/'+self.camwbtag+'.?????.????.momfbd', count = cw)
-  if(cn eq 0) then nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc4.momfbd', count = cn)
-  ;; wbff= file_search(dir+'/cfg/results/'+cam+'.?????.????.momfbd', count = cw1)
 
-  ;;
-  ;; States
-  ;;
-  st = red_get_stkstates(nbf)
-  pref = (strsplit(st.state[0],'.',/extract))[1]
+  wbf = file_search(dir+'/cfg/results/'+self.camwbtag+'.?????.????.momfbd', count = cw)
+  if(keyword_set( wavelength_cube)) then begin
+     nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc1.momfbd', count = cn)
+     if(cn eq 0) then nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc4.momfbd', count = cn)
+     ;; wbff= file_search(dir+'/cfg/results/'+cam+'.?????.????.momfbd', count = cw1)
+     ;;
+     ;; States
+     ;;
+     st = red_get_stkstates(nbf)
+     pref = (strsplit(st.state[0],'.',/extract))[1]
+  endif
+
 
   ;;
   ;; Cavity map
@@ -142,27 +147,30 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      print, inam + 'Error: Could not find calibration file -> '+cfile
      return
   endif
+  print, inam +'loading -> '+cfile
   restore, cfile
   
 
+  if(keyword_set(wavelength_cube)) then begin
+     ;;
+     ;; loop case wavelength dep.
+     ;;
+     nw = st.nwav
+     nscan = st.nscan
+     ;;
+     ;; get image border
+     ;;
+  endif else nscan = n_elements(ang)
+  if(n_elements(x0) eq 0) then dimim = red_getborder(red_mozaic(momfbd_read(wbf[0])), x0, x1, y0, y1, square=square)
 
-  ;;
-  ;; loop case wavelength dep.
-  ;;
-  nw = st.nwav
-  nscan = st.nscan
 
-  ;;
-  ;; get image border
-  ;;
-  dimim = red_getborder(red_mozaic(momfbd_read(wbf[0])), x0, x1, y0, y1, square=square)
   nx = x1 - x0 + 1L
   ny = y1 - y0 + 1L
-
+  
   ;;
   ;; load offsets file
   ;;
-  cfile = file_search(self.out_dir + '/calib/'+cam+'.*.xoffs', count = ct)
+  cfile = file_search(self.out_dir + '/calib/'+cam+'.*'+pref+'.*.xoffs', count = ct)
   if(ct eq 0) then begin
      print, inam + 'Could not find offset files, skipping correction may result in small errors at the edges'
      xoffs = cmap *0.
@@ -175,7 +183,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      xoffs = f0(cfile)
      yoffs = f0(file_dirname(cfile)+'/'+file_basename(cfile,'xoffs')+'yoffs')
   endelse
-
+     
   ;;
   ;; init cmap2 for simple case
   ;;
@@ -190,7 +198,6 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      cmap1 = red_convolve(cmap, psf)
   endif else cmap1 = cmap
   cmap1 = (red_applyoffsets(red_clipim(temporary(cmap1), cl[*,idx]), xoffs,yoffs))[x0:x1,y0:y1]
-  
 
 
   ;;
@@ -199,7 +206,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   odir = self.out_dir + '/crispex/cavity_maps/'
   file_mkdir, odir
   root1 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)+'_nt='+red_stri(nscan)
-  root2 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)+'_nwav='+red_stri(nw)+'_nt='+red_stri(nscan)
+  if(keyword_set(wavelength_cube)) then root2 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)+'_nwav='+red_stri(nw)+'_nt='+red_stri(nscan)
   root3 = 'nx='+red_stri(nx)+'_ny='+red_stri(ny)
 
   if(keyword_set(float)) then exten='.fcube' else exten='.icube'
