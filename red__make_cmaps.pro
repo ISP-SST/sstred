@@ -279,8 +279,8 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
            cmap2 = rotate(temporary(cmap2), rot_dir)
            
            ;; write to disk
-           writeu, lun2, fix(round(temporary(cmap2)*1000.))
-           if(~keyword_set(float)) then writeu, lun2, writeu, lun2, fix(round(temporary(cmap2)*1000.)) else  writeu, lun2, float((temporary(cmap2)*1000.))
+;           writeu, lun2, fix(round((cmap2)*1000.))
+           if(~keyword_set(float)) then writeu, lun2, fix(round(temporary(cmap2)*1000.)) else  writeu, lun2, float((temporary(cmap2)*1000.))
         endfor
      endif
   endfor
