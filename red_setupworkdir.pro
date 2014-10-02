@@ -124,6 +124,9 @@
 ;    2014-01-23 : MGL. No need to give /lapalma keyword, we'll
 ;                 know by examining the host name.
 ;
+;    2014-09-08 : MGL. Changed the wording of comments on the fitgains
+;                 method written to doit.pro.
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -510,7 +513,12 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#'
 
   printf, Slun, 'a -> fitgains, npar = 2, res=res' 
-  printf, Slun, '; a -> fitgains, npar = 2, res=res, /fit_reflectivity   ; Try this if you want but without /fit_reflectivity is safer.'
+  printf, Slun, 'If you need per-pixel reflectivities for your analysis'
+  printf, Slun, '(e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+  printf, Slun, 'keyword:'
+  printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+  printf, Slun, 'However, running without /fit_reflectivity is safer. In should not'
+  printf, Slun, 'be used for chromospheric lines like 6563 and 8542.'
 
   for iline = 0, Nprefilters-1 do begin
      if long(prefilters[iline]) gt 7700 then maybedescatter = ', /descatter' else maybedescatter = ''
