@@ -66,10 +66,12 @@
 ;   2014-01-23 : MGL. Use red_extractstates instead of red_getstates
 ;                and local extraction of info from file names.
 ;
+;   2014-10-06 : JdlCR. Prefilter keyword, please DO NOT REMOVE!
+;
 ;-
 PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                   remove = remove, cam = ucam, check = check, lim = lim, $
-                  store_rawsum = store_rawsum
+                  store_rawsum = store_rawsum, prefilter = prefilter
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -158,6 +160,11 @@ PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
      
      ;; Loop and sum
      for ss = 0L, ns - 1 do begin
+        if(n_elements(prefilter) eq 1) then begin
+           dum = (strsplit(ustat[ss],'.',/extract))[0]
+           if(dum ne prefilter) then continue
+        endif
+        
         pos = where((stat.state eq ustat[ss]) AND (stat.star eq 0B), count)
         if(count eq 0) then continue
 
