@@ -101,7 +101,8 @@
 ; 
 ;    2014-10-10 : MGL. 8x8 r0 data does not exist before 2013-10-28.
 ;                 Set plot24 to true to replace plot8 for earlier
-;                 dates. 
+;                 dates. Make sure to keep within the plot range when
+;                 marking directories.
 ;
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
@@ -349,37 +350,47 @@ pro red_plot_r0, dir = dir, today = today, date = date $
                  ;; Now do the marking of directories
                  
                  if tstarts[i] ne 0.0d then begin
-
-                    tinterval = [tstarts[i], tstops[i]]/3600.
-                    xpoly = [tstarts[i], tstops[i], tstops[i], tstarts[i], tstarts[i]]/3600.
-                    ypoly = [0, 0, 1, 1, 0]*0.01
-
-                    if strmatch(timedirs[i],'*dark*',/fold) then begin
-                       ;; Darks
-                       cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_dark
-                    endif else if strmatch(timedirs[i],'*flat*', /fold) then begin
-                       ;; Flats
-                       cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_flat
-                    endif else if strmatch(timedirs[i],'*pinh*', /fold) then begin
-                       ;; Pinholes
-                       cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_pinhole
-                    endif else if strmatch(timedirs[i],'*polcal*', /fold) then begin
-                       ;; Polcal
-                       cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_polcal
-                    endif else begin
-                       if strmatch(timedirs[i],'*blue*', /fold) then begin
-                          ;; Blue data
-                          cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly+0.010, color = color_blue
-                       endif else begin
-                          ;; Red data
-                          cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly+0.020, color = color_red
-                       endelse  ; red/blue
-                    endelse     ; data type
                     
-                 endif          ; starts[i]
-              endfor            ; i
-           endif                ; Ntd
-        endif                   ; Ndd
+                    ;; The time interval to be marked
+                    tinterval = [tstarts[i], tstops[i]]/3600.
+                    
+                    ;; Proceed only if this directory is at least
+                    ;; partly within the plot range. 
+                    if (tinterval[0] ge !x.crange[0] and tinterval[0] le !x.crange[1]) or $
+                       (tinterval[1] ge !x.crange[0] and tinterval[1] le !x.crange[1]) then begin
+                       
+                       ;; Take plot range into account
+                       tinterval = [tstarts[i]/3600. >!x.crange[0], tstops[i]/3600. <!x.crange[1]]
+                       
+                       xpoly = tinterval[[0, 1, 1, 0, 0]]
+                       ypoly = [0, 0, 1, 1, 0]*0.01
+                       
+                       if strmatch(timedirs[i],'*dark*',/fold) then begin
+                          ;; Darks
+                          cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_dark
+                       endif else if strmatch(timedirs[i],'*flat*', /fold) then begin
+                          ;; Flats
+                          cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_flat
+                       endif else if strmatch(timedirs[i],'*pinh*', /fold) then begin
+                          ;; Pinholes
+                          cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_pinhole
+                       endif else if strmatch(timedirs[i],'*polcal*', /fold) then begin
+                          ;; Polcal
+                          cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_polcal
+                       endif else begin
+                          if strmatch(timedirs[i],'*blue*', /fold) then begin
+                             ;; Blue data
+                             cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly+0.010, color = color_blue
+                          endif else begin
+                             ;; Red data
+                             cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly+0.020, color = color_red
+                          endelse ; red/blue
+                       endelse    ; data type
+                    endif         ; within range
+                 endif            ; starts[i]
+              endfor              ; i
+           endif                  ; Ntd
+        endif                     ; Ndd
         
      endif else begin           ; markdata
         ;; Set up the plot.
