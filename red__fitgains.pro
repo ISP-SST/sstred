@@ -105,10 +105,10 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
                    densegrid = densegrid, res = res, thres = thres, initcmap = initcmap, $
                    fit_reflectivity = fit_reflectivity, $
                    x0 = x0, x1 = x1, state = state, nosave = nosave, myg = myg, $
-                   w0 = w0, w1 = w1, nthreads = nthreads
+                   w0 = w0, w1 = w1, nthreads = nthreads, ifit = ifit
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
 
   ;; Logging
   help, /obj, self, output = selfinfo 
@@ -201,14 +201,29 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
      ;; Pixel-to-pixel fits using a C++ routine to speed-up things
      if(it eq 0) then begin
         res1 = res[0:1,*,*]
-        red_cfitgain, res1, wav, dat, xl, yl, ratio, nthreads=nthreads
+        if(keyword_set(ifit)) then begin
+           red_ifitgain, res1, wav, dat, xl, yl, ratio
+        endif else red_cfitgain, res1, wav, dat, xl, yl, ratio, nthreads=nthreads
         res[0:1,*,*] = temporary(res1)
      ENDIF ELSE BEGIN
-         IF keyword_set(fit_reflectivity) THEN $
+        IF keyword_set(fit_reflectivity) THEN $
            red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads $
-         ELSE $
-           red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads
+        ELSE begin
+           if(keyword_set(ifit)) then begin
+              red_ifitgain, res, wav, dat, xl, yl, ratio 
+           endif else red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads
+        endelse
      ENDELSE
+     
+     dum = 2
+     if(keyword_set(fit_reflectivity)) then dum += 1
+     
+     print, inam+ 'Normalizing polynomial coefs'
+     for ii = dum, npar_t-1 do begin
+        kk = median(reform(res[ii,*,*]))
+        print, ' <C_'+string(ii-dum,format='(I0)')+'> = ', kk
+        res[ii,*,*] -= kk 
+     endfor
   endfor
   yl = red_get_imean(wav, dat, res, npar_t, it, xl = xl, rebin = rebin, densegrid = densegrid, $
                        thres = thres, myg = myg, reflec = fit_reflectivity)
@@ -218,7 +233,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   
   ;; Create cavity-error-free flat (save in "ratio" variable)
   print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
-   
+  ;stop
   for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $
      reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))
    
