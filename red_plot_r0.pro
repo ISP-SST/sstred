@@ -102,7 +102,9 @@
 ;    2014-10-10 : MGL. 8x8 r0 data does not exist before 2013-10-28.
 ;                 Set plot24 to true to replace plot8 for earlier
 ;                 dates. Make sure to keep within the plot range when
-;                 marking directories.
+;                 marking directories. All cg command to just load
+;                 themselves, not add, and then execute only when
+;                 writing to file.
 ;
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
@@ -411,15 +413,15 @@ pro red_plot_r0, dir = dir, today = today, date = date $
      ;; Do the r0 plotting
      if keyword_set(plot24) then begin
         indx = where(r0data[0, *] gt r0_top, Ntop)
-        cgplot, /add, /over, r0time[0, *]/3600., r0data[0, *] >r0_bot<r0_top, color = color_24, psym = 16, symsize = 0.1
-        cgplot, /add, /over, r0time[0, indx]/3600., replicate(r0_top, Ntop), color = color_24, psym = 5, symsize = 0.15
-        cgplot, /add, /over, r0time[0, *]/3600., smooth(r0data[0, *], dt_mean*60.) >r0_bot, color = color_24
+        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., r0data[0, *] >r0_bot<r0_top, color = color_24, psym = 16, symsize = 0.1
+        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, indx]/3600., replicate(r0_top, Ntop), color = color_24, psym = 5, symsize = 0.15
+        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., smooth(r0data[0, *], dt_mean*60.) >r0_bot, color = color_24
      endif
      if keyword_set(plot8) then begin
         indx = where(r0data[1, *] gt r0_top, Ntop)
-        cgplot, /add, /over, r0time[0, *]/3600., r0data[1, *] >r0_bot<r0_top, color = color_8, psym = 16, symsize = 0.1
-        cgplot, /add, /over, r0time[0, indx]/3600., replicate(r0_top, Ntop), color = color_8, psym = 5, symsize = 0.15
-        cgplot, /add, /over, r0time[0, *]/3600., smooth(r0data[1, *], dt_mean*60.) >r0_bot, color = color_8
+        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., r0data[1, *] >r0_bot<r0_top, color = color_8, psym = 16, symsize = 0.1
+        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, indx]/3600., replicate(r0_top, Ntop), color = color_8, psym = 5, symsize = 0.15
+        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., smooth(r0data[1, *], dt_mean*60.) >r0_bot, color = color_8
      endif
 
      cgcontrol, output = 'r0_'+isodate+'.pdf'
