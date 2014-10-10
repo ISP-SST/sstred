@@ -99,12 +99,13 @@
 ;     2014-10-10 : TL. Fixed an issue with calculating the isodate
 ;                  string.  
 ; 
-;    2014-10-10 : MGL. 8x8 r0 data does not exist before 2013-10-28.
-;                 Set plot24 to true to replace plot8 for earlier
-;                 dates. Make sure to keep within the plot range when
-;                 marking directories. All cg command to just load
-;                 themselves, not add, and then execute only when
-;                 writing to file.
+;     2014-10-10 : MGL. 8x8 r0 data does not exist before 2013-10-28.
+;                  Set plot24 to true to replace plot8 for earlier
+;                  dates. Make sure to keep within the plot range when
+;                  marking directories. All cg command to just load
+;                  themselves, not add, and then execute only when
+;                  writing to file. Mark TRIPPEL data directories with
+;                  their own color (pink).
 ;
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
@@ -126,13 +127,14 @@ pro red_plot_r0, dir = dir, today = today, date = date $
   ;; Colors to use for plotting
   color_8       = 'black'
   color_24      = 'goldenrod'
-  color_spec    = 'pink'
   color_dark    = 'black'
   color_flat    = 'gray'
   color_polcal  = 'magenta'
   color_pinhole = 'green'
+
   color_blue    = 'blue'
   color_red     = 'red'
+  color_spec    = 'pink'
 
 
   ;; Did we specify a directory somehow?
@@ -373,17 +375,26 @@ pro red_plot_r0, dir = dir, today = today, date = date $
                        endif else if strmatch(timedirs[i],'*flat*', /fold) then begin
                           ;; Flats
                           cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_flat
-                       endif else if strmatch(timedirs[i],'*pinh*', /fold) then begin
-                          ;; Pinholes
+                       endif else if strmatch(timedirs[i],'*pinh*', /fold) or $
+                          strmatch(timedirs[i], '*[Gg]rid*', /fold) then begin
+                          ;; Pinholes or TRIPPEL grid
                           cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_pinhole
                        endif else if strmatch(timedirs[i],'*polcal*', /fold) then begin
                           ;; Polcal
                           cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_polcal
                        endif else begin
-                          if strmatch(timedirs[i],'*blue*', /fold) then begin
+
+                          ;; Is this TRIPPEL data?
+                          spnames = file_search(timedirs[i]+'Spec*', count = Nspec)
+                          if Nspec gt 0 then begin
+
+                             ;; TRIPPEL data
+                             cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly*2+0.01, color = color_spec
+
+                          endif else if strmatch(timedirs[i],'*blue*', /fold) then begin
                              ;; Blue data
                              cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly+0.010, color = color_blue
-                          endif else begin
+                          end else begin
                              ;; Red data
                              cgwindow, 'cgColorFill', /loadcmd, xpoly, ypoly+0.020, color = color_red
                           endelse ; red/blue
