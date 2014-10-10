@@ -142,7 +142,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   endif else tmean = replicate(1.0, 10000) ; Dummy time correction
 
   ;; Camera tags
-  self->getcamtags, dir = self.data_dir
+  self->getcamtags, dir = self.pinh_dir
 
   ;; Load prefilter
   tpfile = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter.f0'

@@ -135,7 +135,7 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   tr = red_get_fpi_trans(fpi, tw + fpi.w0, ecl = 0.0, ech = 0.0, erh = -0.01)
 
   dum = max(tr, p)
-  cc = poly_fit(tw[p-1:p+1] * 100.d0, tr[p-1: p+1], 2, /double)
+  cc = poly_fit(tw[p-1:p+1] * 100.d0, tr[p-1: p+1], 2)
   off = -0.005d0 * cc[1] / cc[2]
   tr = red_get_fpi_trans(fpi, tw + fpi.w0 + off, ecl = 0.0, ech = 0.0, erh = -0.01)
   
