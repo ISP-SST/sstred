@@ -95,6 +95,9 @@
 ;                  red_find_matching_dirs. 
 ; 
 ;     2014-08-18 : MGL. Use red_strreplace(), not strreplace(). 
+;  
+;     2014-10-10 : TL. Fixed an issue with calculating the isodate
+;                  string.  
 ; 
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
@@ -204,10 +207,12 @@ pro red_plot_r0, dir = dir, today = today, date = date $
      pos = stregex(pwd,'/[0-9][0-9][0-9][0-9][.-][0-9][0-9][.-][0-9][0-9]')
      if pos ne -1 then begin
         date = strmid(pwd, pos+1, 10)
-   endif
+     endif
   endif
   if n_elements(date) ne 0 then begin
-     isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
+     dashdate=red_strreplace(date, '.', '-', n = 2)
+     isodate = (strsplit(date_conv(dashdate[0], 'F'), 'T', /extract))[0]
+     ;; isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
   endif else begin
      print, 'red_plot_r0 : No date given.'
      help, date, dnames[0]
