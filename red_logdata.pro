@@ -46,7 +46,9 @@
 ;   r0 : out, optional, type="fltarr(2) or fltarr(2,N)"
 ; 
 ;     The r0 values in meters from the AO (24x24 and 8x8 pixels) will
-;     be returned.
+;     be returned for 2013-10-28 and later. Before that day no 8x8
+;     data exist and the dimensions of the returned array is changed
+;     accordingly. 
 ;
 ;   turret : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
@@ -114,6 +116,10 @@
 ;                 implemented the zenithangle keyword.
 ;
 ;    2014-05-28 : MGL. Give the date when calling red_download.
+;
+;    2014-10-10 : MGL. May have to look for r0 log files in
+;                 YYYY-subdirectories on the web site. 8x8 r0 data
+;                 does not exist before 2013-10-28.
 ;
 ;
 ;-
@@ -275,6 +281,8 @@ pro red_logdata, date, time $
 
         ;; Read r0 file
         r0data = mgl_rd_tfile(r0file, /auto, /convert, /double)
+        Ncol = (size(r0data, /dim))[0]
+        have8x8 = Ncol gt 5     ; The 8x8 measurements were introduced some time in 2013
 
         ;;  Remove glitches
         goodtimes = where(r0data[0, *] ne 0) 
@@ -282,23 +290,23 @@ pro red_logdata, date, time $
 
         ;; Get r0 values of two kinds (in meters)
         r0_values24x24 = reform(r0data[1, *])           
-        r0_values8x8 = median(r0data[4:12, *], dim = 1) 
+        if have8x8 then r0_values8x8 = median(r0data[4:12, *], dim = 1) 
         
         r0_time = r0data[0, *]-midnight ; In seconds since midnight
 
         if n_elements(T) eq 0 then begin
            ;; Return all values
            Ntimes = n_elements(r0_time)
-           r0 = fltarr(2, Ntimes)
+           if have8x8 then r0 = fltarr(2, Ntimes) else r0 = fltarr(1, Ntimes)
            T = r0_time
            time = T
            r0[0, *] = r0_values24x24
-           r0[1, *] = r0_values8x8
+           if have8x8 then r0[1, *] = r0_values8x8
         endif else begin
            ;; Get interpolated values
-           r0 = fltarr(2, Ntimes)
+           if have8x8 then r0 = fltarr(2, Ntimes) else r0 = fltarr(1, Ntimes)
            r0[0, *] = interpol(r0_values24x24, r0_time, T)
-           r0[1, *] = interpol(r0_values8x8, r0_time, T)
+           if have8x8 then r0[1, *] = interpol(r0_values8x8, r0_time, T)
         endelse 
 
      endif else begin
