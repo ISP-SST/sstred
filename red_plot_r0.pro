@@ -99,6 +99,10 @@
 ;     2014-10-10 : TL. Fixed an issue with calculating the isodate
 ;                  string.  
 ; 
+;    2014-10-10 : MGL. 8x8 r0 data does not exist before 2013-10-28.
+;                 Set plot24 to true to replace plot8 for earlier
+;                 dates. 
+;
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
                  , lapalma = lapalma $
@@ -119,6 +123,7 @@ pro red_plot_r0, dir = dir, today = today, date = date $
   ;; Colors to use for plotting
   color_8       = 'black'
   color_24      = 'goldenrod'
+  color_spec    = 'pink'
   color_dark    = 'black'
   color_flat    = 'gray'
   color_polcal  = 'magenta'
@@ -238,7 +243,13 @@ pro red_plot_r0, dir = dir, today = today, date = date $
   
   ;; Download the r0 log file if necessary
   red_logdata, isodate, r0time, r0 = r0data
-
+  Nr0 = (size(r0data, /dim))[0]
+  if keyword_set(plot8) and Nr0 eq 1 then begin
+     print, 'red_plot_r0 : 8x8 r0 data does not exist before 2013-10-28.'
+     print, '              Using /plot24 instead.'
+     plot8  = 0
+     plot24 = 1
+  endif
 
   ;; Find the timestamp directories
   timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
