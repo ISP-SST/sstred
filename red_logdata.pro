@@ -121,6 +121,9 @@
 ;                 YYYY-subdirectories on the web site. 8x8 r0 data
 ;                 does not exist before 2013-10-28.
 ;
+;     2014-10-10 : MGL. Use read_ascii rather than mgl_rd_tfile for
+;                  reading the r0 log file.
+;
 ;
 ;-
 pro red_logdata, date, time $
@@ -280,19 +283,57 @@ pro red_logdata, date, time $
      if r0file then begin
 
         ;; Read r0 file
-        r0data = mgl_rd_tfile(r0file, /auto, /convert, /double)
-        Ncol = (size(r0data, /dim))[0]
-        have8x8 = Ncol gt 5     ; The 8x8 measurements were introduced some time in 2013
+        if 10000*yr + 100*mo + dy ge 20131028L then begin
+           ;; 8x8 measurements exist
+           have8x8 = 1
+           r0template = { VERSION:1.0 $
+                         , DATASTART:0L $
+                         , DELIMITER:32B $
+                         , MISSINGVALUE:!VALUES.F_NAN $
+                         , COMMENTSYMBOL:'' $
+                         , FIELDCOUNT:13L $
+                         , FIELDTYPES:[5L, replicate(4L, 12)] $
+                         , FIELDNAMES:['time', 'r0', 'closedloop', 'subimages', replicate('r0_8x8', 9)] $
+                         , FIELDLOCATIONS:[0L, 18L, 27L, 36L, 9L*lindgen(9)+46L] $
+                         , FIELDGROUPS:[0L, 1L, 2L, 3L, replicate(4L, 9)] $
+                       }
+        endif else begin
+           have8x8 = 0
+           r0template = { VERSION:1.0 $
+                          , DATASTART:0L $
+                          , DELIMITER:32B $
+                          , MISSINGVALUE:!VALUES.F_NAN $
+                          , COMMENTSYMBOL:'' $
+                          , FIELDCOUNT:4L $
+                          , FIELDTYPES:[5L, 4L, 4L, 4L] $
+                          , FIELDNAMES:['time', 'r0', 'closedloop', 'subimages'] $
+                          , FIELDLOCATIONS:[0L, 18L, 27L, 36L] $
+                          , FIELDGROUPS:[0L, 1L, 2L, 3L] $
+                        }
+        endelse
+
+        ;; We wouldn't really need the template if we didn't need the
+        ;; time to be read in as doubles. 
+        r0data = read_ascii(r0file, TEMPLATE=r0template)
+
+;        r0data = mgl_rd_tfile(r0file, /auto, /convert, /double)
 
         ;;  Remove glitches
-        goodtimes = where(r0data[0, *] ne 0) 
-        r0data = r0data[*,goodtimes]
+;        goodtimes = where(r0data[0, *] ne 0) 
+;        r0data = r0data[*,goodtimes]
+
+        goodtimes = where(r0data.time ne 0)
+        Ntimes = n_elements(goodtimes)
 
         ;; Get r0 values of two kinds (in meters)
-        r0_values24x24 = reform(r0data[1, *])           
-        if have8x8 then r0_values8x8 = median(r0data[4:12, *], dim = 1) 
+;        r0_values24x24 = reform(r0data[1, *])           
+;        if have8x8 then r0_values8x8 = median(r0data[4:12, *], dim = 1) 
+        r0_values24x24 = r0data.r0[goodtimes]
+        if have8x8 then r0_values8x8 = median(r0data.r0_8x8[*, goodtimes], dim = 1)
         
-        r0_time = r0data[0, *]-midnight ; In seconds since midnight
+       
+;        r0_time = r0data[0, *]-midnight ; In seconds since midnight
+        r0_time = r0data.time[goodtimes]-midnight ; In seconds since midnight
 
         if n_elements(T) eq 0 then begin
            ;; Return all values
