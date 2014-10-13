@@ -102,6 +102,8 @@
 ;    2014-04-28 : MGL. An earlier name change of keyword turretfile to
 ;                 pathturret was apparently not complete.
 ;
+;    2014-10-13 : MGL. Fixed bug in turret logfile dates.
+;
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
@@ -167,6 +169,20 @@ pro red_download, date = date $
                              , dir = logdir $
                              , overwrite = overwrite $
                              , path = pathr0) 
+
+     if ~downloadOK then begin
+        ;; It seems Guus is moving earlier year's data to subdirectories...
+        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+ r0file $
+                                , file = r0file $
+                                , dir = logdir $
+                                , overwrite = overwrite $
+                                , path = pathr0) 
+     endif
+
+     if ~downloadOK then begin
+        print, "red_download : Couldn't download the r0 log file"
+     endif
+
   endif
 
   ;; PIG log file
@@ -233,17 +249,17 @@ pro red_download, date = date $
         repeat begin
            
            ;; Make isodate for one day earlier
-           predatearr[2] = string(predatearr[2]-1, format = '(i2)')
+           predatearr[2] = string(predatearr[2]-1, format = '(i02)')
            if predatearr[2] eq 0 then begin
               predatearr[2] = '31'
-              predatearr[1] = string(predatearr[1]-1, format = '(i2)')
+              predatearr[1] = string(predatearr[1]-1, format = '(i02)')
               if predatearr[1] eq 0 then begin
                  predatearr[2] = '12'
-                 predatearr[0] += string(predatearr[0]-1, format = '(i4)')
+                 predatearr[0] += string(predatearr[0]-1, format = '(i04)')
               endif
            endif
            preisodate = strjoin(predatearr, '-')
-           
+
            ;; Try to download
            pathturret2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
            print, 'Try '+pathturret2
