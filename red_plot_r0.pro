@@ -107,6 +107,10 @@
 ;                  writing to file. Mark TRIPPEL data directories with
 ;                  their own color (pink).
 ;
+;     2014-10-10 : MGL. Bugfix: do not assume the r0time array is a 2D
+;                  array. 
+;
+;
 ;-
 pro red_plot_r0, dir = dir, today = today, date = date $
                  , lapalma = lapalma $
@@ -424,15 +428,21 @@ pro red_plot_r0, dir = dir, today = today, date = date $
      ;; Do the r0 plotting
      if keyword_set(plot24) then begin
         indx = where(r0data[0, *] gt r0_top, Ntop)
-        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., r0data[0, *] >r0_bot<r0_top, color = color_24, psym = 16, symsize = 0.1
-        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, indx]/3600., replicate(r0_top, Ntop), color = color_24, psym = 5, symsize = 0.15
-        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., smooth(r0data[0, *], dt_mean*60.) >r0_bot, color = color_24
+        cgwindow, 'cgplot', /loadcmd, /over, r0time/3600., r0data[0, *] >r0_bot<r0_top $
+                  , color = color_24, psym = 16, symsize = 0.1
+        if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over, r0time[indx]/3600., replicate(r0_top, Ntop) $
+                                    , color = color_24, psym = 5, symsize = 0.15
+        cgwindow, 'cgplot', /loadcmd, /over, r0time/3600., smooth(r0data[0, *], dt_mean*60.) >r0_bot $
+                  , color = color_24
      endif
      if keyword_set(plot8) then begin
         indx = where(r0data[1, *] gt r0_top, Ntop)
-        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., r0data[1, *] >r0_bot<r0_top, color = color_8, psym = 16, symsize = 0.1
-        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, indx]/3600., replicate(r0_top, Ntop), color = color_8, psym = 5, symsize = 0.15
-        cgwindow, 'cgplot', /loadcmd, /over, r0time[0, *]/3600., smooth(r0data[1, *], dt_mean*60.) >r0_bot, color = color_8
+        cgwindow, 'cgplot', /loadcmd, /over, r0time/3600., r0data[1, *] >r0_bot<r0_top $
+                  , color = color_8, psym = 16, symsize = 0.1
+        if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over, r0time[indx]/3600., replicate(r0_top, Ntop) $
+                                    , color = color_8, psym = 5, symsize = 0.15
+        cgwindow, 'cgplot', /loadcmd, /over, r0time/3600., smooth(r0data[1, *], dt_mean*60.) >r0_bot $
+                  , color = color_8
      endif
 
      cgcontrol, output = 'r0_'+isodate+'.pdf'
