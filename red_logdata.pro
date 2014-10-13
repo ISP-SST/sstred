@@ -122,7 +122,7 @@
 ;                 does not exist before 2013-10-28.
 ;
 ;     2014-10-10 : MGL. Use read_ascii rather than mgl_rd_tfile for
-;                  reading the r0 and PIG log files.
+;                  reading the r0, PIG, and turret log files.
 ;
 ;
 ;-
@@ -435,9 +435,26 @@ pro red_logdata, date, time $
 
      if turretfile then begin
 
-        turretdata = mgl_rd_tfile(turretfile, /auto)
+        turtemplate = { VERSION:1.0 $
+                        , DATASTART:0L $
+                        , DELIMITER:32B $
+                        , MISSINGVALUE:!VALUES.F_NAN $
+                        , COMMENTSYMBOL:'' $
+                        , FIELDCOUNT:12L $
+                        , FIELDTYPES:[7L, 7L, 4L, 4L, 7L, 4L, 7L, 4L, 4L, 4L, 4L, 4L] $
+                        , FIELDNAMES:['date', 'time', 'az', 'el' $
+                                      , 'stony_ns_direction', 'stony_ns', 'stony_ew_direction', 'stony_ew' $
+                                      , 'parala_angle', 'solar_local_tilt', 'az_th', 'el_th'] $
+                        , FIELDLOCATIONS:[0L, 11L, 22L, 32L, 41L, 44L, 50L, 53L, 59L, 69L, 80L, 89L] $
+                        , FIELDGROUPS:lindgen(12) $
+                      }
+        
+        turretdata = read_ascii(turretfile, template = turtemplate)
 
-        ;; Turretdata is a 12 by N string array. Row contents: [date
+
+;        turretdata = mgl_rd_tfile(turretfile, /auto)
+
+        ;; Turretdata is a structure with the following arrays: [date
         ;; YYYY/MM/DD, time HH:MM:SS, az, el, N or S, Stonyhurst N/S,
         ;; E or W, Stonyhurst E/W, parala. angle, solar local tilt,
         ;; Az(th), El(th)]. Angles are in degrees.
@@ -454,30 +471,41 @@ pro red_logdata, date, time $
         ;; approximately fixed in time.
         ;; (http://en.wikipedia.org/wiki/Stonyhurst_Observatory#Stonyhurst_heliographic_coordinates) 
         
-        turret_time = red_time2double(turretdata[1, *])
-
+;        turret_time = red_time2double(turretdata[1, *])
+        turret_time = red_time2double(turretdata.time)
+        Nturret = n_elements(turret_time)
         
         if n_elements(T) eq 0 then begin
            ;; Return all values
-           Ntimes = (size(turretdata, /dim))[1]
+           Ntimes = Nturret;(size(turretdata, /dim))[1]
            turret = fltarr(2, Ntimes)
            T = turret_time
            time = T
-           turret = float(turretdata[2:3, *]) ; az/el on sky
 
-           turret_StonyN = float(turretdata[5, *])
-           negindx = where(turretdata[4, *] eq 'S')
+;           turret = float(turretdata[2:3, *]) ; az/el on sky
+           turret = transpose([[turretdata.az],[turretdata.el]]) ; az/el on sky
+
+;           turret_StonyN = float(turretdata[5, *])
+;           negindx = where(turretdata[4, *] eq 'S')
+;           turret_StonyN[negindx] *= -1
+;
+;           turret_StonyW = float(turretdata[5, *])
+;           negindx = where(turretdata[6, *] eq 'E')
+;           turret_StonyW[negindx] *= -1
+
+           turret_StonyN = turretdata.stony_ns
+           negindx =  where(turretdata.stony_ns_direction eq 'S')
            turret_StonyN[negindx] *= -1
 
-           turret_StonyW = float(turretdata[5, *])
-           negindx = where(turretdata[6, *] eq 'E')
+           turret_StonyW = turretdata.stony_ew
+           negindx = where(turretdata.stony_ew_direction eq 'E')
            turret_StonyW[negindx] *= -1
 
         endif else begin
            ;; Get interpolated values
            turret = fltarr(2, Ntimes) ; az/el on sky
-           turret[0, *] = interpol(float(turretdata[2,*]), turret_time, t)
-           turret[1, *] = interpol(float(turretdata[3,*]), turret_time, t)
+           turret[0, *] = interpol(turretdata.az, turret_time, t)
+           turret[1, *] = interpol(turretdata.el, turret_time, t)
         endelse 
 
         if arg_present(zenithangle) then begin
