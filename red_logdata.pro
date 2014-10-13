@@ -122,7 +122,7 @@
 ;                 does not exist before 2013-10-28.
 ;
 ;     2014-10-10 : MGL. Use read_ascii rather than mgl_rd_tfile for
-;                  reading the r0 log file.
+;                  reading the r0 and PIG log files.
 ;
 ;
 ;-
@@ -364,27 +364,49 @@ pro red_logdata, date, time $
 
      if pigfile then begin
 
-        pigdata = mgl_rd_tfile(pigfile, /auto, /convert, /double)
+        pigtemplate = { VERSION:1.0 $
+                        , DATASTART:0L $
+                        , DELIMITER:32B $
+                        , MISSINGVALUE:!VALUES.F_NAN $
+                        , COMMENTSYMBOL:'#' $
+                        , FIELDCOUNT:3L $
+                        , FIELDTYPES:[5L, 4L, 4L] $
+                        , FIELDNAMES:['time', 'x', 'y'] $
+                        , FIELDLOCATIONS:[0L, 18L, 27L] $
+                        , FIELDGROUPS:[0L, 1L, 2L] $
+                      }
+        
+        pigdata = read_ascii(pigfile, TEMPLATE=pigtemplate)
+
+
+;        pigdata = mgl_rd_tfile(pigfile, /auto, /convert, /double)
 
         ;;  Remove glitches
-        goodtimes = where(pigdata[0, *] ne 0) 
-        pigdata = pigdata[*,goodtimes]
+;        goodtimes = where(pigdata[0, *] ne 0) 
+;        pigdata = pigdata[*,goodtimes]
+        goodtimes = where(pigdata.time ne 0) 
+        Npig = n_elements(goodtimes)
 
-        pig_time = pigdata[0,*]-midnight ; In seconds since midnight
- 
+;        pig_time = pigdata[0,*]-midnight ; In seconds since midnight
+        pig_time = pigdata.time[goodtimes]-midnight ; In seconds since midnight
+        
         if n_elements(T) eq 0 then begin
            ;; Return all values
-           Ntimes = (size(pigdata, /dim))[1]
+           Ntimes = Npig        ;(size(pigdata, /dim))[1]
            pig = fltarr(2, Ntimes)
            T = pig_time
            time = T
-           pig[0, *] = pigdata[1,*]
-           pig[1, *] = pigdata[2,*]
+;           pig[0, *] = pigdata[1,*]
+;           pig[1, *] = pigdata[2,*]
+           pig[0, *] = pigdata.x[goodtimes]
+           pig[1, *] = pigdata.y[goodtimes]
         endif else begin
            ;; Get interpolated values
            pig = fltarr(2, Ntimes)
-           pig[0, *] = interpol(pigdata[1,*], pig_time, t)
-           pig[1, *] = interpol(pigdata[2,*], pig_time, t)
+;           pig[0, *] = interpol(pigdata[1,*], pig_time, T)
+;           pig[1, *] = interpol(pigdata[2,*], pig_time, T)
+           pig[0, *] = interpol(pigdata.x[goodtimes], pig_time, T)
+           pig[1, *] = interpol(pigdata.y[goodtimes], pig_time, T)
         endelse 
 
         if arg_present(mu) then begin
