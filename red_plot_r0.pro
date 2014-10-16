@@ -496,7 +496,7 @@ pro red_plot_r0, dir = dir, today = today, date = date $
                 , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m', title = isodate 
      endelse
 
-     cgwindow, /add, 'mgl_timeaxis', color = 'opposite' 
+     cgwindow, /add, 'red_timeaxis', color = 'opposite' 
 
      ;; Return time limits of plot
      tmin = !x.crange[0]/3600.
