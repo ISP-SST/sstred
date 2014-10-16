@@ -42,6 +42,8 @@
 ;
 ;   2014-03-21 : MGL. Allow for multiple dark_dir.
 ;
+;   2014-10-16 : MGL. Set up for Coyote graphics.
+;
 ;-
 pro red::initialize, filename
                                 
@@ -293,6 +295,8 @@ pro red::initialize, filename
   if(self.dodescatter) then print, 'red::initialize : descatter_dir = '+ self.descatter_dir
 
   print, 'red::initialize : out_dir = '+ self.out_dir
-                                
+
+  cgWindow_SetDefs, PS_Decomposed=1
+                   
   return
 end
