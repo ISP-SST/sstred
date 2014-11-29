@@ -71,6 +71,9 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ;
+;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
+;                despite rotation and shifts, the entire FOV is inside
+;                the image
 ;
 ;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor, float = float
@@ -136,7 +139,11 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         print, inam + ' : Try to execute red::polish_tseries on this dataset first!'
         return
      endif else print, inam + ' : Loading calibration file -> '+file_basename(cfile)
+
+     
      restore, cfile
+     if(n_elements(ff) eq 5) then full = 1 else full = 0
+     
      tmean = mean(tmean) / tmean
   endif else tmean = replicate(1.0, 10000) ; Dummy time correction
 
@@ -255,7 +262,14 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   ;; Load WB image and define the image border
   tmp = red_mozaic(momfbd_read(wbfiles[0]))
   dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
+  
+  if(full) then begin
+     dimim[0] = nd[0]
+     dimim[1] = nd[1]
+  endif
 
+
+  
   ;; Create temporary cube and open output file
   d = fltarr(dimim[0], dimim[1], nwav)  
   if(~keyword_set(scans_only)) then begin
@@ -379,7 +393,11 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         
         ;; Apply derot, align, dewarp
         if(~keyword_set(scans_only)) then begin
-           bla = red_rotation(temporary(tmp), ang[ss] , total(shift[0,ss]), total(shift[1,ss]))
+           if(full) then begin
+              bla = red_rotation(temporary(tmp), ang[ss] , total(shift[0,ss]), total(shift[1,ss]), full=ff)
+           endif else begin
+              bla = red_rotation(temporary(tmp), ang[ss] , total(shift[0,ss]), total(shift[1,ss]))
+           endelse
            if(~keyword_set(nostretch)) then bla = stretch(temporary(bla), reform(grid[ss,*,*,*]))
            d[*,*,ww] = rotate(temporary(bla), rot_dir) 
 

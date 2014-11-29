@@ -72,6 +72,9 @@
 ;
 ;   2013-09-12 : MGL. Use red_flipthecube rather than flipthecube.
 ;
+;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
+;                despite rotation and shifts, the entire FOV is inside
+;                the image
 ;-
 pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor, no_cross_talk = no_cross_talk, mask = mask
  
@@ -138,6 +141,10 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         return
      endif else print, inam + ' : Loading calibration file -> '+file_basename(cfile)
      restore, cfile
+     
+     full = 0
+     if(n_elements(ff) eq 5) then full = 1
+     
      tmean = mean(tmean) / tmean
   endif else tmean = replicate(1.0, 10000) ; Dummy time correction
 
@@ -201,12 +208,19 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   dimim[0] = x1 - x0 + 1
   dimim[1] = y1 - y0 + 1
 
+  if(full) then begin
+     dimim[0] = nd[0]
+     dimim[1] = nd[1]
+  endif
+  
   print, '   nscan = ', nscan
   print, '   nwav = ', nwav
   print, '   nx = ', dimim[0]
   print, '   ny = ', dimim[1]
 
-  d = fltarr(dimim[0], dimim[1], 4, nwav)  
+
+  d = fltarr(dimim[0], dimim[1], 4, nwav)
+
   if(~keyword_set(scans_only)) then begin
      head =  red_pol_lpheader(dimim[0], dimim[1], nwav*nscan*4L, float=float)
   endif else begin
@@ -298,14 +312,17 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         ;; Apply derot, align, dewarp
         if(~keyword_set(scans_only)) then begin
            for stk = 0,3 do begin
-              bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]))
+              if(full) then begin
+                 bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]), full=ff)
+              endif else begin
+                 bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]))
+              endelse
               if(~keyword_set(nostretch)) then bla = stretch( temporary(bla), reform(grid[ss,*,*,*]))
               d[*,*,stk,ww] = rotate( temporary(bla), rot_dir) 
            endfor
         endif else for stk=0,3 do d[*,*,stk,ww] = rotate(tmp[*,*,stk], rot_dir)
         
      endfor
-     
      if n_elements(imean) eq 0 then begin 
         imean = fltarr(nwav)
         for ii = 0, nwav-1 do imean[ii] = median(d[*,*,0,ii])

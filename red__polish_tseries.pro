@@ -83,12 +83,19 @@
 ;   2013-09-11 : MGL. Use red_lp_write rather than lp_write.
 ;
 ;   2014-01-14 : PS  Code cleanup.  Use self.filetype.  
-;   2014-01-15 : PS  Proper FITS header parsing.  Support EXT_TIME for all formats
+;   2014-01-15 : PS  Proper FITS header parsing.  Support EXT_TIME for
+;                all formats
+;
+;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
+;                despite rotation and shifts, the entire FOV is inside
+;                the image
 ;-
 pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
                          ang = ang, shift = shift, square=square, $
-                         negang = negang, crop=crop, ext_time = ext_time
+                         negang = negang, crop=crop, ext_time = ext_time, $
+                         fullframe = fullframe
+  
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -199,12 +206,13 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       cub[*, *, ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads = 4L)
       
   ENDFOR
-  
+  if (keyword_set(fullframe)) then cub1 = cub
 
   ;; Get derotation angles
   if(~keyword_set(ang)) then begin
      ang = red_lp_angles(time, date)
-     ang -= median(ang)
+     mang = median(ang)
+     ang -= mang
      if(keyword_set(negang)) then ang = -ang
   endif else begin
 
@@ -244,6 +252,27 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
 ;       poly_2d(cub[*, *, ii], [-shift[0, ii], 0, 1., 0.], [-shift[1, ii], 1., 0., 0.], 2, CUBIC = -0.5)
   endelse
 
+
+  if(keyword_set(fullframe)) then begin
+
+     ; Get maximum angle and maximum shift in each direction
+     maxangle = max(abs(ang))
+     mdx0 = reform(min(shift[0,*]))
+     mdx1 = reform(max(shift[0,*]))
+     mdy0 = reform(min(shift[1,*]))
+     mdy1 = reform(max(shift[1,*]))
+     ff = [maxangle, mdx0, mdx1, mdy0, mdy1]
+
+     ;; Recreate cube
+     dum = red_rotation(cub1[*,*,0], ang[0], shift[0,0], shift[1,0], full=ff)
+     nd = size(dum,/dim)
+     cub = fltarr([nd, ct])
+     cub[*,*,0] = temporary(dum)
+     for ii=1, ct-1 do cub[*,*,ii] = red_rotation(cub1[*,*,ii], ang[ii], shift[0,ii], shift[1,ii], full=ff)
+     
+  endif else ff = 0
+
+  
   ;; De-stretch
   if(~keyword_set(clip)) then clip = [12,4,2,1]
   if(~keyword_set(tile)) then tile = [6,8,14,24]
@@ -274,7 +303,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   file_mkdir, odir
   ofil = 'tseries.'+pref+'.'+time_stamp+'.calib.sav'
   print, inam + ' : saving calibration data -> ' + odir + ofil
-  save, file = odir + ofil, tstep, clip, tile, scale, ang, shift, grid, time, date, wfiles, tmean, crop
+  save, file = odir + ofil, tstep, clip, tile, scale, ang, shift, grid, time, date, wfiles, tmean, crop, mang, x0, x1, y0, y1, ff, nd
 
   ;; Normalize intensity
   me = mean(tmean)

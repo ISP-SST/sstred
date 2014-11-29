@@ -192,7 +192,17 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   
   ;; Loop niter
   for it = 0L, niter - 1 do begin
-   
+
+     dum = 2
+     if(keyword_set(fit_reflectivity)) then dum += 1
+     
+     print, inam+ 'Normalizing polynomial coefs'
+     for ii = dum, npar_t-1 do begin
+        kk = median(reform(res[ii,*,*]))
+        print, ' <C_'+string(ii-dum,format='(I0)')+'> = ', kk
+        res[ii,*,*] -= kk 
+     endfor
+     
      ;; Get mean spectrum using Hermitian Spline
      yl = red_get_imean(wav, dat, res, npar_t, it $
                         , xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, $
@@ -215,15 +225,8 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
         endelse
      ENDELSE
      
-     dum = 2
-     if(keyword_set(fit_reflectivity)) then dum += 1
-     
-     print, inam+ 'Normalizing polynomial coefs'
-     for ii = dum, npar_t-1 do begin
-        kk = median(reform(res[ii,*,*]))
-        print, ' <C_'+string(ii-dum,format='(I0)')+'> = ', kk
-        res[ii,*,*] -= kk 
-     endfor
+
+
   endfor
   yl = red_get_imean(wav, dat, res, npar_t, it, xl = xl, rebin = rebin, densegrid = densegrid, $
                        thres = thres, myg = myg, reflec = fit_reflectivity)
