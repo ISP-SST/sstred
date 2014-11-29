@@ -46,7 +46,9 @@
 ;   r0 : out, optional, type="fltarr(2) or fltarr(2,N)"
 ; 
 ;     The r0 values in meters from the AO (24x24 and 8x8 pixels) will
-;     be returned.
+;     be returned for 2013-10-28 and later. Before that day no 8x8
+;     data exist and the dimensions of the returned array is changed
+;     accordingly. 
 ;
 ;   turret : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
@@ -114,6 +116,13 @@
 ;                 implemented the zenithangle keyword.
 ;
 ;    2014-05-28 : MGL. Give the date when calling red_download.
+;
+;    2014-10-10 : MGL. May have to look for r0 log files in
+;                 YYYY-subdirectories on the web site. 8x8 r0 data
+;                 does not exist before 2013-10-28.
+;
+;     2014-10-10 : MGL. Use read_ascii rather than mgl_rd_tfile for
+;                  reading the r0, PIG, and turret log files.
 ;
 ;
 ;-
@@ -274,31 +283,71 @@ pro red_logdata, date, time $
      if r0file then begin
 
         ;; Read r0 file
-        r0data = mgl_rd_tfile(r0file, /auto, /convert, /double)
+        if 10000*yr + 100*mo + dy ge 20131028L then begin
+           ;; 8x8 measurements exist
+           have8x8 = 1
+           r0template = { VERSION:1.0 $
+                         , DATASTART:0L $
+                         , DELIMITER:32B $
+                         , MISSINGVALUE:!VALUES.F_NAN $
+                         , COMMENTSYMBOL:'' $
+                         , FIELDCOUNT:13L $
+                         , FIELDTYPES:[5L, replicate(4L, 12)] $
+                         , FIELDNAMES:['time', 'r0', 'closedloop', 'subimages', replicate('r0_8x8', 9)] $
+                         , FIELDLOCATIONS:[0L, 18L, 27L, 36L, 9L*lindgen(9)+46L] $
+                         , FIELDGROUPS:[0L, 1L, 2L, 3L, replicate(4L, 9)] $
+                       }
+        endif else begin
+           have8x8 = 0
+           r0template = { VERSION:1.0 $
+                          , DATASTART:0L $
+                          , DELIMITER:32B $
+                          , MISSINGVALUE:!VALUES.F_NAN $
+                          , COMMENTSYMBOL:'' $
+                          , FIELDCOUNT:4L $
+                          , FIELDTYPES:[5L, 4L, 4L, 4L] $
+                          , FIELDNAMES:['time', 'r0', 'closedloop', 'subimages'] $
+                          , FIELDLOCATIONS:[0L, 18L, 27L, 36L] $
+                          , FIELDGROUPS:[0L, 1L, 2L, 3L] $
+                        }
+        endelse
+
+        ;; We wouldn't really need the template if we didn't need the
+        ;; time to be read in as doubles. 
+        r0data = read_ascii(r0file, TEMPLATE=r0template)
+
+;        r0data = mgl_rd_tfile(r0file, /auto, /convert, /double)
 
         ;;  Remove glitches
-        goodtimes = where(r0data[0, *] ne 0) 
-        r0data = r0data[*,goodtimes]
+;        goodtimes = where(r0data[0, *] ne 0) 
+;        r0data = r0data[*,goodtimes]
+
+        goodtimes = where(r0data.time ne 0)
+        Ntimes = n_elements(goodtimes)
 
         ;; Get r0 values of two kinds (in meters)
-        r0_values24x24 = reform(r0data[1, *])           
-        r0_values8x8 = median(r0data[4:12, *], dim = 1) 
+;        r0_values24x24 = reform(r0data[1, *])           
+;        if have8x8 then r0_values8x8 = median(r0data[4:12, *], dim = 1) 
+        r0_values24x24 = r0data.r0[goodtimes]
+        if have8x8 then r0_values8x8 = median(r0data.r0_8x8[*, goodtimes], dim = 1)
         
-        r0_time = r0data[0, *]-midnight ; In seconds since midnight
+       
+;        r0_time = r0data[0, *]-midnight ; In seconds since midnight
+        r0_time = r0data.time[goodtimes]-midnight ; In seconds since midnight
 
         if n_elements(T) eq 0 then begin
            ;; Return all values
            Ntimes = n_elements(r0_time)
-           r0 = fltarr(2, Ntimes)
+           if have8x8 then r0 = fltarr(2, Ntimes) else r0 = fltarr(1, Ntimes)
            T = r0_time
            time = T
            r0[0, *] = r0_values24x24
-           r0[1, *] = r0_values8x8
+           if have8x8 then r0[1, *] = r0_values8x8
         endif else begin
            ;; Get interpolated values
-           r0 = fltarr(2, Ntimes)
+           if have8x8 then r0 = fltarr(2, Ntimes) else r0 = fltarr(1, Ntimes)
            r0[0, *] = interpol(r0_values24x24, r0_time, T)
-           r0[1, *] = interpol(r0_values8x8, r0_time, T)
+           if have8x8 then r0[1, *] = interpol(r0_values8x8, r0_time, T)
         endelse 
 
      endif else begin
@@ -315,27 +364,49 @@ pro red_logdata, date, time $
 
      if pigfile then begin
 
-        pigdata = mgl_rd_tfile(pigfile, /auto, /convert, /double)
+        pigtemplate = { VERSION:1.0 $
+                        , DATASTART:0L $
+                        , DELIMITER:32B $
+                        , MISSINGVALUE:!VALUES.F_NAN $
+                        , COMMENTSYMBOL:'#' $
+                        , FIELDCOUNT:3L $
+                        , FIELDTYPES:[5L, 4L, 4L] $
+                        , FIELDNAMES:['time', 'x', 'y'] $
+                        , FIELDLOCATIONS:[0L, 18L, 27L] $
+                        , FIELDGROUPS:[0L, 1L, 2L] $
+                      }
+        
+        pigdata = read_ascii(pigfile, TEMPLATE=pigtemplate)
+
+
+;        pigdata = mgl_rd_tfile(pigfile, /auto, /convert, /double)
 
         ;;  Remove glitches
-        goodtimes = where(pigdata[0, *] ne 0) 
-        pigdata = pigdata[*,goodtimes]
+;        goodtimes = where(pigdata[0, *] ne 0) 
+;        pigdata = pigdata[*,goodtimes]
+        goodtimes = where(pigdata.time ne 0) 
+        Npig = n_elements(goodtimes)
 
-        pig_time = pigdata[0,*]-midnight ; In seconds since midnight
- 
+;        pig_time = pigdata[0,*]-midnight ; In seconds since midnight
+        pig_time = pigdata.time[goodtimes]-midnight ; In seconds since midnight
+        
         if n_elements(T) eq 0 then begin
            ;; Return all values
-           Ntimes = (size(pigdata, /dim))[1]
+           Ntimes = Npig        ;(size(pigdata, /dim))[1]
            pig = fltarr(2, Ntimes)
            T = pig_time
            time = T
-           pig[0, *] = pigdata[1,*]
-           pig[1, *] = pigdata[2,*]
+;           pig[0, *] = pigdata[1,*]
+;           pig[1, *] = pigdata[2,*]
+           pig[0, *] = pigdata.x[goodtimes]
+           pig[1, *] = pigdata.y[goodtimes]
         endif else begin
            ;; Get interpolated values
            pig = fltarr(2, Ntimes)
-           pig[0, *] = interpol(pigdata[1,*], pig_time, t)
-           pig[1, *] = interpol(pigdata[2,*], pig_time, t)
+;           pig[0, *] = interpol(pigdata[1,*], pig_time, T)
+;           pig[1, *] = interpol(pigdata[2,*], pig_time, T)
+           pig[0, *] = interpol(pigdata.x[goodtimes], pig_time, T)
+           pig[1, *] = interpol(pigdata.y[goodtimes], pig_time, T)
         endelse 
 
         if arg_present(mu) then begin
@@ -364,9 +435,26 @@ pro red_logdata, date, time $
 
      if turretfile then begin
 
-        turretdata = mgl_rd_tfile(turretfile, /auto)
+        turtemplate = { VERSION:1.0 $
+                        , DATASTART:0L $
+                        , DELIMITER:32B $
+                        , MISSINGVALUE:!VALUES.F_NAN $
+                        , COMMENTSYMBOL:'' $
+                        , FIELDCOUNT:12L $
+                        , FIELDTYPES:[7L, 7L, 4L, 4L, 7L, 4L, 7L, 4L, 4L, 4L, 4L, 4L] $
+                        , FIELDNAMES:['date', 'time', 'az', 'el' $
+                                      , 'stony_ns_direction', 'stony_ns', 'stony_ew_direction', 'stony_ew' $
+                                      , 'parala_angle', 'solar_local_tilt', 'az_th', 'el_th'] $
+                        , FIELDLOCATIONS:[0L, 11L, 22L, 32L, 41L, 44L, 50L, 53L, 59L, 69L, 80L, 89L] $
+                        , FIELDGROUPS:lindgen(12) $
+                      }
+        
+        turretdata = read_ascii(turretfile, template = turtemplate)
 
-        ;; Turretdata is a 12 by N string array. Row contents: [date
+
+;        turretdata = mgl_rd_tfile(turretfile, /auto)
+
+        ;; Turretdata is a structure with the following arrays: [date
         ;; YYYY/MM/DD, time HH:MM:SS, az, el, N or S, Stonyhurst N/S,
         ;; E or W, Stonyhurst E/W, parala. angle, solar local tilt,
         ;; Az(th), El(th)]. Angles are in degrees.
@@ -383,30 +471,41 @@ pro red_logdata, date, time $
         ;; approximately fixed in time.
         ;; (http://en.wikipedia.org/wiki/Stonyhurst_Observatory#Stonyhurst_heliographic_coordinates) 
         
-        turret_time = red_time2double(turretdata[1, *])
-
+;        turret_time = red_time2double(turretdata[1, *])
+        turret_time = red_time2double(turretdata.time)
+        Nturret = n_elements(turret_time)
         
         if n_elements(T) eq 0 then begin
            ;; Return all values
-           Ntimes = (size(turretdata, /dim))[1]
+           Ntimes = Nturret;(size(turretdata, /dim))[1]
            turret = fltarr(2, Ntimes)
            T = turret_time
            time = T
-           turret = float(turretdata[2:3, *]) ; az/el on sky
 
-           turret_StonyN = float(turretdata[5, *])
-           negindx = where(turretdata[4, *] eq 'S')
+;           turret = float(turretdata[2:3, *]) ; az/el on sky
+           turret = transpose([[turretdata.az],[turretdata.el]]) ; az/el on sky
+
+;           turret_StonyN = float(turretdata[5, *])
+;           negindx = where(turretdata[4, *] eq 'S')
+;           turret_StonyN[negindx] *= -1
+;
+;           turret_StonyW = float(turretdata[5, *])
+;           negindx = where(turretdata[6, *] eq 'E')
+;           turret_StonyW[negindx] *= -1
+
+           turret_StonyN = turretdata.stony_ns
+           negindx =  where(turretdata.stony_ns_direction eq 'S')
            turret_StonyN[negindx] *= -1
 
-           turret_StonyW = float(turretdata[5, *])
-           negindx = where(turretdata[6, *] eq 'E')
+           turret_StonyW = turretdata.stony_ew
+           negindx = where(turretdata.stony_ew_direction eq 'E')
            turret_StonyW[negindx] *= -1
 
         endif else begin
            ;; Get interpolated values
            turret = fltarr(2, Ntimes) ; az/el on sky
-           turret[0, *] = interpol(float(turretdata[2,*]), turret_time, t)
-           turret[1, *] = interpol(float(turretdata[3,*]), turret_time, t)
+           turret[0, *] = interpol(turretdata.az, turret_time, t)
+           turret[1, *] = interpol(turretdata.el, turret_time, t)
         endelse 
 
         if arg_present(zenithangle) then begin
