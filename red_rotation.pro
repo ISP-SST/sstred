@@ -105,8 +105,8 @@ function red_rotation, img, angle, sdx, sdy, linear = linear, full = full
      xsi = dim1[0] * 0.5
      ysi = dim1[1] * 0.5
      
-     dx = cos(full[0]) * (xgrid - xsi - sdx) -  sin(full[0]) * (ygrid - ysi-sdy) +  xsi
-     dy = sin(full[0])  * (xgrid - xsi - sdx) + cos(full[0]) * (ygrid - ysi-sdy) +  ysi
+     dx = cos(angle[0]) * (xgrid - xsi - sdx) -  sin(angle[0]) * (ygrid - ysi-sdy) +  xsi
+     dy = sin(angle[0])  * (xgrid - xsi - sdx) + cos(angle[0]) * (ygrid - ysi-sdy) +  ysi
      ima = fltarr(dim1) + median(img)
      ima[xmin, ymin] = img
   endelse
