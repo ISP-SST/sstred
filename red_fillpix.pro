@@ -65,7 +65,7 @@ function red_fillpix, img, val = val, mask = mask, nthreads = nthreads
      idx = where(img LT val, count)
 
      if(count eq 0) then begin
-        print, inam + 'nothing to do'
+        ;print, inam + 'nothing to do'
         return, img
      endif else mask[idx] = 0B
   endif else mask = byte(temporary(mask))
