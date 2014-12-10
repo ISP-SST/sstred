@@ -221,21 +221,21 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      grid2 = red_dsgridnest(wb, img_wb[*,*,2], tiles, clip)
      grid3 = red_dsgridnest(wb, img_wb[*,*,3], tiles, clip)
       
-     if(keyword_set(cmap)) then cmap = stretch(temporary(cmap), grid1)
+     if(keyword_set(cmap)) then cmap = red_stretch(temporary(cmap), grid1)
 
      rest = fltarr(dim[0], dim[1], 4)
      resr = fltarr(dim[0], dim[1], 4)
       
      for ii = 0L, 3 do begin
-        rest[*,*,ii] = stretch(reform(mymt[0,ii,*,*]) * img_t[*,*,0], grid0)  + $
-                       stretch(reform(mymt[1,ii,*,*]) * img_t[*,*,1], grid1)  + $
-                       stretch(reform(mymt[2,ii,*,*]) * img_t[*,*,2], grid2)  + $
-                       stretch(reform(mymt[3,ii,*,*]) * img_t[*,*,3], grid3) 
+        rest[*,*,ii] = red_stretch(reform(mymt[0,ii,*,*]) * img_t[*,*,0], grid0)  + $
+                       red_stretch(reform(mymt[1,ii,*,*]) * img_t[*,*,1], grid1)  + $
+                       red_stretch(reform(mymt[2,ii,*,*]) * img_t[*,*,2], grid2)  + $
+                       red_stretch(reform(mymt[3,ii,*,*]) * img_t[*,*,3], grid3) 
  
-        resr[*,*,ii] = stretch(reform(mymr[0,ii,*,*]) * img_r[*,*,0], grid0)  + $
-                       stretch(reform(mymr[1,ii,*,*]) * img_r[*,*,1], grid1)  + $
-                       stretch(reform(mymr[2,ii,*,*]) * img_r[*,*,2], grid2)  + $
-                       stretch(reform(mymr[3,ii,*,*]) * img_r[*,*,3], grid3) 
+        resr[*,*,ii] = red_stretch(reform(mymr[0,ii,*,*]) * img_r[*,*,0], grid0)  + $
+                       red_stretch(reform(mymr[1,ii,*,*]) * img_r[*,*,1], grid1)  + $
+                       red_stretch(reform(mymr[2,ii,*,*]) * img_r[*,*,2], grid2)  + $
+                       red_stretch(reform(mymr[3,ii,*,*]) * img_r[*,*,3], grid3) 
      endfor
      img_t = temporary(rest)
      img_r = temporary(resr)

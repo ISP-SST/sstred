@@ -289,9 +289,9 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   print, '   tile = ['+strjoin(string(tile, format='(I3)'),',')+']'
   print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
-  print, inam + " : computing destretch-grid (using T. Berger's routines) ... ", format = '(A, $)'
+  print, inam + " : computing destretch-grid (using LMSAL's routines) ... ", format = '(A, $)'
   grid = red_destretch_tseries(cub, scale, tile, clip, tstep)
-  for ii = 0L, ct - 1 do cub[*,*,ii] = stretch(cub[*,*,ii], reform(grid[ii,*,*,*]))
+  for ii = 0L, ct - 1 do cub[*,*,ii] = red_stretch(cub[*,*,ii], reform(grid[ii,*,*,*]))
   print, 'done'
 
   ;; Measure time-dependent intensity variation (sun move's in the Sky)

@@ -239,7 +239,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      cmap11 = red_rotation(cmap1, ang[ss], total(shift[0,ss]), total(shift[1,ss]))
      
      ;; Time de-warp (case 1)
-     cmap11 = stretch(temporary(cmap11), reform(grid[ss,*,*,*]))
+     cmap11 = red_stretch(temporary(cmap11), reform(grid[ss,*,*,*]))
      
      ;; Flip any of the axes? (case 1)
      cmap11 = rotate(temporary(cmap11), rot_dir)
@@ -267,13 +267,13 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
            igrid = red_dsgridnest(wb, iwb, itiles, iclip)
            
            ;; Convolve CMAP and apply wavelength dep. de-warp
-           cmap2 =  stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
+           cmap2 =  red_stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
            
            ;; Derotate and shift
            cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), total(shift[1,ss]))
            
            ;; Time de-warp
-           cmap2 = stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+           cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
            
            ;; Flip any of the axes?
            cmap2 = rotate(temporary(cmap2), rot_dir)

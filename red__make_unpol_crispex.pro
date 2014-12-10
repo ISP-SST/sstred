@@ -145,12 +145,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      if(n_elements(ff) eq 5) then full = 1 else full = 0
      
      tmean = mean(tmean) / tmean
-  endif else begin
-     tmean = replicate(1.0, 10000) ; Dummy time correction 
-     full = 0
-  endelse
+  endif else tmean = replicate(1.0, 10000) ; Dummy time correction
 
-     
   ;; Camera tags
   self->getcamtags, dir = self.data_dir
 
@@ -393,7 +389,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
         
         ;; Apply destretch to anchor camera and prefilter correction
-        if(wbcor) then tmp = stretch(temporary(tmp), grid1)
+        if(wbcor) then tmp = red_stretch(temporary(tmp), grid1)
         
         ;; Apply derot, align, dewarp
         if(~keyword_set(scans_only)) then begin
@@ -402,7 +398,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
            endif else begin
               bla = red_rotation(temporary(tmp), ang[ss] , total(shift[0,ss]), total(shift[1,ss]))
            endelse
-           if(~keyword_set(nostretch)) then bla = stretch(temporary(bla), reform(grid[ss,*,*,*]))
+           if(~keyword_set(nostretch)) then bla = red_stretch(temporary(bla), reform(grid[ss,*,*,*]))
            d[*,*,ww] = rotate(temporary(bla), rot_dir) 
 
         endif else d[*,*,ww] = rotate( temporary(tmp), rot_dir)

@@ -146,11 +146,8 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      if(n_elements(ff) eq 5) then full = 1
      
      tmean = mean(tmean) / tmean
-  endif else begin
-     tmean = replicate(1.0, 10000) ; Dummy time correction
-     full = 0
-  endif
-     
+  endif else tmean = replicate(1.0, 10000) ; Dummy time correction
+
   ;; Camera tags
   self->getcamtags, dir = self.pinh_dir
 
@@ -320,7 +317,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
               endif else begin
                  bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]))
               endelse
-              if(~keyword_set(nostretch)) then bla = stretch( temporary(bla), reform(grid[ss,*,*,*]))
+              if(~keyword_set(nostretch)) then bla = red_stretch( temporary(bla), reform(grid[ss,*,*,*]))
               d[*,*,stk,ww] = rotate( temporary(bla), rot_dir) 
            endfor
         endif else for stk=0,3 do d[*,*,stk,ww] = rotate(tmp[*,*,stk], rot_dir)

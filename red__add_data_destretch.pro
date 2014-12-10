@@ -301,9 +301,9 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               ;; Apply distortion correction?
               ;;
               if(~keyword_set(nostretch)) then begin
-                 iwb = stretch(temporary(iwb),  corrs[*,*,*,nn,ww,ll,tt])
-                 inbt= stretch(temporary(inbt), corrs[*,*,*,nn,ww,ll,tt])
-                 inbr= stretch(temporary(inbr), corrs[*,*,*,nn,ww,ll,tt])
+                 iwb = red_stretch(temporary(iwb),  corrs[*,*,*,nn,ww,ll,tt])
+                 inbt= red_stretch(temporary(inbt), corrs[*,*,*,nn,ww,ll,tt])
+                 inbr= red_stretch(temporary(inbr), corrs[*,*,*,nn,ww,ll,tt])
               endif
 
               
@@ -367,8 +367,8 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
         
         ;; destretch?
         if(~keyword_set(nostretch)) then begin
-           itmat[ii,jj,*,*] =   stretch( reform(itmat[ii,jj,*,*]), aver_corr)
-           irmat[ii,jj,*,*] =   stretch( reform(irmat[ii,jj,*,*]), aver_corr)
+           itmat[ii,jj,*,*] =   red_stretch( reform(itmat[ii,jj,*,*]), aver_corr)
+           irmat[ii,jj,*,*] =   red_stretch( reform(irmat[ii,jj,*,*]), aver_corr)
         endif
         
      endfor
@@ -406,7 +406,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      ;; Mask spectra and FOV for crosstalk?
      if(~keyword_set(no_cross_talk)) then begin
         if(keyword_set(mask) AND tt eq 0) then begin
-           ppc = red_select_spoints(udwav, averbox(reform(cub[*,*,0,*]),/dir))
+           ppc = red_select_spoints(udwav, total(total(reform(cub[*,*,0,*]),1)/nx,1)/ny)
         endif else ppc = indgen(nwav)
         crt = red_get_ctalk(cub, idx=ppc)
         for tt=1,3 do for ww = 0, nwav-1 do cub[*,*,tt,ww] -= crt[tt]*cub[*,*,0,ww]
