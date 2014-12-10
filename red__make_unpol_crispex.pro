@@ -145,8 +145,10 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      if(n_elements(ff) eq 5) then full = 1 else full = 0
      
      tmean = mean(tmean) / tmean
-  endif else tmean = replicate(1.0, 10000) ; Dummy time correction
-
+  endif else begin
+     tmean = replicate(1.0, 10000) ; Dummy time correction
+     full = 0
+  endelse
   ;; Camera tags
   self->getcamtags, dir = self.data_dir
 

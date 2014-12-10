@@ -14,7 +14,7 @@
 ; 
 ; 
 ; :returns:
-; 
+;  
 ; 
 ; :Params:
 ; 
@@ -146,8 +146,11 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      if(n_elements(ff) eq 5) then full = 1
      
      tmean = mean(tmean) / tmean
-  endif else tmean = replicate(1.0, 10000) ; Dummy time correction
-
+  endif else begin
+     tmean = replicate(1.0, 10000) ; Dummy time correction
+     full = 0
+  endelse
+  
   ;; Camera tags
   self->getcamtags, dir = self.pinh_dir
 
