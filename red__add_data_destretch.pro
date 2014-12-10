@@ -115,8 +115,9 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   ;; Use last one, likely to be continuum
   xto = offiles[count-1]
   yto = file_dirname(xto)+'/'+file_basename(xto,'xoffs')+'yoffs'
-  xro = file_dirname(xto)+'/'+strjoin([self.camrtag,(strsplit(xto,'.',/extract))[1:*]],'.')
-  yro = file_dirname(yto)+'/'+strjoin([self.camrtag,(strsplit(yto,'.',/extract))[1:*]],'.')
+  xro = file_dirname(xto)+'/'+strjoin([self.camrtag,(strsplit(file_basename(xto),'.',/extract))[1:*]],'.')
+  yro = file_dirname(xto)+'/'+strjoin([self.camrtag,(strsplit(file_basename(yto),'.',/extract))[1:*]],'.')
+  
   xto = f0(xto)
   yto = f0(yto)
   xro = f0(xro)
