@@ -49,7 +49,7 @@ for k=0,nest-1 do begin
   gwid = ngw
 
   if (k eq 0) then begin 
-      displ = GRIDMATCH(m1,m2,gx,gy,dx,dy,gwid,stretch_clip)
+      displ = RED_GRIDMATCH(m1,m2,gx,gy,dx,dy,gwid,stretch_clip)
 ;      PRINT,'Mean initial = ',STRTRIM(AVG(ABS(displ)),2),$
 ;            '   Max(abs) = ',STRTRIM(MAX(ABS(displ)),2)
   end else begin   
@@ -65,8 +65,8 @@ for k=0,nest-1 do begin
         prev(1,*,*) = fy
       end else prev = displprev
 
-      m3=STRETCH(m2,prev)
-      displnew = GRIDMATCH(m1, m3, gx, gy, dx, dy, gwid,stretch_clip)
+      m3=RED_STRETCH(m2,prev)
+      displnew = RED_GRIDMATCH(m1, m3, gx, gy, dx, dy, gwid,stretch_clip)
 ;      PRINT,'Mean incremental = ',STRTRIM(AVG(ABS(displnew)),2),$
 ;            '   Max(abs) = ',STRTRIM(MAX(ABS(displnew)),2)
       displ = prev + displnew
