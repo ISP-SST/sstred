@@ -333,7 +333,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               ;; Add shift and corrs
               ;;
               aver_shift +=  ishift
-              aver_corr +=  icorrs
+              aver_corr +=  icorr
               
            endfor
            nb[*,*,ll,ww,*] /= float(numadd[ww,ll,tt])
