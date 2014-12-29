@@ -1,7 +1,8 @@
 pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth, $
                              bad = bad, nthreads=nthreads, nostretch = nostretch,$
                              scans_only = scans_only, no_cross_talk =no_cross_talk, $
-                             mask = mask, overwrite = overwrite, extraclip = extraclip
+                             mask = mask, overwrite = overwrite, extraclip = extraclip, $
+                             t0 = t0, t1 = t1
 
   ;; Get procedure name
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0]) + ': '
@@ -240,7 +241,10 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   nb = fltarr(nx, ny, nlc, nwav,2)
   wb = fltarr(nx, ny)
 
-  for tt = 0, nscan - 1 do begin
+  if(n_elements(t0) eq 0) then t0 = 0
+  if(n_elements(t1) eq 0) then t1 = nscan - 1
+  
+  for tt = t0, t1 do begin
      if(done[tt] eq 0) then continue
      print, ' '
      ;; Check that file does not exist

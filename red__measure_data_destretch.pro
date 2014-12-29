@@ -1,6 +1,7 @@
 pro red::measure_data_destretch, pref = pref, scan = scan, min = min, max = max, smooth = smooth, bad = bad, $
                                  clip = clip, tile = tile, verbose=verbose, addwb = addwb, show = show, $
-                                 t0 = t0, t1 = t1, scale = scale, tstep = tstep, norotation = norotation
+                                 t0 = t0, t1 = t1, scale = scale, tstep = tstep, norotation = norotation, $
+                                 xbd = xbd, ybd = ybd, np = np
  ;; Get procedure name
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0]) + ': '
 
@@ -163,7 +164,7 @@ pro red::measure_data_destretch, pref = pref, scan = scan, min = min, max = max,
 
 
 ;; Loop scans
-  for ss = t0,t1 do begin
+  for ss = t0, t1 do begin
      ;; Get darks and flats in the first time-step
      if(ss eq 0) then begin
         nam = self.out_dir + '/darks/'+cams+'.dark'
@@ -259,6 +260,11 @@ pro red::measure_data_destretch, pref = pref, scan = scan, min = min, max = max,
 
   refs1 = refs
 
+  if(n_elements(xbd) eq 0) then xbd = 512
+  if(n_elements(ybd) eq 0) then ybd = 512
+  if(n_elements(np) eq 0)  then np = 3
+  cubic = 0
+  
   shifts_refs = red_aligncube(refs1, np, xbd = xbd, ybd = ybd, cubic = cubic, /aligncube)
   print, inam + "computing time-series polishing ... ", format='(A,$)'
   tgrid = red_destretch_tseries(refs1, scale, tile, clip, tstep)
