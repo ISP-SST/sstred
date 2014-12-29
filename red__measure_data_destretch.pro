@@ -258,9 +258,11 @@ pro red::measure_data_destretch, pref = pref, scan = scan, min = min, max = max,
   scale = 1.0 / self.image_scale
 
   refs1 = refs
-  shifts_refs = red_aligncube(refs1, np, xbd = xbd, ybd = ybd, cubic = cubic, /aligncube)
-  tgrid = red_destretch_tseries(refs1, scale, tile, clip, tstep)
 
+  shifts_refs = red_aligncube(refs1, np, xbd = xbd, ybd = ybd, cubic = cubic, /aligncube)
+  print, inam + "computing time-series polishing ... ", format='(A,$)'
+  tgrid = red_destretch_tseries(refs1, scale, tile, clip, tstep)
+  print, 'done'
   
   save, file=ofile, corrs, shifts, ifiles, files, st, rms, $
         refs, uscan, uwav, ulc, fstate, ufstate, nwav, nlc, $

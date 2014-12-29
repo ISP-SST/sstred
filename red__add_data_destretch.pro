@@ -285,25 +285,35 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               
 
               ;;
+              ;; ishift
+              ;;
+              ishift = shifts[*,nn,ww,ll,tt]
+              if(n_elements(shifts_refs) gt 0) then ishift += shifts_refs[*,tt]
+
+              
+              ;;
               ;; Rotation? and shift
               ;;
               if(rot) then begin
-                 iwb =  red_rotation(temporary(iwb),  ang[tt], float(shifts[0,nn,ww,ll,tt]), float(shifts[1,nn,ww,ll,tt]))
-                 inbt = red_rotation(temporary(inbt), ang[tt], float(shifts[0,nn,ww,ll,tt]), float(shifts[1,nn,ww,ll,tt]))
-                 inbr = red_rotation(temporary(inbr), ang[tt], float(shifts[0,nn,ww,ll,tt]), float(shifts[1,nn,ww,ll,tt]))
+                 iwb =  red_rotation(temporary(iwb),  ang[tt], float(ishift[0]), float(ishift[1]))
+                 inbt = red_rotation(temporary(inbt), ang[tt], float(ishift[0]), float(ishift[1]))
+                 inbr = red_rotation(temporary(inbr), ang[tt], float(ishift[0]), float(ishift[1]))
               endif else begin
-                 iwb = shift(temporary(iwb), shifts[*,nn,ww,ll,tt])
-                 inbt= shift(temporary(inbt), shifts[*,nn,ww,ll,tt])
-                 inbr= shift(temporary(inbr), shifts[*,nn,ww,ll,tt])
+                 iwb = shift(temporary(iwb),  ishift)
+                 inbt= shift(temporary(inbt), ishift)
+                 inbr= shift(temporary(inbr), ishift)
               endelse
               
               ;;
               ;; Apply distortion correction?
               ;;
+              icorr = corrs[*,*,*,nn,ww,ll,tt]
+              if(n_elements(tgrid) gt 0) then icorr += reform(tgrid[tt,*,*,*])
+              
               if(~keyword_set(nostretch)) then begin
-                 iwb = red_stretch(temporary(iwb),  corrs[*,*,*,nn,ww,ll,tt])
-                 inbt= red_stretch(temporary(inbt), corrs[*,*,*,nn,ww,ll,tt])
-                 inbr= red_stretch(temporary(inbr), corrs[*,*,*,nn,ww,ll,tt])
+                 iwb = red_stretch(temporary(iwb),  icorr)
+                 inbt= red_stretch(temporary(inbt), icorr)
+                 inbr= red_stretch(temporary(inbr), icorr)
               endif
 
               
