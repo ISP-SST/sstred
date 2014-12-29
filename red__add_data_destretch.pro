@@ -332,8 +332,8 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               ;;
               ;; Add shift and corrs
               ;;
-              aver_shift +=  shifts[*,nn,ww,ll,tt]
-              aver_corr +=  corrs[*,*,*,nn,ww,ll,tt]
+              aver_shift +=  ishift
+              aver_corr +=  icorrs
               
            endfor
            nb[*,*,ll,ww,*] /= float(numadd[ww,ll,tt])
@@ -423,7 +423,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
            ppc = red_select_spoints(udwav, total(total(reform(cub[*,*,0,*]),1)/nx,1)/ny)
         endif else ppc = indgen(nwav)
         crt = red_get_ctalk(cub, idx=ppc)
-        for tt=1,3 do for ww = 0, nwav-1 do cub[*,*,tt,ww] -= crt[tt]*cub[*,*,0,ww]
+        for zz=1,3 do for ww = 0, nwav-1 do cub[*,*,zz,ww] -= crt[zz]*cub[*,*,0,ww]
      endif
 
      nx1 = nx
