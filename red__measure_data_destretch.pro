@@ -246,8 +246,27 @@ pro red::measure_data_destretch, pref = pref, scan = scan, min = min, max = max,
            nscan, uscan, pref, upref, done, tile, clip, udwav, $
            numadd, cl, times, rot, ang, mang
   endfor   ;; cc (Scans)
-  
-  ;tgrid = red_destretch_tseries(refs, scale, tile, clip, tstep)
 
+
+
+  ;;
+  ;; Polish time series
+  ;;
+  dt = red_time2double(times)
+  dt = mean(dt[1:*] - dt[0:*])
+  tstep = 180. / dt ;; 3 minutes!
+  scale = 1.0 / self.image_scale
+
+  refs1 = refs
+  shifts_refs = red_aligncube(refs1, np, xbd = xbd, ybd = ybd, cubic = cubic, /aligncube)
+  tgrid = red_destretch_tseries(refs1, scale, tile, clip, tstep)
+
+  
+  save, file=ofile, corrs, shifts, ifiles, files, st, rms, $
+        refs, uscan, uwav, ulc, fstate, ufstate, nwav, nlc, $
+        nscan, uscan, pref, upref, done, tile, clip, udwav, $
+        numadd, cl, times, rot, ang, mang, tgrid, shifts_refs
+  
+  
   return
 end
