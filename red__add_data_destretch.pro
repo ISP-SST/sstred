@@ -260,6 +260,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      ;; load data
      nadd = 0L
      wb[*] = 0.0
+     nb[*] = 0.0
      print, inam +'loading/correcting data for scan ',tt,' -> t='+times[tt], format='(A,I0,A,$)'
 
      aver_shift = [0.,0.]
