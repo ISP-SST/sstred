@@ -59,6 +59,8 @@ pro red_flipthecube, file, nw = nw, nt = nt, maxsize=maxsize, icube = icube
   ntot = nt * nw * 4LL
   if(ntot ne tmp) then begin
      print, inam + 'wrong number of elements: nw * nt * 4L != tmp'
+     print, '  -> nw*nt*4 = ',stri(ntot)
+     print, '  -> tmp = ',stri(tmp)
      return
   endif
   

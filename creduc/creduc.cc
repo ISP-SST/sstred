@@ -876,7 +876,7 @@ void fillpix( int nx, int ny, float *img, uint8_t *mask, int nt ) {
 
     int nbad = nx * ny;
     for( int yy=0; yy<ny; yy++ ) for( int xx=0; xx<nx; xx++ ) nbad -= mask2d[yy][xx];
-    fprintf( stderr, "cfillpix2 : There are %d bad pixels\n", nbad );
+    // fprintf( stderr, "cfillpix2 : There are %d bad pixels\n", nbad );
     if( nbad<=0 ) return;
 
     int *idx = new int[nbad];
@@ -909,7 +909,7 @@ void fillpix( int nx, int ny, float *img, uint8_t *mask, int nt ) {
         tid = omp_get_thread_num();
         master = 0;
         if( tid == 0 ) {
-            fprintf( stderr, "cfillpix2 : nthreads -> %d\n", nt );
+          //  fprintf( stderr, "cfillpix2 : nthreads -> %d\n", nt );
             master = 1;
         }
 
@@ -921,7 +921,7 @@ void fillpix( int nx, int ny, float *img, uint8_t *mask, int nt ) {
             if( master ) {
                 per = ntot*k;
                 if( per > oper ) {
-                    fprintf( stderr, "\rcfillpix2 : %d %s", per, "%" );
+                  //  fprintf( stderr, "\rcfillpix2 : %d %s", per, "%" );
                     oper = per;
                 }
             }
@@ -929,7 +929,7 @@ void fillpix( int nx, int ny, float *img, uint8_t *mask, int nt ) {
 
     }//end parallel block
 
-    fprintf( stderr, "\rcfillpix : %d %s\n", 100, "%" );
+    // fprintf( stderr, "\rcfillpix : %d %s\n", 100, "%" );
 
     for( int ii=0; ii<nbad; ii++ ) {
         img2d[idy[ii]][idx[ii]] = bp[ii];

@@ -305,7 +305,6 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
                  stop
               endelse
               
-              help, mmfiles[idx]
               if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
               tmp = red_sumfiles(mmfiles[idx], /check) - dd
 

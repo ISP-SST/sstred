@@ -1,7 +1,8 @@
 pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth, $
                              bad = bad, nthreads=nthreads, nostretch = nostretch,$
                              scans_only = scans_only, no_cross_talk =no_cross_talk, $
-                             mask = mask, overwrite = overwrite, extraclip = extraclip
+                             mask = mask, overwrite = overwrite, extraclip = extraclip, $
+                             t0 = t0, t1 = t1
 
   ;; Get procedure name
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0]) + ': '
@@ -243,7 +244,10 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   iscale = total(total(refs,1),1) /  (float(nx)*ny) 
   iscale = mean(iscale) / iscale
   
-  for tt = 0, nscan - 1 do begin
+  if(n_elements(t0) eq 0) then t0 = 0
+  if(n_elements(t1) eq 0) then t1 = nscan - 1
+  
+  for tt = t0, t1 do begin
      if(done[tt] eq 0) then continue
      print, ' '
      ;; Check that file does not exist
@@ -288,25 +292,35 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               
 
               ;;
+              ;; ishift
+              ;;
+              ishift = shifts[*,nn,ww,ll,tt]
+              if(n_elements(shifts_refs) gt 0) then ishift += shifts_refs[*,tt]
+
+              
+              ;;
               ;; Rotation? and shift
               ;;
               if(rot) then begin
-                 iwb =  red_rotation(temporary(iwb),  ang[tt], float(shifts[0,nn,ww,ll,tt]), float(shifts[1,nn,ww,ll,tt]))
-                 inbt = red_rotation(temporary(inbt), ang[tt], float(shifts[0,nn,ww,ll,tt]), float(shifts[1,nn,ww,ll,tt]))
-                 inbr = red_rotation(temporary(inbr), ang[tt], float(shifts[0,nn,ww,ll,tt]), float(shifts[1,nn,ww,ll,tt]))
+                 iwb =  red_rotation(temporary(iwb),  ang[tt], float(ishift[0]), float(ishift[1]))
+                 inbt = red_rotation(temporary(inbt), ang[tt], float(ishift[0]), float(ishift[1]))
+                 inbr = red_rotation(temporary(inbr), ang[tt], float(ishift[0]), float(ishift[1]))
               endif else begin
-                 iwb = shift(temporary(iwb), shifts[*,nn,ww,ll,tt])
-                 inbt= shift(temporary(inbt), shifts[*,nn,ww,ll,tt])
-                 inbr= shift(temporary(inbr), shifts[*,nn,ww,ll,tt])
+                 iwb = shift(temporary(iwb),  ishift)
+                 inbt= shift(temporary(inbt), ishift)
+                 inbr= shift(temporary(inbr), ishift)
               endelse
               
               ;;
               ;; Apply distortion correction?
               ;;
+              icorr = corrs[*,*,*,nn,ww,ll,tt]
+              if(n_elements(tgrid) gt 0) then icorr += reform(tgrid[tt,*,*,*])
+              
               if(~keyword_set(nostretch)) then begin
-                 iwb = red_stretch(temporary(iwb),  corrs[*,*,*,nn,ww,ll,tt])
-                 inbt= red_stretch(temporary(inbt), corrs[*,*,*,nn,ww,ll,tt])
-                 inbr= red_stretch(temporary(inbr), corrs[*,*,*,nn,ww,ll,tt])
+                 iwb = red_stretch(temporary(iwb),  icorr)
+                 inbt= red_stretch(temporary(inbt), icorr)
+                 inbr= red_stretch(temporary(inbr), icorr)
               endif
 
               
@@ -321,8 +335,8 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               ;;
               ;; Add shift and corrs
               ;;
-              aver_shift +=  shifts[*,nn,ww,ll,tt]
-              aver_corr +=  corrs[*,*,*,nn,ww,ll,tt]
+              aver_shift +=  ishift
+              aver_corr +=  icorr
               
            endfor
            nb[*,*,ll,ww,*] /= float(numadd[ww,ll,tt])
@@ -412,7 +426,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
            ppc = red_select_spoints(udwav, total(total(reform(cub[*,*,0,*]),1)/nx,1)/ny)
         endif else ppc = indgen(nwav)
         crt = red_get_ctalk(cub, idx=ppc)
-        for tt=1,3 do for ww = 0, nwav-1 do cub[*,*,tt,ww] -= crt[tt]*cub[*,*,0,ww]
+        for zz=1,3 do for ww = 0, nwav-1 do cub[*,*,zz,ww] -= crt[zz]*cub[*,*,0,ww]
      endif
 
      nx1 = nx

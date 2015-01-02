@@ -108,7 +108,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
         print, inam + ' :       -> you must execute red::getalignclips first!'
         continue
      ENDIF ELSE restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
-
+     print, inam+' loading -> '+self.out_dir+'calib/align_clips.'+pref+'.sav'
      toread = ii
      pr = where(rstat eq tstat[ii], count0)
      pw = where(wstat eq tstat[ii], count1)
@@ -165,7 +165,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
      ;; Find pinhole locations! 
       
      ref = red_clipim(temporary(ref), cl[*,0])
-      
+    
      ;; All pixels within each pinhole get the same unique number
       
      mask = red_separate_mask(ref gt tr * max(ref))
@@ -246,6 +246,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
          
         fit = sfit([refpos, ypos], 1, /irr, kx=kx, /max)
         yfit = kx[0] + yy*kx[1] + xx*kx[2]
+
         ;;yfit = red_getplane(kx, xx, yy)
 
         yfit = fix(round(100*temporary(yfit)))
