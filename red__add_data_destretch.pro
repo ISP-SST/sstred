@@ -88,7 +88,9 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   ;;
   time = (strsplit(file_basename(restored_file),'.',/extract))[3]
   odir = self.out_dir +'/summed_cubes/'+time+'/'
+  odir1 = odir+'wb/'
   file_mkdir, odir
+  file_mkdir, odir1
   
   ofiles_root = odir +strjoin( ['data',pref],'.')
   self.getcamtags
@@ -340,11 +342,12 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               aver_corr +=  icorr
               
            endfor
-           nb[*,*,ll,ww,*] /= float(numadd[ww,ll,tt])
+           nb[*,*,ll,ww,*] *= (iscale[tt] / float(numadd[ww,ll,tt]))
         endfor
      endfor
      print, ' ... done'
      wb /= float(nadd)
+     writefits, odir1+'wb.'+pref+'.'+uscan[tt]+'.fits', wb, times[tt]
      
      ;;
      ;; Distort demod matrix with average im shift and average distortion
@@ -417,7 +420,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      t_scale = 0.5 * bmean / tmean
      r_scale = 0.5 * bmean / rmean
      
-     cub = (nb[*,*,*,*,0] * t_scale + nb[*,*,*,*,1] * r_scale) * iscale[tt]
+     cub = (nb[*,*,*,*,0] * t_scale + nb[*,*,*,*,1] * r_scale)
      for ww = 0, nwav-1 do cub[*,*,*,ww] *= totpref[ww]
 
 
