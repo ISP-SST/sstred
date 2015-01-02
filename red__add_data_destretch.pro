@@ -240,6 +240,9 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   nb = fltarr(nx, ny, nlc, nwav,2)
   wb = fltarr(nx, ny)
 
+  iscale = total(total(refs,1),1) /  (float(nx)*ny) 
+  iscale = mean(iscale) / iscale
+  
   for tt = 0, nscan - 1 do begin
      if(done[tt] eq 0) then continue
      print, ' '
@@ -399,7 +402,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      t_scale = 0.5 * bmean / tmean
      r_scale = 0.5 * bmean / rmean
      
-     cub = nb[*,*,*,*,0] * t_scale + nb[*,*,*,*,1] * r_scale
+     cub = (nb[*,*,*,*,0] * t_scale + nb[*,*,*,*,1] * r_scale) * iscale[tt]
      for ww = 0, nwav-1 do cub[*,*,*,ww] *= totpref[ww]
 
 
