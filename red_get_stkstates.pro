@@ -53,7 +53,7 @@ function red_get_stkstates, f
      pref[ii] = tmp[2]
      wav[ii] = tmp[3]
      iwav[ii] = fix((strsplit(tmp[3],'_',/extract))[1])
-     dwav[ii] = iwav[ii]*1.d-3 + double((strsplit(tmp[3],'_',/extract))[0])
+     dwav[ii] = iwav[ii]*1.d-3 + double((strsplit(tmp[3],'_',/extract))[0]) - double(pref[ii])
      state[ii] = strjoin(tmp[1:3],'.')
   endfor
   
@@ -92,5 +92,5 @@ function red_get_stkstates, f
   endfor
                                 ;
   return, {files:f, ofiles:ofiles, flag:flag, ostate:ostate, state:state, idx:idx, uwav:uwav, $
-           uscan:uscan, uiwav:uiwav, nscan:nscan, nwav:nwav}
+           uscan:uscan, uiwav:uiwav, nscan:nscan, nwav:nwav, udwav:udwav}
 end

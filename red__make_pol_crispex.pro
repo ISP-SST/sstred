@@ -196,7 +196,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   
   nwav = st.nwav
   nscan = st.nscan
-  wav = st.uiwav * 1.e-3
+  wav = st.udwav ;* 1.e-3
 
   ;; Interpolate prefilters to the observed grid 
   tpref = 1./(red_intepf(twav, tpref, wav) + red_intepf(rwav, rpref, wav))
