@@ -51,9 +51,13 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2015-03-31 : MGL. Use red_download to get turret log file.
+; 
 ; 
 ;-
-function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch, dir = dir, square = square, newflats = newflats, no_ccdtabs=no_ccdtabs
+function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch $
+                       , dir = dir, square = square, newflats = newflats $
+                       , no_ccdtabs = no_ccdtabs
   inam = 'red::polarim : '
                                 ;
                                 ; Search for folders with reduced data
@@ -103,7 +107,9 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
                                 ; get states that are common to both cameras (object)
                                 ;
-  pol = red_getstates_polarim(tfiles, rfiles, self.out_dir,camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag, newflats=newflats)
+  pol = red_getstates_polarim(tfiles, rfiles, self.out_dir $
+                              , camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag $
+                              , newflats = newflats)
   nstat = n_elements(pol)
                                 ;
                                 ; Modulations matrices
@@ -129,7 +135,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
 
         immt = ptr_new(red_invert_mmatrix(temporary(immt)))
      endif else begin
-        print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
+        print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
         return, 0
      endelse
                                 ;
@@ -174,7 +180,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
      pol[ii]->setvar, 6, value = ptr_new(immr)
   endfor
                                 ;
-                                ; fill border imformation (based of 1st image)
+                                ; fill border information (based on 1st image)
                                 ;
   print, inam + 'reading file -> ' + (pol[0]->getvar(9))[0]
   tmp = red_mozaic(momfbd_read((pol[0]->getvar(9))[0]))
@@ -184,17 +190,20 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
                                 ; telog
                                 ;
-  telfiles = file_search(self.out_dir+'/positionLog*', count = ct)
-                                ;
-  if(ct eq 1) then begin
-     print, inam + 'Using SST position LOG -> ' + telfiles
-     for ii = 0L, nstat - 1 do pol[ii]->setvar, 18, value = telfiles
-  endif
+  red_download, date = self.isodate, /turret, pathturret = turretfile
+  if turretfile then begin
+     print, inam + 'Using SST position LOG -> ' + turretfile
+     for ii = 0L, nstat - 1 do pol[ii]->setvar, 18, value = turretfile
+  endif else begin
+     print, 'red__polarim : No Turret log file'
+     stop
+  endelse 
                                 ;
                                 ; Print states
                                 ;
   print, inam + 'Found '+red_stri(nstat)+' state(s) to demodulate:'
-  for ii = 0L, nstat-1 do print, red_stri(ii, ni='(I5)') + ' -> '+ pol[ii] -> state()
+  for ii = 0L, nstat-1 do print, red_stri(ii, ni='(I5)') + ' -> ' + pol[ii] -> state()
                                 ;
   return, pol
+
 end
