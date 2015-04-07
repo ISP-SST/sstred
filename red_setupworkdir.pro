@@ -57,9 +57,9 @@
 ;    stockholm : in, optional, type=boolean
 ; 
 ;       If this is set, will search for out_dir's date in
-;       "/mnt/sand??/Incoming" (where data is usually found in
-;       Stockholm). If no other information is given about where to
-;       look for data, stockholm is assumed. 
+;       "/mnt/sand??" (where data is usually found in Stockholm). If
+;       no other information is given about where to look for data,
+;       stockholm is assumed.
 ; 
 ; 
 ; :History:
@@ -126,6 +126,11 @@
 ;
 ;    2014-09-08 : MGL. Changed the wording of comments on the fitgains
 ;                 method written to doit.pro.
+;
+;    2015-04-07 : MGL. Changed the default path for data in Stockholm
+;                 to "/mnt/sand??/" (and not its subdirectory
+;                 "Incoming/".
+;
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -199,7 +204,7 @@ pro red_setupworkdir, root_dir = root_dir $
      endif
   endif else begin
      if keyword_set(stockholm) then begin
-        search_dir = "/mnt/sand??/Incoming/"
+        search_dir = "/mnt/sand??/"
      endif else begin
          if ~strmatch(root_dir,'*/') then root_dir += '/'
         search_dir = root_dir
