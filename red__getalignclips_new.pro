@@ -77,6 +77,10 @@
 ;                Fix threshold bug. Loop over all present states and use
 ;                average.
 ;
+;   2015-04-20 : MGL. Don't try to average if there's only a single
+;                state.  
+;  
+;
 ;
 ;   TODO:  This routine is not particularly efficient, should be tweaked/optimized.
 ;
@@ -308,9 +312,9 @@ PRO red::getalignclips_new, thres = thres $
 
      ;; Simply average over the states and save one alignment-file per camera/prefilter,
      ;; for wide lines we may need to store several files and interpolate when they are used.
-     ssh = round(total(ssh,3)/cw)
-     pics = round(total(pics,4)/cw)
-     i_rot = round(total(i_rot,2)/cw)
+     if size(ssh, /n_dim) gt 2 then ssh = round(total(ssh,3)/cw) 
+     if size(pics, /n_dim) gt 3 then pics = round(total(pics,4)/cw) else pics = round(pics)
+     if size(i_rot, /n_dim) gt 1 then i_rot = round(total(i_rot,2)/cw) 
 
      ;; Clip images
      ssh = -ssh
