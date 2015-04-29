@@ -150,7 +150,10 @@ function red_telmat, lam, telpos, time, NO_ZERO_OFFSET=nzo, OLD_POLCAL=oldpc, $
                45.00000,  0.66346, -37.1, 10.7]
         
      END
-     ELSE: message, 'No information for wavelength '+lam
+     ELSE: BEGIN
+        message, 'No information for wavelength '+lam
+        return, diag_matrix([1.,1.,1.,1.])
+     END
   ENDCASE
   
   ;; comment: Parameter 14 is the orientation missmatch between the
