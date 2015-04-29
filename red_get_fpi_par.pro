@@ -138,6 +138,18 @@ function red_get_fpi_par,line=line
         fpi.prw0 = 5578.2d0
         fpi.rng  = 0.2d0
      endcase
+     '5875': begin
+        fpi.w0   = 5876.0d0
+        fpi.rhr  = 0.9266d0
+        fpi.rlr  = 0.8567d0
+        fpi.shr  = 787.e4
+        fpi.slr  = 295.5e4
+        fpi.dhr  = 0.237d0
+        fpi.dlr  = 0.647d0
+        fpi.prw  = 5.0d0
+        fpi.prw0 = 5876.0d0
+        fpi.rng  = 0.2d0
+     endcase
      '6563': begin
         fpi.w0   = 6563.0d0
         fpi.rhr  = 0.9330d0
