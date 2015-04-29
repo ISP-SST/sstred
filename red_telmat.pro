@@ -151,7 +151,7 @@ function red_telmat, lam, telpos, time, NO_ZERO_OFFSET=nzo, OLD_POLCAL=oldpc, $
         
      END
      ELSE: BEGIN
-        message, 'No information for wavelength '+lam
+        message, 'No information for wavelength '+lam, /continue
         return, diag_matrix([1.,1.,1.,1.])
      END
   ENDCASE
