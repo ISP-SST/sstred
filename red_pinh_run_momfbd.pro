@@ -154,7 +154,7 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
   Nch = (size(xoffs, /dim))[2] 
   Npinh = (size(simx, /dim))[0]
 
-  if n_elements(margin) eq 0 then margin = 0
+  if n_elements(margin) eq 0 then margin = 2
   if n_elements(diversity) eq 0 then diversity = replicate(0.0, Nch)
   if n_elements(finddiversity) eq 0 then finddiversity = 0
   if n_elements(workdir) eq 0 then workdir = './'
