@@ -126,7 +126,14 @@
 ;   2014-01-24 : MGL. Removed diversity part of the code. 
 ;
 ;   2014-04-08 : THI. Loop over all prefilters/states unless specified.
-;                New keyword show_plots, change default to not display plots
+;                New keyword show_plots, change default to not display
+;                plots. 
+;
+;   2015-05-07 : MGL. Add 86 to list of bad subfield sizes for momfbd.
+;                Also call red_pinh_run_momfbd with margin=2.
+;
+;
+;
 ;-
 pro red::pinholecalib, STATE = state $                   
                        , PREFILTER = prefilter $         
@@ -165,7 +172,7 @@ pro red::pinholecalib, STATE = state $
     if n_elements(nslaves) eq 0 then nslaves=6
     if n_elements(nthreads) eq 0 then nthreads=1
     if n_elements(maxit) eq 0 then maxit=400
-    if n_elements(margin) eq 0 then margin=0
+    if n_elements(margin) eq 0 then margin=2
 
     ;; Where the summed pinhole images are:
     pinhdir = self.out_dir + '/pinh_align/'
@@ -301,7 +308,7 @@ pro red::pinholecalib, STATE = state $
             sz += (sz mod 2)
 
             ;; Avoid sizes that make the momfbd slaves crash.
-            badsizes = [90]
+            badsizes = [86, 90]
             while total(sz eq badsizes) gt 0 do sz -= 2
 
             ;; Measure positions used for calculating initial offsets.
