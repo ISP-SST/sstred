@@ -56,6 +56,9 @@
 ; 
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
+;
+;   2015-05-05 : MGL. If keyword pref is given, use it when looking
+;                for files.
 ; 
 ; 
 ; 
@@ -81,10 +84,15 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   ;;    print, inam + ' : ERROR, file not found -> ' + file1
   ;;    return
   ;; endif
-  
-  files = file_search(self.out_dir + '/flats/spectral_flats/*.fit_results.sav', count=count)
-  files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
-  
+
+  if n_elements(pref) eq 0 then begin
+     files = file_search(self.out_dir + '/flats/spectral_flats/*.fit_results.sav', count=count)
+     files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
+  endif else begin
+     files = file_search(self.out_dir + '/flats/spectral_flats/*.'+pref+'.fit_results.sav', count=count)
+     files1 = file_search(self.out_dir + '/flats/spectral_flats/*.'+pref+'.flats.sav', count=count1)
+  endelse
+
   ;; Select file   
   stat = strarr(count)
   stat1 = strarr(count1)
