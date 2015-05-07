@@ -50,7 +50,7 @@
 ; 
 ;       The number of pinholes found.
 ;
-;    margin : in, optional, type=integer
+;    edgemargin : in, optional, type=integer
 ; 
 ;       Margin for momfbd to use for swapping tilts for image shifts.
 ; 
@@ -67,6 +67,8 @@
 ;                Documentation. 
 ;
 ;   2014-01-27 : MGL. New keyword: margin.
+;
+;   2015-05-07 : THI. renamed keyword margin to edgemargin to avoid name-clash in the piholecalib routine.
 ; 
 ; 
 ;-
@@ -75,10 +77,10 @@ pro red_findpinholegrid_new, pinholeimage, x, y $
                              , dy = dy $
                              , Npinh = Npinh $
                              , thres = thres $
-                             , margin = margin
+                             , edgemargin = edgemargin
 
   if n_elements(thres) eq 0 then thres = 0.1
-  if n_elements(margin) eq 0 then margin = 0
+  if n_elements(edgemargin) eq 0 then edgemargin = 0
 
   ;; Each pinhole gets a unique ROI number
   mask = red_separate_mask(pinholeimage gt thres*max(pinholeimage))
@@ -122,11 +124,11 @@ pro red_findpinholegrid_new, pinholeimage, x, y $
   ;; Selection of pinholes to return ------
 
   ;; Pick only pinholes that are at least half a grid spacing (plus
-  ;; margin) away from the array border.
+  ;; edgemargin) away from the array border.
   dim = size(pinholeimage, /dim)
-  indx = where(cc(0, *) gt (dd/2+margin) and cc(1, *) gt (dd/2+margin) $
-               and  (dim[0] - cc(0, *)) gt (dd/2+margin) $
-               and  (dim[1] - cc(1, *)) gt (dd/2+margin) )
+  indx = where(cc(0, *) gt (dd/2+edgemargin) and cc(1, *) gt (dd/2+edgemargin) $
+               and  (dim[0] - cc(0, *)) gt (dd/2+edgemargin) $
+               and  (dim[1] - cc(1, *)) gt (dd/2+edgemargin) )
   
   ;; The returned coordinates:
   x = reform(cc[0, indx])

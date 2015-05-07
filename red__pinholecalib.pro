@@ -99,6 +99,16 @@
 ;
 ;        Strehl number
 ; 
+;    edgemargin : in, optional   
+;
+;        Number of rows/columns to exclude when searching for pinholes.
+;
+;    subfieldpadding : in, optional   
+;
+;        Pad this many pixels around the subfields when submitting to momfbd.
+;        (which doesn't seem to handle exact image-sizes too well)
+;
+;
 ; :History:
 ; 
 ;   2013-09-04 : MGL. Use red_momfbd_setup, not momfbd_setup. Improve
@@ -132,7 +142,7 @@
 ;   2015-05-07 : MGL. Add 86 to list of bad subfield sizes for momfbd.
 ;                Also call red_pinh_run_momfbd with margin=2.
 ;
-;
+;   2015-05-07 : THI. Added keywords edgemargin and subfieldpadding.
 ;
 ;-
 pro red::pinholecalib, STATE = state $                   
@@ -155,6 +165,8 @@ pro red::pinholecalib, STATE = state $
                        , DTOL = dtol $                 
                        , TTOL = ttol $                 
                        , STREHL = strehl $
+                       , edgemargin = edgemargin $
+                       , subfieldpadding = subfieldpadding $
                        , show_plots = show_plots
 
     ;; Name of this method
@@ -172,7 +184,8 @@ pro red::pinholecalib, STATE = state $
     if n_elements(nslaves) eq 0 then nslaves=6
     if n_elements(nthreads) eq 0 then nthreads=1
     if n_elements(maxit) eq 0 then maxit=400
-    if n_elements(margin) eq 0 then margin=2
+    if n_elements(edgemargin) eq 0 then edgemargin=0
+    if n_elements(subfieldpadding) eq 0 then subfieldpadding=2
 
     ;; Where the summed pinhole images are:
     pinhdir = self.out_dir + '/pinh_align/'
@@ -301,7 +314,7 @@ pro red::pinholecalib, STATE = state $
             endfor
 
             ;; Find pinhole grid.
-            red_findpinholegrid_new, images[*, *, 0], simx, simy, dx = dx, dy = dy, Npinh = Npinh, margin = margin
+            red_findpinholegrid_new, images[*, *, 0], simx, simy, dx = dx, dy = dy, Npinh = Npinh, edgemargin = edgemargin
             ;; Set subimage size to mean distance between spots.
             sz = round((dx+dy)/2.)
             ;; Make sure sz is an even number:
@@ -396,7 +409,7 @@ pro red::pinholecalib, STATE = state $
                                      , XTILTS = dxtilts $  ; Output
                                      , YTILTS = dytilts $  ; Output
                                      , METRICS = metrics $ ; Output
-                                     , margin = margin $
+                                     , subfieldpadding = subfieldpadding $
                                      , show_plots=keyword_set(show_plots)
 
                 ;; Updates, note 100ths of a pixel
