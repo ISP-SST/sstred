@@ -146,7 +146,7 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
                          , YTILTS = ytilts $ 
                          , FOC = foc $       
                          , METRICS = metrics  $ 
-                         , margin = margin $
+                         , subfieldpadding = subfieldpadding $
                          , show_plots = show_plots
 
   ana_output = 1                ; Otherwise use MOMFBD format output (for development/debugging).
@@ -154,7 +154,7 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
   Nch = (size(xoffs, /dim))[2] 
   Npinh = (size(simx, /dim))[0]
 
-  if n_elements(margin) eq 0 then margin = 2
+  if n_elements(subfieldpadding) eq 0 then subfieldpadding = 2
   if n_elements(diversity) eq 0 then diversity = replicate(0.0, Nch)
   if n_elements(finddiversity) eq 0 then finddiversity = 0
   if n_elements(workdir) eq 0 then workdir = './'
@@ -172,7 +172,7 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
   endif
   
   ;; New subfield offsets, submit jobs
-  d = sz/2 + margin
+  d = sz/2 + subfieldpadding
 
   for ihole=0,Npinh-1 do begin
      
