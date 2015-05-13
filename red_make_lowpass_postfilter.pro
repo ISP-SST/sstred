@@ -165,7 +165,9 @@ function red_make_lowpass_postfilter, ims, limfreq $
            
         endelse 
 
-        fouriercube[*, *, iim] = imf
+	if arg_present(fouriercube) then begin
+        	fouriercube[*, *, iim] = imf
+	endif
 
         pow = abs(imf)^2        ; Power spectrum
 
@@ -371,6 +373,10 @@ function red_make_lowpass_postfilter, ims, limfreq $
      endelse                    ; isotropic
   endfor                        ; iim
 
-  return, min(filtercube, dim = 3)
+  if Nims eq 1 then begin
+  	return, filtercube
+  endif else begin
+  	return, min(filtercube, dim = 3)
+  endelse
 
 end
