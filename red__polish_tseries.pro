@@ -94,7 +94,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
                          ang = ang, shift = shift, square=square, $
                          negang = negang, crop=crop, ext_time = ext_time, $
-                         fullframe = fullframe
+                         fullframe = fullframe, ext_date = ext_date
   
 
   ;; Name of this method
@@ -186,7 +186,8 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
               ENDELSE
               idx = where(strpos(h, 'DATE-OBS') GE 0)
               ok = execute('date[ii] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
-          END
+           END
+          if(n_elements(ext_date) ne 0) then date[ii] = ext_date
       ENDCASE
       
       IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
