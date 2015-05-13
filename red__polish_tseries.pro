@@ -187,9 +187,9 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
               idx = where(strpos(h, 'DATE-OBS') GE 0)
               ok = execute('date[ii] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
            END
-          if(n_elements(ext_date) ne 0) then date[ii] = ext_date
       ENDCASE
-      
+      if(n_elements(ext_date) ne 0) then date[ii] = ext_date
+
       IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
       
       IF ii EQ 0 THEN BEGIN
