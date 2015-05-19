@@ -1,3 +1,11 @@
+; docformat = 'rst'
+
+;+
+; :history:
+; 
+;   2015-04-01 : MGL. Use red_download to get turret log file.
+; 
+;-
 pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth, $
                              bad = bad, nthreads=nthreads, nostretch = nostretch,$
                              scans_only = scans_only, no_cross_talk =no_cross_talk, $
@@ -182,25 +190,22 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   ;;  telescope pointing log
   ;;
   if(self.isodate eq '') then begin
-     date = ''
-     read, date, prompt=inam+'please enter the ISO-date of the observations (YYYY-MM-DD): '
-  endif else date = self.isodate
-  date = strjoin(strsplit(date,'-./', /extract),'.')
+     isodate = ''
+     read, isodate, prompt=inam+'please enter the ISO-date of the observations (YYYY-MM-DD): '
+  endif else isodate = self.isodate
+  date = strjoin(strsplit(isodate,'-./', /extract),'.')
   
-  telog = file_search(self.out_dir+'/positionLog_'+date+'*', count = count)
-  if count eq 0 then begin
-     print, inam+'ERROR, telescope pointing log not found'
-     return
+  ;; Download Turret position log file if needed and read azel angles
+  ;; from it. MGL 2015-04-01
+  red_download, date = isodate, /turret, pathturret = turretfile
+  if turretfile then begin
+     print, inam + 'Using SST position LOG -> ' + turretfile
+     telpos = red_read_azel(turretfile, date)
   endif else begin
-     if count gt 1 then begin
-        telog = telog[0]
-        print, inam+'WARNING, several telescope logs found, using '+telog
-     endif else print, inam+'Telescope pointing: '+telog    
-  endelse
-  date = strjoin(strsplit(date,'-./', /extract),'/')
-  telpos = red_read_azel( telog, date)
-
-
+     print, inam + 'No Turret log file'
+     stop
+  endelse 
+ 
   ;;
   ;; Load prefilter transmission
   ;;
