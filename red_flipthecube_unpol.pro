@@ -114,8 +114,18 @@ pro red_flipthecube_unpol, file, nw = nw, nt = nt, maxsize=maxsize, icube = icub
   nx1 = nx
   if(~keyword_set(maxsize)) then maxsize = 256L
   ny1 = findthedim(ny, maxsize)
+  if ny1 eq 1 then begin
+; if ny1 is 1, making the sp cube takes a lot of time. If you have sufficient memory, you might want to transpose the whole cube in one go
+; provide that option here
+      print, inam + 'no optimal factor found to transpose smaller cubes (ny1=1)'
+      gbsize=float(nx)*float(ny)*float(nw)*float(nt)*2. *1E-9
+      if(~keyword_set(icube)) then gbsize=gbsize*2.
+      print, inam + 'try to transpose the whole cube in one go? [y/n] size of cube: '+strtrim(gbsize,2)+' GB'
+      dum=''
+      read,dum
+      if dum eq 'y' then ny1=ny
+  endif 
   
-
   
   openr,lun,file, /get_lun
   if(~keyword_set(icube)) then a = assoc(lun, fltarr(nx1,ny1,/noze), 512) $

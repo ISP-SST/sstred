@@ -78,6 +78,7 @@
 ;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor, float = float
 
+;  FileANA=1
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
@@ -181,10 +182,18 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      return
   endelse
 
-  tfiles = file_search(f+'/'+self.camttag+'.?????.'+pref+'.????_*momfbd', count=tf)
-  rfiles = file_search(f+'/'+self.camrtag+'.?????.'+pref+'.????_*momfbd', count=rf)
-  wfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.????_*momfbd', count=wf)
-  wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.momfbd', count = wbf)
+;  if FileANA then begin
+  if (self.filetype eq 'ANA') then begin
+      tfiles = file_search(f+'/'+self.camttag+'.?????.'+pref+'.????_*f0', count=tf)
+      rfiles = file_search(f+'/'+self.camrtag+'.?????.'+pref+'.????_*f0', count=rf)
+      wfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.????_*f0', count=wf)
+      wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.f0', count = wbf)
+  endif else begin
+      tfiles = file_search(f+'/'+self.camttag+'.?????.'+pref+'.????_*momfbd', count=tf)
+      rfiles = file_search(f+'/'+self.camrtag+'.?????.'+pref+'.????_*momfbd', count=rf)
+      wfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.????_*momfbd', count=wf)
+      wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.momfbd', count = wbf)
+  endelse 
 
   st = red_get_stkstates(tfiles)
 
@@ -262,7 +271,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
   endif
 
   ;; Load WB image and define the image border
-  tmp = red_mozaic(momfbd_read(wbfiles[0]))
+;  if FileANA then   
+  if (self.filetype eq 'ANA') then tmp=f0(wbfiles[0]) else tmp = red_mozaic(momfbd_read(wbfiles[0]))
   dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
   
   if(full) then begin
@@ -345,7 +355,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         endif
      endif
 
-     wb = (red_mozaic(momfbd_read(wbfiles[ss])))[x0:x1, y0:y1]
+     ;if FileANA then   
+     if (self.filetype eq 'ANA') then wb=(f0(wbfiles[ss]))[x0:x1, y0:y1] else wb = (red_mozaic(momfbd_read(wbfiles[ss])))[x0:x1, y0:y1]
      
      for ww = 0L, nwav - 1 do begin 
         state = strjoin((strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*],'.')
@@ -357,25 +368,32 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
 
         ;; Get destretch to anchor camera (residual seeing)
         if(wbcor) then begin
-           wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
+            ;if FileANA then   
+            if (self.filetype eq 'ANA') then wwi = (f0(wwf))[x0:X1, y0:y1] else wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
            grid1 = red_dsgridnest(wb, wwi, tiles, clips)
            print, 'computed grid'
         endif
         
-        tmp_raw0 = momfbd_read(ttf)
-        tmp_raw1 = momfbd_read(rrf)
+;        if FileANA then begin
+        if (self.filetype eq 'ANA') then begin
+            tmp0 = (f0(ttf))[x0:x1, y0:y1] * tpref[ww]
+            tmp1 = (f0(rrf))[x0:x1, y0:y1] * rpref[ww]
+        endif else begin
+            tmp_raw0 = momfbd_read(ttf)
+            tmp_raw1 = momfbd_read(rrf)
 
         ;; Apply flat ratio after convolving with the PSF of the
         ;; patch: red_img2momfbd
-        tmp0 = (red_mozaic(tmp_raw0))[x0:x1, y0:y1] * tpref[ww]
-        tmp1 = (red_mozaic(tmp_raw1))[x0:x1, y0:y1] * rpref[ww]
-        if(~keyword_set(noflats)) then begin
-           trat = (red_mozaic(red_img2momfbd(tmp_raw0, tratio[*,*,ww])))[x0:x1, y0:y1]
-           rrat = (red_mozaic(red_img2momfbd(tmp_raw1, rratio[*,*,ww])))[x0:x1, y0:y1]
+            tmp0 = (red_mozaic(tmp_raw0))[x0:x1, y0:y1] * tpref[ww]
+            tmp1 = (red_mozaic(tmp_raw1))[x0:x1, y0:y1] * rpref[ww]
+            if(~keyword_set(noflats)) then begin
+                trat = (red_mozaic(red_img2momfbd(tmp_raw0, tratio[*,*,ww])))[x0:x1, y0:y1]
+                rrat = (red_mozaic(red_img2momfbd(tmp_raw1, rratio[*,*,ww])))[x0:x1, y0:y1]
            
-           tmp0 = temporary(tmp0) * temporary(trat) 
-           tmp1 = temporary(tmp1) * temporary(rrat) 
-        endif
+                tmp0 = temporary(tmp0) * temporary(trat) 
+                tmp1 = temporary(tmp1) * temporary(rrat) 
+            endif
+        endelse 
 
         ;; Combine cameras, compute scale factor avoiding borders...
         dim = size(tmp0,/dim)
@@ -451,6 +469,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      print, inam + ' : done'
      print, inam + ' : result saved to -> '+odir+'/'+ofile 
      red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = nscan, nw = nwav
+;     make_crispex_sp_cube, odir+'/'+ofile, nwav, nscan
   endif
 
 end

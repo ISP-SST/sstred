@@ -293,7 +293,7 @@ pro red::initialize, filename
   if(self.docamr) then print, 'red::initialize : cam_R = '+ self.camr
   if(self.docamwb) then print, 'red::initialize : cam_wb = '+ self.camwb
   if(self.dodescatter) then print, 'red::initialize : descatter_dir = '+ self.descatter_dir
-
+  if(self.filetype) then print, 'red::initialize : filetype = '+ self.filetype
   print, 'red::initialize : out_dir = '+ self.out_dir
 
   cgWindow_SetDefs, PS_Decomposed=1

@@ -120,7 +120,7 @@ pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
         read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
   ENDIF
   if(~keyword_set(numpoints)) then numpoints = '88'
-  if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
+  if(~keyword_set(modes)) then modes = '2-45,50,52-55,65,66'
   if(n_elements(nremove) eq 0) then nremove=0
   if(n_elements(nfac) gt 0) then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
@@ -462,11 +462,14 @@ pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
            printf, lun, 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)')
            printf, lun, 'NEW_CONSTRAINTS'
            printf, lun, 'FILE_TYPE='+self.filetype
+           if self.filetype eq 'ANA' then begin
+               printf, lun, 'DATA_TYPE=FLOAT'
+           endif 
            printf, lun, 'FAST_QR'
            IF self.filetype EQ 'MOMFBD' THEN BEGIN
                printf, lun, 'GET_PSF'
                printf, lun, 'GET_PSF_AVG'
-            ENDIF
+           ENDIF
            printf, lun, 'FPMETHOD=horint'
 
            ;; External keywords?
