@@ -50,9 +50,6 @@
 ;   
 ;   
 ;   
-;    newgains : in, optional, 
-; 
-;
 ;    nimages : in, optional, type=integer, default="One scan"
 ;
 ;       The number of images per mfbd data set.
@@ -61,10 +58,10 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;
-;   2013-06-13, JdlCR : added support for scan-dependent gains -> 
-;                       using keyword "/newgains".
+;   2013-06-13 : JdlCR. Added support for scan-dependent gains ->
+;                using keyword "/newgains".
 ;
-;   2013-06-28, JdlCR : added NF (object) option 
+;   2013-06-28 : JdlCR. Added NF (object) option 
 ; 
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
@@ -78,12 +75,14 @@
 ;
 ;   2014-04-02 : MGL. Fixed bug in IMAGE_DATA_DIR.
 ;
+;   2014-05-13 : MGL. Remove keyword newgains.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
                    modes = modes, date_obs = date_obs, descatter = descatter, $
                    global_keywords = global_keywords, skip = skip, $
                    pref = pref, $
-                   newgains=newgains, nf = nfac, nimages = nimages
+                   nf = nfac, nimages = nimages
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
