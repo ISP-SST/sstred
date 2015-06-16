@@ -76,7 +76,7 @@ pro red_momfbd_check, HOST = host $
       end
   end else begin        ; no host given -> check for local manager
       info = get_login_info()
-      spawn, 'ps aux | grep "[[:space:]]manager[[:space:]]" | grep '+info.user_name, psout
+      spawn, 'ps aux | grep "manager[[:space:]]" | grep '+info.user_name, psout
       if n_elements(port) ne 0 then begin
           indices = where(strmatch(psout,'*-p '+strtrim(string(port),2)+'*') eq 1, count)
           if count gt 0 then begin
@@ -102,11 +102,9 @@ pro red_momfbd_check, HOST = host $
 ;      managerpid = (token(psout[0]))[1]
       managerpid = (strsplit(psout[0], /extract))[1]
       if n_elements(port) eq 0 then begin        ; no port specified, get it from the pid
-          spawn, 'netstat -atnpl | grep LISTEN | grep '+managerpid+'/', netstat
-          if strmatch(netstat,'') eq 0 then begin
-              port = long((strsplit((strsplit(netstat,/EXTRACT))[3],':',/EXTRACT))[1])      ; returns the port number if an empty port variable was provided
-              portstring = ' -p '+strtrim(string(port),2)
-          end
+          portstring=stregex(psout, ' -p [0-9]+', /extract)
+          reads,strmid(portstring,3),port
+          port = long(port)
       end
 
 

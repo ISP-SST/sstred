@@ -63,7 +63,7 @@ repeat begin
       Nnames = 0
       names = ''
    endif else begin
-      if Nsubr gt 0 and Nfunc eq 0 then begin
+      if Nsubr gt 0 and Nfunc gt 0 then begin
          names = [subrnames, funcnames]
       endif else begin
          if Nsubr gt 0 then names = subrnames else names = funcnames
