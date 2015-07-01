@@ -89,7 +89,8 @@ PRO red::getalignclips_new, thres = thres $
                             , pref = pref $
                             , extraclip = extraclip $
                             , maxshift = maxshift $
-                            , show_plots = show_plots
+                            , show_plots = show_plots, $
+                            , rots = rots
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -166,7 +167,7 @@ PRO red::getalignclips_new, thres = thres $
      pics = fltarr(dim[0], dim[1], Ncams, cw)
      
      ;; Define the search space for rotation and shifts in x and y.
-     rots = [0, 2, 5, 7]
+     if(n_elements(rots) eq 0) then rots = [0, 2, 5, 7]
      xshifts = [-1, 0, 1]
      yshifts = [-1, 0, 1]
 
