@@ -89,7 +89,7 @@ PRO red::getalignclips_new, thres = thres $
                             , pref = pref $
                             , extraclip = extraclip $
                             , maxshift = maxshift $
-                            , show_plots = show_plots, $
+                            , show_plots = show_plots $
                             , rots = rots
 
   ;; Name of this method
