@@ -69,23 +69,31 @@
 ;   
 ;   
 ;   
+;    savecams  : 
+;   
+;   
+;   
+;    mdate  : 
+;   
+;   
+;   
 ; 
 ; 
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;
-;   2013-07-12 : MGL. Use red_read_azel rather than read_azel.
-;
+;   2013-07-12 : MGL. Use red_read_azel, not read_azel.
+; 
 ; 
 ;-
 pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = no_destretch, $
-                     no_filter = no_filter, overwrite = overwrite, img = res, sp = sp, power_sp = power_sp, $
-                     cmap = cmap, nosave=nosave, noclip = noclip
-
+                      no_filter = no_filter, overwrite = overwrite, img = res, sp = sp, power_sp = power_sp, $
+                      cmap = cmap, nosave=nosave, noclip = noclip, savecams = savecams, mdate = mdate, $
+                      noflat = noflat, ext_time = ext_time
+   
   inam = 'pol::demodulate : '
-
+   
   ;; shall the state be demodulated?
    
   if(keyword_set(state)) then begin
@@ -121,13 +129,39 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
    
   self -> loadimages
   
+  ;; load files
+  if(~keyword_set(noflat)) then begin
+     utflat = f0(self.utflat)
+     urflat = f0(self.urflat)
+     tgain = fltarr([size(utflat,/dim), 4])
+     rgain = fltarr([size(urflat,/dim), 4])
+     for ii = 0,3 do begin
+        print, inam + 'loading -> '+self.ftfiles[ii]
+        tgain[*,*,ii] = f0(self.ftfiles[ii])
+        print, inam + 'loading -> '+self.frfiles[ii]
+        rgain[*,*,ii] = f0(self.frfiles[ii])
+     endfor
+  endif
+
+  ;; Apply flat ratio to IMMT (remember! -> IMMT = Inverse Modulation Matrix!)
+   
+  immt = *(*self.immt)
+  immr = *(*self.immr)
+  
+  if(~keyword_set(noflat)) then begin
+     print, inam + 'applying flat ratios to the inverse modulation matrix (s) ... ', format='(A,$)'
+     immt = red_demat(tgain, utflat, temporary(immt))
+     immr = red_demat(rgain, urflat, temporary(immr))
+     print, 'done'
+  endif
+
   ;; Convert the demodulation matrix into patches (like the momfbd
   ;; images) and convolve with the PSFs from the patches.
    
   immt = red_matrix2momfbd((*self.timg[0]), (*self.timg[1]),$
-                           (*self.timg[2]),(*self.timg[3]),*(*self.immt))
+                           (*self.timg[2]),(*self.timg[3]), immt)
   immr = red_matrix2momfbd((*self.rimg[0]), (*self.rimg[1]),$
-                           (*self.rimg[2]),(*self.rimg[3]),*(*self.immr))
+                           (*self.rimg[2]),(*self.rimg[3]), immr)
 
   ;; Create arrays for the mozaics
 
@@ -194,16 +228,19 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
         filter = smooth(float(temporary(filter)), 3, /edge_truncate)
         filter = complex(filter, filter)
                                 ;
-        filter1 = filter
-                                ;
         print, inam+'Filtering ... ', format='(A,$)'
         for ii = 0L, 3 do img_t[*,*,ii] = red_fftfilt(reform(img_t[*,*,ii]), filter)
-        for ii = 0L, 3 do img_r[*,*,ii] = red_fftfilt(reform(img_r[*,*,ii]), filter1)
+        for ii = 0L, 3 do img_r[*,*,ii] = red_fftfilt(reform(img_r[*,*,ii]), filter)
         print, 'done'
    
      endif
   endif
-   
+
+  ; Filter states together?
+  
+  
+
+
   ;; Destretch ?
    
   if(destretch) then begin
@@ -261,12 +298,40 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      img_r = temporary(resr)
   endelse
 
+  ;;  if(keyword_set(experiment)) then begin
+  ;;     for ii = 0, 3 do img_r[*,*,ii] = deconvolve_straylight(img_r[*,*,ii], 0.059,fwhm = 7.59)
+  ;; endif 
+                                
+  ;; Combine cameras scaling to the median
+   
+  dum = size(img_t,/dim)
+  drm = dum / 8.0 
+  xx0 = drm[0] - 1
+  xx1 = dum[0] - drm[0] - 1
+  yy0 = drm[1] - 1
+  yy1 = dum[1] - drm[1] - 1
+   
+  aver = 0.5 * (mean(img_t[xx0:xx1,yy0:yy1,0]) + mean(img_r[xx0:xx1,yy0:yy1,0]))
+  sct = aver / mean(img_t[xx0:xx1,yy0:yy1,0])
+  scr = aver / mean(img_r[xx0:xx1,yy0:yy1,0])
+   
+  res = (sct * (img_t) + scr * (img_r)) * 0.5
+   
+  print, inam + 'Combining data from transmitted and reflected camera'
+  print, ' -> Average Intensity = ' + red_stri(aver)
+  print, ' -> Tcam scale factor -> '+red_stri(sct)
+  print, ' -> Rcam scale factor -> '+red_stri(scr)
+   
   ;; Average obs. time
    
   time_obs = 0.d0
   for ii = 0L, 3 do time_obs+= red_time2double((*self.timg[ii]).time)
   time_obs = red_time2double(time_obs * 0.25d0, /dir)
-
+  
+  if(n_elements(ext_time) gt 0) then begin
+     iscan = long(self.scan)
+     if(n_elements(ext_time) gt iscan + 1) then time_obs = ext_time[iscan]
+  endif
    
   ;; telescope model
    
@@ -276,54 +341,47 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
 
      ;; mtel =
      ;; sst_mueller_all((*self.timg[0]).date, time_obs, self.telog, line)
-     mdate = strjoin(strsplit((*self.timg[0]).date,'-',/extra),'/')
+     if(n_elements(mdate) eq 0) then mdate = strjoin(strsplit((*self.timg[0]).date,'-/.',/extra),'/')
+     
      telpos = red_read_azel( self.telog,mdate)
      print, inam + 'time_obs = '+time_obs
-     mtel = red_telmat(line, telpos, time_obs, /no_zero)
-      
-     imtel = invert(mtel)
+     if(line eq '6300') then begin
+        mtel = red_telmat('6302', telpos, time_obs, /no_zero)
+     endif else mtel = red_telmat(line, telpos, time_obs, /no_zero)
+     
+     imtel = invert(mtel) 
      imtel /= imtel[0]
 
      ;; Apply the matrix
-      
+
      res1 = fltarr(dim[0], dim[1], 4)
-     FOR j=0, 3 DO FOR i=0, 3 DO res1[*, *, j] += img_t[*, *, i] * imtel[i, j]
-     img_t = temporary(res1)
+     FOR j=0, 3 DO FOR i=0, 3 DO res1[*, *, j] += res[*, *, i] * imtel[i, j]
+     res = temporary(res1)
      
-     res1 = fltarr(dim[0], dim[1], 4)
-     FOR j=0, 3 DO FOR i=0, 3 DO res1[*, *, j] += img_r[*, *, i] * imtel[i, j]
-     img_r = temporary(res1)
-
-  endif else begin
-     print, inam + 'WARNING, SST position LOG not found -> telescope polarization not corrected!!!!'
-     ;;imtel = diag_matrix([1.,1.,1.,1.])
-  endelse
-   
-  ;; Combine cameras scaling to the median
-
-  dum = size(img_t,/dim)
-  drm = dum / 8.0 
-  xx0 = drm[0] - 1
-  xx1 = dum[0] - drm[0] - 1
-  yy0 = drm[1] - 1
-  yy1 = dum[1] - drm[1] - 1
-                                ;
-  aver = 0.5 * (mean(img_t[xx0:xx1,yy0:yy1,0]) + mean(img_r[xx0:xx1,yy0:yy1,0]))
-  sct = aver / mean(img_t[xx0:xx1,yy0:yy1,0])
-  scr = aver / mean(img_r[xx0:xx1,yy0:yy1,0])
-  bb = img_r[xx0:xx1,yy0:yy1]
-
-  ;;stop
-   
-  res = (sct * temporary(img_t) + scr * temporary(img_r)) * 0.5
-   
-  print, inam + 'Combining data from transmitted and reflected camera'
-  print, ' -> Average Intensity = ' + red_stri(aver)
-  print, ' -> Tcam scale factor -> '+red_stri(sct)
-  print, ' -> Rcam scale factor -> '+red_stri(scr)
-   
+  endif else print, inam + 'WARNING, SST position LOG not found -> telescope polarization not corrected!!!!'
+      
   ;; Save result
-   
+                                
+  if(keyword_set(savecams)) then begin
+     odir = file_dirname(self.tfiles[0]) + '/demodulated_cameras/'
+     file_mkdir, odir
+     
+     tcam = (strsplit(file_basename(self.tfiles[0]), '.',/extract))[0]
+     rcam = (strsplit(file_basename(self.rfiles[0]), '.',/extract))[0]
+
+     ofil = tcam + '.'+self.state + '.f0'
+     res1 = fltarr(dim[0], dim[1],4)
+     FOR j=0, 3 DO FOR i=0, 3 DO res1[*, *, j] += img_t[*, *, i] * imtel[i, j]
+     fzwrite,  temporary(res1) * sct, odir + ofil,' '
+     
+     ofil = rcam + '.'+self.state + '.f0'
+     res1 = fltarr(dim[0], dim[1],4)
+     FOR j=0, 3 DO FOR i=0, 3 DO res1[*, *, j] += img_r[*, *, i] * imtel[i, j]
+     fzwrite,  temporary(res1) * scr, odir + ofil,' '
+
+     return
+  endif
+
   if(~keyword_set(nosave)) then begin
      file_mkdir, outdir
      print, inam + 'saving file -> '+ outdir + outname

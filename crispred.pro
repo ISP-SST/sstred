@@ -68,7 +68,7 @@
 ;                 version.
 ;
 ;   2012-03-21 : JdlCR, red_matrix2momfbd -> Corrected clips,
-;                pol::demodulate2 -> some extra features like
+;                pol::demodulate -> some extra features like
 ;                (/noclip)
 ;  
 ;   2012-05-26 : JdlCR, added new IDL polcal routines. Using my C++

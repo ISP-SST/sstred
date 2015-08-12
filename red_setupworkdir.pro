@@ -551,7 +551,7 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
   if Npol gt 0 then begin
      printf, Slun, 'pol = a->polarim(/new)' 
-     printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate2,/noflat' 
+     printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate,/noflat' 
      printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
   endif
   printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
