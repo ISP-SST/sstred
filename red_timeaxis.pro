@@ -165,7 +165,7 @@ pro red_timeaxis, t, jd=jd, form=form, nticks=nticks, $
                                 ;--------  Make axis labels  ------------
   if n_elements(form) eq 0 then form = '' ; Label format.
   if form eq '' then form = frm
-  lab = time_label(v, form, jd=jd)
+  lab = red_time_label(v, form, jd=jd)
   
                                 ;--------  Tick length  ---------------
   ycr = !y.crange               ; Y data range.
