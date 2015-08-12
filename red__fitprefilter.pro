@@ -72,7 +72,7 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  ;; Load idlsave file with the results from fitgains_ng
+  ;; Load idlsave file with the results from fitgains
 
   ;; file =  self.out_dir + '/flats/spectral_flats/' + cam + '.fit_results.sav'
   ;; file1 = self.out_dir + '/flats/spectral_flats/' + cam + '_flats.sav'

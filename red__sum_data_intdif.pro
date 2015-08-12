@@ -265,7 +265,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
 
 
                                 ;
-                                ; Load fitgains_ng results
+                                ; Load fitgains results
                                 ;
         cmf = self.out_dir + '/flats/spectral_flats/' + ctag[cc] + '.' +$
               pref + '.' + 'fit_results.sav'
