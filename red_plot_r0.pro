@@ -133,7 +133,11 @@
 ;                  scans.  
 ;
 ;     2015-08-10 : MGL. Write all plots to subdir dir-analysis. Now
-;                  allowed to give dir without trailing slash.
+;                  allowed to give dir without trailing slash. 
+;
+;     2015-08-12 : MGL. Stop using red_timeaxis.pro to get away from
+;                  its many dependencies. Import Pit's gen_timeaxis to
+;                  the crispred namespace and use it instead.
 ;
 ;-
 pro red_plot_r0, dir = dir $
@@ -193,60 +197,7 @@ pro red_plot_r0, dir = dir $
   print, 'Dir: ', dir
 
   timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
-;  dateregex = '[0-9][0-9][0-9][0-9][.-][0-9][0-9][.-][0-9][0-9]'
   dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
-
-  ;; Find the directory/directories to plot.
-  
-  ;; Does the directory name contain a time-stamp?
-;  regex = '/[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
-  pos = stregex(dir,'/'+timeregex)      
-  if pos ne -1 then begin
-
-     ;; Yes, this is a time-stamped directory.
-
-     dnames = [dir]
-
-  endif else begin
-
-     ;; No, this is not a time-stamped directory.
-     ;; Does it contain time-stamped directories?
-
-     dnames = file_search(dir+'/'+timeregex, count = Ndirs)
-     if Ndirs eq 0 then begin
-
-        ;; No there are no time stamped directories here
-
-        print
-        print, 'Please navigate to and select a directory.'
-        print, 'If this is a time-stamped directory, it will be plotted.'
-        print, 'If not, you will be asked to select one or several time stamped directories'
-        print, 'in the selected directory.'
-        dialog_title = 'Please select a directory.'
-        pickdir = dialog_pickfile(/dir, path = dir, /must_exist, title = dialog_title)
-        if strlen(pickdir) gt 0 then dir = pickdir
-
-        ;; Does this directory name contain a time-stamp?
-        pos = stregex(dir,'/'+timeregex)      
-        if pos ne -1 then begin
-
-           ;; Yes, this is a time-stamped directory.
-
-           dnames = [dir]
-
-        endif else begin
-
-           ;; No, this is still not a time-stamped directory.
-           ;; But does it contain time-stamped directories this time?
-
-           dnames = file_search(dir+'/'+timeregex, count = Ndirs)
-       endelse
-        
-     endif
-
-  endelse
-
-
 
   ;; Do we have a date?
   if keyword_set(today) then date = systime(/UTC,/JULIAN)
@@ -288,8 +239,7 @@ pro red_plot_r0, dir = dir $
 
   thisdateregex = string(yr, format = '(i04)') + '[.-]' + string(mo, format = '(i02)') $
               + '[.-]' + string(dy, format = '(i02)')
-
-
+  
   ;; Download the r0 log file if necessary
   red_logdata, isodate, r0time, r0 = r0data
   Nr0 = (size(r0data, /dim))[0]
@@ -332,7 +282,7 @@ pro red_plot_r0, dir = dir $
   for i = 0, Ntd-1 do begin
      
      print, timedirs[i]
-     
+
      intfile = analysis_dir+red_strreplace(timedirs[i],datedir,'')+'/interval.txt'
 
      if ~file_test(intfile) then begin
@@ -341,11 +291,13 @@ pro red_plot_r0, dir = dir $
         spawn, 'cd '+tdir+' ; ls', cdirs
         
         if n_elements(cdirs) gt 0 then begin
-;           print, 'cd '+tdir+'/'+cdirs[0]+' ; ls -rt '
            spawn, 'cd '+tdir+'/'+cdirs[0]+' ; ls -rt ', fnames
            
            Nf = n_elements(fnames)
-           
+
+           red_extractstates, fnames, nums = fnums
+           fnames = fnames(sort(long(fnums)))
+
            if Nf gt 0 then begin
 
               head = fzhead(tdir+'/'+cdirs[0]+'/'+fnames[0])
@@ -353,14 +305,16 @@ pro red_plot_r0, dir = dir $
               istop = strpos(head, 'Te=')
               len = istop - istart
               tstart = total(double(strsplit((strsplit(strmid(head, istart, len) $
-                                                       , ' ', /extr))[1],':',/extr)) * [3600.,60., 1.])
+                                                       , ' ', /extr))[1],':',/extr)) $
+                             * [3600.,60., 1.])
               
               head = fzhead(tdir+'/'+cdirs[0]+'/'+fnames[Nf-1])
               istart = strpos(head, 'Ts=')
               istop = strpos(head, 'Te=')
               len = istop - istart
               tstop = total(double(strsplit((strsplit(strmid(head, istart, len) $
-                                                      , ' ', /extr))[1],':',/extr)) * [3600.,60., 1.])
+                                                      , ' ', /extr))[1],':',/extr)) $
+                            * [3600.,60., 1.])
 
               tinterval = [tstart, tstop]/3600.
 
@@ -418,12 +372,14 @@ pro red_plot_r0, dir = dir $
  
   result = label_date(date_format = '%H:%I')
 
+  
   ;; Return now if all we wanted was finding directories etc, but no
   ;; actual plots.
   if keyword_set(noplot) then return
 
   if keyword_set(plot24) or keyword_set(plot8) $
-     or ((keyword_set(markdata) or keyword_set(onlydata)) and n_elements(dir) gt 0) then begin
+     or ((keyword_set(markdata) or keyword_set(onlydata)) and n_elements(dir) gt 0) $
+  then begin
 
      ;; Plot r0 for the entire (or part of) day. If we have
      ;; time-stamped directories, possibly mark in the plot where they
@@ -448,18 +404,22 @@ pro red_plot_r0, dir = dir $
 
               if keyword_set(onlydata) then begin
                  ;; Set up the plot.
+                 L = red_gen_timeaxis([tmin_data-0.2, tmax_data+0.2]*3600.)
                  cgplot, /add, [tmin_data-0.2, tmax_data+0.2]*3600., [0, r0max] $
                          , /nodata, /ystyle $
                          , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m', title = isodate $
-                         , xstyle = 5, xrange = [tmin_data-0.2, tmax_data+0.2]*3600.
+                         , xrange = [tmin_data-0.2, tmax_data+0.2]*3600. $
+                         , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
               endif else begin
                  ;; Set up the plot.
+                 L = red_gen_timeaxis([tmin, tmax]*3600.)
                  cgplot, /add, [tmin, tmax]*3600., [0, r0max] $
                          , /nodata, /ystyle $
                          , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m', title = isodate $
-                         , xstyle = 5, xrange = [tmin, tmax]*3600.
+                         , xrange = [tmin, tmax]*3600. $
+                         , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
               endelse
-     
+
               for i = 0, Ntd-1 do begin
 
                  print,strtrim(i,2)+'/'+strtrim(Ntd,2)
@@ -530,11 +490,10 @@ pro red_plot_r0, dir = dir $
         
      endif else begin           ; markdata
         ;; Set up the plot.
-        cgplot, /add, [tmin, tmax]*3600, [0, r0max], /nodata, /ystyle $
-                , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m', title = isodate 
+        cgplot, /add, [tmin, tmax]*3600., [0, r0max], /nodata, /ystyle $
+                , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m' $
+                , title = isodate, xstyle = 5
      endelse
-
-     cgwindow, /loadcmd, 'red_timeaxis', color = 'opposite' 
 
      ;; Return time limits of plot
      tmin = !x.crange[0]/3600.
@@ -551,19 +510,24 @@ pro red_plot_r0, dir = dir $
      if keyword_set(plot24) then begin
         indx = where(r0data[0, *] gt r0_top, Ntop)
         cgwindow, 'cgplot', /loadcmd, /over, r0time, r0data[0, *] >r0_bot<r0_top $
-                  , color = color_24, psym = 16, symsize = 0.1
-        if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over, r0time[indx], replicate(r0_top, Ntop) $
+                  , color = color_24, psym = 16, symsize = 0.15
+        if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over $
+                                    , r0time[indx], replicate(r0_top, Ntop) $
                                     , color = color_24, psym = 5, symsize = 0.15
-        cgwindow, 'cgplot', /loadcmd, /over, r0time, smooth(r0data[0, *], dt_mean*60.) >r0_bot $
+        cgwindow, 'cgplot', /loadcmd, /over $
+                  , r0time, smooth(r0data[0, *], dt_mean*60.) >r0_bot $
                   , color = color_24
      endif
+
      if keyword_set(plot8) then begin
         indx = where(r0data[1, *] gt r0_top, Ntop)
         cgwindow, 'cgplot', /loadcmd, /over, r0time, r0data[1, *] >r0_bot<r0_top $
-                  , color = color_8, psym = 16, symsize = 0.1
-        if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over, r0time[indx], replicate(r0_top, Ntop) $
+                  , color = color_8, psym = 16, symsize = 0.25
+        if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over $
+                                    , r0time[indx], replicate(r0_top, Ntop) $
                                     , color = color_8, psym = 5, symsize = 0.15
-        cgwindow, 'cgplot', /loadcmd, /over, r0time, smooth(r0data[1, *], dt_mean*60.) >r0_bot $
+        cgwindow, 'cgplot', /loadcmd, /over $
+                  , r0time, smooth(r0data[1, *], dt_mean*60.) >r0_bot $
                   , color = color_8
      endif
 
@@ -574,9 +538,8 @@ pro red_plot_r0, dir = dir $
              + '.pdf'
 
      cgcontrol, output = pname
-
+     
   endif                         ; plot24 or plot8
-
 
   if keyword_set(scan24) or keyword_set(scan8) then begin
 
@@ -779,7 +742,6 @@ print,wdir
                  if sstop gt Tstop*3600 or is eq 0 or nofile then begin
                     ;; Time to start a new plot.
                     if is ne 0 then begin
-                       cgwindow, /add, 'red_timeaxis', color = 'opposite' 
                        iplot += 1
                        pname = 'dir-analysis/' + 'r0plot_' + isodate + '_' $
                                + (strsplit(timedirs[i],'/',/extr,count=Nsplit))[Nsplit-1] $
@@ -793,12 +755,14 @@ print,wdir
                     Tstop += Tplot
                     if keyword_set(scan24) then title = 'r0 24x24 : ' else title = 'r0 8x8 : '
                     title += isodate + ' ' + timedirs[i]
-                    cgwindow, /add, 'cgplot', /nodata, [0], [0] , ticklen = -!p.ticklen $
-                              , xrange = [Tstart, Tstop]*3600, xstyle = 5 $
+                    L = red_gen_timeaxis([Tstart, Tstop]*3600)
+                    cgwindow, /add, 'cgplot', /nodata, [0], [0] $
+                              , ticklen = -!p.ticklen $
+                              , xrange = [Tstart, Tstop]*3600 $
                               , yrange = [0, r0max] $
                               , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m' $
-                              , title = title
-                    ;;    cgwindow, /load, 'red_timeaxis', color = 'opposite' 
+                              , title = title $
+                              , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
                  endif
                  
                  cgwindow, /add, 'cgColorFill' $
@@ -847,5 +811,5 @@ print,wdir
         endif                   ; data directory
      endfor                     ; i
   endif                         ; plotscans
-
+  
 end
