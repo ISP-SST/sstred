@@ -118,7 +118,7 @@ pro red::make_time_cmap, cmap, rot_dir = rot_dir, out_dir = out_dir, result = cm
 
   for ss = 0L, nt - 1 do begin
      cmap1 = cmap
-     aa[ss] = round(rotate(stretch(red_rotation(temporary(cmap1), ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir))
+     aa[ss] = round(rotate(red_stretch(red_rotation(temporary(cmap1), ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir))
      print, string(13B), inam + 'correcting cmap -> ', 100./(nt-1.0) * ss,'%', FORMAT='(A,A,F5.1,A,$)'
   endfor
   print, ' '

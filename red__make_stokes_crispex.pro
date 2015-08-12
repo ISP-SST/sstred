@@ -250,10 +250,10 @@ pro red::make_stokes_crispex, timecor = timecor, out_dir = out_dir, rot_dir = ro
                                 ;
                                 ; De-rotate, align and de-stretch into cube
                                 ;
-;     aa[ss] = round(rotate(stretch(red_rotation(temporary(cmap1), ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir))
+;     aa[ss] = round(rotate(red_stretch(red_rotation(temporary(cmap1), ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir))
 
         for ii = 0, 3 do begin
-           cub[*,*,ww,ii,ss] = rotate(round(stretch(red_rotation(tmp[*,*,ii], ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*]))), rot_dir)
+           cub[*,*,ww,ii,ss] = rotate(round(red_stretch(red_rotation(tmp[*,*,ii], ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*]))), rot_dir)
         endfor
                                 ;
         print, string(13B), inam + 'creating data cube -> ', k * ntot, '%', FORMAT='(A,A,F5.1,A,$)'

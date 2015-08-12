@@ -275,12 +275,12 @@ pro red::make_stokes_crispex2, rot_dir = rot_dir, square = square
         ;; Apply destretch to anchor camera and prefilter correction
         ;;
 
-        tmp = stretch(temporary(tmp), grid1)
+        tmp = red_stretch(temporary(tmp), grid1)
 
         ;;
         ;; Apply derot, align, dewarp
         ;;
-        d[*,*,ww] = rotate(stretch(red_rotation(temporary(tmp), ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir)
+        d[*,*,ww] = rotate(red_stretch(red_rotation(temporary(tmp), ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*])), rot_dir)
         
      endfor
      

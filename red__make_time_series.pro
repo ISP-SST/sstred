@@ -115,7 +115,7 @@ pro red::make_time_series, searchroot, rot_dir = rot_dir
   ntot = 100. / (nscan-1.0)
   for ss=0L, nscan-1 do begin
      for ww=0L, st.nwav-1 do begin
-        cub[*,*,ww,ss] = fix(round(rotate(round(stretch(red_rotation(f0(st.ofiles[ww,ss])*1.e3, ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*]))), rot_dir)))
+        cub[*,*,ww,ss] = fix(round(rotate(round(red_stretch(red_rotation(f0(st.ofiles[ww,ss])*1.e3, ang[ss], total(shift[0,ss]), total(shift[1,ss])), reform(grid[ss,*,*,*]))), rot_dir)))
         writeu, lun, cub[*,*,ww,ss]
      endfor
      print, string(13b),inam+'creating icube -> ', ntot * ss,'%', format='(A,A,F5.1,A,$)'
