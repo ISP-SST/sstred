@@ -89,7 +89,7 @@ pro red::init_data_destretch, pref = pref, scan = scan, min = min, max = max, sm
   
   upref = st.pref[uniq(st.pref,sort(st.pref))]
   
-  self.getcamtags, dir = dir
+  self->getcamtags, dir = dir
   cams = [self.camwbtag]
   cc = 0
 

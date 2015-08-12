@@ -47,7 +47,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   cnum = strarr(calcount)
   for ii = 0, calcount -1 do cnum[ii] = (strsplit(file_basename(cfiles[ii]), '.',/extract))[4]
   
-  self.getcamtags, dir = dir
+  self->getcamtags, dir = dir
   cams = [self.camwbtag,self.camttag,self.camrtag]
   
   
@@ -107,7 +107,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
   file_mkdir, odir1
   
   ofiles_root = odir +strjoin( ['data',pref],'.')
-  self.getcamtags
+  self->getcamtags
   wblen = strlen(self.camwbtag)
 
   data_fold = file_dirname(ifiles[0])
