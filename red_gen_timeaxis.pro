@@ -31,6 +31,10 @@
 ;       2015-08-12 : MGL. Import into crispred namespace. Quick fix of
 ;                    bug making x1 < x0 in some cases. 
 ;
+;       2015-08-17 : MGL. Removed the fixing of the number of minor
+;                    tickmark intervals to five. The number given in
+;                    the case statement is now in force.
+;
 ;-
 FUNCTION red_gen_timeaxis, x
 
@@ -96,7 +100,7 @@ IF ticks EQ 0 THEN BEGIN
     ENDELSE
 ENDIF
 tickv = (lindgen(ticks+1)+x0)*step
-minor = 5
+;minor = 5
 IF step EQ 3600 THEN $
   name = strtrim((tickv/3600) MOD 24, 2) $
 ELSE $
