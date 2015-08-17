@@ -137,7 +137,9 @@
 ;
 ;     2015-08-12 : MGL. Stop using red_timeaxis.pro to get away from
 ;                  its many dependencies. Import Pit's gen_timeaxis to
-;                  the crispred namespace and use it instead.
+;                  the crispred namespace and use it instead. 
+;
+;     2015-08-17 : MGL. Can now get directory from config.txt.
 ;
 ;-
 pro red_plot_r0, dir = dir $
@@ -191,6 +193,14 @@ pro red_plot_r0, dir = dir $
         dir = '/data/'                  ;
      endif else begin                   ; Root
         dir = '/'                       ;
+        if file_test('config.txt') then begin
+           ;; Get root_dir from config file
+           spawn, 'grep root_dir config.txt', rd
+           if size(rd,/n_dim) gt 0 then begin
+              rd = rd[0]
+              dir = (strsplit(rd,' =',/extract))[1] 
+           endif
+        endif
      endelse                            ;
   endif
 
