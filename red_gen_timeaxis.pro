@@ -104,7 +104,7 @@ tickv = (lindgen(ticks+1)+x0)*step
 IF step EQ 3600 THEN $
   name = strtrim((tickv/3600) MOD 24, 2) $
 ELSE $
-  name = strtrim((tickv/3600) MOD 24, 2)+':'+nnumber((tickv-tickv/3600*3600)/60, 2)
+  name = strtrim((tickv/3600) MOD 24, 2)+':'+red_nnumber((tickv-tickv/3600*3600)/60, 2)
 return, {ticks: ticks, $
          Minor: minor, $
          Tickv: tickv, $
