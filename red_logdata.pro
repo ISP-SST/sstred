@@ -124,6 +124,9 @@
 ;     2014-10-10 : MGL. Use read_ascii rather than mgl_rd_tfile for
 ;                  reading the r0, PIG, and turret log files.
 ;
+;     2015-08-18 : MGL. Corrected a bug that popped up when you want
+;                  interpolated r0 values at specified times.
+;
 ;
 ;-
 pro red_logdata, date, time $
@@ -345,6 +348,7 @@ pro red_logdata, date, time $
            if have8x8 then r0[1, *] = r0_values8x8
         endif else begin
            ;; Get interpolated values
+           Ntimes = n_elements(T)
            if have8x8 then r0 = fltarr(2, Ntimes) else r0 = fltarr(1, Ntimes)
            r0[0, *] = interpol(r0_values24x24, r0_time, T)
            if have8x8 then r0[1, *] = interpol(r0_values8x8, r0_time, T)
