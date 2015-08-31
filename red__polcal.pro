@@ -142,7 +142,8 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      ql = (qlt + qlr) * 0.5
      da = ql[1]
      ql[1] = 0.
-     print, inam + ' : detected offset angle -> '+string(da)+' -> '+string(da*!radeg)
+     print, inam + ' : detected offset angle -> '+string(da)+' degrees'
+     print, inam + ' :          retardance   -> '+string(ql[0])+' degrees'
 
      ;; Init matrix for each camera
      par_t = red_polcal_fit(t1d, tqw, tlp-da, norm=4, fix=ql)
