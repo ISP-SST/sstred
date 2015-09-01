@@ -131,6 +131,9 @@
 ;                 to "/mnt/sand??/" (and not its subdirectory
 ;                 "Incoming/".
 ;
+;    2015-08-12 : THI. Use demodulate rather than (recently renamed)
+;                 demodulate2. 
+;
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
