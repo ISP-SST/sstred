@@ -134,6 +134,9 @@
 ;    2015-08-12 : THI. Use demodulate rather than (recently renamed)
 ;                 demodulate2. 
 ;
+;    2015-09-01 : MGL. Changed faulty text output when handling prefilter
+;                 scan data. 
+;
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -432,7 +435,7 @@ pro red_setupworkdir, root_dir = root_dir $
   endif
 
 
-  print, 'PSF scan'
+  print, 'Prefilter scan'
   printf, Clun, '#'
   printf, Clun, '# --- Prefilter scan'
   printf, Clun, '#'
