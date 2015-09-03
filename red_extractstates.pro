@@ -90,13 +90,24 @@
 ;        Set this to remove directory information from the beginning
 ;        of the strings.
 ;
+;     blue : in, optional, type=boolean
+; 
+;        Set this if it's data from a blue tower or tilt filter
+;        camera. Will change what is returned in the fullstate and wav
+;        keywords. Will not return anything in many keywords that are
+;        only relevant for CRISP data.  
 ; 
 ; 
 ; :history:
 ; 
 ;   2014-01-22 : First version.
 ; 
-;   2014-04-?? : Added keyword lambda.
+;   2014-04-?? : MGL. Added keyword lambda.
+;
+;   2015-09-03 : MGL. Added the "blue" keyword, will now return
+;                something meaningful also for blue tilt filter data. 
+;
+;
 ; 
 ;-
 pro red_extractstates, strings $
@@ -117,6 +128,7 @@ pro red_extractstates, strings $
                        , rscan = rscan $
                        , hscan = hscan  $
                        , focus = focus $
+                       , blue = blue $
                        , basename = basename
 
   nt = n_elements(strings)
@@ -155,6 +167,46 @@ pro red_extractstates, strings $
   if arg_present(focus) then $
      focus = reform((stregex(strlist,'(\.|^)(F[+-][0-9]+)(\.|$)', /extr, /subexp, /fold_case))[2,*])
 
+  ;; The frame number is the last field iff it consists entirely of
+  ;; digits. The third subexpression of the regular expression matches
+  ;; only the end of the string because that's where it is if it is
+  ;; present. We do not know the length of the frame number field so
+  ;; if the third subexpression were allowed to match a dot we would
+  ;; get false matches with the scan and pref fields.
+  if arg_present(nums) or arg_present(states) or arg_present(pstates) then $
+     nums = reform((stregex(strlist,'(\.)([0-9]+)($)', /extr, /subexp))[2,*])
+
+  ;; The camera name consists of the string 'cam' followed by a roman
+  ;; number.
+  if arg_present(cam) or arg_present(pstates_out) then $
+     cam = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
+
+
+  ;; Now take care of blue data, anything after this section is
+  ;; then irrelevant so we can return when we are done.
+  if keyword_set(blue) then begin
+
+     ;; If the directory names for blue data were standardized labels
+     ;; corresponding to interference filters, we could use it to set
+     ;; pref keyword and add it to the fullstate keyword. For now only
+     ;; the tilt filter will return something that is not an empty
+     ;; string. 
+
+     ;; For blue tilt filter data, the wavelength is encoded as a
+     ;; substring like "ca39684".
+     if arg_present(wav) or arg_present(dwav) then begin
+        wav = reform((stregex(strlist,'(\.|^)ca(39[0-9][0-9][0-9])(\.|$)', /extr, /subexp))[2,*])
+        dwav = float(wav)/10.   ; [Å]
+     endif 
+
+     if arg_present(fullstate) then $
+        fullstate = reform((stregex(strlist,'(\.|^)(ca39[0-9][0-9][0-9])(\.|$)', /extr, /subexp))[2,*])
+
+    return
+
+  endif                         ; blue
+  
+
   ;; The prefilter is the only field that is exactly four digits
   if arg_present(pref) or arg_present(fullstate) or arg_present(lambda) or $
      arg_present(states) or arg_present(pstates) or arg_present(pstates_out) then $
@@ -171,20 +223,6 @@ pro red_extractstates, strings $
   if arg_present(lc) or arg_present(fullstate) or arg_present(states) or $
      arg_present(pstates) or arg_present(pstates_out) then $
         lc = reform((stregex(strlist,'(\.|^)(LC[0-9])(\.|$)', /extr, /subexp, /fold_case))[2,*])
-
-  ;; The frame number is the last field iff it consists entirely of
-  ;; digits. The third subexpression of the regular expression matches
-  ;; only the end of the string because that's where it is if it is
-  ;; present. We do not know the length of the frame number field so
-  ;; if the third subexpression were allowed to match a dot we would
-  ;; get false matches with the scan and pref fields.
-  if arg_present(nums) or arg_present(states) or arg_present(pstates) then $
-     nums = reform((stregex(strlist,'(\.)([0-9]+)($)', /extr, /subexp))[2,*])
-
-  ;; The camera name consists of the string 'cam' followed by a roman
-  ;; number.
-  if arg_present(cam) or arg_present(pstates_out) then $
-     cam = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
 
   ;; For polcal, the linear polarizer state
   if arg_present(lp) or arg_present(pstates) or arg_present(pstates_out) then $
