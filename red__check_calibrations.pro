@@ -37,6 +37,8 @@ pro red::check_calibrations, all = all $
 
   if n_elements(logfile) eq 0 then logfile = 'check_calibrations_output.txt'
   openw, llun, logfile, /get_lun
+  printf, llun
+  printf, llun, 'Examine '+self.root_dir
 
   if keyword_set(all) then begin
      
@@ -71,6 +73,10 @@ pro red::check_calibrations, all = all $
   
   ;; See what darks data there is.
   if keyword_set(darks) then begin
+
+     printf, llun
+     printf, llun, 'Dark frame data.'
+     printf, llun
 
      print, 'Look for darks.'
 
@@ -110,7 +116,13 @@ pro red::check_calibrations, all = all $
   
   ;; See what flats data there is.
   if keyword_set(flats) then begin
+
+     printf, llun
+     printf, llun, 'Flat field data.'
+     printf, llun
+
      print, 'Look for flats.'
+
      ;; List all directories with actual flat frames in them.
      for idir = 0, Nflatdirs-1 do begin
         subdirs = file_search(flatdirs[idir]+'/*', count = Nsubdirs, /fold)
@@ -180,12 +192,88 @@ pro red::check_calibrations, all = all $
   
   ;; See what polcal data there is.
   if keyword_set(polcal) then begin
-     print, 'Look for polcal (not implemented yet).'
+
+     printf, llun
+     printf, llun, 'Polcal data.'
+     printf, llun
+
+     print, 'Look for polcal data.'
+
+     ;; List all directories with actual polcal data in them.
+     for idir = 0, Npolcaldirs-1 do begin
+        subdirs = file_search(polcaldirs[idir]+'/*/*', count = Nsubdirs, /fold)
+        if Nsubdirs gt 0 then begin
+           if n_elements(polcalsubdirs) eq 0 then begin
+              polcalsubdirs = subdirs
+           endif else begin
+              polcalsubdirs = [polcalsubdirs, subdirs]
+           endelse
+        endif
+     endfor                     ; idir
+
+     ;; Go through the list, find out what cameras and what
+     ;; prefilters. Also check that the data appear complete. 
+     Npolcalsubdirs = n_elements(polcalsubdirs)
+     polcalcamstates = strarr(Npolcalsubdirs)
+     polcalok = replicate(1, Npolcalsubdirs)
+     for idir = 0, Npolcalsubdirs-1 do begin
+
+        pnames = file_search(polcalsubdirs[idir]+'/cam*')
+        
+        red_extractstates, file_basename(pnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
+        cam = cam[uniq(cam,sort(cam))]
+        pref = pref[uniq(pref,sort(pref))]
+        if n_elements(cam) gt 1 then begin
+           printf, llun, 'Warning: More than one camera in '+polcalsubdirs[idir]
+        endif else begin
+           polcalcamstates[idir] = cam+'.'+pref
+           ;; Find out if the polcal data are ok.
+           ;; There should be two lp (linear polarizer) states and the
+           ;; number of frames of each should be equal.
+           lp = lp[uniq(lp,sort(lp))]
+           Nlp = lonarr(n_elements(lp))
+           for i = 0, n_elements(lp)-1 do Nlp[i] = n_elements(where(strmatch(pnames,'*'+lp[i]+'*')))
+           polcalok[idir] = polcalok[idir] and Nlp[0] eq Nlp[1]
+           ;; There should be four lc (liqud crystal) states and the
+           ;; number of frames of each should be equal.
+           lc = lc[uniq(lc,sort(lc))]
+           Nlc = lonarr(n_elements(lc))
+           for i = 0, n_elements(lc)-1 do Nlc[i] = n_elements(where(strmatch(pnames,'*'+lc[i]+'*')))
+           polcalok[idir] = polcalok[idir] and Nlc[0] eq Nlc[1] and Nlc[1] eq Nlc[2] and Nlc[2] eq Nlc[3]
+           ;; The number of qw (quarter wave plate) angles is not
+           ;; fixed but the angles should be evenly distributed over
+           ;; 360 degrees, repeating the 0=360 angle. And the number
+           ;; of frames at each angle should be equal.
+           qw = qw[uniq(qw,sort(qw))]     
+           Nqw = lonarr(n_elements(qw))
+           for i = 0, n_elements(qw)-1 do Nqw[i] = n_elements(where(strmatch(pnames,'*'+qw[i]+'*')))
+           polcalok[idir] = polcalok[idir] and stddev(Nqw) lt 1e-1 ; Equal numbers of frames for all angles?
+           polcalok[idir] = polcalok[idir] and min(qw) eq 'qw000'  ; Zero angle present?
+           polcalok[idir] = polcalok[idir] and max(qw) eq 'qw360'  ; Repeated enpoint?
+           dqw = deriv(long(strmid(qw,2,3)))                 ; Differential angle
+           polcalok[idir] = polcalok[idir] and stddev(dqw) lt 1e-1 ; Evenly distributed?
+        endelse
+        
+        outline = string(polcalcamstates[idir], '(a15)') + ' : '
+        if polcalok[idir] then begin
+           outline += 'complete polcal data in ' 
+        endif else begin
+           outline += 'incomplete polcal data in ' 
+        endelse
+        outline += red_strreplace(polcalsubdirs[idir], self.root_dir, '')
+        printf, llun, outline
+     endfor                     ; idir
+     
   endif                         ; polcal
   
   
   ;; See what pinholes data there is.
   if keyword_set(pinholes) then begin
+
+     printf, llun
+     printf, llun, 'Pinhole data.'
+     printf, llun
+
      print, 'Look for pinholes (not implemented yet).'
   endif                         ; pinholes
   
@@ -194,11 +282,13 @@ pro red::check_calibrations, all = all $
   ;; Now examine the data directories, find out cameras and states
   ;; and exposure times and see if we have matching calibrations.
   printf, llun
-  printf, llun, 'Examine the following science directories: ', sciencedirs
+  printf, llun, 'Check the following science directories: '
+  printf, llun, '* '+red_strreplace(sciencedirs, self.root_dir, ''), format = '(a0)'
   printf, llun
 
   print
-  print, 'Examine the following science directories: ', sciencedirs
+  print, 'Check the following science directories: '
+  print, '* '+red_strreplace(sciencedirs, self.root_dir, ''), format = '(a0)'
   print
 
   for idir = 0, Nsciencedirs-1 do begin
@@ -206,8 +296,8 @@ pro red::check_calibrations, all = all $
      sciencesubdirs = file_search(sciencedirs[idir]+'/*', count = Nsubdirs)
      for isubdir = 0, Nsubdirs-1 do begin
 
-        print, sciencesubdirs[isubdir]
-        printf, llun, sciencesubdirs[isubdir]
+        print, red_strreplace(sciencesubdirs[isubdir], self.root_dir, '')
+        printf, llun, red_strreplace(sciencesubdirs[isubdir], self.root_dir, '')
 
         snames = file_search(sciencesubdirs[isubdir]+'/cam*', count = Nscienceframes)
  
@@ -219,8 +309,9 @@ pro red::check_calibrations, all = all $
            
            if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-?') then begin
               ;; CRISP data
-              red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate
+              red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate, pref = pref, lc = lc
               cam = cam[uniq(cam,sort(cam))]
+              lc = lc[uniq(lc,sort(lc))]
               if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-W') then begin
                  ;; For CRISP WB data we only care about the prefilter
                  for ii = 0, n_elements(fullstate)-1 do $
@@ -249,7 +340,10 @@ pro red::check_calibrations, all = all $
 
            ;; Do we have darks for these data?
            if keyword_set(darks) then begin
-              printf, llun, 'There are ' + strtrim(Nscienceframes, 2) + ' ' +cam + ' science frames.'
+
+              print, '   Check darks.'
+
+              printf, llun, '   There are ' + strtrim(Nscienceframes, 2) + ' ' +cam + ' science frames.'
               idark = (where(cam eq darkcams, Nhits))[0]
               if Nhits gt 0 then begin
                  printf, llun, '   There are '+strtrim(Ndarkframes[idark], 2)+' dark frames for '+cam+'.'
@@ -263,6 +357,8 @@ pro red::check_calibrations, all = all $
            ;; Do we have flats for these data?
            if keyword_set(flats) then begin
 
+              print, '   Check flats.'
+              
               ;; Find all camstates, loop through them and compare with the flats camstates.
 ;              sciencecamstates = cam+'.'+fullstate
 
@@ -282,16 +378,34 @@ pro red::check_calibrations, all = all $
 
            ;; Do we need polcal for these data?
            if keyword_set(polcal) then begin
-
-              ;; Check first if polcal is needed (more than one LC
-              ;; state).
-
+              if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-[TR]') then begin
+                 if n_elements(lc) gt 1 then begin
+                    print, '   Check polcal.'
+                    ipolcal = where(cam+'.'+pref eq polcalcamstates, Nhits)
+                    if Nhits eq 0 then begin
+                       printf, llun, '  no polcal data.'
+                    endif else begin
+                       for i = 0, Nhits-1 do begin
+                          ;; Should print out also the polcal
+                          ;; directory here.
+                          if polcalok[ipolcal[i]] then begin
+                             printf, llun, '   complete polcal data in ' $
+                                     + red_strreplace(polcalsubdirs[ipolcal[i]], self.root_dir, '')
+                          endif else begin
+                             printf, llun, '   incomplete polcal data in ' $
+                                     + red_strreplace(polcalsubdirs[ipolcal[i]], self.root_dir, '')
+                          endelse
+                       endfor   ; i
+                    endelse 
+                 endif          ; lc
+              endif             ; CRISP data
            endif                ; polcal
            
            
            ;; Do we have pinholes data?
            if keyword_set(pinholes) then begin
 
+              print, '   Check pinholes (not implemented yet).'
               
               ;; Note that we don't always have pinholes for all
               ;; wavelength points. Report nearest wavelength in that
@@ -305,6 +419,7 @@ pro red::check_calibrations, all = all $
   
   free_lun, llun
   
+  print
   print, 'check_calibrations : Output in '+logfile+'.'
 
 end
