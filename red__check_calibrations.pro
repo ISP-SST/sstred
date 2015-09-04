@@ -28,7 +28,8 @@
 ;                 field data ready.
 ;
 ;    2015-09-04 : MGL. Checking science data for corresponding polcal
-;                 data ready.
+;                 data ready. Checking science data for corresponding
+;                 pinhole data ready. 
 ;
 ; 
 ;-
@@ -41,8 +42,11 @@ pro red::check_calibrations, all = all $
 
   if n_elements(logfile) eq 0 then logfile = 'check_calibrations_output.txt'
   openw, llun, logfile, /get_lun
+
+  root_dir = self.root_dir
+
   printf, llun
-  printf, llun, 'Examine '+self.root_dir
+  printf, llun, 'Examine '+root_dir
 
   if keyword_set(all) then begin
      
@@ -54,15 +58,15 @@ pro red::check_calibrations, all = all $
   endif
   
   ;; Make lists of calibrations directories
-  darkdirs    = file_search(self.root_dir+'/dark*/*',   count = Ndarkdirs,    /fold)
-  flatdirs    = file_search(self.root_dir+'/flat*/*',   count = Nflatdirs,    /fold)
-  pinholedirs = file_search(self.root_dir+'/pinh*/*',   count = Npinholedirs, /fold)
-  polcaldirs  = file_search(self.root_dir+'/polc*/*',   count = Npolcaldirs,  /fold)
-  pfscandirs  = file_search(self.root_dir+'/pfscan*/*', count = Npfscandirs,  /fold)
+  darkdirs    = file_search(root_dir+'/dark*/*',   count = Ndarkdirs,    /fold)
+  flatdirs    = file_search(root_dir+'/flat*/*',   count = Nflatdirs,    /fold)
+  pinholedirs = file_search(root_dir+'/pinh*/*',   count = Npinholedirs, /fold)
+  polcaldirs  = file_search(root_dir+'/polc*/*',   count = Npolcaldirs,  /fold)
+  pfscandirs  = file_search(root_dir+'/pfscan*/*', count = Npfscandirs,  /fold)
 
   ;; The rest must be science data
   nonsciencedirs = [darkdirs, flatdirs, pinholedirs, polcaldirs, pfscandirs]
-  dirs = file_search(self.root_dir+'/*/*', count = Ndirs)
+  dirs = file_search(root_dir+'/*/*', count = Ndirs)
   for idir = 0, Ndirs-1 do begin
      if total(dirs[idir] eq nonsciencedirs) eq 0 then begin
         if n_elements(sciencedirs) eq 0 then begin
@@ -264,7 +268,7 @@ pro red::check_calibrations, all = all $
         endif else begin
            outline += 'incomplete polcal data in ' 
         endelse
-        outline += red_strreplace(polcalsubdirs[idir], self.root_dir, '')
+        outline += red_strreplace(polcalsubdirs[idir], root_dir, '')
         printf, llun, outline
      endfor                     ; idir
      
@@ -350,12 +354,12 @@ pro red::check_calibrations, all = all $
   ;; and exposure times and see if we have matching calibrations.
   printf, llun
   printf, llun, 'Check the following science directories: '
-  printf, llun, '* '+red_strreplace(sciencedirs, self.root_dir, ''), format = '(a0)'
+  printf, llun, '* '+red_strreplace(sciencedirs, root_dir, ''), format = '(a0)'
   printf, llun
 
   print
   print, 'Check the following science directories: '
-  print, '* '+red_strreplace(sciencedirs, self.root_dir, ''), format = '(a0)'
+  print, '* '+red_strreplace(sciencedirs, root_dir, ''), format = '(a0)'
   print
 
   for idir = 0, Nsciencedirs-1 do begin
@@ -363,8 +367,8 @@ pro red::check_calibrations, all = all $
      sciencesubdirs = file_search(sciencedirs[idir]+'/*', count = Nsubdirs)
      for isubdir = 0, Nsubdirs-1 do begin
 
-        print, red_strreplace(sciencesubdirs[isubdir], self.root_dir, '')
-        printf, llun, red_strreplace(sciencesubdirs[isubdir], self.root_dir, '')
+        print, red_strreplace(sciencesubdirs[isubdir], root_dir, '')
+        printf, llun, red_strreplace(sciencesubdirs[isubdir], root_dir, '')
 
         snames = file_search(sciencesubdirs[isubdir]+'/cam*', count = Nscienceframes)
  
@@ -457,10 +461,10 @@ pro red::check_calibrations, all = all $
                           ;; directory here.
                           if polcalok[ipolcal[i]] then begin
                              printf, llun, '   complete polcal data in ' $
-                                     + red_strreplace(polcalsubdirs[ipolcal[i]], self.root_dir, '')
+                                     + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
                           endif else begin
                              printf, llun, '   incomplete polcal data in ' $
-                                     + red_strreplace(polcalsubdirs[ipolcal[i]], self.root_dir, '')
+                                     + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
                           endelse
                        endfor   ; i
                     endelse 
