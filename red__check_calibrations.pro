@@ -101,14 +101,14 @@ pro red::check_calibrations, all = all $
      Ndarkframes = lonarr(Ndarksubdirs) 
      darkcams = strarr(Ndarksubdirs)
      for idir = 0, Ndarksubdirs-1 do begin
-        dnames = file_search(darksubdirs[idir]+'/cam*')
-        red_extractstates, file_basename(dnames), cam = cam
+        fnames = file_search(darksubdirs[idir]+'/cam*')
+        red_extractstates, file_basename(fnames), cam = cam
         cam = cam[uniq(cam,sort(cam))]
         if n_elements(cam) gt 1 then begin
            printf, llun, 'Warning: More than one camera in '+darksubdirs[idir]
         endif else begin
            darkcams[idir] = cam
-           Ndarkframes[idir] = n_elements(dnames)
+           Ndarkframes[idir] = n_elements(fnames)
         endelse
         printf, llun, string(darkcams[idir], '(a12)') $
                + ' :'+string(Ndarkframes[idir], format = '(i6)') $
@@ -222,9 +222,9 @@ pro red::check_calibrations, all = all $
      polcalok = replicate(1, Npolcalsubdirs)
      for idir = 0, Npolcalsubdirs-1 do begin
 
-        pnames = file_search(polcalsubdirs[idir]+'/cam*')
+        fnames = file_search(polcalsubdirs[idir]+'/cam*')
         
-        red_extractstates, file_basename(pnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
+        red_extractstates, file_basename(fnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
         cam = cam[uniq(cam,sort(cam))]
         pref = pref[uniq(pref,sort(pref))]
         if n_elements(cam) gt 1 then begin
@@ -236,13 +236,13 @@ pro red::check_calibrations, all = all $
            ;; number of frames of each should be equal.
            lp = lp[uniq(lp,sort(lp))]
            Nlp = lonarr(n_elements(lp))
-           for i = 0, n_elements(lp)-1 do Nlp[i] = n_elements(where(strmatch(pnames,'*'+lp[i]+'*')))
+           for i = 0, n_elements(lp)-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+lp[i]+'*')))
            polcalok[idir] = polcalok[idir] and Nlp[0] eq Nlp[1]
            ;; There should be four lc (liqud crystal) states and the
            ;; number of frames of each should be equal.
            lc = lc[uniq(lc,sort(lc))]
            Nlc = lonarr(n_elements(lc))
-           for i = 0, n_elements(lc)-1 do Nlc[i] = n_elements(where(strmatch(pnames,'*'+lc[i]+'*')))
+           for i = 0, n_elements(lc)-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+lc[i]+'*')))
            polcalok[idir] = polcalok[idir] and Nlc[0] eq Nlc[1] and Nlc[1] eq Nlc[2] and Nlc[2] eq Nlc[3]
            ;; The number of qw (quarter wave plate) angles is not
            ;; fixed but the angles should be evenly distributed over
@@ -250,7 +250,7 @@ pro red::check_calibrations, all = all $
            ;; of frames at each angle should be equal.
            qw = qw[uniq(qw,sort(qw))]     
            Nqw = lonarr(n_elements(qw))
-           for i = 0, n_elements(qw)-1 do Nqw[i] = n_elements(where(strmatch(pnames,'*'+qw[i]+'*')))
+           for i = 0, n_elements(qw)-1 do Nqw[i] = n_elements(where(strmatch(fnames,'*'+qw[i]+'*')))
            polcalok[idir] = polcalok[idir] and stddev(Nqw) lt 1e-1 ; Equal numbers of frames for all angles?
            polcalok[idir] = polcalok[idir] and min(qw) eq 'qw000'  ; Zero angle present?
            polcalok[idir] = polcalok[idir] and max(qw) eq 'qw360'  ; Repeated enpoint?
@@ -280,7 +280,6 @@ pro red::check_calibrations, all = all $
 
      print, 'Look for pinholes.'
 
-
      ;; List all directories with actual pinhole data in them.
      for idir = 0, Npinholedirs-1 do begin
         subdirs = file_search(pinholedirs[idir]+'/*', count = Nsubdirs, /fold)
@@ -307,7 +306,11 @@ pro red::check_calibrations, all = all $
               ;; For CRISP WB data we only care about the prefilter
               for ii = 0, n_elements(fullstate)-1 do $
                  fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
-           endif                ; Crisp-W
+           endif else begin
+              ;; For CRISP NB data we don't care about the LC state
+              for i=0,n_elements(fullstate)-1 do $
+                 fullstate[i] = strjoin((strsplit(fullstate[i],'.',/extract))[0:1],'.')
+           endelse
            fullstate = fullstate[uniq(fullstate,sort(fullstate))]
            camstates = cam+'.'+fullstate
         endif else begin
@@ -316,11 +319,6 @@ pro red::check_calibrations, all = all $
            cam = cam[uniq(cam,sort(cam))]
            fullstate = fullstate[uniq(fullstate,sort(fullstate))]
            if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
-           ;; We need the exposure time as part of the state
-           h = fzhead(fnames[0])
-           dT = strtrim(round((double(strmid(h, strpos(h, 'Te=')+20, 9)) $
-                               - double(strmid(h, strpos(h, 'Ts=')+20, 9)))*1000), 2) + 'ms'
-           camstates += '.' + dT
         endelse
 
         if n_elements(cam) gt 1 then begin
@@ -337,15 +335,12 @@ pro red::check_calibrations, all = all $
            for i = 0, n_elements(camstates)-1 do begin
               Npinholeframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
               printf, llun, string(pinholecamstates[i], '(a30)') $
-                      + ' :'+string(Npinholeframes[i], format = '(i6)') $
+                      + ' :'+string(Npinholeframes[i], format = '(i5)') $
                       + ' ' + pinholesubdirs[idir]
            endfor
         endelse
         
      endfor                     ; idir
-     
-
-stop
 
   endif                         ; pinholes
   
@@ -477,11 +472,64 @@ stop
            ;; Do we have pinholes data?
            if keyword_set(pinholes) then begin
 
-              print, '   Check pinholes (not implemented yet).'
-              
-              ;; Note that we don't always have pinholes for all
-              ;; wavelength points. Report nearest wavelength in that
-              ;; case? 
+              print, '   Check pinholes.'
+
+              for i = 0, n_elements(fullstate)-1 do begin
+                 Nstateframes = n_elements(where(strmatch(snames,'*'+fullstate[i]+'*')))
+                 if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-[TR]') then begin ; CRISP NB
+                    ;; We don't care about the LC state for NB pinhole data:
+                    sciencecamstate = strjoin((strsplit(sciencecamstates[i],'.',/extract))[0:2],'.')
+                    ipinhole = (where(sciencecamstate eq pinholecamstates, Nhits))[0]
+                    outline = '   ' + sciencecamstates[i] + ' with ' + strtrim(Nstateframes, 2) + ' science frames : '
+                    if Nhits gt 0 then begin
+                       ;; Pinhole data exists for this state
+                       outline += strtrim(Npinholeframes[ipinhole], 2) + ' pinhole frames.'
+                    endif else begin
+                       ;; We don't always have pinholes for all wavelength
+                       ;; points. Report nearest wavelength in that case.
+                       
+                       ;; First make sure we have data with the same prefilter:
+                       indx = where(strmatch(pinholecamstates, $
+                                             strjoin((strsplit(sciencecamstate,'.',/extract))[0:1],'.')+'*'), Nmatch)
+                       if Nmatch eq 0 then begin
+                          outline += 'No pinhole frames!'
+                       endif else begin
+                          ;; These are the existing pinhole cam states
+                          ;; from the current prefilter:
+                          ppinholecamstates = pinholecamstates[indx]
+                          sciencetuning = (strsplit(sciencecamstate,'.',/extract))[2]
+                          sciencelambda = total(double(strsplit(sciencetuning,'_',/extract)) * [1d,1e-3])
+                          pinholelambda = dblarr(Nmatch)
+                          for ii = 0, Nmatch-1 do begin
+                             pinholetuning = (strsplit(ppinholecamstates[ii],'.',/extract))[2]
+                             pinholelambda[ii] = total(double(strsplit(pinholetuning,'_',/extract)) * [1d,1e-3])
+                          endfor ; ii
+                          dlambda = round(min(abs(sciencelambda - pinholelambda),mloc) * 1e3)
+                          ipinhole = indx[mloc]
+                          outline += strtrim(Npinholeframes[ipinhole], 2) + ' pinhole frames ' $
+                                     + strtrim(dlambda, 2)+' mÅ away.'
+                       endelse
+                    endelse        ; Nhits
+                 endif else begin  ; CRISP WB and blue
+                    if ~strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-W') then begin
+                       ;; For blue data we need to remove the exposure
+                       ;; time (but keep the tilt filter tuning).
+                       sciencecamstate = strjoin((strsplit(sciencecamstates[i], '.', /extract, count = Nsplit) $
+                                                 )[0:Nsplit-2], '.')
+                    endif else begin
+                       sciencecamstate = sciencecamstates[i]
+                    endelse
+                    ipinhole = (where(sciencecamstate eq pinholecamstates, Nhits))[0]
+                    outline = '   ' + sciencecamstate + ' with ' + strtrim(Nstateframes, 2) + ' science frames : '
+                    if Nhits gt 0 then begin
+                       outline += strtrim(Npinholeframes[ipinhole], 2) + ' pinhole frames.'
+                    endif else begin
+                       stop
+                       outline += 'No pinhole frames!'
+                    endelse     ; Nhits
+                 endelse
+                 printf, llun, outline
+              endfor            ; i
 
            endif                ; pinholes
 
