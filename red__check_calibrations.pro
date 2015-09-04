@@ -24,8 +24,12 @@
 ;                 Checking science data for corresponding dark frame
 ;                 data ready.
 ;
-;    2015-09-01 : MGL. Checking science data for corresponding flat
+;    2015-09-03 : MGL. Checking science data for corresponding flat
 ;                 field data ready.
+;
+;    2015-09-04 : MGL. Checking science data for corresponding polcal
+;                 data ready.
+;
 ; 
 ;-
 pro red::check_calibrations, all = all $
@@ -50,14 +54,14 @@ pro red::check_calibrations, all = all $
   endif
   
   ;; Make lists of calibrations directories
-  darkdirs   = file_search(self.root_dir+'/dark*/*',   count = Ndarkdirs,    /fold)
-  flatdirs   = file_search(self.root_dir+'/flat*/*',   count = Nflatdirs,    /fold)
-  pinhdirs   = file_search(self.root_dir+'/pinh*/*',   count = Npinholedirs, /fold)
-  polcaldirs = file_search(self.root_dir+'/polc*/*',   count = Npolcaldirs,  /fold)
-  pfscandirs = file_search(self.root_dir+'/pfscan*/*', count = Npfscandirs,  /fold)
+  darkdirs    = file_search(self.root_dir+'/dark*/*',   count = Ndarkdirs,    /fold)
+  flatdirs    = file_search(self.root_dir+'/flat*/*',   count = Nflatdirs,    /fold)
+  pinholedirs = file_search(self.root_dir+'/pinh*/*',   count = Npinholedirs, /fold)
+  polcaldirs  = file_search(self.root_dir+'/polc*/*',   count = Npolcaldirs,  /fold)
+  pfscandirs  = file_search(self.root_dir+'/pfscan*/*', count = Npfscandirs,  /fold)
 
   ;; The rest must be science data
-  nonsciencedirs = [darkdirs, flatdirs, pinhdirs, polcaldirs, pfscandirs]
+  nonsciencedirs = [darkdirs, flatdirs, pinholedirs, polcaldirs, pfscandirs]
   dirs = file_search(self.root_dir+'/*/*', count = Ndirs)
   for idir = 0, Ndirs-1 do begin
      if total(dirs[idir] eq nonsciencedirs) eq 0 then begin
@@ -266,7 +270,7 @@ pro red::check_calibrations, all = all $
      
   endif                         ; polcal
   
-  
+  
   ;; See what pinholes data there is.
   if keyword_set(pinholes) then begin
 
@@ -274,7 +278,75 @@ pro red::check_calibrations, all = all $
      printf, llun, 'Pinhole data.'
      printf, llun
 
-     print, 'Look for pinholes (not implemented yet).'
+     print, 'Look for pinholes.'
+
+
+     ;; List all directories with actual pinhole data in them.
+     for idir = 0, Npinholedirs-1 do begin
+        subdirs = file_search(pinholedirs[idir]+'/*', count = Nsubdirs, /fold)
+        if Nsubdirs gt 0 then begin
+           if n_elements(pinholesubdirs) eq 0 then begin
+              pinholesubdirs = subdirs
+           endif else begin
+              pinholesubdirs = [pinholesubdirs, subdirs]
+           endelse
+        endif
+     endfor                     ; idir
+
+     ;; Go through the list, find out what cameras, what states, and
+     ;; how many frames.
+     Npinholesubdirs = n_elements(pinholesubdirs)
+     for idir = 0, Npinholesubdirs-1 do begin
+        fnames = file_search(pinholesubdirs[idir]+'/cam*')
+
+        if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-?') then begin
+           ;; CRISP data
+           red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
+           cam = cam[uniq(cam,sort(cam))]
+           if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-W') then begin
+              ;; For CRISP WB data we only care about the prefilter
+              for ii = 0, n_elements(fullstate)-1 do $
+                 fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
+           endif                ; Crisp-W
+           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
+           camstates = cam+'.'+fullstate
+        endif else begin
+           ;; Blue data.
+           red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
+           cam = cam[uniq(cam,sort(cam))]
+           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
+           if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
+           ;; We need the exposure time as part of the state
+           h = fzhead(fnames[0])
+           dT = strtrim(round((double(strmid(h, strpos(h, 'Te=')+20, 9)) $
+                               - double(strmid(h, strpos(h, 'Ts=')+20, 9)))*1000), 2) + 'ms'
+           camstates += '.' + dT
+        endelse
+
+        if n_elements(cam) gt 1 then begin
+           printf, llun, 'Warning: More than one camera in '+pinholesubdirs[idir]
+        endif else begin
+           if n_elements(pinholecamstates) eq 0 then begin
+              pinholecamstates = camstates
+              Npinholeframes = replicate(0L, n_elements(camstates))
+           endif else begin
+              pinholecamstates = [camstates, pinholecamstates]
+              Npinholeframes = [replicate(0L, n_elements(camstates)), Npinholeframes]
+           endelse
+           ;; Find out how many frames of each kind:
+           for i = 0, n_elements(camstates)-1 do begin
+              Npinholeframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
+              printf, llun, string(pinholecamstates[i], '(a30)') $
+                      + ' :'+string(Npinholeframes[i], format = '(i6)') $
+                      + ' ' + pinholesubdirs[idir]
+           endfor
+        endelse
+        
+     endfor                     ; idir
+     
+
+stop
+
   endif                         ; pinholes
   
 
