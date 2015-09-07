@@ -105,7 +105,8 @@
 ;   2014-04-?? : MGL. Added keyword lambda.
 ;
 ;   2015-09-03 : MGL. Added the "blue" keyword, will now return
-;                something meaningful also for blue tilt filter data. 
+;                something meaningful also for blue tilt filter data.
+;                Bugfix in qw regular expression.
 ;
 ;
 ; 
@@ -230,7 +231,7 @@ pro red_extractstates, strings $
 
   ;; For polcal, the quarter wave plate state
   if arg_present(qw) or arg_present(pstates) or arg_present(pstates_out) then $
-     qw = reform((stregex(strlist,'(\.|^)(QW[0-3][0-9]{2}))(\.|$)', /extr, /subexp, /fold_case))[2,*])
+     qw = reform((stregex(strlist,'(\.|^)(QW[0-3][0-9]{2})(\.|$)', /extr, /subexp, /fold_case))[2,*])
 
 
   ;; Quantities calculated from the extracted quantities ----
