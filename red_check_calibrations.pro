@@ -20,7 +20,31 @@
 ;       The date-directory of the observations.
 ; 
 ; :Keywords:
-; 
+;
+;       all : in, optional, type=boolean, default=FALSE
+;
+;          Set this to make all of the darks, flats, polcal, and
+;          pinholes keywords TRUE.
+;
+;       darks : in, optional, type=boolean, default=FALSE
+;
+;          Set this to check for darks data.
+;
+;       flats : in, optional, type=boolean, default=FALSE
+;
+;          Set this to check for flats data.
+;
+;       polcal : in, optional, type=boolean, default=FALSE
+;
+;          Set this to check for polcal data.
+;
+;       pinholes : in, optional, type=boolean, default=FALSE
+;
+;          Set this to check for pinholes data.
+;
+;       logfile : in, optional, type=string, default='check_calibrations_output.txt'
+;
+;          The name of the file where the output will be logged.
 ;
 ; :History:
 ;
