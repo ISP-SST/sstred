@@ -57,7 +57,7 @@
 ; 
 ; 
 ;-
-pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam, no_histo_opt = no_histo_opt
+pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam, no_histo_opt = no_histo_opt,ssh_find=ssh_find, pattern=pattern
                                 ;
   inam = 'quicklook_movie : '
 
@@ -72,9 +72,24 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
      read, ichoice, promp = 'Choose ID of the data folder: '
      folder = self.data_list[ichoice]
   endif else folder = self.data_dir
+  
+  ; If search pattern is given, use that, otherwise just use *im*
+  if keyword_set(pattern) then pat = "'*im*" + pattern + "*'" else pat = "'*im*'"
 
-
-  spawn, 'find ' + folder + '/' + cam + '/ | grep im', files
+  IF keyword_set(ssh_find) THEN BEGIN
+       ;;; case 1, called as /ssh_find: transport1, so identical names
+      IF n_elements(ssh_find) EQ 0 THEN BEGIN
+          spawn, 'ssh root@transport1 find '+folder+'/'+cam+' -type f -name '+pat, files
+       ENDIF ELSE BEGIN
+           ;;; case 2, called as  ssh_find=['user@host','<local data dir>']
+          print, 'ssh '+ssh_find(0)+' find '+ssh_find(1)+'/'+cam+' -type f -name '+pat
+          spawn, 'ssh '+ssh_find(0)+' find '+ssh_find(1)+'/'+cam+' -type f -name '+pat, files
+          files = strmid(files, strlen(ssh_find(1)))
+          files = folder+files
+       ENDELSE
+    ENDIF ELSE $
+       spawn, 'find ' + folder + '/' + cam + '/ -type f -name ' + pat, files
+  
   nf = n_elements(files)
   if(files[0] eq '') then begin
      print, 'red::quicklook_movie : ERROR -> no frames found in '+folder
