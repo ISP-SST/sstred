@@ -42,9 +42,11 @@
 ;
 ;          Set this to check for pinholes data.
 ;
-;       logfile : in, optional, type=string, default='check_calibrations_output.txt'
+;       logfile : in, optional, type=string, default='check_calibrations_TIMESTAMP.txt'
 ;
-;          The name of the file where the output will be logged.
+;          The name of the file where the output will be logged. The
+;          string TIMESTAMP in the default will be replaced with an
+;          actual timestamp
 ;
 ; :History:
 ;
@@ -63,6 +65,10 @@
 ;                 subroutine. A skeleton method will get info from the
 ;                 config file and call this subroutine.
 ;
+;    2015-09-18 : MGL. Include a timestamp in the default logfile
+;                 name. Write error status at end of execution. Drop
+;                 science frames that match '*.lcd.*'.
+;
 ; 
 ;-
 pro red_check_calibrations, root_dir $
@@ -78,8 +84,17 @@ pro red_check_calibrations, root_dir $
      return
   endif
 
-  if n_elements(logfile) eq 0 then logfile = 'check_calibrations_output.txt'
+  if n_elements(logfile) eq 0 then begin
+     tstamp = red_timestamp(/utc)
+     logfile = 'check_calibrations_'+tstamp+'.txt'
+  endif
   openw, llun, logfile, /get_lun
+
+  Ndarkproblems = 0             ; Increment this when finding a problem.
+  Nflatproblems = 0             ; Increment this when finding a problem.
+  Npolcalproblems = 0           ; Increment this when finding a problem.
+  Npinholeproblems = 0          ; Increment this when finding a problem.
+  Nscienceproblems = 0          ; Increment this when finding a problem.
 
   printf, llun
   printf, llun, 'Examine '+root_dir
@@ -407,9 +422,15 @@ pro red_check_calibrations, root_dir $
         printf, llun, red_strreplace(sciencesubdirs[isubdir], root_dir, '')
 
         snames = file_search(sciencesubdirs[isubdir]+'/cam*', count = Nscienceframes)
- 
+
+        ;; Are there files that should be dropped?
+        tmp = where(strmatch(snames, '*.lcd.*'), complement = gindx, Ncomplement = Nscienceframes)
+  
         if Nscienceframes gt 0 then begin
-           
+
+           ;; Drop any files that should be dropped.
+           snames = snames[gindx]
+
 ;           red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate
 ;           cam = cam[uniq(cam,sort(cam))]
 ;           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
@@ -441,6 +462,8 @@ pro red_check_calibrations, root_dir $
 
            if n_elements(cam) gt 1 then begin
               printf, llun, '   Warning: More than one camera in '+sciencesubdirs[isubdir]
+              print, '      More than one camera in '+sciencesubdirs[isubdir]
+              Nscienceproblems += 1
               break
            endif
 
@@ -455,7 +478,9 @@ pro red_check_calibrations, root_dir $
               if Nhits gt 0 then begin
                  printf, llun, '   There are '+strtrim(Ndarkframes[idark], 2)+' dark frames for '+cam+'.'
               endif else begin
-                 printf, llun, '   Warning: No darks for '+cam+'!'
+                 printf, llun, '   No darks for '+cam+'!   ---------- Warning!'
+                 print, '      No darks for '+cam+'!'
+                 Ndarkproblem += 1
               endelse
            endif                ; darks
            
@@ -476,7 +501,9 @@ pro red_check_calibrations, root_dir $
                  if Nhits gt 0 then begin
                     outline += strtrim(Nflatframes[iflat], 2) + ' flat frames.'
                  endif else begin
-                    outline += 'No flat frames!'
+                    outline += ' No flat frames!   ---------- Warning!'
+                    print, '      No flats for '+sciencecamstates[i]
+                    Nflatproblems += 1
                  endelse       ; Nhits
                  printf, llun, outline
               endfor            ; i
@@ -490,7 +517,9 @@ pro red_check_calibrations, root_dir $
                     print, '   Check polcal.'
                     ipolcal = where(cam+'.'+pref eq polcalcamstates, Nhits)
                     if Nhits eq 0 then begin
-                       printf, llun, '  no polcal data.'
+                       printf, llun, '   no polcal data.   ---------- Warning!'
+                             print, '      No polcal data'
+                       Npolcalproblems += 1
                     endif else begin
                        for i = 0, Nhits-1 do begin
                           ;; Should print out also the polcal
@@ -500,7 +529,10 @@ pro red_check_calibrations, root_dir $
                                      + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
                           endif else begin
                              printf, llun, '   incomplete polcal data in ' $
-                                     + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
+                                     + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '') $
+                                     + '   ---------- Warning!'
+                             print, '      Incomplete polcal data'
+                             Npolcalproblems += 1
                           endelse
                        endfor   ; i
                     endelse 
@@ -532,7 +564,9 @@ pro red_check_calibrations, root_dir $
                        indx = where(strmatch(pinholecamstates, $
                                              strjoin((strsplit(sciencecamstate,'.',/extract))[0:1],'.')+'*'), Nmatch)
                        if Nmatch eq 0 then begin
-                          outline += 'No pinhole frames!'
+                          outline += ' No pinhole frames!   ---------- Warning!'
+                          print, '      No pinhole data for '+sciencecamstate
+                          Npinholeproblems += 1
                        endif else begin
                           ;; These are the existing pinhole cam states
                           ;; from the current prefilter:
@@ -564,8 +598,9 @@ pro red_check_calibrations, root_dir $
                     if Nhits gt 0 then begin
                        outline += strtrim(Npinholeframes[ipinhole], 2) + ' pinhole frames.'
                     endif else begin
-                       stop
-                       outline += 'No pinhole frames!'
+                       outline += ' No pinhole frames!   ---------- Warning!'
+                       print, '      No pinhole data for '+sciencecamstate
+                       Npinholeproblems += 1
                     endelse     ; Nhits
                  endelse
                  printf, llun, outline
@@ -576,10 +611,39 @@ pro red_check_calibrations, root_dir $
         endif                   ; Nscienceframes
      endfor                     ; isubdir   
   endfor                        ; idir
-  
-  free_lun, llun
-  
+   
   print
-  print, 'check_calibrations : Output in '+logfile+'.'
+  print, '**************************************************'
+  if Ndarkproblems + Nflatproblems + Npolcalproblems + Npinholeproblems + Nscienceproblems eq 0 then begin
+     print, 'red_check_calibrations : No problems detected.'
+  endif else begin
+     if Ndarkproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Ndarkproblems, 2)+' dark problems found.'
+     if Nflatproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Nflatproblems, 2)+' flat problems found.'
+     if Npinholeproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Npinholeproblems, 2)+' pinhole problems found.'
+     if Npolcalproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
+     if Nscienceproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
+  endelse
+
+  print, 'Detailed output in '+logfile+'.'
+  print, '**************************************************'
+ 
+  printf, llun
+  printf, llun, '**************************************************'
+  if Ndarkproblems + Nflatproblems + Npolcalproblems + Npinholeproblems + Nscienceproblems eq 0 then begin
+     printf, llun, 'red_check_calibrations : No problems detected.'
+  endif else begin
+     if Ndarkproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Ndarkproblems, 2)+' dark problems found.'
+     if Nflatproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Nflatproblems, 2)+' flat problems found.'
+     if Npinholeproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Npinholeproblems, 2)+' pinhole problems found.'
+     if Npolcalproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
+     if Nscienceproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
+  endelse
+
+  printf, llun, 'Detailed output in '+logfile+'.'
+  printf, llun, '**************************************************'
+  
+ 
+
+  free_lun, llun
 
 end
