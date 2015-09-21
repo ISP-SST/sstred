@@ -69,6 +69,8 @@
 ;                 name. Write error status at end of execution. Drop
 ;                 science frames that match '*.lcd.*'.
 ;
+;    2015-09-21 : MGL. Drop frames of all kinds that match '*.lcd.*'. 
+;
 ; 
 ;-
 pro red_check_calibrations, root_dir $
@@ -198,10 +200,16 @@ pro red_check_calibrations, root_dir $
      ;; how many frames.
      Nflatsubdirs = n_elements(flatsubdirs)
      for idir = 0, Nflatsubdirs-1 do begin
-        fnames = file_search(flatsubdirs[idir]+'/cam*')
+        fnames = file_search(flatsubdirs[idir]+'/cam*', count = Nflats)
 
         if strmatch(file_basename(flatsubdirs[idir]),'Crisp-?') then begin
            ;; CRISP data
+
+           ;; Are there lcd files that should be dropped?
+           if Nflats gt 0 then red_match_strings, fnames, '*.lcd.*' $
+                                                  , nonmatching_strings = fnames $
+                                                  , Nnonmatching = Nflats
+           
            red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
            cam = cam[uniq(cam,sort(cam))]
            if strmatch(file_basename(flatsubdirs[idir]),'Crisp-W') then begin
@@ -277,8 +285,13 @@ pro red_check_calibrations, root_dir $
      polcalok = replicate(1, Npolcalsubdirs)
      for idir = 0, Npolcalsubdirs-1 do begin
 
-        fnames = file_search(polcalsubdirs[idir]+'/cam*')
-        
+        fnames = file_search(polcalsubdirs[idir]+'/cam*', count = Npolcal)
+   
+        ;; Are there lcd files that should be dropped?
+        if Npolcal gt 0 then red_match_strings, fnames, '*.lcd.*' $
+                                               , nonmatching_strings = fnames $
+                                               , Nnonmatching = Npolcal
+   
         red_extractstates, file_basename(fnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
         cam = cam[uniq(cam,sort(cam))]
         pref = pref[uniq(pref,sort(pref))]
@@ -351,10 +364,16 @@ pro red_check_calibrations, root_dir $
      ;; how many frames.
      Npinholesubdirs = n_elements(pinholesubdirs)
      for idir = 0, Npinholesubdirs-1 do begin
-        fnames = file_search(pinholesubdirs[idir]+'/cam*')
+        fnames = file_search(pinholesubdirs[idir]+'/cam*', count = Npinhole)
 
         if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-?') then begin
            ;; CRISP data
+
+           ;; Are there lcd files that should be dropped?
+           if Npinhole gt 0 then red_match_strings, fnames, '*.lcd.*' $
+                                                  , nonmatching_strings = fnames $
+                                                  , Nnonmatching = Npinhole
+   
            red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
            cam = cam[uniq(cam,sort(cam))]
            if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-W') then begin
@@ -423,14 +442,12 @@ pro red_check_calibrations, root_dir $
 
         snames = file_search(sciencesubdirs[isubdir]+'/cam*', count = Nscienceframes)
 
-        ;; Are there files that should be dropped?
-        tmp = where(strmatch(snames, '*.lcd.*'), complement = gindx, Ncomplement = Nscienceframes)
-  
+        ;; Are there lcd files that should be dropped?
+        if Nscienceframes gt 0 then red_match_strings, snames, '*.lcd.*' $
+           , nonmatching_strings = snames, Nnonmatching = Nscienceframes
+
         if Nscienceframes gt 0 then begin
-
-           ;; Drop any files that should be dropped.
-           snames = snames[gindx]
-
+   
 ;           red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate
 ;           cam = cam[uniq(cam,sort(cam))]
 ;           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
