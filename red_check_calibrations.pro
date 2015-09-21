@@ -69,7 +69,9 @@
 ;                 name. Write error status at end of execution. Drop
 ;                 science frames that match '*.lcd.*'.
 ;
-;    2015-09-21 : MGL. Drop frames of all kinds that match '*.lcd.*'. 
+;    2015-09-21 : MGL. Drop frames of all kinds that match '*.lcd.*'.
+;                 Catch case when there are no calibration data of a
+;                 certain kind.
 ;
 ; 
 ;-
@@ -155,23 +157,27 @@ pro red_check_calibrations, root_dir $
 
      ;; Go through the list, find out what cameras and how many frames
      Ndarksubdirs = n_elements(darksubdirs)
-     Ndarkframes = lonarr(Ndarksubdirs) 
-     darkcams = strarr(Ndarksubdirs)
-     for idir = 0, Ndarksubdirs-1 do begin
-        fnames = file_search(darksubdirs[idir]+'/cam*')
-        red_extractstates, file_basename(fnames), cam = cam
-        cam = cam[uniq(cam,sort(cam))]
-        if n_elements(cam) gt 1 then begin
-           printf, llun, 'Warning: More than one camera in '+darksubdirs[idir]
-        endif else begin
-           darkcams[idir] = cam
-           Ndarkframes[idir] = n_elements(fnames)
-        endelse
-        printf, llun, string(darkcams[idir], '(a12)') $
-               + ' :'+string(Ndarkframes[idir], format = '(i6)') $
-               + ' ' + darksubdirs[idir]
-     endfor                     ; idir
-     
+     if Ndarksubdirs gt 0 then begin
+        Ndarkframes = lonarr(Ndarksubdirs) 
+        darkcams = strarr(Ndarksubdirs)
+        for idir = 0, Ndarksubdirs-1 do begin
+           fnames = file_search(darksubdirs[idir]+'/cam*')
+           red_extractstates, file_basename(fnames), cam = cam
+           cam = cam[uniq(cam,sort(cam))]
+           if n_elements(cam) gt 1 then begin
+              printf, llun, 'Warning: More than one camera in '+darksubdirs[idir]
+           endif else begin
+              darkcams[idir] = cam
+              Ndarkframes[idir] = n_elements(fnames)
+           endelse
+           printf, llun, string(darkcams[idir], '(a12)') $
+                   + ' :'+string(Ndarkframes[idir], format = '(i6)') $
+                   + ' ' + darksubdirs[idir]
+        endfor                  ; idir
+     endif else begin           ; Ndarksubdirs
+        printf, llun, 'No darks data'
+        darkcams = []
+     endelse                    ; Ndarksubdirs
   endif                         ; darks
   
   
@@ -199,61 +205,65 @@ pro red_check_calibrations, root_dir $
      ;; Go through the list, find out what cameras, what states, and
      ;; how many frames.
      Nflatsubdirs = n_elements(flatsubdirs)
-     for idir = 0, Nflatsubdirs-1 do begin
-        fnames = file_search(flatsubdirs[idir]+'/cam*', count = Nflats)
+     if Nflatsubdirs gt 0 then begin
+        for idir = 0, Nflatsubdirs-1 do begin
+           fnames = file_search(flatsubdirs[idir]+'/cam*', count = Nflats)
 
-        if strmatch(file_basename(flatsubdirs[idir]),'Crisp-?') then begin
-           ;; CRISP data
+           if strmatch(file_basename(flatsubdirs[idir]),'Crisp-?') then begin
+              ;; CRISP data
 
-           ;; Are there lcd files that should be dropped?
-           if Nflats gt 0 then red_match_strings, fnames, '*.lcd.*' $
-                                                  , nonmatching_strings = fnames $
-                                                  , Nnonmatching = Nflats
-           
-           red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
-           cam = cam[uniq(cam,sort(cam))]
-           if strmatch(file_basename(flatsubdirs[idir]),'Crisp-W') then begin
-              ;; For CRISP WB data we only care about the prefilter
-              for ii = 0, n_elements(fullstate)-1 do $
-                 fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
-           endif                ; Crisp-W
-           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-           camstates = cam+'.'+fullstate
-        endif else begin
-           ;; Blue data.
-           red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
-           cam = cam[uniq(cam,sort(cam))]
-           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-           if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
-           ;; We need the exposure time as part of the state
-           h = fzhead(fnames[0])
-           dT = strtrim(round((double(strmid(h, strpos(h, 'Te=')+20, 9)) $
-                               - double(strmid(h, strpos(h, 'Ts=')+20, 9)))*1000), 2) + 'ms'
-           camstates += '.' + dT
-        endelse
-
-        if n_elements(cam) gt 1 then begin
-           printf, llun, 'Warning: More than one camera in '+flatsubdirs[idir]
-        endif else begin
-           if n_elements(flatcamstates) eq 0 then begin
-              flatcamstates = camstates
-              Nflatframes = replicate(0L, n_elements(camstates))
+              ;; Are there lcd files that should be dropped?
+              if Nflats gt 0 then red_match_strings, fnames, '*.lcd.*' $
+                                                     , nonmatching_strings = fnames $
+                                                     , Nnonmatching = Nflats
+              
+              red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
+              cam = cam[uniq(cam,sort(cam))]
+              if strmatch(file_basename(flatsubdirs[idir]),'Crisp-W') then begin
+                 ;; For CRISP WB data we only care about the prefilter
+                 for ii = 0, n_elements(fullstate)-1 do $
+                    fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
+              endif             ; Crisp-W
+              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              camstates = cam+'.'+fullstate
            endif else begin
-              flatcamstates = [camstates, flatcamstates]
-              Nflatframes = [replicate(0L, n_elements(camstates)), Nflatframes]
+              ;; Blue data.
+              red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
+              cam = cam[uniq(cam,sort(cam))]
+              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
+              ;; We need the exposure time as part of the state
+              h = fzhead(fnames[0])
+              dT = strtrim(round((double(strmid(h, strpos(h, 'Te=')+20, 9)) $
+                                  - double(strmid(h, strpos(h, 'Ts=')+20, 9)))*1000), 2) + 'ms'
+              camstates += '.' + dT
            endelse
-           ;; Find out how many frames of each kind:
-           for i = 0, n_elements(camstates)-1 do begin
-              Nflatframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
-              printf, llun, string(flatcamstates[i], '(a30)') $
-               + ' :'+string(Nflatframes[i], format = '(i6)') $
-               + ' ' + flatsubdirs[idir]
-           endfor
-        endelse
-        
-     endfor                     ; idir
-    
 
+           if n_elements(cam) gt 1 then begin
+              printf, llun, 'Warning: More than one camera in '+flatsubdirs[idir]
+           endif else begin
+              if n_elements(flatcamstates) eq 0 then begin
+                 flatcamstates = camstates
+                 Nflatframes = replicate(0L, n_elements(camstates))
+              endif else begin
+                 flatcamstates = [camstates, flatcamstates]
+                 Nflatframes = [replicate(0L, n_elements(camstates)), Nflatframes]
+              endelse
+              ;; Find out how many frames of each kind:
+              for i = 0, n_elements(camstates)-1 do begin
+                 Nflatframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
+                 printf, llun, string(flatcamstates[i], '(a30)') $
+                         + ' :'+string(Nflatframes[i], format = '(i6)') $
+                         + ' ' + flatsubdirs[idir]
+              endfor
+           endelse
+           
+        endfor                  ; idir
+        
+     endif else begin           ; Nflatsubdirs
+        flatcamstates = []
+        printf, llun, 'No flats data'
+     endelse                    ; Nflatsubdirs
   endif                         ; flats
   
   
@@ -281,61 +291,65 @@ pro red_check_calibrations, root_dir $
      ;; Go through the list, find out what cameras and what
      ;; prefilters. Also check that the data appear complete. 
      Npolcalsubdirs = n_elements(polcalsubdirs)
-     polcalcamstates = strarr(Npolcalsubdirs)
-     polcalok = replicate(1, Npolcalsubdirs)
-     for idir = 0, Npolcalsubdirs-1 do begin
+     if Npolcalsubdirs gt 0 then begin
+        polcalcamstates = strarr(Npolcalsubdirs)
+        polcalok = replicate(1, Npolcalsubdirs)
+        for idir = 0, Npolcalsubdirs-1 do begin
 
-        fnames = file_search(polcalsubdirs[idir]+'/cam*', count = Npolcal)
-   
-        ;; Are there lcd files that should be dropped?
-        if Npolcal gt 0 then red_match_strings, fnames, '*.lcd.*' $
-                                               , nonmatching_strings = fnames $
-                                               , Nnonmatching = Npolcal
-   
-        red_extractstates, file_basename(fnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
-        cam = cam[uniq(cam,sort(cam))]
-        pref = pref[uniq(pref,sort(pref))]
-        if n_elements(cam) gt 1 then begin
-           printf, llun, 'Warning: More than one camera in '+polcalsubdirs[idir]
-        endif else begin
-           polcalcamstates[idir] = cam+'.'+pref
-           ;; Find out if the polcal data are ok.
-           ;; There should be two lp (linear polarizer) states and the
-           ;; number of frames of each should be equal.
-           lp = lp[uniq(lp,sort(lp))]
-           Nlp = lonarr(n_elements(lp))
-           for i = 0, n_elements(lp)-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+lp[i]+'*')))
-           polcalok[idir] = polcalok[idir] and Nlp[0] eq Nlp[1]
-           ;; There should be four lc (liqud crystal) states and the
-           ;; number of frames of each should be equal.
-           lc = lc[uniq(lc,sort(lc))]
-           Nlc = lonarr(n_elements(lc))
-           for i = 0, n_elements(lc)-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+lc[i]+'*')))
-           polcalok[idir] = polcalok[idir] and Nlc[0] eq Nlc[1] and Nlc[1] eq Nlc[2] and Nlc[2] eq Nlc[3]
-           ;; The number of qw (quarter wave plate) angles is not
-           ;; fixed but the angles should be evenly distributed over
-           ;; 360 degrees, repeating the 0=360 angle. And the number
-           ;; of frames at each angle should be equal.
-           qw = qw[uniq(qw,sort(qw))]     
-           Nqw = lonarr(n_elements(qw))
-           for i = 0, n_elements(qw)-1 do Nqw[i] = n_elements(where(strmatch(fnames,'*'+qw[i]+'*')))
-           polcalok[idir] = polcalok[idir] and stddev(Nqw) lt 1e-1 ; Equal numbers of frames for all angles?
-           polcalok[idir] = polcalok[idir] and min(qw) eq 'qw000'  ; Zero angle present?
-           polcalok[idir] = polcalok[idir] and max(qw) eq 'qw360'  ; Repeated enpoint?
-           dqw = deriv(long(strmid(qw,2,3)))                 ; Differential angle
-           polcalok[idir] = polcalok[idir] and stddev(dqw) lt 1e-1 ; Evenly distributed?
-        endelse
-        
-        outline = string(polcalcamstates[idir], '(a15)') + ' : '
-        if polcalok[idir] then begin
-           outline += 'complete polcal data in ' 
-        endif else begin
-           outline += 'incomplete polcal data in ' 
-        endelse
-        outline += red_strreplace(polcalsubdirs[idir], root_dir, '')
-        printf, llun, outline
-     endfor                     ; idir
-     
+           fnames = file_search(polcalsubdirs[idir]+'/cam*', count = Npolcal)
+           
+           ;; Are there lcd files that should be dropped?
+           if Npolcal gt 0 then red_match_strings, fnames, '*.lcd.*' $
+                                                   , nonmatching_strings = fnames $
+                                                   , Nnonmatching = Npolcal
+           
+           red_extractstates, file_basename(fnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
+           cam = cam[uniq(cam,sort(cam))]
+           pref = pref[uniq(pref,sort(pref))]
+           if n_elements(cam) gt 1 then begin
+              printf, llun, 'Warning: More than one camera in '+polcalsubdirs[idir]
+           endif else begin
+              polcalcamstates[idir] = cam+'.'+pref
+              ;; Find out if the polcal data are ok.
+              ;; There should be two lp (linear polarizer) states and the
+              ;; number of frames of each should be equal.
+              lp = lp[uniq(lp,sort(lp))]
+              Nlp = lonarr(n_elements(lp))
+              for i = 0, n_elements(lp)-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+lp[i]+'*')))
+              polcalok[idir] = polcalok[idir] and Nlp[0] eq Nlp[1]
+              ;; There should be four lc (liqud crystal) states and the
+              ;; number of frames of each should be equal.
+              lc = lc[uniq(lc,sort(lc))]
+              Nlc = lonarr(n_elements(lc))
+              for i = 0, n_elements(lc)-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+lc[i]+'*')))
+              polcalok[idir] = polcalok[idir] and Nlc[0] eq Nlc[1] and Nlc[1] eq Nlc[2] and Nlc[2] eq Nlc[3]
+              ;; The number of qw (quarter wave plate) angles is not
+              ;; fixed but the angles should be evenly distributed over
+              ;; 360 degrees, repeating the 0=360 angle. And the number
+              ;; of frames at each angle should be equal.
+              qw = qw[uniq(qw,sort(qw))]     
+              Nqw = lonarr(n_elements(qw))
+              for i = 0, n_elements(qw)-1 do Nqw[i] = n_elements(where(strmatch(fnames,'*'+qw[i]+'*')))
+              polcalok[idir] = polcalok[idir] and stddev(Nqw) lt 1e-1 ; Equal numbers of frames for all angles?
+              polcalok[idir] = polcalok[idir] and min(qw) eq 'qw000'  ; Zero angle present?
+              polcalok[idir] = polcalok[idir] and max(qw) eq 'qw360'  ; Repeated enpoint?
+              dqw = deriv(long(strmid(qw,2,3)))                       ; Differential angle
+              polcalok[idir] = polcalok[idir] and stddev(dqw) lt 1e-1 ; Evenly distributed?
+           endelse
+           
+           outline = string(polcalcamstates[idir], '(a15)') + ' : '
+           if polcalok[idir] then begin
+              outline += 'complete polcal data in ' 
+           endif else begin
+              outline += 'incomplete polcal data in ' 
+           endelse
+           outline += red_strreplace(polcalsubdirs[idir], root_dir, '')
+           printf, llun, outline
+        endfor                  ; idir
+     endif else begin           ; Npocalsubdirs 
+        polcalcamstates = []
+        printf, llun, 'No polcal data'
+     endelse                    ; Npocalsubdirs     
   endif                         ; polcal
   
   
@@ -363,59 +377,63 @@ pro red_check_calibrations, root_dir $
      ;; Go through the list, find out what cameras, what states, and
      ;; how many frames.
      Npinholesubdirs = n_elements(pinholesubdirs)
-     for idir = 0, Npinholesubdirs-1 do begin
-        fnames = file_search(pinholesubdirs[idir]+'/cam*', count = Npinhole)
+     if Npinholesubdirs gt 0 then begin
+        for idir = 0, Npinholesubdirs-1 do begin
+           fnames = file_search(pinholesubdirs[idir]+'/cam*', count = Npinhole)
 
-        if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-?') then begin
-           ;; CRISP data
+           if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-?') then begin
+              ;; CRISP data
 
-           ;; Are there lcd files that should be dropped?
-           if Npinhole gt 0 then red_match_strings, fnames, '*.lcd.*' $
-                                                  , nonmatching_strings = fnames $
-                                                  , Nnonmatching = Npinhole
-   
-           red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
-           cam = cam[uniq(cam,sort(cam))]
-           if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-W') then begin
-              ;; For CRISP WB data we only care about the prefilter
-              for ii = 0, n_elements(fullstate)-1 do $
-                 fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
+              ;; Are there lcd files that should be dropped?
+              if Npinhole gt 0 then red_match_strings, fnames, '*.lcd.*' $
+                                                       , nonmatching_strings = fnames $
+                                                       , Nnonmatching = Npinhole
+              
+              red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
+              cam = cam[uniq(cam,sort(cam))]
+              if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-W') then begin
+                 ;; For CRISP WB data we only care about the prefilter
+                 for ii = 0, n_elements(fullstate)-1 do $
+                    fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
+              endif else begin
+                 ;; For CRISP NB data we don't care about the LC state
+                 for i=0,n_elements(fullstate)-1 do $
+                    fullstate[i] = strjoin((strsplit(fullstate[i],'.',/extract))[0:1],'.')
+              endelse
+              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              camstates = cam+'.'+fullstate
            endif else begin
-              ;; For CRISP NB data we don't care about the LC state
-              for i=0,n_elements(fullstate)-1 do $
-                 fullstate[i] = strjoin((strsplit(fullstate[i],'.',/extract))[0:1],'.')
+              ;; Blue data.
+              red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
+              cam = cam[uniq(cam,sort(cam))]
+              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
            endelse
-           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-           camstates = cam+'.'+fullstate
-        endif else begin
-           ;; Blue data.
-           red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
-           cam = cam[uniq(cam,sort(cam))]
-           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-           if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
-        endelse
 
-        if n_elements(cam) gt 1 then begin
-           printf, llun, 'Warning: More than one camera in '+pinholesubdirs[idir]
-        endif else begin
-           if n_elements(pinholecamstates) eq 0 then begin
-              pinholecamstates = camstates
-              Npinholeframes = replicate(0L, n_elements(camstates))
+           if n_elements(cam) gt 1 then begin
+              printf, llun, 'Warning: More than one camera in '+pinholesubdirs[idir]
            endif else begin
-              pinholecamstates = [camstates, pinholecamstates]
-              Npinholeframes = [replicate(0L, n_elements(camstates)), Npinholeframes]
+              if n_elements(pinholecamstates) eq 0 then begin
+                 pinholecamstates = camstates
+                 Npinholeframes = replicate(0L, n_elements(camstates))
+              endif else begin
+                 pinholecamstates = [camstates, pinholecamstates]
+                 Npinholeframes = [replicate(0L, n_elements(camstates)), Npinholeframes]
+              endelse
+              ;; Find out how many frames of each kind:
+              for i = 0, n_elements(camstates)-1 do begin
+                 Npinholeframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
+                 printf, llun, string(pinholecamstates[i], '(a30)') $
+                         + ' :'+string(Npinholeframes[i], format = '(i5)') $
+                         + ' ' + pinholesubdirs[idir]
+              endfor
            endelse
-           ;; Find out how many frames of each kind:
-           for i = 0, n_elements(camstates)-1 do begin
-              Npinholeframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
-              printf, llun, string(pinholecamstates[i], '(a30)') $
-                      + ' :'+string(Npinholeframes[i], format = '(i5)') $
-                      + ' ' + pinholesubdirs[idir]
-           endfor
-        endelse
-        
-     endfor                     ; idir
-
+           
+        endfor                  ; idir
+     endif else begin           ; Npinholesubdirs
+        pinholecamstates = []
+        printf, llun, 'No pinhole data.'
+     endelse                    ; Npinholesubdirs
   endif                         ; pinholes
   
 
