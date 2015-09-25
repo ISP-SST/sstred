@@ -99,6 +99,9 @@
 ;    2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                 namespace.
 ;
+;    2015-09-25 : MGL. Don't download the PIG logfile unless
+;                 asked for. 
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
@@ -131,7 +134,6 @@ pro red::download, overwrite = overwrite $
   endif
 
   if keyword_set(logs) then begin
-     pig = 1
      r0 = 1
      turret = 1
   endif
