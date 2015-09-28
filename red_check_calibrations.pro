@@ -73,6 +73,11 @@
 ;                 Catch case when there are no calibration data of a
 ;                 certain kind.
 ;
+;    2015-09-28 : MGL. Variables that are 'uniq'-ued now all start
+;                 with the letter 'u'. Now checks polcal in each
+;                 CRISP-[TR] science directory for one prefilter at a
+;                 time.
+;
 ; 
 ;-
 pro red_check_calibrations, root_dir $
@@ -94,11 +99,12 @@ pro red_check_calibrations, root_dir $
   endif
   openw, llun, logfile, /get_lun
 
-  Ndarkproblems = 0             ; Increment this when finding a problem.
-  Nflatproblems = 0             ; Increment this when finding a problem.
-  Npolcalproblems = 0           ; Increment this when finding a problem.
-  Npinholeproblems = 0          ; Increment this when finding a problem.
-  Nscienceproblems = 0          ; Increment this when finding a problem.
+  ;; Increment one these when finding a problem.
+  Ndarkproblems = 0             
+  Nflatproblems = 0            
+  Npolcalproblems = 0          
+  Npinholeproblems = 0         
+  Nscienceproblems = 0   
 
   printf, llun
   printf, llun, 'Examine '+root_dir
@@ -163,11 +169,11 @@ pro red_check_calibrations, root_dir $
         for idir = 0, Ndarksubdirs-1 do begin
            fnames = file_search(darksubdirs[idir]+'/cam*')
            red_extractstates, file_basename(fnames), cam = cam
-           cam = cam[uniq(cam,sort(cam))]
-           if n_elements(cam) gt 1 then begin
+           ucam = cam[uniq(cam,sort(cam))]
+           if n_elements(ucam) gt 1 then begin
               printf, llun, 'Warning: More than one camera in '+darksubdirs[idir]
            endif else begin
-              darkcams[idir] = cam
+              darkcams[idir] = ucam
               Ndarkframes[idir] = n_elements(fnames)
            endelse
            printf, llun, string(darkcams[idir], '(a12)') $
@@ -218,20 +224,20 @@ pro red_check_calibrations, root_dir $
                                                      , Nnonmatching = Nflats
               
               red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
-              cam = cam[uniq(cam,sort(cam))]
+              ucam = cam[uniq(cam,sort(cam))]
               if strmatch(file_basename(flatsubdirs[idir]),'Crisp-W') then begin
                  ;; For CRISP WB data we only care about the prefilter
                  for ii = 0, n_elements(fullstate)-1 do $
                     fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
               endif             ; Crisp-W
-              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-              camstates = cam+'.'+fullstate
+              ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              camstates = ucam+'.'+ufullstate
            endif else begin
               ;; Blue data.
               red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
-              cam = cam[uniq(cam,sort(cam))]
-              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-              if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
+              ucam = cam[uniq(cam,sort(cam))]
+              ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              if ufullstate ne '' then camstates = ucam+'.'+ufullstate else camstates = ucam
               ;; We need the exposure time as part of the state
               h = fzhead(fnames[0])
               dT = strtrim(round((double(strmid(h, strpos(h, 'Te=')+20, 9)) $
@@ -239,7 +245,7 @@ pro red_check_calibrations, root_dir $
               camstates += '.' + dT
            endelse
 
-           if n_elements(cam) gt 1 then begin
+           if n_elements(ucam) gt 1 then begin
               printf, llun, 'Warning: More than one camera in '+flatsubdirs[idir]
            endif else begin
               if n_elements(flatcamstates) eq 0 then begin
@@ -304,36 +310,36 @@ pro red_check_calibrations, root_dir $
                                                    , Nnonmatching = Npolcal
            
            red_extractstates, file_basename(fnames), cam = cam, pref = pref, lc = lc, qw = qw, lp = lp
-           cam = cam[uniq(cam,sort(cam))]
-           pref = pref[uniq(pref,sort(pref))]
-           if n_elements(cam) gt 1 then begin
+           ucam = cam[uniq(cam,sort(cam))]
+           upref = pref[uniq(pref,sort(pref))]
+           if n_elements(ucam) gt 1 then begin
               printf, llun, 'Warning: More than one camera in '+polcalsubdirs[idir]
            endif else begin
-              polcalcamstates[idir] = cam+'.'+pref
+              polcalcamstates[idir] = ucam+'.'+upref
               ;; Find out if the polcal data are ok.
               ;; There should be two lp (linear polarizer) states and the
               ;; number of frames of each should be equal.
-              lp = lp[uniq(lp,sort(lp))]
-              Nlp = lonarr(n_elements(lp))
-              for i = 0, n_elements(lp)-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+lp[i]+'*')))
+              ulp = lp[uniq(lp,sort(lp))]
+              Nlp = lonarr(n_elements(ulp))
+              for i = 0, n_elements(ulp)-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+ulp[i]+'*')))
               polcalok[idir] = polcalok[idir] and Nlp[0] eq Nlp[1]
               ;; There should be four lc (liqud crystal) states and the
               ;; number of frames of each should be equal.
-              lc = lc[uniq(lc,sort(lc))]
-              Nlc = lonarr(n_elements(lc))
-              for i = 0, n_elements(lc)-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+lc[i]+'*')))
+              ulc = lc[uniq(lc,sort(lc))]
+              Nlc = lonarr(n_elements(ulc))
+              for i = 0, n_elements(ulc)-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+ulc[i]+'*')))
               polcalok[idir] = polcalok[idir] and Nlc[0] eq Nlc[1] and Nlc[1] eq Nlc[2] and Nlc[2] eq Nlc[3]
               ;; The number of qw (quarter wave plate) angles is not
               ;; fixed but the angles should be evenly distributed over
               ;; 360 degrees, repeating the 0=360 angle. And the number
               ;; of frames at each angle should be equal.
-              qw = qw[uniq(qw,sort(qw))]     
-              Nqw = lonarr(n_elements(qw))
-              for i = 0, n_elements(qw)-1 do Nqw[i] = n_elements(where(strmatch(fnames,'*'+qw[i]+'*')))
+              uqw = qw[uniq(qw,sort(qw))]     
+              Nqw = lonarr(n_elements(uqw))
+              for i = 0, n_elements(uqw)-1 do Nqw[i] = n_elements(where(strmatch(fnames,'*'+uqw[i]+'*')))
               polcalok[idir] = polcalok[idir] and stddev(Nqw) lt 1e-1 ; Equal numbers of frames for all angles?
-              polcalok[idir] = polcalok[idir] and min(qw) eq 'qw000'  ; Zero angle present?
-              polcalok[idir] = polcalok[idir] and max(qw) eq 'qw360'  ; Repeated enpoint?
-              dqw = deriv(long(strmid(qw,2,3)))                       ; Differential angle
+              polcalok[idir] = polcalok[idir] and min(uqw) eq 'qw000'  ; Zero angle present?
+              polcalok[idir] = polcalok[idir] and max(uqw) eq 'qw360'  ; Repeated enpoint?
+              dqw = deriv(long(strmid(uqw,2,3)))                       ; Differential angle
               polcalok[idir] = polcalok[idir] and stddev(dqw) lt 1e-1 ; Evenly distributed?
            endelse
            
@@ -390,7 +396,7 @@ pro red_check_calibrations, root_dir $
                                                        , Nnonmatching = Npinhole
               
               red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate
-              cam = cam[uniq(cam,sort(cam))]
+              ucam = cam[uniq(cam,sort(cam))]
               if strmatch(file_basename(pinholesubdirs[idir]),'Crisp-W') then begin
                  ;; For CRISP WB data we only care about the prefilter
                  for ii = 0, n_elements(fullstate)-1 do $
@@ -400,17 +406,17 @@ pro red_check_calibrations, root_dir $
                  for i=0,n_elements(fullstate)-1 do $
                     fullstate[i] = strjoin((strsplit(fullstate[i],'.',/extract))[0:1],'.')
               endelse
-              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-              camstates = cam+'.'+fullstate
+              ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              camstates = ucam+'.'+ufullstate
            endif else begin
               ;; Blue data.
               red_extractstates, file_basename(fnames), cam = cam, fullstate = fullstate, /blue
-              cam = cam[uniq(cam,sort(cam))]
-              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-              if fullstate ne '' then camstates = cam+'.'+fullstate else camstates = cam
+              ucam = cam[uniq(cam,sort(cam))]
+              ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              if ufullstate ne '' then camstates = ucam+'.'+ufullstate else camstates = ucam
            endelse
 
-           if n_elements(cam) gt 1 then begin
+           if n_elements(ucam) gt 1 then begin
               printf, llun, 'Warning: More than one camera in '+pinholesubdirs[idir]
            endif else begin
               if n_elements(pinholecamstates) eq 0 then begin
@@ -422,7 +428,7 @@ pro red_check_calibrations, root_dir $
               endelse
               ;; Find out how many frames of each kind:
               for i = 0, n_elements(camstates)-1 do begin
-                 Npinholeframes[i] = n_elements(where(strmatch(fnames,'*'+fullstate[i]+'*')))
+                 Npinholeframes[i] = n_elements(where(strmatch(fnames,'*'+ufullstate[i]+'*')))
                  printf, llun, string(pinholecamstates[i], '(a30)') $
                          + ' :'+string(Npinholeframes[i], format = '(i5)') $
                          + ' ' + pinholesubdirs[idir]
@@ -465,29 +471,25 @@ pro red_check_calibrations, root_dir $
            , nonmatching_strings = snames, Nnonmatching = Nscienceframes
 
         if Nscienceframes gt 0 then begin
-   
-;           red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate
-;           cam = cam[uniq(cam,sort(cam))]
-;           fullstate = fullstate[uniq(fullstate,sort(fullstate))]
            
            if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-?') then begin
               ;; CRISP data
               red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate, pref = pref, lc = lc
-              cam = cam[uniq(cam,sort(cam))]
-              lc = lc[uniq(lc,sort(lc))]
+              upref = pref[uniq(pref,sort(pref))]
+              ucam = cam[uniq(cam,sort(cam))]
               if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-W') then begin
                  ;; For CRISP WB data we only care about the prefilter
                  for ii = 0, n_elements(fullstate)-1 do $
                     fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0]
               endif             ; Crisp-W
-              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-              sciencecamstates = cam+'.'+fullstate
+              ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              sciencecamstates = ucam+'.'+ufullstate
            endif else begin
               ;; Blue data.
               red_extractstates, file_basename(snames), cam = cam, fullstate = fullstate, /blue
-              cam = cam[uniq(cam,sort(cam))]
-              fullstate = fullstate[uniq(fullstate,sort(fullstate))]
-              if fullstate ne '' then sciencecamstates = cam+'.'+fullstate else sciencecamstates = cam
+              ucam = cam[uniq(cam,sort(cam))]
+              ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
+              if ufullstate ne '' then sciencecamstates = ucam+'.'+ufullstate else sciencecamstates = ucam
               ;; We need the exposure time as part of the state
               h = fzhead(snames[0])
               dT = strtrim(round((double(strmid(h, strpos(h, 'Te=')+20, 9)) $
@@ -495,7 +497,7 @@ pro red_check_calibrations, root_dir $
               sciencecamstates += '.' + dT
            endelse
 
-           if n_elements(cam) gt 1 then begin
+           if n_elements(ucam) gt 1 then begin
               printf, llun, '   Warning: More than one camera in '+sciencesubdirs[isubdir]
               print, '      More than one camera in '+sciencesubdirs[isubdir]
               Nscienceproblems += 1
@@ -508,13 +510,13 @@ pro red_check_calibrations, root_dir $
 
               print, '   Check darks.'
 
-              printf, llun, '   There are ' + strtrim(Nscienceframes, 2) + ' ' +cam + ' science frames.'
-              idark = (where(cam eq darkcams, Nhits))[0]
+              printf, llun, '   There are ' + strtrim(Nscienceframes, 2) + ' ' +ucam + ' science frames.'
+              idark = (where(ucam eq darkcams, Nhits))[0]
               if Nhits gt 0 then begin
-                 printf, llun, '   There are '+strtrim(Ndarkframes[idark], 2)+' dark frames for '+cam+'.'
+                 printf, llun, '   There are '+strtrim(Ndarkframes[idark], 2)+' dark frames for '+ucam+'.'
               endif else begin
-                 printf, llun, '   No darks for '+cam+'!   ---------- Warning!'
-                 print, '      No darks for '+cam+'!'
+                 printf, llun, '   No darks for '+ucam+'!   ---------- Warning!'
+                 print, '      No darks for '+ucam+'!'
                  Ndarkproblem += 1
               endelse
            endif                ; darks
@@ -529,8 +531,8 @@ pro red_check_calibrations, root_dir $
               ;; Find all camstates, loop through them and compare with the flats camstates.
 ;              sciencecamstates = cam+'.'+fullstate
 
-              for i = 0, n_elements(fullstate)-1 do begin
-                 Nstateframes = n_elements(where(strmatch(snames,'*'+fullstate[i]+'*')))
+              for i = 0, n_elements(ufullstate)-1 do begin
+                 Nstateframes = n_elements(where(strmatch(snames,'*'+ufullstate[i]+'*')))
                  iflat = (where(sciencecamstates[i] eq flatcamstates, Nhits))[0]
                  outline = '   ' + sciencecamstates[i] + ' with ' + strtrim(Nstateframes, 2) + ' science frames : '
                  if Nhits gt 0 then begin
@@ -545,44 +547,14 @@ pro red_check_calibrations, root_dir $
 
            endif                ; flats
 
-           ;; Do we need polcal for these data?
-           if keyword_set(polcal) then begin
-              if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-[TR]') then begin
-                 if n_elements(lc) gt 1 then begin
-                    print, '   Check polcal.'
-                    ipolcal = where(cam+'.'+pref eq polcalcamstates, Nhits)
-                    if Nhits eq 0 then begin
-                       printf, llun, '   no polcal data.   ---------- Warning!'
-                             print, '      No polcal data'
-                       Npolcalproblems += 1
-                    endif else begin
-                       for i = 0, Nhits-1 do begin
-                          ;; Should print out also the polcal
-                          ;; directory here.
-                          if polcalok[ipolcal[i]] then begin
-                             printf, llun, '   complete polcal data in ' $
-                                     + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
-                          endif else begin
-                             printf, llun, '   incomplete polcal data in ' $
-                                     + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '') $
-                                     + '   ---------- Warning!'
-                             print, '      Incomplete polcal data'
-                             Npolcalproblems += 1
-                          endelse
-                       endfor   ; i
-                    endelse 
-                 endif          ; lc
-              endif             ; CRISP data
-           endif                ; polcal
-           
            
            ;; Do we have pinholes data?
            if keyword_set(pinholes) then begin
 
               print, '   Check pinholes.'
 
-              for i = 0, n_elements(fullstate)-1 do begin
-                 Nstateframes = n_elements(where(strmatch(snames,'*'+fullstate[i]+'*')))
+              for i = 0, n_elements(ufullstate)-1 do begin
+                 Nstateframes = n_elements(where(strmatch(snames,'*'+ufullstate[i]+'*')))
                  if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-[TR]') then begin ; CRISP NB
                     ;; We don't care about the LC state for NB pinhole data:
                     sciencecamstate = strjoin((strsplit(sciencecamstates[i],'.',/extract))[0:2],'.')
@@ -629,7 +601,8 @@ pro red_check_calibrations, root_dir $
                        sciencecamstate = sciencecamstates[i]
                     endelse
                     ipinhole = (where(sciencecamstate eq pinholecamstates, Nhits))[0]
-                    outline = '   ' + sciencecamstate + ' with ' + strtrim(Nstateframes, 2) + ' science frames : '
+                    outline = '   ' + sciencecamstate + ' with ' + strtrim(Nstateframes, 2) $
+                              + ' science frames : '
                     if Nhits gt 0 then begin
                        outline += strtrim(Npinholeframes[ipinhole], 2) + ' pinhole frames.'
                     endif else begin
@@ -643,6 +616,59 @@ pro red_check_calibrations, root_dir $
 
            endif                ; pinholes
 
+
+           ;; Do we need polcal for these data?
+           if keyword_set(polcal) then begin
+              if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-[TR]') then begin
+                 ;; Only for CRISP NB
+
+                 Npref = n_elements(upref)
+                 for ipref = 0, Npref-1 do begin
+
+                    this_pref = upref[ipref]
+                    indx = where(strmatch(fullstate, this_pref+'\.*\.*'), Nmatch)
+                    
+                    if Nmatch le 0 then begin
+                       print, 'This should not happen!'
+                       stop
+                    endif
+
+                    these_lc = lc[indx]
+                    ulc = these_lc[uniq(these_lc,sort(these_lc))]
+
+
+                    if n_elements(ulc) gt 1 then begin
+                       print, '   Check polcal for '+this_pref+'.'
+                       if n_elements(ulc) gt 4 then begin
+                          help, ulc
+                          stop
+                       endif
+                       ipolcal = where(ucam+'.'+this_pref eq polcalcamstates, Nhits)
+                       if Nhits eq 0 then begin
+                          printf, llun, '   no polcal data.   ---------- Warning!'
+                          print, '      No polcal data'
+                          Npolcalproblems += 1
+                       endif else begin
+                          for i = 0, Nhits-1 do begin
+                             ;; Should print out also the polcal
+                             ;; directory here.
+                             if polcalok[ipolcal[i]] then begin
+                                printf, llun, '   complete polcal data in ' $
+                                        + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
+                             endif else begin
+                                printf, llun, '   incomplete polcal data in ' $
+                                        + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '') $
+                                        + '   ---------- Warning!'
+                                print, '      Incomplete polcal data'
+                                Npolcalproblems += 1
+                             endelse
+                          endfor ; i
+                       endelse 
+                    endif       ; lc
+                 endfor         ; ipref
+              endif             ; CRISP data
+           endif                ; polcal
+
         endif                   ; Nscienceframes
      endfor                     ; isubdir   
   endfor                        ; idir
@@ -652,11 +678,16 @@ pro red_check_calibrations, root_dir $
   if Ndarkproblems + Nflatproblems + Npolcalproblems + Npinholeproblems + Nscienceproblems eq 0 then begin
      print, 'red_check_calibrations : No problems detected.'
   endif else begin
-     if Ndarkproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Ndarkproblems, 2)+' dark problems found.'
-     if Nflatproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Nflatproblems, 2)+' flat problems found.'
-     if Npinholeproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Npinholeproblems, 2)+' pinhole problems found.'
-     if Npolcalproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
-     if Nscienceproblems gt 0 then print, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
+     if Ndarkproblems gt 0 then $
+        print, 'red_check_calibrations : '+strtrim(Ndarkproblems, 2)+' dark problems found.'
+     if Nflatproblems gt 0 then $
+        print, 'red_check_calibrations : '+strtrim(Nflatproblems, 2)+' flat problems found.'
+     if Npinholeproblems gt 0 then $
+        print, 'red_check_calibrations : '+strtrim(Npinholeproblems, 2)+' pinhole problems found.'
+     if Npolcalproblems gt 0 then $
+        print, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
+     if Nscienceproblems gt 0 then $
+        print, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
   endelse
 
   print, 'Detailed output in '+logfile+'.'
@@ -667,11 +698,16 @@ pro red_check_calibrations, root_dir $
   if Ndarkproblems + Nflatproblems + Npolcalproblems + Npinholeproblems + Nscienceproblems eq 0 then begin
      printf, llun, 'red_check_calibrations : No problems detected.'
   endif else begin
-     if Ndarkproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Ndarkproblems, 2)+' dark problems found.'
-     if Nflatproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Nflatproblems, 2)+' flat problems found.'
-     if Npinholeproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Npinholeproblems, 2)+' pinhole problems found.'
-     if Npolcalproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
-     if Nscienceproblems gt 0 then printf, llun, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
+     if Ndarkproblems gt 0 then $
+        printf, llun, 'red_check_calibrations : '+strtrim(Ndarkproblems, 2)+' dark problems found.'
+     if Nflatproblems gt 0 then $
+        printf, llun, 'red_check_calibrations : '+strtrim(Nflatproblems, 2)+' flat problems found.'
+     if Npinholeproblems gt 0 then $
+        printf, llun, 'red_check_calibrations : '+strtrim(Npinholeproblems, 2)+' pinhole problems found.'
+     if Npolcalproblems gt 0 then $
+        printf, llun, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
+     if Nscienceproblems gt 0 then $
+        printf, llun, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
   endelse
 
   printf, llun, 'Detailed output in '+logfile+'.'
