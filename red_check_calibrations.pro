@@ -78,6 +78,11 @@
 ;                 CRISP-[TR] science directory for one prefilter at a
 ;                 time.
 ;
+;    2015-09-30 : MGL. Fix a typo and work around strmatch() not
+;                 thinking 'pinholecamstates = []' makes
+;                 pinholecamstates defined. 
+;                 
+;
 ; 
 ;-
 pro red_check_calibrations, root_dir $
@@ -517,7 +522,7 @@ pro red_check_calibrations, root_dir $
               endif else begin
                  printf, llun, '   No darks for '+ucam+'!   ---------- Warning!'
                  print, '      No darks for '+ucam+'!'
-                 Ndarkproblem += 1
+                 Ndarkproblems += 1
               endelse
            endif                ; darks
            
@@ -564,12 +569,16 @@ pro red_check_calibrations, root_dir $
                        ;; Pinhole data exists for this state
                        outline += strtrim(Npinholeframes[ipinhole], 2) + ' pinhole frames.'
                     endif else begin
-                       ;; We don't always have pinholes for all wavelength
-                       ;; points. Report nearest wavelength in that case.
+                       ;; We don't always have pinholes for all
+                       ;; wavelength points. Report nearest wavelength
+                       ;; in that case.
                        
-                       ;; First make sure we have data with the same prefilter:
-                       indx = where(strmatch(pinholecamstates, $
-                                             strjoin((strsplit(sciencecamstate,'.',/extract))[0:1],'.')+'*'), Nmatch)
+                       ;; First make sure we have data with the same
+                       ;; prefilter:
+                       if n_elements(pinholecamstates) gt 0 then begin
+                          indx = where(strmatch(pinholecamstates, $
+                                                strjoin((strsplit(sciencecamstate,'.',/extract))[0:1],'.')+'*'), Nmatch)
+                       endif else Nmatch = 0
                        if Nmatch eq 0 then begin
                           outline += ' No pinhole frames!   ---------- Warning!'
                           print, '      No pinhole data for '+sciencecamstate
