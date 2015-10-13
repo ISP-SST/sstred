@@ -50,6 +50,10 @@
 ;   
 ;   
 ;   
+;    mmfbddir :  in, optional, type=string, default='mfbd'
+;   
+;       Top directory of output tree.
+;   
 ;    nimages : in, optional, type=integer, default="One scan"
 ;
 ;       The number of images per mfbd data set.
@@ -77,12 +81,16 @@
 ;
 ;   2014-05-13 : MGL. Remove keyword newgains.
 ;
+;   2015-10-13 : MGL. Added keyword mfbddir. Allow keyword num_points
+;                to not be a string.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
                    modes = modes, date_obs = date_obs, descatter = descatter, $
                    global_keywords = global_keywords, skip = skip, $
                    pref = pref, $
-                   nf = nfac, nimages = nimages
+                   nf = nfac, nimages = nimages, $
+                   mfbddir = mfbddir
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -92,17 +100,15 @@ pro red::prepmfbd, numpoints = numpoints, $
   red_writelog, selfinfo = selfinfo
 
   ;; Get keywords
-  if(~keyword_set(date_obs)) then begin
+  if n_elements(date_obs) eq 0 then begin
      date_obs = ' '
      read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
   endif
-  if(~keyword_set(numpoints)) then numpoints = '88'
-  if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
-  if(n_elements(nfac) gt 0) then begin
-     if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
-  endif
-
-
+  if n_elements(numpoints) eq 0 then numpoints = '88'
+  if n_elements(modes) eq 0 then modes = '2-29,31-36,44,45'
+  if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
+  if n_elements(mfbddir) eq 0 then mfbddir = 'mfbd' 
+     
   for fff = 0, self.ndir - 1 do begin
      data_dir = self.data_list[fff]
      spawn, 'find ' + data_dir + '/' + self.camwb+ '/ | grep im.ex | grep -v ".lcd."', files
@@ -138,7 +144,7 @@ pro red::prepmfbd, numpoints = numpoints, $
      ns = n_elements(uscan)
 
      ;; Create a reduc file per prefilter and scan number?
-     outdir = self.out_dir + '/mfbd/' + folder_tag
+     outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag
      file_mkdir, outdir
 
      self -> getcamtags, dir = data_dir
@@ -162,11 +168,11 @@ pro red::prepmfbd, numpoints = numpoints, $
 
            lam = strmid(string(float(upref[pp]) * 1.e-10), 2)
 
-           outdir = self.out_dir + '/mfbd/'+folder_tag+'/'+upref[pp]+'/cfg/'
+           outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag + '/' + upref[pp] + '/cfg/'
            file_mkdir, outdir
-           rdir = self.out_dir + '/mfbd/'+folder_tag+'/'+upref[pp]+'/cfg/results/'
+           rdir = self.out_dir + '/' + mfbddir + '/' + folder_tag + '/' + upref[pp] + '/cfg/results/'
            file_mkdir, rdir
-           ddir = self.out_dir + '/mfbd/'+folder_tag+'/'+upref[pp]+'/cfg/data/'
+           ddir = self.out_dir + '/' + mfbddir + '/' + folder_tag + '/' + upref[pp] + '/cfg/data/'
            file_mkdir, ddir
 
            ;; Image numbers for the current scan
@@ -242,7 +248,7 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, 'IMAGE_NUMS='+nall ;n0+'-'+n1
               printf, lun, 'BASIS=Karhunen-Loeve'
               printf, lun, 'MODES='+modes
-              printf, lun, 'NUM_POINTS='+numpoints
+              printf, lun, 'NUM_POINTS='+strtrim(numpoints, 2)
               printf, lun, 'TELESCOPE_D=0.97'
               printf, lun, 'ARCSECPERPIX='+self.image_scale
               printf, lun, 'PIXELSIZE=16.0E-6'
