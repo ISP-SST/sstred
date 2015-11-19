@@ -74,7 +74,22 @@
 ;-
 function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, myg = myg, reflect = reflect, bezier=bezier
   inam = 'red_get_imean : '
-                                ;
+
+
+  ;; Check for NaNs
+
+  dum = (size(pp, /dim))[0]
+  for ii=0,dum-1 do begin
+     tmp = reform(pp[ii,*,*])
+     pos = where(~finite(tmp), nancount, complement=pos1)
+     if(nancount gt 0) then begin
+        tmp[pos] = median(tmp[pos1])
+        pp[ii,*,*] = temporary(tmp)
+     endif
+  endfor
+  
+
+  
   If(n_elements(rebin) eq 0) then rebin = 10L
   print, inam + 'Rebin factor -> ' + red_stri(rebin)
                                 ;
@@ -107,6 +122,7 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
      fl[ii,*,*] /= reform(pp[0,*,*]) * red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
      imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
+
   
   if(keyword_set(myg) AND iter GE 0) then  begin
      if(~keyword_set(bezier)) then begin
