@@ -119,7 +119,9 @@ function red_get_imean, wav, dat, pp, npar, iter, xl = xl, rebin = rebin, denseg
   fl = dat                      ;fltarr(dim[0], dim[1], dim[2])
   for ii = 0L, dim[0] - 1 do begin
      mask = reform(dat[ii,*,*]) ge 1.e-3
-     fl[ii,*,*] /= reform(pp[0,*,*]) * red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
+     lcom = red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
+     lcom /= median(lcom) ;; Remove mean shape from the linear component so we don't introduce distortion in the average profile
+     fl[ii,*,*] /= reform(pp[0,*,*]) * lcom
      imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
 

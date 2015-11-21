@@ -342,12 +342,12 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      ;; mtel =
      ;; sst_mueller_all((*self.timg[0]).date, time_obs, self.telog, line)
      if(n_elements(mdate) eq 0) then mdate = strjoin(strsplit((*self.timg[0]).date,'-/.',/extra),'/')
-     
+     year = long((strsplit(mdate,'/',/extract))[0])
      telpos = red_read_azel( self.telog,mdate)
      print, inam + 'time_obs = '+time_obs
      if(line eq '6300') then begin
-        mtel = red_telmat('6302', telpos, time_obs, /no_zero)
-     endif else mtel = red_telmat(line, telpos, time_obs, /no_zero)
+        mtel = red_telmat('6302', telpos, time_obs, /no_zero, year=year)
+     endif else mtel = red_telmat(line, telpos, time_obs, /no_zero, year=year)
      
      imtel = invert(mtel) 
      imtel /= imtel[0]

@@ -52,10 +52,16 @@
 ; 
 ; 
 ;-
+
+FUNCTION red_eff, dmm
+return, 1./sqrt(4*total(dmm^2, 1))
+END
+
+
 pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
 
   ;; Logging
   help, /obj, self, output = selfinfo 
@@ -145,9 +151,18 @@ pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodua
      print, inam + ' : detected offset angle -> '+string(da)+' degrees'
      print, inam + ' :          retardance   -> '+string(ql[0])+' degrees'
 
+
+     
      ;; Init matrix for each camera
      par_t = red_polcal_fit(t1d, tqw, tlp-da, norm=4, fix=ql)
      par_r = red_polcal_fit(r1d, rqw, rlp-da, norm=4, fix=ql)
+
+     ;; Print efficiency values
+     dum = red_eff(invert(reform(par_t[0:15],[4,4])))
+     print, inam+'Efficiency for transmitted camera -> I='+string(dum[0]*100., format='(F6.1)')+'%, Q='+string(dum[1]*100., format='(F6.1)')+'%, U='+string(dum[2]*100., format='(F6.1)')+'%, V='+string(dum[3]*100., format='(F6.1)')+'%'
+     
+     dum = red_eff(invert(reform(par_r[0:15],[4,4])))
+     print, inam+'Efficiency for reflected camera -> I='+string(dum[0]*100., format='(F6.1)')+'%, Q='+string(dum[1]*100., format='(F6.1)')+'%, U='+string(dum[2]*100., format='(F6.1)')+'%, V='+string(dum[3]*100., format='(F6.1)')+'%'
      
      ;; Do fits and save
      if(ex eq 'fits') then begin
