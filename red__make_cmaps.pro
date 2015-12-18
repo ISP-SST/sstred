@@ -168,6 +168,10 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
 
   nx = x1 - x0 + 1L
   ny = y1 - y0 + 1L
+  if(full) then begin
+     nx = nd[0]
+     ny = nd[1]
+  endif
   
   ;;
   ;; load offsets file
