@@ -137,6 +137,8 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
         stop
      endif
      restore, cfile
+     full = 0
+     if(n_elements(ff) eq 5) then full = 1
   endif
 
   ;;
@@ -236,8 +238,12 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      ;; CASE 1
      ;;
      ;; Derotate and shift (case 1)
-     cmap11 = red_rotation(cmap1, ang[ss], total(shift[0,ss]), total(shift[1,ss]))
-     
+     if(full) then begin
+        cmap11 = red_rotation(cmap1, ang[ss], total(shift[0,ss]), total(shift[1,ss]), full=ff)
+     endif else begin
+        cmap11 = red_rotation(cmap1, ang[ss], total(shift[0,ss]), total(shift[1,ss]))
+     endelse
+        
      ;; Time de-warp (case 1)
      cmap11 = red_stretch(temporary(cmap11), reform(grid[ss,*,*,*]))
      
@@ -270,7 +276,13 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
            cmap2 =  red_stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
            
            ;; Derotate and shift
-           cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), total(shift[1,ss]))
+           if(full) then begin
+              cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+                                   total(shift[1,ss]), full=ff)
+           endif else begin
+              cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+                                   total(shift[1,ss]))
+           endelse
            
            ;; Time de-warp
            cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
