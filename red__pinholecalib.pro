@@ -144,6 +144,8 @@
 ;
 ;   2015-05-07 : THI. Added keywords edgemargin and subfieldpadding.
 ;
+;   2016-02-06 : THI. Bugfix: subimage cutouts could reach outside image border.
+;
 ;-
 pro red::pinholecalib, STATE = state $                   
                        , PREFILTER = prefilter $         
@@ -186,6 +188,8 @@ pro red::pinholecalib, STATE = state $
     if n_elements(maxit) eq 0 then maxit=400
     if n_elements(edgemargin) eq 0 then edgemargin=0
     if n_elements(subfieldpadding) eq 0 then subfieldpadding=2
+    
+    edgemargin += subfieldpadding      ; prevent subimage cut-outs from going outside image boundary
 
     ;; Where the summed pinhole images are:
     pinhdir = self.out_dir + '/pinh_align/'
