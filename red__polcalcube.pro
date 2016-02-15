@@ -29,7 +29,9 @@
 ;   
 ;   
 ;   
-;    descatter  : 
+;    no_descatter : in, optional, type=boolean 
+;   
+;      Don't do back-scatter compensation.
 ;   
 ;   
 ;   
@@ -46,13 +48,14 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
-;   2016-02-15 : MGL. Use loadbackscatter.
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ; 
 ; 
 ; 
 ;-
-pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = nthreads
+pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -130,7 +133,7 @@ pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = n
      npref = n_elements(upref)
      for ii = 0, npref-1 do begin
          print, inam + ' : Processing prefilter -> '+upref[ii]
-         if(keyword_set(descatter) AND (upref[ii] eq '8542' OR upref[ii] eq '7772')) then begin
+         if (~keyword_set(no_descatter) AND (upref[ii] eq '8542' OR upref[ii] eq '7772')) then begin
             self -> loadbackscatter, icam, upref[ii], bg, psf
 ;            print, inam + ' : loading descatter data for '+icam
 ;            bg =  f0(self.descatter_dir + '/' + icam + '.backgain.f0')
@@ -152,7 +155,7 @@ pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = n
                stop
             endif else print, inam + ' : loading -> '+cams[cc]+'.'+istate
             d[ll,qq,pp,*,*] = f0(f[idx]) - dd
-            if(keyword_set(descatter) and (upref[ii] eq '8542' or upref[ii] eq '7772')) then $
+            if (~keyword_set(no_descatter) and (upref[ii] eq '8542' or upref[ii] eq '7772')) then $
                d[ll,qq,pp,*,*] = red_cdescatter(reform(d[ll,qq,pp,*,*]), bg, psf, /verbose, nthreads = nthreads)
             d1d[ll,qq,pp] = mean(red_fillnan(d[ll,qq,pp,100:nx-101,100:ny-101]))
          endfor

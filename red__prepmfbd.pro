@@ -34,7 +34,7 @@
 ;   
 ;   
 ;   
-;    descatter  :  in, optional, 
+;    no_descatter  :  in, optional, 
 ;   
 ;   
 ;   
@@ -84,9 +84,12 @@
 ;   2015-10-13 : MGL. Added keyword mfbddir. Allow keyword num_points
 ;                to not be a string.
 ;
+;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
-                   modes = modes, date_obs = date_obs, descatter = descatter, $
+                   modes = modes, date_obs = date_obs, no_descatter = no_descatter, $
                    global_keywords = global_keywords, skip = skip, $
                    pref = pref, $
                    nf = nfac, nimages = nimages, $
@@ -227,13 +230,14 @@ pro red::prepmfbd, numpoints = numpoints, $
                                                           '.' + upref[pp]+'*.gain')
               printf, lun, '    DARK_TEMPLATE='+self.out_dir+'darks/'+self.camwbtag+'.summed.0000001'
               printf, lun, '    DARK_NUM=0000001'
-              if((upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND (keyword_set(descatter))) then begin
-                 psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
-                 bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
-                 if(file_test(psff) AND file_test(bgf)) then begin
-                    printf, lun, '    PSF='+psff
-                    printf, lun, '    BACK_GAIN='+bgf
-                 endif
+              if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+                 self -> loadbackscatter, self.camwbtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+;                 psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
+;                 bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
+;                 if(file_test(psff) AND file_test(bgf)) then begin
+                 printf, lun, '    PSF='+psff
+                 printf, lun, '    BACK_GAIN='+bgf
+;                 endif
               endif 
 
               printf, lun, '    INCOMPLETE'

@@ -21,7 +21,7 @@
 ; 
 ; :Keywords:
 ; 
-;    descatter  : 
+;    no_descatter  : 
 ;   
 ;   
 ;   
@@ -66,12 +66,13 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
-;   2016-02-15 : MGL. Use loadbackscatter.
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ; 
 ; 
 ;-
-pro red::makegains, descatter = descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize
+pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize
                                 ;
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -102,7 +103,7 @@ pro red::makegains, descatter = descatter, nthreads = nthreads, cam = cam, pref 
                                 ;
      if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
                                 ;
-     if(keyword_set(descatter)) then begin
+     if ~keyword_set(no_descatter) then begin
         if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
            self -> loadbackscatter, tmp[0], tmp[1], bg, psf
 ;           psff = self.descatter_dir+'/'+tmp[0]+'.psf.f0'

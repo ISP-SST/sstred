@@ -25,10 +25,6 @@
 ;   
 ;   
 ;   
-;    descatter  : 
-;   
-;   
-;   
 ;    nthreads  : 
 ;   
 ;   
@@ -38,6 +34,10 @@
 ;   
 ;   
 ;    pref  : 
+;   
+;    no_descatter : in, optional, type=boolean 
+;   
+;      Don't do back-scatter compensation.
 ;   
 ;   
 ;   
@@ -50,11 +50,12 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
-;   2016-02-15 : MGL. Use loadbackscatter.
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ; 
 ;-
-pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nthreads, cam = cam, pref = pref
+pro red::prepflatcubes, flatdir = flatdir, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -134,7 +135,7 @@ pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nth
         pos = where(stat.pref eq upref, nstat)
 
         ;; Load backscatter data?
-        if(keyword_set(descatter) AND (upref eq '8542' or upref eq '7772')) then begin
+        if ~keyword_set(no_descatter) AND (upref eq '8542' or upref eq '7772') then begin
            self -> loadbackscatter, cam[cc], upref, bg, psf
 ;           print, inam + ' : loading descatter data for '+cam[cc]
 ;           bg =  f0(self.descatter_dir + '/' + cam[cc] + '.backgain.f0')
@@ -180,7 +181,7 @@ pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nth
            lc3 = f0(lc3)
 
            ;; Descatter ?
-           if(keyword_set(descatter) AND (upref EQ '8542' or upref eq '7772')) then begin
+           if(~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772')) then begin
 
               lc0 = red_cdescatter(temporary(lc0), bg, psf, /verbose, nthreads = nthreads)
               lc1 = red_cdescatter(temporary(lc1), bg, psf, /verbose, nthreads = nthreads)

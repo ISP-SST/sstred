@@ -33,6 +33,20 @@
 ;       The backscatter psf.
 ;
 ;
+; :Keywords: 
+;
+;    bgfile : out, optional, type=string
+;
+;       The name of the backscatter gain file, if existing.
+;
+;
+;    bpfile : out, optional, type=string
+;
+;       The name of the backscatter psf file, if existing.
+;
+;
+;
+;
 ; :History:
 ; 
 ;     2016-02-15 : MGL. First version.
@@ -40,7 +54,9 @@
 ;
 ;
 ;-
-pro red::loadbackscatter, cam, pref, bgain, bpsf
+pro red::loadbackscatter, cam, pref, bgain, bpsf $
+                          , bgfile = bgfile $
+                          , bpfile = bpfile
 
   year = (strsplit(self.isodate, '-', /extract))[0]
   
@@ -59,6 +75,9 @@ pro red::loadbackscatter, cam, pref, bgain, bpsf
 
      print, 'Backscatter data not available for ' + cam + ', ' + pref
      stop
-     
+
+     bgfile = ''
+     bpfile = ''
+
   endelse
 end

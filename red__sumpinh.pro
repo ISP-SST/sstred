@@ -18,9 +18,9 @@
 ;   
 ;      The number of threads to use for bad-pixel filling.
 ;   
-;    descatter : in, optional, type=boolean 
+;    no_descatter : in, optional, type=boolean 
 ;   
-;      Do back-scatter compensation.
+;      Don't do back-scatter compensation.
 ;   
 ;    ustat : in, optional, type=string
 ;   
@@ -70,12 +70,13 @@
 ;   2013-09-04 : MGL. Store also in floating point. This is the
 ;                version used in red::pinholecalib.pro.
 ; 
-;   2016-02-15 : MGL. Use loadbackscatter.
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ; 
 ;-
 pro red::sumpinh, nthreads = nthreads $
-                  , descatter = descatter $
+                  , no_descatter = no_descatter $
                   , ustat = ustat $
                   , pref = epref $
                   , pinhole_align = pinhole_align $
@@ -144,7 +145,7 @@ pro red::sumpinh, nthreads = nthreads $
      dark = f0(self.out_dir + '/darks/'+cam+'.dark')
 
      ;; Loop
-     firsttime = 1B
+;     firsttime = 1B
      ns = n_elements(ustat)
      for ii = 0L, ns-1 do BEGIN
         IF(n_elements(epref) GT 0) THEN BEGIN
@@ -166,7 +167,7 @@ pro red::sumpinh, nthreads = nthreads $
         endelse
 
         ;; Descatter data?
-        if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+        if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
 ;           if(firsttime) then begin
               
               self -> loadbackscatter, cam, pref, bgt, Psft
@@ -174,30 +175,14 @@ pro red::sumpinh, nthreads = nthreads $
 ;              descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
 ;              descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
 ;
-;;           ptf = self.descatter_dir+ '/' + tcam + '.psf.f0'
-;;           prf = self.descatter_dir+ '/' + rcam + '.psf.f0'
-;;           pwf = self.descatter_dir+ '/' + wcam + '.psf.f0'
-;;           btf = self.descatter_dir+ '/' + tcam + '.backgain.f0'
-;;           brf = self.descatter_dir+ '/' + rcam + '.backgain.f0'
-;;           bwf = self.descatter_dir+ '/' + wcam + '.backgain.f0'
 ;              
 ;              if file_test(descatter_psf_name) and file_test(descatter_bgain_name) then begin
 ;                 Psft = f0(descatter_psf_name)
 ;                 bgt = f0(descatter_bgain_name)
 ;                 et = 1
 ;              endif else et = 0
-;;           if(file_test(prf) and file_test(brf)) then begin
-;;              Psfr = f0(prf)
-;;              bgr = f0(brf)
-;;              er = 1
-;;           endif else er = 0
-;;           if(file_test(pwf) and file_test(bwf)) then begin
-;;              Psfw = f0(pwf)
-;;              bgw = f0(bwf)
-;;              ew = 1
-;;           endif else ew = 0
               
-              firsttime = 0B
+;              firsttime = 0B
 ;           endif
 
            if et then begin
@@ -229,7 +214,7 @@ pro red::sumpinh, nthreads = nthreads $
               ;; then bad-pixel filling done here after summing.
               c = red_sumfiles(stat.files[pos]) - dark
               
-              if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+              if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
                  if et then begin
                     c = red_cdescatter(c, bgt, Psft, /verbose, nthreads = nthread)
                  endif

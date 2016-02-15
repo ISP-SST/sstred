@@ -47,6 +47,10 @@
 ;   
 ;    nthreads : 
 ;   
+;    no_descatter : in, optional, type=boolean 
+;   
+;      Don't do back-scatter compensation.
+;   
 ;   
 ;   
 ; 
@@ -63,13 +67,14 @@
 ;
 ;   2015-05-05 : MGL. With a *, run all directories.
 ; 
-;   2016-02-15 : MGL. Use loadbackscatter.
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ;
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
                           verbose = verbose, overwrite=overwrite, $
-                          descatter = descatter, show=show, LINK_DIR = link_dir
+                          no_descatter = no_descatter, show=show, LINK_DIR = link_dir
 
   inam = 'red::sum_data_intdif : '
   
@@ -217,7 +222,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
         ;;
         ;; Descatter?
         ;;
-        if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+        if(~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
            self -> loadbackscatter, ctag[cc], pref, bff, pff
 ;           pf = self.descatter_dir+ '/' + ctag[cc] + '.psf.f0'
 ;           bf = self.descatter_dir+ '/' + ctag[cc] + '.backgain.f0'
@@ -324,7 +329,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
                  if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
                  tmp = red_sumfiles(mmfiles[idx], /check) - dd
 
-                 if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+                 if(~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
                     tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
                  endif
                  

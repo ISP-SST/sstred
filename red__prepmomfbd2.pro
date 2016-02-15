@@ -45,7 +45,7 @@
 ;   
 ;   
 ;   
-;    descatter  : 
+;    no_descatter  : 
 ;   
 ;   
 ;   
@@ -74,11 +74,14 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+;
+;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ; 
 ;-
 pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
-                      modes = modes, date_obs = date_obs, state = state, descatter = descatter, $
+                      modes = modes, date_obs = date_obs, state = state, no_descatter = no_descatter, $
                       global_keywords = global_keywords, unpol = unpol, skip = skip, $
                       pref = pref, escan = escan
                                 ;
@@ -219,9 +222,10 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
            printf, lun, '    DARK_TEMPLATE='+self.out_dir+'darks/'+self.camwbtag+'.summed.0000001'
            printf, lun, '    DARK_NUM=0000001'
            printf, lun, '    ' + wclip
-           if((upref[pp] EQ '8542') AND (keyword_set(descatter))) then begin
-              printf, lun, '    PSF='+self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
-              printf, lun, '    BACK_GAIN='+self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
+           if upref[pp] EQ '8542' AND ~keyword_set(no_descatter) then begin
+              self -> loadbackscatter, self.camwbtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+              printf, lun, '    PSF='+psff
+              printf, lun, '    BACK_GAIN='+bgf
            endif 
                                 ;
            xofile = (file_search(self.out_dir+'/calib/'+self.camwbtag+'.*.xoffs'))[0]
@@ -309,9 +313,10 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
               if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
                                 ;
-              if((upref[pp] EQ '8542') AND (keyword_set(descatter))) then begin
-                 printf, lun, '    PSF='+self.descatter_dir+'/'+self.camttag+'.psf.f0'
-                 printf, lun, '    BACK_GAIN='+self.descatter_dir+'/'+self.camttag+'.backgain.f0'
+              if upref[pp] EQ '8542' AND ~keyword_set(no_descatter) then begin
+                 self -> loadbackscatter, self.camttag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+                 printf, lun, '    PSF='+psff
+                 printf, lun, '    BACK_GAIN='+bgf
               endif 
               printf, lun, '    INCOMPLETE'
               printf, lun, '  }'
@@ -352,9 +357,10 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
               if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
                                 ;
-              if((upref[pp] EQ '8542') AND (keyword_set(descatter))) then begin
-                 printf, lun, '    PSF='+self.descatter_dir+'/'+self.camrtag+'.psf.f0'
-                 printf, lun, '    BACK_GAIN='+self.descatter_dir+'/'+self.camrtag+'.backgain.f0'
+              if upref[pp] EQ '8542' AND ~keyword_set(no_descatter) then begin
+                 self -> loadbackscatter, self.camrtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+                 printf, lun, '    PSF='+psff
+                 printf, lun, '    BACK_GAIN='+bgf
               endif 
               printf, lun, '    INCOMPLETE'
               printf, lun, '  }'
@@ -377,9 +383,10 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
                  printf, lun, '    DARK_TEMPLATE='+self.out_dir+'/darks/'+self.camwbtag+'.summed.0000001'
                  printf, lun, '    DARK_NUM=0000001'
                  printf, lun, '    ' + wclip
-                 if((upref[pp] EQ '8542') AND (keyword_set(descatter))) then begin
-                    printf, lun, '    PSF='+self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
-                    printf, lun, '    BACK_GAIN='+self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
+                 if upref[pp] EQ '8542' AND ~keyword_set(no_descatter) then begin
+                    self -> loadbackscatter, self.camwbtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+                    printf, lun, '    PSF='+psff
+                    printf, lun, '    BACK_GAIN='+bgf
                  endif 
                  xofile = self.out_dir+'/calib/'+self.camwbtag+'.'+xoff
                  yofile = self.out_dir+'/calib/'+self.camwbtag+'.'+yoff

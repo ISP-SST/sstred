@@ -25,7 +25,7 @@
 ;   
 ;   
 ;   
-;    descatter  : 
+;    no_descatter  : 
 ;   
 ;   
 ;   
@@ -43,16 +43,23 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
+; 
 ; 
 ;-
-pro red::prepflatcubes_lc4, flatdir = flatdir, descatter = descatter, nthreads = nthreads, cam = cam, verbose = verbose
+pro red::prepflatcubes_lc4, flatdir = flatdir $
+                            , no_descatter = no_descatter $
+                            , nthreads = nthreads $
+                            , cam = cam $
+                            , verbose = verbose
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -103,10 +110,11 @@ pro red::prepflatcubes_lc4, flatdir = flatdir, descatter = descatter, nthreads =
         upref = uprefs[pp]
         pos = where((stat.pref eq upref), nstat)
         
-        if(keyword_set(descatter) AND (upref eq '8542' or upref eq '7772')) then begin
-           print, inam + ' : loading descatter data for '+cam[cc]
-           bg =  f0(self.descatter_dir + '/' + cam[cc] + '.backgain.f0')
-           psf = f0(self.descatter_dir + '/' + cam[cc] + '.psf.f0')
+        if ~keyword_set(no_descatter) AND (upref eq '8542' or upref eq '7772') then begin
+           self -> loadbackscatter, cam[cc], upref, bg, psf
+;           print, inam + ' : loading descatter data for '+cam[cc]
+;           bg =  f0(self.descatter_dir + '/' + cam[cc] + '.backgain.f0')
+;           psf = f0(self.descatter_dir + '/' + cam[cc] + '.psf.f0')
         endif
         
         for ss = 0L, nstat - 1 do begin
@@ -123,7 +131,8 @@ pro red::prepflatcubes_lc4, flatdir = flatdir, descatter = descatter, nthreads =
            lc4 = file_search(flatdir+'/'+cam[cc]+'.*'+stat.state[pos[ss]]+'.lc4*.flat', count = nlc4)
            if(keyword_set(verbose)) then print, inam + ' : reading -> '+file_basename(lc4)
            tmp = f0(lc4)
-           if(keyword_set(descatter) AND (upref eq '8542' or upref eq '7772')) then tmp = red_cdescatter(temporary(tmp), bg, psf, /verbose, nthreads = nthreads)
+           if ~keyword_set(no_descatter) AND (upref eq '8542' or upref eq '7772') then $
+              tmp = red_cdescatter(temporary(tmp), bg, psf, /verbose, nthreads = nthreads)
 
            idx = where(~finite(tmp) OR (tmp LT -0.001), nnan)
 

@@ -18,9 +18,9 @@
 ;   
 ;       The number of threads to use for backscattering and bad-pixel filling.
 ;   
-;    descatter : in, optional, type=boolean 
+;    no_descatter : in, optional, type=boolean 
 ;   
-;      Do back-scatter compensation.
+;      Don't do back-scatter compensation.
 ;   
 ;    ustat : in, optional, type=strarr
 ;   
@@ -98,14 +98,15 @@
 ;                subdirectory to be used for display during the
 ;                getalignclips step.
 ; 
-;   2016-02-15 : MGL. Use loadbackscatter.
+;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
+;                new keyword no_descatter.
 ; 
 ; 
 ; 
 ; 
 ;-
 pro red::sumpinh_new, nthreads = nthreads $
-                      , descatter = descatter $
+                      , no_descatter = no_descatter $
                       , ustat = ustat $
                       , pref = epref $
                       , pinhole_align = pinhole_align $
@@ -307,8 +308,9 @@ pro red::sumpinh_new, nthreads = nthreads $
               stop
            endelse
            
-           ;; Boolean for if we want to do descatter for this prefilter
-           DoDescatter = keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')
+           ;; Boolean for whether we want to do descatter for this
+           ;; prefilter
+           DoDescatter = ~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')
            
            ;; Descatter data?
            if DoDescatter then begin
