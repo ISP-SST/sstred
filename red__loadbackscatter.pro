@@ -1,4 +1,3 @@
-
 ; docformat = 'rst'
 
 ;+
@@ -19,19 +18,19 @@
 ; 
 ;    cam : in, type=string
 ;
-;      The camera tag.
+;       The camera tag.
 ;
 ;    pref : in, type=string
 ;
-;      The prefilter.
+;       The prefilter.
 ;
 ;    bgain : out, type=fltarr
 ;
-;      The backscatter gain.
+;       The backscatter gain.
 ;
 ;    bpsf : out, type=fltarr
 ;
-;      The backscatter psf.
+;       The backscatter psf.
 ;
 ;
 ; :History:
@@ -50,7 +49,7 @@ pro red::loadbackscatter, cam, pref, bgain, bpsf
   
   if ~file_test(bgfile) or ~file_test(bpfile) then self -> download, backscatter = pref
 
-  if file_test(bgfile) or ~file_test(bpfile) then begin
+  if file_test(bgfile) and file_test(bpfile) then begin
   
      print, 'Loading backscatter data for ' + cam + ', ' + pref
      bgain = f0(bgfile)
