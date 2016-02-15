@@ -51,17 +51,20 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ;
-;   2013-07-01: JdlCR : Created!
+;   2013-07-01 : JdlCR : Created!
 ; 
-;   2013-07-24: Use red_show rather than show.
+;   2013-07-24 : Use red_show rather than show.
 ;
-;   2014-01-02: PS take out nremove (selection only done in prepmomfbd)
+;   2014-01-02 : PS take out nremove (selection only done in prepmomfbd)
 ;                  use linked data, to skip incomplete scans
 ;
 ;
-;   2015-05-05: MGL. With a *, run all directories.
+;   2015-05-05 : MGL. With a *, run all directories.
+; 
+;   2016-02-15 : MGL. Use loadbackscatter.
+; 
 ;
 ;-
 pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
@@ -215,14 +218,15 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
         ;; Descatter?
         ;;
         if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-           pf = self.descatter_dir+ '/' + ctag[cc] + '.psf.f0'
-           bf = self.descatter_dir+ '/' + ctag[cc] + '.backgain.f0'
-           if(~file_test(pf) OR ~file_test(bf)) then begin
-              print, inam + 'ERROR, descattering data not found, returning.'
-              return
-           endif 
-           pff = f0(pf)
-           bff = f0(bf)
+           self -> loadbackscatter, ctag[cc], pref, bff, pff
+;           pf = self.descatter_dir+ '/' + ctag[cc] + '.psf.f0'
+;           bf = self.descatter_dir+ '/' + ctag[cc] + '.backgain.f0'
+;           if(~file_test(pf) OR ~file_test(bf)) then begin
+;              print, inam + 'ERROR, descattering data not found, returning.'
+;              return
+;           endif 
+;           pff = f0(pf)
+;           bff = f0(bf)
         endif
 
         tempdir=dir + '/' + ucam[cc]+'/'

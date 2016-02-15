@@ -98,6 +98,9 @@
 ;                subdirectory to be used for display during the
 ;                getalignclips step.
 ; 
+;   2016-02-15 : MGL. Use loadbackscatter.
+; 
+; 
 ; 
 ; 
 ;-
@@ -312,22 +315,20 @@ pro red::sumpinh_new, nthreads = nthreads $
               
               if(firsttime) then begin
                  
-                 ;; WARNING!! This code does not seem to know what
-                 ;; prefilter we are using! (Unless that knowledge is in
-                 ;; self.descatter_dir.)
-                 
-                 descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
-                 descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
-                 
-                 if file_test(descatter_psf_name) and file_test(descatter_bgain_name) then begin
-                    descatter_psf   = f0(descatter_psf_name)
-                    descatter_bgain = f0(descatter_bgain_name)
-                 endif else begin
-                    print, inam + ' : ERROR -> backscatter psf and/or gain not found:'
-                    print, descatter_psf_name
-                    print, descatter_bgain_name
-                    stop    
-                 endelse
+                 self -> loadbackscatter, cam, pref, descatter_bgain, descatter_psf
+                                  
+;                 descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
+;                 descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
+;                 
+;                 if file_test(descatter_psf_name) and file_test(descatter_bgain_name) then begin
+;                    descatter_psf   = f0(descatter_psf_name)
+;                    descatter_bgain = f0(descatter_bgain_name)
+;                 endif else begin
+;                    print, inam + ' : ERROR -> backscatter psf and/or gain not found:'
+;                    print, descatter_psf_name
+;                    print, descatter_bgain_name
+;                    stop    
+;                 endelse
                  
                  firsttime = 0B
                  

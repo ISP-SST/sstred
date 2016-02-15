@@ -46,6 +46,9 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
+;   2016-02-15 : MGL. Use loadbackscatter.
+; 
+; 
 ; 
 ; 
 ;-
@@ -128,9 +131,10 @@ pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = n
      for ii = 0, npref-1 do begin
          print, inam + ' : Processing prefilter -> '+upref[ii]
          if(keyword_set(descatter) AND (upref[ii] eq '8542' OR upref[ii] eq '7772')) then begin
-            print, inam + ' : loading descatter data for '+icam
-            bg =  f0(self.descatter_dir + '/' + icam + '.backgain.f0')
-            psf = f0(self.descatter_dir + '/' + icam + '.psf.f0')
+            self -> loadbackscatter, icam, upref[ii], bg, psf
+;            print, inam + ' : loading descatter data for '+icam
+;            bg =  f0(self.descatter_dir + '/' + icam + '.backgain.f0')
+;            psf = f0(self.descatter_dir + '/' + icam + '.psf.f0')
          endif
 
          ;; Read data
@@ -150,7 +154,6 @@ pro red::polcalcube, cam = cam, pref = pref, descatter = descatter, nthreads = n
             d[ll,qq,pp,*,*] = f0(f[idx]) - dd
             if(keyword_set(descatter) and (upref[ii] eq '8542' or upref[ii] eq '7772')) then $
                d[ll,qq,pp,*,*] = red_cdescatter(reform(d[ll,qq,pp,*,*]), bg, psf, /verbose, nthreads = nthreads)
-
             d1d[ll,qq,pp] = mean(red_fillnan(d[ll,qq,pp,100:nx-101,100:ny-101]))
          endfor
 

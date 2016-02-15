@@ -50,6 +50,8 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
+;   2016-02-15 : MGL. Use loadbackscatter.
+; 
 ; 
 ;-
 pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nthreads, cam = cam, pref = pref
@@ -133,9 +135,10 @@ pro red::prepflatcubes, flatdir = flatdir, descatter = descatter, nthreads = nth
 
         ;; Load backscatter data?
         if(keyword_set(descatter) AND (upref eq '8542' or upref eq '7772')) then begin
-           print, inam + ' : loading descatter data for '+cam[cc]
-           bg =  f0(self.descatter_dir + '/' + cam[cc] + '.backgain.f0')
-           psf = f0(self.descatter_dir + '/' + cam[cc] + '.psf.f0')
+           self -> loadbackscatter, cam[cc], upref, bg, psf
+;           print, inam + ' : loading descatter data for '+cam[cc]
+;           bg =  f0(self.descatter_dir + '/' + cam[cc] + '.backgain.f0')
+;           psf = f0(self.descatter_dir + '/' + cam[cc] + '.psf.f0')
         endif
 
         ;; Start demodulation

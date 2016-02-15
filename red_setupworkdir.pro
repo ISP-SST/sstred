@@ -138,6 +138,10 @@
 ;                 scan data. 
 ;
 ;
+;    2016-02-15 : MGL. Remove (incomplete) definition of descatter_dir
+;                 from config file.
+;
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -210,7 +214,7 @@ pro red_setupworkdir, root_dir = root_dir $
      endif
   endif else begin
      if keyword_set(stockholm) then begin
-        search_dir = "/mnt/sand??/"
+        search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/"]
      endif else begin
          if ~strmatch(root_dir,'*/') then root_dir += '/'
         search_dir = root_dir
@@ -220,7 +224,8 @@ pro red_setupworkdir, root_dir = root_dir $
          found_dir = search_dir
          Nfound = 1
      ENDIF ELSE $
-       found_dir = file_search(search_dir+date, count = Nfound)
+       found_dir = file_search(search_dir+date[0], count = Nfound)
+     
   endelse
   
   if Nfound eq 1 then begin
@@ -515,13 +520,6 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, ';; This is how far we should be able to run unsupervised'
   printf, Slun, 'stop'          
   printf, Slun, ''
-
-  print, 'Descatter (not implemented yet)'
-  printf, Clun, '#'
-  printf, Clun, '# --- 8542 descatter'
-  printf, Clun, '#'
-  printf, Clun, '#descatter_dir = '
-  printf, Clun, '#'
 
   printf, Slun, 'a -> fitgains, npar = 2, res=res' 
   printf, Slun, 'If you need per-pixel reflectivities for your analysis'

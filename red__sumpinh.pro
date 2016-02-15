@@ -70,6 +70,9 @@
 ;   2013-09-04 : MGL. Store also in floating point. This is the
 ;                version used in red::pinholecalib.pro.
 ; 
+;   2016-02-15 : MGL. Use loadbackscatter.
+; 
+; 
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , descatter = descatter $
@@ -164,39 +167,38 @@ pro red::sumpinh, nthreads = nthreads $
 
         ;; Descatter data?
         if(keyword_set(descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-           if(firsttime) then begin
+;           if(firsttime) then begin
               
-              ;; This code does not seem to know what prefilter we are
-              ;; using! (Unless that knowledge is in descatter_dir.)
-
-              descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
-              descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
-
-;           ptf = self.descatter_dir+ '/' + tcam + '.psf.f0'
-;           prf = self.descatter_dir+ '/' + rcam + '.psf.f0'
-;           pwf = self.descatter_dir+ '/' + wcam + '.psf.f0'
-;           btf = self.descatter_dir+ '/' + tcam + '.backgain.f0'
-;           brf = self.descatter_dir+ '/' + rcam + '.backgain.f0'
-;           bwf = self.descatter_dir+ '/' + wcam + '.backgain.f0'
-              
-              if file_test(descatter_psf_name) and file_test(descatter_bgain_name) then begin
-                 Psft = f0(descatter_psf_name)
-                 bgt = f0(descatter_bgain_name)
-                 et = 1
-              endif else et = 0
-;           if(file_test(prf) and file_test(brf)) then begin
-;              Psfr = f0(prf)
-;              bgr = f0(brf)
-;              er = 1
-;           endif else er = 0
-;           if(file_test(pwf) and file_test(bwf)) then begin
-;              Psfw = f0(pwf)
-;              bgw = f0(bwf)
-;              ew = 1
-;           endif else ew = 0
+              self -> loadbackscatter, cam, pref, bgt, Psft
+              et = 1
+;              descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
+;              descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
+;
+;;           ptf = self.descatter_dir+ '/' + tcam + '.psf.f0'
+;;           prf = self.descatter_dir+ '/' + rcam + '.psf.f0'
+;;           pwf = self.descatter_dir+ '/' + wcam + '.psf.f0'
+;;           btf = self.descatter_dir+ '/' + tcam + '.backgain.f0'
+;;           brf = self.descatter_dir+ '/' + rcam + '.backgain.f0'
+;;           bwf = self.descatter_dir+ '/' + wcam + '.backgain.f0'
+;              
+;              if file_test(descatter_psf_name) and file_test(descatter_bgain_name) then begin
+;                 Psft = f0(descatter_psf_name)
+;                 bgt = f0(descatter_bgain_name)
+;                 et = 1
+;              endif else et = 0
+;;           if(file_test(prf) and file_test(brf)) then begin
+;;              Psfr = f0(prf)
+;;              bgr = f0(brf)
+;;              er = 1
+;;           endif else er = 0
+;;           if(file_test(pwf) and file_test(bwf)) then begin
+;;              Psfw = f0(pwf)
+;;              bgw = f0(bwf)
+;;              ew = 1
+;;           endif else ew = 0
               
               firsttime = 0B
-           endif
+;           endif
 
            if et then begin
               flat = red_cdescatter(flat, bgt, Psft, /verbose, nthreads = nthread)

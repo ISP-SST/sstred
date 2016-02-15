@@ -77,6 +77,11 @@
 ;
 ;      Set this to download without checking if the file already exists
 ;
+;    backscatter  : in, optional, type="integer array"
+;
+;      Set this to ["8542", "7772"] (or a subset thereof) to download
+;      backscatter gain and psf for the corresponding prefilter(s).
+;
 ; :History:
 ; 
 ;    2013-12-19 : MGL. Let red_geturl do more of the testing. And also
@@ -116,7 +121,8 @@ pro red_download, date = date $
                   , pathturret = pathturret  $
                   , turret = turret $
                   , armap = armap $
-                  , hmi = hmi
+                  , hmi = hmi $
+                  , backscatter = backscatter
 
   any = keyword_set(pig) $
         or keyword_set(turret)  $
@@ -124,7 +130,8 @@ pro red_download, date = date $
         or keyword_set(hmi)  $
         or keyword_set(r0)  $
         or keyword_set(all)  $
-        or keyword_set(logs)
+        or keyword_set(logs) $
+        or n_elements(backscatter) gt 0
 
   if ~any then logs = 1
 
@@ -134,6 +141,7 @@ pro red_download, date = date $
      turret = 1
      armap = 1
      hmi = 1
+     backscatter = ['8542', '7772']
   endif
 
   if keyword_set(logs) then begin
@@ -160,6 +168,59 @@ pro red_download, date = date $
   endelse
 
   datearr = strsplit(isodate, '-', /extract)
+
+  ;; Backscatter gain and psf
+  if n_elements(backscatter) gt 0 then begin
+     for iback = 0, n_elements(backscatter)-1 do begin
+        backscatter_dir = dir+'backscatter/'
+        file_mkdir, backscatter_dir
+        
+        downloadOK = red_geturl('http://www.isf.astro.su.se/data1/backscatter_' $
+                                + backscatter[iback] + '/sst_backscatter_' $
+                                + backscatter[iback] + '.tgz' $
+                                , dir = backscatter_dir $
+                                , overwrite = overwrite $
+                                , path = backscatter_tarfile)
+stop
+
+        if downloadOK then begin
+           spawn, 'cd '+backscatter_dir+'; tar xzf '+backscatter_tarfile
+           gfiles = file_search(backscatter_dir+'cam*.backgain.'+ backscatter[iback] + '.f0', Nfiles)
+           ;; Due to changes in the way the Sarnoff cameras are read
+           ;; out in different years, we have to make versions of the
+           ;; backscatter gain for the particular year.
+           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
+           backscatter_years = ['2013', '2014', '2015']
+           backscatter_orientations = bytarr(n_elements(backscatter_years), n_elements(backscatter_cameras))
+           backscatter_orientations[0, *] = [0, 0, 7, 0] ; 2013
+           backscatter_orientations[1, *] = [0, 0, 7, 0] ; 2014 - same as 2013
+           backscatter_orientations[2, *] = [0, 7, 7, 0] ; 2015
+           for ifile = 0, Nfiles-1 do begin
+              yfile = red_strreplace(gfiles[ifile],'.f0','_'+datearr[0]+'.f0')
+              if datearr[0] le '2012' then begin
+                 file_move, gfiles[ifile], yfile ; Just rename for 2012 and before.
+              endif else begin
+                 icam = where(backscatter_cameras eq (strsplit(gfiles[ifile],'.', /extract))[0], Ncam)
+                 iyear = where(backscatter_years eq datearr[0], Nyear)
+                 if Ncam eq 0 or Nyear eq 0 then begin
+                    print, 'red_download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
+                           + ' in year'+datearr[0]+'.'
+                    print, '               Please do "git pull" in your crispred directory and try again.'
+                    print, '               Contact crispred maintainers if this does not help.'
+                    stop
+                 endif else begin
+                    fzread, bgain, gfiles[ifile], bheader
+                    fzwrite, rotate(bgain, backscatter_orientations[iyear, icam]), yfile, bheader
+                 endelse        ; Known year and camera?
+              endelse           ; 2012 or earlier?
+           endfor               ; ifile
+
+        endif else begin
+           print, "red_download : Couldn't download the backscatter data for " + backscatter[iback]
+        endelse        
+     endfor                     ; iback
+     stop
+  endif
 
   ;; R0 log file
   if keyword_set(r0) then begin

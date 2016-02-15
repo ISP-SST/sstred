@@ -68,7 +68,12 @@
 ;
 ;    overwrite : in, optional, type=boolean
 ;
-;      Set this to download without checking if the file already exists
+;      Set this to download without checking if the file already exists.
+;
+;    backscatter  : in, optional, type="integer array"
+;
+;      Set this to ["8542", "7772"] (or a subset thereof) to download
+;      backscatter gain and psf for the corresponding prefilter(s).
 ;
 ; :History:
 ; 
@@ -100,7 +105,10 @@
 ;                 namespace.
 ;
 ;    2015-09-25 : MGL. Don't download the PIG logfile unless
-;                 asked for. 
+;                 asked for.
+;
+;    2016-02-15 : MGL. Added downloading of backscatter data files for
+;                 8542 and 7772 prefilters.
 ;
 ;-
 pro red::download, overwrite = overwrite $
@@ -113,7 +121,8 @@ pro red::download, overwrite = overwrite $
                   , pathturret = pathturret  $
                   , turret = turret $
                   , armap = armap $
-                  , hmi = hmi
+                  , hmi = hmi $
+                  , backscatter = backscatter
 
   any = keyword_set(pig) $
         or keyword_set(turret)  $
@@ -121,7 +130,8 @@ pro red::download, overwrite = overwrite $
         or keyword_set(hmi)  $
         or keyword_set(r0)  $
         or keyword_set(all)  $
-        or keyword_set(logs)
+        or keyword_set(logs) $
+        or n_elements(backscatter) gt 0
 
   if ~any then logs = 1
 
@@ -131,6 +141,7 @@ pro red::download, overwrite = overwrite $
      turret = 1
      armap = 1
      hmi = 1
+     backscatter = ['8542', '7772']
   endif
 
   if keyword_set(logs) then begin
@@ -156,6 +167,68 @@ pro red::download, overwrite = overwrite $
 ;  endelse
 
   datearr = strsplit(self.isodate, '-', /extract)
+
+
+  ;; Backscatter gain and psf
+  if n_elements(backscatter) gt 0 then begin
+
+     file_mkdir, self.descatter_dir
+
+     for iback = 0, n_elements(backscatter)-1 do begin
+        
+        downloadOK = red_geturl('http://www.isf.astro.su.se/data1/backscatter_' $
+                                + backscatter[iback] + '/sst_backscatter_' $
+                                + backscatter[iback] + '.tgz' $
+                                , dir = self.descatter_dir $
+                                , overwrite = overwrite $
+                                , path = backscatter_tarfile)
+
+        if downloadOK then begin
+           spawn, 'cd '+self.descatter_dir+'; tar xzf '+file_basename(backscatter_tarfile)
+           file_delete, self.descatter_dir+file_basename(backscatter_tarfile)
+           gfiles = file_search(self.descatter_dir+'cam*.backgain.'+ backscatter[iback] + '_2012.f0' $
+                                , count = Nfiles)
+           ;; Due to changes in the way the Sarnoff cameras are read
+           ;; out in different years, we have to make versions of the
+           ;; backscatter gain for the particular year. The files
+           ;; downloaded are for 2012 (and earlier), the
+           ;; backscatter_orientations matrix defined below has the
+           ;; value of the parameter needed to make the rotate()
+           ;; command do the needed transformation for 2013 and later.
+           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
+           backscatter_years = ['2013', '2014', '2015']
+           backscatter_orientations = bytarr(n_elements(backscatter_years) $
+                                             , n_elements(backscatter_cameras))
+           backscatter_orientations[0, *] = [0, 0, 7, 0] ; 2013
+           backscatter_orientations[1, *] = [0, 0, 7, 0] ; 2014 - same as 2013
+           backscatter_orientations[2, *] = [0, 7, 7, 0] ; 2015
+           for ifile = 0, Nfiles-1 do begin
+              yfile = red_strreplace(gfiles[ifile],'_2012','_'+datearr[0])
+              if datearr[0] lt '2012' then begin
+                 file_copy, gfiles[ifile], yfile ; Just copy for before 2012.
+              endif else if datearr[0] gt '2012' then begin
+                 icam = where(backscatter_cameras $
+                              eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
+                 iyear = where(backscatter_years eq datearr[0], Nyear)
+                 if Ncam eq 0 or Nyear eq 0 then begin
+                    print, 'red_download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
+                           + ' in year'+datearr[0]+'.'
+                    print, '               Please do "git pull" in your crispred directory and try again.'
+                    print, '               Contact crispred maintainers if this does not help.'
+                    stop
+                 endif else begin
+                    fzread, bgain, gfiles[ifile], bheader
+                    if n_elements(bheader) eq 0 then bheader = ' '
+                    fzwrite, rotate(bgain, backscatter_orientations[iyear, icam]), yfile, bheader
+                 endelse        ; Known year and camera?
+              endif             ; 2012 or earlier?
+           endfor               ; ifile
+
+        endif else begin
+           print, "red_download : Couldn't download the backscatter data for " + backscatter[iback]
+        endelse        
+     endfor                     ; iback
+  endif
 
   ;; R0 log file
   if keyword_set(r0) then begin

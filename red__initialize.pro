@@ -44,6 +44,7 @@
 ;
 ;   2014-10-16 : MGL. Set up for Coyote graphics.
 ;
+;   2016-02-15 : MGL. Make descatter_dir local.
 ;-
 pro red::initialize, filename
                                 
@@ -92,9 +93,9 @@ pro red::initialize, filename
             IF strmid(self.root_dir, strlen(self.root_dir)-1) NE '/' THEN $
               self.root_dir += '/'
         end
-        'descatter_dir': begin
-           self.descatter_dir = (strsplit(line,' =',/extract))[1] ; extract value
-        end
+;        'descatter_dir': begin
+;           self.descatter_dir = (strsplit(line,' =',/extract))[1] ; extract value
+;        end
 ;        'dark_dir': begin
 ;           self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
 ;        end
@@ -189,7 +190,7 @@ pro red::initialize, filename
      if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then self.prefilter_dir = self.root_dir + self.prefilter_dir
      if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
      if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then self.polcal_dir = self.root_dir + self.polcal_dir
-     if(strmid(self.descatter_dir, 0, 1) NE '/' AND strlen(self.descatter_dir) gt 0) then self.descatter_dir = self.root_dir + self.descatter_dir
+;     if(strmid(self.descatter_dir, 0, 1) NE '/' AND strlen(self.descatter_dir) gt 0) then self.descatter_dir = self.root_dir + self.descatter_dir
   endif
   if(strlen(self.telescope_d) eq 0) then self.telescope_d = '0.970'
   print, 'red::initialize : telescope_d = '+self.telescope_d 
@@ -211,10 +212,10 @@ pro red::initialize, filename
   print, 'red::initialize : pinhole_spacing = '+strtrim(self.pinhole_spacing, 2)
 
   ;; check available fields
-  if(self.descatter_dir eq '') then begin
-     print, 'red::initialize : WARNING : descatter_dir is undefined!'
-     self.dodescatter = 0B
-  endif
+;  if(self.descatter_dir eq '') then begin
+;     print, 'red::initialize : WARNING : descatter_dir is undefined!'
+;     self.dodescatter = 0B
+;  endif
 ;  if(self.dark_dir eq '') then begin
   IF ~ptr_valid(self.dark_dir) then begin
      print, 'red::initialize : WARNING : dark_dir is undefined!'
@@ -268,6 +269,7 @@ pro red::initialize, filename
   ;; Fields that depend on fields defined above:
   self.log_dir = self.out_dir+'/downloads/sstlogs/'
   self.telog = self.log_dir+'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)+'_final'
+  self.descatter_dir = self.out_dir+'/downloads/backscatter/'
 
 
 

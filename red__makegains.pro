@@ -66,6 +66,9 @@
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ; 
+;   2016-02-15 : MGL. Use loadbackscatter.
+; 
+; 
 ; 
 ;-
 pro red::makegains, descatter = descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize
@@ -101,13 +104,14 @@ pro red::makegains, descatter = descatter, nthreads = nthreads, cam = cam, pref 
                                 ;
      if(keyword_set(descatter)) then begin
         if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
-           psff = self.descatter_dir+'/'+tmp[0]+'.psf.f0'
-           bgf = self.descatter_dir+'/'+tmp[0]+'.backgain.f0'
-           if(file_test(psff) AND file_test(bgf)) then begin
-              psf = f0(psff)
-              bg = f0(bgf)
-              flat = red_cdescatter(flat, bg, psf, nthreads = nthreads, verbose = 1)
-           endif
+           self -> loadbackscatter, tmp[0], tmp[1], bg, psf
+;           psff = self.descatter_dir+'/'+tmp[0]+'.psf.f0'
+;           bgf = self.descatter_dir+'/'+tmp[0]+'.backgain.f0'
+;           if(file_test(psff) AND file_test(bgf)) then begin
+;              psf = f0(psff)
+;              bg = f0(bgf)
+           flat = red_cdescatter(flat, bg, psf, nthreads = nthreads, verbose = 1)
+;           endif
         endif
      endif
 
