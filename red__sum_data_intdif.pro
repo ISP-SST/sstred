@@ -51,9 +51,9 @@
 ;   
 ;      Don't do back-scatter compensation.
 ;   
+;   all : in, optional, type=boolean
 ;   
-;   
-; 
+;      Process all data sets.
 ; 
 ; :History:
 ;
@@ -70,11 +70,19 @@
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
 ; 
+;   2016-02-16 : MGL. New keyword "all".
+; 
 ;
 ;-
-pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, $
-                          verbose = verbose, overwrite=overwrite, $
-                          no_descatter = no_descatter, show=show, LINK_DIR = link_dir
+pro red::sum_data_intdif, cam = cam $
+                          , t1 = t1 $
+                          , nthreads = nthreads $
+                          , pref = pref $
+                          , verbose = verbose, overwrite=overwrite $
+                          , no_descatter = no_descatter $
+                          , show = show $
+                          , link_dir = link_dir $
+                          , all = all
 
   inam = 'red::sum_data_intdif : '
   
@@ -90,7 +98,7 @@ pro red::sum_data_intdif, cam = cam, t1 = t1, nthreads = nthreads, pref = pref, 
       print, inam + 'ERROR: No data found - did you run link_data?'
       if(debug) then stop else return
   ENDIF
-  IF nd GT 1 THEN BEGIN
+  IF nd GT 1 and ~keyword_set(all) THEN BEGIN
       FOR ii = 0, nd-1 DO print, red_stri(ii)+' -> '+ $
                                  file_basename(dirs[ii])
 
