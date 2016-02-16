@@ -80,7 +80,7 @@
 ;   2015-04-20 : MGL. Don't try to average if there's only a single
 ;                state.  
 ;  
-;
+;   2016-02-16 : MGL. The pref keyword had no effect, fixed now.
 ;
 ;   TODO:  This routine is not particularly efficient, should be tweaked/optimized.
 ;
@@ -144,7 +144,7 @@ PRO red::getalignclips_new, thres = thres $
      if max(indx) eq -1 then begin
         print, inam+' : WARNING : Keyword pref does not match any pinhole file names: ', pref
         return
-     endif
+     endif else prefilters = prefilters[indx]
   endif
   Npref = n_elements(prefilters)
 
