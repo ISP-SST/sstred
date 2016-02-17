@@ -148,7 +148,8 @@
 ;
 ;    2016-02-17 : MGL. Remove keywords newgain and outformat from
 ;                 prepmomfbd call. Add quotes around the date in the
-;                 same call.
+;                 same call. Discussion about fitgais in doit.pro is
+;                 now proper IDL comments.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -542,13 +543,16 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, 'stop'          
   printf, Slun, ''
 
+  printf, Slun, '; The fitgais step requires the user to look at the fit and determine'
+  printf, Slun, '; whether npar=3 or npar=4 is needed.'
   printf, Slun, 'a -> fitgains, npar = 2, res=res' 
-  printf, Slun, 'If you need per-pixel reflectivities for your analysis'
-  printf, Slun, '(e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-  printf, Slun, 'keyword:'
+  printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+  printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+  printf, Slun, '; keyword:'
   printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-  printf, Slun, 'However, running without /fit_reflectivity is safer. In should not'
-  printf, Slun, 'be used for chromospheric lines like 6563 and 8542.'
+  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+  printf, Slun, ''
 
   for ipref = 0, Nprefilters-1 do begin
      if long(prefilters[ipref]) gt 7700 then maybedescatter = '' else maybedescatter = ', /no_descatter'
