@@ -449,8 +449,8 @@ pro red_setupworkdir, root_dir = root_dir $
 
      for ipref = 0, Npol-1 do begin
         printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"'"
-        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+", nthreads=" $
-             + strtrim(Nthreads, 2)+"'"
+        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
+             + strtrim(Nthreads, 2)
      endfor                     ; ipref
   
   endif else begin
