@@ -47,6 +47,10 @@
 ;   
 ;    nthreads : 
 ;   
+;   all : in, optional, type=boolean
+;   
+;      Process all data sets.
+;   
 ;   
 ;   
 ; 
@@ -58,12 +62,15 @@
 ;                  if SUMLC is given, don't recompute the gain and use links
 ;
 ;   2015-05-07: MGL. With a *, run all directories.
+; 
+;   2016-02-17 : MGL. New keyword "all".
 ;
 ;
 ;-
-pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, debug = debug, $
-                             cam = cam, min=min, max=max, bad=bad, smooth=smooth, psfw = psfw, $
-                             preserve = preserve, scan = scan, smallscale = smallscale
+pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, debug = debug $
+                             , cam = cam, min=min, max=max, bad=bad, smooth=smooth, psfw = psfw $
+                             , preserve = preserve, scan = scan, smallscale = smallscale $
+                             , all = all
 
   inam = 'red::make_intdif_gains3 : '
   if(n_elements(timeaver) eq 0) then timeaver = 1L
@@ -81,7 +88,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      print, inam + 'You should run red::sum_data_intdif first! -> returning'
      return
   endif
-  if(count gt 1) then begin
+  if(count gt 1) and ~keyword_set(all) then begin
      for ii = 0L, count -1 do print, red_stri(ii)+' -> '+dirs[ii]
      idx = ''
      read, idx, prom = inam+'Select folder (* for all of them): '
