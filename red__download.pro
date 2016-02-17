@@ -110,6 +110,9 @@
 ;    2016-02-15 : MGL. Added downloading of backscatter data files for
 ;                 8542 and 7772 prefilters.
 ;
+;    2016-02-17 : MGL. Use file name provided by red::loadbackscatter
+;                 rather than constructiong one.
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
@@ -203,23 +206,31 @@ pro red::download, overwrite = overwrite $
            backscatter_orientations[1, *] = [0, 0, 7, 0] ; 2014 - same as 2013
            backscatter_orientations[2, *] = [0, 7, 7, 0] ; 2015
            for ifile = 0, Nfiles-1 do begin
-              yfile = red_strreplace(gfiles[ifile],'_2012','_'+datearr[0])
+              ;yfile = red_strreplace(gfiles[ifile],'_2012','_'+datearr[0])
+
               if datearr[0] lt '2012' then begin
-                 file_copy, gfiles[ifile], yfile ; Just copy for before 2012.
+                 self -> loadbackscatter, backscatter_cameras[icam], backscatter[iback] $
+                                          , bgfile = bgfile
+                 file_copy, gfiles[ifile], bgfile ; Just copy for before 2012.
               endif else if datearr[0] gt '2012' then begin
                  icam = where(backscatter_cameras $
                               eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
                  iyear = where(backscatter_years eq datearr[0], Nyear)
                  if Ncam eq 0 or Nyear eq 0 then begin
-                    print, 'red_download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
+                    print, 'red::download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
                            + ' in year'+datearr[0]+'.'
                     print, '               Please do "git pull" in your crispred directory and try again.'
                     print, '               Contact crispred maintainers if this does not help.'
                     stop
                  endif else begin
                     fzread, bgain, gfiles[ifile], bheader
-                    if n_elements(bheader) eq 0 then bheader = ' '
-                    fzwrite, rotate(bgain, backscatter_orientations[iyear, icam]), yfile, bheader
+                    ;if n_elements(bheader) eq 0 then bheader = ' '
+                    ;fzwrite, rotate(bgain, backscatter_orientations[iyear, icam]), yfile, bheader
+
+                    self -> loadbackscatter, backscatter_cameras[icam], backscatter[iback] $
+                                             , rotate(bgain, backscatter_orientations[iyear, icam]) $
+                                             , /write
+
                  endelse        ; Known year and camera?
               endif             ; 2012 or earlier?
            endfor               ; ifile
