@@ -102,11 +102,23 @@
 ;                new keyword no_descatter.
 ;
 ;-
-pro red::prepmomfbd, wb_states = wb_states, numpoints = numpoints, $
-                     modes = modes, date_obs = date_obs, state = state, no_descatter = no_descatter, $
-                     global_keywords = global_keywords, unpol = unpol, skip = skip, $
-                     pref = pref, escan = escan, div = div, nremove = nremove, $
-                     oldgains = oldgains, nf = nfac, weight = weight, maxshift=maxshift
+pro red::prepmomfbd, wb_states = wb_states $
+                     , numpoints = numpoints $
+                     , modes = modes $
+                     , date_obs = date_obs $
+                     , state = state $
+                     , no_descatter = no_descatter $
+                     , global_keywords = global_keywords $
+                     , unpol = unpol $
+                     , skip = skip $
+                     , pref = pref $
+                     , escan = escan $
+                     , div = div $
+                     , nremove = nremove $
+                     , oldgains = oldgains $
+                     , nf = nfac $
+                     , weight = weight $
+                     , maxshift=maxshift
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
