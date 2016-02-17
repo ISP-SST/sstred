@@ -146,6 +146,9 @@
 ;                 backscatter data is not available for the cameras in
 ;                 use.
 ;
+;    2016-02-17 : MGL. Remove keywords newgain and outformat from
+;                 prepmomfbd call. 
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -559,8 +562,8 @@ pro red_setupworkdir, root_dir = root_dir $
      endif else begin
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
-     printf, Slun, "a -> prepmomfbd, /newgains, /wb_states, date_obs = " + date_momfbd $
-             + ", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[ipref]+"'"
+     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = " + date_momfbd $
+             + ", numpoints = '88', pref = '"+prefilters[ipref]+"'"
   endfor
 
 
