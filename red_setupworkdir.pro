@@ -147,7 +147,8 @@
 ;                 use.
 ;
 ;    2016-02-17 : MGL. Remove keywords newgain and outformat from
-;                 prepmomfbd call. 
+;                 prepmomfbd call. Add quotes around the date in the
+;                 same call.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -562,8 +563,8 @@ pro red_setupworkdir, root_dir = root_dir $
      endif else begin
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
-     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = " + date_momfbd $
-             + ", numpoints = '88', pref = '"+prefilters[ipref]+"'"
+     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
+             + "', numpoints = '88', pref = '"+prefilters[ipref]+"'"
   endfor
 
 
