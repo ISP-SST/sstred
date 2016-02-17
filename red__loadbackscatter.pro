@@ -44,40 +44,86 @@
 ;
 ;       The name of the backscatter psf file, if existing.
 ;
+;    write_gain : in, optional, type=boolean
 ;
+;       Normally, loadbackscatter reads the files. With /write_gain, it
+;       writes instead the backgain provided in bgain.
 ;
 ;
 ; :History:
 ; 
 ;     2016-02-15 : MGL. First version.
 ;
-;
+;     2016-02-17 : MGL. New keyword "write_gain". Only read files if
+;                  parameters bgain (and bpsf) are present, otherwise
+;                  just construct the file names.
 ;
 ;-
 pro red::loadbackscatter, cam, pref, bgain, bpsf $
                           , bgfile = bgfile $
-                          , bpfile = bpfile
+                          , bpfile = bpfile $
+                          , write_gain = write_gain
 
   year = (strsplit(self.isodate, '-', /extract))[0]
   
   bgfile = self.descatter_dir + '/' + cam + '.backgain.'+pref+'_'+year+'.f0'
   bpfile = self.descatter_dir + '/' + cam + '.psf.'+pref+'.f0'
   
-  if ~file_test(bgfile) or ~file_test(bpfile) then self -> download, backscatter = pref
+  if keyword_set(write_gain) then begin
 
-  if file_test(bgfile) and file_test(bpfile) then begin
-  
-     print, 'Loading backscatter data for ' + cam + ', ' + pref
-     bgain = f0(bgfile)
-     bpsf  = f0(bpfile)
+     ;; Only write the gain file if possible.
+
+     if size(bgain, /n_dim) lt 1 then begin
+        print, 'red::loadbackscatter : Cannot write the provided bgain.'
+        help, bgain
+        stop
+     endif else begin
+        fzwrite, bgain, bgfile, ' '
+     endelse
 
   endif else begin
+     
+     ;; Construct file names
 
-     print, 'Backscatter data not available for ' + cam + ', ' + pref
-     stop
+     if ~file_test(bgfile) or ~file_test(bpfile) then self -> download, backscatter = pref
+     
+     if arg_present(bgain) then begin
 
-     bgfile = ''
-     bpfile = ''
+        ;; Read the gain if wanted
 
-  endelse
+        if file_test(bgfile) then begin
+           
+           print, 'red::loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
+           bgain = f0(bgfile)
+           
+        endif else begin
+           
+           print, 'red::loadbackscatter : Backscatter gain not available for ' + cam + ', ' + pref
+           print, bgfile
+           stop
+           
+        endelse                 ; exists
+     endif                      ; wants gain
+
+   
+     if arg_present(bpsf) then begin
+
+        ;; Read the psf if wanted
+
+        if file_test(bpfile) then begin
+           
+           print, 'red::loadbackscatter : Loading backscatter psf for ' + cam + ', ' + pref
+           bpsf  = f0(bpfile)
+           
+        endif else begin
+           
+           print, 'red::loadbackscatter : Backscatter psf not available for ' + cam + ', ' + pref
+           print, bpfile
+           stop
+           
+        endelse                 ; exists
+     endif                      ; wants psf
+
+  endelse                  
+
 end
