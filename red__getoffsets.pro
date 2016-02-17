@@ -104,7 +104,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
      pref = (strsplit(tstat[ii], '.',/extract))[0]
      
      IF(~file_test(self.out_dir+'/calib/align_clips.'+pref+'.sav')) THEN BEGIN
-        print, inam + ' : ERROR -> align clips file not found'
+        print, inam + ' : ERROR -> align clips file not found for '+pref
         print, inam + ' :       -> you must execute red::getalignclips first!'
         continue
      ENDIF ELSE restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
