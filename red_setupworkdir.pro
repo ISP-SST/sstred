@@ -137,10 +137,14 @@
 ;    2015-09-01 : MGL. Changed faulty text output when handling prefilter
 ;                 scan data. 
 ;
-;
 ;    2016-02-15 : MGL. Remove (incomplete) definition of descatter_dir
 ;                 from config file.
 ;
+;    2016-02-16 : MGL. Don't use /descatter keyword. Call sumpinh,
+;                 polcalcube, and polcal separately for prefilters so
+;                 user can easily add /no_descatter if 7772
+;                 backscatter data is not available for the cameras in
+;                 use.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -391,7 +395,9 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
         printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
-        printf, Slun, 'a -> sumpinh,/pinhole_align'
+        for ipref = 0, Nprefilters-1 do begin
+           printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
+        endfor
      endif else begin
         pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -400,7 +406,9 @@ pro red_setupworkdir, root_dir = root_dir $
               printf, Clun, 'pinh_dir = '+red_strreplace(pinhsubdirs[j], root_dir, '')
               printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
-              printf, Slun, 'a -> sumpinh,/pinhole_align'
+              for ipref = 0, Nprefilters-1 do begin
+                 printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
+              endfor
            endif
         endfor
      endelse
@@ -410,36 +418,42 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '#'
   printf, Clun, '# --- Polcal'
   printf, Clun, '#'
-  Npol = 0
-  polcaldirs = file_search(root_dir+'/polc*/*', count = Ndirs, /fold)
-  for i = 0, Ndirs-1 do begin
-     polcalsubdirs = file_search(polcaldirs[i]+'/crisp*', count = Nsubdirs, /fold)
-     if Nsubdirs gt 0 then begin
-        printf, Clun, 'polcal_dir = '+red_strreplace(polcaldirs[i], root_dir, '')
-        Npol += 1
-        printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-        printf, Slun, 'a -> sumpolcal, /check'
-     endif else begin
-        polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
-        for j = 0, Nsubdirs-1 do begin
-           polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
-           if Nsubsubdirs gt 0 then begin
-              printf, Clun, 'polcal_dir = '+red_strreplace(polcalsubdirs[j], root_dir, '')
-              Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-              printf, Slun, 'a -> sumpolcal, /check' 
-           endif
-        endfor
-     endelse
-  endfor
-  ;; Find out the prefilters for which polcal needs to be run
+;  Npol = 0
+  polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
   if Npol gt 0 then begin
-     printf, Slun, 'a -> polcalcube' 
-     printf, Slun, "spawn, 'ls polcal_cubes/* | grep 3d.f | cut -d. -f 2 | sort| uniq', polprefs"
-     printf, Slun, "for i = 0, n_elements(polprefs)-1 do a -> polcal, pref=polprefs[i], nthreads="+strtrim(Nthreads, 2)
-  endif
+     polprefs = file_basename(polcaldirs)
+     for i = 0, Npol-1 do begin
+        polcalsubdirs = file_search(polcaldirs[i]+'/crisp*', count = Nsubdirs, /fold)
+        if Nsubdirs gt 0 then begin
+           printf, Clun, 'polcal_dir = '+red_strreplace(polcaldirs[i], root_dir, '')
+;        Npol += 1
+           printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+           printf, Slun, 'a -> sumpolcal, /check'
+        endif else begin
+           polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
+           for j = 0, Nsubdirs-1 do begin
+              polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
+              if Nsubsubdirs gt 0 then begin
+                 printf, Clun, 'polcal_dir = '+red_strreplace(polcalsubdirs[j], root_dir, '')
+;              Npol += 1
+                 printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+                 printf, Slun, 'a -> sumpolcal, /check' 
+              endif
+           endfor               ; j
+        endelse
+     endfor                     ; i
 
+     for ipref = 0, Npol-1 do begin
+        printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"'"
+        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+", nthreads=" $
+             + strtrim(Nthreads, 2)+"'"
+     endfor                     ; ipref
+  
+  endif else begin
+     polprefs = ''
+  endelse                       ; Npol
 
+  
   print, 'Prefilter scan'
   printf, Clun, '#'
   printf, Clun, '# --- Prefilter scan'
@@ -465,6 +479,7 @@ pro red_setupworkdir, root_dir = root_dir $
   ;; If we implement dealing with prefilter scans in the pipeline,
   ;; here is where the command should be written to the script file.
 
+  
   print, 'Science'
   printf, Clun, '#'
   printf, Clun, '# --- Science data'
@@ -499,14 +514,16 @@ pro red_setupworkdir, root_dir = root_dir $
   if Nsci gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr[1:*], "','")+"']"
 
   printf, Slun, 'a -> link_data' 
-
-  if Npol gt 0 then begin
-     printf, Slun, 'a -> prepflatcubes          ; For polarimetry data sets' 
-  endif
-  if Npol ne Nprefilters then begin
-     printf, Slun, 'a -> prepflatcubes_lc4      ; For non-polarimetry data sets' 
-  endif
-
+  
+  for ipref = 0, Nprefilters-1 do begin
+     if total(prefilters[ipref] eq polprefs) gt 0 then begin
+        printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
+     endif else begin
+        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'"
+     endelse
+  endfor                        ; ipref
+  
+  
 
   printf, Slun, ''
   printf, Slun, 'a -> getalignclips_new' 
@@ -529,21 +546,21 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, 'However, running without /fit_reflectivity is safer. In should not'
   printf, Slun, 'be used for chromospheric lines like 6563 and 8542.'
 
-  for iline = 0, Nprefilters-1 do begin
-     if long(prefilters[iline]) gt 7700 then maybedescatter = ', /descatter' else maybedescatter = ''
-     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[iline] $
+  for ipref = 0, Nprefilters-1 do begin
+     if long(prefilters[ipref]) gt 7700 then maybedescatter = '' else maybedescatter = ', /no_descatter'
+     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
              + "', cam = 'Crisp-T', /verbose, /show, /overwrite" + maybedescatter
-     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[iline] $
+     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
              + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybedescatter
-     printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[iline] $
+     printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
              + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale"
-     if strmid(prefilters[iline], 0, 2) eq '63' then begin
-        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[iline]+"', shift=-0.5"
+     if strmid(prefilters[ipref], 0, 2) eq '63' then begin
+        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
      endif else begin
-        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[iline]+"'"
+        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
      printf, Slun, "a -> prepmomfbd, /newgains, /wb_states, date_obs = " + date_momfbd $
-             + ", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[iline]+"'"
+             + ", numpoints = '88', outformat = 'MOMFBD', pref = '"+prefilters[ipref]+"'"
   endfor
 
 
