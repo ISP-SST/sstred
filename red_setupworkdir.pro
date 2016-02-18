@@ -152,7 +152,9 @@
 ;                 now proper IDL comments.
 ;
 ;    2016-02-18 : MGL. Add a commented-out /all to sum_data_intdif and
-;                 make_intdif_gains3 calls.
+;                 make_intdif_gains3 calls. Add a commented-out
+;                 /no_descatter to some method calls involving the
+;                 7772 prefilter.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -388,9 +390,19 @@ pro red_setupworkdir, root_dir = root_dir $
   endif else begin
      prefilters = prefilters[1:*]
   endelse
+  
+  ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
+  ;; some of the method calls, so add it commented out. (This if
+  ;; because for some years we don't have properly prepared
+  ;; backgains and psfs for the relevant cameras.)
+  maybe_nodescatter = strarr(Nprefilters)
+  indx7772 = where(prefilters eq '7772', N7772)
+  if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
 
-  printf, Slun, 'a -> makegains' 
-
+  for ipref = 0, Nprefilters-1 do begin
+     printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
+             + "' " + maybe_nodescatter[ipref]
+  endfor
 
   print, 'Pinholes'
   printf, Clun, '#'
@@ -404,7 +416,8 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
         for ipref = 0, Nprefilters-1 do begin
-           printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
+           printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
+                   + maybe_nodescatter[ipref]
         endfor
      endif else begin
         pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -415,7 +428,8 @@ pro red_setupworkdir, root_dir = root_dir $
               printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
               for ipref = 0, Nprefilters-1 do begin
-                 printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
+                 printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
+                         + maybe_nodescatter[ipref]
               endfor
            endif
         endfor
@@ -452,7 +466,8 @@ pro red_setupworkdir, root_dir = root_dir $
      endfor                     ; i
 
      for ipref = 0, Npol-1 do begin
-        printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"'"
+        printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
+                         + maybe_nodescatter[ipref]
         printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
              + strtrim(Nthreads, 2)
      endfor                     ; ipref
@@ -525,9 +540,11 @@ pro red_setupworkdir, root_dir = root_dir $
   
   for ipref = 0, Nprefilters-1 do begin
      if total(prefilters[ipref] eq polprefs) gt 0 then begin
-        printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
+        printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
+                         + maybe_nodescatter[ipref]
      endif else begin
-        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'"
+        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
+                         + maybe_nodescatter[ipref]
      endelse
   endfor                        ; ipref
   
@@ -558,11 +575,10 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, ''
 
   for ipref = 0, Nprefilters-1 do begin
-     if long(prefilters[ipref]) gt 7700 then maybedescatter = '' else maybedescatter = ', /no_descatter'
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-             + "', cam = 'Crisp-T', /verbose, /show, /overwrite" + maybedescatter + "; /all"
+             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + "; /all"
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-             + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybedescatter + "; /all"
+             + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybe_nodescatter[ipref] + "; /all"
      printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
              + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
      if strmid(prefilters[ipref], 0, 2) eq '63' then begin
@@ -571,7 +587,8 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
      printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
-             + "', numpoints = '88', pref = '"+prefilters[ipref]+"'"
+             + "', numpoints = '88', pref = '"+prefilters[ipref]+"'" $
+             + maybe_nodescatter[ipref]
   endfor
 
 
