@@ -154,7 +154,8 @@
 ;    2016-02-18 : MGL. Add a commented-out /all to sum_data_intdif and
 ;                 make_intdif_gains3 calls. Add a commented-out
 ;                 /no_descatter to some method calls involving the
-;                 7772 prefilter.
+;                 7772 prefilter. Remove duplicate wavelengths in the
+;                 lists given as comments to the setflatdir calls.
 ;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
@@ -346,6 +347,10 @@ pro red_setupworkdir, root_dir = root_dir $
               wavelengths[idir] = strjoin(wls, ' ')
            endif
         endfor
+        ;; Remove duplicate wavelengths
+        wavelengths = strsplit(strjoin(wavelengths,' '),' ', /extract)
+        wavelengths = wavelengths[uniq(wavelengths, sort(wavelengths))]
+        wavelengths = strjoin(wavelengths,' ')
         ;; Print to script file
         printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[i], root_dir, '') $
                 + '"  ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
@@ -370,6 +375,10 @@ pro red_setupworkdir, root_dir = root_dir $
                     wavelengths[idir] = strjoin(wls, ' ')
                  endif
               endfor
+              ;; Remove duplicate wavelengths
+              wavelengths = strsplit(strjoin(wavelengths,' '),' ', /extract)
+              wavelengths = wavelengths[uniq(wavelengths, sort(wavelengths))]
+              wavelengths = strjoin(wavelengths,' ')
               ;; Print to script file
               printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatsubdirs[j], root_dir, '') $
                       + '" ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
