@@ -151,6 +151,9 @@
 ;                 same call. Discussion about fitgais in doit.pro is
 ;                 now proper IDL comments.
 ;
+;    2016-02-18 : MGL. Add a commented-out /all to sum_data_intdif and
+;                 make_intdif_gains3 calls.
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -557,11 +560,11 @@ pro red_setupworkdir, root_dir = root_dir $
   for ipref = 0, Nprefilters-1 do begin
      if long(prefilters[ipref]) gt 7700 then maybedescatter = '' else maybedescatter = ', /no_descatter'
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-             + "', cam = 'Crisp-T', /verbose, /show, /overwrite" + maybedescatter
+             + "', cam = 'Crisp-T', /verbose, /show, /overwrite" + maybedescatter + "; /all"
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-             + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybedescatter
+             + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybedescatter + "; /all"
      printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
-             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale"
+             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
      if strmid(prefilters[ipref], 0, 2) eq '63' then begin
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
      endif else begin
