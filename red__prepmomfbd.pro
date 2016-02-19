@@ -101,6 +101,9 @@
 ;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
 ;
+;   2016-02-15 : MGL. Get just the file names from
+;                red_loadbackscatter, do not read the files.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -261,7 +264,7 @@ pro red::prepmomfbd, wb_states = wb_states $
            printf, lun, '    DARK_NUM=0000001'
            printf, lun, '    ' + wclip
            if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-              self -> loadbackscatter, self.camwbtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+              self -> loadbackscatter, self.camwbtag, upref[pp], bgfile = bgf, bpfile = psff
 ;              psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
 ;              bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
 ;              if(file_test(psff) AND file_test(bgf)) then begin
@@ -354,7 +357,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
 
               if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                 self -> loadbackscatter, self.camttag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+                 self -> loadbackscatter, self.camttag, upref[pp], bgfile = bgf, bpfile = psff
 ;                 psff = self.descatter_dir+'/'+self.camttag+'.psf.f0'
 ;                 bgf = self.descatter_dir+'/'+self.camttag+'.backgain.f0'
 ;                 if(file_test(psff) AND file_test(bgf)) then begin
@@ -407,7 +410,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
                                 ;
               if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                 self -> loadbackscatter, self.camrtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+                 self -> loadbackscatter, self.camrtag, upref[pp], bgfile = bgf, bpfile = psff
 ;                 psff = self.descatter_dir+'/'+self.camrtag+'.psf.f0'
 ;                 bgf = self.descatter_dir+'/'+self.camrtag+'.backgain.f0'
 ;                 if(file_test(psff) AND file_test(bgf)) then begin
@@ -444,7 +447,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                  printf, lun, '    ' + wclip
                  
                  if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                    self -> loadbackscatter, self.camwbtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
+                    self -> loadbackscatter, self.camwbtag, upref[pp], bgfile = bgf, bpfile = psff
 ;                    psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
 ;                    bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
 ;                    if(file_test(psff) AND file_test(bgf)) then begin
