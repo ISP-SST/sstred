@@ -585,9 +585,9 @@ pro red_setupworkdir, root_dir = root_dir $
 
   for ipref = 0, Nprefilters-1 do begin
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + "; /all"
+             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-             + "', cam = 'Crisp-R', /verbose, /show, /overwrite" + maybe_nodescatter[ipref] + "; /all"
+             + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
      printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
              + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
      if strmid(prefilters[ipref], 0, 2) eq '63' then begin
@@ -596,7 +596,7 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
      printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
-             + "', numpoints = '88', pref = '"+prefilters[ipref]+"'" $
+             + "', numpoints = '88', pref = '"+prefilters[ipref]+"' " $
              + maybe_nodescatter[ipref]
   endfor
 
