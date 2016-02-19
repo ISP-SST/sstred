@@ -113,6 +113,9 @@
 ;    2016-02-17 : MGL. Use file name provided by red::loadbackscatter
 ;                 rather than constructiong one.
 ;
+;    2016-02-19 : MGL. Transform backscatter psf the same way as the
+;                 backscatter gain.
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
@@ -210,8 +213,10 @@ pro red::download, overwrite = overwrite $
 
               if datearr[0] lt '2012' then begin
                  self -> loadbackscatter, backscatter_cameras[icam], backscatter[iback] $
-                                          , bgfile = bgfile
+                                          , bgfile = bgfile, bpfile = bpfile
                  file_copy, gfiles[ifile], bgfile ; Just copy for before 2012.
+                 pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
+                 file_copy, pfile, bpfile ; Just copy for before 2012.
               endif else if datearr[0] gt '2012' then begin
                  icam = where(backscatter_cameras $
                               eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
@@ -223,12 +228,14 @@ pro red::download, overwrite = overwrite $
                     print, '               Contact crispred maintainers if this does not help.'
                     stop
                  endif else begin
-                    fzread, bgain, gfiles[ifile], bheader
-                    ;if n_elements(bheader) eq 0 then bheader = ' '
-                    ;fzwrite, rotate(bgain, backscatter_orientations[iyear, icam]), yfile, bheader
-
+                    ;; Read the 2012 files
+                    fzread, bgain, gfiles[ifile], gheader
+                    pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
+                    fzread, bpsf, pfile, pheader
+                    ;; Write them with the transformation given by backscatter_orientations.
                     self -> loadbackscatter, backscatter_cameras[icam], backscatter[iback] $
                                              , rotate(bgain, backscatter_orientations[iyear, icam]) $
+                                             , rotate(bpsf,  backscatter_orientations[iyear, icam]) $
                                              , /write
 
                  endelse        ; Known year and camera?
