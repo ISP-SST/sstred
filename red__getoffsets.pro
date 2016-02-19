@@ -54,6 +54,9 @@
 ;   2014-04-26 : MGL. Bugfix: lam has to be a string when written to
 ;                config file.
 ;
+;   2016-02-17 : MGL. Include prefilter info when complaining about
+;                not finding align clips file.
+;
 ;-
 pro red::getoffsets, thres = thres, state = state, pref=pref
   if(~keyword_set(thres)) then tr = 0.1 else tr = thres
