@@ -44,10 +44,11 @@
 ;
 ;       The name of the backscatter psf file, if existing.
 ;
-;    write_gain : in, optional, type=boolean
+;    write : in, optional, type=boolean
 ;
-;       Normally, loadbackscatter reads the files. With /write_gain, it
-;       writes instead the backgain provided in bgain.
+;       Normally, loadbackscatter reads the files. With /write, it
+;       writes instead the backgain and psf provided in bgain and
+;       bpsf.
 ;
 ;
 ; :History:
@@ -58,20 +59,24 @@
 ;                  parameters bgain (and bpsf) are present, otherwise
 ;                  just construct the file names.
 ;
+;     2016-02-19 : MGL. Allow to write both gain and psf.
+;
 ;-
 pro red::loadbackscatter, cam, pref, bgain, bpsf $
                           , bgfile = bgfile $
                           , bpfile = bpfile $
-                          , write_gain = write_gain
+                          , write = write
 
   year = (strsplit(self.isodate, '-', /extract))[0]
   
-  bgfile = self.descatter_dir + '/' + cam + '.backgain.'+pref+'_'+year+'.f0'
-  bpfile = self.descatter_dir + '/' + cam + '.psf.'+pref+'.f0'
+  bgfile = self.descatter_dir + '/' + cam + '.backgain.' $
+           + pref + '_' + year + '.f0'
+  bpfile = self.descatter_dir + '/' + cam + '.psf.' $
+           + pref + '_' + year + '.f0'
   
-  if keyword_set(write_gain) then begin
+  if keyword_set(write) then begin
 
-     ;; Only write the gain file if possible.
+     ;; Only write the files if possible.
 
      if size(bgain, /n_dim) lt 1 then begin
         print, 'red::loadbackscatter : Cannot write the provided bgain.'
@@ -79,6 +84,14 @@ pro red::loadbackscatter, cam, pref, bgain, bpsf $
         stop
      endif else begin
         fzwrite, bgain, bgfile, ' '
+     endelse
+
+     if size(bpsf, /n_dim) lt 1 then begin
+        print, 'red::loadbackscatter : Cannot write the provided bpsf.'
+        help, bpsf
+        stop
+     endif else begin
+        fzwrite, bpsf, bpfile, ' '
      endelse
 
   endif else begin
