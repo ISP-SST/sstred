@@ -82,7 +82,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
   
     ;; Logging
     help, /obj, self, output = selfinfo 
-    red_writelog, selfinfo = selfinfo
+    red_writelog, selfinfo = selfinfo, logfile = logfile
 
     if(n_elements(threshold) eq 0) then threshold = 0.1
     if(n_elements(refcam) eq 0) THEN refcam = 0
@@ -96,26 +96,27 @@ PRO red::pinholecalib_thi, threshold = threshold $
     if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
     ph_dir = self.out_dir+'/pinh_align/'
-    gt_dir = self.out_dir+'/gaintables/'
     ph_dir = red_strreplace(ph_dir,'//','/')
-    gt_dir = red_strreplace(gt_dir,'//','/')
     
     output_dir = self.out_dir+'/calib_thi/'
     output_dir = red_strreplace(output_dir,'//','/')
     file_mkdir, output_dir
     
     self -> getcamtags, dir = self.pinh_dir
-    camw = self.camwbtag
-    camt = self.camttag
-    camr = self.camrtag
     
-    cams = [camw, camt, camr]
-    labs = ['WB', 'NBT', 'NBR']
+    cams = [ self.camwbtag, self.camttag, self.camrtag ]    ;  TODO autodetect cameras
+    Ncams = n_elements(cams)
+    if Ncams lt 2 then begin
+        print, inam, ' : Need at least 2 cameras.'
+        red_writelog, /add, logfile = logfile, top_info_strings = ' : Need at least 2 cameras.'
+        return
+    endif
 
     ;; Selected prefilter or all prefilters?
-    fw = file_search( ph_dir + camw +'.*.pinh', count = cw)
+    fw = file_search( ph_dir + self.camwbtag +'.*.pinh', count = cw)
     if cw eq 0 then begin
         print, inam, ' : ERROR : No wideband pinholes found in ', ph_dir
+        red_writelog, /add, logfile = logfile, top_info_strings = ' : ERROR : No wideband pinholes found in ' + ph_dir
         retall
     endif
     
@@ -132,6 +133,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
         indx = where(prefilters eq pref)
         if max(indx) eq -1 then begin
             print, inam+' : WARNING : Keyword pref does not match any pinhole file names: ', pref
+            red_writelog, /add, logfile = logfile, top_info_strings = 'WARNING : Keyword pref does not match any pinhole file names: ' + pref
             return
         endif
         prefilters = prefilters(indx)
@@ -147,13 +149,9 @@ PRO red::pinholecalib_thi, threshold = threshold $
 
     for ipref = 0, Npref-1 do begin
 
-        wfiles = file_search(ph_dir + camw +'.'+prefilters[ipref]+'*.pinh', count = cw)
-        tfiles = file_search(ph_dir + camt +'.'+prefilters[ipref]+'*.pinh', count = ct)
-        rfiles = file_search(ph_dir + camr +'.'+prefilters[ipref]+'*.pinh', count = cr)
-
-        files = [ [file_search(ph_dir + camw +'.'+prefilters[ipref]+'*.pinh', count = cw)], $
-                  [file_search(ph_dir + camt +'.'+prefilters[ipref]+'*.pinh', count = ct)], $
-                  [file_search(ph_dir + camr +'.'+prefilters[ipref]+'*.pinh', count = cr)]]
+        files = [ [file_search(ph_dir + cams[0] +'.'+prefilters[ipref]+'*.pinh', count = cw)], $
+                  [file_search(ph_dir + cams[1] +'.'+prefilters[ipref]+'*.pinh', count = ct)], $
+                  [file_search(ph_dir + cams[2] +'.'+prefilters[ipref]+'*.pinh', count = cr)]]
 
 
         if (cw ne ct) or (cw ne cr) then begin
@@ -162,31 +160,26 @@ PRO red::pinholecalib_thi, threshold = threshold $
             continue
         endif
 
-        pics = fltarr(dim[0], dim[1], Ncams, cw)
-     
-        align = fltarr(3, 3, Ncams, cw)
-        clips = fltarr(4, cw)
+        align = fltarr(3, 3, cw, Ncams)
+        clips = fltarr(cw, 4)
      
         for istate = 0, cw-1 do begin
          
-            pnames = [wfiles[istate], tfiles[istate], rfiles[istate]]
-
             print, inam+' : calibrating channels:'
             common_fov = corners
-            pics[*,*,refcam,istate] = f0(files[istate,refcam])
+            ref_img = f0(files[istate,refcam])
             for icam = 0, Ncams-1 do begin
                 if icam EQ refcam then begin
                     print, ' -> '+files[istate,refcam] + ' (reference)'
                 endif else begin
                     print, ' -> '+files[istate,icam]
-                    pics[*,*,icam,istate] = f0(files[istate,icam])
+                    img = f0(files[istate,icam])
                     if max(h_init(*,*,icam)) gt 0 then begin
                         this_init = h_init(*,*,icam)
                     endif
-                    this_transform = img_align( pics[*,*,refcam,istate], pics[*,*,icam,istate], $
-                                                nref=4, h_init=this_init, threshold=threshold, verbose=verbose )
+                    this_transform = img_align( ref_img, img, nref=4, h_init=this_init, threshold=threshold, verbose=verbose )
 
-                    align(*,*,icam,istate) = this_transform
+                    align(*,*,istate,icam) = this_transform
                     h_init(*,*,icam) = temporary(this_init)
 
                     ; transform the corners of the FOV to the non-reference camera
@@ -232,33 +225,29 @@ PRO red::pinholecalib_thi, threshold = threshold $
                 endelse
             endfor
 
-            clips(0,istate) = max(common_fov([0,2],0))
-            clips(1,istate) = min(common_fov([1,3],0))
-            clips(2,istate) = max(common_fov([0,1],1))
-            clips(3,istate) = min(common_fov([2,3],1))
+            clips(istate,0) = max(common_fov([0,2],0))
+            clips(istate,1) = min(common_fov([1,3],0))
+            clips(istate,2) = max(common_fov([0,1],1))
+            clips(istate,3) = min(common_fov([2,3],1))
 
         endfor                         ; istate
 
         ; average over tunings
-        pics = round(total(pics,4)/cw)
-        align_avg = total(align,4)/cw
+        align_avg = total(align,3)/cw
         
 
         cl = intarr(4,Ncams)
-        cl(*,refcam) = [ ceil( max(clips(0,*))), $
-                          floor(min(clips(1,*))), $
-                          ceil( max(clips(2,*))), $
-                          floor(min(clips(3,*)))] + 1   ;   N.B. align_clip index is 1-based
+        cl(*,refcam) = [ ceil( max(clips(*,0))), $
+                          floor(min(clips(*,1))), $
+                          ceil( max(clips(*,2))), $
+                          floor(min(clips(*,3)))] + 1   ;   N.B. align_clip index is 1-based
 
         sx = long(max(cl(0:1,refcam)) - min(cl(0:1,refcam)) + 1) 
         sy = long(max(cl(2:3,refcam)) - min(cl(2:3,refcam)) + 1)
 
         ref_origin = [ min(cl(0:1,refcam))-1, min(cl(2:3,refcam))-1, 1 ]
 
-        xx = dindgen(sx)#replicate(1.d0, sy)
-        yy = replicate(1.d0, sx)#dindgen(sy)
-        zz = replicate(1.d0, sx, sy)
-        
+       
         indices = [ [[dindgen(sx)#replicate(1.d0, sy) + ref_origin(0)]], $
                     [[replicate(1.d0, sx)#dindgen(sy) + ref_origin(1)]], $
                     [[replicate(1.d0, sx, sy)]]]
@@ -279,7 +268,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
                 ; generate offset files
                 for istate = 0, cw-1 do begin
                 
-                    offs = reform(indices, sx*sy, 3) # align(*,*,icam,istate)
+                    offs = reform(indices, sx*sy, 3) # align(*,*,istate,icam)
                     idx = where(offs(*,2) ne 0, COMPLEMENT=idx_c)
                     if max(idx) ne -1 then begin
                         offs(idx,0) /= offs(idx,2)
@@ -288,8 +277,8 @@ PRO red::pinholecalib_thi, threshold = threshold $
                     if max(idx_c) ne -1 then offs(idx_c,0:1) = 0
                     offs = reform(offs, sx, sy, 3) 
 
-                    if align(0,0,icam,istate) lt 0 then offs = reverse(offs,1)
-                    if align(1,1,icam,istate) lt 0 then offs = reverse(offs,2)
+                    if align(0,0,istate,icam) lt 0 then offs = reverse(offs,1)
+                    if align(1,1,istate,icam) lt 0 then offs = reverse(offs,2)
 
                     offs -= indices
                     
@@ -302,14 +291,14 @@ PRO red::pinholecalib_thi, threshold = threshold $
                     endif
                     
                     if (cl(3,icam)-cl(2,icam)) lt 0 then begin
-                        offs = reverse(offs,1)
-                        offs(*,*,0) *= -1
+                        offs = reverse(offs,2)
+                        offs(*,*,1) *= -1
                     endif
 
-                    if align(0,0,icam,istate)*(cl(1,icam)-cl(0,icam)) lt 0 OR $
-                       align(1,1,icam,istate)*(cl(3,icam)-cl(2,icam)) lt 0 then begin
+                    if align(0,0,istate,icam)*(cl(1,icam)-cl(0,icam)) lt 0 OR $
+                       align(1,1,istate,icam)*(cl(3,icam)-cl(2,icam)) lt 0 then begin
                         print, inam + ' : sanity check failed - the sign of the transform does not match the align-clip.'
-                        print, align(*,*,icam,istate)
+                        print, align(*,*,istate,icam)
                         print, cl(*,icam)
                     endif
     
