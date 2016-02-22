@@ -157,6 +157,12 @@
 ;                 7772 prefilter. Remove duplicate wavelengths in the
 ;                 lists given as comments to the setflatdir calls.
 ;
+;    2016-02-22 : MGL. Use red_extractstates for getting the
+;                 prefilters from the flatdirs. Collect prefilters
+;                 from flat directories also for the case when the
+;                 camera directories are directly below the time-stamp
+;                 directories without a prefilter level in between.
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -340,21 +346,23 @@ pro red_setupworkdir, root_dir = root_dir $
         wavelengths = strarr(Nsubdirs)
         for idir = 0, Nsubdirs-1 do begin
            camdirs[idir] = (strsplit(flatsubdirs[idir],  '/',/extract,count=nn))[nn-1]
-           if camdirs[idir] eq 'Crisp-W' then rf = '3' else rf = '5'
-           spawn, "ls "+flatsubdirs[idir]+"|grep cam|wc -l", Nfiles
-           if long(Nfiles) gt 0 then begin
-              spawn, "ls "+flatsubdirs[idir]+"|grep cam|rev|cut -d. -f"+rf+"|uniq|rev", wls
+           fnames = file_search(flatsubdirs[idir]+'/cam*', count = Nfiles)
+           if Nfiles gt 0 then begin
+              red_extractstates, fnames, /basename, pref = wls
+              wls = wls[uniq(wls, sort(wls))]
               wavelengths[idir] = strjoin(wls, ' ')
-           endif
+          endif
         endfor
         ;; Remove duplicate wavelengths
         wavelengths = strsplit(strjoin(wavelengths,' '),' ', /extract)
         wavelengths = wavelengths[uniq(wavelengths, sort(wavelengths))]
         wavelengths = strjoin(wavelengths,' ')
         ;; Print to script file
-        printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[i], root_dir, '') $
+        printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[i], root_dir, '')$
                 + '"  ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
         printf, Slun, 'a -> sumflat, /check'
+        prefilters = [prefilters, (strsplit(flatdirs[i],'/',/extract, count = nn))[nn-1]]
+        Nprefilters += 1
      endif else begin
         flatsubdirs = file_search(flatdirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -368,10 +376,10 @@ pro red_setupworkdir, root_dir = root_dir $
               wavelengths = strarr(Nsubsubdirs)
               for idir = 0, Nsubsubdirs-1 do begin
                  camdirs[idir] = (strsplit(flatsubsubdirs[idir],  '/',/extract,count=nn))[nn-1]
-                 if camdirs[idir] eq 'Crisp-W' then rf = '3' else rf = '5'
-                 spawn, "ls "+flatsubsubdirs[idir]+"|grep cam|wc -l", Nfiles      
-                 if long(Nfiles) gt 0 then begin
-                    spawn, "ls "+flatsubsubdirs[idir]+"|grep cam|rev|cut -d. -f"+rf+"|uniq|rev", wls
+                 fnames = file_search(flatsubdirs[idir]+'/cam*', count = Nfiles)
+                 if Nfiles gt 0 then begin
+                    red_extractstates, fnames, /basename, pref = wls
+                    wls = wls[uniq(wls, sort(wls))]
                     wavelengths[idir] = strjoin(wls, ' ')
                  endif
               endfor
