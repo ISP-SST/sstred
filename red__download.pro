@@ -116,6 +116,9 @@
 ;    2016-02-19 : MGL. Transform backscatter psf the same way as the
 ;                 backscatter gain.
 ;
+;    2016-02-24 : MGL. Make backscatter renaming work also for years
+;                 prior to 2012. 
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
@@ -201,23 +204,24 @@ pro red::download, overwrite = overwrite $
            ;; backscatter_orientations matrix defined below has the
            ;; value of the parameter needed to make the rotate()
            ;; command do the needed transformation for 2013 and later.
-           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
-           backscatter_years = ['2013', '2014', '2015']
-           backscatter_orientations = bytarr(n_elements(backscatter_years) $
-                                             , n_elements(backscatter_cameras))
-           backscatter_orientations[0, *] = [0, 0, 7, 0] ; 2013
-           backscatter_orientations[1, *] = [0, 0, 7, 0] ; 2014 - same as 2013
-           backscatter_orientations[2, *] = [0, 7, 7, 0] ; 2015
-           for ifile = 0, Nfiles-1 do begin
-              ;yfile = red_strreplace(gfiles[ifile],'_2012','_'+datearr[0])
-
-              if datearr[0] lt '2012' then begin
-                 self -> loadbackscatter, backscatter_cameras[icam], backscatter[iback] $
-                                          , bgfile = bgfile, bpfile = bpfile
-                 file_copy, gfiles[ifile], bgfile ; Just copy for before 2012.
-                 pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
-                 file_copy, pfile, bpfile ; Just copy for before 2012.
-              endif else if datearr[0] gt '2012' then begin
+           if datearr[0] ne '2012' then begin
+              backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
+              backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15', '16']
+              backscatter_orientations = bytarr(n_elements(backscatter_years) $
+                                                , n_elements(backscatter_cameras))
+              ;; Change orientations here if needed. Let's hope the
+              ;; orientation never changed *during* an observation
+              ;; season...
+              backscatter_orientations[0, *] = [0, 0, 0, 0] ; 2008 - same as 2012?
+              backscatter_orientations[1, *] = [0, 0, 0, 0] ; 2009 - same as 2012?
+              backscatter_orientations[2, *] = [0, 0, 0, 0] ; 2010 - same as 2012?
+              backscatter_orientations[3, *] = [0, 0, 0, 0] ; 2011 - same as 2012?
+              backscatter_orientations[4, *] = [0, 0, 0, 0] ; 2012
+              backscatter_orientations[5, *] = [0, 0, 7, 0] ; 2013
+              backscatter_orientations[6, *] = [0, 0, 7, 0] ; 2014 - same as 2013
+              backscatter_orientations[7, *] = [0, 7, 7, 0] ; 2015
+              backscatter_orientations[8, *] = [0, 7, 7, 0] ; 2016 - same as 2015?
+              for ifile = 0, Nfiles-1 do begin
                  icam = where(backscatter_cameras $
                               eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
                  iyear = where(backscatter_years eq datearr[0], Nyear)
@@ -228,7 +232,7 @@ pro red::download, overwrite = overwrite $
                     print, '               Contact crispred maintainers if this does not help.'
                     stop
                  endif else begin
-                    ;; Read the 2012 files
+                    ;; Read the downloaded 2012 files
                     fzread, bgain, gfiles[ifile], gheader
                     pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
                     fzread, bpsf, pfile, pheader
@@ -237,11 +241,9 @@ pro red::download, overwrite = overwrite $
                                              , rotate(bgain, backscatter_orientations[iyear, icam]) $
                                              , rotate(bpsf,  backscatter_orientations[iyear, icam]) $
                                              , /write
-
                  endelse        ; Known year and camera?
-              endif             ; 2012 or earlier?
-           endfor               ; ifile
-
+              endfor            ; ifile
+           endif                ; 2012?
         endif else begin
            print, "red_download : Couldn't download the backscatter data for " + backscatter[iback]
         endelse        
