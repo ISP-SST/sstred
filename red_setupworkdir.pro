@@ -163,6 +163,9 @@
 ;                 camera directories are directly below the time-stamp
 ;                 directories without a prefilter level in between.
 ;
+;    2016-02-24 : MGL. Added another root_dir to search when in
+;                 Stockholm. 
+;
 ;-
 pro red_setupworkdir, root_dir = root_dir $
                       , out_dir = out_dir $
@@ -235,7 +238,7 @@ pro red_setupworkdir, root_dir = root_dir $
      endif
   endif else begin
      if keyword_set(stockholm) then begin
-        search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/"]
+        search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/", "/mnt/sand??/Incoming/Checked/"]
      endif else begin
          if ~strmatch(root_dir,'*/') then root_dir += '/'
         search_dir = root_dir
