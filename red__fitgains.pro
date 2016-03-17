@@ -135,10 +135,11 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
 
   print, inam + ' : found states:'
   for ii = 0, ct - 1 do begin
-     tmp = strsplit(file_basename(files[ii]), '.',/extract)
+     tmp = strsplit(file_basename(files[ii]), '.',/extract,count=csub)
      cams[ii] = tmp[0]
      prefs[ii] = tmp[1]
-     states[ii] = strjoin(tmp[0:1],'.')
+     ; save file names have 4 elements, new lc4 have 5
+     states[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
      print, ii, ' -> ',states[ii], FORMAT='(I3,A,A)'
   endfor
 
@@ -253,7 +254,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
      endfor
    
      fit = {pars:res, yl:yl, xl:xl, oname:namelist}
-     save, file = outdir+'spectral_flats/'+cam+'.'+pref+'.fit_results.sav', fit
+     save, file = outdir+'spectral_flats/'+states[idx]+'.fit_results.sav', fit
      fit = 0B
   endif
 

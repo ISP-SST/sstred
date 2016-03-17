@@ -89,18 +89,27 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
      files = file_search(self.out_dir + '/flats/spectral_flats/*.fit_results.sav', count=count)
      files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
   endif else begin
-     files = file_search(self.out_dir + '/flats/spectral_flats/*.'+pref+'.fit_results.sav', count=count)
-     files1 = file_search(self.out_dir + '/flats/spectral_flats/*.'+pref+'.flats.sav', count=count1)
+     files = file_search(self.out_dir +'/flats/spectral_flats/*.'+pref+$
+      '*.fit_results.sav', count=count)
+     files1 = file_search(self.out_dir +'/flats/spectral_flats/*.'+pref+$
+      '*.flats.sav', count=count1)
   endelse
 
   ;; Select file   
   stat = strarr(count)
   stat1 = strarr(count1)
   idd = intarr(count)
-   
-  for ii = 0, count-1 do stat[ii] = strjoin((strsplit(file_basename(files[ii]),'.',/extract))[0:1],'.')
-  for ii = 0, count1-1 do stat1[ii] = strjoin((strsplit(file_basename(files1[ii]),'.',/extract))[0:1],'.')
-   
+  
+  
+  ;; handle simultaneous lc4 and pol data sets for pref
+  for ii = 0, count-1 do begin 
+    tmp = strsplit(file_basename(files[ii]),'.',/extract,count=csub)
+    stat[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
+  endfor
+  for ii = 0, count1-1 do begin
+    tmp = strsplit(file_basename(files1[ii]),'.',/extract,count=csub)
+    stat1[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
+  endfor 
   print, inam + ' : found valid states:'
   k =-1
   for ii = 0, count -1 do begin
