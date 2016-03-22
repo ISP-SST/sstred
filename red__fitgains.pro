@@ -100,6 +100,9 @@
 ; 
 ;   2013-12-21 : MGL. Changed default npar to 2.
 ; 
+;   2016-03-22 : JLF. Added support for .lc4 flat cubes (see 
+;  	 	 red::prepflatcubes_lc4). Added a bit of error checking.
+;
 ;-
 pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, $
                    densegrid = densegrid, res = res, thres = thres, initcmap = initcmap, $
@@ -180,7 +183,10 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   res = dblarr(npar_t, dim[1], dim[2])
   ratio = fltarr(dim[0], dim[1], dim[2])
   nwav = dim[0]
-   
+
+  if nwav eq 1 then $
+    message,'Must have more than 1 wavelength point in the scan to continue.'
+  
   res[0,*,*] = total(dat,1) / nwav
    ;;; is this still needed?
   IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3

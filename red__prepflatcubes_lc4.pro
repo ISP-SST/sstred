@@ -52,7 +52,12 @@
 ; 
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
-; 
+;
+;   2016-03-22 : JLF. Fixed a bug in which red::prepflatcubes_lc4 would
+;		 overwrite the results of red::prepflatcubes if there are
+;		 both lc4 and lc0-3 datasets at the same prefilter. If
+;		 lc0-3 datasets are detected it will output files with
+;		 .lc4 added to the state name.
 ; 
 ;-
 pro red::prepflatcubes_lc4, flatdir = flatdir $

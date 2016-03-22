@@ -59,11 +59,16 @@
 ;
 ;   2015-05-05 : MGL. If keyword pref is given, use it when looking
 ;                for files.
-; 
+;
+;   2016-03-22 : JLF. Added support for lc4 flat cubes (see modifications
+;		 to red::prepflatcubes_lc4). Changed 'pref' keyword to 
+;		 'state' and made its behavior similar to red::fitgains. 
+;		 Added some error checking.
 ; 
 ; 
 ;-
-pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = noasy, shift = shift, init=init, stretch=stretch, weight = weight
+pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, state = state,$
+  noasy = noasy, shift = shift, init=init, stretch=stretch, weight = weight
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -85,16 +90,20 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref, noasy = 
   ;;    return
   ;; endif
 
-  if n_elements(pref) eq 0 then begin
+  if n_elements(state) eq 0 then begin
      files = file_search(self.out_dir + '/flats/spectral_flats/*.fit_results.sav', count=count)
      files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
   endif else begin
-     files = file_search(self.out_dir +'/flats/spectral_flats/*.'+pref+$
+     files = file_search(self.out_dir +'/flats/spectral_flats/*'+state+$
       '*.fit_results.sav', count=count)
-     files1 = file_search(self.out_dir +'/flats/spectral_flats/*.'+pref+$
+     files1 = file_search(self.out_dir +'/flats/spectral_flats/*'+state+$
       '*.flats.sav', count=count1)
   endelse
 
+  if count eq 0 then $
+    message,'No fit results files found. Run red::fitgains first.'
+  if count1 eq 0 then message,'No flat cubes found. Did you delete them?'
+  
   ;; Select file   
   stat = strarr(count)
   stat1 = strarr(count1)
