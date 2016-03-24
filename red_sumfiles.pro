@@ -234,7 +234,9 @@ function red_sumfiles, files_list $
      ;; Find bad frames
      if n_elements(lim) eq 0 then lim = 0.0175 ; Allow 2% deviation from the mean value
      tmean = median(mval)
-     mmval = median(mval, 3)
+     mmval = median( mval, 3)
+     mmval[0] = mmval[1]                        ; Set edges to neighbouring values since the median filter does not modify endpoints.
+     mmval[Nfiles-1] = mmval[Nfiles-2]          ;
      goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
      idx = where(goodones, Nsum, complement = idx1)
      
