@@ -391,9 +391,17 @@ function red_sumfiles, files_list $
   endfor                        ; ii
   print, ' '
 
-  average = red_shift_im(summed/Nsum, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum)             ; shift average image back, to ensure
-                                                                                    ; an average shift of 0.
-  time = red_time2double(time / Nsum, /dir)
+  average = summed
+  if Nsum gt 1 then begin
+    average /= Nsum;
+    time /= Nsum
+  endif
+  
+  if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
+    average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
+  endif
+  
+  time = red_time2double( time, /dir )
 
   if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
 
