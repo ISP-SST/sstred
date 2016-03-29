@@ -52,7 +52,12 @@
 ; 
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
-; 
+;
+;   2016-03-22 : JLF. Fixed a bug in which red::prepflatcubes_lc4 would
+;		 overwrite the results of red::prepflatcubes if there are
+;		 both lc4 and lc0-3 datasets at the same prefilter. If
+;		 lc0-3 datasets are detected it will output files with
+;		 .lc4 added to the state name.
 ; 
 ;-
 pro red::prepflatcubes_lc4, flatdir = flatdir $
@@ -157,9 +162,15 @@ pro red::prepflatcubes_lc4, flatdir = flatdir $
         wav = wav[ord]
         print, 'done'
 
+        ;; are there polarized flat cubes at this prefilter?
+        ;; red::prepflatcubes must always be run first!
+        ofile = cam[cc]+'.'+ upref +'.flats.sav'
+        if file_test(outdir+ofile) then filestem='.lc4' else filestem=''
+        
         ;; Save results (separate fits files for old fortran fitgains_ng)
-        outname = cam[cc]+ '.'+ upref+'.flats_data.fits'
-        outname1 = cam[cc]+'.'+ upref+'.flats_wav.fits'
+        outname = cam[cc]+ '.'+ upref+filestem+'.flats_data.fits'
+        outname1 = cam[cc]+'.'+ upref+filestem+'.flats_wav.fits'
+        
         writefits,  outdir + outname, cub
         writefits,  outdir + outname1, wav
         namelist = strarr(nstat)
@@ -174,7 +185,7 @@ pro red::prepflatcubes_lc4, flatdir = flatdir $
         free_lun, lun
         
         ;; Save as structure for new routines (red::fitgain_ng)
-        ofile = cam[cc]+'.'+ upref +'.flats.sav'
+        ofile = cam[cc]+'.'+ upref +filestem+'.flats.sav'
         print, inam+' : saving -> '+ofile
 
         save, file=outdir+ofile, cub, wav, namelist

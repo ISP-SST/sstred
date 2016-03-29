@@ -100,6 +100,9 @@
 ; 
 ;   2013-12-21 : MGL. Changed default npar to 2.
 ; 
+;   2016-03-22 : JLF. Added support for .lc4 flat cubes (see 
+;  	 	 red::prepflatcubes_lc4). Added a bit of error checking.
+;
 ;-
 pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, $
                    densegrid = densegrid, res = res, thres = thres, initcmap = initcmap, $
@@ -135,10 +138,11 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
 
   print, inam + ' : found states:'
   for ii = 0, ct - 1 do begin
-     tmp = strsplit(file_basename(files[ii]), '.',/extract)
+     tmp = strsplit(file_basename(files[ii]), '.',/extract,count=csub)
      cams[ii] = tmp[0]
      prefs[ii] = tmp[1]
-     states[ii] = strjoin(tmp[0:1],'.')
+     ; save file names have 4 elements, new lc4 have 5
+     states[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
      print, ii, ' -> ',states[ii], FORMAT='(I3,A,A)'
   endfor
 
@@ -179,7 +183,10 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   res = dblarr(npar_t, dim[1], dim[2])
   ratio = fltarr(dim[0], dim[1], dim[2])
   nwav = dim[0]
-   
+
+  if nwav eq 1 then $
+    message,'Must have more than 1 wavelength point in the scan to continue.'
+  
   res[0,*,*] = total(dat,1) / nwav
    ;;; is this still needed?
   IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3
@@ -253,7 +260,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
      endfor
    
      fit = {pars:res, yl:yl, xl:xl, oname:namelist}
-     save, file = outdir+'spectral_flats/'+cam+'.'+pref+'.fit_results.sav', fit
+     save, file = outdir+'spectral_flats/'+states[idx]+'.fit_results.sav', fit
      fit = 0B
   endif
 
