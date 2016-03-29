@@ -144,7 +144,7 @@ pro red::sumdark, overwrite = overwrite, check = check, cams = cams
      
      ;;If everything is ok, sum the darks.
      head = fzhead(files[0])
-     dark = red_sumfiles(files, check = check, summed = darksum)
+     dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
 
      ;; Normalize dark
      ;;dark = float(tmp / count)
@@ -153,7 +153,7 @@ pro red::sumdark, overwrite = overwrite, check = check, cams = cams
      namout = outdir+camtag+'.dark'
      namout_sum = outdir+camtag+'.summed.0000001'
 
-     outheader = red_dark_h2h(files[nf-1], head, nf)
+     outheader = red_dark_h2h(files[nf-1], head, nsum)
 
      file_mkdir, outdir
      print, inam+' : saving ', namout
