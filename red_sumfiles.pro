@@ -410,7 +410,7 @@ function red_sumfiles, files_list $
      endif
 
      ;; Fill the bad pixels 
-     if n_elements(mask) then average = red_fillpix(average, mask = mask)
+     if n_elements(mask) gt 0 then  average = red_fillpix(average, mask = mask)
 
   endif
 
