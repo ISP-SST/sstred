@@ -251,6 +251,7 @@ function red_sumfiles, files_list $
   endif else begin              ; docheck
 
      ;; Set up for NOT checking
+     times[0] = time
      for ii = 1L, Nfiles -1 do begin
         dum = fzhead(files_list[ii])
         dum = strsplit(dum, ' =', /extract)
