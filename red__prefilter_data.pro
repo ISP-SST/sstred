@@ -69,7 +69,7 @@ pro red::prefilter_data, folder , step = step, cam = cam, lre = lre, oname = ona
   spawn, 'find ' + folder + '/' + cam + '/ | grep im.ex', files
   nt = n_elements(files)
   if(files[0] eq '') then begin
-     print, inam+'no files found in '+self.polcal_dir+'/'+cam+', skipping camera!'
+     print, inam+'no files found in '+folder+'/'+cam+', skipping camera!'
      return
   endif
                                 ;

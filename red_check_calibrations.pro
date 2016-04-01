@@ -83,6 +83,10 @@
 ;                 pinholecamstates defined. Improve comments. Now
 ;                 check also prefilter scan data for matching darks.
 ;                 
+;    2016-04-01 : THI. Removed some "empty array" initializations so that
+;                 the code runs on IDL < 8.0. Fixed a crash when pinhole
+;                 calibration contains less than 2 LP positions, or less
+;                 than 4 LC states. Converted some loop indices to long type.
 ;
 ; 
 ;-
@@ -205,7 +209,6 @@ pro red_check_calibrations, root_dir $
         endfor                  ; idir
      endif else begin           ; Ndarksubdirs
         printf, llun, 'No darks data'
-        darkcams = []
      endelse                    ; Ndarksubdirs
   endif                         ; darks
   
@@ -252,7 +255,7 @@ pro red_check_calibrations, root_dir $
               ucam = cam[uniq(cam,sort(cam))]
               if strmatch(file_basename(flatsubdirs[idir]),'Crisp-W') then begin
                  ;; For CRISP WB data we only care about the prefilter
-                 for ii = 0, n_elements(fullstate)-1 do $
+                 for ii = 0L, n_elements(fullstate)-1 do $
                     fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
               endif             ; Crisp-W
               ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
@@ -292,7 +295,6 @@ pro red_check_calibrations, root_dir $
         endfor                  ; idir
         
      endif else begin           ; Nflatsubdirs
-        flatcamstates = []
         printf, llun, 'No flats data'
      endelse                    ; Nflatsubdirs
   endif                         ; flats
@@ -350,25 +352,30 @@ pro red_check_calibrations, root_dir $
               ;; There should be two lp (linear polarizer) states and
               ;; the number of frames of each should be equal.
               ulp = lp[uniq(lp,sort(lp))]
-              Nlp = lonarr(n_elements(ulp))
-              for i = 0, n_elements(ulp)-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+ulp[i]+'*')))
-              polcalok[idir] = polcalok[idir] and Nlp[0] eq Nlp[1]
+              nLP = n_elements(ulp)
+              framesPerLP = lonarr(nLP)
+              for i = 0, n_elements(ulp)-1 do framesPerLP[i] = n_elements(where(strmatch(fnames,'*'+ulp[i]+'*')))
+              polcalok[idir] = polcalok[idir] and nLP eq 2
+              polcalok[idir] = polcalok[idir] and max(framesPerLP) eq min(framesPerLP)
 
               ;; There should be four lc (liqud crystal) states and
               ;; the number of frames of each should be equal.
               ulc = lc[uniq(lc,sort(lc))]
-              Nlc = lonarr(n_elements(ulc))
-              for i = 0, n_elements(ulc)-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+ulc[i]+'*')))
-              polcalok[idir] = polcalok[idir] and Nlc[0] eq Nlc[1] and Nlc[1] eq Nlc[2] and Nlc[2] eq Nlc[3]
+              nLC = n_elements(ulc)
+              framesPerLC = lonarr(nLC)
+              for i = 0, n_elements(ulc)-1 do framesPerLC[i] = n_elements(where(strmatch(fnames,'*'+ulc[i]+'*')))
+              polcalok[idir] = polcalok[idir] and nLC eq 4
+              polcalok[idir] = polcalok[idir] and max(framesPerLC) eq min(framesPerLC)
 
               ;; The number of qw (quarter wave plate) angles is not
               ;; fixed but the angles should be evenly distributed
               ;; over 360 degrees, repeating the 0=360 angle. And the
               ;; number of frames at each angle should be equal.
-              uqw = qw[uniq(qw,sort(qw))]     
-              Nqw = lonarr(n_elements(uqw))
-              for i = 0, n_elements(uqw)-1 do Nqw[i] = n_elements(where(strmatch(fnames,'*'+uqw[i]+'*')))
-              polcalok[idir] = polcalok[idir] and stddev(Nqw) lt 1e-1 ; Equal numbers of frames for all angles?
+              uqw = qw[uniq(qw,sort(qw))]
+              nQW = n_elements(uqw)
+              framesPerQW = lonarr(nQW)
+              for i = 0, n_elements(uqw)-1 do framesPerQW[i] = n_elements(where(strmatch(fnames,'*'+uqw[i]+'*')))
+              polcalok[idir] = polcalok[idir] and max(framesPerQW) eq min(framesPerQW); Equal numbers of frames for all angles?
               polcalok[idir] = polcalok[idir] and min(uqw) eq 'qw000' ; Zero angle present?
               polcalok[idir] = polcalok[idir] and max(uqw) eq 'qw360' ; Repeated enpoint?
               dqw = deriv(long(strmid(uqw,2,3)))                      ; Differential angle
@@ -385,7 +392,6 @@ pro red_check_calibrations, root_dir $
            printf, llun, outline
         endfor                  ; idir
      endif else begin           ; Npocalsubdirs 
-        polcalcamstates = []
         printf, llun, 'No polcal data'
      endelse                    ; Npocalsubdirs     
   endif                         ; polcal
@@ -471,7 +477,6 @@ pro red_check_calibrations, root_dir $
            
         endfor                  ; idir
      endif else begin           ; Npinholesubdirs
-        pinholecamstates = []
         printf, llun, 'No pinhole data.'
      endelse                    ; Npinholesubdirs
   endif                         ; pinholes
@@ -522,7 +527,7 @@ pro red_check_calibrations, root_dir $
                  ucam = cam[uniq(cam,sort(cam))]
                  if strmatch(file_basename(sciencesubdirs[isubdir]),'Crisp-W') then begin
                     ;; For CRISP WB data we only care about the prefilter
-                    for ii = 0, n_elements(fullstate)-1 do $
+                    for ii = 0L, n_elements(fullstate)-1 do $
                        fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0]
                  endif          ; Crisp-W
                  ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
@@ -696,20 +701,19 @@ pro red_check_calibrations, root_dir $
                              print, '      No polcal data'
                              Npolcalproblems += 1
                           endif else begin
-                             for i = 0, Nhits-1 do begin
-                                ;; Should print out also the polcal
-                                ;; directory here.
-                                if polcalok[ipolcal[i]] then begin
-                                   printf, llun, '   complete polcal data in ' $
-                                           + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '')
-                                endif else begin
-                                   printf, llun, '   incomplete polcal data in ' $
-                                           + red_strreplace(polcalsubdirs[ipolcal[i]], root_dir, '') $
-                                           + '   ---------- Warning!'
-                                   print, '      Incomplete polcal data'
-                                   Npolcalproblems += 1
-                                endelse
-                             endfor ; i
+                             okpolcals = where(polcalok[ipolcal], Nok)
+                             if Nok gt 0 then begin
+                             ;; Should print out also the polcal
+                             ;; directory here.
+                                printf, llun, '   complete polcal data in ' $
+                                        + red_strreplace(polcalsubdirs[ipolcal[okpolcals]], root_dir, '')
+                             endif else begin
+                                printf, llun, '   incomplete polcal data in ' $
+                                        + red_strreplace(polcalsubdirs[ipolcal], root_dir, '') $
+                                        + '   ---------- Warning!'
+                                print, '      Incomplete polcal data'
+                                Npolcalproblems += 1
+                            endelse
                           endelse 
                        endif    ; lc
                     endfor      ; ipref

@@ -103,7 +103,7 @@ pro red_writelog $
 
 
   ;; Location of the crispred source files:
-  red_findpro, 'crispred', /NoPrint, dirlist = srcdir
+  srcdir = file_dirname( routine_filepath("red_writelog"), /mark )
 
   ;; Open the log file
   logdir = './pipeline-log/'

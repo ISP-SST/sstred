@@ -48,7 +48,7 @@ pro red::sumprefilter, step = step
   spawn, 'find ' + self.prefilter_dir + '/' + cam + '/ | grep im', files
   nt = n_elements(files)
   if(files[0] eq '') then begin
-     print, inam+'no files found in '+self.polcal_dir+'/'+cam+', skipping camera!'
+     print, inam+'no files found in '+self.prefilter_dir+'/'+cam+', skipping camera!'
      return
   endif
                                 ;

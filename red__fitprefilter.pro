@@ -61,13 +61,16 @@
 ;                for files.
 ;
 ;   2016-03-22 : JLF. Added support for lc4 flat cubes (see modifications
-;		 to red::prepflatcubes_lc4). Changed 'pref' keyword to 
-;		 'state' and made its behavior similar to red::fitgains. 
-;		 Added some error checking.
+;        to red::prepflatcubes_lc4). Changed 'pref' keyword to 
+;        'state' and made its behavior similar to red::fitgains. 
+;        Added some error checking.
+; 
+;   2016-04-01 : THI. Changed 'state' keyword back to 'pref' for now,
+;                so that old scripts does not need to be modified.
 ; 
 ; 
 ;-
-pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, state = state,$
+pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref,$
   noasy = noasy, shift = shift, init=init, stretch=stretch, weight = weight
 
   ;; Name of this method
@@ -90,13 +93,13 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, state = state,$
   ;;    return
   ;; endif
 
-  if n_elements(state) eq 0 then begin
+  if n_elements(pref) eq 0 then begin
      files = file_search(self.out_dir + '/flats/spectral_flats/*.fit_results.sav', count=count)
      files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
   endif else begin
-     files = file_search(self.out_dir +'/flats/spectral_flats/*'+state+$
+     files = file_search(self.out_dir +'/flats/spectral_flats/*'+pref+$
       '*.fit_results.sav', count=count)
-     files1 = file_search(self.out_dir +'/flats/spectral_flats/*'+state+$
+     files1 = file_search(self.out_dir +'/flats/spectral_flats/*'+pref+$
       '*.flats.sav', count=count1)
   endelse
 

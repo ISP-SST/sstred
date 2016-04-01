@@ -16,10 +16,8 @@
 pro red_satlas,xstart,xend,outx,outy,nm=nm,nograv=nograv,nocont=nocont
 
   ;; Find the input data
-  ;;   spawn,'echo $HOME',home
-  ;;   restore,home+'/idl/jaime/ftsatlas.idlsave'
-  red_findpro, 'red_satlas.pro', DIRLIST=DirList
-  restore, DirList[0]+'ftsatlas.idlsave'
+  this_dir = file_dirname( routine_filepath("red_satlas"), /mark )
+  restore, this_dir+'ftsatlas.idlsave'
 
   if not keyword_set(nocont) then YL_FTS/=CINT_FTS
   if keyword_set(nm) then begin
