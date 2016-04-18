@@ -594,6 +594,7 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
   printf, Slun, ''
 
+  printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
              + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
@@ -607,7 +608,7 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
      printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
-             + "', numpoints = '88', pref = '"+prefilters[ipref]+"' " $
+             + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
              + maybe_nodescatter[ipref]
   endfor
 

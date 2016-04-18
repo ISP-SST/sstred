@@ -104,6 +104,9 @@
 ;   2016-02-15 : MGL. Get just the file names from
 ;                red_loadbackscatter, do not read the files.
 ;
+;   2016-04-18 : THI. Added margin keyword to allow for user-defined edge trim
+;                Changed numpoints keyword to be a number rather than a string.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -121,7 +124,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , oldgains = oldgains $
                      , nf = nfac $
                      , weight = weight $
-                     , maxshift=maxshift
+                     , maxshift = maxshift $
+                     , margin = margin
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -139,13 +143,14 @@ pro red::prepmomfbd, wb_states = wb_states $
       IF ~strmatch(date_obs, '????-??-??') THEN $
         read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
   ENDIF
-  if(~keyword_set(numpoints)) then numpoints = '88'
+  if(~keyword_set(numpoints)) then numpoints = 88
+  if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints)    ; convert strings, just to avoid breaking existing codes.
   if(~keyword_set(modes)) then modes = '2-45,50,52-55,65,66'
   if(n_elements(nremove) eq 0) then nremove=0
   if(n_elements(nfac) gt 0) then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
   endif
-  
+  if( n_elements(margin) eq 0 ) then margin = 5
   
   ;; Get states from the data folder
   d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = nd)
@@ -229,6 +234,15 @@ pro red::prepmomfbd, wb_states = wb_states $
            wclip = acl[0]
            tclip = acl[1]
            rclip = acl[2]
+
+           xsz = abs(cl[0,0]-cl[1,0]+1)
+           ysz = abs(cl[2,0]-cl[3,0]+1)
+           this_margin = max([0, min([xsz/3, ysz/3, margin])])  ; prevent silly margin values
+           ; generate patch positions with margin
+           sim_x = rdx_segment( this_margin, xsz-this_margin, numpoints, /momfbd )
+           sim_y = rdx_segment( this_margin, ysz-this_margin, numpoints, /momfbd )
+           sim_x_string = strjoin(strtrim(sim_x,2), ',')
+           sim_y_string = strjoin(strtrim(sim_y,2), ',')
 
            lam = strmid(string(float(upref[pp]) * 1.e-10), 2)
 
@@ -477,7 +491,7 @@ pro red::prepmomfbd, wb_states = wb_states $
            printf, lun, 'IMAGE_NUMS='+nall       ;;  n0+'-'+n1
            printf, lun, 'BASIS=Karhunen-Loeve'
            printf, lun, 'MODES='+modes
-           printf, lun, 'NUM_POINTS='+numpoints
+           printf, lun, 'NUM_POINTS='+strtrim(numpoints,2)
            printf, lun, 'TELESCOPE_D=0.97'
            printf, lun, 'ARCSECPERPIX='+self.image_scale
            printf, lun, 'PIXELSIZE=16.0E-6'
@@ -495,6 +509,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                printf, lun, 'GET_PSF_AVG'
            ENDIF
            printf, lun, 'FPMETHOD=horint'
+           printf, lun, 'SIM_X='+sim_x_string
+           printf, lun, 'SIM_Y='+sim_y_string
 
            ;; External keywords?
            if(keyword_set(global_keywords)) then begin
