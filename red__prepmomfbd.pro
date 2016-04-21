@@ -110,7 +110,9 @@
 ;   2016-04-18 : THI. Added margin keyword to allow for user-defined edge trim
 ;                Changed numpoints keyword to be a number rather than a string.
 ;
-;   2016-04-21 : MGL. Added some documentation.
+;   2016-04-21 : MGL. Added some documentation. Use n_elements, not
+;                keyword_set, to find out if a keyword needs to be set
+;                to a default value.
 ;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
@@ -148,14 +150,14 @@ pro red::prepmomfbd, wb_states = wb_states $
       IF ~strmatch(date_obs, '????-??-??') THEN $
         read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
   ENDIF
-  if(~keyword_set(numpoints)) then numpoints = 88
+  if n_elements(numpoints) eq 0 then numpoints = 88
   if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints)    ; convert strings, just to avoid breaking existing codes.
-  if(~keyword_set(modes)) then modes = '2-45,50,52-55,65,66'
-  if(n_elements(nremove) eq 0) then nremove=0
-  if(n_elements(nfac) gt 0) then begin
+  if n_elements(modes) eq 0 then modes = '2-45,50,52-55,65,66'
+  if n_elements(nremove) eq 0 then nremove=0
+  if n_elements(nfac) gt 0 then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
   endif
-  if( n_elements(margin) eq 0 ) then margin = 5
+  if n_elements(margin) eq 0 then margin = 5
   
   ;; Get states from the data folder
   d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = nd)
