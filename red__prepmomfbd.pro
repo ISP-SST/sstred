@@ -13,59 +13,57 @@
 ; 
 ; 
 ; 
-; :Returns:
-; 
-; 
-; :Params:
-; 
 ; 
 ; :Keywords:
 ; 
-;    wb_states  : 
+;    wb_states : 
 ;   
 ;   
 ;   
-;    numpoints  : 
+;    numpoints : in, optional, type=integer, default=88
+;   
+;      The size of MOMFBD subfields.
+;   
+;    modes : in, optional, type=string, default= '2-45,50,52-55,65,66'
+;   
+;      The modes to include in the expansions of the wavefront phases.
+;   
+;    date_obs : in, optional, type=string
+;   
+;      The date of observations in ISO (YYYY-MM-DD) format. If not
+;      given, prepmomfbd will try to deduce it from the directory name
+;      or, failing that, ask the user.
+;   
+;    state : 
 ;   
 ;   
 ;   
-;    modes  : 
+;    no_descatter : in, optional, type=boolean
+;   
+;       Set this if your data is from a near-IR (777 or 854 nm) line
+;       and you do not want to do backscatter corrections.
+;   
+;    global_keywords : in, optional, type=strarr
+;   
+;      Any global keywords that you want to add to the momfbd config file.
+;   
+;    unpol : 
 ;   
 ;   
 ;   
-;    date_obs  : 
+;    skip : 
 ;   
 ;   
 ;   
-;    state  : 
+;    pref : 
 ;   
 ;   
 ;   
-;    no_descatter  : 
+;    escan : 
 ;   
 ;   
 ;   
-;    global_keywords  : 
-;   
-;   
-;   
-;    unpol  : 
-;   
-;   
-;   
-;    skip  : 
-;   
-;   
-;   
-;    pref  : 
-;   
-;   
-;   
-;    escan  : 
-;   
-;   
-;   
-;    div  : 
+;    div : 
 ;   
 ;   
 ;   
@@ -77,8 +75,13 @@
 ; 
 ;
 ;
+;    margin : in, optional, type=integer, default=5
+; 
+;      A margin (in pixels) to disregard from the FOV edges when
+;      constructing the grid of MOMFBD subfields.
 ;
-; :history:
+;
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;
@@ -106,6 +109,8 @@
 ;
 ;   2016-04-18 : THI. Added margin keyword to allow for user-defined edge trim
 ;                Changed numpoints keyword to be a number rather than a string.
+;
+;   2016-04-21 : MGL. Added some documentation.
 ;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
