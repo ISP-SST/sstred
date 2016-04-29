@@ -86,21 +86,13 @@
 ;                files.
 ; 
 ;   2013-12-10 : PS  adapt for multiple flat_dir
+;
+;   2016-04-29 : THI. Split class RED into a base-class (instrument
+;                independent parts) and derived classes (CRISP/CHROMIS). 
 ; 
 ;-
 function crispred, filename
 
-  tmp = obj_new('red')
-                                ;
-                                ; check input file
-                                ;
-  if((n_params() eq 0) AND file_test('config.txt')) then filename = 'config.txt'
-  if(~file_test(filename)) then begin
-     print, 'reduc : ERROR, cannot find '+filename
-     return, 0
-  endif
-                                ;
-  tmp -> initialize, filename
-                                ;
-  return, tmp
+  return, obj_new('crisp', filename)
+  
 end
