@@ -334,15 +334,11 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '# --- Flats'
   printf, Clun, '#'
   flatdirs = file_search(root_dir+'/flat*/*', count = Ndirs, /fold)
-  dirarr = strarr(1)
-  Nflat = 0
-  prefilters = strarr(1)
+
   Nprefilters = 0
   for i = 0, Ndirs-1 do begin
      flatsubdirs = file_search(flatdirs[i]+'/crisp*', count = Nsubdirs, /fold)
      if Nsubdirs gt 0 then begin
-        dirarr = [dirarr, red_strreplace(flatdirs[i], root_dir, '')]
-        Nflat += 1
         printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[i], root_dir, '')
         ;; Camera dirs and wavelengths to print to script file
         camdirs = strarr(Nsubdirs)
@@ -353,6 +349,8 @@ pro red_setupworkdir, root_dir = root_dir $
            if Nfiles gt 0 then begin
               red_extractstates, fnames, /basename, pref = wls
               wls = wls[uniq(wls, sort(wls))]
+              wls = wls[WHERE(wls ne '')]
+              red_append, prefilters, wls
               wavelengths[idir] = strjoin(wls, ' ')
           endif
         endfor
@@ -364,15 +362,11 @@ pro red_setupworkdir, root_dir = root_dir $
         printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[i], root_dir, '')$
                 + '"  ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
         printf, Slun, 'a -> sumflat, /check'
-        prefilters = [prefilters, (strsplit(flatdirs[i],'/',/extract, count = nn))[nn-1]]
-        Nprefilters += 1
      endif else begin
         flatsubdirs = file_search(flatdirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
            flatsubsubdirs = file_search(flatsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
            if Nsubsubdirs gt 0 then begin
-              dirarr = [dirarr, red_strreplace(flatsubdirs[j], root_dir, '')]
-              Nflat += 1
               printf, Clun, 'flat_dir = '+red_strreplace(flatsubdirs[j], root_dir, '')
               ;; Camera dirs and wavelengths to print to script file
               camdirs = strarr(Nsubsubdirs)
@@ -383,6 +377,8 @@ pro red_setupworkdir, root_dir = root_dir $
                  if Nfiles gt 0 then begin
                     red_extractstates, fnames, /basename, pref = wls
                     wls = wls[uniq(wls, sort(wls))]
+                    wls = wls[WHERE(wls ne '')]
+                    red_append, prefilters, wls
                     wavelengths[idir] = strjoin(wls, ' ')
                  endif
               endfor
@@ -394,22 +390,22 @@ pro red_setupworkdir, root_dir = root_dir $
               printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatsubdirs[j], root_dir, '') $
                       + '" ; ' + strjoin(camdirs+' ('+wavelengths+')', ' ')
               printf, Slun, 'a -> sumflat, /check'
-              ;; The following does not give the right result, 6300
-              ;; instead of 6302! 
-              prefilters = [prefilters, (strsplit(flatdirs[i],'/',/extract, count = nn))[nn-1]]
-              Nprefilters += 1
            endif
         endfor
      endelse
   endfor
+
+  if n_elements(prefilters) gt 0 then begin
+      prefilters = prefilters[uniq(prefilters, sort(prefilters))]
+      Nprefilters = n_elements(prefilters)
+  endif
+
   if Nprefilters eq 0 then begin
      ;; This can happen if flats were already summed in La Palma. Look
      ;; for prefilters in the summed flats directory instead.
      spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
      Nprefilters = n_elements(prefilters)
-  endif else begin
-     prefilters = prefilters[1:*]
-  endelse
+  endif
   
   ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
   ;; some of the method calls, so add it commented out. (This if
@@ -531,30 +527,25 @@ pro red_setupworkdir, root_dir = root_dir $
   ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
   nonsciencedirs = [darkdirs, flatdirs, pinhdirs, polcaldirs, pfscandirs]
   sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
-  dirarr = strarr(1)
-  Nsci = 0
 
   for i = 0, Ndirs-1 do begin
 
      if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-
         sciencesubdirs = file_search(sciencedirs[i]+'/crisp*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
-           dirarr = [dirarr, red_strreplace(sciencedirs[i], root_dir, '')]
-           Nsci += 1
+           red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
         endif else begin
            sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
            for j = 0, Nsubdirs-1 do begin
               sciencesubsubdirs = file_search(sciencesubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
               if Nsubsubdirs gt 0 then begin
-                 dirarr = [dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')]
-                 Nsci += 1
+                 red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
               endif
            endfor               ; j
         endelse 
      endif
   endfor
-  if Nsci gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr[1:*], "','")+"']"
+  if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
   printf, Slun, 'a -> link_data' 
   
