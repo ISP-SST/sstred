@@ -256,7 +256,7 @@ pro red_setupworkdir, root_dir = root_dir $
      root_dir = found_dir
      if ~strmatch(root_dir,'*/') then root_dir += '/'
   endif else if Nfound eq 0 then begin
-     print, 'Cannot fine data from '+date+' in '+search_dir
+     print, 'Cannot find data from '+date+' in '+search_dir
      return
   endif else begin
      print, 'The root directory is not unique.'

@@ -57,7 +57,10 @@
 ; 
 ; 
 ;-
-pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam, no_histo_opt = no_histo_opt,ssh_find=ssh_find, pattern=pattern
+pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, $
+  overwrite = overwrite, x_flip = xflip, y_flip = y_flip, cam = cam, $
+  no_histo_opt = no_histo_opt,ssh_find=ssh_find, pattern=pattern, $
+  use_state = use_state
                                 ;
   inam = 'quicklook_movie : '
 
@@ -114,13 +117,20 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
   endelse
                                 ;
   ns = n_elements(ustat)
-                                ;
-  for ii = 0L, ns - 1 do begin
-     print, red_stri(ii, ni = '(I4)' ), ' -> ',ustat[ii]
-  endfor
-                                ;
-  read, toread, prompt = 'red::quicklook_movie : select state number for movie: '
-  print, 'red::quicklook_movie : selected state ->' + ustat[toread]
+                        
+                       ;
+                       
+  if n_elements(use_state) EQ 0 then begin
+    for ii = 0L, ns - 1 do begin
+      print, red_stri(ii, ni = '(I4)' ), ' -> ',ustat[ii]
+    endfor
+				  ;
+    read, toread, prompt = 'red::quicklook_movie : select state number for movie: '
+  endif else toread = use_state
+  
+  if size(toread,/type) ne 7 then toread = ustat[toread]
+  
+  print, 'red::quicklook_movie : selected state ->' + toread
                                 ;
                                 ; Load dark if not provided externally
   if(~keyword_set(dark)) then begin
@@ -138,7 +148,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
                                 ;
                                 ; load gain if not provided externally
   if(~keyword_set(gain)) then begin
-     gf = self.out_dir+'/gaintables/'+camtag+'.'+ ustat[toread]+'.gain'
+     gf = self.out_dir+'/gaintables/'+camtag+'.'+ toread+'.gain'
      egain = file_test(gf)
      if(~egain) then begin
         print, 'red::quickmovie : ERROR -> gainfile not found -> '+gf
@@ -155,7 +165,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
                                 ;
   if(cam ne self.camwb) then red_flagtuning, stat
                                 ;
-  pos = where((stat.state eq ustat[toread]) AND (stat.star eq 0B), count)
+  pos = where((stat.state eq toread) AND (stat.star eq 0B), count)
   scan = stat.scan[pos]
   uscan = scan[uniq(scan, sort(scan))]
   nscan = n_elements(uscan)
@@ -174,7 +184,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
                                 ;
                                 ; Add time stamp to folder name (if any)
                                 ;
-  outdir = self.out_dir +'/movies/'+ustat[toread]+'/'
+  outdir = self.out_dir +'/movies/'+toread+'/'
   if(n_elements(dum1) eq 3) then outdir += dum +'/'
   
                                 ;
@@ -191,7 +201,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, overwrite = ov
      pos = where(scan eq uscan[ii], ctt)
      if(ctt eq 0) then continue
                                 ;
-     namout = 'img_'+ustat[toread]+'.'+red_stri(ii, ni = '(I05)')+'.png'
+     namout = 'img_'+toread+'.'+red_stri(ii, ni = '(I05)')+'.png'
                                 ;
      if(file_test(outdir+namout) AND ~keyword_set(overwrite)) then begin
         print, bb,'red::quicklook_movie : done -> ',ii*ntot,$
