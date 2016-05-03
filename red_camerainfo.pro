@@ -10,6 +10,7 @@
 ; 
 ; :Author: 
 ;
+;    Mats Löfdahl, ISP, 2016-05-01
 ; 
 ; 
 ; :Returns:
