@@ -30,7 +30,7 @@
 ; 
 ;   2016-05-01 : MGL. First version.
 ; 
-;   2016-05-04 : MGL. Added PointGrey cameras, except for serial numbers.
+;   2016-05-04 : MGL. Added PointGrey cameras.
 ; 
 ; 
 ;-
@@ -233,7 +233,7 @@ function red_camerainfo, x
                   xsize:1920, $
                   ysize:1200, $
                   pixelsize:5.86e-6, $
-                  serialnumber:'', $
+                  serialnumber:'15452652', $
                   use:'CHROMIS', $
                   note:''}
      28: return, {romnum:'XXVIII', $
@@ -242,7 +242,7 @@ function red_camerainfo, x
                   xsize:1920, $
                   ysize:1200, $
                   pixelsize:5.86e-6, $
-                  serialnumber:'', $
+                  serialnumber:'14471636', $
                   use:'CHROMIS', $
                   note:''}
      29: return, {romnum:'XXIX', $
@@ -251,7 +251,7 @@ function red_camerainfo, x
                   xsize:1920, $
                   ysize:1200, $
                   pixelsize:5.86e-6, $
-                  serialnumber:'', $
+                  serialnumber:'15452653', $
                   use:'CHROMIS', $
                   note:''}
      30: return, {romnum:'XXX', $
@@ -260,7 +260,7 @@ function red_camerainfo, x
                   xsize:1920, $
                   ysize:1200, $
                   pixelsize:5.86e-6, $
-                  serialnumber:'', $
+                  serialnumber:'15452648', $
                   use:'CHROMIS', $
                   note:''}
      else: return, {defined:0}
