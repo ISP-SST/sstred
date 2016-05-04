@@ -15,11 +15,12 @@
 ; 
 ; :Params:
 ; 
-;    root_dir : in, string
+;    search_dir : in, string
 ; 
-;      The top directory of your saved data (or a regular expression
-;      that matches it). If this directory name does not contain a
-;      date, an attempt will be made to get the date from out_dir.
+;      The top directory of your saved data, with or wthout a date. Or
+;      a regular expression that matches the top directory. Or an
+;      array of directories and regular expressions. If not given,
+;      setupdir will look for the root_dir based on the site.
 ; 
 ; :Keywords:
 ; 
@@ -40,26 +41,13 @@
 ;      darks, flats, etc. Later commands, that involve human
 ;      interaction are present in the file but commented out.
 ; 
-;    date : in, optional, type=string
+;    date : in, optional, type=string, default='From out_dir if possible' 
 ; 
 ;      The date (in iso format) the data was collected.
 ; 
-;    out_dir : in, optional, type=string, default='current directory'
+;    out_dir : in, optional, type=string, default='Current directory'
 ; 
 ;      The output directory to be used by crispred.
-; 
-;    lapalma : in, optional, type=boolean
-; 
-;       If this is set, will search for root_dir's date in
-;       "/data/disk?/*/" and "/data/camera?/*/" (where data is usually
-;       found in La Palma)'
-; 
-;    stockholm : in, optional, type=boolean
-; 
-;       If this is set, will search for out_dir's date in
-;       "/mnt/sand??" (where data is usually found in Stockholm). If
-;       no other information is given about where to look for data,
-;       stockholm is assumed.
 ; 
 ; 
 ; :History:
@@ -166,16 +154,22 @@
 ;    2016-02-24 : MGL. Added another root_dir to search when in
 ;                 Stockholm. 
 ;
+;    2016-05-03 : THI. Get prefilter from filenames instead of dirname
+;                 so we don't rely on a specific directory structure. 
+;
+;    2016-05-04 : MGL. Removed keywords stockholm and lapalma. Renamed
+;                 root_dir to search_dir. Cleaned up the search for a
+;                 root_dir, decide where to look based on the
+;                 hostname. Also cleaned up the date handling a bit.
+;
 ;-
-pro red_setupworkdir, root_dir = root_dir $
+pro red_setupworkdir, search_dir = search_dir $
                       , out_dir = out_dir $
                       , cfgfile = cfgfile $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
                       , sand = sand $
-                      , date = date $
-                      , stockholm = stockholm $
-                      , lapalma = lapalma
+                      , date = date
 
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
@@ -184,88 +178,105 @@ pro red_setupworkdir, root_dir = root_dir $
   if ~strmatch(out_dir,'*/') then out_dir += '/'
   
   if n_elements(date) eq 0 then begin
-     ;; Date not specified. Does root_dir include the date?
-     if n_elements(root_dir) eq 0 then begin
-        date_known = 0
-     endif else begin
-        pos = stregex(root_dir,'/[0-9][0-9][0-9][0-9][.-][0-9][0-9][.-][0-9][0-9]')
-        if pos ne -1 then begin
-           ;; Date present in root_dir
-           date = strmid(root_dir, pos+1, 10)
-           date_known = 1
-        endif else begin
-           date_known = 0
-        endelse
-     endelse
-  endif
+     ;; Date not specified. Does search_dir include the date?
+     if n_elements(search_dir) gt 0 then begin
+        for i = 0, n_elements(search_dir)-1 do begin
+           pos = stregex(search_dir[i],'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
+           if pos ne -1 then begin
+              ;; Date present in search_dir[i]
+              date = strmid(search_dir[i], pos+1, 10)
+              break
+           endif
+        endfor                  ; i
+     endif                      ; search_dir given?
+  endif                         ; date given?
 
   if n_elements(date) eq 0 then begin
      ;; Get the date from out_dir?
-     pos = stregex(out_dir,'/[0-9][0-9][0-9][0-9][.-][0-9][0-9][.-][0-9][0-9]')
+     pos = stregex(out_dir,'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
      if pos eq -1 then begin
         print, 'sst_makeconfig : No date in either root_dir or out_dir.'
         retall
      endif
      date = strmid(out_dir, pos+1, 10)
      date = red_strreplace(date, '-', '.', n = 2)
-;     root_dir = root_dir+date+'/'
   endif
 
-  isodate = red_strreplace(date, '.', '-', n = 2)
+  ;; Just in case date became a (one-element) array.
+  date = date[0]
 
-  date_momfbd = isodate
+  ;; Date in ISO format and with dots.
+  isodate = red_strreplace(date, '.', '-', n = 2)
   date = red_strreplace(isodate, '-', '.', n = 2)
 
-  ;; Where to look for data?
-  known_site = keyword_set(lapalma) $
-               or keyword_set(stockholm)
-  
-  if ~known_site and n_elements(root_dir) eq 0 then begin
-     hostname = getenv('HOSTNAME')
-     if strpos(hostname,'royac.iac.es') ne -1 then begin
-        lapalma = 1
-     endif else begin
-        stockholm = 1
-     endelse
-  endif
-  
-  if keyword_set(lapalma) then begin
-     search_dir = "/data/disk?/*/"
-     found_dir = file_search(search_dir+date, count = Nfound)
-     if Nfound eq 0 then begin
-        search_dir = "/data/camera?/*/"
-        found_dir = file_search(search_dir+date, count = Nfound)
-     endif
-  endif else begin
-     if keyword_set(stockholm) then begin
-        search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/", "/mnt/sand??/Incoming/Checked/"]
-     endif else begin
-         if ~strmatch(root_dir,'*/') then root_dir += '/'
-        search_dir = root_dir
-     endelse
-        ;;; is search_dir already the one we look for?
-     IF file_basename(search_dir) EQ date THEN BEGIN
-         found_dir = search_dir
-         Nfound = 1
-     ENDIF ELSE $
-       found_dir = file_search(search_dir+date[0], count = Nfound)
+  if n_elements(search_dir) eq 0 then begin
+ 
+     ;; No search_dir specified. Try to find out where we are from the
+     ;; hostname and search for a root_dir based on that.
      
-  endelse
+     spawn, 'hostname -f', hostname
+
+     case 1 of
+        strpos(hostname,'royac.iac.es') ne -1 : begin
+           ;; At the SST in La Palma
+           search_dir = ["/data/disk?/*/", "/data/camera?/*/"]
+        end
+        strpos(hostname,'astro.su.se') ne -1 : begin
+           ;; At the ISP in Stockholm
+           search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/", "/mnt/sand??/Incoming/Checked/"]
+        end
+     endcase
+
+     ;; Make sure search_dir ends with a slash before we append the date
+     for i = 0, n_elements(search_dir)-1 do begin
+        if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
+     endfor
+
+  endif                         ; No search_dir given
   
-  if Nfound eq 1 then begin
-     root_dir = found_dir
-     if ~strmatch(root_dir,'*/') then root_dir += '/'
-  endif else if Nfound eq 0 then begin
-     print, 'Cannot find data from '+date+' in '+search_dir
-     return
-  endif else begin
-     print, 'The root directory is not unique.'
-     print, '"'+search_dir+'" matches: '
-     print, found_dir
-     stop
-     ;; And here we need to figure out what to do...
-     ;; Could happen in La Palma
-  endelse
+  ;; We now have a search_dir, but it could be a regular expression or
+  ;; an array of directories and/or regular expressions. It could
+  ;; include the date but then again it might not.
+
+  for i = 0, n_elements(search_dir)-1 do begin
+     if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
+     if file_basename(search_dir[i]) ne date then search_dir[i] += date
+  endfor
+  
+     
+  ;; Now search
+  found_dir = file_search(search_dir, count = Nfound)
+
+  ;; Maybe some searches returned the same result?
+  if Nfound gt 1 then begin
+     found_dir = found_dir[uniq(found_dir,sort(found_dir))]
+     Nfound = n_elements(found_dir)
+  endif
+
+  print, 'Looked for data from '+date+' in:'
+  for i = 0, n_elements(search_dir)-1 do print, search_dir[i]
+  
+  case Nfound of
+     0: begin
+        print, "Didn't find any data."
+        return
+     end
+     1: begin
+        print, 'Found one dir, which we will use:'
+        print, found_dir
+        root_dir = found_dir
+     end
+     else: begin
+        print, 'Found several possible locations:'
+        for i = 0, Nfound-1 do print, found_dir[i]
+        print, 'Please call red_setupworkdir again with one of them specified as search_dir.'
+        return
+     end
+  endcase
+  
+  ;; Make sure root_dir ends with a slash.
+  if ~strmatch(root_dir,'*/') then root_dir += '/'
+
 
   Ncpu = !cpu.hw_ncpu
   If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
@@ -334,7 +345,7 @@ pro red_setupworkdir, root_dir = root_dir $
   printf, Clun, '# --- Flats'
   printf, Clun, '#'
   flatdirs = file_search(root_dir+'/flat*/*', count = Ndirs, /fold)
-
+  
   Nprefilters = 0
   for i = 0, Ndirs-1 do begin
      flatsubdirs = file_search(flatdirs[i]+'/crisp*', count = Nsubdirs, /fold)
@@ -598,7 +609,7 @@ pro red_setupworkdir, root_dir = root_dir $
      endif else begin
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
-     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
+     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
              + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
              + maybe_nodescatter[ipref]
   endfor
