@@ -30,6 +30,8 @@
 ; 
 ;   2016-05-01 : MGL. First version.
 ; 
+;   2016-05-04 : MGL. Added PointGrey cameras, except for serial numbers.
+; 
 ; 
 ;-
 function red_camerainfo, x
@@ -225,6 +227,42 @@ function red_camerainfo, x
                   serialnumber:'03000831M', $
                   use:'Blue beam', $
                   note:'Camera without window to improve fringing problems'}
+     27: return, {romnum:'XXVII', $
+                  defined:1, $
+                  model:'PointGrey GS3-U3-23S6M-C', $
+                  xsize:1920, $
+                  ysize:1200, $
+                  pixelsize:5.86e-6, $
+                  serialnumber:'', $
+                  use:'CHROMIS', $
+                  note:''}
+     28: return, {romnum:'XXVIII', $
+                  defined:1, $
+                  model:'PointGrey GS3-U3-23S6M-C', $
+                  xsize:1920, $
+                  ysize:1200, $
+                  pixelsize:5.86e-6, $
+                  serialnumber:'', $
+                  use:'CHROMIS', $
+                  note:''}
+     29: return, {romnum:'XXIX', $
+                  defined:1, $
+                  model:'PointGrey GS3-U3-23S6M-C', $
+                  xsize:1920, $
+                  ysize:1200, $
+                  pixelsize:5.86e-6, $
+                  serialnumber:'', $
+                  use:'CHROMIS', $
+                  note:''}
+     30: return, {romnum:'XXX', $
+                  defined:1, $
+                  model:'PointGrey GS3-U3-23S6M-C', $
+                  xsize:1920, $
+                  ysize:1200, $
+                  pixelsize:5.86e-6, $
+                  serialnumber:'', $
+                  use:'CHROMIS', $
+                  note:''}
      else: return, {defined:0}
   endcase
   
