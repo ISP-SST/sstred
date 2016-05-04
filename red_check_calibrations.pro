@@ -23,8 +23,8 @@
 ;
 ;       all : in, optional, type=boolean, default=FALSE
 ;
-;          Set this to make all of the darks, flats, polcal, and
-;          pinholes keywords TRUE.
+;          Set this to make all of the darks, flats, polcal,
+;          pinholes, and science keywords TRUE.
 ;
 ;       darks : in, optional, type=boolean, default=FALSE
 ;
@@ -41,6 +41,10 @@
 ;       pinholes : in, optional, type=boolean, default=FALSE
 ;
 ;          Set this to check for pinholes data.
+;
+;	science : in, optional, type=boolean, default=FALSE
+;
+;	   Set this to check science data.
 ;
 ;       logfile : in, optional, type=string, default='check_calibrations_TIMESTAMP.txt'
 ;
@@ -96,7 +100,8 @@ pro red_check_calibrations, root_dir $
                             , flats = flats $
                             , polcal = polcal $
                             , pinholes = pinholes $
-                            , logfile = logfile
+                            , logfile = logfile $
+                            , science=science
 
 ; The logic of this program is as follows:
 ;
@@ -140,7 +145,7 @@ pro red_check_calibrations, root_dir $
      flats = 1
      polcal = 1
      pinholes = 1
-
+     science = 1
   endif
   
   ;; Make lists of calibrations directories
@@ -150,6 +155,10 @@ pro red_check_calibrations, root_dir $
   polcaldirs  = file_search(root_dir+'/polc*/*',   count = Npolcaldirs,  /fold)
   pfscandirs  = file_search(root_dir+'/pfscan*/*', count = Npfscandirs,  /fold)
 
+  if Ndarkdirs+Nflatdirs+Npinholedirs+Npolcaldirs+Npfscandirs eq 0 then begin
+    message,"Bugged calibration directories!",/info
+    
+  endif
   ;; The rest must be science directories
   nonsciencedirs = [darkdirs, flatdirs, pinholedirs, polcaldirs, pfscandirs]
   dirs = file_search(root_dir+'/*/*', count = Ndirs)
@@ -164,7 +173,7 @@ pro red_check_calibrations, root_dir $
   endfor                        ; idir
   Nsciencedirs = n_elements(sciencedirs)
 
-  
+ 
   if keyword_set(darks) then begin
      ;; See what darks data there are.
 
@@ -209,6 +218,7 @@ pro red_check_calibrations, root_dir $
         endfor                  ; idir
      endif else begin           ; Ndarksubdirs
         printf, llun, 'No darks data'
+        darkcams = ''
      endelse                    ; Ndarksubdirs
   endif                         ; darks
   
@@ -295,6 +305,7 @@ pro red_check_calibrations, root_dir $
         endfor                  ; idir
         
      endif else begin           ; Nflatsubdirs
+        flatcamstates = ''
         printf, llun, 'No flats data'
      endelse                    ; Nflatsubdirs
   endif                         ; flats
@@ -352,21 +363,22 @@ pro red_check_calibrations, root_dir $
               ;; There should be two lp (linear polarizer) states and
               ;; the number of frames of each should be equal.
               ulp = lp[uniq(lp,sort(lp))]
-              nLP = n_elements(ulp)
-              framesPerLP = lonarr(nLP)
-              for i = 0, n_elements(ulp)-1 do framesPerLP[i] = n_elements(where(strmatch(fnames,'*'+ulp[i]+'*')))
-              polcalok[idir] = polcalok[idir] and nLP eq 2
-              polcalok[idir] = polcalok[idir] and max(framesPerLP) eq min(framesPerLP)
 
+	      nulp = n_elements(ulp)
+	      if nulp ne 2 then polcalok[idir] = 0 else begin
+		Nlp = lonarr(nulp)
+		for i = 0, nulp-1 do Nlp[i] = n_elements(where(strmatch(fnames,'*'+ulp[i]+'*')))
+		polcalok[idir] = polcalok[idir] and max(Nlp) eq min(Nlp)
+	      endelse
               ;; There should be four lc (liqud crystal) states and
               ;; the number of frames of each should be equal.
               ulc = lc[uniq(lc,sort(lc))]
-              nLC = n_elements(ulc)
-              framesPerLC = lonarr(nLC)
-              for i = 0, n_elements(ulc)-1 do framesPerLC[i] = n_elements(where(strmatch(fnames,'*'+ulc[i]+'*')))
-              polcalok[idir] = polcalok[idir] and nLC eq 4
-              polcalok[idir] = polcalok[idir] and max(framesPerLC) eq min(framesPerLC)
-
+              nulc = n_elements(ulc)
+              if nulc ne 4 then polcalok[idir] = 0 else begin
+		Nlc = lonarr(nulc)
+		for i = 0, nulc-1 do Nlc[i] = n_elements(where(strmatch(fnames,'*'+ulc[i]+'*')))
+		polcalok[idir] = polcalok[idir] and max(Nlc) eq min(Nlc)
+	      endelse
               ;; The number of qw (quarter wave plate) angles is not
               ;; fixed but the angles should be evenly distributed
               ;; over 360 degrees, repeating the 0=360 angle. And the
@@ -392,6 +404,7 @@ pro red_check_calibrations, root_dir $
            printf, llun, outline
         endfor                  ; idir
      endif else begin           ; Npocalsubdirs 
+        polcalcamstates = ''
         printf, llun, 'No polcal data'
      endelse                    ; Npocalsubdirs     
   endif                         ; polcal
@@ -441,11 +454,12 @@ pro red_check_calibrations, root_dir $
                  ;; For CRISP WB data we only care about the prefilter
                  for ii = 0, n_elements(fullstate)-1 do $
                     fullstate[ii] = (strsplit(fullstate[ii],'.',/extract))[0] 
-              endif else begin
+              endif ;else begin
                  ;; For CRISP NB data we don't care about the LC state
-                 for i=0,n_elements(fullstate)-1 do $
-                    fullstate[i] = strjoin((strsplit(fullstate[i],'.',/extract))[0:1],'.')
-              endelse
+                 ;; Yes we do!
+                 ;for i=0,n_elements(fullstate)-1 do $
+                 ;   fullstate[i] = strjoin((strsplit(fullstate[i],'.',/extract))[0:1],'.')
+              ;endelse
               ufullstate = fullstate[uniq(fullstate,sort(fullstate))]
               camstates = ucam+'.'+ufullstate
            endif else begin
@@ -473,16 +487,62 @@ pro red_check_calibrations, root_dir $
                          + ' :'+string(Npinholeframes[i], format = '(i5)') $
                          + ' ' + pinholesubdirs[idir]
               endfor
+              
+              
+              ;; Do we have darks for these data?
+              if keyword_set(darks) then begin
+
+                 print, '   Check darks.'
+
+                 printf, llun, '   There are ' + strtrim(total(Npinholeframes), 2) + ' ' +ucam + ' pinhole frames.'
+                 idark = (where(ucam eq darkcams, Nhits))[0]
+                 if Nhits gt 0 then begin
+                    printf, llun, '   There are '+strtrim(Ndarkframes[idark], 2)+' dark frames for '+ucam+'.'
+                 endif else begin
+                    printf, llun, '   No darks for '+ucam+'!   ---------- Warning!'
+                    print, '      No darks for '+ucam+'!'
+                    Ndarkproblems += 1
+                 endelse
+              endif             ; darks
+              
+
+
+              ;; Do we have flats for these data?
+              if keyword_set(flats) then begin
+
+                 print, '   Check flats.'
+                 
+                 ;; Find all camstates, loop through them and compare with the flats camstates.
+;              sciencecamstates = cam+'.'+fullstate
+
+                 for i = 0, n_elements(ufullstate)-1 do begin
+                    Nstateframes = n_elements(where(strmatch(fnames,'*'+ufullstate[i]+'*')))
+                    iflat = (where(pinholecamstates[i] eq flatcamstates, Nhits))[0]
+                    outline = '   ' + pinholecamstates[i] + ' with ' + strtrim(Nstateframes, 2) + ' pinhole frames : '
+                    if Nhits gt 0 then begin
+                       outline += strtrim(Nflatframes[iflat], 2) + ' flat frames.'
+                    endif else begin
+                       outline += ' No flat frames!   ---------- Warning!'
+                       print, '      No flats for '+pinholecamstates[i]
+                       Nflatproblems += 1
+                    endelse     ; Nhits
+                    printf, llun, outline
+                 endfor         ; i
+
+              endif             ; flats
+
+              
            endelse
            
         endfor                  ; idir
      endif else begin           ; Npinholesubdirs
+        pinholecamstates = ''
         printf, llun, 'No pinhole data.'
      endelse                    ; Npinholesubdirs
   endif                         ; pinholes
   
 
-  
+  if keyword_set(science) then begin
   if Nsciencedirs eq 0 then begin
      
      printf, llun
@@ -725,7 +785,7 @@ pro red_check_calibrations, root_dir $
      endfor                     ; idir
      
   endelse                       ; Nsciencedirs 
-  
+  endif
 
   ;; Finally, if there are prefilter scans, check that there are darks
   ;; for them.
@@ -812,7 +872,7 @@ pro red_check_calibrations, root_dir $
      if Npolcalproblems gt 0 then $
         print, 'red_check_calibrations : '+strtrim(Npolcalproblems, 2)+' polcal problems found.'
      if Nscienceproblems gt 0 then $
-        print, 'red_check_calibrations : '+strtrim(Nscienceproblems, 2)+' science problems found.'
+        print, 'red_check_calibrations : '+strtrim(X, 2)+' science problems found.'
      if Npfscanproblems gt 0 then $
         print, 'red_check_calibrations : '+strtrim(Npfscanproblems, 2)+' prefilter scan problems found.'
   endelse

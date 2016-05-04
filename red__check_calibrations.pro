@@ -36,6 +36,10 @@
 ;
 ;          Set this to check for pinholes data.
 ;
+;	science : in, optional, type=boolean, default=FALSE
+;
+;	   Set this to check science data.
+;
 ;       logfile : in, optional, type=string
 ;
 ;          The name of the file where the output will be logged.
@@ -66,7 +70,8 @@ pro red::check_calibrations, all = all $
                              , flats = flats $
                              , polcal = polcal $
                              , pinholes = pinholes $
-                             , logfile = logfile
+                             , logfile = logfile $
+                             , science = science
 
   root_dir = self.root_dir
 
@@ -76,7 +81,8 @@ pro red::check_calibrations, all = all $
                           , flats = flats $
                           , polcal = polcal $
                           , pinholes = pinholes $
-                          , logfile = logfile
+                          , logfile = logfile $
+                          , science = science
 
 
 end
