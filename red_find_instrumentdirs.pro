@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Look recursively for instrument-specific below a given directory.
+; Look recursively for instrument-specific subdirectory below a given
+; directory. 
 ;
 ; Subdirectories will be searched for by using regular expressions of
 ; the following type:
