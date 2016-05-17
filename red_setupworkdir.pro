@@ -178,7 +178,8 @@
 ;                 "sand15n" type mounted disk names. Removed some
 ;                 polarization and descatter things from the CHROMIS
 ;                 part. New keywords exclude_chromis and
-;                 exclude_crisp.
+;                 exclude_crisp. Use the new cam_channels in the
+;                 config file.
 ;
 ;
 ;-
@@ -349,9 +350,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_w = Chromis-W'
-     printf, Clun, 'cam_p = Chromis-P'
-     printf, Clun, 'cam_n = Chromis-N'
+     printf, Clun, 'cam_channels = Chromis-W'
+     printf, Clun, 'cam_channels = Chromis-P'
+     printf, Clun, 'cam_channels = Chromis-N'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
@@ -602,9 +603,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_t = Crisp-T'
-     printf, Clun, 'cam_r = Crisp-R'
-     printf, Clun, 'cam_wb = Crisp-W'
+     printf, Clun, 'cam_channels = Crisp-T'
+     printf, Clun, 'cam_channels = Crisp-R'
+     printf, Clun, 'cam_channels = Crisp-W'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
