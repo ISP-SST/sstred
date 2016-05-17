@@ -164,7 +164,10 @@
 ;
 ;    2016-05-05 : MGL. Separate the CRISP and CHROMIS setups into two
 ;                 subdirectories under out_dir. Clean up in the
-;                 searching for subdirectories for darks and flats. 
+;                 searching for subdirectories for darks and flats.  
+;
+;    2016-05-17 : MGL. Changed Stockholm search dirs to accommodate
+;                 "sand15n" type mounted disk names.
 ;
 ;
 ;-
@@ -235,7 +238,7 @@ pro red_setupworkdir, search_dir = search_dir $
         end
         strpos(hostname,'astro.su.se') ne -1 : begin
            ;; At the ISP in Stockholm
-           search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/", "/mnt/sand??/Incoming/Checked/"]
+           search_dir = ["/mnt/sand*/", "/mnt/sand*/Incoming/", "/mnt/sand*/Incoming/Checked/"]
         end
      endcase
 
