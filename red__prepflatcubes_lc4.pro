@@ -59,11 +59,14 @@
 ;		 lc0-3 datasets are detected it will output files with
 ;		 .lc4 added to the state name.
 ; 
+;   2016-05-10 : THI. New keyword pref.
+;
 ;-
 pro red::prepflatcubes_lc4, flatdir = flatdir $
                             , no_descatter = no_descatter $
                             , nthreads = nthreads $
                             , cam = cam $
+                            , pref = pref $
                             , verbose = verbose
 
   ;; Name of this method
@@ -112,6 +115,12 @@ pro red::prepflatcubes_lc4, flatdir = flatdir $
 
      ;; Loop prefilters
      for pp = 0, np -1 do begin
+        if(keyword_set(pref)) then begin
+           if uprefs[pp] ne pref then begin
+              print, inam + ' : skipping prefilter -> '+uprefs[pp]
+              continue
+           endif
+        endif 
         upref = uprefs[pp]
         pos = where((stat.pref eq upref), nstat)
         
