@@ -180,7 +180,10 @@
 ;                 part. New keywords exclude_chromis and
 ;                 exclude_crisp. Use the new cam_channels in the
 ;                 config file. Make an instance of chromisred rather
-;                 than crispred in the CHROMIS script.
+;                 than crispred in the CHROMIS script.  
+;
+;    2016-05-18 : MGL. Use sumdark's dirs keyword instead of
+;                 setdarkdir. 
 ;
 ;
 ;-
@@ -376,9 +379,8 @@ pro red_setupworkdir, search_dir = search_dir $
         darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
-           printf, Slun, 'a -> setdarkdir, root_dir+"' $
+           printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
                    + red_strreplace(darkdirs[idir], root_dir, '') + '"'
-           printf, Slun, 'a -> sumdark, /check'
         endfor                  ; idir
      endif                      ; Nsubdirs
      
@@ -642,9 +644,8 @@ pro red_setupworkdir, search_dir = search_dir $
         darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
-           printf, Slun, 'a -> setdarkdir, root_dir+"' $
+           printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
                    + red_strreplace(darkdirs[idir], root_dir, '') + '"'
-           printf, Slun, 'a -> sumdark, /check'
         endfor                  ; idir
      endif                      ; Nsubdirs
      
