@@ -179,7 +179,8 @@
 ;                 polarization and descatter things from the CHROMIS
 ;                 part. New keywords exclude_chromis and
 ;                 exclude_crisp. Use the new cam_channels in the
-;                 config file.
+;                 config file. Make an instance of chromisred rather
+;                 than crispred in the CHROMIS script.
 ;
 ;
 ;-
@@ -326,8 +327,8 @@ pro red_setupworkdir, search_dir = search_dir $
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
      file_mkdir, chromis_dir
-     openw, Clun, chromis_dir + cfgfile, /get_lun
-     openw, Slun, chromis_dir + scriptfile , /get_lun
+     openw, Clun, chromis_dir + cfgfile,    /get_lun
+     openw, Slun, chromis_dir + scriptfile, /get_lun
 
      ;; Specify the date in the config file, ISO format.
      print, 'Date'
@@ -336,7 +337,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun,'isodate = '+isodate
 
-     printf, Slun, 'a = crispred("'+cfgfile+'")' 
+     printf, Slun, 'a = chromisred("'+cfgfile+'")' 
      printf, Slun, 'root_dir = "' + root_dir + '"'
 
      ;; Download SST log files and optionally some other data from the web.
@@ -368,13 +369,15 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# --- Darks'
      printf, Clun, '#'
      
-     darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'dark', count = Nsubdirs)
+     darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'dark' $
+                                           , count = Nsubdirs)
      if Nsubdirs gt 0 then begin
         darkdirs = file_dirname(darksubdirs)
         darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
-           printf, Slun, 'a -> setdarkdir, root_dir+"' + red_strreplace(darkdirs[idir], root_dir, '')
+           printf, Slun, 'a -> setdarkdir, root_dir+"' $
+                   + red_strreplace(darkdirs[idir], root_dir, '')
            printf, Slun, 'a -> sumdark, /check'
         endfor                  ; idir
      endif                      ; Nsubdirs
@@ -384,7 +387,8 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# --- Flats'
      printf, Clun, '#'
 
-     flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'flat', count = Nsubdirs)
+     flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'flat' $
+                                           , count = Nsubdirs)
      if Nsubdirs gt 0 then begin
         ;; There are CHROMIS flats!
 
@@ -416,11 +420,13 @@ pro red_setupworkdir, search_dir = search_dir $
               wls = wls[WHERE(wls ne '')]
               wavelengths = strjoin(wls, ' ')
               ;; Print to script file
-              print, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '')$
-                      + '"  ; ' + camdirs+' ('+wavelengths+')'
+              print, 'a -> setflatdir, root_dir+"' $
+                     + red_strreplace(flatdirs[idir], root_dir, '')$
+                     + '"  ; ' + camdirs+' ('+wavelengths+')'
               print, 'a -> sumflat, /check'
 
-              printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '')$
+              printf, Slun, 'a -> setflatdir, root_dir+"' $
+                      + red_strreplace(flatdirs[idir], root_dir, '')$
                       + '"  ; ' + camdirs+' ('+wavelengths+')'
               printf, Slun, 'a -> sumflat, /check'
 
@@ -456,7 +462,8 @@ pro red_setupworkdir, search_dir = search_dir $
         pinhsubdirs = file_search(pinhdirs[i]+'/chromis*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
            printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-           printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
+           printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                   + red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
            for ipref = 0, Nprefilters-1 do begin
               printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
@@ -464,13 +471,17 @@ pro red_setupworkdir, search_dir = search_dir $
         endif else begin
            pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
            for j = 0, Nsubdirs-1 do begin
-              pinhsubsubdirs = file_search(pinhsubdirs[j]+'/chromis*', count = Nsubsubdirs, /fold)
+              pinhsubsubdirs = file_search(pinhsubdirs[j]+'/chromis*' $
+                                           , count = Nsubsubdirs, /fold)
               if Nsubsubdirs gt 0 then begin
-                 printf, Clun, 'pinh_dir = '+red_strreplace(pinhsubdirs[j], root_dir, '')
-                 printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+                 printf, Clun, 'pinh_dir = ' $
+                         + red_strreplace(pinhsubdirs[j], root_dir, '')
+                 printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                         + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
                  for ipref = 0, Nprefilters-1 do begin
-                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" 
+                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                            + prefilters[ipref]+"'" 
                  endfor
               endif
            endfor
@@ -492,14 +503,16 @@ pro red_setupworkdir, search_dir = search_dir $
         endif else begin
            pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
            for j = 0, Nsubdirs-1 do begin
-              pfscansubsubdirs = file_search(pfscansubdirs[j]+'/chromis*', count = Nsubsubdirs, /fold)
+              pfscansubsubdirs = file_search(pfscansubdirs[j]+'/chromis*' $
+                                             , count = Nsubsubdirs, /fold)
               if Nsubsubdirs gt 0 then begin
-                 printf, Clun, '# pfscan_dir = '+red_strreplace(pfscansubdirs[j], root_dir, '')
+                 printf, Clun, '# pfscan_dir = ' $
+                         + red_strreplace(pfscansubdirs[j], root_dir, '')
                  Npfs += 1
-              endif
-           endfor
-        endelse
-     endfor
+              endif  ; Nsubsubdirs
+           endfor    ; j
+        endelse      ; Nsubdirs
+     endfor          ; i
      ;; If we implement dealing with prefilter scans in the pipeline,
      ;; here is where the command should be written to the script file.
 
@@ -516,13 +529,15 @@ pro red_setupworkdir, search_dir = search_dir $
      for i = 0, Ndirs-1 do begin
 
         if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-           sciencesubdirs = file_search(sciencedirs[i]+'/chromis*', count = Nsubdirs, /fold)
+           sciencesubdirs = file_search(sciencedirs[i]+'/chromis*' $
+                                        , count = Nsubdirs, /fold)
            if Nsubdirs gt 0 then begin
               red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
            endif else begin
               sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
               for j = 0, Nsubdirs-1 do begin
-                 sciencesubsubdirs = file_search(sciencesubdirs[j]+'/chromis*', count = Nsubsubdirs, /fold)
+                 sciencesubsubdirs = file_search(sciencesubdirs[j]+'/chromis*' $
+                                                 , count = Nsubsubdirs, /fold)
                  if Nsubsubdirs gt 0 then begin
                     red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
                  endif
@@ -627,7 +642,8 @@ pro red_setupworkdir, search_dir = search_dir $
         darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
-           printf, Slun, 'a -> setdarkdir, root_dir+"' + red_strreplace(darkdirs[idir], root_dir, '')
+           printf, Slun, 'a -> setdarkdir, root_dir+"' $
+                   + red_strreplace(darkdirs[idir], root_dir, '')
            printf, Slun, 'a -> sumdark, /check'
         endfor                  ; idir
      endif                      ; Nsubdirs
@@ -669,11 +685,13 @@ pro red_setupworkdir, search_dir = search_dir $
               wls = wls[WHERE(wls ne '')]
               wavelengths = strjoin(wls, ' ')
               ;; Print to script file
-              print, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '')$
+              print, 'a -> setflatdir, root_dir+"' $
+                     + red_strreplace(flatdirs[idir], root_dir, '') $
                       + '"  ; ' + camdirs+' ('+wavelengths+')'
               print, 'a -> sumflat, /check'
 
-              printf, Slun, 'a -> setflatdir, root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '')$
+              printf, Slun, 'a -> setflatdir, root_dir+"' $
+                      + red_strreplace(flatdirs[idir], root_dir, '') $
                       + '"  ; ' + camdirs+' ('+wavelengths+')'
               printf, Slun, 'a -> sumflat, /check'
 
@@ -718,28 +736,34 @@ pro red_setupworkdir, search_dir = search_dir $
         pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
            printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-           printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
+           printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                   + red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
            for ipref = 0, Nprefilters-1 do begin
-              printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
+              printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                      + prefilters[ipref]+"'" $
                       + maybe_nodescatter[ipref]
            endfor
         endif else begin
            pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
            for j = 0, Nsubdirs-1 do begin
-              pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
+              pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
+                                           , count = Nsubsubdirs, /fold)
               if Nsubsubdirs gt 0 then begin
-                 printf, Clun, 'pinh_dir = '+red_strreplace(pinhsubdirs[j], root_dir, '')
-                 printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+                 printf, Clun, 'pinh_dir = ' $
+                         + red_strreplace(pinhsubdirs[j], root_dir, '')
+                 printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                         + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
                  for ipref = 0, Nprefilters-1 do begin
-                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
+                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                            + prefilters[ipref] + "'" $
                             + maybe_nodescatter[ipref]
-                 endfor
-              endif
-           endfor
-        endelse
-     endfor
+                 endfor         ; ipref
+              endif             ; Nsubsubdirs
+           endfor               ; j
+        endelse                 ; Nsubdirs
+     endfor                     ; i
      
      print, 'Polcal'
      printf, Clun, '#'
@@ -750,20 +774,26 @@ pro red_setupworkdir, search_dir = search_dir $
      if Npol gt 0 then begin
         polprefs = file_basename(polcaldirs)
         for i = 0, Npol-1 do begin
-           polcalsubdirs = file_search(polcaldirs[i]+'/crisp*', count = Nsubdirs, /fold)
+           polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
+                                       , count = Nsubdirs, /fold)
            if Nsubdirs gt 0 then begin
-              printf, Clun, 'polcal_dir = '+red_strreplace(polcaldirs[i], root_dir, '')
+              printf, Clun, 'polcal_dir = ' $
+                      + red_strreplace(polcaldirs[i], root_dir, '')
 ;        Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+                      + red_strreplace(polcaldirs[i], root_dir, '')+'"'
               printf, Slun, 'a -> sumpolcal, /check'
            endif else begin
               polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
               for j = 0, Nsubdirs-1 do begin
-                 polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
+                 polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
+                                                , count = Nsubsubdirs, /fold)
                  if Nsubsubdirs gt 0 then begin
-                    printf, Clun, 'polcal_dir = '+red_strreplace(polcalsubdirs[j], root_dir, '')
+                    printf, Clun, 'polcal_dir = ' $
+                            + red_strreplace(polcalsubdirs[j], root_dir, '')
 ;              Npol += 1
-                    printf, Slun, 'a -> setpolcaldir, root_dir+"' + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+                    printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+                            + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
                     printf, Slun, 'a -> sumpolcal, /check' 
                  endif
               endfor            ; j
@@ -796,9 +826,11 @@ pro red_setupworkdir, search_dir = search_dir $
         endif else begin
            pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
            for j = 0, Nsubdirs-1 do begin
-              pfscansubsubdirs = file_search(pfscansubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
+              pfscansubsubdirs = file_search(pfscansubdirs[j]+'/crisp*' $
+                                             , count = Nsubsubdirs, /fold)
               if Nsubsubdirs gt 0 then begin
-                 printf, Clun, '# pfscan_dir = '+red_strreplace(pfscansubdirs[j], root_dir, '')
+                 printf, Clun, '# pfscan_dir = ' $
+                         + red_strreplace(pfscansubdirs[j], root_dir, '')
                  Npfs += 1
               endif
            endfor
@@ -820,20 +852,22 @@ pro red_setupworkdir, search_dir = search_dir $
      for i = 0, Ndirs-1 do begin
 
         if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-           sciencesubdirs = file_search(sciencedirs[i]+'/crisp*', count = Nsubdirs, /fold)
+           sciencesubdirs = file_search(sciencedirs[i]+'/crisp*' $
+                                        , count = Nsubdirs, /fold)
            if Nsubdirs gt 0 then begin
               red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
            endif else begin
               sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
               for j = 0, Nsubdirs-1 do begin
-                 sciencesubsubdirs = file_search(sciencesubdirs[j]+'/crisp*', count = Nsubsubdirs, /fold)
+                 sciencesubsubdirs = file_search(sciencesubdirs[j]+'/crisp*' $
+                                                 , count = Nsubsubdirs, /fold)
                  if Nsubsubdirs gt 0 then begin
                     red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
-                 endif
+                 endif          ; Nsubsubdirs
               endfor            ; j
-           endelse 
+           endelse              ; Nsubdirs
         endif
-     endfor
+     endfor                     ; i
      if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
      printf, Slun, 'a -> link_data' 
