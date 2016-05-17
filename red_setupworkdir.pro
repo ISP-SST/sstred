@@ -377,7 +377,7 @@ pro red_setupworkdir, search_dir = search_dir $
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
            printf, Slun, 'a -> setdarkdir, root_dir+"' $
-                   + red_strreplace(darkdirs[idir], root_dir, '')
+                   + red_strreplace(darkdirs[idir], root_dir, '') + '"'
            printf, Slun, 'a -> sumdark, /check'
         endfor                  ; idir
      endif                      ; Nsubdirs
@@ -643,7 +643,7 @@ pro red_setupworkdir, search_dir = search_dir $
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
            printf, Slun, 'a -> setdarkdir, root_dir+"' $
-                   + red_strreplace(darkdirs[idir], root_dir, '')
+                   + red_strreplace(darkdirs[idir], root_dir, '') + '"'
            printf, Slun, 'a -> sumdark, /check'
         endfor                  ; idir
      endif                      ; Nsubdirs
