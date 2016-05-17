@@ -134,29 +134,29 @@ pro red::initialize, filename
         'cam_dir': BEGIN
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
             IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
-            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
+            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
+            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
         END
         'cam_t': begin
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
             IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
             self.camt =  tmp
-            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
-            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
+            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
+            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
         end
         'cam_r': begin
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
             IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
             self.camr =  tmp
-            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
-            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
+            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
+            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
         end
         'cam_wb': begin
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
             IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
             self.camwb =  tmp
-            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
-            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
+            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
+            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
         end
         'prefilter_dir': begin
            self.prefilter_dir =  (strsplit(line,' =',/extract))[1] ; extract value
@@ -305,13 +305,13 @@ pro red::initialize, filename
         FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.flat_dir)[k]
      ENDELSE
   ENDIF
-  IF ptr_valid(self.cam_dirs) THEN BEGIN
-     nn = n_elements(*self.cam_dirs)
+  IF ptr_valid(self.cam_channels) THEN BEGIN
+     nn = n_elements(*self.cam_channels)
      IF(nn EQ 1) THEN BEGIN
-        print, 'red::initialize : cam_dir = '+ (*self.cam_dirs)[0]
+        print, 'red::initialize : cam_dir = '+ (*self.cam_channels)[0]
      ENDIF ELSE BEGIN
-        print, 'red::initialize : cam_dirs :'
-        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.cam_dirs)[k]
+        print, 'red::initialize : cam_channels :'
+        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.cam_channels)[k]
      ENDELSE
   ENDIF
   ;if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
