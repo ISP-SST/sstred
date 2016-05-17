@@ -189,8 +189,8 @@ pro red_setupworkdir, search_dir = search_dir $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
                       , date = date $
-                      , setup_chromis = setup_chromis $
-                      , setup_crisp = setup_crisp
+                      , exclude_chromis = exclude_chromis $
+                      , exclude_crisp = exclude_crisp
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')  
   if ~strmatch(out_dir,'*/') then out_dir += '/'
