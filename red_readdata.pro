@@ -36,15 +36,15 @@
 ; :History:
 ; 
 ;   2016-05-16 : MGL. First version
+; 
+;   2016-05-17 : MGL. Default for filetype based on file name.
 ;
 ;-
-function red_readdata, fname, data = data, header = header, filetype = filetype, structheader = structheader
-
-  if n_elements(filetype) eq 0 then begin
-
-     ;; Try to guess based on file name
-
-  endif
+function red_readdata, fname $
+                       , data = data $
+                       , header = header $
+                       , filetype = filetype $
+                       , structheader = structheader
 
   if file_test(fname) eq 0 then begin
 
@@ -53,6 +53,25 @@ function red_readdata, fname, data = data, header = header, filetype = filetype,
      return, 0B
 
   endif
+
+  if n_elements(filetype) eq 0 then begin
+
+     if strmatch(fname, '*.fits') then begin
+        ;; Try to find out if it's a PointGrey camera based on file name
+        cam = (strsplit(file_basename(fname), '.', /extract))[0]
+        if n_elements(cam) ne 0 then caminfo = red_camerainfo(cam)
+        if strmatch(caminfo.model,'PointGrey*') then begin
+           filetype = 'ptgrey-fits'
+        endif                   ; PointGrey
+        
+     endif else begin
+        
+        filetype = 'fz'         
+        
+     endelse
+
+  endif                         ; filetype
+
 
   case filetype of
 
@@ -102,8 +121,6 @@ function red_readdata, fname, data = data, header = header, filetype = filetype,
            header[ih] = 'EXPTIME = ' + strtrim(exptime, 2)+ ' / [s]' & ih += 1
            ;;header[ih] = 'INTERVAL= ' & ih += 1
            
-           ;; A CRISP image file header continues with 
-
            ;; End!
            header[ih] = 'END' & ih += 1
 
