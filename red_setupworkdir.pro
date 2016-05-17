@@ -167,7 +167,9 @@
 ;                 searching for subdirectories for darks and flats.  
 ;
 ;    2016-05-17 : MGL. Changed Stockholm search dirs to accommodate
-;                 "sand15n" type mounted disk names.
+;                 "sand15n" type mounted disk names. Removed some
+;                 polarization and descatter things from the CHROMIS
+;                 part.
 ;
 ;
 ;-
@@ -309,7 +311,7 @@ pro red_setupworkdir, search_dir = search_dir $
 
   
   ;; Is there CHROMIS data?
-  setup_chromis = 0
+  setup_chromis = 1
   
   if setup_chromis then begin
   
@@ -376,7 +378,7 @@ pro red_setupworkdir, search_dir = search_dir $
 
      flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'flat', count = Nsubdirs)
      if Nsubdirs gt 0 then begin
-        ;; There are CRISP flats!
+        ;; There are CHROMIS flats!
 
         ;; Directories with camera dirs below:
         flatdirs = file_dirname(flatsubdirs)
@@ -434,7 +436,7 @@ pro red_setupworkdir, search_dir = search_dir $
      
      for ipref = 0, Nprefilters-1 do begin
         printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
-                + "' " + maybe_nodescatter[ipref]
+                + "' "
      endfor
 
      print, 'Pinholes'
@@ -449,8 +451,7 @@ pro red_setupworkdir, search_dir = search_dir $
            printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
            for ipref = 0, Nprefilters-1 do begin
-              printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
-                      + maybe_nodescatter[ipref]
+              printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
            endfor
         endif else begin
            pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -461,8 +462,7 @@ pro red_setupworkdir, search_dir = search_dir $
                  printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
                  for ipref = 0, Nprefilters-1 do begin
-                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
-                            + maybe_nodescatter[ipref]
+                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" 
                  endfor
               endif
            endfor
@@ -502,7 +502,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# '
 
      ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
-     nonsciencedirs = [darkdirs, flatdirs, pinhdirs, polcaldirs, pfscandirs]
+     nonsciencedirs = [darkdirs, flatdirs, pinhdirs, pfscandirs]
      sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 
      for i = 0, Ndirs-1 do begin
@@ -527,13 +527,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Slun, 'a -> link_data' 
      
      for ipref = 0, Nprefilters-1 do begin
-        if total(prefilters[ipref] eq polprefs) gt 0 then begin
-           printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
-                   + maybe_nodescatter[ipref]
-        endif else begin
-           printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
-                   + maybe_nodescatter[ipref]
-        endelse
+        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'"
      endfor                     ; ipref
      
      
@@ -562,28 +556,6 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
      printf, Slun, ''
 
-     printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
-     for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-                + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-        printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-                + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-        printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
-                + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
-        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
-        printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
-                + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
-                + maybe_nodescatter[ipref]
-     endfor
-
-
-     printf, Slun, ''
-     printf, Slun, ';; Run MOMFBD outside IDL.'
-     printf, Slun, ''
-
-     printf, Slun, ';; Post-MOMFBD stuff:' 
-     printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]'
-     printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
      
      free_lun, Clun
      free_lun, Slun
@@ -594,7 +566,7 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; CRISP -----------------------------------------------------------------------------------------
 
   ;; Is there CRISP data?
-  setup_crisp = 1
+  setup_crisp = 0
 
   if setup_crisp then begin
      
