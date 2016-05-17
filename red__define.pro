@@ -29,6 +29,9 @@ PRO red__define
             pinh_dir:'',$           ; The directory where raw pinhole array data is stored
             prefilter_dir:'',$      ;
             polcal_dir:'',$         ; The directory where raw polcal data is stored
+            cam_tags:ptr_new(),$    ; List of camera "names" (e.g. camXX)
+            cam_channels:ptr_new(),$; List of camera locations/channels (e.g. Crisp-R)
+            refcam:0B, $            ; Selected reference channel
             camt:'', $              ;
             camr:'', $              ;
             camwb:'', $             ;

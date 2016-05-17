@@ -57,8 +57,6 @@ pro red::initialize, filename
   self.filetype = 'MOMFBD'
   
   ;; Init vars
-  self.dark_dir = ptr_new('') 
-  self.flat_dir = ptr_new('') 
   ;; self.data_dir = ''
   self.pinh_dir = '' 
   self.polcal_dir = ''
@@ -100,21 +98,17 @@ pro red::initialize, filename
 ;           self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
 ;        end
         'dark_dir': BEGIN
-            if(strpos(line,"'") ne -1) THEN $
-              dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1]) $
-            ELSE $
-              tmp = (strsplit(line,' =',/extract))[1]
-            ptr_free, self.dark_dir
-            self.dark_dir = ptr_new(tmp, /NO_COPY)
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
+            IF ptr_valid(self.dark_dir) THEN red_append, *self.dark_dir, tmp $
+            ELSE self.dark_dir = ptr_new(tmp, /NO_COPY)
         end
         'flat_dir': BEGIN
-            if(strpos(line,"'") ne -1) THEN $
-              dum = execute('tmp = '+(strsplit(line, ' =', /extract))[1]) $
-            ELSE $
-              tmp = (strsplit(line,' =',/extract))[1]
-            ptr_free, self.flat_dir
-            self.flat_dir = ptr_new(tmp, /NO_COPY)
-        end
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
+            IF ptr_valid(self.flat_dir) THEN red_append, *self.flat_dir, tmp $
+            ELSE self.flat_dir = ptr_new(tmp, /NO_COPY)
+        END
         'out_dir': begin
            self.out_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
@@ -137,14 +131,32 @@ pro red::initialize, filename
         'filetype': begin
            self.filetype = (strsplit(line,' =',/extract))[1]
         end
+        'cam_dir': BEGIN
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
+            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
+            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
+        END
         'cam_t': begin
-           self.camt =  (strsplit(line,' =',/extract))[1] ; extract value
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
+            self.camt =  tmp
+            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
+            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
         end
         'cam_r': begin
-           self.camr =  (strsplit(line,' =',/extract))[1] ; extract value
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
+            self.camr =  tmp
+            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
+            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
         end
         'cam_wb': begin
-           self.camwb =  (strsplit(line,' =',/extract))[1] ; extract value
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
+            self.camwb =  tmp
+            IF ptr_valid(self.cam_dirs) THEN red_append, *self.cam_dirs, tmp $
+            ELSE self.cam_dirs = ptr_new(tmp, /NO_COPY)
         end
         'prefilter_dir': begin
            self.prefilter_dir =  (strsplit(line,' =',/extract))[1] ; extract value
@@ -176,13 +188,12 @@ pro red::initialize, filename
   endwhile
   free_lun, lun
 
-
   if(strlen(self.root_dir) gt 0) then begin
      if(self.docamt) then print, 'red::initialize : root_dir = '+ self.root_dir
-     FOR i = 0, n_elements(*self.flat_dir)-1 DO $
+     IF ptr_valid(self.flat_dir) THEN FOR i = 0, n_elements(*self.flat_dir)-1 DO $
        IF strmid((*self.flat_dir)[i], 0, 1) NE '/' AND strlen((*self.flat_dir)[i]) GT 0 $
        THEN (*self.flat_dir)[i] = self.root_dir + (*self.flat_dir)[i]
-     FOR i = 0, n_elements(*self.dark_dir)-1 DO $
+     IF ptr_valid(self.dark_dir) THEN FOR i = 0, n_elements(*self.dark_dir)-1 DO $
        IF strmid((*self.dark_dir)[i], 0, 1) NE '/' AND strlen((*self.dark_dir)[i]) GT 0 $
        THEN (*self.dark_dir)[i] = self.root_dir + (*self.dark_dir)[i]
 ;     if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
@@ -274,10 +285,36 @@ pro red::initialize, filename
 
 
   ;; print fields
-  if(self.dodark) then print, 'red::initialize : dark_dir = '+ strjoin(*self.dark_dir, '  ')
-  if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
+  IF ptr_valid(self.dark_dir) THEN BEGIN
   if(self.dopinh) then print, 'red::initialize : pinh_dir = '+ self.pinh_dir
   if(self.dopolcal) then print, 'red::initialize : polcal_dir = '+ self.polcal_dir
+     nn = n_elements(*self.dark_dir)
+     IF(nn EQ 1) THEN BEGIN
+        print, 'red::initialize : dark_dir = '+ (*self.dark_dir)[0]
+     ENDIF ELSE BEGIN
+        print, 'red::initialize : dark_dirs :'
+        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.dark_dir)[k]
+     ENDELSE
+  ENDIF
+  IF ptr_valid(self.flat_dir) THEN BEGIN
+     nn = n_elements(*self.flat_dir)
+     IF(nn EQ 1) THEN BEGIN
+        print, 'red::initialize : flat_dir = '+ (*self.flat_dir)[0]
+     ENDIF ELSE BEGIN
+        print, 'red::initialize : flat_dirs :'
+        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.flat_dir)[k]
+     ENDELSE
+  ENDIF
+  IF ptr_valid(self.cam_dirs) THEN BEGIN
+     nn = n_elements(*self.cam_dirs)
+     IF(nn EQ 1) THEN BEGIN
+        print, 'red::initialize : cam_dir = '+ (*self.cam_dirs)[0]
+     ENDIF ELSE BEGIN
+        print, 'red::initialize : cam_dirs :'
+        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.cam_dirs)[k]
+     ENDELSE
+  ENDIF
+  ;if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
   if(self.dodata) then begin
      nn = self.ndir
      if(nn eq 1) then begin
