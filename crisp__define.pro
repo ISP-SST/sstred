@@ -17,7 +17,15 @@
 pro crisp__define
                                 
     struct = { CRISP, inherits RED, $
-               crisp_dummy:0B $     ; temporary dummy, move CRISP specific content here
+               camt:'', $              ;
+               camr:'', $              ;
+               camwb:'', $             ;
+               docamt:0B, $            ;
+               docamr:0B, $            ;
+               docamwb:0B, $           ;
+               camttag:'', $           ;
+               camrtag:'', $           ;
+               camwbtag:'' $           ;
              }
 
 end

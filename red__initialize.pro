@@ -68,9 +68,6 @@ pro red::initialize, filename
   self.doflat = 1B
   self.dopinh = 1B
   self.dodark = 1B
-  self.docamt = 1B
-  self.docamr = 1B
-  self.docamwb = 1B
   self.dopolcal = 1B
   self.dodescatter = 1B
 
@@ -131,7 +128,7 @@ pro red::initialize, filename
         'filetype': begin
            self.filetype = (strsplit(line,' =',/extract))[1]
         end
-        'cam_dir': BEGIN
+        'cam_channel': BEGIN
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
             IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
             IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
@@ -251,18 +248,6 @@ pro red::initialize, filename
   if(self.polcal_dir eq '') then begin
      print, 'red::initialize : WARNING : polcal_dir is undefined!'
      self.dopolcal = 0B
-  endif
-  if(self.camt eq '') then begin
-     print, 'red::initialize : WARNING : cam_t is undefined!'
-     self.docamt = 0B
-  endif
-  if(self.camr eq '') then begin
-     print, 'red::initialize : WARNING : cam_r is undefined!'
-     self.docamr = 0B
-  endif
-  if(self.camwb eq '') then begin
-     print, 'red::initialize : WARNING : cam_wb is undefined!'
-     self.docamwb = 0B
   endif
   if(self.isodate eq '') then begin
      print, 'red::initialize : WARNING : isodate is undefined!'
