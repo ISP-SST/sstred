@@ -915,13 +915,13 @@ pro red_setupworkdir, search_dir = search_dir $
   
   print
   
-  if setup_crisp then begin
+  if ~keyword_set(exclude_crisp) then begin
      print, 'CRISP setup in ' + crisp_dir
   endif else begin
      print, 'No CRISP data'
   endelse
   
-  if setup_chromis then begin
+  if ~keyword_set(exclude_chromis) then begin
      print, 'CHROMIS setup in ' + chromis_dir
   endif else begin
      print, 'No CHROMIS data'
