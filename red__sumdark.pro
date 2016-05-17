@@ -49,122 +49,104 @@
 ;
 ;   2014-04-07 : THI. Bugfix: look for darks in dark_dir.
 ;
+;   2016-05-17 : THI. Use cam_channels by default, added keyword dirs
+;                to use specific dark-folder. Re-write to sum files from
+;                multiple folders at once.
+;
 ;-
-pro red::sumdark, overwrite = overwrite, check = check, cams = cams
+pro red::sumdark, overwrite = overwrite, $
+                  check = check, $
+                  cams = cams, $
+                  dirs = dirs
 
-  ;; Defaults
-  if n_elements(overwrite) eq 0 then overwrite = 0
-  if n_elements(check) eq 0 then check = 0
+    ;; Defaults
+    if n_elements(overwrite) eq 0 then overwrite = 0
 
-  ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+    if n_elements(check) eq 0 then check = 0
 
-  ;; Logging
-  help, /obj, self, output = selfinfo1
-  help, /struct, self.done, output = selfinfo2 
-  red_writelog, selfinfo = [selfinfo1, selfinfo2]
+    if n_elements(dirs) gt 0 then dirs = [dirs] $
+    else if ptr_valid(self.dark_dir) then dirs = *self.dark_dir
 
-  ;; Default: do CRISP cameras
-  if n_elements(cams) eq 0 then begin
-     DoCRISP = 1
-     Ncams = 3  
-  endif else begin
-     DoCRISP = 0
-     Ncams = n_elements(cams)
-  endelse
+    if n_elements(cams) gt 0 then cams = [cams] $
+    else if ptr_valid(self.cam_channels) then cams = *self.cam_channels
 
-  if(self.dodark eq 0B) then begin
-     print, inam+' : ERROR : undefined dark_dir'
-     return
-  endif
+    ;; Name of this method
+    inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; create file list
-  for ic = 0L, Ncams-1 do begin
+    ;; Logging
+    help, /obj, self, output = selfinfo1
+    help, /struct, self.done, output = selfinfo2 
+    red_writelog, selfinfo = [selfinfo1, selfinfo2]
 
-     if DoCRISP then begin
-        case ic of
-           0: begin
-              if(self.docamt eq 0B) then begin
-                 print, inam+' : Nothing to do for ', self.camt
-              endif
-              cam = self.camt
-              doit = self.docamt
-           end
-           1: begin
-              if(self.docamr eq 0B) then begin
-                 print, inam+' : Nothing to do for ', self.camr
-              endif
-              cam = self.camr
-              doit = self.docamr
-           end
-           2: begin
-              if(self.docamwb eq 0B) then begin
-                 print, inam+' : Nothing to do for ', self.camwb
-              endif
-              cam = self.camwb
-              doit = self.docamwb
-           end
-        endcase
-     endif else begin
-        cam = cams[ic]
-        doit = 1
-     endelse
+    Ncams = n_elements(cams)
+    if( Ncams eq 0) then begin
+        print, inam+' : ERROR : undefined cams (and cam_channels)'
+        return
+    endif
 
-     if ~doit then continue
-
-     if strmatch(cam,'Crisp-?') then begin
-        ;; Matches Crisp cameras
-;        spawn, 'find ' + *self.dark_dir + '/' + cam + '/|grep im.ex', files
-        files = file_search(*self.dark_dir + '/' + cam + '/cam*.im.ex.*', count = nf)
+    Ndirs = n_elements(dirs)
+    if( Ndirs eq 0) then begin
+        print, inam+' : ERROR : no dark directories defined'
+        return
     endif else begin
-        ;; Matches blue cameras
-;        spawn, 'find ' + *self.dark_dir + '/' + cam + '/|grep im.im', files
-        files = file_search(*self.dark_dir + '/' + cam + '/cam*.im.im.*', count = nf)
-   endelse
-;    nf = n_elements(files)
+        if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+        else dirstr = dirs[0]
+    endelse
 
-     ;;search_chain = self.dark_dir+'/'+cam+'/*im*'
-     ;;print, search_chain
-     ;;files = file_search(search_chain, count = nf)
-;     if(files[0] eq '') then begin
-;        print, inam+' : ERROR, no files found in: '+self.dark_dir
-;        return
-;     endif
+    outdir = self.out_dir+'/darks/'
 
-     print, inam+' : Found '+red_stri(nf)+' files in: '
-     print, '         '+ *self.dark_dir + '/' + cam + '/'
+    for ic = 0L, Ncams-1 do begin
 
-     if(files[0] eq '') then begin
-         print, inam+' : ERROR : '+cam+': no files found in: '
-         print, inam+'                      '+*self.dark_dir
-         print, inam+' : ERROR : '+cam+': skipping camera!'
-        continue
-     endif
+        cam = cams[ic]
 
-     
-     ;;If everything is ok, sum the darks.
-     head = fzhead(files[0])
-     dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
+        if strmatch(cam,'Crisp-?') then begin
+            ;; Matches Crisp cameras  TODO: get template format from crispred class
+            file_template = cam + '/cam*.im.ex.*'
+        endif else begin
+            file_template = cam + '/cam*.im.im.*'
+        endelse
 
-     ;; Normalize dark
-     ;;dark = float(tmp / count)
-     camtag = (strsplit(file_basename(files[0]),'.',/extract))[0]
-     outdir = self.out_dir+'/darks/'
-     namout = outdir+camtag+'.dark'
-     namout_sum = outdir+camtag+'.summed.0000001'
+        files = file_search(dirs + '/' + file_template, count = nf)
 
-     outheader = red_dark_h2h(files[nf-1], head, nsum)
+        if(files[0] eq '') then begin
+            print, inam+' : ERROR : '+cam+': no files found in: '+dirs
+            print, inam+' : ERROR : '+cam+': skipping camera!'
+            continue
+        endif else begin
+            print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
+        endelse
 
-     file_mkdir, outdir
-     print, inam+' : saving ', namout
-     fzwrite, dark, namout, 'mean dark'
+        camtag = (strsplit(file_basename(files[0]),'.',/extract))[0]
+        namout = outdir+camtag+'.dark'
+        namout_sum = outdir+camtag+'.summed.0000001'
 
-     print, inam+' : saving ', namout_sum
-     fzwrite, long(darksum), namout_sum, outheader
+        if(file_test(namout) AND ~keyword_set(overwrite)) then begin
+            print, inam+' : file exists: ' + namout +$
+                  ' , skipping! (run sumdark, /overwrite to recreate)'
+            continue
+        endif
 
-  endfor                        ; (ic loop)
 
-  self.done.sumdark = 1B
+        ;;If everything is ok, sum the darks.
+        head = fzhead(files[0])
+        dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
 
-  return
+        ;; Normalize dark
+        ;;dark = float(tmp / count)
+
+        outheader = red_dark_h2h(files[nf-1], head, nsum)
+
+        file_mkdir, outdir
+        print, inam+' : saving ', namout
+        fzwrite, dark, namout, 'mean dark'
+
+        print, inam+' : saving ', namout_sum
+        fzwrite, long(darksum), namout_sum, outheader
+
+    endfor                        ; (ic loop)
+
+    self.done.sumdark = 1B
+
+    return
+
 end
