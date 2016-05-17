@@ -32,9 +32,6 @@ PRO red__define
             cam_tags:ptr_new(),$    ; List of camera "names" (e.g. camXX)
             cam_channels:ptr_new(),$; List of camera locations/channels (e.g. Crisp-R)
             refcam:0B, $            ; Selected reference channel
-            camt:'', $              ;
-            camr:'', $              ;
-            camwb:'', $             ;
             out_dir:'',$            ; The directory where all output is stored
             filename:'',$           ;
             filetype:'', $          ;
@@ -43,12 +40,6 @@ PRO red__define
             doflat:0B, $            ;
             dodark:0B, $            ;
             dopinh:0B, $            ;
-            docamt:0B, $            ;
-            docamr:0B, $            ;
-            docamwb:0B,$            ;
-            camttag:'',$            ;
-            camrtag:'',$            ;
-            camwbtag:'',$           ;
             descatter_dir:'',$      ;
             root_dir:'',$           ;
             dodescatter:0B,$        ;

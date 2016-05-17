@@ -49,6 +49,14 @@
 ; 
 ;      The output directory to be used by crispred.
 ; 
+;    exclude_chromis : in, optional, type=boolean
+;
+;       Set this to not setup for CHROMIS data only.
+; 
+;    exclude_crisp : in, optional, type=boolean
+;
+;       Set this to not setup for CRISP data. 
+;
 ; 
 ; :History:
 ; 
@@ -167,7 +175,11 @@
 ;                 searching for subdirectories for darks and flats.  
 ;
 ;    2016-05-17 : MGL. Changed Stockholm search dirs to accommodate
-;                 "sand15n" type mounted disk names.
+;                 "sand15n" type mounted disk names. Removed some
+;                 polarization and descatter things from the CHROMIS
+;                 part. New keywords exclude_chromis and
+;                 exclude_crisp. Use the new cam_channels in the
+;                 config file.
 ;
 ;
 ;-
@@ -176,14 +188,16 @@ pro red_setupworkdir, search_dir = search_dir $
                       , cfgfile = cfgfile $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
-                      , sand = sand $
-                      , date = date
+                      , date = date $
+                      , exclude_chromis = exclude_chromis $
+                      , exclude_crisp = exclude_crisp
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')  
   if ~strmatch(out_dir,'*/') then out_dir += '/'
 
-  crisp_dir = out_dir + 'CRISP/'
-  chromis_dir = out_dir + 'CHROMIS/'
+
+  if ~keyword_set(exclude_crisp) then crisp_dir = out_dir + 'CRISP/'
+  if ~keyword_set(exclude_chromis) then chromis_dir = out_dir + 'CHROMIS/'
   
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
@@ -306,12 +320,8 @@ pro red_setupworkdir, search_dir = search_dir $
 
   
   ;; CHROMIS ---------------------------------------------------------------------------------------
-
   
-  ;; Is there CHROMIS data?
-  setup_chromis = 0
-  
-  if setup_chromis then begin
+  if ~keyword_set(exclude_chromis) then begin
   
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
@@ -340,9 +350,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_w = Chromis-W'
-     printf, Clun, 'cam_p = Chromis-P'
-     printf, Clun, 'cam_n = Chromis-N'
+     printf, Clun, 'cam_channels = Chromis-W'
+     printf, Clun, 'cam_channels = Chromis-P'
+     printf, Clun, 'cam_channels = Chromis-N'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
@@ -376,7 +386,7 @@ pro red_setupworkdir, search_dir = search_dir $
 
      flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'flat', count = Nsubdirs)
      if Nsubdirs gt 0 then begin
-        ;; There are CRISP flats!
+        ;; There are CHROMIS flats!
 
         ;; Directories with camera dirs below:
         flatdirs = file_dirname(flatsubdirs)
@@ -434,7 +444,7 @@ pro red_setupworkdir, search_dir = search_dir $
      
      for ipref = 0, Nprefilters-1 do begin
         printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
-                + "' " + maybe_nodescatter[ipref]
+                + "' "
      endfor
 
      print, 'Pinholes'
@@ -449,8 +459,7 @@ pro red_setupworkdir, search_dir = search_dir $
            printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
            for ipref = 0, Nprefilters-1 do begin
-              printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
-                      + maybe_nodescatter[ipref]
+              printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
            endfor
         endif else begin
            pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -461,8 +470,7 @@ pro red_setupworkdir, search_dir = search_dir $
                  printf, Slun, 'a -> setpinhdir, root_dir+"'+red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
                  for ipref = 0, Nprefilters-1 do begin
-                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" $
-                            + maybe_nodescatter[ipref]
+                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'" 
                  endfor
               endif
            endfor
@@ -502,7 +510,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# '
 
      ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
-     nonsciencedirs = [darkdirs, flatdirs, pinhdirs, polcaldirs, pfscandirs]
+     nonsciencedirs = [darkdirs, flatdirs, pinhdirs, pfscandirs]
      sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 
      for i = 0, Ndirs-1 do begin
@@ -527,13 +535,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Slun, 'a -> link_data' 
      
      for ipref = 0, Nprefilters-1 do begin
-        if total(prefilters[ipref] eq polprefs) gt 0 then begin
-           printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
-                   + maybe_nodescatter[ipref]
-        endif else begin
-           printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
-                   + maybe_nodescatter[ipref]
-        endelse
+        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'"
      endfor                     ; ipref
      
      
@@ -562,28 +564,6 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
      printf, Slun, ''
 
-     printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
-     for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-                + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-        printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-                + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-        printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
-                + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
-        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
-        printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
-                + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
-                + maybe_nodescatter[ipref]
-     endfor
-
-
-     printf, Slun, ''
-     printf, Slun, ';; Run MOMFBD outside IDL.'
-     printf, Slun, ''
-
-     printf, Slun, ';; Post-MOMFBD stuff:' 
-     printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]'
-     printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
      
      free_lun, Clun
      free_lun, Slun
@@ -593,10 +573,7 @@ pro red_setupworkdir, search_dir = search_dir $
   
   ;; CRISP -----------------------------------------------------------------------------------------
 
-  ;; Is there CRISP data?
-  setup_crisp = 1
-
-  if setup_crisp then begin
+  if ~keyword_set(exclude_crisp) then begin
      
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
@@ -626,9 +603,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_t = Crisp-T'
-     printf, Clun, 'cam_r = Crisp-R'
-     printf, Clun, 'cam_wb = Crisp-W'
+     printf, Clun, 'cam_channels = Crisp-T'
+     printf, Clun, 'cam_channels = Crisp-R'
+     printf, Clun, 'cam_channels = Crisp-W'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
@@ -939,13 +916,13 @@ pro red_setupworkdir, search_dir = search_dir $
   
   print
   
-  if setup_crisp then begin
+  if ~keyword_set(exclude_crisp) then begin
      print, 'CRISP setup in ' + crisp_dir
   endif else begin
      print, 'No CRISP data'
   endelse
   
-  if setup_chromis then begin
+  if ~keyword_set(exclude_chromis) then begin
      print, 'CHROMIS setup in ' + chromis_dir
   endif else begin
      print, 'No CHROMIS data'
