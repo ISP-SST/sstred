@@ -98,6 +98,19 @@ function red_rotation, img, angle, sdx, sdy, linear = linear, full = full
      dim1[0] +=  xmin + xmax
      dim1[1] +=  ymin + ymax
 
+     ;;
+     ;; Force an odd number to make things easier for
+     ;; flipthecube to find a correct dimension.
+     ;;
+     if((dim1[0]/2)*2 ne dim1[0]) then begin
+        dim1[0] += 1
+        xmax += 1
+     endif
+     if((dim1[1]/2)*2 ne dim1[1]) then begin
+        dim1[1] += 1
+        ymax += 1
+     endif
+     
      xgrid = (findgen(dim1[0]) # (fltarr(dim1[1]) + 1.0)) * float(dim[0])/float(dim[0])
      ygrid = ((fltarr(dim1[0]) + 1.0) # findgen(dim1[1])) * float(dim[1])/float(dim[1])
      xgrid *= float(dim1[0]) / max(xgrid)

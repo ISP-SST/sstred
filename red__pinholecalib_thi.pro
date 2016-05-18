@@ -177,7 +177,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
                     if max(h_init(*,*,icam)) gt 0 then begin
                         this_init = h_init(*,*,icam)
                     endif
-                    this_transform = img_align( ref_img, img, nref=4, h_init=this_init, threshold=threshold, verbose=verbose )
+                    this_transform = rdx_img_align( ref_img, img, nref=4, h_init=this_init, threshold=threshold, verbose=verbose )
 
                     align(*,*,istate,icam) = this_transform
                     h_init(*,*,icam) = temporary(this_init)

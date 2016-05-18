@@ -143,8 +143,12 @@ pro red_momfbd_check, HOST = host $
         spawn, 'jstat '+hoststring+' '+portstring+' -j', jstatj
      end
 
-     if arg_present(njobs) then njobs = (size(jstatj,/dim))[0] - 1
-
+     if arg_present(njobs) then begin
+         array_length = size(jstatj,/dim)
+         if array_length gt 0 then njobs = array_length - 1 $
+         else njobs = 0
+     endif
+     
      if arg_present(jobids) then begin     
         jobids = strarr(njobs)
 ;        for i=0,njobs-1 do jobids[i] = (token(jstatj[i+2]))[1]
