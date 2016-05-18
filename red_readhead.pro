@@ -90,7 +90,7 @@ case filetype of
 
     if n_elements(anaheader) ne 0 then $           
 	;; Convert ana header to fits header
-	header = red_mkhdr(anaheader,img=data)
+	header = red_anahdr2fits(anaheader,img=data)
 
   end
 
