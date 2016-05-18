@@ -1,48 +1,56 @@
-FUNCTION red_parseparameter, line, pos=pos, commentChar=commentChar
+; docformat = 'rst'
 
 ;+
-; NAME:
-;       PARSE_PARAMETER
+;   Parse a string containing 'key = value' pairs, optionally with a
+;   comment.
 ;
-; PURPOSE:
-;	Given a string from a parameter/header ('key = value'), returns key and 
-;	value of a parameter as two element array by basically splitting on an 
-;	equal sign. If commentChar is set to the delimiter for start of a 
-;	comment, then it returns a 3 element array [key, value, comment].
-;	Keyword "pos" returns position of beginning of key.
-;	If there is no equal sign, then it returns [strtrim(line,2),''] and 
-;	pos = -1.
+;   Given a string from a parameter/header ('key = value'), returns key and 
+;   value of a parameter as two element array by basically splitting on an 
+;   equal sign. If commentChar is set to the delimiter for start of a 
+;   comment, then it returns a 3 element array [key, value, comment].
+;   Keyword "pos" returns position of beginning of key.
+;   If there is no equal sign, then it returns [strtrim(line,2),''] and 
+;   pos = -1.
 ;
-; CATEGORY:
-;	Datafile handling; PDS
+; 
+; :Categories:
 ;
-; CALLING SEQUENCE: 
-;	keyval = PARSE_PARAMETER(line, pos=pos, commentChar=commentChar)
+;    Datafile handling
+; 
+; 
+; :Author:
+; 
+;   Ed Shaya / U. of Maryland [April 27, 2012] (as parse_parameter)
+; 
+; 
+; :Returns:
+; 
+;    Two-element array with [key,value] as strings. Or, if commentChar
+;    keyword is set, three-element array with [key,value,comment]
 ;
-; INPUTS:
-;	line - A string consisting of 'key = value'.  Value can have spaces.
+; 
+; :Params:
+; 
+;   line : in, type=string
 ;
-; OUTPUTS:
-;	keyval -  2 element array with [key,value] as strings or 3 element 
+;      A string consisting of 'key = value'.  Value can have spaces.
+; 
+; :Keywords:
+; 
+;   pos : in, optinal
 ;
-;	array, if commentChar keyword is set, with [key,value,comment]
+;      Position of first character of key in paramArr 
 ;
-; KEYWORDS:
-;	pos - position of first character of key in paramArr 
+;   commentChar : in, optional, type=string
 ;
-;	commentChar - character that begins a comment or description
-;
-; PROCEDURES USED:
-;	IDL built-in procedures
-;
-; PACKAGE LOCATION:
-;	http://www.astro.umd.edu/~eshaya/PDS/pds4readxml.tar
-;
-; MODIFICATION HISTORY:
-;	Written by Ed Shaya / U. of Maryland [April 27, 2012]
-;
+;      Character that begins a comment or description
+; 
+; 
+; :History:
+; 
+; 
 ;-
-;-----------------------------------------------------------------
+FUNCTION red_parseparameter, line, pos=pos, commentChar=commentChar
 
 
   IF (N_PARAMS() Lt 1) THEN BEGIN
