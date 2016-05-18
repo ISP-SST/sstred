@@ -134,27 +134,6 @@ pro red::initialize, filename
             IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
             ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
         END
-        'cam_t': begin
-            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-            self.camt =  tmp
-            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
-        end
-        'cam_r': begin
-            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-            self.camr =  tmp
-            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
-        end
-        'cam_wb': begin
-            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-            IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-            self.camwb =  tmp
-            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
-        end
         'prefilter_dir': begin
            self.prefilter_dir =  (strsplit(line,' =',/extract))[1] ; extract value
         end
@@ -186,7 +165,7 @@ pro red::initialize, filename
   free_lun, lun
 
   if(strlen(self.root_dir) gt 0) then begin
-     if(self.docamt) then print, 'red::initialize : root_dir = '+ self.root_dir
+     print, 'red::initialize : root_dir = '+ self.root_dir
      IF ptr_valid(self.flat_dir) THEN FOR i = 0, n_elements(*self.flat_dir)-1 DO $
        IF strmid((*self.flat_dir)[i], 0, 1) NE '/' AND strlen((*self.flat_dir)[i]) GT 0 $
        THEN (*self.flat_dir)[i] = self.root_dir + (*self.flat_dir)[i]
@@ -313,9 +292,6 @@ pro red::initialize, filename
         self.data_dir = self.data_list[id]
      endelse
   endif
-  if(self.docamt) then print, 'red::initialize : cam_T = '+ self.camt
-  if(self.docamr) then print, 'red::initialize : cam_R = '+ self.camr
-  if(self.docamwb) then print, 'red::initialize : cam_wb = '+ self.camwb
   if(self.dodescatter) then print, 'red::initialize : descatter_dir = '+ self.descatter_dir
   if(self.filetype) then print, 'red::initialize : filetype = '+ self.filetype
   print, 'red::initialize : out_dir = '+ self.out_dir

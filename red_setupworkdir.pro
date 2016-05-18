@@ -178,7 +178,7 @@
 ;                 "sand15n" type mounted disk names. Removed some
 ;                 polarization and descatter things from the CHROMIS
 ;                 part. New keywords exclude_chromis and
-;                 exclude_crisp. Use the new cam_channels in the
+;                 exclude_crisp. Use the new cam_channel in the
 ;                 config file. Make an instance of chromisred rather
 ;                 than crispred in the CHROMIS script.  
 ;
@@ -354,9 +354,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_channels = Chromis-W'
-     printf, Clun, 'cam_channels = Chromis-P'
-     printf, Clun, 'cam_channels = Chromis-N'
+     printf, Clun, 'cam_channel = Chromis-W'
+     printf, Clun, 'cam_channel = Chromis-P'
+     printf, Clun, 'cam_channel = Chromis-N'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
@@ -440,9 +440,9 @@ pro red_setupworkdir, search_dir = search_dir $
 
      if n_elements(prefilters) gt 0 then begin
         prefilters = prefilters[uniq(prefilters, sort(prefilters))]
-        Nprefilters = n_elements(prefilters)
      endif
 
+     Nprefilters = n_elements(prefilters)
      if Nprefilters eq 0 then begin
         ;; This can happen if flats were already summed in La Palma. Look
         ;; for prefilters in the summed flats directory instead.
@@ -525,7 +525,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# '
 
      ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
-     nonsciencedirs = [darkdirs, flatdirs, pinhdirs, pfscandirs]
+     nonsciencedirs = [ pinhdirs, pfscandirs ]
+     red_append, nonsciencedirs, darkdirs
+     red_append, nonsciencedirs, flatdirs
      sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 
      for i = 0, Ndirs-1 do begin
@@ -620,9 +622,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_channels = Crisp-T'
-     printf, Clun, 'cam_channels = Crisp-R'
-     printf, Clun, 'cam_channels = Crisp-W'
+     printf, Clun, 'cam_channel = Crisp-T'
+     printf, Clun, 'cam_channel = Crisp-R'
+     printf, Clun, 'cam_channel = Crisp-W'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
@@ -847,7 +849,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# '
 
      ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
-     nonsciencedirs = [darkdirs, flatdirs, pinhdirs, polcaldirs, pfscandirs]
+     nonsciencedirs = [ pinhdirs, polcaldirs, pfscandirs ]
+     red_append, nonsciencedirs, darkdirs
+     red_append, nonsciencedirs, flatdirs
      sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 
      for i = 0, Ndirs-1 do begin

@@ -21,7 +21,7 @@ PRO red__define
   done = {done, sumdark:0B, sumflat:0B, cleandata:0B, sumpolcal:0B, polcal:0B, makegains:0B}
                                 
   struct = {red, $
-            dark_dir:ptr_new(),$    ; The directory where raw dark frames are stored
+            dark_dir:ptr_new(),$    ; The directories where raw dark frames are stored
             flat_dir:ptr_new(),$    ; The directories where raw flat fields are stored
             data_dir:'',$           ; The directory where raw science data is stored
             data_list:strarr(100),$ ;

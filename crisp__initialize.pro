@@ -77,4 +77,7 @@ pro crisp::initialize, filename
         self.docamwb = 0B
     endif
    
+  if(self.docamt) then print, 'red::initialize : cam_T = '+ self.camt
+  if(self.docamr) then print, 'red::initialize : cam_R = '+ self.camr
+  if(self.docamwb) then print, 'red::initialize : cam_wb = '+ self.camwb
 end
