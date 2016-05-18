@@ -15,7 +15,7 @@
 ; 
 ; :Returns:
 ; 
-;    1 for success, 0 for failure.
+;    The image contained in the file fname.
 ; 
 ; :Params:
 ; 
@@ -24,14 +24,25 @@
 ;       The file name.
 ;
 ; :Keywords:
-; 
-;    data : out, optional
-;   
-;       The data.
 ;
-;    header : out, optional, type="strarr or struct"
+;    header : out, type=string array/struct
+;
+;  	Output the header. 
 ; 
-;       The header.
+;    filetype : in, type=string
+;
+;	The type of file to read. Allowed values are: 
+;		ptgrey-fits
+;		fz
+;	If not set auto-detection will be attempted.
+;
+;    structheader : in, type=flag
+;
+;	If set output the header as a structure.
+;
+;    status : out, type=signed int
+;
+;	Output the return status, 0 for success, -1 for failure.
 ;
 ; :History:
 ; 
@@ -39,12 +50,14 @@
 ; 
 ;   2016-05-17 : MGL. Default for filetype based on file name.
 ;
+;   2016-05-18 : JLF. Returns the image (like readfits). Added Status flag keyword.
+;
 ;-
-function red_readdata, fname $
-                       , data = data $
-                       , header = header $
+function red_readdata, fname$
+		       , header = header $
                        , filetype = filetype $
-                       , structheader = structheader
+                       , structheader = structheader $
+                       , status = status
 
   if file_test(fname) eq 0 then begin
 
@@ -79,11 +92,11 @@ function red_readdata, fname $
         
         ;; Data stored in ANA fz format files.
         
-        if arg_present(data) then begin
+;        if arg_present(data) then begin
            fzread, data, fname, anaheader
-        endif else begin
-           anaheader = fzhead(fname)
-        endelse
+;        endif else begin
+;           anaheader = fzhead(fname)
+;        endelse
 
         if n_elements(anaheader) ne 0 then begin
            
@@ -133,12 +146,12 @@ function red_readdata, fname $
         ;; Data stored in fits files, but in the strange format
         ;; returned by the PointGrey cameras.
 
-        if arg_present(data) then begin
+;        if arg_present(data) then begin
            red_rdfits, fname, image = data, header = header, /uint, swap=0
            data = ishft(data, -4) ; 12 bits in 16-bit variables
-        endif else begin
-           red_rdfits, fname, header = header
-        endelse
+;        endif else begin
+;           red_rdfits, fname, header = header
+;        endelse
 
      end
 
@@ -147,7 +160,9 @@ function red_readdata, fname $
   if n_elements(header) ne 0 and keyword_set(structheader) then begin
      header = red_paramstostruct(header)
   endif
-
-  return, 1B
+  
+  status = 0
+  
+  return, data
 
 end
