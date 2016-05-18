@@ -78,7 +78,7 @@ FUNCTION red_parseparameter, line, pos=pos, commentChar=commentChar
      ENDIF
      ;; Trim off spaces
      keyval = STRTRIM(keyval,2)
-     § ;; Locate start of key, if pos is set.
+     ;; Locate start of key, if pos is set.
      IF (ARG_PRESENT(POS)) THEN pos = STRPOS(line,keyval[0])
   ENDELSE
   RETURN, keyval
