@@ -109,7 +109,7 @@ pro red::sumdark, overwrite = overwrite, $
         files = file_search(dirs + '/' + file_template, count = nf)
 
         if(files[0] eq '') then begin
-            print, inam+' : ERROR : '+cam+': no files found in: '+dirs
+            print, inam+' : ERROR : '+cam+': no files found in: '+dirstr
             print, inam+' : ERROR : '+cam+': skipping camera!'
             continue
         endif else begin
@@ -129,8 +129,11 @@ pro red::sumdark, overwrite = overwrite, $
 
         ;;If everything is ok, sum the darks.
         head = fzhead(files[0])
-        dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
-
+        if rdx_hasopencv() then begin
+            dark = rdx_sumfiles(files, check = check, summed = darksum, nsum=nsum, verbose=2)
+        endif else begin
+            dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
+        endelse
         ;; Normalize dark
         ;;dark = float(tmp / count)
 
