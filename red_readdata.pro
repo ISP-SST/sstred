@@ -53,7 +53,7 @@
 ;   2016-05-18 : JLF. Returns the image (like readfits). Added Status flag keyword.
 ;
 ;-
-function red_readdata, fname$
+function red_readdata, fname $
 		       , header = header $
                        , filetype = filetype $
                        , structheader = structheader $
