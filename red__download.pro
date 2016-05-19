@@ -194,7 +194,7 @@ pro red::download, overwrite = overwrite $
 
         if downloadOK then begin
            spawn, 'cd '+self.descatter_dir+'; tar xzf '+file_basename(backscatter_tarfile)
-           file_delete, self.descatter_dir+file_basename(backscatter_tarfile)
+           file_delete, backscatter_tarfile, /allow_nonexistent
            gfiles = file_search(self.descatter_dir+'cam*.backgain.'+ backscatter[iback] + '_2012.f0' $
                                 , count = Nfiles)
            ;; Due to changes in the way the Sarnoff cameras are read
@@ -252,13 +252,26 @@ pro red::download, overwrite = overwrite $
 
   ;; R0 log file
   if keyword_set(r0) then begin
-     r0file = 'r0.data.full-'+strjoin(datearr, '')
+     r0file = 'r0.data.full-'+strjoin(datearr, '')+'.xz'
 
      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
                              , file = r0file $
                              , dir = self.log_dir $
                              , overwrite = overwrite $
-                             , path = pathr0) 
+                             , path = pathr0)
+     
+     if ~downloadOK then begin  ; also try in subfolder /{year}/
+         downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file $
+                                 , file = r0file $
+                                 , dir = self.log_dir $
+                                 , overwrite = overwrite $
+                                 , path = pathr0) 
+     endif
+
+     if downloadOK then begin
+        spawn, 'cd '+self.log_dir+'; xz -d '+file_basename(pathr0)
+        file_delete, pathr0, /allow_nonexistent
+     endif
   
   endif
 
