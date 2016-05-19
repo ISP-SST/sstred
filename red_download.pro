@@ -109,6 +109,10 @@
 ;
 ;    2014-10-13 : MGL. Fixed bug in turret logfile dates.
 ;
+;    2016-05-19 : THI.
+;
+;    2016-05-19 : MGL. Return correct r0path.
+;
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
@@ -262,7 +266,10 @@ pro red_download, date = date $
         spawn, 'cd '+logdir+'; xz -d '+file_basename(pathr0)
         file_delete, pathr0, /allow_nonexistent
      endif
-  
+
+     ;; Where did the uncompressed file end up?
+     pathr0 = logdir + file_basename(pathr0,'.xz')
+
   endif
 
   ;; PIG log file
