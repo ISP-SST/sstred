@@ -154,6 +154,7 @@ pro red_download, date = date $
   dir = 'downloads/'            ; Make this part of the crispred class structure?
   logdir = dir+'sstlogs/'
 
+  file_mkdir, dir
   if any then file_mkdir, logdir
 
   if n_elements(date) gt 0 then begin
@@ -181,69 +182,87 @@ pro red_download, date = date $
                                 , dir = backscatter_dir $
                                 , overwrite = overwrite $
                                 , path = backscatter_tarfile)
-stop
 
         if downloadOK then begin
-           spawn, 'cd '+backscatter_dir+'; tar xzf '+backscatter_tarfile
-           gfiles = file_search(backscatter_dir+'cam*.backgain.'+ backscatter[iback] + '.f0', Nfiles)
+           spawn, 'cd '+backscatter_dir+'; tar xzf '+file_basename(backscatter_tarfile)
+           file_delete, backscatter_tarfile, /allow_nonexistent
+           gfiles = file_search(backscatter_dir+'cam*.backgain.'+ backscatter[iback] + '_2012.f0', count = Nfiles)
            ;; Due to changes in the way the Sarnoff cameras are read
            ;; out in different years, we have to make versions of the
-           ;; backscatter gain for the particular year.
-           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
-           backscatter_years = ['2013', '2014', '2015']
-           backscatter_orientations = bytarr(n_elements(backscatter_years), n_elements(backscatter_cameras))
-           backscatter_orientations[0, *] = [0, 0, 7, 0] ; 2013
-           backscatter_orientations[1, *] = [0, 0, 7, 0] ; 2014 - same as 2013
-           backscatter_orientations[2, *] = [0, 7, 7, 0] ; 2015
-           for ifile = 0, Nfiles-1 do begin
-              yfile = red_strreplace(gfiles[ifile],'.f0','_'+datearr[0]+'.f0')
-              if datearr[0] le '2012' then begin
-                 file_move, gfiles[ifile], yfile ; Just rename for 2012 and before.
-              endif else begin
-                 icam = where(backscatter_cameras eq (strsplit(gfiles[ifile],'.', /extract))[0], Ncam)
+           ;; backscatter gain for the particular year. The files
+           ;; downloaded are for 2012 (and earlier), the
+           ;; backscatter_orientations matrix defined below has the
+           ;; value of the parameter needed to make the rotate()
+           ;; command do the needed transformation for 2013 and later.
+           if datearr[0] ne '2012' then begin
+              backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
+              backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15', '16']
+              backscatter_orientations = bytarr(n_elements(backscatter_years) $
+                                                , n_elements(backscatter_cameras))
+              ;; Change orientations here if needed. Let's hope the
+              ;; orientation never changed *during* an observation
+              ;; season...
+              backscatter_orientations[0, *] = [0, 0, 0, 0] ; 2008 - same as 2012?
+              backscatter_orientations[1, *] = [0, 0, 0, 0] ; 2009 - same as 2012?
+              backscatter_orientations[2, *] = [0, 0, 0, 0] ; 2010 - same as 2012?
+              backscatter_orientations[3, *] = [0, 0, 0, 0] ; 2011 - same as 2012?
+              backscatter_orientations[4, *] = [0, 0, 0, 0] ; 2012
+              backscatter_orientations[5, *] = [0, 0, 7, 0] ; 2013
+              backscatter_orientations[6, *] = [0, 0, 7, 0] ; 2014 - same as 2013
+              backscatter_orientations[7, *] = [0, 7, 7, 0] ; 2015
+              backscatter_orientations[8, *] = [0, 7, 7, 0] ; 2016 - same as 2015?
+              for ifile = 0, Nfiles-1 do begin
+                 icam = where(backscatter_cameras $
+                              eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
                  iyear = where(backscatter_years eq datearr[0], Nyear)
                  if Ncam eq 0 or Nyear eq 0 then begin
-                    print, 'red_download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
+                    print, 'red::download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
                            + ' in year'+datearr[0]+'.'
                     print, '               Please do "git pull" in your crispred directory and try again.'
                     print, '               Contact crispred maintainers if this does not help.'
                     stop
                  endif else begin
-                    fzread, bgain, gfiles[ifile], bheader
-                    fzwrite, rotate(bgain, backscatter_orientations[iyear, icam]), yfile, bheader
+                    ;; Read the downloaded 2012 files
+                    fzread, bgain, gfiles[ifile], gheader
+                    pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
+                    fzread, bpsf, pfile, pheader
+                    ;; Write them with the transformation given by backscatter_orientations.
+                    red_loadbackscatter, backscatter_cameras[icam], isodate, backscatter_dir, backscatter[iback] $
+                                             , rotate(bgain, backscatter_orientations[iyear, icam]) $
+                                             , rotate(bpsf,  backscatter_orientations[iyear, icam]) $
+                                             , /write
                  endelse        ; Known year and camera?
-              endelse           ; 2012 or earlier?
-           endfor               ; ifile
-
+              endfor            ; ifile
+           endif                ; 2012?
         endif else begin
            print, "red_download : Couldn't download the backscatter data for " + backscatter[iback]
         endelse        
      endfor                     ; iback
-     stop
   endif
 
   ;; R0 log file
   if keyword_set(r0) then begin
-     r0file = 'r0.data.full-'+strjoin(datearr, '')
+     r0file = 'r0.data.full-'+strjoin(datearr, '')+'.xz'
+
      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
                              , file = r0file $
-                             , dir = logdir $
+                             , dir = log_dir $
                              , overwrite = overwrite $
-                             , path = pathr0) 
-
-     if ~downloadOK then begin
-        ;; It seems Guus is moving earlier year's data to subdirectories...
-        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+ r0file $
-                                , file = r0file $
-                                , dir = logdir $
-                                , overwrite = overwrite $
-                                , path = pathr0) 
+                             , path = pathr0)
+     
+     if ~downloadOK then begin  ; also try in subfolder /{year}/
+         downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file $
+                                 , file = r0file $
+                                 , dir = logdir $
+                                 , overwrite = overwrite $
+                                 , path = pathr0) 
      endif
 
-     if ~downloadOK then begin
-        print, "red_download : Couldn't download the r0 log file"
+     if downloadOK then begin
+        spawn, 'cd '+logdir+'; xz -d '+file_basename(pathr0)
+        file_delete, pathr0, /allow_nonexistent
      endif
-
+  
   endif
 
   ;; PIG log file

@@ -67,76 +67,8 @@ pro red::loadbackscatter, cam, pref, bgain, bpsf $
                           , bpfile = bpfile $
                           , write = write
 
-  year = (strsplit(self.isodate, '-', /extract))[0]
-  
-  bgfile = self.descatter_dir + '/' + cam + '.backgain.' $
-           + pref + '_' + year + '.f0'
-  bpfile = self.descatter_dir + '/' + cam + '.psf.' $
-           + pref + '_' + year + '.f0'
-  
-  if keyword_set(write) then begin
-
-     ;; Only write the files if possible.
-
-     if size(bgain, /n_dim) lt 1 then begin
-        print, 'red::loadbackscatter : Cannot write the provided bgain.'
-        help, bgain
-        stop
-     endif else begin
-        fzwrite, bgain, bgfile, ' '
-     endelse
-
-     if size(bpsf, /n_dim) lt 1 then begin
-        print, 'red::loadbackscatter : Cannot write the provided bpsf.'
-        help, bpsf
-        stop
-     endif else begin
-        fzwrite, bpsf, bpfile, ' '
-     endelse
-
-  endif else begin
-     
-     ;; Construct file names
-
-     if ~file_test(bgfile) or ~file_test(bpfile) then self -> download, backscatter = pref
-     
-     if arg_present(bgain) then begin
-
-        ;; Read the gain if wanted
-
-        if file_test(bgfile) then begin
-           
-           print, 'red::loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
-           bgain = f0(bgfile)
-           
-        endif else begin
-           
-           print, 'red::loadbackscatter : Backscatter gain not available for ' + cam + ', ' + pref
-           print, bgfile
-           stop
-           
-        endelse                 ; exists
-     endif                      ; wants gain
-
-   
-     if arg_present(bpsf) then begin
-
-        ;; Read the psf if wanted
-
-        if file_test(bpfile) then begin
-           
-           print, 'red::loadbackscatter : Loading backscatter psf for ' + cam + ', ' + pref
-           bpsf  = f0(bpfile)
-           
-        endif else begin
-           
-           print, 'red::loadbackscatter : Backscatter psf not available for ' + cam + ', ' + pref
-           print, bpfile
-           stop
-           
-        endelse                 ; exists
-     endif                      ; wants psf
-
-  endelse                  
+  red_loadbackscatter, cam, self.isodate, self.descatter_dir, pref, bgain, bpsf, $
+                       bgfile = bgfile , bpfile = bpfile, write = write
+                       
 
 end
