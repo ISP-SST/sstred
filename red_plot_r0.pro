@@ -632,7 +632,9 @@ pro red_plot_r0, dir = dir $
      cgwindow
 
      print,'Plot r0 for CRISP and/or CHROMIS scans.'
-
+     
+     
+     ;;CHROMIS
      
      if keyword_set(chromisscans) then begin
 
@@ -675,7 +677,17 @@ pro red_plot_r0, dir = dir $
                        openw, flun, /get_lun, scanfile
 stop                       
                        red_extractstates, fnames, nums = filenos, scan = scannos, pref = prefilts
-                    endif; Nfile
+  
+
+                       
+
+
+
+
+
+                       free_lun, flun
+                       
+                    endif       ; Nfile
                  endif   ; wdir
               endif      ; scanfile
            endif         ; data dir
@@ -683,7 +695,9 @@ stop
      
      endif
 
-
+     
+     ;; CRISP
+     
      if keyword_set(crispscans) then begin
 
         for i = 0, Ntd-1 do begin
@@ -718,13 +732,12 @@ stop
                     
                     if Nfile le 10 then begin
                     
-                       print, 'red_plot_r0_scans : Not enough files in this directory:', Nfile
+                       print, 'red_plot_r0 : Not enough files in this directory:', Nfile
                        help, fnames
                        
                     endif else begin
                        
                        ;; Write the scanfile
-                       stop
                        openw, flun, /get_lun, scanfile
                        
                        red_extractstates, fnames, nums = filenos, scan = scannos, pref = prefilts
