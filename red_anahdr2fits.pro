@@ -34,7 +34,8 @@
 ; 
 ;   2016-05-18 : JLF. Created.
 ;
-;   2016-05-20 : MGL. Make more SOLARNET compliant. 
+;   2016-05-20 : MGL. Make more SOLARNET compliant. Get also camera
+;                and instrument from header.
 ;
 ;-
 function red_anahdr2fits, anahdr $
@@ -57,6 +58,24 @@ function red_anahdr2fits, anahdr $
   sxaddpar,hdr,'DATE-BEG',(red_strreplace(Ts, ' ', 'T'))[0],' ', before='COMMENT'
   sxaddpar,hdr,'DATE-END',(red_strreplace(Te, ' ', 'T'))[0],' ', after='DATE-BEG'
 
+  ;; Camera
+  campos = strpos(h, '"Camera')
+  if campos ne -1 do begin
+     cam = 'cam' + (strsplit(strmid(h, campos+8), ' ', /extract))[0]
+     sxaddpar, hdr, 'CAMERA', cam, 'Name of camera'
+  end
+
+  ;; Instrument
+  ipos = strpos(h, 'CRISP-')
+  if ipos ne -1 do begin
+     instrument = 'Crisp-'+(strsplit(strmid(h, ipos+6), ']', /extract))[0]
+     sxaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
+  end
+  
+  ;; Should extract more info from anahdr: states of prefilter, liquid
+  ;; crystals, LRE, and HRE. But first find out what keywords to use
+  ;; for them in the FITS header.
+  
   ;; Add SOLARNET keyword
   sxaddpar, hdr, 'SOLARNET', 0.5,  format = 'f3.1' $
             , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
