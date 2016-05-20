@@ -52,7 +52,7 @@
 ;
 ;   2016-05-18 : JLF. Returns the image (like readfits). Added Status flag keyword.
 ;
-;   2016-05-18 : JLF. Use red_mkhdr to create FITS headers from ANA headers.
+;   2016-05-18 : JLF. Use red_anahdr2fits to create FITS headers from ANA headers.
 ;-
 function red_readdata, fname $
 		       , header = header $
@@ -104,7 +104,7 @@ function red_readdata, fname $
 
         if n_elements(anaheader) ne 0 then $           
            ;; Convert ana header to fits header
-           header = red_mkhdr(anaheader,img=data)
+           header = red_anahdr2fits(anaheader,img=data)
 
      end
 

@@ -35,7 +35,7 @@
 ;   2016-05-18 : JLF. Created.
 ;
 ;-
-function red_mkhdr, anahdr $
+function red_anahdr2fits, anahdr $
 		    , img = img
 
 if n_elements(img) ne 0 then $
