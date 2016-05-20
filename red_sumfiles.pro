@@ -114,15 +114,19 @@
 ;   2013-09-13 : MGL. Lower the limit for least number of frames
 ;                needed to do checking from 10 to 3.
 ; 
-;   2013-12-10 : PS  keyword lim
+;   2013-12-10 : PS. Keyword lim
 ; 
-;   2013-12-11 : PS  also pass back the number of summed frames
+;   2013-12-11 : PS. Also pass back the number of summed frames
 ; 
 ;   2014-01-27 : MGL. Use red_com rather than red_centroid.
 ; 
 ;   2014-04-11 : MGL. New keywords select_align and xyc. Limit number
 ;                of repeats in the alignment so bad data can
 ;                terminate.
+; 
+;   2016-05-20 : MGL. Rewrite the setting up and reading part to
+;                support files with more than a single frame. Use
+;                red_readdata and red_redhead.
 ; 
 ; 
 ;-
@@ -142,7 +146,7 @@ function red_sumfiles, files_list $
                        , backscatter_gain = backscatter_gain $
                        , backscatter_psf = backscatter_psf $
                        , nthreads = nthreads 
- 
+
   ;; Name of this subprogram
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
@@ -153,20 +157,39 @@ function red_sumfiles, files_list $
   DoDescatter = n_elements(backscatter_gain) gt 0 and n_elements(backscatter_psf) gt 0
 
   Nfiles = n_elements(files_list)
-  fzread, tmp, files_list[0], h
-  dim = size(tmp, /dim)
-  tmp = long(tmp)
 
-  dum = fzhead(files_list[0])
-  dum = strsplit(dum, ' =', /extract)
-  if(new) then begin
-     t1 = dum[18]
-     t2 = dum[21]
-     time = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
-  endif else time = red_time2double(dum[2])
+  ;; Find out dimensions of the data
+  Nframes_per_file = lonarr(Nfiles)
+  Nframes = 0
+  for ifile = 0, Nfiles-1 do begin
+     head = red_readhead(files_list[i])
+     case sxpar(head, 'NAXIS') of
+        2 : Nframes_per_file[ifile] = 1
+        3 : Nframes_per_file[ifile] = sxpar(head, 'NAXIS3')
+        else : begin
+           print, inam + ' : No support for files other than single 2D frames or 3D data cubes' 
+           print, files_list[i]
+           print, head
+           stop
+        end
+     endcase
+     if ifile eq 0 then begin
+        dim = [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
+     endif else begin
+        if dim[0] ne sxpar(head, 'NAXIS1') or dim[1] ne sxpar(head, 'NAXIS2') then begin
+           print, inam + ' : [X,Y] dimensions do not match earlier files.'
+           print, files_list[i]
+           print, 'This file:',  [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
+           print, 'Earlier file(s):', dim 
+           stop
+        endif
+     endelse
+  endfor                        ; ifile
+  Nframes = total(Nframes_per_file)
+
 
   if keyword_set(check) then docheck = 1B else docheck = 0B
-  if docheck and Nfiles lt 3 then begin
+  if docheck and Nframes lt 3 then begin
      print, inam+" : Not enough statistics, don't do checking."
      docheck = 0B
   endif
@@ -194,79 +217,82 @@ function red_sumfiles, files_list $
      dark = dblarr(dim)
   endif 
 
-  ;; If just a single frame, return it now! 
-  if Nfiles eq 1 then begin
+  ;; If just a single frame, return it now. 
+  if Nframes eq 1 then begin
+     head = red_readhead(files_list[0])
+     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[0])
+     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[0])
+     time = (time_beg + time_end) / 2d
      ;; Include gain, dark, fillpix, backscatter here? This case
      ;; should really never happen...
-     return, tmp
+     return, red_readdata(files_list[0])
   endif
 
   ;; Needed for warning messages and progress bars.
-  ntot = 100. / (Nfiles - 1.0)
+  ntot = 100. / (Nframes - 1.0)
   bb = string(13B)
 
-  times = dblarr(Nfiles)
+  times = dblarr(Nframes)
 
   if docheck then begin
-
      ;; Set up for checking
-     cub = intarr(dim[0], dim[1], Nfiles)
-     mval = fltarr(Nfiles)
-     for ii = 0L, Nfiles-1 do begin
+     cub = intarr(dim[0], dim[1], Nframes)
+     iframe = 0
+  endif
 
-        cub[*,*,ii] = f0(files_list[ii])
-        mval[ii] = mean(cub[*,*,ii])
-                                
-        dum = fzhead(files_list[ii])
-        dum = strsplit(dum, ' =', /extract)
-        
-        if(new) then begin
-           t1 = dum[18]
-           t2 = dum[21]
-           times[ii] = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
-        endif else times[ii] = red_time2double(dum[2])
-        print, bb, inam+' : loading files in memory -> ', ntot * ii, '%' $
+  ;; Loop over files
+  for ifile = 0, Nfiles-1 do begin
+     
+     if docheck then begin
+        cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head)
+        print, bb, inam+' : loading files in memory -> ', ntot * iframe, '%' $
                , FORMAT = '(A,A,F5.1,A,$)'
+     endif else begin
+        head = red_readhead(files_list[ifile])
+     endelse
 
-     endfor                     ; ii
-     print, ' '
+     cadence = sxpar(head, 'CADENCE')
+     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
+     times[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile])
+     
+     iframe += Nframes_per_file[ifile]
+     
+  endfor                        ; ifile
+  print, ' '
+  
+  if docheck then begin
+     mval = total(total(cub, 1), 1)/(dim[0]*dim[1])
 
      ;; Find bad frames
      if n_elements(lim) eq 0 then lim = 0.0175 ; Allow 2% deviation from the mean value
      tmean = median(mval)
      mmval = median( mval, 3)
-     mmval[0] = mmval[1]                        ; Set edges to neighbouring values since the median filter does not modify endpoints.
-     mmval[Nfiles-1] = mmval[Nfiles-2]          ;
+     ;; Set edges to neighbouring values since the median filter does
+     ;; not modify endpoints.
+     mmval[0] = mmval[1]        
+     mmval[Nfiles-1] = mmval[Nfiles-2] 
+
      goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
-     idx = where(goodones, Nsum, complement = idx1)
-     
-     if(Nsum ne Nfiles) then begin
+     idx = where(goodones, Nsum, complement = idx1, Ncomplement = Nrejected)     
+
+     if Nrejected gt 0 then begin
         print, inam+' : rejected frames :'
-        print, transpose((files_list[idx1]))
-        if(keyword_set(lun)) then begin
-           printf, lun, files_list[idx1]
-        endif
+        for irejected = 0, Nrejected-1 do begin 
+           ;; Find file name and frame number within file
+           ifile = 0
+           while idx[irejected] lt total(Nframes_per_file[0:ifile]) do ifile += 1
+           msg = files_list[ifile]+', frame # '+strtrim(idx[irejected]-Nframes_per_file[0:ifile], 2)
+           print, msg
+           if(keyword_set(lun)) then printf, lun, msg
+        endfor                  ; irejected
      endif else print, inam+' : all files seem to be fine'
 
   endif else begin              ; docheck
-
-     ;; Set up for NOT checking
-     times[0] = time
-     for ii = 1L, Nfiles -1 do begin
-        dum = fzhead(files_list[ii])
-        dum = strsplit(dum, ' =', /extract)
-        if(new) then begin
-           t1 = dum[18]
-           t2 = dum[21]
-           times[ii] = (red_time2double(t1) + red_time2double(t2)) * 0.5d0
-        endif else times[ii] = red_time2double(dum[2])
-
-     endfor                     ; ii
-
+     
      ;; If no checking, all frames are considered OK.
-     goodones = replicate(1, Nfiles) 
+     goodones = replicate(1, Nframes) 
      idx = where(goodones, Nsum, complement = idx1)
-
+     
   endelse                       ; docheck
 
   ;; Do the summing
