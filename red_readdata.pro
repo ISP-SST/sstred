@@ -66,7 +66,6 @@ function red_readdata, fname $
     status = -1
     return, 0B
 
-
   endif
 
   if n_elements(filetype) eq 0 then begin
@@ -80,7 +79,7 @@ function red_readdata, fname $
       endif else begin			; PointGrey
 	message, 'Cannot detect filetype. Pass it manually as',/info
 	message,"head = red_readhead('"+fname+"',filetype='ptgrey-fits')",/info
-	statue = -1
+	status = -1
 	return, 0B
       endelse
         
