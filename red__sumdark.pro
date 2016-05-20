@@ -93,7 +93,6 @@ pro red::sumdark, overwrite = overwrite, $
         else dirstr = dirs[0]
     endelse
 
-    outdir = self.out_dir+'/darks/'
     darkname = self->getdark('', summed_name=sdarkname)
     file_mkdir, file_dirname(darkname)
     file_mkdir, file_dirname(sdarkname)
