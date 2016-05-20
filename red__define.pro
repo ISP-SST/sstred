@@ -15,9 +15,18 @@
 ;
 ;   2014-03-21 : MGL. Allow for multiple dark_dir.
 ;
+;   2016-05-19 : THI. Define state structures
+;
 ;-
 PRO red__define
 
+    st = { RED_STATE, $
+           filename:'', $
+           camtag:'', $
+           fullstate:'', $
+           skip:0B $
+    }
+                                
   done = {done, sumdark:0B, sumflat:0B, cleandata:0B, sumpolcal:0B, polcal:0B, makegains:0B}
                                 
   struct = {red, $
