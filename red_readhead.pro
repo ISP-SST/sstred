@@ -69,7 +69,7 @@ if n_elements(filetype) eq 0 then begin
       endif else begin			; PointGrey
 	message, 'Cannot detect filetype. Pass it manually as',/info
 	message,"head = red_readhead('"+fname+"',filetype='ptgrey-fits')",/info
-	statue = -1
+	status = -1
 	return, 0B
       endelse
     endif else begin
