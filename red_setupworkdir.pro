@@ -422,15 +422,9 @@ pro red_setupworkdir, search_dir = search_dir $
               wls = wls[WHERE(wls ne '')]
               wavelengths = strjoin(wls, ' ')
               ;; Print to script file
-              print, 'a -> setflatdir, root_dir+"' $
-                     + red_strreplace(flatdirs[idir], root_dir, '')$
-                     + '"  ; ' + camdirs+' ('+wavelengths+')'
-              print, 'a -> sumflat, /check'
-
-              printf, Slun, 'a -> setflatdir, root_dir+"' $
-                      + red_strreplace(flatdirs[idir], root_dir, '')$
-                      + '"  ; ' + camdirs+' ('+wavelengths+')'
-              printf, Slun, 'a -> sumflat, /check'
+              printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
+                   + red_strreplace(flatdirs[idir], root_dir, '') $
+                   + '"  ; ' + camdirs+' ('+wavelengths+')'
 
               red_append, prefilters, wls
 
@@ -688,15 +682,9 @@ pro red_setupworkdir, search_dir = search_dir $
               wls = wls[WHERE(wls ne '')]
               wavelengths = strjoin(wls, ' ')
               ;; Print to script file
-              print, 'a -> setflatdir, root_dir+"' $
-                     + red_strreplace(flatdirs[idir], root_dir, '') $
-                      + '"  ; ' + camdirs+' ('+wavelengths+')'
-              print, 'a -> sumflat, /check'
-
-              printf, Slun, 'a -> setflatdir, root_dir+"' $
-                      + red_strreplace(flatdirs[idir], root_dir, '') $
-                      + '"  ; ' + camdirs+' ('+wavelengths+')'
-              printf, Slun, 'a -> sumflat, /check'
+              printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
+                   + red_strreplace(flatdirs[idir], root_dir, '') $
+                   + '"  ; ' + camdirs+' ('+wavelengths+')'
 
               red_append, prefilters, wls
 

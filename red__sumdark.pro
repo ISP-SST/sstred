@@ -93,41 +93,34 @@ pro red::sumdark, overwrite = overwrite, $
         else dirstr = dirs[0]
     endelse
 
-    outdir = self.out_dir+'/darks/'
+    darkname = self->getdark('', summed_name=sdarkname)
+    file_mkdir, file_dirname(darkname)
+    file_mkdir, file_dirname(sdarkname)
 
     for ic = 0L, Ncams-1 do begin
 
         cam = cams[ic]
+        camtag = self->getcamtag( cam )
 
-        if strmatch(cam,'Crisp-?') then begin
-            ;; Matches Crisp cameras  TODO: get template format from crispred class
-            file_template = cam + '/cam*.im.ex.*'
-        endif else begin
-            file_template = cam + '/cam*.im.im.*'
-        endelse
+        darkname = self->getdark(cam, summed_name=sdarkname)
+        if( ~keyword_set(overwrite) && file_test(darkname) && file_test(sflatname)) then begin
+            print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
+            continue
+        endif
 
-        files = file_search(dirs + '/' + file_template, count = nf)
+        self->selectfiles, cam=cam, dirs=dirs, $
+                         files=files, states=states, /force
 
-        if(files[0] eq '') then begin
-            print, inam+' : ERROR : '+cam+': no files found in: '+dirstr
-            print, inam+' : ERROR : '+cam+': skipping camera!'
+        nf = n_elements(files)
+        if( nf eq 0 || files[0] eq '') then begin
+            print, inam+' : '+cam+': no files found in: '+dirstr
+            print, inam+' : '+cam+': skipping camera!'
             continue
         endif else begin
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
-        camtag = (strsplit(file_basename(files[0]),'.',/extract))[0]
-        namout = outdir+camtag+'.dark'
-        namout_sum = outdir+camtag+'.summed.0000001'
-
-        if(file_test(namout) AND ~keyword_set(overwrite)) then begin
-            print, inam+' : file exists: ' + namout +$
-                  ' , skipping! (run sumdark, /overwrite to recreate)'
-            continue
-        endif
-
-
-        ;;If everything is ok, sum the darks.
+        ; TODO: get/modify/put header in a generic way
         head = fzhead(files[0])
         if rdx_hasopencv() then begin
             dark = rdx_sumfiles(files, check = check, summed = darksum, nsum=nsum, verbose=2)
@@ -139,12 +132,12 @@ pro red::sumdark, overwrite = overwrite, $
 
         outheader = red_dark_h2h(files[nf-1], head, nsum)
 
-        file_mkdir, outdir
-        print, inam+' : saving ', namout
-        fzwrite, dark, namout, 'mean dark'
+        ; TODO: output should be written through class-specific methods
+        print, inam+' : saving ', darkname
+        fzwrite, dark, darkname, 'mean dark'
 
-        print, inam+' : saving ', namout_sum
-        fzwrite, long(darksum), namout_sum, outheader
+        print, inam+' : saving ', sdarkname
+        fzwrite, long(darksum), sdarkname, outheader
 
     endfor                        ; (ic loop)
 

@@ -58,11 +58,19 @@
 ;
 ;    scan24  : in, optional, type=boolean
 ;
-;       Set this to plot the large-FOV r0 for CRISP scans.
+;       Set this to plot the large-FOV r0 for CRISP/CHROMIS scans.
 ;
 ;    scan8  : in, optional, type=boolean
 ;
-;       Set this to plot the small-FOV r0 for CRISP scans.
+;       Set this to plot the small-FOV r0 for CRISP/CHROMIS scans.
+;
+;    chromisscans : in, optional, type=boolean 
+;
+;       Set this to plot scan8/scan24 for CHROMIS.
+;
+;    crispscans : in, optional, type=boolean 
+;
+;       Set this to plot scan8/scan24 for CRISP.
 ;
 ;    markdata : in, optional, type=boolean
 ;
@@ -141,6 +149,12 @@
 ;
 ;     2015-08-17 : MGL. Can now get directory from config.txt.
 ;
+;     2016-05-19 : MGL. Update for CHROMIS. Read file headers with
+;                  red_readhead, this gives us FITS keywords. Works
+;                  now with plot8 and plot24. New keywords crispscans
+;                  and chromisscans to plot CRISP and CHROMIS scans
+;                  separately with scan8 and scan24.
+;
 ;-
 pro red_plot_r0, dir = dir $
                  , today = today $
@@ -159,7 +173,10 @@ pro red_plot_r0, dir = dir $
                  , markdata = markdata $
                  , onlydata = onlydata $
                  , dt_mean = dt_mean $
-                 , noplot = noplot
+                 , noplot = noplot $
+                 , crispscans = crispscans $
+                 , chromisscans = chromisscans
+  
 
   if n_elements(r0max) eq 0 then r0max = 0.40             
   if n_elements(extension) eq 0 then extension = 'jpg'  
@@ -252,6 +269,7 @@ pro red_plot_r0, dir = dir $
   
   ;; Download the r0 log file if necessary
   red_logdata, isodate, r0time, r0 = r0data
+
   Nr0 = (size(r0data, /dim))[0]
   if keyword_set(plot8) and Nr0 eq 1 then begin
      print, 'red_plot_r0 : 8x8 r0 data does not exist before 2013-10-28.'
@@ -310,22 +328,37 @@ pro red_plot_r0, dir = dir $
 
            if Nf gt 0 then begin
 
-              head = fzhead(tdir+'/'+cdirs[0]+'/'+fnames[0])
-              istart = strpos(head, 'Ts=')
-              istop = strpos(head, 'Te=')
-              len = istop - istart
-              tstart = total(double(strsplit((strsplit(strmid(head, istart, len) $
-                                                       , ' ', /extr))[1],':',/extr)) $
-                             * [3600.,60., 1.])
-              
-              head = fzhead(tdir+'/'+cdirs[0]+'/'+fnames[Nf-1])
-              istart = strpos(head, 'Ts=')
-              istop = strpos(head, 'Te=')
-              len = istop - istart
-              tstop = total(double(strsplit((strsplit(strmid(head, istart, len) $
-                                                      , ' ', /extr))[1],':',/extr)) $
-                            * [3600.,60., 1.])
+              head_start = red_readhead(tdir+'/'+cdirs[0]+'/'+fnames[0])
+              head_stop  = red_readhead(tdir+'/'+cdirs[0]+'/'+fnames[Nf-1])
 
+;              Ts = sxpar(head_start, 'Ts')
+;              if ts ne 0 then begin
+;                 ;; ANA headers:
+;                 head = fzhead(tdir+'/'+cdirs[0]+'/'+fnames[0])
+;                 istart = strpos(head, 'Ts=')
+;                 istop = strpos(head, 'Te=')
+;                 len = istop - istart
+;                 tstart = total(double(strsplit((strsplit(strmid(head, istart, len) $
+;                                                          , ' ', /extr))[1],':',/extr)) $
+;                                * [3600.,60., 1.])
+;                 
+;                 ead = fzhead(tdir+'/'+cdirs[0]+'/'+fnames[Nf-1])
+;                 istart = strpos(head, 'Ts=')
+;                 istop = strpos(head, 'Te=')
+;                 len = istop - istart
+;                 tstop = total(double(strsplit((strsplit(strmid(head, istart, len) $
+;                                                         , ' ', /extr))[1],':',/extr)) $
+;                               * [3600.,60., 1.])
+;              endif else begin
+                 ;; FITS headers:
+                 ;; Start time
+                 tstart = red_time2double((strsplit(fxpar(head_start, 'DATE'),'T',/extract))[1])
+                 ;; Stop time
+                 tstop  = red_time2double((strsplit(fxpar(head_stop,  'DATE'),'T',/extract))[1])
+                 interval = fxpar(head_stop, 'INTERVAL')
+                 Naxis3 = fxpar(head_stop, 'NAXIS3')
+                 tstop += Naxis3*interval
+;              endelse                 
               tinterval = [tstart, tstop]/3600.
 
               file_mkdir, analysis_dir+red_strreplace(timedirs[i],datedir,'')
@@ -387,7 +420,8 @@ pro red_plot_r0, dir = dir $
   ;; actual plots.
   if keyword_set(noplot) then return
 
-  if keyword_set(plot24) or keyword_set(plot8) $
+  if keyword_set(plot24) $
+     or keyword_set(plot8) $
      or ((keyword_set(markdata) or keyword_set(onlydata)) and n_elements(dir) gt 0) $
   then begin
 
@@ -417,7 +451,7 @@ pro red_plot_r0, dir = dir $
                  L = red_gen_timeaxis([tmin_data-0.2, tmax_data+0.2]*3600.)
                  cgplot, /add, [tmin_data-0.2, tmax_data+0.2]*3600., [0, r0max] $
                          , /nodata, /ystyle $
-                         , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m', title = isodate $
+                         , xtitle = 't [UT]', ytitle = 'r$\sub0$ / 1 m', title = isodate $
                          , xrange = [tmin_data-0.2, tmax_data+0.2]*3600. $
                          , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
               endif else begin
@@ -425,7 +459,7 @@ pro red_plot_r0, dir = dir $
                  L = red_gen_timeaxis([tmin, tmax]*3600.)
                  cgplot, /add, [tmin, tmax]*3600., [0, r0max] $
                          , /nodata, /ystyle $
-                         , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m', title = isodate $
+                         , xtitle = 't [UT]', ytitle = 'r$\sub0$ / 1 m', title = isodate $
                          , xrange = [tmin, tmax]*3600. $
                          , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
               endelse
@@ -474,23 +508,31 @@ pro red_plot_r0, dir = dir $
                                     , color = color_polcal
                        endif else begin
                           
-                          ;; Is this TRIPPEL data?
-                          spnames = file_search(timedirs[i]+'Spec*', count = Nspec)
-                          if Nspec gt 0 then begin
-                             
-                             ;; TRIPPEL data
-                             cgwindow, 'cgColorFill', /loadcmd, xpoly*3600, (ypoly*2+0.01) $
-                                       , color = color_spec
-                             
-                          endif else if strmatch(timedirs[i],'*blue*', /fold) then begin
-                             ;; Blue data
+                          ;; This is not calibration data. So which
+                          ;; instrument is it from? Could be more than
+                          ;; one! 
+
+                          subdirs = file_search(datedir+timedirs[i]+'*')
+
+                          ;; Blue data
+                          if total(strmatch(file_basename(subdirs),'Chromis-?')) gt 0 $
+                             or strmatch(timedirs[i],'*blue*', /fold) then begin
                              cgwindow, 'cgColorFill', /loadcmd, xpoly*3600, (ypoly+0.010) $
                                        , color = color_blue
-                          endif else begin
-                             ;; Red data
+                          endif ; Blue/CHROMIS
+
+                          ;; Red data
+                          if total(strmatch(file_basename(subdirs),'Crisp-?')) gt 0 then begin
                              cgwindow, 'cgColorFill', /loadcmd, xpoly*3600, (ypoly+0.020) $
                                        , color = color_red
-                          endelse ; red/blue
+                          endif ; Red/CRISP
+
+                          ;; TRIPPEL data?
+                          if total(strmatch(file_basename(subdirs),'Spec*')) gt 0 then begin
+                             cgwindow, 'cgColorFill', /loadcmd, xpoly*3600, (ypoly*2+0.01) $
+                                       , color = color_spec
+                          endif ; TRIPPEL
+                          
                        endelse    ; data type
                     endif         ; within range
                  endif            ; intfile
@@ -498,11 +540,15 @@ pro red_plot_r0, dir = dir $
            endif                  ; Ntd
         endif                     ; Ndd
         
-     endif else begin           ; markdata
+     endif else begin           ; markdata or onlydata
         ;; Set up the plot.
+        L = red_gen_timeaxis([tmin, tmax]*3600.)
         cgplot, /add, [tmin, tmax]*3600., [0, r0max], /nodata, /ystyle $
-                , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m' $
-                , title = isodate, xstyle = 5
+                , xtitle = 't [UT]', ytitle = 'r$\sub0$ / 1 m' $
+                , title = isodate $
+                , xrange = [tmin, tmax]*3600. $
+                , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+
      endelse
 
      ;; Return time limits of plot
@@ -513,7 +559,7 @@ pro red_plot_r0, dir = dir $
      r0_top = r0max * 0.99
      r0_bot = 0.040
      
-     ;; Smooth over a dt_mean*60. wide window because r0time has a 1
+     ;; Smooth over a dt_mean*60 wide window because r0time has a 1
      ;; sec step.
 
      ;; Do the r0 plotting
@@ -553,7 +599,6 @@ pro red_plot_r0, dir = dir $
 
   if keyword_set(scan24) or keyword_set(scan8) then begin
 
-     print,'Plot r0 for CRISP scans.'
 
      ;; Templates for reading information about the scans:
      r0scantemplate = { version : 1.0 $
@@ -585,241 +630,300 @@ pro red_plot_r0, dir = dir $
                     }
      
      cgwindow
+
+     print,'Plot r0 for CRISP and/or CHROMIS scans.'
+
      
-     for i = 0, Ntd-1 do begin
+     if keyword_set(chromisscans) then begin
 
-        print,strtrim(i,2)+'/'+strtrim(Ntd,2)
         
-        if ~strmatch(timedirs[i],'*dark*',/fold) $
-           and ~strmatch(timedirs[i],'*flat*', /fold) $
-           and ~strmatch(timedirs[i],'*pinh*', /fold) $
-           and ~strmatch(timedirs[i],'*pfscan*', /fold) $
-           and ~strmatch(timedirs[i],'*polcal*', /fold) then begin
-           ;; This is a data directory!
+        for i = 0, Ntd-1 do begin
 
-           print, timedirs[i]
+           print,strtrim(i,2)+'/'+strtrim(Ntd,2)
+           
+           if ~strmatch(timedirs[i],'*dark*',/fold) $
+              and ~strmatch(timedirs[i],'*flat*', /fold) $
+              and ~strmatch(timedirs[i],'*pinh*', /fold) $
+              and ~strmatch(timedirs[i],'*pfscan*', /fold) $
+              and ~strmatch(timedirs[i],'*polcal*', /fold) then begin
 
-           ;; File with info about the scans in this time-stamped data directory
-           scanfile = analysis_dir+red_strreplace(timedirs[i],datedir,'')+'/scans.txt'
+              ;; This is a data directory!
 
-           ;; Do we need to make it (as well as the r0scanfiles)?
-           if ~file_test(scanfile) then begin
+              print, timedirs[i]
+
+              ;; File with info about the scans in this time-stamped data directory
+              scanfile = analysis_dir+red_strreplace(timedirs[i],datedir,'')+'/chromis-scans.txt'
               
+              ;; Do we need to make it (as well as the r0scanfiles)?
+              if ~file_test(scanfile) then begin
+
+                 wdir = datedir+timedirs[i]+'/Chromis-W/'
+                 print,wdir
+                 if file_test(wdir) then begin
+
+                  
+                    print, 'Analyse the scans in '+timedirs[i]
+                 
+                    fnames = file_search(wdir + 'cam*', count = Nfile)
+                    
+                    ;; Allow for one scan per file
+                    if Nfile gt 0 then begin
+
+
+                     ;; Write the scanfile
+                       stop
+                       openw, flun, /get_lun, scanfile
+stop                       
+                       red_extractstates, fnames, nums = filenos, scan = scannos, pref = prefilts
+                    endif; Nfile
+                 endif   ; wdir
+              endif      ; scanfile
+           endif         ; data dir
+        endfor           ; i
+     
+     endif
+
+
+     if keyword_set(crispscans) then begin
+
+        for i = 0, Ntd-1 do begin
+
+           print,strtrim(i,2)+'/'+strtrim(Ntd,2)
+           
+           if ~strmatch(timedirs[i],'*dark*',/fold) $
+              and ~strmatch(timedirs[i],'*flat*', /fold) $
+              and ~strmatch(timedirs[i],'*pinh*', /fold) $
+              and ~strmatch(timedirs[i],'*pfscan*', /fold) $
+              and ~strmatch(timedirs[i],'*polcal*', /fold) then begin
+
+              ;; This is a data directory!
+
+              print, timedirs[i]
+
+              ;; File with info about the scans in this time-stamped data directory
+              scanfile = analysis_dir+red_strreplace(timedirs[i],datedir,'')+'/crisp-scans.txt'
+              
+              ;; Do we need to make it (as well as the r0scanfiles)?
+              if ~file_test(scanfile) then begin
+                 
 ;              wdir = file_search(datedir+timedirs[i]+'/Crisp-W', count = Nw)
 ;              if Nw gt 0 then begin
-              wdir = datedir+timedirs[i]+'/Crisp-W/'
-print,wdir
-              if file_test(wdir) then begin
-
-                 print, 'Analyse the scans in '+timedirs[i]
+                 wdir = datedir+timedirs[i]+'/Crisp-W/'
+                 print,wdir
+                 if file_test(wdir) then begin
+                    
+                    print, 'Analyse the scans in '+timedirs[i]
                  
-                 fnames = file_search(wdir + 'cam*', count = Nfile)
-
-                 if Nfile le 10 then begin
+                    fnames = file_search(wdir + 'cam*', count = Nfile)
                     
-                    print, 'red_plot_r0_scans : Not enough files in this directory:', Nfile
-                    help, fnames
+                    if Nfile le 10 then begin
                     
-                 endif else begin
-
-                    ;; Write the scanfile
-                    openw, flun, /get_lun, scanfile
-                    
-                    red_extractstates, fnames, nums = filenos, scan = scannos, pref = prefilts
-                    
-                    indx = sort(filenos)
-                    filenos = filenos[indx]
-                    scannos = scannos[indx]
-                    fnames = fnames[indx]
-                    prefilts = prefilts[indx]
-                    
-                    ;; How many different prefilters were used?
-                    uniqprefilts = prefilts(uniq(prefilts, sort(prefilts)))
-                    print, uniqprefilts
-                    Npre = n_elements(uniqprefilts)
-                    
-                    ;; How many scans (of each kind)?
-                    Nscans = max(scannos)+1
-                    
-                    for iscan = 0L, Nscans-1 do begin
-                       for ipre = 0L, Npre-1 do begin
-                          
-                          print, iscan, Nscans, ipre, Npre, format = '(i0, "/",i0, " ",i0, "/",i0)'
-                          
-                          scanindx = where(scannos eq iscan and prefilts eq uniqprefilts[ipre], Nscan)
-
-                          ;; Scan start time
-                          head = fzhead(fnames[scanindx[0]])   
-                          istart = strpos(head, 'Ts=')
-                          istop = strpos(head, 'Te=')
-                          len = istop - istart
-                          tstart = total(double(strsplit((strsplit(strmid(head, istart, len), ' ', /extr))[1] $
-                                                         , ':', /extr)) * [3600.,60., 1.])
-                          
-                          ;; Scan stop time
-                          head = fzhead(fnames[scanindx[Nscan-1]])   
-                          istart = strpos(head, 'Ts=')
-                          istop = strpos(head, 'Te=')
-                          len = istop - istart
-                          tstop = total(double(strsplit((strsplit(strmid(head, istart, len), ' ', /extr))[1] $
-                                                        , ':', /extr)) * [3600.,60., 1.])
-                          
-                          r0indx = where(r0time gt tstart and r0time le tstop, Nr0scan)
-                          
-                          if Nr0scan ne 0 then begin
-                             r0string = string(min(r0data[0, r0indx]), mean(r0data[0, r0indx]) $
-                                               , median(r0data[0, r0indx]), max(r0data[0, r0indx]) $
-                                               , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
-                             if (size(r0data, /dim) )[0] eq 2 then begin
-                                r0string += "   " + string(min(r0data[1, r0indx]), mean(r0data[1, r0indx]) $
-                                                           , median(r0data[1, r0indx]), max(r0data[1, r0indx]) $
-                                                           , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
-                             endif
-
-                             
-                             r0scanfile = analysis_dir + red_strreplace(timedirs[i],datedir,'') $
-                                          + '/r0data_scan' + strtrim(iscan, 2) + '_pre' + uniqprefilts[ipre] $
-                                          + '.txt'
-                             openw, rlun, /get_lun, r0scanfile
-                             for iii = 0, Nr0scan-1 do printf, rlun, r0time[r0indx[iii]], r0data[*, r0indx[iii]]
-                             free_lun, rlun
-
-                          endif else r0string = ''
-                          
-                          printf, flun, string(iscan, uniqprefilts[ipre], tstart/3600., tstop/3600. $
-                                               , format = '(i0, " ", a0, " ", f8.5," ", f8.5)') + r0string
-                          
-                          
-                       endfor   ; ipre
-                    endfor      ; iscan
-                    
-                    free_lun, flun
-                    
-                 endelse        ; Files?
-              endif             ; CRISP?
-           endif                ; ~scanfile
-                      
-           ;; The scanfile and the r0scanfiles should exist now for
-           ;; CRISP directories. So go ahead and read and plot!
-           if file_test(scanfile) then begin
-           
-              scaninfo = read_ascii(scanfile, template = scantemplate)
-
-              sindx = sort(scaninfo.tstart)
-              Ns = n_elements(sindx) ; Total number of scans of all types
-
-              uniqprefilts = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
-              Npre = n_elements(uniqprefilts)
-              print, uniqprefilts
-              
-              Nscans = max(scaninfo.scanno)+1
-              
-              interval_lengths = fltarr(Npre)
-              for ipre = 0L, Npre-1 do begin
-                 indx = where(scaninfo.prefilter eq uniqprefilts[ipre])
-                 interval_lengths[ipre] = median((scaninfo.tstop-scaninfo.tstart)[indx])*3600
-              endfor
-
-              ;; We base number of plots on the shortest scans, which
-              ;; should be no less than 1/15 of the plot time interval.
-              Nplots = ceil(3600.*(max(scaninfo.tstop)-min(scaninfo.tstart))/(15*min(interval_lengths)))
-              Tplot = (max(scaninfo.tstop)-min(scaninfo.tstart))/Nplots
-              Tstart = min(scaninfo.tstart) - Tplot
-              Tstop = Tstart + Tplot + max(scaninfo.tstop-scaninfo.tstart)
-
-              iplot = 0
-
-              for is = 0, Ns-1 do begin
-
-                 print, is, Ns, format = '(i0, "/", i0)'
-
-                 r0scanfile = analysis_dir + red_strreplace(timedirs[i],datedir,'') $
-                              + '/r0data_scan' + strtrim(scaninfo.scanno[sindx[is]], 2) + '_pre' $
-                              + strtrim(scaninfo.prefilter[sindx[is]], 2) $
-                              + '.txt'
-
-                 if file_test(r0scanfile) then begin
-
-                    r0info = read_ascii(r0scanfile, template = r0scantemplate)
-                    
-                    sstart = min(r0info.time) ; Start and stop of this particular scan
-                    sstop  = max(r0info.time)
-                    nofile = 0
-                    
-                 endif else nofile = 1
-
-                 
-                 if sstop gt Tstop*3600 or is eq 0 or nofile then begin
-                    ;; Time to start a new plot.
-                    if is ne 0 then begin
-                       iplot += 1
-                       pname = 'dir-analysis/' + 'r0plot_' + isodate + '_' $
-                               + (strsplit(timedirs[i],'/',/extr,count=Nsplit))[Nsplit-1] $
-                               + '_' + string(iplot, format = '(i04)') + '.' + extension
-                       cgcontrol, output = pname
+                       print, 'red_plot_r0_scans : Not enough files in this directory:', Nfile
+                       help, fnames
                        
+                    endif else begin
+                       
+                       ;; Write the scanfile
+                       stop
+                       openw, flun, /get_lun, scanfile
+                       
+                       red_extractstates, fnames, nums = filenos, scan = scannos, pref = prefilts
+                       
+                       indx = sort(filenos)
+                       filenos = filenos[indx]
+                       scannos = scannos[indx]
+                       fnames = fnames[indx]
+                       prefilts = prefilts[indx]
+                       
+                       ;; How many different prefilters were used?
+                       uniqprefilts = prefilts(uniq(prefilts, sort(prefilts)))
+                       print, uniqprefilts
+                       Npre = n_elements(uniqprefilts)
+                       
+                       ;; How many scans (of each kind)?
+                       Nscans = max(scannos)+1
+                       
+                       for iscan = 0L, Nscans-1 do begin
+                          for ipre = 0L, Npre-1 do begin
+                             
+                             print, iscan, Nscans, ipre, Npre, format = '(i0, "/",i0, " ",i0, "/",i0)'
+                             
+                             scanindx = where(scannos eq iscan and prefilts eq uniqprefilts[ipre], Nscan)
+
+                             ;; Scan start time
+                             head = fzhead(fnames[scanindx[0]])   
+                             istart = strpos(head, 'Ts=')
+                             istop = strpos(head, 'Te=')
+                             len = istop - istart
+                             tstart = total(double(strsplit((strsplit(strmid(head, istart, len), ' ', /extr))[1] $
+                                                            , ':', /extr)) * [3600.,60., 1.])
+                             
+                             ;; Scan stop time
+                             head = fzhead(fnames[scanindx[Nscan-1]])   
+                             istart = strpos(head, 'Ts=')
+                             istop = strpos(head, 'Te=')
+                             len = istop - istart
+                             tstop = total(double(strsplit((strsplit(strmid(head, istart, len), ' ', /extr))[1] $
+                                                           , ':', /extr)) * [3600.,60., 1.])
+                             
+                             r0indx = where(r0time gt tstart and r0time le tstop, Nr0scan)
+                             
+                             if Nr0scan ne 0 then begin
+                                r0string = string(min(r0data[0, r0indx]), mean(r0data[0, r0indx]) $
+                                                  , median(r0data[0, r0indx]), max(r0data[0, r0indx]) $
+                                                  , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
+                                if (size(r0data, /dim) )[0] eq 2 then begin
+                                   r0string += "   " + string(min(r0data[1, r0indx]), mean(r0data[1, r0indx]) $
+                                                              , median(r0data[1, r0indx]), max(r0data[1, r0indx]) $
+                                                              , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
+                                endif
+
+                                
+                                r0scanfile = analysis_dir + red_strreplace(timedirs[i],datedir,'') $
+                                             + '/r0data_scan' + strtrim(iscan, 2) + '_pre' + uniqprefilts[ipre] $
+                                             + '.txt'
+                                openw, rlun, /get_lun, r0scanfile
+                                for iii = 0, Nr0scan-1 do printf, rlun, r0time[r0indx[iii]], r0data[*, r0indx[iii]]
+                                free_lun, rlun
+
+                             endif else r0string = ''
+                             
+                             printf, flun, string(iscan, uniqprefilts[ipre], tstart/3600., tstop/3600. $
+                                                  , format = '(i0, " ", a0, " ", f8.5," ", f8.5)') + r0string
+                             
+                             
+                          endfor ; ipre
+                       endfor    ; iscan
+                       
+                       free_lun, flun
+                       
+                    endelse     ; Files?
+                 endif          ; CRISP?
+              endif             ; ~scanfile
+                         
+              ;; The scanfile and the r0scanfiles should exist now for
+              ;; CRISP directories. So go ahead and read and plot!
+              if file_test(scanfile) then begin
+                 
+                 scaninfo = read_ascii(scanfile, template = scantemplate)
+
+                 sindx = sort(scaninfo.tstart)
+                 Ns = n_elements(sindx) ; Total number of scans of all types
+
+                 uniqprefilts = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
+                 Npre = n_elements(uniqprefilts)
+                 print, uniqprefilts
+                 
+                 Nscans = max(scaninfo.scanno)+1
+                 
+                 interval_lengths = fltarr(Npre)
+                 for ipre = 0L, Npre-1 do begin
+                    indx = where(scaninfo.prefilter eq uniqprefilts[ipre])
+                    interval_lengths[ipre] = median((scaninfo.tstop-scaninfo.tstart)[indx])*3600
+                 endfor
+
+                 ;; We base number of plots on the shortest scans, which
+                 ;; should be no less than 1/15 of the plot time interval.
+                 Nplots = ceil(3600.*(max(scaninfo.tstop)-min(scaninfo.tstart))/(15*min(interval_lengths)))
+                 Tplot = (max(scaninfo.tstop)-min(scaninfo.tstart))/Nplots
+                 Tstart = min(scaninfo.tstart) - Tplot
+                 Tstop = Tstart + Tplot + max(scaninfo.tstop-scaninfo.tstart)
+
+                 iplot = 0
+
+                 for is = 0, Ns-1 do begin
+
+                    print, is, Ns, format = '(i0, "/", i0)'
+
+                    r0scanfile = analysis_dir + red_strreplace(timedirs[i],datedir,'') $
+                                 + '/r0data_scan' + strtrim(scaninfo.scanno[sindx[is]], 2) + '_pre' $
+                                 + strtrim(scaninfo.prefilter[sindx[is]], 2) $
+                                 + '.txt'
+
+                    if file_test(r0scanfile) then begin
+
+                       r0info = read_ascii(r0scanfile, template = r0scantemplate)
+                       
+                       sstart = min(r0info.time) ; Start and stop of this particular scan
+                       sstop  = max(r0info.time)
+                       nofile = 0
+                       
+                    endif else nofile = 1
+
+                    
+                    if sstop gt Tstop*3600 or is eq 0 or nofile then begin
+                       ;; Time to start a new plot.
+                       if is ne 0 then begin
+                          iplot += 1
+                          pname = 'dir-analysis/' + 'r0plot_' + isodate + '_' $
+                                  + (strsplit(timedirs[i],'/',/extr,count=Nsplit))[Nsplit-1] $
+                                  + '_' + string(iplot, format = '(i04)') + '.' + extension
+                          cgcontrol, output = pname
+                          
+                       endif
+
+                       cgcontrol, /delete, /all
+                       Tstart += Tplot
+                       Tstop += Tplot
+                       if keyword_set(scan24) then title = 'r0 24x24 : ' else title = 'r0 8x8 : '
+                       title += isodate + ' ' + timedirs[i]
+                       L = red_gen_timeaxis([Tstart, Tstop]*3600)
+                       cgwindow, /add, 'cgplot', /nodata, [0], [0] $
+                                 , ticklen = -!p.ticklen $
+                                 , xrange = [Tstart, Tstop]*3600 $
+                                 , yrange = [0, r0max] $
+                                 , xtitle = 't [UT]', ytitle = 'r$\sub0$ / 1 m' $
+                                 , title = title $
+                                 , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+                    endif
+                    
+                    cgwindow, /add, 'cgColorFill' $
+                              , [sstart, sstop, sstop, sstart, sstart] >!x.crange[0] <!x.crange[1] $
+                              , !y.crange([0, 0, 1, 1, 0]) $
+                              , color = precolors[where(uniqprefilts eq scaninfo.prefilter[sindx[is]])]
+                    
+                    if keyword_set(plotvertical) or Npre eq 1 then begin
+                       cgwindow, /add, 'cgplot', /over, [1, 1]*sstart >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
+                       cgwindow, /add, 'cgplot', /over, [1, 1]*sstop  >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
                     endif
 
-                    cgcontrol, /delete, /all
-                    Tstart += Tplot
-                    Tstop += Tplot
-                    if keyword_set(scan24) then title = 'r0 24x24 : ' else title = 'r0 8x8 : '
-                    title += isodate + ' ' + timedirs[i]
-                    L = red_gen_timeaxis([Tstart, Tstop]*3600)
-                    cgwindow, /add, 'cgplot', /nodata, [0], [0] $
-                              , ticklen = -!p.ticklen $
-                              , xrange = [Tstart, Tstop]*3600 $
-                              , yrange = [0, r0max] $
-                              , xtitle = 't (UT)', ytitle = 'r$\sub0$ / 1 m' $
-                              , title = title $
-                              , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
-                 endif
-                 
-                 cgwindow, /add, 'cgColorFill' $
-                           , [sstart, sstop, sstop, sstart, sstart] >!x.crange[0] <!x.crange[1] $
-                           , !y.crange([0, 0, 1, 1, 0]) $
-                           , color = precolors[where(uniqprefilts eq scaninfo.prefilter[sindx[is]])]
-                 
-                 if keyword_set(plotvertical) or Npre eq 1 then begin
-                    cgwindow, /add, 'cgplot', /over, [1, 1]*sstart >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
-                    cgwindow, /add, 'cgplot', /over, [1, 1]*sstop  >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
-                 endif
-
-                 tpos = (sstart+sstop)/2.
-                 if tpos gt !x.crange[0] and tpos lt !x.crange[1] then begin
-                    cgwindow, /add, 'cgtext', tpos, !y.crange[1]*.95 $
-                              , strtrim(string(scaninfo.scanno[sindx[is]]), 2) $
-                              , align = 0.5 
-                    if scaninfo.scanno[sindx[is]] eq 0 then $
-                       cgwindow, /add, 'cgtext', tpos, !y.crange[1]*.03 $
-                                 , strtrim(scaninfo.prefilter[sindx[is]], 2) $
-                                 , align = 0, charsize = .75, orientation = 90 
-                 endif
-                 
-                 if keyword_set(scan24) then begin
-                    cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_24x24, psym=16
-                    cgwindow, /add, 'cgplot', /over, color = 'blue' $
-                              , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_mean[sindx[is]] 
-                    cgwindow, /add, 'cgplot', /over, color = 'red' $
-                              , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_median[sindx[is]] 
-                 endif
-                 
-                 if keyword_set(scan8) then begin
-                    cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_8x8, psym=16
-                    cgwindow, /add, 'cgplot', /over, color = 'blue' $
-                              , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_mean[sindx[is]] 
+                    tpos = (sstart+sstop)/2.
+                    if tpos gt !x.crange[0] and tpos lt !x.crange[1] then begin
+                       cgwindow, /add, 'cgtext', tpos, !y.crange[1]*.95 $
+                                 , strtrim(string(scaninfo.scanno[sindx[is]]), 2) $
+                                 , align = 0.5 
+                       if scaninfo.scanno[sindx[is]] eq 0 then $
+                          cgwindow, /add, 'cgtext', tpos, !y.crange[1]*.03 $
+                                    , strtrim(scaninfo.prefilter[sindx[is]], 2) $
+                                    , align = 0, charsize = .75, orientation = 90 
+                    endif
                     
-                    cgwindow, /add, 'cgplot', /over, color = 'red' $
-                              , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_median[sindx[is]] 
-                 endif
+                    if keyword_set(scan24) then begin
+                       cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_24x24, psym=16
+                       cgwindow, /add, 'cgplot', /over, color = 'blue' $
+                                 , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_mean[sindx[is]] 
+                       cgwindow, /add, 'cgplot', /over, color = 'red' $
+                                 , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_median[sindx[is]] 
+                    endif
+                    
+                    if keyword_set(scan8) then begin
+                       cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_8x8, psym=16
+                       cgwindow, /add, 'cgplot', /over, color = 'blue' $
+                                 , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_mean[sindx[is]] 
+                       
+                       cgwindow, /add, 'cgplot', /over, color = 'red' $
+                                 , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_median[sindx[is]] 
+                    endif
+                    
+                    
+                 endfor         ; is
                  
-                 
-              endfor            ; is
+              endif             ; scanfile
               
-           endif                ; scanfile
-           
-        endif                   ; data directory
-     endfor                     ; i
+           endif                ; data directory
+        endfor                  ; i
+  endif                         ; crispscans
+
   endif                         ; plotscans
   
 end

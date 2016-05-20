@@ -68,245 +68,153 @@
 ;
 ;   2014-10-06 : JdlCR. Prefilter keyword, please DO NOT REMOVE!
 ;
+;   2016-05-19 : THI: Re-write to use overloaded class methods.
+;
 ;-
-PRO red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
-                  remove = remove, cam = ucam, check = check, lim = lim, $
-                  store_rawsum = store_rawsum, prefilter = prefilter
+pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
+                  remove = remove, cams = cams, check = check, lim = lim, $
+                  store_rawsum = store_rawsum, prefilter = prefilter, $
+                  dirs = dirs
 
-  ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+    ;; Defaults
+    if( n_elements(overwrite) eq 0 ) then overwrite = 0
 
-  ;; Logging
-  help, /obj, self, output = selfinfo1
-  help, /struct, self.done, output = selfinfo2 
-  red_writelog, selfinfo = [selfinfo1, selfinfo2]
+    if( n_elements(check) eq 0 ) then check = 0
 
-  if(self.doflat eq 0B) then begin
-     print, inam+' : ERROR : undefined flat_dir'
-     return
-  endif
-  outdir = self.out_dir + '/' + 'flats/'
-  file_mkdir, outdir
-  outdir1 = self.out_dir + '/' + 'flats/summed/'
-  IF keyword_set(store_rawsum) THEN file_mkdir, outdir1
+    if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
+    else if ptr_valid(self.flat_dir) then dirs = *self.flat_dir
 
-  ;; NB cameras
-  for ic = 0L, 1 do begin
+    if( n_elements(cams) gt 0 ) then cams = [cams] $
+    else if ptr_valid(self.cam_channels) then cams = *self.cam_channels
 
-     case ic of
+    ;; Name of this method
+    inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-        0: begin
-           if(self.docamt eq 0B) then begin
-              print, inam+' : Nothing to do for ', self.camt
-           endif
-           cam = self.camt
-           doit = self.docamt
-        end
-        1: begin
-           if(self.docamr eq 0B) then begin
-              print, inam+' : Nothing to do for '+ self.camr
-           endif
-           cam = self.camr
-           doit = self.docamr
-        end
-     endcase
-     if(~doit) then continue
+    ;; Logging
+    help, /obj, self, output = selfinfo1
+    help, /struct, self.done, output = selfinfo2
+    red_writelog, selfinfo = [selfinfo1, selfinfo2]
 
-     if(n_elements(ucam) ne 0) then begin
-        if(ucam ne cam) then begin
-           print, inam + 'skipping camera -> '+cam+' (!= '+ucam+')'
-           continue
-        endif
-     endif
-
- ;    spawn, 'find ' + self.flat_dir + '/' + cam + '/ | grep "camX" | grep -v ".lcd."', files
- ;    nf = n_elements(files)
-     
-     files = file_search(*self.flat_dir + '/' + cam + '/camX*')
-     files = files(where(strpos(files, '.lcd.') LT 0, nf))
-     
-     print, inam+' : Found '+red_stri(nf)+' files in: '
-     print, '         '+ *self.flat_dir + '/' + cam + '/'
-
-     if(files[0] eq '') then begin
-         print, inam+' : ERROR : '+cam+': no files found in: '
-         print, inam+'                      '+*self.flat_dir
-         print, inam+' : ERROR : '+cam+': skipping camera!'
-        continue
-     endif
-
-     files = red_sortfiles(files)
-
-     ;; We do not actually need all the fields in the stat structure. The
-     ;; fullstate and star fields are enough.
-     red_extractstates, files, /basename, states = stat, fullstate = fullstate
-;     stat = red_getstates(files)
-     camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
-
-     if(~file_test(self.out_dir+'/darks/'+camtag+'.dark')) then begin
-        print, inam+' : no darks found for ', camtag
-        continue
-     endif
-     dd = f0(self.out_dir+'/darks/'+camtag+'.dark')
-
-     ;; Unique states
-     if(~keyword_set(ustat)) then ustat = fullstate[uniq(fullstate,sort(fullstate))]
-;     if(~keyword_set(ustat)) then ustat = stat.state[uniq(stat.state, sort(stat.state))]
-     ns = n_elements(ustat)
-
-     ;; Flag first frame after tuning the FPI
-;     if(keyword_set(remove)) then red_flagtuning, states
-     if(keyword_set(remove)) then red_flagtuning, stat
-     
-     ;; Loop and sum
-     for ss = 0L, ns - 1 do begin
-        if(n_elements(prefilter) eq 1) then begin
-           dum = (strsplit(ustat[ss],'.',/extract))[0]
-           if(dum ne prefilter) then continue
-        endif
-        
-        pos = where((stat.state eq ustat[ss]) AND (stat.star eq 0B), count)
-        if(count eq 0) then continue
-
-        outname = camtag + '.' + ustat[ss] + '.flat'
-        outname1 = camtag + '.' + ustat[ss] + '.summed.flat'
-
-
-        ;; If file does not exist, do sum!
-        if(keyword_set(overwrite) OR ~file_test(outdir + outname)) then begin
-           print, inam+' : adding flats for state -> ' + ustat[ss]
-           IF(keyword_set(check)) THEN BEGIN
-              openw, lun, self.out_dir + '/flats/'+camtag+'.'+ustat[ss]+'.discarded.txt', width = 500, /get_lun
-           endif
-           
-           ;; Sum files
-           IF(keyword_set(check)) THEN BEGIN
-                 ;;; if summing from two directories, same frame
-                 ;;; numbers from two directories are consecutive ans
-                 ;;; produce false drop info.  Re-sort them
-               tmplist = files[pos]
-               tmplist = tmplist(sort(tmplist))
-               flat = red_sumfiles(tmplist, time = time, check = check, $
-                                   lun = lun, lim = lim, summed = summed, NSUM = nsum)
-           ENDIF ELSE BEGIN 
-               flat = red_sumfiles(files[pos], time = time, summed = summed, NSUM = nsum)
-           ENDELSE
-           
-           ;; Remove dark
-           flat -= dd
-           flat1 = long(temporary(summed))
-           
-           ;; Output the raw (if requested) and averaged flats
-
-           IF keyword_set(store_rawsum) THEN BEGIN
-               headerout = 't='+time+' n_sum='+red_stri(nsum)
-               print, inam+' : saving ' + outdir1+outname1
-               fzwrite, flat1, outdir1+outname1, headerout
-           ENDIF
-           
-           headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
-           print, inam+' : saving ' + outdir+outname
-           fzwrite, float(flat), outdir+outname, headerout
-
-           IF(keyword_set(check)) THEN free_lun, lun
-
-        endif else begin
-           print, inam+' : file exists: ' + outdir+outname + $
-                  ' , skipping! (run sumflat, /overwrite to recreate)'
-        endelse
-     endfor
-  endfor                        ;(ic loop)
-
-  ;; Now WB camera
-  if(self.docamwb eq 0B) then begin
-     print, inam+' : Nothing to do for '+ self.camwb
-     self.done.sumflat = 1B
-     return
-  endif
-
-  ;; Search files
-  cam = self.camwb
-
-  if(n_elements(ucam) ne 0) then begin
-     if(ucam ne cam) then begin
-        print, inam + 'skipping camera -> '+cam+' (!= '+ucam+')'
+    Ncams = n_elements(cams)
+    if( Ncams eq 0) then begin
+        print, inam+' : ERROR : undefined cams (and cam_channels)'
         return
-     endif
-  endif
+    endif
 
-  files = file_search(*self.flat_dir + '/' + cam + '/camX*')
-  
-  if(files[0] eq '') then begin
-      print, inam+' : ERROR : '+cam+': no files found in:'
-      print, inam+'                      '+*self.flat_dir
-      print, inam+' : ERROR : '+cam+': skipping camera!'
-     self.done.sumflat = 1B
-     return
-  endif
+    Ndirs = n_elements(dirs)
+    if( Ndirs eq 0) then begin
+        print, inam+' : ERROR : no dark directories defined'
+        return
+    endif else begin
+        if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+        else dirstr = dirs[0]
+    endelse
 
-  files = red_sortfiles(files)
-  nt = n_elements(files)
 
-  ;; Get prefilters state
-;  wstat = strarr(nt)
-;  for jj = 0L, nt - 1 do begin
-;     dum = strsplit(file_basename(files[jj]), '.', /extract)
-;     Ndum = n_elements(dum)
-;     if(Ndum eq 7) then wstat[jj] = dum[Ndum-3] else wstat[jj] = dum[Ndum-5]
-;  endfor
-  red_extractstates, files, /basename, pref = wstat, cam = camtag
-  uwstat = wstat[uniq(wstat, sort(wstat))]
-  camtag = camtag[0]
+    flatname = self->getflat( '', state='', summed_name=sflatname )
+    file_mkdir, file_dirname(flatname)
+    if keyword_set(store_rawsum) then file_mkdir, file_dirname(sflatname)
 
-;  camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
-  outdir = self.out_dir + '/' + 'flats/'
+    ;; cameras
+    for ic = 0L, Ncams-1 do begin
 
-  ;; Load dark
-  if(~file_test(self.out_dir+'/darks/'+camtag+'.dark')) then begin
-     print, inam+' : no darks found for ', camtag
-     return
-  endif
+        cam = cams[ic]
+        camtag = self->getcamtag( cam )
 
-  dd = f0(self.out_dir+'/darks/'+camtag+'.dark')
+        dname = self->getdark( cam, data=dd )
+        if( n_elements(dd) eq 0 ) then begin
+            print, inam+' : no dark found for camera ', cam
+            continue
+        endif
 
-  for ss = 0L, n_elements(uwstat) - 1 do begin
-     pos = where(wstat eq uwstat[ss], count)
+        self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
+                         files=files, states=states, nremove=remove, /force
 
-     outname = camtag + '.' + uwstat[ss] + '.flat'
-     outname1 = camtag + '.' + uwstat[ss] + '.summed.flat'
+        nf = n_elements(files)
+        if( nf eq 0 || files[0] eq '') then begin
+            print, inam+' : '+cam+': no files found in: '+dirstr
+            print, inam+' : '+cam+': skipping camera!'
+            continue
+        endif else begin
+            print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
+        endelse
 
-     if(file_test(outdir+outname) AND ~keyword_set(overwrite)) then begin
-        print, inam+' : file exists: ' + outdir+outname +$
-               ' , skipping! (run sumflat, /overwrite to recreate)'
-        continue
-     endif
 
-     if count eq 0 then begin
-        print, inam+' : no files found for WB state -> '+ uwstat[ss]
-        continue
-     endif
+        state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-     print, inam+' : adding flats for WB state -> '+uwstat[ss]
-     flat = red_sumfiles(files[pos], time = time, check=check, summed = summed, NSUM = nsum)
+        ns = n_elements(state_list)
 
-     ;; Remove dark
-     flat1 = long(temporary(summed))
-     flat -= dd
+        ;; Loop over states and sum
+        for ss = 0L, ns - 1 do begin
 
-     ;; Output the raw (if requested) and averaged flats
-     IF keyword_set(store_rawsum) THEN BEGIN
-         headerout = 't='+time+' n_sum='+red_stri(nsum)
-         print, inam+' : saving ' + outdir1+outname1
-         fzwrite, flat1, outdir1+outname1, headerout
-     ENDIF
-     
-     headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
-     print, inam+' : saving ' + outdir+outname
-     fzwrite, float(flat), outdir+outname, headerout
+            flatname = self->getflat( cam, state=state_list[ss], summed_name=sflatname )
 
-     
-  endfor
-  self.done.sumflat = 1B
+            ;; If file does not exist, do sum!
+            if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
+                if (~keyword_set(store_rawsum) || file_test(sflatname)) then begin ; only skip if rawsum also exists
+                   print, inam+' : file exists: ' + flatname + ' , skipping! (run sumflat, /overwrite to recreate)'
+                   continue
+                endif
+            endif
 
-  return
+            self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+                           files=files, states=states, selected=sel
+
+            if( min(sel) lt 0 ) then begin
+                print, inam+' : '+cam+': no files found for state: '+state_list[ss]
+                continue
+            endif
+
+            print, inam+' : adding flats for state -> ' + state_list[ss]
+            if(keyword_set(check)) then begin
+                openw, lun, self.out_dir + '/flats/'+camtag+'.'+state_list[ss]+'.discarded.txt', width = 500, /get_lun
+            endif
+
+            ;; Sum files
+            if keyword_set(check) then begin
+                ;;; if summing from two directories, same frame
+                ;;; numbers from two directories are consecutive ans
+                ;;; produce false drop info.  Re-sort them
+                tmplist = files[sel]
+                tmplist = tmplist(sort(tmplist))
+                if rdx_hasopencv() then begin
+                    flat = rdx_sumfiles(tmplist, time = time, check = check, $
+                                      lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
+                endif else begin
+                    flat = red_sumfiles(tmplist, time = time, check = check, $
+                                      lun = lun, lim = lim, summed = summed, nsum = nsum)
+                endelse
+            endif else begin 
+                if rdx_hasopencv() then begin
+                    flat = rdx_sumfiles(files[sel], time = time, check = check, $
+                                      lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
+                endif else begin
+                    flat = red_sumfiles(files[sel], time = time, check = check, $
+                                      lun = lun, lim = lim, summed = summed, nsum = nsum)
+                endelse
+            endelse
+
+            ;; Remove dark
+            flat -= dd
+            flat1 = long(temporary(summed))
+
+            ;; Output the raw (if requested) and averaged flats
+            ; TODO: output should be written through class-specific methods
+            if keyword_set(store_rawsum) then begin
+                headerout = 't='+time+' n_sum='+red_stri(nsum)
+                print, inam+' : saving ' + sflatname
+                fzwrite, flat1, sflatname, headerout
+            endif
+
+            headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
+            print, inam+' : saving ' + flatname
+            fzwrite, float(flat), flatname, headerout
+
+            if keyword_set(check) then free_lun, lun
+
+
+        endfor  ; states
+
+    endfor  ;  cameras
+
 end  

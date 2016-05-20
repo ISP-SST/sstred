@@ -60,9 +60,6 @@ pro red::initialize, filename
   ;; self.data_dir = ''
   self.pinh_dir = '' 
   self.polcal_dir = ''
-  self.camt = '' 
-  self.camr = '' 
-  self.camwb = '' 
    
   self.dodata = 1B
   self.doflat = 1B
