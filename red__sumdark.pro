@@ -31,7 +31,10 @@
 ;    cams : in, optional, type=strarr
 ; 
 ;      A list of cameras (or rather camera subdirs).
-; 
+;
+;    sum_in_idl : in, optional, type=boolean
+;
+;      Bypass rdx_sumfiles.
 ; 
 ; :history:
 ; 
@@ -52,12 +55,16 @@
 ;   2016-05-17 : THI. Use cam_channels by default, added keyword dirs
 ;                to use specific dark-folder. Re-write to sum files from
 ;                multiple folders at once.
+; 
+;   2016-05-18 : MGL. New keyword sum_in_idl. Started working on
+;                making a header for the dark frame.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
-                  dirs = dirs
+                  dirs = dirs,  $
+                  sum_in_idl = sum_in_idl
 
     ;; Defaults
     if n_elements(overwrite) eq 0 then overwrite = 0
@@ -120,9 +127,25 @@ pro red::sumdark, overwrite = overwrite, $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
+
         ; TODO: get/modify/put header in a generic way
         head = fzhead(files[0])
-        if rdx_hasopencv() then begin
+
+;        camtag = (strsplit(file_basename(files[0]),'.',/extract))[0]
+;        namout = outdir+camtag+'.dark'
+;        namout_sum = outdir+camtag+'.summed.0000001'
+;
+;        if(file_test(namout) AND ~keyword_set(overwrite)) then begin
+;            print, inam+' : file exists: ' + namout + $
+;                  ' , skipping! (run sumdark, /overwrite to recreate)'
+;            continue
+;        endif
+;        
+;        ;;If everything is ok, sum the darks.
+;
+;stop
+;
+        if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
             dark = rdx_sumfiles(files, check = check, summed = darksum, nsum=nsum, verbose=2)
         endif else begin
             dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
@@ -130,7 +153,30 @@ pro red::sumdark, overwrite = overwrite, $
         ;; Normalize dark
         ;;dark = float(tmp / count)
 
-        outheader = red_dark_h2h(files[nf-1], head, nsum)
+        ;;        head = fzhead(files[0])
+        head = red_readhead(files[0]) 
+       
+        ;; The summing will make a single frame out of a data cube.
+        red_sxaddpar, head, 'NAXIS', 2, /check ; Two dimensions.
+        sxdelpar, head, 'NAXIS3'   ; Remove third dimension size.
+        
+        ;; Some SOLARNET recommended keywords:
+        exptime = sxpar(head, 'XPOSURE', comment = exptime_comment)
+        sxdelpar, head, 'XPOSURE' 
+        if exptime eq 0 then begin
+           ;; What Guus used in early versions - remove this later
+           exptime = sxpar(head, 'EXPTIME', comment = exptime_comment) 
+           sxdelpar, head, 'EXPTIME'
+        endif
+        red_sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time', /check
+        red_sxaddpar, head, 'NSUMEXP', Nsum, 'Number of summed exposures', /check
+        
+
+        ;; Add some more info here, see SOLARNET deliverable D20.4 or
+        ;; later versions of that documetn. like how many
+        ;; frames were actually summed, nsum.
+
+        ;; outheader = red_dark_h2h(files[nf-1], head, nsum)
 
         ; TODO: output should be written through class-specific methods
         print, inam+' : saving ', darkname
