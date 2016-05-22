@@ -128,6 +128,9 @@
 ;                support files with more than a single frame. Use
 ;                red_readdata and red_redhead.
 ; 
+;   2016-05-22 : MGL. Rewrite the summing part, take care of the easy
+;                cases first.
+; 
 ; 
 ;-
 function red_sumfiles, files_list $
@@ -260,7 +263,8 @@ function red_sumfiles, files_list $
   endfor                        ; ifile
   print, ' '
   
-  if docheck then begin
+  if DoCheck then begin
+
      mval = total(total(cub, 1), 1)/(dim[0]*dim[1])
 
      ;; Find bad frames
@@ -295,159 +299,250 @@ function red_sumfiles, files_list $
      
   endelse                       ; docheck
 
+  
   ;; Do the summing
-  summed = dblarr(dim)
-  time = 0.0d
+ 
+  case 1 of
 
-  firstframe = 1B               ; When doing alignment we use the first (good) frame as reference.
-  dc_sum = [0.0, 0.0]
-  for ii = 0L, Nfiles-1 do begin
+     ~DoCheck $
+        and ~DoDescatter $
+        and ~keyword_set(pinhole_align) $
+        and ~keyword_set(select_align) : begin
      
-     if goodones[ii] then begin ; Sum only OK frames
+        ;; Easy case first, no checking, no alignment and no
+        ;; descattering. No checking means we have not read the data
+        ;; yet. 
 
-        if docheck then begin
-           thisframe = double(cub[*,*,ii])
-           print, bb, inam+' : summing checked frames -> ' $
-                  , ntot * ii, '%' $
-                  , FORMAT='(A,A,F5.1,A,$)'
-        endif else begin
-           thisframe = double(f0(files_list[ii]))
-           print, bb, inam+' : adding files -> ' $
-                  , ntot * ii, '%' $
-                  , FORMAT = '(A,A,F5.1,A,$)'
-        endelse
+        summed = dblarr(dim)
+        iframe = 0
 
-  
-        if keyword_set(pinhole_align) or keyword_set(select_align) then begin
+        for ifile = 0, Nfiles-1 do begin
            
-           ;; If we are doing sub-pixel alignment, then we need to
-           ;; correct each frame for dark and gain.
-           thisframe = (thisframe - dark)*gain
+           print, bb, inam+' : summing files -> ', ntot * iframe, '%' $
+                  , FORMAT = '(A,A,F5.1,A,$)'
 
-           ;; We also need to do any descattering correction of each frame.
-           if DoDescatter then begin
-              thisframe = red_cdescatter(thisframe $
-                                         , backscatter_gain, backscatter_psf $
-                                         , /verbose, nthreads = nthreads)
-           endif
+           cub = red_readdata(files_list[ifile], header = head)
 
-           ;; And fill the bad pixels 
-           thisframe = red_fillpix(thisframe, mask = mask)
+           summed += total(cub, 3)
+           iframe += Nframes_per_file[ifile]
 
-           if firstframe then begin
-              
-              marg = 100
-              if keyword_set(select_align) then begin
-                 ;; Select feature to align on with mouse.
-                 if max(dim) gt 1000 then fac = max(dim)/1000. else fac = 1
-                 window, 0, xs = 1000, ys = 1000
-                 tvscl, congrid(thisframe, dim[0]/fac, dim[1]/fac, cubic = -0.5)
-                 print, 'Use the mouse to click on feature to align on.'
-                 cursor, xc, yc, /device
-                 xyc = round([xc, yc]*fac) >marg <(dim-marg-1)
-                 subsz = 300
-                 subim = thisframe[xyc[0]-subsz/2:xyc[0]+subsz/2-1, xyc[1]-subsz/2:xyc[1]+subsz/2-1]
-                 tvscl, subim
-              end else begin
-                 ;; Find brightest pinhole spot that is reasonably centered in
-                 ;; the FOV.
-                 subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
-                 mx = max(subim, maxloc)
-                 ncol = dim[1]-2*marg+1
-                 xyc = lonarr(2)
-                 xyc[0] = maxloc MOD ncol
-                 xyc[1] = maxloc / ncol
-                 xyc += marg    ; Position of brightest spot in original image
+        endfor                  ; ifile
+
+        average = summed / Nsum
+        time = total(times) / Nsum
+
+        ;; Dark and gain correction 
+        average = (average - dark)*gain
+
+        ;; Fill the bad pixels 
+        if n_elements(mask) gt 0 then average = red_fillpix(average, mask = mask)
+
+     end
+
+     ~DoDescatter $
+        and ~keyword_set(pinhole_align) $
+        and ~keyword_set(select_align) : begin
+
+        ;; Another easy case, checked data but no alignment and no
+        ;; descattering. The data are checked means they are already
+        ;; read in.
+
+        print, bb, inam+' : summing all good files.'
+
+        summed = total(cub[*, *, idx], 3)
+
+        average = summed / Nsum
+        time = total(times[idx]) / Nsum
+
+        ;; Dark and gain correction 
+        average = (average - dark)*gain
+
+        ;; Fill the bad pixels 
+        if n_elements(mask) gt 0 then average = red_fillpix(average, mask = mask)
+
+     end
+        
+     else : begin
+        
+        ;; And now for the more time consuming cases, where all frames
+        ;; have to be dealt with individually. Either for alignment,
+        ;; or for descattering, or both.
+        
+        
+        firstframe = 1B         ; When doing alignment we use the first (good) frame as reference.
+        dc_sum = [0.0, 0.0]
+
+        ifile = 0
+        ii = 0                  ; Within-file-counter
+
+        ;; Loop over all frames
+        for iframe = 0L, Nframes-1 do begin
+           
+           if goodones[ii] then begin ; Sum only OK frames
+
+              if docheck then begin
+
+                 ;; If checked, we already have the frames in memory.
+                 thisframe = double(cub[*, *, iframe])
+                 
+                 print, bb, inam+' : summing checked frames -> ' $
+                        , ntot * iframe, '%' $
+                        , FORMAT='(A,A,F5.1,A,$)'
+
+              endif else begin
+
+                 ;; If not checked, we (sometimes) have to read the frames in.
+                 if ii ge Nframes_per_file[ifile] then begin
+                    cub = red_readdata(files_list[ifile], header = head)
+                    ii = 0
+                 endif
+                 thisframe = double(cub[*, *, ii])
+                 ii += 1
+                 
+                 print, bb, inam+' : summing frames -> ' $
+                        , ntot * iframe, '%' $
+                        , FORMAT = '(A,A,F5.1,A,$)'
+
               endelse
 
-              ;; Establish subfield size sz, shrunk to fit.
-              sz = 99              
-              subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
-              tot_init = total(subim/max(subim) gt 0.2)
-              repeat begin
-                 sz -= 2
-                 subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
-                 tot = total(subim/max(subim) gt 0.2)
-              endrep until tot lt tot_init
+              
+              if keyword_set(pinhole_align) or keyword_set(select_align) then begin
+                 
+                 ;; If we are doing sub-pixel alignment, then we need to
+                 ;; correct each frame for dark and gain.
+                 thisframe = (thisframe - dark)*gain
 
-              sz += 4           ; A bit of margin
+                 ;; We also need to do any descattering correction of each frame.
+                 if DoDescatter then begin
+                    thisframe = red_cdescatter(thisframe $
+                                               , backscatter_gain, backscatter_psf $
+                                               , /verbose, nthreads = nthreads)
+                 endif
 
-           endif                ; firstframe
+                 ;; And fill the bad pixels 
+                 thisframe = red_fillpix(thisframe, mask = mask)
 
-           ;; Iteratively calculate centroid of thisframe, and then
-           ;; shift the frame so it aligns with the first frame.
-           
-           ;; Iteratively shift the image to get the spot centered in
-           ;; the subfield, because that's where the centroiding is
-           ;; most accurate.
-           dc1 = [0.0,0.0]
-           Nrep = 0
-           repeat begin
-              ;print, 'Shift:', dc1
-              im_shifted = red_shift_im(thisframe, dc1[0], dc1[1])                  ; Shift the image
-              subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2] ; New subimage
+                 if firstframe then begin
+                    
+                    marg = 100
+                    if keyword_set(select_align) then begin
+                       ;; Select feature to align on with mouse.
+                       if max(dim) gt 1000 then fac = max(dim)/1000. else fac = 1
+                       window, 0, xs = 1000, ys = 1000
+                       tvscl, congrid(thisframe, dim[0]/fac, dim[1]/fac, cubic = -0.5)
+                       print, 'Use the mouse to click on feature to align on.'
+                       cursor, xc, yc, /device
+                       xyc = round([xc, yc]*fac) >marg <(dim-marg-1)
+                       subsz = 300
+                       subim = thisframe[xyc[0]-subsz/2:xyc[0]+subsz/2-1, xyc[1]-subsz/2:xyc[1]+subsz/2-1]
+                       tvscl, subim
+                    end else begin
+                       ;; Find brightest pinhole spot that is reasonably centered in
+                       ;; the FOV.
+                       subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
+                       mx = max(subim, maxloc)
+                       ncol = dim[1]-2*marg+1
+                       xyc = lonarr(2)
+                       xyc[0] = maxloc MOD ncol
+                       xyc[1] = maxloc / ncol
+                       xyc += marg ; Position of brightest spot in original image
+                    endelse
 
-              subim0 = subim0 / stdev(subim0)
-              cnt = red_com(subim0) ; Centroid after shift
-              dcold = dc1           ; Old shift
-              dc1 = dc1 + (sz/2.0 - cnt)
-                                ;print, 'Shift change vector length:',
-                                ;sqrt(total((dc1-dcold)^2))
-              Nrep += 1
-           endrep until sqrt(total((dc1-dcold)^2)) lt 0.01 or Nrep eq 100
-           ;; Iterate until shift changes less than 0.01 pixel
+                    ;; Establish subfield size sz, shrunk to fit.
+                    sz = 99              
+                    subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
+                    tot_init = total(subim/max(subim) gt 0.2)
+                    repeat begin
+                       sz -= 2
+                       subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
+                       tot = total(subim/max(subim) gt 0.2)
+                    endrep until tot lt tot_init
 
-           if firstframe then begin
-              ;; Keep as reference
-              dc0 = dc1
-           endif else begin
-              dc = dc1-dc0      ; This is the shift!
-              dc_sum += dc      ; ...add it to the total
-              thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
-           endelse
+                    sz += 4     ; A bit of margin
 
-        endif                   ; keyword_set(pinhole_align)
+                    firstframe = 0B
+                    
+                 endif          ; firstframe
 
-        summed += thisframe
-        time += times[ii]
+                 ;; Iteratively calculate centroid of thisframe, and then
+                 ;; shift the frame so it aligns with the first frame.
+                 
+                 ;; Iteratively shift the image to get the spot centered in
+                 ;; the subfield, because that's where the centroiding is
+                 ;; most accurate.
+                 dc1 = [0.0,0.0]
+                 Nrep = 0
+                 repeat begin
+                    ;;print, 'Shift:', dc1
+                    im_shifted = red_shift_im(thisframe, dc1[0], dc1[1])                  ; Shift the image
+                    subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2] ; New subimage
 
-        firstframe = 0B
-     endif                      ; goodones[ii] 
+                    subim0 = subim0 / stdev(subim0)
+                    cnt = red_com(subim0) ; Centroid after shift
+                    dcold = dc1           ; Old shift
+                    dc1 = dc1 + (sz/2.0 - cnt)
+                    ;;print, 'Shift change vector length:',
+                    ;;sqrt(total((dc1-dcold)^2))
+                    Nrep += 1
+                 endrep until sqrt(total((dc1-dcold)^2)) lt 0.01 or Nrep eq 100
+                 ;; Iterate until shift changes less than 0.01 pixel
 
-  endfor                        ; ii
-  print, ' '
+                 if firstframe then begin
+                    ;; Keep as reference
+                    dc0 = dc1
+                 endif else begin
+                    dc = dc1-dc0 ; This is the shift!
+                    dc_sum += dc ; ...add it to the total
+                    thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
+                 endelse
 
-  average = summed
-  if Nsum gt 1 then begin
-    average /= Nsum;
-    time /= Nsum
-  endif
-  
-  if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
-    average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
-  endif
-  
+              endif             ; keyword_set(pinhole_align)
+
+              summed += thisframe
+              time += times[ii]
+
+           endif                ; goodones[ii] 
+
+        endfor                  ; ii
+        print, ' '
+
+        average = summed
+        if Nsum gt 1 then begin
+           average /= Nsum      ;
+           time /= Nsum
+        endif
+
+        if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
+           average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
+        endif
+
+        time = red_time2double( time, /dir )
+
+        if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
+
+           ;; Some actions already done for each frame in the case of
+           ;; pinhole alignment.
+
+           ;; Dark and gain correction 
+           average = (average - dark)*gain
+
+           if DoDescatter then begin
+              ;; Backscatter correction (done already for pinholes)
+              average = red_cdescatter(average, backscatter_gain, backscatter_psf $
+                                       , /verbose, nthreads = nthreads)
+           endif
+
+           ;; Fill the bad pixels 
+           if n_elements(mask) gt 0 then  average = red_fillpix(average, mask = mask)
+
+        endif
+
+     end
+     
+  endcase
+
   time = red_time2double( time, /dir )
 
-  if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
-
-     ;; Some actions already done for each frame in the case of
-     ;; pinhole alignment.
-
-     ;; Dark and gain correction 
-     average = (average - dark)*gain
-
-     if DoDescatter then begin
-        ;; Backscatter correction (done already for pinholes)
-        average = red_cdescatter(average, backscatter_gain, backscatter_psf $
-                                 , /verbose, nthreads = nthreads)
-     endif
-
-     ;; Fill the bad pixels 
-     if n_elements(mask) gt 0 then  average = red_fillpix(average, mask = mask)
-
-  endif
-
   return, average
- 
+  
 end                             ; red_sumfiles
