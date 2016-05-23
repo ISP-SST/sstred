@@ -59,16 +59,16 @@ function red_anahdr2fits, anahdr $
   sxaddpar,hdr,'DATE-END',(red_strreplace(Te, ' ', 'T'))[0],' ', after='DATE-BEG'
 
   ;; Camera
-  campos = strpos(h, '"Camera')
-  if campos ne -1 do begin
-     cam = 'cam' + (strsplit(strmid(h, campos+8), ' ', /extract))[0]
+  campos = strpos(anahdr, '"Camera')
+  if campos ne -1 then begin
+     cam = 'cam' + (strsplit(strmid(anahdr, campos+8), ' ', /extract))[0]
      sxaddpar, hdr, 'CAMERA', cam, 'Name of camera'
   end
 
   ;; Instrument
-  ipos = strpos(h, 'CRISP-')
-  if ipos ne -1 do begin
-     instrument = 'Crisp-'+(strsplit(strmid(h, ipos+6), ']', /extract))[0]
+  ipos = strpos(anahdr, 'CRISP-')
+  if ipos ne -1 then begin
+     instrument = 'Crisp-'+(strsplit(strmid(anahdr, ipos+6), ']', /extract))[0]
      sxaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
   end
   
