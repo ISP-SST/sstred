@@ -29,14 +29,25 @@
 ; 
 ; :Keywords:
 ; 
-;    time  : out, optional, type=double
+;    time_ave  : out, optional, type=string
 ;   
+;       The average timestamp of the summed frames.
+;   
+;    time_beg  : out, optional, type=string
+;   
+;       The beginning of the first exposure in the summed frames.
+;   
+;    time_end  : out, optional, type=string
+;
+;       The end of the last exposure in the summed frames.
 ;   
 ;    summed  : out, optional, type=dblarr
 ;   
 ;       The summed frames, without division with the number of summed frames.
 ;   
-;    nsum : out, optional, number of frames actually summed
+;    nsum : out, optional
+;
+;       Number of frames actually summed
 ;
 ;    old :  in, optional, type=boolean 
 ;   
@@ -131,13 +142,22 @@
 ;   2016-05-22 : MGL. Rewrite the summing part, take care of the easy
 ;                cases first.
 ; 
+;   2016-05-22 : MGL. Remove "old" keyword. If we have "old" ana
+;                headers, they should be taken care of in
+;                red_readdata. 
+; 
+;   2016-05-23 : MGL. Added time_beg and time_end keywords. Changed
+;                time keyword to time_ave. Do summing in double
+;                precision. 
+; 
 ; 
 ;-
 function red_sumfiles, files_list $
-                       , time = time $
+                       , time_ave = time_ave $
+                       , time_beg = time_beg $
+                       , time_end = time_end $
                        , summed = summed $
                        , nsum = nsum $
-                       , old = old $     
                        , check = check $ 
                        , lim = lim $
                        , lun = lun $ 
@@ -152,8 +172,6 @@ function red_sumfiles, files_list $
 
   ;; Name of this subprogram
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
-  new = ~keyword_set(old)
 
   if n_elements(nthreads) eq 0 then nthreads = 2 else nthreads = nthreads
 
@@ -165,13 +183,13 @@ function red_sumfiles, files_list $
   Nframes_per_file = lonarr(Nfiles)
   Nframes = 0
   for ifile = 0, Nfiles-1 do begin
-     head = red_readhead(files_list[i])
+     head = red_readhead(files_list[ifile])
      case sxpar(head, 'NAXIS') of
         2 : Nframes_per_file[ifile] = 1
         3 : Nframes_per_file[ifile] = sxpar(head, 'NAXIS3')
         else : begin
            print, inam + ' : No support for files other than single 2D frames or 3D data cubes' 
-           print, files_list[i]
+           print, files_list[ifile]
            print, head
            stop
         end
@@ -181,7 +199,7 @@ function red_sumfiles, files_list $
      endif else begin
         if dim[0] ne sxpar(head, 'NAXIS1') or dim[1] ne sxpar(head, 'NAXIS2') then begin
            print, inam + ' : [X,Y] dimensions do not match earlier files.'
-           print, files_list[i]
+           print, files_list[ifile]
            print, 'This file:',  [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
            print, 'Earlier file(s):', dim 
            stop
@@ -223,9 +241,11 @@ function red_sumfiles, files_list $
   ;; If just a single frame, return it now. 
   if Nframes eq 1 then begin
      head = red_readhead(files_list[0])
-     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[0])
-     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[0])
-     time = (time_beg + time_end) / 2d
+     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
+     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
+     time_ave = red_time2double((time_beg + time_end) / 2d, /dir)
+     time_beg = red_time2double(time_beg, /dir)
+     time_end = red_time2double(time_end, /dir)
      ;; Include gain, dark, fillpix, backscatter here? This case
      ;; should really never happen...
      return, red_readdata(files_list[0])
@@ -236,17 +256,19 @@ function red_sumfiles, files_list $
   bb = string(13B)
 
   times = dblarr(Nframes)
+  times_beg = dblarr(Nframes)
+  times_end = dblarr(Nframes)
 
   if docheck then begin
      ;; Set up for checking
      cub = intarr(dim[0], dim[1], Nframes)
-     iframe = 0
   endif
 
   ;; Loop over files
+  iframe = 0
   for ifile = 0, Nfiles-1 do begin
-     
-     if docheck then begin
+    
+     if DoCheck then begin
         cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head)
         print, bb, inam+' : loading files in memory -> ', ntot * iframe, '%' $
                , FORMAT = '(A,A,F5.1,A,$)'
@@ -254,10 +276,20 @@ function red_sumfiles, files_list $
         head = red_readhead(files_list[ifile])
      endelse
 
+     ;; The following two lines to be removed when this cleaning and
+     ;; filtering is in the red_read{data,head} functions.
+     red_cleanheader, head
+     head = red_filterchromisheaders(head)
+
      cadence = sxpar(head, 'CADENCE')
      time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
-     times[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile])
-     
+     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
+
+     times[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile]) + fxpar(head, 'XPOSURE')/2
+
+     times_beg[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile])
+     times_end[iframe] = (times_beg[iframe:iframe+Nframes_per_file[ifile]-1] + fxpar(head, 'XPOSURE')) <time_end
+
      iframe += Nframes_per_file[ifile]
      
   endfor                        ; ifile
@@ -299,6 +331,11 @@ function red_sumfiles, files_list $
      
   endelse                       ; docheck
 
+  ;; Set time stamps to potentially be returned as keywords.
+  time_beg = red_time2double(min(times_beg[idx]), /dir)
+  time_ave = red_time2double(mean(times[idx]),    /dir)
+  time_end = red_time2double(max(times_end[idx]), /dir)
+
   
   ;; Do the summing
  
@@ -313,23 +350,24 @@ function red_sumfiles, files_list $
         ;; descattering. No checking means we have not read the data
         ;; yet. 
 
+        ;; Tested with dark frames on 2016-05-23.
+
         summed = dblarr(dim)
         iframe = 0
 
         for ifile = 0, Nfiles-1 do begin
            
-           print, bb, inam+' : summing files -> ', ntot * iframe, '%' $
+           print, bb, inam+' : reading and summing files -> ', ntot * iframe, '%' $
                   , FORMAT = '(A,A,F5.1,A,$)'
 
-           cub = red_readdata(files_list[ifile], header = head)
+           cub = red_readdata(files_list[ifile])
 
-           summed += total(cub, 3)
+           summed += total(cub, 3, /double)
            iframe += Nframes_per_file[ifile]
 
         endfor                  ; ifile
 
         average = summed / Nsum
-        time = total(times) / Nsum
 
         ;; Dark and gain correction 
         average = (average - dark)*gain
@@ -347,12 +385,13 @@ function red_sumfiles, files_list $
         ;; descattering. The data are checked means they are already
         ;; read in.
 
-        print, bb, inam+' : summing all good files.'
+        ;; Tested with dark frames on 2016-05-23.
 
-        summed = total(cub[*, *, idx], 3)
+        print, bb, inam+' : summing good files in memory.'
+
+        summed = total(cub[*, *, idx], 3, /double)
 
         average = summed / Nsum
-        time = total(times[idx]) / Nsum
 
         ;; Dark and gain correction 
         average = (average - dark)*gain
@@ -393,7 +432,7 @@ function red_sumfiles, files_list $
 
                  ;; If not checked, we (sometimes) have to read the frames in.
                  if ii ge Nframes_per_file[ifile] then begin
-                    cub = red_readdata(files_list[ifile], header = head)
+                    cub = red_readdata(files_list[ifile])
                     ii = 0
                  endif
                  thisframe = double(cub[*, *, ii])
@@ -499,24 +538,17 @@ function red_sumfiles, files_list $
               endif             ; keyword_set(pinhole_align)
 
               summed += thisframe
-              time += times[ii]
 
            endif                ; goodones[ii] 
 
-        endfor                  ; ii
+        endfor                  ; iframe
         print, ' '
 
-        average = summed
-        if Nsum gt 1 then begin
-           average /= Nsum      ;
-           time /= Nsum
-        endif
+        if Nsum gt 1 then average /= Nsum else average = summed
 
         if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
            average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
         endif
-
-        time = red_time2double( time, /dir )
 
         if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
 
@@ -541,8 +573,34 @@ function red_sumfiles, files_list $
      
   endcase
 
-  time = red_time2double( time, /dir )
-
   return, average
   
 end                             ; red_sumfiles
+
+dnames = file_search('/mnt/sand15n/Incoming/2016.05.09/Dark/12:43:00/Chromis-W/cam*fits', count = Ndarks)
+
+print, Ndarks
+
+dsum_check = red_sumfiles(dnames[0:2] $
+                    , time_ave = time_ave_check $
+                    , time_beg = time_beg_check $
+                    , time_end = time_end_check $
+                    , summed = summed_check $
+                    , nsum = nsum_check $  
+                    , /check $
+                   )
+
+dsum = red_sumfiles(dnames[0:2] $
+                    , time_ave = time_ave $
+                    , time_beg = time_beg $
+                    , time_end = time_end $
+                    , summed = summed $
+                    , nsum = nsum $
+                   )
+
+stats, dsum
+stats, dsum_check
+stats, dsum_check - dsum
+
+
+end
