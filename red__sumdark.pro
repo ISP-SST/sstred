@@ -58,6 +58,9 @@
 ; 
 ;   2016-05-18 : MGL. New keyword sum_in_idl. Started working on
 ;                making a header for the dark frame.
+; 
+;   2016-05-23 : MGL. Remove some unused code. Make the fz outheader
+;                here instead of calling red_dark_h2h. 
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -127,33 +130,12 @@ pro red::sumdark, overwrite = overwrite, $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
-
-        ; TODO: get/modify/put header in a generic way
-        head = fzhead(files[0])
-
-;        camtag = (strsplit(file_basename(files[0]),'.',/extract))[0]
-;        namout = outdir+camtag+'.dark'
-;        namout_sum = outdir+camtag+'.summed.0000001'
-;
-;        if(file_test(namout) AND ~keyword_set(overwrite)) then begin
-;            print, inam+' : file exists: ' + namout + $
-;                  ' , skipping! (run sumdark, /overwrite to recreate)'
-;            continue
-;        endif
-;        
-;        ;;If everything is ok, sum the darks.
-;
-;stop
-;
         if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
             dark = rdx_sumfiles(files, check = check, summed = darksum, nsum=nsum, verbose=2)
         endif else begin
-            dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum)
+            dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum, time_ave = time_ave)
         endelse
-        ;; Normalize dark
-        ;;dark = float(tmp / count)
-
-        ;;        head = fzhead(files[0])
+  
         head = red_readhead(files[0]) 
        
         ;; The summing will make a single frame out of a data cube.
@@ -163,11 +145,6 @@ pro red::sumdark, overwrite = overwrite, $
         ;; Some SOLARNET recommended keywords:
         exptime = sxpar(head, 'XPOSURE', comment = exptime_comment)
         sxdelpar, head, 'XPOSURE' 
-        if exptime eq 0 then begin
-           ;; What Guus used in early versions - remove this later
-           exptime = sxpar(head, 'EXPTIME', comment = exptime_comment) 
-           sxdelpar, head, 'EXPTIME'
-        endif
         red_sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time', /check
         red_sxaddpar, head, 'NSUMEXP', Nsum, 'Number of summed exposures', /check
         
@@ -177,6 +154,17 @@ pro red::sumdark, overwrite = overwrite, $
         ;; frames were actually summed, nsum.
 
         ;; outheader = red_dark_h2h(files[nf-1], head, nsum)
+        
+        ;; red_dark_h2h expects an fz header. Make the outheader here
+        ;; instead. At some point we may want to add more header info
+        ;; to this, if the momfbd program can handle it.
+        num = 1                 ; Arbitrary, I don't think the momfbd code cares.
+        outheader = '#.' + string(num,format='(I07)') + '      ' $
+                    + num[0] + '  ' + time_ave + '  ' $
+                    + strtrim(fxpar(head, 'NAXIS1'), 2) + '  ' $
+                    + strtrim(fxpar(head, 'NAXIS2'), 2) + '    ' $
+                    + string(exptime,format='(f6.3)') + '    ' $
+                    + string(Nsum,format='(I4)') + ' ... SUM ... DD'
 
         ; TODO: output should be written through class-specific methods
         print, inam+' : saving ', darkname
