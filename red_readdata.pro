@@ -53,6 +53,9 @@
 ;   2016-05-18 : JLF. Returns the image (like readfits). Added Status flag keyword.
 ;
 ;   2016-05-18 : JLF. Use red_anahdr2fits to create FITS headers from ANA headers.
+;
+;   2016-05-23 : JLF. Use red_filterchromisheaders to clean pt-grey headers. 
+;		      Use rdx_filetype.
 ;-
 function red_readdata, fname $
 		       , header = header $
@@ -70,31 +73,21 @@ function red_readdata, fname $
 
   if n_elements(filetype) eq 0 then begin
 
-     if strmatch(fname, '*.fits') then begin
-      ;; Try to find out if it's a PointGrey camera based on file name
-      cam = (strsplit(file_basename(fname), '.', /extract))[0]
-      if n_elements(cam) ne 0 then caminfo = red_camerainfo(cam)
-      if strmatch(caminfo.model,'PointGrey*') then begin
-	  filetype = 'ptgrey-fits'
-      endif else begin			; PointGrey
-	message, 'Cannot detect filetype. Pass it manually as',/info
-	message,"head = red_readhead('"+fname+"',filetype='ptgrey-fits')",/info
-	status = -1
-	return, 0B
-      endelse
+    filetype = rdx_filetype(fname)
+  
+    if filetype eq '' then begin
+      message,'Cannot detect filetype. Pass it manually as',/info
+      message,"img = red_readdata('"+fname+"',filetype='fits')",/info
+      status = -1
+      return, 0B
+    endif
         
-     endif else begin
-        
-        filetype = 'fz'         
-        
-     endelse
-
   endif                         ; filetype
 
 
-  case filetype of
+  case strupcase(filetype) of
 
-     'fz' : begin
+     'ANA' : begin
         
         ;; Data stored in ANA fz format files.
         
@@ -107,18 +100,24 @@ function red_readdata, fname $
 
      end
 
-     'ptgrey-fits' : begin
+     'FITS' : begin
 
-        ;; Data stored in fits files, but in the strange format
-        ;; returned by the PointGrey cameras.
-
+	
+        ;; Data stored in fits files, 
 	red_rdfits, fname, image = data, header = header, /uint, swap=0
+	
+	;; Try to find out if it's a PointGrey camera based on file name
+	cam = (strsplit(file_basename(fname), '.', /extract))[0]
+	if n_elements(cam) ne 0 then caminfo = red_camerainfo(cam)
+	if strmatch(caminfo.model,'PointGrey*') then $
+	;; but in the strange format returned by the PointGrey cameras.
 	data = ishft(data, -4) ; 12 bits in 16-bit variables
-
      end
 
   endcase
 
+  if n_elements(header) ne 0 then header = red_filterchromisheaders(header)
+  
   if n_elements(header) ne 0 and keyword_set(structheader) then begin
      header = red_paramstostruct(header)
   endif

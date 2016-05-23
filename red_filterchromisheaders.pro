@@ -91,8 +91,8 @@ function red_filterchromisheaders, head
 
 end
 
-
-fname = '/mnt/sand15n/Incoming/2016.05.13/AR2542/15:57:10/Chromis-W/camXXVIII.00019.w2.0000076.fits'
+; /mnt => /storage (in case you aren't on polar)
+fname = '/storage/sand15n/Incoming/2016.05.13/AR2542/15:57:10/Chromis-W/camXXVIII.00019.w2.0000076.fits'
 head = red_readhead(fname)
 
 print, head

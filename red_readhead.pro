@@ -77,7 +77,7 @@ function red_readhead, fname, $
             anaheader = fzhead(fname)
             if n_elements(anaheader) ne 0 then $           
             ;; Convert ana header to fits header
-            header = red_anahdr2fits(anaheader,img=data)
+            header = red_anahdr2fits(anaheader)
         end
 
         'FITS' : begin
@@ -87,6 +87,8 @@ function red_readhead, fname, $
 
     endcase
 
+    header = red_filterchromisheaders(header)
+    
     if n_elements(header) ne 0 and keyword_set(structheader) then begin
         header = red_paramstostruct(header)
     endif
