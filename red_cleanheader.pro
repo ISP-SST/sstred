@@ -29,10 +29,15 @@
 ; 
 ;   2016-05-19 : JLF. Created.
 ;
+;   2016-05-23 : MGL. Make it work for arbitrary number of header
+;                lines. 
+;
 ;-
 pro red_cleanheader, dirty_hdr
 
 hdr = dirty_hdr
+
+Nlines = n_elements(dirty_hdr)
 
 ;; keys are in front of the first =
 keys = gettok(hdr,'=')
@@ -73,7 +78,7 @@ endif
 ;; according to spec.
 values = strtrim(values,0)
 
-for i = 0, 35 do begin
+for i = 0, Nlines-1 do begin
   
   ;; spec is a ' inside a string is represented with '' 
   values[i] = strjoin(strsplit(values[i],"'",/extract),"''")
