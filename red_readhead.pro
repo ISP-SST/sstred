@@ -45,72 +45,54 @@
 ;   2016-05-18 : JLF. Created.
 ;
 ;-
-function red_readhead, fname $
-		      , filetype = filetype $
-                      , structheader = structheader $
-                      , status = status
+function red_readhead, fname, $
+                       filetype = filetype, $
+                       structheader = structheader, $
+                       status = status
 
-if file_test(fname) eq 0 then begin
+    if( file_test(fname) eq 0 ) then begin
+        message, 'File does not exist: '+fname,/info
+        status = -1
+        return, 0B
+    endif
 
-    message, 'File does not exist: '+fname,/info
-    status = -1
-    return, 0B
-
-endif
-
-if n_elements(filetype) eq 0 then begin
-
-    if strmatch(fname, '*.fits') then begin
-      ;; Try to find out if it's a PointGrey camera based on file name
-      cam = (strsplit(file_basename(fname), '.', /extract))[0]
-      if n_elements(cam) ne 0 then caminfo = red_camerainfo(cam)
-      if strmatch(caminfo.model,'PointGrey*') then begin
-	  filetype = 'ptgrey-fits'
-      endif else begin			; PointGrey
-	message, 'Cannot detect filetype. Pass it manually as',/info
-	message,"head = red_readhead('"+fname+"',filetype='ptgrey-fits')",/info
-	status = -1
-	return, 0B
-      endelse
-    endif else begin
-      
-      filetype = 'fz'         
-      
-    endelse
-
-endif                         ; filetype
-
-case filetype of
-
-  'fz' : begin
+    if( n_elements(filetype) eq 0 ) then begin
     
-    ;; Data stored in ANA fz format files.
-    
-    anaheader = fzhead(fname)
+        filetype = rdx_filetype(fname)
 
-    if n_elements(anaheader) ne 0 then $           
-	;; Convert ana header to fits header
-	header = red_anahdr2fits(anaheader,img=data)
+        if( filetype eq '' ) then begin
+            message, 'Cannot detect filetype. Pass it manually as', /info
+            message, "head = red_readhead('"+fname+"',filetype=fits')", /info
+            status = -1
+            return, 0B
+        endif
+        
+    endif                         ; filetype
 
-  end
+        
+    case strupcase(filetype) of
 
-  'ptgrey-fits' : begin
+        'ANA' : begin
+            ;; Data stored in ANA files.
+            anaheader = fzhead(fname)
+            if n_elements(anaheader) ne 0 then $           
+            ;; Convert ana header to fits header
+            header = red_anahdr2fits(anaheader,img=data)
+        end
 
-    ;; Data stored in fits files, but in the strange format
-    ;; returned by the PointGrey cameras.
+        'FITS' : begin
+            ;; Data stored in fits files
+            red_rdfits, fname, header = header
+        end
 
-    red_rdfits, fname, header = header
+    endcase
 
-  end
+    if n_elements(header) ne 0 and keyword_set(structheader) then begin
+        header = red_paramstostruct(header)
+    endif
 
-endcase
+    status = 0
 
-  if n_elements(header) ne 0 and keyword_set(structheader) then begin
-     header = red_paramstostruct(header)
-  endif
-  
-  status = 0
-  
-  return, header
+    return, header
 
 end
