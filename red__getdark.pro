@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Return the filename for the flatfield image for a given (camera-)channel.
+; Return the filename for the darkfield image for a given (camera-)channel.
 ; 
 ; :Categories:
 ;
@@ -15,7 +15,7 @@
 ; 
 ; :returns:
 ;
-;     flatname : type=string
+;     darkname : type=string
 ; 
 ; 
 ; :Params:
@@ -27,10 +27,6 @@
 ; 
 ; :Keywords:
 ; 
-;     state : in, optional, type=string
-;   
-;         State string.
-;   
 ;     tag : in, optional, type=boolean
 ;
 ;         Interpret cam as a "tag" (Ex. 'camXX'), i.e. do not
@@ -38,23 +34,23 @@
 ; 
 ;     data : out, optional
 ;
-;         Return the flat image.
+;         Return the dark image.
 ; 
 ;     header : out, optional
 ;
-;         Return the flat header.
+;         Return the dark header.
 ; 
 ;     summed_name : out, optional, type=string
 ;
-;         Return the filename for the summed (un-normalized) flat.
+;         Return the filename for the summed (un-normalized) dark.
 ; 
 ;     summed_data : out, optional
 ;
-;         Return the summed flat image.
+;         Return the summed dark image.
 ; 
 ;     summed_header : out, optional
 ;
-;         Return the summed flat header.
+;         Return the summed dark header.
 ; 
 ; 
 ; :history:
@@ -63,8 +59,7 @@
 ; 
 ; 
 ;-
-function crisp::getflat, cam, $
-                         state = state, $
+function red::getdark, cam, $
                          tag = tag, $
                          data = data, $
                          header = header, $
@@ -76,25 +71,22 @@ function crisp::getflat, cam, $
         camtag = self->RED::getcamtag(cam)
     endif else camtag = cam
     
-    ; append state
-    if( n_elements(state) eq 1 ) then  camtag += '.' + state
-    
-    filename = self.out_dir+'/flats/'+camtag + '.flat'
-    summed_name = self.out_dir+'/flats/summed/'+camtag + '.summed.flat'
+    filename = self.out_dir+'/darks/'+camtag+'.dark'
+    summed_name = self.out_dir+'/darks/'+camtag+'.summed.0000001'
 
     if file_test(filename) then begin
         if arg_present(data) then begin
-            fzread, data, filename, header
+            data = red_readdata(filename, header=header)
         endif else if arg_present(header) then begin
-            header = fzhead(filename)
+            header = red_readhead(filename)
         endif
     endif
 
     if file_test(summed_name) then begin
         if arg_present(summed_data) then begin
-            fzread, summed_data, summed_name, summed_header
+            summed_data = red_readdata(summed_name, header=summed_header)
         endif else if arg_present(summed_header) then begin
-            summed_header = fzhead(summed_name)
+            summed_header = red_readhead(filename)
         endif
     endif
 
