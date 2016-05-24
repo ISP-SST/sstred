@@ -148,7 +148,9 @@
 ; 
 ;   2016-05-23 : MGL. Added time_beg and time_end keywords. Changed
 ;                time keyword to time_ave. Do summing in double
-;                precision. 
+;                precision.  
+; 
+;   2016-05-24 : MGL. Removed filtering of FITS headers.
 ; 
 ; 
 ;-
@@ -275,11 +277,6 @@ function red_sumfiles, files_list $
      endif else begin
         head = red_readhead(files_list[ifile])
      endelse
-
-     ;; The following two lines to be removed when this cleaning and
-     ;; filtering is in the red_read{data,head} functions.
-     red_cleanheader, head
-     head = red_filterchromisheaders(head)
 
      cadence = sxpar(head, 'CADENCE')
      time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
