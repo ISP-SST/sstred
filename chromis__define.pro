@@ -11,7 +11,11 @@
 ; :History:
 ;
 ;   2016-04-29 : THI. Split class RED into a base-class (instrument
-;                independent parts) and derived classes (CRISP/CHROMIS). 
+;                independent parts) and derived classes
+;                (CRISP/CHROMIS). 
+;
+;   2016-05-24 : MGL. Removed LC from CHROMIS_STATE, added gain and
+;                exposure. 
 ;
 ;-
 pro chromis__define
@@ -28,7 +32,8 @@ pro chromis__define
            prefilter:'', $
            pf_wavelength:0.0, $
            tun_wavelength:0.0D, $
-           lc:'' $
+           exposure:0.0D, $
+           gain:0 $
     }
                                 
     pc = { CHROMIS_POLCAL_STATE, $
