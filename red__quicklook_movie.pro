@@ -66,15 +66,22 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, $
 
   toread = 0
   if(~keyword_set(cam)) then cam = self.camt
+  
+  if ~ptr_valid(self.data_dirs) then begin
+     print, inam+' : ERROR : undefined data_dir'
+     return
+  endif
+
+  Ndirs = n_elements(*self.data_dirs)
                                 ;
                                 ; list files
-  if(self.ndir GT 1) then begin
+  if(Ndirs GT 1) then begin
      print, inam + 'found folders:'
-     for ii=0,self.ndir-1 do print, string(ii,format='(I3)')+' -> '+self.data_list[ii]
+     for ii=0,Ndirs-1 do print, string(ii,format='(I3)')+' -> '+self.data_dirs[ii]
      ichoice = 0L
      read, ichoice, promp = 'Choose ID of the data folder: '
-     folder = self.data_list[ichoice]
-  endif else folder = self.data_dir
+     folder = self.data_dirs[ichoice]
+  endif else folder = self.data_dirs[0]
   
   ; If search pattern is given, use that, otherwise just use *im*
   if keyword_set(pattern) then pat = "'*im*" + pattern + "*'" else pat = "'*im*'"

@@ -59,15 +59,17 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if(~self.dodata) then begin
+  if ~ptr_valid(self.data_dirs) then begin
      print, inam+' : ERROR : undefined data_dir'
      return
   endif
-                                
+
+  Ndirs = n_elements(*self.data_dirs)
+  
   ;; Create file list
-  for ff = 0L, self.ndir - 1 do begin
-     print, inam + ' : Folder -> ' + self.data_list[ff]
-     data_dir = self.data_list[ff]
+  for ff = 0L, Ndirs - 1 do begin
+     print, inam + ' : Folder -> ' + self.data_dirs[ff]
+     data_dir = self.data_dirs[ff]
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]

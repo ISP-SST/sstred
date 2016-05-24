@@ -112,8 +112,15 @@ pro red::prepmfbd, numpoints = numpoints, $
   if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
   if n_elements(mfbddir) eq 0 then mfbddir = 'mfbd' 
      
-  for fff = 0, self.ndir - 1 do begin
-     data_dir = self.data_list[fff]
+  if ~ptr_valid(self.data_dirs) then begin
+     print, inam+' : ERROR : undefined data_dir'
+     return
+  endif
+
+  Ndirs = n_elements(*self.data_dirs)
+
+  for fff = 0, Ndirs - 1 do begin
+     data_dir = self.data_dirs[fff]
      spawn, 'find ' + data_dir + '/' + self.camwb+ '/ | grep im.ex | grep -v ".lcd."', files
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1

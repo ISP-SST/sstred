@@ -95,11 +95,18 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
   if(~keyword_set(numpoints)) then numpoints = '88'
   if(~keyword_set(outformat)) then outformat = 'MOMFBD'
   if(~keyword_set(modes)) then modes = '2-29,31-36,44,45'
+  
+  if ~ptr_valid(self.data_dirs) then begin
+     print, inam+' : ERROR : undefined data_dir'
+     return
+  endif
+
+  Ndirs = n_elements(*self.data_dirs)
                                 ;
                                 ; get states from the data folder
                                 ;
-  for fff = 0, self.ndir - 1 do begin
-     data_dir = self.data_list[fff]
+  for fff = 0, Ndirs - 1 do begin
+     data_dir = self.data_dirs[fff]
      spawn, 'find ' + (data_dir) + '/' + self.camt + '/ | grep im.ex', files
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1

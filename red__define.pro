@@ -32,9 +32,8 @@ PRO red__define
   struct = {red, $
             dark_dir:ptr_new(),$    ; The directories where raw dark frames are stored
             flat_dir:ptr_new(),$    ; The directories where raw flat fields are stored
-            data_dir:'',$           ; The directory where raw science data is stored
-            data_list:strarr(100),$ ;
-            ndir:0B, $              ;
+            data_dirs:ptr_new(),$   ; The directories where raw science data is stored
+            current_data_dir:0B,$   ; Index of data directory to process (default is 0)
             pinh_dir:'',$           ; The directory where raw pinhole array data is stored
             prefilter_dir:'',$      ;
             polcal_dir:'',$         ; The directory where raw polcal data is stored
