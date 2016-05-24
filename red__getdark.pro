@@ -27,6 +27,10 @@
 ; 
 ; :Keywords:
 ; 
+;     state : in, optional, type=string
+;   
+;         State string.
+; 
 ;     tag : in, optional, type=boolean
 ;
 ;         Interpret cam as a "tag" (Ex. 'camXX'), i.e. do not
@@ -56,20 +60,26 @@
 ; :history:
 ; 
 ;   2016-05-19 : First version.
+;
+;   2016-05-24 : MGL. Add keyword state.
 ; 
 ; 
 ;-
 function red::getdark, cam, $
-                         tag = tag, $
-                         data = data, $
-                         header = header, $
-                         summed_name = summed_name, $
-                         summed_data = summed_data, $
-                         summed_header = summed_header
+                       tag = tag, $
+                       state = state,  $
+                       data = data, $
+                       header = header, $
+                       summed_name = summed_name, $
+                       summed_data = summed_data, $
+                       summed_header = summed_header
     
     if ~keyword_set(tag) then begin
         camtag = self->RED::getcamtag(cam)
     endif else camtag = cam
+    
+    ; append state
+    if( n_elements(state) eq 1 ) then camtag += '_' + state
     
     filename = self.out_dir+'/darks/'+camtag+'.dark'
     summed_name = self.out_dir+'/darks/'+camtag+'.summed.0000001'
