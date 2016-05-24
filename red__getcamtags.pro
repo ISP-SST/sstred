@@ -31,7 +31,12 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;
-;   2014-11-29 : JdlCR, store cams in a save-file to speed up execution
+;   2014-11-29 : JdlCR, store cams in a save-file to speed up
+;                execution.
+;
+;   2016-05-22 : THI. Removed CRISP-specific tags.
+;
+;   2016-05-22 : THI. Bugfix.
 ; 
 ;-
 pro red::getcamtags, dir = dir
@@ -49,7 +54,7 @@ pro red::getcamtags, dir = dir
     if(~keyword_set(dir) && ptr_valid(self.dark_dir) ) then dir = *self.dark_dir
 
     for i=0, n_elements(*self.cam_channels)-1 do begin
-        path_spec = dir + '/' + (*self.cam_channels)[i] + '/'
+        path_spec = dir + '/' + (*self.cam_channels)[i] + '/*'
         files = file_search(path_spec, count=nf)
         if( nf eq 0 || files[0] eq '' ) then begin
             print, inam + 'ERROR -> no frames found in [' + dir + '] for ' + (*self.cam_channels)[i]
