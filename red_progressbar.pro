@@ -48,6 +48,7 @@ pro red_progressbar, i, N, message = message, finished = finished
 
   if keyword_set(finished) then begin
      print, bb, message + ' -> ', 100., '%', FORMAT = '(A,A,F5.1,A,$)'
+     print, ' '
   endif else begin
      norm = 100. / (N - 1.0)     
      print, bb, message + ' -> ', norm * i, '%', FORMAT = '(A,A,F5.1,A,$)'
