@@ -15,7 +15,9 @@
 ;                (CRISP/CHROMIS). 
 ;
 ;   2016-05-24 : MGL. Removed LC from CHROMIS_STATE, added gain and
-;                exposure. 
+;                exposure.  
+;
+;   2016-05-25 : MGL. Make the gain in CHROMIS_STATE a float.
 ;
 ;-
 pro chromis__define
@@ -33,7 +35,7 @@ pro chromis__define
            pf_wavelength:0.0, $
            tun_wavelength:0.0D, $
            exposure:0.0D, $
-           gain:0 $
+           gain:0.0 $
     }
                                 
     pc = { CHROMIS_POLCAL_STATE, $
