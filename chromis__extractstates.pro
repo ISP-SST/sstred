@@ -12,12 +12,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Mats Löfdahl, ISP
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -90,7 +90,7 @@
 ;        of the strings.
 ;
 ; 
-; :history:
+; :History:
 ; 
 ;   2014-01-22 : First version.
 ; 
@@ -100,15 +100,16 @@
 ;                something meaningful also for blue tilt filter data.
 ;                Bugfix in qw regular expression.
 ;
-;   2016-05-19 : THI. Partial copy to the crisp class. Modify the state structures
-;                and keywords for clarity.
+;   2016-05-19 : THI. Partial copy to the crisp class. Modify the
+;                state structures and keywords for clarity.
 ;
 ;   2016-05-24 : MGL. Removed polarization stuff. If the strings are
 ;                filenames, then look in the headers. Added keywords
 ;                gain and exposure, return this information if wanted.
 ;                Make the keyword fullstate set the other keywords.
 ;
-;   2016-05-25 : MGL. Do not assume camera gain is integer.
+;   2016-05-25 : MGL. Do not assume camera gain is integer. Get some
+;                info not in the header from the file names for now.
 ;
 ; 
 ;-
@@ -196,26 +197,48 @@ pro chromis::extractstates, strings $
        for ifile = 0, nt-1 do begin
 
           head = red_readhead(strings[ifile])
+          fname = file_basename(strings[ifile], '.fits')
 
           if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
 
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
 
-          if keyword_set(scannumber) then scan_list[ifile] = ''
+          ;; Replace the following regexp expressions when this info
+          ;; is in the header.
 
-          if keyword_set(focus) then focus_list[ifile] = ''
+          if keyword_set(scannumber) then $
+             scan_list[ifile] = (stregex(fname $
+                                         , '(\.|^)([0-9]{5})(\.|$)' $
+                                         , /extr, /subexp))[2,*]
+
+          if keyword_set(focus) then $
+             focus_list[ifile] = (stregex(fname $
+                                          , '(\.|^)(F[+-][0-9]+)(\.|$)' $
+                                          , /extr, /subexp, /fold_case))[2,*]
+
      
-          if keyword_set(framenumber) then num_list[ifile] = ''
+          if keyword_set(framenumber) then $
+             num_list[ifile] = (stregex(fname $
+                                        , '(\.)([0-9]+)($)' $
+                                        , /extr, /subexp))[2,*]
 
-          if keyword_set(cam) then cam_list[ifile] = ''
+          if keyword_set(cam) then $
+             cam_list[ifile] = (stregex(fname  $
+                                        , '(\.|^)(cam[IVX]+)(\.|$)' $
+                                        , /extr, /subexp))[2,*]
 
           if keyword_set(prefilter) or keyword_set(wavelength) then $
-             prefilter_list[ifile] = ''
+             prefilter_list[ifile] = (stregex(fname $
+                                              , '(\.|^)([0-9]{4})(\.|$)'  $
+                                              , /extr, /subexp))[2,*]
 
           if keyword_set(tuning) or keyword_set(dwav) then $
-             tuning_list[ifile] = ''
+             tuning_list[ifile] = (stregex(fname $
+                                           , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
+                                           ,  /extr, /subexp))[2,*]
 
-       endfor
+
+       endfor                   ; ifile
 
     endif else begin            ; AreFiles
 
