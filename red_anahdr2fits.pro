@@ -37,6 +37,8 @@
 ;   2016-05-20 : MGL. Make more SOLARNET compliant. Get also camera
 ;                and instrument from header.
 ;
+;   2016-05-25 : MGL. Check if Ts and Te were found.
+;
 ;-
 function red_anahdr2fits, anahdr $
 		    , img = img
@@ -50,13 +52,17 @@ function red_anahdr2fits, anahdr $
   endelse
 
   ;; Time info
-  Ts = strmid(anahdr, strpos(anahdr, 'Ts=')+3, 26)
-  Te = strmid(anahdr, strpos(anahdr, 'Te=')+3, 26)
-  exptime = red_time2double(strmid(Te, strpos(Te, ' '))) $
-            - red_time2double(strmid(Ts, strpos(Ts, ' ')))
-  sxaddpar,hdr,'XPOSURE',exptime,' [s]', before='COMMENT'
-  sxaddpar,hdr,'DATE-BEG',(red_strreplace(Ts, ' ', 'T'))[0],' ', before='COMMENT'
-  sxaddpar,hdr,'DATE-END',(red_strreplace(Te, ' ', 'T'))[0],' ', after='DATE-BEG'
+  tspos = strpos(anahdr, 'Ts=')
+  tepos = strpos(anahdr, 'Te=')
+  if tspos ne -1 and tepos ne -1 then begin
+     Ts = strmid(anahdr, tspos+3, 26)
+     Te = strmid(anahdr, tepos+3, 26)
+     exptime = red_time2double(strmid(Te, strpos(Te, ' '))) $
+               - red_time2double(strmid(Ts, strpos(Ts, ' ')))
+     sxaddpar,hdr,'XPOSURE',exptime,' [s]', before='COMMENT'
+     sxaddpar,hdr,'DATE-BEG',(red_strreplace(Ts, ' ', 'T'))[0],' ', before='COMMENT'
+     sxaddpar,hdr,'DATE-END',(red_strreplace(Te, ' ', 'T'))[0],' ', after='DATE-BEG'
+  end
 
   ;; Camera
   campos = strpos(anahdr, '"Camera')
