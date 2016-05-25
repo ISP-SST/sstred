@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ;    The sorted array of file names.
 ; 
@@ -29,9 +29,11 @@
 ; 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+; 
+;   2016-05-25 : MGL. Make it handle files with a .fits extension. 
 ; 
 ; 
 ;-
@@ -39,7 +41,7 @@ function red_sortfiles, files
   nt = n_elements(files)
   num = lonarr(nt)
   for ii = 0L, nt -1 do begin
-     tmp = strsplit(files[ii],'.',/extract)
+     tmp = strsplit(file_basename(files[ii],'.fits'),'.',/extract)
      num[ii] = long(tmp[n_elements(tmp) - 1])
   endfor
   pos = sort(num)
