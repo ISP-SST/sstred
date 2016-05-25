@@ -10,12 +10,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Mats Löfdahl, ISP
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ;    The average image. 
 ; 
@@ -103,7 +103,7 @@
 ;       The (x,y) coordinates of the feature used for alignment.
 ;   
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -150,7 +150,9 @@
 ;                time keyword to time_ave. Do summing in double
 ;                precision.  
 ; 
-;   2016-05-24 : MGL. Removed filtering of FITS headers.
+;   2016-05-24 : MGL. Removed filtering of FITS headers.  
+; 
+;   2016-05-25 : MGL. Use red_progressbar.
 ; 
 ; 
 ;-
@@ -272,8 +274,7 @@ function red_sumfiles, files_list $
     
      if DoCheck then begin
         cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head)
-        print, bb, inam+' : loading files in memory -> ', ntot * iframe, '%' $
-               , FORMAT = '(A,A,F5.1,A,$)'
+        red_progressbar, iframe, Nframes, message = inam+' : loading files in memory'
      endif else begin
         head = red_readhead(files_list[ifile])
      endelse
@@ -290,7 +291,7 @@ function red_sumfiles, files_list $
      iframe += Nframes_per_file[ifile]
      
   endfor                        ; ifile
-  print, ' '
+  red_progressbar, /finished, message = inam+' : loading files in memory'
   
   if DoCheck then begin
 
@@ -354,15 +355,14 @@ function red_sumfiles, files_list $
 
         for ifile = 0, Nfiles-1 do begin
            
-           print, bb, inam+' : reading and summing files -> ', ntot * iframe, '%' $
-                  , FORMAT = '(A,A,F5.1,A,$)'
-
+           red_progressbar, iframe, Nframes, message = inam+' : reading and summing files'
            cub = red_readdata(files_list[ifile])
 
            summed += total(cub, 3, /double)
            iframe += Nframes_per_file[ifile]
 
         endfor                  ; ifile
+        red_progressbar, /finished, message = inam+' : reading and summing files'
 
         average = summed / Nsum
 
@@ -420,10 +420,7 @@ function red_sumfiles, files_list $
 
                  ;; If checked, we already have the frames in memory.
                  thisframe = double(cub[*, *, iframe])
-                 
-                 print, bb, inam+' : summing checked frames -> ' $
-                        , ntot * iframe, '%' $
-                        , FORMAT='(A,A,F5.1,A,$)'
+                 progress_message = inam+' : summing checked frames'
 
               endif else begin
 
@@ -435,12 +432,12 @@ function red_sumfiles, files_list $
                  thisframe = double(cub[*, *, ii])
                  ii += 1
                  
-                 print, bb, inam+' : summing frames -> ' $
-                        , ntot * iframe, '%' $
-                        , FORMAT = '(A,A,F5.1,A,$)'
+                 progress_message = inam+' : summing frames'
 
               endelse
-
+              
+              red_progressbar, iframe, Nframes, message = progress_message
+                 
               
               if keyword_set(pinhole_align) or keyword_set(select_align) then begin
                  
@@ -539,7 +536,7 @@ function red_sumfiles, files_list $
            endif                ; goodones[ii] 
 
         endfor                  ; iframe
-        print, ' '
+        red_progressbar, /finished, message = progress_message
 
         if Nsum gt 1 then average /= Nsum else average = summed
 
