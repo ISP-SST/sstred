@@ -355,7 +355,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
      printf, Clun, 'cam_channel = Chromis-W'
-     printf, Clun, 'cam_channel = Chromis-P'
+     printf, Clun, 'cam_channel = Chromis-D'
      printf, Clun, 'cam_channel = Chromis-N'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
