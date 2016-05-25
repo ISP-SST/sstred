@@ -59,8 +59,13 @@
 ;   2016-05-18 : MGL. New keyword sum_in_idl. Started working on
 ;                making a header for the dark frame.
 ; 
-;   2016-05-23 : MGL. Remove some unused code. Make the fz outheader
-;                here instead of calling red_dark_h2h. 
+;   2016-05-23 : MGL. Make the fz outheader here instead of calling
+;                red_dark_h2h. Remove some unused code.
+;
+;   2016-05-25 : MGL. Don't store the non-normalized darks, momfbd
+;                doesn't need them. Do store darks in FITS format.
+;                Don't use red_sxaddpar. Write darks out as
+;                float, not double.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -112,12 +117,6 @@ pro red::sumdark, overwrite = overwrite, $
         cam = cams[ic]
         camtag = self->getcamtag( cam )
 
-        darkname = self->getdark(cam, summed_name=sdarkname)
-        if( ~keyword_set(overwrite) && file_test(darkname) && file_test(sflatname)) then begin
-            print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
-            continue
-        endif
-
         self->selectfiles, cam=cam, dirs=dirs, $
                          files=files, states=states, /force
 
@@ -130,27 +129,40 @@ pro red::sumdark, overwrite = overwrite, $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
+        gain = states.gain[uniq(states.gain, sort(states.gain))]
+        exposure = states.exposure[uniq(states.exposure, sort(states.exposure))]
+        state = string(exposure*1000, format = '(f4.2)')+'ms_G'+string(gain, format = '(f05.2)')
+        
+        darkname = self->getdark(cam, state = state, summed_name=sdarkname)
+
+        if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
+           print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
+           continue
+        endif
+
         if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
             dark = rdx_sumfiles(files, check = check, summed = darksum, nsum=nsum, verbose=2)
         endif else begin
             dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum, time_ave = time_ave)
         endelse
-  
+        dark = float(dark)      ; The momfbd code can't read doubles.
+
         head = red_readhead(files[0]) 
        
         ;; The summing will make a single frame out of a data cube.
-        red_sxaddpar, head, 'NAXIS', 2, /check ; Two dimensions.
+        sxaddpar, head, 'NAXIS', 2 ; Two dimensions.
         sxdelpar, head, 'NAXIS3'   ; Remove third dimension size.
         
         ;; Some SOLARNET recommended keywords:
         exptime = sxpar(head, 'XPOSURE', comment = exptime_comment)
         sxdelpar, head, 'XPOSURE' 
-        red_sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time', /check
-        red_sxaddpar, head, 'NSUMEXP', Nsum, 'Number of summed exposures', /check
+        sxaddpar, head, 'XPOSURE', Nsum*exptime
+        sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
+        sxaddpar, head, 'NSUMEXP', Nsum, 'Number of summed exposures'
         
 
         ;; Add some more info here, see SOLARNET deliverable D20.4 or
-        ;; later versions of that documetn. like how many
+        ;; later versions of that document. like how many
         ;; frames were actually summed, nsum.
 
         ;; outheader = red_dark_h2h(files[nf-1], head, nsum)
@@ -160,18 +172,26 @@ pro red::sumdark, overwrite = overwrite, $
         ;; to this, if the momfbd program can handle it.
         num = 1                 ; Arbitrary, I don't think the momfbd code cares.
         outheader = '#.' + string(num,format='(I07)') + '      ' $
-                    + num[0] + '  ' + time_ave + '  ' $
+                    + string(num[0],format='(I07)') + '  ' + time_ave + '  ' $
+;                    + num[0] + '  ' + time_ave + '  ' $
                     + strtrim(fxpar(head, 'NAXIS1'), 2) + '  ' $
                     + strtrim(fxpar(head, 'NAXIS2'), 2) + '    ' $
                     + string(exptime,format='(f6.3)') + '    ' $
                     + string(Nsum,format='(I4)') + ' ... SUM ... DD'
 
-        ; TODO: output should be written through class-specific methods
+        ;; TODO: output should be written through class-specific
+        ;; methods
+
+        ;; Write ANA format dark
         print, inam+' : saving ', darkname
         fzwrite, dark, darkname, 'mean dark'
 
-        print, inam+' : saving ', sdarkname
-        fzwrite, long(darksum), sdarkname, outheader
+        ;; Write FITS format dark
+        print, inam+' : saving ', darkname+'.fits'
+        writefits, darkname+'.fits', dark, head
+
+;        print, inam+' : saving ', sdarkname
+;        fzwrite, long(darksum), sdarkname, outheader
 
     endfor                        ; (ic loop)
 
