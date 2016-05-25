@@ -108,6 +108,8 @@
 ;                gain and exposure, return this information if wanted.
 ;                Make the keyword fullstate set the other keywords.
 ;
+;   2016-05-25 : MGL. Do not assume camera gain is integer.
+;
 ; 
 ;-
 pro chromis::extractstates, strings $
@@ -195,7 +197,7 @@ pro chromis::extractstates, strings $
 
           head = red_readhead(strings[ifile])
 
-          if keyword_set(gain) then gain_list[ifile] = round(float(fxpar(head, 'GAIN')))
+          if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
 
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
 
