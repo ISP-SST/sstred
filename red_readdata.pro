@@ -91,8 +91,7 @@ function red_readdata, fname $
         
         ;; Data stored in ANA fz format files.
         
-	data = f0(fname)
-	if arg_present(header) then anaheader = fzhead(fname)
+        fzread, data, fname, anaheader
 
         if n_elements(anaheader) ne 0 then $           
            ;; Convert ana header to fits header
@@ -101,17 +100,19 @@ function red_readdata, fname $
      end
 
      'FITS' : begin
-
-	
+        red_rdfits, fname, header = header
         ;; Data stored in fits files, 
-	red_rdfits, fname, image = data, header = header, /uint, swap=0
-	
-	;; Try to find out if it's a PointGrey camera based on file name
-	cam = (strsplit(file_basename(fname), '.', /extract))[0]
-	if n_elements(cam) ne 0 then caminfo = red_camerainfo(cam)
-	if strmatch(caminfo.model,'PointGrey*') then $
-	;; but in the strange format returned by the PointGrey cameras.
-	data = ishft(data, -4) ; 12 bits in 16-bit variables
+        bit_shift = 0
+        if fxpar(header, 'SOLARNET') eq 0 then begin
+            caminfo = red_camerainfo( red_camtag(fname) )
+            if strmatch(caminfo.model,'PointGrey*') then begin     ; hack to load weird PointGrey data
+                uint = 1
+                swap = 0
+                bit_shift = -4
+            endif
+        endif
+        red_rdfits, fname, image = data, uint=uint, swap=swap
+        if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
      end
 
   endcase
