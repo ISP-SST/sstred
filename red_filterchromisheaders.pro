@@ -44,7 +44,7 @@
 ;    2016-05-26 : MGL. Better interpretation/generation of DATE
 ;                 keywords. Get some info from the file name using
 ;                 regular expressions. Different filters in filter
-;                 wheels for narrowband and wideband.
+;                 wheels for narrowband and wideband. Use tag_exist. 
 ; 
 ; 
 ;-
@@ -96,27 +96,28 @@ function red_filterchromisheaders, head, metadata=metaStruct
               'DATE' : begin
                  ;; Rewrite the automatically generated DATE keyword
                  sxaddpar, newhead, 'DATE', value, comment, before = 'COMMENT'
-                 ;; If there isn't already a DATE-END keyword,
-                 ;; this is the best we have for it.
+                 ;; If there isn't already a DATE-END keyword, this is
+                 ;; the best we have for it.
                  if fxpar(head, 'DATE-END') eq '' then $
-                    sxaddpar, newhead, 'DATE-END', value, comment, before = 'COMMENT'
+                    sxaddpar, newhead, 'DATE-END', value, comment, after = 'DATE'
               end
               'DATE_OBS' : begin
-                 ;; We'll use this as POINT-ID for now. It
-                 ;; should really be something that we get from the
-                 ;; turret or PIG systems so it is common to all
-                 ;; instruments. 
+                 ;; We'll use this as POINT-ID for now. It should
+                 ;; really be something that we get from the turret or
+                 ;; PIG systems so it is common to all instruments.
                  sxaddpar, newhead, 'POINT_ID', value, comment, before = 'COMMENT'
               end
               'EXPTIME' : begin
                  ;; Early versions of CHROMIS data used a non-SOLARNET
                  ;; keyword, rename it.
-                 sxaddpar, newhead, 'XPOSURE',  value, comment, before = 'COMMENT', format = 'f8.6'
+                 sxaddpar, newhead, 'XPOSURE',  value, comment, before = 'COMMENT' $
+                           , format = 'f8.6'
               end
               'INTERVAL' : begin
                  ;; Early versions of CHROMIS data used a non-SOLARNET
                  ;; keyword, rename it.
-                 sxaddpar, newhead, 'CADENCE',  value, comment, before = 'COMMENT', format = 'f8.6'
+                 sxaddpar, newhead, 'CADENCE',  value, comment, before = 'COMMENT' $
+                           , format = 'f8.6'
               end
               else : begin
                  ;; Just transfer all other keywords to the new header.
@@ -130,23 +131,23 @@ function red_filterchromisheaders, head, metadata=metaStruct
      if fxpar(head, 'DATE-BEG') eq '' then begin
         ;; Make DATE-BEG from DATE, counting backwards
         date = strsplit(fxpar(head, 'DATE'), 'T', /extract)
-        time = red_time2double(date[1]) - fxpar(head, 'INTERVAL')*fxpar(head, 'NAXIS3')
+        time = red_time2double(date[1]) $
+               - fxpar(head, 'INTERVAL')*fxpar(head, 'NAXIS3')
         sxaddpar, newhead, 'DATE-BEG', date[0]+'T'+red_time2double(time, /dir), after = 'DATE'
      endif
      
      ;; Add any additional metadata we were given.
      if n_elements(metaStruct) ne 0 then begin
-      keys = tag_names(metaStruct)
-     
-      ;; check if the filename is present
-      ifile = where(keys eq strupcase('filename'),cnt)
-      ;; extract metadata from the filename (for now it's all we have)
-      if cnt ne 0 then begin
+
+      if tag_exist(metaStruct, 'filename', /top_level) then begin
+
+         ;; Extract metadata from the filename (for now it's all we
+         ;; have)
 
          ;; Strip directory and extension if needed
-         filename = file_basename(metaStruct.(ifile),)
-         barefile = file_basename(metaStruct.(ifile), '.fits')
-         metaStruct.(ifile) = filename
+         filename = file_basename(metaStruct.filename)
+         barefile = file_basename(metaStruct.filename, '.fits')
+         metaStruct.filename = filename
 
          ;; Camera tag (check that this is the correct keyword...)
          if fxpar(newhead, 'CAMERA') eq '' then begin
@@ -276,6 +277,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
          ;; check these against solarnet standard
          ;; waveband seems to be the right one for pref-filter 
          ;; not sure about the others.
+         keys = tag_names(metaStruct)
          nametags = ['camtag','scannum','waveband','framenum']
          for i = 0, 3 do begin
 	  junk = where(keys eq strupcase(nametags[i]),cnt)
