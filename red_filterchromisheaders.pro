@@ -46,7 +46,18 @@ function red_filterchromisheaders, head
   if simple then begin
 
      bitpix = fxpar(head, 'BITPIX', comment = bitpix_comment)
-     if bitpix eq 16 then type = 2 else stop ; More cases here!
+     case bitpix of
+          8: type = 1
+         16: type = 2
+         32: type = 3
+         64: type = 14
+        -32: type = 4
+        -64: type = 5
+        else: begin
+            print, 'Invalid bitpix value: ', bitpix
+            return, head
+        end
+     endcase
 
      naxis  = fxpar(head, 'NAXIS', comment = naxis_comment)
      naxisx = lonarr(naxis)

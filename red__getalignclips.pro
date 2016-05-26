@@ -75,7 +75,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  self -> getcamtags, dir = self.pinh_dir
+  self -> getcamtags
   camw = self.camwbtag
   camt = self.camttag
   camr = self.camrtag

@@ -68,16 +68,9 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  ;; clips exist?
-   
-  if(~self.dopinh) then begin
-     print, inam+' : ERROR, undefined pinh_dir'
-     return
-  endif
   if(n_elements(pref) eq 0) then pref = '*'
 
-;  self -> getcamtags, dir = self.data_dir
-  self -> getcamtags, dir = self.pinh_dir
+  self -> getcamtags
   camt = self.camttag
   camr = self.camrtag
   camw = self.camwbtag

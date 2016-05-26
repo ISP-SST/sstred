@@ -74,7 +74,7 @@
 pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                   remove = remove, cams = cams, check = check, lim = lim, $
                   store_rawsum = store_rawsum, prefilter = prefilter, $
-                  dirs = dirs
+                  dirs = dirs, sum_in_idl = sum_in_idl
 
     ;; Defaults
     if( n_elements(overwrite) eq 0 ) then overwrite = 0
@@ -103,7 +103,7 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
 
     Ndirs = n_elements(dirs)
     if( Ndirs eq 0) then begin
-        print, inam+' : ERROR : no dark directories defined'
+        print, inam+' : ERROR : no flat directories defined'
         return
     endif else begin
         if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
@@ -177,19 +177,19 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                 ;;; produce false drop info.  Re-sort them
                 tmplist = files[sel]
                 tmplist = tmplist(sort(tmplist))
-                if rdx_hasopencv() then begin
-                    flat = rdx_sumfiles(tmplist, time = time, check = check, $
+                if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
+                    flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
                 endif else begin
-                    flat = red_sumfiles(tmplist, time = time, check = check, $
+                    flat = red_sumfiles(tmplist, time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum)
                 endelse
             endif else begin 
-                if rdx_hasopencv() then begin
-                    flat = rdx_sumfiles(files[sel], time = time, check = check, $
+                if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
+                    flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
                 endif else begin
-                    flat = red_sumfiles(files[sel], time = time, check = check, $
+                    flat = red_sumfiles(files[sel], time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum)
                 endelse
             endelse
@@ -201,12 +201,12 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
             ;; Output the raw (if requested) and averaged flats
             ; TODO: output should be written through class-specific methods
             if keyword_set(store_rawsum) then begin
-                headerout = 't='+time+' n_sum='+red_stri(nsum)
+                headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
                 print, inam+' : saving ' + sflatname
                 fzwrite, flat1, sflatname, headerout
             endif
 
-            headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
+            headerout = 't='+time_ave+' n_aver='+red_stri(nsum)+' darkcorrected'
             print, inam+' : saving ' + flatname
             fzwrite, float(flat), flatname, headerout
 

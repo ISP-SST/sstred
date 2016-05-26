@@ -208,7 +208,7 @@ pro red::pinholecalib, STATE = state $
     file_mkdir, workdir+'data'
 
     ;; Get camera labels:
-    self -> getcamtags, dir = self.pinh_dir 
+    self -> getcamtags
     camt = self.camttag
     camr = self.camrtag
     camw = self.camwbtag

@@ -102,7 +102,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
     output_dir = red_strreplace(output_dir,'//','/')
     file_mkdir, output_dir
     
-    self -> getcamtags, dir = self.pinh_dir
+    self -> getcamtags
     
     cams = [ self.camwbtag, self.camttag, self.camrtag ]    ;  TODO autodetect cameras
     Ncams = n_elements(cams)
