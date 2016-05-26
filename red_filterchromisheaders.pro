@@ -40,6 +40,10 @@
 ;    2016-05-20 : MGL. First version.
 ;
 ;    2016-05-25 : JLF. Add keywords to the header.
+;
+;    2016-05-26 : MGL. Better interpretation/generation of DATE
+;                 keywords. Get some info from the file name using
+;                 regular expressions.
 ; 
 ; 
 ;-
@@ -88,23 +92,47 @@ function red_filterchromisheaders, head, metadata=metaStruct
            value = fxpar(head, name, comment = comment)
 
            case name of
-              'DATE'     : sxaddpar, newhead, 'DATE-BEG', value, comment, before = 'COMMENT'
-              'DATE_OBS' : sxaddpar, newhead, 'POINT_ID', value, comment, before = 'COMMENT'
-              'EXPTIME'  : sxaddpar, newhead, 'XPOSURE',  value, comment, before = 'COMMENT', format = 'f8.6'
-              'INTERVAL' : sxaddpar, newhead, 'CADENCE',  value, comment, before = 'COMMENT', format = 'f8.6'
-              else       : sxaddpar, newhead, name,       value, comment, before = 'COMMENT'
+              'DATE' : begin
+                 ;; Rewrite the automatically generated DATE keyword
+                 sxaddpar, newhead, 'DATE', value, comment, before = 'COMMENT'
+                 ;; If there isn't already a DATE-END keyword,
+                 ;; this is the best we have for it.
+                 if fxpar(head, 'DATE-END') eq '' then $
+                    sxaddpar, newhead, 'DATE-END', value, comment, before = 'COMMENT'
+              end
+              'DATE_OBS' : begin
+                 ;; We'll use this as POINT-ID for now. It
+                 ;; should really be something that we get from the
+                 ;; turret or PIG systems so it is common to all
+                 ;; instruments. 
+                 sxaddpar, newhead, 'POINT_ID', value, comment, before = 'COMMENT'
+              end
+              'EXPTIME' : begin
+                 ;; Early versions of CHROMIS data used a non-SOLARNET
+                 ;; keyword, rename it.
+                 sxaddpar, newhead, 'XPOSURE',  value, comment, before = 'COMMENT', format = 'f8.6'
+              end
+              'INTERVAL' : begin
+                 ;; Early versions of CHROMIS data used a non-SOLARNET
+                 ;; keyword, rename it.
+                 sxaddpar, newhead, 'CADENCE',  value, comment, before = 'COMMENT', format = 'f8.6'
+              end
+              else : begin
+                 ;; Just transfer all other keywords to the new header.
+                 sxaddpar, newhead, name,       value, comment, before = 'COMMENT'
+              end
            endcase
         endif                   ; END
 
      endfor                     ; i
 
-     ;; Make DATE-END
-     dbeg = strsplit(fxpar(head, 'DATE'), 'T', /extract)
-     date = dbeg[0]
-     time = red_time2double(dbeg[1]) + fxpar(head, 'INTERVAL')*fxpar(head, 'NAXIS3')
-     dend = date+'T'+red_time2double(time, /dir)
-     sxaddpar, newhead, 'DATE-END', dend, after = 'DATE-BEG'
-
+     if fxpar(head, 'DATE-BEG') eq '' then begin
+        ;; Make DATE-BEG from DATE, counting backwards
+        date = strsplit(fxpar(head, 'DATE'), 'T', /extract)
+        time = red_time2double(date[1]) - fxpar(head, 'INTERVAL')*fxpar(head, 'NAXIS3')
+        sxaddpar, newhead, 'DATE-BEG', date[0]+'T'+red_time2double(time, /dir), after = 'DATE'
+     endif
+     
      ;; Add any additional metadata we were given.
      if n_elements(metaStruct) ne 0 then begin
       keys = tag_names(metaStruct)
@@ -113,30 +141,114 @@ function red_filterchromisheaders, head, metadata=metaStruct
       ifile = where(keys eq strupcase('filename'),cnt)
       ;; extract metadata from the filename (for now it's all we have)
       if cnt ne 0 then begin
-	filename = metaStruct.(ifile)
-	barefile = strsplit(filename,'/',/extract)
-	barefile = barefile[n_elements(barefile)-1]
-	metaStruct.(ifile) = barefile
-	states = strsplit(barefile,'.',/extract)
-	
-; 	camtag = states[0]
-; 	fscan = states[1]
-; 	pref = states[2]
-; 	frame = states[3]
 
-	;; need to add here a function to lookup the meaning of the w?
-	;; characters
-	;
-	; states[2] = chromis_filter_wheel(states[2])
+         ;; Strip directory and extension if needed
+         filename = file_basename(metaStruct.(ifile),)
+         barefile = file_basename(metaStruct.(ifile), '.fits')
+         metaStruct.(ifile) = filename
 
-	;; add to the metadata if the appropriate keywords aren't there,
-	;; don't overwrite metadata we received
+         ;; Camera tag (check that this is the correct keyword...)
+         if fxpar(newhead, 'CAMERA') eq '' then begin
+
+            ;; The camera tag consists of the string 'cam' followed by a
+            ;; roman number.
+            camtag = (stregex(barefile, '(\.|^)(cam[IVXL]+)(\.|$)', /extr, /subexp))[2,*]
+
+            if camtag ne '' then sxaddpar, newhead, 'CAMERA', camtag $
+                                           , 'Inferred from file name.' $
+                                           , before = 'COMMENT'
+
+         endif                  ; CAMERA
+         
+         
+         ;; WAVEBAND and WAVELNTH
+         if fxpar(newhead, 'WAVEBAND') eq '' then begin
+
+            ;; Get prefilter names from file name. For now, we have
+            ;; the filter wheel position as a tag consisting of the
+            ;; letter w followed by a single digit.
+            wheelpos = (stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*]
+            if wheelpos ne '' then begin
+
+               ;; The filter names here are for Chromis-N. For
+               ;; Chromis-W and Chromis-D, w1-w5 means 'CaHK-cont' and
+               ;; w6 means 'Hb-cont'.
+               case wheelpos of
+                  'w1' : begin
+                     waveband = 'CaK-blue'
+                     wavelnth = 0.
+                  end
+                  'w2' : begin
+                     waveband = 'CaK-core'
+                     wavelnth = 0.
+                  end
+                  'w3' : begin
+                     waveband = 'CaH-core'
+                     wavelnth = 0.
+                  end
+                  'w4' : begin
+                     waveband = 'CaH-red'
+                     wavelnth = 0.
+                  end
+                  'w5' : begin
+                     waveband = 'CaH-cont'
+                     wavelnth = 0.
+                  end
+                  'w6' : begin
+                     waveband = 'Hb-core'
+                     wavelnth = 0.
+                  end
+               endcase
+
+               comment = 'Inferred from filter wheel position in file name.'
+               sxaddpar, newhead, 'WAVEBAND', waveband, comment, before = 'COMMENT'
+               sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
+
+            endif               ; Found a wheel position
+
+         endif                  ; WAVEBAND & WAVELNTH
+         
+         ;; The frame number is the last field iff it consists
+         ;; entirely of digits. The third subexpression of the regular
+         ;; expression matches only the end of the string because
+         ;; that's where it is if it is present. We do not know the
+         ;; length of the frame number field so if the third
+         ;; subexpression were allowed to match a dot we would get
+         ;; false matches with the scan and prefilter fields.
+         ;;
+         ;; Frame number = (stregex(barefile, '(\.)([0-9]+)($)', /extr, /subexp))[2,*]
+         ;;
+         ;; Actually, this is the file number. Let's make the frame
+         ;; number (of the first frame) 10000 times this.
+         ;;
+         ;; But what keyword to use for this?
+
+
+         ;; The scan number is the only field that is exactly five
+         ;; digits long:
+         scannumber = (stregex(fname, '(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*]
+         if scannumber ne '' then sxaddpar, newhead, 'XXX', scannumber $
+                                            , 'Inferred from file name.' $
+                                            , before = 'COMMENT'
+         ;; What keyword to use for this?
+
+
+         ;; Don't trust positions if we don't have to.
+         ;; states = strsplit(barefile,'.',/extract)
+         ;; camtag = states[0]
+         ;; fscan = states[1]
+         ;; pref = states[2]
+         ;; frame = states[3]
+
+
+         ;; add to the metadata if the appropriate keywords aren't there,
+         ;; don't overwrite metadata we received
 	
-	;; check these against solarnet standard
-	;; waveband seems to be the right one for pref-filter 
-	;; not sure about the others.
-	nametags = ['camtag','scannum','waveband','framenum']
-	for i = 0, 3 do begin
+         ;; check these against solarnet standard
+         ;; waveband seems to be the right one for pref-filter 
+         ;; not sure about the others.
+         nametags = ['camtag','scannum','waveband','framenum']
+         for i = 0, 3 do begin
 	  junk = where(keys eq strupcase(nametags[i]),cnt)
 	  
 	  if cnt eq 0 then begin
