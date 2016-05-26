@@ -67,7 +67,9 @@
 ;                Don't use red_sxaddpar. Write darks out as
 ;                float, not double.
 ;
-;   2016-05-26 : MGL. Use get_calib method to get the file name.
+;   2016-05-26 : MGL. Use get_calib method to get the file
+;                name. Don't call get_calib one extra time just
+;                to get the directory. 
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -109,10 +111,6 @@ pro red::sumdark, overwrite = overwrite, $
         if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
         else dirstr = dirs[0]
     endelse
-
-    darkname = self->getdark('', summed_name=sdarkname)
-    file_mkdir, file_dirname(darkname)
-    file_mkdir, file_dirname(sdarkname)
 
     for ic = 0L, Ncams-1 do begin
 
@@ -169,6 +167,8 @@ pro red::sumdark, overwrite = overwrite, $
 
         ;; TODO: output should be written through class-specific
         ;; methods
+
+        file_mkdir, file_dirname(darkname)
 
         ;; Write ANA format dark
         print, inam+' : saving ', darkname
