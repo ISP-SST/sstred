@@ -84,7 +84,7 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   ;;
   ;; Search files
   ;; 
-  self->getcamtags, dir=self.pinh_dir
+  self->getcamtags
   
   cam = self.camttag
   if(keyword_set(reflected)) then cam = self.camrtag

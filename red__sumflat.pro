@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -37,13 +37,18 @@
 ;   
 ;   
 ;   
-;    check : 
+;    check : in, optional, type=boolean
+;
+;
+;    sum_in_idl : in, optional, type=boolean
+;
+;      Bypass rdx_sumfiles.
 ;   
 ;   
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -69,12 +74,16 @@
 ;   2014-10-06 : JdlCR. Prefilter keyword, please DO NOT REMOVE!
 ;
 ;   2016-05-19 : THI: Re-write to use overloaded class methods.
+; 
+;   2016-05-25 : MGL. New keyword sum_in_idl. Get darks from files
+;                with state info in the name.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                   remove = remove, cams = cams, check = check, lim = lim, $
                   store_rawsum = store_rawsum, prefilter = prefilter, $
-                  dirs = dirs
+                  dirs = dirs, $
+                  sum_in_idl = sum_in_idl
 
     ;; Defaults
     if( n_elements(overwrite) eq 0 ) then overwrite = 0
@@ -103,7 +112,7 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
 
     Ndirs = n_elements(dirs)
     if( Ndirs eq 0) then begin
-        print, inam+' : ERROR : no dark directories defined'
+        print, inam+' : ERROR : no flat directories defined'
         return
     endif else begin
         if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
@@ -121,12 +130,6 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
         cam = cams[ic]
         camtag = self->getcamtag( cam )
 
-        dname = self->getdark( cam, data=dd )
-        if( n_elements(dd) eq 0 ) then begin
-            print, inam+' : no dark found for camera ', cam
-            continue
-        endif
-
         self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
                          files=files, states=states, nremove=remove, /force
 
@@ -139,7 +142,16 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
+        gain = states.gain[uniq(states.gain, sort(states.gain))]
+        exposure = states.exposure[uniq(states.exposure, sort(states.exposure))]
+        state = string(exposure*1000, format = '(f4.2)')+'ms_G'+string(gain, format = '(f05.2)')
 
+        dname = self->getdark(cam, state = state, data=dd)
+        if( n_elements(dd) eq 0 ) then begin
+            print, inam+' : no dark found for camera ', cam
+            continue
+        endif
+stop
         state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
         ns = n_elements(state_list)
@@ -177,19 +189,19 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
                 ;;; produce false drop info.  Re-sort them
                 tmplist = files[sel]
                 tmplist = tmplist(sort(tmplist))
-                if rdx_hasopencv() then begin
-                    flat = rdx_sumfiles(tmplist, time = time, check = check, $
+                if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
+                    flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
                 endif else begin
-                    flat = red_sumfiles(tmplist, time = time, check = check, $
+                    flat = red_sumfiles(tmplist, time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum)
                 endelse
             endif else begin 
-                if rdx_hasopencv() then begin
-                    flat = rdx_sumfiles(files[sel], time = time, check = check, $
+                if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
+                    flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
                 endif else begin
-                    flat = red_sumfiles(files[sel], time = time, check = check, $
+                    flat = red_sumfiles(files[sel], time_ave = time_ave, check = check, $
                                       lun = lun, lim = lim, summed = summed, nsum = nsum)
                 endelse
             endelse
@@ -201,12 +213,12 @@ pro red::sumflat, overwrite = overwrite, ustat = ustat, old = old, $
             ;; Output the raw (if requested) and averaged flats
             ; TODO: output should be written through class-specific methods
             if keyword_set(store_rawsum) then begin
-                headerout = 't='+time+' n_sum='+red_stri(nsum)
+                headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
                 print, inam+' : saving ' + sflatname
                 fzwrite, flat1, sflatname, headerout
             endif
 
-            headerout = 't='+time+' n_aver='+red_stri(nsum)+' darkcorrected'
+            headerout = 't='+time_ave+' n_aver='+red_stri(nsum)+' darkcorrected'
             print, inam+' : saving ' + flatname
             fzwrite, float(flat), flatname, headerout
 

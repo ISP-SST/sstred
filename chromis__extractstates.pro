@@ -12,12 +12,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Mats Löfdahl, ISP
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -90,7 +90,7 @@
 ;        of the strings.
 ;
 ; 
-; :history:
+; :History:
 ; 
 ;   2014-01-22 : First version.
 ; 
@@ -100,15 +100,17 @@
 ;                something meaningful also for blue tilt filter data.
 ;                Bugfix in qw regular expression.
 ;
-;   2016-05-19 : THI. Partial copy to the crisp class. Modify the state structures
-;                and keywords for clarity.
+;   2016-05-19 : THI. Partial copy to the crisp class. Modify the
+;                state structures and keywords for clarity.
 ;
 ;   2016-05-24 : MGL. Removed polarization stuff. If the strings are
 ;                filenames, then look in the headers. Added keywords
 ;                gain and exposure, return this information if wanted.
 ;                Make the keyword fullstate set the other keywords.
 ;
-;   2016-05-25 : MGL. Do not assume camera gain is integer.
+;   2016-05-25 : MGL. Do not assume camera gain is integer. Get some
+;                info not in the header from the file names for now.
+;                Move comments to where they are needed.
 ;
 ; 
 ;-
@@ -147,48 +149,16 @@ pro chromis::extractstates, strings $
 
     if AreFiles then begin
        
-       ;; The scan number is the only field that is exactly five digits
-       ;; long:
-       if keyword_set(scannumber) then $
-          scan_list = strarr(nt)
-
-       ;; The focus field is an f folowed by a sign and at least one digit
-       ;; for the amount of focus (in ?unit?):
-       if keyword_set(focus) then $
-          focus_list = strarr(nt) 
-
-       ;; The frame number is the last field iff it consists entirely of
-       ;; digits. The third subexpression of the regular expression matches
-       ;; only the end of the string because that's where it is if it is
-       ;; present. We do not know the length of the frame number field so
-       ;; if the third subexpression were allowed to match a dot we would
-       ;; get false matches with the scan and prefilter fields.
-       if keyword_set(framenumber) then $
-          num_list = strarr(nt)
-
-       ;; The camera name consists of the string 'cam' followed by a roman
-       ;; number.
-       if keyword_set(cam) then $
-          cam_list = strarr(nt) 
-
-       ;; The prefilter is the only field that is exactly four digits
-       if keyword_set(prefilter) or keyword_set(wavelength) then $
-          prefilter_list = strarr(nt) 
-
-       ;; The tuning information consists of a four digit wavelength (in Å)
-       ;; followed by an underscore, a sign (+ or -), and at least one
-       ;; digit for the finetuning (in mÅ).
-       if keyword_set(tuning) or keyword_set(dwav) then $
-          tuning_list = strarr(nt) 
- 
-       ;; The gain information is a floating point number in the
-       ;; header but is really an integer.
-       if keyword_set(gain) then $
-          gain_list = strarr(nt)
-
-       ;; The exposure time is a floating point number of seconds.
-       if keyword_set(exposure) then $
-          exposure_list = strarr(nt)
+       if keyword_set(scannumber)    then scan_list = strarr(nt)
+       if keyword_set(focus)         then focus_list = strarr(nt) 
+       if keyword_set(framenumber)   then num_list = strarr(nt)
+       if keyword_set(cam)           then cam_list = strarr(nt) 
+       if keyword_set(prefilter) $
+          or keyword_set(wavelength) then prefilter_list = strarr(nt) 
+       if keyword_set(tuning) $
+          or keyword_set(dwav)       then tuning_list = strarr(nt) 
+       if keyword_set(gain)          then gain_list = strarr(nt)
+       if keyword_set(exposure)      then exposure_list = strarr(nt)
 
        ;; Read headers and extract information.
        ;; This should perhaps return an array the length of the number
@@ -196,26 +166,67 @@ pro chromis::extractstates, strings $
        for ifile = 0, nt-1 do begin
 
           head = red_readhead(strings[ifile])
+          fname = file_basename(strings[ifile], '.fits')
 
           if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
 
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
 
-          if keyword_set(scannumber) then scan_list[ifile] = ''
+          ;; Replace the following regexp expressions when this info
+          ;; is in the header.
 
-          if keyword_set(focus) then focus_list[ifile] = ''
+          
+          ;; The scan number is the only field that is exactly five
+          ;; digits long:
+          if keyword_set(scannumber) then $
+             scan_list[ifile] = (stregex(fname $
+                                         , '(\.|^)([0-9]{5})(\.|$)' $
+                                         , /extr, /subexp))[2,*]
+
+          ;; The focus field is an f folowed by a sign and at least
+          ;; one digit for the amount of focus (in ?unit?):
+          if keyword_set(focus) then $
+             focus_list[ifile] = (stregex(fname $
+                                          , '(\.|^)(F[+-][0-9]+)(\.|$)' $
+                                          , /extr, /subexp, /fold_case))[2,*]
+
      
-          if keyword_set(framenumber) then num_list[ifile] = ''
+          ;; The frame number is the last field iff it consists
+          ;; entirely of digits. The third subexpression of the
+          ;; regular expression matches only the end of the string
+          ;; because that's where it is if it is present. We do not
+          ;; know the length of the frame number field so if the third
+          ;; subexpression were allowed to match a dot we would get
+          ;; false matches with the scan and prefilter fields.
+          if keyword_set(framenumber) then $
+             num_list[ifile] = (stregex(fname $
+                                        , '(\.)([0-9]+)($)' $
+                                        , /extr, /subexp))[2,*]
 
-          if keyword_set(cam) then cam_list[ifile] = ''
+          ;; The camera name consists of the string 'cam' followed by
+          ;; a roman number.
+          if keyword_set(cam) then $
+             cam_list[ifile] = (stregex(fname  $
+                                        , '(\.|^)(cam[IVX]+)(\.|$)' $
+                                        , /extr, /subexp))[2,*]
 
+          ;; The prefilter is the only field that is exactly four
+          ;; digits.
           if keyword_set(prefilter) or keyword_set(wavelength) then $
-             prefilter_list[ifile] = ''
+             prefilter_list[ifile] = (stregex(fname $
+                                              , '(\.|^)([0-9]{4})(\.|$)'  $
+                                              , /extr, /subexp))[2,*]
 
+          ;; The tuning information consists of a four digit
+          ;; wavelength (in Å) followed by an underscore, a sign (+ or
+          ;; -), and at least one digit for the finetuning (in mÅ).
           if keyword_set(tuning) or keyword_set(dwav) then $
-             tuning_list[ifile] = ''
+             tuning_list[ifile] = (stregex(fname $
+                                           , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
+                                           ,  /extr, /subexp))[2,*]
 
-       endfor
+
+       endfor                   ; ifile
 
     endif else begin            ; AreFiles
 
