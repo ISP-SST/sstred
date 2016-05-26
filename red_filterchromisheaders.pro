@@ -43,7 +43,8 @@
 ;
 ;    2016-05-26 : MGL. Better interpretation/generation of DATE
 ;                 keywords. Get some info from the file name using
-;                 regular expressions.
+;                 regular expressions. Different filters in filter
+;                 wheels for narrowband and wideband.
 ; 
 ; 
 ;-
@@ -170,36 +171,64 @@ function red_filterchromisheaders, head, metadata=metaStruct
             wheelpos = (stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*]
             if wheelpos ne '' then begin
 
-               ;; The filter names here are for Chromis-N. For
-               ;; Chromis-W and Chromis-D, w1-w5 means 'CaHK-cont' and
-               ;; w6 means 'Hb-cont'.
-               case wheelpos of
-                  'w1' : begin
-                     waveband = 'CaK-blue'
-                     wavelnth = 0.
-                  end
-                  'w2' : begin
-                     waveband = 'CaK-core'
-                     wavelnth = 0.
-                  end
-                  'w3' : begin
-                     waveband = 'CaH-core'
-                     wavelnth = 0.
-                  end
-                  'w4' : begin
-                     waveband = 'CaH-red'
-                     wavelnth = 0.
-                  end
-                  'w5' : begin
-                     waveband = 'CaH-cont'
-                     wavelnth = 0.
-                  end
-                  'w6' : begin
-                     waveband = 'Hb-core'
-                     wavelnth = 0.
-                  end
-               endcase
-
+               if fxpar(head, 'INSTRUME') eq 'Chromis-N' then begin
+                  ;; Chromis-N
+                  case wheelpos of
+                     'w1' : begin
+                        waveband = 'CaK-blue'
+                        wavelnth = 0.
+                     end
+                     'w2' : begin
+                        waveband = 'CaK-core'
+                        wavelnth = 0.
+                     end
+                     'w3' : begin
+                        waveband = 'CaH-core'
+                        wavelnth = 0.
+                     end
+                     'w4' : begin
+                        waveband = 'CaH-red'
+                        wavelnth = 0.
+                     end
+                     'w5' : begin
+                        waveband = 'CaH-cont'
+                        wavelnth = 0.
+                     end
+                     'w6' : begin
+                        waveband = 'Hb-core'
+                        wavelnth = 0.
+                     end
+                  endcase
+               endif else begin
+                  ;; Chromis-W and Chromis-D
+                  case wheelpos of
+                     'w1' : begin
+                        waveband = 'CaHK-cont'
+                        wavelnth = 0.
+                     end
+                     'w2' : begin
+                        waveband = 'CaHK-cont'
+                        wavelnth = 0.
+                     end
+                     'w3' : begin
+                        waveband = 'CaHK-cont'
+                        wavelnth = 0.
+                     end
+                     'w4' : begin
+                        waveband = 'CaHK-cont'
+                        wavelnth = 0.
+                     end
+                     'w5' : begin
+                        waveband = 'CaHK-cont'
+                        wavelnth = 0.
+                     end
+                     'w6' : begin
+                        waveband = 'Hb-cont'
+                        wavelnth = 0.
+                     end
+                  endcase
+               endelse
+               
                comment = 'Inferred from filter wheel position in file name.'
                sxaddpar, newhead, 'WAVEBAND', waveband, comment, before = 'COMMENT'
                sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
