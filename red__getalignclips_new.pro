@@ -114,7 +114,7 @@ PRO red::getalignclips_new, thres = thres $
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  self -> getcamtags, dir = self.pinh_dir
+  self -> getcamtags
   ph_dir = self.out_dir+'/pinh_align/'
   gt_dir = self.out_dir+'/gaintables/'
   ph_dir = red_strreplace(ph_dir,'//','/')

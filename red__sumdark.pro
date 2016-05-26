@@ -73,7 +73,7 @@
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
-                  dirs = dirs,  $
+                  dirs = dirs, $
                   sum_in_idl = sum_in_idl
 
     ;; Defaults
@@ -148,47 +148,35 @@ pro red::sumdark, overwrite = overwrite, $
         dark = float(dark)      ; The momfbd code can't read doubles.
 
         head = red_readhead(files[0]) 
-       
-        ;; The summing will make a single frame out of a data cube.
-        sxaddpar, head, 'NAXIS', 2 ; Two dimensions.
-        sxdelpar, head, 'NAXIS3'   ; Remove third dimension size.
+      
+        ; check_fits will adjust naxis & bitpix to match the data
+        check_fits, dark, head, /UPDATE, /SILENT
         
         ;; Some SOLARNET recommended keywords:
-        exptime = sxpar(head, 'XPOSURE', comment = exptime_comment)
-        sxdelpar, head, 'XPOSURE' 
-        sxaddpar, head, 'XPOSURE', Nsum*exptime
-        sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
-        sxaddpar, head, 'NSUMEXP', Nsum, 'Number of summed exposures'
+        exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
+        if count gt 0 then begin
+            sxdelpar, head, 'XPOSURE'
+            sxaddpar, head, 'XPOSURE', nsum*exptime
+            sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
+        endif
+        
+        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
         
 
         ;; Add some more info here, see SOLARNET deliverable D20.4 or
         ;; later versions of that document. like how many
         ;; frames were actually summed, nsum.
 
-        ;; outheader = red_dark_h2h(files[nf-1], head, nsum)
-        
-        ;; red_dark_h2h expects an fz header. Make the outheader here
-        ;; instead. At some point we may want to add more header info
-        ;; to this, if the momfbd program can handle it.
-        num = 1                 ; Arbitrary, I don't think the momfbd code cares.
-        outheader = '#.' + string(num,format='(I07)') + '      ' $
-                    + string(num[0],format='(I07)') + '  ' + time_ave + '  ' $
-;                    + num[0] + '  ' + time_ave + '  ' $
-                    + strtrim(fxpar(head, 'NAXIS1'), 2) + '  ' $
-                    + strtrim(fxpar(head, 'NAXIS2'), 2) + '    ' $
-                    + string(exptime,format='(f6.3)') + '    ' $
-                    + string(Nsum,format='(I4)') + ' ... SUM ... DD'
-
         ;; TODO: output should be written through class-specific
         ;; methods
 
         ;; Write ANA format dark
         print, inam+' : saving ', darkname
-        fzwrite, dark, darkname, 'mean dark'
+        red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
 
         ;; Write FITS format dark
         print, inam+' : saving ', darkname+'.fits'
-        writefits, darkname+'.fits', dark, head
+        red_writedata, darkname+'.fits', dark, header=head, overwrite = overwrite
 
 ;        print, inam+' : saving ', sdarkname
 ;        fzwrite, long(darksum), sdarkname, outheader
