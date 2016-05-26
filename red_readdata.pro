@@ -56,6 +56,9 @@
 ;
 ;   2016-05-23 : JLF. Use red_filterchromisheaders to clean pt-grey headers. 
 ;		      Use rdx_filetype.
+;
+;   2016-05-26 : THI. Allow reading of ana headers which are actually fits-headers.
+;
 ;-
 function red_readdata, fname $
 		       , header = header $
@@ -93,9 +96,21 @@ function red_readdata, fname $
         
         fzread, data, fname, anaheader
 
-        if n_elements(anaheader) ne 0 then $           
-           ;; Convert ana header to fits header
-           header = red_anahdr2fits(anaheader,img=data)
+        if n_elements(anaheader) ne 0 then begin
+           if strmatch( anaheader, "SIMPLE*" ) gt 0 then begin
+               ;; it's actually a fits-header, split into strarr with length 80
+               dummy = temporary(header)
+               len = strlen(anaheader)
+               for i=0,len-1, 80 do begin
+                   card = strmid(anaheader,i,80)
+                   red_append, header, card
+                   if strmid( card, 0, 2 ) eq 'END' then break
+               endfor
+           endif else begin
+               ;; Convert ana header to fits header
+               header = red_anahdr2fits( anaheader, img=data )
+           endelse
+        endif
 
      end
 
