@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -36,7 +36,7 @@
 ;
 ;      Bypass rdx_sumfiles.
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -66,6 +66,8 @@
 ;                doesn't need them. Do store darks in FITS format.
 ;                Don't use red_sxaddpar. Write darks out as
 ;                float, not double.
+;
+;   2016-05-26 : MGL. Use get_calib method to get the file name.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -129,11 +131,9 @@ pro red::sumdark, overwrite = overwrite, $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
-        gain = states.gain[uniq(states.gain, sort(states.gain))]
-        exposure = states.exposure[uniq(states.exposure, sort(states.exposure))]
-        state = string(exposure*1000, format = '(f4.2)')+'ms_G'+string(gain, format = '(f05.2)')
-        
-        darkname = self->getdark(cam, state = state, summed_name=sdarkname)
+        ;; Get the name of the darkfile
+        self -> get_calib, states, darkname = darkname, status = status
+        if status ne 0 then stop
 
         if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
            print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
