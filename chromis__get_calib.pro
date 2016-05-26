@@ -46,6 +46,18 @@
 ; 
 ;        The header of the flat file(s) appropriate to the state(s).
 ; 
+;    sflatname : out, optional, type=strarr 
+; 
+;       The name(s) of the summed flat file(s) appropriate to the state(s).
+; 
+;    sflatdata : out, optional, type=array 
+; 
+;        The data in the summed flat file(s) appropriate to the state(s).
+; 
+;    sflathead : out, optional, type=array 
+; 
+;        The header of the summed flat file(s) appropriate to the state(s).
+; 
 ;    pinhname : out, optional, type=strarr 
 ; 
 ;        The name(s) of the pinhole file(s) appropriate to the state(s).
@@ -65,7 +77,7 @@
 ; :History:
 ; 
 ;    2016-05-26 : MGL. Initial version including darks, flats, and
-;                 pinholes. 
+;                 pinholes. Added support for summed flats.
 ; 
 ; 
 ;-
@@ -77,6 +89,9 @@ pro chromis::get_calib, states $
                         , flatname = flatname $
                         , flatdata = flatdata $
                         , flathead = flathead $
+                        , sflatname = sflatname $
+                        , sflatdata = sflatdata $
+                        , sflathead = sflathead $
                         , pinhname = pinhname $
                         , pinhdata = pinhdata $
                         , pinhhead = pinhhead 
@@ -91,8 +106,13 @@ pro chromis::get_calib, states $
   if arg_present(darkname) then darkname = strarr(Nstates)   
   if arg_present(flatname) then flatname = strarr(Nstates) 
   if arg_present(pinhname) then pinhname = strarr(Nstates) 
+  if arg_present(sflatname) then sflatname = strarr(Nstates) 
 
-  if arg_present(darkdata) or arg_present(flatdata) or arg_present(pinhdata) then begin
+  if arg_present(darkdata) $
+     or arg_present(flatdata) $
+     or arg_present(sflatdata) $
+     or arg_present(pinhdata) then begin
+
      ;; Assume this is all for the same camera type, at least for the
      ;; actual data. Otherwise we cannot return the actual data in a
      ;; single array.
@@ -102,12 +122,14 @@ pro chromis::get_calib, states $
      if arg_present(darkdata) then darkdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
      if arg_present(flatdata) then flatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
      if arg_present(pinhdata) then pinhdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+     if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   endif
 
   Nheadlines = 100              ; Assume max numer of header lines
   if arg_present(darkhead) then darkhead = arr(Nheadlines,Nstates) 
   if arg_present(flathead) then flathead = arr(Nheadlines,Nstates) 
   if arg_present(pinhhead) then pinhhead = arr(Nheadlines,Nstates) 
+  if arg_present(sflathead) then sflathead = arr(Nheadlines,Nstates) 
 
   status = 0
 
@@ -141,7 +163,8 @@ pro chromis::get_calib, states $
 
      ;; Flats
 
-     if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) then begin
+     if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) $
+        or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
 
         flattag = camtag $
                   + '_' + string(states[istate].exposure*1000, format = '(f4.2)') + 'ms' $
@@ -158,6 +181,21 @@ pro chromis::get_calib, states $
            endif else if arg_present(flathead) then begin
               flathead[0, istate] = red_readhead(fname, status = flatstatus)
               if status eq 0 then status = flatstatus
+           endif
+
+        endif else status = -1
+
+        sfname = self.out_dir+'/flats/' + flattag + '_summed.flat'
+        sflatname[istate] = sfname
+
+        if n_elements(sfname) ne 0 then begin
+           
+           if arg_present(sflatdata) then begin
+              sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead, status = sflatstatus)
+              if status eq 0 then status = sflatstatus
+           endif else if arg_present(flathead) then begin
+              sflathead[0, istate] = red_readhead(sfname, status = sflatstatus)
+              if status eq 0 then status = sflatstatus
            endif
 
         endif else status = -1
