@@ -132,7 +132,9 @@ function red_readdata, fname $
 
   endcase
 
-  if n_elements(header) ne 0 then header = red_filterchromisheaders(header)
+  
+  if n_elements(header) ne 0 then $
+    header = red_filterchromisheaders(header,meta={filename:fname})
   
   if n_elements(header) ne 0 and keyword_set(structheader) then begin
      header = red_paramstostruct(header)

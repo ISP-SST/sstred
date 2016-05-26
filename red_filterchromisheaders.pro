@@ -24,13 +24,26 @@
 ;
 ;       The header to correct
 ; 
+; :Keywords:
+;
+;    metadata : in, type=struct
+;
+;	Additional metadata to include in the header
+;	  Form: metadata.[keyword_name] = [keyword_data]
+;
+;    file : in, type=string
+;
+;	The file from which the header came.
+;
 ; :History:
 ; 
 ;    2016-05-20 : MGL. First version.
+;
+;    2016-05-25 : JLF. Add keywords to the header.
 ; 
 ; 
 ;-
-function red_filterchromisheaders, head
+function red_filterchromisheaders, head, metadata=metaStruct
   
   if fxpar(head, 'SOLARNET') gt 0 then begin
      print, 'red_filterchromisheaders : This header should already be (at least partially) SOLARNET compliant.'
@@ -92,6 +105,52 @@ function red_filterchromisheaders, head
      dend = date+'T'+red_time2double(time, /dir)
      sxaddpar, newhead, 'DATE-END', dend, after = 'DATE-BEG'
 
+     ;; Add any additional metadata we were given.
+     if n_elements(metaStruct) ne 0 then begin
+      keys = tag_names(metaStruct)
+     
+      ;; check if the filename is present
+      ifile = where(keys eq strupcase('filename'),cnt)
+      ;; extract metadata from the filename (for now it's all we have)
+      if cnt ne 0 then begin
+	filename = metaStruct.(ifile)
+	barefile = strsplit(filename,'/',/extract)
+	barefile = barefile[n_elements(barefile)-1]
+	metaStruct.(ifile) = barefile
+	states = strsplit(barefile,'.',/extract)
+	
+; 	camtag = states[0]
+; 	fscan = states[1]
+; 	pref = states[2]
+; 	frame = states[3]
+
+	;; need to add here a function to lookup the meaning of the w?
+	;; characters
+	;
+	; states[2] = chromis_filter_wheel(states[2])
+
+	;; add to the metadata if the appropriate keywords aren't there,
+	;; don't overwrite metadata we received
+	
+	;; check these against solarnet standard
+	;; waveband seems to be the right one for pref-filter 
+	;; not sure about the others.
+	nametags = ['camtag','scannum','waveband','framenum']
+	for i = 0, 3 do begin
+	  junk = where(keys eq strupcase(nametags[i]),cnt)
+	  
+	  if cnt eq 0 then begin
+	    keys = [keys,nametags[i]]
+	    metaStruct = create_struct(metaStruct,nametags[i],states[i])
+	  endif
+	
+	endfor
+      endif 		; filename
+     
+      for i = 0, n_elements(keys)-1 do $
+	sxaddpar,newhead,keys[i],metaStruct.(i),before='COMMENT'
+     endif		; metaStruct
+     
      ;; Add SOLARNET keyword
      sxaddpar, newhead, 'SOLARNET', 0.5,  format = 'f3.1' $
                , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'

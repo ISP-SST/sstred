@@ -99,8 +99,9 @@ function red_readhead, fname, $
 
     endcase
 
-    header = red_filterchromisheaders(header)
-    
+    ;; header filtering to bring it to solarnet compliance
+    header = red_filterchromisheaders(header,meta={filename:fname})
+     
     if n_elements(header) ne 0 and keyword_set(structheader) then begin
         header = red_paramstostruct(header)
     endif
