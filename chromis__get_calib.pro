@@ -79,6 +79,8 @@
 ;    2016-05-26 : MGL. Initial version including darks, flats, and
 ;                 pinholes. Added support for summed flats.
 ; 
+;    2016-05-27 : MGL. Bugfixes.
+; 
 ; 
 ;-
 pro chromis::get_calib, states $
@@ -103,10 +105,10 @@ pro chromis::get_calib, states $
      return
   endif
 
-  if arg_present(darkname) then darkname = strarr(Nstates)   
-  if arg_present(flatname) then flatname = strarr(Nstates) 
-  if arg_present(pinhname) then pinhname = strarr(Nstates) 
-  if arg_present(sflatname) then sflatname = strarr(Nstates) 
+  if arg_present(darkname)  or arg_present(darkdata)  then darkname = strarr(Nstates)   
+  if arg_present(flatname)  or arg_present(flatdata)  then flatname = strarr(Nstates) 
+  if arg_present(pinhname)  or arg_present(pinhdata)  then pinhname = strarr(Nstates) 
+  if arg_present(sflatname) or arg_present(sflatdata) then sflatname = strarr(Nstates) 
 
   if arg_present(darkdata) $
      or arg_present(flatdata) $
@@ -168,7 +170,7 @@ pro chromis::get_calib, states $
 
         flattag = camtag $
                   + '_' + string(states[istate].exposure*1000, format = '(f4.2)') + 'ms' $
-                  + '_' + 'G' + string(gain, format = '(f05.2)') $
+                  + '_' + 'G' + string(states[istate].gain, format = '(f05.2)') $
                   + '_' + states[istate].fullstate
         fname = self.out_dir+'/flats/' + flattag + '.flat'
         flatname[istate] = fname
@@ -229,17 +231,20 @@ pro chromis::get_calib, states $
   ;; Reduce dimensions if possible
   if Nstates eq 1 then begin
 
-     if arg_present(darkname) then darkname = darkname[0]
-     if arg_present(flatname) then flatname = flatname[0]
-     if arg_present(pinhname) then pinhname = pinhname[0]
+     if arg_present(darkname)  then darkname = darkname[0]
+     if arg_present(flatname)  then flatname = flatname[0]
+     if arg_present(pinhname)  then pinhname = pinhname[0]
+     if arg_present(sflatname) then sflatname = sflatname[0]
 
-     if arg_present(darkdata) then darkdata = darkhead[*, *, 0]
-     if arg_present(flatdata) then flatdata = flathead[*, *, 0]
-     if arg_present(pinhdata) then pinhdata = pinhhead[*, *, 0] 
+     if arg_present(darkdata)  then darkdata = darkdata[*, *, 0]
+     if arg_present(flatdata)  then flatdata = flatdata[*, *, 0]
+     if arg_present(pinhdata)  then pinhdata = pinhdata[*, *, 0] 
+     if arg_present(sflatdata) then sflatdata = sflatdata[*, *, 0]
      
-     if arg_present(darkhead) then darkhead = darkhead[*, 0]
-     if arg_present(flathead) then flathead = flathead[*, 0]
-     if arg_present(pinhhead) then pinhhead = pinhhead[*, 0]
+     if arg_present(darkhead)  then darkhead = darkhead[*, 0]
+     if arg_present(flathead)  then flathead = flathead[*, 0]
+     if arg_present(pinhhead)  then pinhhead = pinhhead[*, 0]
+     if arg_present(sflathead) then sflathead = sflathead[*, 0]
      
   endif
 
