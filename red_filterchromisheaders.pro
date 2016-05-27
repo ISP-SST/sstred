@@ -47,7 +47,10 @@
 ;                 wheels for narrowband and wideband. Use tag_exist. 
 ;
 ;    2016-05-27 : MGL. Filter names in FILTERn keyword. Move the
-;                 generation of DATE-END.
+;                 generation of DATE-END. Invented keywords for the
+;                 scan number and for the number of the first frame,
+;                 they should be replaced with proper keywords ASAP.
+;                 Commented out some unfinished code.
 ; 
 ; 
 ;-
@@ -140,172 +143,179 @@ function red_filterchromisheaders, head, metadata=metaStruct
      ;; Add any additional metadata we were given.
      if n_elements(metaStruct) ne 0 then begin
 
-        if fxpar(newhead, 'FILENAME') eq '' then begin
-           ;; Preserve existing file name, this keyword should be the
-           ;; name of the original file.
-           if tag_exist(metaStruct, 'filename', /top_level) then begin
+        if tag_exist(metaStruct, 'filename', /top_level) then begin
 
-              ;; Extract metadata from the filename (for now it's all we
-              ;; have)
+           ;; Extract metadata from the filename (for now it's all we
+           ;; have)
+           
+           ;; Strip directory and extension if needed
+           filename = file_basename(metaStruct.filename)
+           barefile = file_basename(metaStruct.filename, '.fits')
 
-              ;; Strip directory and extension if needed
-              filename = file_basename(metaStruct.filename)
-              barefile = file_basename(metaStruct.filename, '.fits')
+           if fxpar(newhead, 'FILENAME') eq '' then begin
+              ;; Preserve existing file name, this keyword should be the
+              ;; name of the original file.
               metaStruct.filename = filename
            endif
-        endif
 
-        ;; Camera tag (check that this is the correct keyword...)
-        if fxpar(newhead, 'CAMERA') eq '' then begin
+           ;; Camera tag (check that this is the correct keyword...)
+           if fxpar(newhead, 'CAMERA') eq '' then begin
 
-           ;; The camera tag consists of the string 'cam' followed by a
-           ;; roman number.
-           camtag = (stregex(barefile, '(\.|^)(cam[IVXL]+)(\.|$)', /extr, /subexp))[2,*]
+              ;; The camera tag consists of the string 'cam' followed by a
+              ;; roman number.
+              camtag = ((stregex(barefile, '(\.|^)(cam[IVXL]+)(\.|$)', /extr, /subexp))[2,*])[0]
 
-           if camtag ne '' then sxaddpar, newhead, 'CAMERA', camtag $
-                                          , 'Inferred from file name.' $
-                                          , before = 'COMMENT'
+              if camtag ne '' then sxaddpar, newhead, 'CAMERA', camtag $
+                                             , 'Inferred from file name.' $
+                                             , before = 'COMMENT'
 
-        endif                   ; CAMERA
-        
-        
-        ;; FILTERn, WAVEBAND and WAVELNTH
-        if fxpar(newhead, 'FILTER1') eq '' then begin
+           endif                ; CAMERA
+           
+           
+           ;; FILTERn, WAVEBAND and WAVELNTH
+           if fxpar(newhead, 'FILTER1') eq '' then begin
 
-           ;; Get prefilter names from file name. For now, we have
-           ;; the filter wheel position as a tag consisting of the
-           ;; letter w followed by a single digit.
-           wheelpos = (stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*]
-           if wheelpos ne '' then begin
+              ;; Get prefilter names from file name. For now, we have
+              ;; the filter wheel position as a tag consisting of the
+              ;; letter w followed by a single digit.
+              wheelpos = ((stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*])[0]
+              if wheelpos ne '' then begin
 
-              if fxpar(head, 'INSTRUME') eq 'Chromis-N' then begin
-                 ;; Chromis-N
-                 case wheelpos of
-                    'w1' : begin
-                       filter1 = 'CaK-blue'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w2' : begin
-                       filter1 = 'CaK-core'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w3' : begin
-                       filter1 = 'CaH-core'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w4' : begin
-                       filter1 = 'CaH-red'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w5' : begin
-                       filter1 = 'CaH-cont'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w6' : begin
-                       filter1 = 'Hb-core'
-                       wavelnth = 486.1
-                       waveband = 'H-beta'
-                    end
-                 endcase
-              endif else begin
-                 ;; Chromis-W and Chromis-D
-                 case wheelpos of
-                    'w1' : begin
-                       filter1 = 'CaHK-cont'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w2' : begin
-                       filter1 = 'CaHK-cont'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w3' : begin
-                       filter1 = 'CaHK-cont'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w4' : begin
-                       filter1 = 'CaHK-cont'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w5' : begin
-                       filter1 = 'CaHK-cont'
-                       wavelnth = 0.
-                       waveband = 'Ca II H & K'
-                    end
-                    'w6' : begin
-                       filter1 = 'Hb-cont'
-                       wavelnth = 486.1
-                       waveband = 'H-beta'
-                    end
-                 endcase
-              endelse
-              
-              comment = 'Inferred from filter wheel position in file name.'
-              sxaddpar, newhead, 'FILTER1', filter1, comment, before = 'COMMENT'
-              sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
+                 if fxpar(head, 'INSTRUME') eq 'Chromis-N' then begin
+                    ;; Chromis-N
+                    case wheelpos of
+                       'w1' : begin
+                          filter1 = 'CaK-blue'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w2' : begin
+                          filter1 = 'CaK-core'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w3' : begin
+                          filter1 = 'CaH-core'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w4' : begin
+                          filter1 = 'CaH-red'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w5' : begin
+                          filter1 = 'CaH-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w6' : begin
+                          filter1 = 'Hb-core'
+                          wavelnth = 486.1
+                          waveband = 'H-beta'
+                       end
+                    endcase
+                 endif else begin
+                    ;; Chromis-W and Chromis-D
+                    case wheelpos of
+                       'w1' : begin
+                          filter1 = 'CaHK-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w2' : begin
+                          filter1 = 'CaHK-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w3' : begin
+                          filter1 = 'CaHK-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w4' : begin
+                          filter1 = 'CaHK-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w5' : begin
+                          filter1 = 'CaHK-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
+                       'w6' : begin
+                          filter1 = 'Hb-cont'
+                          wavelnth = 486.1
+                          waveband = 'H-beta'
+                       end
+                    endcase
+                 endelse
+                 
+                 comment = 'Inferred from filter wheel position in file name.'
+                 sxaddpar, newhead, 'FILTER1', filter1, comment, before = 'COMMENT'
+                 sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
 
-           endif                ; Found a wheel position
+              endif             ; Found a wheel position
 
-        endif                   ; FILTER1, WAVEBAND & WAVELNTH
-        
-        ;; The frame number is the last field iff it consists
-        ;; entirely of digits. The third subexpression of the regular
-        ;; expression matches only the end of the string because
-        ;; that's where it is if it is present. We do not know the
-        ;; length of the frame number field so if the third
-        ;; subexpression were allowed to match a dot we would get
-        ;; false matches with the scan and prefilter fields.
-        ;;
-        ;; Frame number = (stregex(barefile, '(\.)([0-9]+)($)', /extr, /subexp))[2,*]
-        ;;
-        ;; Actually, this is the file number. Let's make the frame
-        ;; number (of the first frame) 10000 times this.
-        ;;
-        ;; But what keyword to use for this?
+           endif                ; FILTER1, WAVEBAND & WAVELNTH
+           
+           ;; The frame number is the last field iff it consists
+           ;; entirely of digits. The third subexpression of the regular
+           ;; expression matches only the end of the string because
+           ;; that's where it is if it is present. We do not know the
+           ;; length of the frame number field so if the third
+           ;; subexpression were allowed to match a dot we would get
+           ;; false matches with the scan and prefilter fields.
+           ;;
+           ;; Actually, this is the file number. Let's make the frame
+           ;; number (of the first frame) 10000 times this.
+           ;;
+           filenumber = ((stregex(barefile, '(\.)([0-9]+)($)', /extr, /subexp))[2,*])[0]
+           if filenumber ne '' then begin
+              framenumber1 = 10000*long(filenumber)
+              ;;
+              ;; But what keyword to use for this? Invent something
+              ;; for now!
+              sxaddpar, newhead, 'FRAME1', framenumber1 $
+                        , '(number of first frame) Inferred from file name.' $
+                        , before = 'COMMENT'
+           endif
+
+           ;; The scan number is the only field that is exactly five
+           ;; digits long:
+           scannumber = ((stregex(barefile, '(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*])[0]
+           if scannumber ne '' then sxaddpar, newhead, 'SCANNUM', long(scannumber) $
+                                              , '(scan number) Inferred from file name.' $
+                                              , before = 'COMMENT'
+           ;; What keyword to use for this? Invented SCANNUM for now.
 
 
-        ;; The scan number is the only field that is exactly five
-        ;; digits long:
-        scannumber = (stregex(fname, '(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*]
-        if scannumber ne '' then sxaddpar, newhead, 'XXX', scannumber $
-                                           , 'Inferred from file name.' $
-                                           , before = 'COMMENT'
-        ;; What keyword to use for this?
+           ;; Don't trust positions if we don't have to.
+           ;; states = strsplit(barefile,'.',/extract)
+           ;; camtag = states[0]
+           ;; fscan = states[1]
+           ;; pref = states[2]
+           ;; frame = states[3]
 
-
-        ;; Don't trust positions if we don't have to.
-        ;; states = strsplit(barefile,'.',/extract)
-        ;; camtag = states[0]
-        ;; fscan = states[1]
-        ;; pref = states[2]
-        ;; frame = states[3]
-
+        endif                   ; filename
 
         ;; add to the metadata if the appropriate keywords aren't there,
         ;; don't overwrite metadata we received
         
-        ;; check these against solarnet standard
-        ;; waveband seems to be the right one for pref-filter 
-        ;; not sure about the others.
-        keys = tag_names(metaStruct)
-        nametags = ['camtag','scannum','waveband','framenum']
-        for i = 0, 3 do begin
-           junk = where(keys eq strupcase(nametags[i]),cnt)
-           
-           if cnt eq 0 then begin
-              keys = [keys,nametags[i]]
-              metaStruct = create_struct(metaStruct,nametags[i],states[i])
-           endif
-           
-        endfor
+;        ;; check these against solarnet standard
+;        ;; waveband seems to be the right one for pref-filter 
+;        ;; not sure about the others.
+;        keys = tag_names(metaStruct)
+;        nametags = ['camtag','scannum','waveband','framenum']
+;        for i = 0, 3 do begin
+;           junk = where(keys eq strupcase(nametags[i]),cnt)
+;           
+;           if cnt eq 0 then begin
+;              keys = [keys,nametags[i]]
+;              metaStruct = create_struct(metaStruct,nametags[i],states[i])
+;           endif
+;           
+;        endfor
 
         
 ;        for ikey = 0, n_elements(keys)-1 do begin
@@ -321,7 +331,9 @@ function red_filterchromisheaders, head, metadata=metaStruct
                , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
      
      ;; Add some more keywords:
-     if fxpar(newhead, 'TIMESYS') eq '' then sxaddpar, newhead, 'TIMESYS', 'UTC'
+     if fxpar(newhead, 'OBS_SHDU') eq '' then $
+        sxaddpar, newhead, 'OBS_SHDU', 1, 'This HDU contains observational data', before = 'DATE'
+     if fxpar(newhead, 'TIMESYS') eq '' then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'DATE'
      
   endif else stop               ; Non-simple
 
@@ -340,8 +352,8 @@ head2 = red_filterchromisheaders(head)
 
 print, head2
 
-head3 = red_filterchromisheaders(head2)
-
-print, head3
-
+;head3 = red_filterchromisheaders(head2)
+;
+;print, head3
+;
 end
