@@ -50,18 +50,21 @@
 ; 
 ;   2016-05-17 : MGL. Default for filetype based on file name.
 ;
-;   2016-05-18 : JLF. Returns the image (like readfits). Added Status flag keyword.
+;   2016-05-18 : JLF. Returns the image (like readfits). Added Status
+;                flag keyword.
 ;
-;   2016-05-18 : JLF. Use red_anahdr2fits to create FITS headers from ANA headers.
+;   2016-05-18 : JLF. Use red_anahdr2fits to create FITS headers from
+;                ANA headers.
 ;
-;   2016-05-23 : JLF. Use red_filterchromisheaders to clean pt-grey headers. 
-;		      Use rdx_filetype.
+;   2016-05-23 : JLF. Use red_filterchromisheaders to clean pt-grey
+;                headers. Use rdx_filetype.
 ;
-;   2016-05-26 : THI. Allow reading of ana headers which are actually fits-headers.
+;   2016-05-26 : THI. Allow reading of ana headers which are actually
+;                fits-headers. 
 ;
 ;-
 function red_readdata, fname $
-		       , header = header $
+                       , header = header $
                        , filetype = filetype $
                        , structheader = structheader $
                        , status = status
