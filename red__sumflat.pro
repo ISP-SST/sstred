@@ -80,6 +80,8 @@
 ; 
 ;   2016-05-26 : MGL. Use get_calib method. Base log file name on
 ;                flatname.
+; 
+;   2016-05-27 : MGL. Various fixes.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -157,11 +159,10 @@ pro red::sumflat, overwrite = overwrite, $
 
         self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
                            files=files, states=states, selected=sel
-        ;; Assume there is only a single state in states from this.
-        
-        ;; Get the flat file name(s)
-        self -> get_calib, states, flatname = flatname, sflatname = sflatname, status = status
 
+        ;; Get the flat file name for the selected state
+        self -> get_calib, states[sel[0]], flatname = flatname, sflatname = sflatname, status = status
+       
         ;; If file does not exist, do sum!
         if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
            if (~keyword_set(store_rawsum) $
@@ -174,7 +175,7 @@ pro red::sumflat, overwrite = overwrite, $
 
 
         ;; Read the dark frame 
-        self -> get_calib, states, flatname = flatname, darkdata = dd, status = status
+        self -> get_calib, states[sel[0]], darkdata = dd, status = status
         if status ne 0 then begin
            print, inam+' : no dark found for camera ', cam
            continue
@@ -185,7 +186,7 @@ pro red::sumflat, overwrite = overwrite, $
            continue
         endif
 
-        print, inam+' : adding flats for state -> ' + state_list[ss]
+        print, inam+' : summing flats for state -> ' + state_list[ss]
         if(keyword_set(check)) then begin
            ;;openw, lun, self.out_dir + '/flats/'+camtag+'.'+state_list[ss]+'.discarded.txt' $
            openw, lun, flatname + '_discarded.txt', width = 500, /get_lun
@@ -217,7 +218,7 @@ pro red::sumflat, overwrite = overwrite, $
 
         ;; Remove dark
         flat -= dd
-
+stop
         ;; Output the raw (if requested) and averaged flats
         if keyword_set(store_rawsum) then begin
            headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
