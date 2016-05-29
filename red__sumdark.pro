@@ -143,13 +143,13 @@ pro red::sumdark, overwrite = overwrite, $
         endif else begin
             dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum, time_ave = time_ave)
         endelse
-        dark = float(dark)      ; The momfbd code can't read doubles.
-
-        head = red_readhead(files[0]) 
-      
-        ; check_fits will adjust naxis & bitpix to match the data
-        check_fits, dark, head, /UPDATE, /SILENT
         
+        ;; The momfbd code can't read doubles.
+        dark = float(dark)      
+
+        ;; Make header
+        head = red_readhead(files[0]) 
+        check_fits, dark, head, /UPDATE, /SILENT        
         ;; Some SOLARNET recommended keywords:
         exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
         if count gt 0 then begin
@@ -157,13 +157,10 @@ pro red::sumdark, overwrite = overwrite, $
             sxaddpar, head, 'XPOSURE', nsum*exptime
             sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
         endif
-        
         if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
         
-
         ;; Add some more info here, see SOLARNET deliverable D20.4 or
-        ;; later versions of that document. like how many
-        ;; frames were actually summed, nsum.
+        ;; later versions of that document.
 
         ;; TODO: output should be written through class-specific
         ;; methods

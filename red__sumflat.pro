@@ -82,6 +82,10 @@
 ;                flatname.
 ; 
 ;   2016-05-27 : MGL. Various fixes.
+; 
+;   2016-05-29 : MGL. Make a FITS header for the summed flat. Save
+;                both ANA and FITS format files and do it with
+;                red_writedata.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -194,9 +198,9 @@ pro red::sumflat, overwrite = overwrite, $
 
         ;; Sum files
         if keyword_set(check) then begin
-                ;;; if summing from two directories, same frame
-                ;;; numbers from two directories are consecutive ans
-                ;;; produce false drop info.  Re-sort them
+           ;; If summing from two directories, same frame numbers from
+           ;; two directories are consecutive ans produce false drop
+           ;; info. Re-sort them
            tmplist = files[sel]
            tmplist = tmplist(sort(tmplist))
            if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
@@ -204,7 +208,7 @@ pro red::sumflat, overwrite = overwrite, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
               flat = red_sumfiles(tmplist, time_ave = time_ave, check = check, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum)
+                                  lun = lun, lim = lim, summed = summed, nsum = nsum, time_ave = time_ave)
            endelse
         endif else begin 
            if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
@@ -212,13 +216,43 @@ pro red::sumflat, overwrite = overwrite, $
                                   lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
               flat = red_sumfiles(files[sel], time_ave = time_ave, check = check, $
-                                  lim = lim, summed = summed, nsum = nsum)
+                                  lim = lim, summed = summed, nsum = nsum, time_ave = time_ave)
            endelse
         endelse
 
-        ;; Remove dark
-        flat -= dd
-stop
+        ;; Subtract dark and make floating point
+        flat = float(flat-dd)
+        
+        ;; Make header
+        head = red_readhead(files[0]) 
+        check_fits, flat, head, /UPDATE, /SILENT
+        ;; Some SOLARNET recommended keywords:
+        exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
+        if count gt 0 then begin
+            sxdelpar, head, 'XPOSURE'
+            sxaddpar, head, 'XPOSURE', nsum*exptime
+            sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
+        endif
+        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
+       
+        ;; Add some more info here, see SOLARNET deliverable D20.4 or
+        ;; later versions of that document. 
+
+        ;; headerout = 't='+time_ave+'
+        ;; n_aver='+red_stri(nsum)+' darkcorrected' print,
+        ;; inam+' : saving ' + flatname file_mkdir,
+        ;; file_dirname(flatname) fzwrite, flat, flatname,
+        ;; headerout
+
+        ;; Write ANA format flat
+        print, inam+' : saving ', flatname
+        red_writedata, flatname, flat, header=head, filetype='ana', overwrite = overwrite
+
+        ;; Write FITS format flat
+        print, inam+' : saving ', flatname+'.fits'
+        red_writedata, flatname+'.fits', flat, header=head, overwrite = overwrite
+
+        
         ;; Output the raw (if requested) and averaged flats
         if keyword_set(store_rawsum) then begin
            headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
@@ -227,11 +261,6 @@ stop
            flat_raw = long(temporary(summed))
            fzwrite, flat_raw, sflatname, headerout
         endif
-
-        headerout = 't='+time_ave+' n_aver='+red_stri(nsum)+' darkcorrected'
-        print, inam+' : saving ' + flatname
-        file_mkdir, file_dirname(flatname)
-        fzwrite, float(flat), flatname, headerout
 
         if keyword_set(check) then free_lun, lun
 
