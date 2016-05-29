@@ -200,7 +200,7 @@ pro red::sumflat, overwrite = overwrite, $
         if keyword_set(check) then begin
            ;; If summing from two directories, same frame numbers from
            ;; two directories are consecutive ans produce false drop
-           ;; info. Re-sort them
+           ;; info. Re-sort them.
            tmplist = files[sel]
            tmplist = tmplist(sort(tmplist))
            if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
@@ -208,7 +208,7 @@ pro red::sumflat, overwrite = overwrite, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
               flat = red_sumfiles(tmplist, time_ave = time_ave, check = check, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum, time_ave = time_ave)
+                                  lun = lun, lim = lim, summed = summed, nsum = nsum)
            endelse
         endif else begin 
            if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
@@ -216,7 +216,7 @@ pro red::sumflat, overwrite = overwrite, $
                                   lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
               flat = red_sumfiles(files[sel], time_ave = time_ave, check = check, $
-                                  lim = lim, summed = summed, nsum = nsum, time_ave = time_ave)
+                                  lim = lim, summed = summed, nsum = nsum)
            endelse
         endelse
 
