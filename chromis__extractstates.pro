@@ -114,7 +114,8 @@
 ;
 ;   2016-05-27 : MGL. Get more information from the headers.
 ;
-;   2016-05-30 : MGL. Trim some whitespace.
+;   2016-05-30 : MGL. Trim some whitespace. Strip trailing dots in
+;                fullstate_list when there is no tuning.
 ;
 ; 
 ;-
@@ -271,6 +272,11 @@ pro chromis::extractstates, strings $
 
     if keyword_set(fullstate) then $
         fullstate_list = strjoin(transpose([[prefilter_list], [tuning_list]]), '.')
+
+    ;; Strip trailing dots in case there is no tuning (ugly!)
+    for ii = 0, nt-1 do if strmid(fullstate_list[ii],strlen(fullstate_list[ii])-1,1) eq '.' $
+    then fullstate_list[ii] = strmid(fullstate_list[ii],0,strlen(fullstate_list[ii])-1)
+
 
     if keyword_set(pf_wavelength) then $
         pf_wavelength_list = float(prefilter_list)*1e-10
