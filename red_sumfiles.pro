@@ -152,7 +152,9 @@
 ; 
 ;   2016-05-24 : MGL. Removed filtering of FITS headers.  
 ; 
-;   2016-05-25 : MGL. Use red_progressbar.
+;   2016-05-25 : MGL. Use red_progressbar.  
+; 
+;   2016-05-30 : MGL. Report how many files are being summed. 
 ; 
 ; 
 ;-
@@ -355,14 +357,14 @@ function red_sumfiles, files_list $
 
         for ifile = 0, Nfiles-1 do begin
            
-           red_progressbar, iframe, Nframes, message = inam+' : reading and summing files'
+           red_progressbar, iframe, Nframes, message = inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
            cub = red_readdata(files_list[ifile])
 
            summed += total(cub, 3, /double)
            iframe += Nframes_per_file[ifile]
 
         endfor                  ; ifile
-        red_progressbar, /finished, message = inam+' : reading and summing files'
+        red_progressbar, /finished, message = inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
 
         average = summed / Nsum
 
@@ -384,7 +386,7 @@ function red_sumfiles, files_list $
 
         ;; Tested with dark frames on 2016-05-23.
 
-        print, bb, inam+' : summing good files in memory.'
+        print, bb, inam+' : summing '+strtrim(Nsum, 2)+' good files in memory.'
 
         summed = total(cub[*, *, idx], 3, /double)
 
@@ -420,7 +422,7 @@ function red_sumfiles, files_list $
 
                  ;; If checked, we already have the frames in memory.
                  thisframe = double(cub[*, *, iframe])
-                 progress_message = inam+' : summing checked frames'
+                 progress_message = inam+' : summing '+strtrim(Nsum, 2)+' checked frames'
 
               endif else begin
 
@@ -432,7 +434,7 @@ function red_sumfiles, files_list $
                  thisframe = double(cub[*, *, ii])
                  ii += 1
                  
-                 progress_message = inam+' : summing frames'
+                 progress_message = inam+' : summing '+strtrim(Nsum, 2)+' frames'
 
               endelse
               
