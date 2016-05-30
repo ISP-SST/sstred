@@ -114,6 +114,8 @@
 ;
 ;   2016-05-27 : MGL. Get more information from the headers.
 ;
+;   2016-05-30 : MGL. Trim some whitespace.
+;
 ; 
 ;-
 pro chromis::extractstates, strings $
@@ -171,9 +173,9 @@ pro chromis::extractstates, strings $
 
           if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
-          if keyword_set(cam) then cam_list[ifile] = fxpar(head, 'CAMERA')
+          if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, 'CAMERA'), 2)
           if keyword_set(prefilter) $
-             or keyword_set(wavelength) then prefilter_list[ifile] = fxpar(head, 'FILTER1')
+             or keyword_set(wavelength) then prefilter_list[ifile] = strtrim(fxpar(head, 'FILTER1'))
 
           ;; These keywords are temporary, change when we change in
           ;; red_filterchromisheaders.
