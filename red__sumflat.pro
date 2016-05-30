@@ -86,6 +86,8 @@
 ;   2016-05-29 : MGL. Make a FITS header for the summed flat. Save
 ;                both ANA and FITS format files and do it with
 ;                red_writedata.
+; 
+;   2016-05-30 : MGL. Improve the headers.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -207,7 +209,8 @@ pro red::sumflat, overwrite = overwrite, $
               flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
-              flat = red_sumfiles(tmplist, time_ave = time_ave, check = check, $
+              flat = red_sumfiles(tmplist, check = check, $
+                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum)
            endelse
         endif else begin 
@@ -215,7 +218,8 @@ pro red::sumflat, overwrite = overwrite, $
               flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
                                   lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
-              flat = red_sumfiles(files[sel], time_ave = time_ave, check = check, $
+              flat = red_sumfiles(files[sel], check = check, $
+                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
                                   lim = lim, summed = summed, nsum = nsum)
            endelse
         endelse
@@ -225,15 +229,33 @@ pro red::sumflat, overwrite = overwrite, $
         
         ;; Make header
         head = red_readhead(files[0]) 
+        case 1 of
+           fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[0]
+           fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[0]
+           fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE'), 'T', /extract))[0]
+           else: begin
+              print, 'No date info in header.'
+              print, head
+              stop
+           end
+        endcase
         check_fits, flat, head, /UPDATE, /SILENT
+        sxaddpar, head, 'DATE', red_timestamp(/utc, /iso), 'Creation date of FITS header', before = 'TIMESYS'
         ;; Some SOLARNET recommended keywords:
         exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
         if count gt 0 then begin
-            sxdelpar, head, 'XPOSURE'
-            sxaddpar, head, 'XPOSURE', nsum*exptime
-            sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
+            sxaddpar, head, 'XPOSURE', nsum*exptime, exptime_comment+' Total exposure time', format = 'f8.6'
+            sxaddpar, head, 'TEXPOSUR', exptime, exptime_comment+' Single-exposure time', format = 'f9.6' $
+                      , after = 'XPOSURE'
         endif
-        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
+        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', after = 'TEXPOSUR'
+        if n_elements(time_end) ne 0 then sxaddpar, head, 'DATE-END', date+'T'+time_end $
+           , 'Date of end of observation', after = 'DATE'
+        if n_elements(time_ave) ne 0 then sxaddpar, head, 'DATE-AVE', date+'T'+time_ave $
+           , 'Average date of observation', after = 'DATE'
+        if n_elements(time_beg) ne 0 then sxaddpar, head, 'DATE-BEG', date+'T'+time_beg $
+           , 'Date of start of observation', after = 'DATE'
+
        
         ;; Add some more info here, see SOLARNET deliverable D20.4 or
         ;; later versions of that document. 
@@ -246,11 +268,11 @@ pro red::sumflat, overwrite = overwrite, $
 
         ;; Write ANA format flat
         print, inam+' : saving ', flatname
-        red_writedata, flatname, flat, header=head, filetype='ana', overwrite = overwrite
+        red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
 
         ;; Write FITS format flat
         print, inam+' : saving ', flatname+'.fits'
-        red_writedata, flatname+'.fits', flat, header=head, overwrite = overwrite
+        red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
 
         
         ;; Output the raw (if requested) and averaged flats
