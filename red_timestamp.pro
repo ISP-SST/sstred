@@ -25,19 +25,25 @@
 ; 
 ; :Keywords:
 ; 
-;    utc : in, optional, type=boolean, default=FALSE
+;    utc : in, optional, type=boolean
 ;
 ;         If this keyword is set, the UTC time will be used for
 ;         the time stamp instead of the local time.
 ; 
+;    iso : in, optional, type=boolean
 ; 
-; :history:
+;         If this keyword is set, the timestamp will be formatted as
+;         YYYY-MM-DDThh:mm:ss. 
+; 
+; :History:
 ; 
 ;   2013-09-02 : MGL. First version.
+;
+;   2016-05-30 : MGL. New keyword "iso".
 ; 
 ; 
 ;-
-function red_timestamp, utc = utc
+function red_timestamp, utc = utc, iso = iso
 
     time = Systime(UTC=Keyword_Set(utc))
     day = Strmid(time, 0, 3)
@@ -48,7 +54,11 @@ function red_timestamp, utc = utc
     months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
     m = (Where(months EQ StrUpCase(month))) + 1
  
-    timestamp = year + String(m, FORMAT='(I2.2)') + date + '@' + stamp
+    if keyword_set(iso) then begin
+       timestamp = year + '-' + string(m, FORMAT='(I2.2)') + '-' + date + 'T' + stamp
+    endif else begin
+       timestamp = year + String(m, FORMAT='(I2.2)') + date + '@' + stamp
+    endelse
 
     return, timestamp
 
