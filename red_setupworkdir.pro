@@ -183,7 +183,10 @@
 ;                 than crispred in the CHROMIS script.  
 ;
 ;    2016-05-18 : MGL. Use sumdark's dirs keyword instead of
-;                 setdarkdir. 
+;                 setdarkdir.  
+;
+;    2016-05-30 : MGL. Don't zero Sarnoff tap borders for
+;                 CHROMIS cameras. 
 ;
 ;
 ;-
@@ -445,7 +448,7 @@ pro red_setupworkdir, search_dir = search_dir $
      endif
      
      for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
+        printf, Slun, "a -> makegains, /preserve, pref='" + prefilters[ipref] $
                 + "' "
      endfor
 
