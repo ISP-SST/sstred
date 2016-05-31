@@ -358,7 +358,7 @@ function red_sumfiles, files_list $
         for ifile = 0, Nfiles-1 do begin
            
            red_progressbar, iframe, Nframes, message = inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
-           cub = red_readdata(files_list[ifile])
+           cub = red_readdata(files_list[ifile],/silent)
 
            summed += total(cub, 3, /double)
            iframe += Nframes_per_file[ifile]
@@ -428,7 +428,7 @@ function red_sumfiles, files_list $
 
                  ;; If not checked, we (sometimes) have to read the frames in.
                  if ii ge Nframes_per_file[ifile] then begin
-                    cub = red_readdata(files_list[ifile])
+                    cub = red_readdata(files_list[ifile],/silent)
                     ii = 0
                  endif
                  thisframe = double(cub[*, *, ii])

@@ -154,10 +154,10 @@ pro chromis::get_calib, states $
 
         if file_test(dname) then begin
             if arg_present(darkdata) then begin
-                darkdata[0, 0, istate] = red_readdata(dname, header = darkhead, status = darkstatus)
+                darkdata[0, 0, istate] = red_readdata(dname, header = darkhead, status = darkstatus, /silent)
                 if status eq 0 then status = darkstatus
             endif else if arg_present(darkhead) then begin
-                darkhead[0, istate] = red_readhead(dname, status = darkstatus)
+                darkhead[0, istate] = red_readhead(dname, status = darkstatus, /silent)
                 if status eq 0 then status = darkstatus
             endif
         endif else begin
@@ -186,10 +186,10 @@ pro chromis::get_calib, states $
 
         if file_test(fname) then begin
             if arg_present(flatdata) then begin
-                flatdata[0, 0, istate] = red_readdata(fname, header = flathead, status = flatstatus)
+                flatdata[0, 0, istate] = red_readdata(fname, header = flathead, status = flatstatus, /silent)
                 if status eq 0 then status = flatstatus
             endif else if arg_present(flathead) then begin
-                flathead[0, istate] = red_readhead(fname, status = flatstatus)
+                flathead[0, istate] = red_readhead(fname, status = flatstatus, /silent)
                 if status eq 0 then status = flatstatus
             endif
         endif else begin
@@ -203,10 +203,10 @@ pro chromis::get_calib, states $
            
         if file_test(sfname) then begin
             if arg_present(sflatdata) then begin
-                sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead, status = sflatstatus)
+                sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead, status = sflatstatus, /silent)
                 if status eq 0 then status = sflatstatus
             endif else if arg_present(flathead) then begin
-                sflathead[0, istate] = red_readhead(sfname, status = sflatstatus)
+                sflathead[0, istate] = red_readhead(sfname, status = sflatstatus, /silent)
                 if status eq 0 then status = sflatstatus
             endif
         endif else begin
@@ -231,10 +231,10 @@ pro chromis::get_calib, states $
 
         if file_test(pname) then begin
             if arg_present(pinhdata) then begin
-                pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead, status = pinhstatus)
+                pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead, status = pinhstatus, /silent)
                 if status eq 0 then status = pinhstatus
             endif else if arg_present(pinhhead) then begin
-                pinhhead[0, istate] = red_readhead(pname, status = pinhstatus)
+                pinhhead[0, istate] = red_readhead(pname, status = pinhstatus, /silent)
                 if status eq 0 then status = pinhstatus
             endif
         endif else begin
