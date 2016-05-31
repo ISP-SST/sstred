@@ -53,14 +53,20 @@
 ;                 Commented out some unfinished code.
 ;
 ;    2016-05-31 : MGL. Add filename to the header.
+;
+;    2016-05-31 : JLF. Added silent keyword (suppresses printing SOLARNET
+;		  compliance message. 
+;		  Started using red_keytab for keywords we aren't sure of.
 ; 
 ; 
 ;-
-function red_filterchromisheaders, head, metadata=metaStruct
+function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
   
   if fxpar(head, 'SOLARNET') gt 0 then begin
+    if ~keyword_set(silent) then begin
      print, 'red_filterchromisheaders : This header should already be (at least partially) SOLARNET compliant.'
      print, 'Return without changes.'
+    endif
      return, head
   endif
 
@@ -164,20 +170,20 @@ function red_filterchromisheaders, head, metadata=metaStruct
            endif
 
            ;; Camera tag (check that this is the correct keyword...)
-           if fxpar(newhead, 'CAMERA') eq 0 then begin
+           if fxpar(newhead, red_keytab('camtag')) eq 0 then begin
 
               ;; The camera tag consists of the string 'cam' followed by a
               ;; roman number.
               camtag = ((stregex(barefile, '(\.|^)(cam[IVXL]+)(\.|$)', /extr, /subexp))[2,*])[0]
 
-              if camtag ne '' then sxaddpar, newhead, 'CAMERA', camtag $
+              if camtag ne '' then sxaddpar, newhead, red_keytab('camtag'), camtag $
                                              , 'Inferred from filename.' $
                                              , before = 'COMMENT'
            endif                ; CAMERA
            
       
            ;; FILTERn, WAVEBAND and WAVELNTH
-           if fxpar(newhead, 'FILTER1') eq 0 then begin
+           if fxpar(newhead, red_keytab('pref')) eq 0 then begin
 
               ;; Get prefilter names from file name. For now, we have
               ;; the filter wheel position as a tag consisting of the
@@ -186,7 +192,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
 
               if wheelpos ne '' then begin
 
-                 if fxpar(head, 'INSTRUME') eq 'Chromis-N' then begin
+                 if fxpar(head, red_keytab('cam_channel')) eq 'Chromis-N' then begin
 
                     ;; Chromis-N
                     case wheelpos of
@@ -225,41 +231,21 @@ function red_filterchromisheaders, head, metadata=metaStruct
 
                     ;; Chromis-W and Chromis-D
                     case wheelpos of
-                       'w1' : begin
-                          filter1 = 'CaHK-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w2' : begin
-                          filter1 = 'CaHK-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w3' : begin
-                          filter1 = 'CaHK-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w4' : begin
-                          filter1 = 'CaHK-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w5' : begin
-                          filter1 = 'CaHK-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
                        'w6' : begin
                           filter1 = 'Hb-cont'
                           wavelnth = 486.1
                           waveband = 'H-beta'
                        end
+                       else: begin
+			  filter1 = 'CaHK-cont'
+                          wavelnth = 0.
+                          waveband = 'Ca II H & K'
+                       end
                     endcase
                  endelse
      
                  comment = 'Inferred from filter wheel position in filename.'
-                 sxaddpar, newhead, 'FILTER1', filter1, comment, before = 'COMMENT'
+                 sxaddpar, newhead, red_keytab('pref'), filter1, comment, before = 'COMMENT'
                  sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
 
               endif             ; Found a wheel position
@@ -283,7 +269,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
               ;;
               ;; But what keyword to use for this? Invent something
               ;; for now!
-              sxaddpar, newhead, 'FRAME1', framenumber1 $
+              sxaddpar, newhead, red_keytab('frame'), framenumber1 $
                         , '(number of first frame) Inferred from filename.' $
                         , before = 'COMMENT'
            endif
@@ -291,7 +277,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
            ;; The scan number is the only field that is exactly five
            ;; digits long:
            scannumber = ((stregex(barefile, '(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*])[0]
-           if scannumber ne '' then sxaddpar, newhead, 'SCANNUM', long(scannumber) $
+           if scannumber ne '' then sxaddpar, newhead, red_keytab('scannumber'), long(scannumber) $
                                               , '(scan number) Inferred from filename.' $
                                               , before = 'COMMENT'
            ;; What keyword to use for this? Invented SCANNUM for now.

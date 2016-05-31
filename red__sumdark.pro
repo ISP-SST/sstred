@@ -119,7 +119,7 @@ pro red::sumdark, overwrite = overwrite, $
 
         self->selectfiles, cam=cam, dirs=dirs, $
                          files=files, states=states, /force
-
+                         
         nf = n_elements(files)
         if( nf eq 0 || files[0] eq '') then begin
             print, inam+' : '+cam+': no files found in: '+dirstr

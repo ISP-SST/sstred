@@ -44,12 +44,14 @@
 ; 
 ;   2016-05-18 : JLF. Created.
 ;
+;   2016-05-31 : JLF. Added keyword silent to suppress informational messages
 ;-
 function red_readhead, fname, $
                        filetype = filetype, $
                        structheader = structheader, $
-                       status = status
-
+                       status = status, $
+		       silent = silent
+		       
     if( file_test(fname) eq 0 ) then begin
         message, 'File does not exist: '+fname,/info
         status = -1
@@ -100,7 +102,7 @@ function red_readhead, fname, $
     endcase
 
     ;; header filtering to bring it to solarnet compliance
-    header = red_filterchromisheaders(header,meta={filename:fname})
+    header = red_filterchromisheaders(header,meta={filename:fname}, silent=silent)
      
     if n_elements(header) ne 0 and keyword_set(structheader) then begin
         header = red_paramstostruct(header)

@@ -62,12 +62,14 @@
 ;   2016-05-26 : THI. Allow reading of ana headers which are actually
 ;                fits-headers. 
 ;
+;   2016-05-31 : JLF. Added silent keyword to suppress informational messages.
 ;-
 function red_readdata, fname $
                        , header = header $
                        , filetype = filetype $
                        , structheader = structheader $
-                       , status = status
+                       , status = status $
+                       , silent = silent
 
   if file_test(fname) eq 0 then begin
 
@@ -137,7 +139,7 @@ function red_readdata, fname $
 
   
   if n_elements(header) ne 0 then $
-    header = red_filterchromisheaders(header,meta={filename:fname})
+    header = red_filterchromisheaders(header,meta={filename:fname}, silent=silent)
   
   if n_elements(header) ne 0 and keyword_set(structheader) then begin
      header = red_paramstostruct(header)

@@ -39,6 +39,8 @@
 ;
 ;   2016-05-25 : MGL. Check if Ts and Te were found.
 ;
+;   2016-05-31 : JLF. Start using red_keytab to keep track of SOLARNET 
+; 		 keywords.
 ;-
 function red_anahdr2fits, anahdr $
 		    , img = img
@@ -68,7 +70,7 @@ function red_anahdr2fits, anahdr $
   campos = strpos(anahdr, '"Camera')
   if campos ne -1 then begin
      cam = 'cam' + (strsplit(strmid(anahdr, campos+8), ' ', /extract))[0]
-     sxaddpar, hdr, 'CAMERA', cam, 'Name of camera'
+     sxaddpar, hdr, red_keytab('cam'), cam, 'Name of camera'
   end
 
   ;; Instrument
