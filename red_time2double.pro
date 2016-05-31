@@ -31,13 +31,18 @@
 ; 
 ; :Keywords:
 ; 
-;    dir  : in, optional, type=boolean
+;    dir : in, optional, type=boolean
+;   
+;       Set this to do the reverse operation, make a string.
+;   
+; 
+;    inverse : in, optional, type=boolean
 ;   
 ;       Set this to do the reverse operation, make a string.
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -50,13 +55,18 @@
 ;   2014-04-30 : MGL. Input data t can now be an array. Also, be more
 ;                relaxed about t's format.
 ; 
+;   2014-05-31 : MGL. New inverse keyword, does the same as dir
+;                keyword. 
+; 
 ;-
-function red_time2double, t, dir = dir
+function red_time2double, t, dir = dir, inverse = inverse
 
   isscalar = size(t, /n_dim) eq 0
   n = n_elements(t)
+
+  if keyword_set(dir) then inverse = 1
   
-  if(~keyword_set(dir)) then begin
+  if(~keyword_set(inverse)) then begin
      res = dblarr(n)
      for i = 0, n-1 do begin
         tmp = strsplit(t[i], ':.', /extract, count = Nfields)
