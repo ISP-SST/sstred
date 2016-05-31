@@ -115,22 +115,29 @@ pro chromis::selectfiles, cam = cam $
         return
     endif
     
+    if( n_elements(files) eq 1 ) then files = [files]
+    
     if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
         self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
         ; TODO: this is a really ugly way to drop the WB states, think of something better
+
         wb_cams = (strmatch( states.camtag, self->getcamtag('Chromis-W')) $
                 or strmatch( states.camtag, self->getcamtag('Chromis-D')))
         pos = where(wb_cams gt 0)
+
         ; replace NB state-info with prefilter for the WB cameras
         if( min(pos) ge 0 ) then states[pos].fullstate = states[pos].prefilter
+
     endif
 
+    if( n_elements(states) eq 1 ) then states = [states]
+    
     states.skip *= 0    ; always clear selection, so repeated calls with the same files/states are possible
     if( keyword_set(nremove) ) then self->skip, states, nremove
 
     Npref = n_elements(prefilter)
     if( Npref gt 0 ) then begin
-        selected = states.skip * 0
+        selected = [states.skip] * 0
         prefilter = [prefilter]    ; make sure it's an array
         for ip = 0, Npref-1 do begin
             pos = where(states.pref eq prefilter[ip])
@@ -139,18 +146,20 @@ pro chromis::selectfiles, cam = cam $
             endif
            ; stop
         endfor
-        states[where(selected lt 1)].skip = 1
+        pos = where(selected lt 1)
+        if( min(pos) ge 0 ) then states[pos].skip = 1
     endif
     
     Nstates = n_elements(ustat)
     if( Nstates gt 0 ) then begin
-        selected = states.skip * 0
+        selected = [states.skip] * 0
         tstates = [ustat]    ; make sure it's an array
         for ip = 0, Nstates-1 do begin
             pos = where(states.fullstate eq tstates[ip])
             if( min(pos) ge 0 ) then selected[pos] = 1
         endfor
-        states[where(selected lt 1)].skip = 1
+        pos = where(selected lt 1)
+        if( min(pos) ge 0 ) then states[pos].skip = 1
     endif
 
     selected = where( states.skip lt 1 )
