@@ -51,6 +51,8 @@
 ;                 scan number and for the number of the first frame,
 ;                 they should be replaced with proper keywords ASAP.
 ;                 Commented out some unfinished code.
+;
+;    2016-05-31 : MGL. Add filename to the header.
 ; 
 ; 
 ;-
@@ -157,6 +159,8 @@ function red_filterchromisheaders, head, metadata=metaStruct
               ;; Preserve existing file name, this keyword should be the
               ;; name of the original file.
               metaStruct.filename = filename
+              sxaddpar, newhead, 'FILENAME', filename $
+                        , 'Name of original file.', before = 'COMMENT'
            endif
 
            ;; Camera tag (check that this is the correct keyword...)
