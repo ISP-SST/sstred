@@ -141,7 +141,7 @@ pro red::make_intdif_gains, pref = pref, scan = scan, cam = cam, bad=bad, preser
                                 ;
                  print, inam + 'loading -> '+f[idx]
                  rat = f0(f[idx]) * 1.e-4
-                 gain = red_flat2gain(flat*rat,bad=bad, preserve=preserve, smooth=smooth, mingain=mingain, maxgain=maxgain) 
+                 gain = self->flat2gain(flat*rat,bad=bad, preserve=preserve, smooth=smooth, mingain=mingain, maxgain=maxgain) 
                  
                                 ;
                                 ; Save result

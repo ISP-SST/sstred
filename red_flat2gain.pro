@@ -41,10 +41,6 @@
 ;   
 ;      Unsharp masking smoothing kernel width.
 ;   
-;    preserve : in, optional, boolean
-;   
-;      If set, don't zero borders between Sarnoff taps.
-;   
 ;    gain_nozero : out, optional
 ;   
 ;      The gain before zeroing the bad pixels.
@@ -60,8 +56,17 @@
 ;   2013-07-02 : JdlCR : Fixed a bug that would allow for NaNs in the
 ;                        resulting gaintable 
 ; 
+;   2016-05-31 : THI : Remove instrument specific keyword /preserve and use
+;                      class-methods instead.
+; 
 ;-
-function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, smoothsize = smoothparameter, preserve = preserve, gain_nozero = gain_nozero
+function red_flat2gain, flat, $
+                        badthreshold = bad, $
+                        mingain = min, $
+                        maxgain = max, $
+                        smoothsize = smoothparameter, $
+                        gain_nozero = gain_nozero
+
   if(n_elements(bad) eq 0) then bad = 1.0
   if(n_elements(min) eq 0) then min = 0.1
   if(n_elements(max) eq 0) then max = 4.0
@@ -94,8 +99,6 @@ function red_flat2gain, flat, badthreshold = bad, mingain = min, maxgain = max, 
   idx = where(~finite(g), count)
   if(count gt 0) then g[idx] = 0.0
 
-
-  if(~keyword_set(preserve)) then for ii = 1,7 do g[ii*128,*] = 0.0                   
 
   return, g
 end

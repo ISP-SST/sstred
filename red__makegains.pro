@@ -116,7 +116,7 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
         endif
      endif
 
-     gain = red_flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
+     gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
      
      namout = file_basename(files[ii], '.flat')+'.gain'
      outdir = self.out_dir+'/gaintables/'

@@ -175,7 +175,7 @@ pro red::init_data_destretch, pref = pref, scan = scan, min = min, max = max, sm
      print, unam+' ERROR, flat not found -> '+ffile
   endif
   print, inam+'loading flat '+ffile
-  ff = red_flat2gain(red_clipim(f0(ffile), cl[*,0]), mi = min, ma = max, $
+  ff = self->flat2gain(red_clipim(f0(ffile), cl[*,0]), mi = min, ma = max, $
                      smooth = smooth, bad = bad, /preserve)     
   
   ;;

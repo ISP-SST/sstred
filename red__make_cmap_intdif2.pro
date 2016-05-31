@@ -220,7 +220,7 @@ pro red::make_cmap_intdif2, scan = scan, cam = cam, pref = pref, debug = debug, 
                                 ;
                                 ; Load flat and dark
                                 ;
-           if(file_test(gf)) then dum =  red_flat2gain(f0(gf), gain_no=g) else begin
+           if(file_test(gf)) then dum =  self->flat2gain(f0(gf), gain_no=g) else begin
               print, inam + 'ERROR, gain file not found -> ', gf
               stop
            endelse
