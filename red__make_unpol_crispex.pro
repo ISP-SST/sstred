@@ -76,7 +76,7 @@
 ;                the image
 ;
 ;-
-pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor, float = float
+pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor, float = float, maxsize=maxsize
 
 ;  FileANA=1
   ;; Name of this method
@@ -462,13 +462,15 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
         endif
      endelse
   endfor
-  
+
+  if(~keyword_set(maxsize)) then maxsize=dimim[1]
+
   if(~keyword_set(scans_only)) then begin
      ;; Close assoc file for output of multi-scan data cube.
      free_lun, lun
      print, inam + ' : done'
      print, inam + ' : result saved to -> '+odir+'/'+ofile 
-     red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = nscan, nw = nwav
+     red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = nscan, nw = nwav, maxsize=maxsize
 ;     make_crispex_sp_cube, odir+'/'+ofile, nwav, nscan
   endif
 

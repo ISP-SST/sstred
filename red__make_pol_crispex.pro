@@ -89,7 +89,7 @@ function red_filterim, im, filter
   return, real_part(fft(ft, /inverse)) + me
 end
 
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor, no_cross_talk = no_cross_talk, mask = mask, filter_file = filter_file
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor, no_cross_talk = no_cross_talk, mask = mask, filter_file = filter_file, maxsize=maxsize
  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
@@ -431,13 +431,15 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      endelse
   endfor
 
+  if(~keyword_set(maxsize)) then maxsize=dimim[1]
+  
   if(~keyword_set(scans_only)) then begin
      free_lun, lun
      print, inam + ' : done'
      print, inam + ' : result saved to -> '+odir+'/'+ofile 
      if(keyword_set(float)) then begin
-        red_flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav
-     endif else red_flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav,/icube
+        red_flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav, maxsize=maxsize
+     endif else red_flipthecube, odir+'/'+ofile, nt = nscan, nw=nwav,/icube, maxsize=maxsize
   endif
   
   return
