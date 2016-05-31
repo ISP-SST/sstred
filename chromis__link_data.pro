@@ -45,12 +45,15 @@
 ;
 ;   2016-05-30 : MGL. Rename from red::link_data, make it a CHROMIS
 ;                method. Rewrite for CHROMIS.
+;
+;   2016-05-31 : MGL. Added dirs keyword. Don't zero the scannumber. 
 ;   
 ;-
 pro chromis::link_data, link_dir = link_dir $
                         , uscan = uscan $
                         , all_data = all_data $
                         , pref = pref $
+                        , dirs = dirs $
                         , nremove = nremove
 
   if n_elements(link_dir) eq 0 then link_dir = 'data'
@@ -63,20 +66,33 @@ pro chromis::link_data, link_dir = link_dir $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if ~ptr_valid(self.data_dirs) then begin
-     print, inam+' : ERROR : undefined data_dir'
-     return
-  endif
+  if n_elements(dirs) gt 0 then begin
+     dirs = [dirs] 
+  endif else begin
+     if ~ptr_valid(self.data_dirs) then begin
+        print, inam+' : ERROR : undefined data_dir'
+        return
+     endif
+     dirs = *self.dark_dir
+  endelse
 
-  Ndirs = n_elements(*self.data_dirs)
+  Ndirs = n_elements(dirs)
+  if( Ndirs eq 0) then begin
+     print, inam+' : ERROR : no directories defined'
+     return
+  endif else begin
+     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+     else dirstr = dirs[0]
+  endelse
+
 
   linkerdir = self.out_dir + '/' + 'link_scripts' + '/'
   file_mkdir, linkerdir
   
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin
-     print, inam + ' : Folder -> ' + (*self.data_dirs)[idir]
-     data_dir = (*self.data_dirs)[idir]
+     print, inam + ' : Folder -> ' + dirs[idir]
+     data_dir = dirs[idir]
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]
@@ -117,34 +133,33 @@ pro chromis::link_data, link_dir = link_dir $
               print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
               CONTINUE
            ENDIF
-           files = files(idx)
+           files = files[idx]
            Nfiles = np
            states = states[idx]
         ENDIF
 
-
         ;;; check for complete scans only
         IF ~keyword_set(all_data) THEN BEGIN
-            scans = states.scannumber[uniq(states.scannumber, sort(states.scannumber))]
+           scans = states.scannumber[uniq(states.scannumber, sort(states.scannumber))]
 
            Nscans = n_elements(scans)
            f_scan = lonarr(Nscans)
            FOR iscan = 0L, Nscans-1 DO $
               f_scan[iscan] = n_elements(where(states.scannumber EQ scans[iscan]))
-           idx = replicate(1b, Nfiles)
+           mask = replicate(1b, Nfiles)
            FOR iscan = 1L, Nscans-1 DO BEGIN
               IF f_scan[iscan]-f_scan[0] LT 0 THEN BEGIN
                  print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans[iscan]
                  print, inam+'             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
                         + strtrim(f_scan(0), 2) + ' files.  Skipping it'
-                 idx[where(states.scannumber EQ scans[iscan])] = 0
+                 mask[where(states.scannumber EQ scans[iscan])] = 0
               ENDIF
            ENDFOR
-           files = (temporary(files))[where(idx)]
+           idx = where(mask)
+           files = (temporary(files))[idx]
            Nfiles = n_elements(files)
            states = states[idx]
         ENDIF
-        
 
         ;; Flag nremove
             
@@ -170,7 +185,7 @@ pro chromis::link_data, link_dir = link_dir $
                                 
            namout = outdir + camtag $
                     + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                    + '_' + states[ifile].fullstate $
+                    + '_' + strtrim(states[ifile].fullstate, 2) $
                     + '_' + string(states[ifile].framenumber, format = '(i07)') $
                     + '.fits'
          
@@ -179,7 +194,7 @@ pro chromis::link_data, link_dir = link_dir $
            if wb then begin
               namout = outdir1 + camtag $
                        + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                       + '_' + states[ifile].prefilter $
+                       + '_' + strtrim(states[ifile].prefilter, 2) $
                        + '_' + string(states[ifile].framenumber, format = '(i07)') $
                        + '.fits'
               

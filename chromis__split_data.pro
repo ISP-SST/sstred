@@ -1,4 +1,3 @@
-
 ; docformat = 'rst'
 
 ;+
@@ -220,7 +219,7 @@ pro chromis::split_data, split_dir = split_dir $
                  ;; Link name 
                  namout1 = outdir1 + camtag $
                           + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                          + '_' + strtrim(states[ifile].prefilter, 2)$
+                          + '_' + strtrim(states[ifile].prefilter, 2) $
                           + '_' + string(frameno, format = '(i07)') $
                           + '.fits'
  
