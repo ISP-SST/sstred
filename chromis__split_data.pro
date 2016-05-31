@@ -30,7 +30,8 @@
 ; :History:
 ; 
 ;   2016-05-30 : MGL. New method, based on chromis::link_data.
-;   
+; 
+;   2016-05-31 : JLF. Start using red_keytab to keep track of SOLARNET keywords.
 ;-
 pro chromis::split_data, split_dir = split_dir $
                          , uscan = uscan $
@@ -161,7 +162,7 @@ pro chromis::split_data, split_dir = split_dir $
 
            ;; Get the frame number for the first frame in the cube,
            ;; remove from header
-           frame1   = fxpar(head, 'FRAME1')
+           frame1   = fxpar(head, red_keytab('frame'))
            date_beg = fxpar(head, 'DATE-BEG')
            cadence  = fxpar(head, 'CADENCE')
            
@@ -169,7 +170,7 @@ pro chromis::split_data, split_dir = split_dir $
            ;; the individual-frame files.
            sxaddpar, head, 'DATE', red_timestamp(/utc, /iso) $
                      , 'Creation date of FITS header', before = 'TIMESYS'
-           sxdelpar, head, 'FRAME1'
+           sxdelpar, head, red_keytab('frame')
            sxdelpar, head, 'NAXIS3'
            sxaddpar, head, 'NAXIS', 2, /savecomment
 stop

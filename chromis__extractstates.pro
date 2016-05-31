@@ -120,7 +120,8 @@
 ;
 ;   2016-05-31 : MGL. Detect whether filter1 keyword exists.
 ;
-; 
+;   2016-05-31 : JLF. Begin using red_keytab to keep track of changing
+;		 SOLARNET keywords.
 ;-
 pro chromis::extractstates, strings $
                         , states $
@@ -179,17 +180,17 @@ pro chromis::extractstates, strings $
 
           if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
-          if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, 'CAMERA'), 2)
+          if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, red_keytab('cam')), 2)
           
-          filter1 = fxpar(head, 'FILTER1', count = Nfilter1)
+          filter1 = fxpar(head, red_keytab('prefilter'), count = Nfilter1)
           if( (keyword_set(prefilter) || keyword_set(pf_wavelength)) && Nfilter1 ne 0 ) then begin
              prefilter_list[ifile] = filter1
           endif
 
           ;; These keywords are temporary, change when we change in
           ;; red_filterchromisheaders.
-          if keyword_set(framenumber) then num_list[ifile] = fxpar(head, 'FRAME1')
-          if keyword_set(scannumber) then scan_list[ifile] = fxpar(head, 'SCANNUM')
+          if keyword_set(framenumber) then num_list[ifile] = fxpar(head, red_keytab('framenumber'))
+          if keyword_set(scannumber) then scan_list[ifile] = fxpar(head, red_keytab('scannumber'))
 
           ;; Replace the following regexp expressions when this info
           ;; is in the header.
