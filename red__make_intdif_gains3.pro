@@ -305,7 +305,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
                  ENDIF ELSE BEGIN 
                     rat = flats[*, *, ww] * reform(cub2[ww, *, *]/cub1[ww, *, *])
 
-                    g = float(red_flat2gain(temporary(rat), min = min, max = max, bad = bad, $
+                    g = float(self->flat2gain(temporary(rat), min = min, max = max, bad = bad, $
                                             smooth = smooth, preserve = preserve))
                     ;;
                     ;; Save gains

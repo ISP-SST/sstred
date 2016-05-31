@@ -340,7 +340,7 @@ pro red::sumpinh_new, nthreads = nthreads $
               
            endif                ; DoDescatter
            
-           gain = red_flat2gain(flat)
+           gain = self->flat2gain(flat)
            
            print, inam+' : summing pinh for state -> ' + selected_states[ii]
            pos = where((state eq selected_states[ii]), count)

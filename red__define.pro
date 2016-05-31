@@ -34,7 +34,7 @@ PRO red__define
             flat_dir:ptr_new(),$    ; The directories where raw flat fields are stored
             data_dirs:ptr_new(),$   ; The directories where raw science data is stored
             current_data_dir:0B,$   ; Index of data directory to process (default is 0)
-            pinh_dir:'',$           ; The directory where raw pinhole array data is stored
+            pinh_dirs:ptr_new(),$   ; The directories where raw pinhole array data is stored
             prefilter_dir:'',$      ;
             polcal_dir:'',$         ; The directory where raw polcal data is stored
             cam_tags:ptr_new(),$    ; List of camera "names" (e.g. camXX)

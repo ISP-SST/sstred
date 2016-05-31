@@ -129,10 +129,10 @@ function red_filterchromisheaders, head, metadata=metaStruct
 
      ;; If there isn't already a DATE-END keyword, we'll have
      ;; construct one.
-     if fxpar(newhead, 'DATE-END') eq '' then begin
+     if fxpar(newhead, 'DATE-END') eq 0 then begin
         sxaddpar, newhead, 'DATE-END', fxpar(head, 'DATE'), comment, after = 'DATE'
      endif
-     if fxpar(newhead, 'DATE-BEG') eq '' then begin
+     if fxpar(newhead, 'DATE-BEG') eq 0 then begin
         ;; Make DATE-BEG from DATE, counting backwards
         date = strsplit(fxpar(head, 'DATE'), 'T', /extract)
         time = red_time2double(date[1]) $
@@ -145,6 +145,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
 
         if tag_exist(metaStruct, 'filename', /top_level) then begin
 
+
            ;; Extract metadata from the filename (for now it's all we
            ;; have)
            
@@ -152,36 +153,37 @@ function red_filterchromisheaders, head, metadata=metaStruct
            filename = file_basename(metaStruct.filename)
            barefile = file_basename(metaStruct.filename, '.fits')
 
-           if fxpar(newhead, 'FILENAME') eq '' then begin
+           if fxpar(newhead, 'FILENAME') eq 0 then begin
               ;; Preserve existing file name, this keyword should be the
               ;; name of the original file.
               metaStruct.filename = filename
            endif
 
            ;; Camera tag (check that this is the correct keyword...)
-           if fxpar(newhead, 'CAMERA') eq '' then begin
+           if fxpar(newhead, 'CAMERA') eq 0 then begin
 
               ;; The camera tag consists of the string 'cam' followed by a
               ;; roman number.
               camtag = ((stregex(barefile, '(\.|^)(cam[IVXL]+)(\.|$)', /extr, /subexp))[2,*])[0]
 
               if camtag ne '' then sxaddpar, newhead, 'CAMERA', camtag $
-                                             , 'Inferred from file name.' $
+                                             , 'Inferred from filename.' $
                                              , before = 'COMMENT'
-
            endif                ; CAMERA
            
-           
+      
            ;; FILTERn, WAVEBAND and WAVELNTH
-           if fxpar(newhead, 'FILTER1') eq '' then begin
+           if fxpar(newhead, 'FILTER1') eq 0 then begin
 
               ;; Get prefilter names from file name. For now, we have
               ;; the filter wheel position as a tag consisting of the
               ;; letter w followed by a single digit.
               wheelpos = ((stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*])[0]
+
               if wheelpos ne '' then begin
 
                  if fxpar(head, 'INSTRUME') eq 'Chromis-N' then begin
+
                     ;; Chromis-N
                     case wheelpos of
                        'w1' : begin
@@ -216,6 +218,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
                        end
                     endcase
                  endif else begin
+
                     ;; Chromis-W and Chromis-D
                     case wheelpos of
                        'w1' : begin
@@ -250,15 +253,15 @@ function red_filterchromisheaders, head, metadata=metaStruct
                        end
                     endcase
                  endelse
-                 
-                 comment = 'Inferred from filter wheel position in file name.'
+     
+                 comment = 'Inferred from filter wheel position in filename.'
                  sxaddpar, newhead, 'FILTER1', filter1, comment, before = 'COMMENT'
                  sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
 
               endif             ; Found a wheel position
 
-           endif                ; FILTER1, WAVEBAND & WAVELNTH
-           
+           endif               ; FILTER1, WAVEBAND & WAVELNTH
+      
            ;; The frame number is the last field iff it consists
            ;; entirely of digits. The third subexpression of the regular
            ;; expression matches only the end of the string because
@@ -277,7 +280,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
               ;; But what keyword to use for this? Invent something
               ;; for now!
               sxaddpar, newhead, 'FRAME1', framenumber1 $
-                        , '(number of first frame) Inferred from file name.' $
+                        , '(number of first frame) Inferred from filename.' $
                         , before = 'COMMENT'
            endif
 
@@ -285,7 +288,7 @@ function red_filterchromisheaders, head, metadata=metaStruct
            ;; digits long:
            scannumber = ((stregex(barefile, '(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*])[0]
            if scannumber ne '' then sxaddpar, newhead, 'SCANNUM', long(scannumber) $
-                                              , '(scan number) Inferred from file name.' $
+                                              , '(scan number) Inferred from filename.' $
                                               , before = 'COMMENT'
            ;; What keyword to use for this? Invented SCANNUM for now.
 
@@ -331,9 +334,9 @@ function red_filterchromisheaders, head, metadata=metaStruct
                , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
      
      ;; Add some more keywords:
-     if fxpar(newhead, 'OBS_SHDU') eq '' then $
+     if fxpar(newhead, 'OBS_SHDU') eq 0 then $
         sxaddpar, newhead, 'OBS_SHDU', 1, 'This HDU contains observational data', before = 'DATE'
-     if fxpar(newhead, 'TIMESYS') eq '' then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'DATE'
+     if fxpar(newhead, 'TIMESYS') eq 0 then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'DATE'
      
   endif else stop               ; Non-simple
 

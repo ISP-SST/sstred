@@ -83,13 +83,13 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
            ;if(ww eq 0) then begin
            ;   print, inam+'loading flat '+file_basename(ffile);
 ;
-;              ff[*,*,0,0] = red_flat2gain(f0(ffile), mi = min, ma = max, $
+;              ff[*,*,0,0] = self->flat2gain(f0(ffile), mi = min, ma = max, $
 ;                                          smooth = smooth, bad = bad, /preserve)
 ;              for tt = 1,  n_elements(uwav)-1 do ff[*,*,tt,cc] = ff[*,*,0,0]
 ;           endif
         endif else begin
            print, inam+'loading flat '+file_basename(ffile)
-           ff[*,*,ww,cc] = red_flat2gain(f0(ffile), mi = min, ma = max, $
+           ff[*,*,ww,cc] = self->flat2gain(f0(ffile), mi = min, ma = max, $
                                          smooth = smooth, bad = bad, /preserve)
         endelse
      endfor

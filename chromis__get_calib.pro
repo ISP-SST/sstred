@@ -146,20 +146,23 @@ pro chromis::get_calib, states $
         darktag = camtag $
                   + '_' + string(states[istate].exposure*1000, format = '(f4.2)') + 'ms' $
                   + '_' + 'G' + string(states[istate].gain, format = '(f05.2)')
+
         dname = self.out_dir+'/darks/' + darktag + '.dark'
-        darkname[istate] = dname
+        if arg_present(darkname) then begin
+            darkname[istate] = dname
+        endif
 
-        if n_elements(dname) ne 0 then begin
-           
-           if arg_present(darkdata) then begin
-              darkdata[0, 0, istate] = red_readdata(dname, header = darkhead, status = darkstatus)
-              if status eq 0 then status = darkstatus
-           endif else if arg_present(darkhead) then begin
-              darkhead[0, istate] = red_readhead(dname, status = darkstatus)
-              if status eq 0 then status = darkstatus
-           endif
-
-        endif else status = -1
+        if file_test(dname) then begin
+            if arg_present(darkdata) then begin
+                darkdata[0, 0, istate] = red_readdata(dname, header = darkhead, status = darkstatus)
+                if status eq 0 then status = darkstatus
+            endif else if arg_present(darkhead) then begin
+                darkhead[0, istate] = red_readhead(dname, status = darkstatus)
+                if status eq 0 then status = darkstatus
+            endif
+        endif else begin
+            if( arg_present(darkdata) || arg_present(darkhead) ) then status = -1
+        endelse
 
      endif
 
@@ -170,37 +173,45 @@ pro chromis::get_calib, states $
 
         flattag = camtag $
                   + '_' + string(states[istate].exposure*1000, format = '(f4.2)') + 'ms' $
-                  + '_' + 'G' + string(states[istate].gain, format = '(f05.2)') $
-                  + '_' + states[istate].fullstate
+                  + '_' + 'G' + string(states[istate].gain, format = '(f05.2)')
+                  
+        if( states[istate].fullstate ne '' ) then begin
+            flattag += '_' + states[istate].fullstate
+        endif
+
         fname = self.out_dir+'/flats/' + flattag + '.flat'
-        flatname[istate] = fname
+        if arg_present(flatname) then begin
+            flatname[istate] = fname
+        endif
 
-        if n_elements(fname) ne 0 then begin
-           
-           if arg_present(flatdata) then begin
-              flatdata[0, 0, istate] = red_readdata(fname, header = flathead, status = flatstatus)
-              if status eq 0 then status = flatstatus
-           endif else if arg_present(flathead) then begin
-              flathead[0, istate] = red_readhead(fname, status = flatstatus)
-              if status eq 0 then status = flatstatus
-           endif
-
-        endif else status = -1
+        if file_test(fname) then begin
+            if arg_present(flatdata) then begin
+                flatdata[0, 0, istate] = red_readdata(fname, header = flathead, status = flatstatus)
+                if status eq 0 then status = flatstatus
+            endif else if arg_present(flathead) then begin
+                flathead[0, istate] = red_readhead(fname, status = flatstatus)
+                if status eq 0 then status = flatstatus
+            endif
+        endif else begin
+            if( arg_present(flatdata) || arg_present(flathead) ) then status = -1
+        endelse
 
         sfname = self.out_dir+'/flats/' + flattag + '_summed.flat'
-        sflatname[istate] = sfname
-
-        if n_elements(sfname) ne 0 then begin
+        if arg_present(sflatname) then begin
+            sflatname[istate] = sfname
+        endif
            
-           if arg_present(sflatdata) then begin
-              sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead, status = sflatstatus)
-              if status eq 0 then status = sflatstatus
-           endif else if arg_present(flathead) then begin
-              sflathead[0, istate] = red_readhead(sfname, status = sflatstatus)
-              if status eq 0 then status = sflatstatus
-           endif
-
-        endif else status = -1
+        if file_test(sfname) then begin
+            if arg_present(sflatdata) then begin
+                sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead, status = sflatstatus)
+                if status eq 0 then status = sflatstatus
+            endif else if arg_present(flathead) then begin
+                sflathead[0, istate] = red_readhead(sfname, status = sflatstatus)
+                if status eq 0 then status = sflatstatus
+            endif
+        endif else begin
+            if( arg_present(sflatdata) || arg_present(sflathead) ) then status = -1
+        endelse
 
      endif
 
@@ -208,21 +219,27 @@ pro chromis::get_calib, states $
 
      if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
 
-        pinhtag = camtag + '_' + states[istate].fullstate
+        pinhtag = camtag
+        if( states[istate].fullstate ne '' ) then begin
+            pinhtag += '_' + states[istate].fullstate
+        endif
+
         pname = self.out_dir+'/pinhs/' + pinhtag + '.pinh'
-        pinhname[istate] = pname
+        if arg_present(pinhname) then begin
+            pinhname[istate] = pname
+        endif
 
-        if n_elements(pname) ne 0 then begin
-           
-           if arg_present(pinhdata) then begin
-              pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead, status = pinhstatus)
-              if status eq 0 then status = pinhstatus
-           endif else if arg_present(pinhhead) then begin
-              pinhhead[0, istate] = red_readhead(pname, status = pinhstatus)
-              if status eq 0 then status = pinhstatus
-           endif
-
-        endif else status = -1
+        if file_test(pname) then begin
+            if arg_present(pinhdata) then begin
+                pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead, status = pinhstatus)
+                if status eq 0 then status = pinhstatus
+            endif else if arg_present(pinhhead) then begin
+                pinhhead[0, istate] = red_readhead(pname, status = pinhstatus)
+                if status eq 0 then status = pinhstatus
+            endif
+        endif else begin
+            if( arg_present(pinhdata) || arg_present(pinhhead) ) then status = -1
+        endelse
         
      endif
 

@@ -57,8 +57,6 @@ pro red::initialize, filename
   self.filetype = 'MOMFBD'
   
   ;; Init vars
-  ;; self.data_dir = ''
-  self.pinh_dir = '' 
   self.polcal_dir = ''
    
   self.dodata = 1B
@@ -107,7 +105,10 @@ pro red::initialize, filename
            self.out_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
         'pinh_dir': begin
-           self.pinh_dir = (strsplit(line,' =',/extract))[1] ; extract value
+            tmp = strtrim((strsplit(line, '=', /extract))[1],2)
+            if(strpos(tmp,"'") ne -1) then dum = execute('tmp = '+tmp)
+            if ptr_valid(self.pinh_dirs) then red_append, *self.pinh_dirs, tmp $
+            else self.pinh_dirs = ptr_new(tmp, /NO_COPY)
         end
         'data_dir': begin
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
@@ -168,8 +169,10 @@ pro red::initialize, filename
      IF ptr_valid(self.data_dirs) THEN FOR i = 0, n_elements(*self.data_dirs)-1 DO $
        IF strmid((*self.data_dirs)[i], 0, 1) NE '/' AND strlen((*self.data_dirs)[i]) GT 0 $
        THEN (*self.data_dirs)[i] = self.root_dir + (*self.data_dirs)[i]
+     IF ptr_valid(self.pinh_dirs) THEN FOR i = 0, n_elements(*self.pinh_dirs)-1 DO $
+       IF strmid((*self.pinh_dirs)[i], 0, 1) NE '/' AND strlen((*self.pinh_dirs)[i]) GT 0 $
+       THEN (*self.pinh_dirs)[i] = self.root_dir + (*self.pinh_dirs)[i]
 ;     if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
-     if(strmid(self.pinh_dir, 0, 1) NE '/' AND strlen(self.pinh_dir) gt 0) then self.pinh_dir = self.root_dir + self.pinh_dir
      if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then self.prefilter_dir = self.root_dir + self.prefilter_dir
 ;     if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
      if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then self.polcal_dir = self.root_dir + self.polcal_dir
@@ -219,7 +222,7 @@ pro red::initialize, filename
   ;;   print, 'red::initialize : WARNING : data_dir is undefined!'
   ;;   self.dodata = 0B
   ;;endif
-  if(self.pinh_dir eq '') then begin
+  if( ~ptr_valid(self.pinh_dirs) ) then begin
      print, 'red::initialize : WARNING : pinh_dir is undefined!'
      self.dopinh = 0B
   endif
@@ -249,7 +252,6 @@ pro red::initialize, filename
 
   ;; print fields
   IF ptr_valid(self.dark_dir) THEN BEGIN
-  if(self.dopinh) then print, 'red::initialize : pinh_dir = '+ self.pinh_dir
   if(self.dopolcal) then print, 'red::initialize : polcal_dir = '+ self.polcal_dir
      nn = n_elements(*self.dark_dir)
      IF(nn EQ 1) THEN BEGIN
@@ -277,6 +279,15 @@ pro red::initialize, filename
         FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.cam_channels)[k]
      ENDELSE
   ENDIF
+  if ptr_valid(self.pinh_dirs) then begin
+     nn = n_elements(*self.pinh_dirs)
+     if(nn eq 1) then begin
+        print, 'red::initialize : pinh_dir = '+ (*self.pinh_dirs)[0]
+     endif else begin
+        print, 'red::initialize : pinh_dirs :'
+        for k = 0, nn-1 do print, string(k, format='(I5)') + ' -> ' + (*self.pinh_dirs)[k]
+     endelse
+  endif
   ;if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
   if ptr_valid(self.data_dirs) then begin
      nn = n_elements(*self.data_dirs)
