@@ -116,7 +116,9 @@
 ;
 ;   2016-05-30 : MGL. Trim some whitespace. Strip trailing dots in
 ;                fullstate_list when there is no tuning. Set
-;                scannumber and framenumber if fullstate is set 
+;                scannumber and framenumber if fullstate is set. 
+;
+;   2016-05-31 : MGL. Detect whether filter1 keyword exists.
 ;
 ; 
 ;-
@@ -178,8 +180,10 @@ pro chromis::extractstates, strings $
           if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
           if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, 'CAMERA'), 2)
-          if( (keyword_set(prefilter) || keyword_set(pf_wavelength)) && fxpar(head, 'FILTER1') ne 0 ) then begin
-              prefilter_list[ifile] = strtrim(fxpar(head, 'FILTER1'))
+          
+          filter1 = fxpar(head, 'FILTER1', count = Nfilter1)
+          if( (keyword_set(prefilter) || keyword_set(pf_wavelength)) && Nfilter1 ne 0 ) then begin
+             prefilter_list[ifile] = filter1
           endif
 
           ;; These keywords are temporary, change when we change in
