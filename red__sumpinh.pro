@@ -73,173 +73,162 @@
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
 ; 
+;   2016-05-31 : THI. Re-write to use the class-methods.
 ; 
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , no_descatter = no_descatter $
                   , ustat = ustat $
-                  , pref = epref $
+                  , prefilter = prefilter $
+                  , cams = cams $
+                  , dirs = dirs $
                   , pinhole_align = pinhole_align $
                   , brightest_only = brightest_only $
-                  , lc_ignore = lc_ignore
+                  , lc_ignore = lc_ignore $
+                  , overwrite = overwrite $
+                  , sum_in_idl = sum_in_idl
 
-  if ~keyword_set(pinhole_align) then pinhole_align = 0
+    ;if ~keyword_set(pinhole_align) then pinhole_align = 0
   
-  ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+    ;; Name of this method
+    inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
-  
-  if ~self.dopinh then begin
-     print, inam + ' : ERROR : undefined pinh_dir'
-     return
-  endif
-  if ~keyword_set(nthreads) then nthread = 2 else nthread = nthreads
+    if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
+    else if ptr_valid(self.pinh_dirs) then dirs = *self.pinh_dirs
+    
+    if(n_elements(cams) eq 0 and ptr_valid(self.cam_channels)) then cams = *self.cam_channels
+    if(n_elements(cams) eq 1) then cams = [cams]
+    
+    ;; Logging
+    help, /obj, self, output = selfinfo 
+    red_writelog, selfinfo = selfinfo
 
-  ;; Output dir
-  if keyword_set(pinhole_align) then begin
-     outdir = self.out_dir+ '/' + 'pinh_align/'
-  endif else begin
-     outdir = self.out_dir+ '/' + 'pinh/'
-  endelse
-  file_mkdir, outdir
+    if ~keyword_set(nthreads) then nthread = 2 else nthread = nthreads
 
-  ;; Cameras
-  cams = [self.camt, self.camr, self.camwb]
-  Ncams = n_elements(cams)
-
-  ;; Loop over cameras
-  for icam = 0, Ncams-1 do begin
-
-     ;; Create file list for this camera
-     spawn, 'find ' + self.pinh_dir + '/' + cams[icam] + "/ | grep im.ex |  grep -v '.lcd.'", files
-     Nfiles = n_elements(files)
-     ;;nr = n_elements(rfiles)
-     ;;nw = n_elements(wfiles)  
-
-     if (files[0] eq '') then begin
-        print, inam + ' : files not found for this camera:'
-        print, '   '+cams[icam]+' -> '+ Nfiles
+    Ncams = n_elements(cams)
+    if( Ncams eq 0) then begin
+        print, inam+' : ERROR : undefined cams (and cam_channels)'
         return
-     endif
-     
-     ;; Sort files
-     files = red_sortfiles(files)
+    endif
 
-     ;; Get states for the cameras
-     print, inam + ' : extracting states for camera '+cams[icam] 
-     stat = red_getstates(files)
+    Ndirs = n_elements(dirs)
+    if( Ndirs eq 0) then begin
+        print, inam+' : ERROR : no pinhole directories defined'
+        return
+    endif else begin
+        if Ndirs gt 1 then begin
+            dirstr = '['+ strjoin(dirs,';') + ']'
+            print,'WARNING: sumpinh was called with multiple directories.'
+            print,'Only the first directory will be used.'
+            print,"To use a particular directory, use: a->sumpinh,dir='path/to/phdata'"
+            dirs = [dirs[0]]
+        endif else dirstr = dirs[0]
+    endelse
 
-     ;; Flagging first image after tuning (will use transmitted camera for the states)
-     state = stat.state
-;     rstate = rstat.state
-;     wstate = wstat.state
-     if n_elements(ustat) eq 0 then ustat = state[uniq(state, sort(state))]
+    if ~file_test(dirs,/directory) then begin
+        print, inam + ' : ERROR : "'+dirs+'" is not a directory'
+        return
+    endif
+    
+    ;; Loop over cameras
+    for icam = 0, Ncams-1 do begin
 
-     ;; Get camera tag
-     cam = red_camtag(files[0])
-     
-     ;; Load darks
-     dark = f0(self.out_dir + '/darks/'+cam+'.dark')
+        cam = cams[icam]
+        camtag = self->getcamtag( cam )
 
-     ;; Loop
-;     firsttime = 1B
-     ns = n_elements(ustat)
-     for ii = 0L, ns-1 do BEGIN
-        IF(n_elements(epref) GT 0) THEN BEGIN
-           IF ((strsplit(ustat[ii],'.',/extract))[0] NE epref) THEN CONTINUE
-        endif
+;         dname = self->getdark( cam, data=dd )
+;         if( n_elements(dd) eq 0 ) then begin
+;             print, inam+' : no dark found for camera ', cam
+;             continue
+;         endif
 
-        pref = (strsplit(ustat[ii], '.',/extract))[0]
-        if cams[icam] eq self.camwb then begin
-           flatf = self.out_dir + '/flats/' + strjoin([cam, pref, 'flat'],'.')
+        self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
+                         files=files, states=states, /force
+
+        nf = n_elements(files)
+        if( nf eq 0 || files[0] eq '') then begin
+            print, inam+' : '+cam+': no files found in: '+dirstr
+            print, inam+' : '+cam+': skipping camera!'
+            continue
         endif else begin
-           flatf = self.out_dir + '/flats/' + strjoin([cam, ustat[ii], 'flat'],'.')
+            print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
-        if(file_test(flatf)) then begin
-           flat = f0(flatf)
-        endif else begin
-           print, inam + ' : ERROR -> flat not found for '+cam+'.'+ustat[ii]
-           stop
-        endelse
+        state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-        ;; Descatter data?
-        if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-;           if(firsttime) then begin
-              
-              self -> loadbackscatter, cam, pref, bgt, Psft
-              et = 1
-;              descatter_psf_name =  self.descatter_dir+ '/' + cam + '.psf.f0'
-;              descatter_bgain_name = self.descatter_dir+ '/' + cam + '.backgain.f0'
-;
-;              
-;              if file_test(descatter_psf_name) and file_test(descatter_bgain_name) then begin
-;                 Psft = f0(descatter_psf_name)
-;                 bgt = f0(descatter_bgain_name)
-;                 et = 1
-;              endif else et = 0
-              
-;              firsttime = 0B
-;           endif
+        ns = n_elements(state_list)
+        ;; Loop over states and sum
+        for ss = 0L, ns - 1 do begin
+         
+            self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+                           files=files, states=states, selected=sel
 
-           if et then begin
-              flat = red_cdescatter(flat, bgt, Psft, /verbose, nthreads = nthread)
-           endif
-        endif
-        
-        gain = red_flat2gain(flat)
+            ;; Get the flat file name for the selected state
+            self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
+                        pinhname = pinhname, status = status
 
-        print, inam+' : summing pinh for state -> ' + ustat[ii]
-        pos = where((state eq ustat[ii]), count)
-        if count eq 0 then begin
+            if( status ne 0 ) then begin
+                print, inam+' : failed to load calibration data for:', states[sel[0]].filename
+                continue
+            endif
 
-           print, inam + ' : WARNING-> No files found for camera '+cams[icam]+' -> '+ ustat[ii]
+            if keyword_set(pinhole_align) then begin
+                ; replace extension .pinh with .fpinh
+                ; replace outdir "pinh/" with "pih_align/"
+                ; Do we want to keep doing this ?
+            endif
+            
+            ;; If file does not exist, do sum!
+            if( ~keyword_set(overwrite) && file_test(pinhname) ) then begin
+               print, inam+' : file exists: ' + pinhname + ' , skipping! (run sumpinh, /overwrite to recreate)'
+               continue
+            endif
 
-        endif else begin
+            if( n_elements(sel) lt 1 || min(sel) lt 0 ) then begin
+                print, inam+' : '+cam+': no files found for state: '+state_list[ss]
+                continue
+            endif
+            
+            pref = states[sel[0]].prefilter
+            print, inam+' : adding pinholes for state -> ' + state_list[ss]
+            
+            DoBackscatter = 0
+            if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+                self -> loadbackscatter, camtag, pref, bgt, Psft
+                DoBackscatter = 1
+            endif
+            if DoBackscatter gt 0 then begin
+                ff = red_cdescatter(ff, bgt, Psft, /verbose, nthreads = nthread)
+            endif
+            gain = self->flat2gain(ff)
 
-           if keyword_set(pinhole_align) then begin
+            ;; Sum files
 
-              ;; Dark and flat correction and bad-pixel filling done
-              ;; by red_sumfiles on each frame before alignment.
-              c = red_sumfiles(stat.files[pos], /pinhole_align, dark = dark, gain = gain)
+            ;; Dark and flat correction and bad-pixel filling done
+            ;; by red_sumfiles on each frame before alignment.
+            if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
+                psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
+                                 backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum, verbose=2)
+            endif else begin
+                psum = red_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
+                                 backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
+            endelse
 
-              ;; Descatter not taken care of yet
+            head = red_readhead(files[sel[0]]) 
+            check_fits, psum, head, /UPDATE, /SILENT        
+            if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', before='COMMENT'
 
-           endif else begin
-              
-              ;; Dark and flat correction, possibly descattering, and
-              ;; then bad-pixel filling done here after summing.
-              c = red_sumfiles(stat.files[pos]) - dark
-              
-              if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-                 if et then begin
-                    c = red_cdescatter(c, bgt, Psft, /verbose, nthreads = nthread)
-                 endif
-              endif
+            file_mkdir, file_dirname(pinhname)
 
-              print, inam + ' : Filling pixels'
-              c = red_fillpix(temporary(c) * gain, mask=gain ne 0, nthreads = nthread)
+            print, inam+' : saving ' + pinhname
+            if keyword_set(pinhole_align) then begin
+                red_writedata, pinhname, psum, header=head, filetype='ANA', overwrite = overwrite
+            endif else begin
+                red_writedata, pinhname, fix(round(10. * psum)), header=head, filetype='ANA', overwrite = overwrite
+            endelse
 
-           endelse
+        endfor  ; states
 
-           ;; Save
-           head = 'n_aver=' + red_stri(count)
-
-           namout = cam+'.' +ustat[ii]+'.pinh'
-           print, inam+' : saving ' + outdir + namout
-           fzwrite, fix(round(10. * c)), outdir+namout, head
-
-           if keyword_set(pinhole_align) then begin
-              namout = cam+'.' +ustat[ii]+'.fpinh'
-              print, inam+' : saving ' + outdir + namout
-              fzwrite, c, outdir+namout, head
-           endif
-
-        endelse                 ; count
-     endfor                     ; ii
-  endfor                        ; icam
+    endfor      ; cam
 
 end
