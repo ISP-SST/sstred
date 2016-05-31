@@ -31,10 +31,12 @@
 ; :History:
 ; 
 ;   2016-05-30 : MGL. New method, based on chromis::link_data.
-; 
-;   2016-05-31 : MGL. Added dirs keyword.
 ;   
-;   2016-05-31 : JLF. Start using red_keytab to keep track of SOLARNET keywords.
+;   2016-05-31 : JLF. Start using red_keytab to keep track of SOLARNET
+;                keywords. 
+; 
+;   2016-05-31 : MGL. Added dirs keyword. Link WB data on the
+;                fly. Don't zero the scannumber.
 ;
 ;-
 pro chromis::split_data, split_dir = split_dir $
@@ -74,9 +76,6 @@ pro chromis::split_data, split_dir = split_dir $
   endelse
 
 
-  linkerdir = self.out_dir + '/' + 'link_scripts' + '/'
-  file_mkdir, linkerdir
-  
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin
      print, inam + ' : Folder -> ' + dirs[idir]
@@ -121,11 +120,10 @@ pro chromis::split_data, split_dir = split_dir $
               print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
               CONTINUE
            ENDIF
-           files = files(idx)
+           files = files[idx]
            Nfiles = np
            states = states[idx]
         ENDIF
-
 
         ;;; check for complete scans only
         IF ~keyword_set(all_data) THEN BEGIN
@@ -135,30 +133,25 @@ pro chromis::split_data, split_dir = split_dir $
            f_scan = lonarr(Nscans)
            FOR iscan = 0L, Nscans-1 DO $
               f_scan[iscan] = n_elements(where(states.scannumber EQ scans[iscan]))
-           idx = replicate(1b, Nfiles)
+           mask = replicate(1b, Nfiles)
            FOR iscan = 1L, Nscans-1 DO BEGIN
               IF f_scan[iscan]-f_scan[0] LT 0 THEN BEGIN
                  print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans[iscan]
                  print, inam+'             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
                         + strtrim(f_scan(0), 2) + ' files.  Skipping it'
-                 idx[where(states.scannumber EQ scans[iscan])] = 0
+                 mask[where(states.scannumber EQ scans[iscan])] = 0
               ENDIF
            ENDFOR
-           files = (temporary(files))[where(idx)]
+           idx = where(mask)
+           files = (temporary(files))[idx]
            Nfiles = n_elements(files)
            states = states[idx]
         ENDIF
-        
 
         ;; Flag nremove
         
-        ;; Create linker script for WB data
         Nfiles = n_elements(files)
 
-        linkername = linkerdir + cam + '_science_linker_' + folder_tag + '.sh'
-        openw, lun, linkername, /get_lun
-        printf, lun, '#!/bin/bash'
-        
         outdir  = self.out_dir + '/' + split_dir + '/' + folder_tag+ '/' + cam + '/'
         outdir1 = self.out_dir + '/' + split_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
 
@@ -215,22 +208,24 @@ pro chromis::split_data, split_dir = split_dir $
               
               namout = outdir + camtag $
                        + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                       + '_' + states[ifile].fullstate $
+                       + '_' + strtrim(states[ifile].fullstate, 2)$
                        + '_' + string(frameno, format = '(i07)') $
                        + '.fits'
               
-              red_writedata, namout, cube[*, *, iframe], header = head, filetype = 'FITS'
+              red_writedata, namout, cube[*, *, iframe], header = head $
+                             , filetype = 'FITS', /overwrite
               
               if wb then begin
 
-                 ;; Write link command 
-                 namout = outdir1 + camtag $
+                 ;; Link name 
+                 namout1 = outdir1 + camtag $
                           + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                          + '_' + states[ifile].prefilter $
+                          + '_' + strtrim(states[ifile].prefilter, 2)$
                           + '_' + string(frameno, format = '(i07)') $
                           + '.fits'
-                 
-                 printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
+ 
+                 ;; Do the linking
+                 file_link, namout, namout1, /allow_same
 
               endif
               
@@ -240,13 +235,7 @@ pro chromis::split_data, split_dir = split_dir $
            
         endfor                  ; ifile
 
-        red_progressbar, message = inam+' : creating linker for '+cam, /finished
-
-        free_lun, lun
-        
-        ;; Link data
-        print, inam+' : executing '+  linkername
-;        spawn, '/bin/bash ' + linkername
+        red_progressbar, message = inam+' : splitting files for '+cam, /finished
         
      endfor                     ; icam
   endfor                        ; idir
