@@ -53,29 +53,28 @@ nstr = n_elements(metaname)
 
 fitsname = metaname
 
+;; The translation table.
+;; Add your own translations here.
+keyword_translator_table = [['cam',		'CAMERA'  ],$
+			    ['camtag',		'CAMERA'  ],$
+			    ['frame',		'FRAME1'  ],$
+			    ['framenumber',	'FRAME1'  ],$
+			    ['pref',		'FILTER1' ],$
+			    ['prefilter',	'FILTER1' ],$
+			    ['camdir',		'INSTRUME'],$
+			    ['cam_channel',	'INSTRUME'],$
+			    ['scan',		'SCANNUM' ],$
+			    ['scannumber',	'SCANNUM' ]]
+
 for i = 0, nstr-1 do begin
   
   test = strlowcase(metaname[i])
   
-  case 1 of 
-    
-    ; camera name
-    test eq 'cam' || test eq 'camtag': fitsname[i] = 'CAMERA'
-    
-    ; frame number
-    test eq 'frame' || test eq 'framenumber': fitsname[i] = 'FRAME1'
-
-    ; prefilter
-    test eq 'pref' || test eq 'prefilter': fitsname[i] = 'FILTER1'
-    
-    ; camdir
-    test eq 'camdir' || test eq 'cam_channel': fitsname[i] = 'INSTRUME'
-    
-    ; scan number
-    test eq 'scan' || test eq 'scannumber': fitsname[i] = 'SCANNUM'
-    
-  endcase
-
+  idx = where(keyword_translator_table[0,*] eq test,cnt)
+  
+  if cnt eq 1 then fitsname[i] = keyword_translator_table[1,idx] $
+  else message,'Translation error, no unambiguous keyword translation found.'
+  
 endfor
 
 return,fitsname
@@ -86,6 +85,6 @@ print,red_keytab('cam')
 print,red_keytab('Camtag')
 print,red_keytab(['frame','PREF','scannumber'])
 print,red_keytab('cam_channel')
-print,red_keytab(cam)
+print,red_keytab('camp')
 
 end

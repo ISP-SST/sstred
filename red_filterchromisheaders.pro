@@ -91,11 +91,7 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
         end
      endcase
 
-     naxis  = fxpar(head, 'NAXIS', comment = naxis_comment)
-     naxisx = lonarr(naxis)
-
-     for i = 0, naxis-1 do naxisx[i] = fxpar(head, 'NAXIS'+strtrim(i+1, 2))
-     
+     naxisx = fxpar(head, 'NAXIS*')
      mkhdr, newhead, type, naxisx
 
      for i = 0, n_elements(head)-1 do begin
@@ -137,15 +133,22 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
 
      ;; If there isn't already a DATE-END keyword, we'll have
      ;; construct one.
-     if fxpar(newhead, 'DATE-END') eq 0 then begin
-        sxaddpar, newhead, 'DATE-END', fxpar(head, 'DATE'), comment, after = 'DATE'
+     dummy = fxpar(newhead, 'DATE-END', count=count)
+     if count eq 0 then begin
+        date_str = fxpar(newhead, 'DATE', count=count2)
+        if count2 then sxaddpar, newhead, 'DATE-END', date_str, comment, after = 'DATE'
      endif
-     if fxpar(newhead, 'DATE-BEG') eq 0 then begin
-        ;; Make DATE-BEG from DATE, counting backwards
-        date = strsplit(fxpar(head, 'DATE'), 'T', /extract)
-        time = red_time2double(date[1]) $
-               - fxpar(head, 'INTERVAL')*fxpar(head, 'NAXIS3')
-        sxaddpar, newhead, 'DATE-BEG', date[0]+'T'+red_time2double(time, /dir), before = 'DATE-END'
+     dummy = fxpar(newhead, 'DATE-BEG', count=count)
+     if count eq 0 then begin
+        date_str = fxpar(newhead, 'DATE', count=count2)
+        cadence = fxpar(newhead, 'CADENCE', count=cadcount)
+        nframes = fxpar(newhead, 'NAXIS3', count=framecount)
+        if count2 && cadcount && framecount then begin
+            ;; Make DATE-BEG from DATE, counting backwards
+            date = strsplit(date_str, 'T', /extract)
+            time = red_time2double(date[1]) - cadence*nframes
+            sxaddpar, newhead, 'DATE-BEG', date[0]+'T'+red_time2double(time, /dir), before = 'DATE-END'
+        endif
      endif
      
      ;; Add any additional metadata we were given.
@@ -161,7 +164,8 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
            filename = file_basename(metaStruct.filename)
            barefile = file_basename(metaStruct.filename, '.fits')
 
-           if fxpar(newhead, 'FILENAME') eq 0 then begin
+           dummy = fxpar(newhead, 'FILENAME', count=count)
+           if count eq 0 then begin
               ;; Preserve existing file name, this keyword should be the
               ;; name of the original file.
               metaStruct.filename = filename
@@ -170,7 +174,8 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
            endif
 
            ;; Camera tag (check that this is the correct keyword...)
-           if fxpar(newhead, red_keytab('camtag')) eq 0 then begin
+           dummy = fxpar(newhead, red_keytab('camtag'), count=count)
+           if count eq 0 then begin
 
               ;; The camera tag consists of the string 'cam' followed by a
               ;; roman number.
@@ -183,7 +188,8 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
            
       
            ;; FILTERn, WAVEBAND and WAVELNTH
-           if fxpar(newhead, red_keytab('pref')) eq 0 then begin
+           dummy = fxpar(newhead, red_keytab('pref'), count=count)
+           if count eq 0 then begin
 
               ;; Get prefilter names from file name. For now, we have
               ;; the filter wheel position as a tag consisting of the
@@ -191,62 +197,70 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
               wheelpos = ((stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*])[0]
 
               if wheelpos ne '' then begin
-
-                 if fxpar(head, red_keytab('cam_channel')) eq 'Chromis-N' then begin
-
-                    ;; Chromis-N
-                    case wheelpos of
-                       'w1' : begin
-                          filter1 = 'CaK-blue'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w2' : begin
-                          filter1 = 'CaK-core'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w3' : begin
-                          filter1 = 'CaH-core'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w4' : begin
-                          filter1 = 'CaH-red'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w5' : begin
-                          filter1 = 'CaH-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                       'w6' : begin
-                          filter1 = 'Hb-core'
-                          wavelnth = 486.1
-                          waveband = 'H-beta'
-                       end
-                    endcase
+              
+                 channel = fxpar(head, red_keytab('cam_channel'), count=count)
+                 if count eq 0 then begin
+                    ;  TDB: can we extract filter-info without the channel-tag?
+                    sxaddpar, newhead, red_keytab('pref'), wheelpos, before = 'COMMENT'
                  endif else begin
+                    
+                    if channel eq 'Chromis-N' then begin
 
-                    ;; Chromis-W and Chromis-D
-                    case wheelpos of
-                       'w6' : begin
-                          filter1 = 'Hb-cont'
-                          wavelnth = 486.1
-                          waveband = 'H-beta'
-                       end
-                       else: begin
-			  filter1 = 'CaHK-cont'
-                          wavelnth = 0.
-                          waveband = 'Ca II H & K'
-                       end
-                    endcase
+                        ;; Chromis-N
+                        case wheelpos of
+                        'w1' : begin
+                            filter1 = 'CaK-blue'
+                            wavelnth = 0.
+                            waveband = 'Ca II H & K'
+                        end
+                        'w2' : begin
+                            filter1 = 'CaK-core'
+                            wavelnth = 0.
+                            waveband = 'Ca II H & K'
+                        end
+                        'w3' : begin
+                            filter1 = 'CaH-core'
+                            wavelnth = 0.
+                            waveband = 'Ca II H & K'
+                        end
+                        'w4' : begin
+                            filter1 = 'CaH-red'
+                            wavelnth = 0.
+                            waveband = 'Ca II H & K'
+                        end
+                        'w5' : begin
+                            filter1 = 'CaH-cont'
+                            wavelnth = 0.
+                            waveband = 'Ca II H & K'
+                        end
+                        'w6' : begin
+                            filter1 = 'Hb-core'
+                            wavelnth = 486.1
+                            waveband = 'H-beta'
+                        end
+                        endcase
+                    endif else begin
+
+                        ;; Chromis-W and Chromis-D
+                        case wheelpos of
+                            'w6' : begin
+                                filter1 = 'Hb-cont'
+                                wavelnth = 486.1
+                                waveband = 'H-beta'
+                            end
+                        else: begin
+                            filter1 = 'CaHK-cont'
+                                wavelnth = 0.
+                                waveband = 'Ca II H & K'
+                            end
+                        endcase
+                    endelse
+        
+                    comment = 'Inferred from filter wheel position in filename.'
+                    sxaddpar, newhead, red_keytab('pref'), filter1, comment, before = 'COMMENT'
+                    sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
+                    
                  endelse
-     
-                 comment = 'Inferred from filter wheel position in filename.'
-                 sxaddpar, newhead, red_keytab('pref'), filter1, comment, before = 'COMMENT'
-                 sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
 
               endif             ; Found a wheel position
 
@@ -324,9 +338,11 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
                , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
      
      ;; Add some more keywords:
-     if fxpar(newhead, 'OBS_SHDU') eq 0 then $
+     dummy = fxpar(newhead, 'OBS_SHDU',count=count)
+     if count eq 0 then $
         sxaddpar, newhead, 'OBS_SHDU', 1, 'This HDU contains observational data', before = 'DATE'
-     if fxpar(newhead, 'TIMESYS') eq 0 then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'DATE'
+     dummy = fxpar(newhead, 'TIMESYS',count=count)
+     if count eq 0 then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'DATE'
      
   endif else stop               ; Non-simple
 

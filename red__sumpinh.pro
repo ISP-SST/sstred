@@ -123,6 +123,7 @@ pro red::sumpinh, nthreads = nthreads $
             print,"To use a particular directory, use: a->sumpinh,dir='path/to/phdata'"
             dirs = [dirs[0]]
         endif else dirstr = dirs[0]
+        dirstr = dirs[0]    ; remove when we can properly deal with multiple directories.
     endelse
 
     if ~file_test(dirs,/directory) then begin
@@ -214,7 +215,7 @@ pro red::sumpinh, nthreads = nthreads $
                                  backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
             endelse
 
-            head = red_readhead(files[sel[0]]) 
+            head = red_readhead(files[sel[0]], /silent) 
             check_fits, psum, head, /UPDATE, /SILENT        
             if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', before='COMMENT'
 
