@@ -115,7 +115,8 @@
 ;   2016-05-27 : MGL. Get more information from the headers.
 ;
 ;   2016-05-30 : MGL. Trim some whitespace. Strip trailing dots in
-;                fullstate_list when there is no tuning.
+;                fullstate_list when there is no tuning. Set
+;                scannumber and framenumber if fullstate is set 
 ;
 ; 
 ;-
@@ -142,6 +143,8 @@ pro chromis::extractstates, strings $
        exposure = 1
        tuning = 1
        prefilter = 1
+       scannumber = 1
+       framenumber = 1
     endif
     
     nt = n_elements(strings)
