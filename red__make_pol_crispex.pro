@@ -74,12 +74,25 @@
 ;
 ;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
 ;                despite rotation and shifts, the entire FOV is inside
-;                the image
+;                the image.
+;
+;   2016-05-30 : JdlCR, added support for Fourier filtering the different
+;                Stokes parameters
 ;-
-pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor, no_cross_talk = no_cross_talk, mask = mask
+function red_filterim, im, filter
+  me = median(im)
+  dim = size(im, /dim)
+  ft = fft((im - me) * red_taper2(dim[0], dim[1], 1./20.), /double)
+
+  ft *= dcomplex(filter, filter)
+  
+  return, real_part(fft(ft, /inverse)) + me
+end
+
+pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite = overwrite, float=float, filter=filter, wbwrite = wbwrite, nostretch = nostretch, iscan=iscan, no_timecor=no_timecor, no_cross_talk = no_cross_talk, mask = mask, filter_file = filter_file
  
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
 
   ;; Logging
   help, /obj, self, output = selfinfo 
@@ -88,7 +101,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
   if(keyword_set(float)) then exten = '.fcube' else exten='.icube'
   if(n_elements(filter) gt 0) then cfilter = dcomplex(filter,filter)
-
+  
   ;; Select folder
   search = self.out_dir +'/momfbd/'
   f = file_search(search+'*', count = ct, /test_dir)
@@ -201,9 +214,12 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   ;; Interpolate prefilters to the observed grid 
   tpref = 1./(red_intepf(twav, tpref, wav) + red_intepf(rwav, rpref, wav))
 
-  ;; Create temporary cube and open output file
+
+  ;; Crop ?
+  
   if(n_elements(crop) eq 0) then crop = [0,0,0,0]
   dimim = size(f0(tfiles[0]), /dim)
+  dum = dimim
   x0 = 0L + crop[0]
   x1 = dimim[0]-crop[1]-1
   y0 = 0L + crop[2]
@@ -222,6 +238,38 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   print, '   ny = ', dimim[1]
 
 
+  
+  ;;
+  ;; Load filter?
+  ;;
+  
+  tfi = 0
+  tfq = 0
+  tfu = 0
+  tfv = 0
+  
+  if(keyword_set(filter_file)) then begin
+     if(file_test(filter_file)) then begin
+        print, inam+"loaging filter file -> "+filter_file
+        restore, filter_file
+        if(n_elements(ffi) gt 1 and (n_elements(ffi) eq dum[0]*dum[1])) then tfi = 1
+        if(n_elements(ffq) gt 1 and (n_elements(ffq) eq dum[0]*dum[1])) then tfq = 1
+        if(n_elements(ffu) gt 1 and (n_elements(ffu) eq dum[0]*dum[1])) then tfu = 1
+        if(n_elements(ffv) gt 1 and (n_elements(ffv) eq dum[0]*dum[1])) then tfv = 1
+
+        print, inam + "Filter status:"
+        print, "   I -> "+string(tfi, format='(I2)')
+        print, "   Q -> "+string(tfq, format='(I2)')
+        print, "   U -> "+string(tfu, format='(I2)')
+        print, "   V -> "+string(tfv, format='(I2)')
+
+     endif else print, inam +"Could not find filter file -> " + $
+                       filter_file+', ignoring keyword!'
+  endif
+
+  
+  ;; Create temporary cube and open output file
+  
   d = fltarr(dimim[0], dimim[1], 4, nwav)
 
   if(~keyword_set(scans_only)) then begin
@@ -307,7 +355,15 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         
         ;; Load image and apply prefilter correction
         print, inam + ' : loading -> '+file_basename(st.ofiles[ww,ss])
-        tmp = (f0(st.ofiles[ww,ss]))[x0:x1,y0:y1,*] * tpref[ww]
+        tmp = f0(st.ofiles[ww,ss])
+
+        ;; Filter data ?
+        if(tfi gt 0) then tmp[*,*,0] = red_filterim(tmp[*,*,0], ffi)
+        if(tfq gt 0) then tmp[*,*,1] = red_filterim(tmp[*,*,1], ffq)
+        if(tfu gt 0) then tmp[*,*,2] = red_filterim(tmp[*,*,2], ffu)
+        if(tfv gt 0) then tmp[*,*,3] = red_filterim(tmp[*,*,3], ffv)
+        
+        tmp = (tmp)[x0:x1,y0:y1,*] * tpref[ww]
         if(keyword_set(filter)) then begin
            tmp = red_fftfilt(temporary(tmp), filter)
         endif 
