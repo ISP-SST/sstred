@@ -158,10 +158,10 @@ pro chromis::extractstates, strings $
        if keyword_set(focus)         then focus_list = strarr(nt) 
        if keyword_set(framenumber)   then num_list = strarr(nt)
        if keyword_set(cam)           then cam_list = strarr(nt) 
-       if keyword_set(prefilter) $
-          or keyword_set(wavelength) then prefilter_list = strarr(nt) 
-       if keyword_set(tuning) $
-          or keyword_set(dwav)       then tuning_list = strarr(nt) 
+       if( keyword_set(prefilter) || keyword_set(pf_wavelength) ) then $
+           prefilter_list = strarr(nt) 
+       if( keyword_set(tuning) || keyword_set(tun_wavelength) ) then $
+           tuning_list = strarr(nt) 
        if keyword_set(gain)          then gain_list = strarr(nt)
        if keyword_set(exposure)      then exposure_list = strarr(nt)
 
@@ -175,8 +175,9 @@ pro chromis::extractstates, strings $
           if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
           if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
           if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, 'CAMERA'), 2)
-          if keyword_set(prefilter) $
-             or keyword_set(wavelength) then prefilter_list[ifile] = strtrim(fxpar(head, 'FILTER1'))
+          if( (keyword_set(prefilter) || keyword_set(pf_wavelength)) && fxpar(head, 'FILTER1') ne 0 ) then begin
+              prefilter_list[ifile] = strtrim(fxpar(head, 'FILTER1'))
+          endif
 
           ;; These keywords are temporary, change when we change in
           ;; red_filterchromisheaders.
@@ -198,7 +199,7 @@ pro chromis::extractstates, strings $
           ;; The tuning information consists of a four digit
           ;; wavelength (in Å) followed by an underscore, a sign (+ or
           ;; -), and at least one digit for the finetuning (in mÅ).
-          if keyword_set(tuning) or keyword_set(dwav) then $
+          if( keyword_set(tuning) || keyword_set(tun_wavelength) ) then $
              tuning_list[ifile] = (stregex(fname $
                                            , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
                                            ,  /extr, /subexp))[2,*]
@@ -249,13 +250,14 @@ pro chromis::extractstates, strings $
           cam_list = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
 
        ;; The prefilter is the only field that is exactly four digits
-       if keyword_set(prefilter) or keyword_set(wavelength) then $
-          prefilter_list = reform((stregex(strlist,'(\.|^)([0-9]{4})(\.|$)', /extr, /subexp))[2,*])
+       if( keyword_set(prefilter) || keyword_set(pf_wavelength) ) then $
+          ;prefilter_list = reform((stregex(strlist,'(\.|^)([0-9]{4})(\.|$)', /extr, /subexp))[2,*])
+          prefilter_list = reform((stregex(strlist,'(\.|^)w([0-9]{1})(\.|$)', /extr, /subexp))[2,*])
 
        ;; The tuning information consists of a four digit wavelength (in Å)
        ;; followed by an underscore, a sign (+ or -), and at least one
        ;; digit for the finetuning (in mÅ).
-       if keyword_set(tuning) or keyword_set(dwav) then $
+       if( keyword_set(tuning) or keyword_set(tun_wavelength) ) then $
           tuning_list = reform((stregex(strlist,'(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)', /extr, /subexp))[2,*])
 
     endelse                     ; AreFiles
@@ -279,12 +281,12 @@ pro chromis::extractstates, strings $
 
 
     if keyword_set(pf_wavelength) then $
-        pf_wavelength_list = float(prefilter_list)*1e-10
+        pf_wavelength_list = 0      ;  TODO: method for getting wavelength from filter tag.
 
 
     ;; Create array with state information
     states = replicate( {CHROMIS_STATE}, nt )
-    
+ 
     states.camtag = cam_list
     states.filename = strings
     if keyword_set(gain) then states.gain = gain_list
@@ -294,7 +296,7 @@ pro chromis::extractstates, strings $
     if keyword_set(tuning) then states.tuning = tuning_list
     if keyword_set(prefilter) then states.prefilter = prefilter_list
     if keyword_set(pf_wavelength) then states.pf_wavelength = pf_wavelength_list
-    if keyword_set(dwav) then states.tun_wavelength = tun_wavelength_list
+    if keyword_set(tun_wavelength) then states.tun_wavelength = tun_wavelength_list
     if keyword_set(lc) then states.lc = lc_list
     if keyword_set(fullstate) then states.fullstate = fullstate_list
     ;if keyword_set(focus) then states.focus = focus_list   TODO: add field to state struct (in an SST class?)
