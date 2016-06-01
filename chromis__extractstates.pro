@@ -89,6 +89,15 @@
 ;        Set this to remove directory information from the beginning
 ;        of the strings.
 ;
+;     strip_wb : in, optional, type=boolean
+;
+;        Exclude tuning information from the fullstate entries for WB
+;        cameras
+; 
+;     strip_settings : in, optional, type=boolean
+;
+;        Exclude exposure/gain information from the fullstate entries.
+; 
 ; 
 ; :History:
 ; 
@@ -121,7 +130,13 @@
 ;   2016-05-31 : MGL. Detect whether filter1 keyword exists.
 ;
 ;   2016-05-31 : JLF. Begin using red_keytab to keep track of changing
-;		 SOLARNET keywords.
+;       SOLARNET keywords.
+;
+;   2016-06-01 : THI. Added gain & exposure to fullstate. Added keywords
+;       strip_wb (to exclude tuning from fullstate for WB cameras) and
+;       strip_settings (to exclude gain and exposure from fullstate for
+;       pinholes)
+;
 ;-
 pro chromis::extractstates, strings $
                         , states $
@@ -134,7 +149,9 @@ pro chromis::extractstates, strings $
                         , framenumber = framenumber $
                         , fullstate = fullstate $
                         , focus = focus $
-                        , basename = basename
+                        , basename = basename $
+                        , strip_wb = strip_wb $
+                        , strip_settings = strip_settings
 
 
     if keyword_set(basename) then begin
@@ -161,13 +178,14 @@ pro chromis::extractstates, strings $
     if keyword_set(scannumber)    then scan_list = strarr(nt)
     if keyword_set(focus)         then focus_list = strarr(nt) 
     if keyword_set(framenumber)   then num_list = strarr(nt)
-    if keyword_set(cam)           then cam_list = strarr(nt) 
+    cam_list = strarr(nt) 
     if( keyword_set(prefilter) || keyword_set(pf_wavelength) ) then $
         prefilter_list = strarr(nt) 
     if( keyword_set(tuning) || keyword_set(tun_wavelength) ) then $
         tuning_list = strarr(nt) 
-    if keyword_set(gain)          then gain_list = strarr(nt)
-    if keyword_set(exposure)      then exposure_list = strarr(nt)
+    if keyword_set(gain)          then gain_list = fltarr(nt)
+    if keyword_set(exposure)      then exposure_list = fltarr(nt)
+    fullstate_list = strarr(nt)
 
     ;; Read headers and extract information.
     ;; This should perhaps return an array the length of the number
@@ -185,7 +203,7 @@ pro chromis::extractstates, strings $
         
         if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
         if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
-        if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, red_keytab('cam')), 2)
+        cam_list[ifile] = strtrim(fxpar(head, red_keytab('cam')), 2)
         if( keyword_set(prefilter) || keyword_set(pf_wavelength) ) then begin
             filter = fxpar(head, red_keytab('prefilter'), count=count)
             if count then prefilter_list[ifile] = strtrim(filter)
@@ -229,13 +247,25 @@ pro chromis::extractstates, strings $
         for ii = 0L, nt -1 do tun_wavelength_list[ii] = total(double(strsplit(tuning_list[ii],'_', /extract))*dfac)
     endif
 
-    if keyword_set(fullstate) then $
-        fullstate_list = strjoin(transpose([[prefilter_list], [tuning_list]]), '.')
-
-    ;; Strip trailing dots in case there is no tuning (ugly!)
-    for ii = 0, nt-1 do if strmid(fullstate_list[ii],strlen(fullstate_list[ii])-1,1) eq '.' $
-    then fullstate_list[ii] = strmid(fullstate_list[ii],0,strlen(fullstate_list[ii])-1)
-
+    if keyword_set(fullstate) then begin
+        if ~keyword_set(strip_settings) then begin
+            fullstate_list = string(exposure_list*1000, format = '(f4.2)') + 'ms' $
+                + '_' + 'G' + string(gain_list, format = '(f05.2)')
+        endif
+        pos = where(prefilter_list ne '', count)
+        if( count ne 0 ) then fullstate_list[pos] += '_' + prefilter_list[pos]
+        if keyword_set(strip_wb) then begin
+            pos = where( (cam_list ne self->getcamtag('Chromis-W') and $
+                          cam_list ne self->getcamtag('Chromis-D')) and $
+                          tuning_list ne '', count)
+            if( count gt 0 ) then begin
+                fullstate_list[pos] += '_' + tuning_list[pos]
+            endif
+        endif else begin
+            pos = where(tuning_list ne '', count)
+            if( count ne 0 ) then fullstate_list[pos] += '_' + tuning_list[pos]
+        endelse
+    endif
 
     if keyword_set(pf_wavelength) then $
         pf_wavelength_list = 0      ;  TODO: method for getting wavelength from filter tag.
