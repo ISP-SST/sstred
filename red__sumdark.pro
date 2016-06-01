@@ -32,7 +32,7 @@
 ; 
 ;      A list of cameras (or rather camera subdirs).
 ;
-;    sum_in_idl : in, optional, type=boolean
+;    sum_in_rdx : in, optional, type=boolean
 ;
 ;      Bypass rdx_sumfiles.
 ; 
@@ -78,7 +78,7 @@ pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
                   dirs = dirs, $
-                  sum_in_idl = sum_in_idl
+                  sum_in_rdx = sum_in_rdx
 
     ;; Defaults
     if n_elements(overwrite) eq 0 then overwrite = 0
@@ -157,7 +157,7 @@ pro red::sumdark, overwrite = overwrite, $
 
             print, inam+' : summing darks for state -> ' + state_list[ss]
             
-            if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
+            if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
                 dark = rdx_sumfiles(files[sel], check = check, summed = darksum, nsum=nsum, verbose=2)
             endif else begin
                 dark = red_sumfiles(files[sel], check = check, summed = darksum, nsum=nsum, time_ave = time_ave)

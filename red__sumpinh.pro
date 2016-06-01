@@ -86,7 +86,7 @@ pro red::sumpinh, nthreads = nthreads $
                   , brightest_only = brightest_only $
                   , lc_ignore = lc_ignore $
                   , overwrite = overwrite $
-                  , sum_in_idl = sum_in_idl
+                  , sum_in_rdx = sum_in_rdx
 
     ;if ~keyword_set(pinhole_align) then pinhole_align = 0
   
@@ -167,7 +167,7 @@ pro red::sumpinh, nthreads = nthreads $
             ;; Get the flat file name for the selected state
             self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
                         pinhname = pinhname, status = status
-
+stop
             if( status ne 0 ) then begin
                 print, inam+' : failed to load calibration data for:', states[sel[0]].filename
                 continue
@@ -207,7 +207,7 @@ pro red::sumpinh, nthreads = nthreads $
 
             ;; Dark and flat correction and bad-pixel filling done
             ;; by red_sumfiles on each frame before alignment.
-            if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
+            if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
                 psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
                                  backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum, verbose=2)
             endif else begin

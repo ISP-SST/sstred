@@ -40,7 +40,7 @@
 ;    check : in, optional, type=boolean
 ;
 ;
-;    sum_in_idl : in, optional, type=boolean
+;    sum_in_rdx : in, optional, type=boolean
 ;
 ;      Bypass rdx_sumfiles.
 ;   
@@ -100,7 +100,7 @@ pro red::sumflat, overwrite = overwrite, $
                   store_rawsum = store_rawsum, $
                   prefilter = prefilter, $
                   dirs = dirs, $
-                  sum_in_idl = sum_in_idl
+                  sum_in_rdx = sum_in_rdx
 
   ;; Defaults
   if( n_elements(overwrite) eq 0 ) then overwrite = 0
@@ -205,7 +205,7 @@ pro red::sumflat, overwrite = overwrite, $
            ;; info. Re-sort them.
            tmplist = files[sel]
            tmplist = tmplist(sort(tmplist))
-           if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
+           if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
               flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
@@ -214,7 +214,7 @@ pro red::sumflat, overwrite = overwrite, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum)
            endelse
         endif else begin 
-           if( ~keyword_set(sum_in_idl) and rdx_hasopencv() ) then begin
+           if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
               flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
                                   lim = lim, summed = summed, nsum = nsum, verbose=2)
            endif else begin
