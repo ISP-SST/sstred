@@ -26,68 +26,13 @@
 ;   
 ;      A list of strings from which to extract the states information.
 ;   
-; 
-; :Keywords:
-; 
-;     states : out, optional, type=array(struct)
+;    states : out, optional, type=array(struct)
 ;
 ;        An array of structs, containing (partially filled) state information.
 ; 
-;     cam : in, optional, type=boolean
-;
-;        Return the camera tag. (string)
 ; 
-;     scannumber : in, optional, type=boolean
-;
-;        Return the scan-number. (int)
+; :Keywords:
 ; 
-;     prefilter : in, optional, type=boolean
-;
-;        Return the prefilter. (string)
-; 
-;     pf_wavelength : in, optional, type=boolean
-;
-;        Return the prefilter wavelength. (float)
-; 
-;     tuning : in, optional, type=boolean
-;
-;        Return the wavelength tuning information in the form
-;        tuning_finetuning, where tuning is the approximate wavelength
-;        in Å and finetuning is the (signed) fine tuning in mÅ. (string)
-; 
-;     tun_wavelength : in, optional, type=boolean
-;
-;        Return the tuning in decimal form [Å]. (double)
-; 
-;     lc : in, optional, type=boolean
-;
-;        Return the LC state. (string)
-;
-;     framenumber : in, optional, type=boolean
-;
-;        Return the frame-number. (long)
-; 
-;     fullstate : in, optional, type=boolean
-;
-;        Return the fullstate field.
-; 
-;     gain : in, optional, type=boolean
-;
-;        Return the camera gain. 
-; 
-;     exposure : in, optional, type=boolean
-;
-;        Return the exposure time. 
-; 
-;     focus : in, optional, type=boolean
-;
-;        The focus added by the AO system (in order to compensate for
-;        prefilters with optical power). Unit?
-; 
-;     basename : in, optional, type=boolean
-;
-;        Set this to remove directory information from the beginning
-;        of the strings.
 ;
 ; 
 ; :History:
@@ -121,140 +66,106 @@
 ;   2016-05-31 : MGL. Detect whether filter1 keyword exists.
 ;
 ;   2016-05-31 : JLF. Begin using red_keytab to keep track of changing
-;		 SOLARNET keywords.
+;		 SOLARNET keywords. 
+;
+;   2016-06-01 : MGL. Get prefilter wavelengths from header. Remove
+;                the boolean keywords that select info to be returned,
+;                just return all info possible. Also the basename
+;                boolean keyword doesn't seem to do anything. Rewrite
+;                to work directly with the struct and not intermediate
+;                arrays.
+;
 ;-
 pro chromis::extractstates, strings $
-                        , states $
-                        , cam = cam $
-                        , scannumber = scannumber $
-                        , prefilter = prefilter $
-                        , pf_wavelength = pf_wavelength $
-                        , tuning = tuning $
-                        , tun_wavelength = tun_wavelength $
-                        , framenumber = framenumber $
-                        , fullstate = fullstate $
-                        , focus = focus $
-                        , basename = basename
+                            , states 
 
 
-    if keyword_set(basename) then begin
-        strlist = file_basename([strings])
-    endif else strlist = [strings]
+  if keyword_set(basename) then begin
+     strlist = file_basename([strings])
+  endif else strlist = [strings]
+  
+  nt = n_elements(strings)
 
-    if fullstate then begin
-       gain = 1
-       exposure = 1
-       tuning = 1
-       prefilter = 1
-       scannumber = 1
-       framenumber = 1
-    endif
-    
-    nt = n_elements(strings)
-
-    if( nt eq 0 ) then return
-
-    ;; Are the strings actually names of existing files? Then look in
-    ;; the headers (for some info).
-    AreFiles = min(file_test(strings))
-
-    if keyword_set(scannumber)    then scan_list = strarr(nt)
-    if keyword_set(focus)         then focus_list = strarr(nt) 
-    if keyword_set(framenumber)   then num_list = strarr(nt)
-    if keyword_set(cam)           then cam_list = strarr(nt) 
-    if( keyword_set(prefilter) || keyword_set(pf_wavelength) ) then $
-        prefilter_list = strarr(nt) 
-    if( keyword_set(tuning) || keyword_set(tun_wavelength) ) then $
-        tuning_list = strarr(nt) 
-    if keyword_set(gain)          then gain_list = strarr(nt)
-    if keyword_set(exposure)      then exposure_list = strarr(nt)
-
-    ;; Read headers and extract information.
-    ;; This should perhaps return an array the length of the number
-    ;; of frames rather than the number of files?
-    for ifile = 0, nt-1 do begin
-
-        if file_test(strings[ifile]) then begin
-            head = red_readhead(strings[ifile],/silent)
-        endif else begin
-            mkhdr, head, ''   ; create a dummy header
-            head = red_filterchromisheaders( head, meta={filename:strings[ifile]} )
-            print,'file does not exist: ', strings[ifile]
-            print,'state information will be incomplete!'
-        endelse
-        
-        if keyword_set(gain) then gain_list[ifile] = fxpar(head, 'GAIN')
-        if keyword_set(exposure) then exposure_list[ifile] = fxpar(head, 'XPOSURE')
-        if keyword_set(cam) then cam_list[ifile] = strtrim(fxpar(head, red_keytab('cam')), 2)
-        if( keyword_set(prefilter) || keyword_set(pf_wavelength) ) then begin
-            filter = fxpar(head, red_keytab('prefilter'), count=count)
-            if count then prefilter_list[ifile] = strtrim(filter)
-        endif
-
-        ;; These keywords are temporary, change when we change in
-        ;; red_filterchromisheaders.
-        if keyword_set(framenumber) then num_list[ifile] = fxpar(head, red_keytab('framenumber'))
-        if keyword_set(scannumber) then scan_list[ifile] = fxpar(head, red_keytab('scannumber'))
-
-        ;; Replace the following regexp expressions when this info
-        ;; is in the header.
-
-        fname = file_basename(strings[ifile], '.fits')
-
-        ;; The focus field is an f followed by a sign and at least
-        ;; one digit for the amount of focus (in ?unit?):
-        if keyword_set(focus) then $
-            focus_list[ifile] = (stregex(fname $
-                                        , '(\.|^)(F[+-][0-9]+)(\.|$)' $
-                                        , /extr, /subexp, /fold_case))[2,*]
-
-        ;; The tuning information consists of a four digit
-        ;; wavelength (in Å) followed by an underscore, a sign (+ or
-        ;; -), and at least one digit for the finetuning (in mÅ).
-        if( keyword_set(tuning) || keyword_set(tun_wavelength) ) then $
-            tuning_list[ifile] = (stregex(fname $
-                                        , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
-                                        ,  /extr, /subexp))[2,*]
-
-    endfor                   ; ifile
+  if( nt eq 0 ) then return
 
 
-    ;; Quantities calculated from the extracted quantities ----
+  ;; Create array with state information
+  states = replicate( {CHROMIS_STATE}, nt )
 
-    ;; The tuning as a single double precision number (in Å)
-    if keyword_set(tun_wavelength) then begin
-        tun_wavelength_list = dblarr(nt)
-        dfac = [1d, 1d-3]
-        ;; In IDL v.8 this could be done without a loop using strsplit
-        for ii = 0L, nt -1 do tun_wavelength_list[ii] = total(double(strsplit(tuning_list[ii],'_', /extract))*dfac)
-    endif
+  ;; Are the strings actually names of existing files? Then look in
+  ;; the headers (for some info).
+  AreFiles = min(file_test(strings))
 
-    if keyword_set(fullstate) then $
-        fullstate_list = strjoin(transpose([[prefilter_list], [tuning_list]]), '.')
+  ;; Read headers and extract information. This should perhaps return
+  ;; an array the length of the number of frames rather than the
+  ;; number of files?
+  for ifile = 0, nt-1 do begin
 
-    ;; Strip trailing dots in case there is no tuning (ugly!)
-    for ii = 0, nt-1 do if strmid(fullstate_list[ii],strlen(fullstate_list[ii])-1,1) eq '.' $
-    then fullstate_list[ii] = strmid(fullstate_list[ii],0,strlen(fullstate_list[ii])-1)
+     if file_test(strings[ifile]) then begin
+        head = red_readhead(strings[ifile],/silent)
+        states.filename = strings
+     endif else begin
+        mkhdr, head, ''         ; create a dummy header
+        head = red_filterchromisheaders( head, meta={filename:strings[ifile]} )
+        print,'file does not exist: ', strings[ifile]
+        print,'state information will be incomplete!'
+     endelse
+
+     ;; Numerical keywords
+     states[ifile].gain = fxpar(head, 'GAIN')
+     states[ifile].exposure = fxpar(head, 'XPOSURE')
+     states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH', count=count)
+     
+
+     ;; String keywords require checking
+     camtag = fxpar(head, red_keytab('cam'), count=count)
+     if count gt 0 then states[ifile].camtag = strtrim(fxpar(head, red_keytab('cam')), 2)
+     filter = fxpar(head, red_keytab('prefilter'), count=count)
+     if count gt 0 then states[ifile].prefilter = filter
+
+     ;; These keywords are temporary, change when we change in
+     ;; red_filterchromisheaders.
+     states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
+     states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
+
+     
+     ;; Replace the following regexp expressions when this info
+     ;; is in the header.
+
+     fname = file_basename(strings[ifile], '.fits')
+
+     ;; The focus field is an f followed by a sign and at least one
+     ;; digit for the amount of focus (in ?unit?). The focus added by
+     ;; the AO system (in order to compensate for prefilters with
+     ;; optical power). Unit?
+     focus = (stregex(fname $
+                      , '(\.|^)(F[+-][0-9]+)(\.|$)' $
+                      , /extr, /subexp, /fold_case))[2,*]
+     ;; states.focus = focus   TODO: add field to states struct (in an SST class?)
 
 
-    if keyword_set(pf_wavelength) then $
-        pf_wavelength_list = 0      ;  TODO: method for getting wavelength from filter tag.
+     ;; The tuning information consists of a four digit wavelength (in
+     ;; Å) followed by an underscore, a sign (+ or -), and at least
+     ;; one digit for the finetuning (in mÅ). Return the wavelength
+     ;; tuning information in the form tuning_finetuning, where tuning
+     ;; is the approximate wavelength in Å and finetuning is the
+     ;; (signed) fine tuning in mÅ. (string)
+         
+     states[ifile].tuning = (stregex(fname $
+                                     , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
+                                     ,  /extr, /subexp))[2,*]
+     
+     ;; Convert to a wavelength
+     ;; Return the tuning in decimal form [Å]
+     states[ifile].tun_wavelength = total(double(strsplit(states[ifile].tuning,'_', /extract))*[1d, 1d-3])
 
+     ;; The fullstate string
+     if states[ifile].tuning ne '' then begin
+        states[ifile].fullstate = states[ifile].prefilter + '.' + states[ifile].tuning
+     endif else begin
+        states[ifile].fullstate = states[ifile].prefilter
+     endelse
 
-    ;; Create array with state information
-    states = replicate( {CHROMIS_STATE}, nt )
- 
-    states.camtag = cam_list
-    states.filename = strings
-    if keyword_set(gain) then states.gain = gain_list
-    if keyword_set(exposure) then states.exposure = exposure_list
-    if keyword_set(scannumber) then states.scannumber = scan_list
-    if keyword_set(framenumber) then states.framenumber = num_list
-    if keyword_set(tuning) then states.tuning = tuning_list
-    if keyword_set(prefilter) then states.prefilter = prefilter_list
-    if keyword_set(pf_wavelength) then states.pf_wavelength = pf_wavelength_list
-    if keyword_set(tun_wavelength) then states.tun_wavelength = tun_wavelength_list
-    if keyword_set(fullstate) then states.fullstate = fullstate_list
-    ;if keyword_set(focus) then states.focus = focus_list   TODO: add field to state struct (in an SST class?)
+  endfor                        ; ifile
   
 end
