@@ -57,6 +57,11 @@
 ;    2016-05-31 : JLF. Added silent keyword (suppresses printing SOLARNET
 ;		  compliance message. 
 ;		  Started using red_keytab for keywords we aren't sure of.
+;
+;    2016-05-31 : MGL. Added filter wavelengths and FWHMs based on a
+;                 table in an email from Aluxa. (If we knew the filter
+;                 tilt angle, we could calculate the actual
+;                 wavelength.)
 ; 
 ; 
 ;-
@@ -203,62 +208,71 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
                     ;  TDB: can we extract filter-info without the channel-tag?
                     sxaddpar, newhead, red_keytab('pref'), wheelpos, before = 'COMMENT'
                  endif else begin
-                    
+
                     if channel eq 'Chromis-N' then begin
 
                         ;; Chromis-N
                         case wheelpos of
                         'w1' : begin
                             filter1 = 'CaK-blue'
-                            wavelnth = 0.
+                            wavelnth = 392.55e-9
+                            fwhm = 0.37e-9
                             waveband = 'Ca II H & K'
                         end
                         'w2' : begin
                             filter1 = 'CaK-core'
-                            wavelnth = 0.
+                            wavelnth = 393.44e-9
+                            fwhm = 0.37e-9
                             waveband = 'Ca II H & K'
                         end
                         'w3' : begin
                             filter1 = 'CaH-core'
-                            wavelnth = 0.
+                            wavelnth = 396.92e-9
+                            fwhm = 0.37e-9
                             waveband = 'Ca II H & K'
                         end
                         'w4' : begin
                             filter1 = 'CaH-red'
-                            wavelnth = 0.
+                            wavelnth = 397.7e-9
+                            fwhm = 0.37e-9
                             waveband = 'Ca II H & K'
                         end
                         'w5' : begin
                             filter1 = 'CaH-cont'
-                            wavelnth = 0.
+                            wavelnth = 400.01e-9
+                            fwhm = 0.37e-9
                             waveband = 'Ca II H & K'
                         end
                         'w6' : begin
                             filter1 = 'Hb-core'
-                            wavelnth = 486.1
+                            wavelnth = 486.20e-9
+                            fwhm = 0.44e-9
                             waveband = 'H-beta'
                         end
                         endcase
                     endif else begin
 
-                        ;; Chromis-W and Chromis-D
-                        case wheelpos of
-                            'w6' : begin
-                                filter1 = 'Hb-cont'
-                                wavelnth = 486.1
-                                waveband = 'H-beta'
-                            end
-                        else: begin
-                            filter1 = 'CaHK-cont'
-                                wavelnth = 0.
-                                waveband = 'Ca II H & K'
-                            end
-                        endcase
+                       ;; Chromis-W and Chromis-D
+                       case wheelpos of
+                          'w6' : begin
+                             filter1 = 'Hb-cont'
+                             wavelnth = 484.7-e-9
+                             fwhm = 0.6e-9
+                             waveband = 'H-beta'
+                          end
+                          else: begin
+                             filter1 = 'CaHK-cont'
+                             wavelnth = 395.1e-9
+                             fwhm = 1.3e-9
+                             waveband = 'Ca II H & K'
+                          end
+                       endcase
                     endelse
-        
+                    
                     comment = 'Inferred from filter wheel position in filename.'
                     sxaddpar, newhead, red_keytab('pref'), filter1, comment, before = 'COMMENT'
-                    sxaddpar, newhead, 'WAVELNTH', wavelnth, '[nm]', before = 'COMMENT'
+                    sxaddpar, newhead, 'WAVELNTH', strtrim(wavelnth, 2), '[m] Prefilter peak wavelength', before = 'COMMENT'
+                    ;; Add also the FWHM in a keyword?
                     
                  endelse
 
