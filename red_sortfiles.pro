@@ -35,16 +35,19 @@
 ; 
 ;   2016-05-25 : MGL. Make it handle files with a .fits extension. 
 ; 
+;   2016-06-01 : MGL. Split at underscores as well as dots. Split all
+;                strings in one go.
+; 
 ; 
 ;-
 function red_sortfiles, files
+
   nt = n_elements(files)
   num = lonarr(nt)
-  for ii = 0L, nt -1 do begin
-     tmp = strsplit(file_basename(files[ii],'.fits'),'.',/extract)
-     num[ii] = long(tmp[n_elements(tmp) - 1])
-  endfor
-  pos = sort(num)
-  res = files[pos]
-  return, res
+
+  tmp = strsplit(file_basename(files,'.fits'),'._',/extract)
+  for ii = 0L, nt-1 do num[ii] = (tmp[ii])[-1]
+
+  return, files[sort(num)]
+
 end
