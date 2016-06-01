@@ -35,7 +35,7 @@
 ;                keywords. 
 ; 
 ;   2016-05-31 : MGL. Added dirs keyword. Link WB data on the
-;                fly. Don't zero the scannumber.
+;                fly. Don't zero the scannumber. Bugfix.
 ;
 ;-
 pro chromis::split_data, split_dir = split_dir $
@@ -62,11 +62,11 @@ pro chromis::split_data, split_dir = split_dir $
         print, inam+' : ERROR : undefined data_dir'
         return
      endif
-     dirs = *self.dark_dir
+     dirs = *self.data_dirs
   endelse
 
   Ndirs = n_elements(dirs)
-  if( Ndirs eq 0) then begin
+  if Ndirs eq 0 then begin
      print, inam+' : ERROR : no directories defined'
      return
   endif else begin
