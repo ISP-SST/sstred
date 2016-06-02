@@ -87,18 +87,20 @@
 ;   2016-06-01 : THI. Added gain & exposure to fullstate. Added
 ;                keywords strip_wb (to exclude tuning from fullstate
 ;                for WB cameras) and strip_settings (to exclude gain
-;                and exposure from fullstate for pinholes). 
+;                and exposure from fullstate for pinholes).  
+;
+;   2016-06-02 : MGL. Added progress printout.
 ;
 ;-
 pro chromis::extractstates, strings, states $
                             , strip_wb = strip_wb $
                             , strip_settings = strip_settings
   
-  nt = n_elements(strings)
-  if( nt eq 0 ) then return
+  Nstrings = n_elements(strings)
+  if( Nstrings eq 0 ) then return
 
   ;; Create array of structs to holed the state information
-  states = replicate( {CHROMIS_STATE}, nt )
+  states = replicate( {CHROMIS_STATE}, Nstrings )
 
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
@@ -107,7 +109,9 @@ pro chromis::extractstates, strings, states $
   ;; Read headers and extract information. This should perhaps return
   ;; an array the length of the number of frames rather than the
   ;; number of files?
-  for ifile = 0, nt-1 do begin
+  progress_message = 'Extract state info from file headers'
+  red_progressbar, 0, Nstrings, message = progress_message
+  for ifile = 0, Nstrings-1 do begin
 
      if file_test(strings[ifile]) then begin
         head = red_readhead(strings[ifile], /silent)
@@ -185,7 +189,10 @@ pro chromis::extractstates, strings, states $
      endif else begin
         if states[ifile].tuning ne '' then states[ifile].fullstate += '_' + states[ifile].tuning
      endelse
+
+     red_progressbar, ifile, Nstrings, message = progress_message
      
   endfor                        ; ifile
+  red_progressbar, /finished, message = progress_message
 
 end
