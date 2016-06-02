@@ -134,7 +134,7 @@ pro chromis::selectfiles, cam = cam $
     Ncam = n_elements(cam)
     if( Ncam gt 0 ) then begin
         selected = [states.skip] * 0
-        camt = [cam]    ; make sure it's an array
+        camt = [self->RED::getcamtag(cam)]    ; make sure it's an array
         for ip = 0, Ncam-1 do begin
             pos = where(states.camtag eq camt[ip])
             if( min(pos) ge 0 ) then begin
