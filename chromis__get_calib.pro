@@ -58,6 +58,18 @@
 ; 
 ;        The header of the summed flat file(s) appropriate to the state(s).
 ; 
+;    gainname : out, optional, type=strarr 
+; 
+;       The name(s) of the gain file(s) appropriate to the state(s).
+; 
+;    gaindata : out, optional, type=array 
+; 
+;        The data in the gain file(s) appropriate to the state(s).
+; 
+;    gainhead : out, optional, type=array 
+; 
+;        The header of the gain file(s) appropriate to the state(s).
+; 
 ;    pinhname : out, optional, type=strarr 
 ; 
 ;        The name(s) of the pinhole file(s) appropriate to the state(s).
@@ -87,21 +99,11 @@
 ;-
 pro chromis::get_calib, states $
                         , status = status $
-                        , darkname = darkname $
-                        , darkdata = darkdata $
-                        , darkhead = darkhead $
-                        , flatname = flatname $
-                        , flatdata = flatdata $
-                        , flathead = flathead $
-                        , gainname = gainname $
-                        , gaindata = gaindata $
-                        , gainhead = gainhead $
-                        , sflatname = sflatname $
-                        , sflatdata = sflatdata $
-                        , sflathead = sflathead $
-                        , pinhname = pinhname $
-                        , pinhdata = pinhdata $
-                        , pinhhead = pinhhead 
+                        , darkname = darkname, darkdata = darkdata, darkhead = darkhead $
+                        , flatname = flatname, flatdata = flatdata, flathead = flathead $
+                        , gainname = gainname, gaindata = gaindata, gainhead = gainhead $
+                        , pinhname = pinhname, pinhdata = pinhdata, pinhhead = pinhhead $
+                        , sflatname = sflatname, sflatdata = sflatdata, sflathead = sflathead 
 
   Nstates = n_elements(states)
 
