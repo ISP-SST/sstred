@@ -34,6 +34,15 @@
 ; :Keywords:
 ; 
 ;
+;     strip_wb : in, optional, type=boolean
+;
+;        Exclude tuning information from the fullstate entries for WB
+;        cameras
+; 
+;     strip_settings : in, optional, type=boolean
+;
+;        Exclude exposure/gain information from the fullstate entries.
+; 
 ; 
 ; :History:
 ; 
@@ -75,21 +84,20 @@
 ;                to work directly with the struct and not intermediate
 ;                arrays.
 ;
+;   2016-06-01 : THI. Added gain & exposure to fullstate. Added
+;                keywords strip_wb (to exclude tuning from fullstate
+;                for WB cameras) and strip_settings (to exclude gain
+;                and exposure from fullstate for pinholes). 
+;
 ;-
-pro chromis::extractstates, strings $
-                            , states 
-
-
-  if keyword_set(basename) then begin
-     strlist = file_basename([strings])
-  endif else strlist = [strings]
+pro chromis::extractstates, strings, states $
+                            , strip_wb = strip_wb $
+                            , strip_settings = strip_settings
   
   nt = n_elements(strings)
-
   if( nt eq 0 ) then return
 
-
-  ;; Create array with state information
+  ;; Create array of structs to holed the state information
   states = replicate( {CHROMIS_STATE}, nt )
 
   ;; Are the strings actually names of existing files? Then look in
@@ -102,7 +110,7 @@ pro chromis::extractstates, strings $
   for ifile = 0, nt-1 do begin
 
      if file_test(strings[ifile]) then begin
-        head = red_readhead(strings[ifile],/silent)
+        head = red_readhead(strings[ifile], /silent)
         states.filename = strings
      endif else begin
         mkhdr, head, ''         ; create a dummy header
@@ -115,7 +123,6 @@ pro chromis::extractstates, strings $
      states[ifile].gain = fxpar(head, 'GAIN')
      states[ifile].exposure = fxpar(head, 'XPOSURE')
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH', count=count)
-     
 
      ;; String keywords require checking
      camtag = fxpar(head, red_keytab('cam'), count=count)
@@ -129,8 +136,8 @@ pro chromis::extractstates, strings $
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
 
      
-     ;; Replace the following regexp expressions when this info
-     ;; is in the header.
+     ;; Replace the following regexp code when this info is in the
+     ;; header.
 
      fname = file_basename(strings[ifile], '.fits')
 
@@ -160,12 +167,25 @@ pro chromis::extractstates, strings $
      states[ifile].tun_wavelength = total(double(strsplit(states[ifile].tuning,'_', /extract))*[1d, 1d-3])
 
      ;; The fullstate string
-     if states[ifile].tuning ne '' then begin
-        states[ifile].fullstate = states[ifile].prefilter + '.' + states[ifile].tuning
+ ;    if states[ifile].tuning ne '' then begin
+ ;       states[ifile].fullstate = states[ifile].prefilter + '.' + states[ifile].tuning
+ ;    endif else begin
+ ;       states[ifile].fullstate = states[ifile].prefilter
+ ;    endelse
+ ;
+ ;
+     if ~keyword_set(strip_settings) then begin
+        states[ifile].fullstate = string(states[ifile].exposure*1000, format = '(f4.2)') + 'ms' $
+                                + '_' + 'G' + string(states[ifile].gain, format = '(f05.2)')
+     endif
+     if states[ifile].prefilter ne '' then states[ifile].fullstate += '_' + states[ifile].prefilter
+     if keyword_set(strip_wb) then begin
+        if states[ifile].camtag eq self->getcamtag('Chromis-N') $
+           and states[ifile].tuning ne '' then states[ifile].fullstate += '_' + states[ifile].tuning
      endif else begin
-        states[ifile].fullstate = states[ifile].prefilter
+        if states[ifile].tuning ne '' then states[ifile].fullstate += '_' + states[ifile].tuning
      endelse
-
+     
   endfor                        ; ifile
-  
+
 end

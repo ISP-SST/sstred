@@ -71,6 +71,8 @@
 ;                name. Don't call get_calib one extra time just
 ;                to get the directory. 
 ;
+;   2016-06-01 : THI. Loop over states (gain & exposure)
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -117,7 +119,7 @@ pro red::sumdark, overwrite = overwrite, $
         cam = cams[ic]
         camtag = self->getcamtag( cam )
 
-        self->selectfiles, cam=cam, dirs=dirs, $
+        self->selectfiles, cam=cam, dirs=dirs, ustat=ustat, $
                          files=files, states=states, /force
                          
         nf = n_elements(files)
@@ -129,58 +131,69 @@ pro red::sumdark, overwrite = overwrite, $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
-        ;; Get the name of the darkfile
-        self -> get_calib, states, darkname = darkname, status = status
-        if status ne 0 then stop
+        state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-        if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
-           print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
-           continue
-        endif
+        ns = n_elements(state_list)
 
-        if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
-            dark = rdx_sumfiles(files, check = check, summed = darksum, nsum=nsum, verbose=2)
-        endif else begin
-            dark = red_sumfiles(files, check = check, summed = darksum, nsum=nsum, time_ave = time_ave)
-        endelse
-        
-        ;; The momfbd code can't read doubles.
-        dark = float(dark)      
+        ;; Loop over states and sum
+        for ss = 0L, ns - 1 do begin
 
-        ;; Make header
-        head = red_readhead(files[0]) 
-        check_fits, dark, head, /UPDATE, /SILENT        
-        ;; Some SOLARNET recommended keywords:
-        exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
-        if count gt 0 then begin
-            sxdelpar, head, 'XPOSURE'
-            sxaddpar, head, 'XPOSURE', nsum*exptime
-            sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
-        endif
-        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
-        
-        ;; Add some more info here, see SOLARNET deliverable D20.4 or
-        ;; later versions of that document.
+            self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+                            files=files, states=states, selected=sel
 
-        ;; TODO: output should be written through class-specific
-        ;; methods
+            ;; Get the name of the darkfile
+            self -> get_calib, states[sel[0]], darkname = darkname, status = status
+            if status ne 0 then stop
 
-        file_mkdir, file_dirname(darkname)
+            if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
+                print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
+                continue
+            endif
 
-        ;; Write ANA format dark
-        print, inam+' : saving ', darkname
-        red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
+            if( min(sel) lt 0 ) then begin
+                print, inam+' : '+cam+': no files found for state: '+state_list[ss]
+                continue
+            endif
 
-        ;; Write FITS format dark
-        print, inam+' : saving ', darkname+'.fits'
-        red_writedata, darkname+'.fits', dark, header=head, overwrite = overwrite
+            print, inam+' : summing darks for state -> ' + state_list[ss]
+            
+            if rdx_hasopencv() and ~keyword_set(sum_in_idl) then begin
+                dark = rdx_sumfiles(files[sel], check = check, summed = darksum, nsum=nsum, verbose=2)
+            endif else begin
+                dark = red_sumfiles(files[sel], check = check, summed = darksum, nsum=nsum, time_ave = time_ave)
+            endelse
+            
+            ;; The momfbd code can't read doubles.
+            dark = float(dark)      
 
-;        print, inam+' : saving ', sdarkname
-;        fzwrite, long(darksum), sdarkname, outheader
+            ;; Make header
+            head = red_readhead(files[sel[0]]) 
+            check_fits, dark, head, /UPDATE, /SILENT        
+            ;; Some SOLARNET recommended keywords:
+            exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
+            if count gt 0 then begin
+                sxdelpar, head, 'XPOSURE'
+                sxaddpar, head, 'XPOSURE', nsum*exptime
+                sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
+            endif
+            if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
+            
+            ;; Add some more info here, see SOLARNET deliverable D20.4 or
+            ;; later versions of that document.
+
+            file_mkdir, file_dirname(darkname)
+
+            ;; Write ANA format dark
+            print, inam+' : saving ', darkname
+            red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
+
+            ;; Write FITS format dark
+            print, inam+' : saving ', darkname+'.fits'
+            red_writedata, darkname+'.fits', dark, header=head, overwrite = overwrite
+
+        endfor                     ; states
 
     endfor                        ; (ic loop)
-
-    self.done.sumdark = 1B
 
     return
 

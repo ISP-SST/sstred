@@ -171,10 +171,7 @@ pro chromis::get_calib, states $
      if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) $
         or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
 
-        flattag = camtag $
-                  + '_' + string(states[istate].exposure*1000, format = '(f4.2)') + 'ms' $
-                  + '_' + 'G' + string(states[istate].gain, format = '(f05.2)')
-                  
+        flattag = camtag
         if( states[istate].fullstate ne '' ) then begin
             flattag += '_' + states[istate].fullstate
         endif
@@ -220,8 +217,11 @@ pro chromis::get_calib, states $
      if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
 
         pinhtag = camtag
-        if( states[istate].fullstate ne '' ) then begin
-            pinhtag += '_' + states[istate].fullstate
+        if( states[istate].prefilter ne '' ) then begin
+            pinhtag += '_' + states[istate].prefilter
+        endif
+        if( states[istate].tuning ne '' ) then begin
+            pinhtag += '_' + states[istate].tuning
         endif
 
         pname = self.out_dir+'/pinhs/' + pinhtag + '.pinh'

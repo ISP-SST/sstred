@@ -71,6 +71,8 @@
 ; 
 ;   2016-05-19 : First version.
 ; 
+;   2016-06-01 : THI. Allow filtering on camera tag.
+;                Pass keyword strip_settings to extractstates.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -83,7 +85,8 @@ pro chromis::selectfiles, cam = cam $
                       , dark = dark $
                       , nremove = nremove $
                       , force = force $
-                      , selected = selected
+                      , selected = selected $
+                      , strip_settings = strip_settings
 
     inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
     
@@ -118,16 +121,7 @@ pro chromis::selectfiles, cam = cam $
     if( n_elements(files) eq 1 ) then files = [files]
     
     if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
-        self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
-        ; TODO: this is a really ugly way to drop the WB states, think of something better
-
-        wb_cams = (strmatch( states.camtag, self->getcamtag('Chromis-W')) $
-                or strmatch( states.camtag, self->getcamtag('Chromis-D')))
-        pos = where(wb_cams gt 0)
-
-        ; replace NB state-info with prefilter for the WB cameras
-        if( min(pos) ge 0 ) then states[pos].fullstate = states[pos].prefilter
-
+        self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate, /strip_wb, strip_settings = strip_settings
     endif
 
     if( n_elements(states) eq 1 ) then states = [states]
@@ -135,12 +129,27 @@ pro chromis::selectfiles, cam = cam $
     states.skip *= 0    ; always clear selection, so repeated calls with the same files/states are possible
     if( keyword_set(nremove) ) then self->skip, states, nremove
 
+    Ncam = n_elements(cam)
+    if( Ncam gt 0 ) then begin
+        selected = [states.skip] * 0
+        camt = [cam]    ; make sure it's an array
+        for ip = 0, Ncam-1 do begin
+            pos = where(states.camtag eq camt[ip])
+            if( min(pos) ge 0 ) then begin
+                selected[pos] = 1
+            endif
+           ; stop
+        endfor
+        pos = where(selected lt 1)
+        if( min(pos) ge 0 ) then states[pos].skip = 1
+    endif
+    
     Npref = n_elements(prefilter)
     if( Npref gt 0 ) then begin
         selected = [states.skip] * 0
-        prefilter = [prefilter]    ; make sure it's an array
+        tpref = [prefilter]    ; make sure it's an array
         for ip = 0, Npref-1 do begin
-            pos = where(states.pref eq prefilter[ip])
+            pos = where(states.pref eq tpref[ip])
             if( min(pos) ge 0 ) then begin
                 selected[pos] = 1
             endif
