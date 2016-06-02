@@ -73,6 +73,8 @@
 ; 
 ;   2016-06-01 : THI. Allow filtering on camera tag.
 ;                Pass keyword strip_settings to extractstates.
+;
+;   2016-06-02 : MGL. Remove some keywords to extractstates.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -121,7 +123,7 @@ pro chromis::selectfiles, cam = cam $
     if( n_elements(files) eq 1 ) then files = [files]
     
     if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
-        self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate, /strip_wb, strip_settings = strip_settings
+        self->extractstates, files, states, /strip_wb, strip_settings = strip_settings
     endif
 
     if( n_elements(states) eq 1 ) then states = [states]

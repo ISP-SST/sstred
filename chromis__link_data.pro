@@ -47,6 +47,8 @@
 ;                method. Rewrite for CHROMIS.
 ;
 ;   2016-05-31 : MGL. Added dirs keyword. Don't zero the scannumber. 
+;
+;   2016-06-02 : MGL. Remove some keywords to extractstates.
 ;   
 ;-
 pro chromis::link_data, link_dir = link_dir $
@@ -124,7 +126,7 @@ pro chromis::link_data, link_dir = link_dir $
         files = red_sortfiles(files)
         
         ;; Get states
-        self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
+        self->extractstates, files, states
 
         ;; Only one prefilter?
         IF keyword_set(pref) THEN BEGIN
