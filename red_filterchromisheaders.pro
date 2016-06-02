@@ -290,7 +290,7 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
         if count gt 0 then begin
            if fxpar(newhead, 'WAVELNTH') eq 0.0 then begin
 
-              case fxpar(newhead, red_keytab('pref')) of
+              case strtrim(prefilter,2) of
                  'CaK-blue' : begin
                     wavelnth = 392.55e-9
                     fwhm = 0.37e-9
@@ -316,7 +316,7 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
                     fwhm = 0.44e-9
                  end
                  'Hb-cont' : begin
-                    wavelnth = 484.7-e-9
+                    wavelnth = 484.7e-9
                     fwhm = 0.6e-9
                  end
                  'CaHK-cont' : begin
