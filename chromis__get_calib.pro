@@ -81,6 +81,8 @@
 ; 
 ;    2016-05-27 : MGL. Bugfixes.
 ; 
+;    2016-06-02 : MGL. Added gains.
+; 
 ; 
 ;-
 pro chromis::get_calib, states $
@@ -91,6 +93,9 @@ pro chromis::get_calib, states $
                         , flatname = flatname $
                         , flatdata = flatdata $
                         , flathead = flathead $
+                        , gainname = gainname $
+                        , gaindata = gaindata $
+                        , gainhead = gainhead $
                         , sflatname = sflatname $
                         , sflatdata = sflatdata $
                         , sflathead = sflathead $
@@ -107,11 +112,13 @@ pro chromis::get_calib, states $
 
   if arg_present(darkname)  or arg_present(darkdata)  then darkname = strarr(Nstates)   
   if arg_present(flatname)  or arg_present(flatdata)  then flatname = strarr(Nstates) 
+  if arg_present(gainname)  or arg_present(gaindata)  then gainname = strarr(Nstates) 
   if arg_present(pinhname)  or arg_present(pinhdata)  then pinhname = strarr(Nstates) 
   if arg_present(sflatname) or arg_present(sflatdata) then sflatname = strarr(Nstates) 
 
   if arg_present(darkdata) $
      or arg_present(flatdata) $
+     or arg_present(gaindata) $
      or arg_present(sflatdata) $
      or arg_present(pinhdata) then begin
 
@@ -123,6 +130,7 @@ pro chromis::get_calib, states $
 
      if arg_present(darkdata) then darkdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
      if arg_present(flatdata) then flatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+     if arg_present(gaindata) then gaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
      if arg_present(pinhdata) then pinhdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
      if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   endif
@@ -130,6 +138,7 @@ pro chromis::get_calib, states $
   Nheadlines = 100              ; Assume max numer of header lines
   if arg_present(darkhead) then darkhead = arr(Nheadlines,Nstates) 
   if arg_present(flathead) then flathead = arr(Nheadlines,Nstates) 
+  if arg_present(gainhead) then gainhead = arr(Nheadlines,Nstates) 
   if arg_present(pinhhead) then pinhhead = arr(Nheadlines,Nstates) 
   if arg_present(sflathead) then sflathead = arr(Nheadlines,Nstates) 
 
@@ -140,7 +149,6 @@ pro chromis::get_calib, states $
      camtag = states[istate].camtag
 
      ;; Darks
-
      if arg_present(darkname) or arg_present(darkdata) or arg_present(darkhead) then begin
 
         darktag = camtag $
@@ -154,7 +162,8 @@ pro chromis::get_calib, states $
 
         if file_test(dname) then begin
             if arg_present(darkdata) then begin
-                darkdata[0, 0, istate] = red_readdata(dname, header = darkhead, status = darkstatus, /silent)
+                darkdata[0, 0, istate] = red_readdata(dname, header = darkhead $
+                                                      , status = darkstatus, /silent)
                 if status eq 0 then status = darkstatus
             endif else if arg_present(darkhead) then begin
                 darkhead[0, istate] = red_readhead(dname, status = darkstatus, /silent)
@@ -164,10 +173,9 @@ pro chromis::get_calib, states $
             if( arg_present(darkdata) || arg_present(darkhead) ) then status = -1
         endelse
 
-     endif
+     endif                      ; Darks
 
      ;; Flats
-
      if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) $
         or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
 
@@ -183,7 +191,8 @@ pro chromis::get_calib, states $
 
         if file_test(fname) then begin
             if arg_present(flatdata) then begin
-                flatdata[0, 0, istate] = red_readdata(fname, header = flathead, status = flatstatus, /silent)
+                flatdata[0, 0, istate] = red_readdata(fname, header = flathead $
+                                                      , status = flatstatus, /silent)
                 if status eq 0 then status = flatstatus
             endif else if arg_present(flathead) then begin
                 flathead[0, istate] = red_readhead(fname, status = flatstatus, /silent)
@@ -200,7 +209,8 @@ pro chromis::get_calib, states $
            
         if file_test(sfname) then begin
             if arg_present(sflatdata) then begin
-                sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead, status = sflatstatus, /silent)
+                sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead $
+                                                      , status = sflatstatus, /silent)
                 if status eq 0 then status = sflatstatus
             endif else if arg_present(flathead) then begin
                 sflathead[0, istate] = red_readhead(sfname, status = sflatstatus, /silent)
@@ -210,10 +220,38 @@ pro chromis::get_calib, states $
             if( arg_present(sflatdata) || arg_present(sflathead) ) then status = -1
         endelse
 
-     endif
+     endif                      ; Flats
 
+     ;; Gains
+     if arg_present(gainname) or arg_present(gaindata) or arg_present(gainhead) then begin
+
+        gaintag = camtag
+        if( states[istate].fullstate ne '' ) then begin
+           gaintag += '_' + states[istate].fullstate
+        endif
+
+        fname = self.out_dir+'/gaintables/' + gaintag + '.gain'
+        if arg_present(gainname) then begin
+           gainname[istate] = fname
+        endif
+
+        if file_test(fname) then begin
+           if arg_present(gaindata) then begin
+              gaindata[0, 0, istate] = red_readdata(fname, header = gainhead $
+                                                    , status = gainstatus, /silent)
+              if status eq 0 then status = gainstatus
+           endif else if arg_present(gainhead) then begin
+              gainhead[0, istate] = red_readhead(fname, status = gainstatus, /silent)
+              if status eq 0 then status = gainstatus
+           endif
+        endif else begin
+           if( arg_present(gaindata) || arg_present(gainhead) ) then status = -1
+        endelse
+
+     endif                      ; Gains
+
+     
      ;; Pinholes
-
      if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
 
         pinhtag = camtag
@@ -231,7 +269,8 @@ pro chromis::get_calib, states $
 
         if file_test(pname) then begin
             if arg_present(pinhdata) then begin
-                pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead, status = pinhstatus, /silent)
+                pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead $
+                                                     , status = pinhstatus, /silent)
                 if status eq 0 then status = pinhstatus
             endif else if arg_present(pinhhead) then begin
                 pinhhead[0, istate] = red_readhead(pname, status = pinhstatus, /silent)
@@ -241,7 +280,7 @@ pro chromis::get_calib, states $
             if( arg_present(pinhdata) || arg_present(pinhhead) ) then status = -1
         endelse
         
-     endif
+     endif                      ; Pinholes
 
   endfor                        ; istate
 
@@ -250,16 +289,19 @@ pro chromis::get_calib, states $
 
      if arg_present(darkname)  then darkname = darkname[0]
      if arg_present(flatname)  then flatname = flatname[0]
+     if arg_present(gainname)  then gainname = gainname[0]
      if arg_present(pinhname)  then pinhname = pinhname[0]
      if arg_present(sflatname) then sflatname = sflatname[0]
 
      if arg_present(darkdata)  then darkdata = darkdata[*, *, 0]
      if arg_present(flatdata)  then flatdata = flatdata[*, *, 0]
+     if arg_present(GAINdata)  then gaindata = gaindata[*, *, 0]
      if arg_present(pinhdata)  then pinhdata = pinhdata[*, *, 0] 
      if arg_present(sflatdata) then sflatdata = sflatdata[*, *, 0]
      
      if arg_present(darkhead)  then darkhead = darkhead[*, 0]
      if arg_present(flathead)  then flathead = flathead[*, 0]
+     if arg_present(gainhead)  then gainhead = gainhead[*, 0]
      if arg_present(pinhhead)  then pinhhead = pinhhead[*, 0]
      if arg_present(sflathead) then sflathead = sflathead[*, 0]
      
