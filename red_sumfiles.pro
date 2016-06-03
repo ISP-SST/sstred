@@ -189,7 +189,7 @@ function red_sumfiles, files_list $
   Nframes_per_file = lonarr(Nfiles)
   Nframes = 0
   for ifile = 0, Nfiles-1 do begin
-     head = red_readhead(files_list[ifile])
+     head = red_readhead(files_list[ifile], /silent)
      case sxpar(head, 'NAXIS') of
         2 : Nframes_per_file[ifile] = 1
         3 : Nframes_per_file[ifile] = sxpar(head, 'NAXIS3')
@@ -246,7 +246,7 @@ function red_sumfiles, files_list $
 
   ;; If just a single frame, return it now. 
   if Nframes eq 1 then begin
-     head = red_readhead(files_list[0])
+     head = red_readhead(files_list[0], /silent)
      time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
      time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
      time_ave = red_time2double((time_beg + time_end) / 2d, /dir)
@@ -254,7 +254,7 @@ function red_sumfiles, files_list $
      time_end = red_time2double(time_end, /dir)
      ;; Include gain, dark, fillpix, backscatter here? This case
      ;; should really never happen...
-     return, red_readdata(files_list[0])
+     return, red_readdata(files_list[0], /silent)
   endif
 
   ;; Needed for warning messages and progress bars.
@@ -275,10 +275,10 @@ function red_sumfiles, files_list $
   for ifile = 0, Nfiles-1 do begin
     
      if DoCheck then begin
-        cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head)
+        cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head, /silent)
         red_progressbar, iframe, Nframes, message = inam+' : loading files in memory'
      endif else begin
-        head = red_readhead(files_list[ifile])
+        head = red_readhead(files_list[ifile], /silent)
      endelse
 
      cadence = sxpar(head, 'CADENCE')
@@ -358,7 +358,7 @@ function red_sumfiles, files_list $
         for ifile = 0, Nfiles-1 do begin
            
            red_progressbar, iframe, Nframes, message = inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
-           cub = red_readdata(files_list[ifile],/silent)
+           cub = red_readdata(files_list[ifile], /silent)
 
            summed += total(cub, 3, /double)
            iframe += Nframes_per_file[ifile]
@@ -428,7 +428,7 @@ function red_sumfiles, files_list $
 
                  ;; If not checked, we (sometimes) have to read the frames in.
                  if ii ge Nframes_per_file[ifile] then begin
-                    cub = red_readdata(files_list[ifile],/silent)
+                    cub = red_readdata(files_list[ifile], /silent)
                     ii = 0
                  endif
                  thisframe = double(cub[*, *, ii])
