@@ -66,6 +66,10 @@
 ;    2016-06-02 : MGL. New information can be added through the
 ;                 metadata also when the header is already SOLARNET
 ;                 compliant. 
+;
+;    2016-06-03 : MGL. Modify regex for framenumber so both dots and
+;                 underscores work as delimiters. Only generate new
+;                 framenumber if it is not already in the header.
 ; 
 ; 
 ;-
@@ -332,27 +336,30 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
            endif 
         endif                   ; WAVELNTH
         
-        ;; The frame number is the last field iff it consists
-        ;; entirely of digits. The third subexpression of the regular
-        ;; expression matches only the end of the string because
-        ;; that's where it is if it is present. We do not know the
-        ;; length of the frame number field so if the third
-        ;; subexpression were allowed to match a dot we would get
-        ;; false matches with the scan and prefilter fields.
-        ;;
-        ;; Actually, this is the file number. Let's make the frame
-        ;; number (of the first frame) 10000 times this.
-        ;;
-        filenumber = ((stregex(barefile, '(\.)([0-9]+)($)', /extr, /subexp))[2,*])[0]
-        if filenumber ne '' then begin
-           framenumber1 = 10000*long(filenumber)
+        framenumber = fxpar(head, red_keytab('frame'), count = count)
+        if count eq 0 then begin
+           ;; The frame number is the last field iff it consists
+           ;; entirely of digits. The third subexpression of the
+           ;; regular expression matches only the end of the string
+           ;; because that's where it is if it is present. We do not
+           ;; know the length of the frame number field so if the
+           ;; third subexpression were allowed to match a dot we would
+           ;; get false matches with the scan and prefilter fields.
            ;;
-           ;; But what keyword to use for this? Invent something
-           ;; for now!
-           sxaddpar, newhead, red_keytab('frame'), framenumber1 $
-                     , '(number of first frame) Inferred from filename.' $
-                     , before = 'COMMENT'
-        endif
+           ;; Actually, this is the file number. Let's make the frame
+           ;; number (of the first frame) 10000 times this.
+           ;;
+           filenumber = ((stregex(barefile, '(\.|_)([0-9]+)($)', /extr, /subexp))[2,*])[0]
+           if filenumber ne '' then begin
+              framenumber1 = 10000L*long(filenumber)
+              ;;
+              ;; But what keyword to use for this? Invent something
+              ;; for now!
+              sxaddpar, newhead, red_keytab('frame'), framenumber1 $
+                        , '(number of first frame) Inferred from filename.' $
+                        , before = 'COMMENT'
+           endif
+        endif 
 
         ;; The scan number is the only field that is exactly five
         ;; digits long:
@@ -360,15 +367,6 @@ function red_filterchromisheaders, head, metadata=metaStruct, silent=silent
         if scannumber ne '' then sxaddpar, newhead, red_keytab('scannumber'), long(scannumber) $
                                            , '(scan number) Inferred from filename.' $
                                            , before = 'COMMENT'
-        ;; What keyword to use for this? Invented SCANNUM for now.
-
-
-        ;; Don't trust positions if we don't have to.
-        ;; states = strsplit(barefile,'.',/extract)
-        ;; camtag = states[0]
-        ;; fscan = states[1]
-        ;; pref = states[2]
-        ;; frame = states[3]
 
      endif                      ; filename
 
