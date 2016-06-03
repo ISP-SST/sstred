@@ -39,6 +39,8 @@
 ;
 ;   2016-06-02 : MGL. Remove some keywords to extractstates.
 ;
+;   2016-06-03 : MGL. Read data silently. Bugfix. Save frames as INTs. 
+;
 ;-
 pro chromis::split_data, split_dir = split_dir $
                          , uscan = uscan $
@@ -128,7 +130,7 @@ pro chromis::split_data, split_dir = split_dir $
 
         ;;; check for complete scans only
         IF ~keyword_set(all_data) THEN BEGIN
-           scans = states.scannumber[uniq(states.scannumber, sort(states.scannumber))]
+           scans = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
 
            Nscans = n_elements(scans)
            f_scan = lonarr(Nscans)
@@ -167,8 +169,8 @@ pro chromis::split_data, split_dir = split_dir $
            if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
 
            ;; Read the data cube
-           cube = red_readdata(files[ifile], header = head)
-
+           cube = red_readdata(files[ifile], header = head, /silent)
+           
            dims = size(cube, /dim)
            Nframes = dims[2]
 
@@ -189,13 +191,16 @@ pro chromis::split_data, split_dir = split_dir $
                      , 'Creation date of FITS header', before = 'TIMESYS'
            sxdelpar, head, 'CADENCE'
            sxdelpar, head, red_keytab('frame')
-           sxdelpar, head, 'NAXIS3'
-           sxaddpar, head, 'NAXIS', 2, /savecomment
+;           sxdelpar, head, 'NAXIS3'
+;           sxaddpar, head, 'NAXIS', 2, /savecomment
+
+           check_fits, fix(cube[*, *, 0]), head, /UPDATE, /SILENT
 
            for iframe = 0L, Nframes-1 do begin
 
               frameno = frame1 + iframe
-              
+              sxaddpar, head, red_keytab('framenumber'), frameno, before = 'COMMENT'
+
               ;; DATE-BEG, DATE-AVE, DATE-END
               sxaddpar, head, 'DATE-BEG', /savecomment, after = 'TIMESYS' $
                         , date + 'T' + red_time2double(time_beg+iframe*cadence, /dir)
@@ -213,7 +218,7 @@ pro chromis::split_data, split_dir = split_dir $
                        + '_' + string(frameno, format = '(i07)') $
                        + '.fits'
               
-              red_writedata, namout, cube[*, *, iframe], header = head $
+              red_writedata, namout, fix(cube[*, *, iframe]), header = head $
                              , filetype = 'FITS', /overwrite
               
               if wb then begin
