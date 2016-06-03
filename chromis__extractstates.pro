@@ -89,7 +89,9 @@
 ;                for WB cameras) and strip_settings (to exclude gain
 ;                and exposure from fullstate for pinholes).  
 ;
-;   2016-06-02 : MGL. Added progress printout.
+;   2016-06-02 : MGL. Added progress printout. 
+;
+;   2016-06-03 : MGL. Filter headers silently.
 ;
 ;-
 pro chromis::extractstates, strings, states $
@@ -118,7 +120,7 @@ pro chromis::extractstates, strings, states $
         states.filename = strings
      endif else begin
         mkhdr, head, ''         ; create a dummy header
-        head = red_filterchromisheaders( head, meta={filename:strings[ifile]} )
+        head = red_filterchromisheaders( head, meta={filename:strings[ifile]}, /silent)
         print,'file does not exist: ', strings[ifile]
         print,'state information will be incomplete!'
      endelse
