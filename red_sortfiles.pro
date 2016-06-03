@@ -45,9 +45,10 @@ function red_sortfiles, files
   nt = n_elements(files)
   num = lonarr(nt)
 
-  tmp = strsplit(file_basename(files,'.fits'),'._',/extract)
-  for ii = 0L, nt-1 do num[ii] = (tmp[ii])[-1]
-
+  for ii = 0L, nt-1 do begin
+    tmp = strsplit(file_basename(files[ii],'.fits'),'._',/extract)
+    num[ii] = long(tmp[n_elements(tmp) - 1])
+  endfor
   return, files[sort(num)]
 
 end
