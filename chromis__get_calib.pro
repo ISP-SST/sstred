@@ -153,9 +153,10 @@ pro chromis::get_calib, states $
      ;; Darks
      if arg_present(darkname) or arg_present(darkdata) or arg_present(darkhead) then begin
 
-        darktag = camtag $
-                  + '_' + string(states[istate].exposure*1000, format = '(f4.2)') + 'ms' $
-                  + '_' + 'G' + string(states[istate].gain, format = '(f05.2)')
+        darktag = camtag
+        if( states[istate].cam_settings ne '' ) then begin
+            darktag += '_' + states[istate].cam_settings
+        endif
 
         dname = self.out_dir+'/darks/' + darktag + '.dark'
         if arg_present(darkname) then begin

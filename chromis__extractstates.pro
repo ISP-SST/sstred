@@ -124,21 +124,31 @@ pro chromis::extractstates, strings, states $
      endelse
 
      ;; Numerical keywords
-     states[ifile].gain = fxpar(head, 'GAIN')
-     states[ifile].exposure = fxpar(head, 'XPOSURE')
-     states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH', count=count)
+     states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
+     states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
+     states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
+     states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
+     states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
 
      ;; String keywords require checking
      camtag = fxpar(head, red_keytab('cam'), count=count)
      if count gt 0 then states[ifile].camtag = strtrim(fxpar(head, red_keytab('cam')), 2)
      filter = fxpar(head, red_keytab('prefilter'), count=count)
      if count gt 0 then states[ifile].prefilter = filter
+     channel = fxpar(head, red_keytab('cam_channel'), count=count)
+     if count gt 0 then begin
+         channel = strtrim(channel,2)
+         states[ifile].channel = channel
+         if channel eq 'Chromis-W' or channel eq 'Chromis-D' then states[ifile].is_wb = 1
+     endif
 
-     ;; These keywords are temporary, change when we change in
-     ;; red_filterchromisheaders.
-     states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
-     states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
-
+     if hasexp gt 0 then begin
+        states[ifile].cam_settings = string(states[ifile].exposure*1000, format = '(f4.2)') + 'ms'
+     endif
+     if hasgain gt 0 then begin
+         if hasexp gt 0 then states[ifile].cam_settings += '_'
+         states[ifile].cam_settings += 'G' + string(states[ifile].gain, format = '(f05.2)')
+     endif
      
      ;; Replace the following regexp code when this info is in the
      ;; header.
@@ -179,13 +189,12 @@ pro chromis::extractstates, strings, states $
  ;
  ;
      if ~keyword_set(strip_settings) then begin
-        states[ifile].fullstate = string(states[ifile].exposure*1000, format = '(f4.2)') + 'ms' $
-                                + '_' + 'G' + string(states[ifile].gain, format = '(f05.2)')
+        states[ifile].fullstate = states[ifile].cam_settings
      endif
      if states[ifile].prefilter ne '' then states[ifile].fullstate += '_' + states[ifile].prefilter
      if keyword_set(strip_wb) then begin
-        if states[ifile].camtag eq self->getcamtag('Chromis-N') $
-           and states[ifile].tuning ne '' then states[ifile].fullstate += '_' + states[ifile].tuning
+        if states[ifile].is_wb eq 0  and states[ifile].tuning ne '' then $
+            states[ifile].fullstate += '_' + states[ifile].tuning
      endif else begin
         if states[ifile].tuning ne '' then states[ifile].fullstate += '_' + states[ifile].tuning
      endelse

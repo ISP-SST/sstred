@@ -35,7 +35,9 @@ pro chromis__define
            pf_wavelength:0.0, $
            tun_wavelength:0.0D, $
            exposure:0.0D, $
-           gain:0.0 $
+           gain:0.0, $
+           cam_settings:'', $
+           is_wb:0B $
     }
                                 
     pc = { CHROMIS_POLCAL_STATE, $

@@ -23,6 +23,7 @@ PRO red__define
     st = { RED_STATE, $
            filename:'', $
            camtag:'', $
+           channel:'', $
            fullstate:'', $
            skip:0B $
     }

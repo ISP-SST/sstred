@@ -167,7 +167,6 @@ pro red::sumpinh, nthreads = nthreads $
             ;; Get the flat file name for the selected state
             self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
                         pinhname = pinhname, status = status
-stop
             if( status ne 0 ) then begin
                 print, inam+' : failed to load calibration data for:', states[sel[0]].filename
                 continue
