@@ -186,7 +186,9 @@
 ;                 setdarkdir.  
 ;
 ;    2016-05-30 : MGL. Don't zero Sarnoff tap borders for
-;                 CHROMIS cameras. 
+;                 CHROMIS cameras.   
+;
+;    2016-06-04 : MGL. CHROMIS image scale.
 ;
 ;
 ;-
@@ -339,9 +341,10 @@ pro red_setupworkdir, search_dir = search_dir $
      ;; Specify the date in the config file, ISO format.
      print, 'Date'
      printf, Clun, '#'
-     printf, Clun, '# --- Date'
+     printf, Clun, '# --- Settings'
      printf, Clun, '#'
      printf, Clun,'isodate = '+isodate
+     printf, Clun,'image_scale = 0.0379' ; Measured in May 2016.
 
      printf, Slun, 'a = chromisred("'+cfgfile+'")' 
      printf, Slun, 'root_dir = "' + root_dir + '"'
