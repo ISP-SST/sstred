@@ -9,7 +9,7 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; :Keywords:
@@ -58,7 +58,7 @@
 ;
 ;       The number of images per mfbd data set.
 ;
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;
@@ -87,12 +87,23 @@
 ;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
 ;
+;   2016-05-31 : MGL. Default date from class object. Better loop
+;                indices. Added dirs keyword.
+;
+;   2016-06-01 : MGL. Replace CRISP specific code.
+;
+;   2016-06-02 : MGL. Use new class methods and camerainfo.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
-                   modes = modes, date_obs = date_obs, no_descatter = no_descatter, $
-                   global_keywords = global_keywords, skip = skip, $
+                   modes = modes, $
+                   date_obs = date_obs, $
+                   dirs = dirs, $
+                   no_descatter = no_descatter, $
+                   global_keywords = global_keywords, $
                    pref = pref, $
-                   nf = nfac, nimages = nimages, $
+                   nf = nfac, $
+                   nimages = nimages, $
                    mfbddir = mfbddir
 
   ;; Name of this method
@@ -103,29 +114,59 @@ pro red::prepmfbd, numpoints = numpoints, $
   red_writelog, selfinfo = selfinfo
 
   ;; Get keywords
-  if n_elements(date_obs) eq 0 then begin
-     date_obs = ' '
-     read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
-  endif
-  if n_elements(numpoints) eq 0 then numpoints = '88'
+  if n_elements(date_obs) eq 0 then date_obs = self.isodate
   if n_elements(modes) eq 0 then modes = '2-29,31-36,44,45'
-  if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
   if n_elements(mfbddir) eq 0 then mfbddir = 'mfbd' 
-     
-  if ~ptr_valid(self.data_dirs) then begin
-     print, inam+' : ERROR : undefined data_dir'
+
+  if n_elements(dirs) gt 0 then begin
+     dirs = [dirs] 
+  endif else begin
+     if ~ptr_valid(self.data_dirs) then begin
+        print, inam+' : ERROR : undefined data_dir'
+        return
+     endif
+     dirs = *self.data_dirs
+  endelse
+
+  Ndirs = n_elements(dirs)
+  if( Ndirs eq 0) then begin
+     print, inam+' : ERROR : no directories defined'
      return
+  endif else begin
+     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+     else dirstr = dirs[0]
+  endelse
+
+
+  Ndirs = n_elements(dirs)
+  if Ndirs eq 0 then begin
+     print, inam+' : ERROR : no directories defined'
+     return
+  endif else begin
+     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+     else dirstr = dirs[0]
+  endelse
+
+  ;; Hardcoded stuff, to be replaced with code that examines the data
+  ;; from the day of the observations:
+  
+  arcsecperpix = 0.0379         ; Measured with pinhole images on 2016-05-07.
+  cam = 'Chromis-W'             ; Or 'Crisp-W'
+  camtag = self -> getcamtag(cam)
+  
+  
+  if n_elements(numpoints) eq 0 then begin
+     ;; About the same subfield size in arcsec as CRISP:
+     numpoints = strtrim(round(88*0.0590/arcsecperpix/2)*2, 2)
   endif
 
-  Ndirs = n_elements(*self.data_dirs)
+  for idir = 0L, Ndirs - 1 do begin
 
-  for fff = 0, Ndirs - 1 do begin
-     data_dir = self.data_dirs[fff]
-     spawn, 'find ' + data_dir + '/' + self.camwb+ '/ | grep im.ex | grep -v ".lcd."', files
-     folder_tag = strsplit(data_dir,'/',/extract)
-     nn = n_elements(folder_tag) - 1
-     folder_tag = folder_tag[nn]
+     data_dir = dirs[idir]
+     spawn, 'find ' + data_dir + '/' + cam + '/' + camtag + '* | grep -v ".lcd."', files
 
+     folder_tag = file_basename(data_dir)
+     
      nf = n_elements(files)
      if(files[0] eq '') then begin
         print, inam + ' : ERROR -> no frames found in '+data_dir
@@ -133,146 +174,146 @@ pro red::prepmfbd, numpoints = numpoints, $
      endif
 
      files = red_sortfiles(temporary(files))
-
      ;; Get image unique states
-     stat = red_getstates(files)
-     red_flagtuning, stat, nremove
-     states = stat.hscan+'.'+stat.state
-     pos = uniq(states, sort(states))
-     ustat = stat.state[pos]
-     ustatp = stat.pref[pos]
+     self -> extractstates, files, states
 
-     ntt = n_elements(ustat)
-     hscans = stat.hscan[pos]
+;     stat = red_getstates(files)
+;     red_flagtuning, stat, nremove
+;     states = stat.hscan+'.'+stat.state
+;     pos = uniq(states.fullstate, sort(states.fullstate))
+;     ustat = states[pos].fullstate
+;     ustatp = states[pos].prefilter
+
+;     ntt = n_elements(ustat)
+;     hscans = stat.hscan[pos]
 
      ;; Get unique prefilters
-     upref = stat.pref[uniq(stat.pref, sort(stat.pref))]
-     np = n_elements(upref)
+     upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
+     Npref = n_elements(upref)
 
      ;; Get scan numbers
-     uscan = stat.rscan[uniq(stat.rscan, sort(stat.rscan))]
-     ns = n_elements(uscan)
+     uscan = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
+     Nscans = n_elements(uscan)
 
-     ;; Create a reduc file per prefilter and scan number?
-     outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag
-     file_mkdir, outdir
-
-     self -> getcamtags, dir = data_dir
-
-     ;; Print cams
-     print, ' WB  -> '+self.camwbtag
+     ;; Create a config file per prefilter and scan number
 
      ;; Loop over scans
-     for ss = 0L, ns - 1 do begin
+     for iscan = 0L, Nscans-1 do begin
         
-        scan = uscan[ss]
+        scan = string(uscan[iscan], format = '(i05)')
 
         ;; Loop over prefilters
-        for pp = 0L, np - 1 do begin
-           if(keyword_set(pref)) then begin
-              if(upref[pp] NE pref) then begin
-                 print, inam + ' : Skipping prefilter -> ' + upref[pp]
+        for ipref = 0L, Npref - 1 do begin
+           
+           if n_elements(pref) ne 0 then begin
+              if upref[ipref] NE pref then begin
+                 print, inam + ' : Skipping prefilter -> ' + upref[ipref]
                  continue
               endif
            endif
 
-           lam = strmid(string(float(upref[pp]) * 1.e-10), 2)
+           ;; Where to put the config files:
+           outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag $
+                    + '/' + upref[ipref] + '/cfg/'
 
-           outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag + '/' + upref[pp] + '/cfg/'
-           file_mkdir, outdir
-           rdir = self.out_dir + '/' + mfbddir + '/' + folder_tag + '/' + upref[pp] + '/cfg/results/'
-           file_mkdir, rdir
-           ddir = self.out_dir + '/' + mfbddir + '/' + folder_tag + '/' + upref[pp] + '/cfg/data/'
-           file_mkdir, ddir
+           ;; Needed by momfbd:
+           file_mkdir, outdir + 'results'
+           file_mkdir, outdir + 'data'
 
-           ;; Image numbers for the current scan
-           numpos = where((stat.rscan eq uscan[ss]) AND (stat.star eq 0B) AND (stat.pref eq upref[pp]), ncount)
+           ;; Image numbers for the current scan:
+           numpos = where((states.scannumber eq scan) $
+;                          AND (stat.star eq 0B) $
+                          AND (states.prefilter eq upref[ipref]) $
+                          , ncount)
            if(ncount eq 0) then continue
     
            ;; Split scan into subsets?
            if n_elements(nimages) eq 0 then begin
-
               Nsubscans = 1
-
            endif else begin
-              
               Nsubscans = round(ncount/float(nimages))
-              
            endelse
 
            ;; Loop over subsets of the current scan
-           for isub = 0, Nsubscans-1 do begin
+           for isub = 0L, Nsubscans-1 do begin
 
               if Nsubscans eq 1 then begin
-                 cfg_file = 'momfbd.reduc.'+upref[pp]+'.'+scan+'.cfg'
-                 n0 = stat.nums[numpos[0]]
-                 n1 = stat.nums[numpos[ncount-1]]
-;                 nall = strjoin(stat.nums[numpos],',')
+                 cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + '.cfg'
+                 n0 = strtrim(states[numpos[0]].framenumber, 2)
+                 n1 = strtrim(states[numpos[ncount-1]].framenumber, 2)
                  nall = strjoin([n0,n1],'-')
-                 print, inam+' : Prefilter = '+upref[pp]+' -> scan = '+uscan[ss]+' -> image range = ['+n0+' - '+n1+']'
-                 oname = self.camwbtag+'.'+scan+'.'+upref[pp]
+                 print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
+                        + scan + ' -> image range = [' + nall + ']'
+                 oname = camtag + '_' + scan + '_' + upref[ipref]
              endif else begin
                  subscan = red_stri(isub, ni = '(i03)')
-                 cfg_file = 'momfbd.reduc.'+upref[pp]+'.'+scan+':'+subscan+'.cfg'
-                 n0 = stat.nums[numpos[isub*ncount/Nsubscans]]
-                 n1 = stat.nums[numpos[((isub+1)*ncount/Nsubscans-1) <ncount]]
+                 cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + ':' + subscan + '.cfg'
+                 n0 = strtrim(states[numpos[isub*ncount/Nsubscans]].framenumber, 2)
+                 n1 = strtrim(states[numpos[((isub+1)*ncount/Nsubscans-1) <ncount]].framenumber, 2)
                  nall = strjoin([n0,n1],'-')                 
-                 print, inam+' : Prefilter = '+upref[pp]+' -> scan = '+scan+':'+subscan+' -> image range = ['+n0+' - '+n1+']'
-                 oname = self.camwbtag+'.'+scan+':'+subscan+'.'+upref[pp]
+                 print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
+                        + scan + ':' + subscan + ' -> image range = [' + nall + ']'
+                 oname = camtag + '_' + scan + ':' + subscan + '_' + upref[ipref]
               endelse
-              
+
               ;; Open config file for writing
               openw, lun, outdir + cfg_file, /get_lun, width=2500
 
+              self -> get_calib, states[numpos[0]], darkname = darkname, gainname = gainname
+              caminfo = red_camerainfo(camtag)
+              
               ;; WB only
               printf, lun, 'object{'
-              printf, lun, '  WAVELENGTH=' + lam
+              printf, lun, '  WAVELENGTH=' + strtrim(states[0].pf_wavelength, 2)
               printf, lun, '  OUTPUT_FILE=results/'+oname
               printf, lun, '  channel{'
-              printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwb+'_nostate/'
-              ;printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwbtag+'_nostate/'
-              printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+scan+'.'+upref[pp]+'.%07d'
-                                ; printf, lun, '    DIVERSITY=0.0 mm'
-              printf, lun, '    GAIN_FILE=' + file_search(self.out_dir+'gaintables/'+self.camwbtag + $
-                                                          '.' + upref[pp]+'*.gain')
-              printf, lun, '    DARK_TEMPLATE='+self.out_dir+'darks/'+self.camwbtag+'.summed.0000001'
+              printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + data_dir + '/' + cam + '_nostate/'
+;              printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + '/data/' + folder_tag $
+;                      + '/' + cam + '_nostate/'
+              printf, lun, '    FILENAME_TEMPLATE=' + camtag + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
+              printf, lun, '    GAIN_FILE=' + gainname
+              printf, lun, '    DARK_TEMPLATE=' + darkname
+;              printf, lun, '    GAIN_FILE=' + file_search(self.out_dir + 'gaintables/' + cam + $
+;                                                          '.' + upref[ipref]+'*.gain')
+;              printf, lun, '    DARK_TEMPLATE=' + self.out_dir + 'darks/' + cam + '.summed.0000001'
               printf, lun, '    DARK_NUM=0000001'
-              if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                 self -> loadbackscatter, self.camwbtag, upref[pp], bg, psf, bgfile = bgf, bpfile = psff
-;                 psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
-;                 bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
-;                 if(file_test(psff) AND file_test(bgf)) then begin
+
+              if upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' $
+                 AND ~keyword_set(no_descatter) then begin
+                 self -> loadbackscatter, cam, upref[ipref], bg, psf $
+                                          , bgfile = bgf, bpfile = psff
                  printf, lun, '    PSF='+psff
                  printf, lun, '    BACK_GAIN='+bgf
-;                 endif
               endif 
 
               printf, lun, '    INCOMPLETE'
 
               if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
+
               printf, lun, '  }'
               printf, lun, '}'
 
               ;; Global keywords
               printf, lun, 'PROG_DATA_DIR=./data/'
-              printf, lun, 'DATE_OBS='+date_obs
-              printf, lun, 'IMAGE_NUMS='+nall ;n0+'-'+n1
+              printf, lun, 'DATE_OBS=' + date_obs
+              printf, lun, 'IMAGE_NUMS=' + nall 
               printf, lun, 'BASIS=Karhunen-Loeve'
-              printf, lun, 'MODES='+modes
-              printf, lun, 'NUM_POINTS='+strtrim(numpoints, 2)
+              printf, lun, 'MODES=' + modes
+              printf, lun, 'NUM_POINTS=' + strtrim(numpoints, 2)
               printf, lun, 'TELESCOPE_D=0.97'
-              printf, lun, 'ARCSECPERPIX='+self.image_scale
-              printf, lun, 'PIXELSIZE=16.0E-6'
+              printf, lun, 'ARCSECPERPIX=' + self.image_scale
+              printf, lun, 'PIXELSIZE=' + strtrim(caminfo.pixelsize, 2)
               printf, lun, 'GETSTEP=getstep_conjugate_gradient'
               printf, lun, 'GRADIENT=gradient_diff'
               printf, lun, 'MAX_LOCAL_SHIFT=30'
               printf, lun, 'NEW_CONSTRAINTS'
-              printf, lun, 'FILE_TYPE='+self.filetype
+              printf, lun, 'FILE_TYPE=' + self.filetype
               printf, lun, 'FAST_QR'
               if self.filetype eq 'MOMFBD' then begin
                  printf, lun, 'GET_PSF'
                  printf, lun, 'GET_PSF_AVG'
               endif
+
               ;; External keywords?
               if(keyword_set(global_keywords)) then begin
                  nk = n_elements(global_keywords)
@@ -280,10 +321,12 @@ pro red::prepmfbd, numpoints = numpoints, $
               endif
 
               free_lun, lun
+              
            endfor               ; isub
-        endfor                  ; pp
-     endfor                     ; ss
-  endfor                        ; fff
+        endfor                  ; ipref
+
+     endfor                     ; iscan
+  endfor                        ; idir
 
   print, inam+' : done!'
   return
