@@ -48,7 +48,9 @@
 ;   
 ;    nremove :  in, optional, 
 ;   
-;   
+;    cam_channel : in, optional, type=string, default="Crisp-W or Chromis-W"
+;
+;       The camera to run mfbd on.
 ;   
 ;    mmfbddir :  in, optional, type=string, default='mfbd'
 ;   
@@ -94,6 +96,9 @@
 ;
 ;   2016-06-02 : MGL. Use new class methods and camerainfo.
 ;
+;   2016-06-05 : MGL. New keyword cam_channel. Default cam that works
+;                for both CRISP and CHROMIS.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
                    modes = modes, $
@@ -104,7 +109,8 @@ pro red::prepmfbd, numpoints = numpoints, $
                    pref = pref, $
                    nf = nfac, $
                    nimages = nimages, $
-                   mfbddir = mfbddir
+                   mfbddir = mfbddir, $
+                   cam_channel = cam_channel
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -147,23 +153,47 @@ pro red::prepmfbd, numpoints = numpoints, $
      else dirstr = dirs[0]
   endelse
 
-  ;; Hardcoded stuff, to be replaced with code that examines the data
-  ;; from the day of the observations:
-  
-  arcsecperpix = 0.0379         ; Measured with pinhole images on 2016-05-07.
-  cam = 'Chromis-W'             ; Or 'Crisp-W'
+  if n_elements(cam_channel) ne 0 then begin
+     ;; Check that the specified camera exists
+     campos = where(strmatch(*self.cam_channels,cam_channel), nn)
+     if nn eq 1 then begin
+        cam = cam_channel
+     endif else begin
+        print, inam + ' : ERROR -> camera not defined '+cam_channel
+        retall
+     endelse
+  endif else begin
+     ;; Select as default the wideband camera
+     campos = where(strmatch(*self.cam_channels,'*-W'), nn)
+     if nn eq 1 then begin
+        cam = (*self.cam_channels)[campos]
+     endif else begin
+        print, inam + ' : ERROR -> camera not specified and no wideband camera defined.'
+        retall        
+     endelse
+  endelse
+
   camtag = self -> getcamtag(cam)
-  
   
   if n_elements(numpoints) eq 0 then begin
      ;; About the same subfield size in arcsec as CRISP:
-     numpoints = strtrim(round(88*0.0590/arcsecperpix/2)*2, 2)
+     numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
   endif
 
   for idir = 0L, Ndirs - 1 do begin
 
      data_dir = dirs[idir]
-     spawn, 'find ' + data_dir + '/' + cam + '/' + camtag + '* | grep -v ".lcd."', files
+
+     ;; Directory
+     if strmatch(cam,'*-W') or strmatch(cam,'*-D') then begin
+        ;; Wideband data
+        camdir = data_dir + '/' + cam + '_nostate/'
+     endif else begin
+        ;; Narrowband data
+        camdir = data_dir + '/' + cam + '/'
+     endelse
+
+     spawn, 'find ' + camdir + camtag + '* | grep -v ".lcd."', files
 
      folder_tag = file_basename(data_dir)
      
@@ -176,16 +206,6 @@ pro red::prepmfbd, numpoints = numpoints, $
      files = red_sortfiles(temporary(files))
      ;; Get image unique states
      self -> extractstates, files, states
-
-;     stat = red_getstates(files)
-;     red_flagtuning, stat, nremove
-;     states = stat.hscan+'.'+stat.state
-;     pos = uniq(states.fullstate, sort(states.fullstate))
-;     ustat = states[pos].fullstate
-;     ustatp = states[pos].prefilter
-
-;     ntt = n_elements(ustat)
-;     hscans = stat.hscan[pos]
 
      ;; Get unique prefilters
      upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
@@ -247,9 +267,11 @@ pro red::prepmfbd, numpoints = numpoints, $
                  oname = camtag + '_' + scan + '_' + upref[ipref]
              endif else begin
                  subscan = red_stri(isub, ni = '(i03)')
-                 cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + ':' + subscan + '.cfg'
+                 cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + ':' $
+                            + subscan + '.cfg'
                  n0 = strtrim(states[numpos[isub*ncount/Nsubscans]].framenumber, 2)
-                 n1 = strtrim(states[numpos[((isub+1)*ncount/Nsubscans-1) <ncount]].framenumber, 2)
+                 n1 = strtrim(states[numpos[((isub+1)*ncount/Nsubscans-1) $
+                                            <ncount]].framenumber, 2)
                  nall = strjoin([n0,n1],'-')                 
                  print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
                         + scan + ':' + subscan + ' -> image range = [' + nall + ']'
@@ -267,15 +289,18 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, '  WAVELENGTH=' + strtrim(states[0].pf_wavelength, 2)
               printf, lun, '  OUTPUT_FILE=results/'+oname
               printf, lun, '  channel{'
-              printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + data_dir + '/' + cam + '_nostate/'
-;              printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + '/data/' + folder_tag $
-;                      + '/' + cam + '_nostate/'
-              printf, lun, '    FILENAME_TEMPLATE=' + camtag + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
+              printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + camdir
+              if strmatch(cam,'*-W') or strmatch(cam,'*-D') then begin
+                 ;; Wideband, no state
+                 template = camtag + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
+              endif else begin
+                 ;; Narrowband, with state
+                 template = camtag + '_' + scan + '_' + states[numpos[0]].fullstate $
+                            + '_%07d.fits'
+              endelse
+              printf, lun, '    FILENAME_TEMPLATE=' + template
               printf, lun, '    GAIN_FILE=' + gainname
               printf, lun, '    DARK_TEMPLATE=' + darkname
-;              printf, lun, '    GAIN_FILE=' + file_search(self.out_dir + 'gaintables/' + cam + $
-;                                                          '.' + upref[ipref]+'*.gain')
-;              printf, lun, '    DARK_TEMPLATE=' + self.out_dir + 'darks/' + cam + '.summed.0000001'
               printf, lun, '    DARK_NUM=0000001'
 
               if upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' $
