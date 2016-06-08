@@ -316,8 +316,8 @@ function red_sumfiles, files_list $
         for irejected = 0, Nrejected-1 do begin 
            ;; Find file name and frame number within file
            ifile = 0
-           while idx[irejected] lt total(Nframes_per_file[0:ifile]) do ifile += 1
-           msg = files_list[ifile]+', frame # '+strtrim(idx[irejected]-Nframes_per_file[0:ifile], 2)
+           while idx1[irejected] gt total(Nframes_per_file[0:ifile]) do ifile += 1
+           msg = files_list[ifile]+', frame # '+strtrim(idx1[irejected]-Nframes_per_file[ifile], 2)
            print, msg
            if(keyword_set(lun)) then printf, lun, msg
         endfor                  ; irejected
