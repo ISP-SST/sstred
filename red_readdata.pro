@@ -63,6 +63,9 @@
 ;                fits-headers. 
 ;
 ;   2016-05-31 : JLF. Added silent keyword to suppress informational messages.
+;
+;   2016-06-08 : JLF. Bugfix, don't process headers if the user isn't asking
+;		 for them.
 ;-
 function red_readdata, fname $
                        , header = header $
@@ -138,7 +141,7 @@ function red_readdata, fname $
   endcase
 
   
-  if n_elements(header) ne 0 then $
+  if arg_present(header) ne 0 then $
     header = red_filterchromisheaders(header,meta={filename:fname}, silent=silent)
   
   if n_elements(header) ne 0 and keyword_set(structheader) then begin
