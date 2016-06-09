@@ -30,7 +30,10 @@
 ;   
 ;   
 ;   
-;    date_obs  :  in, optional, 
+;    date_obs  :  in, optional, type=string
+;   
+;      The date of observations in ISO (YYYY-MM-DD) format. If not
+;      given, taken from class object.
 ;   
 ;   
 ;   
@@ -52,7 +55,7 @@
 ;
 ;       The camera to run mfbd on.
 ;   
-;    mmfbddir :  in, optional, type=string, default='mfbd'
+;    mfbddir :  in, optional, type=string, default='mfbd'
 ;   
 ;       Top directory of output tree.
 ;   
@@ -99,6 +102,11 @@
 ;   2016-06-05 : MGL. New keyword cam_channel. Default cam that works
 ;                for both CRISP and CHROMIS.
 ;
+;   2016-06-06 : MGL. Minor improvements from prepmomfbd.
+;
+;   2016-06-08 : MGL. Renamed keyword nf to nfac so scope_varfetch
+;                does not get confused in writelog.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
                    modes = modes, $
@@ -107,7 +115,7 @@ pro red::prepmfbd, numpoints = numpoints, $
                    no_descatter = no_descatter, $
                    global_keywords = global_keywords, $
                    pref = pref, $
-                   nf = nfac, $
+                   nfac = nfac, $
                    nimages = nimages, $
                    mfbddir = mfbddir, $
                    cam_channel = cam_channel
@@ -133,16 +141,6 @@ pro red::prepmfbd, numpoints = numpoints, $
      endif
      dirs = *self.data_dirs
   endelse
-
-  Ndirs = n_elements(dirs)
-  if( Ndirs eq 0) then begin
-     print, inam+' : ERROR : no directories defined'
-     return
-  endif else begin
-     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-     else dirstr = dirs[0]
-  endelse
-
 
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then begin
@@ -178,11 +176,15 @@ pro red::prepmfbd, numpoints = numpoints, $
   if n_elements(numpoints) eq 0 then begin
      ;; About the same subfield size in arcsec as CRISP:
      numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
-  endif
+  endif else begin
+     ;; Convert strings, just to avoid breaking existing codes.
+     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
+  endelse
 
   for idir = 0L, Ndirs - 1 do begin
 
      data_dir = dirs[idir]
+     folder_tag = file_basename(data_dir)
 
      ;; Directory
      if strmatch(cam,'*-W') or strmatch(cam,'*-D') then begin
@@ -193,17 +195,25 @@ pro red::prepmfbd, numpoints = numpoints, $
         camdir = data_dir + '/' + cam + '/'
      endelse
 
-     spawn, 'find ' + camdir + camtag + '* | grep -v ".lcd."', files
-
-     folder_tag = file_basename(data_dir)
+     search = camdir + camtag
+     files = file_search(search+'/*', count = Nfiles) 
      
-     nf = n_elements(files)
-     if(files[0] eq '') then begin
-        print, inam + ' : ERROR -> no frames found in '+data_dir
-        return
-     endif
+     IF Nfiles EQ 0 THEN BEGIN
+         print, inam + ' : ERROR -> no frames found in '+search
+         print, inam + '   Did you run link_data?'
+         return
+     ENDIF 
+
+;     spawn, 'find ' + camdir + camtag + '* | grep -v ".lcd."', files
+;
+;     nf = n_elements(files)
+;     if(files[0] eq '') then begin
+;        print, inam + ' : ERROR -> no frames found in '+data_dir
+;        return
+;     endif
 
      files = red_sortfiles(temporary(files))
+     
      ;; Get image unique states
      self -> extractstates, files, states
 
