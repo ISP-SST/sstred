@@ -93,6 +93,8 @@
 ;
 ;   2016-06-03 : MGL. Filter headers silently.
 ;
+;   2016-06-09 : MGL. Trim filter string.
+;
 ;-
 pro chromis::extractstates, strings, states $
                             , strip_wb = strip_wb $
@@ -134,9 +136,9 @@ pro chromis::extractstates, strings, states $
 
      ;; String keywords require checking
      camtag = fxpar(head, red_keytab('cam'), count=count)
-     if count gt 0 then states[ifile].camtag = strtrim(fxpar(head, red_keytab('cam')), 2)
+     if count gt 0 then states[ifile].camtag = strtrim(camtag, 2)
      filter = fxpar(head, red_keytab('prefilter'), count=count)
-     if count gt 0 then states[ifile].prefilter = filter
+     if count gt 0 then states[ifile].prefilter = strtrim(filter, 2)
      channel = fxpar(head, red_keytab('cam_channel'), count=count)
      if count gt 0 then begin
          channel = strtrim(channel,2)
