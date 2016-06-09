@@ -154,7 +154,9 @@
 ; 
 ;   2016-05-25 : MGL. Use red_progressbar.  
 ; 
-;   2016-05-30 : MGL. Report how many files are being summed. 
+;   2016-05-30 : MGL. Report how many files are being summed.   
+; 
+;   2016-06-09 : MGL. Bugfix in printout of what frames were rejected. 
 ; 
 ; 
 ;-
@@ -317,7 +319,8 @@ function red_sumfiles, files_list $
            ;; Find file name and frame number within file
            ifile = 0
            while idx1[irejected] gt total(Nframes_per_file[0:ifile]) do ifile += 1
-           msg = files_list[ifile]+', frame # '+strtrim(idx1[irejected]-Nframes_per_file[ifile], 2)
+           if ifile gt 0 then Nsub = round(total(Nframes_per_file[0:ifile-1])) else Nsub = 0
+           msg = files_list[ifile]+', frame # '+strtrim(idx1[irejected]-Nsub, 2)
            print, msg
            if(keyword_set(lun)) then printf, lun, msg
         endfor                  ; irejected
