@@ -93,7 +93,8 @@
 ;
 ;   2016-06-03 : MGL. Filter headers silently.
 ;
-;   2016-06-09 : MGL. Trim filter string.
+;   2016-06-09 : MGL. Trim filter string. Build the fullstate string
+;                so it never starts with an underscore.
 ;
 ;-
 pro chromis::extractstates, strings, states $
@@ -185,23 +186,17 @@ pro chromis::extractstates, strings, states $
      states[ifile].tun_wavelength = total(double(strsplit(states[ifile].tuning,'_', /extract))*[1d, 1d-3])
 
      ;; The fullstate string
- ;    if states[ifile].tuning ne '' then begin
- ;       states[ifile].fullstate = states[ifile].prefilter + '.' + states[ifile].tuning
- ;    endif else begin
- ;       states[ifile].fullstate = states[ifile].prefilter
- ;    endelse
- ;
- ;
-     if ~keyword_set(strip_settings) then begin
-        states[ifile].fullstate = states[ifile].cam_settings
-     endif
-     if states[ifile].prefilter ne '' then states[ifile].fullstate += '_' + states[ifile].prefilter
+     undefine, fullstate_list
+     if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
+     if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
      if keyword_set(strip_wb) then begin
         if states[ifile].is_wb eq 0  and states[ifile].tuning ne '' then $
-            states[ifile].fullstate += '_' + states[ifile].tuning
+           red_append, fullstate_list, states[ifile].tuning
      endif else begin
-        if states[ifile].tuning ne '' then states[ifile].fullstate += '_' + states[ifile].tuning
+        if states[ifile].tuning ne '' then  $
+           red_append, fullstate_list, states[ifile].tuning
      endelse
+     states[ifile].fullstate = strjoin(fullstate_list, '_')
 
      red_progressbar, ifile, Nstrings, message = progress_message
      
