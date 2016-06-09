@@ -73,7 +73,7 @@
 ;
 ;   2016-06-01 : THI. Loop over states (gain & exposure)
 ;
-;   2016-06-01 : MGL. Tell red_writedata when you want to store as
+;   2016-06-09 : MGL. Tell red_writedata when you want to store as
 ;                FITS.
 ;
 ;-
