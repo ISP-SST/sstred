@@ -156,7 +156,8 @@
 ; 
 ;   2016-05-30 : MGL. Report how many files are being summed.   
 ; 
-;   2016-06-09 : MGL. Bugfix in printout of what frames were rejected. 
+;   2016-06-09 : MGL. Bugfix in printout of what frames were rejected.
+;                Bugfix in summing without checking.
 ; 
 ; 
 ;-
@@ -412,6 +413,7 @@ function red_sumfiles, files_list $
         
         firstframe = 1B         ; When doing alignment we use the first (good) frame as reference.
         dc_sum = [0.0, 0.0]
+        summed = dblarr(dim)
 
         ifile = 0
         ii = 0                  ; Within-file-counter
@@ -430,7 +432,7 @@ function red_sumfiles, files_list $
               endif else begin
 
                  ;; If not checked, we (sometimes) have to read the frames in.
-                 if ii ge Nframes_per_file[ifile] then begin
+                 if ii eq 0 or ii ge Nframes_per_file[ifile] then begin
                     cub = red_readdata(files_list[ifile], /silent)
                     ii = 0
                  endif
@@ -481,8 +483,8 @@ function red_sumfiles, files_list $
                        mx = max(subim, maxloc)
                        ncol = dim[1]-2*marg+1
                        xyc = lonarr(2)
-                       xyc[0] = maxloc MOD ncol
-                       xyc[1] = maxloc / ncol
+                       xyc[0] = maxloc / ncol
+                       xyc[1] = maxloc MOD ncol
                        xyc += marg ; Position of brightest spot in original image
                     endelse
 
@@ -497,8 +499,6 @@ function red_sumfiles, files_list $
                     endrep until tot lt tot_init
 
                     sz += 4     ; A bit of margin
-
-                    firstframe = 0B
                     
                  endif          ; firstframe
 
@@ -532,7 +532,8 @@ function red_sumfiles, files_list $
                     dc = dc1-dc0 ; This is the shift!
                     dc_sum += dc ; ...add it to the total
                     thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
-                 endelse
+                    firstframe = 0B
+                 endelse        ; firstframe
 
               endif             ; keyword_set(pinhole_align)
 
@@ -543,7 +544,7 @@ function red_sumfiles, files_list $
         endfor                  ; iframe
         red_progressbar, /finished, message = progress_message
 
-        if Nsum gt 1 then average /= Nsum else average = summed
+        average = summed / Nsum
 
         if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
            average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
