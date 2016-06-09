@@ -5,15 +5,13 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    CHROMIS pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Tomas Hillberg, ISP
 ; 
-; 
-; :returns:
 ; 
 ; :Params:
 ; 
@@ -67,7 +65,7 @@
 ;         the files/states arrays will be over-written to only contain the
 ;         selection.
 ; 
-; :history:
+; :History:
 ; 
 ;   2016-05-19 : First version.
 ; 
@@ -75,6 +73,8 @@
 ;                Pass keyword strip_settings to extractstates.
 ;
 ;   2016-06-02 : MGL. Remove some keywords to extractstates.
+;
+;   2016-06-09 : MGL. Bugfix: states.pref --> states.prefilter. 
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -150,7 +150,7 @@ pro chromis::selectfiles, cam = cam $
         selected = [states.skip] * 0
         tpref = [prefilter]    ; make sure it's an array
         for ip = 0, Npref-1 do begin
-            pos = where(states.pref eq tpref[ip])
+            pos = where(states.prefilter eq tpref[ip])
             if( min(pos) ge 0 ) then begin
                 selected[pos] = 1
             endif
