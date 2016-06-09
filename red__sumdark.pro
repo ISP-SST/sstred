@@ -73,6 +73,9 @@
 ;
 ;   2016-06-01 : THI. Loop over states (gain & exposure)
 ;
+;   2016-06-01 : MGL. Tell red_writedata when you want to store as
+;                FITS.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -189,7 +192,7 @@ pro red::sumdark, overwrite = overwrite, $
 
             ;; Write FITS format dark
             print, inam+' : saving ', darkname+'.fits'
-            red_writedata, darkname+'.fits', dark, header=head, overwrite = overwrite
+            red_writedata, darkname+'.fits', dark, header=head, filetype='fits', overwrite = overwrite
 
         endfor                     ; states
 
