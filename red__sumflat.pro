@@ -88,6 +88,8 @@
 ;                red_writedata.
 ; 
 ;   2016-05-30 : MGL. Improve the headers.
+; 
+;   2016-06-09 : MGL. Make the output directory.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -168,6 +170,7 @@ pro red::sumflat, overwrite = overwrite, $
 
         ;; Get the flat file name for the selected state
         self -> get_calib, states[sel[0]], flatname = flatname, sflatname = sflatname, status = status
+        file_mkdir, file_dirname(flatname)
        
         ;; If file does not exist, do sum!
         if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
@@ -272,6 +275,7 @@ pro red::sumflat, overwrite = overwrite, $
 
         ;; Write FITS format flat
         print, inam+' : saving ', flatname+'.fits'
+        file_mkdir, file_dirname(flatname)
         red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
 
         
