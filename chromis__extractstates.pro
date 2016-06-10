@@ -98,6 +98,10 @@
 ;
 ;   2016-06-09 : JLF. Bugfix. cam_settings couldn't handle exposure times
 ;		 f.o.m 10 msec, produced ****ms_G??.??. 
+;
+;   2016-06-09 : MGL. Change exposure time format to handle longer
+;                exposures while preserving format for short
+;                exposures. 
 ;-
 pro chromis::extractstates, strings, states $
                             , strip_wb = strip_wb $
@@ -150,7 +154,8 @@ pro chromis::extractstates, strings, states $
      endif
 
      if hasexp gt 0 then begin
-        states[ifile].cam_settings = string(states[ifile].exposure*1000, format = '(f06.2)') + 'ms'
+        states[ifile].cam_settings = strtrim(string(states[ifile].exposure*1000 $
+                                                    , format = '(f9.2)'), 2) + 'ms'
      endif
      if hasgain gt 0 then begin
          if hasexp gt 0 then states[ifile].cam_settings += '_'
