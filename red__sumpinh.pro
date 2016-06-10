@@ -103,7 +103,7 @@ pro red::sumpinh, nthreads = nthreads $
     help, /obj, self, output = selfinfo 
     red_writelog, selfinfo = selfinfo
 
-    if ~keyword_set(nthreads) then nthread = 2 else nthread = nthreads
+    if n_elements(nthreads) eq 0 then nthread = 2 else nthread = nthreads
 
     Ncams = n_elements(cams)
     if( Ncams eq 0) then begin
