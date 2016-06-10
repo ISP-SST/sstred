@@ -96,6 +96,8 @@
 ;   2016-06-09 : MGL. Trim filter string. Build the fullstate string
 ;                so it never starts with an underscore.
 ;
+;   2016-06-09 : JLF. Bugfix. cam_settings couldn't handle exposure times
+;		 f.o.m 10 msec, produced ****ms_G??.??. 
 ;-
 pro chromis::extractstates, strings, states $
                             , strip_wb = strip_wb $
@@ -148,7 +150,7 @@ pro chromis::extractstates, strings, states $
      endif
 
      if hasexp gt 0 then begin
-        states[ifile].cam_settings = string(states[ifile].exposure*1000, format = '(f4.2)') + 'ms'
+        states[ifile].cam_settings = string(states[ifile].exposure*1000, format = '(f06.2)') + 'ms'
      endif
      if hasgain gt 0 then begin
          if hasexp gt 0 then states[ifile].cam_settings += '_'
