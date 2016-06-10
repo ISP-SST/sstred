@@ -107,6 +107,8 @@
 ;   2016-06-08 : MGL. Renamed keyword nf to nfac so scope_varfetch
 ;                does not get confused in writelog.
 ;
+;   2016-06-09 : MGL. Bugfix in the search string.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
                    modes = modes, $
@@ -196,21 +198,13 @@ pro red::prepmfbd, numpoints = numpoints, $
      endelse
 
      search = camdir + camtag
-     files = file_search(search+'/*', count = Nfiles) 
-     
+     files = file_search(search+'*', count = Nfiles) 
+
      IF Nfiles EQ 0 THEN BEGIN
          print, inam + ' : ERROR -> no frames found in '+search
          print, inam + '   Did you run link_data?'
          return
      ENDIF 
-
-;     spawn, 'find ' + camdir + camtag + '* | grep -v ".lcd."', files
-;
-;     nf = n_elements(files)
-;     if(files[0] eq '') then begin
-;        print, inam + ' : ERROR -> no frames found in '+data_dir
-;        return
-;     endif
 
      files = red_sortfiles(temporary(files))
      
