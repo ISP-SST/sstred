@@ -1,8 +1,9 @@
 ; docformat = 'rst'
 
 ;+
-;   Find the transformation matrices that maps the reference channel onto the other ones,
-;   use the transform to calculated the offset files needed for MOMFBD alignment.
+;   Find the transformation matrices that maps the reference channel
+;   onto the other ones, use the transform to calculated the offset
+;   files needed for MOMFBD alignment.
 ;
 ; 
 ; 
@@ -11,12 +12,10 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Tomas Hillberg, Institute for Solar Physics, 2015
 ;
-; 
-; :returns:
 ; 
 ; 
 ; :Params:
@@ -49,29 +48,18 @@
 ;      Default is to do it for all prefilters there is data for.
 ;
 ; 
-; :history:
+; :History:
 ;
 ;   2015-12-01 : New implementation that uses OpenCV functionality for finding
 ;                and aligning the pinholes. The offset files are now directly
 ;                computed instead of fitted.
 ;
+;   2016-06-13 : MGL. Various cosmetic edits. CHange bunch of if
+;                statements to a case statement. Move make_corners to
+;                the red_ namespace and its own file.
+;
 ;-
-
-function make_corners, clip
-    dim = size(clip,/dim)
-    corners = intarr(4,3)
-    if dim(0) gt 3 then begin
-        corners(*,2) = 1
-        corners([0,2], 0) = clip(0)
-        corners([1,3], 0) = clip(1)
-        corners([0,1], 1) = clip(2)
-        corners([2,3], 1) = clip(3)
-    endif
-    return, corners
-end
-
-
-PRO red::pinholecalib_thi, threshold = threshold $
+pro red::pinholecalib_thi, threshold = threshold $
                          , nref = nref $
                          , pref = pref $
                          , extraclip = extraclip $
@@ -100,11 +88,20 @@ PRO red::pinholecalib_thi, threshold = threshold $
    
     Ncams = n_elements(cams)
 
-    ;; Search summed pinh images and camtag
-    if(n_elements(extraclip) eq 0) then extraclip = [0L, 0L, 0L, 0L]
-    if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
-    if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
+    case n_elements(extraclip) of
+       0 : extraclip = [0L, 0L, 0L, 0L]
+       1 : extraclip = replicate(extraclip, 4)
+       2 : extraclip = [ replicate(extraclip[0], 2), $
+                         replicate(extraclip[1], 2) ]
+       4 :                      ; Leave as it is.
+       else : begin
+          inam + "ERROR: Don't know how to use keyword extraclip with " $
+             + strtrim(n_elements(extraclip), 2) + ' elements.'
+          stop
+       end
+    endcase
 
+    ;; Search summed pinh images and camtag
     ph_dir = self.out_dir+'/pinhs/'
     ph_dir = red_strreplace(ph_dir,'//','/')
     
@@ -127,12 +124,13 @@ PRO red::pinholecalib_thi, threshold = threshold $
     endif
 
     ;; Selected prefilter or all prefilters?
-    files = file_search( ph_dir + '*.pinh')
+    files = file_search( ph_dir + '*.pinh' )
     self->selectfiles, files=files, prefilter=pref, states=states, /strip_settings
     nf = n_elements( files )
     if nf eq 0 then begin
         print, inam, ' : ERROR : No pinhole files found in ', ph_dir
-        red_writelog, /add, logfile = logfile, top_info_strings = ' : ERROR : No pinhole files found in ' + ph_dir
+        red_writelog, /add, logfile = logfile $
+                      , top_info_strings = ' : ERROR : No pinhole files found in ' + ph_dir
         retall
     endif
     
@@ -148,7 +146,8 @@ PRO red::pinholecalib_thi, threshold = threshold $
         return
     endif
 
-    corners = make_corners( [ extraclip(0), dims[0]-extraclip(1)-1, extraclip(2), dims[1]-extraclip(3)-1] )
+    corners = red_make_corners( [ extraclip(0), dims[0]-extraclip(1)-1 , $
+                                  extraclip(2), dims[1]-extraclip(3)-1 ] )
  
     h_init = fltarr(3, 3, Ncams)
 
@@ -158,7 +157,8 @@ PRO red::pinholecalib_thi, threshold = threshold $
     ;; Loop over states 
     for ss = 0L, ns - 1 do begin
 
-        self->selectfiles, files=files, states=states, cam = cams[refcam], ustat=state_list[ss], selected=ref_sel
+       self->selectfiles, files=files, states=states, cam = cams[refcam] $
+                          , ustat=state_list[ss], selected=ref_sel
         if( n_elements(ref_sel) ne 1 || ref_sel lt 0 ) then begin
             print, inam, " : multiple reference images for state='", state_list[ss], "'"
             continue
@@ -171,9 +171,11 @@ PRO red::pinholecalib_thi, threshold = threshold $
             if icam EQ refcam then begin
                 print, ' -> ' + files[ref_sel] + ' (reference)'
             endif else begin
-                self->selectfiles, files=files, states=states, cam = cams[icam], ustat=state_list[ss], selected=sel
+               self->selectfiles, files=files, states=states, cam = cams[icam] $
+                                  , ustat=state_list[ss], selected=sel
                 if( n_elements(sel) ne 1 || sel lt 0 ) then begin
-                    print, inam, " : multiple or missing images for cam='", cams[icam],"' state='", state_list[ss], "'"
+                   print, inam, " : multiple or missing images for cam='" $
+                          , cams[icam],"' state='", state_list[ss], "'"
                     continue
                 endif
                 print, ' -> ' + files[sel]
@@ -183,7 +185,8 @@ PRO red::pinholecalib_thi, threshold = threshold $
                     this_init = h_init(*,*,icam)
                 endif
 
-                this_transform = rdx_img_align( ref_img, img, nref=nref, h_init=this_init, threshold=threshold, verbose=verbose )
+                this_transform = rdx_img_align( ref_img, img, nref=nref, h_init=this_init $
+                                                , threshold=threshold, verbose=verbose )
 
                 aligns(*,*,ss,icam) = this_transform
                 h_init(*,*,icam) = temporary(this_init)
@@ -238,9 +241,9 @@ PRO red::pinholecalib_thi, threshold = threshold $
         
         cl = intarr(4,Ncams)
         cl(*,refcam) = [ ceil( max(clips(*,0))), $
-                          floor(min(clips(*,1))), $
-                          ceil( max(clips(*,2))), $
-                          floor(min(clips(*,3)))] + 1   ;   N.B. align_clip index is 1-based
+                         floor(min(clips(*,1))), $
+                         ceil( max(clips(*,2))), $
+                         floor(min(clips(*,3))) ] + 1 ;   N.B. align_clip index is 1-based
 
         sx = long(max(cl(0:1,refcam)) - min(cl(0:1,refcam)) + 1) 
         sy = long(max(cl(2:3,refcam)) - min(cl(2:3,refcam)) + 1)
@@ -258,16 +261,19 @@ PRO red::pinholecalib_thi, threshold = threshold $
             if icam NE refcam then begin
             
                 cam_origin = [ min(cl(0:1,icam))-1, min(cl(2:3,icam))-1 ]
-                self->selectfiles, files=files, states=states, cam = cams[icam], ustat=state_list[ss], selected=sel
+                self->selectfiles, files=files, states=states, cam = cams[icam] $
+                                   , ustat=state_list[ss], selected=sel
                 if( n_elements(sel) ne 1 || sel lt 0 ) then begin
                     continue
                 endif
                 this_file = output_dir + file_basename(files[sel],'.pinh')
 
-                ; for the non-refernce channels, map the reference center and cutout a region of the right size
+                ;; For the non-refernce channels, map the reference
+                ;; center and cutout a region of the right size
+                
                 swap = transpose([0,0,1]) # reform(aligns(*,*,ss,icam)) gt center
                 tmp_center = fix(center # reform(aligns(*,*,ss,icam)))
-                cl(*,icam) = [ tmp_center(0)-(1-2*swap(0))*abs(center(0)-cl(swap(0),refcam)), $
+                cl(*,icam) = [ tmp_center(0)-(1-2*swap(0))*abs(center(0)-cl(  swap(0),refcam)), $
                                tmp_center(0)+(1-2*swap(0))*abs(center(0)-cl(1-swap(0),refcam)), $
                                tmp_center(1)-(1-2*swap(1))*abs(center(1)-cl(2+swap(1),refcam)), $
                                tmp_center(1)+(1-2*swap(1))*abs(center(1)-cl(3-swap(1),refcam)) ]
@@ -308,11 +314,13 @@ PRO red::pinholecalib_thi, threshold = threshold $
                 endif
 
                 print, ' -> ' + this_file +'.(x|y)offs'
-                red_writedata, this_file + '.xoffs', fix(round(100*offs(*,*,0))), filetype='ANA', /overwrite
-                red_writedata, this_file + '.yoffs', fix(round(100*offs(*,*,1))), filetype='ANA', /overwrite
+                red_writedata, this_file + '.xoffs', fix(round(100*offs(*,*,0))) $
+                               , filetype='ANA', /overwrite
+                red_writedata, this_file + '.yoffs', fix(round(100*offs(*,*,1))) $
+                               , filetype='ANA', /overwrite
                     
             endif
-        endfor      ; icam
+         endfor                 ; icam
 
 
         ; Save align clips etc.
@@ -327,13 +335,13 @@ PRO red::pinholecalib_thi, threshold = threshold $
         endfor
         free_lun, lun
         
-        ssh = round(reform(aligns(2,0:1,*)))         ;  NB: the shifts calulated with the old routines have different meaning
-        refrot = 0                                  ;  TODO: extract rotation from transformation matrix
+        ssh = round(reform(aligns(2,0:1,*))) ;  NB: the shifts calulated with the old routines have different meaning
+        refrot = 0                           ;  TODO: extract rotation from transformation matrix
         align = reform(aligns[*,*,ss,*])
 
         save, file = clipfile+'sav', align, acl, cl, refrot, sx, sy, ssh
 
 
-    endfor                        ; ipref
+     endfor                     ; ipref
   
 end
