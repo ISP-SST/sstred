@@ -81,7 +81,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, $
 
   IF keyword_set(ssh_find) THEN BEGIN
        ;;; case 1, called as /ssh_find: transport1, so identical names
-      IF n_elements(ssh_find) EQ 0 THEN BEGIN
+      IF n_elements(ssh_find) EQ 1 THEN BEGIN
           spawn, 'ssh root@transport1 find '+folder+'/'+cam+' -type f -name '+pat, files
        ENDIF ELSE BEGIN
            ;;; case 2, called as  ssh_find=['user@host','<local data dir>']
