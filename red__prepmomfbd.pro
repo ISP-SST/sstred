@@ -31,8 +31,7 @@
 ;    date_obs : in, optional, type=string
 ;   
 ;      The date of observations in ISO (YYYY-MM-DD) format. If not
-;      given, prepmomfbd will try to deduce it from the directory name
-;      or, failing that, ask the user.
+;      given, taken from class object.
 ;   
 ;    state : 
 ;   
@@ -64,14 +63,20 @@
 ;   
 ;   
 ;    div : 
+;
+;    no_pd : in, optional, type=boolean
 ;   
-;   
+;       Set this to exclude phase diversity data and processing. 
 ;   
 ;    nremove : 
 ;   
 ;   
 ;   
 ;    oldgains :
+;   
+;    momfbddir :  in, optional, type=string, default='momfbd'
+;   
+;       Top directory of output tree.
 ; 
 ;
 ;
@@ -85,21 +90,20 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;
-;   2013-06-13, JdlCR : added support for scan-dependent gains -> 
-;                       using keyword "/newgains".
+;   2013-06-13 : JdlCR. added support for scan-dependent gains ->
+;                using keyword "/newgains".
 ;
-;   2013-06-28, JdlCR : added NF (object) option 
+;   2013-06-28 : JdlCR. added NF (object) option 
 ; 
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ;
-;   2013-12-19   PS  Work based on the link directory
-;                    guess date before asking
-;                    adapt to changed link directory names
-;                    NEWGAINS is the default now (removed), use OLDGAINS
+;   2013-12-19   PS. Work based on the link directory guess date
+;                before asking adapt to changed link directory names
+;                NEWGAINS is the default now (removed), use OLDGAINS
 ;
-;   2014-01-10   PS  remove keyword outformat, use self.filetype.
-;                to not be a string.
+;   2014-01-10   PS. Remove keyword outformat, use self.filetype. to
+;                not be a string.
 ;
 ;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
@@ -114,11 +118,18 @@
 ;                keyword_set, to find out if a keyword needs to be set
 ;                to a default value.
 ;
+;   2016-06-06 : MGL. Default date from class object. Better loop
+;                indices. Added dirs keyword. Added keyword mfbddir.
+;
+;   2016-06-08 : MGL. New keyword no_pd. Renamed keyword nf to nfac so
+;                scope_varfetch does not get confused in writelog.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
                      , modes = modes $
                      , date_obs = date_obs $
+                     , dirs = dirs $
                      , state = state $
                      , no_descatter = no_descatter $
                      , global_keywords = global_keywords $
@@ -129,10 +140,12 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , div = div $
                      , nremove = nremove $
                      , oldgains = oldgains $
-                     , nf = nfac $
+                     , nfac = nfac $
                      , weight = weight $
                      , maxshift = maxshift $
-                     , margin = margin
+                     , momfbddir = momfbddir $
+                     , margin = margin $
+                     , no_pd = no_pd $
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -143,41 +156,99 @@ pro red::prepmomfbd, wb_states = wb_states $
 
 
   if(n_elements(msh) eq 0) then maxshift='30'
+
   ;; Get keywords
-  IF ~keyword_set(date_obs) THEN BEGIN
-        ;;; guess it from root_dir
-      date_obs = strjoin(strsplit(file_basename(self.root_dir), '.', /extract), '-')
-      IF ~strmatch(date_obs, '????-??-??') THEN $
-        read, date_obs, prompt = inam+' : type date_obs (YYYY-MM-DD): '
-  ENDIF
-  if n_elements(numpoints) eq 0 then numpoints = 88
-  if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints)    ; convert strings, just to avoid breaking existing codes.
+  if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
+  if n_elements(date_obs) eq 0 then date_obs = self.isodate
   if n_elements(modes) eq 0 then modes = '2-45,50,52-55,65,66'
   if n_elements(nremove) eq 0 then nremove=0
-  if n_elements(nfac) gt 0 then begin
-     if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
-  endif
+  if n_elements(nfac) eq 0 then nfac = 1.
+  if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
+  
   if n_elements(margin) eq 0 then margin = 5
+
+  if n_elements(dirs) gt 0 then begin
+     dirs = [dirs] 
+  endif else begin
+     if ~ptr_valid(self.data_dirs) then begin
+        print, inam+' : ERROR : undefined data_dir'
+        return
+     endif
+     dirs = *self.data_dirs
+  endelse
+
+  Ndirs = n_elements(dirs)
+  if( Ndirs eq 0) then begin
+     print, inam+' : ERROR : no directories defined'
+     return
+  endif else begin
+     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+     else dirstr = dirs[0]
+  endelse
   
   ;; Get states from the data folder
-  d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = nd)
-  IF nd EQ 0 THEN BEGIN
+;  d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = Ndirs)
+  IF Ndirs EQ 0 THEN BEGIN
       print, inam + ' : ERROR -> no frames found in '+self.out_dir+'/data'
       print, inam + '   Did you run link_data?'
       return
   ENDIF
-  
-  self -> getcamtags, dir = self.data_dir
-  
-  for fff = 0, nd - 1 do begin
 
-     folder_tag = file_basename(d_dirs[fff])
+  ;; Cameras
+  cams = *self.cam_channels
+  iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
+  ispd = strmatch(cams,'*-D')
+
+  if keyword_set(no_pd) then begin
+     indx = where(~ispd)
+     cams = cams[indx]
+     iswb = iswb[indx]
+     ispd = ispd[indx]
+  endif
+
+  Ncams = n_elements(cams)      ; Number of cameras
+
+  camtags = strarr(Ncams)
+  for icam = 0, Ncams-1 do camtags[icam] = self -> getcamtag(cams[icam])
+  ;;self -> getcamtags, dir = self.data_dir
+
+
+  ;; Print cams
+  print, inam + ' : cameras found:'
+  for icam = 0, Ncams-1 do begin
+     outstr = cams[icam] + ' ' + camtags[icam] + ' '
+     if iswb[icam] then outstr += 'WB 'else outstr += 'NB '
+     if ispd[icam] then outstr += 'PD '
+     print, outstr
+  endfor
+  
+  ;; Use a narrowband camera when searching for files, so we are sure
+  ;; to get the states information.
+  pos = where(~iswb and ~ispd)
+  searchcam = cams[pos[0]]
+  searchcamtag = camtags[pos[0]]
+
+  if n_elements(numpoints) eq 0 then begin
+     ;; About the same subfield size in arcsec as CRISP:
+     numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+  endif else begin
+     ;; Convert strings, just to avoid breaking existing codes.
+     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
+  endelse
+
+  
+  for idir = 0L, Ndirs - 1 do begin
+
+     data_dir = dirs[idir]
+     folder_tag = file_basename(data_dir)
+     searchcamdir = data_dir + '/' + searchcam + '/'
+
+;     search = self.out_dir+'/data/'+folder_tag+'/'+self.camt
+     search = searchcamdir + searchcamtag+'*'
+     files = file_search(search, count = Nfiles) 
      
-     search = self.out_dir+'/data/'+folder_tag+'/'+self.camt
-     files = file_search(search+'/*', count = nf)
-     
-     IF nf EQ 0 THEN BEGIN
-         print, inam + ' : ERROR -> no frames found in '+search
+     IF Nfiles EQ 0 THEN BEGIN
+         print, inam + ' : ERROR -> no frames found : '+search
          print, inam + '   Did you run link_data?'
          return
      ENDIF 
@@ -185,56 +256,56 @@ pro red::prepmomfbd, wb_states = wb_states $
      files = red_sortfiles(temporary(files))
      
      ;; Get image unique states
-     stat = red_getstates(files, /LINKS)
-      ;;; skip leading frames?
-     IF nremove GT 0 THEN red_flagtuning, stat, nremove
+     self -> extractstates, files, states
+;     stat = red_getstates(files, /LINKS)
      
-     states = stat.hscan+'.'+stat.state
-     pos = uniq(states, sort(states))
-     ustat = stat.state[pos]
-     ustatp = stat.pref[pos]
-                                ;ustats = stat.scan[pos]
-
-     ntt = n_elements(ustat)
-     hscans = stat.hscan[pos]
+     ;; skip leading frames?
+     IF nremove GT 0 THEN red_flagtuning, stat, nremove
 
      ;; Get unique prefilters
-     upref = stat.pref[uniq(stat.pref, sort(stat.pref))]
-     np = n_elements(upref)
+     upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
+     Nprefs = n_elements(upref)
 
      ;; Get scan numbers
-     uscan = stat.rscan[uniq(stat.rscan, sort(stat.rscan))]
-     ns = n_elements(uscan)
+     uscan = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
+     Nscans = n_elements(uscan)
+
+     ;;states = stat.hscan+'.'+stat.state
+     ;;pos = uniq(states, sort(states))
+     ;;ustat = stat.state[pos]
+     ;;ustatp = stat.pref[pos]
+     ;;                           ;ustats = stat.scan[pos]
+
+     ;;ntt = n_elements(ustat)
+     ;;hscans = stat.hscan[pos]
 
      ;; Create a reduc file per prefilter and scan number?
-     outdir = self.out_dir + '/momfbd/' + folder_tag
+     outdir = self.out_dir + '/' + momfbddir + '/' + folder_tag
      file_mkdir, outdir
 
-     ;; Print cams
-     print, inam + ' : cameras found:'
-     print, ' WB   -> '+self.camwbtag
-     print, ' NB_T -> '+self.camttag
-     print, ' NB_R -> '+self.camrtag
-
      ;; Choose offset state
-     for ss = 0L, ns - 1 do begin
-         IF n_elements(escan) NE 0 THEN IF ss NE escan THEN CONTINUE 
+     for iscan = 0L, Nscans-1 do begin
 
-        scan = uscan[ss]
+        IF n_elements(escan) NE 0 THEN IF iscan NE escan THEN CONTINUE 
 
-        for pp = 0L, np - 1 do begin
+        scan = uscan[iscan]
+
+        for ipref = 0L, Nprefs-1 do begin
+
            if(keyword_set(pref)) then begin
-              if(upref[pp] NE pref) then begin
-                 print, inam + ' : Skipping prefilter -> ' + upref[pp]
+              if(upref[ipref] NE pref) then begin
+                 print, inam + ' : Skipping prefilter -> ' + upref[ipref]
                  continue
               endif
            endif
 
+     stop
+
            ;; Load align clips
-           clipfile = self.out_dir + '/calib/align_clips.'+upref[pp]+'.sav'
+           clipfile = self.out_dir + '/calib/align_clips.'+upref[ipref]+'.sav'
            IF(~file_test(clipfile)) THEN BEGIN
               print, inam + ' : ERROR -> align_clip file not found'
-              print, inam + ' : -> you must run red::getalignclps first!'
+              print, inam + ' : -> you must run red::getalignclips first!'
               continue
            endif
            restore, clipfile
@@ -251,41 +322,41 @@ pro red::prepmomfbd, wb_states = wb_states $
            sim_x_string = strjoin(strtrim(sim_x,2), ',')
            sim_y_string = strjoin(strtrim(sim_y,2), ',')
 
-           lam = strmid(string(float(upref[pp]) * 1.e-10), 2)
+           lam = strmid(string(float(upref[ipref]) * 1.e-10), 2)
 
-           cfg_file = 'momfbd.reduc.'+upref[pp]+'.'+scan+'.cfg'
-           outdir = self.out_dir + '/momfbd/'+folder_tag+'/'+upref[pp]+'/cfg/'
+           cfg_file = 'momfbd.reduc.'+upref[ipref]+'.'+scan+'.cfg'
+           outdir = self.out_dir + '/'+momfbddir+folder_tag+'/'+upref[ipref]+'/cfg/'
            file_mkdir, outdir
-           rdir = self.out_dir + '/momfbd/'+folder_tag+'/'+upref[pp]+'/cfg/results/'
+           rdir = self.out_dir + '/'+momfbddir+folder_tag+'/'+upref[ipref]+'/cfg/results/'
            file_mkdir, rdir
-           ddir = self.out_dir + '/momfbd/'+folder_tag+'/'+upref[pp]+'/cfg/data/'
+           ddir = self.out_dir + '/'+momfbddir+folder_tag+'/'+upref[ipref]+'/cfg/data/'
            file_mkdir, ddir
            if(n_elements(lun) gt 0) then free_lun, lun
            openw, lun, outdir + cfg_file, /get_lun, width=2500
 
            ;; Image numbers
-           numpos = where((stat.rscan eq uscan[ss]) AND (stat.star eq 0B) AND (stat.pref eq upref[pp]), ncount)
+           numpos = where((stat.rscan eq uscan[iscan]) AND (stat.star eq 0B) AND (stat.pref eq upref[ipref]), ncount)
            if(ncount eq 0) then continue
            n0 = stat.nums[numpos[0]]
            n1 = stat.nums[numpos[ncount-1]]
            nall = strjoin(stat.nums[numpos],',')
-           print, inam+' : Prefilter = '+upref[pp]+' -> scan = '+uscan[ss]+' -> image range = ['+n0+' - '+n1+']'
+           print, inam+' : Prefilter = '+upref[ipref]+' -> scan = '+uscan[iscan]+' -> image range = ['+n0+' - '+n1+']'
 
            ;; WB anchor channel
            printf, lun, 'object{'
            printf, lun, '  WAVELENGTH=' + lam
-           printf, lun, '  OUTPUT_FILE=results/'+self.camwbtag+'.'+scan+'.'+upref[pp]
+           printf, lun, '  OUTPUT_FILE=results/'+self.camwbtag+'.'+scan+'.'+upref[ipref]
            if(n_elements(weight) eq 3) then printf, lun, '  WEIGHT='+string(weight[0])
            printf, lun, '  channel{'
            printf, lun, '    IMAGE_DATA_DIR='+self.out_dir+'/data/'+folder_tag+ '/' +self.camwb+'_nostate/'
-           printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+scan+'.'+upref[pp]+'.%07d'
+           printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+scan+'.'+upref[ipref]+'.%07d'
            printf, lun, '    GAIN_FILE=' + file_search(self.out_dir+'gaintables/'+self.camwbtag + $
-                                                       '.' + upref[pp]+'*.gain')
+                                                       '.' + upref[ipref]+'*.gain')
            printf, lun, '    DARK_TEMPLATE='+self.out_dir+'darks/'+self.camwbtag+'.summed.0000001'
            printf, lun, '    DARK_NUM=0000001'
            printf, lun, '    ' + wclip
-           if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-              self -> loadbackscatter, self.camwbtag, upref[pp], bgfile = bgf, bpfile = psff
+           if (upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+              self -> loadbackscatter, self.camwbtag, upref[ipref], bgfile = bgf, bpfile = psff
 ;              psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
 ;              bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
 ;              if(file_test(psff) AND file_test(bgf)) then begin
@@ -309,7 +380,7 @@ pro red::prepmomfbd, wb_states = wb_states $
            printf, lun, '}'
 
            ;; Loop all wavelengths
-           pos1 = where((ustatp eq upref[pp]), count)
+           pos1 = where((ustatp eq upref[ipref]), count)
            if(count eq 0) then continue
            ustat1 = ustat[pos1]
 
@@ -319,7 +390,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               if(keyword_set(state)) then begin
                  dum = where(state eq ustat1[ii], cstate)
                  if(cstate eq 0) then continue
-                 print, inam+' : found '+state+' -> scan = '+uscan[ss]
+                 print, inam+' : found '+state+' -> scan = '+uscan[iscan]
               endif
 
               self -> whichoffset, ustat1[ii], xoff = xoff, yoff = yoff
@@ -377,8 +448,8 @@ pro red::prepmomfbd, wb_states = wb_states $
               if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
 
-              if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                 self -> loadbackscatter, self.camttag, upref[pp], bgfile = bgf, bpfile = psff
+              if (upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+                 self -> loadbackscatter, self.camttag, upref[ipref], bgfile = bgf, bpfile = psff
 ;                 psff = self.descatter_dir+'/'+self.camttag+'.psf.f0'
 ;                 bgf = self.descatter_dir+'/'+self.camttag+'.backgain.f0'
 ;                 if(file_test(psff) AND file_test(bgf)) then begin
@@ -430,8 +501,8 @@ pro red::prepmomfbd, wb_states = wb_states $
               if(file_test(xofile)) then printf, lun, '    XOFFSET='+xofile
               if(file_test(yofile)) then printf, lun, '    YOFFSET='+yofile
                                 ;
-              if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                 self -> loadbackscatter, self.camrtag, upref[pp], bgfile = bgf, bpfile = psff
+              if (upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+                 self -> loadbackscatter, self.camrtag, upref[ipref], bgfile = bgf, bpfile = psff
 ;                 psff = self.descatter_dir+'/'+self.camrtag+'.psf.f0'
 ;                 bgf = self.descatter_dir+'/'+self.camrtag+'.backgain.f0'
 ;                 if(file_test(psff) AND file_test(bgf)) then begin
@@ -462,13 +533,13 @@ pro red::prepmomfbd, wb_states = wb_states $
                  printf, lun, '    FILENAME_TEMPLATE='+self.camwbtag+'.'+istate+'.%07d'
                                 ; printf, lun, '    DIVERSITY=0.0 mm'
                  printf, lun, '    GAIN_FILE=' + file_search(self.out_dir+'/gaintables/'+self.camwbtag + $
-                                                             '.' + upref[pp] + '*.gain')
+                                                             '.' + upref[ipref] + '*.gain')
                  printf, lun, '    DARK_TEMPLATE='+self.out_dir+'/darks/'+self.camwbtag+'.summed.0000001'
                  printf, lun, '    DARK_NUM=0000001'
                  printf, lun, '    ' + wclip
                  
-                 if (upref[pp] EQ '8542' OR upref[pp] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                    self -> loadbackscatter, self.camwbtag, upref[pp], bgfile = bgf, bpfile = psff
+                 if (upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+                    self -> loadbackscatter, self.camwbtag, upref[ipref], bgfile = bgf, bpfile = psff
 ;                    psff = self.descatter_dir+'/'+self.camwbtag+'.psf.f0'
 ;                    bgf = self.descatter_dir+'/'+self.camwbtag+'.backgain.f0'
 ;                    if(file_test(psff) AND file_test(bgf)) then begin
@@ -490,7 +561,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                  printf, lun, '  }'
                  printf, lun, '}'
               endif          
-           endfor
+           endfor               ; ii
 
            ;; Global keywords
            printf, lun, 'PROG_DATA_DIR=./data/'
@@ -526,10 +597,11 @@ pro red::prepmomfbd, wb_states = wb_states $
            endif
 
            free_lun, lun
-        endfor
-     endfor
-  endfor
+           
+        endfor                  ; ipref
+     endfor                     ; iscan
+  endfor                        ; idir
 
   print, inam+' : done!'
-  return
+  
 end
