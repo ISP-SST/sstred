@@ -13,9 +13,6 @@
 ; 
 ; 
 ; 
-; :Returns:
-; 
-; 
 ; :Params:
 ; 
 ; 
@@ -90,6 +87,8 @@
 ;   2016-05-30 : MGL. Improve the headers.
 ; 
 ;   2016-06-09 : MGL. Make the output directory.
+; 
+;   2016-06-29 : MGL. New keyword outdir.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -102,6 +101,7 @@ pro red::sumflat, overwrite = overwrite, $
                   store_rawsum = store_rawsum, $
                   prefilter = prefilter, $
                   dirs = dirs, $
+                  outdir = outdir, $
                   sum_in_rdx = sum_in_rdx
 
   ;; Defaults
@@ -169,9 +169,17 @@ pro red::sumflat, overwrite = overwrite, $
                            files=files, states=states, selected=sel
 
         ;; Get the flat file name for the selected state
-        self -> get_calib, states[sel[0]], flatname = flatname, sflatname = sflatname, status = status
-        file_mkdir, file_dirname(flatname)
-       
+        self -> get_calib, states[sel[0]] $
+                           , flatname = flatname, sflatname = sflatname, status = status
+
+        if n_elements(outdir) ne 0 then begin
+           flatname = outdir + '/' + file_basename(flatname)
+           sflatname = outdir + '/' + file_basename(sflatname)
+           file_mkdir, outdir
+        endif else begin
+           file_mkdir, file_dirname(flatname)
+        endelse
+
         ;; If file does not exist, do sum!
         if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
            if (~keyword_set(store_rawsum) $
