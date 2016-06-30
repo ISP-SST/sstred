@@ -44,6 +44,11 @@
 ;
 ;	Output the return status, 0 for success, -1 for failure.
 ;
+;    framenumber : in, optional, type=integer
+;
+;       Read just this frame from a data cube. (Implemented only for
+;       FITS files for now.)
+;
 ; :History:
 ; 
 ;   2016-05-16 : MGL. First version
@@ -66,13 +71,16 @@
 ;
 ;   2016-06-08 : JLF. Bugfix, don't process headers if the user isn't asking
 ;		 for them.
+;
+;   2016-05-30 : MGL. New keyword framenumber.
 ;-
 function red_readdata, fname $
                        , header = header $
                        , filetype = filetype $
                        , structheader = structheader $
                        , status = status $
-                       , silent = silent
+                       , silent = silent $
+                       , framenumber = framenumber
 
   if file_test(fname) eq 0 then begin
 
@@ -128,14 +136,19 @@ function red_readdata, fname $
         bit_shift = 0
         if fxpar(header, 'SOLARNET') eq 0 then begin
             caminfo = red_camerainfo( red_camtag(fname) )
-            if strmatch(caminfo.model,'PointGrey*') then begin     ; hack to load weird PointGrey data
+            if strmatch(caminfo.model,'PointGrey*') then begin 
+                ;; Hack to load weird PointGrey data
                 uint = 1
                 swap = 0
                 bit_shift = -4
             endif
         endif
-        red_rdfits, fname, image = data, uint=uint, swap=swap
+        red_rdfits, fname, header = header, image = data $
+                    , uint=uint, swap=swap, framenumber = framenumber
         if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
+        ;; If framenumber is used we may want to change some header
+        ;; keywords, like FRAME1, CADENCE, and DATE-END. Either here
+        ;; or in red_rdfits.
      end
 
   endcase

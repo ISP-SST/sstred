@@ -62,7 +62,9 @@
 ;
 ;               Data is unsigned integer
 ;
-; 
+;       framenumber : in, optional, type=integer
+;
+;               Read just this frame from a data cube.
 ; 
 ; :History:
 ; 
@@ -111,6 +113,8 @@
 ;                    noread, make image an optional keyword instead.
 ;                    Look for .Z files if needed. Additional cosmetic
 ;                    changes.
+;
+;       2016-05-30 : MGL. New keyword framenumber.
 ; 
 ;-
 PRO red_rdfits, file $
@@ -119,8 +123,8 @@ PRO red_rdfits, file $
                 , swap = swap $
                 , header = header $
                 , nosign = nosign $
-                , uint = ui
-
+                , uint = ui $
+                , framenumber = framenumber
 
   on_error, 2
 
@@ -188,15 +192,15 @@ PRO red_rdfits, file $
      IF keyword_set(log) THEN printf, logunit, hd1
      CASE strmid(hd1, 0, 6) OF
         'BITPIX'   :  BEGIN 
-           i = fix(strmid(hd1, 10, 21))
-           CASE i OF
+           bitpix = fix(strmid(hd1, 10, 21))
+           CASE bitpix OF
                 8  : refpix = 8b
                16  : IF keyword_set(ui) THEN refpix = uint(16) $
                                         ELSE refpix = fix(16)
                32  : refpix = 32L
               -32  : refpix = float(32)
               -64  : refpix = 64d
-              ELSE : message, 'red_rdfits : No support for ' + strtrim(i, 2) + $
+              ELSE : message, 'red_rdfits : No support for ' + strtrim(bitpix, 2) + $
                               ' bytes per pixel'
            ENDCASE
         END
@@ -234,12 +238,26 @@ PRO red_rdfits, file $
 ;-----
   if arg_present(image) then begin
 
-     CASE npic OF
-        1 : image = replicate(refpix, sx)
-        2 : image = replicate(refpix, sx, sy)
-        3 : image = replicate(refpix, sx, sy, sz)
-        ELSE: stop
-     ENDCASE
+     if n_elements(framenumber) ne 0 then begin
+        ;; We want only a single frame from the data cube. 
+        if n_elements(sz) eq 0 then sz = 1 ; Cube with only one frame
+        if framenumber ge sz then stop     ; The framenumber is outside the cube
+        image = replicate(refpix, sx, sy)  ; Variable to read image into
+        if framenumber ne 0 then begin     ; Skip over unwanted data
+           byte_elem = abs(bitpix)/8 
+           Nskip = long64(framenumber)*sx*sy*byte_elem
+           mrd_skip, unit, Nskip
+        endif
+        sxaddpar, header, 'NAXIS', 2, /savecomment ; 2D output
+        sxdelpar, header, 'NAXIS3'                 ; 2D output
+     endif else begin
+        CASE npic OF
+           1 : image = replicate(refpix, sx)
+           2 : image = replicate(refpix, sx, sy)
+           3 : image = replicate(refpix, sx, sy, sz)
+           ELSE: stop
+        ENDCASE
+     endelse
 
      readu, unit, image
 
