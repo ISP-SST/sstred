@@ -113,6 +113,9 @@
 ;
 ;    2016-05-19 : MGL. Return correct r0path.
 ;
+;    2016-07-01 : MGL. Bugfixes in the downloading and uncompressing
+;                 of r0 data.
+;
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
@@ -246,29 +249,33 @@ pro red_download, date = date $
 
   ;; R0 log file
   if keyword_set(r0) then begin
-     r0file = 'r0.data.full-'+strjoin(datearr, '')+'.xz'
 
-     downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
-                             , file = r0file $
-                             , dir = log_dir $
-                             , overwrite = overwrite $
-                             , path = pathr0)
+     r0file = 'r0.data.full-'+strjoin(datearr, '')
+
+     if ~file_test(logdir+r0file) or keyword_set(overwrite) then begin
+        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file+'.xz' $
+                                , file = r0file+'.xz' $
+                                , dir = logdir $
+                                , overwrite = overwrite $
+                                , path = pathr0)
      
-     if ~downloadOK then begin  ; also try in subfolder /{year}/
-         downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file $
-                                 , file = r0file $
-                                 , dir = logdir $
-                                 , overwrite = overwrite $
-                                 , path = pathr0) 
-     endif
+        if ~downloadOK then begin ; also try in subfolder /{year}/
+           downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file+'.xz' $
+                                   , file = r0file+'.xz' $
+                                   , dir = logdir $
+                                   , overwrite = overwrite $
+                                   , path = pathr0) 
+        endif
+        
+        if downloadOK then begin
+           spawn, 'cd '+logdir+'; xz -df '+file_basename(pathr0)
+           file_delete, pathr0, /allow_nonexistent
+        endif
 
-     if downloadOK then begin
-        spawn, 'cd '+logdir+'; xz -d '+file_basename(pathr0)
-        file_delete, pathr0, /allow_nonexistent
-     endif
+        ;; Where did the uncompressed file end up?
+        pathr0 = logdir + file_basename(pathr0,'.xz')
 
-     ;; Where did the uncompressed file end up?
-     pathr0 = logdir + file_basename(pathr0,'.xz')
+     endif else pathr0 = logdir + r0file
 
   endif
 
