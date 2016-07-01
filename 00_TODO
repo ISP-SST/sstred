@@ -28,3 +28,42 @@ Action items
   - Two reasons to do this: 1) Remove some unwanted artifacts from
     mosaicking. 2) Reduce false signals in differential quantities. 
   - Base on procedure from tilt-filter paper.
+
+Implementation list for CHROMIS camera software 2016/06/07
+
+* Online Rice compression of images
+* Solution for the 4-bit shift and byte-swapping issues (possibly solved by
+  putting the Point Grey into a mode to read-out exactly 12 bits per pixel)
+* Solarnet standardized FITS headers:
+  - String values in FITS headers must be enclosed by ' ' (a literal ' is
+    denoted '') 
+  - Boolean values T/F in the correct column (31) without ' '
+  - Camera tag in the header as CAMERA/DETECTOR
+  - INSTRUME='Chromis'
+  - Chromis-N/W/P should have its own keyword. Could be CAMERA, then use
+    DETECTOR for camera tag, but possibly we should reserve DETECTOR for
+    make, model, sensor info (serial number?), then need to come up with a
+    keyword for this. CHANNEL?
+  - Camera serial number needs a keyword. What to call it? (Part of DETECTOR?)
+  - FILENAME keyword containing the original raw file name.
+  - Need a fine-tuning keyword, what to call it?
+  - EXPTIME --> XPOSURE
+  - OBSRVTRY = 'SST'
+  - TELESCOP = 'Swedish 1-meter Solar Telescope'
+  - OBSERVER keyword with a standardized list of observer names (enter it once
+    into the list and it can't be changed.)
+  - units in the comment field (with a space on either side of / separator)
+  - EXTNAME = 'Ca II H & K' or 'H-beta'
+  - OBS_SHDU =                T (not 1)
+  - DATE-BEG,-AVG (for cubes), -END all properly set with fractional second
+  - FILTER1 = ['CaK-blue','CaK-core','CaH-core','CaH-red','CaH-cont','Hb-core',
+    'Hb-cont','CaHK-cont']
+  - DATE_OBS ---> POINT_ID
+  - Optional REQUESTR keyword from a standardized name list, if we run in
+    service mode.
+* Need INTERVAL keyword (--> CADENCE) correct in all camera headers. Currently
+  it is only accurate in the master camera header.
+* Make sure pre-filter appears in the file name even when the observer isn't
+  changing filters or using the filter wheel.
+* Placeholder for fine-tuning keyword for Chromis-N will need a Tab-HDU for
+  cube files.
