@@ -41,6 +41,7 @@
 ;
 ;   2016-05-31 : JLF. Start using red_keytab to keep track of SOLARNET 
 ; 		 keywords.
+;   2016-08-05 : JLF. Make DATE-BEG and DATE-END ISO-8601 compliant
 ;-
 function red_anahdr2fits, anahdr $
 		    , img = img
@@ -62,8 +63,10 @@ function red_anahdr2fits, anahdr $
      exptime = red_time2double(strmid(Te, strpos(Te, ' '))) $
                - red_time2double(strmid(Ts, strpos(Ts, ' ')))
      sxaddpar,hdr,'XPOSURE',exptime,' [s]', before='COMMENT'
-     sxaddpar,hdr,'DATE-BEG',(red_strreplace(Ts, ' ', 'T'))[0],' ', before='COMMENT'
-     sxaddpar,hdr,'DATE-END',(red_strreplace(Te, ' ', 'T'))[0],' ', after='DATE-BEG'
+     sxaddpar,hdr,'DATE-BEG',(red_strreplace((red_strreplace(Ts, ' ', 'T')),$
+      '.','-',n=2))[0],' ', before='COMMENT'
+     sxaddpar,hdr,'DATE-END',(red_strreplace((red_strreplace(Te, ' ', 'T')),$
+      '.','-',n=2))[0],' ', after='DATE-BEG'
   end
 
   ;; Camera
