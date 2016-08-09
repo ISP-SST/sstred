@@ -35,20 +35,25 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2016-08-09 : Re-write to also handle channels with reversed align_clip
 ; 
 ;-
 function red_img2momfbd, lc0, img
+
   inam = 'red_img2momfbd : '
   chan = 0
-  nx = lc0.clip[chan,0,1] - lc0.clip[chan,0,0] + 1
-  ny = lc0.clip[chan,1,1] - lc0.clip[chan,1,0] + 1
+  nx = abs(lc0.clip[chan,0,1] - lc0.clip[chan,0,0]) + 1
+  ny = abs(lc0.clip[chan,1,1] - lc0.clip[chan,1,0]) + 1
   print,' '
-  print,inam +'Clipping modulation matrix to '+red_stri(nx)+' x '+red_stri(ny)
+  print,inam +'Clipping image to '+red_stri(nx)+' x '+red_stri(ny)
 
                                 ;
-  dim=size(img, /dimension)
-                                ;
-                                ;
+  align_clip = [ lc0.clip[chan,0,0], lc0.clip[chan,0,1], $
+                 lc0.clip[chan,1,0], lc0.clip[chan,1,1] ]
+
+  img2 = red_clipim( img, align_clip )
+  
+  dim=size(img2, /dimension)
   mny = dim[1] - 1
   mnx = dim[0] - 1
                                 ;
@@ -63,7 +68,7 @@ function red_img2momfbd, lc0, img
         cpmm = dindgen(4,4,pnx,pny)      
         pmm = dindgen(pnx,pny)
                                 ;
-        clip = red_getclips(lc0, x, y)
+        clip = red_getclips(lc0, x, y, /aligned)
                                 ;
         tpmm=img[(clip[0]>0)<mnx:(clip[1]<mnx),(clip[2]>0):(clip[3]<mny)]
         for l=0,0 do begin
