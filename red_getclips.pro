@@ -37,7 +37,6 @@
 ;
 ;       Get the location of the patch in coordinates after clipping and flipping the image.
 ;       These are the coordinates that, e.g., momfbd uses.
-;       Note: for non-flipped channels, they are the same.
 ;
 ; 
 ; :history:
