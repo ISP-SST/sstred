@@ -116,6 +116,11 @@
 ;    2016-07-01 : MGL. Bugfixes in the downloading and uncompressing
 ;                 of r0 data.
 ;
+;    2016-08-10 : JLF. Bugfixes in turret log downloading. Now it looks
+;		  backward through time properly (it was having trouble
+;		  crossing year boundaries). It will not try to write
+;		  output when no data exists for a date and will return 
+;		  string null in pathturret when that happens.
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
@@ -341,24 +346,28 @@ pro red_download, date = date $
         ;; Try previous days until one is found
         predatearr = datearr
         repeat begin
-           
+          
            ;; Make isodate for one day earlier
-           predatearr[2] = string(predatearr[2]-1, format = '(i02)')
-           if predatearr[2] eq 0 then begin
-              predatearr[2] = '31'
-              predatearr[1] = string(predatearr[1]-1, format = '(i02)')
-              if predatearr[1] eq 0 then begin
-                 predatearr[2] = '12'
-                 predatearr[0] += string(predatearr[0]-1, format = '(i04)')
-              endif
-           endif
+           caldat,julday(predatearr[1],predatearr[2],predatearr[0])-1,month,day,year
+           predatearr = [string(year,format='(i4)'),$
+			 string(month,format='(i02)'),$
+			 string(day,format='(i02)')] 
+;            predatearr[2] = string(predatearr[2]-1, format = '(i02)')
+;            if predatearr[2] eq 0 then begin
+;               predatearr[2] = '31'
+;               predatearr[1] = string(predatearr[1]-1, format = '(i02)')
+;               if predatearr[1] eq 0 then begin
+;                  predatearr[2] = '12'
+;                  predatearr[0] += string(predatearr[0]-1, format = '(i04)')
+;               endif
+;            endif
            preisodate = strjoin(predatearr, '-')
-
+      
            ;; Try to download
            pathturret2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
            print, 'Try '+pathturret2
            OK2 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
-                            + datearr[0]+'/'+pathturret2 $
+                            + predatearr[0]+'/'+pathturret2 $
                             , contents = contents2 $
 ;                            , dir = logdir $
                             , /overwrite $
@@ -370,15 +379,20 @@ pro red_download, date = date $
         if OK1 then contents = [contents2, contents1] else contents = contents2
         ;; Filter on date
         turretdate = strjoin(datearr, '/')
-        contents = contents(where(strmatch(contents, turretdate+'*')))
-        ;; Filter on line type, don't want the RA/Decl lines
-        contents = contents(where(~strmatch(contents, '*h*m*')))
+        idx = where(strmatch(contents, turretdate+'*'),cnt)
+        if cnt ne 0 then begin
+	  contents = contents[idx]
+	  ;; Filter on line type, don't want the RA/Decl lines
+	  contents = contents(where(~strmatch(contents, '*h*m*')))
 
-        ;; Write to disk
-        openw, wlun, /get_lun, pathturret
-        printf, wlun, contents, format = '(a0)'
-        free_lun, wlun
-        
+	  ;; Write to disk
+	  openw, wlun, /get_lun, pathturret
+	  printf, wlun, contents, format = '(a0)'
+	  free_lun, wlun
+	endif else begin
+	  message,'No log data for the requested date.',/info
+	  pathturret = '' ; don't return a path, we didn't write anything
+	endelse
 ;     grepdate = strjoin(datearr, '/')
 ;     cmd = 'cd downloads/sstlogs ;'       ; Go to download directory
 ;     cmd += ' cat positionLog_????.??.??' ; Concatenate the turret files
