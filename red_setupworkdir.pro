@@ -47,15 +47,8 @@
 ; 
 ;    out_dir : in, optional, type=string, default='Current directory'
 ; 
-;      The output directory to be used by crispred.
-; 
-;    exclude_chromis : in, optional, type=boolean
-;
-;       Set this to not setup for CHROMIS data only.
-; 
-;    exclude_crisp : in, optional, type=boolean
-;
-;       Set this to not setup for CRISP data. 
+;      The output directory, under which instrument-specific
+;      directories are created.
 ;
 ; 
 ; :History:
@@ -188,7 +181,10 @@
 ;    2016-05-30 : MGL. Don't zero Sarnoff tap borders for
 ;                 CHROMIS cameras.   
 ;
-;    2016-06-04 : MGL. CHROMIS image scale.
+;    2016-06-04 : MGL. CHROMIS image scale.   
+;
+;    2016-08-12 : MGL. Detect the presence of CRISP and CHROMIS data.
+;                 Remove keywords exclude_crisp and exclude_chromis.
 ;
 ;
 ;-
@@ -197,17 +193,11 @@ pro red_setupworkdir, search_dir = search_dir $
                       , cfgfile = cfgfile $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
-                      , date = date $
-                      , exclude_chromis = exclude_chromis $
-                      , exclude_crisp = exclude_crisp
+                      , date = date
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')  
   if ~strmatch(out_dir,'*/') then out_dir += '/'
 
-
-  if ~keyword_set(exclude_crisp) then crisp_dir = out_dir + 'CRISP/'
-  if ~keyword_set(exclude_chromis) then chromis_dir = out_dir + 'CHROMIS/'
-  
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
 
@@ -326,12 +316,16 @@ pro red_setupworkdir, search_dir = search_dir $
 ;  tmp = file_search(pfile, count = Nlog)
 ;  if Nlog eq 0 then spawn, "scp obs@royac27.royac.iac.es:/usr/turret/logs/position/"+pfile+" ./"
 
+  ;; Used for detecting instruments
+  testdirs = file_search(root_dir+'/*/*/*', count = Ndirs)
+
 
   
   ;; CHROMIS ---------------------------------------------------------------------------------------
-  
-  if ~keyword_set(exclude_chromis) then begin
-  
+  if total(strmatch(testdirs,'*chromis*',/fold)) then begin
+
+     chromis_dir = out_dir + 'CHROMIS/'  
+     
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
      file_mkdir, chromis_dir
@@ -591,9 +585,10 @@ pro red_setupworkdir, search_dir = search_dir $
 
   
   ;; CRISP -----------------------------------------------------------------------------------------
+  if total(strmatch(testdirs,'*crisp*',/fold)) then begin
 
-  if ~keyword_set(exclude_crisp) then begin
-     
+     crisp_dir = out_dir + 'CRISP/'
+
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
      file_mkdir, crisp_dir
@@ -948,14 +943,14 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; Write message and then we are done.
   
   print
-  
-  if ~keyword_set(exclude_crisp) then begin
+
+  if n_elements(crisp_dir) then begin
      print, 'CRISP setup in ' + crisp_dir
   endif else begin
      print, 'No CRISP data'
   endelse
   
-  if ~keyword_set(exclude_chromis) then begin
+  if n_elements(chromis_dir) then begin
      print, 'CHROMIS setup in ' + chromis_dir
   endif else begin
      print, 'No CHROMIS data'
