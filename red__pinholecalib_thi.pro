@@ -54,9 +54,9 @@
 ;                and aligning the pinholes. The offset files are now directly
 ;                computed instead of fitted.
 ;
-;   2016-06-13 : MGL. Various cosmetic edits. CHange bunch of if
+;   2016-06-13 : MGL. Various cosmetic edits. Change bunch of if
 ;                statements to a case statement. Move make_corners to
-;                the red_ namespace and its own file.
+;                the red_ namespace and its own file. Bugfix.
 ;
 ;-
 pro red::pinholecalib_thi, threshold = threshold $
@@ -123,9 +123,9 @@ pro red::pinholecalib_thi, threshold = threshold $
         return
     endif
 
-    ;; Selected prefilter or all prefilters?
+    ;; Selected prefilter or all prefilters (for refcam)?
     files = file_search( ph_dir + '*.pinh' )
-    self->selectfiles, files=files, prefilter=pref, states=states, /strip_settings
+    self->selectfiles, files=files, prefilter=pref, states=states, cam = cams[refcam], /strip_settings
     nf = n_elements( files )
     if nf eq 0 then begin
         print, inam, ' : ERROR : No pinhole files found in ', ph_dir
