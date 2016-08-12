@@ -49,6 +49,7 @@ Implementation list for CHROMIS camera software 2016/06/07
   - Need a fine-tuning keyword, what to call it?
   - EXPTIME --> XPOSURE
   - OBSRVTRY = 'SST'
+  - OBSRVTRY = 'Observtorio del Roque de los Muchachos' ?
   - TELESCOP = 'Swedish 1-meter Solar Telescope'
   - OBSERVER keyword with a standardized list of observer names (enter it once
     into the list and it can't be changed.)
