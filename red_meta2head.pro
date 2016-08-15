@@ -36,11 +36,12 @@
 ;
 ;    2016-08-15 : MGL. Take relevant code from
 ;                 red_filterchromisheaders. Remove .momfbd extension
-;                 from variable barefile.
+;                 from variable barefile. Recognize underscore as a
+;                 delimiter when parsing filenames.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
-  
+
   ;; Was any meta data provided?
   if n_elements(metaStruct) eq 0 then return, head
 
@@ -71,7 +72,7 @@ function red_meta2head, head, metadata=metaStruct
 
         ;; The camera tag consists of the string 'cam' followed by a
         ;; roman number.
-        camtag = ((stregex(barefile, '(\.|^)(cam[IVXL]+)(\.|$)', /extr, /subexp))[2,*])[0]
+        camtag = ((stregex(barefile, '(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])[0]
 
         if camtag ne '' then sxaddpar, newhead, red_keytab('camtag'), camtag $
                                        , 'Inferred from filename.' $
@@ -86,7 +87,7 @@ function red_meta2head, head, metadata=metaStruct
         ;; Get prefilter names from file name. For now, we have
         ;; the filter wheel position as a tag consisting of the
         ;; letter w followed by a single digit.
-        wheelpos = ((stregex(barefile, '(\.|^)(w[0-9]{1})(\.|$)', /extr, /subexp))[2,*])[0]
+        wheelpos = ((stregex(barefile, '(_|\.|^)(w[0-9]{1})(_|\.|$)', /extr, /subexp))[2,*])[0]
 
         if wheelpos ne '' then begin
            
@@ -226,7 +227,7 @@ function red_meta2head, head, metadata=metaStruct
 
      ;; The scan number is the only field that is exactly five
      ;; digits long:
-     scannumber = ((stregex(barefile, '(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*])[0]
+     scannumber = ((stregex(barefile, '(_|\.|^)([0-9]{5})(_|\.|$)', /extr, /subexp))[2,*])[0]
      if scannumber ne '' then sxaddpar, newhead, red_keytab('scannumber'), long(scannumber) $
                                         , '(scan number) Inferred from filename.' $
                                         , before = 'COMMENT'
