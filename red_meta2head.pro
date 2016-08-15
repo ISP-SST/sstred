@@ -48,9 +48,12 @@ function red_meta2head, head, metadata=metaStruct
   ;; Extract metadata from the filename (for now it's all we have)
   if tag_exist(metaStruct, 'filename', /top_level) then begin
 
-     ;; Strip directory and extension if needed
+     ;; Strip directory...
      filename = file_basename(metaStruct.filename)
-     barefile = file_basename(metaStruct.filename, '.fits')
+     ;; ...and extension if needed
+     barefile = filename
+     barefile = file_basename(barefile, '.fits')
+     barefile = file_basename(barefile, '.momfbd')
 
      dummy = fxpar(newhead, 'FILENAME', count=count)
      if count eq 0 then begin
