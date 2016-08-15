@@ -32,8 +32,9 @@
 ;    filetype : in, type=string
 ;
 ;	The type of file to read. Allowed values are: 
-;		ptgrey-fits
-;		fz
+;		fits
+;		ana
+;               momfbd
 ;	If not set auto-detection will be attempted.
 ;
 ;    structheader : in, type=flag
@@ -73,6 +74,13 @@
 ;		 for them.
 ;
 ;   2016-05-30 : MGL. New keyword framenumber.
+;
+;   2016-08-12 : MGL. Read also momfbd-format files, return the
+;                mosaicked image.
+;
+;   2016-08-15 : MGL. Don't make header to be returned in header
+;                keyword, get it from red_readhead instead.
+;
 ;-
 function red_readdata, fname $
                        , header = header $
@@ -89,6 +97,9 @@ function red_readdata, fname $
     return, 0B
 
   endif
+
+  ;; Remove this line when rdx_filetype can recognize .momfbd files:
+  if file_basename(fname,'.momfbd') ne file_basename(fname) then filetype = 'momfbd'
 
   if n_elements(filetype) eq 0 then begin
 
@@ -112,55 +123,46 @@ function red_readdata, fname $
         
         fzread, data, fname, anaheader
 
-        if n_elements(anaheader) ne 0 then begin
-           if strmatch( anaheader, "SIMPLE*" ) gt 0 then begin
-               ;; it's actually a fits-header, split into strarr with length 80
-               len = strlen(anaheader)
-               for i=0,len-1, 80 do begin
-                   card = strmid(anaheader,i,80)
-                   red_append, tmpheader, card
-                   if strmid( card, 0, 2 ) eq 'END' then break
-               endfor
-               header = tmpheader
-           endif else begin
-               ;; Convert ana header to fits header
-               header = red_anahdr2fits( anaheader, img=data )
-           endelse
-        endif
+        if arg_present(header) then header = red_readhead(fname)
 
      end
 
      'FITS' : begin
+
+        ;; Data stored in fits files, but what kind?
         red_rdfits, fname, header = header
-        ;; Data stored in fits files, 
         bit_shift = 0
         if fxpar(header, 'SOLARNET') eq 0 then begin
             caminfo = red_camerainfo( red_camtag(fname) )
             if strmatch(caminfo.model,'PointGrey*') then begin 
-                ;; Hack to load weird PointGrey data
+                ;; This is the first version PointGrey data from
+                ;; spring 2016. Hack to load it:
                 uint = 1
                 swap = 0
                 bit_shift = -4
             endif
         endif
-        red_rdfits, fname, header = header, image = data $
+
+        ;; Now read the data
+        red_rdfits, fname, image = data $
                     , uint=uint, swap=swap, framenumber = framenumber
+
+        ;; Compensate for initial weird format
         if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
-        ;; If framenumber is used we may want to change some header
-        ;; keywords, like FRAME1, CADENCE, and DATE-END. Either here
-        ;; or in red_rdfits.
+
+     end
+
+     'MOMFBD' : begin
+        mr = momfbd_read(fname)
+        data = red_mozaic(mr, /clip)
      end
 
   endcase
+  
+  if arg_present(header) then $
+     header = red_readhead(fname, structheader = structheader $
+                           , framenumber = framenumber)
 
-  
-  if arg_present(header) ne 0 then $
-    header = red_filterchromisheaders(header,meta={filename:fname}, silent=silent)
-  
-  if n_elements(header) ne 0 and keyword_set(structheader) then begin
-     header = red_paramstostruct(header)
-  endif
-  
   status = 0
   
   return, data

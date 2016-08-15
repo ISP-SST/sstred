@@ -28,9 +28,15 @@
 ;    filetype : in, type=string
 ;
 ;	The type of file to read. Allowed values are: 
-;		ptgrey-fits
+;		fits
 ;		fz
+;               momfbd
 ;	If not set auto-detection will be attempted.
+;
+;    framenumber : in: optional, type=integer
+;
+;       Specify to get header corresponding to a single frame in a
+;       multi-frame image file.
 ;
 ;    structheader : in, type=flag
 ;
@@ -45,9 +51,16 @@
 ;   2016-05-18 : JLF. Created.
 ;
 ;   2016-05-31 : JLF. Added keyword silent to suppress informational messages
+;
+;   2016-08-12 : MGL. Make header for momfbd-format file. New keyword
+;                framenumber. Call red_filterchromisheaders only for
+;                FITS files without SOLARNET header keyword. Call new
+;                function red_meta2head.
+;
 ;-
 function red_readhead, fname, $
                        filetype = filetype, $
+                       framenumber = framenumber, $
                        structheader = structheader, $
                        status = status, $
 		       silent = silent
@@ -57,6 +70,9 @@ function red_readhead, fname, $
         status = -1
         return, 0B
     endif
+
+    ;; Remove this line when rdx_filetype can recognize .momfbd files:
+    if file_basename(fname,'.momfbd') ne file_basename(fname) then filetype = 'momfbd'
 
     if( n_elements(filetype) eq 0 ) then begin
     
@@ -97,15 +113,42 @@ function red_readhead, fname, $
         'FITS' : begin
             ;; Data stored in fits files
             red_rdfits, fname, header = header
+
+            if fxpar(header, 'SOLARNET') eq 0 then begin
+               caminfo = red_camerainfo( red_camtag(fname) )
+               if strmatch(caminfo.model,'PointGrey*') then begin 
+                  ;; We could add a date check here as well.
+
+                  ;; Old PointGrey data header filtering to bring it
+                  ;; to solarnet compliance. 
+                  header = red_filterchromisheaders(header, silent=silent)
+               endif
+            endif
+
+            if n_elements(framenumber) ne 0 then begin
+               ;; We may want to change or remove some header keywords
+               ;; here, like FRAME1, CADENCE, and DATE-END.
+            endif
+
+         end
+
+        'MOMFBD' : begin
+           mr = momfbd_read(fname, /names) ; Use /names to avoid reading the data parts
+           mkhdr, header, 4, [mr.clip[0,1,1]-mr.clip[0,1,0]+1 $
+                              , mr.clip[0,0,1]-mr.clip[0,0,0]+1]
+           header = header[where(header ne blanks(80))] ; Remove blank lines
+           date_ave = mr.date + 'T' + mr.time
+           sxaddpar, header, 'DATE-AVE', date_ave, ' ', before='COMMENT'
         end
 
     endcase
 
-    ;; header filtering to bring it to solarnet compliance
-    header = red_filterchromisheaders(header,meta={filename:fname}, silent=silent)
-     
-    if n_elements(header) ne 0 and keyword_set(structheader) then begin
-        header = red_paramstostruct(header)
+    header = header[where(header ne blanks(80))] ; Remove blank lines
+
+    header = red_meta2head(header, meta={filename:fname})
+    
+    if keyword_set(structheader) then begin
+       header = red_paramstostruct(header)
     endif
 
     status = 0
