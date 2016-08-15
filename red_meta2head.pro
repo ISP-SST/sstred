@@ -35,7 +35,8 @@
 ; :History:
 ;
 ;    2016-08-15 : MGL. Take relevant code from
-;                 red_filterchromisheaders.
+;                 red_filterchromisheaders. Remove .momfbd extension
+;                 from variable barefile.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
