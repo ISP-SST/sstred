@@ -79,7 +79,9 @@
 ;                mosaicked image.
 ;
 ;   2016-08-15 : MGL. Don't make header to be returned in header
-;                keyword, get it from red_readhead instead.
+;                keyword, get it from red_readhead instead. Read only
+;                the parts of .momfbd files thata are needed to make
+;                the mosaic.
 ;
 ;-
 function red_readdata, fname $
@@ -153,7 +155,7 @@ function red_readdata, fname $
      end
 
      'MOMFBD' : begin
-        mr = momfbd_read(fname)
+        mr = momfbd_read(fname, /img)
         data = red_mozaic(mr, /clip)
      end
 
