@@ -96,7 +96,24 @@
 ;
 ;    dt_mean : in, optional, type=scalar, default=3
 ;
-;       Time window for running mean in minutes. 
+;       Time window for running mean in minutes. Do not plot running
+;       mean if dt_mean is set to zero.
+;
+;    psym_plot : in, optional, type=integer, default=16
+;
+;       Plot symbol to use for plot8 and plot24 plots.
+;
+;    psym_scan : in, optional, type=integer, default=16
+;
+;       Plot symbol to use for scan8 and scan24 plots.
+;
+;    symsize_plot : in, optional, type=float, default=0.25
+;
+;       Plot symbol size to use for plot8 and plot24 plots.
+;
+;    symsize_scan : in, optional, type=float, default=1.0
+;
+;       Plot symbol size to use for scan8 and scan24 plots.
 ;
 ;
 ; :History:
@@ -155,6 +172,10 @@
 ;                  and chromisscans to plot CRISP and CHROMIS scans
 ;                  separately with scan8 and scan24.
 ;
+;     2016-08-15 : MGL. New keywords allowing change of plot symbols.
+;                  Also, can now set dt_mean=0 to remove the smoothed
+;                  curves. 
+;
 ;-
 pro red_plot_r0, dir = dir $
                  , today = today $
@@ -168,8 +189,12 @@ pro red_plot_r0, dir = dir $
                  , plotvertical = plotvertical $
                  , plot24 = plot24 $
                  , plot8 = plot8 $
+                 , psym_plot = psym_plot $
+                 , symsize_plot = symsize_plot $
                  , scan24 = scan24 $
                  , scan8 = scan8 $
+                 , psym_scan = psym_scan $
+                 , symsize_scan = symsize_scan $
                  , markdata = markdata $
                  , onlydata = onlydata $
                  , dt_mean = dt_mean $
@@ -185,6 +210,11 @@ pro red_plot_r0, dir = dir $
   if n_elements(tmax) eq 0 then tmax = 19
   if n_elements(tmin) eq 0 then tmin =  7
  
+  if n_elements(psym_plot) eq 0 then psym_plot = 16
+  if n_elements(psym_scan) eq 0 then psym_scan = 16
+  if n_elements(symsize_plot) eq 0 then symsize_plot = 0.25
+  if n_elements(symsize_scan) eq 0 then symsize_scan = 1.0
+
   ;; Colors to use for plotting
   color_8       = 'black'
   color_24      = 'goldenrod'
@@ -566,25 +596,25 @@ pro red_plot_r0, dir = dir $
      if keyword_set(plot24) then begin
         indx = where(r0data[0, *] gt r0_top, Ntop)
         cgwindow, 'cgplot', /loadcmd, /over, r0time, r0data[0, *] >r0_bot<r0_top $
-                  , color = color_24, psym = 16, symsize = 0.15
+                  , color = color_24, psym = psym_plot, symsize = symsize_plot
         if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over $
                                     , r0time[indx], replicate(r0_top, Ntop) $
                                     , color = color_24, psym = 5, symsize = 0.15
-        cgwindow, 'cgplot', /loadcmd, /over $
-                  , r0time, smooth(r0data[0, *], dt_mean*60.) >r0_bot $
-                  , color = color_24
+        if dt_mean ne 0 then cgwindow, 'cgplot', /loadcmd, /over $
+                                       , r0time, smooth(r0data[0, *], dt_mean*60.) >r0_bot $
+                                       , color = color_24
      endif
 
      if keyword_set(plot8) then begin
         indx = where(r0data[1, *] gt r0_top, Ntop)
         cgwindow, 'cgplot', /loadcmd, /over, r0time, r0data[1, *] >r0_bot<r0_top $
-                  , color = color_8, psym = 16, symsize = 0.25
+                  , color = color_8, psym = psym_plot, symsize = symsize_plot
         if Ntop gt 0 then cgwindow, 'cgplot', /loadcmd, /over $
                                     , r0time[indx], replicate(r0_top, Ntop) $
                                     , color = color_8, psym = 5, symsize = 0.15
-        cgwindow, 'cgplot', /loadcmd, /over $
-                  , r0time, smooth(r0data[1, *], dt_mean*60.) >r0_bot $
-                  , color = color_8
+        if dt_mean ne 0 then cgwindow, 'cgplot', /loadcmd, /over $
+                                       , r0time, smooth(r0data[1, *], dt_mean*60.) >r0_bot $
+                                       , color = color_8
      endif
 
      pname = 'dir-analysis/' + 'r0_' + isodate + '_' $
@@ -912,7 +942,8 @@ stop
                     endif
                     
                     if keyword_set(scan24) then begin
-                       cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_24x24, psym=16
+                       cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_24x24 $
+                                 , psym = psym_scan, symsize = symsize_scan
                        cgwindow, /add, 'cgplot', /over, color = 'blue' $
                                  , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_mean[sindx[is]] 
                        cgwindow, /add, 'cgplot', /over, color = 'red' $
@@ -920,7 +951,8 @@ stop
                     endif
                     
                     if keyword_set(scan8) then begin
-                       cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_8x8, psym=16
+                       cgwindow, /add, 'cgplot', /over, r0info.time, r0info.r0_8x8 $
+                                 , psym = psym_scan, symsize = symsize_scan
                        cgwindow, /add, 'cgplot', /over, color = 'blue' $
                                  , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_mean[sindx[is]] 
                        
