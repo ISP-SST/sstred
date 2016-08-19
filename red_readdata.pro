@@ -80,8 +80,11 @@
 ;
 ;   2016-08-15 : MGL. Don't make header to be returned in header
 ;                keyword, get it from red_readhead instead. Read only
-;                the parts of .momfbd files thata are needed to make
+;                the parts of .momfbd files that are needed to make
 ;                the mosaic.
+;
+;   2016-08-19 : MGL. Only test for .momfbd extension if filetype is
+;                not specified.
 ;
 ;-
 function red_readdata, fname $
@@ -94,19 +97,21 @@ function red_readdata, fname $
 
   if file_test(fname) eq 0 then begin
 
-    message, 'File does not exist: '+fname,/info
+    message, 'File does not exist: '+fname, /info
     status = -1
     return, 0B
 
   endif
 
-  ;; Remove this line when rdx_filetype can recognize .momfbd files:
-  if file_basename(fname,'.momfbd') ne file_basename(fname) then filetype = 'momfbd'
-
   if n_elements(filetype) eq 0 then begin
 
-    filetype = rdx_filetype(fname)
-  
+    ;; Remove this when rdx_filetype can recognize .momfbd files:
+    if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
+       filetype = 'momfbd'
+    endif else begin
+       filetype = rdx_filetype(fname)
+    endelse
+     
     if filetype eq '' then begin
       message,'Cannot detect filetype. Pass it manually as',/info
       message,"img = red_readdata('"+fname+"',filetype='fits')",/info

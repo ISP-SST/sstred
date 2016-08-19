@@ -57,6 +57,9 @@
 ;                FITS files without SOLARNET header keyword. Call new
 ;                function red_meta2head.
 ;
+;   2016-08-19 : MGL. Only test for .momfbd extension if filetype is
+;                not specified.
+;
 ;-
 function red_readhead, fname, $
                        filetype = filetype, $
@@ -71,13 +74,15 @@ function red_readhead, fname, $
         return, 0B
     endif
 
-    ;; Remove this line when rdx_filetype can recognize .momfbd files:
-    if file_basename(fname,'.momfbd') ne file_basename(fname) then filetype = 'momfbd'
-
+    ;; Remove this when rdx_filetype can recognize .momfbd files:
     if( n_elements(filetype) eq 0 ) then begin
     
-        filetype = rdx_filetype(fname)
-
+        if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
+           filetype = 'momfbd'
+        endif else begin
+           filetype = rdx_filetype(fname)
+        endelse
+       
         if( filetype eq '' ) then begin
             message, 'Cannot detect filetype. Pass it manually as', /info
             message, "head = red_readhead('"+fname+"',filetype=fits')", /info
