@@ -60,6 +60,7 @@ fitsname = metaname
 ;; The translation table.
 ;; Add your own translations here.
 keyword_translator_table = [['cam',		'CAMERA'  ],$
+                        ['camera',      'CAMERA'],$
                         ['camtag',      'DETECTOR'],$
                         ['detector',    'DETECTOR'],$
                         ['frame',		'FRAME1'  ],$
@@ -67,7 +68,8 @@ keyword_translator_table = [['cam',		'CAMERA'  ],$
                         ['pref',		'FILTER1' ],$
                         ['prefilter',	'FILTER1' ],$
                         ['camdir',		'CAMERA'  ],$
-                        ['cam_channel',	'CAMERA'  ],$
+                        ['old_channel', 'INSTRUME'],$
+                        ['instrume',    'INSTRUME'],$
                         ['scan',		'SCANNUM' ],$
                         ['scannumber',	'SCANNUM' ]]
 
@@ -89,7 +91,7 @@ end
 print,red_keytab('cam')
 print,red_keytab('Camtag')
 print,red_keytab(['frame','PREF','scannumber'])
-print,red_keytab('cam_channel')
+print,red_keytab('instrume')
 print,red_keytab('camp')
 
 end
