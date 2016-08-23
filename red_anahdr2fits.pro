@@ -41,7 +41,12 @@
 ;
 ;   2016-05-31 : JLF. Start using red_keytab to keep track of SOLARNET 
 ; 		 keywords.
-;   2016-08-05 : JLF. Make DATE-BEG and DATE-END ISO-8601 compliant
+;
+;   2016-08-05 : JLF. Make DATE-BEG and DATE-END ISO-8601 compliant.
+;
+;   2016-08-23 : MGL. Deal with ANA headers lacking data size
+;                information.
+;
 ;-
 function red_anahdr2fits, anahdr $
 		    , img = img
@@ -49,8 +54,10 @@ function red_anahdr2fits, anahdr $
   if n_elements(img) ne 0 then $
      mkhdr,hdr,img $
   else begin
-     NAXIS1 = strtrim(long(strmid(anahdr, strpos(anahdr, ' W=')+3)), 2)
-     NAXIS2 = strtrim(long(strmid(anahdr, strpos(anahdr, ' H=')+3)), 2)
+     posw = strpos(anahdr, ' W=')
+     if posw eq -1 then NAXIS1 = 0 else NAXIS1 = strtrim(long(strmid(anahdr, posw+3)), 2)
+     posh = strpos(anahdr, ' H=')
+     if posh eq -1 then NAXIS2 = 0 else NAXIS2 = strtrim(long(strmid(anahdr, posh+3)), 2)
      mkhdr,hdr,2,[naxis1,naxis2]
   endelse
 

@@ -58,7 +58,11 @@
 ;                function red_meta2head.
 ;
 ;   2016-08-19 : MGL. Only test for .momfbd extension if filetype is
-;                not specified.
+;                not specified.      
+;
+;   2016-08-23 : MGL. Deal with ANA headers lacking data size
+;                information.
+;
 ;
 ;-
 function red_readhead, fname, $
@@ -109,11 +113,20 @@ function red_readhead, fname, $
                    endfor
                    header = tmpheader
                endif else begin
-                   ;; Convert ana header to fits header
-                   header = red_anahdr2fits( anaheader )
+                  ;; Does the ana header have size information?
+                  posw = strpos(anaheader, ' W=')
+                  posh = strpos(anaheader, ' H=')
+                  if posw eq -1 or posh eq -1 then begin
+                     ;;Get it from the data instead.
+                     fzread, data, fname
+                     header = red_anahdr2fits(anaheader, img = data)
+                  endif else begin
+                     ;; Convert ana header to fits header
+                     header = red_anahdr2fits(anaheader)
+                  endelse
                endelse
             endif
-        end
+         end
 
         'FITS' : begin
             ;; Data stored in fits files
