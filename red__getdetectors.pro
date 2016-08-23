@@ -37,37 +37,41 @@
 ;   2016-05-22 : THI. Removed CRISP-specific tags.
 ;
 ;   2016-05-22 : THI. Bugfix.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ;-
-pro red::getcamtags, dir = dir
+pro red::getdetectors, dir = dir
 
-    inam = 'red::getcamtags : '
+    inam = 'red::getdetectors : '
 
-    ptr_free,self.cam_tags
+    ptr_free,self.detectors
     tagfil = self.out_dir+'/camtags.idlsave'
     if(file_test(tagfil)) then begin
         restore, tagfil
-        if n_elements(cam_tags) gt 0 then self.cam_tags = ptr_new(cam_tags, /NO_COPY)
+        if n_elements(detectors) gt 0 then self.detectors = ptr_new(detectors, /NO_COPY)
         return
     endif
      
     if(~keyword_set(dir) && ptr_valid(self.dark_dir) ) then dir = *self.dark_dir
 
-    for i=0, n_elements(*self.cam_channels)-1 do begin
-        path_spec = dir + '/' + (*self.cam_channels)[i] + '/*'
+    for i=0, n_elements(*self.cameras)-1 do begin
+        path_spec = dir + '/' + (*self.cameras)[i] + '/*'
         files = file_search(path_spec, count=nf)
         if( nf eq 0 || files[0] eq '' ) then begin
-            print, inam + 'ERROR -> no frames found in [' + dir + '] for ' + (*self.cam_channels)[i]
+            print, inam + 'ERROR -> no frames found in [' + dir + '] for ' + (*self.cameras)[i]
             return
         endif
         ctag = red_camtag(files[0])
-        if ptr_valid(self.cam_tags) then red_append, *self.cam_tags, ctag $
-        else self.cam_tags = ptr_new(ctag, /NO_COPY)
+        if ptr_valid(self.detectors) then red_append, *self.detectors, ctag $
+        else self.detectors = ptr_new(ctag, /NO_COPY)
     endfor
     
-    cam_tags = *self.cam_tags
+    detectors = *self.detectors
 
-    save, file=tagfil, cam_tags
+    save, file=tagfil, detectors
 
     return
   

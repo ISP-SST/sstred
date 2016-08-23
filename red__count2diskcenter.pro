@@ -36,12 +36,16 @@
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2016-02-15 : MGL. Use loadbackscatter.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ; 
 ;-
 function red::count2diskcenter, pref, cam = cam
   inam = ' red::count2diskcenter :'
-  self->getcamtags, dir = self.data_dir
+  self->getdetectors, dir = self.data_dir
                                 
   fc1 = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter_pars.f0'
   fc2 = self.out_dir + '/prefilter_fits/'+self.camrtag+'.'+pref+'.prefilter_pars.f0'

@@ -34,7 +34,7 @@
 ;     tag : in, optional, type=boolean
 ;
 ;         Interpret cam as a "tag" (Ex. 'camXX'), i.e. do not
-;         bother looking up the camtag.
+;         bother looking up the detector.
 ; 
 ;     data : out, optional
 ;
@@ -62,6 +62,10 @@
 ;   2016-05-19 : First version.
 ;
 ;   2016-05-24 : MGL. Add keyword state.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ; 
 ;-
@@ -75,14 +79,14 @@ function red::getdark, cam, $
                        summed_header = summed_header
     
     if ~keyword_set(tag) then begin
-        camtag = self->RED::getcamtag(cam)
-    endif else camtag = cam
+        detector = self->RED::getdetector(cam)
+    endif else detector = cam
     
     ; append state
-    if( n_elements(state) eq 1 ) then camtag += '_' + state
+    if( n_elements(state) eq 1 ) then detector += '_' + state
     
-    filename = self.out_dir+'/darks/'+camtag+'.dark'
-    summed_name = self.out_dir+'/darks/'+camtag+'.summed.0000001'
+    filename = self.out_dir+'/darks/'+detector+'.dark'
+    summed_name = self.out_dir+'/darks/'+detector+'.summed.0000001'
 
     if file_test(filename) then begin
         if arg_present(data) then begin

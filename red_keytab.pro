@@ -41,6 +41,10 @@
 ; :History:
 ; 
 ;   2016-05-31 : JLF. First version.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 function red_keytab,metaname
 
@@ -56,28 +60,29 @@ fitsname = metaname
 ;; The translation table.
 ;; Add your own translations here.
 keyword_translator_table = [['cam',		'CAMERA'  ],$
-			    ['camtag',		'CAMERA'  ],$
-			    ['frame',		'FRAME1'  ],$
-			    ['framenumber',	'FRAME1'  ],$
-			    ['pref',		'FILTER1' ],$
-			    ['prefilter',	'FILTER1' ],$
-			    ['camdir',		'INSTRUME'],$
-			    ['cam_channel',	'INSTRUME'],$
-			    ['scan',		'SCANNUM' ],$
-			    ['scannumber',	'SCANNUM' ]]
+                        ['camtag',      'DETECTOR'],$
+                        ['detector',    'DETECTOR'],$
+                        ['frame',		'FRAME1'  ],$
+                        ['framenumber',	'FRAME1'  ],$
+                        ['pref',		'FILTER1' ],$
+                        ['prefilter',	'FILTER1' ],$
+                        ['camdir',		'CAMERA'  ],$
+                        ['cam_channel',	'CAMERA'  ],$
+                        ['scan',		'SCANNUM' ],$
+                        ['scannumber',	'SCANNUM' ]]
 
-for i = 0, nstr-1 do begin
-  
-  test = strlowcase(metaname[i])
-  
-  idx = where(keyword_translator_table[0,*] eq test,cnt)
-  
-  if cnt eq 1 then fitsname[i] = keyword_translator_table[1,idx] $
-  else message,'Translation error, no unambiguous keyword translation found.'
-  
-endfor
+    for i = 0, nstr-1 do begin
+        
+        test = strlowcase(metaname[i])
+        
+        idx = where(keyword_translator_table[0,*] eq test,cnt)
+        
+        if cnt eq 1 then fitsname[i] = keyword_translator_table[1,idx] $
+        else message,'Translation error, no unambiguous keyword translation found.'
+    
+    endfor
 
-return,fitsname
+    return,fitsname
 
 end
 

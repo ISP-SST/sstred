@@ -146,6 +146,10 @@
 ;
 ;   2016-02-06 : THI. Bugfix: subimage cutouts could reach outside image border.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+; 
 ;-
 pro red::pinholecalib, STATE = state $                   
                        , PREFILTER = prefilter $         
@@ -208,7 +212,7 @@ pro red::pinholecalib, STATE = state $
     file_mkdir, workdir+'data'
 
     ;; Get camera labels:
-    self -> getcamtags
+    self -> getdetectors
     camt = self.camttag
     camr = self.camrtag
     camw = self.camwbtag

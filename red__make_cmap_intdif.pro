@@ -55,6 +55,10 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;   2013-06-27 : JdlCR: Fixed bug with cam_t, it used files from cam_r
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ;-
 pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, lc = lc, psf = psf, nthreads=nthreads, verbose = verbose, overwrite=overwrite
@@ -136,7 +140,7 @@ pro red::make_cmap_intdif, scan = scan, cam = cam, pref = pref, debug = debug, l
 ;
 ; Get camera tags
 ;
-  self -> getcamtags, dir = self.data_dir
+  self -> getdetectors, dir = self.data_dir
   ctag = [self.camrtag, self.camttag]
 
 ;

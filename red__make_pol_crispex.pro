@@ -152,7 +152,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   endelse
   
   ;; Camera tags
-  self->getcamtags
+  self->getdetectors
 
   ;; Load prefilter
   tpfile = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter.f0'

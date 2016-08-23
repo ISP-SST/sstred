@@ -71,6 +71,10 @@
 ;                new keyword no_descatter.
 ; 
 ;   2016-02-16 : MGL. New keyword "all".
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ;
 ;-
@@ -116,7 +120,7 @@ pro red::sum_data_intdif, cam = cam $
      dir = dirs[idir]
 
                                 ; Get camera tags
-     self -> getcamtags, dir = dir
+     self -> getdetectors, dir = dir
      ctag = [self.camrtag, self.camttag]
      
      ;outdir += file_basename(dir)+'/'

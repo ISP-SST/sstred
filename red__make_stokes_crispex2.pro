@@ -108,7 +108,7 @@ pro red::make_stokes_crispex2, rot_dir = rot_dir, square = square
   ;;
   ;; Camera tags
   ;;
-  self->getcamtags, dir = self.data_dir
+  self->getdetectors, dir = self.data_dir
 
 
   ;;

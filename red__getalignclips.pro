@@ -56,6 +56,10 @@
 ;   2013-09-25 : MGL. Now checks for existence of gaintables before
 ;                reading. 
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 PRO red::getalignclips, thres = thres, extraclip = extraclip, $
                         maxshift = maxshift
@@ -75,7 +79,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  self -> getcamtags
+  self -> getdetectors
   camw = self.camwbtag
   camt = self.camttag
   camr = self.camrtag

@@ -52,6 +52,10 @@
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2015-03-31 : MGL. Use red_download to get turret log file.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ; 
 ;-
@@ -90,7 +94,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
      dir+= '/cfg/results/' 
      print, inam + 'Processing state -> '+dir
   endif
-  self -> getcamtags, dir = self.data_dir
+  self -> getdetectors, dir = self.data_dir
                                 ;
                                 ; get files (right now, only momfbd is supported)
                                 ;

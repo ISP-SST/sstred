@@ -108,7 +108,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
      outdir = self.out_dir + '/gaintables/'+imdir+'/'
      file_mkdir, outdir
 
-     self -> getcamtags, dir = self.data_dir
+     self -> getdetectors, dir = self.data_dir
      cams = [self.camttag, self.camrtag]
      ncam = 2
      

@@ -75,6 +75,10 @@
 ;   2016-06-02 : MGL. Remove some keywords to extractstates.
 ;
 ;   2016-06-09 : MGL. Bugfix: states.pref --> states.prefilter. 
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -98,9 +102,9 @@ pro chromis::selectfiles, cam = cam $
             print,inam+': Only a single cam supported.'
             return
         endif
-        camtag = self->RED::getcamtag(cam)
+        detector = self->RED::getdetector(cam)
         
-        file_template = cam + '/' + camtag + '*'
+        file_template = cam + '/' + detector + '*'
         
         if( n_elements(dirs) gt 0 ) then dirs = [dirs] $    ; ensure it's an array, even with 1 element
         else begin 
@@ -136,7 +140,7 @@ pro chromis::selectfiles, cam = cam $
         selected = [states.skip] * 0
         camt = [cam]    ; make sure it's an array
         for ip = 0, Ncam-1 do begin
-            pos = where(states.channel eq camt[ip])
+            pos = where(states.camera eq camt[ip])
             if( min(pos) ge 0 ) then begin
                 selected[pos] = 1
             endif

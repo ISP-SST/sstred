@@ -82,6 +82,10 @@
 ;  
 ;   2016-02-16 : MGL. The pref keyword had no effect, fixed now.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;   TODO:  This routine is not particularly efficient, should be tweaked/optimized.
 ;
 ;-
@@ -114,7 +118,7 @@ PRO red::getalignclips_new, thres = thres $
   if(n_elements(extraclip) eq 1) then extraclip = replicate(extraclip, 4)
   if(n_elements(extraclip) eq 2) then extraclip = [replicate(extraclip[0],2),replicate(extraclip[1],2)]
 
-  self -> getcamtags
+  self -> getdetectors
   ph_dir = self.out_dir+'/pinh_align/'
   gt_dir = self.out_dir+'/gaintables/'
   ph_dir = red_strreplace(ph_dir,'//','/')

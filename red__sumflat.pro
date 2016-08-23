@@ -90,6 +90,10 @@
 ; 
 ;   2016-06-29 : MGL. New keyword outdir.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro red::sumflat, overwrite = overwrite, $
                   ustat = ustat, $
@@ -113,7 +117,7 @@ pro red::sumflat, overwrite = overwrite, $
   else if ptr_valid(self.flat_dir) then dirs = *self.flat_dir
 
   if( n_elements(cams) gt 0 ) then cams = [cams] $
-  else if ptr_valid(self.cam_channels) then cams = *self.cam_channels
+  else if ptr_valid(self.cameras) then cams = *self.cameras
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -125,7 +129,7 @@ pro red::sumflat, overwrite = overwrite, $
 
   Ncams = n_elements(cams)
   if( Ncams eq 0) then begin
-     print, inam+' : ERROR : undefined cams (and cam_channels)'
+     print, inam+' : ERROR : undefined cams (and cameras)'
      return
   endif
 
@@ -142,7 +146,6 @@ pro red::sumflat, overwrite = overwrite, $
   for ic = 0L, Ncams-1 do begin
 
      cam = cams[ic]
-     camtag = self->getcamtag( cam )
 
      self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
                         files=files, states=states, nremove=remove, /force

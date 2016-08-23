@@ -51,7 +51,7 @@
 ;   
 ;    nremove :  in, optional, 
 ;   
-;    cam_channel : in, optional, type=string, default="Crisp-W or Chromis-W"
+;    camera : in, optional, type=string, default="Crisp-W or Chromis-W"
 ;
 ;       The camera to run mfbd on.
 ;   
@@ -99,7 +99,7 @@
 ;
 ;   2016-06-02 : MGL. Use new class methods and camerainfo.
 ;
-;   2016-06-05 : MGL. New keyword cam_channel. Default cam that works
+;   2016-06-05 : MGL. New keyword camera. Default cam that works
 ;                for both CRISP and CHROMIS.
 ;
 ;   2016-06-06 : MGL. Minor improvements from prepmomfbd.
@@ -108,6 +108,10 @@
 ;                does not get confused in writelog.
 ;
 ;   2016-06-09 : MGL. Bugfix in the search string.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
@@ -120,7 +124,7 @@ pro red::prepmfbd, numpoints = numpoints, $
                    nfac = nfac, $
                    nimages = nimages, $
                    mfbddir = mfbddir, $
-                   cam_channel = cam_channel
+                   camera = camera
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -153,27 +157,27 @@ pro red::prepmfbd, numpoints = numpoints, $
      else dirstr = dirs[0]
   endelse
 
-  if n_elements(cam_channel) ne 0 then begin
+  if n_elements(camera) ne 0 then begin
      ;; Check that the specified camera exists
-     campos = where(strmatch(*self.cam_channels,cam_channel), nn)
+     campos = where(strmatch(*self.cameras,camera), nn)
      if nn eq 1 then begin
-        cam = cam_channel
+        cam = camera
      endif else begin
-        print, inam + ' : ERROR -> camera not defined '+cam_channel
+        print, inam + ' : ERROR -> camera not defined '+camera
         retall
      endelse
   endif else begin
      ;; Select as default the wideband camera
-     campos = where(strmatch(*self.cam_channels,'*-W'), nn)
+     campos = where(strmatch(*self.cameras,'*-W'), nn)
      if nn eq 1 then begin
-        cam = (*self.cam_channels)[campos]
+        cam = (*self.cameras)[campos]
      endif else begin
         print, inam + ' : ERROR -> camera not specified and no wideband camera defined.'
         retall        
      endelse
   endelse
 
-  camtag = self -> getcamtag(cam)
+  detector = self -> getdetector(cam)
   
   if n_elements(numpoints) eq 0 then begin
      ;; About the same subfield size in arcsec as CRISP:
@@ -197,7 +201,7 @@ pro red::prepmfbd, numpoints = numpoints, $
         camdir = data_dir + '/' + cam + '/'
      endelse
 
-     search = camdir + camtag
+     search = camdir + detector
      files = file_search(search+'*', count = Nfiles) 
 
      IF Nfiles EQ 0 THEN BEGIN
@@ -268,7 +272,7 @@ pro red::prepmfbd, numpoints = numpoints, $
                  nall = strjoin([n0,n1],'-')
                  print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
                         + scan + ' -> image range = [' + nall + ']'
-                 oname = camtag + '_' + scan + '_' + upref[ipref]
+                 oname = detector + '_' + scan + '_' + upref[ipref]
              endif else begin
                  subscan = red_stri(isub, ni = '(i03)')
                  cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + ':' $
@@ -279,14 +283,14 @@ pro red::prepmfbd, numpoints = numpoints, $
                  nall = strjoin([n0,n1],'-')                 
                  print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
                         + scan + ':' + subscan + ' -> image range = [' + nall + ']'
-                 oname = camtag + '_' + scan + ':' + subscan + '_' + upref[ipref]
+                 oname = detector + '_' + scan + ':' + subscan + '_' + upref[ipref]
               endelse
 
               ;; Open config file for writing
               openw, lun, outdir + cfg_file, /get_lun, width=2500
 
               self -> get_calib, states[numpos[0]], darkname = darkname, gainname = gainname
-              caminfo = red_camerainfo(camtag)
+              caminfo = red_camerainfo(detector)
               
               ;; WB only
               printf, lun, 'object{'
@@ -296,10 +300,10 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + camdir
               if strmatch(cam,'*-W') or strmatch(cam,'*-D') then begin
                  ;; Wideband, no state
-                 template = camtag + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
+                 template = detector + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
               endif else begin
                  ;; Narrowband, with state
-                 template = camtag + '_' + scan + '_' + states[numpos[0]].fullstate $
+                 template = detector + '_' + scan + '_' + states[numpos[0]].fullstate $
                             + '_%07d.fits'
               endelse
               printf, lun, '    FILENAME_TEMPLATE=' + template

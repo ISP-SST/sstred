@@ -89,6 +89,10 @@
 ;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
 ;                despite rotation and shifts, the entire FOV is inside
 ;                the image
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ;-
 pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
@@ -145,7 +149,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   endcase
 
   ;; Search files
-  self->getcamtags, dir = self.data_dir
+  self->getdetectors, dir = self.data_dir
   wfiles = file_search(fold+'/cfg/results/'+self.camwbtag+'.?????.'+pref+exten, count = ct)
   if(ct eq 0) then begin
      print, inam + ' : Error, no WB files found in -> '+ fold+'/cfg/results/'

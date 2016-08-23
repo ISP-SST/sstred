@@ -52,6 +52,10 @@
 ; 
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ; 
 ;-
@@ -69,7 +73,7 @@ pro red::prepflatcubes, flatdir = flatdir, no_descatter = no_descatter, nthreads
   if(~keyword_set(nthreads)) then nthreads = 2L
 
   ;; Check flats and get states
-  self -> getcamtags, dir = self.data_dir
+  self -> getdetectors, dir = self.data_dir
 
   if(~keyword_set(cam)) then cam = [self.camttag, self.camrtag]
 

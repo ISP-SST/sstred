@@ -46,6 +46,10 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ; 
 ;-
@@ -127,7 +131,7 @@ pro red::make_cmap_intdif2, scan = scan, cam = cam, pref = pref, debug = debug, 
 ;
 ; Get camera tags
 ;
-  self -> getcamtags, dir = self.data_dir
+  self -> getdetectors, dir = self.data_dir
   ctag = [self.camrtag, self.camttag]
 
 ;

@@ -52,7 +52,7 @@
 ;
 ;   2014-04-07 : THI. Bugfix: look for darks in dark_dir.
 ;
-;   2016-05-17 : THI. Use cam_channels by default, added keyword dirs
+;   2016-05-17 : THI. Use cameras by default, added keyword dirs
 ;                to use specific dark-folder. Re-write to sum files from
 ;                multiple folders at once.
 ; 
@@ -76,6 +76,10 @@
 ;   2016-06-09 : MGL. Tell red_writedata when you want to store as
 ;                FITS.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -92,7 +96,7 @@ pro red::sumdark, overwrite = overwrite, $
     else if ptr_valid(self.dark_dir) then dirs = *self.dark_dir
 
     if n_elements(cams) gt 0 then cams = [cams] $
-    else if ptr_valid(self.cam_channels) then cams = *self.cam_channels
+    else if ptr_valid(self.cameras) then cams = *self.cameras
 
     ;; Name of this method
     inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -104,7 +108,7 @@ pro red::sumdark, overwrite = overwrite, $
 
     Ncams = n_elements(cams)
     if( Ncams eq 0) then begin
-        print, inam+' : ERROR : undefined cams (and cam_channels)'
+        print, inam+' : ERROR : undefined cams (and cameras)'
         return
     endif
 
@@ -120,7 +124,6 @@ pro red::sumdark, overwrite = overwrite, $
     for ic = 0L, Ncams-1 do begin
 
         cam = cams[ic]
-        camtag = self->getcamtag( cam )
 
         self->selectfiles, cam=cam, dirs=dirs, ustat=ustat, $
                          files=files, states=states, /force

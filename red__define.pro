@@ -17,13 +17,17 @@
 ;
 ;   2016-05-19 : THI. Define state structures
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 PRO red__define
 
     st = { RED_STATE, $
            filename:'', $
-           camtag:'', $
-           channel:'', $
+           detector:'', $
+           camera:'', $
            fullstate:'', $
            skip:0B $
     }
@@ -38,8 +42,8 @@ PRO red__define
             pinh_dirs:ptr_new(),$   ; The directories where raw pinhole array data is stored
             prefilter_dir:'',$      ;
             polcal_dir:'',$         ; The directory where raw polcal data is stored
-            cam_tags:ptr_new(),$    ; List of camera "names" (e.g. camXX)
-            cam_channels:ptr_new(),$; List of camera locations/channels (e.g. Crisp-R)
+            detectors:ptr_new(),$   ; List of detector identifiers (e.g. camXX)
+            cameras:ptr_new(),$     ; List of camera locations/channels (e.g. Crisp-R)
             refcam:0B, $            ; Selected reference channel
             out_dir:'',$            ; The directory where all output is stored
             filename:'',$           ;

@@ -75,6 +75,10 @@
 ; 
 ;   2016-05-31 : THI. Re-write to use the class-methods.
 ; 
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+; 
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , no_descatter = no_descatter $
@@ -96,7 +100,7 @@ pro red::sumpinh, nthreads = nthreads $
     if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
     else if ptr_valid(self.pinh_dirs) then dirs = *self.pinh_dirs
     
-    if(n_elements(cams) eq 0 and ptr_valid(self.cam_channels)) then cams = *self.cam_channels
+    if(n_elements(cams) eq 0 and ptr_valid(self.cameras)) then cams = *self.cameras
     if(n_elements(cams) eq 1) then cams = [cams]
     
     ;; Logging
@@ -107,7 +111,7 @@ pro red::sumpinh, nthreads = nthreads $
 
     Ncams = n_elements(cams)
     if( Ncams eq 0) then begin
-        print, inam+' : ERROR : undefined cams (and cam_channels)'
+        print, inam+' : ERROR : undefined cams (and cameras)'
         return
     endif
 
@@ -135,7 +139,7 @@ pro red::sumpinh, nthreads = nthreads $
     for icam = 0, Ncams-1 do begin
 
         cam = cams[icam]
-        camtag = self->getcamtag( cam )
+        detector = self->getdetector( cam )
 
 ;         dname = self->getdark( cam, data=dd )
 ;         if( n_elements(dd) eq 0 ) then begin
@@ -194,7 +198,7 @@ pro red::sumpinh, nthreads = nthreads $
             
             DoBackscatter = 0
             if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-                self -> loadbackscatter, camtag, pref, bgt, Psft
+                self -> loadbackscatter, detector, pref, bgt, Psft
                 DoBackscatter = 1
             endif
             if DoBackscatter gt 0 then begin

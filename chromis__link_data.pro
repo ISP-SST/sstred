@@ -49,6 +49,10 @@
 ;   2016-05-31 : MGL. Added dirs keyword. Don't zero the scannumber. 
 ;
 ;   2016-06-02 : MGL. Remove some keywords to extractstates.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ;   
 ;-
 pro chromis::link_data, link_dir = link_dir $
@@ -99,13 +103,13 @@ pro chromis::link_data, link_dir = link_dir $
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]
 
-     cams = *self.cam_channels
+     cams = *self.cameras
      Ncams = n_elements(cams)
 
      for icam = 0L, Ncams-1 do begin
         
         cam = cams[icam]
-        camtag = self->getcamtag( cam )
+        detector = self->getdetector( cam )
 
         case cam of
            'Chromis-N' : wb = 0B
@@ -185,7 +189,7 @@ pro chromis::link_data, link_dir = link_dir $
 ;           if(stat.star[ifile]) then continue
            if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
                                 
-           namout = outdir + camtag $
+           namout = outdir + detector $
                     + '_' + string(states[ifile].scannumber, format = '(i05)') $
                     + '_' + strtrim(states[ifile].fullstate, 2) $
                     + '_' + string(states[ifile].framenumber, format = '(i07)') $
@@ -194,7 +198,7 @@ pro chromis::link_data, link_dir = link_dir $
            printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
          
            if wb then begin
-              namout = outdir1 + camtag $
+              namout = outdir1 + detector $
                        + '_' + string(states[ifile].scannumber, format = '(i05)') $
                        + '_' + strtrim(states[ifile].prefilter, 2) $
                        + '_' + string(states[ifile].framenumber, format = '(i07)') $

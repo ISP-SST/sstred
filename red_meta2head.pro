@@ -38,6 +38,10 @@
 ;                 red_filterchromisheaders. Remove .momfbd extension
 ;                 from variable barefile. Recognize underscore as a
 ;                 delimiter when parsing filenames.
+;
+;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                 so the names match those of the corresponding SolarNet
+;                 keywords.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -66,15 +70,15 @@ function red_meta2head, head, metadata=metaStruct
                   , 'Name of original file.', before = 'COMMENT'
      endif
 
-     ;; Camera tag (check that this is the correct keyword...)
-     dummy = fxpar(newhead, red_keytab('camtag'), count=count)
+     ;; Detector ID (check that this is the correct keyword...)
+     dummy = fxpar(newhead, red_keytab('detector'), count=count)
      if count eq 0 then begin
 
         ;; The camera tag consists of the string 'cam' followed by a
         ;; roman number.
-        camtag = ((stregex(barefile, '(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])[0]
+        detector = ((stregex(barefile, '(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])[0]
 
-        if camtag ne '' then sxaddpar, newhead, red_keytab('camtag'), camtag $
+        if detector ne '' then sxaddpar, newhead, red_keytab('detector'), detector $
                                        , 'Inferred from filename.' $
                                        , before = 'COMMENT'
      endif                      ; CAMERA
@@ -91,13 +95,13 @@ function red_meta2head, head, metadata=metaStruct
 
         if wheelpos ne '' then begin
            
-           channel = fxpar(head, red_keytab('cam_channel'), count=count)
+           camera = fxpar(head, red_keytab('camera'), count=count)
            if count eq 0 then begin
-                                ;  TDB: can we extract filter-info without the channel-tag?
+                                ;  TDB: can we extract filter-info without the camera-tag?
               sxaddpar, newhead, red_keytab('pref'), wheelpos, before = 'COMMENT'
            endif else begin
 
-              if channel eq 'Chromis-N' then begin
+              if camera eq 'Chromis-N' then begin
 
                  ;; Chromis-N
                  case wheelpos of

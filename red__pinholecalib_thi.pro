@@ -58,6 +58,10 @@
 ;                statements to a case statement. Move make_corners to
 ;                the red_ namespace and its own file. Bugfix.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro red::pinholecalib_thi, threshold = threshold $
                          , nref = nref $
@@ -79,9 +83,9 @@ pro red::pinholecalib_thi, threshold = threshold $
     if(n_elements(nref) eq 0) then nref = 4
     if( n_elements(dir) gt 0 ) then dir = [dir] $
     else if ptr_valid(self.pinh_dirs) then dir = *self.pinh_dirs
-    self -> getcamtags, dir = dir
+    self -> getdetectors, dir = dir
     if( n_elements(cams) gt 0 ) then cams = [cams] $
-    else if ptr_valid(self.cam_tags) then cams = [*self.cam_tags]
+    else if ptr_valid(self.cameras) then cams = [*self.cameras]
 
     if(n_elements(refcam) eq 0) THEN refcam = self.refcam
     if(n_elements(verbose) eq 0) THEN verbose = 0
@@ -113,7 +117,7 @@ pro red::pinholecalib_thi, threshold = threshold $
         print, inam, ' : Need at least 2 cameras.'
         print, inam, ' : dir: ',dir
         print, inam, ' : cams: ',cams
-        print, inam, ' : self.cam_tags: ',*self.cam_tags
+        print, inam, ' : self.cameras: ',*self.cameras
         red_writelog, /add, logfile = logfile, top_info_strings = ' : Need at least 2 cameras.'
         return
     endif

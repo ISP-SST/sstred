@@ -34,7 +34,7 @@
 ;     tag : in, optional, type=boolean
 ;
 ;         Interpret cam as a "tag" (Ex. 'camXX'), i.e. do not
-;         bother looking up the camtag.
+;         bother looking up the detector.
 ; 
 ;     data : out, optional
 ;
@@ -60,6 +60,10 @@
 ; :history:
 ; 
 ;   2016-05-19 : First version.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ; 
 ;-
@@ -73,14 +77,14 @@ function red::getflat, cam, $
                          summed_header = summed_header
     
     if ~keyword_set(tag) then begin
-        camtag = self->RED::getcamtag(cam)
-    endif else camtag = cam
+        detector = self->RED::getdetector(cam)
+    endif else detector = cam
     
     ; append state
-    if( n_elements(state) eq 1 ) then  camtag += '.' + state
+    if( n_elements(state) eq 1 ) then  detector += '.' + state
     
-    filename = self.out_dir+'/flats/'+camtag + '.flat'
-    summed_name = self.out_dir+'/flats/summed/'+camtag + '.summed.flat'
+    filename = self.out_dir+'/flats/'+detector + '.flat'
+    summed_name = self.out_dir+'/flats/summed/'+detector + '.summed.flat'
 
     if file_test(filename) then begin
         if arg_present(data) then begin

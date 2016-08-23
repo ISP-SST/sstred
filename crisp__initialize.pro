@@ -13,6 +13,10 @@
 ;   2016-04-29 : THI. Split class RED into a base-class (instrument
 ;                independent parts) and derived classes (CRISP/CHROMIS). 
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro crisp::initialize, filename
 
@@ -40,22 +44,22 @@ pro crisp::initialize, filename
                 tmp = strtrim((strsplit(line, '=', /extract))[1],2)
                 IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
                 self.camt =  tmp
-                IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-                ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
+                IF ptr_valid(self.cameras) THEN red_append, *self.cameras, tmp $
+                ELSE self.cameras = ptr_new(tmp, /NO_COPY)
             end
             'cam_r': begin
                 tmp = strtrim((strsplit(line, '=', /extract))[1],2)
                 IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
                 self.camr =  tmp
-                IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-                ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
+                IF ptr_valid(self.cameras) THEN red_append, *self.cameras, tmp $
+                ELSE self.cameras = ptr_new(tmp, /NO_COPY)
             end
             'cam_wb': begin
                 tmp = strtrim((strsplit(line, '=', /extract))[1],2)
                 IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
                 self.camwb =  tmp
-                IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-                ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
+                IF ptr_valid(self.cameras) THEN red_append, *self.cameras, tmp $
+                ELSE self.cameras = ptr_new(tmp, /NO_COPY)
             end
             else: begin
             end

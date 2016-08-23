@@ -47,6 +47,10 @@
 ;   2016-08-23 : MGL. Deal with ANA headers lacking data size
 ;                information.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 function red_anahdr2fits, anahdr $
 		    , img = img
@@ -79,8 +83,8 @@ function red_anahdr2fits, anahdr $
   ;; Camera
   campos = strpos(anahdr, '"Camera')
   if campos ne -1 then begin
-     cam = 'cam' + (strsplit(strmid(anahdr, campos+8), ' ', /extract))[0]
-     sxaddpar, hdr, red_keytab('cam'), cam, 'Name of camera'
+     detector = 'cam' + (strsplit(strmid(anahdr, campos+8), ' ', /extract))[0]
+     sxaddpar, hdr, red_keytab('detector'), detector, 'Camera identifier'
   end
 
   ;; Instrument

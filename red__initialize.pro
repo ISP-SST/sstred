@@ -45,6 +45,10 @@
 ;   2014-10-16 : MGL. Set up for Coyote graphics.
 ;
 ;   2016-02-15 : MGL. Make descatter_dir local.
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ;-
 pro red::initialize, filename
                                 
@@ -122,11 +126,11 @@ pro red::initialize, filename
         'filetype': begin
            self.filetype = (strsplit(line,' =',/extract))[1]
         end
-        'cam_channel': BEGIN
+        'camera': BEGIN
             tmp = strtrim((strsplit(line, '=', /extract))[1],2)
             IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-            IF ptr_valid(self.cam_channels) THEN red_append, *self.cam_channels, tmp $
-            ELSE self.cam_channels = ptr_new(tmp, /NO_COPY)
+            IF ptr_valid(self.cameras) THEN red_append, *self.cameras, tmp $
+            ELSE self.cameras = ptr_new(tmp, /NO_COPY)
         END
         'prefilter_dir': begin
            self.prefilter_dir =  (strsplit(line,' =',/extract))[1] ; extract value
@@ -270,13 +274,13 @@ pro red::initialize, filename
         FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.flat_dir)[k]
      ENDELSE
   ENDIF
-  IF ptr_valid(self.cam_channels) THEN BEGIN
-     nn = n_elements(*self.cam_channels)
+  IF ptr_valid(self.cameras) THEN BEGIN
+     nn = n_elements(*self.cameras)
      IF(nn EQ 1) THEN BEGIN
-        print, 'red::initialize : cam_dir = '+ (*self.cam_channels)[0]
+        print, 'red::initialize : camera = '+ (*self.cameras)[0]
      ENDIF ELSE BEGIN
-        print, 'red::initialize : cam_channels :'
-        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.cam_channels)[k]
+        print, 'red::initialize : cameras :'
+        FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.cameras)[k]
      ENDELSE
   ENDIF
   if ptr_valid(self.pinh_dirs) then begin

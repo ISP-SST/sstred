@@ -171,7 +171,7 @@
 ;                 "sand15n" type mounted disk names. Removed some
 ;                 polarization and descatter things from the CHROMIS
 ;                 part. New keywords exclude_chromis and
-;                 exclude_crisp. Use the new cam_channel in the
+;                 exclude_crisp. Use the new camera in the
 ;                 config file. Make an instance of chromisred rather
 ;                 than crispred in the CHROMIS script.  
 ;
@@ -185,6 +185,10 @@
 ;
 ;    2016-08-12 : MGL. Detect the presence of CRISP and CHROMIS data.
 ;                 Remove keywords exclude_crisp and exclude_chromis.
+;
+;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                 so the names match those of the corresponding SolarNet
+;                 keywords.
 ;
 ;
 ;-
@@ -354,9 +358,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_channel = Chromis-W'
-     printf, Clun, 'cam_channel = Chromis-D'
-     printf, Clun, 'cam_channel = Chromis-N'
+     printf, Clun, 'camera = Chromis-W'
+     printf, Clun, 'camera = Chromis-D'
+     printf, Clun, 'camera = Chromis-N'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'
@@ -617,9 +621,9 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Cameras'
      printf, Clun, '#'
-     printf, Clun, 'cam_channel = Crisp-T'
-     printf, Clun, 'cam_channel = Crisp-R'
-     printf, Clun, 'cam_channel = Crisp-W'
+     printf, Clun, 'camera = Crisp-T'
+     printf, Clun, 'camera = Crisp-R'
+     printf, Clun, 'camera = Crisp-W'
      printf, Clun, '#'
      printf, Clun, 'root_dir = ' + root_dir
      printf, Clun, '#'

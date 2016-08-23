@@ -71,6 +71,9 @@
 ; 
 ;   2016-05-19 : First version.
 ; 
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ;-
 pro crisp::selectfiles, cam = cam $
@@ -94,9 +97,9 @@ pro crisp::selectfiles, cam = cam $
             print,inam+': Only a single cam supported.'
             return
         endif
-        camtag = self->RED::getcamtag(cam)
+        detector = self->RED::getdetector(cam)
         
-        file_template = cam + '/' + camtag + '*'
+        file_template = cam + '/' + detector + '*'
         
         if( n_elements(dirs) gt 0 ) then dirs = [dirs] $    ; ensure it's an array, even with 1 element
         else begin 
@@ -119,8 +122,8 @@ pro crisp::selectfiles, cam = cam $
     if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
         self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
         ; TODO: this is a really ugly way to drop the WB states, think of something better
-        wb_cams = (strmatch( states.camtag, self->getcamtag('Crisp-W')) $
-                or strmatch( states.camtag, self->getcamtag('Crisp-D')))
+        wb_cams = (strmatch( states.detector, self->getdetector('Crisp-W')) $
+                or strmatch( states.detector, self->getdetector('Crisp-D')))
         pos = where(wb_cams gt 0)
         ; replace NB state-info with prefilter for the WB cameras
         if( min(pos) ge 0 ) then states[pos].fullstate = states[pos].prefilter

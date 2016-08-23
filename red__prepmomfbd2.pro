@@ -77,7 +77,10 @@
 ;
 ;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
-; 
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
 ; 
 ;-
 pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = numpoints, $
@@ -143,7 +146,7 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
      outdir = self.out_dir + '/momfbd/'+folder_tag
      file_mkdir, outdir
                                 ;
-                                ; self -> getcamtags, dir = self.data_dir
+                                ; self -> getdetectors, dir = self.data_dir
      self.camttag = 'camXXV'
      self.camrtag = 'camXVIII'
      self.camwbtag = 'camXIX'

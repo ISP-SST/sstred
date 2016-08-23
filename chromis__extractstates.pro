@@ -102,6 +102,11 @@
 ;   2016-06-09 : MGL. Change exposure time format to handle longer
 ;                exposures while preserving format for short
 ;                exposures. 
+;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+; 
 ;-
 pro chromis::extractstates, strings, states $
                             , strip_wb = strip_wb $
@@ -142,15 +147,15 @@ pro chromis::extractstates, strings, states $
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
 
      ;; String keywords require checking
-     camtag = fxpar(head, red_keytab('cam'), count=count)
-     if count gt 0 then states[ifile].camtag = strtrim(camtag, 2)
+     detector = fxpar(head, red_keytab('detector'), count=count)
+     if count gt 0 then states[ifile].detector = strtrim(detector, 2)
      filter = fxpar(head, red_keytab('prefilter'), count=count)
      if count gt 0 then states[ifile].prefilter = strtrim(filter, 2)
-     channel = fxpar(head, red_keytab('cam_channel'), count=count)
+     camera = fxpar(head, red_keytab('camera'), count=count)
      if count gt 0 then begin
-         channel = strtrim(channel,2)
-         states[ifile].channel = channel
-         if channel eq 'Chromis-W' or channel eq 'Chromis-D' then states[ifile].is_wb = 1
+         camera = strtrim(camera,2)
+         states[ifile].camera = camera
+         if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
      endif
 
      if hasexp gt 0 then begin

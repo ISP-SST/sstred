@@ -139,7 +139,7 @@ pro red::make_stokes_crispex, timecor = timecor, out_dir = out_dir, rot_dir = ro
                                 ; load prefilter
                                 ;
   
-  self->getcamtags, dir = self.data_dir
+  self->getdetectors, dir = self.data_dir
   ;; pr1 = self.out_dir + 'prefilter_fits/'+self.camttag+'.'+pref+'.prefilter.f0'
   ;; pr2 = self.out_dir + 'prefilter_fits/'+self.camrtag+'.'+pref+'.prefilter.f0'
   ;; ;

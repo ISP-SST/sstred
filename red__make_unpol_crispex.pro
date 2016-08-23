@@ -75,6 +75,10 @@
 ;                despite rotation and shifts, the entire FOV is inside
 ;                the image
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, clips=clips, scans_only = scans_only, overwrite = overwrite, noflats=noflats, iscan=iscan, wbwrite = wbwrite, nostretch=nostretch, verbose=verbose, no_timecor=no_timecor, float = float
 
@@ -151,7 +155,7 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      full = 0
   endelse
   ;; Camera tags
-  self->getcamtags, dir = self.data_dir
+  self->getdetectors, dir = self.data_dir
 
 
   ;; Load prefilter

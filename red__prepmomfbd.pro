@@ -124,6 +124,10 @@
 ;   2016-06-08 : MGL. New keyword no_pd. Renamed keyword nf to nfac so
 ;                scope_varfetch does not get confused in writelog.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -195,7 +199,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   ENDIF
 
   ;; Cameras
-  cams = *self.cam_channels
+  cams = *self.cameras
   iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
   ispd = strmatch(cams,'*-D')
 
@@ -208,15 +212,15 @@ pro red::prepmomfbd, wb_states = wb_states $
 
   Ncams = n_elements(cams)      ; Number of cameras
 
-  camtags = strarr(Ncams)
-  for icam = 0, Ncams-1 do camtags[icam] = self -> getcamtag(cams[icam])
-  ;;self -> getcamtags, dir = self.data_dir
+  detectors = strarr(Ncams)
+  for icam = 0, Ncams-1 do detectors[icam] = self -> getdetector(cams[icam])
+  ;;self -> getdetectors, dir = self.data_dir
 
 
   ;; Print cams
   print, inam + ' : cameras found:'
   for icam = 0, Ncams-1 do begin
-     outstr = cams[icam] + ' ' + camtags[icam] + ' '
+     outstr = cams[icam] + ' ' + detectors[icam] + ' '
      if iswb[icam] then outstr += 'WB 'else outstr += 'NB '
      if ispd[icam] then outstr += 'PD '
      print, outstr
@@ -226,7 +230,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   ;; to get the states information.
   pos = where(~iswb and ~ispd)
   searchcam = cams[pos[0]]
-  searchcamtag = camtags[pos[0]]
+  searchcamtag = detectors[pos[0]]
 
   if n_elements(numpoints) eq 0 then begin
      ;; About the same subfield size in arcsec as CRISP:

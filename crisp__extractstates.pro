@@ -100,6 +100,10 @@
 ;   2016-05-19 : THI. Partial copy to the crisp class. Modify the state structures
 ;                and keywords for clarity.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ; 
 ;-
 pro crisp::extractstates, strings $
@@ -165,7 +169,7 @@ pro crisp::extractstates, strings $
     ;; The camera name consists of the string 'cam' followed by a roman
     ;; number.
     if keyword_set(cam) then $
-        cam_list = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
+        detector_list = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
 
     ;; The prefilter is the only field that is exactly four digits
     if keyword_set(prefilter) or keyword_set(fullstate) or keyword_set(wavelength) then $
@@ -216,7 +220,7 @@ pro crisp::extractstates, strings $
         states = replicate( {CRISP_STATE}, nt )
     endelse
     
-    states.camtag = cam_list
+    states.detector = detector_list
     states.filename = strings
     if keyword_set(scannumber) then states.scannumber = scan_list
     if keyword_set(framenumber) then states.framenumber = num_list

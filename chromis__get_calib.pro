@@ -94,6 +94,10 @@
 ;    2016-05-27 : MGL. Bugfixes.
 ; 
 ;    2016-06-02 : MGL. Added gains.
+;
+;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                 so the names match those of the corresponding SolarNet
+;                 keywords.
 ; 
 ; 
 ;-
@@ -127,8 +131,8 @@ pro chromis::get_calib, states $
      ;; Assume this is all for the same camera type, at least for the
      ;; actual data. Otherwise we cannot return the actual data in a
      ;; single array.
-     camtag = states[0].camtag
-     caminfo = red_camerainfo(camtag)
+     detector = states[0].detector
+     caminfo = red_camerainfo(detector)
 
      if arg_present(darkdata) then darkdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
      if arg_present(flatdata) then flatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
@@ -148,12 +152,12 @@ pro chromis::get_calib, states $
 
   for istate = 0, Nstates-1 do begin
 
-     camtag = states[istate].camtag
+     detector = states[istate].detector
 
      ;; Darks
      if arg_present(darkname) or arg_present(darkdata) or arg_present(darkhead) then begin
 
-        darktag = camtag
+        darktag = detector
         if( states[istate].cam_settings ne '' ) then begin
             darktag += '_' + states[istate].cam_settings
         endif
@@ -182,7 +186,7 @@ pro chromis::get_calib, states $
      if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) $
         or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
 
-        flattag = camtag
+        flattag = detector
         if( states[istate].fullstate ne '' ) then begin
             flattag += '_' + states[istate].fullstate
         endif
@@ -228,7 +232,7 @@ pro chromis::get_calib, states $
      ;; Gains
      if arg_present(gainname) or arg_present(gaindata) or arg_present(gainhead) then begin
 
-        gaintag = camtag
+        gaintag = detector
         if( states[istate].fullstate ne '' ) then begin
            gaintag += '_' + states[istate].fullstate
         endif
@@ -257,7 +261,7 @@ pro chromis::get_calib, states $
      ;; Pinholes
      if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
 
-        pinhtag = camtag
+        pinhtag = detector
         if( states[istate].prefilter ne '' ) then begin
             pinhtag += '_' + states[istate].prefilter
         endif

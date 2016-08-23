@@ -57,6 +57,10 @@
 ;   2016-02-17 : MGL. Include prefilter info when complaining about
 ;                not finding align clips file.
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro red::getoffsets, thres = thres, state = state, pref=pref
   if(~keyword_set(thres)) then tr = 0.1 else tr = thres
@@ -70,7 +74,7 @@ pro red::getoffsets, thres = thres, state = state, pref=pref
 
   if(n_elements(pref) eq 0) then pref = '*'
 
-  self -> getcamtags
+  self -> getdetectors
   camt = self.camttag
   camr = self.camrtag
   camw = self.camwbtag

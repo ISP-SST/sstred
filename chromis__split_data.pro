@@ -41,6 +41,10 @@
 ;
 ;   2016-06-03 : MGL. Read data silently. Bugfix. Save frames as INTs. 
 ;
+;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
+;                so the names match those of the corresponding SolarNet
+;                keywords.
+;
 ;-
 pro chromis::split_data, split_dir = split_dir $
                          , uscan = uscan $
@@ -87,13 +91,13 @@ pro chromis::split_data, split_dir = split_dir $
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]
 
-     cams = *self.cam_channels
+     cams = *self.cameras
      Ncams = n_elements(cams)
 
      for icam = 0L, Ncams-1 do begin
         
         cam = cams[icam]
-        camtag = self->getcamtag( cam )
+        detector = self->getdetector( cam )
 
         case cam of
            'Chromis-N' : wb = 0B
@@ -212,7 +216,7 @@ pro chromis::split_data, split_dir = split_dir $
               
               ;; Write one frame
               
-              namout = outdir + camtag $
+              namout = outdir + detector $
                        + '_' + string(states[ifile].scannumber, format = '(i05)') $
                        + '_' + strtrim(states[ifile].fullstate, 2)$
                        + '_' + string(frameno, format = '(i07)') $
@@ -224,7 +228,7 @@ pro chromis::split_data, split_dir = split_dir $
               if wb then begin
 
                  ;; Link name 
-                 namout1 = outdir1 + camtag $
+                 namout1 = outdir1 + detector $
                           + '_' + string(states[ifile].scannumber, format = '(i05)') $
                           + '_' + strtrim(states[ifile].prefilter, 2) $
                           + '_' + string(frameno, format = '(i07)') $
