@@ -125,9 +125,10 @@ pro red::pinholecalib_thi, threshold = threshold $
 
     ;; Selected prefilter or all prefilters (for refcam)?
     files = file_search( ph_dir + '*.pinh' )
-    self->selectfiles, files=files, prefilter=pref, states=states, cam = cams[refcam], /strip_settings
+ 
+    self->selectfiles, files=files, prefilter=pref, states=states, cam = cams[refcam], /strip_settings, selected=ref_sel
     nf = n_elements( files )
-    if nf eq 0 then begin
+    if( n_elements(ref_sel) ne 1 || ref_sel lt 0 ) then begin
         print, inam, ' : ERROR : No pinhole files found in ', ph_dir
         red_writelog, /add, logfile = logfile $
                       , top_info_strings = ' : ERROR : No pinhole files found in ' + ph_dir

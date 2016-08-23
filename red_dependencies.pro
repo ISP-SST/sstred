@@ -83,6 +83,8 @@ pro red_dependencies, verbose=verbose
     ;; compile all methods and their dependencies
     resolve_all, class='pol', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
     resolve_all, class='red', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
+    resolve_all, class='chromis', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
+    resolve_all, class='crisp', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
 
     subrnames = strlowcase(routine_info(functions=0))
     funcnames = strlowcase(routine_info(functions=1))
@@ -98,6 +100,5 @@ pro red_dependencies, verbose=verbose
 
     free_lun, lun
 
-    end
 
 end

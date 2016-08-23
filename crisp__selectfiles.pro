@@ -83,7 +83,8 @@ pro crisp::selectfiles, cam = cam $
                       , dark = dark $
                       , nremove = nremove $
                       , force = force $
-                      , selected = selected
+                      , selected = selected $
+                      , strip_settings = strip_settings
 
     inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
     

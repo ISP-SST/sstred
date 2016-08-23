@@ -145,7 +145,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , maxshift = maxshift $
                      , momfbddir = momfbddir $
                      , margin = margin $
-                     , no_pd = no_pd $
+                     , no_pd = no_pd
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
