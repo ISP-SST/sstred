@@ -95,8 +95,8 @@ pro red::pinholecalib_thi, threshold = threshold $
                          replicate(extraclip[1], 2) ]
        4 :                      ; Leave as it is.
        else : begin
-          inam + "ERROR: Don't know how to use keyword extraclip with " $
-             + strtrim(n_elements(extraclip), 2) + ' elements.'
+          print, inam + "ERROR: Don't know how to use keyword extraclip with " $
+                 + strtrim(n_elements(extraclip), 2) + ' elements.'
           stop
        end
     endcase
