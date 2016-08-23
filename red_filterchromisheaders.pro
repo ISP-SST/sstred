@@ -181,7 +181,7 @@ function red_filterchromisheaders, head, silent=silent
      
   endif else stop               ; non-SIMPLE
 
-  newhead = newhead[where(newhead ne blanks(80))] ; Remove blank lines
+  newhead = newhead[where(newhead ne replicate(' ',80))] ; Remove blank lines
 
   return, newhead
 
