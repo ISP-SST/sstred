@@ -79,7 +79,7 @@ function red_paramstostruct, input, commentChar=commentChar, inverse = inverse
 
      for i = 0, Nparams-1 do begin
 
-        line = blanks(80)
+        line = replicate(' ',80)
 
         strput, line, tags[i], 0
         case 1 of

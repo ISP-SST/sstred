@@ -124,8 +124,8 @@ IF keyword_set(pfit) THEN BEGIN
     ENDELSE
 ENDIF ELSE BEGIN
       ;;; just subtract average
-    p1 = p1 - avg(p1)
-    p2 = p2 - avg(p2)
+    p1 = p1 - mean(p1)
+    p2 = p2 - mean(p2)
 ENDELSE
 
 IF s1[0] EQ 1 THEN GOTO, onedim

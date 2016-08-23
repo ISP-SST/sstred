@@ -65,14 +65,14 @@ pro red_findpinholegrid, pinholeimage, simx, simy, thres = thres
 
   ;; Locate the steps and average the values of each step
   dcx = cx(1:*)-cx
-  scx = [-1, where(dcx GT avg(dcx), nx), nph-1]
+  scx = [-1, where(dcx GT mean(dcx), nx), nph-1]
   simx = intarr(nx+1)
-  FOR i=1, nx+1 DO simx(i-1) = round(avg(cx(scx(i-1)+1:scx(i))))
+  FOR i=1, nx+1 DO simx(i-1) = round(mean(cx(scx(i-1)+1:scx(i))))
 
   ;; Now the same for y
   dcy = cy(1:*)-cy
-  scy = [-1, where(dcy GT avg(dcy), ny), nph-1]
+  scy = [-1, where(dcy GT mean(dcy), ny), nph-1]
   simy = intarr(ny+1)
-  FOR i=1, ny+1 DO simy(i-1) = round(avg(cy(scy(i-1)+1:scy(i))))
+  FOR i=1, ny+1 DO simy(i-1) = round(mean(cy(scy(i-1)+1:scy(i))))
 
 end 

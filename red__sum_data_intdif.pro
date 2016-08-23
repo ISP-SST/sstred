@@ -351,9 +351,9 @@ pro red::sum_data_intdif, cam = cam $
                  if(keyword_set(show)) then begin
                     if n_elements(mydum) eq 0 then begin
                        mydum = 1
-                       red_show, histo_opt(tmp)
+                       red_show, red_histo_opt(tmp)
                     endif
-                    red_show, histo_opt(tmp),/now
+                    red_show, red_histo_opt(tmp),/now
                  endif
               endfor
            endfor
