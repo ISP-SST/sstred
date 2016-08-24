@@ -85,6 +85,13 @@ pro red_dependencies, verbose=verbose
     resolve_all, class='red', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
     resolve_all, class='chromis', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
     resolve_all, class='crisp', skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
+    
+    scripts = file_basename(file_search( crispred_dir+PATH_SEP()+'*.pro' ), '.pro')     ; all scripts in crispred
+    idx = where( strmatch(scripts, '*__*', /fold) EQ 1, compl=cidx )                    ; only the non class-methods
+    scripts = scripts[cidx]
+    for i=0, n_elements(scripts)-1 do begin
+        resolve_all, resolve_either=scripts[i], skip_routines=skip_routines, /CONTINUE_ON_ERROR, /QUIET
+    endfor
 
     subrnames = strlowcase(routine_info(functions=0))
     funcnames = strlowcase(routine_info(functions=1))
