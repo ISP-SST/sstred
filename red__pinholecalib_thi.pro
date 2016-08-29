@@ -298,8 +298,8 @@ pro red::pinholecalib_thi, threshold = threshold $
 
                 offs -= indices
                 
-                offs(*,*,0) -= (cam_origin[0] - ref_origin[0])
-                offs(*,*,1) -= (cam_origin[1] - ref_origin[1])
+                offs(*,*,0) -= (min(cl(0:1,icam)) - ref_origin(0) - 1)
+                offs(*,*,1) -= (min(cl(2:3,icam)) - ref_origin(1) - 1)
                 
                 if (cl(1,icam)-cl(0,icam)) lt 0 then begin
                     offs = reverse(offs,1)
