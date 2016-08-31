@@ -376,7 +376,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# --- Darks'
      printf, Clun, '#'
      
-     darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'dark' $
+     darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
                                            , count = Nsubdirs)
      if Nsubdirs gt 0 then begin
         darkdirs = file_dirname(darksubdirs)
@@ -393,7 +393,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# --- Flats'
      printf, Clun, '#'
 
-     flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', 'flat' $
+     flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
                                            , count = Nsubdirs)
      if Nsubdirs gt 0 then begin
         ;; There are CHROMIS flats!
@@ -416,7 +416,7 @@ pro red_setupworkdir, search_dir = search_dir $
            ;; Look for wavelengths in those flatsubdirs that match
            ;; flatdirs[idir]! Also collect prefilters.
            indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
-           fnames = file_search(flatsubdirs[indx]+'/cam*', count = Nfiles)
+           fnames = file_search(flatsubdirs[indx]+'/sst_cam*', count = Nfiles)
            if Nfiles gt 0 then begin
               
               camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
@@ -457,7 +457,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Pinholes'
      printf, Clun, '#'
-     pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
+     pinhdirs = file_search(root_dir+'/*pinh*/*', count = Ndirs, /fold)
      for i = 0, Ndirs-1 do begin
         pinhsubdirs = file_search(pinhdirs[i]+'/chromis*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
@@ -494,7 +494,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '# --- Prefilter scan'
      printf, Clun, '#'
      Npfs = 0
-     pfscandirs = file_search(root_dir+'/pfscan*/*', count = Ndirs, /fold)
+     pfscandirs = file_search(root_dir+'/*pfscan*/*', count = Ndirs, /fold)
      for i = 0, Ndirs-1 do begin
         pfscansubdirs = file_search(pfscandirs[i]+'/chromis*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
