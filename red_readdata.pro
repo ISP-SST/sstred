@@ -164,7 +164,7 @@ function red_readdata, fname $
         ;; Does it need to be byteswapped?
         doswap = 0
         endian = sxpar(header,'ENDIAN', count = Nendian)
-        if Nendian eq 1 then if edian eq 'little' then doswap = 1
+        if Nendian eq 1 then if endian eq 'little' then doswap = 1
         byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
         if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
 
