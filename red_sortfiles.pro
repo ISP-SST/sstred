@@ -38,6 +38,8 @@
 ;   2016-06-01 : MGL. Split at underscores as well as dots. Split all
 ;                strings in one go.
 ; 
+;   2016-08-31 : MGL. Get the frame number from the file header.
+; 
 ; 
 ;-
 function red_sortfiles, files
@@ -46,9 +48,20 @@ function red_sortfiles, files
   num = lonarr(nt)
 
   for ii = 0L, nt-1 do begin
-    tmp = strsplit(file_basename(files[ii],'.fits'),'._',/extract)
-    num[ii] = long(tmp[n_elements(tmp) - 1])
-  endfor
+     
+     head = red_readhead(files[ii], status = status)
+
+     if status eq 0 then begin
+        ;; Get the frame number from the header
+        num[ii] = sxpar(head, 'FRAMENUM')
+     endif else begin
+        ;; If that din't work, get it from the file name
+        tmp = strsplit(file_basename(files[ii],'.fits'),'._',/extract)
+        num[ii] = long(tmp[n_elements(tmp) - 1])
+     endelse
+
+  endfor                        ; ii
+
   return, files[sort(num)]
 
 end
