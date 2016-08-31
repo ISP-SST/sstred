@@ -43,7 +43,10 @@
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
-;                keywords.
+;                keywords. 
+;
+;   2016-08-31 : MGL. Find files with new style names. Use header
+;                keyword FRAMENUM.
 ;
 ;-
 pro chromis::split_data, split_dir = split_dir $
@@ -106,8 +109,8 @@ pro chromis::split_data, split_dir = split_dir $
            else: stop
         endcase
 
-        files = file_search(data_dir + '/' + cam + '/cam*', count = Nfiles)
-        
+        files = file_search(data_dir + '/' + cam + '/*cam*', count = Nfiles)
+
         if(files[0] eq '') then begin
            print, inam+' : ERROR : '+cam+': no files found in: '+$
                   data_dir +' : skipping camera!'
@@ -182,7 +185,8 @@ pro chromis::split_data, split_dir = split_dir $
            ;; remove from header
 
            xposure  = fxpar(head, 'XPOSURE')
-           frame1   = fxpar(head, red_keytab('frame'))
+           ;;frame1   = fxpar(head, red_keytab('frame'))
+           frame1   = fxpar(head, 'FRAMENUM')
            date_beg = fxpar(head, 'DATE-BEG')
            cadence  = fxpar(head, 'CADENCE')
            
