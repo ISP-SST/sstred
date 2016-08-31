@@ -87,6 +87,7 @@
 ;                not specified.     
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
+;                Swap endian if needed.
 ;
 ;-
 function red_readdata, fname $
@@ -150,14 +151,23 @@ function red_readdata, fname $
                 swap = 0
                 bit_shift = -4
             endif
-        endif
 
+        endif
+        
         ;; Now read the data
         red_rdfits, fname, image = data $
                     , uint=uint, swap=swap, framenumber = framenumber
-
+        
         ;; Compensate for initial weird format
         if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
+
+        ;; Does it need to be byteswapped?
+;        if (sxpar(header,'ENDIAN') eq 'little') or (sxpar(header,'BYTEORDR') eq 'LITTLE_ENDIAN') then begin
+
+        ;; The headers are missing in some of the data from 30 Aug. REALLY SUPER UGLY HACK! REMOVE ASAP!
+        if strmatch(fname,'*/sand*') then begin
+           swap_endian_inplace, data
+        endif 
 
      end
 
