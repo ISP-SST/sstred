@@ -119,8 +119,6 @@ function red_meta2head, head, metadata=metaStruct
                     end
                     'w4' : begin
                        filter1 = 'CaH-red'
-                       wavelnth = 397.7e-9
-                       fwhm = 0.37e-9
                        waveband = 'Ca II H & K'
                     end
                     'w5' : begin
