@@ -79,6 +79,9 @@
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+;
+;   2016-08-31 : MGL. Update file_template for data files not starting
+;                with the detector name.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -104,7 +107,7 @@ pro chromis::selectfiles, cam = cam $
         endif
         detector = self->RED::getdetector(cam)
         
-        file_template = cam + '/' + detector + '*'
+        file_template = cam + '/*' + detector + '*'
         
         if( n_elements(dirs) gt 0 ) then dirs = [dirs] $    ; ensure it's an array, even with 1 element
         else begin 
@@ -113,7 +116,7 @@ pro chromis::selectfiles, cam = cam $
         endelse
         
         path_spec = dirs + '/' + file_template
-    
+
         files = file_search(path_spec)
         files = files(where( strpos(files, '.lcd.') LT 0, nf) )
         files = red_sortfiles(files)
