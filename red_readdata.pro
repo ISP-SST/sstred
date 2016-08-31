@@ -87,7 +87,7 @@
 ;                not specified.     
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
-;                Swap endian if needed.
+;                Swap endian if needed. Remove byteorder keywords.
 ;
 ;-
 function red_readdata, fname $
@@ -170,6 +170,8 @@ function red_readdata, fname $
 
         if doswap then begin
            swap_endian_inplace, data
+           sxdelpar, header, 'ENDIAN'
+           sxdelpar, header, 'BYTEORDR'
         endif 
 
      end
