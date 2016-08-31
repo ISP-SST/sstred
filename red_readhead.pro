@@ -65,7 +65,7 @@
 ;                information.      
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
-;                Add rudimentary handling of tabulated DATE-BEG.
+;                Add rudimentary handling of tabulated DATE-BEG. 
 ;
 ;
 ;-
@@ -150,25 +150,31 @@ function red_readhead, fname, $
             ;; Quick and dirty table reading to get date-beg and
             ;; date-end. Should rewrite this to propagate the whole
             ;; table through the pipeline! /MGL
-            tab_hdus = fxpar(header, 'TAB_HDUS')
-            if tab_hdus ne '' then begin
+            date_beg = sxpar(header, 'DATE-BEG', count = Nbeg)
+            if Nbeg eq 0 then begin
+               tab_hdus = fxpar(header, 'TAB_HDUS')
+               if tab_hdus ne '' then begin
 
-               tab = readfits(fname, theader, /exten, /silent)
-               date_beg = ftget(theader,tab, 'DATE-BEG') 
-               
-               fxaddpar, header, 'DATE-BEG', date_beg[0], 'First in table.', after = 'DATE'
-               
-               date_end_split = strsplit(date_beg[-1], 'T', /extract)
-               date_end_split[1] = red_time2double(red_time2double(date_end_split[1]) $
-                                                   + sxpar(header, 'NAXIS3')*sxpar(header, 'CADENCE') $
-                                                   + sxpar(header, 'XPOSURE') $
-                                                   , /inv)
-               date_end = strjoin(date_end_split, 'T')
+                  tab = readfits(fname, theader, /exten, /silent)
+                  date_beg = ftget(theader,tab, 'DATE-BEG') 
+                  
+                  fxaddpar, header, 'DATE-BEG', date_beg[0] $
+                            , 'First in table.', after = 'DATE'
+                  
+                  date_end_split = strsplit(date_beg[-1], 'T', /extract)
+                  date_end_split[1] = red_time2double(red_time2double(date_end_split[1]) $
+                                                      + sxpar(header, 'NAXIS3')*sxpar(header, 'CADENCE') $
+                                                      + sxpar(header, 'XPOSURE') $
+                                                      , /inv)
+                  date_end = strjoin(date_end_split, 'T')
+                  
+                  fxaddpar, header, 'DATE-END', date_end $
+                            , 'Last in table + NAXIS3*CADENCE + XPOSURE.' $
+                            , after = 'DATE-BEG'
 
-               fxaddpar, header, 'DATE-END', date_end, 'Last in table + NAXIS3*CADENCE + XPOSURE.', after = 'DATE-BEG'
-
+               endif
             endif
-
+            
             ;; Hack to get the prefilter from the file name in data
             ;; from 2016.08.30.
             if fxpar(header, 'FILTER1') eq '' then begin
