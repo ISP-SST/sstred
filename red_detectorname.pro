@@ -38,7 +38,7 @@ function red_detectorname, file
   ;; First try to get the detector from the headers
   head = red_readhead(file, status = status)
 
-  if status ne 0 then begin
+  if status eq 0 then begin
      detector = sxpar(head, 'DETECTOR')
      if detector ne '' then return, detector
   endif
