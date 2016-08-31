@@ -162,10 +162,13 @@ function red_readdata, fname $
         if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
 
         ;; Does it need to be byteswapped?
-;        if (sxpar(header,'ENDIAN') eq 'little') or (sxpar(header,'BYTEORDR') eq 'LITTLE_ENDIAN') then begin
+        doswap = 0
+        endian = sxpar(header,'ENDIAN', count = Nendian)
+        if Nendian eq 1 then if edian eq 'little' then doswap = 1
+        byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
+        if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
 
-        ;; The headers are missing in some of the data from 30 Aug. REALLY SUPER UGLY HACK! REMOVE ASAP!
-        if strmatch(fname,'*/sand*') then begin
+        if doswap then begin
            swap_endian_inplace, data
         endif 
 
