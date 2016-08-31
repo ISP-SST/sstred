@@ -154,8 +154,8 @@ pro chromis::extractstates, strings, states $
      if count gt 0 then states[ifile].detector = strtrim(detector, 2)
      filter = fxpar(head, red_keytab('prefilter'), count=count)
      if count gt 0 then states[ifile].prefilter = strtrim(filter, 2)
-     ;camera = fxpar(head, red_keytab('camera'), count=count)
-     camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
+     camera = fxpar(head, red_keytab('camera'), count=count)
+     ;camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
      if count gt 0 then begin
          camera = strtrim(camera,2)
          states[ifile].camera = camera
