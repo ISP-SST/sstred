@@ -50,7 +50,8 @@
 ; 
 ;   2016-05-18 : JLF. Created.
 ;
-;   2016-05-31 : JLF. Added keyword silent to suppress informational messages
+;   2016-05-31 : JLF. Added keyword silent to suppress informational
+;                messages. 
 ;
 ;   2016-08-12 : MGL. Make header for momfbd-format file. New keyword
 ;                framenumber. Call red_filterchromisheaders only for
@@ -152,17 +153,39 @@ function red_readhead, fname, $
             tab_hdus = fxpar(header, 'TAB_HDUS')
             if tab_hdus ne '' then begin
 
-               tab = readfits(fname, theader, /exten)
+               tab = readfits(fname, theader, /exten, /silent)
                date_beg = ftget(theader,tab, 'DATE-BEG') 
                
                fxaddpar, header, 'DATE-BEG', date_beg[0], 'First in table.', after = 'DATE'
                
                date_end_split = strsplit(date_beg[-1], 'T', /extract)
-               date_end_split[1] = red_time2double(red_time2double(date_end_split[1])+sxpar(header, 'XPOSURE'), /inv)
+               date_end_split[1] = red_time2double(red_time2double(date_end_split[1]) $
+                                                   + sxpar(header, 'NAXIS3')*sxpar(header, 'CADENCE') $
+                                                   + sxpar(header, 'XPOSURE') $
+                                                   , /inv)
                date_end = strjoin(date_end_split, 'T')
 
-               fxaddpar, header, 'DATE-END', date_end, 'Last in table + XPOSURE.', after = 'DATE-BEG'
+               fxaddpar, header, 'DATE-END', date_end, 'Last in table + NAXIS3*CADENCE + XPOSURE.', after = 'DATE-BEG'
 
+            endif
+
+            ;; Hack to get the prefilter from the file name in data
+            ;; from 2016.08.30.
+            if fxpar(header, 'FILTER1') eq '' then begin
+               ;; Try to read from file name
+               fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
+               if n_elements(fname_split) gt 4 then begin
+                  ;; Shorter and it might be a dark
+                  prefilter = (fname_split)[-1]
+                  ;; Translate to previously used filter names
+                  case prefilter of
+                     'hbeta-core' : prefilter = 'Hb-core'
+                     'hbeta-cont' : prefilter = 'Hb-cont'
+                     'cah-core'   : prefilter = 'CaH-core'
+                     else:
+                  endcase
+                  fxaddpar, header, 'FILTER1', prefilter, 'Extracted from file name', after = 'DETECTOR'
+               endif
             endif
 
             if n_elements(framenumber) ne 0 then begin
