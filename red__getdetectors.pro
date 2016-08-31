@@ -43,6 +43,7 @@
 ;                keywords.     
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
+;                Rename camtags.idlsave to detectors.idlsave.
 ; 
 ;-
 pro red::getdetectors, dir = dir
@@ -50,7 +51,7 @@ pro red::getdetectors, dir = dir
     inam = 'red::getdetectors : '
 
     ptr_free,self.detectors
-    tagfil = self.out_dir+'/camtags.idlsave'
+    tagfil = self.out_dir+'/detectors.idlsave'
     if(file_test(tagfil)) then begin
         restore, tagfil
         if n_elements(detectors) gt 0 then self.detectors = ptr_new(detectors, /NO_COPY)
