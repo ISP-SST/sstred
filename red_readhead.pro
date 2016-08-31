@@ -64,6 +64,7 @@
 ;                information.      
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
+;                Add rudimentary handling of tabulated DATE-BEG.
 ;
 ;
 ;-
@@ -143,6 +144,25 @@ function red_readhead, fname, $
                   ;; to solarnet compliance. 
                   header = red_filterchromisheaders(header, silent=silent)
                endif
+            endif
+
+            ;; Quick and dirty table reading to get date-beg and
+            ;; date-end. Should rewrite this to propagate the whole
+            ;; table through the pipeline! /MGL
+            tab_hdus = fxpar(header, 'TAB_HDUS')
+            if tab_hdus ne '' then begin
+
+               tab = readfits(fname, theader, /exten)
+               date_beg = ftget(theader,tab, 'DATE-BEG') 
+               
+               fxaddpar, header, 'DATE-BEG', date_beg[0], 'First in table.', after = 'DATE'
+               
+               date_end_split = strsplit(date_beg[-1], 'T', /extract)
+               date_end_split[1] = red_time2double(red_time2double(date_end_split[1])+sxpar(header, 'XPOSURE'), /inv)
+               date_end = strjoin(date_end_split, 'T')
+
+               fxaddpar, header, 'DATE-END', date_end, 'Last in table + XPOSURE.', after = 'DATE-BEG'
+
             endif
 
             if n_elements(framenumber) ne 0 then begin
