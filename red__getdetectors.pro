@@ -40,7 +40,9 @@
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
-;                keywords.
+;                keywords.     
+;
+;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
 ; 
 ;-
 pro red::getdetectors, dir = dir
@@ -64,7 +66,7 @@ pro red::getdetectors, dir = dir
             print, inam + 'ERROR -> no frames found in [' + dir + '] for ' + (*self.cameras)[i]
             return
         endif
-        ctag = red_camtag(files[0])
+        ctag = red_detectorname(files[0])
         if ptr_valid(self.detectors) then red_append, *self.detectors, ctag $
         else self.detectors = ptr_new(ctag, /NO_COPY)
     endfor

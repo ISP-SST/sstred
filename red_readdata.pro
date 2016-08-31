@@ -84,7 +84,9 @@
 ;                the mosaic.
 ;
 ;   2016-08-19 : MGL. Only test for .momfbd extension if filetype is
-;                not specified.
+;                not specified.     
+;
+;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
 ;
 ;-
 function red_readdata, fname $
@@ -140,7 +142,7 @@ function red_readdata, fname $
         red_rdfits, fname, header = header
         bit_shift = 0
         if fxpar(header, 'SOLARNET') eq 0 then begin
-            caminfo = red_camerainfo( red_camtag(fname) )
+            caminfo = red_camerainfo( red_detectorname(fname) )
             if strmatch(caminfo.model,'PointGrey*') then begin 
                 ;; This is the first version PointGrey data from
                 ;; spring 2016. Hack to load it:

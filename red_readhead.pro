@@ -61,7 +61,9 @@
 ;                not specified.      
 ;
 ;   2016-08-23 : MGL. Deal with ANA headers lacking data size
-;                information.
+;                information.      
+;
+;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
 ;
 ;
 ;-
@@ -133,7 +135,7 @@ function red_readhead, fname, $
             red_rdfits, fname, header = header
 
             if fxpar(header, 'SOLARNET') eq 0 then begin
-               caminfo = red_camerainfo( red_camtag(fname) )
+               caminfo = red_camerainfo( red_detectorname(fname) )
                if strmatch(caminfo.model,'PointGrey*') then begin 
                   ;; We could add a date check here as well.
 
