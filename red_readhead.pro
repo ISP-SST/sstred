@@ -253,10 +253,10 @@ function red_readhead, fname, $
 
     ;; Keyword FRAME1 changed to FRAMNUM. Rewrite old headers
     ;; to match the new standard.
-    frnm = sxpar(header, 'FRAMENUM', Npar)
+    frnm = sxpar(header, 'FRAMENUM', count = Npar)
     if Npar eq 0 then begin
-       fr1 = sxpar(header, 'FRAME1', Npar)
-       if Npar eq 1 then sxaddpar(header, 'FRAMENUM', fr1)
+       fr1 = sxpar(header, 'FRAME1', count = Npar)
+       if Npar eq 1 then sxaddpar, header, 'FRAMENUM', fr1
     endif
 
 
