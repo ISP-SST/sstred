@@ -141,6 +141,7 @@ pro chromis::extractstates, strings, states $
 
      ;; Numerical keywords
      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
+     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain)    ;    New keyword for gain from 2016.08.30
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
