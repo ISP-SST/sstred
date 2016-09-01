@@ -65,7 +65,9 @@
 ;                information.      
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
-;                Add rudimentary handling of tabulated DATE-BEG. 
+;                Add rudimentary handling of tabulated DATE-BEG.       
+;
+;   2016-09-01 : MGL. Change FRAME1 to FRAMENUM if needed.
 ;
 ;
 ;-
@@ -248,6 +250,15 @@ function red_readhead, fname, $
         end
 
     endcase
+
+    ;; Keyword FRAME1 changed to FRAMNUM. Rewrite old headers
+    ;; to match the new standard.
+    frnm = sxpar(header, 'FRAMENUM', Npar)
+    if Npar eq 0 then begin
+       fr1 = sxpar(header, 'FRAME1', Npar)
+       if Npar eq 1 then sxaddpar(header, 'FRAMENUM', fr1)
+    endif
+
 
     header = header[where(header ne replicate(' ',80))] ; Remove blank lines
 
