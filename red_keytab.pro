@@ -44,9 +44,11 @@
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
-;                keywords.
+;                keywords.       
+;
+;   2016-09-01 : MGL. Change header keyword FRAME1 to FRAMENUM.
 ; 
-function red_keytab,metaname
+function red_keytab, metaname
 
 compile_opt idl2
 
@@ -59,19 +61,19 @@ fitsname = metaname
 
 ;; The translation table.
 ;; Add your own translations here.
-keyword_translator_table = [['cam',		'CAMERA'  ],$
-                        ['camera',      'CAMERA'],$
-                        ['camtag',      'DETECTOR'],$
-                        ['detector',    'DETECTOR'],$
-                        ['frame',		'FRAME1'  ],$
-                        ['framenumber',	'FRAME1'  ],$
-                        ['pref',		'FILTER1' ],$
-                        ['prefilter',	'FILTER1' ],$
-                        ['camdir',		'CAMERA'  ],$
-                        ['old_channel', 'INSTRUME'],$
-                        ['instrume',    'INSTRUME'],$
-                        ['scan',		'SCANNUM' ],$
-                        ['scannumber',	'SCANNUM' ]]
+keyword_translator_table = [['cam',         'CAMERA'  ],$
+                            ['camera',      'CAMERA'  ],$
+                            ['camtag',      'DETECTOR'],$
+                            ['detector',    'DETECTOR'],$
+                            ['frame',       'FRAMENUM'],$
+                            ['framenumber', 'FRAMENUM'],$
+                            ['pref',        'FILTER1' ],$
+                            ['prefilter',   'FILTER1' ],$
+                            ['camdir',      'CAMERA'  ],$
+                            ['old_channel', 'INSTRUME'],$
+                            ['instrume',    'INSTRUME'],$
+                            ['scan',        'SCANNUM' ],$
+                            ['scannumber',  'SCANNUM' ]]
 
     for i = 0, nstr-1 do begin
         
