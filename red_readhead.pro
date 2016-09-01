@@ -177,21 +177,58 @@ function red_readhead, fname, $
             
             ;; Hack to get the prefilter from the file name in data
             ;; from 2016.08.30.
-            if fxpar(header, 'FILTER1') eq '' then begin
-               ;; Try to read from file name
-               fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
-               if n_elements(fname_split) gt 4 then begin
-                  ;; Shorter and it might be a dark
-                  prefilter = (fname_split)[-1]
-                  ;; Translate to previously used filter names
-                  case prefilter of
-                     'hbeta-core' : prefilter = 'Hb-core'
-                     'hbeta-cont' : prefilter = 'Hb-cont'
-                     'cah-core'   : prefilter = 'CaH-core'
-                     else:
-                  endcase
-                  fxaddpar, header, 'FILTER1', prefilter, 'Extracted from file name', after = 'DETECTOR'
-               endif
+            if fxpar(header, red_keytab('pref')) eq '' then begin
+                state = fxpar(header, 'STATE')
+                if state eq '' then begin
+                   ;; Try to read from file name
+                   fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
+                   if n_elements(fname_split) gt 4 then begin
+                      ;; Shorter and it might be a dark
+                      prefilter = (fname_split)[-1]
+                      ;; Translate to previously used filter names
+                      case prefilter of
+                         'hbeta-core' : prefilter = 'Hb-core'
+                         'hbeta-cont' : prefilter = 'Hb-cont'
+                         'cah-core'   : prefilter = 'CaH-core'
+                         else:
+                      endcase
+                      fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from file name'
+                   endif
+               endif else begin         ; STATE keyword exists but not FILTER1 (e.g. 2016.08.31 data)
+                   state_split = strsplit( state, '_',  /extr )
+                   if n_elements(state_split) gt 1 then begin
+                       state1 = state_split[0]                      ;  for 2016.08.31:  state = 'wheel00002_hrz32600'
+                       camera = fxpar(header, red_keytab('camera'), count=count)
+                       if count gt 0 then begin
+                          if camera eq 'Chromis-N' then begin
+
+                             ;; Chromis-N
+                             case state1 of
+                                'wheel00001' : prefilter = 'CaK-blue'
+                                'wheel00002' : prefilter = 'CaK-core'
+                                'wheel00003' : prefilter = 'CaH-core'
+                                'wheel00004' : prefilter = 'CaH-red'
+                                'wheel00005' : prefilter = 'CaH-cont'
+                                'wheel00006' : prefilter = 'Hb-core'
+                             endcase
+                          endif else begin
+                             ;; Chromis-W and Chromis-D
+                             case state1 of
+                                'wheel00006' : prefilter = 'Hb-cont'
+                                else: prefilter = 'CaHK-cont'
+                             endcase
+                          endelse
+                          fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from state keyword'
+                       endif
+                   endif else begin
+                      case state of
+                         'hbeta-core' : prefilter = 'Hb-core'
+                         'hbeta-cont' : prefilter = 'Hb-cont'
+                         'cah-core'   : prefilter = 'CaH-core'
+                         else:
+                      endcase
+                   endelse
+               endelse
             endif
 
             if n_elements(framenumber) ne 0 then begin
