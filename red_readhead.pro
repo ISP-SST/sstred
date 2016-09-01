@@ -139,7 +139,7 @@ function red_readhead, fname, $
             red_rdfits, fname, header = header
 
             if fxpar(header, 'SOLARNET') eq 0 then begin
-               caminfo = red_camerainfo( red_detectorname(fname) )
+               caminfo = red_camerainfo( red_detectorname(fname,head=header) )
                if strmatch(caminfo.model,'PointGrey*') then begin 
                   ;; We could add a date check here as well.
 
