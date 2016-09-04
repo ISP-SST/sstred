@@ -179,9 +179,10 @@ function red_readhead, fname, $
             
             ;; Hack to get the prefilter from the file name in data
             ;; from 2016.08.30.
-            if fxpar(header, red_keytab('pref')) eq '' then begin
-                state = fxpar(header, 'STATE')
-                if state eq '' then begin
+            pref = fxpar( header, red_keytab('pref'), count=count )
+            if count eq 0 then begin
+                state = fxpar(header, 'STATE', count=count )
+                if count eq 0 then begin
                    ;; Try to read from file name
                    fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
                    if n_elements(fname_split) gt 4 then begin
@@ -198,7 +199,7 @@ function red_readhead, fname, $
                    endif
                endif else begin         ; STATE keyword exists but not FILTER1 (e.g. 2016.08.31 data)
                    state_split = strsplit( state, '_',  /extr )
-                   if n_elements(state_split) gt 1 then begin
+                   if n_elements(state_split) gt 0 then begin
                        state1 = state_split[0]                      ;  for 2016.08.31:  state = 'wheel00002_hrz32600'
                        camera = fxpar(header, red_keytab('camera'), count=count)
                        if count gt 0 then begin
