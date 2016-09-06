@@ -161,12 +161,17 @@ pro red::sumdark, overwrite = overwrite, $
                 continue
             endif
 
+            file_mkdir, file_dirname(darkname)
+
             print, inam+' : summing darks for state -> ' + state_list[ss]
+            if(keyword_set(check)) then begin
+                openw, lun, darkname + '_discarded.txt', width = 500, /get_lun
+            endif
             
             if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-                dark = rdx_sumfiles(files[sel], check = check, summed = darksum, nsum=nsum, verbose=2)
+                dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, verbose=2)
             endif else begin
-                dark = red_sumfiles(files[sel], check = check, summed = darksum, nsum=nsum, time_ave = time_ave)
+                dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, time_ave = time_ave)
             endelse
             
             ;; The momfbd code can't read doubles.
@@ -187,8 +192,6 @@ pro red::sumdark, overwrite = overwrite, $
             ;; Add some more info here, see SOLARNET deliverable D20.4 or
             ;; later versions of that document.
 
-            file_mkdir, file_dirname(darkname)
-
             ;; Write ANA format dark
             print, inam+' : saving ', darkname
             red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
@@ -196,6 +199,8 @@ pro red::sumdark, overwrite = overwrite, $
             ;; Write FITS format dark
             print, inam+' : saving ', darkname+'.fits'
             red_writedata, darkname+'.fits', dark, header=head, filetype='fits', overwrite = overwrite
+            
+            if keyword_set(check) then free_lun, lun
 
         endfor                     ; states
 

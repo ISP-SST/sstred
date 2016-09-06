@@ -193,6 +193,10 @@ function red_meta2head, head, metadata=metaStruct
                  wavelnth = 395.1e-9
                  fwhm = 1.3e-9
               end
+              else: begin
+		wavelnth = 'unknown'
+		fwhm = 'unknown'
+	      end
            endcase
 
            sxaddpar, newhead, 'WAVELNTH', strtrim(wavelnth, 2) $

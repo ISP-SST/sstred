@@ -265,7 +265,7 @@ pro chromis::get_calib, states $
         if( states[istate].prefilter ne '' ) then begin
             pinhtag += '_' + states[istate].prefilter
         endif
-        if( states[istate].tuning ne '' ) then begin
+        if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
             pinhtag += '_' + states[istate].tuning
         endif
 

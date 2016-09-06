@@ -125,9 +125,23 @@ function red_filterchromisheaders, head, silent=silent
         name = strtrim((strsplit(head[i], '=', /extract))[0], 2)
 
         if name ne 'END' then begin
-
+	  ; use fxpar because it reads strings without enclosing '' properly
+	  ; (in other words it reads non-standard headers)
            value = fxpar(head, name, comment = comment)
-
+          
+          ; watch out for possible booleans, fxpar doesn't return booleans
+          ; differently than ints
+          if size(value,/type) eq 2  then $
+	    ; try again with sxpar
+	    ; use sxpar because it returns byte type data for FITS booleans
+	    ; instead of ints
+	    value = sxpar(head, name, comment = comment)
+	  
+	  ; convert byte data to booleans
+	  ; necessary to make sxaddpar output proper booleans
+	  if size(value,/type) eq 1 then $
+	    value = value eq 1b ? 'T' : 'F'
+	  
            ;; Rewrite some keywords
            case name of
               'DATE_OBS' : begin

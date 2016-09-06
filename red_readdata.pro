@@ -143,7 +143,7 @@ function red_readdata, fname $
         red_rdfits, fname, header = header
         bit_shift = 0
         if fxpar(header, 'SOLARNET') eq 0 then begin
-            caminfo = red_camerainfo( red_detectorname(fname) )
+            caminfo = red_camerainfo( red_detectorname(fname,head=header) )
             if strmatch(caminfo.model,'PointGrey*') then begin 
                 ;; This is the first version PointGrey data from
                 ;; spring 2016. Hack to load it:

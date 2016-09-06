@@ -141,11 +141,20 @@ pro chromis::extractstates, strings, states $
 
      ;; Numerical keywords
      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
+     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain)    ;    New keyword for gain from 2016.08.30
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
 
+     state = fxpar(head, 'STATE', count=hasstate)
+     if hasstate gt 0 then begin
+         state_split = strsplit( state, '_',  /extr )
+         if n_elements(state_split) gt 1 then begin
+             states[ifile].tuning = state_split[1]
+         endif
+     endif
+     
      ;; String keywords require checking
      detector = fxpar(head, red_keytab('detector'), count=count)
      if count eq 0 then begin   ; Temporary fugly hack to work on data processed before 2016-08-23
@@ -192,15 +201,15 @@ pro chromis::extractstates, strings, states $
      ;; tuning information in the form tuning_finetuning, where tuning
      ;; is the approximate wavelength in Å and finetuning is the
      ;; (signed) fine tuning in mÅ. (string)
-         
-     states[ifile].tuning = (stregex(fname $
+     if states[ifile].tuning eq '' then begin
+         states[ifile].tuning = (stregex(fname $
                                      , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
                                      ,  /extr, /subexp))[2,*]
+         ;; Convert to a wavelength
+         ;; Return the tuning in decimal form [Å]
+         states[ifile].tun_wavelength = total(double(strsplit(states[ifile].tuning,'_', /extract))*[1d, 1d-3])
+     endif
      
-     ;; Convert to a wavelength
-     ;; Return the tuning in decimal form [Å]
-     states[ifile].tun_wavelength = total(double(strsplit(states[ifile].tuning,'_', /extract))*[1d, 1d-3])
-
      ;; The fullstate string
      undefine, fullstate_list
      if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
