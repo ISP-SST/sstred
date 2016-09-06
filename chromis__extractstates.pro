@@ -106,6 +106,9 @@
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+;
+;   2016-09-06 : MGL. Call red_meta2head rather than
+;                red_filterchromisheaders. 
 ; 
 ;-
 pro chromis::extractstates, strings, states $
@@ -134,7 +137,7 @@ pro chromis::extractstates, strings, states $
         states.filename = strings
      endif else begin
         mkhdr, head, ''         ; create a dummy header
-        head = red_filterchromisheaders( head, meta={filename:strings[ifile]}, /silent)
+        head = red_meta2head(head, metadata = {filename:strings[ifile]})
         print,'file does not exist: ', strings[ifile]
         print,'state information will be incomplete!'
      endelse
