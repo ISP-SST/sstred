@@ -48,6 +48,9 @@
 ;    skip  :  in, optional, 
 ;   
 ;   
+;    pref : in, optional
+;   
+;        The prefilter for which to generate mfbd config files. 
 ;   
 ;    nremove :  in, optional, 
 ;   
@@ -112,6 +115,9 @@
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+;
+;   2016-09-01 : MGL. Make it work in terms of state rather than
+;                prefilter. 
 ;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
@@ -219,30 +225,36 @@ pro red::prepmfbd, numpoints = numpoints, $
      upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
      Npref = n_elements(upref)
 
+     ;; Get fullstates
+     ustate = states[uniq(states.fullstate, sort(states.fullstate))].fullstate
+     Nstates = n_elements(ustate)
+
      ;; Get scan numbers
      uscan = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
      Nscans = n_elements(uscan)
 
-     ;; Create a config file per prefilter and scan number
+     ;; Create a config file per state and scan number
 
+  
      ;; Loop over scans
      for iscan = 0L, Nscans-1 do begin
         
         scan = string(uscan[iscan], format = '(i05)')
 
         ;; Loop over prefilters
-        for ipref = 0L, Npref - 1 do begin
+        for istate = 0L, Nstates - 1 do begin
            
-           if n_elements(pref) ne 0 then begin
-              if upref[ipref] NE pref then begin
-                 print, inam + ' : Skipping prefilter -> ' + upref[ipref]
-                 continue
-              endif
-           endif
+;           if n_elements(pref) ne 0 then begin
+;              if upref[ipref] NE pref then begin
+;                 print, inam + ' : Skipping prefilter -> ' + upref[ipref]
+;                 continue
+;              endif
+;           endif
+
 
            ;; Where to put the config files:
            outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag $
-                    + '/' + upref[ipref] + '/cfg/'
+                    + '/' + ustate[istate] + '/cfg/'
 
            ;; Needed by momfbd:
            file_mkdir, outdir + 'results'
@@ -251,39 +263,39 @@ pro red::prepmfbd, numpoints = numpoints, $
            ;; Image numbers for the current scan:
            numpos = where((states.scannumber eq scan) $
 ;                          AND (stat.star eq 0B) $
-                          AND (states.prefilter eq upref[ipref]) $
-                          , ncount)
-           if(ncount eq 0) then continue
+                          AND (states.fullstate eq ustate[istate]) $
+                          , Ncount)
+           if(Ncount eq 0) then continue
     
            ;; Split scan into subsets?
-           if n_elements(nimages) eq 0 then begin
+           if n_elements(Nimages) eq 0 then begin
               Nsubscans = 1
            endif else begin
-              Nsubscans = round(ncount/float(nimages))
+              Nsubscans = round(Ncount/float(Nimages))
            endelse
 
            ;; Loop over subsets of the current scan
            for isub = 0L, Nsubscans-1 do begin
 
               if Nsubscans eq 1 then begin
-                 cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + '.cfg'
+                 cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + '.cfg'
                  n0 = strtrim(states[numpos[0]].framenumber, 2)
                  n1 = strtrim(states[numpos[ncount-1]].framenumber, 2)
                  nall = strjoin([n0,n1],'-')
-                 print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
+                 print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
                         + scan + ' -> image range = [' + nall + ']'
-                 oname = detector + '_' + scan + '_' + upref[ipref]
+                 oname = detector + '_' + scan + '_' + ustate[istate]
              endif else begin
                  subscan = red_stri(isub, ni = '(i03)')
-                 cfg_file = 'momfbd.reduc.' + upref[ipref] + '.' + scan + ':' $
+                 cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + ':' $
                             + subscan + '.cfg'
                  n0 = strtrim(states[numpos[isub*ncount/Nsubscans]].framenumber, 2)
                  n1 = strtrim(states[numpos[((isub+1)*ncount/Nsubscans-1) $
                                             <ncount]].framenumber, 2)
                  nall = strjoin([n0,n1],'-')                 
-                 print, inam+' : Prefilter = ' + upref[ipref] + ' -> scan = ' $
+                 print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
                         + scan + ':' + subscan + ' -> image range = [' + nall + ']'
-                 oname = detector + '_' + scan + ':' + subscan + '_' + upref[ipref]
+                 oname = detector + '_' + scan + ':' + subscan + '_' + ustate[istate]
               endelse
 
               ;; Open config file for writing
@@ -292,7 +304,6 @@ pro red::prepmfbd, numpoints = numpoints, $
               self -> get_calib, states[numpos[0]], darkname = darkname, gainname = gainname
               caminfo = red_camerainfo(detector)
               
-              ;; WB only
               printf, lun, 'object{'
               printf, lun, '  WAVELENGTH=' + strtrim(states[0].pf_wavelength, 2)
               printf, lun, '  OUTPUT_FILE=results/'+oname
@@ -311,13 +322,13 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, '    DARK_TEMPLATE=' + darkname
               printf, lun, '    DARK_NUM=0000001'
 
-              if upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' $
-                 AND ~keyword_set(no_descatter) then begin
-                 self -> loadbackscatter, cam, upref[ipref], bg, psf $
-                                          , bgfile = bgf, bpfile = psff
-                 printf, lun, '    PSF='+psff
-                 printf, lun, '    BACK_GAIN='+bgf
-              endif 
+;              if upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' $
+;                 AND ~keyword_set(no_descatter) then begin
+;                 self -> loadbackscatter, cam, upref[ipref], bg, psf $
+;                                          , bgfile = bgf, bpfile = psff
+;                 printf, lun, '    PSF='+psff
+;                 printf, lun, '    BACK_GAIN='+bgf
+;              endif 
 
               printf, lun, '    INCOMPLETE'
 
@@ -342,6 +353,7 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, 'NEW_CONSTRAINTS'
               printf, lun, 'FILE_TYPE=' + self.filetype
               printf, lun, 'FAST_QR'
+              printf, lun, 'FIT_PLANE'
               if self.filetype eq 'MOMFBD' then begin
                  printf, lun, 'GET_PSF'
                  printf, lun, 'GET_PSF_AVG'
@@ -356,7 +368,7 @@ pro red::prepmfbd, numpoints = numpoints, $
               free_lun, lun
               
            endfor               ; isub
-        endfor                  ; ipref
+        endfor                  ; istate
 
      endfor                     ; iscan
   endfor                        ; idir
