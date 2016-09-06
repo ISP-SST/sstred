@@ -12,20 +12,32 @@
 ; 
 ;    Mats Löfdahl, ISP
 ; 
-; :Params:
-; 
 ; 
 ; :Keywords:
 ; 
-;    split_dir  : 
+;    split_dir : in, optional, type=string, default='data'
+;
+;        Name of directory under which the split data will be stored. 
+;   
+;    cameras : in, optional, type=strarr
+;
+;        The cameras (like Chromis-N) for which you want to split
+;        data.
+;    
+;    filenums : in, optional, type=array
+;   
+;        Specify which files to split. 
+;    
+;    scannums : in, optional, type=array
+;   
+;        Specify which scans to split. 
+;   
+;    uscan : in, optional
 ;   
 ;   
-;    uscan  : 
+;    all_data : Not only split complete sequences, but everything found 
 ;   
-;   
-;    all_data    : Not only split complete sequences, but everything found 
-;   
-;    pref        : Only process prefilter 'pref'
+;    pref : Only process prefilter 'pref'
 ; 
 ; :History:
 ; 
@@ -46,7 +58,12 @@
 ;                keywords. 
 ;
 ;   2016-08-31 : MGL. Find files with new style names. Use header
-;                keyword FRAMENUM.
+;                keyword FRAMENUM. 
+;
+;   2016-09-01 : MGL. Remove unused keyword nremove. New keywords
+;                cameras and filenums.
+;
+;   2016-09-05 : MGL. New keyword scannums.
 ;
 ;-
 pro chromis::split_data, split_dir = split_dir $
@@ -54,7 +71,9 @@ pro chromis::split_data, split_dir = split_dir $
                          , all_data = all_data $
                          , pref = pref $
                          , dirs = dirs $
-                         , nremove = nremove
+                         , cameras = cameras $
+                         , filenums = filenums $
+                         , scannums = scannums
 
   if n_elements(split_dir) eq 0 then split_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
@@ -85,6 +104,9 @@ pro chromis::split_data, split_dir = split_dir $
      else dirstr = dirs[0]
   endelse
 
+  if n_elements(cameras) eq 0 then cams = *self.cameras else cams = cameras
+  Ncams = n_elements(cams)
+
 
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin
@@ -93,9 +115,6 @@ pro chromis::split_data, split_dir = split_dir $
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]
-
-     cams = *self.cameras
-     Ncams = n_elements(cams)
 
      for icam = 0L, Ncams-1 do begin
         
@@ -119,9 +138,29 @@ pro chromis::split_data, split_dir = split_dir $
 
         ;; Sort files by image number
         files = red_sortfiles(files)
-        
+    
         ;; Get states
         self->extractstates, files, states
+
+        if n_elements(filenums) ne 0 then begin
+           ;; Filter the files list so we only split the wanted files. 
+           match2, filenums, states.framenumber, suba, subb
+           indx = where(suba ne -1) ; Should this be where(subb ne -1)?
+           files = files[indx]
+           states = states[indx]
+           Nfiles = n_elements(indx)
+           stop
+        endif
+
+        if n_elements(scannums) ne 0 then begin
+           ;; Filter the files list so we only split the files that
+           ;; belong to the specified scans. 
+           match2, scannums, states.scannumber, suba, subb
+           indx = where(subb ne -1)
+           files = files[indx]
+           states = states[indx]
+           Nfiles = n_elements(indx)
+        endif
 
         ;; Only one prefilter?
         IF keyword_set(pref) THEN BEGIN
@@ -158,7 +197,6 @@ pro chromis::split_data, split_dir = split_dir $
            states = states[idx]
         ENDIF
 
-        ;; Flag nremove
         
         Nfiles = n_elements(files)
 
