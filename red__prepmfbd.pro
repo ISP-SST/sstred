@@ -22,6 +22,11 @@
 ;   
 ;   
 ;   
+;    nostate  :  in, optional, type=boolean
+;   
+;       For wideband data, if not set, the mfbd sets will be set up as
+;       if the data had states.
+;   
 ;    numpoints  :  in, optional, 
 ;   
 ;   
@@ -119,6 +124,8 @@
 ;   2016-09-01 : MGL. Make it work in terms of state rather than
 ;                prefilter. 
 ;
+;   2016-09-07 : MGL. New keyword nostate.
+;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
                    modes = modes, $
@@ -130,7 +137,8 @@ pro red::prepmfbd, numpoints = numpoints, $
                    nfac = nfac, $
                    nimages = nimages, $
                    mfbddir = mfbddir, $
-                   camera = camera
+                   camera = camera, $
+                   nostate = nostate
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -199,7 +207,8 @@ pro red::prepmfbd, numpoints = numpoints, $
      folder_tag = file_basename(data_dir)
 
      ;; Directory
-     if strmatch(cam,'*-W') or strmatch(cam,'*-D') then begin
+     if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
+        and keyword_set(nostate) then begin
         ;; Wideband data
         camdir = data_dir + '/' + cam + '_nostate/'
      endif else begin
@@ -309,11 +318,12 @@ pro red::prepmfbd, numpoints = numpoints, $
               printf, lun, '  OUTPUT_FILE=results/'+oname
               printf, lun, '  channel{'
               printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + camdir
-              if strmatch(cam,'*-W') or strmatch(cam,'*-D') then begin
+              if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
+                 and keyword_set(nostate)  then begin
                  ;; Wideband, no state
                  template = detector + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
               endif else begin
-                 ;; Narrowband, with state
+                 ;; With state
                  template = detector + '_' + scan + '_' + states[numpos[0]].fullstate $
                             + '_%07d.fits'
               endelse
