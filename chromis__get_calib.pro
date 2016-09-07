@@ -98,6 +98,9 @@
 ;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                 so the names match those of the corresponding SolarNet
 ;                 keywords.
+;
+;    2016-09-04 : THI. Wideband pinhole names without narrowband
+;                 tuning info. 
 ; 
 ; 
 ;-
