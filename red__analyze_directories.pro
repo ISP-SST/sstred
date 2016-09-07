@@ -47,14 +47,14 @@ pro red::analyze_directories, force = force
 
 
   root_dir = self.root_dir
-  
-  analysis_dir = self.out_dir+'dir-analysis/'+self.isodate+'/'
+  isodate = self.isodate
+  analysis_dir = self.out_dir+'dir-analysis/'+isodate+'/'
+  data_dirs = *self.data_dirs
 
   timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
   dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
 
 
-  data_dirs = *self.data_dirs
 
   print, inam + ' : Finding the timestamp directories.' 
   timedirs = red_find_matching_dirs(timeregex, rootdir = root_dir, count = Ntd)
@@ -122,46 +122,9 @@ pro red::analyze_directories, force = force
      endif                      ; Actually do it?
   endfor                        ; idir
 
-if 0 then begin
-  ;; Is the following needed?-------------------------------------
-  tmin_data = 24.
-  tmax_data = 0.
-  tmin_all = 24.
-  tmax_all = 0.
-  for idir = 0, Ntd-1 do begin
-
-     print,strtrim(idir,2)+'/'+strtrim(Ntd,2)
-
-     intfile = analysis_dir+red_strreplace(timedirs[idir],root_dir,'')+'/interval.txt'
-     
-     openr, flun, /get_lun, intfile
-     tinterval = fltarr(2)
-     readf, flun, tinterval
-     free_lun, flun
-     
-     if ~strmatch(timedirs[idir],'*dark*',/fold) $
-        and ~strmatch(timedirs[idir],'*flat*', /fold) $
-        and ~strmatch(timedirs[idir],'*pinh*', /fold) $
-        and ~strmatch(timedirs[idir],'*pfscan*', /fold) $
-        and ~strmatch(timedirs[idir],'*polcal*', /fold) then begin
-        
-        ;; This is a data directory!
-        print,intfile
-        
-        tmin_data = min([tmin_data, tinterval[0]])
-        tmax_data = max([tmax_data, tinterval[1]])
-     endif                      ; data?
-
-     tmin_all = min([tmin_all, tinterval[0]])
-     tmax_all = max([tmax_all, tinterval[1]])
-
-     
-  endfor                        ; idir
-  ;; Is the above needed?-------------------------------------
-end  
 
   print, inam + ' : Analyzing the science data.'
-  red_logdata, self.isodate, r0time, r0 = r0data ; Need the r0 sample times
+  red_logdata, isodate, r0time, r0 = r0data ; Need the r0 sample times
 
   for idir = 0, Ntd-1 do begin
 
@@ -176,8 +139,6 @@ end
         ;; This is a data directory!
 
         print, timedirs[idir]
-
-
 
         ;; The current timestamp directory
         tdir = root_dir+'/'+timedirs[idir]
@@ -255,6 +216,10 @@ end
                     tstop  = red_time2double((strsplit(fxpar(head_stop,  'DATE-END') $
                                                        ,'T',/extract))[1])
 
+                    print, iscan, upref[ipref]
+                    print, fnames[scanindx[0]]
+                    print, fnames[scanindx[-1]]
+                    print, tstart, tstop
                     
                     r0indx = where(r0time gt tstart and r0time le tstop, Nr0scan)
                     
