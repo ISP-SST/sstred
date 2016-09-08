@@ -64,13 +64,9 @@
 ;
 ;       Set this to plot the small-FOV r0 for CRISP/CHROMIS scans.
 ;
-;    chromisscans : in, optional, type=boolean 
+;    plotstats : in, optional, type=boolean 
 ;
-;       Set this to plot scan8/scan24 for CHROMIS.
-;
-;    crispscans : in, optional, type=boolean 
-;
-;       Set this to plot scan8/scan24 for CRISP.
+;       Set this to plot r0 statistics vs scan number.
 ;
 ;    markdata : in, optional, type=boolean
 ;
@@ -179,6 +175,10 @@
 ;     2016-09-07 : MGL. Parts moved to analyze-directories method.
 ;                  Make plotting work with output from that method.
 ;
+;     2016-09-08 : MGL. New keyword plotstats, implemented plotting r0
+;                  statistics vs scan number. Remove unused keywords
+;                  crispscans and chromisscans.
+;
 ;-
 pro red_plot_r0, dir = dir $
                  , today = today $
@@ -202,8 +202,7 @@ pro red_plot_r0, dir = dir $
                  , onlydata = onlydata $
                  , dt_mean = dt_mean $
                  , noplot = noplot $
-                 , crispscans = crispscans $
-                 , chromisscans = chromisscans
+                 , plotstats = plotstats
   
 
   if n_elements(r0max) eq 0 then r0max = 0.40             
@@ -226,10 +225,12 @@ pro red_plot_r0, dir = dir $
   color_polcal  = 'magenta'
   color_pinhole = 'green'
 
+  ;; Colors used to mark which instruments were collecting data
   color_blue    = 'blue'
   color_red     = 'red'
   color_spec    = 'pink'
   
+  ;; Colors used for scan backgrounds.
   precolors = ['sky blue', 'wheat', 'spring green', 'plum', 'medium gray']
 
   ;; Are tmin or tmax strings?
@@ -380,6 +381,40 @@ pro red_plot_r0, dir = dir $
   ;; Return now if all we wanted was finding directories etc, but no
   ;; actual plots.
   if keyword_set(noplot) then return
+
+  ;; Templates for reading information about the scans:
+  r0scantemplate = { version : 1.0 $
+                     , datastart : 0L $
+                     , delimiter : 32B $
+                     , missingvalue : !Values.F_NaN $
+                     , commentsymbol : '#' $
+                     , fieldcount : 3L $
+                     , fieldtypes : [4L, 4L, 4L] $
+                     , fieldnames : ['time', 'r0_24x24', 'r0_8x8'] $
+                     , fieldlocations : [7L, 21L,  33L] $
+                     , fieldgroups : lindgen(3) $
+                   }
+
+  ;; Need new template with text filter name
+  scantemplate = { version : 1.0 $
+                   , datastart : 0L $
+                   , delimiter : 32B $
+                   , missingvalue : !Values.F_NaN $
+                   , commentsymbol : '#' $
+                   , fieldcount : 12L $
+                   , fieldtypes : [3L, 7L, replicate(4L, 10)] $
+                   , fieldnames : ['scanno', 'prefilter', 'tstart', 'tstop' $
+                                   , 'r0_24x24_min', 'r0_24x24_mean' $
+                                   , 'r0_24x24_median', 'r0_24x24_max' $
+                                   , 'r0_8x8_min', 'r0_8x8_mean' $
+                                   , 'r0_8x8_median', 'r0_8x8_max'] $
+                   , fieldlocations : [0L, 2L, 13L, 22L, 30L, 39L, 48L, 57L $
+                                       , 68L, 77L, 86L, 95L] $
+                   , fieldgroups : lindgen(12) $
+                 }
+
+
+
 
   if keyword_set(plot24) $
      or keyword_set(plot8) $
@@ -560,45 +595,13 @@ pro red_plot_r0, dir = dir $
   endif                         ; plot24 or plot8
 
   if keyword_set(scan24) or keyword_set(scan8) then begin
-
-
-     ;; Templates for reading information about the scans:
-     r0scantemplate = { version : 1.0 $
-                        , datastart : 0L $
-                        , delimiter : 32B $
-                        , missingvalue : !Values.F_NaN $
-                        , commentsymbol : '#' $
-                        , fieldcount : 3L $
-                        , fieldtypes : [4L, 4L, 4L] $
-                        , fieldnames : ['time', 'r0_24x24', 'r0_8x8'] $
-                        , fieldlocations : [7L, 21L,  33L] $
-                        , fieldgroups : lindgen(3) $
-                      }
-
-     ;; Need new template with text filter name
-     scantemplate = { version : 1.0 $
-                      , datastart : 0L $
-                      , delimiter : 32B $
-                      , missingvalue : !Values.F_NaN $
-                      , commentsymbol : '#' $
-                      , fieldcount : 12L $
-                      , fieldtypes : [3L, 7L, replicate(4L, 10)] $
-                      , fieldnames : ['scanno', 'prefilter', 'tstart', 'tstop' $
-                                      , 'r0_24x24_min', 'r0_24x24_mean' $
-                                      , 'r0_24x24_median', 'r0_24x24_max' $
-                                      , 'r0_8x8_min', 'r0_8x8_mean' $
-                                      , 'r0_8x8_median', 'r0_8x8_max'] $
-                      , fieldlocations : [0L, 2L, 13L, 22L, 30L, 39L, 48L, 57L $
-                                          , 68L, 77L, 86L, 95L] $
-                      , fieldgroups : lindgen(12) $
-                    }
+     
+     ;; Plot r0 for all scans.
      
      cgwindow
 
-     print,'Plot r0 for CRISP and/or CHROMIS scans.'
+     print,'red_plot_r0 : Plot r0 for CRISP and/or CHROMIS scans.'
      
-     
-
      scanfiles = file_search(analysis_dir+'/*/*/*-scans.txt', count = Nscanfiles)
 
      ;; We could filter the results to get only plots for the wanted instrument
@@ -735,4 +738,81 @@ pro red_plot_r0, dir = dir $
 
   endif                         ; plotscans
   
+  
+  if keyword_set(plotstats) then begin
+     ;; Now plot for each timedir only the r0 statistics vs scan
+     ;; number. 
+
+     cgwindow
+
+     print,'red_plot_r0 : Plot r0 statistics vs scan number.'
+
+     scanfiles = file_search(analysis_dir+'/*/*/*-scans.txt', count = Nscanfiles)
+
+     ;; We could filter the results to get only plots for the wanted instrument
+     
+
+     
+     for iscanfile = 0, Nscanfiles-1 do begin
+
+        print,strtrim(iscanfile,2)+'/'+strtrim(Nscanfiles,2)
+        
+        print, scanfiles[iscanfile]
+        
+        instrument = file_basename(scanfiles[iscanfile],'-scans.txt')
+        timedir = file_dirname(scanfiles[iscanfile])
+        
+        scaninfo = read_ascii(scanfiles[iscanfile], template = scantemplate)
+
+        upref = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
+        Npref = n_elements(upref)
+        print, upref
+        
+        for ipref = 0, Npref-1 do begin
+
+           pindx = where(scaninfo.prefilter eq upref[ipref], Ns)
+
+           cgcontrol, /delete, /all
+           title = instrument + ' ' + upref[ipref] + ' ' + isodate + ' ' + file_basename(timedir)
+           cgwindow, /add, 'cgplot', /nodata, [0], [0] $
+                     , ticklen = -!p.ticklen $
+                     , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
+                     , yrange = [0, r0max] $
+                     , xtitle = 'scan #', ytitle = 'r$\sub0$ / 1 m' $
+                     , title = title
+
+           statscolors = ['red', 'green', 'magenta', 'blue']
+           statslines = [0, 1]
+           
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_min[pindx] $
+                     , linestyle = statslines[0], color = statscolors[3]
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_max[pindx] $
+                     , linestyle = statslines[0], color = statscolors[0]
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_mean[pindx] $
+                     , linestyle = statslines[0], color = statscolors[1]
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_median[pindx] $
+                     , linestyle = statslines[0], color = statscolors[2]
+           
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_min[pindx] $
+                     , linestyle = statslines[1], color = statscolors[3]
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_max[pindx] $
+                     , linestyle = statslines[1], color = statscolors[0]
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_mean[pindx] $
+                     , linestyle = statslines[1], color = statscolors[1]
+           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_median[pindx] $
+                     , linestyle = statslines[1], color = statscolors[2]
+           
+           cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
+                     , title = ['max', 'mean', 'median', 'min'], colors = statscolors
+
+           pname = 'dir-analysis/' + 'r0stats_'+ upref[ipref] + '_' + isodate + '_' $
+                   + (strsplit(timedir,'/',/extr,count=Nsplit))[Nsplit-1] $
+                   + '.pdf'
+           cgcontrol, output = pname
+
+        endfor                  ; ipref
+     endfor                     ; iscanfile
+
+  endif
+
 end

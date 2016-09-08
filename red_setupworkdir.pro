@@ -361,8 +361,10 @@ pro red_setupworkdir, search_dir = search_dir $
      ;; Analyze directories and produce r0 plots (optional)
      printf, Slun
      printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
-     printf, Slun, '; red_plot_r0, /plot8, /mark ; red_plot_r0 requires analyze_directories to have been run.'
-     printf, Slun, '; red_plot_r0, /scan8 '
+     printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
+     printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
+     printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
+     printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
      
 
      print, 'Cameras'
