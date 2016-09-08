@@ -33,6 +33,8 @@
 ; :History:
 ; 
 ;     2016-09-06 : MGL. First version, based on parts of red_plot_r0.
+; 
+;     2016-09-07 : MGL. Speed up. Remove unused code.
 ;
 ; 
 ;-
@@ -53,8 +55,6 @@ pro red::analyze_directories, force = force
 
   timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
   dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
-
-
 
   print, inam + ' : Finding the timestamp directories.' 
   timedirs = red_find_matching_dirs(timeregex, rootdir = root_dir, count = Ntd)
@@ -88,27 +88,32 @@ pro red::analyze_directories, force = force
 
            cdir = cdirs[cindx[0]]
            
-           ;; Use spawn rather than file_search in case there are a huge
-           ;; number of files in the directory.
-           spawn, 'cd '+tdir[0]+'/'+cdir+' ; ls -rt ', fnames
-           Nf = n_elements(fnames)
+           fnames = file_search(tdir[0]+'/'+cdir+'/*cam*', count = Nf)
+           ;; Use spawn rather than file_search in case there are a
+           ;; huge number of files in the directory. May be necessary
+           ;; for single-frame-per-file CRISP data? Maybe ask the OS
+           ;; how many files there are before listing them? Use find
+           ;; rather than ls?
+;           spawn, 'cd '+tdir[0]+'/'+cdir+' ; ls ', fnames
+;           Nf = n_elements(fnames)
 
            if Nf gt 0 then begin
               
               print, inam + ' : Analyzing ' + timedirs[idir] + ' with '+strtrim(Nf, 2) + ' files.'
 
-              fnames = red_sortfiles(tdir[0]+'/'+cdir+'/'+fnames)
+              ;; If we got the fnames from file_search, they should
+              ;; already be lexically sorted. This is what we need for
+              ;; CHROMIS data. But not for CRISP?
+;              fnames = red_sortfiles(tdir[0]+'/'+cdir+'/'+fnames)
 
-              head_start = red_readhead(tdir[0]+'/'+cdir+'/'+file_basename(fnames[0]))
-              head_stop  = red_readhead(tdir[0]+'/'+cdir+'/'+file_basename(fnames[Nf-1]))
+              head_start = red_readhead(tdir[0]+'/'+cdir+'/'+file_basename(fnames[ 0]))
+              head_stop  = red_readhead(tdir[0]+'/'+cdir+'/'+file_basename(fnames[-1]))
 
-              ;; Start time
+              ;; Start and stop time defines the interval
               tstart = red_time2double((strsplit(fxpar(head_start, 'DATE-BEG') $
                                                  ,'T',/extract))[1])
-              ;; Stop time
               tstop  = red_time2double((strsplit(fxpar(head_stop,  'DATE-END') $
                                                  ,'T',/extract))[1])
-
               tinterval = [tstart, tstop]/3600.
 
               file_mkdir, analysis_dir+timedirs[idir]
@@ -122,7 +127,7 @@ pro red::analyze_directories, force = force
      endif                      ; Actually do it?
   endfor                        ; idir
 
-
+  ;; Now generate r0 statistics for the scans.
   print, inam + ' : Analyzing the science data.'
   red_logdata, isodate, r0time, r0 = r0data ; Need the r0 sample times
 
@@ -173,10 +178,6 @@ pro red::analyze_directories, force = force
               indx = sort(states.framenumber)
               fnames = fnames[indx]
               states = states[indx]
-;              filenos = filenos[indx]
-;              scannos = scannos[indx]
-;              fnames = fnames[indx]
-;              prefilts = prefilts[indx]
               
               ;; How many different prefilters were used?
               upref = (states[uniq(states.prefilter, sort(states.prefilter))]).prefilter
@@ -193,26 +194,11 @@ pro red::analyze_directories, force = force
                     
                     scanindx = where(states.scannumber eq iscan and states.prefilter eq upref[ipref], Nscan)
 
-                    ;; Scan start time
-                    head_start = red_readhead(fnames[scanindx[0]])   
-;                    istart = strpos(head, 'Ts=')
-;                    istop = strpos(head, 'Te=')
-;                    len = istop - istart
-;                    tstart = total(double(strsplit((strsplit(strmid(head, istart, len), ' ', /extr))[1] $
-;                                                   , ':', /extr)) * [3600.,60., 1.])
-;
-;                    ;; Start time
+                    ;; Scan start and stop times
+                    head_start = red_readhead(fnames[scanindx[ 0]])   
+                    head_stop  = red_readhead(fnames[scanindx[-1]])   
                     tstart = red_time2double((strsplit(fxpar(head_start, 'DATE-BEG') $
                                                        ,'T',/extract))[1])
-                    
-                    ;; Scan stop time
-                    head_stop = red_readhead(fnames[scanindx[-1]])   
-;                    istart = strpos(head, 'Ts=')
-;                    istop = strpos(head, 'Te=')
-;                    len = istop - istart
-;                    tstop = total(double(strsplit((strsplit(strmid(head, istart, len), ' ', /extr))[1] $
-;                                                  , ':', /extr)) * [3600.,60., 1.])
-;                    ;; Stop time
                     tstop  = red_time2double((strsplit(fxpar(head_stop,  'DATE-END') $
                                                        ,'T',/extract))[1])
 
