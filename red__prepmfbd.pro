@@ -51,6 +51,10 @@
 ;   
 ;   
 ;    skip  :  in, optional, 
+;    
+;    scannums : in, optional, type=array
+;   
+;        Specify which scans to prep. 
 ;   
 ;   
 ;    pref : in, optional
@@ -124,7 +128,9 @@
 ;   2016-09-01 : MGL. Make it work in terms of state rather than
 ;                prefilter. 
 ;
-;   2016-09-07 : MGL. New keyword nostate.
+;   2016-09-07 : MGL. New keyword nostate. 
+;
+;   2016-09-08 : MGL. New keyword scannums.
 ;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
@@ -138,7 +144,8 @@ pro red::prepmfbd, numpoints = numpoints, $
                    nimages = nimages, $
                    mfbddir = mfbddir, $
                    camera = camera, $
-                   nostate = nostate
+                   nostate = nostate, $
+                   scannums = scannums
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -229,6 +236,16 @@ pro red::prepmfbd, numpoints = numpoints, $
      
      ;; Get image unique states
      self -> extractstates, files, states
+
+     ;; Optionally remove unwanted scans
+     if n_elements(scannums) ne 0 then begin
+        match2, scannums, states.scannumber, suba, subb
+        indx = where(subb ne -1)
+        files = files[indx]
+        states = states[indx]
+        Nfiles = n_elements(indx)
+     endif
+
 
      ;; Get unique prefilters
      upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
