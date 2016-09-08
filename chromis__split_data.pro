@@ -65,6 +65,8 @@
 ;
 ;   2016-09-05 : MGL. New keyword scannums.
 ;
+;   2016-09-08 : MGL. Speed up.
+;
 ;-
 pro chromis::split_data, split_dir = split_dir $
                          , uscan = uscan $
@@ -136,9 +138,6 @@ pro chromis::split_data, split_dir = split_dir $
            continue
         endif
 
-        ;; Sort files by image number
-        files = red_sortfiles(files)
-    
         ;; Get states
         self->extractstates, files, states
 
