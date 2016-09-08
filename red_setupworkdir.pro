@@ -189,6 +189,9 @@
 ;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                 so the names match those of the corresponding SolarNet
 ;                 keywords.
+; 
+;     2016-09-08 : MGL. Add analyze_directories and red_plot_r0 to the
+;                  script file, but commented out.
 ;
 ;
 ;-
@@ -352,7 +355,15 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun, '# --- Download SST log files'
      printf, Clun, '#'
+     printf, Slun
      printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
+
+     ;; Analyze directories and produce r0 plots (optional)
+     printf, Slun
+     printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
+     printf, Slun, '; red_plot_r0, /plot8, /mark ; red_plot_r0 requires analyze_directories to have been run.'
+     printf, Slun, '; red_plot_r0, /scan8 '
+     
 
      print, 'Cameras'
      printf, Clun, '#'
@@ -381,6 +392,7 @@ pro red_setupworkdir, search_dir = search_dir $
      if Nsubdirs gt 0 then begin
         darkdirs = file_dirname(darksubdirs)
         darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
+        printf, Slun
         for idir = 0, n_elements(darkdirs)-1 do begin
            printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
            printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
@@ -405,6 +417,7 @@ pro red_setupworkdir, search_dir = search_dir $
 
         ;; Loop over the flatdirs, write each to the config file and
         ;; to the script file
+        printf, Slun
         for idir = 0, Nflatdirs-1 do begin
 
            ;; Config file
@@ -461,6 +474,7 @@ pro red_setupworkdir, search_dir = search_dir $
      for i = 0, Ndirs-1 do begin
         pinhsubdirs = file_search(pinhdirs[i]+'/chromis*', count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
+           printf, Slun
            printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
            printf, Slun, 'a -> setpinhdir, root_dir+"' $
                    + red_strreplace(pinhdirs[i], root_dir, '')+'"'
@@ -470,6 +484,7 @@ pro red_setupworkdir, search_dir = search_dir $
            endfor
         endif else begin
            pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
+           printf, Slun
            for j = 0, Nsubdirs-1 do begin
               pinhsubsubdirs = file_search(pinhsubdirs[j]+'/chromis*' $
                                            , count = Nsubsubdirs, /fold)
