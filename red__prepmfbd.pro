@@ -130,7 +130,10 @@
 ;
 ;   2016-09-07 : MGL. New keyword nostate. 
 ;
-;   2016-09-08 : MGL. New keyword scannums.
+;   2016-09-08 : MGL. New keyword scannums. 
+;
+;   2016-09-09 : MGL. Allow scannums to be a range string. Added date
+;                and time to filename_tempate.
 ;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
@@ -239,7 +242,9 @@ pro red::prepmfbd, numpoints = numpoints, $
 
      ;; Optionally remove unwanted scans
      if n_elements(scannums) ne 0 then begin
-        match2, scannums, states.scannumber, suba, subb
+        if size(scannums, /tname) eq 'STRING' then $
+           scann = red_expandrange(scannums) else scann = scannums
+        match2, scann, states.scannumber, suba, subb
         indx = where(subb ne -1)
         files = files[indx]
         states = states[indx]
@@ -338,11 +343,12 @@ pro red::prepmfbd, numpoints = numpoints, $
               if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
                  and keyword_set(nostate)  then begin
                  ;; Wideband, no state
-                 template = detector + '_' + scan + '_' + upref[ipref] + '_%07d.fits'
+                 template = detector + '_' + date_obs+'T'+folder_tag + '_' + scan + '_' $
+                            + upref[ipref] + '_%07d.fits'
               endif else begin
                  ;; With state
-                 template = detector + '_' + scan + '_' + states[numpos[0]].fullstate $
-                            + '_%07d.fits'
+                 template = detector + '_' + date_obs+'T'+folder_tag + '_' + scan + '_' $
+                            + states[numpos[0]].fullstate + '_%07d.fits'
               endelse
               printf, lun, '    FILENAME_TEMPLATE=' + template
               printf, lun, '    GAIN_FILE=' + gainname
