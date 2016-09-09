@@ -67,7 +67,10 @@
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
 ;                Add rudimentary handling of tabulated DATE-BEG.       
 ;
-;   2016-09-01 : MGL. Change FRAME1 to FRAMENUM if needed.
+;   2016-09-01 : MGL. Change FRAME1 to FRAMENUM if needed.       
+;
+;   2016-09-08 : MGL. Allow for headers without prefilter info (like
+;                darks). 
 ;
 ;
 ;-
@@ -213,6 +216,7 @@ function red_readhead, fname, $
                                 'wheel00004' : prefilter = 'CaH-red'
                                 'wheel00005' : prefilter = 'CaH-cont'
                                 'wheel00006' : prefilter = 'Hb-core'
+                                else :
                              endcase
                           endif else begin
                              ;; Chromis-W and Chromis-D
@@ -221,7 +225,10 @@ function red_readhead, fname, $
                                 else: prefilter = 'CaHK-cont'
                              endcase
                           endelse
-                          fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from state keyword'
+                          if n_elements(prefilter) gt 0 then begin
+                             ;; Not defined for darks
+                             fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from state keyword'
+                          endif
                        endif
                    endif else begin
                       case state of
