@@ -179,6 +179,9 @@
 ;                  statistics vs scan number. Remove unused keywords
 ;                  crispscans and chromisscans.
 ;
+;     2016-09-12 : MGL. Plotstats plots: add a time axis on top, shade
+;                  between min and max. 
+;
 ;-
 pro red_plot_r0, dir = dir $
                  , today = today $
@@ -774,36 +777,60 @@ pro red_plot_r0, dir = dir $
 
            cgcontrol, /delete, /all
            title = instrument + ' ' + upref[ipref] + ' ' + isodate + ' ' + file_basename(timedir)
+ 
            cgwindow, /add, 'cgplot', /nodata, [0], [0] $
-                     , ticklen = -!p.ticklen $
                      , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
                      , yrange = [0, r0max] $
                      , xtitle = 'scan #', ytitle = 'r$\sub0$ / 1 m' $
-                     , title = title
+                     ;, title = title $
+                     , xstyle = 8 
 
-           statscolors = ['red', 'green', 'magenta', 'blue']
+           ;; Add a time axis on top
+           tmin = min(scaninfo.tstart)
+           tmax = max(scaninfo.tstop) 
+           L = red_gen_timeaxis([tmin, tmax]*3600.)
+
+           cgwindow, /add, 'cgaxis', xaxis = 1 $; , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
+                     ;, xtitle = 'scan #' $
+                     , /xstyle $
+                     , xrange = [tmin, tmax]*3600. $
+                     , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+
+           cgtext, mean(!x.crange), !y.crange[1]*.03, title, /data, align = 0.5,/add
+
+           statscolors = ['green', 'red', 'blue', 'cyan']
            statslines = [0, 1]
-           
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_min[pindx] $
-                     , linestyle = statslines[0], color = statscolors[3]
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_max[pindx] $
-                     , linestyle = statslines[0], color = statscolors[0]
+
+           xpoly = scaninfo.scanno[[pindx, reverse(pindx), 0]]
+           ypoly = [scaninfo.r0_24x24_min[pindx], scaninfo.r0_24x24_max[reverse(pindx)], scaninfo.r0_24x24_min[0]]
+           cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Light Gray'
+
+           xpoly = scaninfo.scanno[[pindx, reverse(pindx), 0]]
+           ypoly = [scaninfo.r0_8x8_min[pindx], scaninfo.r0_8x8_max[reverse(pindx)], scaninfo.r0_8x8_min[0]]
+           cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Pale Goldenrod'
+
+;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_min[pindx] $
+;                     , linestyle = statslines[0], color = statscolors[3]
+;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_max[pindx] $
+;                     , linestyle = statslines[0], color = statscolors[0]
            cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_mean[pindx] $
                      , linestyle = statslines[0], color = statscolors[1]
            cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_median[pindx] $
                      , linestyle = statslines[0], color = statscolors[2]
            
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_min[pindx] $
-                     , linestyle = statslines[1], color = statscolors[3]
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_max[pindx] $
-                     , linestyle = statslines[1], color = statscolors[0]
+;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_min[pindx] $
+;                     , linestyle = statslines[1], color = statscolors[3]
+;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_max[pindx] $
+;                     , linestyle = statslines[1], color = statscolors[0]
            cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_mean[pindx] $
                      , linestyle = statslines[1], color = statscolors[1]
            cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_median[pindx] $
                      , linestyle = statslines[1], color = statscolors[2]
-           
+
+;           cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
+;                     , title = ['max', 'mean', 'median', 'min'], colors = statscolors
            cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
-                     , title = ['max', 'mean', 'median', 'min'], colors = statscolors
+                     , title = ['mean', 'median'], colors = statscolors[[1, 2]]
 
            pname = 'dir-analysis/' + 'r0stats_'+ upref[ipref] + '_' + isodate + '_' $
                    + (strsplit(timedir,'/',/extr,count=Nsplit))[Nsplit-1] $
