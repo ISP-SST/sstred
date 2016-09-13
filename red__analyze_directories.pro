@@ -35,6 +35,8 @@
 ;     2016-09-06 : MGL. First version, based on parts of red_plot_r0.
 ; 
 ;     2016-09-07 : MGL. Speed up. Remove unused code.
+; 
+;     2016-09-13 : MGL. Check for empty data directories.
 ;
 ; 
 ;-
@@ -45,6 +47,7 @@ pro red::analyze_directories, force = force
 
   ;; Logging
   help, /obj, self, output = selfinfo 
+
   red_writelog, selfinfo = selfinfo
 
 
@@ -169,74 +172,78 @@ pro red::analyze_directories, force = force
               
               fnames = file_search(root_dir+timedirs[idir]+cdir + '/*cam*', count = Nfile)
               
-              ;; Write the scanfile
-              openw, flun, /get_lun, scanfile
-              
-              self -> extractstates, fnames, states
+              if Nfile gt 0 then begin
+
+                 ;; Write the scanfile
+                 openw, flun, /get_lun, scanfile
+                 
+                 self -> extractstates, fnames, states
 ;nums = filenos, scan = scannos, pref = prefilts
-              
-              indx = sort(states.framenumber)
-              fnames = fnames[indx]
-              states = states[indx]
-              
-              ;; How many different prefilters were used?
-              upref = (states[uniq(states.prefilter, sort(states.prefilter))]).prefilter
-              print, inam + 'WB prefilters: ' + strjoin(upref, ', ') + '.'
-              Npref = n_elements(upref)
-              
-              ;; How many scans (of each kind)?
-              Nscans = max(states.scannumber)+1
-              
-              for iscan = 0L, Nscans-1 do begin
-                 for ipref = 0L, Npref-1 do begin
-                    
-                    print, iscan, Nscans, ipref, Npref, format = '(i0, "/",i0, " ",i0, "/",i0)'
-                    
-                    scanindx = where(states.scannumber eq iscan and states.prefilter eq upref[ipref], Nscan)
-
-                    ;; Scan start and stop times
-                    head_start = red_readhead(fnames[scanindx[ 0]])   
-                    head_stop  = red_readhead(fnames[scanindx[-1]])   
-                    tstart = red_time2double((strsplit(fxpar(head_start, 'DATE-BEG') $
-                                                       ,'T',/extract))[1])
-                    tstop  = red_time2double((strsplit(fxpar(head_stop,  'DATE-END') $
-                                                       ,'T',/extract))[1])
-
-                    print, iscan, upref[ipref]
-                    print, fnames[scanindx[0]]
-                    print, fnames[scanindx[-1]]
-                    print, tstart, tstop
-                    
-                    r0indx = where(r0time gt tstart and r0time le tstop, Nr0scan)
-                    
-                    if Nr0scan gt 0 then begin
-                       r0string = string(min(r0data[0, r0indx]), mean(r0data[0, r0indx]) $
-                                         , median(r0data[0, r0indx]), max(r0data[0, r0indx]) $
-                                         , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
-                       if (size(r0data, /dim) )[0] eq 2 then begin
-                          r0string += "   " + string(min(r0data[1, r0indx]), mean(r0data[1, r0indx]) $
-                                                     , median(r0data[1, r0indx]), max(r0data[1, r0indx]) $
-                                                     , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
-                       endif
-
+                 
+                 indx = sort(states.framenumber)
+                 fnames = fnames[indx]
+                 states = states[indx]
+                 
+                 ;; How many different prefilters were used?
+                 upref = (states[uniq(states.prefilter, sort(states.prefilter))]).prefilter
+                 print, inam + 'WB prefilters: ' + strjoin(upref, ', ') + '.'
+                 Npref = n_elements(upref)
+                 
+                 ;; How many scans (of each kind)?
+                 Nscans = max(states.scannumber)+1
+                 
+                 for iscan = 0L, Nscans-1 do begin
+                    for ipref = 0L, Npref-1 do begin
                        
-                       r0scanfile = analysis_dir + red_strreplace(timedirs[idir], root_dir, '') $
-                                    + '/r0data_scan' + strtrim(iscan, 2) + '_pre' + upref[ipref] $
-                                    + '.txt'
-                       openw, rlun, /get_lun, r0scanfile
-                       for iii = 0, Nr0scan-1 do printf, rlun, r0time[r0indx[iii]], r0data[*, r0indx[iii]]
-                       free_lun, rlun
+                       print, iscan, Nscans, ipref, Npref, format = '(i0, "/",i0, " ",i0, "/",i0)'
+                       
+                       scanindx = where(states.scannumber eq iscan and states.prefilter eq upref[ipref], Nscan)
 
-                    endif else r0string = ''
-                    
-                    printf, flun, string(iscan, upref[ipref], tstart/3600., tstop/3600. $
-                                         , format = '(i0, " ", a0, " ", f8.5," ", f8.5)') + r0string
-                    
-                    
-                 endfor         ; ipref
-              endfor            ; iscan
-              
-              free_lun, flun
+                       ;; Scan start and stop times
+                       head_start = red_readhead(fnames[scanindx[ 0]])   
+                       head_stop  = red_readhead(fnames[scanindx[-1]])   
+                       tstart = red_time2double((strsplit(fxpar(head_start, 'DATE-BEG') $
+                                                          ,'T',/extract))[1])
+                       tstop  = red_time2double((strsplit(fxpar(head_stop,  'DATE-END') $
+                                                          ,'T',/extract))[1])
+
+                       print, iscan, upref[ipref]
+                       print, fnames[scanindx[0]]
+                       print, fnames[scanindx[-1]]
+                       print, tstart, tstop
+                       
+                       r0indx = where(r0time gt tstart and r0time le tstop, Nr0scan)
+                       
+                       if Nr0scan gt 0 then begin
+                          r0string = string(min(r0data[0, r0indx]), mean(r0data[0, r0indx]) $
+                                            , median(r0data[0, r0indx]), max(r0data[0, r0indx]) $
+                                            , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
+                          if (size(r0data, /dim) )[0] eq 2 then begin
+                             r0string += "   " + string(min(r0data[1, r0indx]), mean(r0data[1, r0indx]) $
+                                                        , median(r0data[1, r0indx]), max(r0data[1, r0indx]) $
+                                                        , format = '(f8.5, " ", f8.5, " ", f8.5, " ", f8.5)')
+                          endif
+
+                          
+                          r0scanfile = analysis_dir + red_strreplace(timedirs[idir], root_dir, '') $
+                                       + '/r0data_scan' + strtrim(iscan, 2) + '_pre' + upref[ipref] $
+                                       + '.txt'
+                          openw, rlun, /get_lun, r0scanfile
+                          for iii = 0, Nr0scan-1 do printf, rlun, r0time[r0indx[iii]], r0data[*, r0indx[iii]]
+                          free_lun, rlun
+
+                       endif else r0string = ''
+                       
+                       printf, flun, string(iscan, upref[ipref], tstart/3600., tstop/3600. $
+                                            , format = '(i0, " ", a0, " ", f8.5," ", f8.5)') + r0string
+                       
+                       
+                    endfor      ; ipref
+                 endfor         ; iscan
+
+                 free_lun, flun
+
+              endif             ; Any files?                 
               
            endif                ; Actually do it?
         endif                   ; Nw
