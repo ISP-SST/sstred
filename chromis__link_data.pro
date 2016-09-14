@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Make links to raw data in the form that is required for momfbd
+; processing.
 ; 
 ; :Categories:
 ;
@@ -53,6 +54,9 @@
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+;
+;   2016-09-14 : MGL. Modify regex for finding files. Bugfix. Make
+;                link script executable.
 ;   
 ;-
 pro chromis::link_data, link_dir = link_dir $
@@ -118,7 +122,7 @@ pro chromis::link_data, link_dir = link_dir $
            else: stop
         endcase
 
-        files = file_search(data_dir + '/' + cam + '/cam*', count = Nfiles)
+        files = file_search(data_dir + '/' + cam + '/*cam*', count = Nfiles)
         
         if(files[0] eq '') then begin
            print, inam+' : ERROR : '+cam+': no files found in: '+$
@@ -146,7 +150,7 @@ pro chromis::link_data, link_dir = link_dir $
 
         ;;; check for complete scans only
         IF ~keyword_set(all_data) THEN BEGIN
-           scans = states.scannumber[uniq(states.scannumber, sort(states.scannumber))]
+           scans = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
 
            Nscans = n_elements(scans)
            f_scan = lonarr(Nscans)
@@ -155,8 +159,8 @@ pro chromis::link_data, link_dir = link_dir $
            mask = replicate(1b, Nfiles)
            FOR iscan = 1L, Nscans-1 DO BEGIN
               IF f_scan[iscan]-f_scan[0] LT 0 THEN BEGIN
-                 print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans[iscan]
-                 print, inam+'             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
+                 print, inam + ' : WARNING : ' + cam + ': Incomplete scan nr ' + strtrim(scans[iscan], 2)
+                 print, inam + '             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
                         + strtrim(f_scan(0), 2) + ' files.  Skipping it'
                  mask[where(states.scannumber EQ scans[iscan])] = 0
               ENDIF
@@ -215,7 +219,8 @@ pro chromis::link_data, link_dir = link_dir $
          
         ;; Link data
         print, inam+' : executing '+  linkername
-;        spawn, '/bin/bash ' + linkername
+        spawn, 'chmod a+x ' + linkername
+        spawn, '/bin/bash ' + linkername
         
      endfor                     ; icam
   endfor                        ; idir
