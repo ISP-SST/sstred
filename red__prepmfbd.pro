@@ -133,7 +133,13 @@
 ;   2016-09-08 : MGL. New keyword scannums. 
 ;
 ;   2016-09-09 : MGL. Allow scannums to be a range string. Added date
-;                and time to filename_tempate.
+;                and time to filename_template. 
+;
+;   2016-09-13 : MGL. Print out a list of missing darks and gains (if
+;                any) at the end.
+;
+;   2016-09-14 : MGL. Removed date and time from filename_template,
+;                added to oname instead.
 ;
 ;-
 pro red::prepmfbd, numpoints = numpoints, $
@@ -315,7 +321,8 @@ pro red::prepmfbd, numpoints = numpoints, $
                  nall = strjoin([n0,n1],'-')
                  print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
                         + scan + ' -> image range = [' + nall + ']'
-                 oname = detector + '_' + scan + '_' + ustate[istate]
+                 oname = detector + '_' + date_obs+'T'+folder_tag $
+                         + '_' + scan + '_' + ustate[istate]
              endif else begin
                  subscan = red_stri(isub, ni = '(i03)')
                  cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + ':' $
@@ -326,7 +333,8 @@ pro red::prepmfbd, numpoints = numpoints, $
                  nall = strjoin([n0,n1],'-')                 
                  print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
                         + scan + ':' + subscan + ' -> image range = [' + nall + ']'
-                 oname = detector + '_' + scan + ':' + subscan + '_' + ustate[istate]
+                 oname = detector + '_' + date_obs+'T'+folder_tag $
+                         + '_' + scan + ':' + subscan + '_' + ustate[istate]
               endelse
 
               ;; Open config file for writing
@@ -334,6 +342,10 @@ pro red::prepmfbd, numpoints = numpoints, $
 
               self -> get_calib, states[numpos[0]], darkname = darkname, gainname = gainname
               caminfo = red_camerainfo(detector)
+
+              ;; Do the dark and gain files exist?
+              if ~file_test(darkname) then red_append, missingfiles, file_basename(darkname), /ifnotthere
+              if ~file_test(gainname) then red_append, missingfiles, file_basename(gainname), /ifnotthere
               
               printf, lun, 'object{'
               printf, lun, '  WAVELENGTH=' + strtrim(states[0].pf_wavelength, 2)
@@ -343,11 +355,11 @@ pro red::prepmfbd, numpoints = numpoints, $
               if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
                  and keyword_set(nostate)  then begin
                  ;; Wideband, no state
-                 template = detector + '_' + date_obs+'T'+folder_tag + '_' + scan + '_' $
+                 template = detector + '_' + scan + '_' $
                             + upref[ipref] + '_%07d.fits'
               endif else begin
                  ;; With state
-                 template = detector + '_' + date_obs+'T'+folder_tag + '_' + scan + '_' $
+                 template = detector + '_' + scan + '_' $
                             + states[numpos[0]].fullstate + '_%07d.fits'
               endelse
               printf, lun, '    FILENAME_TEMPLATE=' + template
@@ -407,5 +419,11 @@ pro red::prepmfbd, numpoints = numpoints, $
   endfor                        ; idir
 
   print, inam+' : done!'
+
+  if n_elements(missingfiles) gt 0 then begin
+     print, 'Missing files: '
+     print, missingfiles, format = '(a0)'
+  endif
+
   return
 end
