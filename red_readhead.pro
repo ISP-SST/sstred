@@ -75,7 +75,9 @@
 ;   2016-09-15 : MGL. Fix bug in construction of DATE-END from table.
 ;                Fix bug in removal of empty lines. Also construct
 ;                DATE-AVE. Construct DATE-BEG, DATE-END, and DATE-AVE
-;                only if they do not already exist.
+;                only if they do not already exist. ANA files: get
+;                dimensions and data type from the first 256 bytes of
+;                the file.
 ;
 ;
 ;-
@@ -131,9 +133,31 @@ function red_readhead, fname, $
                   posw = strpos(anaheader, ' W=')
                   posh = strpos(anaheader, ' H=')
                   if posw eq -1 or posh eq -1 then begin
-                     ;;Get it from the data instead.
-                     fzread, data, fname
-                     header = red_anahdr2fits(anaheader, img = data)
+                     ;; Get info from the file
+                     openr, llun, fname, /get_lun
+                     ;; Read the first few bytes to get data type and
+                     ;; number of dimensions:
+                     ah = bytarr(192) 
+                     readu, llun, ah
+                     case ah[7] of
+                        0: dtyp = 1    ; ANA_BYTE
+                        1: dtyp = 2    ; ANA_WORD
+                        2: dtyp = 3    ; ANA_LONG
+                        3: dtyp = 4    ; ANA_FLOAT
+                        4: dtyp = 5    ; ANA_DOUBLE
+                        else: dtyp = 2 ; default?
+                     endcase
+                     ;; Read bytes 192-255 as longs to get the
+                     ;; dimensions
+                     bh = lonarr(16)
+                     readu, llun, bh
+                     naxisx = bh[0:ah[8]-1]
+                     ;; Close the file
+                     free_lun, llun
+                     ;; Now construct the header:
+;                     ;;Get it from the data instead.
+;                     fzread, data, fname
+                     header = red_anahdr2fits(anaheader, datatype = dtyp, naxisx = naxisx)
                   endif else begin
                      ;; Convert ana header to fits header
                      header = red_anahdr2fits(anaheader)
