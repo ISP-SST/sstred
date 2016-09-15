@@ -70,7 +70,10 @@
 ;   2016-09-01 : MGL. Change FRAME1 to FRAMENUM if needed.       
 ;
 ;   2016-09-08 : MGL. Allow for headers without prefilter info (like
-;                darks). 
+;                darks).        
+;
+;   2016-09-15 : MGL. Fix bug in construction of DATE-END from table.
+;                Fix bug in removal of empty lines.
 ;
 ;
 ;-
@@ -168,13 +171,12 @@ function red_readhead, fname, $
                   
                   date_end_split = strsplit(date_beg[-1], 'T', /extract)
                   date_end_split[1] = red_time2double(red_time2double(date_end_split[1]) $
-                                                      + sxpar(header, 'NAXIS3')*sxpar(header, 'CADENCE') $
                                                       + sxpar(header, 'XPOSURE') $
                                                       , /inv)
                   date_end = strjoin(date_end_split, 'T')
                   
                   fxaddpar, header, 'DATE-END', date_end $
-                            , 'Last in table + NAXIS3*CADENCE + XPOSURE.' $
+                            , 'Last in table + XPOSURE.' $
                             , after = 'DATE-BEG'
 
                endif
@@ -268,8 +270,6 @@ function red_readhead, fname, $
     endif
 
 
-    header = header[where(header ne replicate(' ',80))] ; Remove blank lines
-
     header = red_meta2head(header, meta={filename:fname})
     
     if keyword_set(structheader) then begin
@@ -277,6 +277,8 @@ function red_readhead, fname, $
     endif
 
     status = 0
+
+    header = header[where(header ne string(replicate(32B,80)))] ; Remove blank lines
 
     return, header
 
