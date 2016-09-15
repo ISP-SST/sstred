@@ -42,6 +42,10 @@
 ;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                 so the names match those of the corresponding SolarNet
 ;                 keywords.
+;
+;    2016-09-15 : MGL. If there is a properly formatted
+;                 date+'T'+timestamp in the file name, interpret it as
+;                 the date-obs.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -231,12 +235,30 @@ function red_meta2head, head, metadata=metaStruct
         endif
      endif 
 
-     ;; The scan number is the only field that is exactly five
-     ;; digits long:
-     scannumber = ((stregex(barefile, '(_|\.|^)([0-9]{5})(_|\.|$)', /extr, /subexp))[2,*])[0]
-     if scannumber ne '' then sxaddpar, newhead, red_keytab('scannumber'), long(scannumber) $
-                                        , '(scan number) Inferred from filename.' $
-                                        , before = 'COMMENT'
+     scannumber = fxpar(head, red_keytab('scannumber'), count = count)
+     if count eq 0 then begin
+        ;; The scan number is the only field that is exactly five
+        ;; digits long:
+        scannumber = ((stregex(barefile, '(_|\.|^)([0-9]{5})(_|\.|$)', /extr, /subexp))[2,*])[0]
+        if scannumber ne '' then sxaddpar, newhead, red_keytab('scannumber'), long(scannumber) $
+                                           , '(scan number) Inferred from filename.' $
+                                           , before = 'COMMENT'
+     endif
+
+     date_obs = fxpar(head, 'DATE-OBS', count = count)
+     if count eq 0 then begin
+        ;; If there is a properly formatted date+'T'+timestamp in the
+        ;; file name, it should be the date-obs. I.e., corresponding
+        ;; to the timestamp of the data collection directory.
+        timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
+        dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
+        date_obs = stregex(barefile, dateregex+'T'+timeregex, /extract) 
+        if date_obs ne '' then sxaddpar, newhead $
+                                         , 'DATE-OBS', date_obs $
+                                         , 'Inferred from filename.' $
+                                         , after = 'DATE'
+     endif
+
 
   endif                         ; filename
 
