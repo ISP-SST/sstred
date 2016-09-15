@@ -74,7 +74,8 @@
 ;
 ;   2016-09-15 : MGL. Fix bug in construction of DATE-END from table.
 ;                Fix bug in removal of empty lines. Also construct
-;                DATE-AVE. 
+;                DATE-AVE. Construct DATE-BEG, DATE-END, and DATE-AVE
+;                only if they do not already exist.
 ;
 ;
 ;-
@@ -176,18 +177,23 @@ function red_readhead, fname, $
                   isodate = (strsplit(date_beg_array[0], 'T', /extract))[0]
                   time_beg_array = red_time2double(red_strreplace(date_beg_array,isodate+'T',''))
 
-                  time_end = time_beg_array[-1] + sxpar(header, 'XPOSURE')
-                  date_end = isodate + 'T' + red_time2double(time_end, /inv)
-                  fxaddpar, header, 'DATE-END', date_end $
-                            , 'Last in DATE-BEG table + XPOSURE.' $
-                            , after = 'DATE-BEG'
+                  date_end = sxpar(header, 'DATE-END', count = Nend)
+                  if Nend eq 0 then begin
+                     time_end = time_beg_array[-1] + sxpar(header, 'XPOSURE')
+                     date_end = isodate + 'T' + red_time2double(time_end, /inv)
+                     fxaddpar, header, 'DATE-END', date_end $
+                               , 'Last in DATE-BEG table + XPOSURE.' $
+                               , after = 'DATE-BEG'
+                  endif
 
-                  time_ave = mean(time_beg_array) + sxpar(header, 'XPOSURE')/2.
-                  date_ave = isodate + 'T' + red_time2double(time_ave, /inv)
-                  sxaddpar, header, 'DATE-AVE', date_ave $
-                            , 'Average of DATE-BEG table + XPOSURE/2.' $
-                            , after = 'DATE-BEG'
-
+                  date_ave = sxpar(header, 'DATE-AVE', count = Nave)
+                  if Nave eq 0 then begin
+                     time_ave = mean(time_beg_array) + sxpar(header, 'XPOSURE')/2.
+                     date_ave = isodate + 'T' + red_time2double(time_ave, /inv)
+                     sxaddpar, header, 'DATE-AVE', date_ave $
+                               , 'Average of DATE-BEG table + XPOSURE/2.' $
+                               , after = 'DATE-BEG'
+                  endif
 
                endif
             endif
