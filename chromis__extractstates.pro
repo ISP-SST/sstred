@@ -109,12 +109,19 @@
 ;
 ;   2016-09-06 : MGL. Call red_meta2head rather than
 ;                red_filterchromisheaders. 
+;
+;   2016-09-19 : MGL. Let the subprogram find out its own name. Added
+;                conversion from HRE digital units to wavelength
+;                tuning.
 ; 
 ;-
 pro chromis::extractstates, strings, states $
                             , strip_wb = strip_wb $
                             , strip_settings = strip_settings
-  
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
@@ -144,7 +151,7 @@ pro chromis::extractstates, strings, states $
 
      ;; Numerical keywords
      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
-     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain)    ;    New keyword for gain from 2016.08.30
+     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) ;    New keyword for gain from 2016.08.30
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
@@ -197,22 +204,90 @@ pro chromis::extractstates, strings, states $
                       , /extr, /subexp, /fold_case))[2,*]
      ;; states.focus = focus   TODO: add field to states struct (in an SST class?)
 
-
-     ;; The tuning information consists of a four digit wavelength (in
-     ;; Å) followed by an underscore, a sign (+ or -), and at least
-     ;; one digit for the finetuning (in mÅ). Return the wavelength
+     ;; The CRISP tuning information consists of a four digit
+     ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
+     ;; and at least one digit for the finetuning (in mÅ). Eventually
+     ;; we will (?) have the same for CHROMIS. Return the wavelength
      ;; tuning information in the form tuning_finetuning, where tuning
      ;; is the approximate wavelength in Å and finetuning is the
      ;; (signed) fine tuning in mÅ. (string)
-     if states[ifile].tuning eq '' then begin
-         states[ifile].tuning = (stregex(fname $
-                                     , '(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)' $
-                                     ,  /extr, /subexp))[2,*]
-         ;; Convert to a wavelength
-         ;; Return the tuning in decimal form [Å]
-         states[ifile].tun_wavelength = total(double(strsplit(states[ifile].tuning,'_', /extract))*[1d, 1d-3])
-     endif
-     
+     tuninfo = stregex(fxpar(head, 'STATE') $
+                       , '[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)[._]' $
+                       , /extract, /subexpr) 
+
+     ;; For early CHROMIS data we didn't have tuning data in the
+     ;; proper form.
+     if strlen(tuninfo[0]) ne 0 then begin
+
+        ;; OK, the tuning info is in the form it should be.
+        states[ifile].tuning = tuninfo[0]
+        
+        ;; Also return the tuning in decimal form [Å]:
+        states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d, 1d-3])
+        
+     endif else begin
+
+        ;; The tuning information is in digital units, corresponding
+        ;; to tuning. The conversion factor varies between filters.
+        ;; The scans are symmetrical (so far, 2016-09-16) around the
+        ;; line center, which gives us the zero point.
+
+        tuninfo = stregex(fxpar(head, 'STATE') $
+                          , '[._](hzr[0-9]*)[._]' $
+                          , /extract, /subexpr) 
+        
+        ;; Get the reference wavelength in du from a file previously
+        ;; created with chromis::hzr_zeropoint.
+        infodir = self.out_dir + 'info/'
+        zfile = infodir + 'hzr_zeropoint_' + states[ifile].prefilter + '.fz'
+
+        if file_test(zfile) then begin
+
+           refinfo = f0(zfile)
+           lambda_ref = refinfo[0]
+           du_ref     = refinfo[1]
+           convfac    = refinfo[2]
+           
+           lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
+           
+           ;; Convert to standard form...
+
+           ;; Tuning in digital units
+           du = long((stregex(fxpar(head,'STATE'), 'hrz([0-9]*)', /extract, /subexpr))[1])
+
+           ;; Scaling the conversion factor with the filter wavelength.
+           ;; Or is it more appropriate to scale it with the reference
+           ;; wavelength? 
+           dlambda = convfac * (du-du_ref) * 1d-13
+
+           tuning_string = strtrim(round(dlambda*1d13), 2)
+           if strmid(tuning_string, 0, 1) ne '-' then tuning_string = '+'+tuning_string
+
+           ;; The tuning in standard form
+           states[ifile].tuning = lambda_ref_string + '_' + tuning_string
+           
+           ;; Also return the tuning in decimal form [Å]:
+           states[ifile].tun_wavelength = lambda_ref + dlambda
+
+        endif else begin
+
+           if states[ifile].is_wb then begin
+              ;; For wideband, if there is no tuning info, assume
+              ;; prefilter wavelength.
+              states[ifile].tun_wavelength = states[ifile].pf_wavelength
+              states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
+                                            , format = '(i04)') $
+                                     + '_+0'
+           endif else begin
+              ;; Warn about missing tuning info, but only for narrowband.
+              print, inam + ' : Reference wavelength in du missing.'
+              print, inam + ' : Did you run a -> hrz_zeropoint?'
+           endelse 
+           
+        endelse
+        
+     endelse
+
      ;; The fullstate string
      undefine, fullstate_list
      if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
@@ -230,5 +305,22 @@ pro chromis::extractstates, strings, states $
      
   endfor                        ; ifile
   red_progressbar, /finished, message = progress_message
+
+end
+
+
+a = chromisred('config.txt')
+
+;; Test narrowband
+dirN = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-N/'
+fnamesN = file_search(dirN+'*fits', count = NfilesN)
+if NfilesN gt 0 then a -> extractstates, fnamesN, statesN
+
+stop
+
+;; Test wideband
+dirW = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-W/'
+fnamesW = file_search(dirW+'*fits', count = NfilesW)
+if NfilesW gt 0 then a -> extractstates, fnamesW, statesW
 
 end
