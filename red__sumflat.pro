@@ -93,6 +93,9 @@
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+; 
+;   2016-09-19 : MGL. Changed format strings so exposure times header
+;                keywords do not overflow.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -258,8 +261,8 @@ pro red::sumflat, overwrite = overwrite, $
         ;; Some SOLARNET recommended keywords:
         exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
         if count gt 0 then begin
-            sxaddpar, head, 'XPOSURE', nsum*exptime, exptime_comment+' Total exposure time', format = 'f8.6'
-            sxaddpar, head, 'TEXPOSUR', exptime, exptime_comment+' Single-exposure time', format = 'f9.6' $
+            sxaddpar, head, 'XPOSURE', nsum*exptime, exptime_comment+' Total exposure time', format = '(f12.4)'
+            sxaddpar, head, 'TEXPOSUR', exptime, exptime_comment+' Single-exposure time', format = '(f12.4)' $
                       , after = 'XPOSURE'
         endif
         if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', after = 'TEXPOSUR'
