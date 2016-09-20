@@ -365,19 +365,27 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
   //
   int status;
   mp_result result;
-  memset(&result,0,sizeof(result));
+  memset(&result,0,sizeof( mp_result));
   //
   mp_par fitpars[npar];
-  memset(&fitpars[0], 0, sizeof(fitpars));
+  memset(&fitpars[0], 0, npar*sizeof(mp_par));
+  //
   fitpars[0].limited[0] = 1;
   fitpars[0].limited[1] = 1;
   fitpars[0].limits[0] = 0;
   fitpars[0].limits[1] = 4096;
   fitpars[1].limited[0] = 1;
   fitpars[1].limited[1] = 1;
-  fitpars[1].limits[0] = -0.1;
-  fitpars[1].limits[1] = 0.1;
+  fitpars[1].limits[0] = -0.3;
+  fitpars[1].limits[1] = 0.3;
   for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
+  //
+  mp_config_struct config;
+  memset(&config,0,sizeof( mp_config_struct));
+  config.xtol = 1.e-4;
+  config.ftol = 1.e-4;
+  config.maxiter=50;
+  config.epsfcn = 1.e-7;
   //
   fgd_t tmp;
   tmp.xl = xl;
@@ -414,7 +422,7 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
 	//
 	// Fit pixel
 	//
-	status = mpfit(fitgain_model, nwav, npar, pars[ix], fitpars, 0, (void*) &tmp, &result);
+	status = mpfit(fitgain_model, nwav, npar, pars[ix], fitpars, &config, (void*) &tmp, &result);
 	//
 	// Get ratio dat / model
 	//
@@ -780,6 +788,9 @@ void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, flo
     mp_config config;
     memset(&config,0,sizeof(config));
     config.maxiter = 40;
+    config.xtol = 1.e-5;
+    config.ftol = 1.e-4;
+    config.epsfcn = 1.e-6;
     //
     tid = omp_get_thread_num();
     pol.tid = tid;

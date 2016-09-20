@@ -108,7 +108,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
                    densegrid = densegrid, res = res, thres = thres, initcmap = initcmap, $
                    fit_reflectivity = fit_reflectivity, $
                    x0 = x0, x1 = x1, state = state, nosave = nosave, myg = myg, $
-                   w0 = w0, w1 = w1, nthreads = nthreads, ifit = ifit
+                   w0 = w0, w1 = w1, nthreads = nthreads, ifit = ifit, init = init
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
@@ -183,7 +183,12 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
   res = dblarr(npar_t, dim[1], dim[2])
   ratio = fltarr(dim[0], dim[1], dim[2])
   nwav = dim[0]
+  
+  if(keyword_set(init)) then begin
+     
+  endif
 
+  
   if nwav eq 1 then $
     message,'Must have more than 1 wavelength point in the scan to continue.'
   
@@ -216,7 +221,7 @@ pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, 
                         myg = myg, reflec = fit_reflectivity)
       
      ;; Pixel-to-pixel fits using a C++ routine to speed-up things
-     if(it eq 0) then begin
+     if(it eq 0 and ~keyword_set(initcmap)) then begin
         res1 = res[0:1,*,*]
         if(keyword_set(ifit)) then begin
            red_ifitgain, res1, wav, dat, xl, yl, ratio
