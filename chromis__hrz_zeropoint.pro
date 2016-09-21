@@ -21,9 +21,11 @@
 ; :History:
 ;
 ;    2016-09-18 : MGL. First version.
+;
+;    2016-09-21 : MGL. Work in meters, not Å or mÅ. Bugfix in
+;                 extracting the hrz tunings. Typos hzr --> hrz.
 ; 
 ;-
-
 pro chromis::hrz_zeropoint
 
   ;; Name of this method
@@ -45,7 +47,7 @@ pro chromis::hrz_zeropoint
 
   for ipref = 0, Npref-1 do begin
   
-     zfile = infodir + 'hzr_zeropoint_' + upref[ipref] + '.fz'
+     zfile = infodir + 'hrz_zeropoint_' + upref[ipref] + '.fz'
 
      ;; Just a single continuum point, set the reference
      ;; wavelength to that wavelength and the reference du to
@@ -61,23 +63,23 @@ pro chromis::hrz_zeropoint
         end
      endcase 
 
-     convfac = -1.53d                 ; [mÅ/du] for CaH-cont 3998.6 Å
-     convfac *= lambda_ref/3998.6e-10 ; Scales with lambda.
+     convfac = -1.53d-13              ; [m/du] for CaH-cont 3998.6 Å
+     convfac *= lambda_ref/3998.6d-10 ; Scales with lambda.
      
      indx = where(states.prefilter eq upref[ipref])
      prefstates = states[indx]
 
-     hrz = long((stregex(prefstates.fullstate, 'hrz([0-9]*)', /extract, /subexpr))[1])
+     hrz = long((stregex(prefstates.fullstate, 'hrz([0-9]*)', /extract, /subexpr))[1, *])
      uhrz = hrz[uniq(hrz, sort(hrz))]
      Nhrz = n_elements(uhrz)
-     
+
      ;; The scans are supposed to be symmetric around the reference
      ;; wavelength, so the number of tunings should be odd.
      if Nhrz mod 2 ne 0 then begin
 
-        hzr_zero = uhrz[Nhrz/2]
+        hrz_zero = uhrz[Nhrz/2]
         
-        fzwrite, [lambda_ref, hzr_zero, convfac], zfile, ' '
+        fzwrite, [lambda_ref, hrz_zero, convfac], zfile, ' '
 
      endif else begin
 
