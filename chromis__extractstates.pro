@@ -113,6 +113,8 @@
 ;   2016-09-19 : MGL. Let the subprogram find out its own name. Added
 ;                conversion from HRE digital units to wavelength
 ;                tuning.
+;
+;    2016-09-21 : MGL. Work in meters, not Å or mÅ. Typos hzr --> hrz.
 ; 
 ;-
 pro chromis::extractstates, strings, states $
@@ -151,7 +153,7 @@ pro chromis::extractstates, strings, states $
 
      ;; Numerical keywords
      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
-     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) ;    New keyword for gain from 2016.08.30
+     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) ; New keyword for gain from 2016.08.30
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
@@ -207,10 +209,7 @@ pro chromis::extractstates, strings, states $
      ;; The CRISP tuning information consists of a four digit
      ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
      ;; and at least one digit for the finetuning (in mÅ). Eventually
-     ;; we will (?) have the same for CHROMIS. Return the wavelength
-     ;; tuning information in the form tuning_finetuning, where tuning
-     ;; is the approximate wavelength in Å and finetuning is the
-     ;; (signed) fine tuning in mÅ. (string)
+     ;; we will (?) have the same for CHROMIS.
      tuninfo = stregex(fxpar(head, 'STATE') $
                        , '[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)[._]' $
                        , /extract, /subexpr) 
@@ -222,8 +221,8 @@ pro chromis::extractstates, strings, states $
         ;; OK, the tuning info is in the form it should be.
         states[ifile].tuning = tuninfo[0]
         
-        ;; Also return the tuning in decimal form [Å]:
-        states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d, 1d-3])
+        ;; Also return the tuning in decimal form [m]:
+        states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d-10, 1d-13])
         
      endif else begin
 
@@ -233,13 +232,13 @@ pro chromis::extractstates, strings, states $
         ;; line center, which gives us the zero point.
 
         tuninfo = stregex(fxpar(head, 'STATE') $
-                          , '[._](hzr[0-9]*)[._]' $
+                          , '[._](hrz[0-9]*)[._]' $
                           , /extract, /subexpr) 
         
         ;; Get the reference wavelength in du from a file previously
-        ;; created with chromis::hzr_zeropoint.
+        ;; created with chromis::hrz_zeropoint.
         infodir = self.out_dir + 'info/'
-        zfile = infodir + 'hzr_zeropoint_' + states[ifile].prefilter + '.fz'
+        zfile = infodir + 'hrz_zeropoint_' + states[ifile].prefilter + '.fz'
 
         if file_test(zfile) then begin
 
@@ -248,25 +247,22 @@ pro chromis::extractstates, strings, states $
            du_ref     = refinfo[1]
            convfac    = refinfo[2]
            
-           lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
-           
-           ;; Convert to standard form...
-
            ;; Tuning in digital units
            du = long((stregex(fxpar(head,'STATE'), 'hrz([0-9]*)', /extract, /subexpr))[1])
 
-           ;; Scaling the conversion factor with the filter wavelength.
-           ;; Or is it more appropriate to scale it with the reference
-           ;; wavelength? 
-           dlambda = convfac * (du-du_ref) * 1d-13
+           ;; Tuning in [m]
+           dlambda = convfac * (du-du_ref) 
 
+           ;; Return the wavelength tuning information in the form
+           ;; tuning_finetuning, where tuning is the approximate
+           ;; wavelength in Å and finetuning is the (signed) fine
+           ;; tuning in mÅ. (string)
+           lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
            tuning_string = strtrim(round(dlambda*1d13), 2)
            if strmid(tuning_string, 0, 1) ne '-' then tuning_string = '+'+tuning_string
-
-           ;; The tuning in standard form
            states[ifile].tuning = lambda_ref_string + '_' + tuning_string
            
-           ;; Also return the tuning in decimal form [Å]:
+           ;; Also return the tuning in decimal form [m]:
            states[ifile].tun_wavelength = lambda_ref + dlambda
 
         endif else begin
