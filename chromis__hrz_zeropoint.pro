@@ -24,6 +24,7 @@
 ;
 ;    2016-09-21 : MGL. Work in meters, not Å or mÅ. Bugfix in
 ;                 extracting the hrz tunings. Typos hzr --> hrz.
+;                 Remove previously generated hrz_zeropoint files. 
 ; 
 ;-
 pro chromis::hrz_zeropoint
@@ -33,6 +34,9 @@ pro chromis::hrz_zeropoint
 
   infodir = self.out_dir + 'info/'
   file_mkdir, infodir
+
+  ;; Remove previously generated hrz_zeropoint files if any. 
+  file_delete, infodir+'hrz_zeropoint_*', /allow_nonexistent
 
   ;; Get du_ref from the unique list of hrz tunings in raw flats taken
   ;; with the nb camera, list them in all flats directories.
