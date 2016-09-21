@@ -83,7 +83,7 @@ pro chromis::link_data, link_dir = link_dir $
         print, inam+' : ERROR : undefined data_dir'
         return
      endif
-     dirs = *self.dark_dir
+     dirs = *self.data_dirs
   endelse
 
   Ndirs = n_elements(dirs)
