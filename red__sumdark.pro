@@ -80,6 +80,9 @@
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
 ;
+;   2016-09-21 : MGL. Tell user what darkname is being summed for
+;                instead of what state.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -163,7 +166,7 @@ pro red::sumdark, overwrite = overwrite, $
 
             file_mkdir, file_dirname(darkname)
 
-            print, inam+' : summing darks for state -> ' + state_list[ss]
+            print, inam+' : summing darks -> ' + file_basename(darkname)
             if(keyword_set(check)) then begin
                 openw, lun, darkname + '_discarded.txt', width = 500, /get_lun
             endif
