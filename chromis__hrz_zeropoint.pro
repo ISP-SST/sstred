@@ -24,7 +24,10 @@
 ;
 ;    2016-09-21 : MGL. Work in meters, not Å or mÅ. Bugfix in
 ;                 extracting the hrz tunings. Typos hzr --> hrz.
-;                 Remove previously generated hrz_zeropoint files. 
+;                 Remove previously generated hrz_zeropoint files.
+;                 Change filter tags to four-digit tags representing
+;                 approximate filter wavelength.
+;    
 ; 
 ;-
 pro chromis::hrz_zeropoint
@@ -57,10 +60,10 @@ pro chromis::hrz_zeropoint
      ;; wavelength to that wavelength and the reference du to
      ;; the actual du, so the tuning is zero.
      case upref[ipref] of
-        'Hb-core'  : lambda_ref = 4861d-10                         ; Hbeta line center
-        'CaK-core' : lambda_ref = 3933.7d-10                       ; Ca II K line center
-        'CaH-core' : lambda_ref = 3968.5d-10                       ; Ca II H line center
-        'CaH-cont' : lambda_ref = (3998.640d-10 + 1.258d-10)       ; Clean reference line within the passband
+        '4862' : lambda_ref = 4861d-10                   ; H-beta core
+        '3934' : lambda_ref = 3933.7d-10                 ; Ca II K core
+        '3969' : lambda_ref = 3968.5d-10                 ; Ca II H core
+        '3999' : lambda_ref = (3998.640d-10 + 1.258d-10) ; Clean reference line within the passband
         else: begin
            print, inam+' : Please add reference wavelength for prefilter '+states[ifile].prefilter
            stop

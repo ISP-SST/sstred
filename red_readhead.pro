@@ -79,6 +79,9 @@
 ;                dimensions and data type from the first 256 bytes of
 ;                the file.
 ;
+;   2016-09-21 : MGL. Change filter tags to four-digit tags
+;                representing approximate filter wavelength.
+;
 ;
 ;-
 function red_readhead, fname, $
@@ -235,9 +238,9 @@ function red_readhead, fname, $
                       prefilter = (fname_split)[-1]
                       ;; Translate to previously used filter names
                       case prefilter of
-                         'hbeta-core' : prefilter = 'Hb-core'
-                         'hbeta-cont' : prefilter = 'Hb-cont'
-                         'cah-core'   : prefilter = 'CaH-core'
+                         'hbeta-core' : prefilter = '4862'
+                         'hbeta-cont' : prefilter = '4846'
+                         'cah-core'   : prefilter = '3969'
                          else:
                       endcase
                       fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from file name'
@@ -252,19 +255,19 @@ function red_readhead, fname, $
 
                              ;; Chromis-N
                              case state1 of
-                                'wheel00001' : prefilter = 'CaK-blue'
-                                'wheel00002' : prefilter = 'CaK-core'
-                                'wheel00003' : prefilter = 'CaH-core'
-                                'wheel00004' : prefilter = 'CaH-red'
-                                'wheel00005' : prefilter = 'CaH-cont'
-                                'wheel00006' : prefilter = 'Hb-core'
+                                'wheel00001' : prefilter = '3925' ; Ca II K blue wing
+                                'wheel00002' : prefilter = '3934' ; Ca II K core
+                                'wheel00003' : prefilter = '3969' ; Ca II H core
+                                'wheel00004' : prefilter = '3978' ; Ca II H red wing
+                                'wheel00005' : prefilter = '3999' ; Ca II H continuum
+                                'wheel00006' : prefilter = '4862' ; H-beta core
                                 else :
                              endcase
                           endif else begin
                              ;; Chromis-W and Chromis-D
                              case state1 of
-                                'wheel00006' : prefilter = 'Hb-cont'
-                                else: prefilter = 'CaHK-cont'
+                                'wheel00006' : prefilter = '4846' ; H-beta continuum
+                                else: prefilter = '3950'          ; Ca II HK wideband
                              endcase
                           endelse
                           if n_elements(prefilter) gt 0 then begin
@@ -274,9 +277,9 @@ function red_readhead, fname, $
                        endif
                    endif else begin
                       case state of
-                         'hbeta-core' : prefilter = 'Hb-core'
-                         'hbeta-cont' : prefilter = 'Hb-cont'
-                         'cah-core'   : prefilter = 'CaH-core'
+                         'hbeta-core' : prefilter = '4862'
+                         'hbeta-cont' : prefilter = '4846'
+                         'cah-core'   : prefilter = '3969'
                          else:
                       endcase
                    endelse

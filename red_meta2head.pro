@@ -46,6 +46,10 @@
 ;    2016-09-15 : MGL. If there is a properly formatted
 ;                 date+'T'+timestamp in the file name, interpret it as
 ;                 the date-obs.
+;
+;    2016-09-21 : MGL. Change filter tags to four-digit tags
+;                 representing approximate filter wavelength. Set
+;                 WAVELNTH header keyword to corresponding wavelength.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -109,28 +113,28 @@ function red_meta2head, head, metadata=metaStruct
 
                  ;; Chromis-N
                  case wheelpos of
-                    'w1' : begin
-                       filter1 = 'CaK-blue'
+                    'w1' : begin ; Ca II K blue wing
+                       filter1 = '3925'
                        waveband = 'Ca II H & K'
                     end
-                    'w2' : begin
-                       filter1 = 'CaK-core'
+                    'w2' : begin ; Ca II K core
+                       filter1 = '3934'
                        waveband = 'Ca II H & K'
                     end
-                    'w3' : begin
-                       filter1 = 'CaH-core'
+                    'w3' : begin ; Ca II H core
+                       filter1 = '3969'
                        waveband = 'Ca II H & K'
                     end
-                    'w4' : begin
-                       filter1 = 'CaH-red'
+                    'w4' : begin ; Ca II H red wing
+                       filter1 = '3978'
                        waveband = 'Ca II H & K'
                     end
-                    'w5' : begin
-                       filter1 = 'CaH-cont'
+                    'w5' : begin ; Ca II H continuum
+                       filter1 = '3999'
                        waveband = 'Ca II H & K'
                     end
-                    'w6' : begin
-                       filter1 = 'Hb-core'
+                    'w6' : begin ; H-beta core
+                       filter1 = '4862'
                        waveband = 'H-beta'
                     end
                  endcase
@@ -138,12 +142,12 @@ function red_meta2head, head, metadata=metaStruct
 
                  ;; Chromis-W and Chromis-D
                  case wheelpos of
-                    'w6' : begin
-                       filter1 = 'Hb-cont'
+                    'w6' : begin ; H-beta continuum
+                       filter1 = '4846'
                        waveband = 'H-beta'
                     end
-                    else: begin
-                       filter1 = 'CaHK-cont'
+                    else: begin ; Ca II HK wideband
+                       filter1 = '3950'
                        waveband = 'Ca II H & K'
                     end
                  endcase
@@ -165,39 +169,39 @@ function red_meta2head, head, metadata=metaStruct
         if fxpar(newhead, 'WAVELNTH') eq 0.0 then begin
 
            case strtrim(prefilter,2) of
-              'CaK-blue' : begin
-                 wavelnth = 392.55e-9
+              '3925' : begin    ; Ca II K blue wing
+                 wavelnth = 3925e-10
                  fwhm = 0.37e-9
               end
-              'CaK-core' : begin
-                 wavelnth = 393.44e-9
+              '3934' : begin    ; Ca II K core
+                 wavelnth = 3934e-10
                  fwhm = 0.37e-9
               end
-              'CaH-core' : begin
-                 wavelnth = 396.92e-9
+              '3969' : begin    ; Ca II H core
+                 wavelnth = 3969e-10
                  fwhm = 0.37e-9
               end
-              'CaH-red' : begin
-                 wavelnth = 397.7e-9
+              '3978' : begin    ; Ca II H red wing
+                 wavelnth = 3978e-10
                  fwhm = 0.37e-9
               end
-              'CaH-cont' : begin
-                 wavelnth = 400.01e-9
+              '3999' : begin    ; Ca II H continuum
+                 wavelnth = 3999e-10
                  fwhm = 0.37e-9
               end
-              'Hb-core' : begin
-                 wavelnth = 486.20e-9
+              '4862' : begin    ; H-beta core
+                 wavelnth = 4862e-10
                  fwhm = 0.44e-9
               end
-              'Hb-cont' : begin
-                 wavelnth = 484.7e-9
+              '4846' : begin    ; H-beta continuum
+                 wavelnth = 4846e-10
                  fwhm = 0.6e-9
               end
-              'CaHK-cont' : begin
-                 wavelnth = 395.1e-9
+              '3950' : begin    ; Ca II HK wideband
+                 wavelnth = 3950e-10
                  fwhm = 1.3e-9
               end
-              else: begin
+              else: begin      
 		wavelnth = 'unknown'
 		fwhm = 'unknown'
 	      end
