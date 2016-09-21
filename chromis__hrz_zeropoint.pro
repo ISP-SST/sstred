@@ -36,7 +36,7 @@ pro chromis::hrz_zeropoint
   file_mkdir, infodir
 
   ;; Remove previously generated hrz_zeropoint files if any. 
-  file_delete, infodir+'hrz_zeropoint_*', /allow_nonexistent
+  spawn, 'rm -f '+ infodir + 'hrz_zeropoint_*'
 
   ;; Get du_ref from the unique list of hrz tunings in raw flats taken
   ;; with the nb camera, list them in all flats directories.
