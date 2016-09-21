@@ -208,7 +208,9 @@ pro red::sumdark, overwrite = overwrite, $
             print, inam+' : saving ', darkname+'.fits'
             red_writedata, darkname+'.fits', dark, header=head, filetype='fits', overwrite = overwrite
             
-            if keyword_set(check) then free_lun, lun
+            if keyword_set(check) then begin
+                free_lun, lun
+            endif
 
         endfor                     ; states
 
