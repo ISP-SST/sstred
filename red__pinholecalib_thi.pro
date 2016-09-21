@@ -2,10 +2,8 @@
 
 ;+
 ;   Find the transformation matrices that maps the reference channel
-;   onto the other ones, use the transform to calculated the offset
-;   files needed for MOMFBD alignment.
+;   onto the other ones.
 ;
-; 
 ; 
 ; :Categories:
 ;
@@ -24,28 +22,34 @@
 ; 
 ; :Keywords:
 ;    
-;    threshold : in, optional, type=float, default=0.1
-; 
+;    threshold : in, optional, type=float, default=0.25
 ;       Threshold for identifying a strong enough pinhole.
 ;
-;    
-;    extraclip : 
+;    max_shift : in, optional, type=int, default=100
+;       Only consider mappings with a linear shift < max_shift pixels.
 ;
+;    nref : in, optional, type=integer, default=5
+;      How many of the strongest pinholes to use for finding the
+;      approximate transform. Afterwards a refinement is made using
+;      >80% of the detected pinholes.
 ;
-;    refcam : in, optional, type=integer, default=0
-;    
-;      Select reference-channel.
-;
-;    
-;    verbose : in, optional, type=integer, default=0
-;    
-;      Provide more output
-;
-;    
 ;    pref : in, optional, type=string
-;     
 ;      Indicate the prefilter you want to calculate the clips for,
 ;      Default is to do it for all prefilters there is data for.
+;
+;    dir : in, optional, type=strarr
+;      Restrict to pinholes in the listed directories. Default
+;      is to use all directories listed in *(self.pinh_dirs).
+;
+;    dir : in, optional, type=strarr
+;      Restrict to specified cameras. Default is to use all
+;      cameras listed in *(self.cameras).
+;
+;    refcam : in, optional, type=integer, default=0
+;      Select reference-channel.
+;    
+;    verbose : in, optional, type=integer, default=0
+;      Provide more output
 ;
 ; 
 ; :History:
@@ -62,11 +66,15 @@
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
 ;
+;   2016-09-21 : THI. Re-write to support matching of prefilters between NB/WB channels.
+;                Some cleanup. Move generation of clips/offset-files to a
+;                separate method (red::getalignment)
+;
 ;-
 pro red::pinholecalib_thi, threshold = threshold $
+                         , max_shift = max_shift $
                          , nref = nref $
                          , pref = pref $
-                         , extraclip = extraclip $
                          , dir = dir $
                          , cams = cams $
                          , refcam = refcam $
@@ -79,8 +87,8 @@ pro red::pinholecalib_thi, threshold = threshold $
     help, /obj, self, output = selfinfo 
     red_writelog, selfinfo = selfinfo, logfile = logfile
 
-    if(n_elements(threshold) eq 0) then threshold = 0.3
-    if(n_elements(nref) eq 0) then nref = 4
+    if(n_elements(threshold) eq 0) then threshold = 0.25
+    if(n_elements(nref) eq 0) then nref = 5
     if( n_elements(dir) gt 0 ) then dir = [dir] $
     else if ptr_valid(self.pinh_dirs) then dir = *self.pinh_dirs
     self -> getdetectors, dir = dir
@@ -89,6 +97,7 @@ pro red::pinholecalib_thi, threshold = threshold $
 
     if(n_elements(refcam) eq 0) THEN refcam = self.refcam
     if(n_elements(verbose) eq 0) THEN verbose = 0
+    if(n_elements(max_shift) eq 0) then max_shift = 100
    
     Ncams = n_elements(cams)
 
@@ -111,6 +120,7 @@ pro red::pinholecalib_thi, threshold = threshold $
     
     output_dir = self.out_dir+'/calib/'
     output_dir = red_strreplace(output_dir,'//','/')
+    output_file = output_dir+'alignments.sav'
     file_mkdir, output_dir
     
     if Ncams lt 2 then begin
@@ -127,226 +137,60 @@ pro red::pinholecalib_thi, threshold = threshold $
         return
     endif
 
-    ;; Selected prefilter or all prefilters (for refcam)?
-    files = file_search( ph_dir + '*.pinh' )
- 
-    self->selectfiles, files=files, prefilter=pref, states=states, cam = cams[refcam], /strip_settings, selected=ref_sel
-    nf = n_elements( files )
-    if( n_elements(ref_sel) ne 1 || ref_sel lt 0 ) then begin
-        print, inam, ' : ERROR : No pinhole files found in ', ph_dir
-        red_writelog, /add, logfile = logfile $
-                      , top_info_strings = ' : ERROR : No pinhole files found in ' + ph_dir
-        retall
-    endif
+    all_files = file_search( ph_dir + '*.pinh' )
+    nf = n_elements( all_files )
     
-    self->selectfiles, files=files, states=states, cam = cams[refcam], selected=ref_sel
-    fullstate = [states[ref_sel].fullstate]
-    state_list = fullstate[ uniq(fullstate, sort(fullstate)) ]
-    ns = n_elements(state_list)
-    head = red_readhead( files[0], /silent )
-    dims = fxpar(head, 'NAXIS*')
-
-    if( n_elements(dims) ne 2 ) then begin
-        print, inam, ' : pinhole data is not 2-dimensional.'
-        return
-    endif
-
-    corners = red_make_corners( [ extraclip(0), dims[0]-extraclip(1)-1 , $
-                                  extraclip(2), dims[1]-extraclip(3)-1 ] )
- 
-    h_init = fltarr(3, 3, Ncams)
-
-    aligns = fltarr(3, 3, ns, Ncams)
-    clips = fltarr(ns, 4)
-     
-    ;; Loop over states 
-    for ss = 0L, ns - 1 do begin
-
-       self->selectfiles, files=files, states=states, cam = cams[refcam] $
-                          , ustat=state_list[ss], selected=ref_sel
-        if( n_elements(ref_sel) ne 1 || ref_sel lt 0 ) then begin
-            print, inam, " : multiple reference images for state='", state_list[ss], "'"
-            continue
-        endif
-   
-        common_fov = corners
-        ref_img = red_readdata( files[ref_sel], /silent )
-
-        for icam = 0, Ncams-1 do begin
-            if icam EQ refcam then begin
-                print, ' -> ' + files[ref_sel] + ' (reference)'
-            endif else begin
-               self->selectfiles, files=files, states=states, cam = cams[icam] $
-                                  , ustat=state_list[ss], selected=sel
-                if( n_elements(sel) ne 1 || sel lt 0 ) then begin
-                   print, inam, " : multiple or missing images for cam='" $
-                          , cams[icam],"' state='", state_list[ss], "'"
-                    continue
-                endif
-                print, ' -> ' + files[sel]
-
-                img = red_readdata(files[sel], /silent)
-                if max(h_init(*,*,icam)) gt 0 then begin
-                    this_init = h_init(*,*,icam)
-                endif
-
-                this_transform = rdx_img_align( ref_img, img, nref=nref, h_init=this_init $
-                                                , threshold=threshold, verbose=verbose )
-
-                aligns(*,*,ss,icam) = this_transform
-                h_init(*,*,icam) = temporary(this_init)
-
-                ; transform the corners of the FOV to the non-reference camera
-                common_fov = common_fov # this_transform
-                idx = where(common_fov(*,2) ne 0, COMPLEMENT=idx_c)
-                if max(idx) ne -1 then begin
-                    common_fov(idx,0) /= common_fov(idx,2)
-                    common_fov(idx,1) /= common_fov(idx,2)
-                endif
-                if max(idx_c) ne -1 then common_fov(idx_c,*) = 0
-                common_fov(*,2) = 1
-                
-                ; if a mapped corner falls outside the range, clip it
-                idx = where(common_fov(*,0) lt corners(0,0) )
-                if max(idx) ne -1 then  common_fov(idx,0) = corners(0,0)
-                idx = where(common_fov(*,0) gt corners(1,0) )
-                if max(idx) ne -1 then  common_fov(idx,0) = corners(1,0)
-                idx = where(common_fov(*,1) lt corners(0,1) )
-                if max(idx) ne -1 then  common_fov(idx,1) = corners(0,1)
-                idx = where(common_fov(*,1) gt  corners(2,1) )
-                if max(idx) ne -1 then  common_fov(idx,1) = corners(2,1)
-                
-                ; transform back to reference camera
-                common_fov = common_fov # invert(this_transform)
-                idx = where(common_fov(*,2) ne 0, COMPLEMENT=idx_c)
-                if max(idx) ne -1 then begin
-                    common_fov(idx,0) /= common_fov(idx,2)
-                    common_fov(idx,1) /= common_fov(idx,2)
-                endif
-                if max(idx_c) ne -1 then common_fov(idx_c,*) = 0
-                common_fov(*,2) = 1
-
-                ; clip again
-                idx = where( common_fov(*,0) lt corners(0,0) )
-                if max(idx) ne -1 then  common_fov(idx,0) = corners(0,0)
-                idx = where( common_fov(*,0) gt corners(1,0) )
-                if max(idx) ne -1 then  common_fov(idx,0) = corners(1,0)
-                idx = where( common_fov(*,1) lt corners(0,1) )
-                if max(idx) ne -1 then  common_fov(idx,1) = corners(0,1)
-                idx = where( common_fov(*,1) gt corners(2,1) )
-                if max(idx) ne -1 then  common_fov(idx,1) = corners(2,1)
-                
-            endelse
-        endfor      ; icam
-
-        clips(ss,0) = max(common_fov([0,2],0))
-        clips(ss,1) = min(common_fov([1,3],0))
-        clips(ss,2) = max(common_fov([0,1],1))
-        clips(ss,3) = min(common_fov([2,3],1))
-        
-        cl = intarr(4,Ncams)
-        cl(*,refcam) = [ ceil( max(clips(*,0))), $
-                         floor(min(clips(*,1))), $
-                         ceil( max(clips(*,2))), $
-                         floor(min(clips(*,3))) ] + 1 ;   N.B. align_clip index is 1-based
-
-        sx = long(max(cl(0:1,refcam)) - min(cl(0:1,refcam)) + 1) 
-        sy = long(max(cl(2:3,refcam)) - min(cl(2:3,refcam)) + 1)
-
-        ref_origin = [ min(cl(0:1,refcam))-1, min(cl(2:3,refcam))-1 ]
-
-        indices = [ [[dindgen(sx)#replicate(1.d0, sy) + ref_origin(0)]], $
-                    [[replicate(1.d0, sx)#dindgen(sy) + ref_origin(1)]], $
-                    [[replicate(1.d0, sx, sy)]]]
-
-        print, inam+' : generating offset files:'
-        center = transpose([ (cl(0,refcam)+cl(1,refcam))/2, (cl(2,refcam)+cl(3,refcam))/2, 1 ])
-
-        for icam = 0, Ncams-1 do begin
-            if icam NE refcam then begin
-            
-                cam_origin = [ min(cl(0:1,icam))-1, min(cl(2:3,icam))-1 ]
-                self->selectfiles, files=files, states=states, cam = cams[icam] $
-                                   , ustat=state_list[ss], selected=sel
-                if( n_elements(sel) ne 1 || sel lt 0 ) then begin
-                    continue
-                endif
-                this_file = output_dir + file_basename(files[sel],'.pinh')
-
-                ;; For the non-refernce channels, map the reference
-                ;; center and cutout a region of the right size
-                
-                swap = transpose([0,0,1]) # reform(aligns(*,*,ss,icam)) gt center
-                tmp_center = fix(center # reform(aligns(*,*,ss,icam)))
-                cl(*,icam) = [ tmp_center(0)-(1-2*swap(0))*abs(center(0)-cl(  swap(0),refcam)), $
-                               tmp_center(0)+(1-2*swap(0))*abs(center(0)-cl(1-swap(0),refcam)), $
-                               tmp_center(1)-(1-2*swap(1))*abs(center(1)-cl(2+swap(1),refcam)), $
-                               tmp_center(1)+(1-2*swap(1))*abs(center(1)-cl(3-swap(1),refcam)) ]
-
-                ; generate offset files
-                offs = reform(indices, sx*sy, 3) # aligns(*,*,ss,icam)
-                idx = where(offs(*,2) ne 0, COMPLEMENT=idx_c)
-                if max(idx) ne -1 then begin
-                    offs(idx,0) /= offs(idx,2)
-                    offs(idx,1) /= offs(idx,2)
-                endif
-                if max(idx_c) ne -1 then offs(idx_c,0:1) = 0
-                offs = reform(offs, sx, sy, 3) 
-
-                if aligns(0,0,ss,icam) lt 0 then offs = reverse(offs,1)
-                if aligns(1,1,ss,icam) lt 0 then offs = reverse(offs,2)
-
-                offs -= indices
-                
-                offs(*,*,0) -= (min(cl(0:1,icam)) - ref_origin(0) - 1)
-                offs(*,*,1) -= (min(cl(2:3,icam)) - ref_origin(1) - 1)
-                
-                if (cl(1,icam)-cl(0,icam)) lt 0 then begin
-                    offs = reverse(offs,1)
-                    offs(*,*,0) *= -1
-                endif
-                
-                if (cl(3,icam)-cl(2,icam)) lt 0 then begin
-                    offs = reverse(offs,2)
-                    offs(*,*,1) *= -1
-                endif
-
-                if aligns(0,0,ss,icam)*(cl(1,icam)-cl(0,icam)) lt 0 OR $
-                   aligns(1,1,ss,icam)*(cl(3,icam)-cl(2,icam)) lt 0 then begin
-                    print, inam + ' : sanity check failed - the sign of the transform does not match the align-clip.'
-                    print, aligns(*,*,ss,icam)
-                    print, cl(*,icam)
-                endif
-
-                print, ' -> ' + this_file +'.(x|y)offs'
-                red_writedata, this_file + '.xoffs', fix(round(100*offs(*,*,0))) $
-                               , filetype='ANA', /overwrite
-                red_writedata, this_file + '.yoffs', fix(round(100*offs(*,*,1))) $
-                               , filetype='ANA', /overwrite
-                    
+    self->selectfiles, files=all_files, states=states, cam = cams[refcam], /strip_settings, selected=selection
+    ref_states = states[selection]
+    ref_states_unique = ref_states.fullstate
+    ref_states_unique = ref_states[ uniq(ref_states_unique, sort(ref_states_unique)) ] ; we discard multiple pinhole files for the same state
+    for icam = 0, Ncams-1 do begin
+        if icam EQ refcam then continue
+        self->selectfiles, files=all_files, states=states, cam = cams[icam], /strip_settings, selected=selection
+        cam_states = states[selection]
+        cam_states_unique = cam_states.fullstate
+        cam_states_unique = cam_states[ uniq(cam_states_unique, sort(cam_states_unique)) ] ; we discard multiple pinhole files for the same state
+        for ic1=0, n_elements(ref_states_unique)-1 do begin
+            print, 'loading ref-file: ', ref_states_unique[ic1].filename
+            if n_elements(this_init) eq 0 then this_init=0
+            dummy = temporary(this_init)
+            ref_img = red_readdata( ref_states_unique[ic1].filename, /silent )
+            dims = size( ref_img, /dim )
+            if( n_elements(dims) ne 2 ) then begin
+                print, inam, ' : pinhole data is not 2-dimensional: ', ref_states_unique[ic1].filename
+                continue
             endif
-         endfor                 ; icam
-
-
-        ; Save align clips etc.
-        acl = 'ALIGN_CLIP='+strjoin(strtrim(cl, 2), ',')
-        clipfile = output_dir+'align_clips.'
-        if state_list[ss] ne '' then clipfile += state_list[ss] + '.'
-        print, ' -> ' + clipfile + '(txt|sav)'
-        openw, lun, clipfile+'txt', /get_lun
-        for icam = 0L, Ncams-1 do begin
-            printf, lun, acl[icam]
-            print, '  -> '+cams[icam]+': '+acl[icam]
+            for ic2=0, n_elements(cam_states_unique)-1 do begin
+                if self->match_prefilters( ref_states_unique[ic1].prefilter, cam_states_unique[ic2].prefilter ) eq 0 then continue
+                print, 'loading cam-file: ', cam_states_unique[ic2].filename
+                img2 = red_readdata( cam_states_unique[ic2].filename, /silent )
+                dims2 = size( img2, /dim )
+                if( n_elements(dims2) ne 2 ) then begin
+                    print, inam, ' : pinhole data is not 2-dimensional: ', cam_states_unique[ic2].filename
+                    continue
+                endif
+                red_append, alignments,  { state1:ref_states_unique[ic1], state2:cam_states_unique[ic2], $
+                        map:rdx_img_align( ref_img, img2, nref=nref, h_init=this_init $
+                                            , threshold=threshold, verbose=verbose, max_shift = max_shift ) }
+           endfor
         endfor
-        free_lun, lun
         
-        ssh = round(reform(aligns(2,0:1,*))) ;  NB: the shifts calulated with the old routines have different meaning
-        refrot = 0                           ;  TODO: extract rotation from transformation matrix
-        align = reform(aligns[*,*,ss,*])
+        okmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] eq 1) )
+        failedmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] ne 1) )
+        if (max(failedmaps) ge 0) and (max(okmaps) ge 0) then begin
+            avg_map = alignments[okmaps].map
+            if n_elements(okmaps) gt 1 then avg_map = total(avg_map,3)/n_elements(okmaps)
+            for ifailed=0, n_elements(failedmaps)-1 do begin
+                this_init = avg_map
+                ref_img = red_readdata( alignments[failedmaps[ifailed]].state1.filename, /silent )
+                img2 = red_readdata( alignments[failedmaps[ifailed]].state2.filename, /silent )
+                alignments[failedmaps[ifailed]].map = rdx_img_align( ref_img, img2, nref=nref, h_init=this_init $
+                                            , threshold=threshold, verbose=verbose )
+            endfor
+        endif
 
-        save, file = clipfile+'sav', align, acl, cl, refrot, sx, sy, ssh
+    endfor      ; icam
 
-
-     endfor                     ; ipref
-  
+    save, file = output_file, alignments
+    
 end
