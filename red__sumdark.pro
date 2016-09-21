@@ -33,9 +33,11 @@
 ;      A list of cameras (or rather camera subdirs).
 ;
 ;    sum_in_rdx : in, optional, type=boolean
-;
-;      Bypass rdx_sumfiles.
+;      Use rdx_sumfiles.
 ; 
+;    filter  : in, optional, type=int, default=3
+;       Size of the medianfilter to use when checking data.
+;   
 ; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
@@ -83,12 +85,15 @@
 ;   2016-09-21 : MGL. Tell user what darkname is being summed for
 ;                instead of what state.
 ;
+;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
                   dirs = dirs, $
-                  sum_in_rdx = sum_in_rdx
+                  sum_in_rdx = sum_in_rdx, $
+                  filter = filter
 
     ;; Defaults
     if n_elements(overwrite) eq 0 then overwrite = 0
@@ -172,9 +177,9 @@ pro red::sumdark, overwrite = overwrite, $
             endif
             
             if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-                dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, verbose=2)
+                dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, filter=filter, verbose=2)
             endif else begin
-                dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, time_ave = time_ave)
+                dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, filter=filter, time_ave = time_ave)
             endelse
             
             ;; The momfbd code can't read doubles.

@@ -102,6 +102,9 @@
 ;   
 ;       The (x,y) coordinates of the feature used for alignment.
 ;   
+;    filter  : in, optional, type=int, default=3
+;       Size of the medianfilter to use when checking data.
+;   
 ; 
 ; :History:
 ; 
@@ -159,6 +162,8 @@
 ;   2016-06-09 : MGL. Bugfix in printout of what frames were rejected.
 ;                Bugfix in summing without checking.
 ; 
+;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
+;
 ; 
 ;-
 function red_sumfiles, files_list $
@@ -177,7 +182,8 @@ function red_sumfiles, files_list $
                        , xyc = xyc $   
                        , backscatter_gain = backscatter_gain $
                        , backscatter_psf = backscatter_psf $
-                       , nthreads = nthreads 
+                       , nthreads = nthreads $
+                       , filter = filter
 
   ;; Name of this subprogram
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -304,12 +310,14 @@ function red_sumfiles, files_list $
 
      ;; Find bad frames
      if n_elements(lim) eq 0 then lim = 0.0175 ; Allow 2% deviation from the mean value
+     if n_elements(filter) eq 0 then filter = 3  ; default is to use a medianfilter of width 3
+     if filter mod 2 eq 0 then filter += 1       ; force odd filtersize
      tmean = median(mval)
-     mmval = median( mval, 3)
+     mmval = median( mval, filter )
      ;; Set edges to neighbouring values since the median filter does
      ;; not modify endpoints.
-     mmval[0] = mmval[1]        
-     mmval[Nfiles-1] = mmval[Nfiles-2] 
+     mmval[0:filter/2-1] = mmval[filter/2]        
+     mmval[Nfiles-filter/2:Nfiles-1] = mmval[Nfiles-filter/2-1] 
 
      goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
      idx = where(goodones, Nsum, complement = idx1, Ncomplement = Nrejected)     

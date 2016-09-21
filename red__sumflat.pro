@@ -38,10 +38,10 @@
 ;
 ;
 ;    sum_in_rdx : in, optional, type=boolean
-;
-;      Bypass rdx_sumfiles.
+;      Use rdx_sumfiles.
 ;   
-;   
+;    filter  : in, optional, type=int, default=3
+;       Size of the medianfilter to use when checking data.
 ;   
 ; 
 ; 
@@ -97,6 +97,8 @@
 ;   2016-09-19 : MGL. Changed format strings so exposure times header
 ;                keywords do not overflow.
 ;
+;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
+;
 ;-
 pro red::sumflat, overwrite = overwrite, $
                   ustat = ustat, $
@@ -109,7 +111,8 @@ pro red::sumflat, overwrite = overwrite, $
                   prefilter = prefilter, $
                   dirs = dirs, $
                   outdir = outdir, $
-                  sum_in_rdx = sum_in_rdx
+                  sum_in_rdx = sum_in_rdx, $
+                  filter = filter
 
   ;; Defaults
   if( n_elements(overwrite) eq 0 ) then overwrite = 0
@@ -224,20 +227,20 @@ pro red::sumflat, overwrite = overwrite, $
            tmplist = tmplist(sort(tmplist))
            if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
               flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum, verbose=2)
+                                  lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter, verbose=2)
            endif else begin
               flat = red_sumfiles(tmplist, check = check, $
                                   time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum)
+                                  lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter)
            endelse
         endif else begin 
            if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
               flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
-                                  lim = lim, summed = summed, nsum = nsum, verbose=2)
+                                  lim = lim, summed = summed, nsum = nsum, filter = filter, verbose=2)
            endif else begin
               flat = red_sumfiles(files[sel], check = check, $
                                   time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
-                                  lim = lim, summed = summed, nsum = nsum)
+                                  lim = lim, summed = summed, nsum = nsum, filter = filter)
            endelse
         endelse
 
