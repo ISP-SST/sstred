@@ -115,6 +115,9 @@
 ;                tuning.
 ;
 ;    2016-09-21 : MGL. Work in meters, not Å or mÅ. Typos hzr --> hrz.
+;
+;    2016-09-21 : MGL. Make exception for darks when looking for
+;                 tuning info.
 ; 
 ;-
 pro chromis::extractstates, strings, states $
@@ -153,7 +156,8 @@ pro chromis::extractstates, strings, states $
 
      ;; Numerical keywords
      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
-     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) ; New keyword for gain from 2016.08.30
+     ;; New keyword for gain from 2016.08.30:
+     if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) 
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
@@ -274,8 +278,15 @@ pro chromis::extractstates, strings, states $
               states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
                                             , format = '(i04)') $
                                      + '_+0'
+           endif else if strmatch(states[ifile].filename,*self.dark_dir+'*') then begin
+              ;; For darks there is no tuning info. This is a kludge,
+              ;; should really set something like states.is_dark and
+              ;; test for that?
+              states[ifile].tun_wavelength = 0
+              states[ifile].tuning = ''
            endif else begin
-              ;; Warn about missing tuning info, but only for narrowband.
+              ;; Warn about missing tuning info, but only for
+              ;; narrowband.
               print, inam + ' : Reference wavelength in du missing.'
               print, inam + ' : Did you run a -> hrz_zeropoint?'
            endelse 
@@ -298,7 +309,8 @@ pro chromis::extractstates, strings, states $
      states[ifile].fullstate = strjoin(fullstate_list, '_')
 
      red_progressbar, ifile, Nstrings, message = progress_message
-     
+
+
   endfor                        ; ifile
   red_progressbar, /finished, message = progress_message
 
@@ -306,6 +318,14 @@ end
 
 
 a = chromisred('config.txt')
+
+
+;; Test flats
+files = file_search('flats/camXXX_*.flat', count = Nfiles)
+a -> extractstates, files, states
+
+
+stop
 
 ;; Test narrowband
 dirN = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-N/'
