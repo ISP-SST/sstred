@@ -11,11 +11,6 @@
 ; :Author:
 ; 
 ; 
-; 
-; 
-; :Params:
-; 
-; 
 ; :Keywords:
 ; 
 ;    overwrite  : 
@@ -98,6 +93,8 @@
 ;                keywords do not overflow.
 ;
 ;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
+; 
+;   2016-09-22 : MGL. Base output header on relevant original file.
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -149,9 +146,9 @@ pro red::sumflat, overwrite = overwrite, $
   endelse
 
   ;; cameras
-  for ic = 0L, Ncams-1 do begin
+  for icam = 0L, Ncams-1 do begin
 
-     cam = cams[ic]
+     cam = cams[icam]
 
      self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
                         files=files, states=states, nremove=remove, /force
@@ -169,12 +166,12 @@ pro red::sumflat, overwrite = overwrite, $
 
      state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-     ns = n_elements(state_list)
+     Nstates = n_elements(state_list)
 
      ;; Loop over states and sum
-     for ss = 0L, ns - 1 do begin
+     for istate = 0L, Nstates - 1 do begin
 
-        self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+        self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
                            files=files, states=states, selected=sel
 
         ;; Get the flat file name for the selected state
@@ -208,26 +205,26 @@ pro red::sumflat, overwrite = overwrite, $
         endif
 
         if( min(sel) lt 0 ) then begin
-           print, inam+' : '+cam+': no files found for state: '+state_list[ss]
+           print, inam+' : '+cam+': no files found for state: '+state_list[istate]
            continue
         endif
 
-        print, inam+' : summing flats for state -> ' + state_list[ss]
-        if(keyword_set(check)) then begin
-           ;;openw, lun, self.out_dir + '/flats/'+camtag+'.'+state_list[ss]+'.discarded.txt' $
-           openw, lun, flatname + '_discarded.txt', width = 500, /get_lun
-        endif
-
+        print, inam+' : summing flats for state -> ' + state_list[istate]
+        print, inam+' : to be saved in ' + flatname
+        if(keyword_set(check)) then openw, lun, flatname + '_discarded.txt' $
+                                           , width = 500, /get_lun
+        
         ;; Sum files
         if keyword_set(check) then begin
            ;; If summing from two directories, same frame numbers from
-           ;; two directories are consecutive ans produce false drop
+           ;; two directories are consecutive and produce false drop
            ;; info. Re-sort them.
            tmplist = files[sel]
            tmplist = tmplist(sort(tmplist))
            if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
               flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter, verbose=2)
+                                  lun = lun, lim = lim, summed = summed, nsum = nsum $
+                                  , filter = filter, verbose=2)
            endif else begin
               flat = red_sumfiles(tmplist, check = check, $
                                   time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
@@ -236,7 +233,8 @@ pro red::sumflat, overwrite = overwrite, $
         endif else begin 
            if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
               flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
-                                  lim = lim, summed = summed, nsum = nsum, filter = filter, verbose=2)
+                                  lim = lim, summed = summed, nsum = nsum $
+                                  , filter = filter, verbose=2)
            endif else begin
               flat = red_sumfiles(files[sel], check = check, $
                                   time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
@@ -248,11 +246,14 @@ pro red::sumflat, overwrite = overwrite, $
         flat = float(flat-dd)
         
         ;; Make header
-        head = red_readhead(files[0]) 
+        head = red_readhead(files[sel[0]]) 
         case 1 of
-           fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[0]
-           fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[0]
-           fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE'), 'T', /extract))[0]
+           fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG') $
+                                                            , 'T', /extract))[0]
+           fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END') $
+                                                            , 'T', /extract))[0]
+           fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE') $
+                                                            , 'T', /extract))[0]
            else: begin
               print, 'No date info in header.'
               print, head
@@ -260,22 +261,25 @@ pro red::sumflat, overwrite = overwrite, $
            end
         endcase
         check_fits, flat, head, /UPDATE, /SILENT
-        sxaddpar, head, 'DATE', red_timestamp(/utc, /iso), 'Creation date of FITS header', before = 'TIMESYS'
+        sxaddpar, head, 'DATE', red_timestamp(/utc, /iso) $
+                  , 'Creation date of FITS header', before = 'TIMESYS'
         ;; Some SOLARNET recommended keywords:
         exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
         if count gt 0 then begin
-            sxaddpar, head, 'XPOSURE', nsum*exptime, exptime_comment+' Total exposure time', format = '(f12.4)'
-            sxaddpar, head, 'TEXPOSUR', exptime, exptime_comment+' Single-exposure time', format = '(f12.4)' $
+            sxaddpar, head, 'XPOSURE', nsum*exptime $
+                      , exptime_comment+' Total exposure time', format = '(f12.4)'
+            sxaddpar, head, 'TEXPOSUR', exptime $
+                      , exptime_comment+' Single-exposure time', format = '(f12.4)' $
                       , after = 'XPOSURE'
         endif
-        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', after = 'TEXPOSUR'
+        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum $
+                                    , 'Number of summed exposures', after = 'TEXPOSUR'
         if n_elements(time_end) ne 0 then sxaddpar, head, 'DATE-END', date+'T'+time_end $
            , 'Date of end of observation', after = 'DATE'
         if n_elements(time_ave) ne 0 then sxaddpar, head, 'DATE-AVE', date+'T'+time_ave $
            , 'Average date of observation', after = 'DATE'
         if n_elements(time_beg) ne 0 then sxaddpar, head, 'DATE-BEG', date+'T'+time_beg $
            , 'Date of start of observation', after = 'DATE'
-
        
         ;; Add some more info here, see SOLARNET deliverable D20.4 or
         ;; later versions of that document. 
@@ -308,8 +312,8 @@ pro red::sumflat, overwrite = overwrite, $
         if keyword_set(check) then free_lun, lun
 
 
-     endfor                     ; states
+     endfor                     ; istate
 
-  endfor                        ;  cameras
+  endfor                        ; icam
 
 end  
