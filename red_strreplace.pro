@@ -6,6 +6,9 @@
 ; 2014-01-22 : MGL. Renamed for inclusion in the red_ namespace.
 ;
 ; 2014-03-05 : THI. Handle both arrays of strings and single strings.
+;
+; 2016-09-20 : JLF. Fix bug in handling arrays of strings where some of the
+;		strings don't contain the replaced character.
 
 FUNCTION red_strreplace,st,pat1,pat2,n=n
 
@@ -23,7 +26,7 @@ FUNCTION red_strreplace,st,pat1,pat2,n=n
   while max(m) gt 0 do begin
       idx = where(m gt 0)
       pos = strpos(st0[idx],pat1)
-      st0 = strmid(st0[idx],0,transpose(pos))+pat2+red_strskp(st0[idx],pat1)
+      st0[idx] = strmid(st0[idx],0,transpose(pos))+pat2+red_strskp(st0[idx],pat1)
       m -= 1
   endwhile
 
