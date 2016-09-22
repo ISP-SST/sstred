@@ -162,7 +162,9 @@
 ;   2016-06-09 : MGL. Bugfix in printout of what frames were rejected.
 ;                Bugfix in summing without checking.
 ; 
-;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
+;   2016-09-21 : THI. Make the size of the medianfilter a parameter.   
+; 
+;   2016-09-22 : MGL. Make time_beg etc. with 6 decimals.
 ;
 ; 
 ;-
@@ -258,9 +260,9 @@ function red_sumfiles, files_list $
      head = red_readhead(files_list[0], /silent)
      time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
      time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
-     time_ave = red_time2double((time_beg + time_end) / 2d, /dir)
-     time_beg = red_time2double(time_beg, /dir)
-     time_end = red_time2double(time_end, /dir)
+     time_ave = red_timestring((time_beg + time_end) / 2d, Nsecdecimals = 6)
+     time_beg = red_timestring(time_beg, Nsecdecimals = 6)
+     time_end = red_timestring(time_end, Nsecdecimals = 6)
      ;; Include gain, dark, fillpix, backscatter here? This case
      ;; should really never happen...
      return, red_readdata(files_list[0], /silent)
@@ -344,9 +346,9 @@ function red_sumfiles, files_list $
   endelse                       ; docheck
 
   ;; Set time stamps to potentially be returned as keywords.
-  time_beg = red_time2double(min(times_beg[idx]), /dir)
-  time_ave = red_time2double(mean(times[idx]),    /dir)
-  time_end = red_time2double(max(times_end[idx]), /dir)
+  time_beg = red_timestring(min(times_beg[idx]), Nsecdecimals = 6)
+  time_ave = red_timestring(mean(times[idx]),    Nsecdecimals = 6)
+  time_end = red_timestring(max(times_end[idx]), Nsecdecimals = 6)
 
   
   ;; Do the summing
