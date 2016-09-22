@@ -87,6 +87,9 @@
 ;
 ;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
 ;
+;   2016-09-21 : MGL. Put DATE-BEG, DATE-END, DATE-AVE in output
+;                header. 
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -177,9 +180,12 @@ pro red::sumdark, overwrite = overwrite, $
             endif
             
             if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-                dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, filter=filter, verbose=2)
+                dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
+                                    , nsum=nsum, filter=filter, verbose=2)
             endif else begin
-                dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum, nsum=nsum, filter=filter, time_ave = time_ave)
+                dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
+                                    , nsum=nsum, filter=filter $
+                                    , time_ave = time_ave, time_beg = time_beg, time_end = time_end)
             endelse
             
             ;; The momfbd code can't read doubles.
@@ -187,6 +193,19 @@ pro red::sumdark, overwrite = overwrite, $
 
             ;; Make header
             head = red_readhead(files[sel[0]]) 
+            case 1 of
+               fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG') $
+                                                                , 'T', /extract))[0]
+               fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END') $
+                                                                , 'T', /extract))[0]
+               fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE') $
+                                                                , 'T', /extract))[0]
+               else: begin
+                  print, 'No date info in header.'
+                  print, head
+                  stop
+               end
+            endcase
             check_fits, dark, head, /UPDATE, /SILENT        
             ;; Some SOLARNET recommended keywords:
             exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
@@ -196,6 +215,13 @@ pro red::sumdark, overwrite = overwrite, $
                 sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
             endif
             if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
+            
+            if n_elements(time_end) ne 0 then sxaddpar, head, 'DATE-END', date+'T'+time_end $
+               , 'Date of end of observation', after = 'DATE'
+            if n_elements(time_ave) ne 0 then sxaddpar, head, 'DATE-AVE', date+'T'+time_ave $
+               , 'Average date of observation', after = 'DATE'
+            if n_elements(time_beg) ne 0 then sxaddpar, head, 'DATE-BEG', date+'T'+time_beg $
+               , 'Date of start of observation', after = 'DATE'
             
             ;; Add some more info here, see SOLARNET deliverable D20.4 or
             ;; later versions of that document.
