@@ -157,8 +157,11 @@ pro chromis::selectfiles, cam = cam $
         selected = [states.skip] * 0
         tpref = [prefilter]    ; make sure it's an array
         for ip = 0, Npref-1 do begin
-            pos = where(states.prefilter eq tpref[ip])
-            if( min(pos) ge 0 ) then begin
+            undefine, pos
+            for is = 0, n_elements(states)-1 do begin
+                if( self->match_prefilters(states[is].prefilter, tpref) ) then red_append, pos, is
+            endfor
+            if( n_elements(pos) gt 0 ) then begin
                 selected[pos] = 1
             endif
         endfor
