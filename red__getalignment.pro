@@ -128,10 +128,16 @@ pro red::getalignment, align = align, $
     Nalign = n_elements(alignments)
     if Nalign eq 0 then begin
         print, inam, ' : No alignments left, was the filtering too strict?'
+        return
     endif
     
     allstates = [[alignments.state1],[alignments.state2]]
     ref_idx = where( allstates.camera eq refcam_name )
+    if max(ref_idx) lt 0 then begin
+        print, inam, ' : Alignment not found for reference camera: ', refcam_name
+        return
+    endif
+
     head = red_readhead( allstates[ref_idx[0]].filename, /silent )
     ref_dims = fxpar(head, 'NAXIS*')
     ref_corners = red_make_corners( [ extraclip(0), ref_dims[0]-extraclip(1)-1 , $
