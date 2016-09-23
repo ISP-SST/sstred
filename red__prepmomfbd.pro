@@ -440,10 +440,14 @@ pro red::prepmomfbd, wb_states = wb_states $
                             fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
                             
                             state_idx = where( align.state2.camera eq cams[icam] and align.state2.fullstate eq thisstate)
-                            if max(state_idx) lt 0 then begin
-                                print, inam, ' : Failed to get alignment for camera: ', cams[icam]
-                                continue
+                            if max(state_idx) lt 0 then begin   ; no match for fullstate, try only prefilter
+                                state_idx = where( align.state2.camera eq cams[icam] and align.state2.prefilter eq ustates[is].prefilter)
+                                if max(state_idx) lt 0 then begin
+                                    print, inam, ' : Failed to get alignment for camera/state ', cams[icam] + ':' + thisstate
+                                    continue
+                                endif
                             endif
+                            if n_elements(state_idx) gt 1 then state_idx = state_idx[0]     ; just pick the first one for now
                             state_align = align[state_idx]
                             
                             ;; create cfg object
