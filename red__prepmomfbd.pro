@@ -305,13 +305,14 @@ pro red::prepmomfbd, wb_states = wb_states $
 
             for ipref=0L, Nprefs-1 do begin
                 
-                self->selectfiles, prefilter=upref[ipref], files=ref_files, states=ref_states, selected=ref_sel
+                self->selectfiles, prefilter=upref[ipref], scan=scannumber, $
+                    files=ref_files, states=ref_states, selected=ref_sel
+                
                 if( max(ref_sel) lt 0 ) then continue
                 
                 self -> get_calib, ref_states[ref_sel[0]], gainname = gainname, darkname = darkname, status = status
                 if( status lt 0 ) then continue
 
-                lam = strmid(string(float(upref[ipref]) * 1.e-10), 2)
                 cfg_dir = cfg_base_dir + '/'+upref[ipref]+'/cfg/'
                 rdir = cfg_dir + 'results/'
                 ddir = cfg_dir + 'data/'
@@ -406,7 +407,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                     for ipref=0L, Nprefs-1 do begin
                     
                         ;; select a subset of the states which matches prefilter & scan number.
-                        self->selectfiles, cam=cams[icam], dirs=dir, prefilter=upref[ipref], $
+                        self->selectfiles, cam=cams[icam], dirs=dir, prefilter=upref[ipref], scan=scannumber, $
                                 files=files, states=states, nremove=remove, /strip_settings, selected=sel
                         if( max(sel) lt 0 ) then continue
                                 
@@ -415,6 +416,9 @@ pro red::prepmomfbd, wb_states = wb_states $
                         cfg_idx = where( cfg_list.file eq cfg_file )
                         
                         if( max(cfg_idx) lt 0 ) then continue
+                        
+                        cfg_list[cfg_idx].first_file = min([cfg_list[cfg_idx].first_file, states[sel].framenumber])
+                        cfg_list[cfg_idx].last_file = max([cfg_list[cfg_idx].last_file, states[sel].framenumber])
                         
                         state_list = states[sel]
                         ustates = state_list[uniq(state_list.fullstate, sort(state_list.fullstate))]
@@ -442,9 +446,6 @@ pro red::prepmomfbd, wb_states = wb_states $
                             endif
                             state_align = align[state_idx]
                             
-                            cfg_list[cfg_idx].first_file = min([cfg_list[cfg_idx].first_file, states[ref_sel].framenumber])
-                            cfg_list[cfg_idx].last_file = max([cfg_list[cfg_idx].last_file, states[ref_sel].framenumber])
-                        
                             ;; create cfg object
                             cfg_list[cfg_idx].objects += 'object{' + string(10b)
                             cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[is].pf_wavelength,2) + string(10b)

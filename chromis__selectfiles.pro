@@ -83,12 +83,15 @@
 ;   2016-08-31 : MGL. Update file_template for data files not starting
 ;                with the detector name.
 ; 
+;   2016-09-23 : THI. Add selection by scannumber
+; 
 ;-
 pro chromis::selectfiles, cam = cam $
                       , dirs = dirs $
                       , files = files $
                       , states = states $
                       , prefilter = prefilter $
+                      , scan = scan $
                       , ustat = ustat $
                       , flat = flat $
                       , dark = dark $
@@ -168,7 +171,19 @@ pro chromis::selectfiles, cam = cam $
         pos = where(selected lt 1)
         if( min(pos) ge 0 ) then states[pos].skip = 1
     endif
-    
+  
+    Nscan = n_elements(scan)
+    if( Nscan gt 0 ) then begin
+        selected = [states.skip] * 0
+        tscans = [scan]    ; make sure it's an array
+        for is = 0, Nscan-1 do begin
+            pos = where(states.scannumber eq tscans[is])
+            if( min(pos) ge 0 ) then selected[pos] = 1
+        endfor
+        pos = where(selected lt 1)
+        if( min(pos) ge 0 ) then states[pos].skip = 1
+    endif
+  
     Nstates = n_elements(ustat)
     if( Nstates gt 0 ) then begin
         selected = [states.skip] * 0
@@ -182,7 +197,7 @@ pro chromis::selectfiles, cam = cam $
     endif
 
     selected = where( states.skip lt 1 )
-    
+ 
     if arg_present(selected) then return
     
     ; if keyword selected is not present, return selected subsets as new files/states
