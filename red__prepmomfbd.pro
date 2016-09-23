@@ -381,6 +381,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                         print, inam, ' : No backscatter files found for prefilter: ', upref[ipref]
                     endelse
                 endif
+                ;if(n_elements(nfac) gt 0) then cfg.objects += '        NF=' + red_stri(nfac[0]) + string(10b)
+                cfg.objects += '        INCOMPLETE' + string(10b)
                 cfg.objects += '    }' + string(10b)
                 cfg.objects += '}' + string(10b)
                     
@@ -475,6 +477,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                                     print, inam, ' : No backscatter files found for prefilter: ', ustates[is].prefilter
                                 endelse
                             endif
+                            ;if(n_elements(nfac) gt 0) then cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[1]) + string(10b)
+                            cfg_list[cfg_idx].objects += '        INCOMPLETE' + string(10b)
                             cfg_list[cfg_idx].objects += '    }' + string(10b)
                             cfg_list[cfg_idx].objects += '}' + string(10b)
                         endfor
