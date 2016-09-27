@@ -8,12 +8,12 @@
 ;    SST observations
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Mats Löfdahl, 2013-10-03
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ;    The list of selected elements.
 ; 
@@ -33,12 +33,14 @@
 ;
 ;      Set this to get instructions.
 ;
-; :history:
+; :History:
 ; 
 ;     2013-10-03 : MGL. Use red_expandrange instead of expandrange.
 ; 
 ;     2013-12-05 : MGL. A single dash will select nothing. New keyword
 ;                  indx for the selected indices.
+;
+;     2016-09-26 : MGL. If none selected, undefine indx.
 ; 
 ; 
 ; 
@@ -72,6 +74,7 @@ function red_select_subset, list, count = count, help = help, qstring = qstring,
   if selection eq '' then selection = default
   if selection eq '-' then begin
      count = 0
+     undefine, indx 
      return, ''
   endif
   if selection eq '*' then selection = '0-'+strtrim(string(Nelements-1), 2)
