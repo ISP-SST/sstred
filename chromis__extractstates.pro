@@ -183,10 +183,17 @@ pro chromis::extractstates, strings, states $
      camera = fxpar(head, red_keytab('camera'), count=count)
      ;camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
      if count gt 0 then begin
-         camera = strtrim(camera,2)
-         states[ifile].camera = camera
-         if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
-     endif
+        camera = strtrim(camera,2)
+        states[ifile].camera = camera
+        if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+     endif else begin
+        self->getdetectors
+        indx = where(strmatch(*self.detectors,detector),count) 
+        if count eq 1 then begin
+           camera = (*self.cameras)[indx[0]]
+           if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+        endif
+     endelse
 
      if hasexp gt 0 then begin
         states[ifile].cam_settings = strtrim(string(states[ifile].exposure*1000 $
@@ -288,6 +295,7 @@ pro chromis::extractstates, strings, states $
            endif else begin
               ;; Warn about missing tuning info, but only for
               ;; narrowband.
+stop
               print, inam + ' : Reference wavelength in du missing.'
               print, inam + ' : Did you run a -> hrz_zeropoint?'
            endelse 
