@@ -50,6 +50,9 @@
 ;    2016-09-21 : MGL. Change filter tags to four-digit tags
 ;                 representing approximate filter wavelength. Set
 ;                 WAVELNTH header keyword to corresponding wavelength.
+;
+;    2016-09-27 : MGL. Get tuning info (including prefilter), detector
+;                 gain, and exposure time. Move setting of waveband to 
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -90,9 +93,47 @@ function red_meta2head, head, metadata=metaStruct
                                        , 'Inferred from filename.' $
                                        , before = 'COMMENT'
      endif                      ; CAMERA
+
+     ;; Exposure time
+     dummy = fxpar(newhead, 'XPOSURE', count=count)
+     if count eq 0 then begin
+        xposure = stregex(barefile, '([0-9]*)[.]([0-9]*)ms' $
+                          , /extract, /subexpr) 
+        if xposure[0] ne '' then begin
+           comment = ' [ms] Inferred from filename.'
+           sxaddpar, newhead, 'XPOSURE', float(strjoin(xposure[1:2], '.')), comment, before = 'COMMENT'
+        endif
+    endif
+
+     ;; Detector gain
+     dummy = fxpar(newhead, 'DETGAIN', count=count)
+     if count eq 0 then begin
+        detgain = stregex(barefile, 'G([0-9]*)[.]([0-9]*)' $
+                          , /extract, /subexpr) 
+        if detgain[0] ne '' then begin
+           comment = 'Inferred from filename.'
+           sxaddpar, newhead, 'DETGAIN', float(strjoin(detgain[1:2], '.')), comment, before = 'COMMENT'
+        endif
+     endif
      
-     
-     ;; FILTERn, WAVEBAND and WAVELNTH
+     ;; Prefilter and tuning info
+     dummy = fxpar(newhead, red_keytab('pref'), count=count)
+     if count eq 0 then begin
+        ;; Try to find tuning info on standard form in the file name
+        tuninfo = stregex(barefile, '([0-9][0-9][0-9][0-9])[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
+                          , /extract, /subexpr) 
+        if tuninfo[0] ne '' then begin
+           comment = 'Inferred from tuning info in filename.'
+           if tuninfo[1] ne '' then sxaddpar, newhead, red_keytab('pref'), tuninfo[1], comment, before = 'COMMENT'
+           ;; Add also the tuning state if not there already
+           dummy = fxpar(newhead, 'STATE', count=count)
+           if count eq 0 then begin
+              sxaddpar, newhead, 'STATE', tuninfo[0], comment, before = 'COMMENT'  ;strjoin(tuninfo[2:3], '_')
+           endif
+        endif
+     endif
+
+     ;; FILTERn and WAVELNTH
      dummy = fxpar(newhead, red_keytab('pref'), count=count)
      if count eq 0 then begin
 
@@ -110,46 +151,20 @@ function red_meta2head, head, metadata=metaStruct
            endif else begin
 
               if camera eq 'Chromis-N' then begin
-
                  ;; Chromis-N
                  case wheelpos of
-                    'w1' : begin ; Ca II K blue wing
-                       filter1 = '3925'
-                       waveband = 'Ca II H & K'
-                    end
-                    'w2' : begin ; Ca II K core
-                       filter1 = '3934'
-                       waveband = 'Ca II H & K'
-                    end
-                    'w3' : begin ; Ca II H core
-                       filter1 = '3969'
-                       waveband = 'Ca II H & K'
-                    end
-                    'w4' : begin ; Ca II H red wing
-                       filter1 = '3978'
-                       waveband = 'Ca II H & K'
-                    end
-                    'w5' : begin ; Ca II H continuum
-                       filter1 = '3999'
-                       waveband = 'Ca II H & K'
-                    end
-                    'w6' : begin ; H-beta core
-                       filter1 = '4862'
-                       waveband = 'H-beta'
-                    end
+                    'w1' : filter1 = '3925' ; Ca II K blue wing
+                    'w2' : filter1 = '3934' ; Ca II K core
+                    'w3' : filter1 = '3969' ; Ca II H core
+                    'w4' : filter1 = '3978' ; Ca II H red wing
+                    'w5' : filter1 = '3999' ; Ca II H continuum
+                    'w6' : filter1 = '4862' ; H-beta core
                  endcase
               endif else begin
-
                  ;; Chromis-W and Chromis-D
                  case wheelpos of
-                    'w6' : begin ; H-beta continuum
-                       filter1 = '4846'
-                       waveband = 'H-beta'
-                    end
-                    else: begin ; Ca II HK wideband
-                       filter1 = '3950'
-                       waveband = 'Ca II H & K'
-                    end
+                    'w6' : filter1 = '4846' ; H-beta continuum
+                    else: filter1 = '3950'  ; Ca II HK wideband
                  endcase
               endelse
               
@@ -161,7 +176,7 @@ function red_meta2head, head, metadata=metaStruct
         endif                   ; Found a wheel position
 
 
-     endif                      ; FILTER1, WAVEBAND
+     endif                      ; FILTER1
 
      ;; WAVELNTH
      prefilter = fxpar(newhead, red_keytab('pref'), count=count)
@@ -172,38 +187,47 @@ function red_meta2head, head, metadata=metaStruct
               '3925' : begin    ; Ca II K blue wing
                  wavelnth = 3925e-10
                  fwhm = 0.37e-9
+                 waveband = 'Ca II H & K'
               end
               '3934' : begin    ; Ca II K core
                  wavelnth = 3934e-10
                  fwhm = 0.37e-9
-              end
-              '3969' : begin    ; Ca II H core
-                 wavelnth = 3969e-10
-                 fwhm = 0.37e-9
-              end
-              '3978' : begin    ; Ca II H red wing
-                 wavelnth = 3978e-10
-                 fwhm = 0.37e-9
-              end
-              '3999' : begin    ; Ca II H continuum
-                 wavelnth = 3999e-10
-                 fwhm = 0.37e-9
-              end
-              '4862' : begin    ; H-beta core
-                 wavelnth = 4862e-10
-                 fwhm = 0.44e-9
-              end
-              '4846' : begin    ; H-beta continuum
-                 wavelnth = 4846e-10
-                 fwhm = 0.6e-9
+                 waveband = 'Ca II H & K'
               end
               '3950' : begin    ; Ca II HK wideband
                  wavelnth = 3950e-10
                  fwhm = 1.3e-9
+                 waveband = 'Ca II H & K'
+              end
+              '3969' : begin    ; Ca II H core
+                 wavelnth = 3969e-10
+                 fwhm = 0.37e-9
+                 waveband = 'Ca II H & K'
+              end
+              '3978' : begin    ; Ca II H red wing
+                 wavelnth = 3978e-10
+                 fwhm = 0.37e-9
+                 waveband = 'Ca II H & K'
+              end
+              '3999' : begin    ; Ca II H continuum
+                 wavelnth = 3999e-10
+                 fwhm = 0.37e-9
+                 waveband = 'Ca II H & K'
+              end
+              '4862' : begin    ; H-beta core
+                 wavelnth = 4862e-10
+                 fwhm = 0.44e-9
+                 waveband = 'H-beta'
+              end
+              '4846' : begin    ; H-beta continuum
+                 wavelnth = 4846e-10
+                 fwhm = 0.6e-9
+                 waveband = 'H-beta'
               end
               else: begin      
-		wavelnth = 'unknown'
-		fwhm = 'unknown'
+                 wavelnth = ''
+                 fwhm = ''
+                 waveband = ''
 	      end
            endcase
 
