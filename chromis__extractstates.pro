@@ -119,6 +119,9 @@
 ;    2016-09-22 : MGL. Make exception for darks when looking for
 ;                 tuning info.
 ;
+;    2016-09-27 : MGL. Detect is_wb also if the camera is not already
+;                 known. 
+;
 ; 
 ;-
 pro chromis::extractstates, strings, states $
