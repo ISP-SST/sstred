@@ -34,6 +34,9 @@
 ;      usually be found at the SST site in La Palma,
 ;      "/data/store[1234]/" and "/data/disk[1234]/*/"
 ;
+;    instruments : in, optional, type=strarr, default=['chromis']
+; 
+;      A list of instruments to plot scans and statistics for.  
 ;
 ;    r0max : in, optional, type=scalar, default=0.40
 ;
@@ -182,6 +185,8 @@
 ;     2016-09-12 : MGL. Plotstats plots: add a time axis on top, shade
 ;                  between min and max. 
 ;
+;     2016-09-27 : MGL. New keyword instruments.
+;
 ;-
 pro red_plot_r0, dir = dir $
                  , today = today $
@@ -205,9 +210,12 @@ pro red_plot_r0, dir = dir $
                  , onlydata = onlydata $
                  , dt_mean = dt_mean $
                  , noplot = noplot $
-                 , plotstats = plotstats
+                 , plotstats = plotstats $
+                 , instruments = instruments
   
 
+
+  if n_elements(instruments) eq 0 then instruments = ['chromis']; ['chromis', 'crisp']
   if n_elements(r0max) eq 0 then r0max = 0.40             
   if n_elements(extension) eq 0 then extension = 'jpg'  
   if n_elements(plotvertical) eq 0 then plotvertical = 0
@@ -219,6 +227,8 @@ pro red_plot_r0, dir = dir $
   if n_elements(psym_scan) eq 0 then psym_scan = 16
   if n_elements(symsize_plot) eq 0 then symsize_plot = 0.25
   if n_elements(symsize_scan) eq 0 then symsize_scan = .5
+
+  Ninstruments = n_elements(instruments)
 
   ;; Colors to use for plotting
   color_8       = 'black'
@@ -603,141 +613,142 @@ pro red_plot_r0, dir = dir $
      
      cgwindow
 
-     print,'red_plot_r0 : Plot r0 for CRISP and/or CHROMIS scans.'
-     
-     scanfiles = file_search(analysis_dir+'/*/*/*-scans.txt', count = Nscanfiles)
-
-     ;; We could filter the results to get only plots for the wanted instrument
-     
-
-     
-     for iscanfile = 0, Nscanfiles-1 do begin
-
-        print,strtrim(iscanfile,2)+'/'+strtrim(Nscanfiles,2)
-           
-        print, scanfiles[iscanfile]
+     for iinstrument = 0, Ninstruments-1 do begin
         
-        instrument = file_basename(scanfiles[iscanfile],'-scans.txt')
-        timedir = file_dirname(scanfiles[iscanfile])
+        print,'red_plot_r0 : Plot r0 '+instruments[iinstrument]+' scans.'
+
+        scanfiles = file_search(analysis_dir+'/*/*/'+instruments[iinstrument]+'-scans.txt', count = Nscanfiles, /fold)
         
-        scaninfo = read_ascii(scanfiles[iscanfile], template = scantemplate)
+        for iscanfile = 0, Nscanfiles-1 do begin
 
-        sindx = sort(scaninfo.tstart)
-        Ns = n_elements(sindx)  ; Total number of scans of all types
+           print,strtrim(iscanfile,2)+'/'+strtrim(Nscanfiles,2)
+           
+           print, scanfiles[iscanfile]
+           
+           instrument = file_basename(scanfiles[iscanfile],'-scans.txt')
+           timedir = file_dirname(scanfiles[iscanfile])
+           
+           if ~query_ascii(scanfiles[iscanfile]) then continue ; Skip non-valid files
+           scaninfo = read_ascii(scanfiles[iscanfile], template = scantemplate)
 
-        upref = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
-        Npref = n_elements(upref)
-        print, upref
+           sindx = sort(scaninfo.tstart)
+           Ns = n_elements(sindx) ; Total number of scans of all types
+
+           upref = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
+           Npref = n_elements(upref)
+           print, upref
+           
+           Nscans = max(scaninfo.scanno)+1
+           
+           interval_lengths = fltarr(Npref)
+           for ipref = 0L, Npref-1 do begin
+              indx = where(scaninfo.prefilter eq upref[ipref])
+              interval_lengths[ipref] = median((scaninfo.tstop-scaninfo.tstart)[indx])*3600
+           endfor               ; ipref
+
+           ;; We base number of plots on the shortest scans, which
+           ;; should be no less than 1/15 of the plot time interval.
+           tfrac = 20
+           Nplots = ceil(3600.*(max(scaninfo.tstop)-min(scaninfo.tstart))/(tfrac*min(interval_lengths)))
+           Tplot = (max(scaninfo.tstop)-min(scaninfo.tstart))/Nplots
+           Tstart = min(scaninfo.tstart) - Tplot
+           Tstop = Tstart + Tplot + max(scaninfo.tstop-scaninfo.tstart)
+
+           iplot = 0
+
+           for is = 0, Ns-1 do begin
+              
+              print, is, Ns, format = '(i0, "/", i0)'
+              
+              r0scanfile = timedir $
+                           + '/r0data_scan' + strtrim(scaninfo.scanno[sindx[is]], 2) + '_pre' $
+                           + strtrim(scaninfo.prefilter[sindx[is]], 2) $
+                           + '.txt'
+
+              if file_test(r0scanfile) then begin
                  
-        Nscans = max(scaninfo.scanno)+1
+                 if ~query_ascii(scanfiles[iscanfile]) then continue ; Skip non-valid files
+                 r0info = read_ascii(r0scanfile, template = r0scantemplate)
                  
-        interval_lengths = fltarr(Npref)
-        for ipref = 0L, Npref-1 do begin
-           indx = where(scaninfo.prefilter eq upref[ipref])
-           interval_lengths[ipref] = median((scaninfo.tstop-scaninfo.tstart)[indx])*3600
-        endfor                  ; ipref
-
-        ;; We base number of plots on the shortest scans, which
-        ;; should be no less than 1/15 of the plot time interval.
-        tfrac = 20
-        Nplots = ceil(3600.*(max(scaninfo.tstop)-min(scaninfo.tstart))/(tfrac*min(interval_lengths)))
-        Tplot = (max(scaninfo.tstop)-min(scaninfo.tstart))/Nplots
-        Tstart = min(scaninfo.tstart) - Tplot
-        Tstop = Tstart + Tplot + max(scaninfo.tstop-scaninfo.tstart)
-
-        iplot = 0
-
-        for is = 0, Ns-1 do begin
-           
-           print, is, Ns, format = '(i0, "/", i0)'
-           
-           r0scanfile = timedir $
-                        + '/r0data_scan' + strtrim(scaninfo.scanno[sindx[is]], 2) + '_pre' $
-                        + strtrim(scaninfo.prefilter[sindx[is]], 2) $
-                        + '.txt'
-
-           if file_test(r0scanfile) then begin
+                 sstart = min(r0info.time) ; Start and stop of this particular scan
+                 sstop  = max(r0info.time)
+                 nofile = 0
+                 
+              endif else nofile = 1
               
-              r0info = read_ascii(r0scanfile, template = r0scantemplate)
               
-              sstart = min(r0info.time) ; Start and stop of this particular scan
-              sstop  = max(r0info.time)
-              nofile = 0
-              
-           endif else nofile = 1
-           
+              if sstop gt Tstop*3600 or is eq 0 or nofile then begin
+
+                 ;; Time to start a new plot.
+                 if is ne 0 then begin
+                    iplot += 1
+                    pname = 'dir-analysis/' + 'r0plot_' + isodate + '_' $
+                            + (strsplit(timedir,'/',/extr,count=Nsplit))[Nsplit-1] $
+                            + '_' + string(iplot, format = '(i04)') + '.' + extension
+                    cgcontrol, output = pname
                     
-           if sstop gt Tstop*3600 or is eq 0 or nofile then begin
-
-              ;; Time to start a new plot.
-              if is ne 0 then begin
-                 iplot += 1
-                 pname = 'dir-analysis/' + 'r0plot_' + isodate + '_' $
-                         + (strsplit(timedir,'/',/extr,count=Nsplit))[Nsplit-1] $
-                         + '_' + string(iplot, format = '(i04)') + '.' + extension
-                 cgcontrol, output = pname
+                 endif
                  
+                 cgcontrol, /delete, /all
+                 Tstart += Tplot
+                 Tstop += Tplot
+                 if keyword_set(scan24) then title = 'r0 24x24 : ' else title = 'r0 8x8 : '
+                 title += instrument + ' ' + isodate + ' ' + file_basename(timedir)
+                 L = red_gen_timeaxis([Tstart, Tstop]*3600)
+                 cgwindow, /add, 'cgplot', /nodata, [0], [0] $
+                           , ticklen = -!p.ticklen $
+                           , xrange = [Tstart, Tstop]*3600 $
+                           , yrange = [0, r0max] $
+                           , xtitle = 't [UT]', ytitle = 'r$\sub0$ / 1 m' $
+                           , title = title $
+                           , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
               endif
               
-              cgcontrol, /delete, /all
-              Tstart += Tplot
-              Tstop += Tplot
-              if keyword_set(scan24) then title = 'r0 24x24 : ' else title = 'r0 8x8 : '
-              title += instrument + ' ' + isodate + ' ' + file_basename(timedir)
-              L = red_gen_timeaxis([Tstart, Tstop]*3600)
-              cgwindow, /add, 'cgplot', /nodata, [0], [0] $
-                        , ticklen = -!p.ticklen $
-                        , xrange = [Tstart, Tstop]*3600 $
-                        , yrange = [0, r0max] $
-                        , xtitle = 't [UT]', ytitle = 'r$\sub0$ / 1 m' $
-                        , title = title $
-                        , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
-           endif
-           
-           cgwindow, /load, 'cgColorFill' $
-                     , [sstart, sstop, sstop, sstart, sstart] >!x.crange[0] <!x.crange[1] $
-                     , !y.crange([0, 0, 1, 1, 0]) $
-                     , color = precolors[where(upref eq scaninfo.prefilter[sindx[is]])]
-           
-           if keyword_set(plotvertical) or Npref eq 1 then begin
-              cgwindow, /load, 'cgplot', /over, [1, 1]*sstart >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
-              cgwindow, /load, 'cgplot', /over, [1, 1]*sstop  >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
-           endif
-           
-           tpos = (sstart+sstop)/2.
-           if tpos gt !x.crange[0] and tpos lt !x.crange[1] then begin
-              cgwindow, /load, 'cgtext', tpos, !y.crange[1]*.95 $
-                        , strtrim(string(scaninfo.scanno[sindx[is]]), 2) $
-                        , align = 0.5 
-              if scaninfo.scanno[sindx[is]] eq 0 then $
-                 cgwindow, /load, 'cgtext', tpos, !y.crange[1]*.03 $
-                           , strtrim(scaninfo.prefilter[sindx[is]], 2) $
-                           , align = 0, charsize = .75, orientation = 90 
-           endif
-           
-           if keyword_set(scan24) then begin
-              cgwindow, /load, 'cgplot', /over, r0info.time, r0info.r0_24x24 $
-                        , psym = psym_scan, symsize = symsize_scan
-              cgwindow, /load, 'cgplot', /over, color = 'blue' $
-                        , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_mean[sindx[is]] 
-              cgwindow, /load, 'cgplot', /over, color = 'red' $
-                        , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_median[sindx[is]] 
-           endif
-           
-           if keyword_set(scan8) then begin
-              cgwindow, /load, 'cgplot', /over, r0info.time, r0info.r0_8x8 $
-                        , psym = psym_scan, symsize = symsize_scan
-              cgwindow, /load, 'cgplot', /over, color = 'blue' $
-                        , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_mean[sindx[is]] 
+              cgwindow, /load, 'cgColorFill' $
+                        , [sstart, sstop, sstop, sstart, sstart] >!x.crange[0] <!x.crange[1] $
+                        , !y.crange([0, 0, 1, 1, 0]) $
+                        , color = precolors[where(upref eq scaninfo.prefilter[sindx[is]])]
               
-              cgwindow, /load, 'cgplot', /over, color = 'red' $
-                        , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_median[sindx[is]] 
-           endif
+              if keyword_set(plotvertical) or Npref eq 1 then begin
+                 cgwindow, /load, 'cgplot', /over, [1, 1]*sstart >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
+                 cgwindow, /load, 'cgplot', /over, [1, 1]*sstop  >!x.crange[0] <!x.crange[1], !y.crange([0, 1]) 
+              endif
+              
+              tpos = (sstart+sstop)/2.
+              if tpos gt !x.crange[0] and tpos lt !x.crange[1] then begin
+                 cgwindow, /load, 'cgtext', tpos, !y.crange[1]*.95 $
+                           , strtrim(string(scaninfo.scanno[sindx[is]]), 2) $
+                           , align = 0.5 
+                 if scaninfo.scanno[sindx[is]] eq 0 then $
+                    cgwindow, /load, 'cgtext', tpos, !y.crange[1]*.03 $
+                              , strtrim(scaninfo.prefilter[sindx[is]], 2) $
+                              , align = 0, charsize = .75, orientation = 90 
+              endif
+              
+              if keyword_set(scan24) then begin
+                 cgwindow, /load, 'cgplot', /over, r0info.time, r0info.r0_24x24 $
+                           , psym = psym_scan, symsize = symsize_scan
+                 cgwindow, /load, 'cgplot', /over, color = 'blue' $
+                           , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_mean[sindx[is]] 
+                 cgwindow, /load, 'cgplot', /over, color = 'red' $
+                           , [sstart, sstop], [1, 1]*scaninfo.r0_24x24_median[sindx[is]] 
+              endif
+              
+              if keyword_set(scan8) then begin
+                 cgwindow, /load, 'cgplot', /over, r0info.time, r0info.r0_8x8 $
+                           , psym = psym_scan, symsize = symsize_scan
+                 cgwindow, /load, 'cgplot', /over, color = 'blue' $
+                           , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_mean[sindx[is]] 
+                 
+                 cgwindow, /load, 'cgplot', /over, color = 'red' $
+                           , [sstart, sstop], [1, 1]*scaninfo.r0_8x8_median[sindx[is]] 
+              endif
+              
+              
+           endfor               ; is
            
-           
-        endfor                  ; is
-        
-     endfor                     ; iscanfile
+        endfor                  ; iscanfile
+     endfor                     ; iinstrument
 
   endif                         ; plotscans
   
@@ -748,97 +759,98 @@ pro red_plot_r0, dir = dir $
 
      cgwindow
 
-     print,'red_plot_r0 : Plot r0 statistics vs scan number.'
-
-     scanfiles = file_search(analysis_dir+'/*/*/*-scans.txt', count = Nscanfiles)
-
-     ;; We could filter the results to get only plots for the wanted instrument
-     
-
-     
-     for iscanfile = 0, Nscanfiles-1 do begin
-
-        print,strtrim(iscanfile,2)+'/'+strtrim(Nscanfiles,2)
+     for iinstrument = 0, Ninstruments-1 do begin
         
-        print, scanfiles[iscanfile]
-        
-        instrument = file_basename(scanfiles[iscanfile],'-scans.txt')
-        timedir = file_dirname(scanfiles[iscanfile])
-        
-        scaninfo = read_ascii(scanfiles[iscanfile], template = scantemplate)
+        print,'red_plot_r0 : Plot r0 statistics vs scan number for '+instruments[iinstrument]+'.'
 
-        upref = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
-        Npref = n_elements(upref)
-        print, upref
-        
-        for ipref = 0, Npref-1 do begin
+        scanfiles = file_search(analysis_dir+'/*/*/'+instruments[iinstrument]+'-scans.txt', count = Nscanfiles, /fold)
 
-           pindx = where(scaninfo.prefilter eq upref[ipref], Ns)
+        for iscanfile = 0, Nscanfiles-1 do begin
 
-           cgcontrol, /delete, /all
-           title = instrument + ' ' + upref[ipref] + ' ' + isodate + ' ' + file_basename(timedir)
- 
-           cgwindow, /add, 'cgplot', /nodata, [0], [0] $
-                     , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
-                     , yrange = [0, r0max] $
-                     , xtitle = 'scan #', ytitle = 'r$\sub0$ / 1 m' $
-                     ;, title = title $
-                     , xstyle = 8 
+           print,strtrim(iscanfile,2)+'/'+strtrim(Nscanfiles,2)
+           
+           print, scanfiles[iscanfile]
+           
+           instrument = file_basename(scanfiles[iscanfile],'-scans.txt')
+           timedir = file_dirname(scanfiles[iscanfile])
+           print, timedir
 
-           ;; Add a time axis on top
-           tmin = min(scaninfo.tstart)
-           tmax = max(scaninfo.tstop) 
-           L = red_gen_timeaxis([tmin, tmax]*3600.)
+           if ~query_ascii(scanfiles[iscanfile]) then continue ; Skip non-valid files
+           scaninfo = read_ascii(scanfiles[iscanfile], template = scantemplate)
 
-           cgwindow, /add, 'cgaxis', xaxis = 1 $; , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
-                     ;, xtitle = 'scan #' $
-                     , /xstyle $
-                     , xrange = [tmin, tmax]*3600. $
-                     , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+           upref = scaninfo.prefilter(uniq(scaninfo.prefilter, sort(scaninfo.prefilter)))
+           Npref = n_elements(upref)
+           print, upref
+           
+           for ipref = 0, Npref-1 do begin
 
-           cgtext, mean(!x.crange), !y.crange[1]*.03, title, /data, align = 0.5,/add
+              pindx = where(scaninfo.prefilter eq upref[ipref], Ns)
 
-           statscolors = ['green', 'red', 'blue', 'cyan']
-           statslines = [0, 1]
+              cgcontrol, /delete, /all
+              title = instrument + ' ' + upref[ipref] + ' ' + isodate + ' ' + file_basename(timedir)
+              
+              cgwindow, /add, 'cgplot', /nodata, [0], [0] $
+                        , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
+                        , yrange = [0, r0max] $
+                        , xtitle = 'scan #', ytitle = 'r$\sub0$ / 1 m' $
+                                ;, title = title $
+                        , xstyle = 8 
 
-           xpoly = scaninfo.scanno[[pindx, reverse(pindx), 0]]
-           ypoly = [scaninfo.r0_24x24_min[pindx], scaninfo.r0_24x24_max[reverse(pindx)], scaninfo.r0_24x24_min[0]]
-           cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Light Gray'
+              ;; Add a time axis on top
+              tmin = min(scaninfo.tstart)
+              tmax = max(scaninfo.tstop) 
+              L = red_gen_timeaxis([tmin, tmax]*3600.)
 
-           xpoly = scaninfo.scanno[[pindx, reverse(pindx), 0]]
-           ypoly = [scaninfo.r0_8x8_min[pindx], scaninfo.r0_8x8_max[reverse(pindx)], scaninfo.r0_8x8_min[0]]
-           cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Pale Goldenrod'
+              cgwindow, /add, 'cgaxis', xaxis = 1 $ ; , xrange = [min(scaninfo.scanno), max(scaninfo.scanno)] $
+                                ;, xtitle = 'scan #' $
+                        , /xstyle $
+                        , xrange = [tmin, tmax]*3600. $
+                        , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+
+              cgtext, mean(!x.crange), !y.crange[1]*.03, title, /data, align = 0.5,/add
+
+              statscolors = ['green', 'red', 'blue', 'cyan']
+              statslines = [0, 1]
+
+              xpoly = scaninfo.scanno[[pindx, reverse(pindx), 0]]
+              ypoly = [scaninfo.r0_24x24_min[pindx], scaninfo.r0_24x24_max[reverse(pindx)], scaninfo.r0_24x24_min[0]]
+              cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Light Gray'
+
+              xpoly = scaninfo.scanno[[pindx, reverse(pindx), 0]]
+              ypoly = [scaninfo.r0_8x8_min[pindx], scaninfo.r0_8x8_max[reverse(pindx)], scaninfo.r0_8x8_min[0]]
+              cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Pale Goldenrod'
 
 ;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_min[pindx] $
 ;                     , linestyle = statslines[0], color = statscolors[3]
 ;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_max[pindx] $
 ;                     , linestyle = statslines[0], color = statscolors[0]
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_mean[pindx] $
-                     , linestyle = statslines[0], color = statscolors[1]
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_median[pindx] $
-                     , linestyle = statslines[0], color = statscolors[2]
-           
+              cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_mean[pindx] $
+                        , linestyle = statslines[0], color = statscolors[1]
+              cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_8x8_median[pindx] $
+                        , linestyle = statslines[0], color = statscolors[2]
+              
 ;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_min[pindx] $
 ;                     , linestyle = statslines[1], color = statscolors[3]
 ;           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_max[pindx] $
 ;                     , linestyle = statslines[1], color = statscolors[0]
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_mean[pindx] $
-                     , linestyle = statslines[1], color = statscolors[1]
-           cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_median[pindx] $
-                     , linestyle = statslines[1], color = statscolors[2]
+              cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_mean[pindx] $
+                        , linestyle = statslines[1], color = statscolors[1]
+              cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_median[pindx] $
+                        , linestyle = statslines[1], color = statscolors[2]
 
 ;           cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
 ;                     , title = ['max', 'mean', 'median', 'min'], colors = statscolors
-           cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
-                     , title = ['mean', 'median'], colors = statscolors[[1, 2]]
+              cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
+                        , title = ['mean', 'median'], colors = statscolors[[1, 2]]
 
-           pname = 'dir-analysis/' + 'r0stats_'+ upref[ipref] + '_' + isodate + '_' $
-                   + (strsplit(timedir,'/',/extr,count=Nsplit))[Nsplit-1] $
-                   + '.pdf'
-           cgcontrol, output = pname
+              pname = 'dir-analysis/' + 'r0stats_'+ upref[ipref] + '_' + isodate + '_' $
+                      + (strsplit(timedir,'/',/extr,count=Nsplit))[Nsplit-1] $
+                      + '.pdf'
+              cgcontrol, output = pname
 
-        endfor                  ; ipref
-     endfor                     ; iscanfile
+           endfor               ; ipref
+        endfor                  ; iscanfile
+     endfor                     ; iinstrument
 
   endif
 
