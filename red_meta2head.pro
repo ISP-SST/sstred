@@ -52,7 +52,8 @@
 ;                 WAVELNTH header keyword to corresponding wavelength.
 ;
 ;    2016-09-27 : MGL. Get tuning info (including prefilter), detector
-;                 gain, and exposure time. Move setting of waveband to 
+;                 gain, and exposure time. Move setting of waveband to
+;                 the later case statement.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
