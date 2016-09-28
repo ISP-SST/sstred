@@ -122,6 +122,10 @@
 ;    2016-09-27 : MGL. Detect is_wb also if the camera is not already
 ;                 known. 
 ;
+;    2016-09-28 : MGL. Use TEXPOSUR for cam_settings of summed files.
+;                 Parse STATE correctly. FULLSTATE for darks without
+;                 tuning info.
+;
 ; 
 ;-
 pro chromis::extractstates, strings, states $
@@ -163,6 +167,7 @@ pro chromis::extractstates, strings, states $
      ;; New keyword for gain from 2016.08.30:
      if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) 
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
+     texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
      states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
@@ -198,15 +203,22 @@ pro chromis::extractstates, strings, states $
         endif
      endelse
 
-     if hasexp gt 0 then begin
+     if hastexp then begin
+        ;; This is a summed file, use the single-exposure exposure
+        ;; time for the camera setting.
+        states[ifile].cam_settings = strtrim(string(texposur*1000 $
+                                                    , format = '(f9.2)'), 2) + 'ms'
+     end else if hasexp gt 0 then begin
+        ;; This is not a summed file.
         states[ifile].cam_settings = strtrim(string(states[ifile].exposure*1000 $
                                                     , format = '(f9.2)'), 2) + 'ms'
      endif
+
      if hasgain gt 0 then begin
          if hasexp gt 0 then states[ifile].cam_settings += '_'
          states[ifile].cam_settings += 'G' + string(states[ifile].gain, format = '(f05.2)')
      endif
-     
+
      ;; Replace the following regexp code when this info is in the
      ;; header.
 
@@ -226,7 +238,7 @@ pro chromis::extractstates, strings, states $
      ;; and at least one digit for the finetuning (in mÅ). Eventually
      ;; we will (?) have the same for CHROMIS.
      tuninfo = stregex(fxpar(head, 'STATE') $
-                       , '[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)[._]' $
+                       , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                        , /extract, /subexpr) 
 
      ;; For early CHROMIS data we didn't have tuning data in the
@@ -246,10 +258,6 @@ pro chromis::extractstates, strings, states $
         ;; The scans are symmetrical (so far, 2016-09-16) around the
         ;; line center, which gives us the zero point.
 
-        tuninfo = stregex(fxpar(head, 'STATE') $
-                          , '[._](hrz[0-9]*)[._]' $
-                          , /extract, /subexpr) 
-        
         ;; Get the reference wavelength in du from a file previously
         ;; created with chromis::hrz_zeropoint.
         infodir = self.out_dir + 'info/'
@@ -298,7 +306,6 @@ pro chromis::extractstates, strings, states $
            endif else begin
               ;; Warn about missing tuning info, but only for
               ;; narrowband.
-stop
               print, inam + ' : Reference wavelength in du missing.'
               print, inam + ' : Did you run a -> hrz_zeropoint?'
            endelse 
@@ -307,21 +314,23 @@ stop
         
      endelse
 
+     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
+
      ;; The fullstate string
      undefine, fullstate_list
      if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
      if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
-     if keyword_set(strip_wb) then begin
-        if states[ifile].is_wb eq 0  and states[ifile].tuning ne '' then $
+     if states[ifile].tuning ne '' then begin     
+        if keyword_set(strip_wb) then begin
+           if states[ifile].is_wb eq 0 then $
+              red_append, fullstate_list, states[ifile].tuning
+        endif else begin
            red_append, fullstate_list, states[ifile].tuning
-     endif else begin
-        if states[ifile].tuning ne '' then  $
-           red_append, fullstate_list, states[ifile].tuning
-     endelse
+        endelse
+     endif
      states[ifile].fullstate = strjoin(fullstate_list, '_')
 
      red_progressbar, ifile, Nstrings, message = progress_message
-
 
   endfor                        ; ifile
   red_progressbar, /finished, message = progress_message
@@ -331,6 +340,12 @@ end
 
 a = chromisred('config.txt')
 
+
+;; Test darks
+files = file_search('darks/cam*.dark', count = Nfiles)
+a -> extractstates, files, states
+
+stop
 
 ;; Test flats
 files = file_search('flats/camXXX_*.flat', count = Nfiles)
