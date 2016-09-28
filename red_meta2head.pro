@@ -101,8 +101,8 @@ function red_meta2head, head, metadata=metaStruct
         xposure = stregex(barefile, '([0-9]*)[.]([0-9]*)ms' $
                           , /extract, /subexpr) 
         if xposure[0] ne '' then begin
-           comment = ' [ms] Inferred from filename.'
-           sxaddpar, newhead, 'XPOSURE', float(strjoin(xposure[1:2], '.')), comment, before = 'COMMENT'
+           comment = ' [s] Inferred from filename.'
+           sxaddpar, newhead, 'XPOSURE', float(strjoin(xposure[1:2], '.'))/1000., comment, before = 'COMMENT'
         endif
     endif
 
