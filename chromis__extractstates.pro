@@ -124,7 +124,8 @@
 ;
 ;    2016-09-28 : MGL. Use TEXPOSUR for cam_settings of summed files.
 ;                 Parse STATE correctly. FULLSTATE for darks without
-;                 tuning info.
+;                 tuning info. Do not complain if calling from
+;                 hrz_zeropoint. 
 ;
 ; 
 ;-
@@ -134,6 +135,11 @@ pro chromis::extractstates, strings, states $
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
+  ;; Don't complain about hrz_zeropoint isn't run already when
+  ;; that's what we are doing!
+  st = scope_traceback(/structure)
+  if st[1].routine eq 'CHROMIS::HRZ_ZEROPOINT' then quiet = 1 else quiet = 0
 
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
@@ -168,7 +174,10 @@ pro chromis::extractstates, strings, states $
      if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) 
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
-     states[ifile].pf_wavelength = fxpar(head, 'WAVELNTH')
+
+     wavelnth = fxpar(head, 'WAVELNTH')
+     if wavelnth ne '        ' then states[ifile].pf_wavelength = float(wavelnth)
+
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
 
@@ -306,8 +315,10 @@ pro chromis::extractstates, strings, states $
            endif else begin
               ;; Warn about missing tuning info, but only for
               ;; narrowband.
-              print, inam + ' : Reference wavelength in du missing.'
-              print, inam + ' : Did you run a -> hrz_zeropoint?'
+              if ~quiet then begin
+                 print, inam + ' : Reference wavelength in du missing.'
+                 print, inam + ' : Did you run a -> hrz_zeropoint?'
+              endif
            endelse 
            
         endelse
