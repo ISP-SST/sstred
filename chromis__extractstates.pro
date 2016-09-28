@@ -175,8 +175,8 @@ pro chromis::extractstates, strings, states $
      states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
      texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
 
-     wavelnth = fxpar(head, 'WAVELNTH')
-     if wavelnth ne '        ' then states[ifile].pf_wavelength = float(wavelnth)
+     wavelnth = fxpar(head, 'WAVELNTH', count = haswav)
+     if haswav ne 0 then states[ifile].pf_wavelength = float(wavelnth)
 
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
