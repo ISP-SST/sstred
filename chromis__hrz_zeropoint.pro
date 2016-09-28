@@ -65,7 +65,7 @@ pro chromis::hrz_zeropoint
         '3969' : lambda_ref = 3968.5d-10                 ; Ca II H core
         '3999' : lambda_ref = (3998.640d-10 + 1.258d-10) ; Clean reference line within the passband
         else: begin
-           print, inam+' : Please add reference wavelength for prefilter '+states[ifile].prefilter
+           print, inam+' : Please add reference wavelength for prefilter '+upref[ipref]
            stop
         end
      endcase 
