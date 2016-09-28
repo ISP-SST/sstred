@@ -83,6 +83,7 @@
 ;                representing approximate filter wavelength.
 ;
 ;
+;
 ;-
 function red_readhead, fname, $
                        filetype = filetype, $
@@ -224,68 +225,72 @@ function red_readhead, fname, $
 
                endif
             endif
-            
+
             ;; Hack to get the prefilter from the file name in data
             ;; from 2016.08.30.
             pref = fxpar( header, red_keytab('pref'), count=count )
             if count eq 0 then begin
-                state = fxpar(header, 'STATE', count=count )
-                if count eq 0 then begin
-                   ;; Try to read from file name
-                   fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
-                   if n_elements(fname_split) gt 4 then begin
-                      ;; Shorter and it might be a dark
-                      prefilter = (fname_split)[-1]
-                      ;; Translate to previously used filter names
-                      case prefilter of
-                         'hbeta-core' : prefilter = '4862'
-                         'hbeta-cont' : prefilter = '4846'
-                         'cah-core'   : prefilter = '3969'
-                         else:
-                      endcase
-                      fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from file name'
-                   endif
-               endif else begin         ; STATE keyword exists but not FILTER1 (e.g. 2016.08.31 data)
-                   state_split = strsplit( state, '_',  /extr )
-                   if n_elements(state_split) gt 0 then begin
-                       state1 = state_split[0]                      ;  for 2016.08.31:  state = 'wheel00002_hrz32600'
-                       camera = fxpar(header, red_keytab('camera'), count=count)
-                       if count gt 0 then begin
-                          if camera eq 'Chromis-N' then begin
+               state = fxpar(header, 'STATE', count=count )
+               if count eq 0 then begin
+                  ;; Try to read from file name
+                  fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
+                  if n_elements(fname_split) gt 4 then begin
+                     ;; Shorter and it might be a dark
+                     prefilter = (fname_split)[-1]
+                     ;; Translate to previously used filter names
+                     case prefilter of
+                        'hbeta-core' : prefilter = '4862'
+                        'hbeta-cont' : prefilter = '4846'
+                        'cah-core'   : prefilter = '3969'
+                        else:
+                     endcase
+                     fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from file name'
+                  endif
+               endif else begin ; STATE keyword exists but not FILTER1 (e.g. 2016.08.31 data)
+                  state_split = strsplit( state, '_',  /extr )
+                  if n_elements(state_split) gt 1 then begin
+                     state1 = state_split[0] ;  for 2016.08.31:  state = 'wheel00002_hrz32600'
+                     camera = fxpar(header, red_keytab('camera'), count=count)
+                     if count gt 0 then begin
+                        if camera eq 'Chromis-N' then begin
 
-                             ;; Chromis-N
-                             case state1 of
-                                'wheel00001' : prefilter = '3925' ; Ca II K blue wing
-                                'wheel00002' : prefilter = '3934' ; Ca II K core
-                                'wheel00003' : prefilter = '3969' ; Ca II H core
-                                'wheel00004' : prefilter = '3978' ; Ca II H red wing
-                                'wheel00005' : prefilter = '3999' ; Ca II H continuum
-                                'wheel00006' : prefilter = '4862' ; H-beta core
-                                else :
-                             endcase
-                          endif else begin
-                             ;; Chromis-W and Chromis-D
-                             case state1 of
-                                'wheel00006' : prefilter = '4846' ; H-beta continuum
-                                else: prefilter = '3950'          ; Ca II HK wideband
-                             endcase
-                          endelse
-                          if n_elements(prefilter) gt 0 then begin
-                             ;; Not defined for darks
-                             fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from state keyword'
-                          endif
-                       endif
-                   endif else begin
-                      case state of
-                         'hbeta-core' : prefilter = '4862'
-                         'hbeta-cont' : prefilter = '4846'
-                         'cah-core'   : prefilter = '3969'
-                         else:
-                      endcase
-                   endelse
+                           ;; Chromis-N
+                           case state1 of
+                              'wheel00001' : prefilter = '3925'       ; Ca II K blue wing
+                              'wheel00002' : prefilter = '3934'       ; Ca II K core
+                              'wheel00003' : prefilter = '3969'       ; Ca II H core
+                              'wheel00004' : prefilter = '3978'       ; Ca II H red wing
+                              'wheel00005' : prefilter = '3999'       ; Ca II H continuum
+                              'wheel00006' : prefilter = '4862'       ; H-beta core
+                              else :
+                           endcase
+                        endif else begin
+                           ;; Chromis-W and Chromis-D
+                           case state1 of
+                              'wheel00006' : prefilter = '4846' ; H-beta continuum
+                              else: prefilter = '3950'          ; Ca II HK wideband
+                           endcase
+                        endelse
+                        if n_elements(prefilter) gt 0 then begin
+                           ;; Not defined for darks
+                           fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from state keyword'
+                        endif
+                     endif
+                  endif else begin
+                     case state of
+                        'hbeta-core' : prefilter = '4862'
+                        'hbeta-cont' : prefilter = '4846'
+                        'cah-core'   : prefilter = '3969'
+                        else:
+                     endcase
+                     if n_elements(prefilter) gt 0 then begin
+                        ;; Not defined for darks
+                        fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from state keyword'
+                     endif
+                  endelse
                endelse
             endif
-
+            
             if n_elements(framenumber) ne 0 then begin
                ;; We may want to change or remove some header keywords
                ;; here, like FRAME1, CADENCE, and DATE-END.
