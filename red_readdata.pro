@@ -184,8 +184,8 @@ function red_readdata, fname $
   endcase
   
   if arg_present(header) then $
-     header = red_readhead(fname, structheader = structheader $
-                           , framenumber = framenumber)
+     header = red_readhead(fname, structheader = structheader, $
+                           framenumber = framenumber, silent=silent)
 
   status = 0
   
