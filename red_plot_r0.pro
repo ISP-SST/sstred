@@ -187,6 +187,8 @@
 ;
 ;     2016-09-27 : MGL. New keyword instruments.
 ;
+;     2016-10-03 : MGL. Add vertical lines in plotstats plot.
+;
 ;-
 pro red_plot_r0, dir = dir $
                  , today = today $
@@ -837,6 +839,12 @@ pro red_plot_r0, dir = dir $
                         , linestyle = statslines[1], color = statscolors[1]
               cgwindow, /add, /over, 'cgplot', scaninfo.scanno[pindx], scaninfo.r0_24x24_median[pindx] $
                         , linestyle = statslines[1], color = statscolors[2]
+
+
+              delta = 5
+              for ii = delta, max(scaninfo.scanno)-1, delta do begin
+                 cgwindow, /add, /over, 'cgplot', [ii, ii], !y.crange, color = 'gray', linestyle = 1
+              endfor
 
 ;           cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
 ;                     , title = ['max', 'mean', 'median', 'min'], colors = statscolors
