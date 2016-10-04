@@ -8,18 +8,22 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
 ; 
 ; 
 ; :Keywords:
+; 
+;    all : in, optional, type=boolean
+;
+;       If set, bypass selection and process all data.
 ; 
 ;    npar  : 
 ;   
@@ -87,7 +91,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -103,166 +107,216 @@
 ;   2016-03-22 : JLF. Added support for .lc4 flat cubes (see 
 ;  	 	 red::prepflatcubes_lc4). Added a bit of error checking.
 ;
+;   2016-10-04 : MGL. Adapted for CHROMIS data and split_classes. Set
+;                up for red_get_imean to use cgplot so plots can
+;                easily be saved. Individual npar defaults for
+;                prefilters, so we can batch process. Get output file
+;                names from filenames method.
+;
 ;-
-pro red::fitgains, npar = npar, niter = niter, rebin = rebin, xl = xl, yl = yl, $
-                   densegrid = densegrid, res = res, thres = thres, initcmap = initcmap, $
-                   fit_reflectivity = fit_reflectivity, $
-                   x0 = x0, x1 = x1, state = state, nosave = nosave, myg = myg, $
-                   w0 = w0, w1 = w1, nthreads = nthreads, ifit = ifit
+pro red::fitgains, npar = npar $
+                   , niter = niter $
+                   , rebin = rebin $
+                   , xl = xl, yl = yl $
+                   , densegrid = densegrid $
+                   , res = res $
+                   , thres = thres $
+                   , initcmap = initcmap $
+                   , fit_reflectivity = fit_reflectivity $
+                   , x0 = x0, x1 = x1 $
+                   , state = state $
+                   , nosave = nosave $
+                   , myg = myg $
+                   , w0 = w0, w1 = w1 $
+                   , nthreads = nthreads $
+                   , ifit = ifit $
+                   , all = all
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-    ;;; get_imean uses colortables.  Save old graphics setting
-  device, get_decompose = odc
-  device, decompose = 0
-
-  if(~keyword_set(npar)) then npar = 2L
-  ;npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
-  if(keyword_set(fit_reflectivity)) then npar_t = max([npar,3]) else npar_t = max([npar,2])
-
-  if(~keyword_set(niter)) then niter = 3L
-  if(~keyword_set(rebin)) then rebin = 100L
+  if n_elements(niter) eq 0 then niter = 3L
+  if n_elements(rebin) eq 0 then rebin = 100L
   
-  ;; Restore data
-  files = self.out_dir + 'flats/spectral_flats/cam*.flats.sav'
+  outdir = self.out_dir + '/flats/'
 
-  files = file_search(files, count = ct)
-  prefs = strarr(ct)
-  cams = strarr(ct)
-  states = strarr(ct)
+  files = file_search(self.out_dir + 'flats/spectral_flats/*_filenames.txt' $
+                      , count = Nfiles)
 
-  print, inam + ' : found states:'
-  for ii = 0, ct - 1 do begin
-     tmp = strsplit(file_basename(files[ii]), '.',/extract,count=csub)
-     cams[ii] = tmp[0]
-     prefs[ii] = tmp[1]
-     ; save file names have 4 elements, new lc4 have 5
-     states[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
-     print, ii, ' -> ',states[ii], FORMAT='(I3,A,A)'
-  endfor
+  print, inam + ' : Found '+strtrim(Nfiles, 2)+' files'
 
-  if(~keyword_set(state)) then begin
-     idx = 0
-     if(ct gt 1) then read, idx, prompt =  inam + ' : select state ID to be processed: '
+  ;; Select data
+  selectionlist = strarr(Nfiles)
+  for ifile = 0L, Nfiles-1 do begin
+    spawn, 'cat ' + files[ifile], namelist
+    self -> extractstates, namelist, states
+    selectionlist[ifile] = states[0].prefilter + ' ' + states[0].cam_settings
+  endfor                        ; ifile
+  if keyword_set(all) then begin
+    Nselect = Nfiles
+    sindx = indgen(Nselect)
   endif else begin
-     idx = where(states eq state, count)
-     if count eq 0 then begin
-        print, inam + ' : ERROR, external state -> '+state+' not found'
-        return
-     endif
+    tmp = red_select_subset(selectionlist, qstring = 'Select data to be processed' $
+                            , count = Nselect, indx = sindx)
   endelse
-   
-  ;; Load data
-  cam = cams[idx]
-  pref = prefs[idx]
-  print, inam + ' : selected -> '+states[idx]
-  restore, files[idx]
-  if(keyword_set(w0)) then begin
-     cub = (temporary(cub))[w0:*,*,*]
-     wav = wav[w0:*]
-     namelist = namelist[w0:*]
-  endif else w0=0
-  if(keyword_set(w1)) then begin
-     cub = (temporary(cub))[0:w1-w0,*,*]
-     wav = wav[0:w1-w0]
-     namelist = namelist[0:w1-w0]
-  endif
 
-  wav = float(wav)
-  if(n_elements(dat) eq 0) then begin 
-     dat = temporary(cub)
-  endif
+  for iselect = 0L, Nselect-1 do begin
 
-  ;; Init output vars
-  dim = size(dat, /dim)
-  res = dblarr(npar_t, dim[1], dim[2])
-  ratio = fltarr(dim[0], dim[1], dim[2])
-  nwav = dim[0]
+    ifile = sindx[iselect]
 
-  if nwav eq 1 then $
-    message,'Must have more than 1 wavelength point in the scan to continue.'
-  
-  res[0,*,*] = total(dat,1) / nwav
-   ;;; is this still needed?
-  IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3
-  
-  ;; Init cavity map?   
-  if(keyword_set(initcmap)) then begin
-     print, inam + ' : Initializing cavity-errors with parabola-fit'
-     res[1,*,*] = red_initcmap(wav, dat, x0 = x0, x1 = x1)
-  endif
-  
-  ;; Loop niter
-  for it = 0L, niter - 1 do begin
+    ;; Load data
+    print, file_basename(files[ifile], '_filenames.txt')
+    spawn, 'cat ' + files[ifile], namelist
+    Nwav = n_elements(namelist)
 
-     dum = 2
-     if(keyword_set(fit_reflectivity)) then dum += 1
-     
-   ;  print, inam+ 'Normalizing polynomial coefs'
-   ;  for ii = dum, npar_t-1 do begin
-   ;     kk = median(reform(res[ii,*,*]))
-   ;     print, ' <C_'+string(ii-dum,format='(I0)')+'> = ', kk
-   ;     res[ii,*,*] -= kk 
-   ;  endfor
-     
-     ;; Get mean spectrum using Hermitian Spline
-     yl = red_get_imean(wav, dat, res, npar_t, it $
-                        , xl = xl, rebin = rebin, densegrid = densegrid, thres = thres, $
-                        myg = myg, reflec = fit_reflectivity)
+    ffile = strreplace(files[ifile], '_filenames.txt', '_flats_data.fits')  ; Input flat intensities
+    wfile = strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')   ; Input flat wavelengths
+    sfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.fits') ; Output save file
+    pfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.png')  ; Plot file
+
+    self -> extractstates, namelist, states
+    outnames = self -> filenames('cavityflat', states)
+
+    if Nwav eq 0 then continue
+    if Nwav eq 1 then begin
+      print, inam+' : Only one wavelength point.'
+      print, inam+' : Will assume it is a continuum point and copy the ordinary flat.'
       
-     ;; Pixel-to-pixel fits using a C++ routine to speed-up things
-     if(it eq 0) then begin
+      file_copy, namelist[0], outnames[0], /overwrite
+      print, inam + ' : Copying file -> '+outnames[0]
+      
+      continue
+    endif
+
+    pref = states[0].prefilter
+
+    if n_elements(npar) eq 0 then begin
+      ;; Add prefilters and nparr values here as we gain experience.
+      case pref of
+        '3934' : nparr = 3
+        '4862' : nparr = 2
+        else: nparr = 2         ; default
+      endcase
+    endif else nparr = npar
+    ;; npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
+    if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
+
+    cub = readfits(ffile)
+    wav = float(readfits(wfile)) * 1e10 ; Must be in Å.
+
+    case 1 of 
+      n_elements(w0) gt 0 and n_elements(w1) gt 0 : begin
+        cub = (temporary(cub))[w0:w1,*,*]
+        wav = wav[w0:w1]
+        namelist = namelist[w0:w1]
+      end
+      n_elements(w0) gt 0 : begin
+        cub = (temporary(cub))[w0:*,*,*]
+        wav = wav[w0:*]
+        namelist = namelist[w0:*]
+      end
+      n_elements(w1) gt 0 : begin
+        cub = (temporary(cub))[0:w1,*,*]
+        wav = wav[0:w1]
+        namelist = namelist[0:w1]
+      end
+      else:
+    endcase
+    
+    dat = cub                   ; Why make a copy of cub?
+
+    ;; Init output vars
+    dims = size(dat, /dim)
+    res = dblarr([npar_t, dims[1:2]])
+    ratio = fltarr(dims)
+
+    res[0,*,*] = total(dat,1) / nwav
+    ;; Is this still needed?
+    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3
+
+    ;; Init cavity map?   
+    if(keyword_set(initcmap)) then begin
+      print, inam + ' : Initializing cavity-errors with parabola-fit'
+      res[1,*,*] = red_initcmap(wav, dat, x0 = x0, x1 = x1)
+    endif
+
+    cgwindow
+    title = selectionlist[sindx[iselect]] + ' npar='+strtrim(nparr, 2)
+
+    ;; Loop niter
+    for iiter = 0L, niter - 1 do begin
+
+      ;;dum = 2
+      ;;if(keyword_set(fit_reflectivity)) then dum += 1
+      ;;  print, inam+ 'Normalizing polynomial coefs'
+      ;;  for ii = dum, npar_t-1 do begin
+      ;;     kk = median(reform(res[ii,*,*]))
+      ;;     print, ' <C_'+string(ii-dum,format='(I0)')+'> = ', kk
+      ;;     res[ii,*,*] -= kk 
+      ;;  endfor
+      
+      ;; Get mean spectrum using Hermitian Spline
+      yl = red_get_imean(wav, dat, res, npar_t, iiter $
+                         , xl = xl, rebin = rebin, densegrid = densegrid, thres = thres $
+                         , myg = myg, reflec = fit_reflectivity $
+                         , title = title + ' iter='+strtrim(iiter, 2))
+      
+      ;; Pixel-to-pixel fits using a C++ routine to speed-up things
+      if iiter eq 0 then begin
         res1 = res[0:1,*,*]
         if(keyword_set(ifit)) then begin
-           red_ifitgain, res1, wav, dat, xl, yl, ratio
+          red_ifitgain, res1, wav, dat, xl, yl, ratio
         endif else red_cfitgain, res1, wav, dat, xl, yl, ratio, nthreads=nthreads
         res[0:1,*,*] = temporary(res1)
-     ENDIF ELSE BEGIN
-        IF keyword_set(fit_reflectivity) THEN $
+      endif else begin
+        if keyword_set(fit_reflectivity) then $
            red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads $
-        ELSE begin
-           if(keyword_set(ifit)) then begin
-              red_ifitgain, res, wav, dat, xl, yl, ratio 
-           endif else red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads
+        else begin
+          if(keyword_set(ifit)) then begin
+            red_ifitgain, res, wav, dat, xl, yl, ratio 
+          endif else red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads
         endelse
-     ENDELSE
-     
+      endelse
 
+    endfor                      ; iiter
 
-  endfor
-  yl = red_get_imean(wav, dat, res, npar_t, it, xl = xl, rebin = rebin, densegrid = densegrid, $
-                       thres = thres, myg = myg, reflec = fit_reflectivity)
+    yl = red_get_imean(wav, dat, res, npar_t, iiter $
+                       , xl = xl, rebin = rebin, densegrid = densegrid $
+                       , thres = thres, myg = myg, reflec = fit_reflectivity $
+                       , title = title)
 
-   ;;; reset the color setting
-  device, decompose = odc
-  
-  ;; Create cavity-error-free flat (save in "ratio" variable)
-  print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
-  ;stop
-  for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $
-     reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))
-   
-  print, 'done'
-   
-  ;; Save results
-  if(~keyword_set(nosave)) then begin
+    ;; Create cavity-error-free flat (save in "ratio" variable)
+    print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
 
-     outdir = self.out_dir + '/flats/'
-     for ii = 0L, nwav - 1 do begin
-        namout =  outdir + namelist[ii]
-        fzwrite, reform(ratio[ii,*,*]), namout, 'npar='+red_stri(npar_t)
-        print, inam + ' : saving file -> '+namout
-     endfor
-   
-     fit = {pars:res, yl:yl, xl:xl, oname:namelist}
-     save, file = outdir+'spectral_flats/'+states[idx]+'.fit_results.sav', fit
-     fit = 0B
-  endif
+    for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $
+       reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))
 
-  return
+    print, 'done'
+    
+    ;; Save results
+    if ~keyword_set(nosave) then begin
+
+      for iwav = 0L, Nwav - 1 do begin
+        fzwrite, reform(ratio[iwav,*,*]), outnames[iwav], 'npar='+red_stri(npar_t)
+        print, inam + ' : Saving file -> '+outnames[iwav]
+      endfor
+      
+      fit = {pars:res, yl:yl, xl:xl, oname:outnames}
+      save, file = sfile, fit
+      fit = 0B
+
+      ;; Save the plot made by red_get_imean
+      cgcontrol, output = pfile
+
+    endif
+
+  endfor                        ; iselect
+
+  print, inam + 'Done!'
+  print, inam + 'Please check flats/spectral_flats/*fit_results.png.'
+
 end
