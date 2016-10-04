@@ -34,6 +34,10 @@
 ; 
 ; :Keywords:
 ; 
+;    linked : in, optional, type=boolean
+;
+;       If set, generate link name. (Only for raw science data.)
+; 
 ;    no_dir : in, optional, type=boolean
 ; 
 ;       If set, generate file names without directory. 
@@ -46,14 +50,26 @@
 ; 
 ;       If set, generate names for raw data of the specified type.
 ; 
+;    template : in, optional, type=boolean
+;
+;       If set, generate C-style format string instead of search
+;       string (only frame number implemented - used in momfbd config
+;       files).
+; 
 ;    wild_* : in, optional, type="boolean or string"
 ;   
-;       If a string, use this as part of the search string. Otherwise,
-;       if true, construct the proper type of wild card.
+;       If a string, use this as part of the search string. (It does
+;       not have to be a wild card, it can also be a fixed string). If
+;       not a string but still true, construct the proper type of wild
+;       card.
 ; 
 ; :History:
 ; 
 ;    2016-09-29 : MGL. First version.
+; 
+;    2016-10-04 : MGL. New keywords template, timestamp, and linked.
+;                 Add filenames for cavity-error corrected flats,
+;                 summed darks, and the links to raw science data.
 ; 
 ; 
 ;-
@@ -71,11 +87,13 @@ function chromis::filenames, datatype, states $
                              , no_fits = no_fits $
                              , no_dir = no_dir $
                              , raw = raw $
-                             , timestamp = timestamp
+                             , timestamp = timestamp $
+                             , template = template $
+                             , linked = linked 
 
   Nstates = n_elements(states)
   filenames = strarr(Nstates)
- 
+  
   if keyword_set(raw) then begin
      if ~keyword_set(wild_prefilter) and ~keyword_set(wild_tuning) then begin
         print, 'chromis::filenames : Can only generate raw data searchstrings with'
@@ -83,7 +101,6 @@ function chromis::filenames, datatype, states $
         return, 0
      endif
   endif
-
 
   ;; Shorthand to make several fields wild:
   if keyword_set(wild_fullstate) then begin
@@ -106,7 +123,10 @@ function chromis::filenames, datatype, states $
   exposure_searchstring    = '[0-9]*\.[0-9]*ms' 
   gain_searchstring        = 'G[0-9]*\.[0-9]*'
   tuning_searchstring      = strjoin(replicate('[0-9]', 4)) + '_[+-][0-9]*'
-  
+  timestamp_searchstring   = '[0-2][0-9]:[0-5][0-9]:[0-5][0-9]'
+
+  framenumber_template = '%07d'
+
   ;; If wild, set to search strings (possibly the one entered with the
   ;; wild_* keyword).
   if keyword_set(wild_detector) then begin
@@ -134,7 +154,11 @@ function chromis::filenames, datatype, states $
      if strlowcase(size(wild_framenumber, /tname)) eq 'string' then begin
         framenumber = wild_framenumber
      endif else begin
-        framenumber = framenumber_searchstring
+        if keyword_set(template) then begin
+           framenumber = framenumber_template
+        endif else begin
+           framenumber = framenumber_searchstring
+        endelse
      endelse
   endif
   if keyword_set(wild_prefilter) then begin
@@ -173,8 +197,10 @@ function chromis::filenames, datatype, states $
      ;; If not wild, set to value from states. 
      if ~keyword_set(wild_detector)    then detector    = states[istate].detector
      if ~keyword_set(wild_camera)      then camera      = states[istate].camera
-     if ~keyword_set(wild_scannumber)  then scannumber  = string(states[istate].scannumber, format = '(i05)')
-     if ~keyword_set(wild_framenumber) then framenumber = string(states[istate].framenumber, format = '(i07)')
+     if ~keyword_set(wild_scannumber)  then scannumber  = string(states[istate].scannumber $
+                                                                 , format = '(i05)')
+     if ~keyword_set(wild_framenumber) then framenumber = string(states[istate].framenumber $
+                                                                 , format = '(i07)')
      if ~keyword_set(wild_prefilter)   then prefilter   = states[istate].prefilter
      if ~keyword_set(wild_tuning)      then tuning      = states[istate].tuning
      ;; Get exposure and detector gain from cam_settings because there
@@ -195,19 +221,20 @@ function chromis::filenames, datatype, states $
         if strlowcase(size(wild_prefilter, /tname)) ne 'string' then prefilter = 'w*'
         if strlowcase(size(wild_tuning, /tname)) ne 'string' then tuning = 'hrz*'
 
-        red_append, tag_list, 'sst'
-        red_append, tag_list, detector
-
-        case strlowcase(strmid(datatype, 0, 4)) of
+        case strlowcase(datatype) of
            
            'dark' : begin
               dirs = *self.dark_dir
+              red_append, tag_list, 'sst'
+              red_append, tag_list, detector
               red_append, tag_list, scannumber
               red_append, tag_list, framenumber
            end
 
            'flat' : begin
               dirs = *self.flat_dir
+              red_append, tag_list, 'sst'
+              red_append, tag_list, detector
               red_append, tag_list, scannumber
               red_append, tag_list, framenumber
               red_append, tag_list, prefilter
@@ -216,18 +243,43 @@ function chromis::filenames, datatype, states $
 
            'pinh' : begin
               dirs = *self.pinh_dirs
+              red_append, tag_list, 'sst'
+              red_append, tag_list, detector
               red_append, tag_list, scannumber
               red_append, tag_list, framenumber
               red_append, tag_list, prefilter
               red_append, tag_list, tuning
            end
 
-           'scie' : begin
-              dirs = *self.data_dirs
-              red_append, tag_list, scannumber
-              red_append, tag_list, framenumber
-              red_append, tag_list, prefilter
-              red_append, tag_list, tuning
+           'science' : begin
+              if keyword_set(linked) then begin
+                 dirs = *self.out_dirs+'data/'
+                 if n_elements(timestamp) eq 1 then begin
+                    dirs += timestamp + '/'
+                 endif else begin
+                    ;; Try to get it from states[istate].filename.
+                    ts = stregex(file_dirname(states[istate].filename) $
+                                 , timestamp_searchstring, /extract)
+                    if strlen(ts) eq 8 then dirs += ts + '/'
+                 endelse
+                 dirs += camera + '/'
+                 red_append, tag_list, detector
+                 red_append, tag_list, scannumber
+                 red_append, tag_list, exposure
+                 red_append, tag_list, gain
+                 red_append, tag_list, prefilter
+                 red_append, tag_list, tuning
+                 red_append, tag_list, framenumber
+              endif else begin
+                 dirs = *self.data_dirs
+                 dirs += camera + '/'
+                 red_append, tag_list, 'sst'
+                 red_append, tag_list, detector
+                 red_append, tag_list, scannumber
+                 red_append, tag_list, framenumber
+                 red_append, tag_list, prefilter
+                 red_append, tag_list, tuning
+              endelse
            end
 
         endcase
@@ -254,7 +306,7 @@ function chromis::filenames, datatype, states $
                        ;; If a timestamp is given in keyword, use it
                        dir = ubdirs[0] + '/' + timestamp + '/'
                     endif else begin
-                       dir = ubdirs[0] + '/[0-2][0-9]:[0-5][0-9]:[0-5][0-9]/'
+                       dir = ubdirs[0] + '/' + timestamp_searchstring + '/'
                     endelse
                  endif
               endelse                         ; eq 1
@@ -268,13 +320,23 @@ function chromis::filenames, datatype, states $
 
         ;; Not raw data
 
-        case strlowcase(strmid(datatype, 0, 4)) of
+        case strlowcase(datatype) of
            
            'dark' : begin
               dir = self.out_dir+'/darks/'
               red_append, tag_list, detector
               red_append, tag_list, exposure
               red_append, tag_list, gain
+              ext = '.dark'
+              if ~keyword_set(no_fits) then ext += '.fits'
+           end
+
+           'darksum' : begin
+              dir = self.out_dir+'/darks/'
+              red_append, tag_list, detector
+              red_append, tag_list, exposure
+              red_append, tag_list, gain
+              red_append, tag_list, 'summed'
               ext = '.dark'
               if ~keyword_set(no_fits) then ext += '.fits'
            end
@@ -291,7 +353,20 @@ function chromis::filenames, datatype, states $
               if ~keyword_set(no_fits) then ext += '.fits'
            end
 
-           'sfla' : begin
+           'cavityflat' : begin
+              dir = self.out_dir + '/flats/' 
+              red_append, tag_list, detector
+              red_append, tag_list, exposure
+              red_append, tag_list, gain
+              red_append, tag_list, prefilter
+              if states[istate].is_wb eq 0 and tuning ne '' then $
+                 red_append, tag_list, tuning
+              red_append, tag_list, 'cavityfree'
+              ext = '.flat'
+              if ~keyword_set(no_fits) then ext += '.fits'
+           end
+
+           'sumflat' : begin
               dir = self.out_dir + '/flats/' 
               red_append, tag_list, detector
               red_append, tag_list, exposure
