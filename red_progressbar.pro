@@ -63,8 +63,8 @@ pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar
         print, bb, message + ' -> ' $
                , 100., '%', FORMAT = '(A,A,F5.1,A,$)'
      endif else begin
-        print, bb, message+' ['+strjoin(replicate('=', barlength))+'] ' $
-               , 100., '%', FORMAT = '(A,A,F5.1,A,$)'
+        print, bb, '['+string(replicate(61B, barlength))+'] ' $
+               , 100., '% '+message, FORMAT = '(A,A,F5.1,A,$)'
      endelse
      print, ' '
   endif else begin
@@ -78,8 +78,8 @@ pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar
         bar = ''
         if elength gt 0 then bar += string(replicate(61B, elength)) ; Replicated '='
         if mlength gt 0 then bar += string(replicate(45B, mlength)) ; Replicated '-'
-        print, bb, message + ' [' + bar + '] ' $
-               , norm*i, '%', FORMAT = '(A,A,F5.1,A,$)'
+        print, bb, '[' + bar + '] ' $
+               , norm*i, '% '+message, FORMAT = '(A,A,F5.1,A,$)'
      endelse
   endelse
   
