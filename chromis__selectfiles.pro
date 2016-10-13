@@ -85,12 +85,16 @@
 ; 
 ;   2016-09-23 : THI. Add selection by scannumber
 ; 
+;   2016-10-13 : THI. Add selection by framenumbers and option strip_wb to
+;                be forwarded to extractstates
+; 
 ;-
 pro chromis::selectfiles, cam = cam $
                       , dirs = dirs $
                       , files = files $
                       , states = states $
                       , prefilter = prefilter $
+                      , framenumbers = framenumbers $
                       , scan = scan $
                       , ustat = ustat $
                       , flat = flat $
@@ -98,7 +102,8 @@ pro chromis::selectfiles, cam = cam $
                       , nremove = nremove $
                       , force = force $
                       , selected = selected $
-                      , strip_settings = strip_settings
+                      , strip_settings = strip_settings $
+                      , strip_wb = strip_wb
 
     inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
     
@@ -133,7 +138,7 @@ pro chromis::selectfiles, cam = cam $
     if( n_elements(files) eq 1 ) then files = [files]
     
     if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
-        self->extractstates, files, states, /strip_wb, strip_settings = strip_settings
+        self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
     endif
 
     if( n_elements(states) eq 1 ) then states = [states]
@@ -167,6 +172,18 @@ pro chromis::selectfiles, cam = cam $
             if( n_elements(pos) gt 0 ) then begin
                 selected[pos] = 1
             endif
+        endfor
+        pos = where(selected lt 1)
+        if( min(pos) ge 0 ) then states[pos].skip = 1
+    endif
+  
+    Nframes = n_elements(framenumbers)
+    if( Nframes gt 0 ) then begin
+        selected = [states.skip] * 0
+        tframes = [framenumbers]    ; make sure it's an array
+        for is = 0, Nframes-1 do begin
+            pos = where(states.framenumber eq tframes[is])
+            if( min(pos) ge 0 ) then selected[pos] = 1
         endfor
         pos = where(selected lt 1)
         if( min(pos) ge 0 ) then states[pos].skip = 1
