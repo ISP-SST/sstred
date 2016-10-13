@@ -159,27 +159,26 @@ pro red::sumpinh, nthreads = nthreads $
             print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
         endelse
 
-        state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
+        state_list = states[uniq(states.fpi_state, sort(states.fpi_state))]
 
         ns = n_elements(state_list)
         ;; Loop over states and sum
         for ss = 0L, ns - 1 do begin
          
-            self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
-                           files=files, states=states, selected=sel
+            this_state = state_list[ss]
+            sel = where(states.fpi_state eq this_state.fpi_state)
+        
+        
+            ;self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+            ;               files=files, states=states, selected=sel
 
             ;; Get the flat file name for the selected state
             self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
                         pinhname = pinhname, status = status
             if( status ne 0 ) then begin
                 print, inam+' : failed to load calibration data for:', states[sel[0]].filename
+            stop
                 continue
-            endif
-
-            if keyword_set(pinhole_align) then begin
-                ; replace extension .pinh with .fpinh
-                ; replace outdir "pinh/" with "pih_align/"
-                ; Do we want to keep doing this ?
             endif
             
             ;; If file does not exist, do sum!
@@ -189,12 +188,12 @@ pro red::sumpinh, nthreads = nthreads $
             endif
 
             if( n_elements(sel) lt 1 || min(sel) lt 0 ) then begin
-                print, inam+' : '+cam+': no files found for state: '+state_list[ss]
+                print, inam+' : '+cam+': no files found for state: '+state_list[ss].fullstate
                 continue
             endif
             
             pref = states[sel[0]].prefilter
-            print, inam+' : adding pinholes for state -> ' + state_list[ss]
+            print, inam+' : adding pinholes for state -> ' + state_list[ss].fpi_state
             
             DoBackscatter = 0
             if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
