@@ -183,6 +183,7 @@ pro chromis::extractstates, strings, states $
 
      state = fxpar(head, 'STATE', count=hasstate)
      if hasstate gt 0 then begin
+         states[ifile].fpi_state = state
          state_split = strsplit( state, '_',  /extr )
          if n_elements(state_split) gt 1 then begin
              states[ifile].tuning = state_split[1]

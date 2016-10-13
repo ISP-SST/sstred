@@ -266,11 +266,11 @@ pro chromis::get_calib, states $
 
         pinhtag = detector
         if( states[istate].prefilter ne '' ) then begin
-            pinhtag += '_' + states[istate].prefilter
+            pinhtag += '_' + states[istate].prefilter + '_' + states[istate].fpi_state
         endif
-        if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
-            pinhtag += '_' + states[istate].tuning
-        endif
+;         if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
+;             pinhtag += '_' + states[istate].tuning
+;         endif
 
         pname = self.out_dir+'/pinhs/' + pinhtag + '.pinh'
         if arg_present(pinhname) then begin

@@ -29,6 +29,7 @@ PRO red__define
            detector:'', $
            camera:'', $
            fullstate:'', $
+           fpi_state:'', $
            skip:0B $
     }
                                 
