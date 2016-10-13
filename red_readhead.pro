@@ -281,6 +281,8 @@ function red_readhead, fname, $
                         'hbeta-core' : prefilter = '4862'
                         'hbeta-cont' : prefilter = '4846'
                         'cah-core'   : prefilter = '3969'
+                        'wheel00005' : prefilter = '3950' ; WB: Ca II HK continuum
+                        'wheel00006' : prefilter = '4846' ; WB: H-beta continuum
                         else:
                      endcase
                      if n_elements(prefilter) gt 0 then begin
