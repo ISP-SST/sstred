@@ -65,9 +65,10 @@ pro red::getdetectors, dir = dir
         files = file_search(path_spec, count=nf)
         if( nf eq 0 || files[0] eq '' ) then begin
             print, inam + 'ERROR -> no frames found in [' + dir + '] for ' + (*self.cameras)[i]
-            return
-        endif
-        ctag = red_detectorname(files[0])
+            ctag = red_detectorname(files[0])
+        endif else begin
+            ctag = red_detectorname(files[0])
+        endelse
         if ptr_valid(self.detectors) then red_append, *self.detectors, ctag $
         else self.detectors = ptr_new(ctag, /NO_COPY)
     endfor

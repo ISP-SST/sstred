@@ -151,8 +151,8 @@ pro red::getalignment, align = align, $
     
         head = red_readhead( alignments[ialign].state2.filename, /silent )
         dims = fxpar(head, 'NAXIS*')
-        corners = red_make_corners( [ extraclip(0), dims[0]-extraclip(1)-1 , $
-                                      extraclip(2), dims[1]-extraclip(3)-1 ] )
+        corners = red_make_corners( [ 0, dims[0]-1 , $
+                                      0, dims[1]-1 ] )
         ; transform the corners of the FOV to the non-reference camera
         common_fov = common_fov # alignments[ialign].map
         idx = where(common_fov(*,2) ne 0, COMPLEMENT=idx_c)
@@ -231,11 +231,13 @@ pro red::getalignment, align = align, $
     
     for ialign=0, Nalign-1 do begin
     
+        ;; map center and generate a clip around it
         h = alignments[ialign].map
         mid = ref_mid # alignments[ialign].map
         if abs(mid[2]) gt 1E-6 then begin
             mid /= mid[2]
         endif
+        
         align[ialign+1].clip[0] = round(mid[0]-ref_sz[0]/2)
         align[ialign+1].clip[1] = align[ialign+1].clip[0] + ref_sz[0] - 1
         align[ialign+1].clip[2] = round(mid[1]-ref_sz[1]/2)
@@ -249,61 +251,28 @@ pro red::getalignment, align = align, $
                  align[ialign+1].state2.fullstate ],'_')
         align[ialign+1].xoffs_file = output_dir + fname + '.xoffs'
         align[ialign+1].yoffs_file = output_dir + fname + '.yoffs'
-        flipped = transpose([0,0,1]) # h gt ref_mid
+        flipped = transpose([0,0,1]) # h gt mid
         if flipped[0] gt 0 then begin
             align[ialign+1].clip[0:1] = reverse(align[ialign+1].clip[0:1])
         endif
         if flipped[1] gt 0 then begin
             align[ialign+1].clip[2:3] = reverse(align[ialign+1].clip[2:3])
         endif
+
         if( keyword_set(overwrite) || ~file_test(align[ialign+1].xoffs_file) $
                                    || ~file_test(align[ialign+1].xoffs_file)) then begin
 
-            cl = align[ialign+1].clip+1
-
-            offs = reform(indices, sx*sy, 3) # h
-            idx = where(offs(*,2) ne 0, COMPLEMENT=idx_c)
-            if max(idx) ne -1 then begin
-                offs(idx,0) /= offs(idx,2)
-                offs(idx,1) /= offs(idx,2)
-            endif
-            if max(idx_c) ne -1 then offs(idx_c,0:1) = 0
-            offs = reform(offs, sx, sy, 3) 
-
-            if h[0,0] lt 0 then offs = reverse(offs,1)
-            if h[1,1] lt 0 then offs = reverse(offs,2)
-
-            offs -= indices
+            red_make_offs, h, xoff, yoff, align[ialign+1].clip+1, ref_clip=ref_clip+1
             
-            offs(*,*,0) -= (min(cl[0:1]) - ref_origin(0) - 1)
-            offs(*,*,1) -= (min(cl[2:3]) - ref_origin(1) - 1)
-
-            if (cl[1]-cl[0]) lt 0 then begin
-                offs = reverse(offs,1)
-                offs(*,*,0) *= -1
-            endif
-            
-            if (cl[3]-cl[2]) lt 0 then begin
-                offs = reverse(offs,2)
-                offs(*,*,1) *= -1
-            endif
-
-            if alignments[ialign].map[0,0]*(cl[1]-cl[0]) lt 0 OR $
-               alignments[ialign].map[1,1]*(cl[3]-cl[2]) lt 0 then begin
-                print, inam + ' : sanity check failed - the sign of the transform does not match the align-clip.'
-                print, alignments[ialign].map
-                print, cl
-            endif
-
             print, 'Saving files ' + fname +'.(x|y)offs'
-            red_writedata, align[ialign+1].xoffs_file, fix(round(100*offs(*,*,0))) $
+            red_writedata, align[ialign+1].xoffs_file, xoff $
                            , filetype='ANA', /overwrite
-            red_writedata, align[ialign+1].yoffs_file, fix(round(100*offs(*,*,1))) $
+            red_writedata, align[ialign+1].yoffs_file, yoff $
                            , filetype='ANA', /overwrite
         endif
         
     endfor
     
-    align.clip += 1   ; clip indices are 1-based 
+    align.clip += 1   ; return 1-based clips
 
 end
