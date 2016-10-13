@@ -91,6 +91,7 @@
 ;-
 pro chromis::selectfiles, cam = cam $
                       , dirs = dirs $
+                      , subdir = subdir $
                       , files = files $
                       , states = states $
                       , prefilter = prefilter $
@@ -115,7 +116,9 @@ pro chromis::selectfiles, cam = cam $
         endif
         detector = self->RED::getdetector(cam)
         
-        file_template = cam + '/*' + detector + '*'
+        if( n_elements(subdir) ne 1 ) then subdir = cam
+        
+        file_template = subdir + '/*' + detector + '*'
         
         if( n_elements(dirs) gt 0 ) then dirs = [dirs] $    ; ensure it's an array, even with 1 element
         else begin 
