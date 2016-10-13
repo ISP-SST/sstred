@@ -142,37 +142,48 @@ pro red::pinholecalib_thi, threshold = threshold $
     
     self->selectfiles, files=all_files, states=states, cam = cams[refcam], /strip_settings, selected=selection
     ref_states = states[selection]
-    ref_states_unique = ref_states.fullstate
+    ref_states_unique = ref_states.fpi_state
     ref_states_unique = ref_states[ uniq(ref_states_unique, sort(ref_states_unique)) ] ; we discard multiple pinhole files for the same state
     for icam = 0, Ncams-1 do begin
         if icam EQ refcam then continue
         self->selectfiles, files=all_files, states=states, cam = cams[icam], /strip_settings, selected=selection
         cam_states = states[selection]
-        cam_states_unique = cam_states.fullstate
+
+        cam_states_unique = cam_states.fpi_state
         cam_states_unique = cam_states[ uniq(cam_states_unique, sort(cam_states_unique)) ] ; we discard multiple pinhole files for the same state
-        for ic1=0, n_elements(ref_states_unique)-1 do begin
-            print, 'loading ref-file: ', ref_states_unique[ic1].filename
-            if n_elements(this_init) eq 0 then this_init=0
-            dummy = temporary(this_init)
-            ref_img = red_readdata( ref_states_unique[ic1].filename, /silent )
-            dims = size( ref_img, /dim )
-            if( n_elements(dims) ne 2 ) then begin
-                print, inam, ' : pinhole data is not 2-dimensional: ', ref_states_unique[ic1].filename
+        
+        last_prefilter = ''
+        for iref=0, n_elements(ref_states_unique)-1 do begin
+            cam_idx = where(cam_states.fpi_state eq ref_states_unique[iref].fpi_state)
+            if n_elements(cam_idx) ne 1 || max(cam_idx) lt 0 then begin
+                print, inam, ' : No (unique) pair of pinhole images.'
                 continue
             endif
-            for ic2=0, n_elements(cam_states_unique)-1 do begin
-                if self->match_prefilters( ref_states_unique[ic1].prefilter, cam_states_unique[ic2].prefilter ) eq 0 then continue
-                print, 'loading cam-file: ', cam_states_unique[ic2].filename
-                img2 = red_readdata( cam_states_unique[ic2].filename, /silent )
-                dims2 = size( img2, /dim )
-                if( n_elements(dims2) ne 2 ) then begin
-                    print, inam, ' : pinhole data is not 2-dimensional: ', cam_states_unique[ic2].filename
-                    continue
-                endif
-                red_append, alignments,  { state1:ref_states_unique[ic1], state2:cam_states_unique[ic2], $
-                        map:rdx_img_align( ref_img, img2, nref=nref, h_init=this_init $
-                                            , threshold=threshold, verbose=verbose, max_shift = max_shift ) }
-           endfor
+            if self->match_prefilters( ref_states_unique[iref].prefilter, cam_states[cam_idx].prefilter ) eq 0 then continue
+
+            this_prefilter = cam_states[cam_idx].prefilter
+            if this_prefilter ne last_prefilter then undefine, this_init
+            
+            ref_fn = ref_states_unique[iref].filename
+            print, 'loading reference file: ', ref_fn
+            ref_img = red_readdata( ref_fn, /silent )
+            
+            cam_fn = cam_states[cam_idx].filename
+            print, 'loading camera file: ', cam_fn
+            cam_img = red_readdata( cam_fn, /silent )
+            
+            rdims = size( ref_img, /dim )
+            cdims = size( cam_img, /dim )
+            if( n_elements(rdims) ne 2 || n_elements(cdims) ne 2 ) then begin
+                print, inam, ' : pinhole data is not 2-dimensional: ', ref_fn, cam_fn
+                continue
+            endif
+            
+            red_append, alignments,  { state1:ref_states_unique[iref], state2:cam_states[cam_idx], $
+                    map:rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init $
+                                , threshold=threshold, verbose=verbose, max_shift=max_shift ) }
+
+            last_prefilter = this_prefilter
         endfor
         
         okmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] eq 1) )
