@@ -343,9 +343,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                 file:cfg_dir+'momfbd_reduc_'+upref[ipref]+'_'+scanstring+'.cfg', $
                 globals:'', $
                 objects:'', $
-                framenumbers:ref_states[ref_sel].framenumber $
-;                        first_file:min(ref_states[ref_sel].framenumber), $
-;                        last_file:max(ref_states[ref_sel].framenumber) $
+                framenumbers:ptr_new(ref_states[ref_sel].framenumber) $
               }
         
         ;; Global keywords
@@ -451,9 +449,6 @@ pro red::prepmomfbd, wb_states = wb_states $
             
             if( max(cfg_idx) lt 0 ) then continue
             
-            ;;cfg_list[cfg_idx].first_file = min([cfg_list[cfg_idx].first_file, states[sel].framenumber])
-            ;;cfg_list[cfg_idx].last_file = max([cfg_list[cfg_idx].last_file, states[sel].framenumber])
-            
             state_list = states[sel]
             ustates = state_list[uniq(state_list.fullstate, sort(state_list.fullstate))]
             Nstates = n_elements(ustates)
@@ -472,11 +467,11 @@ pro red::prepmomfbd, wb_states = wb_states $
               if state_list[state_idx[0]].nframes eq 1 then begin
                 if nremove ge n_elements(state_idx) then continue
                 if nremove ne 0 then begin
-                  cfg_list[cfg_idx].framenumbers = red_strip(cfg_list[cfg_idx].framenumbers, state_list[state_idx[0:nremove-1]].framenumber)
+                  *(cfg_list[cfg_idx].framenumbers) = red_strip(*(cfg_list[cfg_idx].framenumbers), state_list[state_idx[0:nremove-1]].framenumber)
                   state_idx = state_idx[nremove:*] 
                 endif
               endif
-              red_append, cfg_list[cfg_idx].framenumbers, state_list[state_idx].framenumber
+              red_append, *(cfg_list[cfg_idx].framenumbers), state_list[state_idx].framenumber
               
               img_dir = file_dirname(file_expand_path(state_list[state_idx[0]].filename),/mark)
               filename = file_basename(state_list[state_idx[0]].filename)
@@ -618,7 +613,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 ;                 + '-' + string(cfg_list[ic].last_file,format='(I07)')
 ;        cfg_list[ic].globals += 'IMAGE_NUMS=' + number_str +
 ;        string(10b) + string(10b)
-    frmnums = cfg_list[ic].framenumbers
+    frmnums = *(cfg_list[ic].framenumbers)
     frmnums = frmnums[uniq(frmnums, sort(frmnums))]
     cfg_list[ic].globals += 'IMAGE_NUMS=' + red_collapserange(frmnums, ld='', rd='')
     
@@ -626,6 +621,8 @@ pro red::prepmomfbd, wb_states = wb_states $
     openw, lun, cfg_list[ic].file, /get_lun, width=2500
     printf, lun, cfg_list[ic].objects + cfg_list[ic].globals
     free_lun, lun
+    
+    ptr_free, cfg_list[ic].framenumbers
 
   endfor                        ; cfg loop
   
