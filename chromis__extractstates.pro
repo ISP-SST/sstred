@@ -148,6 +148,7 @@ pro chromis::extractstates, strings, states $
 
   ;; Create array of structs to holed the state information
   states = replicate( {CHROMIS_STATE}, Nstrings )
+  states.nframes = 1    ; single frame by default
 
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
