@@ -31,11 +31,12 @@
 ;     2016-10-13 : MGL & THI. First version
 ;
 ;-
-pro red_strip, array, data
+function red_strip, array, data
 
    match2, array, data, suba, subb
    
    indx = where(suba eq -1, nindx)
-   if nindx gt 0 then array = array[indx]     
+   if nindx gt 0 then return, array[indx]
+   return, array
 
 end

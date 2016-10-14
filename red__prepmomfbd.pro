@@ -453,14 +453,6 @@ pro red::prepmomfbd, wb_states = wb_states $
             
             ;;cfg_list[cfg_idx].first_file = min([cfg_list[cfg_idx].first_file, states[sel].framenumber])
             ;;cfg_list[cfg_idx].last_file = max([cfg_list[cfg_idx].last_file, states[sel].framenumber])
-            if states[sel[0]].nframes eq 1 then begin
-              if nremove ge n_elements(sel) then continue
-              if nremove ne 0 then begin
-                red_strip, cfg_list[cfg_idx].framenumbers, states[sel[0:nremove-1]].framenumber
-                sel = sel[nremove:*] 
-              endif
-            endif
-            red_append, cfg_list[cfg_idx].framenumbers, states[sel].framenumber
             
             state_list = states[sel]
             ustates = state_list[uniq(state_list.fullstate, sort(state_list.fullstate))]
@@ -476,6 +468,15 @@ pro red::prepmomfbd, wb_states = wb_states $
               self -> get_calib, state_list[state_idx[0]] $
                                  , gainname = gainname, darkname = darkname, status = status
               if( status lt 0 ) then stop ;continue
+              
+              if state_list[state_idx[0]].nframes eq 1 then begin
+                if nremove ge n_elements(state_idx) then continue
+                if nremove ne 0 then begin
+                  cfg_list[cfg_idx].framenumbers = red_strip(cfg_list[cfg_idx].framenumbers, state_list[state_idx[0:nremove-1]].framenumber)
+                  state_idx = state_idx[nremove:*] 
+                endif
+              endif
+              red_append, cfg_list[cfg_idx].framenumbers, state_list[state_idx].framenumber
               
               img_dir = file_dirname(file_expand_path(state_list[state_idx[0]].filename),/mark)
               filename = file_basename(state_list[state_idx[0]].filename)
@@ -617,7 +618,6 @@ pro red::prepmomfbd, wb_states = wb_states $
 ;                 + '-' + string(cfg_list[ic].last_file,format='(I07)')
 ;        cfg_list[ic].globals += 'IMAGE_NUMS=' + number_str +
 ;        string(10b) + string(10b)
-stop
     frmnums = cfg_list[ic].framenumbers
     frmnums = frmnums[uniq(frmnums, sort(frmnums))]
     cfg_list[ic].globals += 'IMAGE_NUMS=' + red_collapserange(frmnums, ld='', rd='')
