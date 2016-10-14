@@ -21,6 +21,8 @@
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
 ;
+;   2016-10-13 : MGL. Added nframes to RED_STATE.
+;
 ;-
 PRO red__define
 
@@ -30,6 +32,7 @@ PRO red__define
            camera:'', $
            fullstate:'', $
            fpi_state:'', $
+           nframes:1L, $
            skip:0B $
     }
                                 
