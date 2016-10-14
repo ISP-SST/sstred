@@ -132,6 +132,8 @@
 ;                Added keyword refcam to allow selecting the annchor-channel.
 ;                Added keyword redux to add keywords/options specific to redux.
 ;
+;   2016-10-13 : MGL & THI. Implement the nremove mechanism.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -158,427 +160,475 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , extraclip = extraclip $
                      , redux = redux
 
-    ;; Name of this method
-    inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-    ;; Logging
-    help, /obj, self, output = selfinfo 
-    red_writelog, selfinfo = selfinfo
+  ;; Logging
+  help, /obj, self, output = selfinfo 
+  red_writelog, selfinfo = selfinfo
 
 
-    if(n_elements(msh) eq 0) then maxshift='30'
+  if(n_elements(msh) eq 0) then maxshift='30'
 
-    ;; Get keywords
-    if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
-    if n_elements(date_obs) eq 0 then date_obs = self.isodate
-    if n_elements(modes) eq 0 then modes = '2-45,50,52-55,65,66'
-    if n_elements(nremove) eq 0 then nremove=0
-    ;if n_elements(nfac) eq 0 then nfac = 1.
-    if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
+  ;; Get keywords
+  if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
+  if n_elements(date_obs) eq 0 then date_obs = self.isodate
+  if n_elements(modes) eq 0 then modes = '2-45,50,52-55,65,66'
+  if n_elements(nremove) eq 0 then nremove=0
+                                ;if n_elements(nfac) eq 0 then nfac = 1.
+  if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
 
-    if n_elements(margin) eq 0 then margin = 5
+  if n_elements(margin) eq 0 then margin = 5
 
-    if n_elements(dirs) gt 0 then begin
-        dirs = [dirs] 
-    endif else begin
-        if ~ptr_valid(self.data_dirs) then begin
-        print, inam+' : ERROR : undefined data_dir'
-        return
-        endif
-        dirs = *self.data_dirs
-    endelse
-
-    Ndirs = n_elements(dirs)
-    if( Ndirs eq 0) then begin
-        print, inam+' : ERROR : no directories defined'
-        return
-    endif else begin
-        if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-        else dirstr = dirs[0]
-    endelse
-
-    ;; Get states from the data folder
-    ;  d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = Ndirs)
-    IF Ndirs EQ 0 THEN BEGIN
-        print, inam + ' : ERROR -> no frames found in '+self.out_dir+'/data'
-        print, inam + '   Did you run link_data?'
-        return
-    ENDIF
-
-    ;; Cameras
-    cams = *self.cameras
-    iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
-    ispd = strmatch(cams,'*-D')
-
-    if keyword_set(no_pd) then begin
-        indx = where(~ispd)
-        cams = cams[indx]
-        iswb = iswb[indx]
-        ispd = ispd[indx]
+  if n_elements(dirs) gt 0 then begin
+    dirs = [dirs] 
+  endif else begin
+    if ~ptr_valid(self.data_dirs) then begin
+      print, inam+' : ERROR : undefined data_dir'
+      return
     endif
+    dirs = *self.data_dirs
+  endelse
 
-    Ncams = n_elements(cams)      ; Number of cameras
+  Ndirs = n_elements(dirs)
+  if( Ndirs eq 0) then begin
+    print, inam+' : ERROR : no directories defined'
+    return
+  endif else begin
+    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+    else dirstr = dirs[0]
+  endelse
 
-    if(n_elements(refcam) eq 0) then begin
-        indx = where(iswb)
-        if max(indx) ge 0 then refcam = indx[0] $
-        else refcam = self.refcam
-    endif
+  ;; Get states from the data folder
+  ;;  d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = Ndirs)
+  IF Ndirs EQ 0 THEN BEGIN
+    print, inam + ' : ERROR -> no frames found in '+self.out_dir+'/data'
+    print, inam + '   Did you run link_data?'
+    return
+  ENDIF
 
-    if refcam ge Ncams then begin
-        print, inam, ' : index of reference camera out of range: ', refcam, ' >= ', Ncams
-        return
-    endif
+  ;; Cameras
+  cams = *self.cameras
+  iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
+  ispd = strmatch(cams,'*-D')
 
-    refcam_name = cams[refcam]
-     ; NB: this will overwrite exising offset files !!
-    self->getalignment, align=align, cams=cams, refcam=refcam, prefilters=pref, extraclip=extraclip, /overwrite
-    ref_idx = where( align.state1.camera eq refcam_name )
-    if max(ref_idx) lt 0 then begin
-        print, inam, ' : Failed to get alignment for refererence camera: ', refcam_name
-        return
-    endif
+  if keyword_set(no_pd) then begin
+    indx = where(~ispd)
+    cams = cams[indx]
+    iswb = iswb[indx]
+    ispd = ispd[indx]
+  endif
 
-    detectors = strarr(Ncams)
-    for icam = 0, Ncams-1 do detectors[icam] = self -> getdetector(cams[icam])
-    ;;self -> getdetectors, dir = self.data_dir
+  Ncams = n_elements(cams)      ; Number of cameras
 
-    ;; Print cams
-    print, inam + ' : cameras found:'
-    for icam = 0, Ncams-1 do begin
-        outstr = cams[icam] + ' ' + detectors[icam] + ' '
-        if iswb[icam] then outstr += 'WB 'else outstr += 'NB '
-        if ispd[icam] then outstr += 'PD '
-        print, outstr
-    endfor
+  if(n_elements(refcam) eq 0) then begin
+    indx = where(iswb)
+    if max(indx) ge 0 then refcam = indx[0] $
+    else refcam = self.refcam
+  endif
 
-    ;; Use a narrowband camera when searching for files, so we are sure
-    ;; to get the states information.
-    pos = where(~iswb and ~ispd)
-    searchcam = cams[pos[0]]
-    searchdet = detectors[pos[0]]
+  if refcam ge Ncams then begin
+    print, inam, ' : index of reference camera out of range: ', refcam, ' >= ', Ncams
+    return
+  endif
 
-    if n_elements(numpoints) eq 0 then begin
-        ;; About the same subfield size in arcsec as CRISP:
-        numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
-    endif else begin
-        ;; Convert strings, just to avoid breaking existing codes.
-        if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
-    endelse
+  refcam_name = cams[refcam]
+                                ; NB: this will overwrite exising offset files !!
+  self->getalignment, align=align, cams=cams, refcam=refcam, prefilters=pref $
+                      , extraclip=extraclip, /overwrite
+  ref_idx = where( align.state1.camera eq refcam_name )
+  if max(ref_idx) lt 0 then begin
+    print, inam, ' : Failed to get alignment for refererence camera: ', refcam_name
+    return
+  endif
+
+  detectors = strarr(Ncams)
+  for icam = 0, Ncams-1 do detectors[icam] = self -> getdetector(cams[icam])
+  ;;self -> getdetectors, dir = self.data_dir
+
+  ;; Print cams
+  print, inam + ' : cameras found:'
+  for icam = 0, Ncams-1 do begin
+    outstr = cams[icam] + ' ' + detectors[icam] + ' '
+    if iswb[icam] then outstr += 'WB 'else outstr += 'NB '
+    if ispd[icam] then outstr += 'PD '
+    print, outstr
+  endfor
+
+  ;; Use a narrowband camera when searching for files, so we are sure
+  ;; to get the states information.
+  pos = where(~iswb and ~ispd)
+  searchcam = cams[pos[0]]
+  searchdet = detectors[pos[0]]
+
+  if n_elements(numpoints) eq 0 then begin
+    ;; About the same subfield size in arcsec as CRISP:
+    numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+  endif else begin
+    ;; Convert strings, just to avoid breaking existing codes.
+    if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
+  endelse
 
 
-    ref_clip = align[0].clip
-    xsz = abs(ref_clip[0,0]-ref_clip[1,0])+1
-    ysz = abs(ref_clip[2,0]-ref_clip[3,0])+1
-    this_margin = max([0, min([xsz/3, ysz/3, margin])])  ; prevent silly margin values
-    ; generate patch positions with margin
-    sim_x = rdx_segment( this_margin, xsz-this_margin, numpoints, /momfbd )
-    sim_y = rdx_segment( this_margin, ysz-this_margin, numpoints, /momfbd )
-    sim_x_string = strjoin(strtrim(sim_x,2), ',')
-    sim_y_string = strjoin(strtrim(sim_y,2), ',')
+  ref_clip = align[0].clip
+  xsz = abs(ref_clip[0,0]-ref_clip[1,0])+1
+  ysz = abs(ref_clip[2,0]-ref_clip[3,0])+1
+  this_margin = max([0, min([xsz/3, ysz/3, margin])]) ; prevent silly margin values
+                                ; generate patch positions with margin
+  sim_x = rdx_segment( this_margin, xsz-this_margin, numpoints, /momfbd )
+  sim_y = rdx_segment( this_margin, ysz-this_margin, numpoints, /momfbd )
+  sim_x_string = strjoin(strtrim(sim_x,2), ',')
+  sim_y_string = strjoin(strtrim(sim_y,2), ',')
 
-    for idir=0L, Ndirs-1 do begin
+  for idir=0L, Ndirs-1 do begin
     
-        dir = dirs[idir]
-        folder_tag = file_basename(dir)
+    dir = dirs[idir]
+    folder_tag = file_basename(dir)
+    
+    if file_test(dir + refcam_name + '_nostate/',/directory) then subdir = refcam_name + '_nostate/'
+
+    print, inam + ' : Search for reference files in ' + dir
+    self->selectfiles, cam=refcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
+                       files=ref_files, states=ref_states, nremove=remove, /force ;, /strip_wb
+
+    if n_elements(ref_states) eq 0 then begin
+      print, inam, ' : Failed to find files/states for the reference channel in ', dir
+      return
+    endif
+    
+    ref_img_dir = file_dirname(file_expand_path(ref_states[0].filename),/mark)
+    ref_caminfo = red_camerainfo(detectors[refcam])
+
+    ;; unique prefilters
+    upref = ref_states[uniq(ref_states.prefilter, sort(ref_states.prefilter))].prefilter
+    Nprefs = n_elements(upref)
+
+    ;; unique scan numbers
+    uscan = ref_states[uniq(ref_states.scannumber, sort(ref_states.scannumber))].scannumber
+    Nscans = n_elements(uscan)
+    
+    ;; base output location
+    cfg_base_dir = self.out_dir + PATH_SEP() + momfbddir + PATH_SEP() + folder_tag
+    
+    for iscan=0L, Nscans-1 do begin
+      
+      if n_elements(escan) ne 0 then if iscan ne escan then continue 
+
+      scannumber = uscan[iscan]
+      scanstring = string(scannumber,format='(I05)')
+
+      for ipref=0L, Nprefs-1 do begin
         
-        if file_test(dir + refcam_name + '_nostate/',/directory) then subdir = refcam_name + '_nostate/'
+        self->selectfiles, prefilter=upref[ipref], scan=scannumber, $
+                           files=ref_files, states=ref_states, selected=ref_sel
+        
+        if ref_states[ref_sel[0]].nframes eq 1 then begin
+          if nremove lt n_elements(ref_sel) then ref_sel = ref_sel[nremove:*] else continue
+        endif
 
-        self->selectfiles, cam=refcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                        files=ref_files, states=ref_states, nremove=remove, /force;, /strip_wb
+        if( max(ref_sel) lt 0 ) then continue
+        
+        filename = file_basename(ref_states[ref_sel[0]].filename)
+        pos = STREGEX(filename, '[0-9]{7}', length=len)
+        fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
+        
+        self -> get_calib, ref_states[ref_sel[0]] $
+                           , gainname = gainname, darkname = darkname, status = status
+        if( status lt 0 ) then continue
 
-        if n_elements(ref_states) eq 0 then begin
-            print, inam, ' : Failed to find files/states for the reference channel in ', dir
-            return
+        cfg_dir = cfg_base_dir + '/'+upref[ipref]+'/cfg/'
+        rdir = cfg_dir + 'results/'
+        ddir = cfg_dir + 'data/'
+        cfg = { dir:cfg_dir, $
+                file:cfg_dir+'momfbd_reduc_'+upref[ipref]+'_'+scanstring+'.cfg', $
+                globals:'', $
+                objects:'', $
+                framenumbers:ref_states[ref_sel].framenumber $
+;                        first_file:min(ref_states[ref_sel].framenumber), $
+;                        last_file:max(ref_states[ref_sel].framenumber) $
+              }
+        
+        ;; Global keywords
+        cfg.globals += 'DATE_OBS=' + date_obs + string(10b)
+        cfg.globals += 'PROG_DATA_DIR=./data/' + string(10b)
+        cfg.globals += 'NEW_CONSTRAINTS' + string(10b)
+        cfg.globals += 'FAST_QR' + string(10b)
+        cfg.globals += 'FPMETHOD=horint' + string(10b)
+        cfg.globals += 'BASIS=Karhunen-Loeve' + string(10b)
+        cfg.globals += 'GETSTEP=getstep_conjugate_gradient' + string(10b)
+        cfg.globals += 'GRADIENT=gradient_diff' + string(10b)
+        cfg.globals += 'MODES=' + modes + string(10b)
+        cfg.globals += 'TELESCOPE_D=0.97' + string(10b)
+        cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + string(10b)
+        cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + string(10b)
+        cfg.globals += 'ARCSECPERPIX=' + self.image_scale + string(10b)
+        cfg.globals += 'PIXELSIZE=' + strtrim(ref_caminfo.pixelsize, 2) + string(10b)
+        cfg.globals += 'FILE_TYPE=' + self.filetype + string(10b)
+        if self.filetype eq 'ANA' then begin
+          cfg.globals += 'DATA_TYPE=FLOAT' + string(10b)
+        endif 
+        if self.filetype eq 'MOMFBD' then begin
+          cfg.globals += 'GET_PSF' + string(10b)
+          cfg.globals += 'GET_PSF_AVG' + string(10b)
+        endif
+        cfg.globals += 'SIM_X=' + sim_x_string + string(10b)
+        cfg.globals += 'SIM_Y=' + sim_y_string + string(10b)
+
+        ;; External keywords?
+        if(keyword_set(global_keywords)) then begin
+          nk = n_elements(global_keywords)
+          for ki=0L, nk-1 do cfg.globals += global_keywords[ki] + string(10b)
         endif
         
-        ref_img_dir = file_dirname(file_expand_path(ref_states[0].filename),/mark)
-        ref_caminfo = red_camerainfo(detectors[refcam])
+        ;; Reference object
+        cfg.objects += 'object{' + string(10b)
+        cfg.objects += '    WAVELENGTH=' + strtrim(ref_states[ref_sel[0]].pf_wavelength,2) + string(10b)
+        cfg.objects += '    OUTPUT_FILE=results/' + detectors[refcam] $
+                       + '_' + date_obs+'T'+folder_tag $
+                       + '_' + scanstring + '_' + upref[ipref] + string(10b)
+        if(n_elements(weight) gt 0 ) then $
+           cfg.objects += '    WEIGHT=' + strtrim(weight[0],2) + string(10b)
+        cfg.objects += '    channel{' + string(10b)
+        cfg.objects += '        IMAGE_DATA_DIR=' + ref_img_dir + string(10b)
+        cfg.objects += '        FILENAME_TEMPLATE=' + fn_template + string(10b)
+        cfg.objects += '        GAIN_FILE=' + gainname + string(10b)
+        cfg.objects += '        DARK_TEMPLATE=' + darkname + string(10b)
+        cfg.objects += '        DARK_NUM=0000001' + string(10b)
+        cfg.objects += '        ALIGN_CLIP=' $
+                       + strjoin(strtrim(ref_clip,2),',') + string(10b)
+        if( align[0].xoffs_file ne '' && file_test(align[0].xoffs_file)) then $
+           cfg.objects += '        XOFFSET='+align[0].xoffs_file + string(10b)
+        if( align[0].yoffs_file ne '' && file_test(align[0].yoffs_file)) then $
+           cfg.objects += '        YOFFSET='+align[0].yoffs_file + string(10b)
+        if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
+           ~keyword_set(no_descatter) then begin
+          self -> loadbackscatter, detectors[refcam], upref[ipref] $
+                                   , bgfile = bgf, bpfile = psff
+          if(file_test(psff) AND file_test(bgf)) then begin
+            cfg.objects += '        PSF=' + psff + string(10b)
+            cfg.objects += '        BACK_GAIN=' + bgf + string(10b)
+          endif else begin
+            print, inam, ' : No backscatter files found for prefilter: ', upref[ipref]
+          endelse
+        endif
+        if(n_elements(nfac) gt 0) then $
+           cfg.objects += '        NF=' + red_stri(nfac[0]) + string(10b)
+        cfg.objects += '        INCOMPLETE' + string(10b)
+        cfg.objects += '    }' + string(10b)
+        cfg.objects += '}' + string(10b)
 
-        ;; unique prefilters
-        upref = ref_states[uniq(ref_states.prefilter, sort(ref_states.prefilter))].prefilter
-        Nprefs = n_elements(upref)
-
-        ;; unique scan numbers
-        uscan = ref_states[uniq(ref_states.scannumber, sort(ref_states.scannumber))].scannumber
-        Nscans = n_elements(uscan)
-         
-        ;; base output location
-        cfg_base_dir = self.out_dir + PATH_SEP() + momfbddir + PATH_SEP() + folder_tag
+        red_append, cfg_list, cfg
         
+      endfor                    ; prefilter loop
+      
+    endfor                      ; scan loop
+
+    for icam=0L, Ncams-1 do begin
+      if icam ne refcam then begin
+
+        ;; get a list of all states for this camera
+        self->selectfiles, cam=cams[icam], dirs=dir, files=files, $
+                           states=states, nremove=remove, /force
+
         for iscan=0L, Nscans-1 do begin
-        
-            if n_elements(escan) ne 0 then if iscan ne escan then continue 
+          
+          if n_elements(escan) ne 0 then if iscan ne escan then continue 
 
-            scannumber = uscan[iscan]
-            scanstring = string(scannumber,format='(I05)')
+          scannumber = uscan[iscan]
+          scanstring = string(scannumber,format='(I05)')
 
-            for ipref=0L, Nprefs-1 do begin
+          for ipref=0L, Nprefs-1 do begin
+            
+            ;; select a subset of the states which matches prefilter & scan number.
+            self->selectfiles, cam=cams[icam], dirs=dir, prefilter=upref[ipref], scan=scannumber, $
+                               files=files, states=states, nremove=remove, selected=sel
+
+            if( max(sel) lt 0 ) then continue
+            
+            cfg_dir = cfg_base_dir + '/'+upref[ipref]+'/cfg/'
+            cfg_file = cfg_dir+'momfbd_reduc_'+upref[ipref]+'_'+scanstring+'.cfg'
+            cfg_idx = where( cfg_list.file eq cfg_file )
+            
+            if( max(cfg_idx) lt 0 ) then continue
+            
+            ;;cfg_list[cfg_idx].first_file = min([cfg_list[cfg_idx].first_file, states[sel].framenumber])
+            ;;cfg_list[cfg_idx].last_file = max([cfg_list[cfg_idx].last_file, states[sel].framenumber])
+            if states[sel[0]].nframes eq 1 then begin
+              if nremove ge n_elements(sel) then continue
+              if nremove ne 0 then begin
+                red_strip, cfg_list[cfg_idx].framenumbers, states[sel[0:nremove-1]].framenumber
+                sel = sel[nremove:*] 
+              endif
+            endif
+            red_append, cfg_list[cfg_idx].framenumbers, states[sel].framenumber
+            
+            state_list = states[sel]
+            ustates = state_list[uniq(state_list.fullstate, sort(state_list.fullstate))]
+            Nstates = n_elements(ustates)
+            
+            ;; Loop over states and add object to cfg_list
+            for is=0L, Nstates-1 do begin
+              
+              thisstate = ustates[is].fpi_state
+              state_idx = where(state_list.fpi_state eq thisstate)
+              if max(state_idx) lt 0 then continue
+              
+              self -> get_calib, state_list[state_idx[0]] $
+                                 , gainname = gainname, darkname = darkname, status = status
+              if( status lt 0 ) then stop ;continue
+              
+              img_dir = file_dirname(file_expand_path(state_list[state_idx[0]].filename),/mark)
+              filename = file_basename(state_list[state_idx[0]].filename)
+              pos = STREGEX(filename, '[0-9]{7}', length=len)
+              fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
+
+              align_idx = where( align.state2.camera eq cams[icam] and $
+                                 align.state2.fpi_state eq thisstate)
+              if max(align_idx) lt 0 then begin ; no match for state, try only prefilter
+                align_idx = where( align.state2.camera eq cams[icam] and $
+                                   align.state2.prefilter eq ustates[is].prefilter)
+                if max(align_idx) lt 0 then begin
+                  ;;print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
+                  ;;stop
+                  continue
+                endif
+              endif
+
+              if n_elements(align_idx) gt 1 then align_idx = align_idx[0] ; just pick the first one for now
+              state_align = align[align_idx]
+              
+              ;; create cfg object
+              cfg_list[cfg_idx].objects += 'object{' + string(10b)
+              cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[is].pf_wavelength,2) + string(10b)
+              cfg_list[cfg_idx].objects += '    OUTPUT_FILE=results/' + detectors[icam] $
+                                           + '_' + date_obs+'T'+folder_tag $
+                                           + '_' + scanstring + '_'+ustates[is].fullstate + string(10b)
+              if(n_elements(weight) gt 1) then $
+                 cfg_list[cfg_idx].objects += '    WEIGHT=' + strtrim(weight[1],2) + string(10b)
+              cfg_list[cfg_idx].objects += '    channel{' + string(10b)
+              cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + string(10b)
+              cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + string(10b)
+              cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + string(10b)
+              cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + string(10b)
+              cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + string(10b)
+              cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' $
+                                           + strjoin(strtrim(state_align.clip,2),',') + string(10b)
+              if( state_align.xoffs_file ne '' && file_test(state_align.xoffs_file)) then $
+                 cfg_list[cfg_idx].objects += '        XOFFSET='+state_align.xoffs_file + string(10b)
+              if( state_align.yoffs_file ne '' && file_test(state_align.yoffs_file)) then $
+                 cfg_list[cfg_idx].objects += '        YOFFSET='+state_align.yoffs_file + string(10b)
+              if( ustates[is].prefilter EQ '8542' OR ustates[is].prefilter EQ '7772' ) AND $
+                 ~keyword_set(no_descatter) then begin
+                self -> loadbackscatter, detectors[icam], ustates[is].prefilter, bgfile = bgf, bpfile = psff
+                if(file_test(psff) AND file_test(bgf)) then begin
+                  cfg_list[cfg_idx].objects += '        PSF=' + psff + string(10b)
+                  cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + string(10b)
+                endif else begin
+                  print, inam, ' : No backscatter files found for prefilter: ' $
+                         , ustates[is].prefilter
+                endelse
+              endif
+              if(n_elements(nfac) gt 1) then $
+                 cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[1]) + string(10b)
+              if keyword_set(redux) && max(nremove) gt 0 then $
+                 cfg_list[cfg_idx].objects += '        DISCARD=' $
+                                              + strjoin(strtrim(nremove,2),',') + string(10b)
+              cfg_list[cfg_idx].objects += '        INCOMPLETE' + string(10b)
+              cfg_list[cfg_idx].objects += '    }' + string(10b)
+              cfg_list[cfg_idx].objects += '}' + string(10b)
+              
+              if(keyword_set(wb_states)) then begin
                 
+                ;; select WB files with the same framenumbers
                 self->selectfiles, prefilter=upref[ipref], scan=scannumber, $
-                    files=ref_files, states=ref_states, selected=ref_sel
+                                   files=ref_files, states=ref_states, selected=ref_sel $
+                                   , framenumbers = state_list[state_idx].framenumber
                 
                 if( max(ref_sel) lt 0 ) then continue
                 
-                filename = file_basename(ref_states[ref_sel[0]].filename)
+                self -> get_calib, ref_states[ref_sel[0]] $
+                                   , gainname = gainname, darkname = darkname, status = status
+                if( status lt 0 ) then continue
+                
+                fullname = file_readlink(ref_states[ref_sel[0]].filename)
+                img_dir = file_dirname(fullname,/mark)
+                filename = file_basename(fullname)
                 pos = STREGEX(filename, '[0-9]{7}', length=len)
                 fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
-            
-                self -> get_calib, ref_states[ref_sel[0]], gainname = gainname, darkname = darkname, status = status
-                if( status lt 0 ) then continue
-
-                cfg_dir = cfg_base_dir + '/'+upref[ipref]+'/cfg/'
-                rdir = cfg_dir + 'results/'
-                ddir = cfg_dir + 'data/'
-                cfg = { dir:cfg_dir, $
-                        file:cfg_dir+'momfbd_reduc_'+upref[ipref]+'_'+scanstring+'.cfg', $
-                        globals:'', $
-                        objects:'', $
-                        first_file:min(ref_states[ref_sel].framenumber), $
-                        last_file:max(ref_states[ref_sel].framenumber) $
-                      }
                 
-                ;; Global keywords
-                cfg.globals += 'DATE_OBS=' + date_obs + string(10b)
-                cfg.globals += 'PROG_DATA_DIR=./data/' + string(10b)
-                cfg.globals += 'NEW_CONSTRAINTS' + string(10b)
-                cfg.globals += 'FAST_QR' + string(10b)
-                cfg.globals += 'FPMETHOD=horint' + string(10b)
-                cfg.globals += 'BASIS=Karhunen-Loeve' + string(10b)
-                cfg.globals += 'GETSTEP=getstep_conjugate_gradient' + string(10b)
-                cfg.globals += 'GRADIENT=gradient_diff' + string(10b)
-                cfg.globals += 'MODES=' + modes + string(10b)
-                cfg.globals += 'TELESCOPE_D=0.97' + string(10b)
-                cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + string(10b)
-                cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + string(10b)
-                cfg.globals += 'ARCSECPERPIX=' + self.image_scale + string(10b)
-                cfg.globals += 'PIXELSIZE=' + strtrim(ref_caminfo.pixelsize, 2) + string(10b)
-                cfg.globals += 'FILE_TYPE=' + self.filetype + string(10b)
-                if self.filetype eq 'ANA' then begin
-                   cfg.globals += 'DATA_TYPE=FLOAT' + string(10b)
-                endif 
-                if self.filetype eq 'MOMFBD' then begin
-                   cfg.globals += 'GET_PSF' + string(10b)
-                   cfg.globals += 'GET_PSF_AVG' + string(10b)
+                cfg_list[cfg_idx].objects += 'object{' + string(10b)
+                cfg_list[cfg_idx].objects += '    WAVELENGTH=' $
+                                             + strtrim(ustates[is].pf_wavelength,2) + string(10b)
+                if(n_elements(weight) gt 2) then $
+                   cfg.objects += '    WEIGHT=' + strtrim(weight[3],2) + string(10b) $
+                else cfg_list[cfg_idx].objects += '    WEIGHT=0.00' + string(10b)
+                cfg_list[cfg_idx].objects += '    OUTPUT_FILE=results/'+detectors[refcam] + '_' $
+                                             + date_obs+'T'+folder_tag $
+                                             + '_' + scanstring + '_'+ustates[is].fullstate + string(10b)
+                cfg_list[cfg_idx].objects += '    channel{' + string(10b)
+                cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + string(10b)
+                cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + string(10b)
+                cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + string(10b)
+                cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + string(10b)
+                cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + string(10b)
+                cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + string(10b)
+                if( ustates[is].prefilter EQ '8542' OR $
+                    ustates[is].prefilter EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+                  self -> loadbackscatter, detectors[refcam], ustates[is].prefilter $
+                                           , bgfile = bgf, bpfile = psff
+                  if(file_test(psff) AND file_test(bgf)) then begin
+                    cfg_list[cfg_idx].objects += '        PSF=' + psff + string(10b)
+                    cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + string(10b)
+                  endif else begin
+                    print, inam, ' : No backscatter files found for prefilter: ' $
+                           , ustates[is].prefilter
+                  endelse
                 endif
-                cfg.globals += 'SIM_X=' + sim_x_string + string(10b)
-                cfg.globals += 'SIM_Y=' + sim_y_string + string(10b)
-
-                ;; External keywords?
-                if(keyword_set(global_keywords)) then begin
-                  nk = n_elements(global_keywords)
-                  for ki=0L, nk-1 do cfg.globals += global_keywords[ki] + string(10b)
-                endif
-                
-                ;; Reference object
-                cfg.objects += 'object{' + string(10b)
-                cfg.objects += '    WAVELENGTH=' + strtrim(ref_states[ref_sel[0]].pf_wavelength,2) + string(10b)
-                cfg.objects += '    OUTPUT_FILE=results/' + detectors[refcam] + '_' + date_obs+'T'+folder_tag $
-                         + '_' + scanstring + '_' + upref[ipref] + string(10b)
-                if(n_elements(weight) gt 0 ) then cfg.objects += '    WEIGHT=' + strtrim(weight[0],2) + string(10b)
-                cfg.objects += '    channel{' + string(10b)
-                cfg.objects += '        IMAGE_DATA_DIR=' + ref_img_dir + string(10b)
-                cfg.objects += '        FILENAME_TEMPLATE=' + fn_template + string(10b)
-                cfg.objects += '        GAIN_FILE=' + gainname + string(10b)
-                cfg.objects += '        DARK_TEMPLATE=' + darkname + string(10b)
-                cfg.objects += '        DARK_NUM=0000001' + string(10b)
-                cfg.objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + string(10b)
-                if( align[0].xoffs_file ne '' && file_test(align[0].xoffs_file)) then $
-                    cfg.objects += '        XOFFSET='+align[0].xoffs_file + string(10b)
-                if( align[0].yoffs_file ne '' && file_test(align[0].yoffs_file)) then $
-                    cfg.objects += '        YOFFSET='+align[0].yoffs_file + string(10b)
-                if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                    self -> loadbackscatter, detectors[refcam], upref[ipref], bgfile = bgf, bpfile = psff
-                    if(file_test(psff) AND file_test(bgf)) then begin
-                        cfg.objects += '        PSF=' + psff + string(10b)
-                        cfg.objects += '        BACK_GAIN=' + bgf + string(10b)
-                    endif else begin
-                        print, inam, ' : No backscatter files found for prefilter: ', upref[ipref]
-                    endelse
-                endif
-                if(n_elements(nfac) gt 0) then cfg.objects += '        NF=' + red_stri(nfac[0]) + string(10b)
-                cfg.objects += '        INCOMPLETE' + string(10b)
-                cfg.objects += '    }' + string(10b)
-                cfg.objects += '}' + string(10b)
-
-                red_append, cfg_list, cfg
-                
-            endfor  ; prefilter loop
+                if(n_elements(nfac) gt 2) then cfg_list[cfg_idx].objects $
+                   += '        NF=' + red_stri(nfac[2]) + string(10b)
+                if keyword_set(redux) && max(nremove) gt 0 then $
+                   cfg_list[cfg_idx].objects += '        DISCARD=' $
+                                                + strjoin(strtrim(nremove,2),',') + string(10b)
+                cfg_list[cfg_idx].objects += '        INCOMPLETE' + string(10b)
+                cfg_list[cfg_idx].objects += '    }' + string(10b)
+                cfg_list[cfg_idx].objects += '}' + string(10b)
+              endif
+              
+            endfor
             
-        endfor  ; scan loop
-
-        for icam=0L, Ncams-1 do begin
-            if icam ne refcam then begin
-
-                ;; get a list of all states for this camera
-                self->selectfiles, cam=cams[icam], dirs=dir, files=files, $
-                        states=states, nremove=remove, /force
-
-                for iscan=0L, Nscans-1 do begin
-                
-                    if n_elements(escan) ne 0 then if iscan ne escan then continue 
-
-                    scannumber = uscan[iscan]
-                    scanstring = string(scannumber,format='(I05)')
-
-                    for ipref=0L, Nprefs-1 do begin
-                    
-                        ;; select a subset of the states which matches prefilter & scan number.
-                        self->selectfiles, cam=cams[icam], dirs=dir, prefilter=upref[ipref], scan=scannumber, $
-                                files=files, states=states, nremove=remove, selected=sel
-
-                        if( max(sel) lt 0 ) then continue
-                                
-                        cfg_dir = cfg_base_dir + '/'+upref[ipref]+'/cfg/'
-                        cfg_file = cfg_dir+'momfbd_reduc_'+upref[ipref]+'_'+scanstring+'.cfg'
-                        cfg_idx = where( cfg_list.file eq cfg_file )
-                        
-                        if( max(cfg_idx) lt 0 ) then continue
-                        
-                        cfg_list[cfg_idx].first_file = min([cfg_list[cfg_idx].first_file, states[sel].framenumber])
-                        cfg_list[cfg_idx].last_file = max([cfg_list[cfg_idx].last_file, states[sel].framenumber])
-                        
-                        state_list = states[sel]
-                        ustates = state_list[uniq(state_list.fullstate, sort(state_list.fullstate))]
-                        Nstates = n_elements(ustates)
-                        
-                        ;; Loop over states and add object to cfg_list
-                        for is=0L, Nstates-1 do begin
-                            
-                            thisstate = ustates[is].fpi_state
-                            state_idx = where(state_list.fpi_state eq thisstate)
-                            if max(state_idx) lt 0 then continue
-                            
-                            self -> get_calib, state_list[state_idx[0]], gainname = gainname, darkname = darkname, status = status
-                            if( status lt 0 ) then stop ;continue
-                            
-                            img_dir = file_dirname(file_expand_path(state_list[state_idx[0]].filename),/mark)
-                            filename = file_basename(state_list[state_idx[0]].filename)
-                            pos = STREGEX(filename, '[0-9]{7}', length=len)
-                            fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
-
-                            align_idx = where( align.state2.camera eq cams[icam] and align.state2.fpi_state eq thisstate)
-                            if max(align_idx) lt 0 then begin   ; no match for state, try only prefilter
-                                align_idx = where( align.state2.camera eq cams[icam] and align.state2.prefilter eq ustates[is].prefilter)
-                                if max(align_idx) lt 0 then begin
-                                    ;print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
-                                    ;stop
-                                    continue
-                                endif
-                            endif
-
-                            if n_elements(align_idx) gt 1 then align_idx = align_idx[0]     ; just pick the first one for now
-                            state_align = align[align_idx]
-                            
-                            ;; create cfg object
-                            cfg_list[cfg_idx].objects += 'object{' + string(10b)
-                            cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[is].pf_wavelength,2) + string(10b)
-                            cfg_list[cfg_idx].objects += '    OUTPUT_FILE=results/' + detectors[icam] + '_' + date_obs+'T'+folder_tag $
-                                                             + '_' + scanstring + '_'+ustates[is].fullstate + string(10b)
-                            if(n_elements(weight) gt 1) then cfg_list[cfg_idx].objects += '    WEIGHT=' + strtrim(weight[1],2) + string(10b)
-                            cfg_list[cfg_idx].objects += '    channel{' + string(10b)
-                            cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + string(10b)
-                            cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + string(10b)
-                            cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + string(10b)
-                            cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + string(10b)
-                            cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + string(10b)
-                            cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' + strjoin(strtrim(state_align.clip,2),',') + string(10b)
-                            if( state_align.xoffs_file ne '' && file_test(state_align.xoffs_file)) then $
-                                cfg_list[cfg_idx].objects += '        XOFFSET='+state_align.xoffs_file + string(10b)
-                            if( state_align.yoffs_file ne '' && file_test(state_align.yoffs_file)) then $
-                                cfg_list[cfg_idx].objects += '        YOFFSET='+state_align.yoffs_file + string(10b)
-                            if( ustates[is].prefilter EQ '8542' OR ustates[is].prefilter EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                                self -> loadbackscatter, detectors[icam], ustates[is].prefilter, bgfile = bgf, bpfile = psff
-                                if(file_test(psff) AND file_test(bgf)) then begin
-                                    cfg_list[cfg_idx].objects += '        PSF=' + psff + string(10b)
-                                    cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + string(10b)
-                                endif else begin
-                                    print, inam, ' : No backscatter files found for prefilter: ', ustates[is].prefilter
-                                endelse
-                            endif
-                            if(n_elements(nfac) gt 1) then cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[1]) + string(10b)
-                            if keyword_set(redux) && max(nremove) gt 0 then $
-                                cfg_list[cfg_idx].objects += '        DISCARD=' + strjoin(strtrim(nremove,2),',') + string(10b)
-                            cfg_list[cfg_idx].objects += '        INCOMPLETE' + string(10b)
-                            cfg_list[cfg_idx].objects += '    }' + string(10b)
-                            cfg_list[cfg_idx].objects += '}' + string(10b)
-                            
-                            if(keyword_set(wb_states)) then begin
-                            
-                                ;; select WB files with the same framenumbers
-                                self->selectfiles, prefilter=upref[ipref], scan=scannumber, $
-                                    files=ref_files, states=ref_states, selected=ref_sel, framenumbers = state_list[state_idx].framenumber
-                                
-                                if( max(ref_sel) lt 0 ) then continue
-                                
-                                self -> get_calib, ref_states[ref_sel[0]], gainname = gainname, darkname = darkname, status = status
-                                if( status lt 0 ) then continue
-                
-                                fullname = file_readlink(ref_states[ref_sel[0]].filename)
-                                img_dir = file_dirname(fullname,/mark)
-                                filename = file_basename(fullname)
-                                pos = STREGEX(filename, '[0-9]{7}', length=len)
-                                fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
-                                
-                                cfg_list[cfg_idx].objects += 'object{' + string(10b)
-                                cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[is].pf_wavelength,2) + string(10b)
-                                if(n_elements(weight) gt 2) then cfg.objects += '    WEIGHT=' + strtrim(weight[3],2) + string(10b) $
-                                else cfg_list[cfg_idx].objects += '    WEIGHT=0.00' + string(10b)
-                                cfg_list[cfg_idx].objects += '    OUTPUT_FILE=results/'+detectors[refcam]+'_' + date_obs+'T'+folder_tag $
-                                                             + '_' + scanstring + '_'+ustates[is].fullstate + string(10b)
-                                cfg_list[cfg_idx].objects += '    channel{' + string(10b)
-                                cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + string(10b)
-                                cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + string(10b)
-                                cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + string(10b)
-                                cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + string(10b)
-                                cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + string(10b)
-                                cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + string(10b)
-                                if( ustates[is].prefilter EQ '8542' OR ustates[is].prefilter EQ '7772' ) AND ~keyword_set(no_descatter) then begin
-                                    self -> loadbackscatter, detectors[refcam], ustates[is].prefilter, bgfile = bgf, bpfile = psff
-                                    if(file_test(psff) AND file_test(bgf)) then begin
-                                        cfg_list[cfg_idx].objects += '        PSF=' + psff + string(10b)
-                                        cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + string(10b)
-                                    endif else begin
-                                        print, inam, ' : No backscatter files found for prefilter: ', ustates[is].prefilter
-                                    endelse
-                                endif
-                                if(n_elements(nfac) gt 2) then cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[2]) + string(10b)
-                                if keyword_set(redux) && max(nremove) gt 0 then $
-                                    cfg_list[cfg_idx].objects += '        DISCARD=' + strjoin(strtrim(nremove,2),',') + string(10b)
-                                cfg_list[cfg_idx].objects += '        INCOMPLETE' + string(10b)
-                                cfg_list[cfg_idx].objects += '    }' + string(10b)
-                                cfg_list[cfg_idx].objects += '}' + string(10b)
-                            endif
-                            
-                        endfor
-                        
-                    endfor  ; prefilter loop
-                    
-                endfor  ; scan loop
-                        
-            endif       ; icam ne refcam
-            
-        endfor          ; cam loop
-    
-    endfor              ; dir loop
-    
-    for ic=0, n_elements(cfg_list)-1 do begin
-    
-        if( ~file_test(cfg_list[ic].dir, /directory) ) then begin
-            file_mkdir, cfg_list[ic].dir+'/data/'
-            file_mkdir, cfg_list[ic].dir+'/results/'
-        endif
+          endfor                ; prefilter loop
+          
+        endfor                  ; scan loop
         
-        number_str = string(cfg_list[ic].first_file, format='(I07)') + '-' + string(cfg_list[ic].last_file,format='(I07)')
-        cfg_list[ic].globals += 'IMAGE_NUMS=' + number_str + string(10b) + string(10b)
+      endif                     ; icam ne refcam
+      
+    endfor                      ; cam loop
     
-        print,'Writing: ', cfg_list[ic].file
-        openw, lun, cfg_list[ic].file, /get_lun, width=2500
-        printf, lun, cfg_list[ic].objects + cfg_list[ic].globals
-        free_lun, lun
+  endfor                        ; dir loop
+  
+  for ic=0, n_elements(cfg_list)-1 do begin
+    
+    if( ~file_test(cfg_list[ic].dir, /directory) ) then begin
+      file_mkdir, cfg_list[ic].dir+'/data/'
+      file_mkdir, cfg_list[ic].dir+'/results/'
+    endif
+    
+;    number_str = string(cfg_list[ic].first_file, format='(I07)') $
+;                 + '-' + string(cfg_list[ic].last_file,format='(I07)')
+;        cfg_list[ic].globals += 'IMAGE_NUMS=' + number_str +
+;        string(10b) + string(10b)
+stop
+    frmnums = cfg_list[ic].framenumbers
+    frmnums = frmnums[uniq(frmnums, sort(frmnums))]
+    cfg_list[ic].globals += 'IMAGE_NUMS=' + red_collapserange(frmnums, ld='', rd='')
+    
+    print,'Writing: ', cfg_list[ic].file
+    openw, lun, cfg_list[ic].file, /get_lun, width=2500
+    printf, lun, cfg_list[ic].objects + cfg_list[ic].globals
+    free_lun, lun
 
-    endfor      ; cfg loop
- 
+  endfor                        ; cfg loop
+  
 
 return
   
