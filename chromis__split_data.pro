@@ -256,10 +256,12 @@ pro chromis::split_data, split_dir = split_dir $
               
               
               ;; Write one frame
+              if wb then statestring = strtrim(states[ifile].fpi_state, 2) $
+              else statestring = strtrim(states[ifile].fullstate, 2)
               
               namout = outdir + detector $
                        + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                       + '_' + strtrim(states[ifile].fullstate, 2)$
+                       + '_' + statestring $
                        + '_' + string(frameno, format = '(i07)') $
                        + '.fits'
               
