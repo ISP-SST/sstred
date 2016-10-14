@@ -82,6 +82,9 @@
 ;   2016-09-21 : MGL. Change filter tags to four-digit tags
 ;                representing approximate filter wavelength.
 ;
+;   2016-10-13 : MGL. Removed unecessary check for W and H in ana
+;                headers.
+;
 ;
 ;
 ;-
@@ -134,38 +137,31 @@ function red_readhead, fname, $
                    header = tmpheader
                endif else begin
                   ;; Does the ana header have size information?
-                  posw = strpos(anaheader, ' W=')
-                  posh = strpos(anaheader, ' H=')
-                  if posw eq -1 or posh eq -1 then begin
-                     ;; Get info from the file
-                     openr, llun, fname, /get_lun
-                     ;; Read the first few bytes to get data type and
-                     ;; number of dimensions:
-                     ah = bytarr(192) 
-                     readu, llun, ah
-                     case ah[7] of
-                        0: dtyp = 1    ; ANA_BYTE
-                        1: dtyp = 2    ; ANA_WORD
-                        2: dtyp = 3    ; ANA_LONG
-                        3: dtyp = 4    ; ANA_FLOAT
-                        4: dtyp = 5    ; ANA_DOUBLE
-                        else: dtyp = 2 ; default?
-                     endcase
-                     ;; Read bytes 192-255 as longs to get the
-                     ;; dimensions
-                     bh = lonarr(16)
-                     readu, llun, bh
-                     naxisx = bh[0:ah[8]-1]
-                     ;; Close the file
-                     free_lun, llun
-                     ;; Now construct the header:
+                 ;; Get info from the file
+                 openr, llun, fname, /get_lun
+                 ;; Read the first few bytes to get data type and
+                 ;; number of dimensions:
+                 ah = bytarr(192) 
+                 readu, llun, ah
+                 case ah[7] of
+                   0: dtyp = 1         ; ANA_BYTE
+                   1: dtyp = 2         ; ANA_WORD
+                   2: dtyp = 3         ; ANA_LONG
+                   3: dtyp = 4         ; ANA_FLOAT
+                   4: dtyp = 5         ; ANA_DOUBLE
+                   else: dtyp = 2      ; default?
+                 endcase
+                 ;; Read bytes 192-255 as longs to get the
+                 ;; dimensions
+                 bh = lonarr(16)
+                 readu, llun, bh
+                 naxisx = bh[0:ah[8]-1]
+                 ;; Close the file
+                 free_lun, llun
+                 ;; Now construct the header:
 ;                     ;;Get it from the data instead.
 ;                     fzread, data, fname
-                     header = red_anahdr2fits(anaheader, datatype = dtyp, naxisx = naxisx)
-                  endif else begin
-                     ;; Convert ana header to fits header
-                     header = red_anahdr2fits(anaheader)
-                  endelse
+                 header = red_anahdr2fits(anaheader, datatype = dtyp, naxisx = naxisx)
                endelse
             endif
          end
