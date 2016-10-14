@@ -125,7 +125,9 @@
 ;    2016-09-28 : MGL. Use TEXPOSUR for cam_settings of summed files.
 ;                 Parse STATE correctly. FULLSTATE for darks without
 ;                 tuning info. Do not complain if calling from
-;                 hrz_zeropoint. 
+;                 hrz_zeropoint.  
+;
+;    2016-10-13 : MGL. Added nframes state keyword.
 ;
 ; 
 ;-
@@ -169,6 +171,8 @@ pro chromis::extractstates, strings, states $
      endelse
 
      ;; Numerical keywords
+     naxis3 = fxpar(head, 'NAXIS3', count=hasnframes)
+     if hasnframes then states[ifile].nframes = naxis3
      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
      ;; New keyword for gain from 2016.08.30:
      if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) 
