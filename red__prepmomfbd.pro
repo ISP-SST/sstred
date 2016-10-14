@@ -134,6 +134,8 @@
 ;
 ;   2016-10-13 : MGL & THI. Implement the nremove mechanism.
 ;
+;   2016-10-14 : MGL. Time-varying gaintables.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -473,10 +475,35 @@ pro red::prepmomfbd, wb_states = wb_states $
               state_idx = where(state_list.fpi_state eq thisstate)
               if max(state_idx) lt 0 then continue
               
-              self -> get_calib, state_list[state_idx[0]] $
-                                 , gainname = gainname, darkname = darkname, status = status
-              if( status lt 0 ) then stop ;continue
+;              self -> get_calib, state_list[state_idx[0]] $
+;                                 , gainname = gainname, darkname = darkname, status = status
+;              if( status lt 0 ) then stop ;continue
               
+              darkname = self -> filenames('dark', state_list[state_idx[0]], /no_fits)
+              if(~keyword_set(unpol)) then begin
+                if(keyword_set(oldgains)) then begin
+;                  search = self.out_dir+'/gaintables/'+self.camttag + '.' + ustat1[ii] + '*.gain'
+                  stop
+                  ;; Not implemented in chromis::filenames yet.
+                  gainname = a -> filenames('oldgain', state_list[state_idx[0]], /no_fits)
+                endif else begin
+                  ;;search =
+                  ;;self.out_dir+'/gaintables/'+folder_tag+'/'+self.camttag
+                  ;;+ '.' + istate+'.gain'
+                  gainname = self -> filenames('scangain', state_list[state_idx[0]] $
+                                               , timestamp = stregex(state_list[state_idx[0]].filename $
+                                                                     ,'[0-9][0-9]:[0-9][0-9]:[0-9][0-9]' $
+                                                                     ,/extr), /no_fits)
+                endelse
+              endif else begin
+                  gainname = a -> filenames('gain', state_list[state_idx[0]], /no_fits)
+;
+;                 search = self.out_dir+'/gaintables/'+self.camttag + $
+;                          '.' + strmid(ustat1[ii], idx[0], $
+;                                       idx[nidx-1])+ '*unpol.gain'
+              endelse
+ 
+
               img_dir = file_dirname(file_expand_path(state_list[state_idx[0]].filename),/mark)
               filename = file_basename(state_list[state_idx[0]].filename)
               pos = STREGEX(filename, '[0-9]{7}', length=len)
