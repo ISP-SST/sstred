@@ -260,7 +260,7 @@ pro red_setupworkdir, search_dir = search_dir $
         end
         strpos(hostname,'astro.su.se') ne -1 : begin
            ;; At the ISP in Stockholm
-           search_dir = ["/mnt/sand*/", "/mnt/sand*/Incoming/", "/mnt/sand*/Incoming/Checked/"]
+           search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
         end
      endcase
 
