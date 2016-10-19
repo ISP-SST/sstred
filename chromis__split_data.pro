@@ -123,6 +123,9 @@ pro chromis::split_data, split_dir = split_dir $
         cam = cams[icam]
         detector = self->getdetector( cam )
 
+        print, inam + ' : Camera -> ' + cam
+
+
         case cam of
            'Chromis-N' : wb = 0B
            'Chromis-W' : wb = 1B
