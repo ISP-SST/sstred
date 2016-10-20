@@ -172,11 +172,11 @@ pro red::fitgains, npar = npar $
     print, file_basename(files[ifile], '_filenames.txt')
     spawn, 'cat ' + files[ifile], namelist
     Nwav = n_elements(namelist)
-
-    ffile = strreplace(files[ifile], '_filenames.txt', '_flats_data.fits')  ; Input flat intensities
-    wfile = strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')   ; Input flat wavelengths
-    sfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.fits') ; Output save file
-    pfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.png')  ; Plot file
+    
+    ffile = strreplace(files[ifile], '_filenames.txt', '_flats_data.fits') ; Input flat intensities
+    wfile = strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')  ; Input flat wavelengths
+    sfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.sav') ; Output save file
+    pfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.png') ; Plot file
 
     self -> extractstates, namelist, states
     outnames = self -> filenames('cavityflat', states)
@@ -245,7 +245,7 @@ pro red::fitgains, npar = npar $
     endif
 
     cgwindow
-    title = selectionlist[sindx[iselect]] + ' npar='+strtrim(nparr, 2)
+    title = selectionlist[ifile] + ' npar='+strtrim(nparr, 2)
 
     ;; Loop niter
     for iiter = 0L, niter - 1 do begin
