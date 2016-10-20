@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -47,7 +47,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -60,18 +60,26 @@
 ;   2015-05-05 : MGL. If keyword pref is given, use it when looking
 ;                for files.
 ;
-;   2016-03-22 : JLF. Added support for lc4 flat cubes (see modifications
-;        to red::prepflatcubes_lc4). Changed 'pref' keyword to 
-;        'state' and made its behavior similar to red::fitgains. 
-;        Added some error checking.
+;   2016-03-22 : JLF. Added support for lc4 flat cubes (see
+;                modifications to red::prepflatcubes_lc4). Changed
+;                'pref' keyword to 'state' and made its behavior
+;                similar to red::fitgains. Added some error checking.
 ; 
 ;   2016-04-01 : THI. Changed 'state' keyword back to 'pref' for now,
-;                so that old scripts does not need to be modified.
+;                so that old scripts do not need to be modified.
+;
+;   2016-10-13 : MGL. Adapted to CHROMIS and new pipeline mechanisms. 
 ; 
 ; 
 ;-
-pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref,$
-  noasy = noasy, shift = shift, init=init, stretch=stretch, weight = weight
+pro red::fitprefilter, fixcav = fixcav $
+                       , w0 = w0, w1 = w1 $
+                       , pref = pref $
+                       , noasy = noasy $
+                       , shift = shift $
+                       , init=init $
+                       , stretch=stretch $
+                       , weight = weight
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -94,37 +102,77 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref,$
   ;; endif
 
   if n_elements(pref) eq 0 then begin
-     files = file_search(self.out_dir + '/flats/spectral_flats/*.fit_results.sav', count=count)
-     files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
+    files = file_search(self.out_dir + '/flats/spectral_flats/*_fit_results.sav' $
+                        , count=Nfiles)
+;     files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
   endif else begin
-     files = file_search(self.out_dir +'/flats/spectral_flats/*'+pref+$
-      '*.fit_results.sav', count=count)
-     files1 = file_search(self.out_dir +'/flats/spectral_flats/*'+pref+$
-      '*.flats.sav', count=count1)
+    files = file_search(self.out_dir +'/flats/spectral_flats/*' + pref $
+                         + '*_fit_results.sav', count=Nfiles)
+;     files1 = file_search(self.out_dir +'/flats/spectral_flats/*'+pref+$
+;      '*.flats.sav', count=count1)
   endelse
+  
+  if Nfiles eq 0 then $
+    message, 'No fit results files found. Run the fitgains method first!'
 
-  if count eq 0 then $
-    message,'No fit results files found. Run red::fitgains first.'
-  if count1 eq 0 then message,'No flat cubes found. Did you delete them?'
+  ;; Select data
+  selectionlist = strarr(Nfiles)
+  for ifile = 0L, Nfiles-1 do begin
+    selectionlist[ifile] = file_basename(files[ifile], '_fit_results.sav')
+  endfor                        ; ifile
+  if keyword_set(all) or Nfiles eq 1 then begin
+    Nselect = Nfiles
+    sindx = indgen(Nselect)
+  endif else begin
+    tmp = red_select_subset(selectionlist, qstring = 'Select data to be processed' $
+                            , count = Nselect, indx = sindx)
+  endelse
+  print, inam + ' : Will process the following data:'
+  print, selectionlist[sindx], format = '(a0)'
+
+  for iselect = 0L, Nselect-1 do begin
+
+    ifile = sindx[iselect]
+
+    nfile = strreplace(files[ifile], '_fit_results.sav', '_filenames.txt')   ; Input flat filenames
+    ffile = strreplace(files[ifile], '_fit_results.sav', '_flats_data.fits') ; Input flat intensities
+    wfile = strreplace(files[ifile], '_fit_results.sav', '_flats_wav.fits')  ; Input flat wavelengths
+    
+    if ~file_test(nfile) then begin
+      print, inam+' : Canot find file '+nfile
+      continue
+    endif
+    if ~file_test(ffile) then begin
+      print, inam+' : Canot find file '+ffile
+      continue
+    endif
+    if ~file_test(wfile) then begin
+      print, inam+' : Canot find file '+wfile
+      continue
+    endif
+    
+
+stop
+
+;  if count1 eq 0 then message, 'No flat cubes found. Did you delete them?'
   
   ;; Select file   
-  stat = strarr(count)
-  stat1 = strarr(count1)
-  idd = intarr(count)
+  stat = strarr(Nfiles)
+;  stat1 = strarr(count1)
+  idd = intarr(Nfiles)
   
-  
-  ;; handle simultaneous lc4 and pol data sets for pref
-  for ii = 0, count-1 do begin 
-    tmp = strsplit(file_basename(files[ii]),'.',/extract,count=csub)
+  ;; Handle simultaneous lc4 and pol data sets for pref
+  for ifile = 0, Nfiles-1 do begin 
+    tmp = strsplit(file_basename(files[ifile]), '.', /extract, count=csub)
     stat[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
   endfor
   for ii = 0, count1-1 do begin
-    tmp = strsplit(file_basename(files1[ii]),'.',/extract,count=csub)
+    tmp = strsplit(file_basename(files1[ii]), '.', /extract, count=csub)
     stat1[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
   endfor 
   print, inam + ' : found valid states:'
   k =-1
-  for ii = 0, count -1 do begin
+  for ii = 0, Nfiles-1 do begin
      dum = where(stat1 eq stat[ii], cc)
      if(cc eq 0) then begin
         continue
@@ -134,13 +182,16 @@ pro red::fitprefilter,  fixcav = fixcav, w0 = w0, w1 = w1, pref = pref,$
      print, ii,' -> ' + stat[ii]
   endfor
   idx = 0
-  if(k gt 0) then read, idx, prompt = inam + ' : select state: '
+  if Nfiles gt 0 then read, idx, prompt = inam + ' : select state: '
   file = files[idx]
-  file1 = files1[idd[idx]]
+; file1 = files1[idd[idx]]
   cam = (strsplit(stat[idx],'.',/extract))[0]
 
   restore, file
-  restore, file1
+ 
+stop
+
+ restore, file1
   fac = median(fit.pars[0,*,*])
   fit.yl *= fac
   if(~keyword_set(w0)) then w0 = 0
