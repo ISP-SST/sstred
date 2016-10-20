@@ -1,14 +1,15 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Make links to raw data in the form that is required for momfbd
+; processing. 
 ; 
 ; :Categories:
 ;
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
@@ -31,7 +32,7 @@
 ;   
 ;    pref        : Only process prefilter 'pref'
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -40,11 +41,12 @@
 ; 
 ;   2013-09-11 : MGL. Fixed default values for keywords.
 ; 
-;   2013-12-16 : PS  keyword ALL_DATA, by default only link complete scans
-;                    keyword PREF
+;   2013-12-16 : PS. Keyword ALL_DATA, by default only link complete
+;                scans keyword PREF.
 ;
-;   2014-01-02 : PS  Change subdirectory names to also use cam, not camtag
-;                    remove nremove and no_remove keywords (all done in prepmomfbd)
+;   2014-01-02 : PS. Change subdirectory names to also use cam, not
+;                camtag remove nremove and no_remove keywords (all
+;                done in prepmomfbd).
 ;   
 ;-
 pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PREF = pref, nremove=nremove
