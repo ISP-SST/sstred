@@ -85,6 +85,9 @@
 ;   2016-10-13 : MGL. Removed unecessary check for W and H in ana
 ;                headers.
 ;
+;   2016-10-19 : MGL. Look for data under /storage/ rather than under
+;                /mnt/ in Stockholm.
+;
 ;
 ;
 ;-
