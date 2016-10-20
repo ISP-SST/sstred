@@ -182,7 +182,7 @@ pro chromis::prepflatcubes, flatdir = flatdir $
 
         ;; Print file names in order into a text file. Note that this
         ;; is no longer a list of file names for the cavity error
-        ;; corrected flats (produce by the fitgains method), it's the
+        ;; corrected flats (produces by the fitgains method), it's the
         ;; filenames of the input (average) flats.
         openw, lun, outdir + noutname, /get_lun
         printf, lun, sstates.filename, format = '(a0)'
