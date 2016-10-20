@@ -71,6 +71,8 @@
 ;                 Add filenames for cavity-error corrected flats,
 ;                 summed darks, and the links to raw science data.
 ; 
+;    2016-10-14 : MGL. Added scangain datatype.
+; 
 ; 
 ;-
 function chromis::filenames, datatype, states $
@@ -377,6 +379,22 @@ function chromis::filenames, datatype, states $
               red_append, tag_list, 'summed'
               ext = '.flat'
               if ~keyword_set(no_fits) then ext += '.fits'
+           end
+        
+           'scangain' : begin
+             ;; Gain tables constructed for a particular scan.
+             dir = self.out_dir + '/gaintables/' + timestamp + '/'
+             red_append, tag_list, detector
+             red_append, tag_list, scannumber
+             red_append, tag_list, exposure
+             red_append, tag_list, gain
+             red_append, tag_list, prefilter
+             if states[istate].is_wb eq 0 and tuning ne '' then begin
+               red_append, tag_list, tuning
+             endif
+             ext = '.gain'
+             if ~keyword_set(no_fits) then ext += '.fits'
+
            end
 
            'gain' : begin
