@@ -68,7 +68,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   red_writelog, selfinfo = selfinfo
 
   if(n_elements(thres) eq 0) then tr = 0.1
-  if(n_elements(maxshift) eq 0) THEN maxshift = 35
+  if(n_elements(maxshift) eq 0) THEN maxshift = 75
    
   ;; Search summed pinh images and camtag
   if(n_elements(extraclip) eq 0) then extraclip = [0L, 0L, 0L, 0L]
@@ -254,7 +254,8 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
      print, 'Max shift allowed: ', mxsh
      print, maxindx
 
-     ssh[*, icam] = red_shc(pics[*,*,icamref], p1, RANGE = mxsh)
+     ;ssh[*, icam] = red_shc(pics[*,*,icamref], p1, RANGE = mxsh)
+     ssh[*, icam] = red_shc(pics[border:dim[0]-border-1,border:dim[1]-border-1,icamref], p1[border:dim[0]-border-1,border:dim[1]-border-1], RANGE = mxsh)
 
      print, inam+' '+cams[icam]+' : orientation ', strtrim(i_rot[icam], 2), $
             ' -> shift: x,y=', strtrim(ssh[0, icam], 2), ', ', strtrim(ssh[1, icam], 2)
@@ -328,8 +329,8 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
 
   print, 'Please check that the displayed images are aligned and oriented properly.'
 
-  szx_disp = dim[0]/2
-  szy_disp = dim[1]/2
+  szx_disp = dim[0]/2.5
+  szy_disp = dim[1]/2.5
   disp_spacing = 5
 
   title = '        '
@@ -340,7 +341,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(pics[*,*,icam], cl[*,icam])
      dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
-     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+     tvscl, red_histo_opt(dispim), icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
   endfor
 
   ;; Display gain tables?
@@ -380,7 +381,7 @@ PRO red::getalignclips, thres = thres, extraclip = extraclip, $
   for icam = 0, Ncams-1 do begin
      dispim = red_clipim(gains[*,*,icam], cl[*,icam])
      dispim = congrid(dispim, szx_disp, szy_disp, cubic = -0.5)
-     tvscl, dispim, icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
+     tvscl, red_histo_opt(dispim), icam*(szx_disp+disp_spacing)+disp_spacing, disp_spacing
   endfor
 
   ;; Print out some info about blocked rows/columns.
