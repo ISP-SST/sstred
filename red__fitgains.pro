@@ -151,6 +151,7 @@ pro red::fitgains, npar = npar $
 
   ;; Select data
   selectionlist = strarr(Nfiles)
+
   for ifile = 0L, Nfiles-1 do begin
     spawn, 'cat ' + files[ifile], namelist
     self -> extractstates, namelist, states
@@ -160,7 +161,8 @@ pro red::fitgains, npar = npar $
     Nselect = Nfiles
     sindx = indgen(Nselect)
   endif else begin
-    tmp = red_select_subset(selectionlist, qstring = 'Select data to be processed' $
+    tmp = red_select_subset(selectionlist $
+                            , qstring = 'Select data to be processed' $
                             , count = Nselect, indx = sindx)
   endelse
 
@@ -198,7 +200,8 @@ pro red::fitgains, npar = npar $
       ;; Add prefilters and nparr values here as we gain experience.
       case pref of
         '3934' : nparr = 3
-        '4862' : nparr = 2
+        '3969' : nparr = 3
+        '4862' : nparr = 3
         else: nparr = 2         ; default
       endcase
     endif else nparr = npar
