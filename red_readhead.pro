@@ -82,7 +82,7 @@
 ;   2016-09-21 : MGL. Change filter tags to four-digit tags
 ;                representing approximate filter wavelength.
 ;
-;   2016-10-13 : MGL. Removed unecessary check for W and H in ana
+;   2016-10-13 : MGL. Removed unnecessary check for W and H in ANA
 ;                headers.
 ;
 ;   2016-10-19 : MGL. Look for data under /storage/ rather than under
