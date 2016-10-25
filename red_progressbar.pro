@@ -47,7 +47,9 @@
 ;     2016-05-25 : MGL. First version, code taken from
 ;                  red_sumfiles.pro. 
 ; 
-;     2016-10-10 : MGL. Implemented a real bar.
+;     2016-10-10 : MGL. Implemented a real bar. 
+; 
+;     2016-10-25 : MGL. Deal with N=0 and N=1.
 ; 
 ; 
 ;-
@@ -68,7 +70,11 @@ pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar
      endelse
      print, ' '
   endif else begin
-     norm = 100. / (N - 1.0)     
+     case N of
+        0: return
+        1: norm = 100.
+        else: norm = 100. / (N - 1.0)  
+     endcase
      if keyword_set(nobar) then begin
         print, bb, message + ' -> ' $
                , norm * i, '%', FORMAT = '(A,A,F5.1,A,$)'
@@ -76,11 +82,12 @@ pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar
         elength = floor(norm*i/100.*barlength)
         mlength = barlength-elength
         bar = ''
-        if elength gt 0 then bar += string(replicate(61B, elength)) ; Replicated '='
-        if mlength gt 0 then bar += string(replicate(45B, mlength)) ; Replicated '-'
+        if elength gt 0 then bar += string(replicate(61B, elength))   ; Replicated '='
+        if mlength gt 0 then bar += string(replicate(45B, mlength))   ; Replicated '-'
         print, bb, '[' + bar + '] ' $
                , norm*i, '% '+message, FORMAT = '(A,A,F5.1,A,$)'
      endelse
+  
   endelse
   
 end
