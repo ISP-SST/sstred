@@ -483,7 +483,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                                                                      ,/extr), /no_fits)
                 endelse
               endif else begin
-                  gainname = a -> filenames('gain', state_list[state_idx[0]], /no_fits)
+                  gainname = self -> filenames('gain', state_list[state_idx[0]], /no_fits)
 ;
 ;                 search = self.out_dir+'/gaintables/'+self.camttag + $
 ;                          '.' + strmid(ustat1[ii], idx[0], $
