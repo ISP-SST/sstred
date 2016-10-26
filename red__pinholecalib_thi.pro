@@ -97,7 +97,7 @@ pro red::pinholecalib_thi, threshold = threshold $
 
     if(n_elements(refcam) eq 0) THEN refcam = self.refcam
     if(n_elements(verbose) eq 0) THEN verbose = 0
-    if(n_elements(max_shift) eq 0) then max_shift = 100
+    if(n_elements(max_shift) eq 0) then max_shift = 200
    
     Ncams = n_elements(cams)
 
