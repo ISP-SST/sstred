@@ -68,7 +68,9 @@ pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar
      endelse
      print, ' '
   endif else begin
-     norm = 100. / (N - 1.0)     
+     norm = 100. / (N - 1.0)
+     if(~finite(norm)) then norm = 100. ; If N = 1 then it will crash.
+     
      if keyword_set(nobar) then begin
         print, bb, message + ' -> ' $
                , norm * i, '%', FORMAT = '(A,A,F5.1,A,$)'
