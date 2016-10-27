@@ -69,6 +69,9 @@
 ;                so that old scripts do not need to be modified.
 ;
 ;   2016-10-13 : MGL. Adapted to CHROMIS and new pipeline mechanisms. 
+;
+;   2016-10-27 : MGL. Special case for prefilters with only a single
+;                wavelength point.
 ; 
 ; 
 ;-
@@ -102,29 +105,34 @@ pro red::fitprefilter, fixcav = fixcav $
   ;; endif
 
   if n_elements(pref) eq 0 then begin
-    files = file_search(self.out_dir + '/flats/spectral_flats/*_fit_results.sav' $
-                        , count=Nfiles)
-;     files1 = file_search(self.out_dir + '/flats/spectral_flats/*.flats.sav', count=count1)
+    sfiles = file_search(self.out_dir + '/flats/spectral_flats/*_fit_results.sav' $
+                         , count=Nsfiles)
+    xfiles = file_search(self.out_dir + '/flats/spectral_flats/*_flats.sav' $
+                         , count=Nxfiles)
   endif else begin
-    files = file_search(self.out_dir +'/flats/spectral_flats/*' + pref $
-                         + '*_fit_results.sav', count=Nfiles)
-;     files1 = file_search(self.out_dir +'/flats/spectral_flats/*'+pref+$
-;      '*.flats.sav', count=count1)
+    sfiles = file_search(self.out_dir +'/flats/spectral_flats/*' + pref $
+                         + '*_fit_results.sav', count=Nsfiles)
+    xfiles = file_search(self.out_dir +'/flats/spectral_flats/*' + pref $
+                         + '*_flats.sav', count=Nxfiles)
   endelse
+
+  print, sfiles
+  print
+  print, xfiles
   
-  if Nfiles eq 0 then $
-    message, 'No fit results files found. Run the fitgains method first!'
+  if Nsfiles eq 0 then begin
+     message, 'No fit results files found. Run the fitgains method first!'
+     return
+  endif
 
   ;; Select data
-  selectionlist = strarr(Nfiles)
-  for ifile = 0L, Nfiles-1 do begin
-    selectionlist[ifile] = file_basename(files[ifile], '_fit_results.sav')
-  endfor                        ; ifile
-  if keyword_set(all) or Nfiles eq 1 then begin
-    Nselect = Nfiles
+  selectionlist = file_basename(xfiles,'_flats.sav') 
+  if keyword_set(all) or Nsfiles eq 1 then begin
+    Nselect = Nsfiles
     sindx = indgen(Nselect)
   endif else begin
-    tmp = red_select_subset(selectionlist, qstring = 'Select data to be processed' $
+    tmp = red_select_subset(selectionlist $
+                            , qstring = 'Select data to be processed' $
                             , count = Nselect, indx = sindx)
   endelse
   print, inam + ' : Will process the following data:'
@@ -132,167 +140,277 @@ pro red::fitprefilter, fixcav = fixcav $
 
   for iselect = 0L, Nselect-1 do begin
 
-    ifile = sindx[iselect]
-
-    nfile = strreplace(files[ifile], '_fit_results.sav', '_filenames.txt')   ; Input flat filenames
-    ffile = strreplace(files[ifile], '_fit_results.sav', '_flats_data.fits') ; Input flat intensities
-    wfile = strreplace(files[ifile], '_fit_results.sav', '_flats_wav.fits')  ; Input flat wavelengths
+    isfile = sindx[iselect]
+    
+    xfile = xfiles[isfile]                                      ; Input flats results 
+    sfile = strreplace(xfile, '_flats.sav', '_fit_results.sav') ; Input fit results 
+    nfile = strreplace(xfile, '_flats.sav', '_filenames.txt')   ; Input flat filenames
+;    ffile = strreplace(xfile, '_flats.sav', '_flats_data.fits') ; Input flat intensities
+;    wfile = strreplace(xfile, '_flats.sav', '_flats_wav.fits')  ; Input flat wavelengths
     
     if ~file_test(nfile) then begin
-      print, inam+' : Canot find file '+nfile
+      print, inam+' : Cannot find file '+nfile
       continue
     endif
-    if ~file_test(ffile) then begin
-      print, inam+' : Canot find file '+ffile
-      continue
+;    if ~file_test(ffile) then begin
+;      print, inam+' : Cannot find file '+ffile
+;      continue
+;    endif
+;    if ~file_test(wfile) then begin
+;      print, inam+' : Cannot find file '+wfile
+;      continue
+;    endif
+
+
+    ;; Load data
+    print, file_basename(nfile, '_filenames.txt')
+    spawn, 'cat ' + nfile, namelist
+    Nwav = n_elements(namelist)
+
+    self -> extractstates, namelist, states
+
+    ;;camera = states[0].camera
+    detector = states[0].detector
+
+    ;; Get prefilter
+    prefs = states[0].prefilter
+;    prefs = (strsplit(file_basename(fit.oname[0]), '.',/extract))[1]
+    print, inam + ' : Processing prefilter ' + prefs
+;    dpr = double(prefs)
+    ;; This is the reference point of the fine tuning:
+    dpr = double((strsplit(states[0].tuning,'_',/extract))[0])
+
+    if ~file_test(sfile) then begin
+       print, inam+' : Cannot find file '+sfile
+       continue
     endif
-    if ~file_test(wfile) then begin
-      print, inam+' : Canot find file '+wfile
-      continue
-    endif
-    
 
-stop
-
-;  if count1 eq 0 then message, 'No flat cubes found. Did you delete them?'
-  
-  ;; Select file   
-  stat = strarr(Nfiles)
-;  stat1 = strarr(count1)
-  idd = intarr(Nfiles)
-  
-  ;; Handle simultaneous lc4 and pol data sets for pref
-  for ifile = 0, Nfiles-1 do begin 
-    tmp = strsplit(file_basename(files[ifile]), '.', /extract, count=csub)
-    stat[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
-  endfor
-  for ii = 0, count1-1 do begin
-    tmp = strsplit(file_basename(files1[ii]), '.', /extract, count=csub)
-    stat1[ii] = csub eq 5 ? strjoin(tmp[0:2],'.') : strjoin(tmp[0:1],'.')
-  endfor 
-  print, inam + ' : found valid states:'
-  k =-1
-  for ii = 0, Nfiles-1 do begin
-     dum = where(stat1 eq stat[ii], cc)
-     if(cc eq 0) then begin
-        continue
-     endif
-     idd[ii] = dum
-     k += 1
-     print, ii,' -> ' + stat[ii]
-  endfor
-  idx = 0
-  if Nfiles gt 0 then read, idx, prompt = inam + ' : select state: '
-  file = files[idx]
-; file1 = files1[idd[idx]]
-  cam = (strsplit(stat[idx],'.',/extract))[0]
-
-  restore, file
+    restore, sfile
+    restore, xfile
  
-stop
+    fac = median(fit.pars[0,*,*])
+    fit.yl *= fac
+    if(~keyword_set(w0)) then ww0 = 0
+    if(~keyword_set(w1)) then ww1 = n_elements(wav) - 1
 
- restore, file1
-  fac = median(fit.pars[0,*,*])
-  fit.yl *= fac
-  if(~keyword_set(w0)) then w0 = 0
-  if(~keyword_set(w1)) then w1 = n_elements(wav) - 1
-  
-  ;; Get prefilter
-  prefs = (strsplit(file_basename(fit.oname[0]), '.',/extract))[1]
-  print, inam + ' : Processing prefilter at ' + prefs
-  dpr = double(prefs)
+    ;; Load satlas
+    red_satlas, min(fit.xl) + dpr - 1.0, max(fit.xl) + dpr + 1.0, xs, ys
+    xs -= dpr
+    
+    ;; Get FPI transmission profile
+    fpi = red_get_fpi_par(line = prefs)
+    dw = xs[1] - xs[0]
+    np = long((max(xs) - min(xs)) / dw) - 2
+    if(np/2*2 eq np) then np -= 1L
+    tw = (dindgen(np) - np/2) * dw
+    tr = red_get_fpi_trans(fpi, tw + fpi.w0, ecl = 0.0, ech = 0.0, erh = -0.01)
 
-  ;; Load satlas
-  red_satlas, min(fit.xl) + dpr - 1.0, max(fit.xl) + dpr + 1.0, xs, ys
-  xs -= dpr
-  
-  ;; Get CRISP transmission profile
-  fpi = red_get_fpi_par(line = prefs)
-  dw = xs[1] - xs[0]
-  np = long((max(xs) - min(xs)) / dw) - 2
-  if(np/2*2 eq np) then np -= 1L
-  tw = (dindgen(np) - np/2) * dw
-  tr = red_get_fpi_trans(fpi, tw + fpi.w0, ecl = 0.0, ech = 0.0, erh = -0.01)
+    dum = max(tr, p)
+    cc = poly_fit(tw[p-1:p+1] * 100.d0, tr[p-1: p+1], 2)
+    off = -0.005d0 * cc[1] / cc[2]
+    tr = red_get_fpi_trans(fpi, tw + fpi.w0 + off, ecl = 0.0, ech = 0.0, erh = -0.01)
 
-  dum = max(tr, p)
-  cc = poly_fit(tw[p-1:p+1] * 100.d0, tr[p-1: p+1], 2)
-  off = -0.005d0 * cc[1] / cc[2]
-  tr = red_get_fpi_trans(fpi, tw + fpi.w0 + off, ecl = 0.0, ech = 0.0, erh = -0.01)
-  
-  ;; Convolve Solar Atlas with the FPI transmission profile
-  ys = red_convl(ys, tr, /usefft)
-  
-  ;; Pack variables for mpfit                                
-  yl1 = red_intepf(fit.xl, fit.yl, wav[w0:w1])
+    ;; Convolve Solar Atlas with the FPI transmission profile
+    ys = red_convl(ys, tr, /usefft)
 
-  if(n_elements(weight) eq 0) then weight=dblarr(n_elements(fit.yl))+1.0d0
-  
-  mm = {xl:fit.xl, yl:fit.yl, wav:wav[w0:w1], yl1:yl1}
-  functargs = {xs:xs, ys:ys, dpr:dpr, mm:mm, w:weight}
-  
-  ;; Init guess model
-  pp = dblarr(8)
-  if(n_elements(init) gt 0) then pp[0]=init else begin
-     pp[0] = fac                ; Scale factor
-     pp[1] = -0.5d0             ; Pref. shift
-     pp[2] = 6.0d0              ; Pref. FWHM
-     pp[3] = 2.d0               ; Pref. ncav
-     pp[4] = -0.001d0           ; Line shift (satlas-obs)
-     pp[5] = 0.0001d0
-     pp[6] = 0.0001d0
-     pp[7] = 1.0d0
-  endelse
+    if Nwav gt 1 then begin
 
-  fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0}, 8)
-   
-  fitpars[2].LIMITED = [1,1]
-  fitpars[2].LIMITS = [1.d0, 10.2d0]
-  pp[3] = 2.0d0
-  fitpars[3].LIMITS = [1.4d0, 2.4d0]
-  fitpars[3].LIMITED = [1,1]
-  if(~keyword_set(stretch)) then fitpars[7].FIXED = 1B
-  fitpars[6].fixed = 1
+      ;; Usual case with several wavelength points.
+       
+      ;; Pack variables for mpfit                                
+      yl1 = red_intepf(fit.xl, fit.yl, wav[ww0:ww1])
 
-  If(keyword_set(fixcav)) then begin
-     pp[3] = fixcav
-     fitpars[3].fixed = 1
-  endif
-  If(keyword_set(noasy)) then begin
-     fitpars[5].fixed = 1
-     fitpars[6].fixed = 1
-     pp[5] = 0.
-     pp[6] = 0.
-  endif
-  if(keyword_set(shift)) then begin
-     pp[4] = shift
-  endif
+      if(n_elements(weight) eq 0) then weight=dblarr(n_elements(fit.yl))+1.0d0
+      
+      mm = {xl:fit.xl, yl:fit.yl, wav:wav[ww0:ww1], yl1:yl1}
+      functargs = {xs:xs, ys:ys, dpr:dpr, mm:mm, w:weight}
+      
+      ;; Init guess model
+      pp = dblarr(8)
+      if(n_elements(init) gt 0) then pp[0]=init else begin
+        pp[0] = fac             ; Scale factor
+        pp[1] = -0.5d0          ; Pref. shift
+        pp[2] = 6.0d0           ; Pref. FWHM
+        pp[3] = 2.d0            ; Pref. ncav
+        pp[4] = -0.001d0        ; Line shift (satlas-obs)
+        pp[5] = 0.0001d0
+        pp[6] = 0.0001d0
+        pp[7] = 1.0d0
+      endelse
 
-  ;; Call mpfit
-  pp = mpfit('red_fit_prefilter', pp, functargs = functargs, parinfo = fitpars, /quiet)
-  dum = red_fit_prefilter(pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref, w=weight)
-   
-  print, inam + ' : p[0] -> ', pp[0], ' (scale factor)'
-  print, inam + ' : p[1] -> ', pp[1], ' (prefilter shift)'
-  print, inam + ' : p[2] -> ', pp[2], ' (prefilter FWHM)'
-  print, inam + ' : p[3] -> ', pp[3], ' (prefilter number of cavities)'
-  print, inam + ' : p[4] -> ', pp[4], ' (solar atlas shift)'
-  print, inam + ' : p[5] -> ', pp[5], ' (asymmetry term 1)'
-  print, inam + ' : p[6] -> ', pp[6], ' (asymmetry term 2)'
-  print, inam + ' : p[7] -> ', pp[7], ' (Wavelength stretch)'
+      fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0}, 8)
+          
+      ;; Limits and settings for the various model parameters
 
-   
-  odir = self.out_dir + '/prefilter_fits/'
-  file_mkdir, odir
-   
-  ofile = cam + '.'+prefs+'.prefilter.f0'
-  print, inam + ' : saving prefilter to file -> ' + odir + ofile
-  fzwrite, float(pref), odir + ofile, ' '
-  ofile = cam + '.'+prefs+'.prefilter_wav.f0'
-  fzwrite, float(mm.wav), odir + ofile, ' '
+      ;; Prefilter FWHM
+      fitpars[2].limited = [1,1]
+      fitpars[2].limits = [1.d0, 10.2d0]
+
+      ;; Filter cavities
+      if keyword_set(fixcav) then begin
+        pp[3] = fixcav
+        fitpars[3].fixed = 1
+      endif else begin
+        pp[3] = 2.0d0           ; Default 2 cavities
+        fitpars[3].limits = [1.4d0, 2.4d0]
+        fitpars[3].limited = [1,1]
+      endelse
+
+      ;; Solar atlas wavelength shift
+      if(keyword_set(shift)) then begin
+        pp[4] = shift
+      endif
+
+      ;; Asymmetry
+      if(keyword_set(noasy)) then begin
+        fitpars[5].fixed = 1B
+        fitpars[6].fixed = 1B
+        pp[5] = 0.
+        pp[6] = 0.
+      endif
+      fitpars[6].fixed = 1B
+
+      ;; Wavelength stretch
+      if(~keyword_set(stretch)) then fitpars[7].FIXED = 1B
+
+
+      print, inam + ' : Initial model parameters:'
+      print, inam + ' : p[0] -> ', pp[0], ' (scale factor)'
+      print, inam + ' : p[1] -> ', pp[1], ' (prefilter shift)'
+      print, inam + ' : p[2] -> ', pp[2], ' (prefilter FWHM)'
+      print, inam + ' : p[3] -> ', pp[3], ' (prefilter number of cavities)'
+      print, inam + ' : p[4] -> ', pp[4], ' (solar atlas shift)'
+      print, inam + ' : p[5] -> ', pp[5], ' (asymmetry term 1)'
+      print, inam + ' : p[6] -> ', pp[6], ' (asymmetry term 2)'
+      print, inam + ' : p[7] -> ', pp[7], ' (Wavelength stretch)'
+
+      ;; Call mpfit
+      pp = mpfit('red_fit_prefilter', pp, functargs = functargs, parinfo = fitpars, /quiet)
+      dum = red_fit_prefilter(pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref, w=weight)
+
+      print, inam + ' : Fitted model parameters:'
+      print, inam + ' : p[0] -> ', pp[0], ' (scale factor)'
+      print, inam + ' : p[1] -> ', pp[1], ' (prefilter shift)'
+      print, inam + ' : p[2] -> ', pp[2], ' (prefilter FWHM)'
+      print, inam + ' : p[3] -> ', pp[3], ' (prefilter number of cavities)'
+      print, inam + ' : p[4] -> ', pp[4], ' (solar atlas shift)'
+      print, inam + ' : p[5] -> ', pp[5], ' (asymmetry term 1)'
+      print, inam + ' : p[6] -> ', pp[6], ' (asymmetry term 2)'
+      print, inam + ' : p[7] -> ', pp[7], ' (Wavelength stretch)'
+
+    endif else begin
+
+      ;; Special treatment of CaH-cont with only a single wavelength
+      ;; point.
+
+      ;; Pack variables for mpfit                                
+      if fit.xl[0] ne wav[0] then stop
+      yl1 = fit.yl
+      
+      if n_elements(weight) eq 0 then weight = [1.0d0]
+      
+      mm = {xl:fit.xl, yl:fit.yl, wav:wav[ww0:ww1], yl1:yl1}
+      functargs = {xs:xs, ys:ys, dpr:dpr, mm:mm, w:weight}
+      
+      ;; Init guess model
+      Nparam = 8
+      pp = dblarr(Nparam)
+      if(n_elements(init) gt 0) then pp[0]=init else begin
+        pp[0] = fac             ; Scale factor
+        pp[1] = 0d;-0.5d0          ; Pref. shift
+        pp[2] = 6.0d0           ; Pref. FWHM
+        pp[3] = 2.d0            ; Pref. ncav
+;        pp[4] = -0.001d0        ; Line shift (satlas-obs)
+;        pp[5] = 0.0001d0
+;        pp[6] = 0.0001d0
+        pp[7] = 1.0d0
+      endelse
+
+      fitpars = replicate({mpside:2 $
+                           , limited:[0,0] $
+                           , limits:[0.0d, 0.0d] $
+                           , fixed:0} $
+                          , Nparam)
+      
+      ;; Limits and settings for the various model parameters
+
+      fitpars[1:7].fixed = 1
+
+;      ;; Prefilter FWHM
+;      fitpars[2].limited = [1,1]
+;      fitpars[2].limits = [1.d0, 10.2d0]
+;
+;      ;; Filter cavities
+;;      If(keyword_set(fixcav)) then begin
+;;        pp[3] = fixcav
+;        fitpars[3].fixed = 1
+;;      endif else begin
+;;        pp[3] = 2.0d0           ; Default 2 cavities
+;;        fitpars[3].limits = [1.4d0, 2.4d0]
+;;        fitpars[3].limited = [1,1]
+;;      endelse
+;
+;      ;; Asymmetry 2
+;      fitpars[6].fixed = 1
+;
+;      ;; Wavelength stretch
+;      if(~keyword_set(stretch)) then fitpars[7].FIXED = 1B
+;
+;;      if(keyword_set(noasy)) then begin
+;        fitpars[5].fixed = 1
+;        fitpars[6].fixed = 1
+;        pp[5] = 0.
+;        pp[6] = 0.
+;;      endif
+;      if(keyword_set(shift)) then begin
+;        pp[4] = shift
+;      endif
+
+      print, inam + ' : Initial model parameters:'
+      print, inam + ' : p[0] -> ', pp[0], ' (scale factor)'
+      print, inam + ' : p[1] -> ', pp[1], ' (prefilter shift)'
+      print, inam + ' : p[2] -> ', pp[2], ' (prefilter FWHM)'
+      print, inam + ' : p[3] -> ', pp[3], ' (prefilter number of cavities)'
+      print, inam + ' : p[4] -> ', pp[4], ' (solar atlas shift)'
+      print, inam + ' : p[5] -> ', pp[5], ' (asymmetry term 1)'
+      print, inam + ' : p[6] -> ', pp[6], ' (asymmetry term 2)'
+      print, inam + ' : p[7] -> ', pp[7], ' (Wavelength stretch)'
+
+      ;; Call mpfit
+      pp = mpfit('red_fit_prefilter', pp, functargs = functargs, parinfo = fitpars, /quiet)
+      dum = red_fit_prefilter(pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pref, w=weight)
+
+      print, inam + ' : Fitted model parameters:'
+      print, inam + ' : p[0] -> ', pp[0], ' (scale factor)'
+      print, inam + ' : p[1] -> ', pp[1], ' (prefilter shift)'
+      print, inam + ' : p[2] -> ', pp[2], ' (prefilter FWHM)'
+      print, inam + ' : p[3] -> ', pp[3], ' (prefilter number of cavities)'
+      print, inam + ' : p[4] -> ', pp[4], ' (solar atlas shift)'
+      print, inam + ' : p[5] -> ', pp[5], ' (asymmetry term 1)'
+      print, inam + ' : p[6] -> ', pp[6], ' (asymmetry term 2)'
+      print, inam + ' : p[7] -> ', pp[7], ' (Wavelength stretch)'
+
+
+      ;; Fit the single point to the convolved spectrum.
+      
+      ;; Must make the data corresponding to pref, mm.wav, and pp, to
+      ;; be written to file.
+
+    endelse
+    
+    odir = self.out_dir + '/prefilter_fits/'
+    file_mkdir, odir
+    
+    ofile = detector + '.'+prefs+'.prefilter.f0'
+    print, inam + ' : saving prefilter to file -> ' + odir + ofile
+    fzwrite, float(pref), odir + ofile, ' '
+    ofile = detector + '.'+prefs+'.prefilter_wav.f0'
+    fzwrite, float(mm.wav), odir + ofile, ' '
+    
+    ofile = detector + '.'+prefs+'.prefilter_pars.f0'
+    print, inam + ' : saving fit-results to file -> ' + odir + ofile
+    fzwrite, pp, odir + ofile, ' '
+    
+  endfor                         ; iselect
   
-  ofile = cam + '.'+prefs+'.prefilter_pars.f0'
-  print, inam + ' : saving fit-results to file -> ' + odir + ofile
-  fzwrite, pp, odir + ofile, ' '
-  
-  return
 end

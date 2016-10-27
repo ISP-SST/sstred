@@ -113,6 +113,9 @@
 ;                prefilters, so we can batch process. Get output file
 ;                names from filenames method.
 ;
+;   2016-10-26 : MGL. Special case for prefilters with only a single
+;                wavelength point.
+;
 ;-
 pro red::fitgains, npar = npar $
                    , niter = niter $
@@ -171,6 +174,7 @@ pro red::fitgains, npar = npar $
     ifile = sindx[iselect]
 
     ;; Load data
+    print
     print, file_basename(files[ifile], '_filenames.txt')
     spawn, 'cat ' + files[ifile], namelist
     Nwav = n_elements(namelist)
@@ -187,9 +191,34 @@ pro red::fitgains, npar = npar $
     if Nwav eq 1 then begin
       print, inam+' : Only one wavelength point.'
       print, inam+' : Will assume it is a continuum point and copy the ordinary flat.'
-      
-      file_copy, namelist[0], outnames[0], /overwrite
-      print, inam + ' : Copying file -> '+outnames[0]
+
+      if ~keyword_set(nosave) then begin
+
+        file_copy, namelist[0], outnames[0], /overwrite
+        print, inam + ' : Copying file -> '+outnames[0]
+
+        ;; Need to set res (the cavity error map?).
+        dat = readfits(ffile)
+        wav = float(readfits(wfile)) * 1e10 ; Must be in Å.
+        dims = size(dat, /dim)
+;        if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
+        npar_t = 1
+        res = dblarr([npar_t, dims[1:2]])
+        res[0,*,*] = dat
+
+        ;; Need to set xl, yl (from red_get_imean):
+;        imean = fltarr(dims[0])
+;        yl = imean
+        yl = [1.];median(dat)
+        iwav = wav ;- median(res[1,*,*])
+        xl = iwav
+        
+        ;res /= yl
+
+        fit = {pars:res, yl:yl, xl:xl, oname:outnames}
+        save, file = sfile, fit
+        fit = 0B
+      endif      
       
       continue
     endif
@@ -319,7 +348,7 @@ pro red::fitgains, npar = npar $
 
   endfor                        ; iselect
 
-  print, inam + 'Done!'
-  print, inam + 'Please check flats/spectral_flats/*fit_results.png.'
+  print, inam + ' : Done!'
+  print, inam + ' : Please check flats/spectral_flats/*fit_results.png.'
 
 end
