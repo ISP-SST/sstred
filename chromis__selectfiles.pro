@@ -64,6 +64,18 @@
 ;         Return the indices for the selection. If this is not specified,
 ;         the files/states arrays will be over-written to only contain the
 ;         selection.
+;
+;     count : out, optional, type=integer
+;
+;         The number of selected files.
+;
+;     complement : out, optional, type=intarr
+;
+;         The complement of selected.
+;
+;     ncomplement : out, optional, type=integer
+;
+;         The number of non-selected files.
 ; 
 ; :History:
 ; 
@@ -87,9 +99,14 @@
 ; 
 ;   2016-10-13 : THI. Add selection by framenumbers and option strip_wb to
 ;                be forwarded to extractstates
+;
+;   2016-10-27 : MGL. New keywords count, complement, and ncomplement.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
+                      , count = count $
+                      , complement = complement $
+                      , ncomplement = ncomplement $
                       , dirs = dirs $
                       , subdir = subdir $
                       , files = files $
@@ -108,6 +125,10 @@ pro chromis::selectfiles, cam = cam $
 
     inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
     
+    ;; Unless we select any
+    count = 0L                  
+    ncomplement = n_elements(files)
+
     if( n_elements(force) gt 0 || n_elements(files) eq 0 ) then begin
 
         if( n_elements(cam) ne 1 ) then begin
@@ -216,7 +237,8 @@ pro chromis::selectfiles, cam = cam $
         if( min(pos) ge 0 ) then states[pos].skip = 1
     endif
 
-    selected = where( states.skip lt 1 )
+    selected = where(states.skip lt 1, count $
+                     , complement = complement, Ncomplement = Ncomplement)
  
     if arg_present(selected) then return
     
