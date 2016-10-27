@@ -71,6 +71,8 @@
 ;
 ;   2016-10-04 : MGL. Use cgplot. Let the subprogram find out its own
 ;                name. 
+;
+;   2016-10-26 : MGL. Add progress bar, don't redraw plots so often. 
 ; 
 ;-
 function red_get_imean, wav, dat, pp, npar, iter $
@@ -117,9 +119,12 @@ function red_get_imean, wav, dat, pp, npar, iter $
   wl = fltarr(dim[0], dim[1], dim[2])
 
   print, inam + ' : Ordering and correcting data to fit mean spectrum ... ', FORMAT = '(A,$)'
+  print
   for ii = 0L, dim[0] - 1 do begin
+     red_progressbar, ii, dim[0], message = 'Ordering and correcting data to fit mean spectrum.'
      wl[ii,*,*] = wav[ii] - pp[1,*,*]
   endfor
+  red_progressbar, ii, dim[0], message = 'Ordering and correcting data to fit mean spectrum.', /finished
 
   wl = reform(temporary(wl), dim[0]*dim[1]*dim[2])
 
@@ -127,6 +132,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
 
   fl = dat                      ;fltarr(dim[0], dim[1], dim[2])
   for ii = 0L, dim[0] - 1 do begin
+     red_progressbar, ii, dim[0], message = 'Same with the intensity.'
      mask = reform(dat[ii,*,*]) ge 1.e-3
      lcom = red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
      ;; Remove mean shape from the linear component so we don't
@@ -135,6 +141,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
      fl[ii,*,*] /= reform(pp[0,*,*]) * lcom
      imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
+  red_progressbar, ii, dim[0], message = 'Same with the intensity.', /finished
   
   if(keyword_set(myg) AND iter GE 0) then  begin
      if(~keyword_set(bezier)) then begin
@@ -163,7 +170,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
   idx = sort(wl)
   wl = (temporary(wl))[idx]
   fl = (temporary(fl))[temporary(idx)]
-  print, 'done'
+;  print, 'done'
 
   ;; Rebin
 
@@ -191,13 +198,13 @@ function red_get_imean, wav, dat, pp, npar, iter $
   mmma = max(fl) < 3
 
   cgcontrol, /delete, /all
-  cgplot, /add, wl, fl, psym = 3, title = title $
-          , xtitle = 'Wavelength / 1 $\Angstrom$', xstyle = 3 $
-          , ytitle = 'Normalized intensity', ystyle = 1 $
-          , yrange = [mmmi-abs(mmma-mmmi)*0.1,mmma+abs(mmma-mmmi)*0.1]
+  cgwindow, 'cgplot', /load, wl, fl, psym = 3, title = title $
+            , xtitle = 'Wavelength / 1 $\Angstrom$', xstyle = 3 $
+            , ytitle = 'Normalized intensity', ystyle = 1 $
+            , yrange = [mmmi-abs(mmma-mmmi)*0.1,mmma+abs(mmma-mmmi)*0.1]
   
-  cgplot, /add, /over, iwav, imean, psym = 9, color = 'yellow'
-  cgplot, /add, /over, iwav, imean, psym = 1, color = 'red'
+  cgwindow, 'cgplot', /load, /over, iwav, imean, psym = 9, color = 'yellow'
+  cgwindow, 'cgplot', /add,  /over, iwav, imean, psym = 1, color = 'red'
   
   print, inam + ' : Fitting data to Hermitian spline with '+red_stri(n_elements(imean)) $
          + ' node points (this might take a while) ... ', FORMAT = '(A,$)'
@@ -218,9 +225,9 @@ function red_get_imean, wav, dat, pp, npar, iter $
    
                                 ;
   if(keyword_set(bezier)) then begin
-    cgplot, /add, /over, pwl, red_bezier3(xl, yl, pwl, /linear), color = 'blue'
+    cgwindow, 'cgplot', /add, /over, pwl, red_bezier3(xl, yl, pwl, /linear), color = 'blue'
   endif else  begin
-    cgplot, /add, /over, pwl, red_intepf(xl, yl, pwl, /linear), color = 'blue'
+    cgwindow, 'cgplot', /add, /over, pwl, red_intepf(xl, yl, pwl, /linear), color = 'blue'
   endelse
 
 ;  wait, 0.2                     ; otherwise IDL does not update the plot (?)
