@@ -77,14 +77,16 @@ function red_fit_prefilter, pp, xs = xs, ys = ys, dpr = dpr, mm = mm, pref = pre
   pref =  1.d0 / (1.d0+((2.d0*(mm.wav - p1) / p2)^2.)^p3) * (1.d0 + (mm.wav * p5) + (mm.wav^3 * p6))
 
   res = p0 * pref * ys1 
+  wav =  mm.wav*1e10
 
-  cgplot, mm.wav, res, psym = 4 $
-          , xrange = [min(mm.wav)-1, max(mm.wav)+1], yrange=[0,2] * median(mm.yl1) $
-          , /ystyle, symsize = 2, thick = 2
-  cgplot, /over, mm.wav, mm.yl1, line = 0, psym=-1, color = 'red', symsize = 2, thick = 2
-  cgplot, /over, mm.wav, pref*median(mm.yl1), color = 'blue', thick = 2, line = 2
+  cgplot, wav, res, psym = 9 $
+          , xrange = [min(wav)-.1, max(wav)+.1], yrange=[0,2] * median(mm.yl1) $
+          , /ystyle, symsize = 1.5, thick = 1.5 $
+          , xtitle = 'd$\lambda$ / 1 $\Angstrom$', ytitle = 'Intensity'
+  cgplot, /over, wav, mm.yl1, line = 0, psym=-1, color = 'red', symsize = 1.5, thick = 1.5
+  cgplot, /over, wav, pref*median(mm.yl1), color = 'blue', thick = 1.5, line = 2
 
-  ;al_legend, ['Model', 'Observed', 'Prefilter'], line = [0, 1, 0], psym = [-4, -1, -1], $
+  ;al_legend, ['Model', 'Observed', 'Prefilter'], line = [0, 1, 0], psym = [-9, -1, -1], $
   ;           color = [255, 255, 175], /bottom, /right, charsize=2
   
   return, (res - mm.yl1)*w
