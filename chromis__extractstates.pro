@@ -127,7 +127,9 @@
 ;                 tuning info. Do not complain if calling from
 ;                 hrz_zeropoint.  
 ;
-;    2016-10-13 : MGL. Added nframes state keyword.
+;    2016-10-13 : MGL. Added nframes state keyword.  
+;
+;    2016-10-27 : MGL. Put the camera into the states if found.
 ;
 ; 
 ;-
@@ -159,6 +161,7 @@ pro chromis::extractstates, strings, states $
   ;; number of files?
   progress_message = 'Extract state info from file headers'
   red_progressbar, 0, Nstrings, message = progress_message
+
   for ifile = 0, Nstrings-1 do begin
 
      if file_test(strings[ifile]) then begin
@@ -181,7 +184,10 @@ pro chromis::extractstates, strings, states $
      texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
 
      wavelnth = fxpar(head, 'WAVELNTH', count = haswav)
-     if haswav ne 0 then states[ifile].pf_wavelength = float(wavelnth)
+     if haswav ne 0 then begin
+       if wavelnth ne '        ' then $
+          states[ifile].pf_wavelength = float(wavelnth)
+     endif
 
      states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
      states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
@@ -205,17 +211,19 @@ pro chromis::extractstates, strings, states $
      if count gt 0 then states[ifile].prefilter = strtrim(filter, 2)
      camera = fxpar(head, red_keytab('camera'), count=count)
      ;camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
+
      if count gt 0 then begin
-        camera = strtrim(camera,2)
-        states[ifile].camera = camera
-        if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
-     endif else begin
-        self->getdetectors
-        indx = where(strmatch(*self.detectors,detector),count) 
-        if count eq 1 then begin
-           camera = (*self.cameras)[indx[0]]
-           if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
-        endif
+       camera = strtrim(camera,2)
+       states[ifile].camera = camera
+       if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+     endif else begin 
+       self->getdetectors
+       indx = where(strmatch(*self.detectors,strtrim(detector, 2)),count) 
+       if count eq 1 then begin
+         camera = (*self.cameras)[indx[0]]
+         states[ifile].camera = camera
+         if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+       endif else stop
      endelse
 
      if hastexp then begin
