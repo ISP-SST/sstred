@@ -72,7 +72,7 @@
 ; 
 ; 
 ;-
-pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize
+pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize, cavityfree=cavityfree
                                 ;
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -81,7 +81,9 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
   
-  tosearch = self.out_dir+'/flats/*.flat'
+  if(keyword_set(cavityfree)) then tosearch = self.out_dir+'/flats/*cavityfree.flat.fits' $
+  else  tosearch = self.out_dir+'/flats/*.flat'
+  
   files = file_search(tosearch, count = ct)
                                 ;
   if(ct eq 0) then begin
@@ -90,7 +92,7 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
                                 ;
   firsttime = 1B
   for ii = 0L, ct -1 do begin
-     tmp = strsplit(file_basename(files[ii]), '.', /extract)
+     tmp = strsplit(file_basename(files[ii]), '._', /extract)
      if(keyword_set(pref)) then begin
         if(tmp[1] ne pref) then begin
            print, inam+' : skipping prefilter -> '+tmp[1]
@@ -102,7 +104,7 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
                                 ; Only one camera?
                                 ;
      if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
-                                ;
+                             ;
      if ~keyword_set(no_descatter) then begin
         if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
            self -> loadbackscatter, tmp[0], tmp[1], bg, psf
@@ -118,7 +120,9 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
 
      gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
      
-     namout = file_basename(files[ii], '.flat')+'.gain'
+     if(keyword_set(cavityfree)) then namout = file_basename(files[ii], '_cavityfree.flat.fits')+'.gain' $
+     else namout = file_basename(files[ii], '.flat')+'.gain'
+     
      outdir = self.out_dir+'/gaintables/'
      h = head
                                 ;
