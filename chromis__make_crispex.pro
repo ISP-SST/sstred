@@ -81,6 +81,12 @@
 ;
 ;   2016-09-26 : MGL. Adapt red::make_unpol_crispex for CHROMIS data.
 ;
+;   2016-09-28 : MGL. New keyword aligncontkludge to activate a kludge
+;                where the misaligned Ca continuum narrowband image is
+;                stretched to its wideband image before applying the
+;                stretching that aligns it to the anchor wideband
+;                image. 
+;
 ;-
 pro chromis::make_crispex, rot_dir = rot_dir $
                            , square = square $
@@ -94,7 +100,8 @@ pro chromis::make_crispex, rot_dir = rot_dir $
                            , nostretch=nostretch $
                            , verbose=verbose $
                            , no_timecor=no_timecor $
-                           , float = float
+                           , float = float $
+                           , aligncontkludge = aligncontkludge
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -443,8 +450,19 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         clips = [8,4,2,1]
       endif
 
-      uscans = [69, 70, 71]
-      Nscans = n_elements(uscans)
+;      uscans = [69, 70, 71]
+;      Nscans = n_elements(uscans)
+
+;      ;; Select timestamp folders
+;      selectionlist = strtrim(indgen(Ntimestamps), 2)+ '  -> ' + timestamps
+;      tmp = red_select_subset(selectionlist $
+;                              , qstring = inam + ' : Select timestamp directory ID:' $
+;                              , count = Ntimestamps, indx = sindx)
+;      if Ntimestamps eq 0 then begin
+;        print, inam + ' : No timestamp sub-folders selected.'
+;        return                  ; Nothing more to do
+;      endif
+
 
       for ss = 0L, Nscans-1 do begin
 
@@ -467,7 +485,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         scan_wbstates =  pertuningstates[scan_wbindx]
         sortindx = sort(scan_wbstates.tun_wavelength)
         scanscan_wbfiles = scan_wbfiles[sortindx]
-        scan_wbstates =  scan_wbstates[sortindx]
+        scan_wbstates = scan_wbstates[sortindx]
 
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
                              , cam = nbcamera, scan = uscans[ss] $
@@ -476,7 +494,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         scan_nbstates =  pertuningstates[scan_nbindx]
         sortindx = sort(scan_nbstates.tun_wavelength)
         scan_nbfiles = scan_nbfiles[sortindx]
-        scan_nbstates =  scan_nbstates[sortindx]
+        scan_nbstates = scan_nbstates[sortindx]
 
 
         if(keyword_set(scans_only)) then begin
@@ -560,6 +578,17 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           
 ;          tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
           
+          if keyword_set(aligncontkludge) then begin
+            continnumpoint = scan_nbstates[ww].fpi_state eq '3999_4000_+0'
+            if continnumpoint then begin
+              print, inam + ' : Doing the continuum destretch kludge!'
+              ;; Stretch the nb cont image to its wb image
+              gridx = red_dsgridnest(wwi, tmp, tiles, clips)
+              tmp = red_stretch(temporary(tmp), gridx)
+            endif
+
+          endif
+
           ;; Apply destretch to anchor camera and prefilter correction
           if(wbcor) then tmp = red_stretch(temporary(tmp), grid1)
           
