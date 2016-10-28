@@ -5,15 +5,15 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SST pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -71,7 +71,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -82,17 +82,22 @@
 ;
 ;   2013-09-11 : MGL. Use red_lp_write rather than lp_write.
 ;
-;   2014-01-14 : PS  Code cleanup.  Use self.filetype.  
-;   2014-01-15 : PS  Proper FITS header parsing.  Support EXT_TIME for
+;   2014-01-14 : PS. Code cleanup. Use self.filetype.
+;
+;   2014-01-15 : PS. Proper FITS header parsing. Support EXT_TIME for
 ;                all formats
 ;
-;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
+;   2014-11-29 : JdlCR. added support for fullframe cubes (aka,
 ;                despite rotation and shifts, the entire FOV is inside
-;                the image
+;                the image.
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+;
+;   2016-10-28 : MGL. Adapt to new pipeline.
+;
+;
 ;-
 pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
