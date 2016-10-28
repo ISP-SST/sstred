@@ -51,6 +51,8 @@
 ; 
 ;     2016-10-25 : MGL. Deal with N=0 and N=1.
 ; 
+;     2016-10-28 : MGL. Don't need to send the message when finishing.
+; 
 ; 
 ;-
 pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar, barlength = barlength
@@ -66,7 +68,7 @@ pro red_progressbar, i, N, message = message, finished = finished, nobar = nobar
                , 100., '%', FORMAT = '(A,A,F5.1,A,$)'
      endif else begin
         print, bb, '['+string(replicate(61B, barlength))+'] ' $
-               , 100., '% '+message, FORMAT = '(A,A,F5.1,A,$)'
+               , 100., '%', FORMAT = '(A,A,F5.1,A,$)'
      endelse
      print, ' '
   endif else begin
