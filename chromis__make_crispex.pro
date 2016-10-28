@@ -111,7 +111,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
   red_writelog, selfinfo = selfinfo
 
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
-      ;; Detector tags
+  ;; Detector tags
 
   ;; Camera/detector identification
   self->getdetectors
@@ -147,7 +147,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
   print, inam + ' : Selected -> '+ strjoin(timestamps, ', ')
 
   ;; Loop over timestamp directories
-  for itimestamp = 0, Ntimestamps-1 do begin
+  for itimestamp = 0L, Ntimestamps-1 do begin
 
     timestamp = timestamps[itimestamp]
 
@@ -157,7 +157,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
                                            , count = Nprefs, /test_dir))
     if Nprefs eq 0 then begin
       print, inam + ' : No prefilter sub-directories found in: ' + search_dir
-      return
+      continue                  ; Next timestamp
     endif
     
     ;; Select prefilter folders
@@ -173,7 +173,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
     print, inam + ' : Selected -> '+ strjoin(prefilters, ', ')
 
     ;; Loop over WB prefilters
-    for ipref = 0, Nprefs-1 do begin
+    for ipref = 0L, Nprefs-1 do begin
 
       search_dir = self.out_dir + '/momfbd/' + timestamp $
                    + '/' + prefilters[ipref] + '/cfg/results/'
@@ -214,7 +214,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       Nnbprefs = n_elements(unbprefindx)
       unbprefs = pertuningstates[unbprefindx].prefilter
       unbprefsref = dblarr(Nnbprefs)
-      for inbpref = 0, Nnbprefs-1 do begin
+      for inbpref = 0L, Nnbprefs-1 do begin
         ;; This is the reference point of the fine tuning for this prefilter:
         unbprefsref[inbpref] = double((strsplit(pertuningstates[unbprefindx[inbpref]].tuning,'_',/extract))[0])
       endfor
@@ -253,7 +253,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
  
       ;; Load prefilters
-      for inbpref = 0, Nnbprefs-1 do begin
+      for inbpref = 0L, Nnbprefs-1 do begin
         pfile = self.out_dir + '/prefilter_fits/'+nbdetector+'.'+unbprefs[inbpref]+'.prefilter.f0'
         pwfile = self.out_dir + '/prefilter_fits/'+nbdetector+'.'+unbprefs[inbpref]+'.prefilter_wav.f0'
         if ~file_test(pfile) then begin
@@ -334,7 +334,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
       if(~keyword_set(noflats)) then begin
         ;; Load clean flats and gains
-        for ii = 0, Nwav-1 do begin
+        for ii = 0L, Nwav-1 do begin
           
           tff = self.out_dir + 'flats/'+self.camttag + '.'+prefilters[ipref]+'.'+st.uwav[ii]+'.unpol.flat'
           rff = self.out_dir + 'flats/'+self.camrtag + '.'+prefilters[ipref]+'.'+st.uwav[ii]+'.unpol.flat'
@@ -611,7 +611,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         
         if n_elements(imean) eq 0 then begin 
           imean = fltarr(nwav)
-          for ii = 0, nwav-1 do imean[ii] = median(d[*,*,ii])
+          for ii = 0L, nwav-1 do imean[ii] = median(d[*,*,ii])
           cscl = 4.0                    ; 32768 / 4096
           ;; if(keyword_set(scans_only)) then cscl = 1.0
           norm_spect = imean / cscl ;/ max(imean)
