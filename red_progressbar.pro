@@ -78,8 +78,9 @@ pro red_progressbar, i, N, message $
   if arg_present(clock) then begin
     if i eq 0 then clock = tic()        ; Remember starting time
     time = toc(clock)
-    sec = fix(time)
-    time = 'in ' + strtrim(sec, 2) + '.' + string(round(100*(time-sec)), format = '(i02)') + ' s'
+    time = 'in ' + strtrim(round(time), 2) + ' s'
+    ;;sec = fix(time)
+    ;;time = 'in ' + strtrim(sec, 2) + '.' + string(round(100*(time-sec)), format = '(i02)') + ' s'
   endif else time = ''
 
   if n_elements(barlength) eq 0 then barlength = 20
