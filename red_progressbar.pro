@@ -106,3 +106,11 @@ pro red_progressbar, i, N, message $
   if i eq N-1 then print        ; Finished
 
 end
+
+N=50                                                                        
+for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock & wait,.1 & end    
+for i=0,N-1 do begin red_progressbar,i,N,'Test' & wait,.1 & end
+for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /nobar& wait,.1 & end    
+for i=0,N-1 do begin red_progressbar,i,N,'Test', /nobar & wait,.1 & end
+
+end
