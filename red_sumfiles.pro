@@ -287,7 +287,7 @@ function red_sumfiles, files_list $
     
      if DoCheck then begin
         cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head, /silent)
-        red_progressbar, iframe, Nframes, message = inam+' : loading files in memory'
+        red_progressbar, iframe, Nframes, inam+' : loading files in memory', clock = clock
      endif else begin
         head = red_readhead(files_list[ifile], /silent)
      endelse
@@ -304,7 +304,6 @@ function red_sumfiles, files_list $
      iframe += Nframes_per_file[ifile]
      
   endfor                        ; ifile
-  red_progressbar, /finished, message = inam+' : loading files in memory'
   
   if DoCheck then begin
 
@@ -371,14 +370,14 @@ function red_sumfiles, files_list $
 
         for ifile = 0, Nfiles-1 do begin
            
-           red_progressbar, iframe, Nframes, message = inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
+           red_progressbar, clock = clock, iframe, Nframes $
+                            , inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
            cub = red_readdata(files_list[ifile], /silent)
 
            summed += total(cub, 3, /double)
            iframe += Nframes_per_file[ifile]
 
         endfor                  ; ifile
-        red_progressbar, /finished, message = inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
 
         average = summed / Nsum
 
@@ -437,7 +436,8 @@ function red_sumfiles, files_list $
 
                  ;; If checked, we already have the frames in memory.
                  thisframe = double(cub[*, *, iframe])
-                 progress_message = inam+' : summing '+strtrim(Nsum, 2)+' checked frames'
+                 red_progressbar, clock = clock, iframe, Nframes $
+                                  , inam+' : summing '+strtrim(Nsum, 2)+' checked frames'
 
               endif else begin
 
@@ -449,13 +449,11 @@ function red_sumfiles, files_list $
                  thisframe = double(cub[*, *, ii])
                  ii += 1
                  
-                 progress_message = inam+' : summing '+strtrim(Nsum, 2)+' frames'
+                 red_progressbar, clock = clock, iframe, Nframes $
+                                  , inam+' : summing '+strtrim(Nsum, 2)+' frames'
 
               endelse
-              
-              red_progressbar, iframe, Nframes, message = progress_message
                  
-              
               if keyword_set(pinhole_align) or keyword_set(select_align) then begin
                  
                  ;; If we are doing sub-pixel alignment, then we need to
@@ -552,7 +550,6 @@ function red_sumfiles, files_list $
            endif                ; goodones[ii] 
 
         endfor                  ; iframe
-        red_progressbar, /finished, message = progress_message
 
         average = summed / Nsum
 

@@ -187,8 +187,6 @@ pro chromis::link_data, link_dir = link_dir $
         file_mkdir, outdir
         if wb then file_mkdir, outdir1
 
-        red_progressbar, 0, Nfiles, message = inam+' : creating linker for '+cam
-
         for ifile = 0L, Nfiles - 1 do begin
 ;           if(stat.star[ifile]) then continue
            if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
@@ -211,11 +209,10 @@ pro chromis::link_data, link_dir = link_dir $
               printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
            endif
 
-           red_progressbar, ifile, Nfiles, message = inam+' : creating linker for '+cam
+           red_progressbar, ifile, Nfiles, inam+' : creating linker for '+cam, clock = clock
            
         endfor                  ; ifile
         free_lun, lun
-        red_progressbar, message = inam+' : creating linker for '+cam, /finished
          
         ;; Link data
         print, inam+' : executing '+  linkername

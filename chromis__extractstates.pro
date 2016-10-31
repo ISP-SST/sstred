@@ -159,8 +159,6 @@ pro chromis::extractstates, strings, states $
   ;; Read headers and extract information. This should perhaps return
   ;; an array the length of the number of frames rather than the
   ;; number of files?
-  progress_message = 'Extract state info from file headers'
-  red_progressbar, 0, Nstrings, message = progress_message
 
   for ifile = 0, Nstrings-1 do begin
 
@@ -355,10 +353,9 @@ pro chromis::extractstates, strings, states $
      endif
      states[ifile].fullstate = strjoin(fullstate_list, '_')
 
-     red_progressbar, ifile, Nstrings, message = progress_message
+     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock
 
   endfor                        ; ifile
-  red_progressbar, /finished, message = progress_message
 
 end
 

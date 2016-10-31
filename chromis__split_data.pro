@@ -209,7 +209,7 @@ pro chromis::split_data, split_dir = split_dir $
         file_mkdir, outdir
         if wb then file_mkdir, outdir1
 
-        red_progressbar, 0, Nfiles, message = inam+' : splitting files for '+cam
+        red_progressbar, 0, Nfiles inam+' : splitting files for '+cam, clock = clock
 
         for ifile = 0L, Nfiles - 1 do begin
 ;           if(stat.star[ifile]) then continue
@@ -287,12 +287,10 @@ pro chromis::split_data, split_dir = split_dir $
               
            endfor               ; iframe
 
-           red_progressbar, ifile, Nfiles, message = inam+' : splitting files for '+cam
+           red_progressbar, ifile, Nfiles, inam+' : splitting files for '+cam, clock = clock
            
         endfor                  ; ifile
 
-        red_progressbar, message = inam+' : splitting files for '+cam, /finished
-        
      endfor                     ; icam
   endfor                        ; idir
   

@@ -121,10 +121,9 @@ function red_get_imean, wav, dat, pp, npar, iter $
   print, inam + ' : Ordering and correcting data to fit mean spectrum ... ', FORMAT = '(A,$)'
   print
   for ii = 0L, dim[0] - 1 do begin
-     red_progressbar, ii, dim[0], message = 'Ordering and correcting data to fit mean spectrum.'
+     red_progressbar, ii, dim[0], 'Ordering and correcting data to fit mean spectrum.', clock = clock
      wl[ii,*,*] = wav[ii] - pp[1,*,*]
   endfor
-  red_progressbar, ii, dim[0], message = 'Ordering and correcting data to fit mean spectrum.', /finished
 
   wl = reform(temporary(wl), dim[0]*dim[1]*dim[2])
 
@@ -132,7 +131,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
 
   fl = dat                      ;fltarr(dim[0], dim[1], dim[2])
   for ii = 0L, dim[0] - 1 do begin
-     red_progressbar, ii, dim[0], message = 'Same with the intensity.'
+     red_progressbar, ii, dim[0], 'Same with the intensity.', clock = clock
      mask = reform(dat[ii,*,*]) ge 1.e-3
      lcom = red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
      ;; Remove mean shape from the linear component so we don't
@@ -141,7 +140,6 @@ function red_get_imean, wav, dat, pp, npar, iter $
      fl[ii,*,*] /= reform(pp[0,*,*]) * lcom
      imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
-  red_progressbar, ii, dim[0], message = 'Same with the intensity.', /finished
   
   if(keyword_set(myg) AND iter GE 0) then  begin
      if(~keyword_set(bezier)) then begin
