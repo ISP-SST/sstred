@@ -97,17 +97,11 @@ pro red_progressbar, i, N, message $
     bar = ''
     if elength gt 0 then bar += string(replicate(61B, elength))     ; Replicated '='
     if mlength gt 0 then bar += string(replicate(45B, mlength))     ; Replicated '-'
-    if arg_present(clock) then begin
-      print, bb, '[' + bar + '] ' $
-             , norm*i, '% ' + time + message, FORMAT = '(A,A,F5.1,A,$)'
-    endif else begin
-      print, bb, '[' + bar + '] ' $
-             , norm*i, '% ' + message, FORMAT = '(A,A,F5.1,A,$)'
-    endelse
+    print, bb, '[' + bar + '] ' $
+           , norm*i, '% ' + time + message, FORMAT = '(A,A,F5.1,A,$)'
 
   endelse
 
   if i eq N-1 then print        ; Finished
 
-  
 end
