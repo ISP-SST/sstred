@@ -1,178 +1,156 @@
-function findthedim, ny, maxs
-  res = 0L
-  for ii = 1L, maxs do begin
-     if((ny / ii) * ii EQ ny) then res = ii
-  endfor
-  print, 'findthedim: using ny1 = '+string(res, format='(I5)')
-  return, res
-end
-pro lp_header, filename, header=header, datatype=datatype, $
-               dims=dims, nx=nx, ny=ny, nt=nt ,endian=endian
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
 ;
-; extracts data parameters from header
-; header should contain following entries :
-;   datatype=4 (float), dims=2, nx=2027, ny=2042
-; see lp_write.pro
-;
- IF n_params() EQ 0 THEN BEGIN
-    message, /info, 'lp_header, filename, header=header, datatype=datatype $'
-    print, '                      , dims=dims, nx=nx, ny=ny, nt=nt'
-    retall
- ENDIF
-
- if ARG_PRESENT(header) then printheader=0 else printheader=1
-
- openr, lur, filename, /get_lun
- rec = assoc(lur, bytarr(512))   ; first 512 bytes is header info
- header = string(rec[0])
- free_lun, lur
- if printheader eq 1 then print, header
- ; extract info from header
- len = strlen(header)
- ; datatype
- searchstring = 'datatype='
- pos = strpos(header, searchstring)
- if pos eq -1 then begin
-     message, /info, 'unknown datatype'
-     print, '  header: '+header
-     retall
- endif
- datatype = fix(strmid(header, pos+strlen(searchstring), 1))
- ; number of dimensions :
- searchstring = 'dims='
- pos = strpos(header, searchstring)
- if pos eq -1 then begin
-     message, /info, 'unknown number of dimensions'
-     print, '  header: '+header
-     retall
- endif
- dims = fix(strmid(header, pos+strlen(searchstring), 1))
- if (dims lt 2) or (dims gt 3) then begin
-     message, /info, 'number of dimensions not supported'
-     print, '  dimensions: ', dims
-     retall
- endif
- ; number of pixels in x-direction
- searchstring = 'nx='
- pos = strpos(header, searchstring)
- if pos eq -1 then begin
-     message, /info, 'unknown number of pixels in x-direction'
-     print, '  header: '+header
-     retall
- endif
- nx = fix(strmid(header, pos+strlen(searchstring), 4))
- ; number of pixels in y-direction
- searchstring = 'ny='
- pos = strpos(header, searchstring)
- if pos eq -1 then begin
-     message, /info, 'unknown number of pixels in y-direction'
-     print, '  header: '+header
-     retall
- endif
- ny = fix(strmid(header, pos+strlen(searchstring), 4))
- ; number of pixels in t-dimension
-; if dims eq 3 then begin
-     searchstring = 'nt='
-     pos = strpos(header, searchstring)
-     if pos eq -1 then begin
-         message, /info, 'unknown number of pixels in t-direction'
-         print, '  header: '+header
-         return
-     endif else nt = long(strmid(header, pos+strlen(searchstring), 5))
-; endif
-     searchstring = 'endian='
-     pos = strpos(header, searchstring)
-     if pos eq -1 then begin
-         message, /info, 'unknown endianness'
-         print, '  header: '+header
-         return
-     endif else endian = strmid(header, pos+strlen(searchstring), 1)
-
-end
-
-
-pro red_flipthecube_unpol, file, nw = nw, nt = nt, maxsize=maxsize, icube = icube
-
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+; 
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+;    2016-10-31 : MGL. Use red_findthedim and red_lp_header.
+; 
+;    2016-11-01 : MGL. Transpose entire cube without asking if enough
+;                 memory. 
+; 
+; 
+;-
+pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icube
+  
   inam = 'flipthecube_unpol: '
 
-  nt = long64(nt)
-  nw = long64(nw)
+  Nt = long64(Nt)
+  Nw = long64(Nw)
 
   if(~file_test(file)) then begin
-     print, inam + 'file not found -> ', file
-     return
+    print, inam + 'file not found -> ', file
+    return
   endif
-  lp_header, file, nx = nx, ny = ny, nt = tmp
-  
-  ntot = nt * nw 
+  red_lp_header, file, Nx = Nx, Ny = Ny, Nt = tmp
+
+  Ntot = Nt * Nw 
   if(ntot ne tmp) then begin
-     print, inam + 'wrong number of elements: nw * nt  != tmp'
-     print, '  ', ntot, tmp
-     stop
+    print, inam + 'wrong number of elements: Nw * Nt  != tmp'
+    print, '  ', Ntot, tmp
+    stop
   endif
-  
-  nx1 = nx
+
+;  Nbytes = Ntot * long(Nx) * long(Ny) * 4.
+;  print, 'Total number of bytes in cube:', Nbytes
+
+  ;; Compare cube size with available memory (free + cashed) in GB
+  spawn,'free -g ',free
+  free = total(long((strsplit(free[1],/extract))[[3,6]]))
+  cubesize = (float(Ntot) * float(Nx) * float(Ny)) * 1e-9
+  if keyword_set(icube) then cubesize *= 2. else cubesize *= 4.
+  print, 'Free memory and cube size in GB:', free, cubesize
+
+  Nx1 = Nx
   if(~keyword_set(maxsize)) then maxsize = 256L
-  ny1 = findthedim(ny, maxsize)
-  if ny1 eq 1 then begin
-; if ny1 is 1, making the sp cube takes a lot of time. If you have sufficient memory, you might want to transpose the whole cube in one go
-; provide that option here
-      print, inam + 'no optimal factor found to transpose smaller cubes (ny1=1)'
-      gbsize=float(nx)*float(ny)*float(nw)*float(nt)*2. *1E-9
-      if(~keyword_set(icube)) then gbsize=gbsize*2.
-      print, inam + 'try to transpose the whole cube in one go? [y/n] size of cube: '+strtrim(gbsize,2)+' GB'
+  Ny1 = red_findthedim(Ny, maxsize)
+  if Ny1 eq 1 then begin
+
+    if free*0.75 gt cubesize then begin
+
+      print, inam + ' : Enough memory to transpose entire cube.'
+      Ny1=Ny
+
+    endif else begin
+      ;; If Ny1 is 1, making the sp cube takes a lot of time. If you
+      ;; have sufficient memory, you might want to transpose the whole
+      ;; cube in one go provide that option here
+      print, inam + 'No optimal factor found to transpose smaller cubes (ny1=1)'
+      print, inam + 'Try to transpose the whole cube in one go? [y/n] '
       dum=''
       read,dum
       if dum eq 'y' then ny1=ny
+    endelse
   endif 
   
   
   openr,lun,file, /get_lun
-  if(~keyword_set(icube)) then a = assoc(lun, fltarr(nx1,ny1,/noze), 512) $
-  else a = assoc(lun, intarr(nx1,ny1,/noze), 512)
+  if(~keyword_set(icube)) then  $
+     a = assoc(lun, fltarr(Nx1, Ny1, /noze), 512) $
+  else $
+     a = assoc(lun, intarr(Nx1, Ny1, /noze), 512)
 
-  ext = strsplit(file,'.',/extract)
+  ext = strsplit(file, '.', /extract)
   ext = ext[n_elements(ext)-1]
 
   odir = file_dirname(file)+'/'
   ofile = odir+file_basename(file,'.'+ext)+'_sp.' + ext
   print, inam + 'saving result -> '+ofile
   openw, lun1, ofile, /get_lun
-  if(~keyword_set(icube)) then b = assoc(lun1, fltarr(nw,nt,/noze), 512) $
-  else b = assoc(lun1, intarr(nw,nt,/noze), 512)
+  if(~keyword_set(icube)) then $
+     b = assoc(lun1, fltarr(Nw,Nt,/noze), 512) $
+  else $
+     b = assoc(lun1, intarr(Nw,Nt,/noze), 512)
 
-  ntimes = ny / ny1
+  Ntimes = Ny / Ny1
   k = 0LL
-  for ii = 0L, ntimes - 1 do begin
-     print, 'processing part '+string(ii,format='(A,I3)')+' of '+string(ntimes-1,format='(A,I3)')
-     if(~keyword_set(icube)) then cub = fltarr(nx1,ny1,nw,nt) $
-     else cub = intarr(nx1,ny1,nw,nt)
-     
-     ;
-     ; read
-     ;
-     for tt = 0LL, nt-1 do begin
-        for ww = 0LL, nw-1 do begin
-           ele = tt * nw * ntimes + ww * ntimes + ii
-           cub[*,*,ww,tt] = a[ele]             
-        endfor
-     endfor
-     
-     cub = transpose(temporary(cub), [2,3,0,1])
-     for yy = 0L, ny1 - 1 do for xx=0L, nx1-1 do begin
-        b[k] = cub[*,*,xx,yy]
+  for ii = 0L, Ntimes - 1 do begin
+    ;;print, 'processing part '+string(ii,format='(A,I3)')+' of '+string(ntimes-1,format='(A,I3)')
+    if Ntimes ne 1 then $
+       red_progressbar, clock = clock, ii, Ntimes $
+                        , 'Flipping the cube '+strtrim(ny1, 2)+' rows at a time'
+
+    if(~keyword_set(icube)) then $
+       cub = fltarr(Nx1,Ny1,Nw,Nt) $
+    else $
+       cub = intarr(Nx1,Ny1,Nw,Nt)
+    
+    ;; Read
+    for it = 0LL, Nt - 1 do begin
+      if Ntimes eq 1 then $
+         red_progressbar, clock = clock, it, Nt, 'Reading the cube'
+      for iw = 0LL, Nw - 1 do begin
+        ele = it * Nw * Ntimes + iw * Ntimes + ii
+        cub[*,*,iw,it] = a[ele]             
+      endfor                    ; iw
+    endfor                      ; it
+    
+    if Ntimes eq 1 then print, inam + ' : Transposing the cube (this may take some time)'
+    cub = transpose(temporary(cub), [2,3,0,1])
+
+    ;; Write
+    for iy = 0L, Ny1 - 1 do begin
+      if Ntimes eq 1 then $
+         red_progressbar, clock = clock, iy, Ny1, 'Writing the transposed cube'
+      for ix = 0L, Nx1 - 1 do begin
+        b[k] = cub[*,*,ix,iy]
         k += 1L
-     endfor
-     cub = 0B
-  endfor
+      endfor                    ; ix
+    endfor                      ; iy
+    cub = 0B
+  endfor                        ; ii
+
   free_lun, lun
   free_lun, lun1
 
-  ;
-  ; Write header
-  ;
+                                
+  ;; Write header
   openu, lun1, ofile, /get_lun
-  extra = '';'stokes=[I,Q,U,V], ns=4'
+  extra = ''                    ;'stokes=[I,Q,U,V], ns=4'
   if(~keyword_set(icube)) then typestring = '(float)' else typestring = '(integer)'
   if(~keyword_set(icube)) then datatype = 4 else datatype = 2
   header = 'datatype='+strtrim(datatype,2)+' '+typestring
@@ -188,5 +166,5 @@ pro red_flipthecube_unpol, file, nw = nw, nt = nt, maxsize=maxsize, icube = icub
   hh[0:n_elements(hh1)-1] = hh1
   writeu, lun1, hh
   free_lun, lun1
-  ;
+                                ;
 end
