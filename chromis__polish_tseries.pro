@@ -97,6 +97,9 @@
 ;
 ;   2016-10-28 : MGL. Adapt to new pipeline. 
 ;
+;   2016-11-01 : MGL. New output file names including date and scan
+;                selection.
+;
 ;
 ;-
 pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
@@ -151,6 +154,7 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
   for itimestamp = 0L, Ntimestamps-1 do begin
 
     timestamp = timestamps[itimestamp]
+    datestamp = self.isodate+'T'+timestamp
 
     ;; Find prefilter subdirs
     search_dir = self.out_dir +'/momfbd/'+timestamp+'/'
@@ -369,10 +373,9 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       ;; De-rotate images in the cube
 ;      print, inam+' : de-rotating WB images ... ', format = '(A,$)'
       for iscan = 0L, Nscans -1 do begin
-        red_progressbar, iscan, Nscans, message = inam+' : De-rotating images.'
+        red_progressbar, iscan, Nscans, inam+' : De-rotating images.', clock = clock
         cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
       endfor                    ; iscan
-      red_progressbar, /finish
       
       ;; Align cube
       if(~keyword_set(shift)) then begin
@@ -393,10 +396,9 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
         endif 
 
         for iscan = 0L, Nscans - 1 do begin
-          red_progressbar, iscan, Nscans, message = inam+' : Applying shifts to images.'
+          red_progressbar, iscan, Nscans, inam+' : Applying shifts to images.', clock = clock
           cub[*,*,iscan] = red_shift_im(cub[*,*,iscan], shift[0,iscan], shift[1,iscan])
         endfor                  ; iscan
-        red_progressbar, /finish
 
       endelse
 
@@ -417,10 +419,9 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
         cub = fltarr([nd, Nscans])
         cub[*,*,0] = temporary(dum)
         for iscan=1, Nscans-1 do begin
-          red_progressbar, iscan, Nscans, message = inam+' : Making full-size cube, de-rotating and shifting.'
+          red_progressbar, iscan, Nscans, inam+' : Making full-size cube, de-rotating and shifting.', clock = clock
           cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], ang[iscan], shift[0,iscan], shift[1,iscan], full=ff)
         endfor                  ; iscan
-        red_progressbar, /finish
 
       endif else ff = 0
       
@@ -444,19 +445,21 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       grid = red_destretch_tseries(cub, scale, tile, clip, tstep)
 ;      print, 'done'
       for iscan = 0L, Nscans - 1 do begin
-        red_progressbar, iscan, Nscans, message = inam+' : Applying the stretches.'
+        red_progressbar, iscan, Nscans, inam+' : Applying the stretches.', clock = clock
         cub[*,*,iscan] = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
       endfor                    ; iscan
-      red_progressbar, /finish
 
       ;; Measure time-dependent intensity variation (sun move's in the Sky)
       tmean = total(total(cub,1),1) / float(nx) / float(ny)
       plot, tmean, xtitle = 'Time Step', ytitle = 'Mean WB intensity', psym=-1
 
+      ;; Prepare for making output file names
+      midpart = prefilters[ipref]+'_'+datestamp+'_scans='+red_collapserange(uscans, ld = '', rd = '')
+
       ;; Save angles, shifts and de-stretch grids
       odir = self.out_dir + '/calib_tseries/'
       file_mkdir, odir
-      ofil = 'tseries.'+prefilters[ipref]+'.'+timestamp+'.calib.sav'
+      ofil = 'tseries_'+midpart+'_calib.sav'
       print, inam + ' : saving calibration data -> ' + odir + ofil
       save, file = odir + ofil $
             , tstep, clip, tile, scale, ang, shift, grid, time, date $
@@ -467,7 +470,7 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       for iscan = 0L, Nscans - 1 do cub[*,*,iscan] *= (me / tmean[iscan])
 
       ;; Save WB results as lp_cube
-      ofil = 'wb.'+prefilters[ipref]+'.'+timestamp+'.corrected.icube'
+      ofil = 'wb_'+midpart+'_corrected.icube'
       print, inam + ' : saving WB corrected cube -> ' + odir + ofil
       ;;fcwrite, fix(round(temporary(cub))), odir + ofil, ' '
       red_lp_write, fix(round(temporary(cub))), odir + ofil
