@@ -52,7 +52,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep
   delta = FLTARR(dim[2], 2, maxgx, maxgy)
 
   for i=1, dim[2]-1 do begin
-    red_progressbar, i, dim[2], 'Computing destretch grid', clock = clock
+    red_progressbar, i-1, dim[2]-1, 'Computing destretch grid', clock = clock
     im = cub[*,*,i]
     dq = red_dsgridnest(refim, im, grids, clips)
     badg = WHERE(dq gt maxstr, num)
