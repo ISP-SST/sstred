@@ -71,21 +71,21 @@ function red_select_subset, list, count = count, help = help, qstring = qstring,
      print, '  4. An dash to select nothing.'
   endif 
   read, qstring+' [default='+default+']: ', selection
-  
-  if selection eq '-' then begin
-     count = 0
-     undefine, indx 
-     return, ''
-  endif
 
+  if n_elements(selection) eq 0 then selection = default
   if selection eq '' then selection = default
 
-  if selection eq '*' then begin
-    indx = lindgen(Nelements)
-  endif else begin
-    indx = red_expandrange(selection)
-  endelse 
-
+  case selection of 
+    
+    '-' : begin
+      count = 0
+      undefine, indx 
+      return, ''
+    end
+    '*' : indx = lindgen(Nelements)
+    else : indx = red_expandrange(selection)
+  endcase 
+  
   count = n_elements(indx)
   
   return, list(indx)
