@@ -98,7 +98,8 @@
 ;   2016-10-28 : MGL. Adapt to new pipeline. 
 ;
 ;   2016-11-01 : MGL. New output file names including date and scan
-;                selection.
+;                selection. Changed default clip and tile. Improved
+;                WB lightcurve plot.
 ;
 ;
 ;-
@@ -284,54 +285,17 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
             if Nsplit gt 1 then ttime = date_ave_split[1] else undefine, ttime
           endif
 
-          
           if n_elements(ext_time) gt 0 then begin
             time[iscan] = ext_time[iscan] 
           endif else begin
             if n_elements(ttime) gt 0 then time[iscan] = tt
-;          idx = where(strpos(h, 'TIME-OBS') GE 0)
-;          ok = execute('time[iscan] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
           endelse
           if(n_elements(ext_date) ne 0) then begin
             date[iscan] = ext_date
           endif else begin
             date[iscan] = ddate
-;        idx = where(strpos(h, 'DATE-OBS') GE 0)
-;        ok = execute('date[iscan] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
           endelse
         endelse
-
-;        CASE self.filetype OF
-;          'ANA': BEGIN
-;            fzread, tmp, wfiles[iscan], h
-;            dum = strsplit(h, ' =', /extract)
-;            IF n_elements(ext_time) GT 0 THEN $
-;               time[iscan] = ext_time[iscan] $
-;            ELSE $
-;               time[iscan] = dum[1]
-;            date[iscan] = dum[3]
-;          END
-;          'MOMFBD': BEGIN
-;            tmp = red_mozaic((dum =  momfbd_read(wfiles[iscan])))
-;            IF n_elements(ext_time) GT 0 THEN $
-;               time[iscan] = ext_time[iscan] $
-;            ELSE $
-;               time[iscan] = dum.time + ''
-;            date[iscan] = strmid(dum.date, 0, 10) + ''
-;          END
-;          'FITS': BEGIN
-;            tmp = readfits(wfiles[iscan], h, /SILENT)
-;            IF n_elements(ext_time) GT 0 THEN $
-;               time[iscan] = ext_time[iscan] $
-;            ELSE BEGIN
-;              idx = where(strpos(h, 'TIME-OBS') GE 0)
-;              ok = execute('time[iscan] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
-;            ENDELSE
-;            idx = where(strpos(h, 'DATE-OBS') GE 0)
-;            ok = execute('date[iscan] = '+(strsplit(strmid(h(idx), 9), '/', /extr))[0])
-;          END
-;        ENDCASE
-;        if(n_elements(ext_date) ne 0) then date[iscan] = ext_date
 
         IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
         
@@ -371,7 +335,6 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       endelse
       
       ;; De-rotate images in the cube
-;      print, inam+' : de-rotating WB images ... ', format = '(A,$)'
       for iscan = 0L, Nscans -1 do begin
         red_progressbar, iscan, Nscans, inam+' : De-rotating images.', clock = clock
         cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
@@ -419,15 +382,17 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
         cub = fltarr([nd, Nscans])
         cub[*,*,0] = temporary(dum)
         for iscan=1, Nscans-1 do begin
-          red_progressbar, iscan, Nscans, inam+' : Making full-size cube, de-rotating and shifting.', clock = clock
-          cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], ang[iscan], shift[0,iscan], shift[1,iscan], full=ff)
-        endfor                  ; iscan
-
+          red_progressbar, clock = clock, iscan, Nscans $
+                           , inam+' : Making full-size cube, de-rotating and shifting.'
+          cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], ang[iscan], shift[0,iscan] $
+                                        , shift[1,iscan], full=ff)
+        endfor                   ; iscan
+ 
       endif else ff = 0
       
       ;; De-stretch
-      if(~keyword_set(clip)) then clip = [12,4,2,1]
-      if(~keyword_set(tile)) then tile = [6,8,14,24]
+      if(~keyword_set(clip)) then clip = [8, 4, 1]
+      if(~keyword_set(tile)) then tile = [8, 16, 32]
       if(~keyword_set(scale)) then scale = 1.0 / float(self.image_scale)
       if(~keyword_set(tstep)) then begin
         dts = dblarr(Nscans)
@@ -441,9 +406,8 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       print, '   tile = ['+strjoin(string(tile, format='(I3)'),',')+']'
       print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
-;      print, inam + " : computing destretch-grid (using LMSAL's routines) ... ", format = '(A, $)'
       grid = red_destretch_tseries(cub, scale, tile, clip, tstep)
-;      print, 'done'
+
       for iscan = 0L, Nscans - 1 do begin
         red_progressbar, iscan, Nscans, inam+' : Applying the stretches.', clock = clock
         cub[*,*,iscan] = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
@@ -451,10 +415,11 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
 
       ;; Measure time-dependent intensity variation (sun move's in the Sky)
       tmean = total(total(cub,1),1) / float(nx) / float(ny)
-      plot, tmean, xtitle = 'Time Step', ytitle = 'Mean WB intensity', psym=-1
+      cgplot, uscans, tmean, xtitle = 'Scan number', ytitle = 'Mean WB intensity', psym=-1
 
       ;; Prepare for making output file names
-      midpart = prefilters[ipref]+'_'+datestamp+'_scans='+red_collapserange(uscans, ld = '', rd = '')
+      midpart = prefilters[ipref] + '_' + datestamp + '_scans=' $
+                + red_collapserange(uscans, ld = '', rd = '')
 
       ;; Save angles, shifts and de-stretch grids
       odir = self.out_dir + '/calib_tseries/'
@@ -472,7 +437,6 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       ;; Save WB results as lp_cube
       ofil = 'wb_'+midpart+'_corrected.icube'
       print, inam + ' : saving WB corrected cube -> ' + odir + ofil
-      ;;fcwrite, fix(round(temporary(cub))), odir + ofil, ' '
       red_lp_write, fix(round(temporary(cub))), odir + ofil
 
     endfor                      ; ipref
