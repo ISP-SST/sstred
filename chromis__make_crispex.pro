@@ -20,7 +20,14 @@
 ; 
 ; 
 ; :Keywords:
-; 
+;
+;    aligncontkludge : in, optional, type=boolean
+;
+;       Set this to activate a kludge where the misaligned Ca
+;       continuum narrowband image is stretched to its wideband image
+;       before applying the stretching that aligns it to the anchor
+;       wideband image.
+;
 ;    rot_dir  : 
 ;   
 ;   
@@ -81,11 +88,8 @@
 ;
 ;   2016-09-26 : MGL. Adapt red::make_unpol_crispex for CHROMIS data.
 ;
-;   2016-09-28 : MGL. New keyword aligncontkludge to activate a kludge
-;                where the misaligned Ca continuum narrowband image is
-;                stretched to its wideband image before applying the
-;                stretching that aligns it to the anchor wideband
-;                image. 
+;   2016-09-28 : MGL. New keyword aligncontkludge. New output file
+;                names including date and scan selection.
 ;
 ;-
 pro chromis::make_crispex, rot_dir = rot_dir $
@@ -150,6 +154,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
   for itimestamp = 0L, Ntimestamps-1 do begin
 
     timestamp = timestamps[itimestamp]
+    datestamp = self.isodate+'T'+timestamp
 
     ;; Find prefilter subdirs
     search_dir = self.out_dir +'/momfbd/'+timestamp+'/'
@@ -192,9 +197,6 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       wbgstates = states[wbgindx]
       wbgfiles = files[wbgindx]
 
-      ;; Scan numbers
-      uscans = wbgstates[uniq(wbgstates.scannumber, sort(wbgstates.scannumber))].scannumber
-
 
       ;; All the per-tuning files and states
       pertuningfiles = files[complement]
@@ -234,24 +236,49 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       
 
       if(~keyword_set(scans_only)) then begin
-        ;; Look for time-series calib file
-        cfile = self.out_dir + '/calib_tseries/tseries.'+prefilters[ipref]+'.'+timestamp+'.calib.sav'
-        if(~file_test(cfile)) then begin
-          print, inam + ' : Could not find calibration file: ' + cfile
-          print, inam + ' : Try to execute red::polish_tseries on this dataset first!'
-          return
-        endif else print, inam + ' : Loading calibration file -> '+file_basename(cfile)
 
+        ;; Look for time-series calib file
+        csearch = self.out_dir + '/calib_tseries/tseries_' + prefilters[ipref] $
+                  + '_' + datestamp + '*_calib.sav'
+        cfiles = file_search(csearch, count = Ncfiles)
+        case Ncfiles of
+          0: begin
+            print, inam + ' : Could not find calibration file: ' + csearch
+            print, inam + ' : Try executing red::polish_tseries on this dataset first!'
+            return
+          end
+          1: cfile = cfiles[0]
+          else: begin
+            repeat begin
+              tmp = red_select_subset(cfiles $
+                                      , qstring = inam + ' : Select calibration file (scan subset).' $
+                                      , count = Ncfileselect, indx = cindx, default = '-')
+            endrep until Ncfileselect eq 1
+            cfile = cfiles[cindx[0]]
+          end
+        endcase
+
+        print, inam + ' : Loading calibration file -> '+file_basename(cfile)
         restore, cfile
         if(n_elements(ff) eq 5) then full = 1 else full = 0
+        
+        ;; Get the scan selection from wfiles (from the sav file)
+        wgbfiles = wfiles
+        self -> extractstates, wgbfiles, wgbstates
+        uscans = wgbstates.scannumber
         
         tmean = mean(tmean) / tmean
       endif else begin
         tmean = replicate(1.0, 10000) ; Dummy time correction
         full = 0
+        ;; Scan numbers
+        uscans = wbgstates[uniq(wbgstates.scannumber, sort(wbgstates.scannumber))].scannumber
       endelse
+      Nscans = n_elements(uscans)
 
- 
+      ;; Prepare for making output file names
+      midpart = prefilters[ipref]+'_'+datestamp+'_scans='+red_collapserange(uscans, ld = '', rd = '')
+
       ;; Load prefilters
       for inbpref = 0L, Nnbprefs-1 do begin
         pfile = self.out_dir + '/prefilter_fits/'+nbdetector+'.'+unbprefs[inbpref]+'.prefilter.f0'
@@ -277,57 +304,10 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           rwav = [rwav, rwav0 + unbprefsref[inbpref]]
         endelse
       endfor               ; inbpref
-      
-
-      ;;      pfile = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter.f0'
-      ;;      pwfile = self.out_dir + '/prefilter_fits/'+self.camttag+'.'+pref+'.prefilter_wav.f0'
-      ;;      rpfile = self.out_dir + '/prefilter_fits/'+self.camrtag+'.'+pref+'.prefilter.f0'
-      ;;      rpwfile = self.out_dir + '/prefilter_fits/'+self.camrtag+'.'+pref+'.prefilter_wav.f0'
-      ;;
-      ;;      if(file_test(tpfile) AND file_test(tpwfile)) then begin
-      ;;        print, inam + ' : Loading:'
-      ;;        print, '  -> ' + file_basename(tpfile)
-      ;;        tpref = f0(tpfile)
-      ;;        print, '  -> ' + file_basename(tpwfile)
-      ;;        twav = f0(tpwfile)
-      ;;      endif else begin
-      ;;        print, inam + ' : prefilter files not found!'
-      ;;        return
-      ;;      endelse
-      ;;
-      ;;      if(file_test(rpfile) AND file_test(rpwfile)) then begin
-      ;;        print, inam + ' : Loading:'
-      ;;        print, '  -> ' + file_basename(rpfile)
-      ;;        rpref = f0(tpfile)
-      ;;        print, '  -> ' + file_basename(rpwfile)
-      ;;        rwav = f0(tpwfile)
-      ;;      endif else begin
-      ;;        print, inam + ' : prefilter files not found!'
-      ;;        return
-      ;;      endelse
-;stop
-;      if (self.filetype eq 'ANA') then begin
-;        tfiles = file_search(f+'/'+self.camttag+'.?????.'+pref+'.????_*f0', count=tf)
-;        rfiles = file_search(f+'/'+self.camrtag+'.?????.'+pref+'.????_*f0', count=rf)
-;        wfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.????_*f0', count=wf)
-;        wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.f0', count = wbf)
-;      endif else begin
-;        tfiles = file_search(f+'/'+self.camttag+'.?????.'+pref+'.????_*momfbd', count=tf)
-;        rfiles = file_search(f+'/'+self.camrtag+'.?????.'+pref+'.????_*momfbd', count=rf)
-;        wfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.????_*momfbd', count=wf)
-;        wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.momfbd', count = wbf)
-;      endelse 
-
-;      st = red_get_stkstates(tfiles)
    
       ;; Do WB correction?
       if(Nwb eq Nnb) then wbcor = 1B else wbcor = 0B
 
-
-;      nwav = st.nwav
-;      Nscans = st.nscan
-;      wav = st.uiwav * 1.e-3
-;      wav = utunwavelength 
 
       ;; Interpolate prefilters to the observed grid 
       rpref = 1./red_intepf(rwav, rpref, wav)
@@ -336,10 +316,14 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         ;; Load clean flats and gains
         for ii = 0L, Nwav-1 do begin
           
-          tff = self.out_dir + 'flats/'+self.camttag + '.'+prefilters[ipref]+'.'+st.uwav[ii]+'.unpol.flat'
-          rff = self.out_dir + 'flats/'+self.camrtag + '.'+prefilters[ipref]+'.'+st.uwav[ii]+'.unpol.flat'
-          tgg = self.out_dir + 'gaintables/'+self.camttag + '.'+prefilters[ipref]+'.'+st.uwav[ii]+'.lc4.gain'
-          rgg = self.out_dir + 'gaintables/'+self.camrtag + '.'+prefilters[ipref]+'.'+st.uwav[ii]+'.lc4.gain'
+          tff = self.out_dir + 'flats/' + self.camttag + '.' + prefilters[ipref] $
+                + '.'+st.uwav[ii]+'.unpol.flat'
+          rff = self.out_dir + 'flats/' + self.camrtag + '.' + prefilters[ipref] $
+                + '.'+st.uwav[ii]+'.unpol.flat'
+          tgg = self.out_dir + 'gaintables/' + self.camttag + '.' + prefilters[ipref] $
+                + '.' + st.uwav[ii] + '.lc4.gain'
+          rgg = self.out_dir + 'gaintables/' + self.camrtag + '.'+prefilters[ipref] $
+                + '.' + st.uwav[ii] + '.lc4.gain'
           if(ii eq 0) then print, inam + ' : Loading: '
           print,' -> '+tff
           print,' -> '+rff
@@ -389,8 +373,6 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       endif
 
       ;; Load WB image and define the image border
-;      if (self.filetype eq 'ANA') then tmp=f0(wbfiles[0])$
-;      else tmp = red_mozaic(momfbd_read(wbfiles[0]))
       tmp = red_readdata(wbgfiles[0])
       dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
       
@@ -403,7 +385,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       ;; Create temporary cube and open output file
       d = fltarr(dimim[0], dimim[1], Nwav)  
       if(~keyword_set(scans_only)) then begin
-        head =  red_unpol_lpheader(dimim[0], dimim[1], Nwav*Nscans, float = float)
+        head = red_unpol_lpheader(dimim[0], dimim[1], Nwav*Nscans, float = float)
       endif else begin
         head = red_unpol_lpheader(dimim[0], dimim[1], Nwav, float = float)
       endelse
@@ -414,7 +396,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
       if(~keyword_set(scans_only)) then begin
         ;; Open assoc file for output of multi-scan data cube.
-        ofile = 'crispex.'+prefilters[ipref]+'.'+timestamp+'.time_corrected'+extent
+        ofile = 'crispex_'+midpart+'_time-corrected'+extent
 
         if file_test(odir + '/' + ofile) then begin
           if keyword_set(overwrite) then begin
@@ -430,7 +412,6 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         openw, lun, odir + '/' + ofile, /get_lun
         writeu, lun, head
         point_lun, lun, 0L
-        dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,/nozero), 512)
         print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
         openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
         printf,lunf, 'nx=', dimim[0]
@@ -438,31 +419,21 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         printf,lunf, 'nw=', Nwav
         printf,lunf, 'nt=', Nscans
         printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
-        printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+        if keyword_set(float) then begin
+          dat = assoc(lun, fltarr(dimim[0], dimim[1], nwav, /nozero), 512)
+          printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,/nozer), 512)"
+        endif else begin
+          dat = assoc(lun, intarr(dimim[0], dimim[1], nwav, /nozero), 512)
+          printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+        endelse
         free_lun, lunf
       endif 
-
-
 
       ;; Start processing data
       if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
         tiles = [8,16,32,64]
         clips = [8,4,2,1]
       endif
-
-;      uscans = [69, 70, 71]
-;      Nscans = n_elements(uscans)
-
-;      ;; Select timestamp folders
-;      selectionlist = strtrim(indgen(Ntimestamps), 2)+ '  -> ' + timestamps
-;      tmp = red_select_subset(selectionlist $
-;                              , qstring = inam + ' : Select timestamp directory ID:' $
-;                              , count = Ntimestamps, indx = sindx)
-;      if Ntimestamps eq 0 then begin
-;        print, inam + ' : No timestamp sub-folders selected.'
-;        return                  ; Nothing more to do
-;      endif
-
 
       for ss = 0L, Nscans-1 do begin
 
@@ -498,8 +469,10 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
 
         if(keyword_set(scans_only)) then begin
-          ofile = 'crispex.'+prefilters[ipref]+'.'+timestamp+'_scan='+string(uscans[ss], format = '(i05)')+extent
-          ofilewb = 'wb.'+prefilters[ipref]+'.'+timestamp+'_scan='+string(uscans[ss], format = '(i05)')+'.fz' 
+          ofile = 'crispex_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
+                  + string(uscans[ss], format = '(i05)') + extent
+          ofilewb = 'wb_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
+                    + string(uscans[ss], format = '(i05)') + '.fz' 
           if file_test(odir + '/' + ofile) then begin
             if keyword_set(overwrite) then begin
               print, 'Overwriting existing data cube:'
@@ -512,8 +485,6 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           endif
         endif
 
-;        if (self.filetype eq 'ANA') then wb=(f0(wbfiles[ss]))[x0:x1, y0:y1] else $
-;           wb = (red_mozaic(momfbd_read(wbfiles[ss])))[x0:x1, y0:y1]
         wb = (red_readdata(wbgfiles[ss]))[x0:x1, y0:y1]
 
         for ww = 0L, Nwav - 1 do begin 
@@ -523,15 +494,14 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 ;          ttf = f + '/' + self.camttag+'.'+state
 ;          rrf = f + '/' + self.camrtag+'.'+state
 ;          wwf = f + '/' + self.camwbtag+'.'+state
-          print, inam + ' : processing state -> '+state 
+;          print, inam + ' : processing state -> '+state 
+          red_progressbar, clock = clock, ww, Nwav $
+                           , inam + ' : Rotate, shift, and dewarp (' + state + ')   '
 
           ;; Get destretch to anchor camera (residual seeing)
           if(wbcor) then begin
             wwi = (red_readdata(scan_wbfiles[ww]))[x0:x1, y0:y1]
-;            if (self.filetype eq 'ANA') then wwi = (f0(wwf))[x0:X1, y0:y1] else $
-;               wwi = (red_mozaic(momfbd_read(wwf)))[x0:x1, y0:y1]
             grid1 = red_dsgridnest(wb, wwi, tiles, clips)
-            print, 'computed grid'
           endif
 
           if 0 then wwc = red_stretch(wwi, grid1) ; test
@@ -581,12 +551,10 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           if keyword_set(aligncontkludge) then begin
             continnumpoint = scan_nbstates[ww].fpi_state eq '3999_4000_+0'
             if continnumpoint then begin
-              print, inam + ' : Doing the continuum destretch kludge!'
               ;; Stretch the nb cont image to its wb image
               gridx = red_dsgridnest(wwi, tmp, tiles, clips)
               tmp = red_stretch(temporary(tmp), gridx)
             endif
-
           endif
 
           ;; Apply destretch to anchor camera and prefilter correction
@@ -608,7 +576,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           endif else d[*,*,ww] = rotate( temporary(tmp), rot_dir)
           
         endfor                  ; ww
-        
+
         if n_elements(imean) eq 0 then begin 
           imean = fltarr(nwav)
           for ii = 0L, nwav-1 do imean[ii] = median(d[*,*,ii])
@@ -617,21 +585,23 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           norm_spect = imean / cscl ;/ max(imean)
           norm_factor = cscl        ;* max(imean)
           spect_pos = wav + double(prefilters[ipref])
-          print, inam + 'saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
-          save, file=odir + '/spectfile.'+prefilters[ipref]+'.idlsave', norm_spect, norm_factor, spect_pos
+          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
+          save, file = odir + '/spectfile.' + prefilters[ipref] + '.idlsave' $
+                , norm_spect, norm_factor, spect_pos
         endif
         
         
         if(~keyword_set(scans_only)) then begin
           ;; Write this scan's data cube to assoc file
           if keyword_set(no_timecor) then tscl = 1 else tscl = tmean[ss]
-          if(keyword_set(float)) then dat[ss] = d*cscl*tscl else begin
+          if(keyword_set(float)) then begin
+            dat[ss] = d*cscl*tscl
+          endif else begin
             d1 = round(d*cscl*tscl)
             dat[ss] = fix(d1)
           endelse
           if(keyword_set(verbose)) then begin
-            print, inam +'scan=',ss,', max=', max(d1)
-            
+            print, inam +'scan=',ss,', max=', max(d1)            
           endif
         endif else begin
           ;; Write this scan's data cube as an individual file.
@@ -649,16 +619,21 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       endfor                    ; ss
       
       if(~keyword_set(scans_only)) then begin
+
         ;; Close assoc file for output of multi-scan data cube.
         free_lun, lun
         print, inam + ' : done'
         print, inam + ' : result saved to -> '+odir+'/'+ofile 
-        red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = Nscans, nw = Nwav
-;     make_crispex_sp_cube, odir+'/'+ofile, nwav, Nscans
+        if keyword_set(float) then begin
+          red_flipthecube_unpol, odir+'/'+ofile, nt = Nscans, nw = Nwav
+        endif else begin
+          red_flipthecube_unpol, odir + '/' + ofile, /icube, nt = Nscans, nw = Nwav
+        endelse
+        ;;     make_crispex_sp_cube, odir+'/'+ofile, nwav, Nscans
       endif
 
     endfor                      ; ipref
-
+    
   endfor                        ; itimestamp
 
 
