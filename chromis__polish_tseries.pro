@@ -99,16 +99,28 @@
 ;
 ;   2016-11-01 : MGL. New output file names including date and scan
 ;                selection. Changed default clip and tile. Improved
-;                WB lightcurve plot.
+;                WB lightcurve plot. 
+;
+;   2016-11-03 : MGL. Removed keywords ext_time, ang, and shift.
 ;
 ;
 ;-
-pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
-                             tile = tile, tstep = tstep, scale = scale, $
-                             ang = ang, shift = shift, square=square, $
-                             negang = negang, crop=crop, ext_time = ext_time, $
-                             fullframe = fullframe, ext_date = ext_date, $
-                             timefiles = timefiles
+pro chromis::polish_tseries, xbd = xbd $
+                             , ybd = ybd $
+                             , np = np $
+                             , clip = clip $
+                             , tile = tile $
+                             , tstep = tstep $
+                             , scale = scale $
+;                             , ang = ang $
+;                             , shift = shift $
+                             , square = square $
+                             , negang = negang $
+                             , crop = crop $
+;                             , ext_time = ext_time $
+                             , fullframe = fullframe $
+                             , ext_date = ext_date $
+                             , timefiles = timefiles
   
 
   ;; Name of this method
@@ -207,55 +219,6 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       uscans = selectionlist[scanindx]
       wstates = wstates[scanindx]
       wfiles = wfiles[scanindx]
-;
-;
-;  ;; Get time stamp
-;  data_dir = file_search(self.out_dir + '/momfbd/*', /test_directory, count = nf)
-;  if(nf GT 1) then begin
-;     print, inam + ' : Available folders: '
-;     for ii = 0L, nf - 1 do print, '  '+red_stri(ii)+' -> '+ data_dir[ii]
-;     idx = 0L
-;     read, idx, prompt='Select folder ID: '
-;     data_dir = data_dir[idx]
-;  endif 
-;  time_stamp = file_basename(data_dir)
-;
-;  ;; Search reduction folders
-;  fold = file_search(data_dir+'/*', /test_directory, count = ct)
-;  if(ct eq 0) then begin
-;     print, inam + ' : Error, no subfolders were found in '+data_dir
-;     return
-;  endif
-;
-;  ;; Select one of them if ct >1
-;  iread = 0
-;  if(ct gt 1) then begin
-;     print, inam + ' : reduction subfolders:'
-;     for ii = 0L, ct-1 do print, string(ii,format='(I2)') +' -> '+ file_basename(fold[ii])
-;     read, iread, prompt = 'Please, choose one state (enter the ID number): '
-;  endif
-;  fold = fold[iread]
-;  pref = file_basename(fold)
-;  print, inam + ' : selected state -> '+ pref
-      
-;    ;; Extensions
-;  case self.filetype of
-;      'ANA': exten = '.f0'
-;      'MOMFBD': exten = '.momfbd'
-;      'FITS': exten =  '.fits'
-;      ELSE: begin
-;          print, inam+' : WARNING -> could not determine a file type for the output'
-;          exten = ''
-;      END
-;  endcase
-
-;  ;; Search files
-;  self->getdetectors, dir = self.data_dir
-;  wfiles = file_search(fold+'/cfg/results/'+self.camwbtag+'.?????.'+pref+exten, count = ct)
-;  if(ct eq 0) then begin
-;     print, inam + ' : Error, no WB files found in -> '+ fold+'/cfg/results/'
-;     stop
-;  endif
 
       time = strarr(Nscans)
       date = strarr(Nscans)
@@ -283,18 +246,26 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
             date_ave_split = strsplit(date_ave, 'T', count = Nsplit)
             ddate = date_ave_split[0]
             if Nsplit gt 1 then ttime = date_ave_split[1] else undefine, ttime
-          endif
+          endif else undefine, ddate, ttime
 
-          if n_elements(ext_time) gt 0 then begin
-            time[iscan] = ext_time[iscan] 
-          endif else begin
-            if n_elements(ttime) gt 0 then time[iscan] = tt
-          endelse
-          if(n_elements(ext_date) ne 0) then begin
-            date[iscan] = ext_date
+          if n_elements(ddate) eq 0 then begin
+            print, inam+' : No date and time information for scan '+strtrim(uscans[iscan], 2)
+            stop
           endif else begin
             date[iscan] = ddate
+            time[iscan] = ttime
           endelse
+
+;          if n_elements(ext_time) gt 0 then begin
+;            time[iscan] = ext_time[iscan] 
+;          endif else begin
+;            if n_elements(ttime) gt 0 then time[iscan] = ttime
+;          endelse
+;          if(n_elements(ext_date) ne 0) then begin
+;            date[iscan] = ext_date
+;          endif else begin
+;            date[iscan] = ddate
+;          endelse
         endelse
 
         IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
@@ -318,21 +289,21 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       if (keyword_set(fullframe)) then cub1 = cub
 
       ;; Get derotation angles
-      if(~keyword_set(ang)) then begin
+;      if(~keyword_set(ang)) then begin
         ang = red_lp_angles(time, date)
         mang = median(ang)
         ang -= mang
         if(keyword_set(negang)) then ang = -ang
-      endif else begin
-
-        print, inam + ' : Using external angles'
-
-        if(n_elements(ang) NE Nscans) then begin
-          print, inam + ' : Error, the number of angles (' + red_stri(n_elements(ang)) $
-                 + ')!= number of images (' + red_stri(Nscans) + ')'
-          stop
-        endif
-      endelse
+;      endif else begin
+;
+;        print, inam + ' : Using external angles'
+;
+;        if(n_elements(ang) NE Nscans) then begin
+;          print, inam + ' : Error, the number of angles (' + red_stri(n_elements(ang)) $
+;                 + ')!= number of images (' + red_stri(Nscans) + ')'
+;          stop
+;        endif
+;      endelse
       
       ;; De-rotate images in the cube
       for iscan = 0L, Nscans -1 do begin
@@ -341,7 +312,7 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
       endfor                    ; iscan
       
       ;; Align cube
-      if(~keyword_set(shift)) then begin
+;      if(~keyword_set(shift)) then begin
         if(~keyword_set(np)) then begin
           np = 0L
           read, np, prompt = inam +' : Please introduce the factor to recompute the reference image: '
@@ -350,20 +321,20 @@ pro chromis::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
         print, inam + ' : aligning images ... ', format = '(A, $)'
         shift = red_aligncube(cub, np, xbd = xbd, ybd = ybd, cubic = cubic, /aligncube)
         print, 'done'
-      endif else begin
-        print, inam + ' : Using external shifts'
-
-        if(n_elements(shift[0,*]) NE Nscans) then begin
-          print, inam + ' : Error, incorrect number of elements in shift array'
-          return
-        endif 
-
-        for iscan = 0L, Nscans - 1 do begin
-          red_progressbar, iscan, Nscans, inam+' : Applying shifts to images.', clock = clock
-          cub[*,*,iscan] = red_shift_im(cub[*,*,iscan], shift[0,iscan], shift[1,iscan])
-        endfor                  ; iscan
-
-      endelse
+;      endif else begin
+;        print, inam + ' : Using external shifts'
+;
+;        if(n_elements(shift[0,*]) NE Nscans) then begin
+;          print, inam + ' : Error, incorrect number of elements in shift array'
+;          return
+;        endif 
+;
+;        for iscan = 0L, Nscans - 1 do begin
+;          red_progressbar, iscan, Nscans, inam+' : Applying shifts to images.', clock = clock
+;          cub[*,*,iscan] = red_shift_im(cub[*,*,iscan], shift[0,iscan], shift[1,iscan])
+;        endfor                  ; iscan
+;
+;      endelse
 
 
       if(keyword_set(fullframe)) then begin
