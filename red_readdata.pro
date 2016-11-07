@@ -50,6 +50,19 @@
 ;       Read just this frame from a data cube. (Implemented only for
 ;       FITS files for now.)
 ;
+;    extension : in, optional, type=string
+;
+;	Read from a FITS extension with extname taken from the value of 
+;	extension keyword. If it is an image extension the image is returned.
+;	If it is a binary or ASCII table the column data are returned which 
+; 	correspond to the value of tabkey (or by default the 1st column).
+;	
+;	The extension header is returned in the header keyword (if specified)
+;
+;    tabkey : in, optional, type=string
+;
+;	The name of the tabulated keyword to extract from the table.
+;
 ; :History:
 ; 
 ;   2016-05-16 : MGL. First version
@@ -89,6 +102,8 @@
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
 ;                Swap endian if needed. Remove byteorder keywords.
 ;
+;   2016-11-04 : JLF. Added extension and tabkey keywords to support 
+;		 reading from tab-HDUs and other extensions. 
 ;-
 function red_readdata, fname $
                        , header = header $
@@ -96,8 +111,12 @@ function red_readdata, fname $
                        , structheader = structheader $
                        , status = status $
                        , silent = silent $
-                       , framenumber = framenumber
+                       , framenumber = framenumber $
+                       , extension = extension $
+                       , tabkey = tabkey
 
+  compile_opt idl2
+  
   if file_test(fname) eq 0 then begin
 
     message, 'File does not exist: '+fname, /info
@@ -155,25 +174,52 @@ function red_readdata, fname $
         endif
         
         ;; Now read the data
-        red_rdfits, fname, image = data $
-                    , uint=uint, swap=swap, framenumber = framenumber
         
-        ;; Compensate for initial weird format
-        if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
+        ;; primary HDU
+        if n_elements(extension) eq 0 then begin
+	  red_rdfits, fname, image = data $
+		      , uint=uint, swap=swap, framenumber = framenumber
+	  
+	  ;; Compensate for initial weird format
+	  if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
 
-        ;; Does it need to be byteswapped?
-        doswap = 0
-        endian = sxpar(header,'ENDIAN', count = Nendian)
-        if Nendian eq 1 then if endian eq 'little' then doswap = 1
-        byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
-        if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
+	  ;; Does it need to be byteswapped?
+	  doswap = 0
+	  endian = sxpar(header,'ENDIAN', count = Nendian)
+	  if Nendian eq 1 then if endian eq 'little' then doswap = 1
+	  byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
+	  if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
 
-        if doswap then begin
-           swap_endian_inplace, data
-           sxdelpar, header, 'ENDIAN'
-           sxdelpar, header, 'BYTEORDR'
-        endif 
-
+	  if doswap then begin
+	    swap_endian_inplace, data
+	    sxdelpar, header, 'ENDIAN'
+	    sxdelpar, header, 'BYTEORDR'
+	  endif 
+	endif else begin
+	  header = red_readhead(fname,extension=extension,silent=silent)
+	  exttype = fxpar(header,'XTENSION')
+	  case exttype of 
+	    'IMAGE   ': begin
+	      fxread,fname,data,extension=extension
+	    end
+	    'TABLE   ': begin
+	      extno = get_fits_extno(fname, extension)
+	      if extno eq -1 then extno = extension
+	      tab = readfits(fname,silent=silent,exten=extno)
+	      if n_elements(tabkey) ne 0 then $
+		data = ftget(header,tab,tabkey) $
+	      else data = ftget(header,tab,1) ; default to first field.
+	    end
+	    'BINTABLE': begin
+	      fxbopen,tlun,fname,extension
+	      if n_elements(tabkey) ne 0 then $
+		fxbread,tlun,data,tabkey $
+	      else fxbread,tlun,data,1 ; default to the first column
+	      fxbclose,tlun
+	    end
+	  endcase
+	endelse
+	
      end
 
      'MOMFBD' : begin
@@ -185,10 +231,36 @@ function red_readdata, fname $
   
   if arg_present(header) then $
      header = red_readhead(fname, structheader = structheader, $
-                           framenumber = framenumber, silent=silent)
+                           framenumber = framenumber, silent=silent,$
+                           extension=extension)
 
   status = 0
   
   return, data
+
+end
+
+
+cd,'/storage/sand02/Incoming/2016.09.19/CHROMIS-flats/11:21:22/Chromis-N',current=curdir
+fname = 'sst_camXXX_00000_0000000_wheel00005_hrz32061.fits'
+
+img = red_readdata(fname)
+tab = red_readdata(fname,head=header,extension='tabulations',tabkey='date-beg')
+tabdefault = red_readdata(fname,extension='tabulations')
+tabextno = red_readdata(fname,/extension)
+
+stop
+
+cd,'/scratch/polar/mats/2016.09.19/CHROMIS/calib_tseries'
+fname = 'wb_3950_2016-09-19T09:28:36_scans=68-72_corrected_im.fits'
+
+img = red_readdata(fname)
+tabdefault = red_readdata(fname,extension='tabulations')
+tab = red_readdata(fname,extension='tabulations',tabkey='time',header=head)
+tabextno = red_readdata(fname,/extension)
+
+stop
+
+cd,curdir
 
 end
