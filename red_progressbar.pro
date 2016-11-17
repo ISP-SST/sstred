@@ -43,6 +43,10 @@
 ;       Remember the 'tic/toc' clock in this variable and use it when
 ;       finishing.
 ;
+;    predict : in, optional, type=boolean
+;
+;       Print a prediction for the remaining time. Does nothing if the
+;       clock keyword is not used.
 ; 
 ; :History:
 ; 
@@ -59,35 +63,44 @@
 ;                  completion. Make message a parameter instead of a
 ;                  keyword. New keyword clock.
 ; 
+;     2016-11-16 : MGL. New keyword predict.
+; 
 ; 
 ;-
 pro red_progressbar, i, N, message $
                      , barlength = barlength $
                      , nobar = nobar $
-                     , clock = clock
+                     , clock = clock $
+                     , predict = predict
 
   if n_elements(message) eq 0 then message = 'Progress'
-  bb = string(13B)
-
+  bb = string(13B)              ; CR w/o LF
+  
   case N of
     0: return
     1: norm = 100.
     else: norm = 100. / (N - 1.0)  
   endcase
 
+  percentdone = norm * i
+
   if arg_present(clock) then begin
-    if i eq 0 then clock = tic()        ; Remember starting time
+    if i eq 0 or n_elements(clock) eq 0 then clock = tic()        ; Remember starting time
     time = toc(clock)
-    time = 'in ' + strtrim(round(time), 2) + ' s'
-    ;;sec = fix(time)
-    ;;time = 'in ' + strtrim(sec, 2) + '.' + string(round(100*(time-sec)), format = '(i02)') + ' s'
+;print, time
+;stop
+    if keyword_set(predict) and i gt 0 then begin
+      ;;prediction = ' (total estimated '+strtrim(round(time/(percentdone/100.)), 2)+' s)' else prediction = '' 
+      prediction = ' ('+red_timestring(round(time*(1./(percentdone/100.)-1)), Nsecdec = 0, /short)+' s remaining)' 
+    endif else prediction = '' 
+    time = 'in ' + red_timestring(round(time), Nsecdec = 0, /short) + ' s' + prediction
   endif else time = ''
 
   if n_elements(barlength) eq 0 then barlength = 20
   if keyword_set(nobar) then begin
 
     print, bb, message + ' -> ' $
-           , norm * i, '% ' + time, FORMAT = '(A,A,F5.1,A,$)'
+           , percentdone, '% ' + time + '   ', FORMAT = '(A,A,F5.1,A,$)'
 
   endif else begin
 
@@ -99,11 +112,14 @@ pro red_progressbar, i, N, message $
     if elength gt 0 then bar += string(replicate(61B, elength))     ; Replicated '='
     if mlength gt 0 then bar += string(replicate(45B, mlength))     ; Replicated '-'
     print, bb, '[' + bar + '] ' $
-           , norm*i, '% ' + time + message, FORMAT = '(A,A,F5.1,A,$)'
+           , percentdone, '% ' + time + message + '   ', FORMAT = '(A,A,F5.1,A,$)'
 
   endelse
 
-  if i eq N-1 then print        ; Finished
+  if i eq N-1 then begin
+    undefine, clock
+    print                       ; Finished
+  endif
 
 end
 
@@ -112,5 +128,8 @@ for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock & wait,.1 & end
 for i=0,N-1 do begin red_progressbar,i,N,'Test' & wait,.1 & end
 for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /nobar& wait,.1 & end    
 for i=0,N-1 do begin red_progressbar,i,N,'Test', /nobar & wait,.1 & end
+
+
+for i=10,N-1 do begin red_progressbar,i,N,'Test',clock=clock & wait,.1 & end    
 
 end
