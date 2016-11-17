@@ -1,101 +1,146 @@
-FUNCTION red_dsgridnest,m1,m2,vg,clips
+; docformat = 'rst'
 
-; 2/10/93	does a series of gridmatch calculations with grid sizes
-; specified in vg, returns an offset grid for the last value of vg
-; clips to use for each grid are in pixels?
-; Grid returned is the cumulative offset of all grids specified in vg.
+;+
+; Does a series of gridmatch calculations for two images, determining
+; offset vectors on a grid.
+;
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Dick Shine, LMSAL (original ANA version)
+; 
+; 
+; :Returns:
+;
+;    The cumulative offset of all grids specified in vg. 
+; 
+; :Params:
+; 
+;    m1 : in, type="2D array"
+;
+;       An image.
+;
+;    m2 : in, type="2D array"
+;
+;       Another image.
+;
+;
+;    vg : in, type=array
+;
+;       Subfield grid sizes. The last element specifies the grid of
+;       the returned offsets.
+;
+;    clips : in, type=array
+; 
+;       Outlier clips in pixels.
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+;     1993-02-10 : DS. Original ANA version. 
+;
+;     1994-01-03 : DS. Allow for rectangular images
+;
+;     1999-04-28 : BDP. Adapted from ANA.
+; 
+;     2000-05 : L. Strous. GRIDMATCH and STRETCH adapted from ANA and
+;               coded into an IDL DLM file.
+; 
+;     2000-12-14 : TEB. Default clip conditions.
+; 
+;     2000-12-14 : TEB. Use IDL CONGRID function for faster bilinear
+;                  interpolation. 
+; 
+;     201?-??-?? : JdlC. Adapted to CRISPRED and Moved to red_
+;                  namespace. 
+; 
+;     2016-11-17 : MGL. Added documentation header. Trust IDL to
+;                  destroy local variables at exit.
+; 
+;-
+function red_dsgridnest, m1, m2, vg, clips
 
-; Adapted from ANA on April 28, 1999. BDP.
-; GRIDMATCH and STRETCH adapted from ANA by L. Strous and coded into
-;  an IDL DLM file. 5/2000. 
-; Default clip conditions: 12/14/00, TEB.
-; Use IDL CONGRID function for faster bilinear interpolation: 12/14/00, TEB.
+  bdp_size = size(m1)
+  nx = bdp_size(1)
+  ny = bdp_size(2)
+  nest = n_elements(vg)
 
- bdp_size = SIZE(m1)
- nx = bdp_size(1)
- ny = bdp_size(2)
- nest = N_ELEMENTS(vg)
+  ;; Default values for clips:
+  if n_elements(clips) ne nest then begin
+    print,'Grid clip array not specified - assigning default value of 20 pixels'
+    clips = replicate(20,nest)
+  end
 
-;Default values for clips:
-if N_ELEMENTS(clips) ne nest then begin
-  PRINT,'Grid clip array not specified - assigning default value of 20 pixels'
-  clips = REPLICATE(20,nest)
-end
-
-for k=0,nest-1 do begin 
-  n = vg(k)
-  stretch_clip = clips(k) 
-  ngw = FIX(2.*nx/n)
-  nw = FIX(1.25*ngw)
-  if(nx gt ny) then begin
-     nxg = n
-     nyg = LONG(FLOAT(n)*ny/nx +0.5) ;1/3/94 allow for rectangular images
-                                    ;note the wx calculation should be FP, 3/18/89
-  endif else begin
-     nyg = n
-     nxg = LONG(FLOAT(n)*nx/ny +0.5) ;1/3/94 allow for rectangular images
+  for k=0L, nest-1 do begin 
+    n = vg(k)
+    stretch_clip = clips(k) 
+    ngw = fix(2.*nx/n)
+    nw = fix(1.25*ngw)
+    if(nx gt ny) then begin
+      nxg = n
+      nyg = long(float(n)*ny/nx +0.5) ;1/3/94 allow for rectangular images
                                 ;note the wx calculation should be FP, 3/18/89
-  endelse
+    endif else begin
+      nyg = n
+      nxg = long(float(n)*nx/ny +0.5) ;1/3/94 allow for rectangular images
+      ;; Note the wx calculation should be FP, 3/18/89
+    endelse
 
-  wx = FLOAT(nx)/nxg
-  wy = FLOAT(ny)/nyg
-  ;this is supposed to compute the grid the same way as Stu's programs
-  gx = FINDGEN(nxg)#(FLTARR(nyg)+1.0) ;integer grid coordinates
-  gx = gx*wx+wx/2.-1                  ;in pixels, as required for gridmatch
-  gy = (FLTARR(nxg)+1.0)#FINDGEN(nyg)
-  gy = gy*wy+wy/2.-1 
-  dx = nw
-  dy = nw
-  gwid = ngw
+    wx = float(nx)/nxg
+    wy = float(ny)/nyg
+    ;; This is supposed to compute the grid the same way as Stu's programs
+    gx = findgen(nxg)#(fltarr(nyg)+1.0) ;integer grid coordinates
+    gx = gx*wx+wx/2.-1                  ;in pixels, as required for gridmatch
+    gy = (fltarr(nxg)+1.0)#findgen(nyg)
+    gy = gy*wy+wy/2.-1 
+    dx = nw
+    dy = nw
+    gwid = ngw
 
-  if (k eq 0) then begin 
-      displ = RED_GRIDMATCH(m1,m2,gx,gy,dx,dy,gwid,stretch_clip)
+    if (k eq 0) then begin 
+      displ = red_gridmatch(m1,m2,gx,gy,dx,dy,gwid,stretch_clip)
 ;      PRINT,'Mean initial = ',STRTRIM(AVG(ABS(displ)),2),$
 ;            '   Max(abs) = ',STRTRIM(MAX(ABS(displ)),2)
-  end else begin   
+    end else begin   
 
       if n ne nprev then begin
-           ;interpolate the old displ on the new grid and apply to m3
-        disx = REFORM(displprev(0,*,*))
-        disy = REFORM(displprev(1,*,*))
-        fx = CONGRID(disx,nxg,nyg,/INT)
-        fy = CONGRID(disy,nxg,nyg,/INT)
-        prev = FLTARR(2,N_ELEMENTS(fx(*,0)),N_ELEMENTS(fy(0,*)))
+        ;; Interpolate the old displ on the new grid and apply to m3
+        disx = reform(displprev(0,*,*))
+        disy = reform(displprev(1,*,*))
+        fx = congrid(disx,nxg,nyg,/INT)
+        fy = congrid(disy,nxg,nyg,/INT)
+        prev = fltarr(2,n_elements(fx(*,0)),n_elements(fy(0,*)))
         prev(0,*,*) = fx
         prev(1,*,*) = fy
       end else prev = displprev
 
-      m3=RED_STRETCH(m2,prev)
-      displnew = RED_GRIDMATCH(m1, m3, gx, gy, dx, dy, gwid,stretch_clip)
+      m3 = red_stretch(m2,prev)
+      displnew = red_gridmatch(m1, m3, gx, gy, dx, dy, gwid,stretch_clip)
 ;      PRINT,'Mean incremental = ',STRTRIM(AVG(ABS(displnew)),2),$
 ;            '   Max(abs) = ',STRTRIM(MAX(ABS(displnew)),2)
       displ = prev + displnew
-  end
+    end
 
-  if k lt nest-1 then begin  ;save variables for next cycle if needed
-    nprev = n
-    displprev = displ		
+    if k lt nest-1 then begin   ;save variables for next cycle if needed
+      nprev = n
+      displprev = displ		
 ;    gxprev = gx
 ;    gyprev = gy
-  end
+    end
 
-end 
+  end 
 
 ;PRINT,'Mean total displacement = ',STRTRIM(AVG(ABS(displ)),2),$
 ;      '   Max(abs) = ',STRTRIM(MAX(ABS(displ)),2)
 
-;recover some memory
-m3=0
-disx=0
-disy=0
-fx=0
-fy=0
-prev=0
-displnew=0
-gx = 0
-gy = 0
-;gxprev=0
-;gyprev=0
- 
-RETURN, displ
-END
+  return, displ
+
+end
