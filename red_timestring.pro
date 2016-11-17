@@ -36,9 +36,11 @@
 ;                  to wrap to day(s) before (negative numbers) or
 ;                  day(s) after (large numbers).
 ; 
+;     2016-11-16 : MGL. New keyword short.
+; 
 ; 
 ;-
-function red_timestring, t, Nsecdecimals = Nsecdecimals 
+function red_timestring, t, Nsecdecimals = Nsecdecimals, short = short
 
   isscalar = size(t, /n_dim) eq 0
   n = n_elements(t)
@@ -64,8 +66,11 @@ function red_timestring, t, Nsecdecimals = Nsecdecimals
      hours = it / 3600L
      min = (it  - hours * 3600L) / 60L
      secs = tt - hours * 3600L - min * 60L
-     res[i] = red_stri(hours, ni = format) + ':' +red_stri(min, ni = format) + $
-              ':' + string(secs, format = secformat)
+     if hours gt 0 or ~keyword_set(short) then res[i] += red_stri(hours, ni = format) + ':'
+     if hours gt 0 or min gt 0 or ~keyword_set(short) then res[i] += red_stri(min, ni = format) + ':' 
+     res[i] += string(secs, format = secformat)
+;     res[i] = red_stri(hours, ni = format) + ':' +red_stri(min, ni = format) + $
+;              ':' + string(secs, format = secformat)
   endfor
   
 
