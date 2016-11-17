@@ -58,9 +58,13 @@
 ;   2014-05-31 : MGL. New inverse keyword, does the same as dir
 ;                keyword. 
 ; 
+;   2016-10-20 : JLF. Fix short int bug.
+;
 ;-
 function red_time2double, t, dir = dir, inverse = inverse
 
+  compile_opt idl2
+  
   isscalar = size(t, /n_dim) eq 0
   n = n_elements(t)
 
