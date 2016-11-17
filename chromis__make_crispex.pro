@@ -91,8 +91,10 @@
 ;   2016-09-28 : MGL. New keyword aligncontkludge. New output file
 ;                names including date and scan selection. 
 ;
-;   2016-11-02 : MGL. Changed default clip and tile. Now works with
+;   2016-11-02 : MGL. Changed default clips and tiles. Now works with
 ;                selection of scans done in polish_tseries.
+;
+;   2016-11-17 : MGL. Changed default clips and tiles again.
 ;   
 ;
 ;-
@@ -430,14 +432,16 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
       ;; Start processing data
       if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
-        tiles = [8, 16, 32]
-        clips = [8, 4, 1]
+        tiles = [8, 16, 32, 64, 128]
+        clips = [8, 4, 2, 1, 1]
       endif
 
+      iprogress = 0
+      Nprogress = Nscans*Nwav
       for iscan = 0L, Nscans-1 do begin
 
         if(n_elements(selscan) gt 0) then if selscan ne strtrim(uscans[iscan], 2) then continue
-        print, inam + ' : processing scan -> '+strtrim(uscans[iscan], 2)
+;        print, inam + ' : processing scan -> '+strtrim(uscans[iscan], 2)
 
         ;; Save the wavelength points in a separate file, common to
         ;; all the scans.
@@ -493,8 +497,10 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 ;          rrf = f + '/' + self.camrtag+'.'+state
 ;          wwf = f + '/' + self.camwbtag+'.'+state
 ;          print, inam + ' : processing state -> '+state 
-          red_progressbar, clock = clock, iwav, Nwav $
-                           , inam + ' : Rotate, shift, and dewarp (' + state + ')   '
+          red_progressbar, iprogress, Nprogress $
+                           , clock = clock, /predict $
+                           , 'Processing scan ' $
+                           + strtrim(uscans[iscan], 2) + ' state=' + state 
 
           ;; Get destretch to anchor camera (residual seeing)
           if(wbcor) then begin
@@ -547,6 +553,8 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 ;          tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
           
           if keyword_set(aligncontkludge) then begin
+            ;; This is the continuum point for a Ca scan, has to be
+            ;; different for a Hb scan:
             continnumpoint = scan_nbstates[iwav].fpi_state eq '3999_4000_+0'
             if continnumpoint then begin
               ;; Stretch the nb cont image to its wb image
@@ -573,6 +581,8 @@ pro chromis::make_crispex, rot_dir = rot_dir $
             d[*,*,iwav] = rotate(temporary(bla), rot_dir) 
 
           endif else d[*,*,iwav] = rotate( temporary(tmp), rot_dir)
+
+          iprogress++           ; update progress counter
           
         endfor                  ; iwav
 
@@ -584,7 +594,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           norm_spect = imean / cscl ;/ max(imean)
           norm_factor = cscl        ;* max(imean)
           spect_pos = wav + double(prefilters[ipref])
-          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
+;          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
           save, file = odir + '/spectfile.' + prefilters[ipref] + '.idlsave' $
                 , norm_spect, norm_factor, spect_pos
         endif
@@ -615,6 +625,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
             fzwrite, wb, odir + '/' + ofilewb, ' '
           endif
         endelse
+
       endfor                    ; iscan
       
       if(~keyword_set(scans_only)) then begin
