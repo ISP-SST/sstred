@@ -272,11 +272,14 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs=cgs, si=si
         
         ;; save curve
 
-        prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[pp], fitpars:par}
+        prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[pp], $
+               fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter}
      endif else begin
+
         y1 = interpol(yl, xl, iwav)
-        prefilter = [ispec/yl]
-        prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[pp], fitpars:prefilter}
+        prefilter = [ispec/yl1]
+        prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[pp], $
+               fitpars:prefilter, fts_model:y1}
      endelse
      save, file=self.out_dir + '/prefilter_fits/chromis_'+upref[pp]+'_prefilter.idlsave', prf
   endfor
