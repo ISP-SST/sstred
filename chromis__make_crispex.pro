@@ -96,7 +96,8 @@
 ;
 ;   2016-11-17 : MGL. Changed default clips and tiles again.
 ;   
-;
+;   2016-11-17 : JdlCR. Added prefilter calibration and absolute units
+;                calibration. Removed the /noflat keyword for the time being.
 ;-
 pro chromis::make_crispex, rot_dir = rot_dir $
                            , square = square $
@@ -104,7 +105,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
                            , clips=clips $
                            , scans_only = scans_only $
                            , overwrite = overwrite $
-                           , noflats=noflats $
+;                           , noflats=noflats $
                            , selscan=selscan $
                            , wbwrite = wbwrite $
                            , nostretch=nostretch $
@@ -210,6 +211,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       utunwavelength = pertuningstates[utunindx[sortindx]].tun_wavelength
 
       wav = utunwavelength
+      my_prefilters = pertuningstates[utunindx[sortindx]].prefilter
       Nwav = n_elements(utunindx)
 
       ;; Unique nb prefilters
@@ -282,96 +284,98 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
       ;; Load prefilters
       for inbpref = 0L, Nnbprefs-1 do begin
-        pfile = self.out_dir + '/prefilter_fits/'+nbdetector+'.'+unbprefs[inbpref]+'.prefilter.f0'
-        pwfile = self.out_dir + '/prefilter_fits/'+nbdetector+'.'+unbprefs[inbpref]+'.prefilter_wav.f0'
-        if ~file_test(pfile) then begin
-          print, inam + ' : prefilter file not found: '+pfile
-          return
-        endif
-        if ~file_test(pwfile) then begin
-          print, inam + ' : prefilter wavelength file not found: '+pwfile
-          return
-        endif
-        print, inam + ' : Loading:'
-        print, '  -> ' + file_basename(pfile)
-        rpref0 = f0(pfile)
-        print, '  -> ' + file_basename(pwfile)
-        rwav0 = f0(pwfile)
-        if inbpref eq 0 then begin
-          rpref = rpref0
-          rwav = rwav0 + unbprefsref[inbpref]
-        endif else begin
-          rpref = [rpref, rpref0]
-          rwav = [rwav, rwav0 + unbprefsref[inbpref]]
-        endelse
+         pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+'_prefilter.idlsave'
+         if ~file_test(pfile) then begin
+            print, inam + ' : prefilter file not found: '+pfile
+            return
+         endif
+         
+         restore, pfile ;; restores variable prf which is a struct
+         idxpref = where(my_prefilters eq unbprefs[inbpref], count)
+
+         if(inbpref eq 0) then begin
+            prefilter_curve = [0.d0]
+            prefilter_wav = [0.0d0]
+         endif
+         
+         if(count eq 1) then begin
+            prefilter_curve = [prefilter_curve, prf.pref]
+            prefilter_wav = [prefilter_wav, prf.wav]
+         endif else begin
+            me = median(prf.wav)
+            prefilter_curve = [prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.e10-me)]
+            prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
+         endelse
       endfor                    ; inbpref
-   
+      
+
+      rpref = 1.d0/prefilter_curve[1:*]
+      prefilter_wav = prefilter_wav[1:*]
+      
       ;; Do WB correction?
       if(Nwb eq Nnb) then wbcor = 1B else wbcor = 0B
 
 
-      ;; Interpolate prefilters to the observed grid 
-      rpref = 1./red_intepf(rwav, rpref, wav)
-
-      if(~keyword_set(noflats)) then begin
-        ;; Load clean flats and gains
-        for ii = 0L, Nwav-1 do begin
+     
+      ;; if(~keyword_set(noflats)) then begin
+      ;;   ;; Load clean flats and gains
+      ;;   for ii = 0L, Nwav-1 do begin
           
-          tff = self.out_dir + 'flats/' + self.camttag + '.' + prefilters[ipref] $
-                + '.'+st.uwav[ii]+'.unpol.flat'
-          rff = self.out_dir + 'flats/' + self.camrtag + '.' + prefilters[ipref] $
-                + '.'+st.uwav[ii]+'.unpol.flat'
-          tgg = self.out_dir + 'gaintables/' + self.camttag + '.' + prefilters[ipref] $
-                + '.' + st.uwav[ii] + '.lc4.gain'
-          rgg = self.out_dir + 'gaintables/' + self.camrtag + '.'+prefilters[ipref] $
-                + '.' + st.uwav[ii] + '.lc4.gain'
-          if(ii eq 0) then print, inam + ' : Loading: '
-          print,' -> '+tff
-          print,' -> '+rff
-          print,' -> '+tgg
-          print,' -> '+rgg
+      ;;     tff = self.out_dir + 'flats/' + self.camttag + '.' + prefilters[ipref] $
+      ;;           + '.'+st.uwav[ii]+'.unpol.flat'
+      ;;     rff = self.out_dir + 'flats/' + self.camrtag + '.' + prefilters[ipref] $
+      ;;           + '.'+st.uwav[ii]+'.unpol.flat'
+      ;;     tgg = self.out_dir + 'gaintables/' + self.camttag + '.' + prefilters[ipref] $
+      ;;           + '.' + st.uwav[ii] + '.lc4.gain'
+      ;;     rgg = self.out_dir + 'gaintables/' + self.camrtag + '.'+prefilters[ipref] $
+      ;;           + '.' + st.uwav[ii] + '.lc4.gain'
+      ;;     if(ii eq 0) then print, inam + ' : Loading: '
+      ;;     print,' -> '+tff
+      ;;     print,' -> '+rff
+      ;;     print,' -> '+tgg
+      ;;     print,' -> '+rgg
           
-          if ~file_test(tff) $
-             or ~file_test(rff) $
-             or ~file_test(tgg) $
-             or ~file_test(rgg) then begin
-            print, inam + ' : ERROR -> Flat/gain files not found'
-            return
-          endif
+      ;;     if ~file_test(tff) $
+      ;;        or ~file_test(rff) $
+      ;;        or ~file_test(tgg) $
+      ;;        or ~file_test(rgg) then begin
+      ;;       print, inam + ' : ERROR -> Flat/gain files not found'
+      ;;       return
+      ;;     endif
           
-          if(ii eq 0) then begin
-            dim = size(f0(tff),/dimen)
-            tratio = fltarr(dim[0], dim[1], nwav)
-            rratio = fltarr(dim[0], dim[1], nwav)
-          endif 
+      ;;     if(ii eq 0) then begin
+      ;;       dim = size(f0(tff),/dimen)
+      ;;       tratio = fltarr(dim[0], dim[1], nwav)
+      ;;       rratio = fltarr(dim[0], dim[1], nwav)
+      ;;     endif 
           
-          tmp = f0(tff)
-          tmp1 = f0(tgg)
-          idx = where(tmp1 gt 0.0001, count, complement = idx1)
-          mask = bytarr(dim) + 1B
-          tmp[idx] = mean(tmp[idx]) / tmp[idx]
-          tmp[idx] = tmp[idx] / tmp1[idx]
-          if(n_elements(idx1) gt 0) then begin
-            tmp[idx1] = 0.0d0
-            mask[idx1] = 0B
-          endif
-          tmp = red_fillpix(tmp, mask=red_cleanmask(mask),nthreads=6)
-          tratio[*,*,ii] = temporary(tmp)
+      ;;     tmp = f0(tff)
+      ;;     tmp1 = f0(tgg)
+      ;;     idx = where(tmp1 gt 0.0001, count, complement = idx1)
+      ;;     mask = bytarr(dim) + 1B
+      ;;     tmp[idx] = mean(tmp[idx]) / tmp[idx]
+      ;;     tmp[idx] = tmp[idx] / tmp1[idx]
+      ;;     if(n_elements(idx1) gt 0) then begin
+      ;;       tmp[idx1] = 0.0d0
+      ;;       mask[idx1] = 0B
+      ;;     endif
+      ;;     tmp = red_fillpix(tmp, mask=red_cleanmask(mask),nthreads=6)
+      ;;     tratio[*,*,ii] = temporary(tmp)
           
-          tmp = f0(rff)
-          tmp1 = f0(rgg)
-          idx = where(tmp1 gt 0.0001, count, complement = idx1)
-          mask = bytarr(dim) + 1B
-          tmp[idx] = mean(tmp[idx]) / tmp[idx]
-          tmp[idx] = tmp[idx] / tmp1[idx]
-          if(n_elements(idx1) gt 0) then begin
-            tmp[idx1] = 0.0d0
-            mask[idx1] = 0B
-          endif
-          tmp = red_fillpix(tmp, mask = red_cleanmask(mask),nthreads=6)
-          rratio[*,*,ii] = temporary(tmp)
-        endfor
-      endif                     ; ~noflats
+      ;;     tmp = f0(rff)
+      ;;     tmp1 = f0(rgg)
+      ;;     idx = where(tmp1 gt 0.0001, count, complement = idx1)
+      ;;     mask = bytarr(dim) + 1B
+      ;;     tmp[idx] = mean(tmp[idx]) / tmp[idx]
+      ;;     tmp[idx] = tmp[idx] / tmp1[idx]
+      ;;     if(n_elements(idx1) gt 0) then begin
+      ;;       tmp[idx1] = 0.0d0
+      ;;       mask[idx1] = 0B
+      ;;     endif
+      ;;     tmp = red_fillpix(tmp, mask = red_cleanmask(mask),nthreads=6)
+      ;;     rratio[*,*,ii] = temporary(tmp)
+      ;;   endfor
+      ;; endif                     ; ~noflats
 
       ;; Load WB image and define the image border
       tmp = red_readdata(wbgfiles[0])
