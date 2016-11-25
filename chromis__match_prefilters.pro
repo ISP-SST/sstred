@@ -33,7 +33,9 @@
 ; 
 ; :History:
 ; 
-;    2016-09-30 : MGL. Allow different lengths if one of them is 1. 
+;    2016-09-30 : MGL. Allow different lengths if one of them is 1.
+; 
+;    2016-11-25 : MGL. Allow NB filters to match themselves.
 ; 
 ;-
 function chromis::match_prefilters, pf1, pf2
@@ -77,7 +79,8 @@ function chromis::match_prefilters, pf1, pf2
   for ip=0, Npref-1 do begin
      ret[ip] = max(where( (prefilter_table[0,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) $
                           or (prefilter_table[1,*] eq list1[ip] and prefilter_table[0,*] eq list2[ip]) $
-                          or (prefilter_table[1,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) ) $
+                          or (prefilter_table[1,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) $
+                          or (prefilter_table[0,*] eq list1[ip] and prefilter_table[0,*] eq list2[ip]) ) $
                   ) ge 0
   endfor
 
@@ -121,5 +124,7 @@ pf1 = ['3978', '4846']
 print, pf1
 print, pf2
 print, a -> match_prefilters(pf2, pf1) ; Supposed to fail!
+
+print, a -> match_prefilters('3999', '3999')
 
 end
