@@ -65,6 +65,8 @@
 ; 
 ;     2016-11-16 : MGL. New keyword predict.
 ; 
+;     2016-11-28 : MGL. Call red_timestring with /interval.
+; 
 ; 
 ;-
 pro red_progressbar, i, N, message $
@@ -91,9 +93,9 @@ pro red_progressbar, i, N, message $
 ;stop
     if keyword_set(predict) and i gt 0 then begin
       ;;prediction = ' (total estimated '+strtrim(round(time/(percentdone/100.)), 2)+' s)' else prediction = '' 
-      prediction = ' ('+red_timestring(round(time*(1./(percentdone/100.)-1)), Nsecdec = 0, /short)+' s remaining)' 
+      prediction = ' ('+red_timestring(round(time*(1./(percentdone/100.)-1)), Nsecdec = 0, /interval)+' remaining)' 
     endif else prediction = '' 
-    time = 'in ' + red_timestring(round(time), Nsecdec = 0, /short) + ' s' + prediction
+    time = 'in ' + red_timestring(round(time), Nsecdec = 0, /interval) + prediction
   endif else time = ''
 
   if n_elements(barlength) eq 0 then barlength = 20

@@ -27,6 +27,11 @@
 ;     Nsecdecimals : in, optional, type=integer, default=5
 ;   
 ;        Use this number of decimals for the seconds.
+;
+;     interval : in, optional, type=boolean
+;
+;        Set this keyword to interpret t as a time interval, producing
+;        a different type of string. 
 ; 
 ; 
 ; :History:
@@ -38,9 +43,11 @@
 ; 
 ;     2016-11-16 : MGL. New keyword short.
 ; 
+;     2016-11-28 : MGL. New keyword interval.
+; 
 ; 
 ;-
-function red_timestring, t, Nsecdecimals = Nsecdecimals, short = short
+function red_timestring, t, Nsecdecimals = Nsecdecimals, short = short, interval = interval
 
   isscalar = size(t, /n_dim) eq 0
   n = n_elements(t)
@@ -66,9 +73,29 @@ function red_timestring, t, Nsecdecimals = Nsecdecimals, short = short
      hours = it / 3600L
      min = (it  - hours * 3600L) / 60L
      secs = tt - hours * 3600L - min * 60L
-     if hours gt 0 or ~keyword_set(short) then res[i] += red_stri(hours, ni = format) + ':'
-     if hours gt 0 or min gt 0 or ~keyword_set(short) then res[i] += red_stri(min, ni = format) + ':' 
-     res[i] += string(secs, format = secformat)
+
+     if keyword_set(short) then begin
+       if hours gt 0 then res[i] += string(hours, format = format) + ':'
+       if hours gt 0 or min gt 0 then res[i] += string(min, format = format) + ':' 
+       res[i] += string(secs, format = secformat)
+     endif else if keyword_set(interval) then begin
+       if hours gt 0 then res[i] += string(hours, format = format) + 'h'
+       if hours gt 0 or min gt 0 then res[i] += string(min, format = format) + 'm' 
+       if min gt 0 then begin
+         res[i] += string(secs, format = format) + 's'
+       endif else begin
+         res[i] += string(secs, format = secformat) + 's'
+       endelse
+     endif else begin
+       res[i] += red_stri(hours, ni = format) + ':'
+       res[i] += red_stri(min, ni = format) + ':' 
+       res[i] += string(secs, format = secformat)
+     endelse
+
+
+;     if hours gt 0 or ~keyword_set(short) then res[i] += red_stri(hours, ni = format) + ':'
+;     if hours gt 0 or min gt 0 or ~keyword_set(short) then res[i] += red_stri(min, ni = format) + ':' 
+;     res[i] += string(secs, format = secformat)
 ;     res[i] = red_stri(hours, ni = format) + ':' +red_stri(min, ni = format) + $
 ;              ':' + string(secs, format = secformat)
   endfor
