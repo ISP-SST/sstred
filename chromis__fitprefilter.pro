@@ -36,6 +36,7 @@
 ; 
 ;   2016-11-28 : MGL. Moved helper functions to their own files and
 ;                added header. Make and save a final plot of the fit.
+;                Prevent user from setting both /cgs and /si keywords.
 ; 
 ; 
 ; 
