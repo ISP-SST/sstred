@@ -21,9 +21,15 @@
 ; 
 ; :Keywords:
 ; 
+;     cgs : in, optional, type=boolean
 ;   
+;        Set this to use CGS units (default is to normalize with the
+;        continuum). 
+; 
+;     si : in, optional, type=boolean
 ;   
-;   
+;        Set this to use SI units (default is to normalize with the
+;        continuum).
 ; 
 ; 
 ; :History:
@@ -32,8 +38,10 @@
 ;                added header. Make and save a final plot of the fit.
 ; 
 ; 
+; 
+; 
 ;-
-pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs=cgs, si=si
+pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si = si
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
@@ -41,6 +49,11 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs=cgs, si=si
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
+
+  if keyword_set(si) and keyword_set(cgs) then begin
+    print, inam+' : Please do not set both /si and /cgs.'
+    retall
+  endif
 
   if ~ptr_valid(self.data_dirs) then begin
     print, inam+' : ERROR : undefined data_dir'
