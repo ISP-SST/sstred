@@ -53,9 +53,9 @@
 ; 
 ; :History:
 ;
-;      1999-05-?? : J. Chae. First version (as alignoffset.pro).
+;     1999-05-?? : J. Chae. First version (as alignoffset.pro).
 ;
-;      2016-11-22 : MGL. New keywords window and fitplane.
+;     2016-11-22 : MGL. New keywords window and fitplane.
 ;
 ;     2016-11-29 : MGL. Renamed into the red_ namespace.
 ;
@@ -109,7 +109,7 @@ function red_alignoffset, image, reference, cor, window = window, fitplane = fit
   x = x0+x1
   y = y0+y1
   if n_params() ge 3 then begin
-     image1= shift_sub(image1, -x, -y)
+     image1= red_shift_sub(image1, -x, -y)
      i=findgen(si(1))#replicate(1., si(2))+x
      j=replicate(1., si(1))#findgen(si(2))+y
      w=i ge 0 and i le si(1)-1 and j ge 0 and j le si(2)-1.

@@ -176,10 +176,10 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
           rit = 0
           repeat begin
 
-            shifts_new = alignoffset(im1c, im2c, /window, /fitplane)
+            shifts_new = red_alignoffset(im1c, im2c, /window, /fitplane)
             shifts_total = shifts_total + shifts_new
 
-            im2c = centerpic(shift_sub(im2o, shifts_total[0], shifts_total[1]), sz = msz)
+            im2c = centerpic(red_shift_sub(im2o, shifts_total[0], shifts_total[1]), sz = msz)
 
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
