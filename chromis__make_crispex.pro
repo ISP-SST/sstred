@@ -5,7 +5,7 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -48,9 +48,10 @@
 ;   
 ;       Set this to save data on a per-scan basis, not per time series.
 ;   
-;    overwrite  : in, type=boolean
+;    overwrite  : in, optional, type=boolean
 ;   
-;   
+;       Set this to overwrite existing files.   
+;
 ;    wbwrite : in, type=boolean
 ;
 ;       Set this to write also the global wideband image to the
@@ -97,7 +98,14 @@
 ;   2016-11-17 : MGL. Changed default clips and tiles again.
 ;   
 ;   2016-11-17 : JdlCR. Added prefilter calibration and absolute units
-;                calibration. Removed the /noflat keyword for the time being.
+;                calibration. Removed the /noflat keyword for the time
+;                being.
+;
+;   2016-11-28 : MGL. Renamed keyword aligncontkludge to aligncont,
+;                make it align not only the continuum image but all nb
+;                images based on output from earlier pipeline step
+;                align_continuum. 
+;
 ;-
 pro chromis::make_crispex, rot_dir = rot_dir $
                            , square = square $
@@ -112,7 +120,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
                            , verbose=verbose $
                            , no_timecor=no_timecor $
                            , float = float $
-                           , aligncontkludge = aligncontkludge
+                           , aligncont = aligncont
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -122,7 +130,6 @@ pro chromis::make_crispex, rot_dir = rot_dir $
   red_writelog, selfinfo = selfinfo
 
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
-  ;; Detector tags
 
   ;; Camera/detector identification
   self->getdetectors
@@ -280,7 +287,8 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       nbfiles = pertuningfiles[nbindx]
 
       ;; Prepare for making output file names
-      midpart = prefilters[ipref]+'_'+datestamp+'_scans='+red_collapserange(uscans, ld = '', rd = '')
+      midpart = prefilters[ipref] + '_' + datestamp + '_scans=' $ 
+                + red_collapserange(uscans, ld = '', rd = '')
 
       ;; Load prefilters
       for inbpref = 0L, Nnbprefs-1 do begin
@@ -440,6 +448,36 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         clips = [8, 4, 2, 1, 1]
       endif
 
+      
+      if keyword_set(aligncont) then begin
+
+        ;; Get shifts based on continuum vs wideband alignment.
+
+        aligndir = self.out_dir + '/align/' + timestamp $
+                   + '/' + prefilters[ipref] + '/'
+        
+        nname = aligndir+'scan_numbers.fz'
+        sname = aligndir+'continuum_shifts_smoothed.fz'
+        
+        if ~file_test(nname) or ~file_test(sname) then begin
+          print, inam + ' : At least one file missing for aligncont option:'
+          print, nname
+          print, sname
+          retall
+        endif
+        
+        ;; Read the shifts for the continuum images
+        align_scannumbers = f0(nname)
+        align_shifts = f0(sname)
+
+        ;; Use interpolation to get the shifts for the selected scans.
+        nb_shifts = fltarr(2, Nscans)
+        nb_shifts[0, *] = interpol(align_shifts[0, *], align_scannumbers, uscans)
+        nb_shifts[1, *] = interpol(align_shifts[1, *], align_scannumbers, uscans)
+
+      endif
+
+
       iprogress = 0
       Nprogress = Nscans*Nwav
       for iscan = 0L, Nscans-1 do begin
@@ -492,6 +530,23 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         endif
 
         wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
+
+        if keyword_set(aligncont) then begin
+          
+          ;; Interpolate to get the shifts for all wavelengths for
+          ;; this scan.
+
+          ;; Get these from somewhere else (scan_wbstates does not
+          ;; have the WB tuning or prefilter!):
+          lambdaW = 3950e-10
+          lambdaC = 3998.640d-10 + 1.258d-10
+          
+          xshifts = interpol([0., nb_shifts[0, iscan]], [lambdaW, lambdaC]*1e7 $
+                             , scan_nbstates.tun_wavelength*1e7)
+          yshifts = interpol([0., nb_shifts[1, iscan]], [lambdaW, lambdaC]*1e7 $
+                             , scan_nbstates.tun_wavelength*1e7)
+        
+        endif
 
         for iwav = 0L, Nwav - 1 do begin 
           ;; state = strjoin((strsplit(file_basename(st.ofiles[iwav,iscan]),'.',/extract))[1:*],'.')
@@ -556,15 +611,19 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           
 ;          tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
           
-          if keyword_set(aligncontkludge) then begin
-            ;; This is the continuum point for a Ca scan, has to be
-            ;; different for a Hb scan:
-            continnumpoint = scan_nbstates[iwav].fpi_state eq '3999_4000_+0'
-            if continnumpoint then begin
-              ;; Stretch the nb cont image to its wb image
-              gridx = red_dsgridnest(wwi, tmp, tiles, clips)
-              tmp = red_stretch(temporary(tmp), gridx)
-            endif
+          if keyword_set(aligncont) then begin
+
+            
+            tmp = shift_sub(tmp, -xshifts[iwav], -yshifts[iwav])
+
+;            ;; This is the continuum point for a Ca scan, has to be
+;            ;; different for a Hb scan:
+;            continnumpoint = scan_nbstates[iwav].fpi_state eq '3999_4000_+0'
+;            if continnumpoint then begin
+;              ;; Stretch the nb cont image to its wb image
+;              gridx = red_dsgridnest(wwi, tmp, tiles, clips)
+;              tmp = red_stretch(temporary(tmp), gridx)
+;            endif
           endif
 
           ;; Apply destretch to anchor camera and prefilter correction
