@@ -614,7 +614,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           if keyword_set(aligncont) then begin
 
             
-            tmp = shift_sub(tmp, -xshifts[iwav], -yshifts[iwav])
+            tmp = red_shift_sub(tmp, -xshifts[iwav], -yshifts[iwav])
 
 ;            ;; This is the continuum point for a Ca scan, has to be
 ;            ;; different for a Hb scan:
