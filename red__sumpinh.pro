@@ -177,7 +177,6 @@ pro red::sumpinh, nthreads = nthreads $
                         pinhname = pinhname, status = status
             if( status ne 0 ) then begin
                 print, inam+' : failed to load calibration data for:', states[sel[0]].filename
-            stop
                 continue
             endif
             
