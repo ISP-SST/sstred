@@ -101,7 +101,10 @@
 ;                selection. Changed default clip and tile. Improved
 ;                WB lightcurve plot. 
 ;
-;   2016-11-03 : MGL. Removed keywords ext_time, ang, and shift.
+;   2016-11-03 : MGL. Removed keywords ext_time, ext_date, ang, and
+;                shift. 
+;
+;   2016-11-30 : MGL. New keyword fitsoutput.
 ;
 ;
 ;-
@@ -119,8 +122,9 @@ pro chromis::polish_tseries, xbd = xbd $
                              , crop = crop $
 ;                             , ext_time = ext_time $
                              , fullframe = fullframe $
-                             , ext_date = ext_date $
-                             , timefiles = timefiles
+;                             , ext_date = ext_date $
+                             , timefiles = timefiles $
+                             , fitsoutput = fitsoutput
   
 
   ;; Name of this method
@@ -226,6 +230,8 @@ pro chromis::polish_tseries, xbd = xbd $
       ;; Read headers to get obs_time and load the images into a cube
       for iscan = 0L, Nscans -1 do begin
         
+        red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube', clock = clock
+
         tmp = red_readdata(wfiles[iscan], head = h)
 
         if keyword_set(timefiles) then begin
@@ -243,7 +249,7 @@ pro chromis::polish_tseries, xbd = xbd $
 
           date_ave = fxpar(h, 'DATE-AVE', count = hasdateave)
           if hasdateave then begin
-            date_ave_split = strsplit(date_ave, 'T', count = Nsplit)
+            date_ave_split = strsplit(date_ave, 'T', /extract, count = Nsplit)
             ddate = date_ave_split[0]
             if Nsplit gt 1 then ttime = date_ave_split[1] else undefine, ttime
           endif else undefine, ddate, ttime
@@ -405,10 +411,84 @@ pro chromis::polish_tseries, xbd = xbd $
       me = mean(tmean)
       for iscan = 0L, Nscans - 1 do cub[*,*,iscan] *= (me / tmean[iscan])
 
-      ;; Save WB results as lp_cube
-      ofil = 'wb_'+midpart+'_corrected.icube'
-      print, inam + ' : saving WB corrected cube -> ' + odir + ofil
-      red_lp_write, fix(round(temporary(cub))), odir + ofil
+      if keyword_set(fitsoutput) then begin
+        ;; Save WB results as a fits file
+        ofil = 'wb_'+midpart+'_corrected_im.fits'
+        print, inam + ' : saving WB corrected cube -> ' + odir + ofil
+
+        ;; Make header
+        dims = size(cub, /dim)
+        type=(size(fix(1)))[1]
+        mkhdr,hdr,type,dims,/extend
+        ;; Keywords to describe data cube
+        sxaddpar, hdr, before='DATE', 'SOLARNET', 0.5
+        sxaddpar, hdr, before='DATE', 'BTYPE',    'Intensity'
+        sxaddpar, hdr, before='DATE', 'BUNIT',    'DU' ; Digital unit?
+        sxaddpar, hdr, before='DATE', 'CDELT1',   float(self.image_scale), ' [arcsec] x-coordinate increment'
+        sxaddpar, hdr, before='DATE', 'CDELT2',   float(self.image_scale), ' [arcsec] y-coordinate increment'
+;        sxaddpar, hdr, before='DATE', 'CDELT3',   1.,               ' [m] wavelength-coordinate axis increment'
+;        sxaddpar, hdr, before='DATE', 'CDELT4',   1.,               ' [s] time-coordinate axis increment'
+        sxaddpar, hdr, before='DATE', 'CTYPE1',   'x',              ' [arcsec]'
+        sxaddpar, hdr, before='DATE', 'CTYPE2',   'y',              ' [arcsec]'
+        sxaddpar, hdr, before='DATE', 'CTYPE3',   'wavelength',     ' [s]'
+        sxaddpar, hdr, before='DATE', 'CTYPE4',   'time',           ' [s]'
+        sxaddpar, hdr, before='DATE', 'CUNIT1',   'arcsec'
+        sxaddpar, hdr, before='DATE', 'CUNIT2',   'arcsec'
+        sxaddpar, hdr, before='DATE', 'CUNIT3',   'm'
+        sxaddpar, hdr, before='DATE', 'CUNIT4',   's'
+        sxaddpar, hdr, before='DATE', 'COMMENT',  "Index order is (x,y,lambda,t)"
+        ;; DATE_OBS should be getting the value including decimals
+        ;; from the raw data headers, not just integer seconds as
+        ;; here:
+        sxaddpar, hdr, before='DATE', 'DATE_OBS', datestamp,        ' '
+        ;; IS STARTOBS needed?
+        sxaddpar, hdr, before='DATE', 'STARTOBS', datestamp,        ' '
+        ;; Keywords from wstates
+        sxaddpar, hdr, before='DATE', 'DETECTOR', wstates[0].detector
+        sxaddpar, hdr, before='DATE', 'CAMERA',   wstates[0].camera
+        sxaddpar, hdr, before='DATE', 'IS_WB',    wstates[0].is_wb
+        if wstates[0].cam_settings ne '' then $
+           sxaddpar, hdr, before='DATE', 'CAM_SETTINGS',  wstates[0].cam_settings
+        if wstates[0].pf_wavelength ne 0.0 then $
+           sxaddpar, hdr, before='DATE', 'PF_WAVELENGTH', wstates[0].pf_wavelength
+        if wstates[0].exposure ne 0.0d then $
+           sxaddpar, hdr, before='DATE', 'EXPOSURE',      wstates[0].exposure
+        ;; Keyword info from other variables
+        sxaddpar, hdr, before='DATE', 'FILTER1',  prefilters[ipref]
+
+        ;; Make time tabhdu extension with Nscans rows
+        fxbhmake, ehead, Nscans
+        s_array = dblarr(1, 1, 1, Nscans)
+        s_array[0] = wstates.scannumber
+        t_array = dblarr(1, 1, 1, Nscans)
+        t_array[0] = red_time2double(time)-red_time2double(timestamp)
+        w_array = fltarr(1, 1, 1, 1)
+        w_array[0] = wstates[0].pf_wavelength
+        tabstruct = {tabulations: {time: {val:t_array $
+                                          , comment:'time-coordinates'}, $
+                                   wavelength: {val:w_array $
+                                                , comment:'wavelength-coordinates'}, $
+                                   scannumber: {val:s_array $
+                                                , comment:'scannumbers'}, $
+                                   comment: ' For storing tabulated keywords'}}
+        
+        
+        ;; Add the wavelength dimension
+        cub = reform(cub, nx, ny, 1, Nscans, /overwrite) 
+        ;; Write the file
+        red_writedata, odir + ofil, fix(round(temporary(cub))) $
+                       , header = hdr, tabhdu = tabstruct, /over
+        
+
+      endif else begin
+
+        ;; Save WB results as lp_cube
+        ofil = 'wb_'+midpart+'_corrected.icube'
+        print, inam + ' : saving WB corrected cube -> ' + odir + ofil
+        red_lp_write, fix(round(temporary(cub))), odir + ofil
+
+      endelse
+
 
     endfor                      ; ipref
   endfor                        ; itimestamp
