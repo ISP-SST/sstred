@@ -31,7 +31,9 @@
 ; 
 ; :History:
 ; 
-;    2016-09-25 : MGL. First version.
+;    2016-11-25 : MGL. First version.
+; 
+;    2016-12-03 : MGL. Use red_centerpic.
 ; 
 ; 
 ; 
@@ -170,8 +172,8 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 
           msz = 1024
           shifts_total = [0., 0.]
-          im1c = centerpic(im1o, sz = msz)
-          im2c = centerpic(im2o, sz = msz)
+          im1c = red_centerpic(im1o, sz = msz)
+          im2c = red_centerpic(im2o, sz = msz)
           
           rit = 0
           repeat begin
@@ -179,7 +181,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
             shifts_new = red_alignoffset(im1c, im2c, /window, /fitplane)
             shifts_total = shifts_total + shifts_new
 
-            im2c = centerpic(red_shift_sub(im2o, shifts_total[0], shifts_total[1]), sz = msz)
+            im2c = red_centerpic(red_shift_sub(im2o, shifts_total[0], shifts_total[1]), sz = msz)
 
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
