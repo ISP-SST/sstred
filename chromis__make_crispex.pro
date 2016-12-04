@@ -104,7 +104,9 @@
 ;   2016-11-28 : MGL. Renamed keyword aligncontkludge to aligncont,
 ;                make it align not only the continuum image but all nb
 ;                images based on output from earlier pipeline step
-;                align_continuum. 
+;                align_continuum.
+;
+;   2016-12-04 : JdlCR. Fixed contalign bug when only one scan is present.
 ;
 ;-
 pro chromis::make_crispex, rot_dir = rot_dir $
@@ -472,10 +474,16 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
         ;; Use interpolation to get the shifts for the selected scans.
         nb_shifts = fltarr(2, Nscans)
-        nb_shifts[0, *] = interpol(align_shifts[0, *], align_scannumbers, uscans)
-        nb_shifts[1, *] = interpol(align_shifts[1, *], align_scannumbers, uscans)
-
-      endif
+        for bb=0, Nscans-1 do begin
+           pos = where(align_scannumbers eq uscans[bb], cccc)
+           if(cccc eq 1) then nb_shifts[*, bb] = align_shifts[*, pos] else begin
+              nb_shifts[0, *] = interpol([reform(align_shifts[0, *])], [float(align_scannumbers)], [float(uscans)])
+              nb_shifts[1, *] = interpol([reform(align_shifts[1, *])], [float(align_scannumbers)], [float(uscans)])
+           endelse
+        endfor
+        pos = where(~finite(nb_shifts), cccc)
+        if(cccc gt 0) then nb_shifts[pos] = 0
+     endif
 
 
       iprogress = 0
