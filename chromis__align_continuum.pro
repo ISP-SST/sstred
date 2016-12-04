@@ -34,6 +34,12 @@
 ;    2016-11-25 : MGL. First version.
 ; 
 ;    2016-12-03 : MGL. Use red_centerpic.
+;
+;    2016-12-04 : JdlCR. Fixed problems when only one scan has been
+;                  reduced. Fixed bug when ignore_indx = where(w eq
+;                  0.0). It can return -1 and then the last element
+;                  will be set to zero. 
+
 ; 
 ; 
 ; 
@@ -201,9 +207,9 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
         ;; The biweight_mean function returns weight zero for
         ;; outliers. 
         contrast_mean = biweight_mean(contrasts,contrast_sigma,w)
-        ignore_indx = where(w eq 0.0)
-        contrasts[ignore_indx] = 0
-
+        ignore_indx = where(w eq 0.0, count)
+        if(count gt 0) then contrasts[ignore_indx] = 0
+        
         ;; Smooth the shifts, taking image quality into account.
         shifts_smooth = fltarr(2, Nscans) 
         weights = contrasts^2
@@ -220,12 +226,12 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
                           , weights = weights, yfit = shifts_fit)
             shifts_smooth[iaxis, *] = shifts_fit
           endif else begin
-            ;; Use weighted smoothing
-            shifts_smooth[iaxis, *] = red_wsmooth(nbcstates.scannumber, shifts[iaxis, *], smooth_window, 2 $
-                                                  , weight = weights, select = 0.6 )
+             ;; Use weighted smoothing
+             shifts_smooth[iaxis, *] = red_wsmooth(nbcstates.scannumber, shifts[iaxis, *], smooth_window, 2 $
+                                                   , weight = weights, select = 0.6 )
           endelse
         endfor                  ; iaxis
-
+        
         fzwrite, [nbcstates.scannumber], nname, ' '
         fzwrite, shifts, sname, ' '
         fzwrite, shifts_smooth, mname

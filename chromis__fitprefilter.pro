@@ -212,7 +212,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     ;; Prepdata
     
     if(nwav gt 1) then begin
-       w = red_maskprefilter(iwav, ispec)
+       if(keyword_set(mask)) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
        dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[pp]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
