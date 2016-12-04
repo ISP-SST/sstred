@@ -224,14 +224,14 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
           endelse
         endfor                  ; iaxis
 
-        fzwrite, nbcstates.scannumber, nname, ' '
+        fzwrite, [nbcstates.scannumber], nname, ' '
         fzwrite, shifts, sname, ' '
         fzwrite, shifts_smooth, mname
-        fzwrite, contrasts, cname
+        fzwrite, [contrasts], cname
 
 
         ;; Plot colors representing image quality
-        colors = wavelengthtorgb(cgscalevector(-contrasts, 400, 750), /num)
+        colors = red_wavelengthtorgb(cgscalevector(-contrasts, 400, 750), /num)
         xrange = [-1, Nscans]
         title = timestamp + '/' + prefilters[ipref]
 
@@ -246,8 +246,11 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
                                              , nbcstates[iscan].scannumber, contrasts[iscan] $
                                              , color = colors[iscan], psym = 16
         ;; /Add one separately so /loaded symbols appear on screen
-        cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
-                  , color = colors[1, 0], psym = 18
+        if(n_elements(contrast) gt 1) then cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
+           , color = colors[1, 0], psym = 18 $
+        else cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, [contrasts] $
+           , color = [colors], psym = 18
+        
         cgcontrol, output = cpname
 
         ;; Plot shifts
