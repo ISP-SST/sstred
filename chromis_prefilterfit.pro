@@ -29,11 +29,13 @@
 ; :History:
 ; 
 ;   2016-11-28 : MGL. Split from chromis__fitprefilter.pro and added
-;                header. 
+;                header.
+;
+;   2016-12-04 : JdlCR. Added weights to remove masked sections.
 ; 
 ; 
 ;-
-function chromis_prefilterfit, par, xl = xl, yl = yl, ispec = ispec, iwav = iwav, pref=pref
+function chromis_prefilterfit, par, xl = xl, yl = yl, ispec = ispec, iwav = iwav, pref=pref, w=w
   
   iwav1 = iwav - pref
   xl1 = xl - pref
@@ -41,13 +43,7 @@ function chromis_prefilterfit, par, xl = xl, yl = yl, ispec = ispec, iwav = iwav
   y1 = interpol(yl, xl1+par[1], iwav1) 
   prefc = chromis_prefilter(par, iwav, pref)
   
-  res = ispec - (y1 * prefc)
-
-  plot, iwav, ispec, /line
-  oplot, iwav, y1*prefc
-  oplot, iwav, prefc/par[0] * max(ispec), line=2
-  wait, 0.01
   
-  return, res
+  return, (ispec - (y1 * prefc)) * w
 
 end

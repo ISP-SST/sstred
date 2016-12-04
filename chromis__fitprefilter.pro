@@ -30,6 +30,11 @@
 ;   
 ;        Set this to use SI units (default is to normalize with the
 ;        continuum).
+;
+;    mask : in, optional, type=boolean
+;
+;           if selected, will allow the user to mask out spectral
+;           positions from the fit.
 ; 
 ; 
 ; :History:
@@ -38,11 +43,14 @@
 ;                added header. Make and save a final plot of the fit.
 ;                Prevent user from setting both /cgs and /si keywords.
 ; 
-; 
+;   2016-12-04 : JdlCR. Allow to mask regions of the mean
+;                spectra. Sometimes there is no real quiet-sun and the line center
+;                must be masked.
+;
 ; 
 ; 
 ;-
-pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si = si
+pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si = si, mask = mask
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
@@ -204,7 +212,8 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     ;; Prepdata
     
     if(nwav gt 1) then begin
-      dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[pp])}
+       w = red_maskprefilter(iwav, ispec)
+       dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[pp]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
       fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 7)

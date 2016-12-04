@@ -85,6 +85,8 @@
 ;                for the calibration of CHROMIS
 ; 
 ;    2016-11-29 : MGL. New keywords cgs_conversion and si_conversion.
+;
+;    2016-12-04 : JdlCR. Removed new keywords, they break the routine.
 ; 
 ;
 ;-
@@ -94,9 +96,9 @@ pro red_satlas, xstart, xend, outx, outy $
                 , nocont = nocont $
                 , cgs = cgs $
                 , cont = con $
-                , si = si $
-                , cgs_conversion = cgs_conversion $
-                , si_conversion = si_conversion
+                , si = si ;,$
+;                , cgs_conversion = cgs_conversion, $
+;                , si_conversion = si_conversion
 
   ;; Find the input data
   this_dir = file_dirname( routine_filepath("red_satlas"), /mark )
