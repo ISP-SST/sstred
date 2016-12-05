@@ -1,6 +1,49 @@
-;; Return an RGB triple representing the color associated with the
-;; wavelength(s) lambda given in nm.
-function red_WavelengthToRGB, lambda, hex = hex, num = num
+; docformat = 'rst'
+
+;+
+; Return an RGB triple representing the color associated with the
+; wavelength(s) lambda given in nm.
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, ISP
+; 
+; 
+; :Returns:
+;
+;    One or several RGB triplets approximating the visible spectrum.
+; 
+; :Params:
+; 
+;    lambda : Wavelength in nm.
+; 
+; 
+; :Keywords:
+; 
+;    hex : in, optional, type=boolean
+;
+;       Set this to get the triplet in hexadecimal string representation.  
+; 
+;    num : in, optional, type=boolean
+;
+;       Set this to get the triplet in numerical form, suitable for
+;       use with cgplot.
+;    
+; 
+; 
+; :History:
+; 
+;    2016-12-05 : MGL. Added documentation header.
+; 
+; 
+;-
+function red_wavelengthtorgb, lambda, hex = hex, num = num
 
   N = n_elements(lambda)
 
@@ -52,4 +95,4 @@ function red_WavelengthToRGB, lambda, hex = hex, num = num
   ;; Return the triples
   return, rgb
 
-END                             ; WavelengthToRGB
+end                             ; WavelengthToRGB
