@@ -1,8 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Return an RGB triple representing the color associated with the
-; wavelength(s) lambda given in nm.
+; Translate wavelengths to RGB triplets.
 ; 
 ; 
 ; :Categories:
@@ -14,15 +13,14 @@
 ; 
 ;    Mats Löfdahl, ISP
 ; 
-; 
 ; :Returns:
 ;
-;    One or several RGB triplets approximating the visible spectrum.
+;    One or several RGB triplets approximating wavelengths within the
+;    visible spectrum.
 ; 
 ; :Params:
 ; 
 ;    lambda : Wavelength in nm.
-; 
 ; 
 ; :Keywords:
 ; 
@@ -34,12 +32,11 @@
 ;
 ;       Set this to get the triplet in numerical form, suitable for
 ;       use with cgplot.
-;    
 ; 
 ; 
 ; :History:
 ; 
-;    2016-12-05 : MGL. Added documentation header.
+;    2016-12-05 : MGL. Added documentation header. Vectorized.
 ; 
 ; 
 ;-
@@ -48,48 +45,73 @@ function red_wavelengthtorgb, lambda, hex = hex, num = num
   N = n_elements(lambda)
 
   rgb = fltarr(3, N)
+  factor = fltarr(N)
   
   IntensityMax = 255
-  Gamma        = 0.80  
+  gamma        = 0.80  
 
-  for i = 0, N-1 do begin
+  ;; Intensity falls off near the vision limits:
 
-     ;; RGB values
-     if lambda[i] lt 380 then rgb[*, i] = [0., 0., 0.] $
-     else if lambda[i] lt 440 then rgb[*, i] = [-(lambda[i]-440.)/(440.-380.), 0.0, 1.0] $
-     else if lambda[i] lt 490 then rgb[*, i] = [0.0, (lambda[i] - 440.)/(490. - 440.), 1.0] $
-     else if lambda[i] lt 510 then rgb[*, i] = [0.0, 1.0, -(lambda[i] - 510.) / (510. - 490.)] $
-     else if lambda[i] lt 580 then rgb[*, i] = [(lambda[i] - 510.) / (580. - 510.), 1., 0.] $
-     else if lambda[i] lt 645 then rgb[*, i] = [1., -(lambda[i] - 645.) / (645. - 580.), 0.] $
-     else if lambda[i] lt 780 then rgb[*, i] = [1., 0., 0.] $
-     else rgb[*, i] = [0., 0., 0.]
-     
-     ;; Let the intensity fall off near the vision limits
-     if lambda[i] lt 380 then factor = 0.0 $
-     else if lambda[i] lt 420 then factor = 0.3 + 0.7*(lambda[i] - 380.) / (420. - 380.) $
-     else if lambda[i] lt 700 then factor = 1.0 $
-     else if lambda[i] lt 780 then factor = 0.3 + 0.7*(780. - lambda[i]) / (780. - 700.) $
-     else factor = 0.0
-     
-     ;; "Adjust"
-     rgb[*, i] = IntensityMax * (rgb[*, i] * Factor)^Gamma
-     
-  endfor
+  indx = where(lambda ge 380 and lambda lt 420, Nindx)
+  if Nindx gt 0 then factor[indx] = 0.3 + 0.7*(lambda[indx] - 380.) / (420. - 380.)
+  indx = where(lambda ge 420 and lambda lt 700, Nindx)
+  if Nindx gt 0 then factor[indx] = 1.0
+  indx = where(lambda ge 700 and lambda lt 780, Nindx)
+  if Nindx gt 0 then factor[indx] = 0.3 + 0.7*(780. - lambda[indx]) / (780. - 700.) 
+  factor = transpose([[factor], [factor], [factor]])
 
-  rgb = round(rgb)
-  
-  ;; Make RGB hexadecimal strings.
-  if keyword_set(hex) then begin  
-     rgbhex = strarr(N)
-     for i = 0, N-1 do rgbhex[i] = string(rgb[0, i]*65536L+rgb[1, i]*256L+rgb[2, i],format='(Z06)')
-     return, rgbhex
+  ;; RGB triplets:
+
+  indx = where(lambda lt 440, Nindx)
+  if Nindx gt 0 then begin
+    rgb[0, indx] = -(lambda[indx]-440.)/(440.-380.)
+    rgb[2, indx] = 1.0
   endif
 
-  ;; Make long integer array, suitable for plotting.
+  indx = where(lambda ge 440 and lambda lt 490, Nindx)
+  if Nindx gt 0 then begin
+    rgb[1, indx] = (lambda[indx] - 440.)/(490. - 440.) 
+    rgb[2, indx] = 1.0
+  endif
+
+  indx = where(lambda ge 490 and lambda lt 510, Nindx)
+  if Nindx gt 0 then begin
+    rgb[1, indx] = 1.0
+    rgb[2, indx] = -(lambda[indx] - 510.) / (510. - 490.) 
+  endif
+
+  indx = where(lambda ge 510 and lambda lt 580, Nindx)
+  if Nindx gt 0 then begin
+    rgb[0, indx] = (lambda[indx] - 510.) / (580. - 510.) 
+    rgb[1, indx] = 1.0
+  endif
+
+  indx = where(lambda ge 580 and lambda lt 645, Nindx)
+  if Nindx gt 0 then begin
+    rgb[0, indx] = 1.0
+    rgb[1, indx] = -(lambda[indx] - 645.) / (645. - 580.)
+  endif
+  
+  indx = where(lambda ge 645 and lambda lt 780, Nindx)
+  if Nindx gt 0 then rgb[0, indx] = 1.0
+
+
+  ;; Apply scaling and gamma
+  rgb = round(IntensityMax * (rgb * factor)^gamma)
+
+
+  ;; Make RGB hexadecimal strings.
+  if keyword_set(hex) then begin  
+    rgbhex = strarr(N)
+    for i = 0, N-1 do rgbhex[indx] = string(rgb[0, i]*65536L+rgb[1, i]*256L+rgb[2, i], format='(Z06)')
+    return, rgbhex
+  endif
+
+  ;; Make long integers, suitable for plotting.
   if keyword_set(num) then begin
-     rgbnum = lonarr(N)
-     for i = 0, N-1 do rgbnum[i] = rgb[0, i] + rgb[1, i]*256L + rgb[2, i]*65536L
-     return, rgbnum
+    rgbnum = lonarr(N)
+    for i = 0, N-1 do rgbnum[indx] = rgb[0, i] + rgb[1, i]*256L + rgb[2, i]*65536L
+    return, rgbnum
   endif
 
   ;; Return the triples
