@@ -61,7 +61,7 @@ pro red_write_tabhdu, tabhdu, filename
       if size(data,/type) eq 12 then data = fix(data-32768)
       fxbwrite,lun,data,j+1,1   ; FITS tables are unit indexed
     endfor
-    ;; done with this extension
+    ;; Done with this extension
 
     fxbfinish,lun
     
