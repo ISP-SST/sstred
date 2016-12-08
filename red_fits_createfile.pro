@@ -1,13 +1,22 @@
 ; docformat = 'rst'
 
 ;+
-; Create a fits file to write data cube slices into.
+; Create a fits file to write data cube slices into when you don't
+; want to have the entire cube in memory at the same time.
 ; 
-; Once the file is created, write slices to the file with
-; fileassoc[islice]=data, where data has to be of the correct type and
-; size.
+; Usage:
 ;
-; Close the file with free_lun,lun when done.
+; mkhdr,head,type,naxisx   ; Make a FITS header appropriate for your data cube.
+; sxaddpar,hdr,...         ; Add whatever information you want
+; 
+; red_fits_createfile, 'file.fits', head, lun, fileassoc [, tabhdu = tabhdu ]
+; for i=0,N-1 do begin
+;    im = ... ; Calculate image number i.
+;    fileassoc[i]=im
+; endfor
+; free_lun,lun
+;
+; Binary extensions can be included by use of the tabhdu keyword.
 ;
 ; :Categories:
 ;
@@ -43,25 +52,37 @@
 ;       An assoc variable that can be used to write (and read!) data
 ;       slices. 
 ;
-;
+;    tabhdu : in, type=struct
+; 
+;       Binary extensions to be added to the fits file. See
+;       documentation in red_writedata.pro.
 ; 
 ; 
 ; :History:
 ; 
 ;    2016-11-07 : MGL. First version.
 ; 
+;    2016-12-07 : MGL. New keyword tabhdu.
+; 
 ; 
 ; 
 ;-
-pro red_fits_createfile, filename, head, lun, fileassoc
+pro red_fits_createfile, filename, head, lun, fileassoc, tabhdu = tabhdu
 
   ;; Open the new fits file
   openw, lun, filename, /get_lun, /swap_if_little_endian
 
+  hdr = head                    ; Protect input
+  if n_elements(tabhdu) gt 0 then begin
+    ;; Binary extension header 
+    extname = tag_names(tabhdu)
+    for i = 0, n_elements(extname)-1 do red_create_extheaders, tabhdu, extname[i], hdr
+  endif
+
   ;; Make byte-version of header and write it to the file.
-  Nlines = n_elements(head)     ; Number of header lines
+  Nlines = n_elements(hdr)     ; Number of header lines
   bhdr = replicate(32B, 80L*Nlines)
-  for n = 0L, Nlines-1 do bhdr[80*n] = byte(head[n])
+  for n = 0L, Nlines-1 do bhdr[80*n] = byte(hdr[n])
   writeu, lun, bhdr
 
   ;; Pad to mod 2880 bytes
@@ -89,9 +110,6 @@ pro red_fits_createfile, filename, head, lun, fileassoc
      else : stop
   endcase
 
-  ;; Set up an assoc variable for writing the slices
-  fileassoc = assoc(lun, array_structure, offset)
-
   ;; Pad the file, including the data part, to mod 2880 bytes
   endpos = offset + Nelements*abs(bitpix)/8 ; End position of data
   Npad = 2880 - (endpos mod 2880)
@@ -100,5 +118,17 @@ pro red_fits_createfile, filename, head, lun, fileassoc
      rec = assoc(lun,bpad,endpos)
      rec[0] = bpad
   endif
+
+  ;; Write binary extension if any.
+  if n_elements(tabhdu) gt 0 then begin
+    free_lun, lun               ; The file is expected to be closed for this.
+    red_write_tabhdu, tabhdu, filename
+    ;; Open the fits file again, so the image data can be written
+    ;; outside of this subroutine.
+    openu, lun, filename, /get_lun, /swap_if_little_endian
+  endif
+
+  ;; Set up an assoc variable for writing the slices
+  fileassoc = assoc(lun, array_structure, offset)
 
 end
