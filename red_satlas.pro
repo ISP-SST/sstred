@@ -87,6 +87,8 @@
 ;    2016-11-29 : MGL. New keywords cgs_conversion and si_conversion.
 ;
 ;    2016-12-04 : JdlCR. Removed new keywords, they break the routine.
+;
+;    2016-12-04 : MGL. Renamed the keywords.
 ; 
 ;
 ;-
@@ -96,9 +98,9 @@ pro red_satlas, xstart, xend, outx, outy $
                 , nocont = nocont $
                 , cgs = cgs $
                 , cont = con $
-                , si = si ;,$
-;                , cgs_conversion = cgs_conversion, $
-;                , si_conversion = si_conversion
+                , si = si $
+                , conversion_cgs = conversion_cgs, $
+                , conversion_si = conversion_si
 
   ;; Find the input data
   this_dir = file_dirname( routine_filepath("red_satlas"), /mark )
@@ -126,9 +128,9 @@ pro red_satlas, xstart, xend, outx, outy $
     aa_to_cm = 1e-8
 
     ;; From Watt /(cm2 ster AA) to erg/(s cm2 ster cm)
-    cgs_conversion = joule_2_erg / aa_to_cm      
+    conversion_cgs = joule_2_erg / aa_to_cm      
     ;; To erg/
-    cgs_conversion *= (outx*aa_to_cm)^2 / clight 
+    conversion_cgs *= (outx*aa_to_cm)^2 / clight 
 
   endif
       
@@ -140,16 +142,16 @@ pro red_satlas, xstart, xend, outx, outy $
     m_to_cm = 1e2
 
     ;; From from Watt /(s cm2 ster AA) to Watt/(s m2 ster m) 
-    si_conversion = m_to_cm^2 / aa_to_m       
+    conversion_si = m_to_cm^2 / aa_to_m       
     ;; To Watt/(s m2 Hz ster)
-    si_conversion *= (outx*aa_to_m)^2 / clight
+    conversion_si *= (outx*aa_to_m)^2 / clight
 
   endif
   
   if(keyword_set(cgs)) then begin
 
-    outy *= cgs_conversion
-    con  *= cgs_conversion
+    outy *= conversion_cgs
+    con  *= conversion_cgs
     return
 
 ;    outy *= joule_2_erg/aa_to_cm     ; from Watt /(cm2 ster AA) to erg/(s cm2 ster cm)
@@ -162,8 +164,8 @@ pro red_satlas, xstart, xend, outx, outy $
 
   if(keyword_set(si)) then begin
 
-    outy *= si_conversion
-    con  *= si_conversion
+    outy *= conversion_si
+    con  *= conversion_si
     return
 
 ;    clight = 2.99792458e8         ;speed of light [m/s]                                  
@@ -178,7 +180,7 @@ pro red_satlas, xstart, xend, outx, outy $
 ;    return
   endif
   
-  if not keyword_set(nocont) then begin
+  if ~keyword_set(nocont) then begin
     outy /= con
     con[*] = 1.d0
   endif
