@@ -103,7 +103,11 @@
 ;                Swap endian if needed. Remove byteorder keywords.
 ;
 ;   2016-11-04 : JLF. Added extension and tabkey keywords to support 
-;		 reading from tab-HDUs and other extensions. 
+;		 reading from tab-HDUs and other extensions.      
+;
+;   2016-12-07 : MGL. Use readfits so we can read 4-dimensional cubes.
+;
+;
 ;-
 function red_readdata, fname $
                        , header = header $
@@ -177,11 +181,18 @@ function red_readdata, fname $
         
         ;; primary HDU
         if n_elements(extension) eq 0 then begin
-	  red_rdfits, fname, image = data $
-		      , uint=uint, swap=swap, framenumber = framenumber
-	  
-	  ;; Compensate for initial weird format
-	  if( bit_shift ne 0 ) then data = ishft(data, bit_shift)
+          if keyword_set(uint) then begin
+            ;; readfits does not support uint data so use Pit's
+            ;; red_rdfits instead. 
+            red_rdfits, fname, image = data $
+                        , uint=uint, swap=swap, framenumber = framenumber
+            ;; Compensate for initial weird format
+            if bit_shift ne 0 then data = ishft(data, bit_shift)
+          endif else begin
+            ;; By default use readfits so we can read 4-dimensional
+            ;; cubes.
+            data = readfits(fname, Nslice = framenumber)
+          endelse
 
 	  ;; Does it need to be byteswapped?
 	  doswap = 0
