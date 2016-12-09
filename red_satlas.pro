@@ -87,6 +87,8 @@
 ;    2016-11-29 : MGL. New keywords cgs_conversion and si_conversion.
 ;
 ;    2016-12-04 : JdlCR. Removed new keywords, they break the routine.
+;
+;    2016-12-09 : JdlCR. Fixed double bug in the computation of "si_conversion".
 ; 
 ;
 ;-
@@ -121,9 +123,9 @@ pro red_satlas, xstart, xend, outx, outy $
   
   if arg_present(cgs_conversion) or keyword_set(cgs) then begin
 
-    clight = 2.99792458e10      ;speed of light [cm/s]
-    joule_2_erg = 1e7
-    aa_to_cm = 1e-8
+    clight = 2.99792458d10      ;speed of light [cm/s]
+    joule_2_erg = 1d7
+    aa_to_cm = 1d-8
 
     ;; From Watt /(cm2 ster AA) to erg/(s cm2 ster cm)
     cgs_conversion = joule_2_erg / aa_to_cm      
@@ -134,15 +136,16 @@ pro red_satlas, xstart, xend, outx, outy $
       
   if arg_present(si_conversion) or keyword_set(si) then begin
 
-    clight = 2.99792458e8       ;speed of light [m/s]                                  
-    aa_to_m = 1e-10                                                                        
-    cm_to_m = 1e-2     
-    m_to_cm = 1e2
+    clight = 2.99792458d8       ;speed of light [m/s]                                  
+    aa_to_m = 1d-10                                                                        
+    cm_to_m = 1d-2     
+    m_to_cm = 1d2
 
     ;; From from Watt /(s cm2 ster AA) to Watt/(s m2 ster m) 
-    si_conversion = m_to_cm^2 / aa_to_m       
+;    si_conversion = 1.0d0
+    
     ;; To Watt/(s m2 Hz ster)
-    si_conversion *= (outx*aa_to_m)^2 / clight
+    si_conversion = (outx*aa_to_m)^2 / (clight * cm_to_m^2 * aa_to_m )
 
   endif
   
