@@ -89,6 +89,9 @@
 ;    2016-12-04 : JdlCR. Removed new keywords, they break the routine.
 ;
 ;    2016-12-04 : MGL. Renamed the keywords.
+;
+;    2016-12-09 : JdlCR. Fixed double bug in the computation of
+;                 "conversion_si". 
 ; 
 ;
 ;-
@@ -121,11 +124,11 @@ pro red_satlas, xstart, xend, outx, outy $
   outy = yl_fts[pos]
   con = cint_fts[pos]
   
-  if arg_present(cgs_conversion) or keyword_set(cgs) then begin
+  if arg_present(conversion_cgs) or keyword_set(cgs) then begin
 
-    clight = 2.99792458e10      ;speed of light [cm/s]
-    joule_2_erg = 1e7
-    aa_to_cm = 1e-8
+    clight = 2.99792458d10      ;speed of light [cm/s]
+    joule_2_erg = 1d7
+    aa_to_cm = 1d-8
 
     ;; From Watt /(cm2 ster AA) to erg/(s cm2 ster cm)
     conversion_cgs = joule_2_erg / aa_to_cm      
@@ -134,17 +137,15 @@ pro red_satlas, xstart, xend, outx, outy $
 
   endif
       
-  if arg_present(si_conversion) or keyword_set(si) then begin
+  if arg_present(conversion_si) or keyword_set(si) then begin
 
-    clight = 2.99792458e8       ;speed of light [m/s]                                  
-    aa_to_m = 1e-10                                                                        
-    cm_to_m = 1e-2     
-    m_to_cm = 1e2
+    clight = 2.99792458d8       ;speed of light [m/s]                                  
+    aa_to_m = 1d-10                                                                        
+    cm_to_m = 1d-2     
+    m_to_cm = 1d2
 
-    ;; From from Watt /(s cm2 ster AA) to Watt/(s m2 ster m) 
-    conversion_si = m_to_cm^2 / aa_to_m       
     ;; To Watt/(s m2 Hz ster)
-    conversion_si *= (outx*aa_to_m)^2 / clight
+    conversion_si = (outx*aa_to_m)^2 / (clight * cm_to_m^2 * aa_to_m )
 
   endif
   
@@ -154,12 +155,6 @@ pro red_satlas, xstart, xend, outx, outy $
     con  *= conversion_cgs
     return
 
-;    outy *= joule_2_erg/aa_to_cm     ; from Watt /(cm2 ster AA) to erg/(s cm2 ster cm)
-;    outy *= (outx*aa_to_cm)^2/clight ; to erg/
-;    
-;    con *= joule_2_erg/aa_to_cm
-;    con *= (outx*aa_to_cm)^2/clight
-;    return
   endif
 
   if(keyword_set(si)) then begin
@@ -168,16 +163,6 @@ pro red_satlas, xstart, xend, outx, outy $
     con  *= conversion_si
     return
 
-;    clight = 2.99792458e8         ;speed of light [m/s]                                  
-;    aa_to_m = 1e-10                                                                        
-;    cm_to_m = 1e-2                       
-;
-;    outy /= cm_to_m^2 * aa_to_m       ; from from Watt /(s cm2 ster AA) to Watt/(s m2 ster m) 
-;    outy *= (outx*aa_to_m)^2 / clight ; to Watt/(s m2 Hz ster)
-;    
-;    con /= cm_to_m^2 * aa_to_m
-;    con *= (outx*aa_to_m)^2 / clight
-;    return
   endif
   
   if ~keyword_set(nocont) then begin
