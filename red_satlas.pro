@@ -102,7 +102,7 @@ pro red_satlas, xstart, xend, outx, outy $
                 , cgs = cgs $
                 , cont = con $
                 , si = si $
-                , conversion_cgs = conversion_cgs, $
+                , conversion_cgs = conversion_cgs $
                 , conversion_si = conversion_si
 
   ;; Find the input data

@@ -260,7 +260,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         restore, cfile
         if(n_elements(ff) eq 5) then full = 1 else full = 0
 
-        tmean = mean(tmean) / tmean
+        ;tmean = mean(tmean) / tmean
         
         ;; Get the scan selection from wfiles (from the sav file)
         wbgfiles = wfiles
@@ -306,21 +306,25 @@ pro chromis::make_crispex, rot_dir = rot_dir $
          if(inbpref eq 0) then begin
             prefilter_curve = [0.d0]
             prefilter_wav = [0.0d0]
+            prefilter_wb = [0.0d0]
          endif
          
          if(count eq 1) then begin
             prefilter_curve = [prefilter_curve, prf.pref]
             prefilter_wav = [prefilter_wav, prf.wav]
+            prefilter_wb = [prefilter_wb, prf.wbint]
          endif else begin
             me = median(prf.wav)
-            prefilter_curve = [prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.e10-me)]
+            prefilter_curve = [prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
             prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
+            prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
          endelse
       endfor                    ; inbpref
       
 
       rpref = 1.d0/prefilter_curve[1:*]
       prefilter_wav = prefilter_wav[1:*]
+      prefilter_wb = prefilter_wb[1:*]
       
       ;; Do WB correction?
       if(Nwb eq Nnb) then wbcor = 1B else wbcor = 0B
@@ -660,9 +664,9 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         if n_elements(imean) eq 0 then begin 
           imean = fltarr(nwav)
           for ii = 0L, nwav-1 do imean[ii] = median(d[*,*,ii])
-          cscl = 4.0                    ; 32768 / 4096
+          ;;cscl = 4.0                    ; 32768 / 4096
           ;; if(keyword_set(scans_only)) then cscl = 1.0
-          norm_spect = imean / cscl ;/ max(imean)
+          norm_spect = imean / 1.0 ;/ max(imean)
           norm_factor = cscl        ;* max(imean)
           spect_pos = wav + double(prefilters[ipref])
 ;          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
@@ -673,9 +677,9 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         
         if(~keyword_set(scans_only)) then begin
           ;; Write this scan's data cube to assoc file
-          if keyword_set(no_timecor) then tscl = 1 else tscl = tmean[iscan]
+          if keyword_set(no_timecor) then tscl = 1 else tscl = tmean[iscan]/mean(prefilter_wb)
           if(keyword_set(float)) then begin
-            dat[iscan] = d*cscl*tscl
+            dat[iscan] = d*tscl
           endif else begin
             d1 = round(d*cscl*tscl)
             dat[iscan] = fix(d1)
