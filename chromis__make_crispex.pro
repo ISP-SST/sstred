@@ -667,7 +667,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           ;;cscl = 4.0                    ; 32768 / 4096
           ;; if(keyword_set(scans_only)) then cscl = 1.0
           norm_spect = imean / 1.0 ;/ max(imean)
-          norm_factor = cscl        ;* max(imean)
+          norm_factor = 1.0
           spect_pos = wav + double(prefilters[ipref])
 ;          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
           save, file = odir + '/spectfile.' + prefilters[ipref] + '.idlsave' $
@@ -681,7 +681,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           if(keyword_set(float)) then begin
             dat[iscan] = d*tscl
           endif else begin
-            d1 = round(d*cscl*tscl)
+            d1 = round(d*tscl)
             dat[iscan] = fix(d1)
           endelse
           if(keyword_set(verbose)) then begin
