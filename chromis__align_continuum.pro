@@ -36,10 +36,10 @@
 ;    2016-12-03 : MGL. Use red_centerpic.
 ;
 ;    2016-12-04 : JdlCR. Fixed problems when only one scan has been
-;                  reduced. Fixed bug when ignore_indx = where(w eq
-;                  0.0). It can return -1 and then the last element
-;                  will be set to zero. 
-
+;                 reduced. Fixed bug when ignore_indx = where(w eq
+;                 0.0). It can return -1 and then the last element
+;                 will be set to zero.
+; 
 ; 
 ; 
 ; 
@@ -254,7 +254,8 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
                                              , nbcstates[iscan].scannumber, contrasts[iscan] $
                                              , color = colors[iscan], psym = 16
         ;; /Add one separately so /loaded symbols appear on screen
-        if(n_elements(contrast) gt 1) then cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
+
+        if(n_elements(contrasts) gt 1) then cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
            , color = colors[1, 0], psym = 18 $
         else cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, [contrasts] $
            , color = [colors], psym = 18
