@@ -41,8 +41,6 @@
 ;                 will be set to zero.
 ; 
 ; 
-; 
-; 
 ;-
 pro chromis::align_continuum, continuum_filter = continuum_filter $
                               , overwrite = overwrite 
@@ -254,11 +252,12 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
                                              , nbcstates[iscan].scannumber, contrasts[iscan] $
                                              , color = colors[iscan], psym = 16
         ;; /Add one separately so /loaded symbols appear on screen
-
-        if(n_elements(contrasts) gt 1) then cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
-           , color = colors[1, 0], psym = 18 $
-        else cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, [contrasts] $
-           , color = [colors], psym = 18
+        if(n_elements(contrasts) gt 1) then $
+           cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
+                     , color = colors[1, 0], psym = 18 $
+        else $
+           cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, [contrasts] $
+                     , color = [colors], psym = 18
         
         cgcontrol, output = cpname
 
@@ -298,5 +297,6 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   
   print, inam + ' : Please inspect the smooting results shown in align/??:??:??/????/*.pdf.'
   print, inam + ' : Edit continuum_shifts_smoothed.fz if you do not like the results of the smoothing.'
+  print, inam + ' : The lines should be smoothed versions of the points, but with low-contrast data having less (or no) weight.'
 
 end
