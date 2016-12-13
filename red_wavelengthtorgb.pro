@@ -38,6 +38,8 @@
 ; 
 ;    2016-12-05 : MGL. Added documentation header. Vectorized.
 ; 
+;    2016-12-13 : MGL. Bugfix in hex and num output.
+; 
 ; 
 ;-
 function red_wavelengthtorgb, lambda, hex = hex, num = num
@@ -95,25 +97,18 @@ function red_wavelengthtorgb, lambda, hex = hex, num = num
   indx = where(lambda ge 645 and lambda lt 780, Nindx)
   if Nindx gt 0 then rgb[0, indx] = 1.0
 
-
   ;; Apply scaling and gamma
   rgb = round(IntensityMax * (rgb * factor)^gamma)
 
-
   ;; Make RGB hexadecimal strings.
-  if keyword_set(hex) then begin  
-    rgbhex = strarr(N)
-    for i = 0, N-1 do rgbhex[indx] = string(rgb[0, i]*65536L+rgb[1, i]*256L+rgb[2, i], format='(Z06)')
-    return, rgbhex
-  endif
-
+  if keyword_set(hex) then $
+     return, string(reform(rgb[0, *]*65536L + rgb[1, *]*256L + rgb[2, *]) $
+                    , format='(Z06)')
+  
   ;; Make long integers, suitable for plotting.
-  if keyword_set(num) then begin
-    rgbnum = lonarr(N)
-    for i = 0, N-1 do rgbnum[indx] = rgb[0, i] + rgb[1, i]*256L + rgb[2, i]*65536L
-    return, rgbnum
-  endif
-
+  if keyword_set(num) then $
+     return, reform(rgb[0,*] + rgb[1, *]*256L + rgb[2, *]*65536L)
+  
   ;; Return the triples
   return, rgb
 
