@@ -353,7 +353,7 @@ pro chromis::extractstates, strings, states $
      endif
      states[ifile].fullstate = strjoin(fullstate_list, '_')
 
-     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock
+     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock, /predict
 
   endfor                        ; ifile
 
