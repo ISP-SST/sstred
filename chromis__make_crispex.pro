@@ -261,6 +261,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         if(n_elements(ff) eq 5) then full = 1 else full = 0
 
         ;tmean = mean(tmean) / tmean
+
         
         ;; Get the scan selection from wfiles (from the sav file)
         wbgfiles = wfiles
@@ -677,7 +678,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         
         if(~keyword_set(scans_only)) then begin
           ;; Write this scan's data cube to assoc file
-          if keyword_set(no_timecor) then tscl = 1 else tscl = tmean[iscan]/mean(prefilter_wb)
+          if keyword_set(no_timecor) then tscl = 1 else tscl = mean(prefilter_wb) / tmean[iscan]
           if(keyword_set(float)) then begin
             dat[iscan] = d*tscl
           endif else begin
