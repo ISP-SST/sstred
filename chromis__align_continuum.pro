@@ -39,13 +39,16 @@
 ;                 reduced. Fixed bug when ignore_indx = where(w eq
 ;                 0.0). It can return -1 and then the last element
 ;                 will be set to zero.
+;
+;    2016-12-16 : JdlCR. Added /no_plot, usefull when working with
+;                 screen remotely.
 ; 
 ; 
 ; 
 ; 
 ;-
 pro chromis::align_continuum, continuum_filter = continuum_filter $
-                              , overwrite = overwrite 
+                              , overwrite = overwrite , no_plot = no_plot
    
   
   ;; Name of this method
@@ -88,7 +91,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   timestamps = timestamps[sindx]
   print, inam + ' : Selected -> '+ strjoin(timestamps, ', ')
 
-  cgwindow
+  if(~keyword_set(no_plot)) then cgwindow
 
   ;; Loop over timestamp directories
   for itimestamp = 0L, Ntimestamps-1 do begin
@@ -237,64 +240,65 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
         fzwrite, shifts_smooth, mname
         fzwrite, [contrasts], cname
 
-
-        ;; Plot colors representing image quality
-        colors = red_wavelengthtorgb(cgscalevector(-contrasts, 400, 750), /num)
-        xrange = [-1, Nscans]
-        title = timestamp + '/' + prefilters[ipref]
-
-
-        ;; Plot contrasts
-        cgcontrol, /delete, /all
-        cgplot, /add, [0], /nodata $
-                , xrange = xrange, yrange = [min(contrasts), max(contrasts)] + 0.01*[-1, 1] $
-                , title = title $
-                , xtitle = 'scan number', ytitle = 'RMS contrast' 
-        for iscan = 0, Nscans-1 do cgwindow, 'cgplot', /load, /over $
-                                             , nbcstates[iscan].scannumber, contrasts[iscan] $
-                                             , color = colors[iscan], psym = 16
-        ;; /Add one separately so /loaded symbols appear on screen
-
-        if(n_elements(contrasts) gt 1) then cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
-           , color = colors[1, 0], psym = 18 $
-        else cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, [contrasts] $
-           , color = [colors], psym = 18
-        
-        cgcontrol, output = cpname
-
-        ;; Plot shifts
-        axistag = ['X', 'Y']
-        for iaxis = 0, 1 do begin
-          ;; X and Y axis loop
-          cgcontrol, /delete, /all
-
-          yrange = [min(shifts[iaxis, *]), max(shifts[iaxis, *])] + 0.2*[-1, 1]
-          cgplot, /add, [0], /nodata, color = 'blue' $
-                  , title = title $
-                  , xrange = xrange, yrange = yrange $
-                  , xtitle = 'scan number', ytitle = axistag[iaxis]+' shift / 1 pixel'
-          
-          for iscan = 0, Nscans-1 do begin
-            cgwindow, 'cgplot', /load, /over $
-                      , nbcstates[iscan].scannumber, shifts[iaxis, iscan] $
-                      , color = colors[iscan], psym = 16
-          endfor                ; iscan
-
-          cgplot, /add, /over, shifts_smooth[iaxis, *], color = 'red'
-
- 
-          case iaxis of
-            0: cgcontrol, output = xpname
-            1: cgcontrol, output = ypname
-          endcase
-
-        endfor                  ; iaxis
-
-      endif
-
-    endfor                      ; ipref
+        if(~keyword_set(no_plot)) then begin
+           
+           ;; Plot colors representing image quality
+           colors = red_wavelengthtorgb(cgscalevector(-contrasts, 400, 750), /num)
+           xrange = [-1, Nscans]
+           title = timestamp + '/' + prefilters[ipref]
+           
+           
+           ;; Plot contrasts
+           cgcontrol, /delete, /all
+           cgplot, /add, [0], /nodata $
+                   , xrange = xrange, yrange = [min(contrasts), max(contrasts)] + 0.01*[-1, 1] $
+                   , title = title $
+                   , xtitle = 'scan number', ytitle = 'RMS contrast' 
+           for iscan = 0, Nscans-1 do cgwindow, 'cgplot', /load, /over $
+                                                , nbcstates[iscan].scannumber, contrasts[iscan] $
+                                                , color = colors[iscan], psym = 16
+           ;; /Add one separately so /loaded symbols appear on screen
+           
+           if(n_elements(contrasts) gt 1) then cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, contrasts[1, 0] $
+              , color = colors[1, 0], psym = 18 $
+           else cgwindow, 'cgplot', /add, /over, nbcstates[0].scannumber, [contrasts] $
+                          , color = [colors], psym = 18
+           
+           cgcontrol, output = cpname
+           
+           ;; Plot shifts
+           axistag = ['X', 'Y']
+           for iaxis = 0, 1 do begin
+              ;; X and Y axis loop
+              cgcontrol, /delete, /all
+              
+              yrange = [min(shifts[iaxis, *]), max(shifts[iaxis, *])] + 0.2*[-1, 1]
+              cgplot, /add, [0], /nodata, color = 'blue' $
+                      , title = title $
+                      , xrange = xrange, yrange = yrange $
+                      , xtitle = 'scan number', ytitle = axistag[iaxis]+' shift / 1 pixel'
+              
+              for iscan = 0, Nscans-1 do begin
+                 cgwindow, 'cgplot', /load, /over $
+                           , nbcstates[iscan].scannumber, shifts[iaxis, iscan] $
+                           , color = colors[iscan], psym = 16
+              endfor            ; iscan
+              
+              cgplot, /add, /over, shifts_smooth[iaxis, *], color = 'red'
+              
+              
+              case iaxis of
+                 0: cgcontrol, output = xpname
+                 1: cgcontrol, output = ypname
+              endcase
+              
+           endfor               ; iaxis
+        endif ;no_plot
+     endif ; overwrite
+      
+   endfor                       ; ipref
     
-  endfor                        ; itimestamp
+ endfor                         ; itimestamp
   
   print, inam + ' : Please inspect the smooting results shown in align/??:??:??/????/*.pdf.'
   print, inam + ' : Edit continuum_shifts_smoothed.fz if you do not like the results of the smoothing.'
