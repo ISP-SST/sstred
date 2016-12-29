@@ -408,7 +408,18 @@ function chromis::filenames, datatype, states $
               ext = '.gain'
               if ~keyword_set(no_fits) then ext += '.fits'
            end
-
+           'cavityfree_gain' : begin
+              dir = self.out_dir + '/gaintables/' 
+              red_append, tag_list, detector
+              red_append, tag_list, exposure
+              red_append, tag_list, gain
+              red_append, tag_list, prefilter
+              if states[istate].is_wb eq 0 and tuning ne '' then $
+                 red_append, tag_list, tuning
+              ext = '_cavityfree.gain'
+              if ~keyword_set(no_fits) then ext += '.fits'
+           end
+           
            'pinh' :  begin
               dir = self.out_dir+'/pinhs/'
               red_append, tag_list, detector

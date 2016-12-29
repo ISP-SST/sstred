@@ -72,7 +72,7 @@
 ; 
 ; 
 ;-
-pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize, cavityfree=cavityfree
+pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize;, cavityfree=cavityfree
                                 ;
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -81,8 +81,8 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
   
-  if(keyword_set(cavityfree)) then tosearch = self.out_dir+'/flats/*cavityfree.flat.fits' $
-  else  tosearch = self.out_dir+'/flats/*.flat'
+  ;if(keyword_set(cavityfree)) then tosearch = self.out_dir+'/flats/*cavityfree.flat.fits' $
+  tosearch = self.out_dir+'/flats/*.flat.fits'
   
   files = file_search(tosearch, count = ct)
                                 ;
@@ -99,7 +99,9 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
            continue
         endif
      endif
-     fzread, flat, files[ii], head
+                                ;fzread, flat, files[ii], head
+     flat = red_readdata(files[ii])
+     
                                 ;
                                 ; Only one camera?
                                 ;
@@ -120,11 +122,10 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
 
      gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
      
-     if(keyword_set(cavityfree)) then namout = file_basename(files[ii], '_cavityfree.flat.fits')+'.gain' $
-     else namout = file_basename(files[ii], '.flat')+'.gain'
+     namout = file_basename(files[ii], '.flat.fits')+'.gain'
      
      outdir = self.out_dir+'/gaintables/'
-     h = head
+     h = ' ';head
                                 ;
                                 ; Output gaintable
      file_mkdir, outdir

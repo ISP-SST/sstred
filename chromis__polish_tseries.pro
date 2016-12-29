@@ -359,6 +359,7 @@ pro chromis::polish_tseries, xbd = xbd $
         nd = size(dum,/dim)
         cub = fltarr([nd, Nscans])
         cub[*,*,0] = temporary(dum)
+
         for iscan=1, Nscans-1 do begin
           red_progressbar, clock = clock, iscan, Nscans $
                            , inam+' : Making full-size cube, de-rotating and shifting.'
@@ -392,7 +393,9 @@ pro chromis::polish_tseries, xbd = xbd $
       endfor                    ; iscan
 
       ;; Measure time-dependent intensity variation (sun move's in the Sky)
-      tmean = total(total(cub,1),1) / float(nx) / float(ny)
+      tmean = fltarr(Nscans)
+      for ik = 0, Nscans-1 do tmean[ii] = median(cub[*,*,ii])
+      
       cgplot, uscans, tmean, xtitle = 'Scan number', ytitle = 'Mean WB intensity', psym=-1
 
       ;; Prepare for making output file names
