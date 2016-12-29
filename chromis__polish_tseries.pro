@@ -124,7 +124,8 @@ pro chromis::polish_tseries, xbd = xbd $
                              , fullframe = fullframe $
 ;                             , ext_date = ext_date $
                              , timefiles = timefiles $
-                             , fitsoutput = fitsoutput
+                             , fitsoutput = fitsoutput $
+                             , blur = blur
   
 
   ;; Name of this method
@@ -397,6 +398,7 @@ pro chromis::polish_tseries, xbd = xbd $
       ;; Prepare for making output file names
       midpart = prefilters[ipref] + '_' + datestamp + '_scans=' $
                 + red_collapserange(uscans, ld = '', rd = '')
+      if keyword_set(blur) then midpart += '_blurred'
 
       ;; Save angles, shifts and de-stretch grids
       odir = self.out_dir + '/calib_tseries/'
@@ -411,10 +413,15 @@ pro chromis::polish_tseries, xbd = xbd $
       me = mean(tmean)
       for iscan = 0L, Nscans - 1 do cub[*,*,iscan] *= (me / tmean[iscan])
 
+      if keyword_set(blur) then cub = smooth(cub, [29, 29, 1], /edge_wrap)
+
       if keyword_set(fitsoutput) then begin
         ;; Save WB results as a fits file
         ofil = 'wb_'+midpart+'_corrected_im.fits'
         print, inam + ' : saving WB corrected cube -> ' + odir + ofil
+
+        ;; Add the wavelength dimension
+        cub = reform(cub, nx, ny, 1, Nscans, /overwrite) 
 
         ;; Make header
         dims = size(cub, /dim)
@@ -426,11 +433,11 @@ pro chromis::polish_tseries, xbd = xbd $
         sxaddpar, hdr, before='DATE', 'BUNIT',    'DU' ; Digital unit?
         sxaddpar, hdr, before='DATE', 'CDELT1',   float(self.image_scale), ' [arcsec] x-coordinate increment'
         sxaddpar, hdr, before='DATE', 'CDELT2',   float(self.image_scale), ' [arcsec] y-coordinate increment'
-;        sxaddpar, hdr, before='DATE', 'CDELT3',   1.,               ' [m] wavelength-coordinate axis increment'
-;        sxaddpar, hdr, before='DATE', 'CDELT4',   1.,               ' [s] time-coordinate axis increment'
+        sxaddpar, hdr, before='DATE', 'CDELT3',   1.,               ' [m] wavelength-coordinate axis increment'
+        sxaddpar, hdr, before='DATE', 'CDELT4',   1.,               ' [s] time-coordinate axis increment'
         sxaddpar, hdr, before='DATE', 'CTYPE1',   'x',              ' [arcsec]'
         sxaddpar, hdr, before='DATE', 'CTYPE2',   'y',              ' [arcsec]'
-        sxaddpar, hdr, before='DATE', 'CTYPE3',   'wavelength',     ' [s]'
+        sxaddpar, hdr, before='DATE', 'CTYPE3',   'wavelength',     ' [m]'
         sxaddpar, hdr, before='DATE', 'CTYPE4',   'time',           ' [s]'
         sxaddpar, hdr, before='DATE', 'CUNIT1',   'arcsec'
         sxaddpar, hdr, before='DATE', 'CUNIT2',   'arcsec'
@@ -456,30 +463,46 @@ pro chromis::polish_tseries, xbd = xbd $
         ;; Keyword info from other variables
         sxaddpar, hdr, before='DATE', 'FILTER1',  prefilters[ipref]
 
+        if keyword_set(blur) then begin
+          sxaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
+        endif
+
         ;; Make time tabhdu extension with Nscans rows
-        fxbhmake, ehead, Nscans
-        s_array = dblarr(1, 1, 1, Nscans)
+        s_array = lonarr(1, 1, 1, Nscans)
         s_array[0] = wstates.scannumber
         t_array = dblarr(1, 1, 1, Nscans)
-        t_array[0] = red_time2double(time)-red_time2double(timestamp)
+        t_array[0] = red_time2double(time);-red_time2double(timestamp)
         w_array = fltarr(1, 1, 1, 1)
-        w_array[0] = wstates[0].pf_wavelength
-        tabstruct = {tabulations: {time: {val:t_array $
-                                          , comment:'time-coordinates'}, $
-                                   wavelength: {val:w_array $
-                                                , comment:'wavelength-coordinates'}, $
-                                   scannumber: {val:s_array $
-                                                , comment:'scannumbers'}, $
-                                   comment: ' For storing tabulated keywords'}}
-        
-        
-        ;; Add the wavelength dimension
-        cub = reform(cub, nx, ny, 1, Nscans, /overwrite) 
-        ;; Write the file
-        red_writedata, odir + ofil, fix(round(temporary(cub))) $
-                       , header = hdr, tabhdu = tabstruct, /over
-        
+        ;;w_array[0] = wstates.tun_wavelength
+        w_array[0] = float(prefilters[0])*1e-10
+        tabhdu = {tabulations: {time: {val:t_array $
+                                       , comment:'time-coordinates'}, $
+                                wavelength: {val:w_array $
+                                             , comment:'wavelength-coordinates'}, $
+                                scannumber: {val:s_array $
+                                             , comment:'scannumbers'}, $
+                                comment: ' For storing tabulated keywords'}}
+stop
+        red_fits_createfile, odir + ofil, hdr, lun, fileassoc, tabhdu = tabhdu
+        for iscan = 0, Nscans-1 do fileassoc[iscan] = round(cub[*, *, *, iscan])
+        free_lun, lun
+        print, inam + ' : Wrote file '+odir + ofil
 
+;        ;; Write the file
+;        red_writedata, odir + ofil, fix(round(temporary(cub))) $
+;                       , header = hdr, tabhdu = tabstruct, /over
+ 
+
+rcub = readfits(odir + ofil, rhdr)
+rdcub = red_readdata(odir + ofil, head = rdhdr)
+help, cub
+print, hdr, format = '(a0)'
+help, rcub
+print, rhdr, format = '(a0)'
+;help, rdcub
+;print, rdhdr, format = '(a0)'
+stats, round(cub)-rcub
+stop
       endif else begin
 
         ;; Save WB results as lp_cube
