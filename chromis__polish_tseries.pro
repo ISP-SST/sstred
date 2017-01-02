@@ -393,7 +393,7 @@ pro chromis::polish_tseries, xbd = xbd $
 
       ;; Measure time-dependent intensity variation (sun move's in the Sky)
       tmean = fltarr(Nscans)
-      for ik = 0, Nscans-1 do tmean[ii] = median(cub[*,*,ii])
+      for ik = 0, Nscans-1 do tmean[ik] = median(cub[*,*,ik])
       
       cgplot, uscans, tmean, xtitle = 'Scan number', ytitle = 'Mean WB intensity', psym=-1
 
