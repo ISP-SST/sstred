@@ -321,6 +321,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   norm_spect = fltarr(nwav,4)
   spect_pos = wav + double(pref)
   norm_factor = fltarr(4)
+  ppc = indgen(nwav)
 
   ;; start processing data
   for ss = 0L, nscan-1 do begin
@@ -394,10 +395,15 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
 
  ;; Mask spectra and FOV for crosstalk?
      if(~keyword_set(no_cross_talk)) then begin
-        if(keyword_set(mask) AND ss eq 0) then begin
+        if(keyword_set(mask) AND n_elements(pixmask) eq 0) then begin
            ppc = red_select_spoints(wav, imean)
-        endif else ppc = indgen(nwav)
-        crt = red_get_ctalk(d, idx=ppc)
+           if(n_elements(ppc) gt 1) then im = total(abs(d[*,*,3,ppc]),4) $
+           else im = d[*,*,3,ppc]
+           pixmask = red_select_area(im)
+        endif
+       
+        
+           crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
         for tt=1,3 do for ww = 0, nwav-1 do d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
      endif
     
