@@ -27,7 +27,7 @@
 ;    
 ;    threshold : in, optional, type=float, default=0.1
 ; 
-;       Threshold for identifying a strong enough pinhole.
+;       Threshold for identifying a strong enough pinhole. (in normalized intensity)
 ;
 ;    
 ;    extraclip : 
@@ -47,6 +47,12 @@
 ;     
 ;      Indicate the prefilter you want to calculate the clips for,
 ;      Default is to do it for all prefilters there is data for.
+;
+; 
+;    nref : in, optional, type=integer, default=5
+;     
+;      How many of the most prominent keypoints in the pinhole images
+;      to attempt to pair up and find the coordinate transformation
 ;
 ; 
 ; :history:
@@ -75,6 +81,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
                          , pref = pref $
                          , extraclip = extraclip $
                          , refcam = refcam $
+                         , nref = nref $
                          , verbose = verbose
 
     ;; Name of this method
@@ -87,6 +94,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
     if(n_elements(threshold) eq 0) then threshold = 0.1
     if(n_elements(refcam) eq 0) THEN refcam = 0
     if(n_elements(verbose) eq 0) THEN verbose = 0
+    if(n_elements(nref) eq 0) THEN nref = 5
    
     Ncams = 3
 
@@ -177,7 +185,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
                     if max(h_init(*,*,icam)) gt 0 then begin
                         this_init = h_init(*,*,icam)
                     endif
-                    this_transform = rdx_img_align( ref_img, img, nref=4, h_init=this_init, threshold=threshold, verbose=verbose )
+                    this_transform = rdx_img_align( ref_img, img, nref=nref, h_init=this_init, threshold=threshold, verbose=verbose )
 
                     align(*,*,istate,icam) = this_transform
                     h_init(*,*,icam) = temporary(this_init)
