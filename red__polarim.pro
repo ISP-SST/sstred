@@ -57,7 +57,7 @@
 ;-
 function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch $
                        , dir = dir, square = square, newflats = newflats $
-                       , no_ccdtabs = no_ccdtabs
+                       , no_ccdtabs = no_ccdtabs, smooth = smooth
   inam = 'red::polarim : '
                                 ;
                                 ; Search for folders with reduced data
@@ -120,7 +120,9 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
      search = self.out_dir+'/polcal/'+self.camttag+'.'+pol[0]->getvar(7)+'.polcal.f0'
      if(file_test(search)) then begin
         immt = (f0(search))[0:15,*,*]
-
+   
+        
+        
         ;; interpolate CCD tabs?
         if(~keyword_set(no_ccdtabs)) then begin
            for ii = 0, 15 do immt[ii,*,*] = red_mask_ccd_tabs(reform(immt[ii,*,*]))
@@ -133,6 +135,20 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
            if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask=mask)
         endfor
 
+
+        if(n_elements(smooth) gt 0) then begin
+           dpix = round(smooth)*3
+           if((dpix/2)*2 eq dpix) then dpix -= 1
+           dpsf = double(smooth)
+           psf = red_get_psf(dpix, dpix, dpsf, dpsf)
+           psf /= total(psf, /double)
+           for ii=0,15 do immt[ii,*,*] = red_convolve(reform(immt[ii,*,*]), psf)
+        endif
+        
+
+
+
+        
         immt = ptr_new(red_invert_mmatrix(temporary(immt)))
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
@@ -163,6 +179,21 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
            if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask=mask)
         endfor
 
+
+        ;;smooth?
+       if(n_elements(smooth) gt 0) then begin
+           dpix = round(smooth)*3
+           if((dpix/2)*2 eq dpix) then dpix -= 1
+           dpsf = double(smooth)
+           psf = red_get_psf(dpix, dpix, dpsf, dpsf)
+           psf /= total(psf, /double)
+           for ii=0,15 do immr[ii,*,*] = red_convolve(reform(immr[ii,*,*]), psf)
+        endif
+        
+
+
+
+        
         immr = ptr_new(red_invert_mmatrix(temporary(immr)))
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
