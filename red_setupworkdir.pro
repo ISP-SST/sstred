@@ -195,6 +195,8 @@
 ; 
 ;     2016-09-19 : MGL. Add hrz_zeropoint.
 ;
+;     2017-01-25 : MGL. Added (nominal) diversity.
+;
 ;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
@@ -348,6 +350,7 @@ pro red_setupworkdir, search_dir = search_dir $
      printf, Clun, '#'
      printf, Clun,'isodate = '+isodate
      printf, Clun,'image_scale = 0.0379' ; Measured in May 2016.
+     printf, Clun, 'diversity = 3.5e-3'  ; Nominal value for 2016.
 
      printf, Slun, 'a = chromisred("'+cfgfile+'")' 
      printf, Slun, 'root_dir = "' + root_dir + '"'

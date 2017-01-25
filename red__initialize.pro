@@ -49,6 +49,9 @@
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
+;
+;   2017-01-25 : MGL. Added (nominal) diversity.
+;
 ;-
 pro red::initialize, filename
                                 
@@ -140,6 +143,9 @@ pro red::initialize, filename
         end
         'image_scale':begin
            self.image_scale =  (strsplit(line,' =',/extract))[1] ; extract value
+        end
+        'diversity':begin
+           self.diversity =  (strsplit(line,' =',/extract))[1] ; extract value
         end
         'pixel_size':begin
            self.pixel_size =  (strsplit(line,' =',/extract))[1] ; extract value
