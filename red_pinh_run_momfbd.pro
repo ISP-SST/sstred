@@ -40,14 +40,6 @@
 ;
 ;       Subfield size used for momfbding.
 ;
-;    xtemplates : 
-;
-;
-;
-;    ytemplates : 
-;
-;
-;
 ;    ptemplates :                           
 ;
 ;
@@ -113,6 +105,14 @@
 ; 
 ;       Margin for momfbd to use for swapping tilts for image shifts.
 ; 
+;
+;    xtemplates : 
+;
+;
+;
+;    ytemplates : 
+;
+;
 ; 
 ; 
 ; :History:
@@ -129,11 +129,18 @@
 ; 
 ; 
 ;   2014-04-08 : THI. New keyword show_plots, change default to not
-;                display plots
+;                display plots.
+;
+;   2017-01-26 : MGL. Make xoffs, yoffs, xtemplates, and ytemplates
+;                keywords.
+;
+;   2017-01-27 : MGL. Bugfix in returned metrics.
 ; 
 ;-
-pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
-                         , xtemplates, ytemplates, ptemplates $
+pro red_pinh_run_momfbd, images, simx, simy, sz $
+                         , xoffs = xoffs, yoffs = yoffs $
+                         , xtemplates = xtemplates, ytemplates = ytemplates $
+                         , ptemplates $
                          , stat $
                          , telescope_d, image_scale, pixel_size $
                          , DIVERSITY = diversity $
@@ -151,7 +158,7 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
 
   ana_output = 1                ; Otherwise use MOMFBD format output (for development/debugging).
 
-  Nch = (size(xoffs, /dim))[2] 
+  Nch = (size(images, /dim))[2] 
   Npinh = (size(simx, /dim))[0]
 
   if n_elements(subfieldpadding) eq 0 then subfieldpadding = 2
@@ -161,11 +168,14 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
   if n_elements(nslaves) eq 0 then nslaves = 6
   if n_elements(nthreads) eq 0 then nthreads = 1
 
+  use_offsets = n_elements(xtemplates) gt 0 and n_elements(ytemplates) gt 0 $
+                and n_elements(xoffs) gt 0 and n_elements(yoffs) gt 0 
+
   ;; Restart manager and slaves if needed.
   red_momfbd_setup, PORT = port, NSLAVES = nslaves, NMANAGERS=1, NTHREADS=nthreads
   
   ;; Remove old metric files if needed.
-  spawn, 'cd '+workdir+' ; rm -f metric.*'
+  spawn, 'cd '+workdir+' ; rm -f metric.* momfbd_submit* '
 
   if keyword_set(show_plots) then begin 
       window, 0
@@ -176,9 +186,11 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
 
   for ihole=0,Npinh-1 do begin
      
-     ;; Read out subfield from images and offsets
-     xosubfields = xoffs[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
-     yosubfields = yoffs[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
+    ;; Read out subfield from images and offsets
+    if use_offsets then begin 
+      xosubfields = xoffs[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
+      yosubfields = yoffs[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
+    endif
      pinhsubfields = images[simx[ihole]-d:simx[ihole]+d-1,simy[ihole]-d:simy[ihole]+d-1, *]
      
      Nbins = 1000
@@ -212,10 +224,10 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
         
         yfit=mpfitpeak(float(intensities[indx]), float(hh[indx]), a, Nterms = 5)
         if keyword_set(show_plots) then begin 
-            plot,intensities[indx],hh[indx], /xstyle, /ystyle
-            oplot,intensities[indx],yfit,color=fsc_color('yellow')
-            oplot,[0,0]+a[1],[0,1]*max(hh),color=fsc_color('yellow')
-            oplot,[0,0]+mn,[0,1]*max(hh),color=fsc_color('cyan')
+            cgplot,intensities[indx],hh[indx], /xstyle, /ystyle
+            cgplot, /over,intensities[indx],yfit,color='yellow'
+            cgplot, /over,[0,0]+a[1],[0,1]*max(hh),color='yellow'
+            cgplot, /over,[0,0]+mn,[0,1]*max(hh),color='cyan'
         endif
         
         ;print,intensities[ml]
@@ -230,10 +242,12 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
         fzwrite, fix(round(pinhsubfields[*, *, ich]*15000.)), fname, ' '
 
         if ich gt 0 then begin
-           fname = workdir+string(format = '(%"'+xtemplates[ich]+'")', ihole)
-           fzwrite, fix(round(xosubfields[*, *, ich])), fname, ' '
-           fname = workdir+string(format = '(%"'+ytemplates[ich]+'")', ihole)
-           fzwrite, fix(round(yosubfields[*, *, ich])), fname, ' '
+          if use_offsets then begin
+            fname = workdir+string(format = '(%"'+xtemplates[ich]+'")', ihole)
+            fzwrite, fix(round(xosubfields[*, *, ich])), fname, ' '
+            fname = workdir+string(format = '(%"'+ytemplates[ich]+'")', ihole)
+            fzwrite, fix(round(yosubfields[*, *, ich])), fname, ' '
+          endif
         endif
 
      endfor                     ; ich
@@ -247,10 +261,12 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
         cfglines = [cfglines, '    FILENAME_TEMPLATE=' + ptemplates[ich]]
         cfglines = [cfglines, '    DIVERSITY='+strtrim(string(diversity[ich]), 2)+' mm']
         if ich gt 0 then begin
-           cfglines = [cfglines, '    XOFFSET='+ workdir $
-                       + string(format = '(%"'+xtemplates[ich]+'")', ihole)]
-           cfglines = [cfglines, '    YOFFSET='+ workdir $
-                       + string(format = '(%"'+ytemplates[ich]+'")', ihole)]
+          if use_offsets then begin
+            cfglines = [cfglines, '    XOFFSET='+ workdir $
+                        + string(format = '(%"'+xtemplates[ich]+'")', ihole)]
+            cfglines = [cfglines, '    YOFFSET='+ workdir $
+                        + string(format = '(%"'+ytemplates[ich]+'")', ihole)]
+          endif
         endif
         cfglines = [cfglines, '  }']
      endfor
@@ -260,7 +276,8 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
      cfglines = [cfglines, 'GETSTEP=getstep_steepest_descent']
      cfglines = [cfglines, 'PROG_DATA_DIR=./data/']
      if keyword_set(finddiversity) then begin
-        cfglines = [cfglines, 'MODES=2-4']                               ;; Tilts + focus
+;        cfglines = [cfglines, 'MODES=2-4']                               ;; Tilts + focus
+        cfglines = [cfglines, 'MODES=2-10']                               ;; Tilts + focus
      endif else begin
         cfglines = [cfglines, 'MODES=2-3']                               ;; Tilts 
      endelse
@@ -304,11 +321,10 @@ pro red_pinh_run_momfbd, images, xoffs, yoffs, simx, simy, sz $
   endrep until njobs eq 0
   spawn, 'cd '+workdir+' ; cat metric.*', metriclist
 
+  metrics = float(metriclist)
 
   for ihole=0,Npinh-1 do begin
      
-     metrics[ihole] = float(metriclist[imno])
-        
      if arg_present(xtilts) or arg_present(ytilts) then begin
 
         ;; Read momfbd output
