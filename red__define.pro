@@ -23,6 +23,8 @@
 ;
 ;   2016-10-13 : MGL. Added nframes to RED_STATE.
 ;
+;   2017-01-25 : MGL. Added (nominal) diversity.
+;
 ;-
 PRO red__define
 
@@ -63,6 +65,7 @@ PRO red__define
             telescope_d:'',$        ; The diameter of the telescope pupil in meters
             image_scale:'',$        ; The image scale in arxsec per pixel
             pixel_size:'',$         ; The pixel size in meters on the detector
+            diversity:'', $         ; The nominal amount of focus diversity in -D camera, if any, in meters. 
             camsz:'',$              ;
             done:done, $            ;
             isodate:'', $           ; The date of observations in ISO format YYYY-MM-DD

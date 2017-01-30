@@ -23,30 +23,41 @@
 ; :Keywords:
 ;    
 ;    align : out
+;
 ;      Array of structures containing clip, offset filenames and
 ;      state information.
 ;
 ;    prefilters : in, optional, type=strarr
+;
 ;      Indicate the prefilters to calculate the clips/offsets for.
 ;      Default is to do it for all prefilters.
 ;
 ;    extraclip : in, optional, type=intarr(4)
+;
 ;      Exclude a margin around the clip-area
 ;
 ;    cams : in, optional, type=strarr
+;
 ;      Indicate the cameras to calculate the clips/offsets for.
 ;      Default is to do it for all prefilters.
 ;
 ;    refcam : in, optional, type=integer, default=0
+;
 ;      Select reference camera
 ;
 ;    overwrite : in, optional, type=boolean, default=false
+;
 ;      Force re-calculation if files already exist.
 ;
+;    output_dir : in, optional, type=string, default="self.out_dir+'/calib/'"
+;
+;      The directory in which to write offset files.
 ; 
 ; :History:
 ;
 ;   2016-09-21 : First version
+;
+;   2017-01-18 : MGL. New keyword output_dir.
 ;
 ;
 ;-
@@ -55,6 +66,7 @@ pro red::getalignment, align = align, $
                        extraclip = extraclip, $
                        cams = cams, $
                        refcam = refcam, $
+                       output_dir = output_dir, $
                        overwrite = overwrite
 
     ;; Name of this method
@@ -71,8 +83,8 @@ pro red::getalignment, align = align, $
     if(n_elements(refcam) eq 0) THEN refcam = self.refcam
     if(n_elements(verbose) eq 0) THEN verbose = 0
 
-    output_dir = self.out_dir+'/calib/'
-    alignfile = output_dir+'alignments.sav'
+    if n_elements(output_dir) eq 0 then output_dir = self.out_dir+'/calib/'
+    alignfile = self.out_dir+'/calib/alignments.sav'
 
     if file_test(alignfile) then begin
         restore, alignfile

@@ -41,7 +41,7 @@
 ;      Restrict to pinholes in the listed directories. Default
 ;      is to use all directories listed in *(self.pinh_dirs).
 ;
-;    dir : in, optional, type=strarr
+;    cams : in, optional, type=strarr
 ;      Restrict to specified cameras. Default is to use all
 ;      cameras listed in *(self.cameras).
 ;
