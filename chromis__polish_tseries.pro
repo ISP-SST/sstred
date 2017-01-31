@@ -106,6 +106,10 @@
 ;
 ;   2016-11-30 : MGL. New keyword fitsoutput.
 ;
+;   2017-01-30 : JdlCR. Allow to specify a mean offset angle to, e.g.,
+;                       create the cube aligned with the solar north.
+;                       The angle is in radians.
+;
 ;
 ;-
 pro chromis::polish_tseries, xbd = xbd $
@@ -125,7 +129,8 @@ pro chromis::polish_tseries, xbd = xbd $
 ;                             , ext_date = ext_date $
                              , timefiles = timefiles $
                              , fitsoutput = fitsoutput $
-                             , blur = blur
+                             , blur = blur $
+                             , offset_angle = offset_angle
   
 
   ;; Name of this method
@@ -301,6 +306,7 @@ pro chromis::polish_tseries, xbd = xbd $
         mang = median(ang)
         ang -= mang
         if(keyword_set(negang)) then ang = -ang
+        if(n_elements(offset_angle)) then ang += offset_angle
 ;      endif else begin
 ;
 ;        print, inam + ' : Using external angles'
