@@ -669,7 +669,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           ;; if(keyword_set(scans_only)) then cscl = 1.0
           norm_spect = imean / 1.0 ;/ max(imean)
           norm_factor = 1.0
-          spect_pos = wav + double(prefilters[ipref])
+          spect_pos = wav *1.d10;+ double(prefilters[ipref])
 ;          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
           save, file = odir + '/spectfile.' + prefilters[ipref] + '.idlsave' $
                 , norm_spect, norm_factor, spect_pos
