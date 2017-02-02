@@ -51,8 +51,11 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2014-01-14 : PS Use red_box_cursor for interactive ROI selection
-;                   default size set to 256
+;   2014-01-14 : PS. Use red_box_cursor for interactive ROI selection
+;                default size set to 256
+;
+;   2017-02-02 : MGL. Use red_histo_opt.
+;
 ;-
 function red_aligncube, cub, np, xbd = xbd, ybd = ybd, cubic = cubic, aligncube = aligncube
   if n_elements(xbd) eq 0 then xbd = 256
@@ -85,11 +88,11 @@ function red_aligncube, cub, np, xbd = xbd, ybd = ybd, cubic = cubic, aligncube 
      if(noref) then begin
         refoffs=[0.0, 0.0]
         window,0, xs = dim[0], ys = dim[1], title = 'Select subfield:  LMB moves,  RMB accepts'
-        tvscl, histo_opt(cube[*,*,idx])
+        tvscl, red_histo_opt(cube[*,*,idx])
         red_box_cursor, x0, y0, xbd, ybd, /FIXED
         sec = [x0, x0+xbd-1, y0, y0+ybd-1]
         window,0, xs = xbd, ys = ybd, title = 'Reference for subset'
-        tvscl, histo_opt(cube[sec[0]:sec[1],sec[2]:sec[3], idx])
+        tvscl, red_histo_opt(cube[sec[0]:sec[1],sec[2]:sec[3], idx])
         tempoff = red_getcoords(cube[sec[0]:sec[1],sec[2]:sec[3], *], idx)
         shifts[0, 0] = tempoff
         last = maxj[i]

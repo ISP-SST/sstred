@@ -47,6 +47,8 @@
 ;
 ;    2013-09-20 : MGL. Added title keyword.
 ;
+;    2017-02-02 : MGL. Use red_histo_opt.
+;
 ;-
 pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale, title = title
 
@@ -103,7 +105,7 @@ pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale, title
          print, xsiz, ysiz, asp, sasp
          if not keyword_set(nowin) then window,wnum,xsize=xsiz,ysize=ysiz, title = title
          var=congrid(var,xsiz,ysiz)        
-         if keyword_set(opt) then var=histo_opt(var)
+         if keyword_set(opt) then var=red_histo_opt(var)
          if not keyword_set(noscale) then var=bytscl(var)
          tv,var
       endelse

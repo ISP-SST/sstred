@@ -4,7 +4,7 @@ function red_select_area, im
   im1 = fix(im)*0
   im1[50:-50,50:-50] = 1
 
-  imo = histo_opt(im*im1,2.e-3)
+  imo = red_histo_opt(im*im1,2.e-3)
   mma = max(imo)
   mmi = min(imo)
   

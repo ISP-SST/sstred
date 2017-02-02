@@ -128,6 +128,7 @@ PRO red::getalignclips_new, thres = thres $
   ;; Selected prefilter or all prefilters?
   fw = file_search( ph_dir + camw +'.*.pinh', count = cw)
   if cw eq 0 then begin
+stop
      print, inam, ' : ERROR : No wideband pinholes found in ', ph_dir
      retall
   endif
