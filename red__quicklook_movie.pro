@@ -54,6 +54,8 @@
 ; :history:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+;
+;   2017-02-02 : MGL. Use red_histo_opt.
 ; 
 ; 
 ;-
@@ -236,7 +238,7 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, $
      if(keyword_set(y_flip)) then im = reverse(temporary(im), 2)
                                 ;
      dum  = (temporary(im))[x0:x1, y0:y1]
-     if(~keyword_set(no_histo_opt)) then dum = histo_opt(temporary(dum))
+     if(~keyword_set(no_histo_opt)) then dum = red_histo_opt(temporary(dum))
      write_png, outdir+namout, bytscl(temporary(dum))
                                 ;
      print, bb,'red::quicklook_movie : done -> ',ii*ntot,'%', format='(A,A,F5.1,A,$)'
