@@ -207,7 +207,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   endelse
 
   Ndirs = n_elements(dirs)
-  if( Ndirs eq 0) then begin
+  if Ndirs eq 0 then begin
     print, inam+' : ERROR : no directories defined'
     return
   endif else begin
@@ -254,7 +254,7 @@ pro red::prepmomfbd, wb_states = wb_states $
     endif else begin
       if self.diversity ne '' then begin 
         ;; Use the nominal amount specified in the config file
-        diversity_string = strtrim(string(float(self.diversity)*1e3,format='(f4.1)')+' mm', 2)
+        diversity_string = strtrim(string(float(self.diversity)*1e3,format='(f5.2)')+' mm', 2)
       endif else begin
         print, inam+' : Diversity not specified.'
         stop
@@ -324,7 +324,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 
   for idir=0L, Ndirs-1 do begin
     
-    dir = dirs[idir]
+    dir = dirs[idir]+'/'
     folder_tag = file_basename(dir)
     
     if file_test(dir + refcam_name + '_nostate/',/directory) then subdir = refcam_name + '_nostate/'
