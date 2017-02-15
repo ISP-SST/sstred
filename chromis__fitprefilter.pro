@@ -47,6 +47,9 @@
 ;                spectra. Sometimes there is no real quiet-sun and the line center
 ;                must be masked.
 ;
+;   2017-02-14 : JdlCR. Allow to also mask a section of the FOV. Many
+;                observers forget to take quiet-Sun data for calibration.
+;
 ; 
 ; 
 ;-
@@ -150,26 +153,45 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     print, inam+'loading files for state -> '+ustate[ii]
     
     for kk=0L, count -1 do begin
-      tmp = red_readdata(states[pos[kk]].filename)
-      tmpwb = red_readdata(states1[pos[kk]].filename)
+      tmp = float(red_readdata(states[pos[kk]].filename))
+      tmpwb = float(red_readdata(states1[pos[kk]].filename))
       
       dim = size(tmp,/dim)
       dx = round(dim[0]*0.12)
       dy = round(dim[1]*0.12)
       
       nsli = 1
-      if(n_elements(dim) gt 2) then nsli = dim[2]
-      
-      if(nsli gt 1) then begin
-        tmp1 = total(tmp[dx:dim[0]-dx-1,dy:dim[1]-dy-1,*],3, /double) / double(nsli)
-        tmpwb1 = total(tmpwb[dx:dim[0]-dx-1,dy:dim[1]-dy-1,*],3, /double) / double(nsli)
-      endif else begin
-        tmp1 = double(tmp[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
-        tmpwb1 = double(tmpwb[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
-      endelse
+      if(n_elements(dim) gt 2) then begin
+         nsli = dim[2]
+         tmp   = total(  tmp,3, /double) / double(nsli)
+         tmpwb = total(tmpwb,3, /double) / double(nsli)
+      endif
 
-      spec[ii] += median(tmp1-dd)
-      specwb[ii] += median(tmpwb1-ddwb)
+      tmp   -= dd
+      tmpwb -= ddwb
+      
+      if(keyword_set(mask)) then begin
+
+         if(kk eq 0 and ii eq 0) then begin
+            mmask = red_select_area(tmp[*,*,0], /noedge)
+            nzero = where(mmask gt 0)
+            bla = tmp[*,*,0]
+            ind = array_indices(bla, nzero)
+         endif
+         
+ 
+         tmp1 = double(tmp[reform(ind[0,*]),reform(ind[1,*])])
+         tmpwb1 = double(tmpwb[reform(ind[0,*]),reform(ind[1,*])])
+         
+      endif else begin
+ 
+         tmp1 = double(tmp[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
+         tmpwb1 = double(tmpwb[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
+        
+      endelse ;; if mask
+
+      spec[ii] += median(tmp1)
+      specwb[ii] += median(tmpwb1)
 
     endfor                      ; kk
 
@@ -228,7 +250,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
       fitpars[2].limits[*] = [-3.0d0,+3.0d0]
       ;;
       fitpars[3].limited[*] = [1,1]
-      fitpars[3].limits[*] = [2.0d0, 5.0d0]
+      fitpars[3].limits[*] = [2.0d0, 7.5d0]
       ;;
       fitpars[4].limited[*] = [1,1]
       fitpars[4].limits[*] = [2.5d0, 3.5d0]
@@ -243,7 +265,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
       
       ;; Now call mpfit
 
-      par = [max(ispec) * 10d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
+      par = [max(ispec) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
       par = mpfit('chromis_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
       prefilter = chromis_prefilter(par, dat.iwav, dat.pref)
       
