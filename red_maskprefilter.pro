@@ -1,4 +1,4 @@
-function red_maskprefilter, wav, imean
+function red_maskprefilter, wav, imean, img = img, mask = mask
 
   !p.multi = [0,1,1]
   window, 2, xsize=1024, ysize=500
@@ -33,5 +33,14 @@ function red_maskprefilter, wav, imean
   endwhile
   !MOUSE.button = 0
   wdelete, 2
+
+
+
+  ;; Now the FOV
+  if(n_elements(img) gt 0) then begin
+     tmp = red_select_area(img)
+     mask = where(tmp gt 0, count)
+  endif
+  
   return, w
 end
