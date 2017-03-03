@@ -347,7 +347,7 @@ pro red_setupworkdir, search_dir = search_dir $
       chromis_dir = ''
       print, 'Use an existing directory or create a new one.'
       read, 'Specify CHROMIS workdir name: ', chromis_dir
-      chromis_dir = out_dir + chromis_dir
+      chromis_dir = out_dir + chromis_dir + '/'
     endelse
   endif else setup_chromis = 0
 
@@ -363,11 +363,9 @@ pro red_setupworkdir, search_dir = search_dir $
       crisp_dir = ''
       print, 'Use an existing directory or create a new one.'
       read, 'Specify CRISP workdir name: ', crisp_dir
-      crisp_dir = out_dir + crisp_dir
+      crisp_dir = out_dir + crisp_dir + '/'
     endelse
   endif else setup_crisp = 0
-
-  stop
 
   
   ;; CHROMIS ---------------------------------------------------------------------------------------
