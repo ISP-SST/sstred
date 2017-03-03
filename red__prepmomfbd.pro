@@ -141,6 +141,9 @@
 ;
 ;   2017-01-18 : MGL. Implemented phase diversity.
 ;
+;   2017-02-10 : JdlCR. Bugfix, maxshift was not used when provided as
+;                a keyword.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -176,7 +179,8 @@ pro red::prepmomfbd, wb_states = wb_states $
 
   offset_dir = self.out_dir + '/calib/'
 
-  if(n_elements(msh) eq 0) then maxshift='30'
+  if(n_elements(maxshift) eq 0) then maxshift='30'
+  maxshift = strcompress(string(maxshift), /remove_all)
   
   LineFeed = string(10b)
 

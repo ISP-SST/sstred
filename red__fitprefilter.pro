@@ -72,7 +72,8 @@
 ;
 ;   2016-10-27 : MGL. Special case for prefilters with only a single
 ;                wavelength point.
-; 
+;
+;   2017-02-14 : JdlCR. Added the option to mask a region of the FOV.
 ; 
 ;-
 pro red::fitprefilter, fixcav = fixcav $
@@ -82,7 +83,8 @@ pro red::fitprefilter, fixcav = fixcav $
                        , shift = shift $
                        , init=init $
                        , stretch=stretch $
-                       , weight = weight
+                       , weight = weight $
+                       , mask = mask
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])

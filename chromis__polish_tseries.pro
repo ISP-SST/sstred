@@ -376,8 +376,8 @@ pro chromis::polish_tseries, xbd = xbd $
       endif else ff = 0
       
       ;; De-stretch
-      if(~keyword_set(clip)) then clip = [8, 4, 1]
-      if(~keyword_set(tile)) then tile = [8, 16, 32]
+      if(~keyword_set(clip)) then clip = [8, 4, 2, 1]
+      if(~keyword_set(tile)) then tile = [12, 24, 48, 64]
       if(~keyword_set(scale)) then scale = 1.0 / float(self.image_scale)
       if(~keyword_set(tstep)) then begin
         dts = dblarr(Nscans)
