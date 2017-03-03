@@ -23,12 +23,13 @@
 ; 
 ; :Params:
 ; 
+;    tabhdu : in
 ; 
-; :Keywords:
+; 
+;    extname : in
 ; 
 ;   
-;   
-;   
+;    head : in
 ; 
 ; 
 ; :History:
