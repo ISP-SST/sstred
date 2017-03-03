@@ -197,6 +197,9 @@
 ;
 ;     2017-01-25 : MGL. Added (nominal) diversity.
 ;
+;     2017-03-03 : MGL. Search directories based on ip address rather
+;                  than hostname. Check for existing workdirs.
+;
 ;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
@@ -247,23 +250,22 @@ pro red_setupworkdir, search_dir = search_dir $
   if n_elements(search_dir) eq 0 then begin
  
      ;; No search_dir specified. Try to find out where we are from the
-     ;; hostname and search for a root_dir based on that.
+     ;; ip address and search for a root_dir based on that.
      
-     spawn, 'hostname -f', hostname
+     spawn, 'hostname -i', ipaddress
 
      case 1 of
-        strpos(hostname,'royac.iac.es') ne -1 : begin
-           ;; At the SST in La Palma
-           search_dir = "/data/disk?/*/"
-           ;; We could search the camera directories as well
-           ;; but then we'd end up with multiple root_dirs, which I'd
-           ;; now like to disallow. - Mats
-           ;; search_dir = ["/data/disk?/*/", "/data/camera?/*/"]
-        end
-        strpos(hostname,'astro.su.se') ne -1 : begin
-           ;; At the ISP in Stockholm
-           search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
-        end
+       strmatch(ipaddress,'161.72.15.*') : begin
+         ;; At the SST in La Palma
+         search_dir = "/data/disk?/*/"
+         ;; We could search the camera directories as well but then
+         ;; we'd end up with multiple root_dirs, which I'd now like to
+         ;; disallow. - Mats
+       end
+       strmatch(ipaddress,'130.237.166.*') : begin
+         ;; At the ISP in Stockholm
+         search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
+       end
      endcase
 
      ;; Make sure search_dir ends with a slash before we append the date
@@ -330,13 +332,47 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; Used for detecting instruments
   testdirs = file_search(root_dir+'/*/*/*', count = Ndirs)
 
+  not_crisp = 1
+  not_chromis = 0
+
+  if total(strmatch(testdirs,'*chromis*',/fold)) and ~keyword_set(not_chromis) then begin
+    setup_chromis = 1
+    odirs = file_search(out_dir + 'CHROMIS*', count = Nodirs)
+    if Nodirs eq 0 then begin
+      chromis_dir = out_dir + 'CHROMIS/'  
+    endif else begin
+      print
+      print, 'Existing CHROMIS work dirs in '+out_dir+' :'
+      print, file_basename(odirs), format = '(a0)'
+      chromis_dir = ''
+      print, 'Use an existing directory or create a new one.'
+      read, 'Specify CHROMIS workdir name: ', chromis_dir
+      chromis_dir = out_dir + chromis_dir
+    endelse
+  endif else setup_chromis = 0
+
+  
+  if total(strmatch(testdirs,'*crisp*',/fold)) and ~keyword_set(not_crisp) then begin
+    setup_crisp = 1
+    odirs = file_search(out_dir + 'CRISP*', count = Nodirs)
+    if Nodirs eq 0 then begin
+      crisp_dir = out_dir + 'CRISP/'  
+    endif else begin
+      print, 'Existing CRISP work dirs in '+out_dir+' :'
+      print, file_basename(odirs), format = '(a0)'
+      crisp_dir = ''
+      print, 'Use an existing directory or create a new one.'
+      read, 'Specify CRISP workdir name: ', crisp_dir
+      crisp_dir = out_dir + crisp_dir
+    endelse
+  endif else setup_crisp = 0
+
+  stop
 
   
   ;; CHROMIS ---------------------------------------------------------------------------------------
-  if total(strmatch(testdirs,'*chromis*',/fold)) then begin
-
-     chromis_dir = out_dir + 'CHROMIS/'  
-     
+  if setup_chromis then begin
+   
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
      file_mkdir, chromis_dir
@@ -613,9 +649,7 @@ pro red_setupworkdir, search_dir = search_dir $
 
   
   ;; CRISP -----------------------------------------------------------------------------------------
-  if total(strmatch(testdirs,'*crisp*',/fold)) then begin
-
-     crisp_dir = out_dir + 'CRISP/'
+  if setup_crisp then begin
 
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
