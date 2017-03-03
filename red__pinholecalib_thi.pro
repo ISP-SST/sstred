@@ -23,32 +23,40 @@
 ; :Keywords:
 ;    
 ;    threshold : in, optional, type=float, default=0.25
+;
 ;       Threshold for identifying a strong enough pinhole.
 ;
 ;    max_shift : in, optional, type=int, default=100
+;
 ;       Only consider mappings with a linear shift < max_shift pixels.
 ;
 ;    nref : in, optional, type=integer, default=5
+;
 ;      How many of the strongest pinholes to use for finding the
 ;      approximate transform. Afterwards a refinement is made using
 ;      >80% of the detected pinholes.
 ;
 ;    pref : in, optional, type=string
+;
 ;      Indicate the prefilter you want to calculate the clips for,
 ;      Default is to do it for all prefilters there is data for.
 ;
 ;    dir : in, optional, type=strarr
+;
 ;      Restrict to pinholes in the listed directories. Default
 ;      is to use all directories listed in *(self.pinh_dirs).
 ;
 ;    cams : in, optional, type=strarr
+;
 ;      Restrict to specified cameras. Default is to use all
 ;      cameras listed in *(self.cameras).
 ;
 ;    refcam : in, optional, type=integer, default=0
+;
 ;      Select reference-channel.
 ;    
 ;    verbose : in, optional, type=integer, default=0
+;
 ;      Provide more output
 ;
 ; 

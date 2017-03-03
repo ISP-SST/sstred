@@ -33,9 +33,11 @@
 ;      A list of cameras (or rather camera subdirs).
 ;
 ;    sum_in_rdx : in, optional, type=boolean
+;
 ;      Use rdx_sumfiles.
 ; 
 ;    filter  : in, optional, type=int, default=3
+;
 ;       Size of the medianfilter to use when checking data.
 ;   
 ; :History:
