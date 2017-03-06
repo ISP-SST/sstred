@@ -396,11 +396,11 @@ pro red_setupworkdir, search_dir = search_dir $
     
     ;; Write numerical metadata
     red_metadata_store, fname = workdirs[idir] + '/info/metadata.fits' $
-                        , [{keyword:'OBSGEO-X', value:obsgeo_xyz[0] $
+                        , [{keyword:'OBSGEO-Z', value:obsgeo_xyz[2] $
                             , comment:'[m] SST location'}, $
                            {keyword:'OBSGEO-Y', value:obsgeo_xyz[1] $
                             , comment:'[m] SST location'}, $
-                           {keyword:'OBSGEO-Z', value:obsgeo_xyz[2] $
+                           {keyword:'OBSGEO-Y', value:obsgeo_xyz[0] $
                             , comment:'[m] SST location'}]
     
   endfor                        ; idir
