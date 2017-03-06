@@ -190,15 +190,18 @@
 ;                 so the names match those of the corresponding SolarNet
 ;                 keywords.
 ; 
-;     2016-09-08 : MGL. Add analyze_directories and red_plot_r0 to the
-;                  script file, but commented out.
+;    2016-09-08 : MGL. Add analyze_directories and red_plot_r0 to the
+;                 script file, but commented out.
 ; 
-;     2016-09-19 : MGL. Add hrz_zeropoint.
+;    2016-09-19 : MGL. Add hrz_zeropoint.
 ;
-;     2017-01-25 : MGL. Added (nominal) diversity.
+;    2017-01-25 : MGL. Added (nominal) diversity.
 ;
-;     2017-03-03 : MGL. Search directories based on ip address rather
-;                  than hostname. Check for existing workdirs.
+;    2017-03-03 : MGL. Search directories based on ip address rather
+;                 than hostname. Check for existing workdirs.
+;
+;    2017-03-06 : MGL. Add storing of metadata in the work
+;                 directories.
 ;
 ;
 ;-
@@ -335,6 +338,8 @@ pro red_setupworkdir, search_dir = search_dir $
   not_crisp = 1
   not_chromis = 0
 
+  ;; Work directories
+
   if total(strmatch(testdirs,'*chromis*',/fold)) and ~keyword_set(not_chromis) then begin
     setup_chromis = 1
     odirs = file_search(out_dir + 'CHROMIS*', count = Nodirs)
@@ -349,9 +354,9 @@ pro red_setupworkdir, search_dir = search_dir $
       read, 'Specify CHROMIS workdir name: ', chromis_dir
       chromis_dir = out_dir + chromis_dir + '/'
     endelse
+    red_append, workdirs, chromis_dir
   endif else setup_chromis = 0
 
-  
   if total(strmatch(testdirs,'*crisp*',/fold)) and ~keyword_set(not_crisp) then begin
     setup_crisp = 1
     odirs = file_search(out_dir + 'CRISP*', count = Nodirs)
@@ -365,15 +370,53 @@ pro red_setupworkdir, search_dir = search_dir $
       read, 'Specify CRISP workdir name: ', crisp_dir
       crisp_dir = out_dir + crisp_dir + '/'
     endelse
+    red_append, workdirs, crisp_dir
   endif else setup_crisp = 0
+
+  if n_elements(workdirs) eq 0 then return
+
+  ;; Common setup tasks
+
+  ;; Telescope location:
+  ;; wikipedia, geo:28.759733,-17.880736
+  ;; Mats C:        28.759693, -17.880757
+  ;; wikipedia says altitude is 2360 m. Should add 20 m for height of tower?
+  obsgeo_xyz = round(red_obsgeo(28.759733d,-17.880736d, 2360d))
+
+  for idir = 0, n_elements(workdirs)-1 do begin 
+
+    file_mkdir, workdirs[idir]
+
+    ;; Write string metadata
+    red_metadata_store, fname = workdirs[idir] + '/info/metadata.fits' $
+                        , [{keyword:'OBSRVTRY', value:'ORM', comment:'Name of observatory'}, $
+                           {keyword:'TELESCOP', value:'SST', comment:'Name of telescope'}, $
+                           {keyword:'TELCONFG', value:'Schupmann, imaging', $
+                            comment:'Telescope configuration'}]
+    
+    ;; Write numerical metadata
+    red_metadata_store, fname = workdirs[idir] + '/info/metadata.fits' $
+                        , [{keyword:'OBSGEO-X', value:obsgeo_xyz[0] $
+                            , comment:'[m] SST location'}, $
+                           {keyword:'OBSGEO-Y', value:obsgeo_xyz[1] $
+                            , comment:'[m] SST location'}, $
+                           {keyword:'OBSGEO-Z', value:obsgeo_xyz[2] $
+                            , comment:'[m] SST location'}]
+    
+  endfor                        ; idir
+
+
 
   
   ;; CHROMIS ---------------------------------------------------------------------------------------
   if setup_chromis then begin
+
+    red_metadata_store, fname = chromis_dir + '/info/metadata.fits' $
+                        , [{keyword:'INSTRUME', value:'CHROMIS', comment:'Name of instrument'}]
+
    
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
-     file_mkdir, chromis_dir
      openw, Clun, chromis_dir + cfgfile,    /get_lun
      openw, Slun, chromis_dir + scriptfile, /get_lun
 
@@ -646,12 +689,18 @@ pro red_setupworkdir, search_dir = search_dir $
   endif                         ; setup_chromis
 
   
-  ;; CRISP -----------------------------------------------------------------------------------------
+  ;; CRISP
+  ;; -----------------------------------------------------------------------------------------
+  
   if setup_crisp then begin
 
+    red_metadata_store, fname = crisp_dir + '/info/metadata.fits' $
+                        , [{keyword:'INSTRUME', value:'CRISP', comment:'Name of instrument'}]
+
+   
      ;; Open two files for writing. Use logical unit Clun for a Config
      ;; file and Slun for a Script file.
-     file_mkdir, crisp_dir
+
      openw, Clun, crisp_dir + cfgfile, /get_lun
      openw, Slun, crisp_dir + scriptfile , /get_lun
 
