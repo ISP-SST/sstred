@@ -219,28 +219,28 @@ pro red_setupworkdir, search_dir = search_dir $
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
 
   if n_elements(date) eq 0 then begin
-     ;; Date not specified. Does search_dir include the date?
-     if n_elements(search_dir) gt 0 then begin
-        for i = 0, n_elements(search_dir)-1 do begin
-           pos = stregex(search_dir[i],'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
-           if pos ne -1 then begin
-              ;; Date present in search_dir[i]
-              date = strmid(search_dir[i], pos+1, 10)
-              break
-           endif
-        endfor                  ; i
-     endif                      ; search_dir given?
+    ;; Date not specified. Does search_dir include the date?
+    if n_elements(search_dir) gt 0 then begin
+      for i = 0, n_elements(search_dir)-1 do begin
+        pos = stregex(search_dir[i],'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
+        if pos ne -1 then begin
+          ;; Date present in search_dir[i]
+          date = strmid(search_dir[i], pos+1, 10)
+          break
+        endif
+      endfor                    ; i
+    endif                       ; search_dir given?
   endif                         ; date given?
 
   if n_elements(date) eq 0 then begin
-     ;; Get the date from out_dir?
-     pos = stregex(out_dir,'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
-     if pos eq -1 then begin
-        print, 'sst_makeconfig : No date in either root_dir or out_dir.'
-        retall
-     endif
-     date = strmid(out_dir, pos+1, 10)
-     date = red_strreplace(date, '-', '.', n = 2)
+    ;; Get the date from out_dir?
+    pos = stregex(out_dir,'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
+    if pos eq -1 then begin
+      print, 'sst_makeconfig : No date in either root_dir or out_dir.'
+      retall
+    endif
+    date = strmid(out_dir, pos+1, 10)
+    date = red_strreplace(date, '-', '.', n = 2)
   endif
 
   ;; Just in case date became a (one-element) array.
@@ -251,30 +251,30 @@ pro red_setupworkdir, search_dir = search_dir $
   date = red_strreplace(isodate, '-', '.', n = 2)
 
   if n_elements(search_dir) eq 0 then begin
- 
-     ;; No search_dir specified. Try to find out where we are from the
-     ;; ip address and search for a root_dir based on that.
-     
-     spawn, 'hostname -i', ipaddress
+    
+    ;; No search_dir specified. Try to find out where we are from the
+    ;; ip address and search for a root_dir based on that.
+    
+    spawn, 'hostname -i', ipaddress
 
-     case 1 of
-       strmatch(ipaddress,'161.72.15.*') : begin
-         ;; At the SST in La Palma
-         search_dir = "/data/disk?/*/"
-         ;; We could search the camera directories as well but then
-         ;; we'd end up with multiple root_dirs, which I'd now like to
-         ;; disallow. - Mats
-       end
-       strmatch(ipaddress,'130.237.166.*') : begin
-         ;; At the ISP in Stockholm
-         search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
-       end
-     endcase
+    case 1 of
+      strmatch(ipaddress,'161.72.15.*') : begin
+        ;; At the SST in La Palma
+        search_dir = "/data/disk?/*/"
+        ;; We could search the camera directories as well but then
+        ;; we'd end up with multiple root_dirs, which I'd now like to
+        ;; disallow. - Mats
+      end
+      strmatch(ipaddress,'130.237.166.*') : begin
+        ;; At the ISP in Stockholm
+        search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
+      end
+    endcase
 
-     ;; Make sure search_dir ends with a slash before we append the date
-     for i = 0, n_elements(search_dir)-1 do begin
-        if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
-     endfor
+    ;; Make sure search_dir ends with a slash before we append the date
+    for i = 0, n_elements(search_dir)-1 do begin
+      if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
+    endfor
 
   endif                         ; No search_dir given
   
@@ -283,41 +283,41 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; include the date but then again it might not.
 
   for i = 0, n_elements(search_dir)-1 do begin
-     if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
-     if file_basename(search_dir[i]) ne date then search_dir[i] += date
+    if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
+    if file_basename(search_dir[i]) ne date then search_dir[i] += date
   endfor
   
-     
+  
   ;; Now search
   found_dir = file_search(search_dir, count = Nfound)
 
   ;; Maybe some searches returned the same result?
   if Nfound gt 1 then begin
-     found_dir = found_dir[uniq(found_dir,sort(found_dir))]
-     Nfound = n_elements(found_dir)
+    found_dir = found_dir[uniq(found_dir,sort(found_dir))]
+    Nfound = n_elements(found_dir)
   endif
 
   print, 'Looked for data from '+date+' in:'
   for i = 0, n_elements(search_dir)-1 do print, search_dir[i]
   
   case Nfound of
-     0: begin
-        print, "Didn't find any data."
-        return
-     end
-     1: begin
-        print, 'Found one dir, which we will use:'
-        print, found_dir
-        root_dir = found_dir
-     end
-     else: begin
-        print, 'Found several possible locations:'
-        for i = 0, Nfound-1 do print, found_dir[i]
-        print, 'Please call red_setupworkdir again with one of them specified as search_dir.'
-        ;; We'd have to do something else here if we want to
-        ;; allow the camera directories in La Palma.
-        return
-     end
+    0: begin
+      print, "Didn't find any data."
+      return
+    end
+    1: begin
+      print, 'Found one dir, which we will use:'
+      print, found_dir
+      root_dir = found_dir
+    end
+    else: begin
+      print, 'Found several possible locations:'
+      for i = 0, Nfound-1 do print, found_dir[i]
+      print, 'Please call red_setupworkdir again with one of them specified as search_dir.'
+      ;; We'd have to do something else here if we want to
+      ;; allow the camera directories in La Palma.
+      return
+    end
   endcase
   
   ;; Make sure root_dir ends with a slash.
@@ -374,7 +374,7 @@ pro red_setupworkdir, search_dir = search_dir $
   endif else setup_crisp = 0
 
   if n_elements(workdirs) eq 0 then return
-
+  
   ;; Common setup tasks
 
   ;; Telescope location:
@@ -414,277 +414,277 @@ pro red_setupworkdir, search_dir = search_dir $
     red_metadata_store, fname = chromis_dir + '/info/metadata.fits' $
                         , [{keyword:'INSTRUME', value:'CHROMIS', comment:'Name of instrument'}]
 
-   
-     ;; Open two files for writing. Use logical unit Clun for a Config
-     ;; file and Slun for a Script file.
-     openw, Clun, chromis_dir + cfgfile,    /get_lun
-     openw, Slun, chromis_dir + scriptfile, /get_lun
+    
+    ;; Open two files for writing. Use logical unit Clun for a Config
+    ;; file and Slun for a Script file.
+    openw, Clun, chromis_dir + cfgfile,    /get_lun
+    openw, Slun, chromis_dir + scriptfile, /get_lun
 
-     ;; Specify the date in the config file, ISO format.
-     print, 'Date'
-     printf, Clun, '#'
-     printf, Clun, '# --- Settings'
-     printf, Clun, '#'
-     printf, Clun,'isodate = '+isodate
-     printf, Clun,'image_scale = 0.0379' ; Measured in May 2016.
-     printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
+    ;; Specify the date in the config file, ISO format.
+    print, 'Date'
+    printf, Clun, '#'
+    printf, Clun, '# --- Settings'
+    printf, Clun, '#'
+    printf, Clun,'isodate = '+isodate
+    printf, Clun,'image_scale = 0.0379'  ; Measured in May 2016.
+    printf, Clun, 'diversity = 3.35e-3'  ; Nominal value for 2016.
 
-     printf, Slun, 'a = chromisred("'+cfgfile+'")' 
-     printf, Slun, 'root_dir = "' + root_dir + '"'
+    printf, Slun, 'a = chromisred("'+cfgfile+'")' 
+    printf, Slun, 'root_dir = "' + root_dir + '"'
 
-     ;; Download SST log files and optionally some other data from the web.
-     print, 'Log files'
-     printf, Clun, '#'
-     printf, Clun, '# --- Download SST log files'
-     printf, Clun, '#'
-     printf, Slun
-     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
+    ;; Download SST log files and optionally some other data from the web.
+    print, 'Log files'
+    printf, Clun, '#'
+    printf, Clun, '# --- Download SST log files'
+    printf, Clun, '#'
+    printf, Slun
+    printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
 
-     ;; Analyze directories and produce r0 plots (optional)
-     printf, Slun
-     printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
-     printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
-     printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
-     printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
-     printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
-     printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
-     
+    ;; Analyze directories and produce r0 plots (optional)
+    printf, Slun
+    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
+    printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
+    printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
+    printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
+    printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
+    printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
+    
 
-     print, 'Cameras'
-     printf, Clun, '#'
-     printf, Clun, '# --- Cameras'
-     printf, Clun, '#'
-     printf, Clun, 'camera = Chromis-W'
-     printf, Clun, 'camera = Chromis-D'
-     printf, Clun, 'camera = Chromis-N'
-     printf, Clun, '#'
-     printf, Clun, 'root_dir = ' + root_dir
-     printf, Clun, '#'
+    print, 'Cameras'
+    printf, Clun, '#'
+    printf, Clun, '# --- Cameras'
+    printf, Clun, '#'
+    printf, Clun, 'camera = Chromis-W'
+    printf, Clun, 'camera = Chromis-D'
+    printf, Clun, 'camera = Chromis-N'
+    printf, Clun, '#'
+    printf, Clun, 'root_dir = ' + root_dir
+    printf, Clun, '#'
 
-     print, 'Output'
-     printf, Clun, '#'
-     printf, Clun, '# --- Output'
-     printf, Clun, '#'
-     printf, Clun, 'out_dir = ' + chromis_dir
+    print, 'Output'
+    printf, Clun, '#'
+    printf, Clun, '# --- Output'
+    printf, Clun, '#'
+    printf, Clun, 'out_dir = ' + chromis_dir
 
-     print, 'Darks'
-     printf, Clun, '#'
-     printf, Clun, '# --- Darks'
-     printf, Clun, '#'
-     
-     darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
-                                           , count = Nsubdirs)
-     if Nsubdirs gt 0 then begin
-        darkdirs = file_dirname(darksubdirs)
-        darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
+    print, 'Darks'
+    printf, Clun, '#'
+    printf, Clun, '# --- Darks'
+    printf, Clun, '#'
+    
+    darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
+                                          , count = Nsubdirs)
+    if Nsubdirs gt 0 then begin
+      darkdirs = file_dirname(darksubdirs)
+      darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
+      printf, Slun
+      for idir = 0, n_elements(darkdirs)-1 do begin
+        printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
+        printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
+                + red_strreplace(darkdirs[idir], root_dir, '') + '"'
+      endfor                    ; idir
+    endif                       ; Nsubdirs
+    
+    print, 'Flats'
+    printf, Clun, '#'
+    printf, Clun, '# --- Flats'
+    printf, Clun, '#'
+
+    flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
+                                          , count = Nsubdirs)
+    if Nsubdirs gt 0 then begin
+      ;; There are CHROMIS flats!
+
+      ;; Directories with camera dirs below:
+      flatdirs = file_dirname(flatsubdirs)
+      flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
+      Nflatdirs = n_elements(flatdirs)
+
+      ;; Loop over the flatdirs, write each to the config file and
+      ;; to the script file
+      printf, Slun
+      for idir = 0, Nflatdirs-1 do begin
+
+        ;; Config file
+
+        printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[idir], root_dir, '')
+
+        ;; Script file
+        
+        ;; Look for wavelengths in those flatsubdirs that match
+        ;; flatdirs[idir]! Also collect prefilters.
+        indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
+        fnames = file_search(flatsubdirs[indx]+'/sst_cam*', count = Nfiles)
+        if Nfiles gt 0 then begin
+          
+          camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
+
+          red_extractstates, fnames, /basename, pref = wls
+          wls = wls[uniq(wls, sort(wls))]
+          wls = wls[WHERE(wls ne '')]
+          wavelengths = strjoin(wls, ' ')
+          ;; Print to script file
+          printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
+                  + red_strreplace(flatdirs[idir], root_dir, '') $
+                  + '"  ; ' + camdirs+' ('+wavelengths+')'
+
+          red_append, prefilters, wls
+
+        endif                   ; Nfiles
+      endfor                    ; idir
+    endif                       ; Nsubdirs
+
+    if n_elements(prefilters) gt 0 then begin
+      prefilters = prefilters[uniq(prefilters, sort(prefilters))]
+    endif
+
+    Nprefilters = n_elements(prefilters)
+    if Nprefilters eq 0 then begin
+      ;; This can happen if flats were already summed in La Palma. Look
+      ;; for prefilters in the summed flats directory instead.
+      spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
+      Nprefilters = n_elements(prefilters)
+    endif
+    
+    for ipref = 0, Nprefilters-1 do begin
+      printf, Slun, "a -> makegains, /preserve, pref='" + prefilters[ipref] $
+              + "' "
+    endfor
+
+    print, 'Pinholes'
+    printf, Clun, '#'
+    printf, Clun, '# --- Pinholes'
+    printf, Clun, '#'
+    pinhdirs = file_search(root_dir+'/*pinh*/*', count = Ndirs, /fold)
+    for i = 0, Ndirs-1 do begin
+      pinhsubdirs = file_search(pinhdirs[i]+'/chromis*', count = Nsubdirs, /fold)
+      if Nsubdirs gt 0 then begin
         printf, Slun
-        for idir = 0, n_elements(darkdirs)-1 do begin
-           printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
-           printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
-                   + red_strreplace(darkdirs[idir], root_dir, '') + '"'
-        endfor                  ; idir
-     endif                      ; Nsubdirs
-     
-     print, 'Flats'
-     printf, Clun, '#'
-     printf, Clun, '# --- Flats'
-     printf, Clun, '#'
-
-     flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
-                                           , count = Nsubdirs)
-     if Nsubdirs gt 0 then begin
-        ;; There are CHROMIS flats!
-
-        ;; Directories with camera dirs below:
-        flatdirs = file_dirname(flatsubdirs)
-        flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
-        Nflatdirs = n_elements(flatdirs)
-
-        ;; Loop over the flatdirs, write each to the config file and
-        ;; to the script file
-        printf, Slun
-        for idir = 0, Nflatdirs-1 do begin
-
-           ;; Config file
-
-           printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[idir], root_dir, '')
-
-           ;; Script file
-           
-           ;; Look for wavelengths in those flatsubdirs that match
-           ;; flatdirs[idir]! Also collect prefilters.
-           indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
-           fnames = file_search(flatsubdirs[indx]+'/sst_cam*', count = Nfiles)
-           if Nfiles gt 0 then begin
-              
-              camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
-
-              red_extractstates, fnames, /basename, pref = wls
-              wls = wls[uniq(wls, sort(wls))]
-              wls = wls[WHERE(wls ne '')]
-              wavelengths = strjoin(wls, ' ')
-              ;; Print to script file
-              printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
-                   + red_strreplace(flatdirs[idir], root_dir, '') $
-                   + '"  ; ' + camdirs+' ('+wavelengths+')'
-
-              red_append, prefilters, wls
-
-           endif                ; Nfiles
-        endfor                  ; idir
-     endif                      ; Nsubdirs
-
-     if n_elements(prefilters) gt 0 then begin
-        prefilters = prefilters[uniq(prefilters, sort(prefilters))]
-     endif
-
-     Nprefilters = n_elements(prefilters)
-     if Nprefilters eq 0 then begin
-        ;; This can happen if flats were already summed in La Palma. Look
-        ;; for prefilters in the summed flats directory instead.
-        spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
-        Nprefilters = n_elements(prefilters)
-     endif
-     
-     for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> makegains, /preserve, pref='" + prefilters[ipref] $
-                + "' "
-     endfor
-
-     print, 'Pinholes'
-     printf, Clun, '#'
-     printf, Clun, '# --- Pinholes'
-     printf, Clun, '#'
-     pinhdirs = file_search(root_dir+'/*pinh*/*', count = Ndirs, /fold)
-     for i = 0, Ndirs-1 do begin
-        pinhsubdirs = file_search(pinhdirs[i]+'/chromis*', count = Nsubdirs, /fold)
-        if Nsubdirs gt 0 then begin
-           printf, Slun
-           printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-           printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                   + red_strreplace(pinhdirs[i], root_dir, '')+'"'
+        printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
+        printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                + red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
-           for ipref = 0, Nprefilters-1 do begin
-              printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
-           endfor
-        endif else begin
-           pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
-           printf, Slun
-           for j = 0, Nsubdirs-1 do begin
-              pinhsubsubdirs = file_search(pinhsubdirs[j]+'/chromis*' $
-                                           , count = Nsubsubdirs, /fold)
-              if Nsubsubdirs gt 0 then begin
-                 printf, Clun, 'pinh_dir = ' $
-                         + red_strreplace(pinhsubdirs[j], root_dir, '')
-                 printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                         + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+        for ipref = 0, Nprefilters-1 do begin
+          printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
+        endfor
+      endif else begin
+        pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
+        printf, Slun
+        for j = 0, Nsubdirs-1 do begin
+          pinhsubsubdirs = file_search(pinhsubdirs[j]+'/chromis*' $
+                                       , count = Nsubsubdirs, /fold)
+          if Nsubsubdirs gt 0 then begin
+            printf, Clun, 'pinh_dir = ' $
+                    + red_strreplace(pinhsubdirs[j], root_dir, '')
+            printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                    + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
-                 for ipref = 0, Nprefilters-1 do begin
-                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                            + prefilters[ipref]+"'" 
-                 endfor
-              endif
-           endfor
-        endelse
-     endfor
+            for ipref = 0, Nprefilters-1 do begin
+              printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                      + prefilters[ipref]+"'" 
+            endfor
+          endif
+        endfor
+      endelse
+    endfor
 
-     
-     print, 'Prefilter scan'
-     printf, Clun, '#'
-     printf, Clun, '# --- Prefilter scan'
-     printf, Clun, '#'
-     Npfs = 0
-     pfscandirs = file_search(root_dir+'/*pfscan*/*', count = Ndirs, /fold)
-     for i = 0, Ndirs-1 do begin
-        pfscansubdirs = file_search(pfscandirs[i]+'/chromis*', count = Nsubdirs, /fold)
+    
+    print, 'Prefilter scan'
+    printf, Clun, '#'
+    printf, Clun, '# --- Prefilter scan'
+    printf, Clun, '#'
+    Npfs = 0
+    pfscandirs = file_search(root_dir+'/*pfscan*/*', count = Ndirs, /fold)
+    for i = 0, Ndirs-1 do begin
+      pfscansubdirs = file_search(pfscandirs[i]+'/chromis*', count = Nsubdirs, /fold)
+      if Nsubdirs gt 0 then begin
+        printf, Clun, '# pfscan_dir = '+red_strreplace(pfscandirs[i], root_dir, '')
+        Npfs += 1
+      endif else begin
+        pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
+        for j = 0, Nsubdirs-1 do begin
+          pfscansubsubdirs = file_search(pfscansubdirs[j]+'/chromis*' $
+                                         , count = Nsubsubdirs, /fold)
+          if Nsubsubdirs gt 0 then begin
+            printf, Clun, '# pfscan_dir = ' $
+                    + red_strreplace(pfscansubdirs[j], root_dir, '')
+            Npfs += 1
+          endif                 ; Nsubsubdirs
+        endfor                  ; j
+      endelse                   ; Nsubdirs
+    endfor                      ; i
+    ;; If we implement dealing with prefilter scans in the pipeline,
+    ;; here is where the command should be written to the script file.
+
+    
+    print, 'Science'
+    printf, Clun, '#'
+    printf, Clun, '# --- Science data'
+    printf, Clun, '# '
+
+    ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
+    nonsciencedirs = [ pinhdirs, pfscandirs ]
+    red_append, nonsciencedirs, darkdirs
+    red_append, nonsciencedirs, flatdirs
+    sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+
+    for i = 0, Ndirs-1 do begin
+
+      if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
+        sciencesubdirs = file_search(sciencedirs[i]+'/chromis*' $
+                                     , count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
-           printf, Clun, '# pfscan_dir = '+red_strreplace(pfscandirs[i], root_dir, '')
-           Npfs += 1
+          red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
         endif else begin
-           pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
-           for j = 0, Nsubdirs-1 do begin
-              pfscansubsubdirs = file_search(pfscansubdirs[j]+'/chromis*' $
-                                             , count = Nsubsubdirs, /fold)
-              if Nsubsubdirs gt 0 then begin
-                 printf, Clun, '# pfscan_dir = ' $
-                         + red_strreplace(pfscansubdirs[j], root_dir, '')
-                 Npfs += 1
-              endif  ; Nsubsubdirs
-           endfor    ; j
-        endelse      ; Nsubdirs
-     endfor          ; i
-     ;; If we implement dealing with prefilter scans in the pipeline,
-     ;; here is where the command should be written to the script file.
+          sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
+          for j = 0, Nsubdirs-1 do begin
+            sciencesubsubdirs = file_search(sciencesubdirs[j]+'/chromis*' $
+                                            , count = Nsubsubdirs, /fold)
+            if Nsubsubdirs gt 0 then begin
+              red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
+            endif
+          endfor                ; j
+        endelse 
+      endif
+    endfor
+    if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
-     
-     print, 'Science'
-     printf, Clun, '#'
-     printf, Clun, '# --- Science data'
-     printf, Clun, '# '
+    printf, Slun, 'a -> link_data' 
+    
+    for ipref = 0, Nprefilters-1 do begin
+      printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'"
+    endfor                      ; ipref
+    
+    
 
-     ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
-     nonsciencedirs = [ pinhdirs, pfscandirs ]
-     red_append, nonsciencedirs, darkdirs
-     red_append, nonsciencedirs, flatdirs
-     sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+    printf, Slun, ''
+    printf, Slun, 'a -> getalignclips_new' 
+    printf, Slun, 'a -> getoffsets' 
+    
+    printf, Slun, ''
+    printf, Slun, 'a -> pinholecalib_thi'
+    printf, Slun, 'a -> diversitycalib'
+    
+    printf, Slun, ''
+    printf, Slun, ';; -----------------------------------------------------'
+    printf, Slun, ';; This is how far we should be able to run unsupervised'
+    printf, Slun, 'stop'          
+    printf, Slun, ''
 
-     for i = 0, Ndirs-1 do begin
+    printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
+    printf, Slun, '; whether npar=3 or npar=4 is needed.'
+    printf, Slun, 'a -> fitgains, npar = 2, res=res' 
+    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+    printf, Slun, '; keyword:'
+    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+    printf, Slun, ''
 
-        if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-           sciencesubdirs = file_search(sciencedirs[i]+'/chromis*' $
-                                        , count = Nsubdirs, /fold)
-           if Nsubdirs gt 0 then begin
-              red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
-           endif else begin
-              sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
-              for j = 0, Nsubdirs-1 do begin
-                 sciencesubsubdirs = file_search(sciencesubdirs[j]+'/chromis*' $
-                                                 , count = Nsubsubdirs, /fold)
-                 if Nsubsubdirs gt 0 then begin
-                    red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
-                 endif
-              endfor            ; j
-           endelse 
-        endif
-     endfor
-     if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
-
-     printf, Slun, 'a -> link_data' 
-     
-     for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'"
-     endfor                     ; ipref
-     
-     
-
-     printf, Slun, ''
-     printf, Slun, 'a -> getalignclips_new' 
-     printf, Slun, 'a -> getoffsets' 
-     
-     printf, Slun, ''
-     printf, Slun, 'a -> pinholecalib_thi'
-     printf, Slun, 'a -> diversitycalib'
-     
-     printf, Slun, ''
-     printf, Slun, ';; -----------------------------------------------------'
-     printf, Slun, ';; This is how far we should be able to run unsupervised'
-     printf, Slun, 'stop'          
-     printf, Slun, ''
-
-     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-     printf, Slun, '; whether npar=3 or npar=4 is needed.'
-     printf, Slun, 'a -> fitgains, npar = 2, res=res' 
-     printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-     printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-     printf, Slun, '; keyword:'
-     printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-     printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-     printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-     printf, Slun, ''
-
-     
-     free_lun, Clun
-     free_lun, Slun
+    
+    free_lun, Clun
+    free_lun, Slun
 
   endif                         ; setup_chromis
 
@@ -697,354 +697,354 @@ pro red_setupworkdir, search_dir = search_dir $
     red_metadata_store, fname = crisp_dir + '/info/metadata.fits' $
                         , [{keyword:'INSTRUME', value:'CRISP', comment:'Name of instrument'}]
 
-   
-     ;; Open two files for writing. Use logical unit Clun for a Config
-     ;; file and Slun for a Script file.
+    
+    ;; Open two files for writing. Use logical unit Clun for a Config
+    ;; file and Slun for a Script file.
 
-     openw, Clun, crisp_dir + cfgfile, /get_lun
-     openw, Slun, crisp_dir + scriptfile , /get_lun
+    openw, Clun, crisp_dir + cfgfile, /get_lun
+    openw, Slun, crisp_dir + scriptfile , /get_lun
 
-     ;; Specify the date in the config file, ISO format.
-     print, 'Date'
-     printf, Clun, '#'
-     printf, Clun, '# --- Date'
-     printf, Clun, '#'
-     printf, Clun,'isodate = '+isodate
+    ;; Specify the date in the config file, ISO format.
+    print, 'Date'
+    printf, Clun, '#'
+    printf, Clun, '# --- Date'
+    printf, Clun, '#'
+    printf, Clun,'isodate = '+isodate
 
-     ;; printf, Slun, '.r crispred'
-     printf, Slun, 'a = crispred("config.txt")' 
-     printf, Slun, 'root_dir = "' + root_dir + '"'
+    ;; printf, Slun, '.r crispred'
+    printf, Slun, 'a = crispred("config.txt")' 
+    printf, Slun, 'root_dir = "' + root_dir + '"'
 
-     ;; Download SST log files and optionally some other data from the web.
-     print, 'Log files'
-     printf, Clun, '#'
-     printf, Clun, '# --- Download SST log files'
-     printf, Clun, '#'
-     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
+    ;; Download SST log files and optionally some other data from the web.
+    print, 'Log files'
+    printf, Clun, '#'
+    printf, Clun, '# --- Download SST log files'
+    printf, Clun, '#'
+    printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
 
-     print, 'Cameras'
-     printf, Clun, '#'
-     printf, Clun, '# --- Cameras'
-     printf, Clun, '#'
-     printf, Clun, 'camera = Crisp-T'
-     printf, Clun, 'camera = Crisp-R'
-     printf, Clun, 'camera = Crisp-W'
-     printf, Clun, '#'
-     printf, Clun, 'root_dir = ' + root_dir
-     printf, Clun, '#'
+    print, 'Cameras'
+    printf, Clun, '#'
+    printf, Clun, '# --- Cameras'
+    printf, Clun, '#'
+    printf, Clun, 'camera = Crisp-T'
+    printf, Clun, 'camera = Crisp-R'
+    printf, Clun, 'camera = Crisp-W'
+    printf, Clun, '#'
+    printf, Clun, 'root_dir = ' + root_dir
+    printf, Clun, '#'
 
-     print, 'Output'
-     printf, Clun, '#'
-     printf, Clun, '# --- Output'
-     printf, Clun, '#'
-     printf, Clun, 'out_dir = ' + crisp_dir
+    print, 'Output'
+    printf, Clun, '#'
+    printf, Clun, '# --- Output'
+    printf, Clun, '#'
+    printf, Clun, 'out_dir = ' + crisp_dir
 
-     print, 'Darks'
-     printf, Clun, '#'
-     printf, Clun, '# --- Darks'
-     printf, Clun, '#'
-     
-     darksubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'dark', count = Nsubdirs)
-     if Nsubdirs gt 0 then begin
-        darkdirs = file_dirname(darksubdirs)
-        darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
-        for idir = 0, n_elements(darkdirs)-1 do begin
-           printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
-           printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
-                   + red_strreplace(darkdirs[idir], root_dir, '') + '"'
-        endfor                  ; idir
-     endif                      ; Nsubdirs
-     
-     print, 'Flats'
-     printf, Clun, '#'
-     printf, Clun, '# --- Flats'
-     printf, Clun, '#'
+    print, 'Darks'
+    printf, Clun, '#'
+    printf, Clun, '# --- Darks'
+    printf, Clun, '#'
+    
+    darksubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'dark', count = Nsubdirs)
+    if Nsubdirs gt 0 then begin
+      darkdirs = file_dirname(darksubdirs)
+      darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
+      for idir = 0, n_elements(darkdirs)-1 do begin
+        printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir], root_dir, '')
+        printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
+                + red_strreplace(darkdirs[idir], root_dir, '') + '"'
+      endfor                    ; idir
+    endif                       ; Nsubdirs
+    
+    print, 'Flats'
+    printf, Clun, '#'
+    printf, Clun, '# --- Flats'
+    printf, Clun, '#'
 
-     flatsubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'flat', count = Nsubdirs)
-     if Nsubdirs gt 0 then begin
-        ;; There are CRISP flats!
+    flatsubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'flat', count = Nsubdirs)
+    if Nsubdirs gt 0 then begin
+      ;; There are CRISP flats!
 
-        ;; Directories with camera dirs below:
-        flatdirs = file_dirname(flatsubdirs)
-        flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
-        Nflatdirs = n_elements(flatdirs)
+      ;; Directories with camera dirs below:
+      flatdirs = file_dirname(flatsubdirs)
+      flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
+      Nflatdirs = n_elements(flatdirs)
 
-        ;; Loop over the flatdirs, write each to the config file and
-        ;; to the script file
-        for idir = 0, Nflatdirs-1 do begin
+      ;; Loop over the flatdirs, write each to the config file and
+      ;; to the script file
+      for idir = 0, Nflatdirs-1 do begin
 
-           ;; Config file
+        ;; Config file
 
-           printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[idir], root_dir, '')
+        printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[idir], root_dir, '')
 
-           ;; Script file
-           
-           ;; Look for wavelengths in those flatsubdirs that match
-           ;; flatdirs[idir]! Also collect prefilters.
-           indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
-           fnames = file_search(flatsubdirs[indx]+'/cam*', count = Nfiles)
-           if Nfiles gt 0 then begin
-              
-              camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
-
-              red_extractstates, fnames, /basename, pref = wls
-              wls = wls[uniq(wls, sort(wls))]
-              wls = wls[WHERE(wls ne '')]
-              wavelengths = strjoin(wls, ' ')
-              ;; Print to script file
-              printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
-                   + red_strreplace(flatdirs[idir], root_dir, '') $
-                   + '"  ; ' + camdirs+' ('+wavelengths+')'
-
-              red_append, prefilters, wls
-
-           endif                ; Nfiles
-        endfor                  ; idir
-     endif                      ; Nsubdirs
-
-     
-     if n_elements(prefilters) gt 0 then begin
-        prefilters = prefilters[uniq(prefilters, sort(prefilters))]
-        Nprefilters = n_elements(prefilters)
-     endif
-
-     if Nprefilters eq 0 then begin
-        ;; This can happen if flats were already summed in La Palma. Look
-        ;; for prefilters in the summed flats directory instead.
-        spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
-        Nprefilters = n_elements(prefilters)
-     endif
-     
-     ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
-     ;; some of the method calls, so add it commented out. (This if
-     ;; because for some years we don't have properly prepared
-     ;; backgains and psfs for the relevant cameras.)
-     maybe_nodescatter = strarr(Nprefilters)
-     indx7772 = where(prefilters eq '7772', N7772)
-     if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
-
-     for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
-                + "' " + maybe_nodescatter[ipref]
-     endfor
-
-     print, 'Pinholes'
-     printf, Clun, '#'
-     printf, Clun, '# --- Pinholes'
-     printf, Clun, '#'
-     pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
-     for i = 0, Ndirs-1 do begin
-        pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
-        if Nsubdirs gt 0 then begin
-           printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-           printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                   + red_strreplace(pinhdirs[i], root_dir, '')+'"'
-;        printf, Slun, 'a -> sumpinh_new'
-           for ipref = 0, Nprefilters-1 do begin
-              printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                      + prefilters[ipref]+"'" $
-                      + maybe_nodescatter[ipref]
-           endfor
-        endif else begin
-           pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
-           for j = 0, Nsubdirs-1 do begin
-              pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
-                                           , count = Nsubsubdirs, /fold)
-              if Nsubsubdirs gt 0 then begin
-                 printf, Clun, 'pinh_dir = ' $
-                         + red_strreplace(pinhsubdirs[j], root_dir, '')
-                 printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                         + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
-;              printf, Slun, 'a -> sumpinh_new'
-                 for ipref = 0, Nprefilters-1 do begin
-                    printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                            + prefilters[ipref] + "'" $
-                            + maybe_nodescatter[ipref]
-                 endfor         ; ipref
-              endif             ; Nsubsubdirs
-           endfor               ; j
-        endelse                 ; Nsubdirs
-     endfor                     ; i
-     
-     print, 'Polcal'
-     printf, Clun, '#'
-     printf, Clun, '# --- Polcal'
-     printf, Clun, '#'
-;  Npol = 0
-     polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
-     if Npol gt 0 then begin
-        polprefs = file_basename(polcaldirs)
-        for i = 0, Npol-1 do begin
-           polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
-                                       , count = Nsubdirs, /fold)
-           if Nsubdirs gt 0 then begin
-              printf, Clun, 'polcal_dir = ' $
-                      + red_strreplace(polcaldirs[i], root_dir, '')
-;        Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-                      + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-              printf, Slun, 'a -> sumpolcal, /check'
-           endif else begin
-              polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
-              for j = 0, Nsubdirs-1 do begin
-                 polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
-                                                , count = Nsubsubdirs, /fold)
-                 if Nsubsubdirs gt 0 then begin
-                    printf, Clun, 'polcal_dir = ' $
-                            + red_strreplace(polcalsubdirs[j], root_dir, '')
-;              Npol += 1
-                    printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-                            + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-                    printf, Slun, 'a -> sumpolcal, /check' 
-                 endif
-              endfor            ; j
-           endelse
-        endfor                  ; i
-
-        for ipref = 0, Npol-1 do begin
-           printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
-                   + maybe_nodescatter[ipref]
-           printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
-                   + strtrim(Nthreads, 2)
-        endfor                  ; ipref
+        ;; Script file
         
-     endif else begin
-        polprefs = ''
-     endelse                    ; Npol
+        ;; Look for wavelengths in those flatsubdirs that match
+        ;; flatdirs[idir]! Also collect prefilters.
+        indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
+        fnames = file_search(flatsubdirs[indx]+'/cam*', count = Nfiles)
+        if Nfiles gt 0 then begin
+          
+          camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
 
-     
-     print, 'Prefilter scan'
-     printf, Clun, '#'
-     printf, Clun, '# --- Prefilter scan'
-     printf, Clun, '#'
-     Npfs = 0
-     pfscandirs = file_search(root_dir+'/pfscan*/*', count = Ndirs, /fold)
-     for i = 0, Ndirs-1 do begin
-        pfscansubdirs = file_search(pfscandirs[i]+'/crisp*', count = Nsubdirs, /fold)
+          red_extractstates, fnames, /basename, pref = wls
+          wls = wls[uniq(wls, sort(wls))]
+          wls = wls[WHERE(wls ne '')]
+          wavelengths = strjoin(wls, ' ')
+          ;; Print to script file
+          printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
+                  + red_strreplace(flatdirs[idir], root_dir, '') $
+                  + '"  ; ' + camdirs+' ('+wavelengths+')'
+
+          red_append, prefilters, wls
+
+        endif                   ; Nfiles
+      endfor                    ; idir
+    endif                       ; Nsubdirs
+
+    
+    if n_elements(prefilters) gt 0 then begin
+      prefilters = prefilters[uniq(prefilters, sort(prefilters))]
+      Nprefilters = n_elements(prefilters)
+    endif
+
+    if Nprefilters eq 0 then begin
+      ;; This can happen if flats were already summed in La Palma. Look
+      ;; for prefilters in the summed flats directory instead.
+      spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
+      Nprefilters = n_elements(prefilters)
+    endif
+    
+    ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
+    ;; some of the method calls, so add it commented out. (This if
+    ;; because for some years we don't have properly prepared
+    ;; backgains and psfs for the relevant cameras.)
+    maybe_nodescatter = strarr(Nprefilters)
+    indx7772 = where(prefilters eq '7772', N7772)
+    if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
+
+    for ipref = 0, Nprefilters-1 do begin
+      printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
+              + "' " + maybe_nodescatter[ipref]
+    endfor
+
+    print, 'Pinholes'
+    printf, Clun, '#'
+    printf, Clun, '# --- Pinholes'
+    printf, Clun, '#'
+    pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
+    for i = 0, Ndirs-1 do begin
+      pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
+      if Nsubdirs gt 0 then begin
+        printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
+        printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                + red_strreplace(pinhdirs[i], root_dir, '')+'"'
+;        printf, Slun, 'a -> sumpinh_new'
+        for ipref = 0, Nprefilters-1 do begin
+          printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                  + prefilters[ipref]+"'" $
+                  + maybe_nodescatter[ipref]
+        endfor
+      endif else begin
+        pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
+        for j = 0, Nsubdirs-1 do begin
+          pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
+                                       , count = Nsubsubdirs, /fold)
+          if Nsubsubdirs gt 0 then begin
+            printf, Clun, 'pinh_dir = ' $
+                    + red_strreplace(pinhsubdirs[j], root_dir, '')
+            printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                    + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+;              printf, Slun, 'a -> sumpinh_new'
+            for ipref = 0, Nprefilters-1 do begin
+              printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                      + prefilters[ipref] + "'" $
+                      + maybe_nodescatter[ipref]
+            endfor              ; ipref
+          endif                 ; Nsubsubdirs
+        endfor                  ; j
+      endelse                   ; Nsubdirs
+    endfor                      ; i
+    
+    print, 'Polcal'
+    printf, Clun, '#'
+    printf, Clun, '# --- Polcal'
+    printf, Clun, '#'
+;  Npol = 0
+    polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
+    if Npol gt 0 then begin
+      polprefs = file_basename(polcaldirs)
+      for i = 0, Npol-1 do begin
+        polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
+                                    , count = Nsubdirs, /fold)
         if Nsubdirs gt 0 then begin
-           printf, Clun, '# pfscan_dir = '+red_strreplace(pfscandirs[i], root_dir, '')
-           Npfs += 1
+          printf, Clun, 'polcal_dir = ' $
+                  + red_strreplace(polcaldirs[i], root_dir, '')
+;        Npol += 1
+          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+          printf, Slun, 'a -> sumpolcal, /check'
         endif else begin
-           pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
-           for j = 0, Nsubdirs-1 do begin
-              pfscansubsubdirs = file_search(pfscansubdirs[j]+'/crisp*' $
-                                             , count = Nsubsubdirs, /fold)
-              if Nsubsubdirs gt 0 then begin
-                 printf, Clun, '# pfscan_dir = ' $
-                         + red_strreplace(pfscansubdirs[j], root_dir, '')
-                 Npfs += 1
-              endif
-           endfor
+          polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
+          for j = 0, Nsubdirs-1 do begin
+            polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
+                                           , count = Nsubsubdirs, /fold)
+            if Nsubsubdirs gt 0 then begin
+              printf, Clun, 'polcal_dir = ' $
+                      + red_strreplace(polcalsubdirs[j], root_dir, '')
+;              Npol += 1
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+              printf, Slun, 'a -> sumpolcal, /check' 
+            endif
+          endfor                ; j
         endelse
-     endfor
-     ;; If we implement dealing with prefilter scans in the pipeline,
-     ;; here is where the command should be written to the script file.
+      endfor                    ; i
 
-     
-     print, 'Science'
-     printf, Clun, '#'
-     printf, Clun, '# --- Science data'
-     printf, Clun, '# '
-
-     ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
-     nonsciencedirs = [ pinhdirs, polcaldirs, pfscandirs ]
-     red_append, nonsciencedirs, darkdirs
-     red_append, nonsciencedirs, flatdirs
-     sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
-
-     for i = 0, Ndirs-1 do begin
-
-        if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-           sciencesubdirs = file_search(sciencedirs[i]+'/crisp*' $
-                                        , count = Nsubdirs, /fold)
-           if Nsubdirs gt 0 then begin
-              red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
-           endif else begin
-              sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
-              for j = 0, Nsubdirs-1 do begin
-                 sciencesubsubdirs = file_search(sciencesubdirs[j]+'/crisp*' $
-                                                 , count = Nsubsubdirs, /fold)
-                 if Nsubsubdirs gt 0 then begin
-                    red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
-                 endif          ; Nsubsubdirs
-              endfor            ; j
-           endelse              ; Nsubdirs
-        endif
-     endfor                     ; i
-     if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
-
-     printf, Slun, 'a -> link_data' 
-     
-     for ipref = 0, Nprefilters-1 do begin
-        if total(prefilters[ipref] eq polprefs) gt 0 then begin
-           printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
-                   + maybe_nodescatter[ipref]
-        endif else begin
-           printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
-                   + maybe_nodescatter[ipref]
-        endelse
-     endfor                     ; ipref
-     
-     
-
-     printf, Slun, ''
-     printf, Slun, 'a -> getalignclips_new' 
-     printf, Slun, 'a -> getoffsets' 
-     
-     printf, Slun, ''
-     printf, Slun, 'a -> pinholecalib'
-     
-     printf, Slun, ''
-     printf, Slun, ';; -----------------------------------------------------'
-     printf, Slun, ';; This is how far we should be able to run unsupervised'
-     printf, Slun, 'stop'          
-     printf, Slun, ''
-
-     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-     printf, Slun, '; whether npar=3 or npar=4 is needed.'
-     printf, Slun, 'a -> fitgains, npar = 2, res=res' 
-     printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-     printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-     printf, Slun, '; keyword:'
-     printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-     printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-     printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-     printf, Slun, ''
-
-     printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
-     for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-                + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-        printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-                + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-        printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
-                + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
-        if strmid(prefilters[ipref], 0, 2) eq '63' then begin
-           printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
-        endif else begin
-           printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
-        endelse
-        printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
-                + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
+      for ipref = 0, Npol-1 do begin
+        printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
                 + maybe_nodescatter[ipref]
-     endfor
+        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
+                + strtrim(Nthreads, 2)
+      endfor                    ; ipref
+      
+    endif else begin
+      polprefs = ''
+    endelse                     ; Npol
+
+    
+    print, 'Prefilter scan'
+    printf, Clun, '#'
+    printf, Clun, '# --- Prefilter scan'
+    printf, Clun, '#'
+    Npfs = 0
+    pfscandirs = file_search(root_dir+'/pfscan*/*', count = Ndirs, /fold)
+    for i = 0, Ndirs-1 do begin
+      pfscansubdirs = file_search(pfscandirs[i]+'/crisp*', count = Nsubdirs, /fold)
+      if Nsubdirs gt 0 then begin
+        printf, Clun, '# pfscan_dir = '+red_strreplace(pfscandirs[i], root_dir, '')
+        Npfs += 1
+      endif else begin
+        pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
+        for j = 0, Nsubdirs-1 do begin
+          pfscansubsubdirs = file_search(pfscansubdirs[j]+'/crisp*' $
+                                         , count = Nsubsubdirs, /fold)
+          if Nsubsubdirs gt 0 then begin
+            printf, Clun, '# pfscan_dir = ' $
+                    + red_strreplace(pfscansubdirs[j], root_dir, '')
+            Npfs += 1
+          endif
+        endfor
+      endelse
+    endfor
+    ;; If we implement dealing with prefilter scans in the pipeline,
+    ;; here is where the command should be written to the script file.
+
+    
+    print, 'Science'
+    printf, Clun, '#'
+    printf, Clun, '# --- Science data'
+    printf, Clun, '# '
+
+    ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
+    nonsciencedirs = [ pinhdirs, polcaldirs, pfscandirs ]
+    red_append, nonsciencedirs, darkdirs
+    red_append, nonsciencedirs, flatdirs
+    sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+
+    for i = 0, Ndirs-1 do begin
+
+      if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
+        sciencesubdirs = file_search(sciencedirs[i]+'/crisp*' $
+                                     , count = Nsubdirs, /fold)
+        if Nsubdirs gt 0 then begin
+          red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
+        endif else begin
+          sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
+          for j = 0, Nsubdirs-1 do begin
+            sciencesubsubdirs = file_search(sciencesubdirs[j]+'/crisp*' $
+                                            , count = Nsubsubdirs, /fold)
+            if Nsubsubdirs gt 0 then begin
+              red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
+            endif               ; Nsubsubdirs
+          endfor                ; j
+        endelse                 ; Nsubdirs
+      endif
+    endfor                      ; i
+    if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+
+    printf, Slun, 'a -> link_data' 
+    
+    for ipref = 0, Nprefilters-1 do begin
+      if total(prefilters[ipref] eq polprefs) gt 0 then begin
+        printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
+                + maybe_nodescatter[ipref]
+      endif else begin
+        printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
+                + maybe_nodescatter[ipref]
+      endelse
+    endfor                      ; ipref
+    
+    
+
+    printf, Slun, ''
+    printf, Slun, 'a -> getalignclips_new' 
+    printf, Slun, 'a -> getoffsets' 
+    
+    printf, Slun, ''
+    printf, Slun, 'a -> pinholecalib'
+    
+    printf, Slun, ''
+    printf, Slun, ';; -----------------------------------------------------'
+    printf, Slun, ';; This is how far we should be able to run unsupervised'
+    printf, Slun, 'stop'          
+    printf, Slun, ''
+
+    printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
+    printf, Slun, '; whether npar=3 or npar=4 is needed.'
+    printf, Slun, 'a -> fitgains, npar = 2, res=res' 
+    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+    printf, Slun, '; keyword:'
+    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+    printf, Slun, ''
+
+    printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
+    for ipref = 0, Nprefilters-1 do begin
+      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
+              + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
+      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
+              + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
+      printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
+              + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
+      if strmid(prefilters[ipref], 0, 2) eq '63' then begin
+        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
+      endif else begin
+        printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
+      endelse
+      printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
+              + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
+              + maybe_nodescatter[ipref]
+    endfor
 
 
-     printf, Slun, ''
-     printf, Slun, ';; Run MOMFBD outside IDL.'
-     printf, Slun, ''
+    printf, Slun, ''
+    printf, Slun, ';; Run MOMFBD outside IDL.'
+    printf, Slun, ''
 
-     printf, Slun, ';; Post-MOMFBD stuff:' 
-     printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
-     if Npol gt 0 then begin
-        printf, Slun, 'pol = a->polarim(/new)' 
-        printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate,/noflat' 
-        printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
-     endif
-     printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
-     
-     free_lun, Clun
-     free_lun, Slun
+    printf, Slun, ';; Post-MOMFBD stuff:' 
+    printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
+    if Npol gt 0 then begin
+      printf, Slun, 'pol = a->polarim(/new)' 
+      printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate,/noflat' 
+      printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
+    endif
+    printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
+    
+    free_lun, Clun
+    free_lun, Slun
   endif                         ; setup_crisp
 
   
@@ -1054,15 +1054,15 @@ pro red_setupworkdir, search_dir = search_dir $
   print
 
   if n_elements(crisp_dir) then begin
-     print, 'CRISP setup in ' + crisp_dir
+    print, 'CRISP setup in ' + crisp_dir
   endif else begin
-     print, 'No CRISP data'
+    print, 'No CRISP data'
   endelse
   
   if n_elements(chromis_dir) then begin
-     print, 'CHROMIS setup in ' + chromis_dir
+    print, 'CHROMIS setup in ' + chromis_dir
   endif else begin
-     print, 'No CHROMIS data'
+    print, 'No CHROMIS data'
   endelse
   
 end
