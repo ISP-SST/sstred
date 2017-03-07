@@ -109,7 +109,8 @@ function red_make_lowpass_postfilter, ims, limfreq $
                                       , doplot = doplot $
                                       , filtercube = filtercube $
                                       , fouriercube = fouriercube $
-                                      , wiener = wiener
+                                      , wiener = wiener $
+                                      , pause = pause
   
   dims = size(ims, /dim)
   sz = dims[0]
@@ -188,7 +189,7 @@ function red_make_lowpass_postfilter, ims, limfreq $
         mn = min(pow1d)
         
         if keyword_set(doplot) then begin
-           window, iim <9
+           window, 0
            cgplot,pow1d, /ylog
         endif
 
@@ -218,7 +219,8 @@ function red_make_lowpass_postfilter, ims, limfreq $
            ihi_signal = ilo_noise*0.7
            Pstart = [0, -1]
            errs = 1.+0*xx[ilo_signal:ihi_signal]
-           P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal], alog(pow1d[ilo_signal:ihi_signal]), errs, Pstart)
+           P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal] $
+                         , alog(pow1d[ilo_signal:ihi_signal]), errs, Pstart)
            Signal_fit = exp(P[0]+P[1]*xx)
 
            if keyword_set(doplot) then begin
@@ -246,19 +248,20 @@ function red_make_lowpass_postfilter, ims, limfreq $
            ;; Make the filter
            filt = aperture(sz/2, rc)
            kern = red_get_psf(sz, sz, sz/20., sz/20.)
-           filtercube[*, *, iim] =  red_convolve(filt, kern)
+           filtercube[*, *, iim] = red_convolve(filt, kern)
+           filtercube[*, *, iim] = filtercube[*, *, iim] / max(filtercube[*, *, iim])
 
            if keyword_set(doplot) then begin
-              window, (iim+10) <19
-              cgplot, indx, ld[indx]
+              window, 1
+              cgplot, indx, ld[indx], title = 'Image cube index '+strtrim(iim, 2)
               cgplot, indx, r, color = 'red',/over
-              cgplot, rc*[1., 1.], [max(ld), min(ld)], color = 'blue',/over
-
+              cgplot, rc*[1., 1.], !y.crange, color = 'blue',/over
               cgplot, indx, rc-indx, color = 'cyan', /over
+              cgplot, (filtercube[sz/2:*, sz/2, iim])*(!y.crange[1]-!y.crange[0]) + !y.crange[0], /over
 
-              window, iim <9
-              cgplot,pow1d, /ylog
-              cgplot, rc*[1., 1.], [mn/2, mx*2], color = 'blue',/over
+              window, 0
+              cgplot,pow1d, /ylog, title = 'Image cube index '+strtrim(iim, 2)
+              cgplot, rc*[1., 1.], 10^!y.crange, color = 'blue',/over
            endif
 
         endelse                 ; Wiener
@@ -283,7 +286,7 @@ function red_make_lowpass_postfilter, ims, limfreq $
               mn = min(pow1d[*, ia])
               
               if keyword_set(doplot) then begin
-                 window, 0
+                 window, 4
                  cgplot,pow1d[*, ia], /ylog
               endif
 
@@ -313,7 +316,8 @@ function red_make_lowpass_postfilter, ims, limfreq $
               ihi_signal = ilo_noise*0.7
               Pstart = [0, -1]
               errs = 1.+0*xx[ilo_signal:ihi_signal]
-              P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal], alog(pow1d[ilo_signal:ihi_signal, ia]), errs, Pstart)
+              P = mpfitexpr('P[0]+P[1]*x', xx[ilo_signal:ihi_signal] $
+                            , alog(pow1d[ilo_signal:ihi_signal, ia]), errs, Pstart)
               Signal_fit = exp(P[0]+P[1]*xx)
 
               if keyword_set(doplot) then begin
@@ -329,6 +333,7 @@ function red_make_lowpass_postfilter, ims, limfreq $
 
            ;;filtercube[*, *, iim] = red_roundmatrix(signal_fit/(signal_fit+noise_fit), sz/2)
            filtercube[*, *, iim] = red_sectormatrix(filt1d, sz/2)
+
           
         endif else begin
            ;; Non-Wiener. 
@@ -362,15 +367,19 @@ function red_make_lowpass_postfilter, ims, limfreq $
            ;; Make a psf for smoothing the filter 
            fwhm = sz/32.
            psf = red_get_psf(sz, sz, fwhm, fwhm)
-
-           filter = pow gt levels[iselect]            ; Threshold
-           filter = shift(filter, sz/2, sz/2)         ; Origin in the center
+           
+           filter = pow gt levels[iselect]               ; Threshold
+           filter = shift(filter, sz/2, sz/2)            ; Origin in the center
            filter = morph_close(filter,replicate(1,5,5)) ; Close holes and remove isolated pixels
            filter = red_convolve(filter, psf)            ; Smooth the filter
            filter = shift(filter, sz/2, sz/2)            ; Origin in the corner
            
         endelse                 ; Wiener
      endelse                    ; isotropic
+
+     if keyword_set(pause) then stop
+
+
   endfor                        ; iim
 
   if Nims eq 1 then begin
