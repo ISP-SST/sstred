@@ -74,7 +74,7 @@
 ;                of clips/offset-files to a separate method
 ;                (red::getalignment)
 ;
-;   2016-06-13 : MGL. Removed "_thi" suffix. This is now the default
+;   2017-03-07 : MGL. Removed "_thi" suffix. This is now the default
 ;                pinhole calibration method.
 ;
 ;-
