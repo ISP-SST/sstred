@@ -104,7 +104,7 @@ pro red_pinh_plot_convergence, IT = it $ ; # of iterations so far
 
 
   if n_elements(dconvergence) ne 0 then begin
-     window, 12, xs = 400, ys = 300
+     window, 13, xs = 400, ys = 300
      Nch =  (size(dconvergence, /dim))[0]
      if plotall then it = (size(dconvergence, /dim))[1]-1
      plot, dconvergence[0, 0:it], title = 'diversity updates' $
@@ -118,7 +118,7 @@ pro red_pinh_plot_convergence, IT = it $ ; # of iterations so far
   endif
      
   if n_elements(dvalues) ne 0 then begin
-     window, 13, xs = 400, ys = 300
+     window, 14, xs = 400, ys = 300
      Nch =  (size(dvalues, /dim))[0]
      if plotall then it = (size(dvalues, /dim))[1]-1
      plot, dvalues[0, 0:it], title = 'diversity values' $
@@ -127,12 +127,18 @@ pro red_pinh_plot_convergence, IT = it $ ; # of iterations so far
   endif
 
   if n_elements(mconvergence) ne 0 then begin
-     window, 14, xs = 400, ys = 300
+     window, 12, xs = 400, ys = 300
      if plotall then it = (size(mconvergence, /dim))[2]-1
-     maxmconvergence = max(max(mconvergence, dim = 1), dim = 1)
-     minmconvergence = min(min(mconvergence, dim = 1), dim = 1)
      dims = size(mconvergence, /dim)
-     medmconvergence = median(reform(mconvergence, dims[0]*dims[1], dims[2]), dim = 1)
+     if n_elements(dims) eq 2 then begin
+       maxmconvergence = max(mconvergence, dim = 1)
+       minmconvergence = min(mconvergence, dim = 1)
+       medmconvergence = median(mconvergence, dim = 1)
+     endif else begin
+       maxmconvergence = max(max(mconvergence, dim = 1), dim = 1)
+       minmconvergence = min(min(mconvergence, dim = 1), dim = 1)
+       medmconvergence = median(reform(mconvergence, dims[0]*dims[1], dims[2]), dim = 1)
+     endelse
      mn = min(minmconvergence[where(minmconvergence ne 0)])
      mx = max(maxmconvergence)
      plot, maxmconvergence[0:it], title = 'MOMFBD metric', /ylog, yrange = [mn, mx]
