@@ -203,6 +203,9 @@
 ;    2017-03-06 : MGL. Add storing of metadata in the work
 ;                 directories.
 ;
+;    2017-03-07 : MGL. Remove calls to getalignclips and getoffsets
+;                 methods, not needed with Tomas' getalignclips.
+;
 ;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
@@ -658,12 +661,8 @@ pro red_setupworkdir, search_dir = search_dir $
     
 
     printf, Slun, ''
-    printf, Slun, 'a -> getalignclips_new' 
-    printf, Slun, 'a -> getoffsets' 
-    
-    printf, Slun, ''
-    printf, Slun, 'a -> pinholecalib_thi'
-    printf, Slun, 'a -> diversitycalib'
+    printf, Slun, 'a -> pinholecalib'
+;    printf, Slun, 'a -> diversitycalib'
     
     printf, Slun, ''
     printf, Slun, ';; -----------------------------------------------------'
