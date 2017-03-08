@@ -45,21 +45,21 @@
 ;-
 function red_timestamp, utc = utc, iso = iso
 
-    time = Systime(UTC=Keyword_Set(utc))
-    day = Strmid(time, 0, 3)
-    date = String(StrMid(time, 8, 2), Format='(I2.2)') ; Required because UNIX and Windows differ in time format.
-    month = Strmid(time, 4, 3)
-    year = Strmid(time, 20, 4)
-    stamp = Strmid(time, 11, 8)
-    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-    m = (Where(months EQ StrUpCase(month))) + 1
- 
-    if keyword_set(iso) then begin
-       timestamp = year + '-' + string(m, FORMAT='(I2.2)') + '-' + date + 'T' + stamp
-    endif else begin
-       timestamp = year + String(m, FORMAT='(I2.2)') + date + '@' + stamp
-    endelse
+  time = Systime(UTC=Keyword_Set(utc))
+  day = Strmid(time, 0, 3)
+  date = String(StrMid(time, 8, 2), Format='(I2.2)') ; Required because UNIX and Windows differ in time format.
+  month = Strmid(time, 4, 3)
+  year = Strmid(time, 20, 4)
+  stamp = Strmid(time, 11, 8)
+  months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+  m = (Where(months EQ StrUpCase(month))) + 1
+  
+  if keyword_set(iso) then begin
+    timestamp = year + '-' + string(m, FORMAT='(I2.2)') + '-' + date + 'T' + stamp
+  endif else begin
+    timestamp = year + String(m, FORMAT='(I2.2)') + date + '@' + stamp
+  endelse
 
-    return, timestamp
+  return, timestamp
 
 end
