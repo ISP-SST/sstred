@@ -206,6 +206,8 @@
 ;    2017-03-07 : MGL. Remove calls to getalignclips and getoffsets
 ;                 methods, not needed with Tomas' getalignclips.
 ;
+;   2017-03-09 : MGL. Make Sun the OBJECT.
+;
 ;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
@@ -398,6 +400,7 @@ pro red_setupworkdir, search_dir = search_dir $
                               , comment:'Name of telescope'} $
                            , {keyword:'TELCONFG', value:'Schupmann, imaging', $
                               comment:'Telescope configuration'} $
+                           , {keyword:'OBJECT', value:'Sun', comment:''} $
                           ]
     
     ;; Write numerical metadata
