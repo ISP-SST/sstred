@@ -6,6 +6,12 @@
 ; :Author:
 ; 
 ;    Tomas Hillberg
+; 
+; :Keywords:
+; 
+;    develop : in, optional, type=boolean
+; 
+;       Run in developer mode.
 ;
 ;
 ; :History:
@@ -14,11 +20,13 @@
 ;                independent parts) and derived classes (CRISP/CHROMIS). 
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
-;                so the names match those of the corresponding SolarNet
-;                keywords.
+;                so the names match those of the corresponding
+;                SOLARNET keywords.
+;
+;   2017-03-09 : MGL. New keyword "develop".
 ;
 ;-
-pro crisp::initialize, filename
+pro crisp::initialize, filename, develop = develop
 
     self->RED::initialize, filename     ; Call initialize of the base-class first to load common parameters
 

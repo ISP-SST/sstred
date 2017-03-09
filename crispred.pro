@@ -10,7 +10,7 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;   Jaime de la Cruz Rodriguez (IFA-UU 2011),
 ;         Department of Physics and Astronomy, Uppsala University,
@@ -39,7 +39,7 @@
 ;         shift-and-sum in red_sumfiles for summing pinholes
 ;
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -50,22 +50,27 @@
 ;     of the science and calibration data (and a few other things).
 ;   
 ; 
+; 
 ; :Keywords:
 ; 
+;    develop : in, optional, type=boolean
 ; 
-; :dependencies:
+;       Run in developer mode.
+; 
+; 
+; :Dependencies:
 ;
 ;    The external C++ module must be compiled and the system variable
 ;    CREDUC point to creduc.so.
 ;
 ; 
-; :history:
+; :History:
 ; 
-;    2012-03-08 : JdlCR, The c++ routine red_cconvolve seemed to shift
-;                 the convolved data by dx,dy > 0.5 < 2 pixels.
-;                 Re-using the old IDL convolution routine (much
-;                 slower, yet it works better). Must check the c++
-;                 version.
+;   2012-03-08 : JdlCR, The c++ routine red_cconvolve seemed to shift
+;                the convolved data by dx,dy > 0.5 < 2 pixels.
+;                Re-using the old IDL convolution routine (much
+;                slower, yet it works better). Must check the c++
+;                version.
 ;
 ;   2012-03-21 : JdlCR, red_matrix2momfbd -> Corrected clips,
 ;                pol::demodulate -> some extra features like
@@ -88,10 +93,13 @@
 ;   2013-12-10 : PS  adapt for multiple flat_dir
 ;
 ;   2016-04-29 : THI. Split class RED into a base-class (instrument
-;                independent parts) and derived classes (CRISP/CHROMIS). 
+;                independent parts) and derived classes
+;                (CRISP/CHROMIS).
+;
+;   2017-03-09 : MGL. New keyword "develop".
 ; 
 ;-
-function crispred, filename
+function crispred, filename, develop = develop
 
   return, obj_new('crisp', filename)
   

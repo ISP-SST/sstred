@@ -25,7 +25,9 @@
 ; 
 ; :Keywords:
 ; 
+;    develop : in, optional, type=boolean
 ; 
+;       Run in developer mode.
 ; 
 ; :History:
 ; 
@@ -52,10 +54,11 @@
 ;
 ;   2017-01-25 : MGL. Added (nominal) diversity.
 ;
-;   2017-03-09 : MGL. Version info.
+;   2017-03-09 : MGL. Version info. New keyword "develop".
+;
 ;
 ;-
-pro red::initialize, filename
+pro red::initialize, filename, develop = develop
 
   ;; Test file
   if(~file_test(filename)) then begin
@@ -427,20 +430,18 @@ pro red::initialize, filename
   endcase
 
 
-
   ;; Report problems
   if strlen(self.version_problems) gt 0 then begin
     print
     print, 'Problem(s) with your installation:'
     print, self.version_problems
     print
-    print, 'You can go ahead with your processing but your output will be marked as'
-    print, 'not conforming to the SOLARNET standard.'
+    print, 'You can proceed with your processing but your output will be marked as'
+    print, 'not conforming to the SOLARNET standard. Just restart with the /develop flag set.'
     print
-    answ = ''
-    read, 'Do you want to continue [y/N]? ', answ
-    if strlowcase(answ) ne 'y' then exit
+    if ~keyword_set(develop) then exit
   endif
+
   
   cgWindow_SetDefs, PS_Decomposed=1
   
