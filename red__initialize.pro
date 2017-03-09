@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -27,7 +27,7 @@
 ; 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -52,9 +52,11 @@
 ;
 ;   2017-01-25 : MGL. Added (nominal) diversity.
 ;
+;   2017-03-09 : MGL. Version info.
+;
 ;-
 pro red::initialize, filename
-  
+
   ;; Test file
   if(~file_test(filename)) then begin
     print, 'red::initialize : ERROR : file not found: ', filename
@@ -182,11 +184,16 @@ pro red::initialize, filename
     IF ptr_valid(self.pinh_dirs) THEN FOR i = 0, n_elements(*self.pinh_dirs)-1 DO $
        IF strmid((*self.pinh_dirs)[i], 0, 1) NE '/' AND strlen((*self.pinh_dirs)[i]) GT 0 $
        THEN (*self.pinh_dirs)[i] = self.root_dir + (*self.pinh_dirs)[i]
-;     if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
-    if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then self.prefilter_dir = self.root_dir + self.prefilter_dir
-;     if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
-    if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then self.polcal_dir = self.root_dir + self.polcal_dir
-;     if(strmid(self.descatter_dir, 0, 1) NE '/' AND strlen(self.descatter_dir) gt 0) then self.descatter_dir = self.root_dir + self.descatter_dir
+    ;; if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then $
+    ;;   self.dark_dir = self.root_dir + self.dark_dir
+    if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then $
+       self.prefilter_dir = self.root_dir + self.prefilter_dir
+    ;; if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then $
+    ;;    self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
+    if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then $
+       self.polcal_dir = self.root_dir + self.polcal_dir
+    ;; if(strmid(self.descatter_dir, 0, 1) NE '/' AND  strlen(self.descatter_dir) gt 0) then $
+    ;;     self.descatter_dir = self.root_dir + self.descatter_dir
   endif
   if(strlen(self.telescope_d) eq 0) then self.telescope_d = '0.970'
   print, 'red::initialize : telescope_d = '+self.telescope_d 
@@ -298,7 +305,7 @@ pro red::initialize, filename
       for k = 0, nn-1 do print, string(k, format='(I5)') + ' -> ' + (*self.pinh_dirs)[k]
     endelse
   endif
-                                ;if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
+  ;;if(self.doflat) then print, 'red::initialize : flat_dir = '+ strjoin(*self.flat_dir, '  ')
   if ptr_valid(self.data_dirs) then begin
     nn = n_elements(*self.data_dirs)
     if(nn eq 1) then begin
@@ -312,6 +319,127 @@ pro red::initialize, filename
   if(self.filetype) then print, 'red::initialize : filetype = '+ self.filetype
   print, 'red::initialize : out_dir = '+ self.out_dir
 
+
+
+  ;; Versions and libraries info ----------------------------------------------------
+
+  paths = strsplit(!path,":",/extract) 
+  git_describe_command = 'git describe --always --abbrev=12 --long --dirty=\ \(Modified\)'
+  git_count_command = 'git rev-list HEAD --count'
+  git_diff_command = 'git diff HEAD'
+  
+  ;; Pipeline version
+  srcdir = file_dirname( routine_filepath("red::initialize"), /mark )
+  spawn, 'cd '+srcdir+'; ' + git_describe_command, pipeline_gitoutput
+  pipeline_gitoutput = strreplace(pipeline_gitoutput, 'release/', '')
+  if strmatch(pipeline_gitoutput, '*(Modified)') then $
+     self.version_problems += 'The pipeline is modified. '
+  self.version_pipeline = strjoin((strsplit(pipeline_gitoutput, '-', /extract))[0:1], '-')
+
+  ;; Redux dlm version. We require that the ANA and MOMFBD dlms are
+  ;; part of the rdx dlm and the same version.
+  help,/dlm,'rdx', output = rdx_dlm_version
+  dlmpos = strpos(rdx_dlm_version[1], 'release/')
+  self.version_reduxdlm = strjoin((strsplit(strmid(rdx_dlm_version[1],dlmpos+8), '-', /extract))[0:1], '-')
+  help,/dlm,'ana' , output = ana_dlm_version
+  dlmpos = strpos(ana_dlm_version[1], 'release/')
+  ana_dlm_version = strjoin((strsplit(strmid(ana_dlm_version[1],dlmpos+8), '-', /extract))[0:1], '-')
+  help,/dlm,'momfbd', output = momfbd_dlm_version
+  dlmpos = strpos(momfbd_dlm_version[1], 'release/')
+  momfbd_dlm_version = strjoin((strsplit(strmid(momfbd_dlm_version[1],dlmpos+8), '-', /extract))[0:1], '-')
+
+  if ana_dlm_version ne self.version_reduxdlm then self.version_problems += 'ANA DLM not identical to redux DLM'
+  if momfbd_dlm_version ne self.version_reduxdlm then self.version_problems += 'MOMFBD  DLM not identical to redux DLM'
+
+
+  ;; Coyote library version
+  coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
+  case Nwhere of
+    0: begin
+      print, 'The Coyote library does not seem to be installed.'
+      stop
+    end
+    1: begin
+      ;coyotedir = file_dirname( filepath(root_dir = coyotepaths[0], "cgcolor"), /mark )
+      spawn, 'cd '+coyotepaths[0]+'; ' + git_count_command, coyote_gitoutput
+      coyote_gitoutput = strreplace(coyote_gitoutput, 'release/', '')
+      ;; if strmatch(coyote_gitoutput, '(Modified)') then $
+      ;;   self.version_problems += 'The Coyote library is modified. '
+      ;; self.version_coyote = strjoin((strsplit(coyote_gitoutput, '-', /extract))[0:1], '-')
+      self.version_coyote = coyote_gitoutput
+      spawn, 'cd '+coyotepaths[0]+'; ' + git_diff_command, coyote_gitoutput
+      if size(coyote_gitoutput, /n_dim) gt 0 then self.version_problems += 'The Coyote library is modified. '
+    end
+    else: begin
+      self.version_coyote = 'Undefined'
+      self.version_problems += 'Multiple Coyote directories. '
+    end
+  endcase
+
+
+  ;; IDLastro library version
+  idlastropaths = paths(where(strmatch(paths, '*IDLAstro/pro'), Nwhere))
+  case Nwhere of
+    0: begin
+      print, 'The IDLAstro library does not seem to be installed.'
+      stop
+    end
+    1: begin
+      spawn, 'cd '+idlastropaths[0]+'; ' + git_count_command, idlastro_gitoutput
+      idlastro_gitoutput = strreplace(idlastro_gitoutput, 'release/', '')
+      ;; if strmatch(idlastro_gitoutput, '(Modified)') then $
+      ;;  self.version_problems += 'The IDLAstro library is modified. '
+      ;; self.version_idlastro = strjoin((strsplit(idlastro_gitoutput, '-', /extract))[0:1], '-')
+      self.version_idlastro = idlastro_gitoutput
+      spawn, 'cd '+idlastropaths[0]+'; ' + git_diff_command, idlastro_gitoutput
+      if size(idlastro_gitoutput, /n_dim) gt 0 then self.version_problems += 'The IDLAstro library is modified. '
+    end
+    else: begin
+      self.version_idlastro = 'Undefined.'
+      self.version_problems += 'Multiple IDLAstro directories. '
+    end
+  endcase
+
+
+  ;; mpfit version  
+  mpfitpaths = paths(where(strmatch(paths, '*mpfit'), Nwhere))
+  case Nwhere of
+    0: begin
+      print, 'The mpfit library does not seem to be installed.'
+      stop
+    end
+    1: begin
+      ;; mpfit is not under version control so we will use the time of
+      ;; the latest chenge, as defined by the $Id string.
+      spawn, 'grep "\$Id" '+mpfitpaths[0]+'/*.pro', mpfit_spawnoutput
+      timestamps = STREGEX(mpfit_spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9] ' $
+                           + '[0-9][0-9]:[0-9][0-9]:[0-9][0-9]',/EXTRACT)
+      for i = 0, n_elements(timestamps)-1 do timestamps[i] = strreplace(timestamps[i], '/', '-', n = 2)
+      for i = 0, n_elements(timestamps)-1 do timestamps[i] = strreplace(timestamps[i], ' ', 'T')
+      self.version_mpfit = (timestamps(sort(timestamps)))[n_elements(timestamps)-1]
+    end
+    else: begin
+      self.version_mpfit = 'Undefined'
+      self.version_problems += 'Multiple mpfit directories. '
+    end
+  endcase
+
+
+
+  ;; Report problems
+  if strlen(self.version_problems) gt 0 then begin
+    print
+    print, 'Problem(s) with your installation:'
+    print, self.version_problems
+    print
+    print, 'You can go ahead with your processing but your output will be marked as'
+    print, 'not conforming to the SOLARNET standard.'
+    print
+    answ = ''
+    read, 'Do you want to continue [y/N]? ', answ
+    if strlowcase(answ) ne 'y' then exit
+  endif
+  
   cgWindow_SetDefs, PS_Decomposed=1
   
   return
