@@ -368,7 +368,8 @@ pro red::initialize, filename
       ;; self.version_coyote = strjoin((strsplit(coyote_gitoutput, '-', /extract))[0:1], '-')
       self.version_coyote = coyote_gitoutput
       spawn, 'cd '+coyotepaths[0]+'; ' + git_diff_command, coyote_gitoutput
-      if size(coyote_gitoutput, /n_dim) gt 0 then self.version_problems += 'The Coyote library is modified. '
+      if size(coyote_gitoutput, /n_dim) gt 0 then self.version_problems $
+         += 'The Coyote library is not the latest version. '
     end
     else: begin
       self.version_coyote = 'Undefined'
@@ -392,7 +393,8 @@ pro red::initialize, filename
       ;; self.version_idlastro = strjoin((strsplit(idlastro_gitoutput, '-', /extract))[0:1], '-')
       self.version_idlastro = idlastro_gitoutput
       spawn, 'cd '+idlastropaths[0]+'; ' + git_diff_command, idlastro_gitoutput
-      if size(idlastro_gitoutput, /n_dim) gt 0 then self.version_problems += 'The IDLAstro library is modified. '
+      if size(idlastro_gitoutput, /n_dim) gt 0 then self.version_problems $
+         += 'The IDLAstro library is not the latest version. '
     end
     else: begin
       self.version_idlastro = 'Undefined.'
