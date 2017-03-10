@@ -56,9 +56,14 @@
 ;
 ;   2017-03-09 : MGL. Version info. New keyword "develop".
 ;
+;   2017-03-10 : MGL. New member "developer_mode". 
+;
 ;
 ;-
 pro red::initialize, filename, develop = develop
+
+  ;; Are we running in developer mode?
+  if keyword_set(develop) then self.developer_mode = 1B
 
   ;; Test file
   if(~file_test(filename)) then begin
@@ -429,17 +434,26 @@ pro red::initialize, filename, develop = develop
     end
   endcase
 
-
   ;; Report problems
   if strlen(self.version_problems) gt 0 then begin
     print
     print, 'Problem(s) with your installation:'
     print, self.version_problems
     print
-    print, 'You can proceed with your processing but your output will be marked as'
-    print, 'not conforming to the SOLARNET standard. Just restart with the /develop flag set.'
-    print
-    if ~keyword_set(develop) then exit
+    if self.developer_mode then begin
+      print, 'You are running ' + strlowcase(tag_names(self,/STRUCTURE_NAME)) + 'red in developer mode, your output'
+      print, 'will be marked as not conforming to the SOLARNET standard.'
+      print
+    endif else begin
+      print, 'You can proceed with your processing but your output will be marked as'
+      print, 'not conforming to the SOLARNET standard.'
+      print
+      print, 'Just restart with the /develop keyword set:'
+      print
+      print, 'IDL> a = ' + strlowcase(tag_names(self,/STRUCTURE_NAME)) + "red('config.txt', /develop)"
+      print
+      exit
+    endelse
   endif
 
   

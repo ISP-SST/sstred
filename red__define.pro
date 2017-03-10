@@ -27,6 +27,8 @@
 ;
 ;   2017-03-09 : MGL. Version info.
 ;
+;   2017-03-10 : MGL. New member "developer_mode".
+;
 ;-
 PRO red__define
 
@@ -43,6 +45,7 @@ PRO red__define
   done = {done, sumdark:0B, sumflat:0B, cleandata:0B, sumpolcal:0B, polcal:0B, makegains:0B}
   
   struct = {red, $
+            developer_mode:0B, $   ; Boolean: are we running in developer mode?
             dark_dir:ptr_new(),$   ; The directories where raw dark frames are stored
             flat_dir:ptr_new(),$   ; The directories where raw flat fields are stored
             data_dirs:ptr_new(),$  ; The directories where raw science data is stored
