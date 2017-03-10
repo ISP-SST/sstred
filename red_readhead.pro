@@ -127,7 +127,7 @@ function red_readhead, fname, $
     
     if( filetype eq '' ) then begin
       message, 'Cannot detect filetype. Pass it manually as', /info
-      message, "head = red_readhead('"+fname+"',filetype=fits')", /info
+      message, "head = red_readhead('"+fname+"',filetype='fits')", /info
       status = -1
       return, 0B
     endif
