@@ -95,8 +95,9 @@
 ;   2016-11-05 : JLF. Read in extension headers using the extension
 ;                keyword. 
 ;
-;   2016-10-19 : MGL. Move file-format specific code to their own
-;                subprograms. 
+;   2017-03-10 : MGL. Move file-format specific code to their own
+;                subprograms. Trust rdx_filetype() to recognize momfbd
+;                files. 
 ;
 ;
 ;-
@@ -115,25 +116,9 @@ function red_readhead, fname, $
     status = -1
     return, 0B
   endif
-
-  ;; Remove this when rdx_filetype can recognize .momfbd files:
-  if( n_elements(filetype) eq 0 ) then begin
-    
-    if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
-      filetype = 'momfbd'
-    endif else begin
-      filetype = rdx_filetype(fname)
-    endelse
-    
-    if( filetype eq '' ) then begin
-      message, 'Cannot detect filetype. Pass it manually as', /info
-      message, "head = red_readhead('"+fname+"',filetype='fits')", /info
-      status = -1
-      return, 0B
-    endif
-    
-  endif                         ; filetype
   
+  if( n_elements(filetype) eq 0 ) then filetype = rdx_filetype(fname)
+
   case strupcase(filetype) of
     'ANA'    : header = red_readhead_ana(fname)
     'FITS'   : header = red_readhead_fits(fname, $
@@ -141,6 +126,12 @@ function red_readhead, fname, $
                                           silent = silent, $
                                           extension = extension)
     'MOMFBD' : header = red_readhead_momfbd(fname)
+    else     : begin
+      message, 'Cannot detect filetype. Pass it manually as e.g.', /info
+      message, "head = red_readhead('"+fname+"',filetype='fits')", /info
+      status = -1
+      return, 0B
+    end
   endcase
 
   ;; Keyword FRAME1 changed to FRAMNUM. Rewrite old headers
