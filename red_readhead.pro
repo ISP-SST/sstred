@@ -111,7 +111,7 @@ function red_readhead, fname, $
   compile_opt idl2
   
   if( file_test(fname) eq 0 ) then begin
-    message, 'File does not exist: '+fname,/info
+    message, 'File does not exist: '+fname, /info
     status = -1
     return, 0B
   endif
@@ -136,7 +136,10 @@ function red_readhead, fname, $
   
   case strupcase(filetype) of
     'ANA'    : header = red_readhead_ana(fname)
-    'FITS'   : header = red_readhead_fits(fname)
+    'FITS'   : header = red_readhead_fits(fname, $
+                                          framenumber = framenumber, $
+                                          silent = silent, $
+                                          extension = extension)
     'MOMFBD' : header = red_readhead_momfbd(fname)
   endcase
 
