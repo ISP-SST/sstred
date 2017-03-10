@@ -56,8 +56,8 @@
 ;
 ;   2014-04-07 : THI. Bugfix: look for darks in dark_dir.
 ;
-;   2016-05-17 : THI. Use cameras by default, added keyword dirs
-;                to use specific dark-folder. Re-write to sum files from
+;   2016-05-17 : THI. Use cameras by default, added keyword dirs to
+;                use specific dark-folder. Re-write to sum files from
 ;                multiple folders at once.
 ; 
 ;   2016-05-18 : MGL. New keyword sum_in_idl. Started working on
@@ -68,12 +68,12 @@
 ;
 ;   2016-05-25 : MGL. Don't store the non-normalized darks, momfbd
 ;                doesn't need them. Do store darks in FITS format.
-;                Don't use red_sxaddpar. Write darks out as
-;                float, not double.
+;                Don't use red_sxaddpar. Write darks out as float, not
+;                double.
 ;
-;   2016-05-26 : MGL. Use get_calib method to get the file
-;                name. Don't call get_calib one extra time just
-;                to get the directory. 
+;   2016-05-26 : MGL. Use get_calib method to get the file name. Don't
+;                call get_calib one extra time just to get the
+;                directory.
 ;
 ;   2016-06-01 : THI. Loop over states (gain & exposure)
 ;
@@ -81,8 +81,8 @@
 ;                FITS.
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
-;                so the names match those of the corresponding SolarNet
-;                keywords.
+;                so the names match those of the corresponding
+;                SOLARNET keywords.
 ;
 ;   2016-09-21 : MGL. Tell user what darkname is being summed for
 ;                instead of what state.
@@ -90,7 +90,7 @@
 ;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
 ;
 ;   2016-09-21 : MGL. Put DATE-BEG, DATE-END, DATE-AVE in output
-;                header. 
+;                header.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -100,151 +100,151 @@ pro red::sumdark, overwrite = overwrite, $
                   sum_in_rdx = sum_in_rdx, $
                   filter = filter
 
-    ;; Defaults
-    if n_elements(overwrite) eq 0 then overwrite = 0
+  ;; Defaults
+  if n_elements(overwrite) eq 0 then overwrite = 0
 
-    if n_elements(check) eq 0 then check = 0
+  if n_elements(check) eq 0 then check = 0
 
-    if n_elements(dirs) gt 0 then dirs = [dirs] $
-    else if ptr_valid(self.dark_dir) then dirs = *self.dark_dir
+  if n_elements(dirs) gt 0 then dirs = [dirs] $
+  else if ptr_valid(self.dark_dir) then dirs = *self.dark_dir
 
-    if n_elements(cams) gt 0 then cams = [cams] $
-    else if ptr_valid(self.cameras) then cams = *self.cameras
+  if n_elements(cams) gt 0 then cams = [cams] $
+  else if ptr_valid(self.cameras) then cams = *self.cameras
 
-    ;; Name of this method
-    inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-    ;; Logging
-    help, /obj, self, output = selfinfo1
-    help, /struct, self.done, output = selfinfo2 
-    red_writelog, selfinfo = [selfinfo1, selfinfo2]
+  ;; Logging
+  help, /obj, self, output = selfinfo1
+  help, /struct, self.done, output = selfinfo2 
+  red_writelog, selfinfo = [selfinfo1, selfinfo2]
 
-    Ncams = n_elements(cams)
-    if( Ncams eq 0) then begin
-        print, inam+' : ERROR : undefined cams (and cameras)'
-        return
-    endif
+  Ncams = n_elements(cams)
+  if( Ncams eq 0) then begin
+    print, inam+' : ERROR : undefined cams (and cameras)'
+    return
+  endif
 
-    Ndirs = n_elements(dirs)
-    if( Ndirs eq 0) then begin
-        print, inam+' : ERROR : no dark directories defined'
-        return
+  Ndirs = n_elements(dirs)
+  if( Ndirs eq 0) then begin
+    print, inam+' : ERROR : no dark directories defined'
+    return
+  endif else begin
+    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+    else dirstr = dirs[0]
+  endelse
+
+  for icam = 0L, Ncams-1 do begin
+
+    cam = cams[icam]
+
+    self->selectfiles, cam=cam, dirs=dirs, ustat=ustat, $
+                       files=files, states=states, /force
+    
+    nf = n_elements(files)
+    if( nf eq 0 || files[0] eq '') then begin
+      print, inam+' : '+cam+': no files found in: '+dirstr
+      print, inam+' : '+cam+': skipping camera!'
+      continue
     endif else begin
-        if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-        else dirstr = dirs[0]
+      print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
     endelse
 
-    for icam = 0L, Ncams-1 do begin
+    state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-        cam = cams[icam]
+    Nstates = n_elements(state_list)
 
-        self->selectfiles, cam=cam, dirs=dirs, ustat=ustat, $
-                         files=files, states=states, /force
-                         
-        nf = n_elements(files)
-        if( nf eq 0 || files[0] eq '') then begin
-            print, inam+' : '+cam+': no files found in: '+dirstr
-            print, inam+' : '+cam+': skipping camera!'
-            continue
-        endif else begin
-            print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
-        endelse
+    ;; Loop over states and sum
+    for istate = 0L, Nstates - 1 do begin
 
-        state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
+      self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
+                         files=files, states=states, selected=sel
 
-        Nstates = n_elements(state_list)
+      ;; Get the name of the darkfile
+      self -> get_calib, states[sel[0]], darkname = darkname, status = status
+      if status ne 0 then stop
 
-        ;; Loop over states and sum
-        for istate = 0L, Nstates - 1 do begin
-stop
-            self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
-                            files=files, states=states, selected=sel
+      if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
+        print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
+        continue
+      endif
 
-            ;; Get the name of the darkfile
-            self -> get_calib, states[sel[0]], darkname = darkname, status = status
-            if status ne 0 then stop
+      if( min(sel) lt 0 ) then begin
+        print, inam+' : '+cam+': no files found for state: '+state_list[istate]
+        continue
+      endif
 
-            if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
-                print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
-                continue
-            endif
+      file_mkdir, file_dirname(darkname)
 
-            if( min(sel) lt 0 ) then begin
-                print, inam+' : '+cam+': no files found for state: '+state_list[istate]
-                continue
-            endif
+      print, inam+' : summing darks -> ' + file_basename(darkname)
+      if(keyword_set(check)) then begin
+        openw, lun, darkname + '_discarded.txt', width = 500, /get_lun
+      endif
+      
+      ;; Do the summing
+      if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
+        dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
+                            , nsum=nsum, filter=filter, verbose=2)
+      endif else begin
+        dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
+                            , nsum=nsum, filter=filter $
+                            , time_ave = time_ave, time_beg = time_beg, time_end = time_end)
+      endelse
+      
+      ;; The momfbd code can't read doubles.
+      dark = float(dark)      
 
-            file_mkdir, file_dirname(darkname)
+      ;; Make header
+      head = red_readhead(files[sel[0]]) 
+      case 1 of
+        fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG') $
+                                                         , 'T', /extract))[0]
+        fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END') $
+                                                         , 'T', /extract))[0]
+        fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE') $
+                                                         , 'T', /extract))[0]
+        else: begin
+          print, 'No date info in header.'
+          print, head
+          stop
+        end
+      endcase
+      check_fits, dark, head, /UPDATE, /SILENT        
+      ;; Some SOLARNET recommended keywords:
+      exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
+      if count gt 0 then begin
+        sxdelpar, head, 'XPOSURE'
+        sxaddpar, head, 'XPOSURE', nsum*exptime
+        sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
+      endif
+      if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
+      
+      if n_elements(time_end) ne 0 then sxaddpar, head, 'DATE-END', date+'T'+time_end $
+         , 'Date of end of observation', after = 'DATE'
+      if n_elements(time_ave) ne 0 then sxaddpar, head, 'DATE-AVE', date+'T'+time_ave $
+         , 'Average date of observation', after = 'DATE'
+      if n_elements(time_beg) ne 0 then sxaddpar, head, 'DATE-BEG', date+'T'+time_beg $
+         , 'Date of start of observation', after = 'DATE'
+      
+      ;; Add some more info here, see SOLARNET deliverable D20.4 or
+      ;; later versions of that document.
 
-            print, inam+' : summing darks -> ' + file_basename(darkname)
-            if(keyword_set(check)) then begin
-                openw, lun, darkname + '_discarded.txt', width = 500, /get_lun
-            endif
-            
-            ;; Do the summing
-            if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-                dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
-                                    , nsum=nsum, filter=filter, verbose=2)
-            endif else begin
-                dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
-                                    , nsum=nsum, filter=filter $
-                                    , time_ave = time_ave, time_beg = time_beg, time_end = time_end)
-            endelse
-            
-            ;; The momfbd code can't read doubles.
-            dark = float(dark)      
+      ;; Write ANA format dark
+      print, inam+' : saving ', darkname
+      red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
 
-            ;; Make header
-            head = red_readhead(files[sel[0]]) 
-            case 1 of
-               fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG') $
-                                                                , 'T', /extract))[0]
-               fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END') $
-                                                                , 'T', /extract))[0]
-               fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE') $
-                                                                , 'T', /extract))[0]
-               else: begin
-                  print, 'No date info in header.'
-                  print, head
-                  stop
-               end
-            endcase
-            check_fits, dark, head, /UPDATE, /SILENT        
-            ;; Some SOLARNET recommended keywords:
-            exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
-            if count gt 0 then begin
-                sxdelpar, head, 'XPOSURE'
-                sxaddpar, head, 'XPOSURE', nsum*exptime
-                sxaddpar, head, 'TEXPOSUR', exptime, '[s] Single-exposure time'
-            endif
-            if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures'
-            
-            if n_elements(time_end) ne 0 then sxaddpar, head, 'DATE-END', date+'T'+time_end $
-               , 'Date of end of observation', after = 'DATE'
-            if n_elements(time_ave) ne 0 then sxaddpar, head, 'DATE-AVE', date+'T'+time_ave $
-               , 'Average date of observation', after = 'DATE'
-            if n_elements(time_beg) ne 0 then sxaddpar, head, 'DATE-BEG', date+'T'+time_beg $
-               , 'Date of start of observation', after = 'DATE'
-            
-            ;; Add some more info here, see SOLARNET deliverable D20.4 or
-            ;; later versions of that document.
+      ;; Write FITS format dark
+      print, inam+' : saving ', darkname+'.fits'
+      red_writedata, darkname+'.fits', dark, header=head, filetype='fits', overwrite = overwrite
+      
+      if keyword_set(check) then begin
+        free_lun, lun
+      endif
 
-            ;; Write ANA format dark
-            print, inam+' : saving ', darkname
-            red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
+    endfor                      ; states
 
-            ;; Write FITS format dark
-            print, inam+' : saving ', darkname+'.fits'
-            red_writedata, darkname+'.fits', dark, header=head, filetype='fits', overwrite = overwrite
-            
-            if keyword_set(check) then begin
-                free_lun, lun
-            endif
+  endfor                        ; icam 
 
-         endfor                ; states
-
-      endfor                    ; icam 
-
-    return
+  return
 
 end
