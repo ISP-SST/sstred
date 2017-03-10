@@ -134,9 +134,9 @@ pro red::sumdark, overwrite = overwrite, $
         else dirstr = dirs[0]
     endelse
 
-    for ic = 0L, Ncams-1 do begin
+    for icam = 0L, Ncams-1 do begin
 
-        cam = cams[ic]
+        cam = cams[icam]
 
         self->selectfiles, cam=cam, dirs=dirs, ustat=ustat, $
                          files=files, states=states, /force
@@ -152,12 +152,12 @@ pro red::sumdark, overwrite = overwrite, $
 
         state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-        ns = n_elements(state_list)
+        Nstates = n_elements(state_list)
 
         ;; Loop over states and sum
-        for ss = 0L, ns - 1 do begin
-
-            self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+        for istate = 0L, Nstates - 1 do begin
+stop
+            self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
                             files=files, states=states, selected=sel
 
             ;; Get the name of the darkfile
@@ -170,7 +170,7 @@ pro red::sumdark, overwrite = overwrite, $
             endif
 
             if( min(sel) lt 0 ) then begin
-                print, inam+' : '+cam+': no files found for state: '+state_list[ss]
+                print, inam+' : '+cam+': no files found for state: '+state_list[istate]
                 continue
             endif
 
@@ -181,6 +181,7 @@ pro red::sumdark, overwrite = overwrite, $
                 openw, lun, darkname + '_discarded.txt', width = 500, /get_lun
             endif
             
+            ;; Do the summing
             if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
                 dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
                                     , nsum=nsum, filter=filter, verbose=2)
@@ -240,9 +241,9 @@ pro red::sumdark, overwrite = overwrite, $
                 free_lun, lun
             endif
 
-        endfor                     ; states
+         endfor                ; states
 
-    endfor                        ; (ic loop)
+      endfor                    ; icam 
 
     return
 
