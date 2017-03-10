@@ -63,7 +63,7 @@
 pro red::initialize, filename, develop = develop
 
   ;; Are we running in developer mode?
-  if keyword_set(develop) then self.developer_mode = 1B
+  self.developer_mode = keyword_set(develop)
 
   ;; Test file
   if(~file_test(filename)) then begin
