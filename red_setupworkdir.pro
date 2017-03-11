@@ -409,7 +409,7 @@ pro red_setupworkdir, search_dir = search_dir $
                             , comment:'[m] SST location'}, $
                            {keyword:'OBSGEO-Y', value:obsgeo_xyz[1] $
                             , comment:'[m] SST location'}, $
-                           {keyword:'OBSGEO-Y', value:obsgeo_xyz[0] $
+                           {keyword:'OBSGEO-X', value:obsgeo_xyz[0] $
                             , comment:'[m] SST location'}]
     
   endfor                        ; idir
