@@ -304,7 +304,8 @@ function red_sumfiles, files_list $
      iframe += Nframes_per_file[ifile]
      
   endfor                        ; ifile
-  
+  print
+
   if DoCheck then begin
 
      mval = total(total(cub, 1), 1)/(dim[0]*dim[1])
