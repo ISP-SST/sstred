@@ -168,8 +168,8 @@ function red_readhead_fits, fname, $
     ;; Correct OBS_PHDU bug in camera software
     OBS_PHDU = fxpar( header, 'OBS_PHDU', pcomment, count=count )
     if count gt 0 then begin
-      if strtrim(pcomment,2) eq '' then $
-         pcomment = 'Observational SOLARNET Header and Data Unit'
+      if n_elements(pcomment) eq 0 || strtrim(pcomment,2) eq '' then $
+         pcomment = ' Observational SOLARNET Header and Data Unit'
       fxaddpar, header, 'OBS_SHDU', OBS_PHDU, pcomment, after = 'OBS_PHDU'
       sxdelpar, header, 'OBS_PHDU'
     endif
