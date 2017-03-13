@@ -95,6 +95,9 @@
 ;   2016-09-21 : THI. Make the size of the medianfilter a parameter.
 ; 
 ;   2016-09-22 : MGL. Base output header on relevant original file.
+; 
+;   2017-03-13 : MGL. Use red_sumheaders.
+;
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -181,10 +184,12 @@ pro red::sumflat, overwrite = overwrite, $
         if n_elements(outdir) ne 0 then begin
            flatname = outdir + '/' + file_basename(flatname)
            sflatname = outdir + '/' + file_basename(sflatname)
-           file_mkdir, outdir
+;           file_mkdir, outdir
         endif else begin
-           file_mkdir, file_dirname(flatname)
+;           file_mkdir, file_dirname(flatname)
         endelse
+
+        file_mkdir, file_dirname(flatname)
 
         ;; If file does not exist, do sum!
         if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
@@ -227,7 +232,7 @@ pro red::sumflat, overwrite = overwrite, $
                                   , filter = filter, verbose=2)
            endif else begin
               flat = red_sumfiles(tmplist, check = check, $
-                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
+;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
                                   lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter)
            endelse
         endif else begin 
@@ -237,53 +242,25 @@ pro red::sumflat, overwrite = overwrite, $
                                   , filter = filter, verbose=2)
            endif else begin
               flat = red_sumfiles(files[sel], check = check, $
-                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
+;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
                                   lim = lim, summed = summed, nsum = nsum, filter = filter)
            endelse
         endelse
 
         ;; Subtract dark and make floating point
         flat = float(flat-dd)
-        
-        ;; Make header
-        head = red_readhead(files[sel[0]]) 
-        case 1 of
-           fxpar(head, 'DATE-BEG') ne '' : date = (strsplit(fxpar(head, 'DATE-BEG') $
-                                                            , 'T', /extract))[0]
-           fxpar(head, 'DATE-END') ne '' : date = (strsplit(fxpar(head, 'DATE-END') $
-                                                            , 'T', /extract))[0]
-           fxpar(head, 'DATE-AVE') ne '' : date = (strsplit(fxpar(head, 'DATE-AVE') $
-                                                            , 'T', /extract))[0]
-           else: begin
-              print, 'No date info in header.'
-              print, head
-              stop
-           end
-        endcase
-        check_fits, flat, head, /UPDATE, /SILENT
-        sxaddpar, head, 'DATE', red_timestamp(/utc, /iso) $
-                  , 'Creation date of FITS header', before = 'TIMESYS'
-        ;; Some SOLARNET recommended keywords:
-        exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
-        if count gt 0 then begin
-            sxaddpar, head, 'XPOSURE', nsum*exptime $
-                      , exptime_comment+' Total exposure time', format = '(f12.4)'
-            sxaddpar, head, 'TEXPOSUR', exptime $
-                      , exptime_comment+' Single-exposure time', format = '(f12.4)' $
-                      , after = 'XPOSURE'
-        endif
-        if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum $
-                                    , 'Number of summed exposures', after = 'TEXPOSUR'
-        if n_elements(time_end) ne 0 then sxaddpar, head, 'DATE-END', date+'T'+time_end $
-           , 'Date of end of observation', after = 'DATE'
-        if n_elements(time_ave) ne 0 then sxaddpar, head, 'DATE-AVE', date+'T'+time_ave $
-           , 'Average date of observation', after = 'DATE'
-        if n_elements(time_beg) ne 0 then sxaddpar, head, 'DATE-BEG', date+'T'+time_beg $
-           , 'Date of start of observation', after = 'DATE'
+
+        ;; Make FITS headers 
+        head  = red_sumheaders(files[sel], flat,   nsum = nsum)
+        shead = red_sumheaders(files[sel], summed, nsum = nsum)
        
         ;; Add some more info here, see SOLARNET deliverable D20.4 or
         ;; later versions of that document. 
 
+        if self.developer_mode then begin
+          ;; Mark headers for developer mode
+        endif
+        
         ;; headerout = 't='+time_ave+'
         ;; n_aver='+red_stri(nsum)+' darkcorrected' print,
         ;; inam+' : saving ' + flatname file_mkdir,
@@ -292,16 +269,18 @@ pro red::sumflat, overwrite = overwrite, $
 
         ;; Write ANA format flat
         print, inam+' : saving ', flatname
+        fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
         red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
 
         ;; Write FITS format flat
         print, inam+' : saving ', flatname+'.fits'
-        file_mkdir, file_dirname(flatname)
+        fxaddpar, head, 'FILENAME', file_basename(flatname+'.fits'), after = 'DATE'
         red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
 
         
         ;; Output the raw (if requested) and averaged flats
         if keyword_set(store_rawsum) then begin
+           fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
            headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
            print, inam+' : saving ' + sflatname
            file_mkdir, file_dirname(sflatname)
@@ -310,7 +289,6 @@ pro red::sumflat, overwrite = overwrite, $
         endif
 
         if keyword_set(check) then free_lun, lun
-
 
      endfor                     ; istate
 
