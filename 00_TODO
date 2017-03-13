@@ -49,13 +49,12 @@ Implementation list for CHROMIS camera software 2016/06/07
   - Need a fine-tuning keyword, what to call it?
   - EXPTIME --> XPOSURE
   - OBSRVTRY = 'SST'
-  - OBSRVTRY = 'Observtorio del Roque de los Muchachos' ?
   - TELESCOP = 'Swedish 1-meter Solar Telescope'
   - OBSERVER keyword with a standardized list of observer names (enter it once
     into the list and it can't be changed.)
   - units in the comment field (with a space on either side of / separator)
   - EXTNAME = 'Ca II H & K' or 'H-beta'
-  - OBS_SHDU =                T (not 1)
+  - OBS_SHDU =                1 (not T)
   - DATE-BEG,-AVG (for cubes), -END all properly set with fractional second
   - FILTER1 = ['CaK-blue','CaK-core','CaH-core','CaH-red','CaH-cont','Hb-core',
     'Hb-cont','CaHK-cont']
@@ -68,3 +67,103 @@ Implementation list for CHROMIS camera software 2016/06/07
   changing filters or using the filter wheel.
 * Placeholder for fine-tuning keyword for Chromis-N will need a Tab-HDU for
   cube files.
+
+Solarnet standard header keywords for raw data:
+
+Priority 1=Absolutely necessary, 2=Highly desirable, 3=no hurry.
+
+Group 1
+
+DATE    = '2015-05-13T09:45:42' / datetime of file creation (actually header)
+DATE-BEG= '2016-05-13T10:01:01&' / in "almost ISO-8601", no time zone allowed
+CONTINUE  '&' / in the value, and UTC assumed. Use comment string to indicate
+CONTINUE  '&' / if otherwise. Required for full compliance.
+CONTINUE  '&' / is the keyword that will be broken out in a table. The table
+CONTINUE  '' / SHOULD have its 1st value in the main header.
+TAB_HDUS= 'TABULATIONS-PER-FRAME&' / The EXTNAME of the bintable containing all
+CONTINUE  '&' / per frame table keywords. TAB_HDUS follows each keyword so
+CONTINUE  '' / broken out.
+DATE-END= '2016-05-14T14:21:23' / the last DATE-BEG value plus XPOSURE
+FILENAME= 'cam[XIV].scan.pref.base_+/-xxxx.tyyyy.framenum.fits'
+tyyyy is the tilt angle, y.yyy deg?. Desired precision unknown.
+
+FRAMENUM  = 3400 / our own keyword for the frame number of the 1st frame in cube
+TAB_HDUS= 'TABULATIONS-PER-FRAME' / tabulate frame numbers?
+XPOSURE = 0.02001 / [s]
+CADENCE = 0.024 / [s]
+CAMERA  = 'CHROMIS-N/D/W' / provisionally this is where we put the camchannel
+DETECTOR= 'camXXX' / where we put the camera roman identity
+FILTER1 = 'functional wavelength from a list' / different list for the N and W channels
+FILTER2 = 'functional name of ND filter' / only applicable to the W channel
+FILTRIDn= 'the name of the actual physical filter' / the label on the part
+PREFTILT= 0.12 / angle in deg (or in tilt stage controller counts?)
+FPISTATE= '3968_+0100' / filename contains FILTER1.FPISTATE
+CAMGAIN = 9.998 / dB
+
+Do we want string or numeric filter names?
+The "characteristic wavelength" filter names are the ones given in Alluxa's
+measured data (which differ somewhat from the theoretical curves) rounded to
+the nearest Å.
+
+Göran says we want numeric filter names (but still stored as a string since
+it's a label?)
+
+FILTER1 = [3925    ,3934    ,3969    ,3978   ,3999    ,4862]
+          [CaK-blue,CaK-core,CaH-core,CaH-red,CaH-cont,Hb-core] / for CHROMIS-N 
+FILTER1 = [3949     ,4845]
+          [CaHK-cont,Hb-cont]/ for CHROMIS-D/W
+FILTER2 = [ND0.6, NDm.n] / for CHROMIS-D/W
+
+FILTRID1 = 'something Pit picks that is written on the part, could be serial &c'
+FILTRID2 = 'ditto, we have to be able to know which physical objects these are'
+
+Group 2
+
+POINT_ID= '2016-05-13T09:42:00' / replaces DATE-OBS, ultimately from PIG (x,y)?
+
+If POINT_ID is used as proposed in Solarnet the datetime will be the time
+stamp when the PIG coordinates were last altered (by clicking etc). What DATE
+type keyword will contain the datetime when the directory containing the files
+was created? DATE-OBS is deprecated in Solarnet.... do we want to apprecate it?
+
+SETTINGS= 'OFFSET=0.0, CAMFIRM=2.0.0-32, HRE=0x4432, LRE=0x3A38&' / for  
+CONTINUE  '&' / storing settings that we don't normally use, but
+CONTINUE  '' / want to have recorded.
+
+*OR*
+
+SETTINGS= 'OFFSET=0.0, CAMFIRM=2.0.0-32' / and...
+FPIVOLTS= 'HRE=0x4432, LRE=0x3A38' / ??? these separate cam from fpi settings
+
+Group 3
+
+EXTNAME = 'Main' / Uniquely (in file) describes the main HDU.
+SOLARNET= 0.5 / Required for even partial compliance.
+OBS_SHDU=                     1 / Required in the primary HDU, not a real bool
+ORIGIN  = 'Institute for Solar Physics'
+TELESCOP= 'Swedish 1-m Solar Telescope'
+OBSRVTRY= 'Observatorio del Roque de los Muchachos'
+INSTRUME= 'CHROMIS' / Reverting our first idea that this would be the channel.
+OBJECT  = 'Sun&' / or perhaps something else selected by the observer, like
+CONTINUE  '' / an AR number perhaps?
+OBSERVER= 'names from a list&' / It is recommended this be selected from a list
+CONTINUE  '' / not entered by each observer, else the names become ambiguous
+REQUESTR= 'names from a list' / Optional requester of obs, for service mode
+DATASUM = '2503532134' / Data checksum
+CHECKSUM= 'hchHka98kaegha' / HDU checksum, see checksum/datasum convention
+DEFOCUS = 'how far from nominal telescope focus' / via A-O
+
+Need some kind of pointing mechanism included in the header perhaps? Or do we
+want to get that from the logs later? I prefer to have the pointing information
+in the header. Possibly even in a tabulated header keyword.
+
+This seems to be the list of required keywords that are sensible to include in
+the raw header. Do we want the raw header to be fully solarnet compliant? Then
+we have to put in a lot more stuff. If we don't we could even pare down this
+list some more. "Obvious" keywords, for things that will never change, can go.
+
+We also need information about the piezo settings in the FPI.
+
+Need to come up with names of FILTERs. 
+
+Do we have valid entries for TELCONFG?

@@ -36,7 +36,7 @@
 #define export_IDL_DEF
 
 #ifdef __cplusplus
-    extern "C" {
+extern "C" {
 #endif
 
 
@@ -61,19 +61,19 @@
 
 
 #ifdef sun
-   #ifdef sparc
-      #define SUN_SPARC
-      #ifdef __sparcv9		/* Building as 64-bit application */
-         #define SUN_64
-      #endif
-   #else
-      #define SUN_INTEL
-      #ifdef __x86_64 /* Predefined - see man cc */
-         #define SUN_X86_64
-      #else
-         #define SUN_X86
-      #endif
-   #endif
+#ifdef sparc
+#define SUN_SPARC
+#ifdef __sparcv9		/* Building as 64-bit application */
+#define SUN_64
+#endif
+#else
+#define SUN_INTEL
+#ifdef __x86_64 /* Predefined - see man cc */
+#define SUN_X86_64
+#else
+#define SUN_X86
+#endif
+#endif
 #endif				/* sun */
 
 #if defined(__alpha) && defined(__osf__)
@@ -136,19 +136,19 @@
 
 /* darwin */
 #ifdef __APPLE__
-  #ifndef darwin
-    #define darwin
-  #endif
-  #ifdef __ppc__
-    #define darwin_ppc
-  #endif
-  #if defined(__i386__) || defined(__x86_64__)
-    #ifdef __LP64__
-      #define darwin_x86_64
-    #else
-      #define darwin_i386
-    #endif
-  #endif
+#ifndef darwin
+#define darwin
+#endif
+#ifdef __ppc__
+#define darwin_ppc
+#endif
+#if defined(__i386__) || defined(__x86_64__)
+#ifdef __LP64__
+#define darwin_x86_64
+#else
+#define darwin_i386
+#endif
+#endif
 #endif
 
 
@@ -328,7 +328,7 @@ typedef long IDL_PTRINT;
 typedef unsigned char UCHAR;	/* Unsigned character type */
 #endif
 
-/* Boolean. */ 
+/* Boolean. */
 typedef enum {
     IDL_FALSE = 0,
     IDL_TRUE = 1
@@ -421,7 +421,7 @@ typedef IDL_ULONG IDL_HVID;
 #endif
 
 #if defined(sun) || defined(ALPHA_OSF) || defined(sgi) || defined(hpux) || defined(MSWIN) || defined(linux) || defined(_AIX) || defined(darwin)
-				/* Files can have 64-bit sizes */
+/* Files can have 64-bit sizes */
 #define IDL_FILEINT_64
 #define IDL_TYP_FILEINT	  IDL_TYP_LONG64
 #define IDL_FILEINT	  IDL_LONG64
@@ -447,7 +447,7 @@ typedef IDL_ULONG IDL_HVID;
 /* This macro turns it's argument into its bit mask equivalent.
  * The argument type_code should be one of the type codes defined
  * above.
-*/ 
+*/
 #define IDL_TYP_MASK(type_code)      (1 << type_code)
 
 
@@ -516,11 +516,11 @@ typedef IDL_ULONG IDL_HVID;
 /**** Basic IDL structures: ****/
 
 typedef struct {
-  float r,i;
+    float r,i;
 } IDL_COMPLEX;
 
 typedef struct {
-  double r,i;
+    double r,i;
 } IDL_DCOMPLEX;
 
 /*
@@ -557,17 +557,17 @@ typedef int IDL_STRING_SLEN_T;
 
 
 typedef struct {		/* Define string descriptor */
-  IDL_STRING_SLEN_T slen;	/* Length of string, 0 for null */
-  short stype;			/* type of string, static or dynamic */
-  char *s;			/* Addr of string */
+    IDL_STRING_SLEN_T slen;	/* Length of string, 0 for null */
+    short stype;			/* type of string, static or dynamic */
+    char *s;			/* Addr of string */
 } IDL_STRING;
 
 
 /**** IDL identifiers ****/
 typedef struct _idl_ident {
-  struct _idl_ident *hash;	/* Must be the first field */
-  char *name;                   /* Identifier text (NULL terminated */
-  int len;			/* # of characters in id, not counting NULL
+    struct _idl_ident *hash;	/* Must be the first field */
+    char *name;                   /* Identifier text (NULL terminated */
+    int len;			/* # of characters in id, not counting NULL
 				   termination. */
 } IDL_IDENT;
 
@@ -585,61 +585,62 @@ typedef void (* IDL_ARRAY_FREE_CB)(UCHAR *data);
 /* Type of the dim field of an IDL_ARRAY. */
 typedef IDL_MEMINT IDL_ARRAY_DIM[IDL_MAX_ARRAY_DIM];
 
-typedef struct {		/* Its important that this block
-				   be an integer number of longwords
-				   in length to ensure that array
-				   data is longword aligned.  */
-  IDL_MEMINT elt_len;		/* Length of element in char units */
-  IDL_MEMINT arr_len;		/* Length of entire array (char) */
-  IDL_MEMINT n_elts;		/* total # of elements */
-  UCHAR *data;			/* ^ to beginning of array data */
-  UCHAR n_dim;			/* # of dimensions used by array */
-  UCHAR flags;			/* Array block flags */
-  short file_unit;		/* # of assoc file if file var */
-  IDL_ARRAY_DIM dim;		/* dimensions */
-  IDL_ARRAY_FREE_CB free_cb;	/* Free callback */
-  IDL_FILEINT offset;		/* Offset to base of data for file var */
-  IDL_MEMINT data_guard;	/* Guard longword */
+typedef struct {
+    /* Its important that this block
+    				   be an integer number of longwords
+    				   in length to ensure that array
+    				   data is longword aligned.  */
+    IDL_MEMINT elt_len;		/* Length of element in char units */
+    IDL_MEMINT arr_len;		/* Length of entire array (char) */
+    IDL_MEMINT n_elts;		/* total # of elements */
+    UCHAR *data;			/* ^ to beginning of array data */
+    UCHAR n_dim;			/* # of dimensions used by array */
+    UCHAR flags;			/* Array block flags */
+    short file_unit;		/* # of assoc file if file var */
+    IDL_ARRAY_DIM dim;		/* dimensions */
+    IDL_ARRAY_FREE_CB free_cb;	/* Free callback */
+    IDL_FILEINT offset;		/* Offset to base of data for file var */
+    IDL_MEMINT data_guard;	/* Guard longword */
 } IDL_ARRAY;
 
 typedef struct {		/* Reference to a structure */
-  IDL_ARRAY *arr;		/* ^ to array block containing data */
-  struct _idl_structure *sdef;	/* ^ to structure definition */
+    IDL_ARRAY *arr;		/* ^ to array block containing data */
+    struct _idl_structure *sdef;	/* ^ to structure definition */
 } IDL_SREF;
 
 /* IDL_ALLTYPES can be used to represent all IDL_VARIABLE types */
 typedef union {
-  char sc;			/* A standard char, where "standard" is defined
+    char sc;			/* A standard char, where "standard" is defined
 				   by the compiler. This isn't an IDL data
 				   type, but having this field is sometimes
 				   useful for internal code */
-  UCHAR c;			/* Byte value */
-  IDL_INT i;			/* 16-bit integer */
-  IDL_UINT ui;			/* 16-bit unsigned integer */
-  IDL_LONG l;			/* 32-bit integer */
-  IDL_ULONG ul;			/* 32-bit unsigned integer */
-  IDL_LONG64 l64;		/* 64-bit integer */
-  IDL_ULONG64 ul64;		/* 64-bit unsigned integer */
-  float f;			/* 32-bit floating point value */
-  double d;			/* 64-bit floating point value */
-  IDL_COMPLEX cmp;		/* Complex value */
-  IDL_DCOMPLEX dcmp;		/* Double complex value */
-  IDL_STRING str;		/* String descriptor */
-  IDL_ARRAY *arr;		/* ^ to array descriptor */
-  IDL_SREF s;			/* Descriptor of structure */
-  IDL_HVID hvid;		/* Heap variable identifier */
+    UCHAR c;			/* Byte value */
+    IDL_INT i;			/* 16-bit integer */
+    IDL_UINT ui;			/* 16-bit unsigned integer */
+    IDL_LONG l;			/* 32-bit integer */
+    IDL_ULONG ul;			/* 32-bit unsigned integer */
+    IDL_LONG64 l64;		/* 64-bit integer */
+    IDL_ULONG64 ul64;		/* 64-bit unsigned integer */
+    float f;			/* 32-bit floating point value */
+    double d;			/* 64-bit floating point value */
+    IDL_COMPLEX cmp;		/* Complex value */
+    IDL_DCOMPLEX dcmp;		/* Double complex value */
+    IDL_STRING str;		/* String descriptor */
+    IDL_ARRAY *arr;		/* ^ to array descriptor */
+    IDL_SREF s;			/* Descriptor of structure */
+    IDL_HVID hvid;		/* Heap variable identifier */
 
-  /* The following are mappings to basic types that vary between platforms */
-  IDL_MEMINT memint;		/* Memory size or offset */
-  IDL_FILEINT fileint;		/* File size or offset */
-  IDL_PTRINT ptrint;		/* A pointer size integer */
+    /* The following are mappings to basic types that vary between platforms */
+    IDL_MEMINT memint;		/* Memory size or offset */
+    IDL_FILEINT fileint;		/* File size or offset */
+    IDL_PTRINT ptrint;		/* A pointer size integer */
 } IDL_ALLTYPES;
 
 typedef struct {		/* IDL_VARIABLE definition */
-  UCHAR type;			/* Type byte */
-  UCHAR flags;			/* Flags byte */
-  UCHAR flags2;
-  IDL_ALLTYPES value;
+    UCHAR type;			/* Type byte */
+    UCHAR flags;			/* Flags byte */
+    UCHAR flags2;
+    IDL_ALLTYPES value;
 } IDL_VARIABLE;
 typedef IDL_VARIABLE *IDL_VPTR;
 
@@ -663,13 +664,13 @@ typedef IDL_VARIABLE *(* IDL_SYSRTN_GENERIC)();
  * structures.
  */
 typedef union {
-  IDL_SYSRTN_GENERIC generic;	/* Used for generic access to the routine
+    IDL_SYSRTN_GENERIC generic;	/* Used for generic access to the routine
 				   pointer. The Ansi C spec (K&R 2nd edition)
 				   says that union initializations always
 				   refer to the first field in the union.
 				   Hence, this must be the first field. */
-  IDL_SYSRTN_PRO pro;		/* System procedure pointer */
-  IDL_SYSRTN_FUN fun;		/* System function pointer */
+    IDL_SYSRTN_PRO pro;		/* System procedure pointer */
+    IDL_SYSRTN_FUN fun;		/* System function pointer */
 } IDL_SYSRTN_UNION;		/* ^ to interp. function (ret ^ to VAR) */
 
 
@@ -692,12 +693,12 @@ typedef void (* IDL_PRO_PTR)();	/* ^ to interpreter procedure (ret is void) */
  * or function table entry.
  */
 typedef struct {
-  IDL_SYSRTN_UNION funct_addr;	/* Address of function, or procedure. */
-  char *name;			/* The name of the function */
-  unsigned short arg_min;	/* Minimum allowed argument count. */
-  unsigned short arg_max;	/* Maximum argument count. */
-  int flags;			/* IDL_SYSFUN_DEF_F_* flags */
-  void *extra;			/* Caller should set this to 0 */
+    IDL_SYSRTN_UNION funct_addr;	/* Address of function, or procedure. */
+    char *name;			/* The name of the function */
+    unsigned short arg_min;	/* Minimum allowed argument count. */
+    unsigned short arg_max;	/* Maximum argument count. */
+    int flags;			/* IDL_SYSFUN_DEF_F_* flags */
+    void *extra;			/* Caller should set this to 0 */
 } IDL_SYSFUN_DEF2;
 
 /**** IDL structures ****/
@@ -706,35 +707,36 @@ typedef struct {
  * make it opaque for use outside of IDL.
  */
 typedef struct _idl_structure *IDL_StructDefPtr;
-typedef struct _idl_tagdef  {	/* Definition of each instance of a tag
-				   in a structure: */
-  IDL_IDENT *id;
-  IDL_MEMINT offset;		/* Offset of this tag within struct */
-  IDL_VARIABLE var;		/* Definition of this tag's field. */
+typedef struct _idl_tagdef  {
+    /* Definition of each instance of a tag
+    				   in a structure: */
+    IDL_IDENT *id;
+    IDL_MEMINT offset;		/* Offset of this tag within struct */
+    IDL_VARIABLE var;		/* Definition of this tag's field. */
 } IDL_TAGDEF;
 
 typedef struct _idl_structure  {   /* Structure definition: */
-  IDL_IDENT *id;		/* The name of this structure.  NULL
+    IDL_IDENT *id;		/* The name of this structure.  NULL
 				   for anonymous structure. */
-  UCHAR flags;			/* Structure attribute flags */
-  UCHAR contains_string;	/* TRUE if structure contains strings or
+    UCHAR flags;			/* Structure attribute flags */
+    UCHAR contains_string;	/* TRUE if structure contains strings or
                                    heap variables, and FALSE otherwise. */
-  int ntags;			/* The number of tags in this structure */
-  IDL_MEMINT length;		/* Length in bytes of each instance of
+    int ntags;			/* The number of tags in this structure */
+    IDL_MEMINT length;		/* Length in bytes of each instance of
 				   this structure. */
-  IDL_MEMINT data_length;	/* Length in bytes of the data contained in
+    IDL_MEMINT data_length;	/* Length in bytes of the data contained in
 				   each instance of this structure. This is
 				   (length - struct alignment-holes) */
-  int rcount;			/* Reference count: only for anon structs */
-  void *object;
-  IDL_ARRAY *tag_array_mem;	/* If the IDL_ARRAY descriptors for the
+    int rcount;			/* Reference count: only for anon structs */
+    void *object;
+    IDL_ARRAY *tag_array_mem;	/* If the IDL_ARRAY descriptors for the
 				   tags was not allocated at the end of
 				   the same memory block as the array, this
 				   field contains the pointer to their memory.
 				   This is used to free the memory when the
 				   .reset_session executive command is
 				   executed. Otherwise it is NULL. */
-  IDL_TAGDEF tags[1];		/* Array of ntags tagdefs. */
+    IDL_TAGDEF tags[1];		/* Array of ntags tagdefs. */
 } IDL_STRUCTURE;
 #endif				/* defs_IDL_DEF */
 
@@ -820,19 +822,19 @@ typedef struct _idl_structure  {   /* Structure definition: */
  *	  them on incorrect platforms.
  */
 typedef enum {
-  IDL_MSG_SYSCODE_NONE=0,	/* There is no system error part */
-  IDL_MSG_SYSCODE_ERRNO=1	/* Unix style errno based error */
+    IDL_MSG_SYSCODE_NONE=0,	/* There is no system error part */
+    IDL_MSG_SYSCODE_ERRNO=1	/* Unix style errno based error */
 #ifdef MSWIN
-  , IDL_MSG_SYSCODE_WIN=2	/* Windows system codes (aka GetLastError() */
-  , IDL_MSG_SYSCODE_WINSOCK=3	/* MS Windows winsock error codes
+                          , IDL_MSG_SYSCODE_WIN=2	/* Windows system codes (aka GetLastError() */
+                                  , IDL_MSG_SYSCODE_WINSOCK=3	/* MS Windows winsock error codes
 				   WSAGetLastError()*/
 #endif
 } IDL_MSG_SYSCODE_T;
 
 /* The type of elements in the defs argument to IDL_MessageDefineBlock() */
 typedef struct {
-  char *name;
-  char *format;
+    char *name;
+    char *format;
 } IDL_MSG_DEF;
 
 /* Type returned by IDL_MessageDefineBlock() */
@@ -841,15 +843,15 @@ typedef void *IDL_MSG_BLOCK;
 #define IDL_MSG_SYSERR_BUF_LEN	512   /* Need not be so big */
 
 typedef struct {
-  int action;			/* As passed to IDL_Message(). */
-  IDL_MSG_BLOCK msg_block;	/* Message block containing error */
-  int code;			/* Message code within msg_block */
-  int global_code;		/* Message code mapped into global
+    int action;			/* As passed to IDL_Message(). */
+    IDL_MSG_BLOCK msg_block;	/* Message block containing error */
+    int code;			/* Message code within msg_block */
+    int global_code;		/* Message code mapped into global
 				   IDL message space */
-  IDL_MSG_SYSCODE_T syscode_type;   /* System error code type */
-  int syscode;			/* System error code */
-  char msg[IDL_MSG_ERR_BUF_LEN];   /* Text of IDL part of message */
-  char sysmsg[IDL_MSG_SYSERR_BUF_LEN];   /* Text of system part of message */
+    IDL_MSG_SYSCODE_T syscode_type;   /* System error code type */
+    int syscode;			/* System error code */
+    char msg[IDL_MSG_ERR_BUF_LEN];   /* Text of IDL part of message */
+    char sysmsg[IDL_MSG_SYSERR_BUF_LEN];   /* Text of system part of message */
 } IDL_MSG_ERRSTATE;
 
 /*
@@ -1005,38 +1007,38 @@ typedef void *IDL_MSG_ERRSTATE_PTR;
 
 
 typedef struct {
-  IDL_STRING name;
-  IDL_STRING block;
-  IDL_LONG code;
-  IDL_LONG sys_code[2];
-  IDL_STRING sys_code_type;
-  IDL_STRING msg;
-  IDL_STRING sys_msg;
-  IDL_STRING msg_prefix;
+    IDL_STRING name;
+    IDL_STRING block;
+    IDL_LONG code;
+    IDL_LONG sys_code[2];
+    IDL_STRING sys_code_type;
+    IDL_STRING msg;
+    IDL_STRING sys_msg;
+    IDL_STRING msg_prefix;
 } IDL_SYS_ERROR_STATE;
 
 
 
 
 typedef struct {
-  IDL_LONG x;
-  IDL_LONG y;
-  IDL_LONG button;
-  IDL_LONG time;
+    IDL_LONG x;
+    IDL_LONG y;
+    IDL_LONG button;
+    IDL_LONG time;
 } IDL_MOUSE_STRUCT;
 
 
 
 
 typedef struct {
-  IDL_STRING arch;
-  IDL_STRING os;
-  IDL_STRING os_family;
-  IDL_STRING os_name;
-  IDL_STRING release;
-  IDL_STRING build_date;
-  IDL_INT memory_bits;
-  IDL_INT file_offset_bits;
+    IDL_STRING arch;
+    IDL_STRING os;
+    IDL_STRING os_family;
+    IDL_STRING os_name;
+    IDL_STRING release;
+    IDL_STRING build_date;
+    IDL_INT memory_bits;
+    IDL_INT file_offset_bits;
 } IDL_SYS_VERSION;
 
 #endif				/* idl_pds_IDL_DEF */
@@ -1142,7 +1144,7 @@ typedef void (* IDL_EXIT_HANDLER_FUNC)(void);
 /* This macro turns it's argument into a bit mask suitable for
  * the allowed_dims field of IDL_EZ_ARG. The argument dim_code should be
  * 0 for scalar, 1 for 1D, 2 for 2D, etc...
- */ 
+ */
 #define IDL_EZ_DIM_MASK(dim_code)   (1 << dim_code)
 
 /* Define type mask of all numeric types: */
@@ -1183,12 +1185,12 @@ typedef void (* IDL_EXIT_HANDLER_FUNC)(void);
  * to a routine.
  */
 typedef struct {
-  short allowed_dims;		/* A bit mask that specifies the
+    short allowed_dims;		/* A bit mask that specifies the
 				   allowed dimensions. Bit 0 means scalar,
 				   bit 1 is 1D, etc. Use the EZ_DIM_* constants
 				   defined in this file to specify this
 				   value. */
-  int allowed_types;		/* This is a bit mask defining the
+    int allowed_types;		/* This is a bit mask defining the
 				   allowed data types for the argument.
 				   To convert the TYP_* type codes defined
 				   in defs.h to the appropriate bits,
@@ -1199,35 +1201,35 @@ typedef struct {
 				   IDL_TYP_B_SIMPLE here. The type conversion
 				   will catch any problems and your routine
 				   will be more flexible. */
-  short access;			/* Some combination of the EZ_ACCESS
+    short access;			/* Some combination of the EZ_ACCESS
 				   constants defined above. */
-  short convert;		/* If non-zero, the TYP_* type code to
+    short convert;		/* If non-zero, the TYP_* type code to
 				   which the argument will be converted.
 				   A value of zero means that no conversion
 				   will be applied. */
-  short pre;			/* A bit mask that specifies special purpose
+    short pre;			/* A bit mask that specifies special purpose
 				   processing that should be performed on
 				   the variable by IDL_EzCall(). These bits
 				   are specified with the IDL_EZ_PRE_*
 				   constants. This processing occurs *AFTER*
 				   any type conversions specified by
 				   convert. */
-  short post;			/* A bit mask that specifies special purpose
+    short post;			/* A bit mask that specifies special purpose
 				   processing that should be performed on
 				   the variable by IDL_EzCallCleanup(). These
 				   bits are specified with the IDL_EZ_POST_*
 				   constants. */
-  IDL_VPTR to_delete;		/* RESERVED TO EZ MODULE. DO NOT MAKE
+    IDL_VPTR to_delete;		/* RESERVED TO EZ MODULE. DO NOT MAKE
 				   USE OF OR CHANGE THIS FIELD. If EZ
 				   allocated a temporary variable to satisfy
 				   the conversion requirements given by the
 				   convert field, the IDL_VPTR to that temp
 				   is stashed here by IDL_EzCall for use by
 				   IDL_EzCallCleanup(). */
-  IDL_VPTR uargv;		/* After calling IDL_EzCall(), uargv contains
+    IDL_VPTR uargv;		/* After calling IDL_EzCall(), uargv contains
 				   a pointer to the IDL_VARIABLE which is
 				   the argument. */
-  IDL_ALLTYPES value;		/* This is a copy of the value field
+    IDL_ALLTYPES value;		/* This is a copy of the value field
 				   of the variable pointed at by uargv.
 				   For scalar variables, it contains the
 				   value, for arrays it points at the
@@ -1275,37 +1277,37 @@ typedef struct {
 #define IDL_TICKLAYOUT_STANDARD    0  /* Tick layout styles */
 #define IDL_TICKLAYOUT_NOAXISLINES 1
 #define IDL_TICKLAYOUT_BOXOUTLINE  2
-  
-typedef struct {		/* System variable for axis */
-  IDL_STRING title;		/* Axis title */
-  int type;			/* 0 = normal linear, 1=log. */
-  int style;			/* 0 = norm, AX_EXTEND, AX_EXACT, AX_NONE,
-				   AX_NOBOX. */
-  int nticks;			/* # of ticks, 0=auto, -1 = none */
-  float ticklen;		/* Tick length, normalized */
-  float thick;			/* Axis thickness */
-  double range[2];		/* Min and max of endpoints */
-  double crange[2];		/* Current min & max */
-  double s[2];			/* Scale factors, screen = data*s[1]+s[0] */
-  float margin[2];		/* Margin size, in char units. */
-  float omargin[2];		/* Outer margin, in char units */
-  float window[2];		/* data WINDOW coords, normal units */
-  float region[2];		/* Plot region, normal units */
-  float charsize;		/* Size of annotations */
-  int minor_ticks;		/* Minor ticks */
-  double tickv[IDL_MAX_TICKN];	/* Position of ticks */
-  IDL_STRING annot[IDL_MAX_TICKN];   /* Annotation */
-  IDL_LONG gridstyle;		/* tick linestyle */
-  IDL_STRING format[IDL_MAX_TICKUNIT_COUNT]; /* Axis label format/procedure */
-  double tickinterval;          /* Interval between major ticks */    
-  IDL_LONG ticklayout;          /* Layout style for the ticks of the axis. */
-  IDL_STRING tickunits[IDL_MAX_TICKUNIT_COUNT];    
-				/* Units for each axis level */
 
-  /* After here, the elements are not accessible to the user via
-   the system variables: */
-  IDL_VPTR ret_values;		/* Returned tick values */
-  int log_minor_ticks;		/* true if the minor tickmarks should be
+typedef struct {		/* System variable for axis */
+    IDL_STRING title;		/* Axis title */
+    int type;			/* 0 = normal linear, 1=log. */
+    int style;			/* 0 = norm, AX_EXTEND, AX_EXACT, AX_NONE,
+				   AX_NOBOX. */
+    int nticks;			/* # of ticks, 0=auto, -1 = none */
+    float ticklen;		/* Tick length, normalized */
+    float thick;			/* Axis thickness */
+    double range[2];		/* Min and max of endpoints */
+    double crange[2];		/* Current min & max */
+    double s[2];			/* Scale factors, screen = data*s[1]+s[0] */
+    float margin[2];		/* Margin size, in char units. */
+    float omargin[2];		/* Outer margin, in char units */
+    float window[2];		/* data WINDOW coords, normal units */
+    float region[2];		/* Plot region, normal units */
+    float charsize;		/* Size of annotations */
+    int minor_ticks;		/* Minor ticks */
+    double tickv[IDL_MAX_TICKN];	/* Position of ticks */
+    IDL_STRING annot[IDL_MAX_TICKN];   /* Annotation */
+    IDL_LONG gridstyle;		/* tick linestyle */
+    IDL_STRING format[IDL_MAX_TICKUNIT_COUNT]; /* Axis label format/procedure */
+    double tickinterval;          /* Interval between major ticks */
+    IDL_LONG ticklayout;          /* Layout style for the ticks of the axis. */
+    IDL_STRING tickunits[IDL_MAX_TICKUNIT_COUNT];
+    /* Units for each axis level */
+
+    /* After here, the elements are not accessible to the user via
+     the system variables: */
+    IDL_VPTR ret_values;		/* Returned tick values */
+    int log_minor_ticks;		/* true if the minor tickmarks should be
 			           laid out via log10() */
 } IDL_AXIS;
 
@@ -1337,97 +1339,98 @@ typedef struct {		/* System variable for axis */
 
 typedef union {			/* Describe a point: */
 
-  struct {			
-    float x,y,z,h;
-  } d;                          /* Single precision point,
+    struct {
+        float x,y,z,h;
+    } d;                          /* Single precision point,
 				 * referenced by .x, .y, etc., in
 				 * homogeneous coordinates. */
 
-  struct {			
-    int x,y;
-  } i;                          /* Integer point,
+    struct {
+        int x,y;
+    } i;                          /* Integer point,
 				 * referenced by .x and .y. */
 
-  struct {                      
+    struct {
 
-    double x,y,z,h;
-  } d_s;                        /* Double precision point,
+        double x,y,z,h;
+    } d_s;                        /* Double precision point,
 				 * referenced by .x, .y, etc., in
 				 * homogeneous coordinates. */
 
-  float p[4];			/* Single precision point,
+    float p[4];			/* Single precision point,
 				 * referred to by [0],[1], etc. */
 
-  double d_arr[4];              /* Double precision point,
+    double d_arr[4];              /* Double precision point,
 				 * referred to by [0],[1], etc. */
 
-  struct {
-    int x, y;
-    float z, h;
-  } dev;                        /* Device coordinate (x,y) plus Z value
+    struct {
+        int x, y;
+        float z, h;
+    } dev;                        /* Device coordinate (x,y) plus Z value
 				 *  (for devices that support a Z-buffer),
-				 *  and homogeneous coordinate (for 
-				 *  transform of texture coordinates). */ 
+				 *  and homogeneous coordinate (for
+				 *  transform of texture coordinates). */
 } IDL_GR_PT;
 
 typedef enum {
-  IDL_GR_PT_UNKNOWN       = 0,
-  IDL_GR_PT_INT_STRUCT    = 1, /* IDL_GR_PT.i     */
-  IDL_GR_PT_FLOAT_STRUCT  = 2, /* IDL_GR_PT.d     */
-  IDL_GR_PT_FLOAT_ARRAY   = 3, /* IDL_GR_PT.p     */
-  IDL_GR_PT_DOUBLE_STRUCT = 4, /* IDL_GR_PT.d_s   */
-  IDL_GR_PT_DOUBLE_ARRAY  = 5, /* IDL_GR_PT.d_arr */
-  IDL_GR_PT_DEV_STRUCT    = 4  /* IDL_GR_PT.dev   */
+    IDL_GR_PT_UNKNOWN       = 0,
+    IDL_GR_PT_INT_STRUCT    = 1, /* IDL_GR_PT.i     */
+    IDL_GR_PT_FLOAT_STRUCT  = 2, /* IDL_GR_PT.d     */
+    IDL_GR_PT_FLOAT_ARRAY   = 3, /* IDL_GR_PT.p     */
+    IDL_GR_PT_DOUBLE_STRUCT = 4, /* IDL_GR_PT.d_s   */
+    IDL_GR_PT_DOUBLE_ARRAY  = 5, /* IDL_GR_PT.d_arr */
+    IDL_GR_PT_DEV_STRUCT    = 4  /* IDL_GR_PT.dev   */
 } IDL_GR_PT_TYPE_e;
 
 typedef struct {
-  IDL_GR_PT_TYPE_e  type;   /* Indicates the field of IDL_GR_PT union to use */
-  int               coord;  /* Coordinate system.  IDL_COORD_* */
-  IDL_GR_PT         pt;
+    IDL_GR_PT_TYPE_e  type;   /* Indicates the field of IDL_GR_PT union to use */
+    int               coord;  /* Coordinate system.  IDL_COORD_* */
+    IDL_GR_PT         pt;
 } IDL_GR_TYPED_PT;
 
 typedef struct {
-	IDL_GR_PT origin;
-	IDL_GR_PT size;
+    IDL_GR_PT origin;
+    IDL_GR_PT size;
 } IDL_GR_BOX;
-    
+
 typedef struct {		/* Attributes structure for points & lines */
-  IDL_ULONG color;		/* Specifys all that can go wrong w/ graphic */
-  float thick;
-  int linestyle;
-  double *t;			/* NULL for no 3d transform, or pointer to
+    IDL_ULONG color;		/* Specifys all that can go wrong w/ graphic */
+    float thick;
+    int linestyle;
+    double *t;			/* NULL for no 3d transform, or pointer to
 				   4 by 4 matrix. */
-  int *clip;			/* NULL for no clipping or ^ to [2][2]
+    int *clip;			/* NULL for no clipping or ^ to [2][2]
 				   clipping rectangle in device coord. */
-  IDL_AXIS *ax,*ay,*az;		/* Axis definitions */
-  int chl;			/* For devices with multiple channels */
+    IDL_AXIS *ax,*ay,*az;		/* Axis definitions */
+    int chl;			/* For devices with multiple channels */
 } IDL_ATTR_STRUCT;
 
-typedef struct {		/* Graphic text attribute structure.
-				   Passed to text routines. */
-  int font;			/* 0=hdw, -1=hershey, 1=TrueType */
-  int axes;			/* Text axes, 0 = xy, 1 = xz, 2 =yz,
+typedef struct {
+    /* Graphic text attribute structure.
+    				   Passed to text routines. */
+    int font;			/* 0=hdw, -1=hershey, 1=TrueType */
+    int axes;			/* Text axes, 0 = xy, 1 = xz, 2 =yz,
 				   3 = yx, 4 = zx, 5 = zy */
-  float size;			/* Text size, 1.0 = normal */
-  float orien;			/* Orientation, degrees CCW from normal */
-  float align;			/* Justification, 0.0 = left, 1.0 = right,
+    float size;			/* Text size, 1.0 = normal */
+    float orien;			/* Orientation, degrees CCW from normal */
+    float align;			/* Justification, 0.0 = left, 1.0 = right,
 				   0.5  = centered. */
 } IDL_TEXT_STRUCT;
 
 
 /* Structure that defines secondary paramenters for imaging */
 typedef struct {		/* Imaging attribute structure */
-  short xsize_exp;		/* Non-0 if xsize is EXPlictily set by user */
-  short ysize_exp;		/* Non-0 if ysize is EXPlictily set by user */
-  IDL_LONG xsize, ysize;	/* Requested size of image (dev coords) */
-  int chl;			/* Channel */
-  int order;			/* Image order - 0 bottom to top */
-  /* Three element array giving the stride between colors of the same
-     pixel, adjacent pixels of the same color, and rows of the same color.
-     color_stride[0] is non-zero for true color. */
-  int color_stride[3];
-  int image_is_scratch;		/* True if source image is a temp */
-  int b_per_pixel;		/* # of bytes/pixel */
+    short xsize_exp;		/* Non-0 if xsize is EXPlictily set by user */
+    short ysize_exp;		/* Non-0 if ysize is EXPlictily set by user */
+    IDL_LONG xsize, ysize;	/* Requested size of image (dev coords) */
+    int chl;			/* Channel */
+    int order;			/* Image order - 0 bottom to top */
+    /* Three element array giving the stride between colors of the same
+       pixel, adjacent pixels of the same color, and rows of the same color.
+       color_stride[0] is non-zero for true color. */
+    int color_stride[3];
+    int image_is_scratch;		/* True if source image is a temp */
+    int b_per_pixel;		/* # of bytes/pixel */
 } IDL_TV_STRUCT;
 
 
@@ -1436,56 +1439,56 @@ typedef struct {		/* Imaging attribute structure */
  * also needed for IDL_POLYFILL_ATTR.
  */
 typedef void (* IDL_DEVCORE_FCN_DRAW)(IDL_GR_PT *p0, IDL_GR_PT *p1,
-				      IDL_ATTR_STRUCT *a);
+                                      IDL_ATTR_STRUCT *a);
 typedef void (* IDL_DEVCORE_FCN_RW_PIXELS)(UCHAR *data, int x0, int y0, int nx,
-					   int ny, int dir,
-					   IDL_TV_STRUCT *secondary);
+        int ny, int dir,
+        IDL_TV_STRUCT *secondary);
 
 typedef struct {
-  IDLBool_t bInterior;          /* True if current ROI is interior */
-  IDL_LONG iNAllocEdgeLists;    /* # of allocated edges */
-  IDL_LONG iNUsedEdgeLists;     /* # of used edges */
-  UCHAR **ppEdgeLists;          /* ^ to edge lists */
-  IDL_MEMINT iBottomY, iTopY;   /* Overall bottom & top scanline Y */
+    IDLBool_t bInterior;          /* True if current ROI is interior */
+    IDL_LONG iNAllocEdgeLists;    /* # of allocated edges */
+    IDL_LONG iNUsedEdgeLists;     /* # of used edges */
+    UCHAR **ppEdgeLists;          /* ^ to edge lists */
+    IDL_MEMINT iBottomY, iTopY;   /* Overall bottom & top scanline Y */
 } IDL_ROI_STATE;
 
 typedef struct {		/* Structure defining polygon fills */
-  enum {
-    POLY_SOLID, POLY_PATTERN, POLY_IMAGE, POLY_GOURAUD, POLY_IMAGE3D
+    enum {
+        POLY_SOLID, POLY_PATTERN, POLY_IMAGE, POLY_GOURAUD, POLY_IMAGE3D
     } fill_type;
-  IDL_ATTR_STRUCT *attr;	/* Graphics attribute structure */
-  union {			/* Drawing routine to use */
-    IDL_DEVCORE_FCN_DRAW draw;
-    IDL_DEVCORE_FCN_RW_PIXELS rw_pixels;
-  } rtn;
-  union {			/* Operation dependent params: */
-    struct {			/* Image fill  */
-      UCHAR *data;		/* Fill data for image fill */
-      int d1, d2;		/* Dimensions of fill data */
-      float *im_verts;		/* Image coords of verts */
-      float *im_w;		/* Screen vert W coords */
-      UCHAR interp;		/* TRUE to interpolate in image space */
-      UCHAR transparent;	/* Transparency threshold, 0 for none */
-      UCHAR im_depth;           /* Z device only: 1 byte or 3 bytes */
-    } image;
-    struct {			/* Line-pattern fill: */
-      float angle;		/* Fill orientation in degrees */
-      int spacing;		/* Line spacing, in device units */
-      float ct, st;		/* Cos / sin of rotation */
-    } lines;
-    int fill_style;		/* Hardware dependent fill style for
+    IDL_ATTR_STRUCT *attr;	/* Graphics attribute structure */
+    union {			/* Drawing routine to use */
+        IDL_DEVCORE_FCN_DRAW draw;
+        IDL_DEVCORE_FCN_RW_PIXELS rw_pixels;
+    } rtn;
+    union {			/* Operation dependent params: */
+        struct {			/* Image fill  */
+            UCHAR *data;		/* Fill data for image fill */
+            int d1, d2;		/* Dimensions of fill data */
+            float *im_verts;		/* Image coords of verts */
+            float *im_w;		/* Screen vert W coords */
+            UCHAR interp;		/* TRUE to interpolate in image space */
+            UCHAR transparent;	/* Transparency threshold, 0 for none */
+            UCHAR im_depth;           /* Z device only: 1 byte or 3 bytes */
+        } image;
+        struct {			/* Line-pattern fill: */
+            float angle;		/* Fill orientation in degrees */
+            int spacing;		/* Line spacing, in device units */
+            float ct, st;		/* Cos / sin of rotation */
+        } lines;
+        int fill_style;		/* Hardware dependent fill style for
 				   POLY_SOLID */
-  } extra;
-  struct {			/* Info used only with Z buffer device */
-    union {
-	float *f;
-	double *d;
-    }z;				/* The Z values */
-    int precision;              /* Precision for the Z values. */
-    int *shades;		/* Shading values at verts for POLY_GOURAUD */
-  } three;
+    } extra;
+    struct {			/* Info used only with Z buffer device */
+        union {
+            float *f;
+            double *d;
+        } z;				/* The Z values */
+        int precision;              /* Precision for the Z values. */
+        int *shades;		/* Shading values at verts for POLY_GOURAUD */
+    } three;
 
-  IDL_ROI_STATE *pROIState;     /* Pointer to ROI state. */
+    IDL_ROI_STATE *pROIState;     /* Pointer to ROI state. */
 
 } IDL_POLYFILL_ATTR;
 
@@ -1494,16 +1497,16 @@ typedef struct {		/* Structure defining polygon fills */
  * Prototypes for remaining functions in IDL_DEVICE_CORE struct (below)
  */
 typedef int (* IDL_DEVCORE_FCN_TEXT)(IDL_GR_PT *p, IDL_ATTR_STRUCT *ga,
-				     IDL_TEXT_STRUCT *ta, char *text);
+                                     IDL_TEXT_STRUCT *ta, char *text);
 typedef void (* IDL_DEVCORE_FCN_ERASE)(IDL_ATTR_STRUCT *a);
 typedef void (* IDL_DEVCORE_FCN_CURSOR)(int funct, IDL_MOUSE_STRUCT *m);
 typedef void (* IDL_DEVCORE_FCN_POLYFILL)(int *x, int *y, int n,
-					  IDL_POLYFILL_ATTR *poly);
+        IDL_POLYFILL_ATTR *poly);
 typedef void (* IDL_DEVCORE_FCN_INTER_EXIT)(void);
 typedef void (* IDL_DEVCORE_FCN_FLUSH)(void);
 typedef void (* IDL_DEVCORE_FCN_LOAD_COLOR)(IDL_LONG start, IDL_LONG n);
 typedef void (* IDL_DEVCORE_FCN_DEV_SPECIFIC)(int argc, IDL_VPTR *argv,
-					      char *argk);
+        char *argk);
 typedef void (* IDL_DEVCORE_FCN_DEV_HELP)(int argc, IDL_VPTR *argv);
 typedef void (* IDL_DEVCORE_FCN_LOAD_RTN)(void);
 typedef void (* IDL_DEVCORE_FCN_RESET_SESSION)(void);
@@ -1515,21 +1518,21 @@ typedef void (* IDL_DEVCORE_FCN_RESET_SESSION)(void);
  * this --- If you can't do that much, why bother with a driver?
 */
 typedef struct {
-  IDL_DEVCORE_FCN_DRAW		draw;
-  IDL_DEVCORE_FCN_TEXT		text;
-  IDL_DEVCORE_FCN_ERASE		erase;
-  IDL_DEVCORE_FCN_CURSOR	cursor;   /* cursor inquire and set */
-  IDL_DEVCORE_FCN_POLYFILL	polyfill;   /* Fill irregular polygon */
-  IDL_DEVCORE_FCN_INTER_EXIT	inter_exit;   /* Return to interactive mode */
-  IDL_DEVCORE_FCN_FLUSH		flush;
-  IDL_DEVCORE_FCN_LOAD_COLOR	load_color;
-  IDL_DEVCORE_FCN_RW_PIXELS	rw_pixels;   /* Pixel input/output */
-  IDL_DEVCORE_FCN_DEV_SPECIFIC	dev_specific;   /* DEVICE procedure */
-  IDL_DEVCORE_FCN_DEV_HELP	dev_help;   /* HELP,/DEVICE */
-  IDL_DEVCORE_FCN_LOAD_RTN	load_rtn;   /* Call when driver is loaded */
-				/* Call for .reset_session executive command
-				   to close and release windows. */
-  IDL_DEVCORE_FCN_RESET_SESSION	reset_session;
+    IDL_DEVCORE_FCN_DRAW		draw;
+    IDL_DEVCORE_FCN_TEXT		text;
+    IDL_DEVCORE_FCN_ERASE		erase;
+    IDL_DEVCORE_FCN_CURSOR	cursor;   /* cursor inquire and set */
+    IDL_DEVCORE_FCN_POLYFILL	polyfill;   /* Fill irregular polygon */
+    IDL_DEVCORE_FCN_INTER_EXIT	inter_exit;   /* Return to interactive mode */
+    IDL_DEVCORE_FCN_FLUSH		flush;
+    IDL_DEVCORE_FCN_LOAD_COLOR	load_color;
+    IDL_DEVCORE_FCN_RW_PIXELS	rw_pixels;   /* Pixel input/output */
+    IDL_DEVCORE_FCN_DEV_SPECIFIC	dev_specific;   /* DEVICE procedure */
+    IDL_DEVCORE_FCN_DEV_HELP	dev_help;   /* HELP,/DEVICE */
+    IDL_DEVCORE_FCN_LOAD_RTN	load_rtn;   /* Call when driver is loaded */
+    /* Call for .reset_session executive command
+       to close and release windows. */
+    IDL_DEVCORE_FCN_RESET_SESSION	reset_session;
 } IDL_DEVICE_CORE;
 
 
@@ -1540,11 +1543,11 @@ typedef struct {
  * they're called without checking.
  */
 typedef struct {		/* Procedures & functions for image device: */
-  void (* window_create)(int argc, IDL_VPTR *argv,char *argk);
-  void (* window_delete)(int argc, IDL_VPTR *argv);
-  void (* window_show)(int argc, IDL_VPTR *argv, char *argk);
-  void (* window_set)(int argc, IDL_VPTR *argv);
-  IDL_VPTR (* window_menu)(int argc, IDL_VPTR *argv, char *argk);
+    void (* window_create)(int argc, IDL_VPTR *argv,char *argk);
+    void (* window_delete)(int argc, IDL_VPTR *argv);
+    void (* window_show)(int argc, IDL_VPTR *argv, char *argk);
+    void (* window_set)(int argc, IDL_VPTR *argv);
+    IDL_VPTR (* window_menu)(int argc, IDL_VPTR *argv, char *argk);
 } IDL_DEVICE_WINDOW;
 
 /*
@@ -1553,25 +1556,26 @@ typedef struct {		/* Procedures & functions for image device: */
  * structure must contain valid information --- it is used without
  * any error checking.
  */
-typedef struct {		/* Device descriptor, mostly static attributes
-				   and definitions: */
-  IDL_STRING name;		/* Device name */
-  int t_size[2];		/* Total size in device coordinates */
-  int v_size[2];		/* Visible area size, device coords */
-  int ch_size[2];		/* Default character sizes */
-  float px_cm[2];		/* Device units / centimeter, x & y. */
-  int n_colors;			/* # of possible simultaneous colors */
-  int table_size;		/* # of color table elements */
-  int fill_dist;		/* minimum line spacing for solid fill */
-  int window;			/* Current window number */
-  int unit;			/* Unit number of output file */
-  int flags;			/* Advertise limitations and abilities */
-  int origin[2];		/* Display XY (pan/scroll) origin */
-  int zoom[2];			/* Display XY zoom factors */
-  float aspect;			/* Aspect ratio, = v_size[0] / v_size[1]. */
-  IDL_DEVICE_CORE core;		/* Core graphics */
-  IDL_DEVICE_WINDOW winsys;	/* Window system. Only required if D_WINDOWS */
-  char *reserved;		/* Set to zero. */
+typedef struct {
+    /* Device descriptor, mostly static attributes
+    				   and definitions: */
+    IDL_STRING name;		/* Device name */
+    int t_size[2];		/* Total size in device coordinates */
+    int v_size[2];		/* Visible area size, device coords */
+    int ch_size[2];		/* Default character sizes */
+    float px_cm[2];		/* Device units / centimeter, x & y. */
+    int n_colors;			/* # of possible simultaneous colors */
+    int table_size;		/* # of color table elements */
+    int fill_dist;		/* minimum line spacing for solid fill */
+    int window;			/* Current window number */
+    int unit;			/* Unit number of output file */
+    int flags;			/* Advertise limitations and abilities */
+    int origin[2];		/* Display XY (pan/scroll) origin */
+    int zoom[2];			/* Display XY zoom factors */
+    float aspect;			/* Aspect ratio, = v_size[0] / v_size[1]. */
+    IDL_DEVICE_CORE core;		/* Core graphics */
+    IDL_DEVICE_WINDOW winsys;	/* Window system. Only required if D_WINDOWS */
+    char *reserved;		/* Set to zero. */
 } IDL_DEVICE_DEF;
 
 
@@ -1603,37 +1607,37 @@ typedef struct {		/* Device descriptor, mostly static attributes
 #define IDL_D_TRUETYPE_FONT (1 << 18) /* Device supports TrueType fonts. */
 
 typedef struct {
-  int background;		/* Background color */
-  float charsize;		/* Global Character size */
-  float charthick;		/* Character thickness */
-  int clip[6];			/* Clipping rectangle, normalized coords */
-  IDL_ULONG color;		/* Current color */
-  int font;			/* Font */
-  int linestyle;		/* Line style */
-  int  multi[5];		/* Cnt, Cols/rows, major dir for multi plts. */
-  int clip_off;			/* True if clipping is disabled */
-  int noerase;			/* No erase flag */
-  int nsum;			/* Number of points to sum */
-  float position[4];		/* Default window */
-  int psym;			/* Marker symbol */
-  float region[4];		/* Default plotting region */
-  IDL_STRING subtitle;		/* Plot subtitle */
-  float symsize;		/* Symbol size */
-  double t[16];			/* Matrix (4x4) of homogeneous transform */
-  int  t3d_on;			/* True if 3d homo transform is on */
-  float thick;			/* Line thickness */
-  IDL_STRING title;		/* Main plot title */
-  float ticklen;		/* Tick length */
-  int chl;			/* Default channel */
-  /* Fields below this are not visible to the IDL user */
-  double sr_restore_pad;	/* Save/Restore has the user view of this
+    int background;		/* Background color */
+    float charsize;		/* Global Character size */
+    float charthick;		/* Character thickness */
+    int clip[6];			/* Clipping rectangle, normalized coords */
+    IDL_ULONG color;		/* Current color */
+    int font;			/* Font */
+    int linestyle;		/* Line style */
+    int  multi[5];		/* Cnt, Cols/rows, major dir for multi plts. */
+    int clip_off;			/* True if clipping is disabled */
+    int noerase;			/* No erase flag */
+    int nsum;			/* Number of points to sum */
+    float position[4];		/* Default window */
+    int psym;			/* Marker symbol */
+    float region[4];		/* Default plotting region */
+    IDL_STRING subtitle;		/* Plot subtitle */
+    float symsize;		/* Symbol size */
+    double t[16];			/* Matrix (4x4) of homogeneous transform */
+    int  t3d_on;			/* True if 3d homo transform is on */
+    float thick;			/* Line thickness */
+    IDL_STRING title;		/* Main plot title */
+    float ticklen;		/* Tick length */
+    int chl;			/* Default channel */
+    /* Fields below this are not visible to the IDL user */
+    double sr_restore_pad;	/* Save/Restore has the user view of this
 				   struct. Hence, its length calculation for
 				   this struct stops with the field above this
 				   one. This field ensures that the alignment
 				   padding generated by the C compiler will
 				   not cause RESTORE to overwrite these hidden
 				   fields. */
-  IDL_DEVICE_DEF *dev;		/* Current output device, not user accessible*/
+    IDL_DEVICE_DEF *dev;		/* Current output device, not user accessible*/
 } IDL_PLOT_COM;
 
 
@@ -1740,24 +1744,24 @@ typedef struct {
 
 
 typedef struct {
-  char *keyword;		/* ^ to Keyword string, NULL terminated.
+    char *keyword;		/* ^ to Keyword string, NULL terminated.
 				   A NULL keyword string pointer value
 				   terminates the keyword structure.  Strings
 				   must be UPPER case and in LEXICAL order .*/
-  UCHAR type;			/* Type of data required. This may be any
+    UCHAR type;			/* Type of data required. This may be any
 				   simple type or 0 in cases where the type
 				   is determined by other factors
 				   (KW_OUT, KW_VIN, KW_VALUE, KW_SYMCONST). */
-  unsigned short mask;		/* Enable mask.  This field is AND'ed with
+    unsigned short mask;		/* Enable mask.  This field is AND'ed with
 				   the mask field in the call to
 				   GET_IDL_KW_PARAMS, and if the result is
 				   non-zero the keyword is used. If it is 0,
 				   the keyword is ignored.  */
-  unsigned short flags;		/* Contains  flags as described above */
-  int *specified;		/* (A/O) Address/Offset of int to set on
+    unsigned short flags;		/* Contains  flags as described above */
+    int *specified;		/* (A/O) Address/Offset of int to set on
 				   return if param is specified. May be null
 				   if this information is not required. */
-  char *value;			/* (A/O) In the case of arrays, this is a real
+    char *value;			/* (A/O) In the case of arrays, this is a real
 				   pointer to the IDL_KW_ARR_DESC
 				   (IDL_KWGetParams() or
 				   IDL_KWProcessByAddr()) or
@@ -1793,13 +1797,13 @@ typedef struct {
   IDL_MEMINT nmax;		/* Maximum # of elements allowed. */
 
 typedef struct {		/* Descriptor for array's that are returned */
-  IDL_KW_COMMON_ARR_DESC_TAGS
-  IDL_MEMINT n;			/* # present, (Returned value). */
+    IDL_KW_COMMON_ARR_DESC_TAGS
+    IDL_MEMINT n;			/* # present, (Returned value). */
 } IDL_KW_ARR_DESC;
 
 typedef struct {
-  IDL_KW_COMMON_ARR_DESC_TAGS
-  IDL_MEMINT *n_offset;		/* Address/Offset of variable to receive
+    IDL_KW_COMMON_ARR_DESC_TAGS
+    IDL_MEMINT *n_offset;		/* Address/Offset of variable to receive
 				   # elements present, (Returned value). */
 } IDL_KW_ARR_DESC_R;
 
@@ -1813,8 +1817,8 @@ typedef struct {
  * to understand and use, and therefore less error prone.
  */
 extern int IDL_CDECL IDL_KWGetParams(int argc, IDL_VPTR *argv, char *argk,
-				     IDL_KW_PAR *kw_list,
-				     IDL_VPTR *plain_args, int mask);
+                                     IDL_KW_PAR *kw_list,
+                                     IDL_VPTR *plain_args, int mask);
 extern void IDL_CDECL IDL_KWCleanup(int fcn);
 
 #define IDL_KW_MARK 1		/* Mark string stack before calling get_
@@ -1878,24 +1882,24 @@ typedef char IDL_ATIME_BUF[25];   /* Extra byte for NULL termination */
 /* Structure passed to IDL_GetUserInfo() */
 #define IDL_USER_INFO_MAXHOSTLEN 64
 typedef struct {
-  char *logname;			/* Users login name */
-  char *homedir;			/* User's home directory */
-  char *pid;				/* The process ID */
-  char host[IDL_USER_INFO_MAXHOSTLEN];	/* The machine name */
-  char wd[IDL_MAXPATH+1];		/* The current directory */
-  IDL_ATIME_BUF date;			/* The current date */
+    char *logname;			/* Users login name */
+    char *homedir;			/* User's home directory */
+    char *pid;				/* The process ID */
+    char host[IDL_USER_INFO_MAXHOSTLEN];	/* The machine name */
+    char wd[IDL_MAXPATH+1];		/* The current directory */
+    IDL_ATIME_BUF date;			/* The current date */
 } IDL_USER_INFO;
 
 /* Possible values for type argument to IDL_GetKbrdInternal() */
 typedef enum {
-  IDL_GETKBRD_T_CH=0,		/* Return a single ASCII character */
-  IDL_GETKBRD_T_CH_OR_ESC=1,	/* Return a single ASCII character or
+    IDL_GETKBRD_T_CH=0,		/* Return a single ASCII character */
+    IDL_GETKBRD_T_CH_OR_ESC=1,	/* Return a single ASCII character or
 				   a single ANSI escape sequence. Escape
 				   sequences can only be generated by a Unix
 				   tty based front end. In all other situations,
 				   this request is equivalent to
 				   IDL_GETKBRD_T_CH. */
-  IDL_GETKBRD_T_CH_OR_NAME=2	/* Return a single ASCII character or
+    IDL_GETKBRD_T_CH_OR_NAME=2	/* Return a single ASCII character or
 				   the name of a function key. */
 } IDL_GETKBRD_T;
 
@@ -1922,13 +1926,13 @@ typedef char IDL_GETKBRD_BUFFER[128];
 
 /*** Structure for control argument to pout() ***/
 typedef struct {
-  int unit;			/* LUN of open file */
-  int curcol;			/* Current output column */
-  int wrap;			/* # chars at which buf should flush */
-  char *leading;		/* String to output at start of each line */
-  int leading_len;		/* Length of leading w/o terminating null */
-  char *buf;			/* ^ to output buffer. Must be max_len chars */
-  int max_len;			/* Length of buffer */
+    int unit;			/* LUN of open file */
+    int curcol;			/* Current output column */
+    int wrap;			/* # chars at which buf should flush */
+    char *leading;		/* String to output at start of each line */
+    int leading_len;		/* Length of leading w/o terminating null */
+    char *buf;			/* ^ to output buffer. Must be max_len chars */
+    int max_len;			/* Length of buffer */
 } IDL_POUT_CNTRL;
 
 /* Macro for common case of writing a blank line to the file */
@@ -1954,13 +1958,13 @@ typedef struct {
 #ifndef ptr_IDL_DEF
 #define ptr_IDL_DEF
 typedef struct idl_heap_variable {
-  struct idl_heap_variable *hash; /* THIS MUST BE THE FIRST FIELD IN the
+    struct idl_heap_variable *hash; /* THIS MUST BE THE FIRST FIELD IN the
 				     IDL_HEAP_VARIABLE struct!!! */
-  IDL_HVID hash_id;		/* pointer value assigned to this heap var */
-  IDL_LONG refcount;            /* Reference counting */
-  int flags;			/* Bitmask of IDL_HV_F_* values */
-  IDL_VARIABLE var;		/* Associated variable */
-  
+    IDL_HVID hash_id;		/* pointer value assigned to this heap var */
+    IDL_LONG refcount;            /* Reference counting */
+    int flags;			/* Bitmask of IDL_HV_F_* values */
+    IDL_VARIABLE var;		/* Associated variable */
+
 } IDL_HEAP_VARIABLE;
 typedef IDL_HEAP_VARIABLE *IDL_HEAP_VPTR;
 
@@ -1996,18 +2000,18 @@ typedef IDL_HEAP_VARIABLE *IDL_HEAP_VPTR;
 #define IDL_RASTER_MSB_RIGHT { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 }
 
 typedef struct {		/* Information that characterizes a raster */
-  UCHAR *fb;			/* Address of frame buffer */
-  int nx, ny;			/* Size of frame buffer in pixels */
-  int bytes_line;		/* # of bytes per scan line, must be whole. */
-  int byte_padding;		/* Pad lines to a multiple of this amount,
+    UCHAR *fb;			/* Address of frame buffer */
+    int nx, ny;			/* Size of frame buffer in pixels */
+    int bytes_line;		/* # of bytes per scan line, must be whole. */
+    int byte_padding;		/* Pad lines to a multiple of this amount,
 				   Must be a power of 2.  */
-  int dot_width;		/* The length of a dot for the linestyles.
+    int dot_width;		/* The length of a dot for the linestyles.
 				   Default = 1. */
-  int dither_method;		/* Dithering method code. */
-  int dither_threshold;		/* Threshold value for threshold dither */
-  UCHAR bit_tab[8];		/* Table of set bits, bit_tab[0] is leftmost,
+    int dither_method;		/* Dithering method code. */
+    int dither_threshold;		/* Threshold value for threshold dither */
+    UCHAR bit_tab[8];		/* Table of set bits, bit_tab[0] is leftmost,
 				   bit_tab[7] is right most. */
-  int flags;			/* Raster flags, see above */
+    int flags;			/* Raster flags, see above */
 } IDL_RASTER_DEF;
 
 #endif				/* raster_IDL_DEF */
@@ -2048,9 +2052,9 @@ typedef IDL_LONG IDL_SFILE_PIPE_EXIT_STATUS;
  * convert to this base.
  */
 typedef struct {
-  IDL_LONG64 access;		/* Time of last file access,  */
-  IDL_LONG64 create;		/* Time of creation of file */
-  IDL_LONG64 mod;		/* Time of last Modification of file. */
+    IDL_LONG64 access;		/* Time of last file access,  */
+    IDL_LONG64 create;		/* Time of creation of file */
+    IDL_LONG64 mod;		/* Time of last Modification of file. */
 } IDL_SFILE_STAT_TIME;
 
 #endif				/* sfile_IDL_DEF */
@@ -2077,9 +2081,9 @@ typedef struct {
  */
 typedef struct {
 #ifdef linux
-  unsigned long set[_SIGSET_NWORDS];
+    unsigned long set[_SIGSET_NWORDS];
 #else
-  double set[4];
+    double set[4];
 #endif
 } IDL_SignalSet_t;
 
@@ -2104,19 +2108,19 @@ typedef void (* IDL_SignalHandler_t)(int signo);
 				   sub-structure as usual. */
 
 typedef struct {		/* A tag definition for K_MakeSTruct */
-  char *name;			/* Name of the tag. Must be upper case
+    char *name;			/* Name of the tag. Must be upper case
 				   and obey the rules for IDL identifiers.
 				   In the case of inherited structures, this
 				   can be NULL if type is set. Otherwise, it
 				   is the name of the structure being inherited
 				   and IDL will call a __DEFINE procedure
 				   based on that name to define it. */
-  IDL_MEMINT *dims;		/* NULL pointer for a scalar tag, otherwise
+    IDL_MEMINT *dims;		/* NULL pointer for a scalar tag, otherwise
 				   an array giving the array dimensions. The
 				   first element is the number of dimensions,
 				   and is followed in order by the dimensions
 				   themselves. */
-  void *type;			/* This may be either a pointer to another
+    void *type;			/* This may be either a pointer to another
 				   structure definition, or a simple IDL
 				   type code (IDL_TYP_*) cast to void
 				   (e.g. (void *) IDL_TYP_BYTE). If this
@@ -2124,7 +2128,7 @@ typedef struct {		/* A tag definition for K_MakeSTruct */
 				   should search for a structure of the
 				   given name and fill in the pointer to
 				   its structure definition. */
-  UCHAR flags;			/* Bitmask made up of IDL_STD_* bits */
+    UCHAR flags;			/* Bitmask made up of IDL_STD_* bits */
 } IDL_STRUCT_TAG_DEF;
 #endif				/* structs_IDL_DEF */
 
@@ -2145,13 +2149,13 @@ typedef struct {		/* A tag definition for K_MakeSTruct */
 				       are not altered. */
 
 #define IDL_SRE_ENABLE			0   /* Enable specified routines */
-				/* Enable specified routines and
-				   disable all others. */
+/* Enable specified routines and
+   disable all others. */
 #define IDL_SRE_ENABLE_EXCLUSIVE	IDL_SRE_B_EXCLUSIVE
-				/* Disable specified routines */
+/* Disable specified routines */
 #define IDL_SRE_DISABLE			IDL_SRE_B_DISABLE
-				/* Disable specified routines and
-				   enable all others. */
+/* Disable specified routines and
+   enable all others. */
 #define IDL_SRE_DISABLE_EXCLUSIVE	(IDL_SRE_B_DISABLE|IDL_SRE_B_EXCLUSIVE)
 
 
@@ -2181,13 +2185,13 @@ typedef struct {		/* A tag definition for K_MakeSTruct */
  * IDL_SYSFUN_DEF2 structure, and is not intended for new code.
  */
 typedef struct {		/* System function definition */
-  IDL_FUN_RET funct_addr;	/* Address of function, or procedure. */
-  char *name;			/* The name of the function */
-  UCHAR arg_min;		/* Minimum allowed argument count. */
-  UCHAR arg_max;		/* Maximum argument count.  The top
+    IDL_FUN_RET funct_addr;	/* Address of function, or procedure. */
+    char *name;			/* The name of the function */
+    UCHAR arg_min;		/* Minimum allowed argument count. */
+    UCHAR arg_max;		/* Maximum argument count.  The top
 				   bit in arg_min is set to indicate that
 				   the routine accepts keywords. */
-  UCHAR flags;			/* IDL_SYSFUN_DEF_F_* flags */
+    UCHAR flags;			/* IDL_SYSFUN_DEF_F_* flags */
 } IDL_SYSFUN_DEF;
 
 /*
@@ -2250,7 +2254,7 @@ typedef void (* IDL_TOUT_OUTF)(int flags, char *buf, int n);
 #define IDL_TOUT_MORE_RSP_QUIT	0   /* Quit */
 #define IDL_TOUT_MORE_RSP_PAGE	1   /* Continue for another page */
 #define IDL_TOUT_MORE_RSP_LINE	2   /* Continue for a single line */
-     
+
 #endif				/* tout_IDL_DEF */
 
 
@@ -2265,28 +2269,28 @@ typedef void (* IDL_TOUT_OUTF)(int flags, char *buf, int n);
 /* Values that are OR'd together to form the options field of IDL_INIT_DATA */
 #define IDL_INIT_GUI		1   /* Use the GUI interface. */
 #define IDL_INIT_GUI_AUTO	(IDL_INIT_GUI|2)
-				/* Try to use a GUI if possible. If that
-				   fails and the OS supports ttys, use
-				   the standard tty interface. Note that
-				   this code includes IDL_INIT_GUI. */
+/* Try to use a GUI if possible. If that
+   fails and the OS supports ttys, use
+   the standard tty interface. Note that
+   this code includes IDL_INIT_GUI. */
 #define IDL_INIT_RUNTIME	 4   /* RunTime IDL. */
 #define IDL_INIT_EMBEDDED	(IDL_INIT_RUNTIME|8)
-				/* Embedded IDL. Note that this code includes
-				   IDL_INIT_RUNTIME. */
+/* Embedded IDL. Note that this code includes
+   IDL_INIT_RUNTIME. */
 #define IDL_INIT_NOLICALIAS	16
-				/* Our FlexLM (Unix) floating license
-				   policy is to alias all IDL sessions that
-				   share the same user/system/display to the
-				   same license. If no_lic_alias is set,
-				   this IDL session will force a unique
-				   license to be checked out. In this case,
-				   we allow the user to change the DISPLAY
-				   environment variable. This is useful for
-				   RPC servers that don't know where their
-				   output will need to go before invocation.*/
+/* Our FlexLM (Unix) floating license
+   policy is to alias all IDL sessions that
+   share the same user/system/display to the
+   same license. If no_lic_alias is set,
+   this IDL session will force a unique
+   license to be checked out. In this case,
+   we allow the user to change the DISPLAY
+   environment variable. This is useful for
+   RPC servers that don't know where their
+   output will need to go before invocation.*/
 #define IDL_INIT_BACKGROUND	32
-				/* Identical to the combination:
-				   (IDL_INIT_NOCMDLINE|IDL_INIT_NOTTYEDIT) */
+/* Identical to the combination:
+   (IDL_INIT_NOCMDLINE|IDL_INIT_NOTTYEDIT) */
 
 #define IDL_INIT_QUIET		64   /* Suppresses the startup announcement and
 					message of the day. */
@@ -2297,109 +2301,109 @@ typedef void (* IDL_TOUT_OUTF)(int flags, char *buf, int n);
 
 
 #define IDL_INIT_LMQUEUE	(1 << 10)
-				/* For FLEXlm licensing only, cause license
-				   manager to queue for a license if floating
-				   licenses exist but are currently not
-				   available. */
+/* For FLEXlm licensing only, cause license
+   manager to queue for a license if floating
+   licenses exist but are currently not
+   available. */
 
 #define IDL_INIT_GENVER		(1 << 11)
-				/* Request genver licensing. Unix-only */
+/* Request genver licensing. Unix-only */
 
 #define IDL_INIT_NOCMDLINE	(1 << 12)
-				/* IDL should assume that it has no command
-				   line. In this mode, any attempt to read
-				   from stdin should be treated as if EOF
-				   was returned. */
+/* IDL should assume that it has no command
+   line. In this mode, any attempt to read
+   from stdin should be treated as if EOF
+   was returned. */
 
 #define IDL_INIT_OCX		IDL_INIT_NOCMDLINE
-				/* An old name for IDL_INITNOCMDLINE */
+/* An old name for IDL_INITNOCMDLINE */
 
 #define IDL_INIT_VM		(1 << 13)
-				/* Initialize in virtual machine mode.
-				   This is add-on behavior to runtime mode
-				   but unlike embedded, this flag does not
-				   include the runtime behavior.  The
-				   runtime flag must be set as well to
-				   initiate virtual machine behavior. */
+/* Initialize in virtual machine mode.
+   This is add-on behavior to runtime mode
+   but unlike embedded, this flag does not
+   include the runtime behavior.  The
+   runtime flag must be set as well to
+   initiate virtual machine behavior. */
 
 
 #define IDL_INIT_NOVM		(1 << 14)
-				/* Prevent going into vm mode if a license
-				   is not available. */
+/* Prevent going into vm mode if a license
+   is not available. */
 
 
 #define IDL_INIT_NOTTYEDIT	(1 << 15)
-				/* Prevents IDL from using termcap/terminfo to 
-				   handle command line editing, and disables
-				   the use of the SIGWINCH signal to track
-				   the current tty size. This is usually what
-				   you want when using callable IDL in a
-				   background process that isn't doing I/O
-				   to the tty. In such cases, the termcap
-				   initialization can cause the process
-				   to block because of job control from the
-				   shell with a message like "Stopped (tty
-				   output) idl". Setting this option prevents
-				   all tty edit functions. I/O to the tty is
-				   done with a simple fgets()/printf().
-				   In the case of IDL_INIT_GUI, this is
-				   ignored. */
+/* Prevents IDL from using termcap/terminfo to
+   handle command line editing, and disables
+   the use of the SIGWINCH signal to track
+   the current tty size. This is usually what
+   you want when using callable IDL in a
+   background process that isn't doing I/O
+   to the tty. In such cases, the termcap
+   initialization can cause the process
+   to block because of job control from the
+   shell with a message like "Stopped (tty
+   output) idl". Setting this option prevents
+   all tty edit functions. I/O to the tty is
+   done with a simple fgets()/printf().
+   In the case of IDL_INIT_GUI, this is
+   ignored. */
 
 
 
 #define IDL_INIT_CLARGS		(1 << 17)
-				/* The clargs field contains valid command line
-				   (argc,argv) arguments */
+/* The clargs field contains valid command line
+   (argc,argv) arguments */
 
 #define IDL_INIT_HWND		(1 << 18)
-				/* (MS Windows only) The hwnd field contains
-				   a valid HWND to be used as the application
-				   main window */
+/* (MS Windows only) The hwnd field contains
+   a valid HWND to be used as the application
+   main window */
 
 #define IDL_INIT_NODEMOWARN	(1 << 21)
-								/* If set, do not display demo warning when
-								   entering demo mode. */
+/* If set, do not display demo warning when
+   entering demo mode. */
 #define IDL_INIT_APPLIC		(1 << 27)
-				/* The applic field contains application
-				 license strings. */
+/* The applic field contains application
+ license strings. */
 
 /* Definition of data type for init_data argument to IDL_Initialize() */
 typedef int IDL_INIT_DATA_OPTIONS_T;
 
 typedef struct {
-  /*
-   * The options field specifies initialization options.
-   * Most of these option bits are boolean (on/off), but some require
-   * require additional information to be specified using one
-   * of the other fields in this structure, as documented in the comments
-   * that accompanies the option value definitions above and the fields below.
-   *
-   * IDL_Initialize() always examines the value of the options field of
-   * this structure. It will only examine the other fields if a value in
-   * options requires it to. Otherwise, those other fields are not used and
-   * may safely contain any value (i.e. can be uninitialized).
-   *
-   * This organization allows us to add additional initialization options
-   * to newer versions of IDL without requiring source code changes to
-   * older applications that do not require those new features.
-   */
+    /*
+     * The options field specifies initialization options.
+     * Most of these option bits are boolean (on/off), but some require
+     * require additional information to be specified using one
+     * of the other fields in this structure, as documented in the comments
+     * that accompanies the option value definitions above and the fields below.
+     *
+     * IDL_Initialize() always examines the value of the options field of
+     * this structure. It will only examine the other fields if a value in
+     * options requires it to. Otherwise, those other fields are not used and
+     * may safely contain any value (i.e. can be uninitialized).
+     *
+     * This organization allows us to add additional initialization options
+     * to newer versions of IDL without requiring source code changes to
+     * older applications that do not require those new features.
+     */
 
-  IDL_INIT_DATA_OPTIONS_T options;  /* 0 or any combination of IDL_INIT_ flags */
+    IDL_INIT_DATA_OPTIONS_T options;  /* 0 or any combination of IDL_INIT_ flags */
 
-  /* clargs requires  the IDL_INIT_CLARGS options bit to be set */
-  struct {			/* Command line arguments, as passed to main() */
-    int argc;			/* Number of arguments */
-    char **argv;		/* The arguments. These must be readonly
+    /* clargs requires  the IDL_INIT_CLARGS options bit to be set */
+    struct {			/* Command line arguments, as passed to main() */
+        int argc;			/* Number of arguments */
+        char **argv;		/* The arguments. These must be readonly
 				   strings that are safe to access for the
 				   entire life of this process. */
-  } clargs;
+    } clargs;
 
 #ifdef MSWIN
-  /* hwnd requires  the IDL_INIT_HWND options bit to be set */
-  void *hwnd;			/* HWND of application main window */
+    /* hwnd requires  the IDL_INIT_HWND options bit to be set */
+    void *hwnd;			/* HWND of application main window */
 #endif
 
-  char **applic;		/* Used if (options & IDL_INIT_APPLIC) */
+    char **applic;		/* Used if (options & IDL_INIT_APPLIC) */
 
 } IDL_INIT_DATA;
 
@@ -2424,7 +2428,7 @@ typedef struct {
 #define widgets_IDL_DEF
 
 typedef void (* IDL_WIDGET_STUB_SET_SIZE_FUNC)
-     (IDL_ULONG id, int width, int height);
+(IDL_ULONG id, int width, int height);
 
 #endif				/* widgets_DEF */
 
@@ -2444,41 +2448,41 @@ typedef void (* IDL_WIDGET_STUB_SET_SIZE_FUNC)
 
 /**** Flags field bits in IDL_FILE_DESC and IDL_FILE_STAT ****/
 #define IDL_F_ISATTY        ((IDL_SFILE_FLAGS_T) 1)   /* Is a terminal */
-				/* Is a Graphical User Interface */
+/* Is a Graphical User Interface */
 #define IDL_F_ISAGUI	    ((IDL_SFILE_FLAGS_T) 2)
-				/* Don't let user close */
+/* Don't let user close */
 #define IDL_F_NOCLOSE       ((IDL_SFILE_FLAGS_T) 4)
-				/* Use more(1) like pager for fmt output */
+/* Use more(1) like pager for fmt output */
 #define IDL_F_MORE          ((IDL_SFILE_FLAGS_T) 8)
 #define IDL_F_XDR           ((IDL_SFILE_FLAGS_T) 16)   /* Is a XDR file */
 #define IDL_F_DEL_ON_CLOSE  ((IDL_SFILE_FLAGS_T) 32)   /* Delete on close */
-				/* Is a SAVE/RESTORE file. */
+/* Is a SAVE/RESTORE file. */
 #define IDL_F_SR            ((IDL_SFILE_FLAGS_T) 64)
-				/* File has opposite byte order than
-				   current system. */
+/* File has opposite byte order than
+   current system. */
 #define IDL_F_SWAP_ENDIAN   ((IDL_SFILE_FLAGS_T) 128)
-				/* Binary float and double are in VAX
-				   F and D format. Implies that file is
-				   little endian. */
+/* Binary float and double are in VAX
+   F and D format. Implies that file is
+   little endian. */
 #define IDL_F_VAX_FLOAT	    (((IDL_SFILE_FLAGS_T) 1) << 8)
-				/* If a normal file, file is in compressed
-				   gzip format. If IDL_F_SR, then file
-				   contains zlib compressed data. */
+/* If a normal file, file is in compressed
+   gzip format. If IDL_F_SR, then file
+   contains zlib compressed data. */
 #define IDL_F_COMPRESS	    (((IDL_SFILE_FLAGS_T) 1) << 9)
-				/* Unformatted f77(1) I/O */
+/* Unformatted f77(1) I/O */
 #define IDL_F_UNIX_F77      (((IDL_SFILE_FLAGS_T) 1) << 10)
-				/* File is a pipe to a child process */
+/* File is a pipe to a child process */
 #define IDL_F_PIPE	    (((IDL_SFILE_FLAGS_T) 1) << 11)
 #define IDL_F_UNIX_PIPE     IDL_F_PIPE
-				/* Call read(2) and write(2) directly
-				   and allow short transfers. */
+/* Call read(2) and write(2) directly
+   and allow short transfers. */
 #define IDL_F_UNIX_RAWIO    (((IDL_SFILE_FLAGS_T) 1) << 12)
 #define IDL_F_UNIX_NOSTDIO  IDL_F_UNIX_RAWIO   /* Old name for rawio */
-				/* It's a device/special file */
+/* It's a device/special file */
 #define IDL_F_UNIX_SPECIAL  (((IDL_SFILE_FLAGS_T) 1) << 13)
-				/* Uses stdio instead of native I/O */
+/* Uses stdio instead of native I/O */
 #define IDL_F_STDIO          (((IDL_SFILE_FLAGS_T) 1) << 14)
-				/* File is an internet TCP/IP socket */
+/* File is an internet TCP/IP socket */
 #define IDL_F_SOCKET	     (((IDL_SFILE_FLAGS_T) 1) << 15)
 
 
@@ -2522,7 +2526,7 @@ typedef void (* IDL_WIDGET_STUB_SET_SIZE_FUNC)
 #define IDL_F_MAC_BINARY     ((IDL_SFILE_FLAGS_T) 0)
 
 
-  
+
 /* Sets the IDL_F_NOCLOSE bit for file unit. */
 #define IDL_FILE_NOCLOSE(unit) IDL_FileSetClose((unit), FALSE)
 
@@ -2556,25 +2560,25 @@ typedef void (* IDL_WIDGET_STUB_SET_SIZE_FUNC)
 #define IDL_EFS_STDIO	    (1 << 12)    /* File must be IDL_F_STDIO */
 #define IDL_EFS_NOSOCKET    (1 << 13)    /* Unit cannot be a socket */
 #define IDL_EFS_SOCKET_LISTEN (1 << 14)	  /* Unit must be a listener socket */
-     
+
 
 /**** Struct for global variable term, filled by IDL_FileInit() ****/
 typedef struct {
 #ifdef IDL_OS_HAS_TTYS
-  char *name;                   /* Name of terminal type */
-  char is_tty;                  /* True if stdin is a terminal */
+    char *name;                   /* Name of terminal type */
+    char is_tty;                  /* True if stdin is a terminal */
 #endif
-  int lines;                    /* Lines on screen */
-  int columns;                  /* Width of output */
+    int lines;                    /* Lines on screen */
+    int columns;                  /* Width of output */
 } IDL_TERMINFO;
 
 
 /**** Struct that is filled in by IDL_FileStat() ****/
 typedef struct {
-  char *name;
-  short access;
-  IDL_SFILE_FLAGS_T flags;
-  FILE *fptr;
+    char *name;
+    short access;
+    IDL_SFILE_FLAGS_T flags;
+    FILE *fptr;
 } IDL_FILE_STAT;
 
 #define IDL_FCU_FREELUN		2   /* If LUN has had a GET_LUN operation to
@@ -2667,7 +2671,7 @@ typedef struct {
 #define IDL_BZERO_ARRAY(zero_arr) bzero((char *) (zero_arr), sizeof(zero_arr))
 #define IDL_BZERO_BYADDR(zero_var_addr) \
   bzero((char *) (zero_var_addr), sizeof(*(zero_var_addr)))
-     
+
 
 /*
  * Solaris has these functions starting with Solaris 8. No one else
@@ -2688,7 +2692,7 @@ typedef struct {
 #define wstrcasecmp _wcsicmp
 #define wstrncasecmp _wcsnicmp
 
-			/* They don't supply these without the underscore */
+/* They don't supply these without the underscore */
 #define snprintf _snprintf
 #define snwprintf _snwprintf
 #define vsnprintf _vsnprintf
@@ -2794,7 +2798,7 @@ extern double IDL_CDECL IDL_CastUL64_d(IDL_ULONG64 value);
 extern IDL_ULONG IDL_CDECL IDL_CastFloat_UL(float value);
 extern IDL_ULONG IDL_CDECL IDL_CastDouble_UL(double value);
 extern void IDL_CDECL IDL_StrDup(IDL_REGISTER IDL_STRING *str,
-        IDL_REGISTER IDL_MEMINT n);
+                                 IDL_REGISTER IDL_MEMINT n);
 extern void IDL_CDECL IDL_StrDelete(IDL_STRING *str, IDL_MEMINT n);
 extern void IDL_CDECL IDL_StrStore(IDL_STRING *s, const char *fs);
 extern void IDL_CDECL IDL_StrEnsureLength(IDL_STRING *s, int n);
@@ -2816,12 +2820,12 @@ extern IDL_VPTR IDL_CDECL IDL_GettmpULong64(IDL_ULONG64 value);
 extern IDL_VPTR IDL_CDECL IDL_GettmpFILEINT(IDL_FILEINT value);
 extern IDL_VPTR IDL_CDECL IDL_GettmpMEMINT(IDL_MEMINT value);
 extern char *IDL_CDECL IDL_GetScratch(IDL_REGISTER IDL_VPTR *p,
-        IDL_REGISTER IDL_MEMINT n_elts,  IDL_REGISTER IDL_MEMINT elt_size);
+                                      IDL_REGISTER IDL_MEMINT n_elts,  IDL_REGISTER IDL_MEMINT elt_size);
 extern char *IDL_CDECL IDL_GetScratchOnThreshold(IDL_REGISTER char
         *auto_buf, IDL_REGISTER IDL_MEMINT auto_elts,  IDL_REGISTER IDL_MEMINT
         n_elts,  IDL_REGISTER IDL_MEMINT elt_size,  IDL_VPTR *tempvar);
 extern IDL_VPTR IDL_CDECL IDL_CvtBytscl(int argc, IDL_VPTR *argv, char
-        *argk);
+                                        *argk);
 extern int IDL_CDECL IDL_StrBase_strcasecmp(const char *str1, const char
         *str2);
 extern int IDL_CDECL IDL_StrBase_strncasecmp(const char *str1, const char
@@ -2842,9 +2846,9 @@ extern int IDL_CDECL IDL_StrBase_strbcopyW(wchar_t *dst, const wchar_t
         *src, size_t siz);
 extern IDL_VPTR IDL_CDECL IDL_transpose(int argc, IDL_VPTR *argv);
 extern void IDL_CDECL IDL_VarCopy(IDL_REGISTER IDL_VPTR src, IDL_REGISTER
-        IDL_VPTR dst);
+                                  IDL_VPTR dst);
 extern void IDL_CDECL IDL_StoreScalar(IDL_VPTR dest, int type,
-        IDL_ALLTYPES *value);
+                                      IDL_ALLTYPES *value);
 extern void IDL_CDECL IDL_StoreScalarZero(IDL_VPTR dest, int type);
 extern IDL_VPTR IDL_CDECL IDL_BasicTypeConversion(int argc, IDL_VPTR
         argv[], IDL_REGISTER int type);
@@ -2863,10 +2867,10 @@ extern IDL_VPTR IDL_CDECL IDL_CvtComplex(int argc, IDL_VPTR argv[], char
         *argk);
 extern IDL_VPTR IDL_CDECL IDL_CvtDComplex(int argc, IDL_VPTR argv[]);
 extern IDL_VPTR IDL_CDECL IDL_CvtString(int argc, IDL_VPTR argv[], char
-        *argk);
+                                        *argk);
 extern IDL_LONG IDL_CDECL IDL_grMesh_Clip(float fPlane[4], short clipSide,
-         float *pfVin, IDL_LONG iNVerts,  IDL_LONG *piCin, IDL_LONG iNConn, 
-        float **pfVout, IDL_LONG *iNVout,  IDL_LONG **piCout, IDL_LONG *iNCout, 
+        float *pfVin, IDL_LONG iNVerts,  IDL_LONG *piCin, IDL_LONG iNConn,
+        float **pfVout, IDL_LONG *iNVout,  IDL_LONG **piCout, IDL_LONG *iNCout,
         IDL_VPTR vpAuxInKW, IDL_VPTR vpAuxOutKW,  IDL_VPTR vpCut);
 extern int IDL_CDECL IDL_KWProcessByOffset(int argc, IDL_VPTR *argv, char
         *argk, IDL_KW_PAR *kw_list, IDL_VPTR *plain_args,  int mask, void *base);
@@ -2876,7 +2880,7 @@ extern int IDL_CDECL IDL_KWProcessByAddr(int argc, IDL_VPTR *argv, char
 extern void IDL_CDECL IDL_KWFree(void);
 extern void IDL_CDECL IDL_KWFreeAll(void);
 extern void IDL_CDECL IDL_unform_io(int type, int argc, IDL_VPTR *argv,
-        char *argk);
+                                    char *argk);
 extern void IDL_CDECL IDL_Print(int argc, IDL_VPTR *argv, char *argk);
 extern void IDL_CDECL IDL_PrintF(int argc, IDL_VPTR *argv, char *argk);
 extern char *IDL_DitherMethodNames[];
@@ -2885,28 +2889,28 @@ extern void IDL_CDECL IDL_RasterDrawThick(IDL_GR_PT *p0, IDL_GR_PT *p1,
         IDL_ATTR_STRUCT *a,  IDL_DEVCORE_FCN_POLYFILL routine,  int dot_width);
 extern void IDL_CDECL IDL_RasterPolyfill(int *x, int *y, int n,
         IDL_POLYFILL_ATTR *p, IDL_RASTER_DEF *r);
-extern void IDL_CDECL IDL_RasterDraw(IDL_GR_PT *p0, IDL_GR_PT *p1, 
-        IDL_ATTR_STRUCT *a, IDL_RASTER_DEF *r);
+extern void IDL_CDECL IDL_RasterDraw(IDL_GR_PT *p0, IDL_GR_PT *p1,
+                                     IDL_ATTR_STRUCT *a, IDL_RASTER_DEF *r);
 extern void IDL_CDECL IDL_Raster8Image(UCHAR *data, IDL_ULONG nx,
-        IDL_ULONG ny,  IDL_ULONG x0, IDL_ULONG y0,  IDL_ULONG xsize, IDL_ULONG
-        ysize,  IDL_TV_STRUCT *secondary,  IDL_RASTER_DEF *rs,  IDLBool_t
-        bReverse);
+                                       IDL_ULONG ny,  IDL_ULONG x0, IDL_ULONG y0,  IDL_ULONG xsize, IDL_ULONG
+                                       ysize,  IDL_TV_STRUCT *secondary,  IDL_RASTER_DEF *rs,  IDLBool_t
+                                       bReverse);
 extern void IDL_CDECL IDL_RasterImage(UCHAR *data, IDL_ULONG nx, IDL_ULONG
-        ny,  IDL_ULONG x0, IDL_ULONG y0,  IDL_ULONG xsize, IDL_ULONG ysize, 
-        IDL_TV_STRUCT *secondary,  IDL_RASTER_DEF *rs,  IDLBool_t bReverse);
+                                      ny,  IDL_ULONG x0, IDL_ULONG y0,  IDL_ULONG xsize, IDL_ULONG ysize,
+                                      IDL_TV_STRUCT *secondary,  IDL_RASTER_DEF *rs,  IDLBool_t bReverse);
 extern void IDL_CDECL IDL_Dither(UCHAR *data, int ncols, int nrows,
-        IDL_RASTER_DEF *r, int x0, int y0, IDL_TV_STRUCT *secondary);
+                                 IDL_RASTER_DEF *r, int x0, int y0, IDL_TV_STRUCT *secondary);
 extern void IDL_CDECL IDL_BitmapLandscape(IDL_RASTER_DEF *in,
         IDL_RASTER_DEF *out, int y0);
 extern void IDL_CDECL IDL_VarGetData(IDL_VPTR v, IDL_MEMINT *n, char **pd,
-        int ensure_simple);
+                                     int ensure_simple);
 extern IDL_STRING *IDL_CDECL IDL_VarGet1EltStringDesc(IDL_VPTR v, IDL_VPTR
         *tc_v, int like_print);
 extern char *IDL_CDECL IDL_VarGetString(IDL_VPTR v);
 extern IDL_VPTR IDL_CDECL IDL_ImportArray(int n_dim, IDL_MEMINT dim[], int
         type, UCHAR *data, IDL_ARRAY_FREE_CB free_cb,  IDL_StructDefPtr s);
 extern IDL_VPTR IDL_CDECL IDL_ImportNamedArray(char *name, int n_dim,
-        IDL_MEMINT dim[],  int type, UCHAR *data,  IDL_ARRAY_FREE_CB free_cb, 
+        IDL_MEMINT dim[],  int type, UCHAR *data,  IDL_ARRAY_FREE_CB free_cb,
         IDL_StructDefPtr s);
 extern void IDL_CDECL IDL_Delvar(IDL_VPTR var);
 extern IDL_VPTR IDL_CDECL IDL_VarTypeConvert(IDL_VPTR v, IDL_REGISTER int
@@ -2916,21 +2920,21 @@ extern char *IDL_CDECL IDL_VarMakeTempFromTemplate(IDL_VPTR template_var,
         int type, IDL_StructDefPtr sdef,  IDL_VPTR *result_addr, int zero);
 extern int IDL_CDECL IDL_AddDevice( IDL_DEVICE_DEF *dev,  int msg_action);
 extern void IDL_CDECL IDL_RgbToHsv(UCHAR *r, UCHAR *g, UCHAR *b,  float
-        *h, float *s, float *v, int n);
+                                   *h, float *s, float *v, int n);
 extern void IDL_CDECL IDL_RgbToHls(UCHAR *r, UCHAR *g, UCHAR *b,  float
-        *h, float *l, float *s, int n);
+                                   *h, float *l, float *s, int n);
 extern void IDL_CDECL IDL_HsvToRgb(float *h, float *s, float *v,  UCHAR
-        *r, UCHAR *g, UCHAR *b, int n);
+                                   *r, UCHAR *g, UCHAR *b, int n);
 extern void IDL_CDECL IDL_HlsToRgb(float *h, float *l, float *s, UCHAR *r,
-        UCHAR *g, UCHAR *b, int n);
+                                   UCHAR *g, UCHAR *b, int n);
 extern int IDL_CDECL IDL_SysRtnAdd(IDL_SYSFUN_DEF2 *defs, int is_function,
-        int cnt);
+                                   int cnt);
 extern IDL_MEMINT IDL_CDECL IDL_SysRtnNumEnabled(int is_function, int
         enabled);
 extern void IDL_CDECL IDL_SysRtnGetEnabledNames(int is_function,
         IDL_STRING *str, int enabled);
 extern void IDL_CDECL IDL_SysRtnEnable(int is_function, IDL_STRING *names,
-        IDL_MEMINT n, int option,  IDL_SYSRTN_GENERIC disfcn);
+                                       IDL_MEMINT n, int option,  IDL_SYSRTN_GENERIC disfcn);
 extern IDL_SYSRTN_GENERIC IDL_CDECL IDL_SysRtnGetRealPtr(int is_function,
         char *name);
 extern char *IDL_CDECL IDL_SysRtnGetCurrentName(void);
@@ -2942,20 +2946,20 @@ extern int IDL_CDECL IDL_FileTermColumns(void);
 extern int IDL_CDECL IDL_FileEnsureStatus(int action, int unit, int flags);
 extern void IDL_CDECL IDL_FileSetMode(int unit, int binary);
 extern int IDL_CDECL IDL_FileOpenUnitBasic(int unit, char *filename, int
-        access_mode, IDL_SFILE_FLAGS_T flags, int msg_action, 
+        access_mode, IDL_SFILE_FLAGS_T flags, int msg_action,
         IDL_MSG_ERRSTATE_PTR errstate);
 extern int IDL_CDECL IDL_FileOpen(int argc, IDL_VPTR argv[], char *argk,
-        int access_mode, IDL_SFILE_FLAGS_T extra_flags,  int longjmp_safe, int
-        msg_attr);
+                                  int access_mode, IDL_SFILE_FLAGS_T extra_flags,  int longjmp_safe, int
+                                  msg_attr);
 extern int IDL_CDECL IDL_FileCloseUnit(int unit, int flags,
-        IDL_SFILE_PIPE_EXIT_STATUS *exit_status,  int msg_action,
-        IDL_MSG_ERRSTATE_PTR errstate);
+                                       IDL_SFILE_PIPE_EXIT_STATUS *exit_status,  int msg_action,
+                                       IDL_MSG_ERRSTATE_PTR errstate);
 extern void IDL_CDECL IDL_FileClose(int argc, IDL_VPTR argv[], char *argk);
 extern void IDL_CDECL IDL_FileFlushUnit(int unit);
 extern void IDL_CDECL IDL_FileGetUnit(int argc, IDL_VPTR argv[]);
 extern void IDL_CDECL IDL_FileFreeUnit(int argc, IDL_VPTR argv[]);
 extern int IDL_CDECL IDL_FileSetPtr(int unit, IDL_FILEINT pos, int extend,
-        int msg_action);
+                                    int msg_action);
 extern int IDL_CDECL IDL_FileEOF(int unit);
 extern void IDL_CDECL IDL_FileStat(int unit, IDL_FILE_STAT *stat_blk);
 extern void IDL_CDECL IDL_FileSetClose(int unit, int allow);
@@ -2971,16 +2975,16 @@ extern int IDL_CDECL IDL_BailOut(int stop);
 extern int IDL_CDECL IDL_Cleanup(int just_cleanup);
 extern int IDL_CDECL IDL_Initialize(IDL_INIT_DATA *init_data);
 extern int IDL_CDECL IDL_Init(IDL_INIT_DATA_OPTIONS_T options, int *argc,
-        char *argv[]);
+                              char *argv[]);
 extern int IDL_CDECL IDL_Win32Init(IDL_INIT_DATA_OPTIONS_T iOpts, void
-        *hinstExe, void *hwndExe, void *hAccel);
+                                   *hinstExe, void *hwndExe, void *hAccel);
 extern int IDL_CDECL IDL_Main(IDL_INIT_DATA_OPTIONS_T options, int argc,
-        char *argv[]);
+                              char *argv[]);
 extern int IDL_CDECL IDL_ExecuteStr(char *cmd);
 extern int IDL_CDECL IDL_Execute(int argc, char *argv[]);
 extern int IDL_CDECL IDL_RuntimeExec(char *file);
 extern void IDL_CDECL IDL_Runtime(IDL_INIT_DATA_OPTIONS_T options, int
-        *argc, char *argv[], char *file);
+                                  *argc, char *argv[], char *file);
 extern char *IDL_OutputFormat[];
 extern char *IDL_CDECL IDL_OutputFormatFunc(int type);
 extern int IDL_OutputFormatLen[];
@@ -2997,7 +3001,7 @@ extern IDL_VPTR IDL_CDECL IDL_nonavailable_rtn(int argc, IDL_VPTR argv[],
 extern int IDL_CDECL IDL_AddSystemRoutine(IDL_SYSFUN_DEF *defs, int
         is_function, int cnt);
 extern char *IDL_CDECL IDL_Rline(char *s, IDL_MEMINT n, int unit, FILE
-        *stream, int is_tty, char *prompt, int opt);
+                                 *stream, int is_tty, char *prompt, int opt);
 extern void IDL_CDECL IDL_RlineSetStdinOptions(int opt);
 extern void IDL_CDECL IDL_Logit(char *s);
 extern char *IDL_CDECL IDL_FilePathFromRoot(int flags, char *pathbuf, char
@@ -3036,13 +3040,13 @@ extern void IDL_CDECL IDL_GetUserInfo(IDL_USER_INFO *user_info);
 extern int IDL_CDECL IDL_GetKbrd(int should_wait);
 extern void IDL_CDECL IDL_TTYReset(void);
 extern void *IDL_CDECL IDL_MemAlloc(IDL_MEMINT n, char *err_str, int
-        msg_action);
+                                    msg_action);
 extern void *IDL_CDECL IDL_MemRealloc(void *ptr, IDL_MEMINT n, char
-        *err_str, int action);
+                                      *err_str, int action);
 extern void IDL_CDECL IDL_MemFree(IDL_REGISTER void *m, char *err_str, int
-        msg_action);
+                                  msg_action);
 extern void *IDL_CDECL IDL_MemAllocPerm(IDL_MEMINT n, char *err_str, int
-        action);
+                                        action);
 extern IDL_PLOT_COM IDL_PlotCom;
 extern UCHAR IDL_ColorMap[];
 extern IDL_PLOT_COM *IDL_CDECL IDL_PlotComAddr(void);
@@ -3050,9 +3054,9 @@ extern UCHAR *IDL_CDECL IDL_ColorMapAddr(void);
 extern void IDL_CDECL IDL_PolyfillSoftware(int *x, int *y, int n,
         IDL_POLYFILL_ATTR *s);
 extern double IDL_CDECL IDL_GraphText(IDL_GR_PT *p, IDL_ATTR_STRUCT *ga,
-        IDL_TEXT_STRUCT *a, char *text);
+                                      IDL_TEXT_STRUCT *a, char *text);
 extern void IDL_CDECL IDL_TimerSet(IDL_LONG length, IDL_TIMER_CB callback,
-        int from_callback, IDL_TIMER_CONTEXT_PTR context);
+                                   int from_callback, IDL_TIMER_CONTEXT_PTR context);
 extern void IDL_CDECL IDL_TimerCancel(IDL_TIMER_CONTEXT context);
 extern void IDL_CDECL IDL_TimerBlock(int stop);
 extern void IDL_CDECL IDL_WidgetIssueStubEvent(char *rec, IDL_LONG value);
@@ -3127,9 +3131,9 @@ extern IDL_LONG IDL_CDECL IDL_SysvOrderValue(void);
 extern float IDL_CDECL IDL_SysvValuesGetFloat(int type);
 extern double IDL_CDECL IDL_SysvValuesGetDouble(int type);
 extern void IDL_CDECL IDL_Pout(IDL_POUT_CNTRL *control, int flags, char
-        *fmt, ...);
+                               *fmt, ...);
 extern void IDL_CDECL IDL_PoutVa(IDL_POUT_CNTRL *control, int flags, char
-        *fmt, va_list *args);
+                                 *fmt, va_list *args);
 extern void IDL_CDECL IDL_PoutRaw(int unit, char *buf, int n);
 extern void IDL_CDECL IDL_ExitRegister(IDL_EXIT_HANDLER_FUNC proc);
 extern void IDL_CDECL IDL_ExitUnregister(IDL_EXIT_HANDLER_FUNC proc);
@@ -3159,13 +3163,13 @@ extern int IDL_CDECL IDL_SignalSetIsMember(IDL_SignalSet_t *set, int
         signo);
 extern void IDL_CDECL IDL_SignalMaskGet(IDL_SignalSet_t *set);
 extern void IDL_CDECL IDL_SignalMaskSet(IDL_SignalSet_t *set,
-        IDL_SignalSet_t *oset);
+                                        IDL_SignalSet_t *oset);
 extern void IDL_CDECL IDL_SignalMaskBlock(IDL_SignalSet_t *set,
         IDL_SignalSet_t *oset);
 extern void IDL_CDECL IDL_SignalBlock(int signo, IDL_SignalSet_t *oset);
 extern void IDL_CDECL IDL_SignalSuspend(IDL_SignalSet_t *set);
 extern int IDL_CDECL IDL_SignalRegister(int signo, IDL_SignalHandler_t
-        func, int msg_action);
+                                        func, int msg_action);
 extern int IDL_CDECL IDL_SignalUnregister(int signo, IDL_SignalHandler_t
         func, int msg_action);
 extern void IDL_CDECL IDL_CvtVAXToFloat(float *fp, IDL_MEMINT n);
@@ -3173,9 +3177,9 @@ extern void IDL_CDECL IDL_CvtFloatToVAX(float *fp, IDL_MEMINT n);
 extern void IDL_CDECL IDL_CvtVAXToDouble(double *dp, IDL_MEMINT n);
 extern void IDL_CDECL IDL_CvtDoubleToVAX(double *dp, IDL_MEMINT n);
 extern void IDL_CDECL IDL_EzCall(int argc, IDL_VPTR argv[], IDL_EZ_ARG
-        arg_struct[]);
+                                 arg_struct[]);
 extern void IDL_CDECL IDL_EzCallCleanup(int argc, IDL_VPTR argv[],
-        IDL_EZ_ARG arg_struct[]);
+                                        IDL_EZ_ARG arg_struct[]);
 extern void IDL_CDECL IDL_EzReplaceWithTranspose(IDL_VPTR *v, IDL_VPTR
         orig);
 extern int IDL_CDECL IDL_SetValue(int id, void* pvValue);
@@ -3186,7 +3190,7 @@ extern void IDL_CDECL IDL_Win32MessageLoop(int fFlush);
 
 
 #ifdef __cplusplus
-    }
+}
 #endif
 
 #endif                               /* export_IDL_DEF */

@@ -214,9 +214,8 @@ function red_readdata, fname $
 	      fxread,fname,data,extension=extension
 	    end
 	    'TABLE   ': begin
-	      extno = get_fits_extno(fname, extension)
-	      if extno eq -1 then extno = extension
-	      tab = readfits(fname,silent=silent,exten=extno)
+	      if size(extension,/type) ne 7 then extno = extension
+	      fits_read,fname,tab,exten=extno,extname=extension,/no_pdu
 	      if n_elements(tabkey) ne 0 then $
 		data = ftget(header,tab,tabkey) $
 	      else data = ftget(header,tab,1) ; default to first field.
@@ -262,7 +261,7 @@ tabextno = red_readdata(fname,/extension)
 
 stop
 
-cd,'/scratch/polar/mats/2016.09.19/CHROMIS/calib_tseries'
+cd,'/polar-scratch/mats/2016.09.19/CHROMIS/calib_tseries'
 fname = 'wb_3950_2016-09-19T09:28:36_scans=68-72_corrected_im.fits'
 
 img = red_readdata(fname)
