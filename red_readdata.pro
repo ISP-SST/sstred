@@ -133,109 +133,109 @@ function red_readdata, fname $
 
     ;; Remove this when rdx_filetype can recognize .momfbd files:
     if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
-       filetype = 'momfbd'
+      filetype = 'momfbd'
     endif else begin
-       filetype = rdx_filetype(fname)
+      filetype = rdx_filetype(fname)
     endelse
-     
+    
     if filetype eq '' then begin
       message,'Cannot detect filetype. Pass it manually as',/info
       message,"img = red_readdata('"+fname+"',filetype='fits')",/info
       status = -1
       return, 0B
     endif
-        
+    
   endif                         ; filetype
 
 
   case strupcase(filetype) of
 
-     'ANA' : begin
-        
-        ;; Data stored in ANA fz format files.
-        
-        fzread, data, fname, anaheader
+    'ANA' : begin
+      
+      ;; Data stored in ANA fz format files.
+      
+      fzread, data, fname, anaheader
 
-        if arg_present(header) then header = red_readhead(fname)
+      if arg_present(header) then header = red_readhead(fname)
 
-     end
+    end
 
-     'FITS' : begin
+    'FITS' : begin
 
-        ;; Data stored in fits files, but what kind?
-        red_rdfits, fname, header = header
-        bit_shift = 0
-        if fxpar(header, 'SOLARNET') eq 0 then begin
-            caminfo = red_camerainfo( red_detectorname(fname,head=header) )
-            if strmatch(caminfo.model,'PointGrey*') then begin 
-                ;; This is the first version PointGrey data from
-                ;; spring 2016. Hack to load it:
-                uint = 1
-                swap = 0
-                bit_shift = -4
-            endif
-
+      ;; Data stored in fits files, but what kind?
+      red_rdfits, fname, header = header
+      bit_shift = 0
+      if fxpar(header, 'SOLARNET') eq 0 then begin
+        caminfo = red_camerainfo( red_detectorname(fname,head=header) )
+        if strmatch(caminfo.model,'PointGrey*') then begin 
+          ;; This is the first version PointGrey data from
+          ;; spring 2016. Hack to load it:
+          uint = 1
+          swap = 0
+          bit_shift = -4
         endif
-        
-        ;; Now read the data
-        
-        ;; primary HDU
-        if n_elements(extension) eq 0 then begin
-          if keyword_set(uint) then begin
-            ;; readfits does not support uint data so use Pit's
-            ;; red_rdfits instead. 
-            red_rdfits, fname, image = data $
-                        , uint=uint, swap=swap, framenumber = framenumber
-            ;; Compensate for initial weird format
-            if bit_shift ne 0 then data = ishft(data, bit_shift)
-          endif else begin
-            ;; By default use readfits so we can read 4-dimensional
-            ;; cubes.
-            data = readfits(fname, Nslice = framenumber, silent = silent)
-          endelse
 
-	  ;; Does it need to be byteswapped?
-	  doswap = 0
-	  endian = sxpar(header,'ENDIAN', count = Nendian)
-	  if Nendian eq 1 then if endian eq 'little' then doswap = 1
-	  byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
-	  if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
+      endif
+      
+      ;; Now read the data
+      
+      ;; primary HDU
+      if n_elements(extension) eq 0 then begin
+        if keyword_set(uint) then begin
+          ;; readfits does not support uint data so use Pit's
+          ;; red_rdfits instead. 
+          red_rdfits, fname, image = data $
+                      , uint=uint, swap=swap, framenumber = framenumber
+          ;; Compensate for initial weird format
+          if bit_shift ne 0 then data = ishft(data, bit_shift)
+        endif else begin
+          ;; By default use readfits so we can read 4-dimensional
+          ;; cubes.
+          data = readfits(fname, Nslice = framenumber, silent = silent)
+        endelse
 
-	  if doswap then begin
-	    swap_endian_inplace, data
-	    sxdelpar, header, 'ENDIAN'
-	    sxdelpar, header, 'BYTEORDR'
-	  endif 
-	endif else begin
-	  header = red_readhead(fname,extension=extension,silent=silent)
-	  exttype = fxpar(header,'XTENSION')
-	  case exttype of 
-	    'IMAGE   ': begin
-	      fxread,fname,data,extension=extension
-	    end
-	    'TABLE   ': begin
-	      if size(extension,/type) ne 7 then extno = extension
-	      fits_read,fname,tab,exten=extno,extname=extension,/no_pdu
-	      if n_elements(tabkey) ne 0 then $
-		data = ftget(header,tab,tabkey) $
-	      else data = ftget(header,tab,1) ; default to first field.
-	    end
-	    'BINTABLE': begin
-	      fxbopen,tlun,fname,extension
-	      if n_elements(tabkey) ne 0 then $
-		fxbread,tlun,data,tabkey $
-	      else fxbread,tlun,data,1 ; default to the first column
-	      fxbclose,tlun
-	    end
-	  endcase
-	endelse
-	
-     end
+        ;; Does it need to be byteswapped?
+        doswap = 0
+        endian = sxpar(header,'ENDIAN', count = Nendian)
+        if Nendian eq 1 then if endian eq 'little' then doswap = 1
+        byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
+        if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
 
-     'MOMFBD' : begin
-        mr = momfbd_read(fname, /img)
-        data = red_mozaic(mr, /clip)
-     end
+        if doswap then begin
+          swap_endian_inplace, data
+          sxdelpar, header, 'ENDIAN'
+          sxdelpar, header, 'BYTEORDR'
+        endif 
+      endif else begin
+        header = red_readhead(fname,extension=extension,silent=silent)
+        exttype = fxpar(header,'XTENSION')
+        case exttype of 
+          'IMAGE   ': begin
+            fxread,fname,data,extension=extension
+          end
+          'TABLE   ': begin
+            if size(extension,/type) ne 7 then extno = extension
+            fits_read,fname,tab,exten=extno,extname=extension,/no_pdu
+            if n_elements(tabkey) ne 0 then $
+               data = ftget(header,tab,tabkey) $
+            else data = ftget(header,tab,1) ; default to first field.
+          end
+          'BINTABLE': begin
+            fxbopen,tlun,fname,extension
+            if n_elements(tabkey) ne 0 then $
+               fxbread,tlun,data,tabkey $
+            else fxbread,tlun,data,1 ; default to the first column
+            fxbclose,tlun
+          end
+        endcase
+      endelse
+      
+    end
+
+    'MOMFBD' : begin
+      mr = momfbd_read(fname, /img)
+      data = red_mozaic(mr, /clip)
+    end
 
   endcase
   
