@@ -200,72 +200,72 @@ function red_sumfiles, files_list $
   Nframes_per_file = lonarr(Nfiles)
   Nframes = 0
   for ifile = 0, Nfiles-1 do begin
-     head = red_readhead(files_list[ifile], /silent)
-     case sxpar(head, 'NAXIS') of
-        2 : Nframes_per_file[ifile] = 1
-        3 : Nframes_per_file[ifile] = sxpar(head, 'NAXIS3')
-        else : begin
-           print, inam + ' : No support for files other than single 2D frames or 3D data cubes' 
-           print, files_list[ifile]
-           print, head
-           stop
-        end
-     endcase
-     if ifile eq 0 then begin
-        dim = [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
-     endif else begin
-        if dim[0] ne sxpar(head, 'NAXIS1') or dim[1] ne sxpar(head, 'NAXIS2') then begin
-           print, inam + ' : [X,Y] dimensions do not match earlier files.'
-           print, files_list[ifile]
-           print, 'This file:',  [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
-           print, 'Earlier file(s):', dim 
-           stop
-        endif
-     endelse
+    head = red_readhead(files_list[ifile], /silent)
+    case sxpar(head, 'NAXIS') of
+      2 : Nframes_per_file[ifile] = 1
+      3 : Nframes_per_file[ifile] = sxpar(head, 'NAXIS3')
+      else : begin
+        print, inam + ' : No support for files other than single 2D frames or 3D data cubes' 
+        print, files_list[ifile]
+        print, head
+        stop
+      end
+    endcase
+    if ifile eq 0 then begin
+      dim = [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
+    endif else begin
+      if dim[0] ne sxpar(head, 'NAXIS1') or dim[1] ne sxpar(head, 'NAXIS2') then begin
+        print, inam + ' : [X,Y] dimensions do not match earlier files.'
+        print, files_list[ifile]
+        print, 'This file:',  [sxpar(head, 'NAXIS1'), sxpar(head, 'NAXIS2')]
+        print, 'Earlier file(s):', dim 
+        stop
+      endif
+    endelse
   endfor                        ; ifile
   Nframes = total(Nframes_per_file)
 
 
   if keyword_set(check) then docheck = 1B else docheck = 0B
   if docheck and Nframes lt 3 then begin
-     print, inam+" : Not enough statistics, don't do checking."
-     docheck = 0B
+    print, inam+" : Not enough statistics, don't do checking."
+    docheck = 0B
   endif
 
   if keyword_set(pinhole_align) or keyword_set(select_align) then begin
-     if n_elements(gain) eq 0 or n_elements(dark) eq 0 then begin
-        print, inam+' : Need to specify gain and dark when doing /pinhole_align or /select_align'
-        help, gain, dark
-        stop
-     endif
+    if n_elements(gain) eq 0 or n_elements(dark) eq 0 then begin
+      print, inam+' : Need to specify gain and dark when doing /pinhole_align or /select_align'
+      help, gain, dark
+      stop
+    endif
   endif
 
   if n_elements(gain) eq 0 then begin
-     ;; Default gain is unity
-     gain = dblarr(dim)+1D
+    ;; Default gain is unity
+    gain = dblarr(dim)+1D
   endif else begin
-     ;; Make a mask for fillpixing. We want to exclude really large
-     ;; areas along the border of the image and therefore irrelevant
-     ;; for pinhole calibration.
-     mask = red_cleanmask(gain)
+    ;; Make a mask for fillpixing. We want to exclude really large
+    ;; areas along the border of the image and therefore irrelevant
+    ;; for pinhole calibration.
+    mask = red_cleanmask(gain)
   endelse 
 
   if n_elements(dark) eq 0 then begin
-     ;; Default zero dark correction
-     dark = dblarr(dim)
+    ;; Default zero dark correction
+    dark = dblarr(dim)
   endif 
 
   ;; If just a single frame, return it now. 
   if Nframes eq 1 then begin
-     head = red_readhead(files_list[0], /silent)
-     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
-     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
-     time_ave = red_timestring((time_beg + time_end) / 2d, Nsecdecimals = 6)
-     time_beg = red_timestring(time_beg, Nsecdecimals = 6)
-     time_end = red_timestring(time_end, Nsecdecimals = 6)
-     ;; Include gain, dark, fillpix, backscatter here? This case
-     ;; should really never happen...
-     return, red_readdata(files_list[0], /silent)
+    head = red_readhead(files_list[0], /silent)
+    time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
+    time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
+    time_ave = red_timestring((time_beg + time_end) / 2d, Nsecdecimals = 6)
+    time_beg = red_timestring(time_beg, Nsecdecimals = 6)
+    time_end = red_timestring(time_end, Nsecdecimals = 6)
+    ;; Include gain, dark, fillpix, backscatter here? This case
+    ;; should really never happen...
+    return, red_readdata(files_list[0], /silent)
   endif
 
   ;; Needed for warning messages and progress bars.
@@ -277,72 +277,72 @@ function red_sumfiles, files_list $
   times_end = dblarr(Nframes)
 
   if docheck then begin
-     ;; Set up for checking
-     cub = intarr(dim[0], dim[1], Nframes)
+    ;; Set up for checking
+    cub = intarr(dim[0], dim[1], Nframes)
   endif
 
   ;; Loop over files
   iframe = 0
   for ifile = 0, Nfiles-1 do begin
     
-     if DoCheck then begin
-        cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head, /silent)
-        red_progressbar, iframe, Nframes, inam+' : loading files in memory', clock = clock
-     endif else begin
-        head = red_readhead(files_list[ifile], /silent)
-     endelse
+    if DoCheck then begin
+      cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head, /silent)
+      red_progressbar, iframe, Nframes, inam+' : loading files in memory', clock = clock
+    endif else begin
+      head = red_readhead(files_list[ifile], /silent)
+    endelse
 
-     cadence = sxpar(head, 'CADENCE')
-     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
-     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
+    cadence = sxpar(head, 'CADENCE')
+    time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
+    time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
 
-     times[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile]) + fxpar(head, 'XPOSURE')/2
+    times[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile]) + fxpar(head, 'XPOSURE')/2
 
-     times_beg[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile])
-     times_end[iframe] = (times_beg[iframe:iframe+Nframes_per_file[ifile]-1] + fxpar(head, 'XPOSURE')) <time_end
+    times_beg[iframe] = time_beg + cadence*findgen(Nframes_per_file[ifile])
+    times_end[iframe] = (times_beg[iframe:iframe+Nframes_per_file[ifile]-1] + fxpar(head, 'XPOSURE')) <time_end
 
-     iframe += Nframes_per_file[ifile]
-     
+    iframe += Nframes_per_file[ifile]
+    
   endfor                        ; ifile
   print
 
   if DoCheck then begin
 
-     mval = total(total(cub, 1), 1)/(dim[0]*dim[1])
+    mval = total(total(cub, 1), 1)/(dim[0]*dim[1])
 
-     ;; Find bad frames
-     if n_elements(lim) eq 0 then lim = 0.0175 ; Allow 2% deviation from the mean value
-     if n_elements(filter) eq 0 then filter = 3  ; default is to use a medianfilter of width 3
-     if filter mod 2 eq 0 then filter += 1       ; force odd filtersize
-     tmean = median(mval)
-     mmval = median( mval, filter )
-     ;; Set edges to neighbouring values since the median filter does
-     ;; not modify endpoints.
-     mmval[0:filter/2-1] = mmval[filter/2]        
-     mmval[Nfiles-filter/2:Nfiles-1] = mmval[Nfiles-filter/2-1] 
+    ;; Find bad frames
+    if n_elements(lim) eq 0 then lim = 0.0175   ; Allow 2% deviation from the mean value
+    if n_elements(filter) eq 0 then filter = 3  ; default is to use a medianfilter of width 3
+    if filter mod 2 eq 0 then filter += 1       ; force odd filtersize
+    tmean = median(mval)
+    mmval = median( mval, filter )
+    ;; Set edges to neighbouring values since the median filter does
+    ;; not modify endpoints.
+    mmval[0:filter/2-1] = mmval[filter/2]        
+    mmval[Nfiles-filter/2:Nfiles-1] = mmval[Nfiles-filter/2-1] 
 
-     goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
-     idx = where(goodones, Nsum, complement = idx1, Ncomplement = Nrejected)     
+    goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
+    idx = where(goodones, Nsum, complement = idx1, Ncomplement = Nrejected)     
 
-     if Nrejected gt 0 then begin
-        print, inam+' : rejected frames :'
-        for irejected = 0, Nrejected-1 do begin 
-           ;; Find file name and frame number within file
-           ifile = 0
-           while idx1[irejected] gt total(Nframes_per_file[0:ifile]) do ifile += 1
-           if ifile gt 0 then Nsub = round(total(Nframes_per_file[0:ifile-1])) else Nsub = 0
-           msg = files_list[ifile]+', frame # '+strtrim(idx1[irejected]-Nsub, 2)
-           print, msg
-           if(keyword_set(lun)) then printf, lun, msg
-        endfor                  ; irejected
-     endif else print, inam+' : all files seem to be fine'
+    if Nrejected gt 0 then begin
+      print, inam+' : rejected frames :'
+      for irejected = 0, Nrejected-1 do begin 
+        ;; Find file name and frame number within file
+        ifile = 0
+        while idx1[irejected] gt total(Nframes_per_file[0:ifile]) do ifile += 1
+        if ifile gt 0 then Nsub = round(total(Nframes_per_file[0:ifile-1])) else Nsub = 0
+        msg = files_list[ifile]+', frame # '+strtrim(idx1[irejected]-Nsub, 2)
+        print, msg
+        if(keyword_set(lun)) then printf, lun, msg
+      endfor                    ; irejected
+    endif else print, inam+' : all files seem to be fine'
 
   endif else begin              ; docheck
-     
-     ;; If no checking, all frames are considered OK.
-     goodones = replicate(1, Nframes) 
-     idx = where(goodones, Nsum, complement = idx1)
-     
+    
+    ;; If no checking, all frames are considered OK.
+    goodones = replicate(1, Nframes) 
+    idx = where(goodones, Nsum, complement = idx1)
+    
   endelse                       ; docheck
 
   ;; Set time stamps to potentially be returned as keywords.
@@ -352,233 +352,233 @@ function red_sumfiles, files_list $
 
   
   ;; Do the summing
- 
+  
   case 1 of
 
-     ~DoCheck $
-        and ~DoDescatter $
-        and ~keyword_set(pinhole_align) $
-        and ~keyword_set(select_align) : begin
-     
-        ;; Easy case first, no checking, no alignment and no
-        ;; descattering. No checking means we have not read the data
-        ;; yet. 
+    ~DoCheck $
+       and ~DoDescatter $
+       and ~keyword_set(pinhole_align) $
+       and ~keyword_set(select_align) : begin
+      
+      ;; Easy case first, no checking, no alignment and no
+      ;; descattering. No checking means we have not read the data
+      ;; yet. 
 
-        ;; Tested with dark frames on 2016-05-23.
+      ;; Tested with dark frames on 2016-05-23.
 
-        summed = dblarr(dim)
-        iframe = 0
+      summed = dblarr(dim)
+      iframe = 0
 
-        for ifile = 0, Nfiles-1 do begin
-           
-           red_progressbar, clock = clock, iframe, Nframes $
-                            , inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
-           cub = red_readdata(files_list[ifile], /silent)
-
-           summed += total(cub, 3, /double)
-           iframe += Nframes_per_file[ifile]
-
-        endfor                  ; ifile
-
-        average = summed / Nsum
-
-        ;; Dark and gain correction 
-        average = (average - dark)*gain
-
-        ;; Fill the bad pixels 
-        if n_elements(mask) gt 0 then average = red_fillpix(average, mask = mask)
-
-     end
-
-     ~DoDescatter $
-        and ~keyword_set(pinhole_align) $
-        and ~keyword_set(select_align) : begin
-
-        ;; Another easy case, checked data but no alignment and no
-        ;; descattering. The data are checked means they are already
-        ;; read in.
-
-        ;; Tested with dark frames on 2016-05-23.
-
-        print, bb, inam+' : summing '+strtrim(Nsum, 2)+' good files in memory.'
-
-        summed = total(cub[*, *, idx], 3, /double)
-
-        average = summed / Nsum
-
-        ;; Dark and gain correction 
-        average = (average - dark)*gain
-
-        ;; Fill the bad pixels 
-        if n_elements(mask) gt 0 then average = red_fillpix(average, mask = mask)
-
-     end
+      for ifile = 0, Nfiles-1 do begin
         
-     else : begin
+        red_progressbar, clock = clock, iframe, Nframes $
+                         , inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
+        cub = red_readdata(files_list[ifile], /silent)
+
+        summed += total(cub, 3, /double)
+        iframe += Nframes_per_file[ifile]
+
+      endfor                    ; ifile
+
+      average = summed / Nsum
+
+      ;; Dark and gain correction 
+      average = (average - dark)*gain
+
+      ;; Fill the bad pixels 
+      if n_elements(mask) gt 0 then average = red_fillpix(average, mask = mask)
+
+    end
+
+    ~DoDescatter $
+       and ~keyword_set(pinhole_align) $
+       and ~keyword_set(select_align) : begin
+
+      ;; Another easy case, checked data but no alignment and no
+      ;; descattering. The data are checked means they are already
+      ;; read in.
+
+      ;; Tested with dark frames on 2016-05-23.
+
+      print, bb, inam+' : summing '+strtrim(Nsum, 2)+' good files in memory.'
+
+      summed = total(cub[*, *, idx], 3, /double)
+
+      average = summed / Nsum
+
+      ;; Dark and gain correction 
+      average = (average - dark)*gain
+
+      ;; Fill the bad pixels 
+      if n_elements(mask) gt 0 then average = red_fillpix(average, mask = mask)
+
+    end
+    
+    else : begin
+      
+      ;; And now for the more time consuming cases, where all frames
+      ;; have to be dealt with individually. Either for alignment,
+      ;; or for descattering, or both.
+      
+      
+      firstframe = 1B           ; When doing alignment we use the first (good) frame as reference.
+      dc_sum = [0.0, 0.0]
+      summed = dblarr(dim)
+
+      ifile = 0
+      ii = 0                    ; Within-file-counter
+
+      ;; Loop over all frames
+      for iframe = 0L, Nframes-1 do begin
         
-        ;; And now for the more time consuming cases, where all frames
-        ;; have to be dealt with individually. Either for alignment,
-        ;; or for descattering, or both.
-        
-        
-        firstframe = 1B         ; When doing alignment we use the first (good) frame as reference.
-        dc_sum = [0.0, 0.0]
-        summed = dblarr(dim)
+        if goodones[ii] then begin ; Sum only OK frames
 
-        ifile = 0
-        ii = 0                  ; Within-file-counter
+          if docheck then begin
 
-        ;; Loop over all frames
-        for iframe = 0L, Nframes-1 do begin
-           
-           if goodones[ii] then begin ; Sum only OK frames
+            ;; If checked, we already have the frames in memory.
+            thisframe = double(cub[*, *, iframe])
+            red_progressbar, clock = clock, iframe, Nframes $
+                             , inam+' : summing '+strtrim(Nsum, 2)+' checked frames'
 
-              if docheck then begin
+          endif else begin
 
-                 ;; If checked, we already have the frames in memory.
-                 thisframe = double(cub[*, *, iframe])
-                 red_progressbar, clock = clock, iframe, Nframes $
-                                  , inam+' : summing '+strtrim(Nsum, 2)+' checked frames'
+            ;; If not checked, we (sometimes) have to read the frames in.
+            if ii eq 0 or ii ge Nframes_per_file[ifile] then begin
+              cub = red_readdata(files_list[ifile], /silent)
+              ii = 0
+            endif
+            thisframe = double(cub[*, *, ii])
+            ii += 1
+            
+            red_progressbar, clock = clock, iframe, Nframes $
+                             , inam+' : summing '+strtrim(Nsum, 2)+' frames'
 
-              endif else begin
+          endelse
+          
+          if keyword_set(pinhole_align) or keyword_set(select_align) then begin
+            
+            ;; If we are doing sub-pixel alignment, then we need to
+            ;; correct each frame for dark and gain.
+            thisframe = (thisframe - dark)*gain
 
-                 ;; If not checked, we (sometimes) have to read the frames in.
-                 if ii eq 0 or ii ge Nframes_per_file[ifile] then begin
-                    cub = red_readdata(files_list[ifile], /silent)
-                    ii = 0
-                 endif
-                 thisframe = double(cub[*, *, ii])
-                 ii += 1
-                 
-                 red_progressbar, clock = clock, iframe, Nframes $
-                                  , inam+' : summing '+strtrim(Nsum, 2)+' frames'
+            ;; We also need to do any descattering correction of each frame.
+            if DoDescatter then begin
+              thisframe = red_cdescatter(thisframe $
+                                         , backscatter_gain, backscatter_psf $
+                                         , /verbose, nthreads = nthreads)
+            endif
 
+            ;; And fill the bad pixels 
+            thisframe = red_fillpix(thisframe, mask = mask)
+
+            if firstframe then begin
+              
+              marg = 100
+              if keyword_set(select_align) then begin
+                ;; Select feature to align on with mouse.
+                if max(dim) gt 1000 then fac = max(dim)/1000. else fac = 1
+                window, 0, xs = 1000, ys = 1000
+                tvscl, congrid(thisframe, dim[0]/fac, dim[1]/fac, cubic = -0.5)
+                print, 'Use the mouse to click on feature to align on.'
+                cursor, xc, yc, /device
+                xyc = round([xc, yc]*fac) >marg <(dim-marg-1)
+                subsz = 300
+                subim = thisframe[xyc[0]-subsz/2:xyc[0]+subsz/2-1, xyc[1]-subsz/2:xyc[1]+subsz/2-1]
+                tvscl, subim
+              end else begin
+                ;; Find brightest pinhole spot that is reasonably centered in
+                ;; the FOV.
+                subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
+                mx = max(subim, maxloc)
+                ncol = dim[1]-2*marg+1
+                xyc = lonarr(2)
+                xyc[0] = maxloc / ncol
+                xyc[1] = maxloc MOD ncol
+                xyc += marg     ; Position of brightest spot in original image
               endelse
-                 
-              if keyword_set(pinhole_align) or keyword_set(select_align) then begin
-                 
-                 ;; If we are doing sub-pixel alignment, then we need to
-                 ;; correct each frame for dark and gain.
-                 thisframe = (thisframe - dark)*gain
 
-                 ;; We also need to do any descattering correction of each frame.
-                 if DoDescatter then begin
-                    thisframe = red_cdescatter(thisframe $
-                                               , backscatter_gain, backscatter_psf $
-                                               , /verbose, nthreads = nthreads)
-                 endif
+              ;; Establish subfield size sz, shrunk to fit.
+              sz = 99              
+              subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
+              tot_init = total(subim/max(subim) gt 0.2)
+              repeat begin
+                sz -= 2
+                subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
+                tot = total(subim/max(subim) gt 0.2)
+              endrep until tot lt tot_init
 
-                 ;; And fill the bad pixels 
-                 thisframe = red_fillpix(thisframe, mask = mask)
+              sz += 4           ; A bit of margin
+              
+            endif               ; firstframe
 
-                 if firstframe then begin
-                    
-                    marg = 100
-                    if keyword_set(select_align) then begin
-                       ;; Select feature to align on with mouse.
-                       if max(dim) gt 1000 then fac = max(dim)/1000. else fac = 1
-                       window, 0, xs = 1000, ys = 1000
-                       tvscl, congrid(thisframe, dim[0]/fac, dim[1]/fac, cubic = -0.5)
-                       print, 'Use the mouse to click on feature to align on.'
-                       cursor, xc, yc, /device
-                       xyc = round([xc, yc]*fac) >marg <(dim-marg-1)
-                       subsz = 300
-                       subim = thisframe[xyc[0]-subsz/2:xyc[0]+subsz/2-1, xyc[1]-subsz/2:xyc[1]+subsz/2-1]
-                       tvscl, subim
-                    end else begin
-                       ;; Find brightest pinhole spot that is reasonably centered in
-                       ;; the FOV.
-                       subim = thisframe[marg:dim[0]-marg, marg:dim[1]-marg]
-                       mx = max(subim, maxloc)
-                       ncol = dim[1]-2*marg+1
-                       xyc = lonarr(2)
-                       xyc[0] = maxloc / ncol
-                       xyc[1] = maxloc MOD ncol
-                       xyc += marg ; Position of brightest spot in original image
-                    endelse
+            ;; Iteratively calculate centroid of thisframe, and then
+            ;; shift the frame so it aligns with the first frame.
+            
+            ;; Iteratively shift the image to get the spot centered in
+            ;; the subfield, because that's where the centroiding is
+            ;; most accurate.
+            dc1 = [0.0,0.0]
+            Nrep = 0
+            repeat begin
+              ;;print, 'Shift:', dc1
+              im_shifted = red_shift_im(thisframe, dc1[0], dc1[1])                        ; Shift the image
+              subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]       ; New subimage
 
-                    ;; Establish subfield size sz, shrunk to fit.
-                    sz = 99              
-                    subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
-                    tot_init = total(subim/max(subim) gt 0.2)
-                    repeat begin
-                       sz -= 2
-                       subim = thisframe[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2]
-                       tot = total(subim/max(subim) gt 0.2)
-                    endrep until tot lt tot_init
+              subim0 = subim0 / stdev(subim0)
+              cnt = red_com(subim0) ; Centroid after shift
+              dcold = dc1           ; Old shift
+              dc1 = dc1 + (sz/2.0 - cnt)
+              ;;print, 'Shift change vector length:',
+              ;;sqrt(total((dc1-dcold)^2))
+              Nrep += 1
+            endrep until sqrt(total((dc1-dcold)^2)) lt 0.01 or Nrep eq 100
+            ;; Iterate until shift changes less than 0.01 pixel
 
-                    sz += 4     ; A bit of margin
-                    
-                 endif          ; firstframe
+            if firstframe then begin
+              ;; Keep as reference
+              dc0 = dc1
+            endif else begin
+              dc = dc1-dc0       ; This is the shift!
+              dc_sum += dc       ; ...add it to the total
+              thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
+              firstframe = 0B
+            endelse             ; firstframe
 
-                 ;; Iteratively calculate centroid of thisframe, and then
-                 ;; shift the frame so it aligns with the first frame.
-                 
-                 ;; Iteratively shift the image to get the spot centered in
-                 ;; the subfield, because that's where the centroiding is
-                 ;; most accurate.
-                 dc1 = [0.0,0.0]
-                 Nrep = 0
-                 repeat begin
-                    ;;print, 'Shift:', dc1
-                    im_shifted = red_shift_im(thisframe, dc1[0], dc1[1])                  ; Shift the image
-                    subim0 = im_shifted[xyc[0]-sz/2:xyc[0]+sz/2, xyc[1]-sz/2:xyc[1]+sz/2] ; New subimage
+          endif                 ; keyword_set(pinhole_align)
 
-                    subim0 = subim0 / stdev(subim0)
-                    cnt = red_com(subim0) ; Centroid after shift
-                    dcold = dc1           ; Old shift
-                    dc1 = dc1 + (sz/2.0 - cnt)
-                    ;;print, 'Shift change vector length:',
-                    ;;sqrt(total((dc1-dcold)^2))
-                    Nrep += 1
-                 endrep until sqrt(total((dc1-dcold)^2)) lt 0.01 or Nrep eq 100
-                 ;; Iterate until shift changes less than 0.01 pixel
+          summed += thisframe
 
-                 if firstframe then begin
-                    ;; Keep as reference
-                    dc0 = dc1
-                 endif else begin
-                    dc = dc1-dc0 ; This is the shift!
-                    dc_sum += dc ; ...add it to the total
-                    thisframe = red_shift_im(thisframe, dc[0], dc[1]) 
-                    firstframe = 0B
-                 endelse        ; firstframe
+        endif                   ; goodones[ii] 
 
-              endif             ; keyword_set(pinhole_align)
+      endfor                    ; iframe
 
-              summed += thisframe
+      average = summed / Nsum
 
-           endif                ; goodones[ii] 
+      if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
+        average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
+      endif
 
-        endfor                  ; iframe
+      if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
 
-        average = summed / Nsum
+        ;; Some actions already done for each frame in the case of
+        ;; pinhole alignment.
 
-        if total(abs(dc_sum)) gt 0 then begin ; shift average image back, to ensure an average shift of 0.
-           average = red_shift_im( average, -dc_sum[0]/Nsum, -dc_sum[1]/Nsum )
+        ;; Dark and gain correction 
+        average = (average - dark)*gain
+
+        if DoDescatter then begin
+          ;; Backscatter correction (done already for pinholes)
+          average = red_cdescatter(average, backscatter_gain, backscatter_psf $
+                                   , /verbose, nthreads = nthreads)
         endif
 
-        if ~keyword_set(pinhole_align) and ~keyword_set(select_align) then begin
+        ;; Fill the bad pixels 
+        if n_elements(mask) gt 0 then  average = red_fillpix(average, mask = mask)
 
-           ;; Some actions already done for each frame in the case of
-           ;; pinhole alignment.
+      endif
 
-           ;; Dark and gain correction 
-           average = (average - dark)*gain
-
-           if DoDescatter then begin
-              ;; Backscatter correction (done already for pinholes)
-              average = red_cdescatter(average, backscatter_gain, backscatter_psf $
-                                       , /verbose, nthreads = nthreads)
-           endif
-
-           ;; Fill the bad pixels 
-           if n_elements(mask) gt 0 then  average = red_fillpix(average, mask = mask)
-
-        endif
-
-     end
-     
+    end
+    
   endcase
 
   return, average
@@ -590,13 +590,13 @@ dnames = file_search('/mnt/sand15n/Incoming/2016.05.09/Dark/12:43:00/Chromis-W/c
 print, Ndarks
 
 dsum_check = red_sumfiles(dnames[0:2] $
-                    , time_ave = time_ave_check $
-                    , time_beg = time_beg_check $
-                    , time_end = time_end_check $
-                    , summed = summed_check $
-                    , nsum = nsum_check $  
-                    , /check $
-                   )
+                          , time_ave = time_ave_check $
+                          , time_beg = time_beg_check $
+                          , time_end = time_end_check $
+                          , summed = summed_check $
+                          , nsum = nsum_check $  
+                          , /check $
+                         )
 
 dsum = red_sumfiles(dnames[0:2] $
                     , time_ave = time_ave $
