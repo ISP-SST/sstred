@@ -191,7 +191,7 @@ function red_readdata, fname $
           endif else begin
             ;; By default use readfits so we can read 4-dimensional
             ;; cubes.
-            data = readfits(fname, Nslice = framenumber)
+            data = readfits(fname, Nslice = framenumber, silent = silent)
           endelse
 
 	  ;; Does it need to be byteswapped?
