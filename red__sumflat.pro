@@ -135,162 +135,162 @@ pro red::sumflat, overwrite = overwrite, $
 
   Ncams = n_elements(cams)
   if( Ncams eq 0) then begin
-     print, inam+' : ERROR : undefined cams (and cameras)'
-     return
+    print, inam+' : ERROR : undefined cams (and cameras)'
+    return
   endif
 
   Ndirs = n_elements(dirs)
   if( Ndirs eq 0) then begin
-     print, inam+' : ERROR : no flat directories defined'
-     return
+    print, inam+' : ERROR : no flat directories defined'
+    return
   endif else begin
-     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-     else dirstr = dirs[0]
+    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+    else dirstr = dirs[0]
   endelse
 
   ;; cameras
   for icam = 0L, Ncams-1 do begin
 
-     cam = cams[icam]
+    cam = cams[icam]
 
-     self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
-                        files=files, states=states, nremove=remove, /force
+    self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
+                       files=files, states=states, nremove=remove, /force
 
-     ;; From the above call we expect states to be an array of structures.
+    ;; From the above call we expect states to be an array of structures.
 
-     nf = n_elements(files)
-     if( nf eq 0 || files[0] eq '') then begin
-        print, inam+' : '+cam+': no files found in: '+dirstr
-        print, inam+' : '+cam+': skipping camera!'
-        continue
-     endif else begin
-        print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
-     endelse
+    nf = n_elements(files)
+    if( nf eq 0 || files[0] eq '') then begin
+      print, inam+' : '+cam+': no files found in: '+dirstr
+      print, inam+' : '+cam+': skipping camera!'
+      continue
+    endif else begin
+      print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
+    endelse
 
-     state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
+    state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-     Nstates = n_elements(state_list)
+    Nstates = n_elements(state_list)
 
-     ;; Loop over states and sum
-     for istate = 0L, Nstates - 1 do begin
+    ;; Loop over states and sum
+    for istate = 0L, Nstates - 1 do begin
 
-        self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
-                           files=files, states=states, selected=sel
+      self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
+                         files=files, states=states, selected=sel
 
-        ;; Get the flat file name for the selected state
-        self -> get_calib, states[sel[0]] $
-                           , flatname = flatname, sflatname = sflatname, status = status
+      ;; Get the flat file name for the selected state
+      self -> get_calib, states[sel[0]] $
+                         , flatname = flatname, sflatname = sflatname, status = status
 
-        if n_elements(outdir) ne 0 then begin
-           flatname = outdir + '/' + file_basename(flatname)
-           sflatname = outdir + '/' + file_basename(sflatname)
+      if n_elements(outdir) ne 0 then begin
+        flatname = outdir + '/' + file_basename(flatname)
+        sflatname = outdir + '/' + file_basename(sflatname)
 ;           file_mkdir, outdir
-        endif else begin
+      endif else begin
 ;           file_mkdir, file_dirname(flatname)
-        endelse
+      endelse
 
-        file_mkdir, file_dirname(flatname)
+      file_mkdir, file_dirname(flatname)
 
-        ;; If file does not exist, do sum!
-        if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
-           if (~keyword_set(store_rawsum) $
-               || file_test(sflatname)) then begin ; only skip if rawsum also exists
-              print, inam+' : file exists: ' + flatname $
-                     + ' , skipping! (run sumflat, /overwrite to recreate)'
-              continue
-           endif
+      ;; If file does not exist, do sum!
+      if( ~keyword_set(overwrite) && file_test(flatname) ) then begin
+        if (~keyword_set(store_rawsum) $
+            || file_test(sflatname)) then begin ; only skip if rawsum also exists
+          print, inam+' : file exists: ' + flatname $
+                 + ' , skipping! (run sumflat, /overwrite to recreate)'
+          continue
         endif
+      endif
 
 
-        ;; Read the dark frame 
-        self -> get_calib, states[sel[0]], darkdata = dd, status = status
-        if status ne 0 then begin
-           print, inam+' : no dark found for camera ', cam
-           continue
-        endif
+      ;; Read the dark frame 
+      self -> get_calib, states[sel[0]], darkdata = dd, status = status
+      if status ne 0 then begin
+        print, inam+' : no dark found for camera ', cam
+        continue
+      endif
 
-        if( min(sel) lt 0 ) then begin
-           print, inam+' : '+cam+': no files found for state: '+state_list[istate]
-           continue
-        endif
+      if( min(sel) lt 0 ) then begin
+        print, inam+' : '+cam+': no files found for state: '+state_list[istate]
+        continue
+      endif
 
-        print, inam+' : summing flats for state -> ' + state_list[istate]
-        print, inam+' : to be saved in ' + flatname
-        if(keyword_set(check)) then openw, lun, flatname + '_discarded.txt' $
-                                           , width = 500, /get_lun
-        
-        ;; Sum files
-        if keyword_set(check) then begin
-           ;; If summing from two directories, same frame numbers from
-           ;; two directories are consecutive and produce false drop
-           ;; info. Re-sort them.
-           tmplist = files[sel]
-           tmplist = tmplist(sort(tmplist))
-           if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-              flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum $
-                                  , filter = filter, verbose=2)
-           endif else begin
-              flat = red_sumfiles(tmplist, check = check, $
+      print, inam+' : summing flats for state -> ' + state_list[istate]
+      print, inam+' : to be saved in ' + flatname
+      if(keyword_set(check)) then openw, lun, flatname + '_discarded.txt' $
+                                         , width = 500, /get_lun
+      
+      ;; Sum files
+      if keyword_set(check) then begin
+        ;; If summing from two directories, same frame numbers from
+        ;; two directories are consecutive and produce false drop
+        ;; info. Re-sort them.
+        tmplist = files[sel]
+        tmplist = tmplist(sort(tmplist))
+        if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
+          flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
+                              lun = lun, lim = lim, summed = summed, nsum = nsum $
+                              , filter = filter, verbose=2)
+        endif else begin
+          flat = red_sumfiles(tmplist, check = check, $
 ;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
-                                  lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter)
-           endelse
-        endif else begin 
-           if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-              flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
-                                  lim = lim, summed = summed, nsum = nsum $
-                                  , filter = filter, verbose=2)
-           endif else begin
-              flat = red_sumfiles(files[sel], check = check, $
-;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
-                                  lim = lim, summed = summed, nsum = nsum, filter = filter)
-           endelse
+                              lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
+      endif else begin 
+        if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
+          flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
+                              lim = lim, summed = summed, nsum = nsum $
+                              , filter = filter, verbose=2)
+        endif else begin
+          flat = red_sumfiles(files[sel], check = check, $
+;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
+                              lim = lim, summed = summed, nsum = nsum, filter = filter)
+        endelse
+      endelse
 
-        ;; Subtract dark and make floating point
-        flat = float(flat-dd)
+      ;; Subtract dark and make floating point
+      flat = float(flat-dd)
 
-        ;; Make FITS headers 
-        head  = red_sumheaders(files[sel], flat,   nsum = nsum)
-        shead = red_sumheaders(files[sel], summed, nsum = nsum)
-       
-        ;; Add some more info here, see SOLARNET deliverable D20.4 or
-        ;; later versions of that document. 
+      ;; Make FITS headers 
+      head  = red_sumheaders(files[sel], flat,   nsum = nsum)
+      shead = red_sumheaders(files[sel], summed, nsum = nsum)
+      
+      ;; Add some more info here, see SOLARNET deliverable D20.4 or
+      ;; later versions of that document. 
 
-        if self.developer_mode then begin
-          ;; Mark headers for developer mode
-        endif
-        
-        ;; headerout = 't='+time_ave+'
-        ;; n_aver='+red_stri(nsum)+' darkcorrected' print,
-        ;; inam+' : saving ' + flatname file_mkdir,
-        ;; file_dirname(flatname) fzwrite, flat, flatname,
-        ;; headerout
+      if self.developer_mode then begin
+        ;; Mark headers for developer mode
+      endif
+      
+      ;; headerout = 't='+time_ave+'
+      ;; n_aver='+red_stri(nsum)+' darkcorrected' print,
+      ;; inam+' : saving ' + flatname file_mkdir,
+      ;; file_dirname(flatname) fzwrite, flat, flatname,
+      ;; headerout
 
-        ;; Write ANA format flat
-        print, inam+' : saving ', flatname
-        fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
-        red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
+      ;; Write ANA format flat
+      print, inam+' : saving ', flatname
+      fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
+      red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
 
-        ;; Write FITS format flat
-        print, inam+' : saving ', flatname+'.fits'
-        fxaddpar, head, 'FILENAME', file_basename(flatname+'.fits'), after = 'DATE'
-        red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
+      ;; Write FITS format flat
+      print, inam+' : saving ', flatname+'.fits'
+      fxaddpar, head, 'FILENAME', file_basename(flatname+'.fits'), after = 'DATE'
+      red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
 
-        
-        ;; Output the raw (if requested) and averaged flats
-        if keyword_set(store_rawsum) then begin
-           fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
-           headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
-           print, inam+' : saving ' + sflatname
-           file_mkdir, file_dirname(sflatname)
-           flat_raw = long(temporary(summed))
-           fzwrite, flat_raw, sflatname, headerout
-        endif
+      
+      ;; Output the raw (if requested) and averaged flats
+      if keyword_set(store_rawsum) then begin
+        fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
+        headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
+        print, inam+' : saving ' + sflatname
+        file_mkdir, file_dirname(sflatname)
+        flat_raw = long(temporary(summed))
+        fzwrite, flat_raw, sflatname, headerout
+      endif
 
-        if keyword_set(check) then free_lun, lun
+      if keyword_set(check) then free_lun, lun
 
-     endfor                     ; istate
+    endfor                      ; istate
 
   endfor                        ; icam
 
