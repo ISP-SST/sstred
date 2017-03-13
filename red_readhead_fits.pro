@@ -28,6 +28,8 @@
 ;    2017-03-10 : MGL. Moved reading of headers from ANA fz format
 ;                 files from red_readhead.pro.
 ; 
+;    2017-03-13 : MGL. Deal with camera software OBS_PHDU bug.
+; 
 ; 
 ; 
 ;-
@@ -163,6 +165,15 @@ function red_readhead_fits, fname, $
       endelse
     endif
     
+    ;; Correct OBS_PHDU bug in camera software
+    OBS_PHDU = fxpar( header, 'OBS_PHDU', pcomment, count=count )
+    if count gt 0 then begin
+      if strtrim(pcomment,2) eq '' then $
+         pcomment = 'Observational SOLARNET Header and Data Unit'
+      fxaddpar, header, 'OBS_SHDU', OBS_PHDU, pcomment, after = 'OBS_PHDU'
+      sxdelpar, header, 'OBS_PHDU'
+    endif
+
     if n_elements(framenumber) ne 0 then begin
       ;; We may want to change or remove some header keywords
       ;; here, like FRAME1, CADENCE, and DATE-END.

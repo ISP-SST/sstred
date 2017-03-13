@@ -117,7 +117,8 @@ function red_filterchromisheaders, head, silent=silent
      if count eq 0 then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'SOLARNET'
      dummy = fxpar(newhead, 'OBS_SHDU',count=count)
      if count eq 0 then $
-        sxaddpar, newhead, 'OBS_SHDU', 1, 'This HDU contains observational data', after = 'SOLARNET'
+        sxaddpar, newhead, 'OBS_SHDU', 1, 'Observational SOLARNET Header and Data Unit' $
+                  , after = 'SOLARNET'
 
 
      for i = 0, n_elements(head)-1 do begin
@@ -203,6 +204,10 @@ end
 
 ; /mnt => /storage (in case you aren't on polar)
 fname = '/storage/sand15n/Incoming/2016.05.13/AR2542/15:57:10/Chromis-W/camXXVIII.00019.w2.0000076.fits'
+
+cd,'/storage/sand02/Incoming/2016.09.19/CHROMIS-flats/11:21:22/Chromis-N',current=curdir
+fname = 'sst_camXXX_00000_0000000_wheel00005_hrz32061.fits'
+
 head = red_readhead(fname)
 
 print, head
