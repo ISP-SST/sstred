@@ -1,18 +1,18 @@
-/*
+/* 
  * MINPACK-1 Least Squares Fitting Library
  *
  * Original public domain version by B. Garbow, K. Hillstrom, J. More'
  *   (Argonne National Laboratory, MINPACK project, March 1980)
- *
+ * 
  * Tranlation to C Language by S. Moshier (moshier.net)
- *
+ * 
  * Enhancements and packaging by C. Markwardt
  *   (comparable to IDL fitting routine MPFIT
  *    see http://cow.physics.wisc.edu/~craigm/idl/idl.html)
  */
 
 /* Header file defining constants, data structures and functions of
-   mpfit library
+   mpfit library 
    $Id: mpfit.h,v 1.1.1.1 2011/09/16 10:16:42 jaime Exp $
 */
 
@@ -29,21 +29,21 @@ extern "C" {
 
 /* Definition of a parameter constraint structure */
 struct mp_par_struct {
-    int fixed;        /* 1 = fixed; 0 = free */
-    int limited[2];   /* 1 = low/upper limit; 0 = no limit */
-    double limits[2]; /* lower/upper limit boundary value */
+  int fixed;        /* 1 = fixed; 0 = free */
+  int limited[2];   /* 1 = low/upper limit; 0 = no limit */
+  double limits[2]; /* lower/upper limit boundary value */
 
-    char *parname;    /* Name of parameter, or 0 for none */
-    double step;      /* Step size for finite difference */
-    double relstep;   /* Relative step size for finite difference */
-    int side;         /* Sidedness of finite difference derivative
+  char *parname;    /* Name of parameter, or 0 for none */
+  double step;      /* Step size for finite difference */
+  double relstep;   /* Relative step size for finite difference */
+  int side;         /* Sidedness of finite difference derivative 
 		        0 - one-sided derivative computed automatically
 		        1 - one-sided derivative (f(x+h) - f(x)  )/h
 		       -1 - one-sided derivative (f(x)   - f(x-h))/h
-		        2 - two-sided derivative (f(x+h) - f(x-h))/(2*h)
+		        2 - two-sided derivative (f(x+h) - f(x-h))/(2*h) 
 			3 - user-computed analytical derivatives
 		    */
-    int deriv_debug;  /* Derivative debug mode: 1 = Yes; 0 = No;
+  int deriv_debug;  /* Derivative debug mode: 1 = Yes; 0 = No;
 
                        If yes, compute both analytical and numerical
                        derivatives and print them to the console for
@@ -54,9 +54,9 @@ struct mp_par_struct {
 		       you want to compare the user-analytical one to
 		       (0, 1, -1, or 2).
 		    */
-    double deriv_reltol; /* Relative tolerance for derivative debug
+  double deriv_reltol; /* Relative tolerance for derivative debug
 			  printout */
-    double deriv_abstol; /* Absolute tolerance for derivative debug
+  double deriv_abstol; /* Absolute tolerance for derivative debug
 			  printout */
 };
 
@@ -65,69 +65,69 @@ typedef void (*mp_iterproc)(void);
 
 /* Definition of MPFIT configuration structure */
 struct mp_config_struct {
-    /* NOTE: the user may set the value explicitly; OR, if the passed
-       value is zero, then the "Default" value will be substituted by
-       mpfit(). */
-    double ftol;    /* Relative chi-square convergence criterium Default: 1e-10 */
-    double xtol;    /* Relative parameter convergence criterium  Default: 1e-10 */
-    double gtol;    /* Orthogonality convergence criterium       Default: 1e-10 */
-    double epsfcn;  /* Finite derivative step size               Default: MP_MACHEP0 */
-    double stepfactor; /* Initial step bound                     Default: 100.0 */
-    double covtol;  /* Range tolerance for covariance calculation Default: 1e-14 */
-    int maxiter;    /* Maximum number of iterations.  If maxiter == 0,
+  /* NOTE: the user may set the value explicitly; OR, if the passed
+     value is zero, then the "Default" value will be substituted by
+     mpfit(). */
+  double ftol;    /* Relative chi-square convergence criterium Default: 1e-10 */
+  double xtol;    /* Relative parameter convergence criterium  Default: 1e-10 */
+  double gtol;    /* Orthogonality convergence criterium       Default: 1e-10 */
+  double epsfcn;  /* Finite derivative step size               Default: MP_MACHEP0 */
+  double stepfactor; /* Initial step bound                     Default: 100.0 */
+  double covtol;  /* Range tolerance for covariance calculation Default: 1e-14 */
+  int maxiter;    /* Maximum number of iterations.  If maxiter == 0,
                      then basic error checking is done, and parameter
                      errors/covariances are estimated based on input
-                     parameter values, but no fitting iterations are done.
+                     parameter values, but no fitting iterations are done. 
 		     Default: 200
 		  */
-    int maxfev;     /* Maximum number of function evaluations, or 0 for no limit
+  int maxfev;     /* Maximum number of function evaluations, or 0 for no limit
 		     Default: 0 (no limit) */
-    int nprint;     /* Default: 1 */
-    int douserscale;/* Scale variables by user values?
+  int nprint;     /* Default: 1 */
+  int douserscale;/* Scale variables by user values?
 		     1 = yes, user scale values in diag;
 		     0 = no, variables scaled internally (Default) */
-    int nofinitecheck; /* Disable check for infinite quantities from user?
+  int nofinitecheck; /* Disable check for infinite quantities from user?
 			0 = do not perform check (Default)
-			1 = perform check
+			1 = perform check 
 		     */
-    mp_iterproc iterproc; /* Placeholder pointer - must set to 0 */
+  mp_iterproc iterproc; /* Placeholder pointer - must set to 0 */
 
 };
 
 /* Definition of results structure, for when fit completes */
 struct mp_result_struct {
-    double bestnorm;     /* Final chi^2 */
-    double orignorm;     /* Starting value of chi^2 */
-    int niter;           /* Number of iterations */
-    int nfev;            /* Number of function evaluations */
-    int status;          /* Fitting status code */
+  double bestnorm;     /* Final chi^2 */
+  double orignorm;     /* Starting value of chi^2 */
+  int niter;           /* Number of iterations */
+  int nfev;            /* Number of function evaluations */
+  int status;          /* Fitting status code */
+  
+  int npar;            /* Total number of parameters */
+  int nfree;           /* Number of free parameters */
+  int npegged;         /* Number of pegged parameters */
+  int nfunc;           /* Number of residuals (= num. of data points) */
 
-    int npar;            /* Total number of parameters */
-    int nfree;           /* Number of free parameters */
-    int npegged;         /* Number of pegged parameters */
-    int nfunc;           /* Number of residuals (= num. of data points) */
-
-    double *resid;       /* Final residuals
+  double *resid;       /* Final residuals
 			  nfunc-vector, or 0 if not desired */
-    double *xerror;      /* Final parameter uncertainties (1-sigma)
+  double *xerror;      /* Final parameter uncertainties (1-sigma)
 			  npar-vector, or 0 if not desired */
-    double *covar;       /* Final parameter covariance matrix
+  double *covar;       /* Final parameter covariance matrix
 			  npar x npar array, or 0 if not desired */
-    char version[20];    /* MPFIT version string */
-};
+  char version[20];    /* MPFIT version string */
+};  
 
-/* Convenience typedefs */
+/* Convenience typedefs */  
 typedef struct mp_par_struct mp_par;
 typedef struct mp_config_struct mp_config;
 typedef struct mp_result_struct mp_result;
 
 /* Enforce type of fitting function */
 typedef int (*mp_func)(int m, /* Number of functions (elts of fvec) */
-                       int n, /* Number of variables (elts of x) */
-                       double *x,      /* I - Parameters */
-                       double *fvec,   /* O - function values */
-                       double **dvec,  /* O - function derivatives (optional)*/
-                       void *private_data); /* I/O - function private data*/
+		       int n, /* Number of variables (elts of x) */
+		       double *x,      /* I - Parameters */
+		       double *fvec,   /* O - function values */
+		       double **dvec,  /* O - function derivatives (optional)*/
+		       void *private_data); /* I/O - function private data*/
 
 /* Error codes */
 #define MP_ERR_INPUT (0)         /* General input parameter error */
@@ -169,9 +169,9 @@ typedef int (*mp_func)(int m, /* Number of functions (elts of fvec) */
 
 /* External function prototype declarations */
 extern int mpfit(mp_func funct, int m, int npar,
-                 double *xall, mp_par *pars, mp_config *config,
-                 void *private_data,
-                 mp_result *result);
+		 double *xall, mp_par *pars, mp_config *config, 
+		 void *private_data, 
+		 mp_result *result);
 
 
 

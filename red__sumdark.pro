@@ -92,15 +92,13 @@
 ;   2016-09-21 : MGL. Put DATE-BEG, DATE-END, DATE-AVE in output
 ;                header.
 ;
-;   2016-11-29 : JLF. Added the outdir keyword from sumflat. 
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
                   dirs = dirs, $
                   sum_in_rdx = sum_in_rdx, $
-                  filter = filter, $
-                  outdir = outdir
+                  filter = filter
 
   ;; Defaults
   if n_elements(overwrite) eq 0 then overwrite = 0

@@ -41,18 +41,6 @@ pro chromis::hrz_zeropoint
   ;; Remove previously generated hrz_zeropoint files if any. 
   spawn, 'rm -f '+ infodir + 'hrz_zeropoint_*'
 
-  ;; Download script log output files for the day.
-  
-  ;; Parse them looking for reference hrz values
-  ;; The hrz reference value is in the first "filter hrz raw" command
-  ;; following a "filter wheel position" command
-  
-  ;; filter wheel position num: num-> the prefilter name
-  
-  ;; filter hrz raw num: num = hrz_zero (long)
-  
-  ;; 
-  
   ;; Get du_ref from the unique list of hrz tunings in raw flats taken
   ;; with the nb camera, list them in all flats directories.
 
