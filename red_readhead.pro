@@ -168,7 +168,7 @@ ehead = red_readhead(fname,/extension)
 
 stop
 
-cd,'/scratch/polar/mats/2016.09.19/CHROMIS/calib_tseries'
+cd,'/polar-scratch/mats/2016.09.19/CHROMIS/calib_tseries'
 fname = 'wb_3950_2016-09-19T09:28:36_scans=68-72_corrected_im.fits'
 
 head = red_readhead(fname)

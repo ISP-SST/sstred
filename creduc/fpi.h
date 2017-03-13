@@ -3,30 +3,30 @@
 #include "fftw3.h"
 #include "types.h"
 
-struct cfpi{
-  double erh, erl, ech, ecl, orh;
-  double rhr, rlr, slr, shr, dhr, dlr, w0, dw; // FPI vars
-  double *calp, *sin2p_l, *sin2p_h;
-  int line
-, npad, nmean, nwav, tid;
-  fftw_plan otfplan, bplan, fplan;
-  //  double complex *otf, *ft,*otfm;
-  complex_t *otf, *ft,*otfm;
-  double *xlp, *ylp, *imean;
-  double *tr, *tw;
-  float *xl, *yl, *wav, *idat;
-  double *c1,*c2;
-  double *lp1, *lp2, *fp1, *fp2;
-  bool scl;
+struct cfpi {
+    double erh, erl, ech, ecl, orh;
+    double rhr, rlr, slr, shr, dhr, dlr, w0, dw; // FPI vars
+    double *calp, *sin2p_l, *sin2p_h;
+    int line
+    , npad, nmean, nwav, tid;
+    fftw_plan otfplan, bplan, fplan;
+    //  double complex *otf, *ft,*otfm;
+    complex_t *otf, *ft,*otfm;
+    double *xlp, *ylp, *imean;
+    double *tr, *tw;
+    float *xl, *yl, *wav, *idat;
+    double *c1,*c2;
+    double *lp1, *lp2, *fp1, *fp2;
+    bool scl;
 };
 typedef struct cfpi fpi_t;
 
 
-template <class T> T sqr(T val){
-  return val * val;
+template <class T> T sqr(T val) {
+    return val * val;
 }
-template <class T> T sqr2(T val){
-  return val * val * val * val;
+template <class T> T sqr2(T val) {
+    return val * val * val * val;
 }
 
 void init_fpi(fpi_t &fpi, int line);
