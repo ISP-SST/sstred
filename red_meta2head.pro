@@ -54,6 +54,9 @@
 ;    2016-09-27 : MGL. Get tuning info (including prefilter), detector
 ;                 gain, and exposure time. Move setting of waveband to
 ;                 the later case statement. 
+;
+;    2017-03-13 : MGL. Leave frame numbers alone for single-frame ANA
+;                 files.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -79,7 +82,7 @@ function red_meta2head, head, metadata=metaStruct
       ;; name of the original file.
       metaStruct.filename = filename
       sxaddpar, newhead, 'FILENAME', filename $
-                , 'Name of original file.', before = 'COMMENT'
+                , ' Name of original file.', before = 'COMMENT'
     endif
 
     ;; Detector ID (check that this is the correct keyword...)
@@ -91,7 +94,7 @@ function red_meta2head, head, metadata=metaStruct
       detector = ((stregex(barefile, '(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])[0]
 
       if detector ne '' then sxaddpar, newhead, red_keytab('detector'), detector $
-                                       , 'Inferred from filename.' $
+                                       , ' Inferred from filename.' $
                                        , before = 'COMMENT'
     endif                       ; CAMERA
 
@@ -112,7 +115,7 @@ function red_meta2head, head, metadata=metaStruct
       detgain = stregex(barefile, 'G([0-9]*)[.]([0-9]*)' $
                         , /extract, /subexpr) 
       if detgain[0] ne '' then begin
-        comment = 'Inferred from filename.'
+        comment = ' Inferred from filename.'
         sxaddpar, newhead, 'DETGAIN', float(strjoin(detgain[1:2], '.')), comment, before = 'COMMENT'
       endif
     endif
@@ -124,7 +127,7 @@ function red_meta2head, head, metadata=metaStruct
       tuninfo = stregex(barefile, '([0-9][0-9][0-9][0-9])[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                         , /extract, /subexpr) 
       if tuninfo[0] ne '' then begin
-        comment = 'Inferred from tuning info in filename.'
+        comment = ' Inferred from tuning info in filename.'
         if tuninfo[1] ne '' then sxaddpar, newhead, red_keytab('pref'), tuninfo[1], comment, before = 'COMMENT'
         ;; Add also the tuning state if not there already
         dummy = fxpar(newhead, 'STATE', count=count)
@@ -169,7 +172,7 @@ function red_meta2head, head, metadata=metaStruct
             endcase
           endelse
           
-          comment = 'Inferred from filter wheel position in filename.'
+          comment = ' Inferred from filter wheel position in filename.'
           sxaddpar, newhead, red_keytab('pref'), filter1, comment, before = 'COMMENT'
           
         endelse
@@ -249,17 +252,20 @@ function red_meta2head, head, metadata=metaStruct
       ;; get false matches with the scan and prefilter fields.
       ;;
       ;; Actually, this is the file number. Let's make the frame
-      ;; number (of the first frame) 10000 times this.
+      ;; number (of the first frame) 10000 times this. But only if
+      ;; naxis > 2.
       ;;
       filenumber = ((stregex(barefile, '(\.|_)([0-9]+)($)', /extr, /subexp))[2,*])[0]
       if filenumber ne '' then begin
-        framenumber1 = 10000L*long(filenumber)
-        ;;
-        ;; But what keyword to use for this? Invent something
-        ;; for now!
-        sxaddpar, newhead, red_keytab('frame'), framenumber1 $
-                  , '(number of first frame) Inferred from filename.' $
-                  , before = 'COMMENT'
+        if sxpar(newhead, 'NAXIS') gt 2 then begin
+          sxaddpar, newhead, red_keytab('frame'), 10000L*long(filenumber) $
+                    , '(number of first frame) Inferred from filename.' $
+                    , before = 'COMMENT'          
+        endif else begin
+          sxaddpar, newhead, red_keytab('frame'), long(filenumber) $
+                    , ' Inferred from filename.' $
+                    , before = 'COMMENT'          
+        endelse
       endif
     endif 
 
@@ -269,7 +275,7 @@ function red_meta2head, head, metadata=metaStruct
       ;; digits long:
       scannumber = ((stregex(barefile, '(_|\.|^)([0-9]{5})(_|\.|$)', /extr, /subexp))[2,*])[0]
       if scannumber ne '' then sxaddpar, newhead, red_keytab('scannumber'), long(scannumber) $
-                                         , '(scan number) Inferred from filename.' $
+                                         , ' Inferred from filename.' $
                                          , before = 'COMMENT'
     endif
 
