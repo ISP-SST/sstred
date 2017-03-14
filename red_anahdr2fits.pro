@@ -62,7 +62,9 @@
 ;
 ;   2016-09-15 : MGL. New keywords naxisx and datatype. Get what
 ;                little extra info there is from momfbd program
-;                output.
+;                output. 
+;
+;    2017-03-13 : MGL. Recognize TRIPPEL data.
 ;
 ;-
 function red_anahdr2fits, anahdr $
@@ -107,11 +109,16 @@ function red_anahdr2fits, anahdr $
   end
 
   ;; Instrument (as in CRISP raw data)
-  ipos = strpos(anahdr, 'CRISP-')
-  if ipos ne -1 then begin
-     instrument = 'Crisp-'+(strsplit(strmid(anahdr, ipos+6), ']', /extract))[0]
-     sxaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
-  end
+  case 1 of
+    strmatch(anahdr,'*"Spectrograph*"*') : instrument = 'TRIPPEL'
+    strmatch(anahdr,'*CRISP-*') :          instrument = 'CRISP'
+    else: stop
+  endcase
+  sxaddpar, hdr, 'INSTRUME', instrument, ' Name of instrument'
+;  if ipos ne -1 then begin
+;     instrument = 'Crisp-'+(strsplit(strmid(anahdr, ipos+6), ']', /extract))[0]
+;     sxaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
+;  end
   
   ;; Header date (as in the FZ output from Michiel's momfbd program)
   dpos = strpos(anahdr, 'DATE=')
@@ -139,7 +146,7 @@ function red_anahdr2fits, anahdr $
   
   ;; Add SOLARNET keyword
   sxaddpar, hdr, 'SOLARNET', 0.5,  format = 'f3.1' $
-            , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
+            , ' Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
 
   return,hdr
 
