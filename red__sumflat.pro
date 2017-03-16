@@ -102,7 +102,7 @@
 ;-
 pro red::sumflat, overwrite = overwrite, $
                   ustat = ustat, $
-                  old = old, $
+;                  old = old, $
                   remove = remove, $
                   cams = cams, $
                   check = check, $
@@ -115,15 +115,32 @@ pro red::sumflat, overwrite = overwrite, $
                   filter = filter
 
   ;; Defaults
-  if( n_elements(overwrite) eq 0 ) then overwrite = 0
-
-  if( n_elements(check) eq 0 ) then check = 0
-
+;  if( n_elements(overwrite) eq 0 ) then overwrite = 0
+;  if( n_elements(check) eq 0 ) then check = 0
   if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
   else if ptr_valid(self.flat_dir) then dirs = *self.flat_dir
-
   if( n_elements(cams) gt 0 ) then cams = [cams] $
   else if ptr_valid(self.cameras) then cams = *self.cameras
+
+  ;; Prepare for logging (after setting of defaults).
+  ;; Set up a dictionary with all parameters that are in use
+  prpara = dictionary()
+  ;; Boolean keywords
+  if keyword_set(check) then prpara['check'] = check
+  if keyword_set(overwrite) then prpara['overwrite'] = overwrite
+  if keyword_set(store_rawsum) then prpara['store_rawsum'] = store_rawsum
+  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
+  ;; Non-boolean keywords
+  if n_elements(cams) ne 0 then prpara['cams'] = cams
+  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
+  if n_elements(filter) ne 0 then prpara['filter'] = filter
+  if n_elements(lim) ne 0 then prpara['lim'] = lim
+  if n_elements(outdir) ne 0 then prpara['outdir'] = outdir
+  if n_elements(prefilter) ne 0 then prpara['prefilter'] = prefilter
+  if n_elements(ustat) ne 0 then prpara['ustat'] = ustat
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -252,14 +269,17 @@ pro red::sumflat, overwrite = overwrite, $
 
       ;; Make FITS headers 
       head  = red_sumheaders(files[sel], flat,   nsum = nsum)
-      shead = red_sumheaders(files[sel], summed, nsum = nsum)
+      if keyword_set(store_rawsum) then $
+         shead = red_sumheaders(files[sel], summed, nsum = nsum)
       
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document. 
 
-      if self.developer_mode then begin
-        ;; Mark headers for developer mode
-      endif
+      self -> headerinfo_addstep, head, prstep = 'Flat summing' $
+                                  , prproc = inam, prpara = prpara
+      if keyword_set(store_rawsum) then $
+         self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
+                                     , prproc = inam, prpara = prpara
       
       ;; headerout = 't='+time_ave+'
       ;; n_aver='+red_stri(nsum)+' darkcorrected' print,

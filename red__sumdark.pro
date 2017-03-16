@@ -94,6 +94,8 @@
 ;
 ;   2017-03-13 : MGL. Use red_sumheaders.
 ;
+;   2017-03-16 : MGL. Add FITS headers about this processing step.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -103,23 +105,36 @@ pro red::sumdark, overwrite = overwrite, $
                   filter = filter
 
   ;; Defaults
-  if n_elements(overwrite) eq 0 then overwrite = 0
-
-  if n_elements(check) eq 0 then check = 0
-
+;  if n_elements(overwrite) eq 0 then overwrite = 0
+;  if n_elements(check) eq 0 then check = 0
   if n_elements(dirs) gt 0 then dirs = [dirs] $
   else if ptr_valid(self.dark_dir) then dirs = *self.dark_dir
-
   if n_elements(cams) gt 0 then cams = [cams] $
   else if ptr_valid(self.cameras) then cams = *self.cameras
+
+  ;; Prepare for logging (after setting of defaults).
+  ;; Set up a dictionary with all parameters that are in use
+  prpara = dictionary()
+  ;; Boolean keywords
+  if keyword_set(overwrite) then prpara['overwrite'] = overwrite
+  if keyword_set(check) then prpara['check'] = check
+  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
+  ;; Non-boolean keywords
+  if n_elements(cams) ne 0 then prpara['cams'] = cams
+  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
+  if n_elements(filter) ne 0 then prpara['filter'] = filter
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo1
-  help, /struct, self.done, output = selfinfo2 
-  red_writelog, selfinfo = [selfinfo1, selfinfo2]
+;  ;; Logging
+;  help, /obj, self, output = selfinfo1
+;  help, /struct, self.done, output = selfinfo2 
+;  red_writelog, selfinfo = [selfinfo1, selfinfo2]
 
   Ncams = n_elements(cams)
   if( Ncams eq 0) then begin
@@ -166,6 +181,8 @@ pro red::sumdark, overwrite = overwrite, $
       self -> get_calib, states[sel[0]], darkname = darkname, status = status
       if status ne 0 then stop
 
+      file_mkdir, file_dirname(darkname)
+
       if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
         print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
         continue
@@ -202,11 +219,8 @@ pro red::sumdark, overwrite = overwrite, $
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document.
 
-      if self.developer_mode then begin
-        ;; Mark headers for developer mode
-      endif
-      
-      file_mkdir, file_dirname(darkname)
+      self -> headerinfo_addstep, head, prstep = 'Dark summing' $
+                                  , prproc = inam, prpara = prpara
 
       ;; Write ANA format dark
       print, inam+' : saving ', darkname
