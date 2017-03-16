@@ -13,20 +13,50 @@
 ;    Mats Löfdahl, ISP
 ; 
 ; 
-; :Returns:
-; 
-; 
 ; :Params:
 ; 
+;    header : in, type=strarr
+;
+;      The FITS header to be modified.
 ; 
 ; :Keywords:
 ; 
+;    prstep : in, optional, type=string
+;
+;       The processing step name.
+;
+;    prproc : in, optional, type=string
+;
+;       The name of the procedure used.
+;
+;    prmode : in, optional, type=string
+;
+;       The processing mode .
+;
+;    prpara : in, optional, type=string
+;
+;       List of parameters/options for the procedure.
+;
+;    addlib : in, optional, type=string
+;
+;       Library in addition to the default ones.
+;
+;    level  : in, optional, type=string
+;
+;       
+;
+;    version  : in, optional, type=string
+;
+;       
+;
 ;   
 ;   
 ;   
 ; 
 ; 
 ; :History:
+;
+;   2017-03-16 : MGL. First version.
 ; 
 ; 
 ;-
