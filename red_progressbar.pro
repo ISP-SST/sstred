@@ -132,6 +132,6 @@ for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /nobar& wait,.1 & e
 for i=0,N-1 do begin red_progressbar,i,N,'Test', /nobar & wait,.1 & end
 
 
-for i=10,N-1 do begin red_progressbar,i,N,'Test',clock=clock & wait,.1 & end    
+for i=10,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /predict & wait,.1 & end    
 
 end
