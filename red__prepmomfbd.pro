@@ -57,10 +57,14 @@
 ;    pref : 
 ;   
 ;   
+; 
+;    dirs : in, optional, type=strarr
 ;   
-;    escan : 
+;       The data directories to process.
 ;   
+;    escan :  in, optional, type=integer
 ;   
+;       Scan number.
 ;   
 ;    div : 
 ;
