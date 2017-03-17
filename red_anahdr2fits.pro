@@ -112,9 +112,9 @@ function red_anahdr2fits, anahdr $
   case 1 of
     strmatch(anahdr,'*"Spectrograph*"*') : instrument = 'TRIPPEL'
     strmatch(anahdr,'*CRISP-*') :          instrument = 'CRISP'
-    else: stop
+    else:
   endcase
-  sxaddpar, hdr, 'INSTRUME', instrument, ' Name of instrument'
+  if n_elements(instrument) gt 0 then sxaddpar, hdr, 'INSTRUME', instrument, ' Name of instrument'
 ;  if ipos ne -1 then begin
 ;     instrument = 'Crisp-'+(strsplit(strmid(anahdr, ipos+6), ']', /extract))[0]
 ;     sxaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
