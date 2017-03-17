@@ -57,6 +57,8 @@
 ; :History:
 ;
 ;   2017-03-16 : MGL. First version.
+;
+;   2017-03-16 : MGL. Use red_headerinfo_addlib.
 ; 
 ; 
 ;-
@@ -71,65 +73,56 @@ pro red::headerinfo_addstep, header $
   
   if n_elements(header) eq 0 then mkhdr, header, 0
   
+  prevkey = 'OBS_SHDU';'SOLARNET'
+
   ;; Look for existing processing steps, set stepnumber to one higher.
   stepnumber = 0
   repeat begin
     stepnumber++
     stp = strtrim(stepnumber, 2)
-    tmp = sxpar(header, 'PRSTEP'+stp, count = count)
+    tmp = fxpar(header, 'PRSTEP'+stp, count = count)
   endrep until count eq 0
+
+;  if stepnumber gt 1 then prevkey = 
 
   ;; Add the LONGSTRN keyword, just in case. (Doing it here lets us
   ;; position it a bit better.)
 ;  fxaddpar_contwarn, header, 'SOLARNET'
 
+  if n_elements(prstep) eq 0 then prstep = 'Unknown'
+  fxaddpar, header, 'PRSTEP'+stp, prstep, ' Processing step name', after = prevkey
+  prevkey = 'PRSTEP'+stp
+
+  ;; Procedure name
+  if n_elements(prproc) ne 0 then begin
+    key = 'PRPROC'+stp
+    fxaddpar, header, key, prproc, ' Name of procedure used', after = prevkey
+    prevkey = key
+  endif
+
   ;; Add headers with library names and versions. (Bug: Should be
   ;; listed in the order they appear in the path!)
-  prlibcomment = ' Software library'
-  if n_elements(prproc) ne 0 then prlibcomment += ' containing '+prproc
-  fxaddpar, header, 'PRLIB'+stp, after = 'OBS_SHDU' $
-            , 'SSTRED', prlibcomment
-  fxaddpar, header, 'PRVER'+stp, after = 'PRLIB'+stp $
-            , self.version_pipeline, ' Library version/MJD of last update' 
-  fxaddpar, header, 'PRLIB'+stp+'A', after = 'PRVER'+stp $
-            , 'IDLAstro', ' Additional software library'
-  fxaddpar, header, 'PRVER'+stp+'A', after = 'PRLIB'+stp+'A' $
-            , self.version_idlastro, ' Library version/MJD of last update'
-  fxaddpar, header, 'PRLIB'+stp+'B', after = 'PRVER'+stp+'A' $
-            , 'Coyote', ' Additional software library'
-  fxaddpar, header, 'PRVER'+stp+'B', after = 'PRLIB'+stp+'B' $
-            , self.version_coyote, ' Library version/MJD of last update'
-  fxaddpar, header, 'PRLIB'+stp+'C', after = 'PRVER'+stp+'B' $
-            , 'mpfit', ' Additional software library'
-  fxaddpar, header, 'PRVER'+stp+'C', after = 'PRLIB'+stp+'C' $
-            , self.version_mpfit, ' Library version/MJD of last update'
-  fxaddpar, header, 'PRLIB'+stp+'D', after = 'PRVER'+stp+'C' $
-            , 'reduxdlm', ' Additional software library'
-  fxaddpar, header, 'PRVER'+stp+'D', after = 'PRLIB'+stp+'D' $
-            , self.version_reduxdlm, ' Library version/MJD of last update'
-
-  for ilib = 0, n_elements(addlib)-1 do begin
-    libletter = string(byte(69+ilib)) ; 'D' = 68!
-    fxaddpar, header, 'PRLIB'+stp+libletter, after = 'PRVER'+stp+string(byte(68+ilib)) $
-              , addlib[ilib], ' Additional software library'
-  endfor                        ; ilib
+  red_headerinfo_addlib, head, 'SSTRED', self.version_pipeline, prevkey = prevkey
+  red_headerinfo_addlib, head, 'IDLAstro', self.version_idlastro , prevkey = prevkey
+  red_headerinfo_addlib, head, 'Coyote', self.version_coyote, prevkey = prevkey
+  red_headerinfo_addlib, head, 'mpfit', self.version_mpfit, prevkey = prevkey
+  red_headerinfo_addlib, head, 'reduxdlm', self.version_reduxdlm, prevkey = prevkey
+  for ilib = 0, n_elements(addlib)-1 do red_headerinfo_addlib, head, addlib[ilib], prevkey = prevkey
   
-  if n_elements(prstep) eq 0 then prstep = 'Unknown'
-  fxaddpar, header, 'PRSTEP'+stp, prstep, ' Processing step name', before = 'PRLIB'+stp
-
-;  FXADDPAR_CONTWARN, HEADER, 'PRSTEP'+stp
-  
+  ;; Procedure mode
   if self.developer_mode then red_append, prmode, 'Developer mode' 
   if n_elements(prmode) gt 0 then begin
     prm = strjoin(prmode, ',')
-    if prm ne '' then $
-       fxaddpar,header,'PRMODE'+stp, prm, ' Processing mode', before = 'PRLIB'+stp
+    key = 'PRMODE'+stp
+    if prm ne '' then begin
+      fxaddpar,header, key, prm, ' Processing mode', after = prevkey
+      prekey = key
+    end
   endif
   
-  if n_elements(prproc) ne 0 then $
-     fxaddpar, header, 'PRPROC'+stp, prproc, ' Name of procedure used', before = 'PRLIB'+stp
-  
+  ;; Procedure parameters
   if n_elements(prpara) ne 0 then begin
+    key = 'PRPARA'+stp
     case typename(prpara) of
       'STRING' : prp = strjoin(strtrim(prpara, 2), ',')
       'DICTIONARY' : begin
@@ -144,10 +137,10 @@ pro red::headerinfo_addstep, header $
       end
       else : stop
     endcase
-  endif else prp = ''
-  fxaddpar, header, 'PRPARA'+stp, prp $, before = 'PRLIB'+stp $
-            , ' List of parameters/options for PRPROC'+stp
-
+    fxaddpar, header, key, prp $, after = prevkey $
+              , ' List of parameters/options for PRPROC'+stp
+    prevkey = key
+  endif
 
   ;; Add headers with other step info.
 ;  fxaddpar, header, 'VERSION', 0, 'FITS file processing generation/version'
