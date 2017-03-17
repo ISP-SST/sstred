@@ -72,7 +72,8 @@ pro red::headerinfo_addstep, header $
                              , version = version
   
   if n_elements(header) eq 0 then mkhdr, header, 0
-  
+
+
   prevkey = 'OBS_SHDU';'SOLARNET'
 
   ;; Look for existing processing steps, set stepnumber to one higher.
@@ -82,12 +83,6 @@ pro red::headerinfo_addstep, header $
     stp = strtrim(stepnumber, 2)
     tmp = fxpar(header, 'PRSTEP'+stp, count = count)
   endrep until count eq 0
-
-;  if stepnumber gt 1 then prevkey = 
-
-  ;; Add the LONGSTRN keyword, just in case. (Doing it here lets us
-  ;; position it a bit better.)
-;  fxaddpar_contwarn, header, 'SOLARNET'
 
   if n_elements(prstep) eq 0 then prstep = 'Unknown'
   fxaddpar, header, 'PRSTEP'+stp, prstep, ' Processing step name', after = prevkey
@@ -102,13 +97,13 @@ pro red::headerinfo_addstep, header $
 
   ;; Add headers with library names and versions. (Bug: Should be
   ;; listed in the order they appear in the path!)
-  red_headerinfo_addlib, head, 'SSTRED', self.version_pipeline, prevkey = prevkey
-  red_headerinfo_addlib, head, 'IDLAstro', self.version_idlastro , prevkey = prevkey
-  red_headerinfo_addlib, head, 'Coyote', self.version_coyote, prevkey = prevkey
-  red_headerinfo_addlib, head, 'mpfit', self.version_mpfit, prevkey = prevkey
-  red_headerinfo_addlib, head, 'reduxdlm', self.version_reduxdlm, prevkey = prevkey
-  for ilib = 0, n_elements(addlib)-1 do red_headerinfo_addlib, head, addlib[ilib], prevkey = prevkey
-  
+  red_headerinfo_addlib, header, 'SSTRED', self.version_pipeline
+  red_headerinfo_addlib, header, 'IDLAstro', self.version_idlastro
+  red_headerinfo_addlib, header, 'Coyote', self.version_coyote
+  red_headerinfo_addlib, header, 'mpfit', self.version_mpfit
+  red_headerinfo_addlib, header, 'reduxdlm', self.version_reduxdlm
+  for ilib = 0, n_elements(addlib)-1 do red_headerinfo_addlib, header, addlib[ilib]
+
   ;; Procedure mode
   if self.developer_mode then red_append, prmode, 'Developer mode' 
   if n_elements(prmode) gt 0 then begin
@@ -116,10 +111,10 @@ pro red::headerinfo_addstep, header $
     key = 'PRMODE'+stp
     if prm ne '' then begin
       fxaddpar,header, key, prm, ' Processing mode', after = prevkey
-      prekey = key
+      prevkey = key
     end
   endif
-  
+
   ;; Procedure parameters
   if n_elements(prpara) ne 0 then begin
     key = 'PRPARA'+stp
@@ -137,7 +132,7 @@ pro red::headerinfo_addstep, header $
       end
       else : stop
     endcase
-    fxaddpar, header, key, prp $, after = prevkey $
+    fxaddpar, header, key, prp, after = prevkey $
               , ' List of parameters/options for PRPROC'+stp
     prevkey = key
   endif
