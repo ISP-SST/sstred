@@ -68,17 +68,25 @@ pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey
   key = 'PRLIB'+stp
   tmp = fxpar(head, key, count = count)
   if count eq 0 then begin
+    ;; This is the "main" library, no letter added
     letter = ''
   endif else begin
-    ;; We should add a letter. But which letter?
+    ;; We should add a letter. But which letter? And after which
+    ;; keyword should we add the next?
+    altkey = 'PRVER'+stp
+    tmp = fxpar(head, altkey, count = count2)
+    if count2 gt 0 then key = altkey
     letternumber = 64B           ; One before 'A'
     repeat begin
       letternumber++
       letter = string(letternumber)
+      prevkey = key
       key = 'PRLIB'+stp+letter
       tmp = fxpar(head, key, count = count)
+      altkey = 'PRVER'+stp+letter
+      tmp = fxpar(head, altkey, count = count2)
+      if count2 gt 0 then key = altkey
     endrep until count eq 0
-    prevkey = key
   endelse
 
 
