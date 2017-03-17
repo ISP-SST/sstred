@@ -22,15 +22,24 @@
 ;
 ;       The name of the data file.
 ; 
+; :Keywords:
+; 
+;    version : out, optional, type=string
+;
+;       The version of the momfbd (or redux) program that wrote the
+;       file.
+; 
 ; :History:
 ; 
 ;    2017-03-10 : MGL. Moved reading of headers from MOMFBD format
 ;                 files from red_readhead.pro.
 ; 
+;    2017-03-17 : MGL. New keyword "version".
+; 
 ; 
 ; 
 ;-
-function red_readhead_momfbd, fname
+function red_readhead_momfbd, fname, version = version
 
   compile_opt idl2
 
@@ -42,6 +51,17 @@ function red_readhead_momfbd, fname
   date_ave = mr.date + 'T' + mr.time
   sxaddpar, header, 'DATE-AVE', date_ave, ' ', before='COMMENT'
 
+  ;; Set version to the version of the momfbd (or redux) program that
+  ;; wrote the file.
+  version = mr.version
+
   return, header
         
+end
+
+
+head = red_readhead_momfbd('/scratch/mats/2016.09.19/CHROMIS/momfbd_test_pd2/09:28:36/3950/cfg/results/camXXX_2016-09-19T09:28:36_00071_12.00ms_G10.00_3934_3934_-313.momfbd', version = version)
+
+print, version
+
 end
