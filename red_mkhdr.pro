@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Make FITS header they way we want them.
+; Wrapper, make FITS header they way we want them.
 ; 
 ; :Categories:
 ;
@@ -46,12 +46,12 @@
 ;   2017-03-17 : MGL. First version. 
 ; 
 ;-
-pro red_mkhdr, header, im, naxisx, IMAGE = image, EXTEND = extend
+pro red_mkhdr, header, im, naxisx, _ref_extra = extra ;IMAGE = image, EXTEND = extend
 
   if n_elements(naxisx) gt 0 then begin
-    mkhdr, header, im, naxisx, IMAGE = image, EXTEND = extend
+    mkhdr, header, im, naxisx, _strict_extra = extra ;IMAGE = image, EXTEND = extend
   endif else begin
-    mkhdr, header, im, IMAGE = image, EXTEND = extend
+    mkhdr, header, im, _strict_extra = extra ;IMAGE = image, EXTEND = extend
   endelse
 
   ;; Add the OGIP warning near the end of the header so it doesn't
