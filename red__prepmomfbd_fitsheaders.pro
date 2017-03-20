@@ -83,44 +83,49 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
       
       cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
       cfg_files = file_search(cfg_dir+'momfbd_reduc_'+prefs[ipref]+'_?????.cfg', count = Ncfg)
-
+      
+      progress_msg = 'Making fitsheaders for ' + strreplace(strreplace(cfg_dir,'//','/'),self.out_dir,'')
 
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
         
+        red_progressbar, icfg, Ncfg, progress_msg, clock=clock, /predict
+
         spawn, 'cat '+cfg_files[icfg], cfg
         Nlines = n_elements(cfg)
 
-        ;; Get the prpara (processing parameters) from the global config keywords
+        ;; Get prpara (processing parameters) from the global config keywords
         Gstart = (where(strmatch(cfg,'}*'),Nmatch))[Nmatch-1] + 1
+        undefine, Gprpara       ; Start fresh
         for iline = Gstart, Nlines-1 do begin
           cfgsplit = strsplit(cfg[iline], '=', /extract)
           case cfgsplit[0] of
             ;; Make list of possible global keywords complete!
-            'ARCSECPERPIX'    : red_append, Gprpara, 'ARCSECPERPIX=' + cfgsplit[1]
-            'BASIS'           : red_append, Gprpara, 'BASIS=' + cfgsplit[1]
-            'DATA_TYPE'       : red_append, Gprpara, 'DATA_TYPE=' + cfgsplit[1]
-            'DATE_OBS'        : red_append, Gprpara, 'DATE_OBS=' + cfgsplit[1]
-            'FAST_QR'         : red_append, Gprpara, 'FAST_QR'
+            'ARCSECPERPIX'    : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
+            'BASIS'           : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
+            'DATA_TYPE'       : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
+            'DATE_OBS'        : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
+            'FAST_QR'         : red_append, Gprpara,  cfgsplit[0]
             'FILE_TYPE'       : begin
               file_type = cfgsplit[1]
-              red_append, Gprpara, 'FILE_TYPE=' + file_type
+              red_append, Gprpara, cfgsplit[0] + '=' + file_type
             end
-            'FIT_PLANE'       : red_append, Gprpara, 'FIT_PLANE'
-            'FPMETHOD'        : red_append, Gprpara, 'FPMETHOD=' + cfgsplit[1]
-            'GETSTEP'         : red_append, Gprpara, 'GETSTEP=' + cfgsplit[1]
-            'GET_PSF'         : red_append, Gprpara, 'GET_PSF'
-            'GET_PSF_AVG'     : red_append, Gprpara, 'GET_PSF_AVG'
-            'GRADIENT'        : red_append, Gprpara, 'GRADIENT=' + cfgsplit[1]
-            'IMAGE_NUMS'      : red_append, Gprpara, 'IMAGE_NUMS=' + '['+cfgsplit[1]+']'
-            'MAX_LOCAL_SHIFT' : red_append, Gprpara, 'MAX_LOCAL_SHIFT=' + cfgsplit[1]
-            'MODES'           : red_append, Gprpara, 'MODES=' + '['+cfgsplit[1]+']'
-            'NEW_CONSTRAINTS' : red_append, Gprpara, 'NEW_CONSTRAINTS'
-            'NUM_POINTS'      : red_append, Gprpara, 'NUM_POINTS=' + cfgsplit[1]
-            'PIXELSIZE'       : red_append, Gprpara, 'PIXELSIZE=' + cfgsplit[1]
-            'SIM_X'           : red_append, Gprpara, 'SIM_X=' + '['+cfgsplit[1]+']'
-            'SIM_Y'           : red_append, Gprpara, 'SIM_Y=' + '['+cfgsplit[1]+']'
-            'TELESCOPE_D'     : red_append, Gprpara, 'TELESCOPE_D=' + cfgsplit[1]
+            'FIT_PLANE'       : red_append, Gprpara, cfgsplit[0]
+            'FPMETHOD'        : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'GETSTEP'         : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'GET_PSF'         : red_append, Gprpara, cfgsplit[0]
+            'GET_ALPHA'       : red_append, Gprpara, cfgsplit[0]
+            'GET_PSF_AVG'     : red_append, Gprpara, cfgsplit[0]
+            'GRADIENT'        : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'IMAGE_NUMS'      : red_append, Gprpara, cfgsplit[0] + '=' + '['+cfgsplit[1]+']'
+            'MAX_LOCAL_SHIFT' : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'MODES'           : red_append, Gprpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
+            'NEW_CONSTRAINTS' : red_append, Gprpara, cfgsplit[0]
+            'NUM_POINTS'      : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'PIXELSIZE'       : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'SIM_X'           : red_append, Gprpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
+            'SIM_Y'           : red_append, Gprpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
+            'TELESCOPE_D'     : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
             ;; Ignored config lines:
             'PROG_DATA_DIR' : 
 ;            '' : 
@@ -141,7 +146,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
           ;; Make a generic header. Data type and dimensions can be
           ;; added when we read the output. 
-          mkhdr, head, 0        
+          red_mkhdr, head, 0        
 
           prpara = Gprpara      ; Start from the global parameters
 
@@ -155,11 +160,11 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             if ~strmatch(cfgline,'*{') and ~strmatch(cfgline,'*}') then begin
               cfgsplit = strsplit(cfgline, '=', /extract)
               case cfgsplit[0] of
-                'WAVELENGTH'  : red_append, prpara, 'WAVELENGTH=' + cfgsplit[1]
-                'WEIGHT'      : red_append, prpara, 'WEIGHT=' + cfgsplit[1]
+                'WAVELENGTH'  : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                'WEIGHT'      : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
                 'OUTPUT_FILE' : begin
                   output_file = cfgsplit[1]
-                  red_append, prpara, 'OUTPUT_FILE=' + output_file
+                  red_append, prpara, cfgsplit[0] + '=' + output_file
                 end
                 else : begin
                   print, inam + ' : Unknown cfg parameter:'
@@ -170,6 +175,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             endif
           endfor ; iline
 
+          if n_elements(file_type) eq 0 then file_type = 'ANA' ; Default in momfbd program.
+          header_file = cfg_dir + output_file + '.fitsheader'
           case file_type of
             'MOMFBD' : output_file += '.momfbd'
             'ANA'    : output_file += '.f0'
@@ -177,7 +184,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             else: stop
           endcase
           fxaddpar, head, 'FILENAME', file_basename(output_file), ' MOMFBD restored data'
-          header_file = cfg_dir + output_file + '.fitsheader'
+
 
           ;; Channels
           if Nchan gt 0 then prmode = 'Phase Diversity' else prmode = ''
@@ -191,16 +198,17 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               if ~strmatch(cfgline,'*{') and ~strmatch(cfgline,'*}') then begin
                 cfgsplit = strsplit(cfgline, '=', /extract)
                 case cfgsplit[0] of
-                  'ALIGN_CLIP'        : red_append, prpara, 'ALIGN_CLIP=' + '['+cfgsplit[1]+']'
-                  'DARK_NUM'          : red_append, prpara, 'DARK_NUM=' + cfgsplit[1]
-                  'DARK_TEMPLATE'     : red_append, prpara, 'DARK_TEMPLATE=' + cfgsplit[1]
-                  'FILENAME_TEMPLATE' : red_append, prpara, 'FILENAME_TEMPLATE=' + cfgsplit[1]
-                  'GAIN_FILE'         : red_append, prpara, 'GAIN_FILE=' + cfgsplit[1]
-                  'IMAGE_DATA_DIR'    : red_append, prpara, 'IMAGE_DATA_DIR=' + cfgsplit[1]
-                  'INCOMPLETE'        : red_append, prpara, 'INCOMPLETE'
-                  'XOFFSET'           : red_append, prpara, 'XOFFSET=' + cfgsplit[1]
-                  'YOFFSET'           : red_append, prpara, 'YOFFSET=' + cfgsplit[1]
-                  'DIVERSITY'         : red_append, prpara, 'DIVERSIY=' + cfgsplit[1]
+                  'ALIGN_CLIP'        : red_append, prpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
+                  'DARK_NUM'          : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'DARK_TEMPLATE'     : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'FILENAME_TEMPLATE' : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'GAIN_FILE'         : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'IMAGE_DATA_DIR'    : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'INCOMPLETE'        : red_append, prpara, cfgsplit[0]
+                  'XOFFSET'           : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'YOFFSET'           : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'DISCARD'           : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'DIVERSITY'         : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
                   else : begin
                     print, inam + ' : Unknown cfg parameter:'
                     print, cfg[iline]
@@ -217,10 +225,15 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                                       , prpara = prpara $
                                       , prmode = prmode $
                                       , addlib = 'momfbd/redux' 
-          ;; Select momfbd or redux and add version number when
-          ;; reading the output.
+          ;; At this point we don't know which program will be used,
+          ;; momfbd or redux. Select one (if possible) and add version
+          ;; number when reading the output.
 
-          stop
+          ;; Additional keywords that should be set after momfbd
+          ;; processing.
+          fxaddpar, head, 'FILLED', 1, 'Missing pixels have been filled.'
+
+          
 
           ;; Write the header file
           fxwrite, header_file, head 
