@@ -181,14 +181,16 @@ arr[1,*] = red_time2double(datebeg,/inv)
 datebeg = strjoin(temporary(arr),'T')
 datebeg = reform(datebeg,[1,1,500])
 
-struct = {tabulations: {date_beg: {val:datebeg,summary:datebeg[0]},$
-                        datamean: {val:dmean,comment:' [DN] Mean of data'},$
+struct = {tabulations: {date_beg: {val:datebeg,summary:datebeg[0],unit:'ISODATE (ISO-8601)'},$
+                        datamean: {val:dmean,comment:' [DN] Mean of data',unit:'DN'},$
                         datamin: {val:dmin,comment:' [DN] Minimum of data',$
                                   summary: min(dark1)},$
                         datamax: {val:dmax,comment:' [DN] Maximum of data',$
                                   summary:max(dark1)},$
                         datamedn:{val:dmed,comment:' [DN] Median of data',$
                                   summary:median(dark1)},$
+                        test:{val:1l,comment:' test scalar'},$
+                        testarr:{val:fltarr(1),comment:' test single element array'},$
                         comment: ' For storing tabulated keywords'}}
 
 cd,curdir
