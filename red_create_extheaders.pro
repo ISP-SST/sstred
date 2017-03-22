@@ -99,11 +99,18 @@ pro red_create_extheaders,tabhdu,extname,head
     idx = where(tags eq 'COMMENT',cnt)
     if cnt ne 0 then comment = tabkeywd.(idx) else comment = ''
     
+    ;; Unit (supplies optional input to TUNIT keyword in the extension
+    ;; header)
+    
+    idx = where(tags eq 'UNIT',cnt)
+    if cnt ne 0 then unit = tabkeywd.(idx) else unit = ''
+    
     ;; Add the keyword to the header
     sxaddpar,head,keys[i],summary_value,comment,after=after
 
     ;; Add tabulated values to the bintable
-    fxbaddcol,i+1,bdr,tabkeywd.val,keys[i],comment
+    if unit eq '' then fxbaddcol,i+1,bdr,tabkeywd.val,keys[i],comment $
+    else fxbaddcol,i+1,bdr,tabkeywd.val,keys[i],comment,tunit=unit
   endfor
 
   ;; Add the tabulatd keyword according to Stein Vidar's solarnet
