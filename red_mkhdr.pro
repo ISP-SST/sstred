@@ -44,6 +44,8 @@
 ; :History:
 ;
 ;   2017-03-17 : MGL. First version. 
+;
+;   2017-03-22 : MGL. Add TIMESYS.
 ; 
 ;-
 pro red_mkhdr, header, im, naxisx, _ref_extra = extra ;IMAGE = image, EXTEND = extend
@@ -54,12 +56,15 @@ pro red_mkhdr, header, im, naxisx, _ref_extra = extra ;IMAGE = image, EXTEND = e
     mkhdr, header, im, _strict_extra = extra ;IMAGE = image, EXTEND = extend
   endelse
 
+  fxaddpar, header, 'TIMESYS', 'UTC'
+
   ;; Add the OGIP warning near the end of the header so it doesn't
   ;; appear near the first added long keyword. Do it "by hand" rather
   ;; than calling FXADDPAR_CONTWARN because 1) that routine may put
   ;; the comment lines in reverse order and 2) it might not be
   ;; compiled as it is defined in fxaddpar.pro as a helper routine.
-  fxaddpar, header, 'LONGSTRN', 'OGIP 1.0', ' The OGIP long string convention may be used.' $
+
+  fxaddpar, header, 'LONGSTRN', 'OGIP 1.0', 'The OGIP long string convention may be used.' $
             , before = 'COMMENT'
   fxaddpar, header, 'COMMENT', "" $
             , after = 'LONGSTRN'
