@@ -29,7 +29,7 @@
 ; 
 ; :Keywords:
 ; 
-;    time_ave  : out, optional, type=string
+;    time_avg  : out, optional, type=string
 ;   
 ;       The average timestamp of the summed frames.
 ;   
@@ -150,7 +150,7 @@
 ;                red_readdata. 
 ; 
 ;   2016-05-23 : MGL. Added time_beg and time_end keywords. Changed
-;                time keyword to time_ave. Do summing in double
+;                time keyword to time_avg. Do summing in double
 ;                precision.  
 ; 
 ;   2016-05-24 : MGL. Removed filtering of FITS headers.  
@@ -169,7 +169,7 @@
 ; 
 ;-
 function red_sumfiles, files_list $
-                       , time_ave = time_ave $
+                       , time_avg = time_avg $
                        , time_beg = time_beg $
                        , time_end = time_end $
                        , summed = summed $
@@ -260,7 +260,7 @@ function red_sumfiles, files_list $
     head = red_readhead(files_list[0], /silent)
     time_beg = red_time2double((strsplit(fxpar(head, 'DATE-BEG'), 'T', /extract))[1])
     time_end = red_time2double((strsplit(fxpar(head, 'DATE-END'), 'T', /extract))[1])
-    time_ave = red_timestring((time_beg + time_end) / 2d, Nsecdecimals = 6)
+    time_avg = red_timestring((time_beg + time_end) / 2d, Nsecdecimals = 6)
     time_beg = red_timestring(time_beg, Nsecdecimals = 6)
     time_end = red_timestring(time_end, Nsecdecimals = 6)
     ;; Include gain, dark, fillpix, backscatter here? This case
@@ -347,7 +347,7 @@ function red_sumfiles, files_list $
 
   ;; Set time stamps to potentially be returned as keywords.
   time_beg = red_timestring(min(times_beg[idx]), Nsecdecimals = 6)
-  time_ave = red_timestring(mean(times[idx]),    Nsecdecimals = 6)
+  time_avg = red_timestring(mean(times[idx]),    Nsecdecimals = 6)
   time_end = red_timestring(max(times_end[idx]), Nsecdecimals = 6)
 
   
@@ -590,7 +590,7 @@ dnames = file_search('/mnt/sand15n/Incoming/2016.05.09/Dark/12:43:00/Chromis-W/c
 print, Ndarks
 
 dsum_check = red_sumfiles(dnames[0:2] $
-                          , time_ave = time_ave_check $
+                          , time_avg = time_avg_check $
                           , time_beg = time_beg_check $
                           , time_end = time_end_check $
                           , summed = summed_check $
@@ -599,7 +599,7 @@ dsum_check = red_sumfiles(dnames[0:2] $
                          )
 
 dsum = red_sumfiles(dnames[0:2] $
-                    , time_ave = time_ave $
+                    , time_avg = time_avg $
                     , time_beg = time_beg $
                     , time_end = time_end $
                     , summed = summed $
