@@ -244,22 +244,22 @@ pro red::sumflat, overwrite = overwrite, $
         tmplist = files[sel]
         tmplist = tmplist(sort(tmplist))
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(tmplist, time_ave = time_ave, check = check, $
+          flat = rdx_sumfiles(tmplist, time_ave = time_avg, check = check, $
                               lun = lun, lim = lim, summed = summed, nsum = nsum $
                               , filter = filter, verbose=2)
         endif else begin
           flat = red_sumfiles(tmplist, check = check, $
-;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
+;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
                               lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endif else begin 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(files[sel], time_ave = time_ave, check = check, $
+          flat = rdx_sumfiles(files[sel], time_ave = time_avg, check = check, $
                               lim = lim, summed = summed, nsum = nsum $
                               , filter = filter, verbose=2)
         endif else begin
           flat = red_sumfiles(files[sel], check = check, $
-;                                  time_ave = time_ave, time_beg = time_beg, time_end = time_end, $
+;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
                               lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endelse
@@ -281,7 +281,7 @@ pro red::sumflat, overwrite = overwrite, $
          self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
                                      , prproc = inam, prpara = prpara
       
-      ;; headerout = 't='+time_ave+'
+      ;; headerout = 't='+time_avg+'
       ;; n_aver='+red_stri(nsum)+' darkcorrected' print,
       ;; inam+' : saving ' + flatname file_mkdir,
       ;; file_dirname(flatname) fzwrite, flat, flatname,
@@ -301,7 +301,7 @@ pro red::sumflat, overwrite = overwrite, $
       ;; Output the raw (if requested) and averaged flats
       if keyword_set(store_rawsum) then begin
         fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
-        headerout = 't='+time_ave+' n_sum='+red_stri(nsum)
+        headerout = 't='+time_avg+' n_sum='+red_stri(nsum)
         print, inam+' : saving ' + sflatname
         file_mkdir, file_dirname(sflatname)
         flat_raw = long(temporary(summed))
