@@ -137,7 +137,7 @@ function red_anahdr2fits, anahdr $
         time_obs = strmid(anahdr, tpos+9,dpos-(tpos+9))
         if strlen(time_obs) gt 1 then date_obs += 'T' + time_obs
      endif 
-     sxaddpar, hdr, 'DATE-AVE', date_obs, '', after = 'DATE'
+     sxaddpar, hdr, 'DATE-AVG', date_obs, '', after = 'DATE'
   endif
 
   ;; Should extract more info from anahdr: states of prefilter, liquid
