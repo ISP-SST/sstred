@@ -67,6 +67,10 @@
 ;   
 ;    crop : 
 ;   
+;    momfbddir :  in, optional, type=string, default='momfbd'
+;   
+;       Top directory of output tree.
+;   
 ;   
 ;   
 ; 
@@ -110,6 +114,11 @@
 ;                       create the cube aligned with the solar north.
 ;                       The angle is in radians.
 ;
+;   2017-03-20 : MGL. New keyword momfbddir.
+;
+;   2017-03-24 : MGL. Add prpara info.
+;
+;
 ;
 ;-
 pro chromis::polish_tseries, xbd = xbd $
@@ -129,10 +138,30 @@ pro chromis::polish_tseries, xbd = xbd $
 ;                             , ext_date = ext_date $
                              , timefiles = timefiles $
                              , fitsoutput = fitsoutput $
+                             , momfbddir = momfbddir $
                              , blur = blur $
                              , offset_angle = offset_angle
   
-
+  red_make_prpara, prpara, xbd 
+  red_make_prpara, prpara, ybd 
+  red_make_prpara, prpara, np 
+  red_make_prpara, prpara, clip 
+  red_make_prpara, prpara, tile 
+  red_make_prpara, prpara, tstep 
+  red_make_prpara, prpara, scale 
+  red_make_prpara, prpara, square 
+  red_make_prpara, prpara, negang 
+  red_make_prpara, prpara, crop 
+  red_make_prpara, prpara, fullframe 
+  red_make_prpara, prpara, timefiles 
+  red_make_prpara, prpara, fitsoutput 
+  red_make_prpara, prpara, momfbddir 
+  red_make_prpara, prpara, blur 
+  red_make_prpara, prpara, offset_angle 
+  
+  ;; Get keywords
+  if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
+  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
@@ -153,7 +182,7 @@ pro chromis::polish_tseries, xbd = xbd $
   ;; restored data.
 
   ;; Find timestamp subdirs
-  search_dir = self.out_dir +'/momfbd/'
+  search_dir = self.out_dir +'/'+momfbddir+'/'
   timestamps = file_basename(file_search(search_dir + '*' $
                                          , count = Ntimestamps, /test_dir))
   if Ntimestamps eq 0 then begin
@@ -180,7 +209,7 @@ pro chromis::polish_tseries, xbd = xbd $
     datestamp = self.isodate+'T'+timestamp
 
     ;; Find prefilter subdirs
-    search_dir = self.out_dir +'/momfbd/'+timestamp+'/'
+    search_dir = self.out_dir +'/'+momfbddir+'/'+timestamp+'/'
     prefilters = file_basename(file_search(search_dir + '*' $
                                            , count = Nprefs, /test_dir))
     if Nprefs eq 0 then begin
@@ -203,7 +232,7 @@ pro chromis::polish_tseries, xbd = xbd $
     ;; Loop over WB prefilters
     for ipref = 0L, Nprefs-1 do begin
 
-      search_dir = self.out_dir + '/momfbd/' + timestamp $
+      search_dir = self.out_dir + '/'+momfbddir+'/' + timestamp $
                    + '/' + prefilters[ipref] + '/cfg/results/'
       case self.filetype of
         'ANA': extension = '.f0'
@@ -211,16 +240,21 @@ pro chromis::polish_tseries, xbd = xbd $
         'FITS': extension = '.fits'
       endcase
       files = file_search(search_dir + '*'+extension, count = Nfiles)      
-      
-      ;; Find the global WB images and the number of scans
-      self -> selectfiles, files = files, states = states $
-                           , cam = wbcamera, ustat = '' $
-                           , sel = windx, count = Nscans $
-                           , complement = complement, Ncomplement = Ncomplement
+
+      ;; Find the global WB images and the number of scans.
+;      self -> selectfiles, files = files, states = states $
+;                           , cam = wbcamera, ustat = '' $
+;                           , sel = windx, count = Nscans
+      ;; We have no special state (or absence of state) to identify
+      ;; the global WB images but we do know that their exposure times
+      ;; are much larger than the ones corresponding to the individual
+      ;; NB states.
+      self -> extractstates, files, states
+      windx = where(states.EXPOSURE gt mean(states.EXPOSURE))
       wstates = states[windx]
       wfiles = files[windx]
 
-      ;; Select can numbers
+      ;; Select scan numbers
       selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
       tmp = red_select_subset(selectionlist $
                               , qstring = inam + ' : Select scans:' $
@@ -238,7 +272,7 @@ pro chromis::polish_tseries, xbd = xbd $
         
         red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube', clock = clock
 
-        tmp = red_readdata(wfiles[iscan], head = h)
+        tmp = red_readdata(wfiles[iscan], head = hdr)
 
         if keyword_set(timefiles) then begin
           
@@ -253,11 +287,11 @@ pro chromis::polish_tseries, xbd = xbd $
           ;; This part needs work! Only used the /timefiles option so
           ;; far. 
 
-          date_ave = fxpar(h, 'DATE-AVE', count = hasdateave)
-          if hasdateave then begin
-            date_ave_split = strsplit(date_ave, 'T', /extract, count = Nsplit)
-            ddate = date_ave_split[0]
-            if Nsplit gt 1 then ttime = date_ave_split[1] else undefine, ttime
+          date_avg = fxpar(hdr, 'DATE-AVG', count = hasdateavg)
+          if hasdateavg then begin
+            date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
+            ddate = date_avg_split[0]
+            if Nsplit gt 1 then ttime = date_avg_split[1] else undefine, ttime
           endif else undefine, ddate, ttime
 
           if n_elements(ddate) eq 0 then begin
@@ -268,16 +302,6 @@ pro chromis::polish_tseries, xbd = xbd $
             time[iscan] = ttime
           endelse
 
-;          if n_elements(ext_time) gt 0 then begin
-;            time[iscan] = ext_time[iscan] 
-;          endif else begin
-;            if n_elements(ttime) gt 0 then time[iscan] = ttime
-;          endelse
-;          if(n_elements(ext_date) ne 0) then begin
-;            date[iscan] = ext_date
-;          endif else begin
-;            date[iscan] = ddate
-;          endelse
         endelse
 
         IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
@@ -294,6 +318,7 @@ pro chromis::polish_tseries, xbd = xbd $
           cub = fltarr(nx, ny, Nscans)
         endif
         
+        ;; Why fillpix? Isn't this done in the momfbding? /MGL
         cub[*, *, iscan] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads = 4L)
         
       endfor                    ; iscan
@@ -363,6 +388,8 @@ pro chromis::polish_tseries, xbd = xbd $
         ;; Recreate cube
         dum = red_rotation(cub1[*,*,0], ang[0], shift[0,0], shift[1,0], full=ff)
         nd = size(dum,/dim)
+        nx = nd[0]
+        ny = nd[1]
         cub = fltarr([nd, Nscans])
         cub[*,*,0] = temporary(dum)
 
@@ -372,6 +399,9 @@ pro chromis::polish_tseries, xbd = xbd $
           cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], ang[iscan], shift[0,iscan] $
                                         , shift[1,iscan], full=ff)
         endfor                   ; iscan
+        
+        ;; Note that the fullsize option changes the FOV of the array.
+        ;; This may make it necessary to adjust some header info.
  
       endif else ff = 0
       
@@ -433,50 +463,42 @@ pro chromis::polish_tseries, xbd = xbd $
         cub = reform(cub, nx, ny, 1, Nscans, /overwrite) 
 
         ;; Make header
+        ;; Use header of last input file.
         dims = size(cub, /dim)
         type=(size(fix(1)))[1]
-        mkhdr,hdr,type,dims,/extend
-        ;; Keywords to describe data cube
-        sxaddpar, hdr, before='DATE', 'SOLARNET', 0.5
-        sxaddpar, hdr, before='DATE', 'BTYPE',    'Intensity'
-        sxaddpar, hdr, before='DATE', 'BUNIT',    'DU' ; Digital unit?
-        sxaddpar, hdr, before='DATE', 'CDELT1',   float(self.image_scale), ' [arcsec] x-coordinate increment'
-        sxaddpar, hdr, before='DATE', 'CDELT2',   float(self.image_scale), ' [arcsec] y-coordinate increment'
-        sxaddpar, hdr, before='DATE', 'CDELT3',   1.,               ' [m] wavelength-coordinate axis increment'
-        sxaddpar, hdr, before='DATE', 'CDELT4',   1.,               ' [s] time-coordinate axis increment'
-        sxaddpar, hdr, before='DATE', 'CTYPE1',   'x',              ' [arcsec]'
-        sxaddpar, hdr, before='DATE', 'CTYPE2',   'y',              ' [arcsec]'
-        sxaddpar, hdr, before='DATE', 'CTYPE3',   'wavelength',     ' [m]'
-        sxaddpar, hdr, before='DATE', 'CTYPE4',   'time',           ' [s]'
-        sxaddpar, hdr, before='DATE', 'CUNIT1',   'arcsec'
-        sxaddpar, hdr, before='DATE', 'CUNIT2',   'arcsec'
-        sxaddpar, hdr, before='DATE', 'CUNIT3',   'm'
-        sxaddpar, hdr, before='DATE', 'CUNIT4',   's'
-        sxaddpar, hdr, before='DATE', 'COMMENT',  "Index order is (x,y,lambda,t)"
-        ;; DATE_OBS should be getting the value including decimals
-        ;; from the raw data headers, not just integer seconds as
-        ;; here:
-        sxaddpar, hdr, before='DATE', 'DATE_OBS', datestamp,        ' '
-        ;; IS STARTOBS needed?
-        sxaddpar, hdr, before='DATE', 'STARTOBS', datestamp,        ' '
-        ;; Keywords from wstates
-        sxaddpar, hdr, before='DATE', 'DETECTOR', wstates[0].detector
-        sxaddpar, hdr, before='DATE', 'CAMERA',   wstates[0].camera
-        sxaddpar, hdr, before='DATE', 'IS_WB',    wstates[0].is_wb
-        if wstates[0].cam_settings ne '' then $
-           sxaddpar, hdr, before='DATE', 'CAM_SETTINGS',  wstates[0].cam_settings
-        if wstates[0].pf_wavelength ne 0.0 then $
-           sxaddpar, hdr, before='DATE', 'PF_WAVELENGTH', wstates[0].pf_wavelength
-        if wstates[0].exposure ne 0.0d then $
-           sxaddpar, hdr, before='DATE', 'EXPOSURE',      wstates[0].exposure
-        ;; Keyword info from other variables
-        sxaddpar, hdr, before='DATE', 'FILTER1',  prefilters[ipref]
+;        red_mkhdr,hdr,type,dims,/extend
+
+        ;; The compulsory headers
+        fxaddpar, hdr, 'NAXIS', n_elements(dims), 'Number of data axes'
+        for iaxis = 0, n_elements(dims)-1 do $
+           fxaddpar, hdr, 'NAXIS'+strtrim(iaxis+1, 2), dims[iaxis]
+        fxaddpar, hdr, 'BITPIX', 16, 'Number of bits per data pixel' ; Because we round() before saving. 
+
+        ;; Add keywords to the data cube description
+        fxaddpar, hdr, 'CDELT3', after = 'CDELT2', 1. $
+                  , '[m] wavelength-coordinate axis increment'
+        fxaddpar, hdr, 'CDELT4', after = 'CDELT3', 1. $
+                  , '[s] time-coordinate axis increment'
+        fxaddpar, hdr, 'CTYPE3', after = 'CTYPE2', 'wavelength', '[m]'
+        fxaddpar, hdr, 'CTYPE4', after = 'CTYPE3', 'time',       '[s]'
+        fxaddpar, hdr, 'CUNIT3', after = 'CUNIT2', 'm', 'Wavelength unit'
+        fxaddpar, hdr, 'CUNIT4', after = 'CUNIT3', 's', 'Time unit'
+        fxaddpar, hdr, 'COMMENT', after = 'CUNIT4' $
+                  , "Index order is (x,y,lambda,t)"
 
         if keyword_set(blur) then begin
-          sxaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
+          fxaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
         endif
 
+        ;; Add info about this step
+        self -> headerinfo_addstep, hdr $
+                                    , prstep = 'Prepare WB science data cube' $
+                                    , prpara = prpara $
+                                    , prproc = inam
+        
+
         ;; Make time tabhdu extension with Nscans rows
+        fxaddpar,hdr,'EXTEND',!true
         s_array = lonarr(1, 1, 1, Nscans)
         s_array[0] = wstates.scannumber
         t_array = dblarr(1, 1, 1, Nscans)
@@ -484,15 +506,31 @@ pro chromis::polish_tseries, xbd = xbd $
         w_array = fltarr(1, 1, 1, 1)
         ;;w_array[0] = wstates.tun_wavelength
         w_array[0] = float(prefilters[0])*1e-10
-        tabhdu = {tabulations: {time: {val:t_array $
-                                       , comment:'time-coordinates'}, $
-                                wavelength: {val:w_array $
-                                             , comment:'wavelength-coordinates'}, $
-                                scannumber: {val:s_array $
-                                             , comment:'scannumbers'}, $
-                                comment: ' For storing tabulated keywords'}}
-stop
-        red_fits_createfile, odir + ofil, hdr, lun, fileassoc, tabhdu = tabhdu
+;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
+;                                                         , comment:'time-coordinates'}, $
+;                                       WAVE-TABULATION: {val:w_array $
+;                                                         , comment:'wavelength-coordinates'}, $
+;                                       comment: ' For storing tabulated keywords'}}
+;        tabhdu = {tabulations: {time: {val:t_array $
+;                                       , comment:'time-coordinates'}, $
+;                                wavelength: {val:w_array $
+;                                             , comment:'wavelength-coordinates'}, $
+;                                scannumber: {val:s_array $
+;                                             , comment:'scannumbers'}, $
+;                                comment: ' For storing tabulated keywords'}}
+        
+        ;; TIME reference value, all times are seconds since midnight.
+        dateref = fxpar(hdr, 'DATEREF', count = count)
+        if count eq 0 then begin
+          ;; One should really check also for the existence of MJDREF
+          ;; and JDREF but within the pipeline we can be sure we don't
+          ;; use them.
+          dateref = self.isodate+'T00:00:00.000000'
+          fxaddpar, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601'
+        endif
+
+        ;; Write the file
+        red_fits_createfile, odir + ofil, hdr, lun, fileassoc;, tabhdu = tabhdu
         for iscan = 0, Nscans-1 do fileassoc[iscan] = round(cub[*, *, *, iscan])
         free_lun, lun
         print, inam + ' : Wrote file '+odir + ofil
@@ -501,6 +539,7 @@ stop
 ;        red_writedata, odir + ofil, fix(round(temporary(cub))) $
 ;                       , header = hdr, tabhdu = tabstruct, /over
  
+
 
 rcub = readfits(odir + ofil, rhdr)
 rdcub = red_readdata(odir + ofil, head = rdhdr)
