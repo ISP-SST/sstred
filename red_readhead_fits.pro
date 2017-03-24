@@ -86,11 +86,11 @@ function red_readhead_fits, fname, $
                     , after = 'DATE-BEG'
         endif
 
-        date_ave = sxpar(header, 'DATE-AVE', count = Nave)
-        if Nave eq 0 then begin
-          time_ave = mean(time_beg_array) + sxpar(header, 'XPOSURE')/2.
-          date_ave = isodate + 'T' + red_time2double(time_ave, /inv)
-          sxaddpar, header, 'DATE-AVE', date_ave $
+        date_avg = sxpar(header, 'DATE-AVG', count = Navg)
+        if Navg eq 0 then begin
+          time_avg = mean(time_beg_array) + sxpar(header, 'XPOSURE')/2.
+          date_avg = isodate + 'T' + red_time2double(time_avg, /inv)
+          sxaddpar, header, 'DATE-AVG', date_avg $
                     , 'Average of DATE-BEG table + XPOSURE/2.' $
                     , after = 'DATE-BEG'
         endif
@@ -164,6 +164,7 @@ function red_readhead_fits, fname, $
         endelse
       endelse
     endif
+
 
     ;; Correct OBS_PHDU bug in camera software
     OBS_PHDU = sxpar( header, 'OBS_PHDU', comment = pcomment, count=count )
