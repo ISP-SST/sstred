@@ -38,6 +38,10 @@
 ;       Specify to get header corresponding to a single frame in a
 ;       multi-frame image file.
 ;
+;    noexternal : in, optional, type=boolean
+;
+;       Set this to not read any external FITS header.
+;
 ;    structheader : in, type=flag
 ;
 ;	If set output the header as a structure.
@@ -97,13 +101,17 @@
 ;
 ;   2017-03-10 : MGL. Move file-format specific code to their own
 ;                subprograms. Trust rdx_filetype() to recognize momfbd
-;                files. 
+;                files.  
+;
+;   2017-03-16 : MGL. Look for (and optionally read) an external FITS
+;                header.
 ;
 ;
 ;-
 function red_readhead, fname, $
                        filetype = filetype, $
                        framenumber = framenumber, $
+                       noexternal = noexternal, $
                        structheader = structheader, $
                        status = status, $
                        silent = silent, $
@@ -117,15 +125,45 @@ function red_readhead, fname, $
     return, 0B
   endif
   
-  if( n_elements(filetype) eq 0 ) then filetype = rdx_filetype(fname)
-
+  ;; Remove this when rdx_filetype can recognize .momfbd files:
+  if( n_elements(filetype) eq 0 ) then begin
+    
+    if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
+      filetype = 'momfbd'
+    endif else begin
+      filetype = rdx_filetype(fname)
+    endelse
+    
+    if( filetype eq '' ) then begin
+      message, 'Cannot detect filetype. Pass it manually as', /info
+      message, "head = red_readhead('"+fname+"',filetype='fits')", /info
+      status = -1
+      return, 0B
+    endif
+  endif
+  
+  ;if( n_elements(filetype) eq 0 ) then filetype = rdx_filetype(fname)
+  hdir = file_dirname(fname)
+  
+  ;; Read the header based on filetype and construct the name of an
+  ;; external header file.
   case strupcase(filetype) of
-    'ANA'    : header = red_readhead_ana(fname)
-    'FITS'   : header = red_readhead_fits(fname, $
-                                          framenumber = framenumber, $
-                                          silent = silent, $
-                                          extension = extension)
-    'MOMFBD' : header = red_readhead_momfbd(fname)
+    'ANA' : begin
+      header = red_readhead_ana(fname)
+      hname = file_basename(fname, '.fz')
+      hname = hdir+'/'+file_basename(hname, '.f0') + '.fitsheader'
+    end
+    'FITS' : begin
+      header = red_readhead_fits(fname, $
+                                 framenumber = framenumber, $
+                                 silent = silent, $
+                                 extension = extension)
+      hname = hdir+'/'+file_basename(fname, '.fits')   + '.fitsheader'
+    end
+    'MOMFBD' : begin
+      header = red_readhead_momfbd(fname, version = momfbd_version)
+      hname = hdir+'/'+file_basename(fname, '.momfbd') + '.fitsheader'
+    end
     else     : begin
       message, 'Cannot detect filetype. Pass it manually as e.g.', /info
       message, "head = red_readhead('"+fname+"',filetype='fits')", /info
@@ -150,6 +188,32 @@ function red_readhead, fname, $
     header = red_paramstostruct(header)
   endif
 
+  ;; Read the external fitsheader if it exists.
+  if ~keyword_set(noexternal) && file_test(hname) then begin
+    xhead = headfits(hname)
+    ;; Add or replace all keywords from the external header except
+    ;; DATE, BITPIX, NAXIS*, COMMENT, etc.
+    Nlines = n_elements(xhead)
+    keys = strtrim(strmid(xhead, 0, 8), 2)
+    skipkeys = ['SIMPLE', 'BITPIX', 'NAXIS', 'DATE', 'LONGSTRN', 'CONTINUE', 'COMMENT', 'END']
+    naxis = fxpar(xhead, 'NAXIS')
+    for i = 1, naxis do red_append, skipkeys, 'NAXIS'+strtrim(i, 2)
+    for iline = 0, Nlines-1 do begin
+      if ~max(strmatch(skipkeys, keys[iline])) then begin
+        value = fxpar(xhead, keys[iline], comment = comment)
+        fxaddpar, header, keys[iline], value, comment
+        if strmatch(keys[iline], 'PRLIB*') $
+           && (strmatch(value, 'momfbd/redux*')) then begin
+          if n_elements(momfbd_version) ne 0 then begin
+            libindx = strreplace(keys[iline], 'PRLIB', '')
+            fxaddpar, header, 'PRVER'+libindx, momfbd_version, after = keys[iline] $
+                      , 'Library version/MJD of last update (From .momfbd file)'
+          endif
+        endif
+      endif
+    endfor                      ; iline
+  endif
+  
   status = 0
 
   ;; Remove blank lines
