@@ -58,6 +58,10 @@
 ;     force : in, optional, type=boolean
 ;
 ;        Re-populate files/states.
+;
+;     scan : in, optional, type=intarr
+;
+;        Only return files matching these scan numbers.
 ; 
 ;     selected : out, optional, type=intarr
 ;
