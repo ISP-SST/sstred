@@ -39,8 +39,10 @@
 ;-
 pro red_make_prpara, prpara, paraname, parameter
   
+  if n_elements(paraname) eq 0 then return
+
   case n_elements(parameter) of
-    0 : return
+    0 : red_append, prpara, paraname
     1 : red_append, prpara, paraname + '=' + strtrim(parameter, 2)
     else : begin
       if typename(parameter) eq 'STRING' then begin
