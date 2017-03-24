@@ -93,9 +93,9 @@ pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey
   ;; Add the library
   key = 'PRLIB'+stp+letter
   if letter eq '' then begin
-    if n_elements(prlibcomment) eq 0 then prlibcomment = ' Software library'
+    if n_elements(prlibcomment) eq 0 then prlibcomment = 'Software library'
     if prcount gt 0 then prlibcomment += ' containing '+prproc
-  endif else prlibcomment = ' Additional software library'
+  endif else prlibcomment = 'Additional software library'
   fxaddpar, head, key, prlib, prlibcomment, after = prevkey
   prevkey = key
 
@@ -103,7 +103,7 @@ pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey
   if n_elements(prver) gt 0 then begin
     key = 'PRVER'+stp+letter
     fxaddpar, head, key, after = prevkey $
-              , prver, ' Library version/MJD of last update' 
+              , prver, 'Library version/MJD of last update' 
     prekey = key
   endif
 
