@@ -37,11 +37,14 @@
 ; 
 ;    2017-03-16 : MGL. First version.
 ; 
+;    2017-03-24 : MGL. Add header information about this processing step.
+; 
 ; 
 ;-
 pro red::prepmomfbd_fitsheaders, dirs = dirs $
                                  , momfbddir = momfbddir $
                                  , pref = pref $
+                                 , scanno = scanno $
                                  , no_pd = no_pd 
   
   ;; Name of this method
@@ -73,23 +76,30 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
     
     dir = dirs[idir]+'/'
     folder_tag = file_basename(dir)
+    datestamp = self.isodate+'T'+folder_tag
     
     ;; base output location
     cfg_base_dir = self.out_dir + PATH_SEP() + momfbddir + PATH_SEP() + folder_tag + PATH_SEP()
     
     prefs = file_basename(file_search(cfg_base_dir+'*', count = Nprefs))
-    
+
     for ipref = 0, Nprefs-1 do begin
       
       cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
       cfg_files = file_search(cfg_dir+'momfbd_reduc_'+prefs[ipref]+'_?????.cfg', count = Ncfg)
       
-      progress_msg = 'Making fitsheaders for ' + strreplace(strreplace(cfg_dir,'//','/'),self.out_dir,'')
+      progress_msg = 'Making fits headers for ' + strreplace(strreplace(cfg_dir,'//','/'),self.out_dir,'')
 
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
-        
+
         red_progressbar, icfg, Ncfg, progress_msg, clock=clock, /predict
+
+    
+        if n_elements(scanno) ne 0 then $
+           if long(scanno) ne long((strsplit(file_basename(cfg_files[icfg],'.cfg'),'_',/extract))[3]) then $
+              continue
+    
 
         spawn, 'cat '+cfg_files[icfg], cfg
         Nlines = n_elements(cfg)
@@ -99,42 +109,29 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         undefine, Gprpara       ; Start fresh
         for iline = Gstart, Nlines-1 do begin
           cfgsplit = strsplit(cfg[iline], '=', /extract)
+          
           case cfgsplit[0] of
             ;; Make list of possible global keywords complete!
-            'ARCSECPERPIX'    : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
-            'BASIS'           : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
-            'DATA_TYPE'       : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
-            'DATE_OBS'        : red_append, Gprpara,  cfgsplit[0] + '=' + cfgsplit[1]
-            'FAST_QR'         : red_append, Gprpara,  cfgsplit[0]
-            'FILE_TYPE'       : begin
+            'FILE_TYPE' : begin
               file_type = cfgsplit[1]
-              red_append, Gprpara, cfgsplit[0] + '=' + file_type
+              red_make_prpara, Gprpara, cfgsplit[0], cfgsplit[1]
             end
-            'FIT_PLANE'       : red_append, Gprpara, cfgsplit[0]
-            'FPMETHOD'        : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
-            'GETSTEP'         : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
-            'GET_PSF'         : red_append, Gprpara, cfgsplit[0]
-            'GET_ALPHA'       : red_append, Gprpara, cfgsplit[0]
-            'GET_PSF_AVG'     : red_append, Gprpara, cfgsplit[0]
-            'GRADIENT'        : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
-            'IMAGE_NUMS'      : red_append, Gprpara, cfgsplit[0] + '=' + '['+cfgsplit[1]+']'
-            'MAX_LOCAL_SHIFT' : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
-            'MODES'           : red_append, Gprpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
-            'NEW_CONSTRAINTS' : red_append, Gprpara, cfgsplit[0]
-            'NUM_POINTS'      : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
-            'PIXELSIZE'       : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
-            'SIM_X'           : red_append, Gprpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
-            'SIM_Y'           : red_append, Gprpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
-            'TELESCOPE_D'     : red_append, Gprpara, cfgsplit[0] + '=' + cfgsplit[1]
+            'IMAGE_NUMS'      : begin
+              ;; These are actually file numbers, several frames in each file.
+              file_nums = red_expandrange(cfgsplit[1]) 
+              red_make_prpara, Gprpara, cfgsplit[0], file_nums
+            end
+            'MODES' : red_make_prpara, Gprpara, cfgsplit[0], red_expandrange(cfgsplit[1])
+            'SIM_X' : red_make_prpara, Gprpara, cfgsplit[0], red_expandrange(cfgsplit[1])
+            'SIM_Y' : red_make_prpara, Gprpara, cfgsplit[0], red_expandrange(cfgsplit[1])
             ;; Ignored config lines:
             'PROG_DATA_DIR' : 
-;            '' : 
-;            '' : 
-;            '' : 
             else : begin
-              print, inam + ' : Unknown cfg parameter:'
-              print, cfg[iline]
-              stop
+              case n_elements(cfgsplit) of
+                1: red_make_prpara, Gprpara, cfg[iline]
+                2: red_make_prpara, Gprpara, cfgsplit[0], cfgsplit[1]
+                else: stop
+              endcase
             end
           endcase
         endfor                  ; iline
@@ -143,10 +140,6 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         ;; Parse objects
         Ostarts = where(strmatch(cfg,'object{*'),Nobj)
         for iobj = 0, Nobj-1 do begin
-
-          ;; Make a generic header. Data type and dimensions can be
-          ;; added when we read the output. 
-          red_mkhdr, head, 0        
 
           prpara = Gprpara      ; Start from the global parameters
 
@@ -160,16 +153,16 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             if ~strmatch(cfgline,'*{') and ~strmatch(cfgline,'*}') then begin
               cfgsplit = strsplit(cfgline, '=', /extract)
               case cfgsplit[0] of
-                'WAVELENGTH'  : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                'WEIGHT'      : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
                 'OUTPUT_FILE' : begin
                   output_file = cfgsplit[1]
-                  red_append, prpara, cfgsplit[0] + '=' + output_file
+                  red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
                 end
                 else : begin
-                  print, inam + ' : Unknown cfg parameter:'
-                  print, cfg[iline]
-                  stop
+                  case n_elements(cfgsplit) of
+                    1: red_make_prpara, prpara, cfg[iline]
+                    2: red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                    else: stop
+                  endcase
                 end
               endcase
             endif
@@ -183,8 +176,6 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             'FITS'   : output_file += '.fits'
             else: stop
           endcase
-          fxaddpar, head, 'FILENAME', file_basename(output_file), ' MOMFBD restored data'
-
 
           ;; Channels
           if Nchan gt 0 then prmode = 'Phase Diversity' else prmode = ''
@@ -192,33 +183,63 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             
             Cstart = Cstarts[ichan]
             Cend   = Cstart + (where(strmatch(cfg[Cstart:*],'*}*'),Nmatch))[0]
-            
+
+            undefine, discard
             for iline = Cstart, Cend do begin
               cfgline = strtrim(cfg[iline], 2)
               if ~strmatch(cfgline,'*{') and ~strmatch(cfgline,'*}') then begin
                 cfgsplit = strsplit(cfgline, '=', /extract)
                 case cfgsplit[0] of
-                  'ALIGN_CLIP'        : red_append, prpara, cfgsplit[0] + '=[' + cfgsplit[1]+']'
-                  'DARK_NUM'          : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'DARK_TEMPLATE'     : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'FILENAME_TEMPLATE' : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'GAIN_FILE'         : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'IMAGE_DATA_DIR'    : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'INCOMPLETE'        : red_append, prpara, cfgsplit[0]
-                  'XOFFSET'           : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'YOFFSET'           : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'DISCARD'           : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
-                  'DIVERSITY'         : red_append, prpara, cfgsplit[0] + '=' + cfgsplit[1]
+                  'ALIGN_CLIP' : red_make_prpara, prpara, cfgsplit[0], red_expandrange(cfgsplit[1])
+                  'FILENAME_TEMPLATE' : begin
+                    filename_template = cfgsplit[1]
+                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                  end
+                  'GAIN_FILE'         : begin
+                    gain_file = cfgsplit[1]
+                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1] 
+                  end
+                  'IMAGE_DATA_DIR'    : begin
+                    image_data_dir = cfgsplit[1]
+                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                  end
+                  'DISCARD'           : begin
+                    discard = long(cfgsplit[1])
+                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                  end
                   else : begin
-                    print, inam + ' : Unknown cfg parameter:'
-                    print, cfg[iline]
-                    stop
+                    case n_elements(cfgsplit) of
+                      1: red_make_prpara, prpara, cfg[iline]
+                      2: red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                      else: stop
+                    endcase
                   end
                 endcase
               endif
             endfor              ; iline
 
+            if ichan eq 0 then begin
+              ;; Make a list of files actually involved in the sum.
+              undefine, fnames
+              for ifile = 0, n_elements(file_nums)-1 do begin
+                fname = image_data_dir + '/' $
+                        + string(file_nums[ifile], format='(%"'+filename_template+'")')
+                if file_test(fname) then red_append, fnames, fname
+              endfor            ; ifile
+              Nfiles = n_elements(fnames)
+              if Nfiles eq 0 then stop
+              
+            endif
+
           endfor                ; ichan
+
+          if n_elements(fnames) eq 0 then begin
+            print, inam+' : WARNING, no files for '+filename_template
+            continue
+          endif
+
+          ;; Make header corresponding to the sum.
+          head = red_sumheaders(fnames, discard = discard)
 
           self -> headerinfo_addstep, head $
                                       , prstep = 'MOMFBD image restoration' $
@@ -231,9 +252,25 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
           ;; Additional keywords that should be set after momfbd
           ;; processing.
-          fxaddpar, head, 'FILLED', 1, 'Missing pixels have been filled.'
-
+          fxaddpar, head, 'FILLED', 1, 'Missing pixels have been filled.' ; Check gain file for missing?
+          fxaddpar, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
           
+          fxaddpar, head, before='DATE', 'SOLARNET', 0.5
+          fxaddpar, head, before='DATE', 'BTYPE', 'Intensity'
+          fxaddpar, head, before='DATE', 'BUNIT', 'DU' ; Digital unit?
+          ;; DATE_OBS should be getting the value including decimals from
+          ;; the raw data headers, not just integer seconds as here:
+          fxaddpar, head, before='DATE', 'DATE_OBS', datestamp
+          fxaddpar, head, before='DATE', 'STARTOBS', datestamp ; IS STARTOBS needed?
+
+          ;; The CDELTn keywords should not change to HPLN-TAN/HPLT-TAN
+          ;; until we know the position and orientation? /MGL
+          fxaddpar, head, before='DATE', 'CTYPE1', 'x',                     '[arcsec]'
+          fxaddpar, head, before='DATE', 'CTYPE2', 'y',                     '[arcsec]'
+          fxaddpar, head, before='DATE', 'CDELT1', float(self.image_scale), '[arcsec] x-coordinate increment'
+          fxaddpar, head, before='DATE', 'CDELT2', float(self.image_scale), '[arcsec] y-coordinate increment'
+          fxaddpar, head, before='DATE', 'CUNIT1', 'arcsec', 'Unit along axix 1'
+          fxaddpar, head, before='DATE', 'CUNIT2', 'arcsec', 'Unit along axix 2'
 
           ;; Write the header file
           fxwrite, header_file, head 
