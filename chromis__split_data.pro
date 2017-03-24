@@ -249,12 +249,12 @@ pro chromis::split_data, split_dir = split_dir $
               frameno = frame1 + iframe
               sxaddpar, head, red_keytab('framenumber'), frameno, before = 'COMMENT'
 
-              ;; DATE-BEG, DATE-AVE, DATE-END
+              ;; DATE-BEG, DATE-AVG, DATE-END
               sxaddpar, head, 'DATE-BEG', /savecomment, after = 'TIMESYS' $
                         , date + 'T' + red_time2double(time_beg+iframe*cadence, /dir)
               sxaddpar, head, 'DATE-END', /savecomment, after = 'TIMESYS' $
                         , date + 'T' + red_time2double(time_beg+iframe*cadence+xposure, /dir)
-              sxaddpar, head, 'DATE-AVE', /savecomment, after = 'TIMESYS' $
+              sxaddpar, head, 'DATE-AVG', /savecomment, after = 'TIMESYS' $
                         , date + 'T' + red_time2double(time_beg+iframe*cadence+xposure/2, /dir)
               
               
