@@ -44,12 +44,12 @@ function red_readhead_momfbd, fname, version = version
   compile_opt idl2
 
   mr = momfbd_read(fname, /names) ; Use /names to avoid reading the data parts
-  mkhdr, header, 4, [mr.clip[0,1,1]-mr.clip[0,1,0]+1 $
-                     , mr.clip[0,0,1]-mr.clip[0,0,0]+1]
+  red_mkhdr, header, 4, [mr.clip[0,1,1]-mr.clip[0,1,0]+1 $
+                         , mr.clip[0,0,1]-mr.clip[0,0,0]+1]
   header = header[where(header ne replicate(' ',80))] ; Remove blank lines
 
-  date_ave = mr.date + 'T' + mr.time
-  sxaddpar, header, 'DATE-AVE', date_ave, ' ', before='COMMENT'
+  date_avg = mr.date + 'T' + mr.time
+  fxaddpar, header, 'DATE-AVG', date_avg, ' ', before='COMMENT'
 
   ;; Set version to the version of the momfbd (or redux) program that
   ;; wrote the file.
