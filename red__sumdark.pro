@@ -206,7 +206,7 @@ pro red::sumdark, overwrite = overwrite, $
         dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
                             , nsum=nsum, filter=filter)
         ;;$
-        ;;                    , time_ave = time_ave, time_beg = time_beg, time_end = time_end)
+        ;;                    , time_avg = time_avg, time_beg = time_beg, time_end = time_end)
       endelse
       
       ;; The momfbd code can't read doubles.
