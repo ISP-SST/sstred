@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Mats Löfdahl (MGL), 2008
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -47,17 +47,17 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2013-06-09 : Added documentation. MGL.
+;   2013-06-09 : MGL. Added documentation.
 ; 
-;   2013-07-02 : JdlCR : Fixed a bug that would allow for NaNs in the
-;                        resulting gaintable 
+;   2013-07-02 : JdlCR. Fixed a bug that would allow for NaNs in the
+;                resulting gaintable
 ; 
-;   2016-05-31 : THI : Remove instrument specific keyword /preserve and use
-;                      class-methods instead.
+;   2016-05-31 : THI. Remove instrument specific keyword /preserve and
+;                use class-methods instead.
 ; 
 ;-
 function red_flat2gain, flat, $
@@ -77,19 +77,17 @@ function red_flat2gain, flat, $
   pos = where(mask1, count, complement=pos1)
   gain_nozero = red_fillnan(g)
   if(count gt 0) then begin
-     g[pos]=0.0
+    g[pos]=0.0
   endif
 
-
  ;; dgain = g - smooth(g, smoothparameter, /edge_truncate)
-  psf = red_get_psf(round(3*smoothparameter), round(3*smoothparameter),double( smoothparameter), double(smoothparameter))
+  psf = red_get_psf(round(3*smoothparameter), round(3*smoothparameter) $
+                    , double(smoothparameter), double(smoothparameter))
   dgain = g - red_convolve(g, psf / total(psf))
   mask = g GE min and g LE max and dgain LT bad AND finite(g)
 
   ker = replicate(1B, [5, 5])
   mask = morph_open(mask, ker)
-  
-
   
   idx = where(mask AND finite(g), count, complement= idx1)
   if(count NE n_elements(flat)) then g[idx1] = 0.0
@@ -99,6 +97,6 @@ function red_flat2gain, flat, $
   idx = where(~finite(g), count)
   if(count gt 0) then g[idx] = 0.0
 
-
   return, g
+
 end
