@@ -1,3 +1,37 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+; 
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+;    2017-04-07 : MGL. Revised selection of commands.
+; 
+; 
+;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
 
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
@@ -73,7 +107,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
     for idir = 0, n_elements(darkdirs)-1 do begin
       printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir] $
                                                  , root_dir, '')
-      printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
+      printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
               + red_strreplace(darkdirs[idir], root_dir, '') + '"'
     endfor                      ; idir
   endif                         ; Nsubdirs
@@ -118,7 +152,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
         wls = wls[WHERE(wls ne '')]
         wavelengths = strjoin(wls, ' ')
         ;; Print to script file
-        printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
+        printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
                 + red_strreplace(flatdirs[idir], root_dir, '') $
                 + '"  ; ' + camdirs+' ('+wavelengths+')'
 
@@ -131,13 +165,27 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   if n_elements(prefilters) gt 0 then $
      prefilters = prefilters[uniq(prefilters, sort(prefilters))]
   Nprefilters = n_elements(prefilters)
-
   if Nprefilters eq 0 then begin
     ;; This can happen if flats were already summed in La Palma. Look
     ;; for prefilters in the summed flats directory instead.
     spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
     Nprefilters = n_elements(prefilters)
   endif
+
+  for ipref = 0, Nprefilters-1 do begin
+    printf, Slun, "a -> prepflatcubes ;, pref='"+prefilters[ipref]+"'"
+  endfor                        ; ipref
+
+  printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
+  printf, Slun, '; whether npar=3 or npar=4 is needed.'
+  printf, Slun, 'a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res' 
+  printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+  printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+  printf, Slun, '; keyword:'
+  printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+  printf, Slun, ''
   
   printf, Slun, "a -> makegains, /preserve"
   
@@ -151,11 +199,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
     if Nsubdirs gt 0 then begin
       printf, Slun
       printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-      printf, Slun, 'a -> setpinhdir, root_dir+"' $
-              + red_strreplace(pinhdirs[i], root_dir, '')+'"'
+;      printf, Slun, 'a -> setpinhdir, root_dir+"' $
+;              + red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
       for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sumpinh, /pinhole_align, pref='"+prefilters[ipref]+"'"
+        printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+'" $
+                + red_strreplace(pinhdirs[i], root_dir, '') $
+                + "', pref='"+prefilters[ipref]+"'"
       endfor                    ; ipref
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -166,17 +216,21 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
         if Nsubsubdirs gt 0 then begin
           printf, Clun, 'pinh_dir = ' $
                   + red_strreplace(pinhsubdirs[j], root_dir, '')
-          printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                  + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+;          printf, Slun, 'a -> setpinhdir, root_dir+"' $
+;                  + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
           for ipref = 0, Nprefilters-1 do begin
-            printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                    + prefilters[ipref]+"'" 
+            printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+'" $
+                    +  red_strreplace(pinhsubdirs[j], root_dir, '') $
+                    + "' pref='" + prefilters[ipref]+"'" 
           endfor                ; ipref
         endif
       endfor                    ; j
     endelse
   endfor                        ; i
+  printf, Slun, ''
+  printf, Slun, 'a -> pinholecalib, thres=0.011, nref=6'
+;    printf, Slun, 'a -> diversitycalib'
 
   
   print, 'Prefilter scan'
@@ -243,60 +297,31 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Slun, 'a -> link_data' 
   printf, Slun, ';a -> split_data ; For old momfbd program.' 
   
-  for ipref = 0, Nprefilters-1 do begin
-    printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
-  endfor                        ; ipref
-
-  printf, Slun, ''
-  printf, Slun, ';a -> getalignclips_new  ; For old momfbd program.' 
-  printf, Slun, ';a -> getoffsets         ; For old momfbd program.' 
-  printf, Slun, ';a -> pinholecalib_old   ; For old momfbd program.'
-
-  printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib, thres=0.011, nref=6'
-;    printf, Slun, 'a -> diversitycalib'
-  
   printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
   printf, Slun, ';; This is how far we should be able to run unsupervised'
   printf, Slun, 'stop'          
   printf, Slun, ''
 
-  printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-  printf, Slun, '; whether npar=3 or npar=4 is needed.'
-  printf, Slun, 'a -> fitgains, npar = 2, res=res' 
-  printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-  printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-  printf, Slun, '; keyword:'
-  printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-  printf, Slun, ''
-
-
-  ;; sumdata_intdiff
-  ;; fitprefilter
-  ;; prepmomfbd
-
   for ipref = 0, Nprefilters-1 do begin
 
-    printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-            + "', cam = 'Crisp-T', /verbose, /show, /overwrite  ; /all"
-    printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-            + "', cam = 'Crisp-R', /verbose, /show, /overwrite  ; /all"
-    printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
-            + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
-
-    if strmid(prefilters[ipref], 0, 2) eq '63' then begin
-      printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
-    endif else begin
-      printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
-    endelse
+    printf, Slun, "a -> fitprefilter, /si, /mask ;, pref = '"+prefilters[ipref]+"'"
     
-    printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate + "' " $
-            + ", numpoints = 128, pref = '"+prefilters[ipref]+"', margin = 5 " $
-            + ", nremove=2, global_keywords= ['FIT_PLANE'] " $
-            + ", modes='2-55,63-66,77,78'"
+    printf, Slun, "a -> prepmomfbd" $
+            + ", date_obs='" + isodate + "'" $
+            + ", Nremove=2" $
+            + ", Nmodes=60" $
+            + ", numpoints=128" $
+            + ", pref='" + prefilters[ipref] + "'" $
+            + ", margin=5 " $
+            + ", global_keywords=['FIT_PLANE']" $
+            + ", maxshift=45" $
+            + ", /wb_states" $
+            + ", /redux" $
+            + ", /unpol" $
+            + "; , extraclip = [75,125,15,15]"
+    
+    printf, Slun, "a -> prepmomfbd_fitsheaders, momfbddir='momfbd_pd'" $
 
   endfor                        ; ipref
 
@@ -306,9 +331,18 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
 
   printf, Slun, ';; Post-MOMFBD stuff:' 
 
-  ;; make_crispex
+  printf, Slun, "a->polish_tseries" $
+;            + ", /full" $
+;            + ", /fitsoutput" $
+            + ", xbd=1280, ybd=1024" $
+            + ", np=5" $
+            + ", clip=[12, 6, 3, 1]" $
+            + ", tile=[10, 20, 30, 40]" $
+            + ", momfbddir='momfbd_pd'"
 
-  ;; polish_tseries
+  printf, Slun, "a->align_continuum"
+  printf, Slun, "a->make_crispex, /float, /aligncont"
+;; a -> make_crispex, /noflat, /scans_only, /float, /aligncont, /wbwrite
 
   
   free_lun, Clun
