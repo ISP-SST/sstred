@@ -14,22 +14,22 @@ function red_maskprefilter, wav, imean, img = img, mask = mask
   !MOUSE.button = 0
   fclick = 1B
   while(!MOUSE.button NE 4) do begin
-     cursor, t1, t2, /down, /data
-     if(fclick) then begin
-        tw = t1
-        fclick = 0B
-     endif else begin
-        range = [tw, t1]
-        range = range[sort(range)]
-        pos = where((wav LE range[1]) AND (wav GE range[0]), count)
-        if(count GE 1) then begin
-           w[pos] = 0.0d0
-           loadct,3, /silent
-           oplot, wav[pos], imean[pos], color = 160, psym = -1
-           loadct,0, /silent   
-        endif
-        fclick = 1B
-     endelse
+    cursor, t1, t2, /down, /data
+    if(fclick) then begin
+      tw = t1
+      fclick = 0B
+    endif else begin
+      range = [tw, t1]
+      range = range[sort(range)]
+      pos = where((wav LE range[1]) AND (wav GE range[0]), count)
+      if(count GE 1) then begin
+        w[pos] = 0.0d0
+        loadct,3, /silent
+        oplot, wav[pos], imean[pos], color = 160, psym = -1
+        loadct,0, /silent   
+      endif
+      fclick = 1B
+    endelse
   endwhile
   !MOUSE.button = 0
   wdelete, 2
@@ -38,9 +38,11 @@ function red_maskprefilter, wav, imean, img = img, mask = mask
 
   ;; Now the FOV
   if(n_elements(img) gt 0) then begin
-     tmp = red_select_area(img)
-     mask = where(tmp gt 0, count)
+    tmp = red_select_area(img)
+    mask = where(tmp gt 0, count)
   endif
+   
   
   return, w
+
 end
