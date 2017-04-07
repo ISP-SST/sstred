@@ -33,8 +33,8 @@
 ;
 ;    mask : in, optional, type=boolean
 ;
-;           if selected, will allow the user to mask out spectral
-;           positions from the fit.
+;        If selected, will allow the user to mask out spectral
+;        positions from the fit.
 ; 
 ; 
 ; :History:
@@ -43,12 +43,16 @@
 ;                added header. Make and save a final plot of the fit.
 ;                Prevent user from setting both /cgs and /si keywords.
 ; 
-;   2016-12-04 : JdlCR. Allow to mask regions of the mean
-;                spectra. Sometimes there is no real quiet-sun and the line center
-;                must be masked.
+;   2016-12-04 : JdlCR. Allow to mask regions of the mean spectra.
+;                Sometimes there is no real quiet-sun and the line
+;                center must be masked.
 ;
 ;   2017-02-14 : JdlCR. Allow to also mask a section of the FOV. Many
-;                observers forget to take quiet-Sun data for calibration.
+;                observers forget to take quiet-Sun data for
+;                calibration.
+;
+;   2017-04-07 : MGL. Use XROI GUI to select area. Added progress
+;                bars. 
 ;
 ; 
 ; 
@@ -125,36 +129,38 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
   states1 = states1[idx[idx1]]
   
   ustate = states[uniq(states[*].tun_wavelength, sort(states[*].tun_wavelength))].fullstate  
-  nstate = n_elements(ustate)
+  Nstates = n_elements(ustate)
   
   ;; load data and compute mean spectrum
 
-  spec = dblarr(nstate)
-  wav   = dblarr(nstate)
-  pref  = strarr(nstate)
-  specwb = dblarr(nstate)
+  spec = dblarr(Nstates)
+  wav   = dblarr(Nstates)
+  pref  = strarr(Nstates)
+  specwb = dblarr(Nstates)
 
-  for ii =0L, nstate-1 do begin
-    
-    darkfile = file_search(self.out_dir +'/darks/'+detector+'_'+states[ii].cam_settings+'.dark.fits', count=ct)
-    darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+states1[ii].cam_settings+'.dark.fits', count=ct)
+  for istate =0L, Nstates-1 do begin
+
+    red_progressbar, istate, Nstates, 'Loop over states: '+ustate[istate], clock = clock, /predict
+
+    darkfile = file_search(self.out_dir +'/darks/'+detector+'_'+states[istate].cam_settings+'.dark.fits', count=ct)
+    darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+states1[istate].cam_settings+'.dark.fits', count=ct)
 
     if(ct ne 1) then begin
       print, inam+'ERROR, cannot find dark file'
       stop
     endif
-    dd = red_readdata(darkfile)
-    ddwb = red_readdata(darkfilewb)
+    dd = red_readdata(darkfile, /silent)
+    ddwb = red_readdata(darkfilewb, /silent)
 
-    ;; Let's not assume that all images for one state must be
-    ;; in the same file... just in case.
+    ;; Let's not assume that all images for one state must be in the
+    ;; same file... just in case.
     
-    pos = where(states[*].fullstate eq ustate[ii], count)
-    print, inam+'loading files for state -> '+ustate[ii]
+    pos = where(states[*].fullstate eq ustate[istate], count)
+;    print, inam+'loading files for state -> '+ustate[istate]
     
-    for kk=0L, count -1 do begin
-      tmp = float(red_readdata(states[pos[kk]].filename))
-      tmpwb = float(red_readdata(states1[pos[kk]].filename))
+    for kk=0L, count-1 do begin
+      tmp = float(red_readdata(states[pos[kk]].filename, /silent))
+      tmpwb = float(red_readdata(states1[pos[kk]].filename, /silent))
       
       dim = size(tmp,/dim)
       dx = round(dim[0]*0.12)
@@ -172,8 +178,8 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
       
       if(keyword_set(mask)) then begin
 
-         if(kk eq 0 and ii eq 0) then begin
-            mmask = red_select_area(tmp[*,*,0], /noedge)
+         if(kk eq 0 and istate eq 0) then begin
+            mmask = red_select_area(tmp[*,*,0], /noedge, /xroi)
             nzero = where(mmask gt 0)
             bla = tmp[*,*,0]
             ind = array_indices(bla, nzero)
@@ -190,17 +196,17 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
         
       endelse ;; if mask
 
-      spec[ii] += median(tmp1)
-      specwb[ii] += median(tmpwb1)
+      spec[istate] += median(tmp1)
+      specwb[istate] += median(tmpwb1)
 
     endfor                      ; kk
 
-    spec[ii] /= count
-    specwb[ii] /= count
+    spec[istate] /= count
+    specwb[istate] /= count
     
-    wav[ii] = states[pos[0]].tun_wavelength*1.d10
-    pref[ii] = states[pos[0]].prefilter
-  endfor                        ; ii
+    wav[istate] = states[pos[0]].tun_wavelength*1.d10
+    pref[istate] = states[pos[0]].prefilter
+  endfor                        ; istate
 
 
   ;; loop prefilters
@@ -209,11 +215,13 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
   upref = pref[uniq(pref, sort(pref))] 
   npref = n_elements(upref)
 
-  for pp=0, npref-1 do begin
+  for ipref=0, npref-1 do begin
+
+    red_progressbar, ipref, Npref, 'Loop over prefilters: ' + upref[ipref], clock = clock, /predict
 
     ;; copy spectra for each prefilter
     
-    idx = where(pref eq upref[pp], nwav)
+    idx = where(pref eq upref[ipref], nwav)
     iwav = wav[idx]
     ispec = spec[idx]
     wbint = mean(specwb[idx])
@@ -225,7 +233,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     dw = xl[1] - xl[0]
     np = round((0.080 * 8) / dw)
     if(np/2*2 eq np) then np -=1
-    tw = (dindgen(np)-np/2)*dw + double(upref[pp])
+    tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
     tr = chromis_profile(tw, erh=-0.02d0)
     tr/=total(tr)
     yl1 = fftconvol(yl, tr)
@@ -235,7 +243,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     
     if(nwav gt 1) then begin
        if(keyword_set(mask)) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
-       dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[pp]), w:w}
+       dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[ipref]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
       fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 7)
@@ -271,27 +279,27 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
       
       ;; save curve
 
-      prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[pp], $
+      prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
              fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter}
 
       cgwindow
       cgplot, /add, iwav, ispec, line = 1
       cgplot, /add, /over, iwav, interpol(yl1, xl+par[1], iwav)*prefilter
       cgplot, /add, /over, iwav, chromis_prefilter(par, iwav, pref)/par[0] * max(ispec), line=2
-      cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[pp]+'_prefilter.pdf'
+      cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
 
     endif else begin
 
       y1 = interpol(yl, xl, iwav)
       prefilter = [ispec/yl1]
-      prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[pp], $
+      prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
              fitpars:prefilter, fts_model:y1}
 
     endelse
 
-    save, file=self.out_dir + '/prefilter_fits/chromis_'+upref[pp]+'_prefilter.idlsave', prf
+    save, file=self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave', prf
 
-  endfor                        ; pp
+  endfor                        ; ipref
   
   
 end
