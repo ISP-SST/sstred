@@ -229,7 +229,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
     endelse
   endfor                        ; i
   printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib, thres=0.011, nref=6'
+  printf, Slun, 'a -> pinholecalib, nref=6'
 ;    printf, Slun, 'a -> diversitycalib'
 
   
@@ -320,8 +320,6 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
             + ", /redux" $
             + ", /unpol" $
             + "; , extraclip = [75,125,15,15]"
-    
-    printf, Slun, "a -> prepmomfbd_fitsheaders, momfbddir='momfbd_pd'" $
 
   endfor                        ; ipref
 
