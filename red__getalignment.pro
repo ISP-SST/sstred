@@ -59,6 +59,8 @@
 ;
 ;   2017-01-18 : MGL. New keyword output_dir.
 ;
+;   2017-04-10 : MGL. New keyword makeoffsets.
+;
 ;
 ;-
 pro red::getalignment, align = align, $
@@ -75,8 +77,8 @@ pro red::getalignment, align = align, $
   
   ;; Logging
   help, /obj, self, output = selfinfo 
-                                ; FIXME logging of array(struct) kewords fails for more than 10 elements, see line 167 in red_writelog
-                                ;red_writelog, selfinfo = selfinfo, logfile = logfile
+  ;; FIXME logging of array(struct) kewords fails for more than 10 elements, see line 167 in red_writelog
+  ;;red_writelog, selfinfo = selfinfo, logfile = logfile
 
   if( n_elements(cams) gt 0 ) then cams = [cams] $
   else if ptr_valid(self.cameras) then cams = [*self.cameras]
@@ -156,7 +158,7 @@ pro red::getalignment, align = align, $
   ref_corners = red_make_corners( [ extraclip(0), ref_dims[0]-extraclip(1)-1 , $
                                     extraclip(2), ref_dims[1]-extraclip(3)-1 ] )
 
-                                ; TODO invert, or re-map, if refcam is not the same as when pinholecalib was run.
+  ;; TODO invert, or re-map, if refcam is not the same as when pinholecalib was run.
   halfsize = ref_dims/2
   common_fov = ref_corners
 
@@ -237,7 +239,7 @@ pro red::getalignment, align = align, $
 
   ref_align = { clip:ref_clip, $
                 state1:alignments[0].state1, $
-                state2:alignments[0].state1, $
+                state2:alignments[0].state2, $
                 map:identity(3), $
                 xoffs_file:'', yoffs_file:'' }
   align = replicate( ref_align, Nalign+1 )
@@ -258,33 +260,38 @@ pro red::getalignment, align = align, $
     align[ialign+1].state1 = alignments[ialign].state1
     align[ialign+1].state2 = alignments[ialign].state2
     align[ialign+1].map = h
-    fname = strjoin([ align[ialign+1].state1.detector, $
-                      align[ialign+1].state1.fullstate, $
-                      align[ialign+1].state2.detector, $
-                      align[ialign+1].state2.fullstate ],'_')
-    align[ialign+1].xoffs_file = output_dir + fname + '.xoffs'
-    align[ialign+1].yoffs_file = output_dir + fname + '.yoffs'
-    flipped = transpose([0,0,1]) # h gt mid
-    if flipped[0] gt 0 then begin
-      align[ialign+1].clip[0:1] = reverse(align[ialign+1].clip[0:1])
-    endif
-    if flipped[1] gt 0 then begin
-      align[ialign+1].clip[2:3] = reverse(align[ialign+1].clip[2:3])
-    endif
 
-    if( keyword_set(overwrite) || ~file_test(align[ialign+1].xoffs_file) $
-        || ~file_test(align[ialign+1].xoffs_file)) then begin
+    if keyword_set(makeoffsets) then begin
 
-      red_make_offs, h, xoff, yoff, align[ialign+1].clip+1, ref_clip=ref_clip+1
+      fname = strjoin([ align[ialign+1].state1.detector, $
+                        align[ialign+1].state1.fullstate, $
+                        align[ialign+1].state2.detector, $
+                        align[ialign+1].state2.fullstate ],'_')
+      align[ialign+1].xoffs_file = output_dir + fname + '.xoffs'
+      align[ialign+1].yoffs_file = output_dir + fname + '.yoffs'
+      flipped = transpose([0,0,1]) # h gt mid
+      if flipped[0] gt 0 then begin
+        align[ialign+1].clip[0:1] = reverse(align[ialign+1].clip[0:1])
+      endif
+      if flipped[1] gt 0 then begin
+        align[ialign+1].clip[2:3] = reverse(align[ialign+1].clip[2:3])
+      endif
+
+      if( keyword_set(overwrite) || ~file_test(align[ialign+1].xoffs_file) $
+          || ~file_test(align[ialign+1].xoffs_file)) then begin
+
+        red_make_offs, h, xoff, yoff, align[ialign+1].clip+1, ref_clip=ref_clip+1
+        
+        print, 'Saving files ' + fname +'.(x|y)offs'
+        red_writedata, align[ialign+1].xoffs_file, xoff $
+                       , filetype='ANA', /overwrite
+        red_writedata, align[ialign+1].yoffs_file, yoff $
+                       , filetype='ANA', /overwrite
+      endif
       
-      print, 'Saving files ' + fname +'.(x|y)offs'
-      red_writedata, align[ialign+1].xoffs_file, xoff $
-                     , filetype='ANA', /overwrite
-      red_writedata, align[ialign+1].yoffs_file, yoff $
-                     , filetype='ANA', /overwrite
     endif
-    
-  endfor
+
+  endfor                        ; ialign
   
   align.clip += 1               ; return 1-based clips
 
