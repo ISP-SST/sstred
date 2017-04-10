@@ -179,10 +179,10 @@ pro red::fitgains, npar = npar $
     spawn, 'cat ' + files[ifile], namelist
     Nwav = n_elements(namelist)
     
-    ffile = strreplace(files[ifile], '_filenames.txt', '_flats_data.fits') ; Input flat intensities
-    wfile = strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')  ; Input flat wavelengths
-    sfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.sav') ; Output save file
-    pfile = strreplace(files[ifile], '_filenames.txt', '_fit_results.png') ; Plot file
+    ffile = red_strreplace(files[ifile], '_filenames.txt', '_flats_data.fits') ; Input flat intensities
+    wfile = red_strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')  ; Input flat wavelengths
+    sfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.sav') ; Output save file
+    pfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.png') ; Plot file
 
     self -> extractstates, namelist, states
     outnames = self -> filenames('cavityflat', states)

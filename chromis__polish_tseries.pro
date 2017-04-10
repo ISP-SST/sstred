@@ -276,7 +276,7 @@ pro chromis::polish_tseries, xbd = xbd $
 
         if keyword_set(timefiles) then begin
           
-          timefile = strreplace(wfiles[iscan], '.f0', '.time')
+          timefile = red_strreplace(wfiles[iscan], '.f0', '.time')
           spawn, 'cat '+timefile, ts
           ts_split = strsplit(ts, 'T', /extract)
           date[iscan] = ts_split[0]

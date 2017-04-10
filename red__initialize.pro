@@ -339,7 +339,7 @@ pro red::initialize, filename, develop = develop
   ;; Pipeline version
   srcdir = file_dirname( routine_filepath("red::initialize"), /mark )
   spawn, 'cd '+srcdir+'; ' + git_describe_command, pipeline_gitoutput
-  pipeline_gitoutput = strreplace(pipeline_gitoutput, 'release/', '')
+  pipeline_gitoutput = red_strreplace(pipeline_gitoutput, 'release/', '')
   if strmatch(pipeline_gitoutput, '*(Modified)') then $
      self.version_problems += 'The pipeline is modified. '
   self.version_pipeline = strjoin((strsplit(pipeline_gitoutput, '-', /extract))[0:1], '-')
@@ -370,7 +370,7 @@ pro red::initialize, filename, develop = develop
     1: begin
       ;coyotedir = file_dirname( filepath(root_dir = coyotepaths[0], "cgcolor"), /mark )
       spawn, 'cd '+coyotepaths[0]+'; ' + git_count_command, coyote_gitoutput
-      coyote_gitoutput = strreplace(coyote_gitoutput, 'release/', '')
+      coyote_gitoutput = red_strreplace(coyote_gitoutput, 'release/', '')
       ;; if strmatch(coyote_gitoutput, '(Modified)') then $
       ;;   self.version_problems += 'The Coyote library is modified. '
       ;; self.version_coyote = strjoin((strsplit(coyote_gitoutput, '-', /extract))[0:1], '-')
@@ -395,7 +395,7 @@ pro red::initialize, filename, develop = develop
     end
     1: begin
       spawn, 'cd '+idlastropaths[0]+'; ' + git_count_command, idlastro_gitoutput
-      idlastro_gitoutput = strreplace(idlastro_gitoutput, 'release/', '')
+      idlastro_gitoutput = red_strreplace(idlastro_gitoutput, 'release/', '')
       ;; if strmatch(idlastro_gitoutput, '(Modified)') then $
       ;;  self.version_problems += 'The IDLAstro library is modified. '
       ;; self.version_idlastro = strjoin((strsplit(idlastro_gitoutput, '-', /extract))[0:1], '-')
@@ -424,8 +424,8 @@ pro red::initialize, filename, develop = develop
       spawn, 'grep "\$Id" '+mpfitpaths[0]+'/*.pro', mpfit_spawnoutput
       timestamps = STREGEX(mpfit_spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9] ' $
                            + '[0-9][0-9]:[0-9][0-9]:[0-9][0-9]',/EXTRACT)
-      for i = 0, n_elements(timestamps)-1 do timestamps[i] = strreplace(timestamps[i], '/', '-', n = 2)
-      for i = 0, n_elements(timestamps)-1 do timestamps[i] = strreplace(timestamps[i], ' ', 'T')
+      for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], '/', '-', n = 2)
+      for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], ' ', 'T')
       self.version_mpfit = (timestamps(sort(timestamps)))[n_elements(timestamps)-1]
     end
     else: begin

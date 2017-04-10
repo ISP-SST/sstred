@@ -205,7 +205,7 @@ function red_readhead, fname, $
         if strmatch(keys[iline], 'PRLIB*') $
            && (strmatch(value, 'momfbd/redux*')) then begin
           if n_elements(momfbd_version) ne 0 then begin
-            libindx = strreplace(keys[iline], 'PRLIB', '')
+            libindx = red_strreplace(keys[iline], 'PRLIB', '')
             fxaddpar, header, 'PRVER'+libindx, momfbd_version, after = keys[iline] $
                       , 'Library version/MJD of last update (From .momfbd file)'
           endif

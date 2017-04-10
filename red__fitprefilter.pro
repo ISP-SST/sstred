@@ -145,10 +145,10 @@ pro red::fitprefilter, fixcav = fixcav $
     isfile = sindx[iselect]
     
     xfile = xfiles[isfile]                                      ; Input flats results 
-    sfile = strreplace(xfile, '_flats.sav', '_fit_results.sav') ; Input fit results 
-    nfile = strreplace(xfile, '_flats.sav', '_filenames.txt')   ; Input flat filenames
-;    ffile = strreplace(xfile, '_flats.sav', '_flats_data.fits') ; Input flat intensities
-;    wfile = strreplace(xfile, '_flats.sav', '_flats_wav.fits')  ; Input flat wavelengths
+    sfile = red_strreplace(xfile, '_flats.sav', '_fit_results.sav') ; Input fit results 
+    nfile = red_strreplace(xfile, '_flats.sav', '_filenames.txt')   ; Input flat filenames
+;    ffile = red_strreplace(xfile, '_flats.sav', '_flats_data.fits') ; Input flat intensities
+;    wfile = red_strreplace(xfile, '_flats.sav', '_flats_wav.fits')  ; Input flat wavelengths
     
     if ~file_test(nfile) then begin
       print, inam+' : Cannot find file '+nfile
