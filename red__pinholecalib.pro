@@ -77,6 +77,9 @@
 ;   2017-03-07 : MGL. Removed "_thi" suffix. This is now the default
 ;                pinhole calibration method.
 ;
+;   2017-04-10 : MGL. Changed threshold default to 0 due to
+;                reimplementation of rdx_img_align.
+;
 ;-
 pro red::pinholecalib, threshold = threshold $
                            , max_shift = max_shift $
@@ -94,7 +97,7 @@ pro red::pinholecalib, threshold = threshold $
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo, logfile = logfile
 
-  if(n_elements(threshold) eq 0) then threshold = 0.25
+  if(n_elements(threshold) eq 0) then threshold = 0.0
   if(n_elements(nref) eq 0) then nref = 5
   if( n_elements(dir) gt 0 ) then dir = [dir] $
   else if ptr_valid(self.pinh_dirs) then dir = *self.pinh_dirs
