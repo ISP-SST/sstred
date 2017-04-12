@@ -28,6 +28,8 @@
 ; 
 ;     2004-03-25 : MGL. First version (in ANA).
 ;
+;     2009-06-11 : MGL. Ported to IDL.
+;
 ;     2013-10-03 : MGL. Renamed to the red_ namespace.
 ; 
 ;     2014-01-22 : MGL. Adapt to string functions moved to the str_
