@@ -119,6 +119,10 @@
 ;    2016-02-24 : MGL. Make backscatter renaming work also for years
 ;                 prior to 2012. 
 ;
+;    2017-04-12 : MGL. Pig log can have isodate or dotdate in the
+;                 path. Use new convertlog as DLM and not separate
+;                 executable. 
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
@@ -245,7 +249,7 @@ pro red::download, overwrite = overwrite $
               endfor            ; ifile
            endif                ; 2012?
         endif else begin
-           print, "red_download : Couldn't download the backscatter data for " + backscatter[iback]
+           print, "red::download : Couldn't download the backscatter data for " + backscatter[iback]
         endelse        
      endfor                     ; iback
   endif
@@ -284,21 +288,33 @@ pro red::download, overwrite = overwrite $
                              , overwrite = overwrite $
                              , path = pathpig)
 
+     if ~DownloadOK then begin
+       dotdate = strjoin(datearr, '.')
+       DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate + '/' + pigfile $
+                               , file = pigfile $
+                               , dir = self.log_dir $
+                               , overwrite = overwrite $
+                               , path = pathpig)     
+     endif
+
+stop
      if DownloadOK then begin
         ;; We actually want the logfile converted to time and x/y
         ;; coordinates (in arcseconds).
         pathpig += '_'+self.isodate+'_converted'
         if ~file_test(pathpig) then begin
-           pig_N = 16           ; # of positions to average when converting. Originally ~16 pos/s.
-           convertcmd = 'cd '+self.log_dir+'; convertlog --dx 31.92 --dy 14.81' $
-                        + ' --rotation 84.87 --scale 4.935 '
-           if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
-           print, 'red_download : Converting PIG log file...'
-           spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+self.isodate+'_converted'
+;           pig_N = 16           ; # of positions to average when converting. Originally ~16 pos/s.
+;           convertcmd = 'cd '+self.log_dir+'; convertlog --dx 31.92 --dy 14.81' $
+;                        + ' --rotation 84.87 --scale 4.935 '
+;           if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
+           print, 'red::download : Converting PIG log file...'
+           rdx_convertlog, self.log_dir+pigfile, self.log_dir+pigfile+'_'+self.isodate+'_converted', dx=31.92, $
+                           dy=14.81, rotation=84.87, scale=4.935, average=16
+;           spawn, convertcmd+' '+self.log_dir+pigfile+' > '+self.log_dir+pigfile+'_'+self.isodate+'_converted'
 ;        file_link, self.log_dir+pigfile+'_'+self.isodate+'_converted', 'log_pig'
 ;        print, 'red_download : Linked to ' + link
         endif else begin
-           print, 'red_download : Converted PIG log file already exists.'
+           print, 'red::download : Converted PIG log file already exists.'
         endelse
      endif else begin
         ;; We tried to download but failed. So any existing files may

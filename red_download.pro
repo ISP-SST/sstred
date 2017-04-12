@@ -121,6 +121,10 @@
 ;		  crossing year boundaries). It will not try to write
 ;		  output when no data exists for a date and will return 
 ;		  string null in pathturret when that happens.
+;
+;    2017-04-12 : MGL. Pig log can have isodate or dotdate in the
+;                 path. Use new convertlog as DLM and not separate
+;                 executable. 
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
@@ -287,25 +291,37 @@ pro red_download, date = date $
   ;; PIG log file
   if keyword_set(pig) then begin
     pigfile = 'rmslog_guidercams'
+
     DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate + '/' + pigfile $
                             , file = pigfile $
                             , dir = logdir $
                             , overwrite = overwrite $
                             , path = pathpig)
 
+    if ~DownloadOK then begin
+      dotdate = strjoin(datearr, '.')
+      DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate + '/' + pigfile $
+                              , file = pigfile $
+                              , dir = logdir $
+                              , overwrite = overwrite $
+                              , path = pathpig)     
+    endif
+
     if DownloadOK then begin
       ;; We actually want the logfile converted to time and x/y
       ;; coordinates (in arcseconds).
       pathpig += '_'+isodate+'_converted'
       if ~file_test(pathpig) then begin
-        pig_N = 16              ; # of positions to average when converting. Originally ~16 pos/s.
-        convertcmd = 'cd '+logdir+'; convertlog --dx 31.92 --dy 14.81' $
-                     + ' --rotation 84.87 --scale 4.935 '
-        if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
+;        pig_N = 16              ; # of positions to average when converting. Originally ~16 pos/s.
+;        convertcmd = 'cd '+logdir+'; convertlog --dx 31.92 --dy 14.81' $
+;                     + ' --rotation 84.87 --scale 4.935 '
+;        if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
         print, 'red_download : Converting PIG log file...'
-        spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+isodate+'_converted'
-;        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
-;        print, 'red_download : Linked to ' + link
+        rdx_convertlog, logdir+pigfile, logdir+pigfile+'_'+isodate+'_converted', dx=31.92, $
+                        dy=14.81, rotation=84.87, scale=4.935, average=16
+;        spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+isodate+'_converted'
+        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
+        print, 'red_download : Linked to ' + link
       endif else begin
         print, 'red_download : Converted PIG log file already exists.'
       endelse
