@@ -142,23 +142,23 @@ pro chromis::polish_tseries, xbd = xbd $
                              , blur = blur $
                              , offset_angle = offset_angle
   
-  red_make_prpara, prpara, xbd 
-  red_make_prpara, prpara, ybd 
-  red_make_prpara, prpara, np 
-  red_make_prpara, prpara, clip 
-  red_make_prpara, prpara, tile 
-  red_make_prpara, prpara, tstep 
-  red_make_prpara, prpara, scale 
-  red_make_prpara, prpara, square 
-  red_make_prpara, prpara, negang 
-  red_make_prpara, prpara, crop 
-  red_make_prpara, prpara, fullframe 
-  red_make_prpara, prpara, timefiles 
-  red_make_prpara, prpara, fitsoutput 
-  red_make_prpara, prpara, momfbddir 
-  red_make_prpara, prpara, blur 
-  red_make_prpara, prpara, offset_angle 
-  
+  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
+  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
+  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
+  if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip         
+  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile         
+  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep        
+  if n_elements(scale       ) ne 0 then red_make_prpara, prpara, 'scale'        , scale        
+  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
+  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
+  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop         
+  if n_elements(fullframe   ) ne 0 then red_make_prpara, prpara, 'fullframe'    , fullframe    
+  if n_elements(timefiles   ) ne 0 then red_make_prpara, prpara, 'timefiles'    , timefiles    
+  if n_elements(fitsoutput  ) ne 0 then red_make_prpara, prpara, 'fitsoutput'   , fitsoutput   
+  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
+  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
+  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
+
   ;; Get keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
   
@@ -459,8 +459,8 @@ pro chromis::polish_tseries, xbd = xbd $
         ofil = 'wb_'+midpart+'_corrected_im.fits'
         print, inam + ' : saving WB corrected cube -> ' + odir + ofil
 
-        ;; Add the wavelength dimension
-        cub = reform(cub, nx, ny, 1, Nscans, /overwrite) 
+        ;; Add the wavelength and Stokes dimensions
+        cub = reform(cub, nx, ny, 1, 1, Nscans, /overwrite) 
 
         ;; Make header
         ;; Use header of last input file.
@@ -474,17 +474,17 @@ pro chromis::polish_tseries, xbd = xbd $
            fxaddpar, hdr, 'NAXIS'+strtrim(iaxis+1, 2), dims[iaxis]
         fxaddpar, hdr, 'BITPIX', 16, 'Number of bits per data pixel' ; Because we round() before saving. 
 
-        ;; Add keywords to the data cube description
-        fxaddpar, hdr, 'CDELT3', after = 'CDELT2', 1. $
-                  , '[m] wavelength-coordinate axis increment'
-        fxaddpar, hdr, 'CDELT4', after = 'CDELT3', 1. $
-                  , '[s] time-coordinate axis increment'
-        fxaddpar, hdr, 'CTYPE3', after = 'CTYPE2', 'wavelength', '[m]'
-        fxaddpar, hdr, 'CTYPE4', after = 'CTYPE3', 'time',       '[s]'
-        fxaddpar, hdr, 'CUNIT3', after = 'CUNIT2', 'm', 'Wavelength unit'
-        fxaddpar, hdr, 'CUNIT4', after = 'CUNIT3', 's', 'Time unit'
-        fxaddpar, hdr, 'COMMENT', after = 'CUNIT4' $
-                  , "Index order is (x,y,lambda,t)"
+;        ;; Add keywords to the data cube description
+;        fxaddpar, hdr, 'CDELT3', after = 'CDELT2', 1. $
+;                  , '[m] wavelength-coordinate axis increment'
+;        fxaddpar, hdr, 'CDELT4', after = 'CDELT3', 1. $
+;                  , '[s] time-coordinate axis increment'
+;        fxaddpar, hdr, 'CTYPE3', after = 'CTYPE2', 'wavelength', '[m]'
+;        fxaddpar, hdr, 'CTYPE4', after = 'CTYPE3', 'time',       '[s]'
+;        fxaddpar, hdr, 'CUNIT3', after = 'CUNIT2', 'm', 'Wavelength unit'
+;        fxaddpar, hdr, 'CUNIT4', after = 'CUNIT3', 's', 'Time unit'
+;        fxaddpar, hdr, 'COMMENT', after = 'CUNIT4' $
+;                  , "Index order is (x,y,lambda,t)"
 
         if keyword_set(blur) then begin
           fxaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
@@ -499,11 +499,11 @@ pro chromis::polish_tseries, xbd = xbd $
 
         ;; Make time tabhdu extension with Nscans rows
         fxaddpar,hdr,'EXTEND',!true
-        s_array = lonarr(1, 1, 1, Nscans)
+        s_array = lonarr(Nscans)
         s_array[0] = wstates.scannumber
-        t_array = dblarr(1, 1, 1, Nscans)
-        t_array[0] = red_time2double(time);-red_time2double(timestamp)
-        w_array = fltarr(1, 1, 1, 1)
+        t_array = dblarr(1, Nscans)
+        t_array[0] = red_time2double(time)
+        w_array = fltarr(1)
         ;;w_array[0] = wstates.tun_wavelength
         w_array[0] = float(prefilters[0])*1e-10
 ;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
@@ -529,27 +529,68 @@ pro chromis::polish_tseries, xbd = xbd $
           fxaddpar, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601'
         endif
 
+        help, round(cub)
+        print, 'n_elements:', n_elements(cub)
         ;; Write the file
-        red_fits_createfile, odir + ofil, hdr, lun, fileassoc;, tabhdu = tabhdu
-        for iscan = 0, Nscans-1 do fileassoc[iscan] = round(cub[*, *, *, iscan])
+;        red_fits_createfile, odir + ofil, hdr, lun, fileassoc;, tabhdu = tabhdu
+        self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims $
+                                     , wcs_time_coordinate = t_array $
+                                     , wcs_wave_coordinate = w_array $
+                                     , scannumber = s_array
+
+
+;        for iscan = 0, Nscans-1 do begin
+;          self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
+;                                     , iscan = iscan
+;        endfor                  ; iscan
         free_lun, lun
         print, inam + ' : Wrote file '+odir + ofil
 
-;        ;; Write the file
-;        red_writedata, odir + ofil, fix(round(temporary(cub))) $
-;                       , header = hdr, tabhdu = tabstruct, /over
- 
+;        ;; Experimental extra tabulated data:
+;        Ntuning = 1
+;        temp_array = fltarr(Ntemp)
+;        r0_array   = fltarr(Nr0)
+;        temp_array[0] = cos(s_array/max(s_array)) ; Really function of scannumber
+;        r0_array[0]   = sin(s_array/max(s_array)) ; Really function of time, i.e., of tuning and scannumber
+;        
+;
+;        fxaddpar, hdr, 'TABULATD', 'TABULATIONS;ATMOS_R0,AMB_TEMP'
+;
+;        fxbhmake,bdr,1,'TABULATIONS','For storing tabulated keywords'
+;        fxbaddcol, 1, bdr, r0_array, 'ATMOS_R0', TUNIT = 'm', 'Table of atmospheric r0'
+;        fxbadd, bdr, '1CTYP1', 'TIME-TAB', 'Time since DATEREF, tabulated for ATMOS_R0'
+;        fxbadd, bdr, '1CNAM1', 'Time since DATEREF for ATMOS_R0'
+;        fxbadd, bdr, '1S1_0', 'TABULATIONS', 'Extension w/tabulations for ATMOS_R0'
+;        fxbadd, bdr, '1S1_1', 'TIME-ATMOS_R0', 'TTYPE of col. w/TIME for ATMOS_R0'
+;        fxbaddcol, 2, bdr, r0_time, 'TIME-ATMOS_R0', 'Tabulations of TIME for ATMOS_R0', tunit = 's'
+;        
+;        
+;        fxbaddcol, 3, bdr, temp_array, 'AMB_TEMP', TUNIT = 'K', 'Table of ambient temperature'
+;        fxbcreate, lun, filename, bdr, extension_no
+;        fxbwrite, lun, r0_array, 1, 1
+;        fxbwrite, lun, temp_array, 2, 1
+;        fxbfinish, lun
+;    
 
 
-rcub = readfits(odir + ofil, rhdr)
-rdcub = red_readdata(odir + ofil, head = rdhdr)
-help, cub
-print, hdr, format = '(a0)'
-help, rcub
-print, rhdr, format = '(a0)'
-;help, rdcub
-;print, rdhdr, format = '(a0)'
-stats, round(cub)-rcub
+;rcub = readfits(odir + ofil, rhdr)
+;rdcub = red_readdata(odir + ofil, head = rdhdr)
+;help, cub
+;print, hdr, format = '(a0)'
+;help, rcub
+;print, rhdr, format = '(a0)'
+;;help, rdcub
+;;print, rdhdr, format = '(a0)'
+;stats, round(cub)-rcub
+
+fxbopen, tlun, odir + ofil, 'EXTNAME-WCS-TABLES'
+fxbread,tlun,time_tab,'TIME-TABULATION'
+fxbread,tlun,wave_tab,'WAVE-TABULATION'
+fxbread,tlun,scan_tab,'SCAN-TABULATION'
+
+
+
+
 stop
       endif else begin
 
