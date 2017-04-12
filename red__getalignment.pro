@@ -126,7 +126,7 @@ pro red::getalignment, align = align, $
     end
   endcase
 
-                                ; filter selection
+  ;; filter selection
   Nalign = n_elements(alignments)
   Npref = n_elements(prefilters)
   for ialign=0, Nalign-1 do begin
@@ -239,7 +239,7 @@ pro red::getalignment, align = align, $
 
   ref_align = { clip:ref_clip, $
                 state1:alignments[0].state1, $
-                state2:alignments[0].state2, $
+                state2:alignments[0].state1, $
                 map:identity(3), $
                 xoffs_file:'', yoffs_file:'' }
   align = replicate( ref_align, Nalign+1 )
