@@ -297,7 +297,6 @@ pro red::download, overwrite = overwrite $
                                , path = pathpig)     
      endif
 
-stop
      if DownloadOK then begin
         ;; We actually want the logfile converted to time and x/y
         ;; coordinates (in arcseconds).
