@@ -1,11 +1,53 @@
-;	   File:       collapserange_f.ana
-;	   Created:    <2003-06-19 15:20:16 mats>
-;	   Author:     mats@astro.su.se
-;	   Time-stamp: <2009-06-11 15:47:51 mats>
+; docformat = 'rst'
 
-; Ported from ANA  (not done yet)
-
-FUNCTION red_collapserange, arr, ld = ld, rd = rd
+;+
+; Convert an array of numbers into a string of comma and dash
+; separated (sub-)ranges, e.g., [1,2,3,4,5,8,9,10,14,17,20,21,22] ->
+; '[1-5,8-10,14,17,20-22]'
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, ISP
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+;    arr : in, type=array
+;
+;       The array of numbers.
+; 
+; :Keywords:
+; 
+;    ld : in, optional, type=string, default='['
+;   
+;       The delimiter on the left hand side of the resulting string. 
+; 
+;    rd : in, optional, type=string, default=']'
+;   
+;       The delimiter on the right hand side of the resulting string. 
+; 
+; 
+; :History:
+; 
+;     2003-06-19 : MGL. First version (in ANA)
+;
+;     2009-06-11 : MGL. Ported to IDL.
+;
+;     2013-10-03 : MGL. Renamed to the red_ namespace.
+;
+;
+;
+;
+;-
+function red_collapserange, arr, ld = ld, rd = rd
   
   if n_elements(ld) eq 0 then ld = '['
   if n_elements(rd) eq 0 then rd = ']'
@@ -16,22 +58,22 @@ FUNCTION red_collapserange, arr, ld = ld, rd = rd
   
   strng = ld+strcompress(string(arr[0]), /rem)
   
-  FOR i = 1, n_elements(arr)-2 DO BEGIN
-     IF arr[i] EQ arr[i-1]+1 THEN BEGIN
-        IF arr[i] NE arr[i+1]-1 THEN BEGIN
+  for i = 1, n_elements(arr)-2 do begin
+    if arr[i] eq arr[i-1]+1 then begin
+      if arr[i] ne arr[i+1]-1 then begin
                                 ;strng += '!'
-           IF ~strmatch(strng, '*[,-]') THEN strng += ','	
-           strng += strcompress(string(arr(i)), /rem) + ','
-        END ELSE BEGIN
-           if ~strmatch(strng, '*-') then strng += '-'
-        ENDELSE
-     END ELSE BEGIN
-        IF ~strmatch(strng, '*,') then strng += ','	
-        strng += strcompress(string(arr[i]), /rem)
-     ENDELSE
-  ENDFOR
+        if ~strmatch(strng, '*[,-]') then strng += ','	
+        strng += strcompress(string(arr(i)), /rem) + ','
+      end else begin
+        if ~strmatch(strng, '*-') then strng += '-'
+      endelse
+    end else begin
+      if ~strmatch(strng, '*,') then strng += ','	
+      strng += strcompress(string(arr[i]), /rem)
+    endelse
+  endfor
   
-  ;;IF (last(strng) NE ',') AND (last(strng) NE '-') THEN strng += ','	
+  ;;if (last(strng) NE ',') AND (last(strng) NE '-') THEN strng += ','	
   if ~strmatch(strng, '*[,-]') then strng += ',' 
 
   ;;return, strng+strcompress(string(last(arr)), /rem)+rd

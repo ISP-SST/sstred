@@ -9,12 +9,12 @@
 ;    SST observations
 ; 
 ; 
-; :author:
+; :Author:
 ; 
-;    Mats Löfdahl, 2004-03-25 (originally in ANA)
+;    Mats Löfdahl, ISP
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ;    An integer array.
 ; 
@@ -24,8 +24,10 @@
 ; 
 ;      This is the comma and dash separated list.
 ; 
-; :history:
+; :History:
 ; 
+;     2004-03-25 : MGL. First version (in ANA).
+;
 ;     2013-10-03 : MGL. Renamed to the red_ namespace.
 ; 
 ;     2014-01-22 : MGL. Adapt to string functions moved to the str_
@@ -67,4 +69,4 @@ function red_expandrange,st_in
   
   return, range
 
-end;
+end
