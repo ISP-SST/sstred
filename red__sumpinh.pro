@@ -92,54 +92,52 @@ pro red::sumpinh, nthreads = nthreads $
                   , overwrite = overwrite $
                   , sum_in_rdx = sum_in_rdx
 
-    ;if ~keyword_set(pinhole_align) then pinhole_align = 0
+  if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
+  else if ptr_valid(self.pinh_dirs) then dirs = *self.pinh_dirs
   
-    ;; Name of this method
-    inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  if(n_elements(cams) eq 0 and ptr_valid(self.cameras)) then cams = *self.cameras
+  if(n_elements(cams) eq 1) then cams = [cams]
 
-    if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
-    else if ptr_valid(self.pinh_dirs) then dirs = *self.pinh_dirs
-    
-    if(n_elements(cams) eq 0 and ptr_valid(self.cameras)) then cams = *self.cameras
-    if(n_elements(cams) eq 1) then cams = [cams]
-    
-    ;; Logging
-    help, /obj, self, output = selfinfo 
-    red_writelog, selfinfo = selfinfo
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  
+  ;; Logging
+  help, /obj, self, output = selfinfo 
+  red_writelog, selfinfo = selfinfo
 
-    if n_elements(nthreads) eq 0 then nthread = 2 else nthread = nthreads
+  if n_elements(nthreads) eq 0 then nthread = 2 else nthread = nthreads
 
-    Ncams = n_elements(cams)
-    if( Ncams eq 0) then begin
-        print, inam+' : ERROR : undefined cams (and cameras)'
-        return
-    endif
+  Ncams = n_elements(cams)
+  if( Ncams eq 0) then begin
+    print, inam+' : ERROR : undefined cams (and cameras)'
+    return
+  endif
 
-    Ndirs = n_elements(dirs)
-    if( Ndirs eq 0) then begin
-        print, inam+' : ERROR : no pinhole directories defined'
-        return
-    endif else begin
-        if Ndirs gt 1 then begin
-            dirstr = '['+ strjoin(dirs,';') + ']'
-            print,'WARNING: sumpinh was called with multiple directories.'
-            print,'Only the first directory will be used.'
-            print,"To use a particular directory, use: a->sumpinh,dir='path/to/phdata'"
-            dirs = [dirs[0]]
-        endif else dirstr = dirs[0]
-        dirstr = dirs[0]    ; remove when we can properly deal with multiple directories.
-    endelse
+  Ndirs = n_elements(dirs)
+  if( Ndirs eq 0) then begin
+    print, inam+' : ERROR : no pinhole directories defined'
+    return
+  endif else begin
+    if Ndirs gt 1 then begin
+      dirstr = '['+ strjoin(dirs,';') + ']'
+      print,'WARNING: sumpinh was called with multiple directories.'
+      print,'Only the first directory will be used.'
+      print,"To use a particular directory, use: a->sumpinh,dir='path/to/phdata'"
+      dirs = [dirs[0]]
+    endif else dirstr = dirs[0]
+    dirstr = dirs[0]            ; remove when we can properly deal with multiple directories.
+  endelse
 
-    if ~file_test(dirs,/directory) then begin
-        print, inam + ' : ERROR : "'+dirs+'" is not a directory'
-        return
-    endif
-    
-    ;; Loop over cameras
-    for icam = 0, Ncams-1 do begin
+  if ~file_test(dirs,/directory) then begin
+    print, inam + ' : ERROR : "'+dirs+'" is not a directory'
+    return
+  endif
+  
+  ;; Loop over cameras
+  for icam = 0, Ncams-1 do begin
 
-        cam = cams[icam]
-        detector = self->getdetector( cam )
+    cam = cams[icam]
+    detector = self->getdetector( cam )
 
 ;         dname = self->getdark( cam, data=dd )
 ;         if( n_elements(dd) eq 0 ) then begin
@@ -147,90 +145,90 @@ pro red::sumpinh, nthreads = nthreads $
 ;             continue
 ;         endif
 
-        self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
-                         files=files, states=states, /force
+    self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
+                       files=files, states=states, /force
 
-        nf = n_elements(files)
-        if( nf eq 0 || files[0] eq '') then begin
-            print, inam+' : '+cam+': no files found in: '+dirstr
-            print, inam+' : '+cam+': skipping camera!'
-            continue
-        endif else begin
-            print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
-        endelse
+    nf = n_elements(files)
+    if( nf eq 0 || files[0] eq '') then begin
+      print, inam+' : '+cam+': no files found in: '+dirstr
+      print, inam+' : '+cam+': skipping camera!'
+      continue
+    endif else begin
+      print, inam+' : Found '+red_stri(nf)+' files in: '+ dirstr + '/' + cam + '/'
+    endelse
 
-        state_list = states[uniq(states.fpi_state, sort(states.fpi_state))]
+    state_list = states[uniq(states.fpi_state, sort(states.fpi_state))]
 
-        ns = n_elements(state_list)
-        ;; Loop over states and sum
-        for ss = 0L, ns - 1 do begin
-         
-            this_state = state_list[ss]
-            sel = where(states.fpi_state eq this_state.fpi_state)
-        
-        
-            ;self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
-            ;               files=files, states=states, selected=sel
+    ns = n_elements(state_list)
+    ;; Loop over states and sum
+    for ss = 0L, ns - 1 do begin
+      
+      this_state = state_list[ss]
+      sel = where(states.fpi_state eq this_state.fpi_state)
+      
+      
+                                ;self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
+                                ;               files=files, states=states, selected=sel
 
-            ;; Get the flat file name for the selected state
-            self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
-                        pinhname = pinhname, status = status
-            if( status ne 0 ) then begin
-                print, inam+' : failed to load calibration data for:', states[sel[0]].filename
-                continue
-            endif
-            
-            ;; If file does not exist, do sum!
-            if( ~keyword_set(overwrite) && file_test(pinhname) ) then begin
-               print, inam+' : file exists: ' + pinhname + ' , skipping! (run sumpinh, /overwrite to recreate)'
-               continue
-            endif
+      ;; Get the flat file name for the selected state
+      self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
+                         pinhname = pinhname, status = status
+      if( status ne 0 ) then begin
+        print, inam+' : failed to load calibration data for:', states[sel[0]].filename
+        continue
+      endif
+      
+      ;; If file does not exist, do sum!
+      if( ~keyword_set(overwrite) && file_test(pinhname) ) then begin
+        print, inam+' : file exists: ' + pinhname + ' , skipping! (run sumpinh, /overwrite to recreate)'
+        continue
+      endif
 
-            if( n_elements(sel) lt 1 || min(sel) lt 0 ) then begin
-                print, inam+' : '+cam+': no files found for state: '+state_list[ss].fullstate
-                continue
-            endif
-            
-            pref = states[sel[0]].prefilter
-            print, inam+' : adding pinholes for state -> ' + state_list[ss].fpi_state
-            
-            DoBackscatter = 0
-            if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-                self -> loadbackscatter, detector, pref, bgt, Psft
-                DoBackscatter = 1
-            endif
-            if DoBackscatter gt 0 then begin
-                ff = red_cdescatter(ff, bgt, Psft, /verbose, nthreads = nthread)
-            endif
-            gain = self->flat2gain(ff)
+      if( n_elements(sel) lt 1 || min(sel) lt 0 ) then begin
+        print, inam+' : '+cam+': no files found for state: '+state_list[ss].fullstate
+        continue
+      endif
+      
+      pref = states[sel[0]].prefilter
+      print, inam+' : adding pinholes for state -> ' + state_list[ss].fpi_state
+      
+      DoBackscatter = 0
+      if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+        self -> loadbackscatter, detector, pref, bgt, Psft
+        DoBackscatter = 1
+      endif
+      if DoBackscatter gt 0 then begin
+        ff = red_cdescatter(ff, bgt, Psft, /verbose, nthreads = nthread)
+      endif
+      gain = self->flat2gain(ff)
 
-            ;; Sum files
+      ;; Sum files
 
-            ;; Dark and flat correction and bad-pixel filling done
-            ;; by red_sumfiles on each frame before alignment.
-            if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-                psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
-                                 backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum, verbose=2)
-            endif else begin
-                psum = red_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
-                                 backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
-            endelse
+      ;; Dark and flat correction and bad-pixel filling done
+      ;; by red_sumfiles on each frame before alignment.
+      if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
+        psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
+                            backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum, verbose=2)
+      endif else begin
+        psum = red_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
+                            backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
+      endelse
 
-            head = red_readhead(files[sel[0]], /silent) 
-            check_fits, psum, head, /UPDATE, /SILENT        
-            if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', before='COMMENT'
+      head = red_readhead(files[sel[0]], /silent) 
+      check_fits, psum, head, /UPDATE, /SILENT        
+      if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', before='COMMENT'
 
-            file_mkdir, file_dirname(pinhname)
+      file_mkdir, file_dirname(pinhname)
 
-            print, inam+' : saving ' + pinhname
-            if keyword_set(pinhole_align) then begin
-                red_writedata, pinhname, psum, header=head, filetype='ANA', overwrite = overwrite
-            endif else begin
-                red_writedata, pinhname, fix(round(10. * psum)), header=head, filetype='ANA', overwrite = overwrite
-            endelse
+      print, inam+' : saving ' + pinhname
+      if keyword_set(pinhole_align) then begin
+        red_writedata, pinhname, psum, header=head, filetype='ANA', overwrite = overwrite
+      endif else begin
+        red_writedata, pinhname, fix(round(10. * psum)), header=head, filetype='ANA', overwrite = overwrite
+      endelse
 
-        endfor  ; states
+    endfor                      ; states
 
-    endfor      ; cam
+  endfor                        ; cam
 
 end
