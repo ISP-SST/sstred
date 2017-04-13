@@ -193,7 +193,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   if(n_elements(maxshift) eq 0) then maxshift='30'
   maxshift = strcompress(string(maxshift), /remove_all)
   
-  LineFeed = string(10b)
+  LF = string(10b)
 
   ;; Get keywords
   if n_elements(momfbddir) eq 0 then begin
@@ -212,7 +212,7 @@ pro red::prepmomfbd, wb_states = wb_states $
     ;; KL modes in variance order:
     manymodes = red_expandrange('2-6,9,10,7,8,14,15,11-13,20,21,18,19,16,17,27,28,25,26,22-24,35,36,33,34,44,45,31,32,29,30,54,55,42,43,40,41,37-39,65,66,52,53,50,51,77,78,48,49,46,47,63,64,61,62,90,91,75,76,59,60,56-58,104,105,73,74,88,89,71,72,69,70,67,68,119,120,86,87,102,103,84,85,135,136,82,83,79-81,100,101,117,118,152,153,98,99,96,97,115,116,133,134,94,95,92,93,170,171,113,114,150,151,131,132,111,112,189,190,109,110,106-108,129,130,168,169,148,149,209,210,127,128,125,126,123,124,121,122,146,147,187,188,230,231,166,167,144,145,142,143,207,208,164,165,252,253,140,141,137-139,185,186,162,163,275,276,228,229,160,161,183,184,205,206,158,159,156,157,154,155,181,182,299,300,250,251,203,204,179,180,226,227,177,178,175,176,324,325,172-174,201,202,273,274,224,225,248,249,199,200,350,351,197,198,297,298,222,223,195,196,193,194,191,192,246,247,271,272,220,221,377,378,322,323,218,219,244,245,216,217,295,296,269,270,214,215,211-213,405,406,242,243,348,349,240,241,267,268,320,321,293,294,434,435,238,239,236,237,375,376,265,266,234,235,232,233,291,292,346,347,263,264,464,465,318,319,261,262,403,404,289,290,259,260,257,258,254-256,495,496,373,374,316,317,344,345,287,288,432,433,285,286,314,315,527,528,283,284,401,402,342,343,281,282,371,372,279,280,277,278,462,463,312,313,560,561,310,311,340,341,430,431,308,309,369,370,399,400,493,494,306,307,338,339,304,305,301-303,594,595,367,368,336,337,460,461,397,398,525,526,428,429,334,335,629,630,365,366,332,333,330,331,328,329,326,327,491,492,395,396,363,364,558,559,458,459,426,427,665,666,361,362,393,394,359,360,523,524,357,358,592,593,424,425,355,356,352-354,489,490,391,392,456,457,702,703,389,390,422,423,556,557,627,628,387,388,454,455,521,522,740,741,385,386,487,488,420,421,383,384,381,382,379,380,590,591,418,419,452,453,663,664,779,780,485,486,416,417,554,555,519,520,450,451,414,415,412,413,625,626,410,411,700')
     ;; Use the Nmodes most significant modes, in significance order:
-    if Nmodes le n_elements(manymodes) then modes = red_collapserange(manymodes[0:Nmodes-1]) else stop
+    if Nmodes le n_elements(manymodes) then modes = red_collapserange(manymodes[0:Nmodes-1], ld = '', rd = '') else stop
   endif
   if n_elements(nremove) eq 0 then nremove=0
                                 ;if n_elements(nfac) eq 0 then nfac = 1.
@@ -448,131 +448,134 @@ pro red::prepmomfbd, wb_states = wb_states $
               }
         
         ;; Global keywords
-        cfg.globals += 'DATE_OBS=' + date_obs + LineFeed
-        cfg.globals += 'PROG_DATA_DIR=./data/' + LineFeed
-        cfg.globals += 'NEW_CONSTRAINTS' + LineFeed
-        cfg.globals += 'FAST_QR' + LineFeed
-        cfg.globals += 'FPMETHOD=horint' + LineFeed
-        cfg.globals += 'BASIS=Karhunen-Loeve' + LineFeed
-        cfg.globals += 'GETSTEP=getstep_conjugate_gradient' + LineFeed
-        cfg.globals += 'GRADIENT=gradient_diff' + LineFeed
-        cfg.globals += 'MODES=' + modes + LineFeed
-        cfg.globals += 'TELESCOPE_D=0.97' + LineFeed
-        cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LineFeed
-        cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + LineFeed
-        cfg.globals += 'ARCSECPERPIX=' + self.image_scale + LineFeed
-        cfg.globals += 'PIXELSIZE=' + strtrim(ref_caminfo.pixelsize, 2) + LineFeed
-        cfg.globals += 'FILE_TYPE=' + self.filetype + LineFeed
+        cfg.globals += 'DATE_OBS=' + date_obs + LF
+        cfg.globals += 'PROG_DATA_DIR=./data/' + LF
+        cfg.globals += 'NEW_CONSTRAINTS' + LF
+        cfg.globals += 'FAST_QR' + LF
+        cfg.globals += 'FPMETHOD=horint' + LF
+        cfg.globals += 'BASIS=Karhunen-Loeve' + LF
+        cfg.globals += 'GETSTEP=getstep_conjugate_gradient' + LF
+        cfg.globals += 'GRADIENT=gradient_diff' + LF
+        cfg.globals += 'MODES=' + modes + LF
+        cfg.globals += 'TELESCOPE_D=0.97' + LF
+        cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LF
+        cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + LF
+        cfg.globals += 'ARCSECPERPIX=' + self.image_scale + LF
+        cfg.globals += 'PIXELSIZE=' + strtrim(ref_caminfo.pixelsize, 2) + LF
+        cfg.globals += 'FILE_TYPE=' + self.filetype + LF
         case self.filetype of
           'ANA' : begin
-            cfg.globals += 'DATA_TYPE=FLOAT' + LineFeed
+            cfg.globals += 'DATA_TYPE=FLOAT' + LF
           end
           'MOMFBD' : begin
-            cfg.globals += 'GET_PSF' + LineFeed
-            cfg.globals += 'GET_PSF_AVG' + LineFeed
+            cfg.globals += 'GET_PSF' + LF
+            cfg.globals += 'GET_PSF_AVG' + LF
           end
         endcase
-        cfg.globals += 'SIM_X=' + sim_x_string + LineFeed
-        cfg.globals += 'SIM_Y=' + sim_y_string + LineFeed
+        cfg.globals += 'SIM_X=' + sim_x_string + LF
+        cfg.globals += 'SIM_Y=' + sim_y_string + LF
 
         ;; External keywords?
         if(keyword_set(global_keywords)) then begin
           nk = n_elements(global_keywords)
-          for ki=0L, nk-1 do cfg.globals += global_keywords[ki] + LineFeed
+          for ki=0L, nk-1 do cfg.globals += global_keywords[ki] + LF
         endif
         
         ;; Reference object
-        cfg.objects += 'object{' + LineFeed
-        cfg.objects += '    WAVELENGTH=' + strtrim(ref_states[ref_sel[0]].pf_wavelength,2) + LineFeed
+        cfg.objects += 'object{' + LF
+        cfg.objects += '    WAVELENGTH=' + strtrim(ref_states[ref_sel[0]].pf_wavelength,2) + LF
         cfg.objects += '    OUTPUT_FILE=results/' + detectors[refcam] $
                        + '_' + date_obs+'T'+folder_tag $
-                       + '_' + scanstring + '_' + upref[ipref] + LineFeed
+                       + '_' + scanstring + '_' + upref[ipref] + LF
         if(n_elements(weight) gt 0 ) then $
-           cfg.objects += '    WEIGHT=' + strtrim(weight[0],2) + LineFeed
-        cfg.objects += '    channel{' + LineFeed
-        cfg.objects += '        IMAGE_DATA_DIR=' + ref_img_dir + LineFeed
-        cfg.objects += '        FILENAME_TEMPLATE=' + ref_fn_template + LineFeed
-        cfg.objects += '        GAIN_FILE=' + ref_gainname + LineFeed
-        cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LineFeed
-        cfg.objects += '        DARK_NUM=0000001' + LineFeed
+           cfg.objects += '    WEIGHT=' + strtrim(weight[0],2) + LF
+        cfg.objects += '    channel{' + LF
+        cfg.objects += '        IMAGE_DATA_DIR=' + ref_img_dir + LF
+        cfg.objects += '        FILENAME_TEMPLATE=' + ref_fn_template + LF
+        cfg.objects += '        GAIN_FILE=' + ref_gainname + LF
+        cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LF
+        cfg.objects += '        DARK_NUM=0000001' + LF
+
         if keyword_set(redux) then begin
-          cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LineFeed
+          cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
         endif else begin
           cfg.objects += '        ALIGN_CLIP=' $
-                         + strjoin(strtrim(ref_clip,2),',') + LineFeed
+                         + strjoin(strtrim(ref_clip,2),',') + LF
           if( align[0].xoffs_file ne '' && file_test(align[0].xoffs_file)) then $
-             cfg.objects += '        XOFFSET='+align[0].xoffs_file + LineFeed
+             cfg.objects += '        XOFFSET='+align[0].xoffs_file + LF
           if( align[0].yoffs_file ne '' && file_test(align[0].yoffs_file)) then $
-             cfg.objects += '        YOFFSET='+align[0].yoffs_file + LineFeed
+             cfg.objects += '        YOFFSET='+align[0].yoffs_file + LF
         endelse
         if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
            ~keyword_set(no_descatter) then begin
           self -> loadbackscatter, detectors[refcam], upref[ipref] $
                                    , bgfile = bgf, bpfile = psff
           if(file_test(psff) AND file_test(bgf)) then begin
-            cfg.objects += '        PSF=' + psff + LineFeed
-            cfg.objects += '        BACK_GAIN=' + bgf + LineFeed
+            cfg.objects += '        PSF=' + psff + LF
+            cfg.objects += '        BACK_GAIN=' + bgf + LF
           endif else begin
             print, inam, ' : No backscatter files found for prefilter: ', upref[ipref]
           endelse
         endif
         if(n_elements(nfac) gt 0) then $
-           cfg.objects += '        NF=' + red_stri(nfac[0]) + LineFeed
-        cfg.objects += '        INCOMPLETE' + LineFeed
-        cfg.objects += '    }' + LineFeed
+           cfg.objects += '        NF=' + red_stri(nfac[0]) + LF
+        cfg.objects += '        INCOMPLETE' + LF
+        cfg.objects += '    }' + LF
 
         if ~keyword_set(no_pd) then begin ; PD channel
 
-          align_idx = where( align.state2.camera eq cams[pdcam])
-          if max(align_idx) lt 0 then begin
+          align_idx = where( align.state2.camera eq cams[pdcam], count)
+          if count eq 0 then begin
             ;;print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
             ;;stop
             continue
           endif
-
+          
+          if keyword_set(redux) then begin
+            if count gt 1 then begin
+              pd_map = median(align[align_idx].map, dim = 3)
+            endif else begin
+              pd_map = align[align_idx].map
+            endelse
+          endif 
           if n_elements(align_idx) gt 1 then align_idx = align_idx[0] ; just pick the first one for now
           state_align = align[align_idx]
 
-          cfg.objects += '    channel{' + LineFeed
-          cfg.objects += '        IMAGE_DATA_DIR=' + pd_img_dir + LineFeed
-          cfg.objects += '        FILENAME_TEMPLATE=' + pd_fn_template + LineFeed
-          cfg.objects += '        GAIN_FILE=' + pd_gainname + LineFeed
-          cfg.objects += '        DARK_TEMPLATE=' + pd_darkname + LineFeed
-          cfg.objects += '        DARK_NUM=0000001' + LineFeed
+          cfg.objects += '    channel{' + LF
+          cfg.objects += '        IMAGE_DATA_DIR=' + pd_img_dir + LF
+          cfg.objects += '        FILENAME_TEMPLATE=' + pd_fn_template + LF
+          cfg.objects += '        GAIN_FILE=' + pd_gainname + LF
+          cfg.objects += '        DARK_TEMPLATE=' + pd_darkname + LF
+          cfg.objects += '        DARK_NUM=0000001' + LF
+
           if keyword_set(redux) then begin
-            cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(state_align.map, 9), 2), ',') + LineFeed
+            cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(pd_map, 9), 2), ',') + LF
           endif else begin
             cfg.objects += '        ALIGN_CLIP=' $
-                           + strjoin(strtrim(state_align.clip,2),',') + LineFeed
+                           + strjoin(strtrim(state_align.clip,2),',') + LF
             if file_test(state_align.xoffs_file) then $
-               cfg.objects += '        XOFFSET='+state_align.xoffs_file + LineFeed
+               cfg.objects += '        XOFFSET='+state_align.xoffs_file + LF
             if file_test(state_align.yoffs_file) then $
-             cfg.objects += '        YOFFSET='+state_align.yoffs_file + LineFeed
+             cfg.objects += '        YOFFSET='+state_align.yoffs_file + LF
           endelse
-;          cfg.objects += '        ALIGN_CLIP=' $
-;                         + strjoin(strtrim(ref_clip,2),',') + LineFeed
-;          if( align[1].xoffs_file ne '' && file_test(align[1].xoffs_file)) then $
-;             cfg.objects += '        XOFFSET='+align[1].xoffs_file + LineFeed
-;          if( align[1].yoffs_file ne '' && file_test(align[1].yoffs_file)) then $
-;             cfg.objects += '        YOFFSET='+align[1].yoffs_file + LineFeed
           if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
              ~keyword_set(no_descatter) then begin
             self -> loadbackscatter, detectors[refcam], upref[ipref] $
                                      , bgfile = bgf, bpfile = psff
             if(file_test(psff) AND file_test(bgf)) then begin
-              cfg.objects += '        PSF=' + psff + LineFeed
-              cfg.objects += '        BACK_GAIN=' + bgf + LineFeed
+              cfg.objects += '        PSF=' + psff + LF
+              cfg.objects += '        BACK_GAIN=' + bgf + LF
             endif else begin
               print, inam, ' : No backscatter files found for prefilter: ', upref[ipref]
             endelse
           endif
           if(n_elements(nfac) gt 0) then $
-             cfg.objects += '        NF=' + red_stri(nfac[0]) + LineFeed
-          cfg.objects += '        INCOMPLETE' + LineFeed
-          cfg.objects += '        DIVERSITY=' + diversity_string + LineFeed
-          cfg.objects += '    }' + LineFeed
+             cfg.objects += '        NF=' + red_stri(nfac[0]) + LF
+          cfg.objects += '        INCOMPLETE' + LF
+          cfg.objects += '        DIVERSITY=' + diversity_string + LF
+          cfg.objects += '    }' + LF
         endif                   ; PD channel
-        cfg.objects += '}' + LineFeed
+        cfg.objects += '}' + LF
 
         red_append, cfg_list, cfg
 
@@ -655,7 +658,8 @@ pro red::prepmomfbd, wb_states = wb_states $
               if state_list[state_idx[0]].nframes eq 1 then begin
                 if nremove ge n_elements(state_idx) then continue
                 if nremove ne 0 then begin
-                  *(cfg_list[cfg_idx].framenumbers) = red_strip(*(cfg_list[cfg_idx].framenumbers), state_list[state_idx[0:nremove-1]].framenumber)
+                  *(cfg_list[cfg_idx].framenumbers) = red_strip(*(cfg_list[cfg_idx].framenumbers) $
+                                                                , state_list[state_idx[0:nremove-1]].framenumber)
                   state_idx = state_idx[nremove:*] 
                 endif
               endif
@@ -681,52 +685,53 @@ pro red::prepmomfbd, wb_states = wb_states $
               if n_elements(align_idx) gt 1 then align_idx = align_idx[0] ; just pick the first one for now
               state_align = align[align_idx]
               
-              ;; create cfg object
-              cfg_list[cfg_idx].objects += 'object{' + LineFeed
-              cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[istate].pf_wavelength,2) + LineFeed
+              ;; Create cfg object
+              cfg_list[cfg_idx].objects += 'object{' + LF
+              cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[istate].pf_wavelength,2) + LF
               cfg_list[cfg_idx].objects += '    OUTPUT_FILE=results/' + detectors[icam] $
                                            + '_' + date_obs+'T'+folder_tag $
-                                           + '_' + scanstring + '_'+ustates[istate].fullstate + LineFeed
+                                           + '_' + scanstring + '_'+ustates[istate].fullstate + LF
               if(n_elements(weight) gt 1) then $
-                 cfg_list[cfg_idx].objects += '    WEIGHT=' + strtrim(weight[1],2) + LineFeed
-              cfg_list[cfg_idx].objects += '    channel{' + LineFeed
-              cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + LineFeed
-              cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + LineFeed
-              cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LineFeed
-              cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LineFeed
-              cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LineFeed
+                 cfg_list[cfg_idx].objects += '    WEIGHT=' + strtrim(weight[1],2) + LF
+              cfg_list[cfg_idx].objects += '    channel{' + LF
+              cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + LF
+              cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + LF
+              cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF
+              cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LF
+              cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
+
               if keyword_set(redux) then begin
-                cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(state_align.map, 9), 2), ',') + LineFeed
+                cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(state_align.map, 9), 2), ',') + LF
               endif else begin
                 cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' $
-                                             + strjoin(strtrim(state_align.clip,2),',') + LineFeed
+                                             + strjoin(strtrim(state_align.clip,2),',') + LF
                 if( state_align.xoffs_file ne '' && file_test(state_align.xoffs_file)) then $
-                   cfg_list[cfg_idx].objects += '        XOFFSET='+state_align.xoffs_file + LineFeed
+                   cfg_list[cfg_idx].objects += '        XOFFSET='+state_align.xoffs_file + LF
                 if( state_align.yoffs_file ne '' && file_test(state_align.yoffs_file)) then $
-                   cfg_list[cfg_idx].objects += '        YOFFSET='+state_align.yoffs_file + LineFeed
+                   cfg_list[cfg_idx].objects += '        YOFFSET='+state_align.yoffs_file + LF
               endelse
               if( ustates[istate].prefilter EQ '8542' OR ustates[istate].prefilter EQ '7772' ) AND $
                  ~keyword_set(no_descatter) then begin
                 self -> loadbackscatter, detectors[icam], ustates[istate].prefilter, bgfile = bgf, bpfile = psff
                 if(file_test(psff) AND file_test(bgf)) then begin
-                  cfg_list[cfg_idx].objects += '        PSF=' + psff + LineFeed
-                  cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + LineFeed
+                  cfg_list[cfg_idx].objects += '        PSF=' + psff + LF
+                  cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + LF
                 endif else begin
                   print, inam, ' : No backscatter files found for prefilter: ' $
                          , ustates[istate].prefilter
                 endelse
               endif
               if(n_elements(nfac) gt 1) then $
-                 cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[1]) + LineFeed
+                 cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[1]) + LF
               if keyword_set(redux) && max(nremove) gt 0 then $
                  cfg_list[cfg_idx].objects += '        DISCARD=' $
-                                              + strjoin(strtrim(nremove,2),',') + LineFeed
-              cfg_list[cfg_idx].objects += '        INCOMPLETE' + LineFeed
-              cfg_list[cfg_idx].objects += '    }' + LineFeed
-              cfg_list[cfg_idx].objects += '}' + LineFeed
+                                              + strjoin(strtrim(nremove,2),',') + LF
+              cfg_list[cfg_idx].objects += '        INCOMPLETE' + LF
+              cfg_list[cfg_idx].objects += '    }' + LF
+              cfg_list[cfg_idx].objects += '}' + LF
               
               if(keyword_set(wb_states)) then begin
-                
+
                 ;; select WB files with the same framenumbers
                 self->selectfiles, prefilter=upref[ipref], scan=scannumber, $
                                    files=ref_files, states=ref_states, selected=ref_sel $
@@ -738,52 +743,56 @@ pro red::prepmomfbd, wb_states = wb_states $
                                    , gainname = gainname, darkname = darkname, status = status
                 if( status lt 0 ) then continue
                 
+                ;; Use the real file name, not the link, because the
+                ;; links (even in the dir w/o _nostate) do not have
+                ;; the NB state info.
                 fullname = file_readlink(ref_states[ref_sel[0]].filename)
                 img_dir = file_dirname(fullname,/mark)
                 filename = file_basename(fullname)
                 pos = STREGEX(filename, '[0-9]{7}', length=len)
                 fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
                 
-                cfg_list[cfg_idx].objects += 'object{' + LineFeed
+                cfg_list[cfg_idx].objects += 'object{' + LF
                 cfg_list[cfg_idx].objects += '    WAVELENGTH=' $
-                                             + strtrim(ustates[istate].pf_wavelength,2) + LineFeed
+                                             + strtrim(ustates[istate].pf_wavelength,2) + LF
                 if(n_elements(weight) gt 2) then $
-                   cfg.objects += '    WEIGHT=' + strtrim(weight[3],2) + LineFeed $
-                else cfg_list[cfg_idx].objects += '    WEIGHT=0.00' + LineFeed
+                   cfg.objects += '    WEIGHT=' + strtrim(weight[3],2) + LF $
+                else cfg_list[cfg_idx].objects += '    WEIGHT=0.00' + LF
                 cfg_list[cfg_idx].objects += '    OUTPUT_FILE=results/'+detectors[refcam] + '_' $
                                              + date_obs+'T'+folder_tag $
-                                             + '_' + scanstring + '_'+ustates[istate].fullstate + LineFeed
-                cfg_list[cfg_idx].objects += '    channel{' + LineFeed
-                cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + LineFeed
-                cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + LineFeed
-                cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LineFeed
-                cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LineFeed
-                cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LineFeed
+                                             + '_' + scanstring + '_'+ustates[istate].fullstate + LF
+                cfg_list[cfg_idx].objects += '    channel{' + LF
+                cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + LF
+                cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + LF
+                cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF
+                cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LF
+                cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
+
                 if keyword_set(redux) then begin
-                  cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LineFeed
+                  cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
                 endif else begin
-                  cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + LineFeed
+                  cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + LF
                 endelse
                 if( ustates[istate].prefilter EQ '8542' OR $
                     ustates[istate].prefilter EQ '7772' ) AND ~keyword_set(no_descatter) then begin
                   self -> loadbackscatter, detectors[refcam], ustates[istate].prefilter $
                                            , bgfile = bgf, bpfile = psff
                   if(file_test(psff) AND file_test(bgf)) then begin
-                    cfg_list[cfg_idx].objects += '        PSF=' + psff + LineFeed
-                    cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + LineFeed
+                    cfg_list[cfg_idx].objects += '        PSF=' + psff + LF
+                    cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + LF
                   endif else begin
                     print, inam, ' : No backscatter files found for prefilter: ' $
                            , ustates[istate].prefilter
                   endelse
                 endif
                 if(n_elements(nfac) gt 2) then cfg_list[cfg_idx].objects $
-                   += '        NF=' + red_stri(nfac[2]) + LineFeed
+                   += '        NF=' + red_stri(nfac[2]) + LF
                 if keyword_set(redux) && max(nremove) gt 0 then $
                    cfg_list[cfg_idx].objects += '        DISCARD=' $
-                                                + strjoin(strtrim(nremove,2),',') + LineFeed
-                cfg_list[cfg_idx].objects += '        INCOMPLETE' + LineFeed
-                cfg_list[cfg_idx].objects += '    }' + LineFeed
-                cfg_list[cfg_idx].objects += '}' + LineFeed
+                                                + strjoin(strtrim(nremove,2),',') + LF
+                cfg_list[cfg_idx].objects += '        INCOMPLETE' + LF
+                cfg_list[cfg_idx].objects += '    }' + LF
+                cfg_list[cfg_idx].objects += '}' + LF
               endif
               
             endfor              ; istate
@@ -811,10 +820,10 @@ pro red::prepmomfbd, wb_states = wb_states $
 ;    number_str = string(cfg_list[icfg].first_file, format='(I07)') $
 ;                 + '-' + string(cfg_list[icfg].last_file,format='(I07)')
 ;        cfg_list[icfg].globals += 'IMAGE_NUMS=' + number_str +
-;        LineFeed + LineFeed
+;        LF + LF
     frmnums = *(cfg_list[icfg].framenumbers)
     frmnums = frmnums[uniq(frmnums, sort(frmnums))]
-    cfg_list[icfg].globals += 'IMAGE_NUMS=' + red_collapserange(frmnums, ld='', rd='')
+    cfg_list[icfg].globals += 'IMAGE_NUMS=' + red_collapserange(frmnums, ld='', rd='') + LF
 
 ;    print,'Writing: ', cfg_list[icfg].file
     openw, lun, cfg_list[icfg].file, /get_lun, width=2500
