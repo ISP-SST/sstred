@@ -56,17 +56,27 @@
 ;
 ;   2016-10-04 : MGL. Adapted red::preflatcubes_lc4 for CHROMIS data.
 ;
+;   2017-04-13 : MGL. Do not read cavityfree flats! Make FITS header
+;                for the cube.
+;
 ;-
 pro chromis::prepflatcubes, flatdir = flatdir $
                             , pref = pref $
                             , verbose = verbose
 
+
+  ;; Prepare for logging (after setting of defaults).
+  ;; Set up a dictionary with all parameters that are in use
+  prpara = dictionary()
+  if n_elements(flatdir) ne 0 then prpara['flatdir'] = flatdir
+  if n_elements(pref) ne 0 then prpara['pref'] = pref
+
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+;  ;; Logging
+;  help, /obj, self, output = selfinfo 
+;  red_writelog, selfinfo = selfinfo
 
   ;; Check keywords
   if(~keyword_set(flatdir)) then flatdir = self.out_dir+'/flats/'
@@ -83,8 +93,9 @@ pro chromis::prepflatcubes, flatdir = flatdir $
   self -> getdetectors
   detector = (*self.detectors)[where(isnb)]
 
-  ;; Find the files
-  files = file_search(flatdir+'/'+detector+'*.flat.fits', count = Nfiles)
+  ;; Find the files (make sure not to get the cavity free flats!)
+  files = file_search(flatdir+'/'+detector+'*[0-9].flat.fits', count = Nfiles)
+
 
   ;; Check files
   if Nfiles eq 0 then begin
@@ -176,8 +187,23 @@ pro chromis::prepflatcubes, flatdir = flatdir $
         noutname = detector + '_' + usetting + '_' + upref + '_filenames.txt'
         soutname = detector + '_' + usetting + '_' + upref + '_flats.sav'
         
-        writefits,  outdir + doutname, cub
-        writefits,  outdir + woutname, wav
+        ;; Make FITS header
+        check_fits, cub, head, /UPDATE, /SILENT  
+        fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
+        fxaddpar, head, 'FILENAME', file_basename(doutname[0]), after = 'DATE'
+        self -> headerinfo_addstep, head, prstep = 'Flat cubes' $
+                                    , prproc = inam, prpara = prpara
+
+        ;; More things need to be added...
+        ;; * What's on the axes?
+        
+
+        writefits, outdir + doutname, cub, head
+
+        ;; Should make header also for the wavelength file. (Or add
+        ;; the wavelengths to the cube file, but reader program has to
+        ;; deal with that!)
+        writefits, outdir + woutname, wav
         namelist = strarr(Nstates)
 
         ;; Print file names in order into a text file. Note that this
