@@ -116,6 +116,8 @@
 ;   2016-10-26 : MGL. Special case for prefilters with only a single
 ;                wavelength point.
 ;
+;   2017-04-13 : MGL. Make SOLARNET FITS headers.
+;
 ;-
 pro red::fitgains, npar = npar $
                    , niter = niter $
@@ -135,16 +137,34 @@ pro red::fitgains, npar = npar $
                    , ifit = ifit $
                    , all = all
 
-  ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
-
+  ;; Defaults
   if n_elements(niter) eq 0 then niter = 3L
   if n_elements(rebin) eq 0 then rebin = 100L
   
+  ;; Prepare for logging (after setting of defaults). Set up a
+  ;; dictionary with all parameters that are in use
+  prpara = dictionary()
+  if keyword_set(npar) then prpara['npar'] = npar
+  if keyword_set(niter) then prpara['niter'] = niter
+  if keyword_set(rebin) then prpara['rebin'] = rebin
+  if keyword_set(xl) then prpara['xl'] = xl
+  if keyword_set(densegrid) then prpara['densegrid'] = densegrid
+  if keyword_set(res) then prpara['res'] = res
+  if keyword_set(thres) then prpara['thres'] = thres
+  if keyword_set(initcmap) then prpara['initcmap'] = initcmap
+  if keyword_set(fit_reflectivity) then prpara['fit_reflectivity'] = fit_reflectivity
+  if keyword_set(x0) then prpara['x0'] = x0
+  if keyword_set(state) then prpara['state'] = state
+  if keyword_set(nosave) then prpara['nosave'] = nosave
+  if keyword_set(myg) then prpara['myg'] = myg
+  if keyword_set(w0) then prpara['w0'] = w0
+  if keyword_set(nthreads) then prpara['nthreads'] = nthreads
+  if keyword_set(ifit) then prpara['ifit'] = ifit
+  if keyword_set(all) then prpara['all'] = all
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
   outdir = self.out_dir + '/flats/'
 
   files = file_search(self.out_dir + 'flats/spectral_flats/*_filenames.txt' $
@@ -222,6 +242,8 @@ pro red::fitgains, npar = npar $
       
       continue
     endif
+
+    ;; At this point, Nwav gt 1.
 
     pref = states[0].prefilter
 
@@ -333,9 +355,21 @@ pro red::fitgains, npar = npar $
     if ~keyword_set(nosave) then begin
 
       for iwav = 0L, Nwav - 1 do begin
-        fzwrite, reform(ratio[iwav,*,*]), outnames[iwav], 'npar='+red_stri(npar_t)
+
+        output = reform(ratio[iwav,*,*])
+
+        ;; Make FITS header
+        head = red_readhead(namelist[iwav])
+        check_fits, output, head, /UPDATE, /SILENT  
+        fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
+        fxaddpar, head, 'FILENAME', file_basename(outnames[iwav]), after = 'DATE'
+        self -> headerinfo_addstep, head, prstep = 'Make cavity free flats' $
+                                    , prproc = inam, prpara = prpara
+
+        writefits, outnames[iwav], output, head
+        ;; fzwrite, reform(ratio[iwav,*,*]), outnames[iwav], 'npar='+red_stri(npar_t)
         print, inam + ' : Saving file -> '+outnames[iwav]
-      endfor
+      endfor                    ; iwav
       
       fit = {pars:res, yl:yl, xl:xl, oname:outnames}
       save, file = sfile, fit
