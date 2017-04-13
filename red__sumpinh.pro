@@ -79,6 +79,8 @@
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
 ; 
+;   2017-04-13 : MGL. Construct SOLARNET metadata fits header.
+; 
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , no_descatter = no_descatter $
@@ -98,12 +100,30 @@ pro red::sumpinh, nthreads = nthreads $
   if(n_elements(cams) eq 0 and ptr_valid(self.cameras)) then cams = *self.cameras
   if(n_elements(cams) eq 1) then cams = [cams]
 
+  ;; Prepare for logging (after setting of defaults).
+  ;; Set up a dictionary with all parameters that are in use
+  prpara = dictionary()
+  ;; Boolean keywords
+  if keyword_set(no_descatter) then prpara['no_descatter'] = no_descatter
+  if keyword_set(overwrite) then prpara['overwrite'] = overwrite
+  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
+  if keyword_set(pinhole_align) ne 0 then prpara['pinhole_align'] = pinhole_align
+  if keyword_set(brightest_only) ne 0 then prpara['brightest_only'] = brightest_only
+  ;; Non-boolean keywords
+  if n_elements(cams) ne 0 then prpara['cams'] = cams
+  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
+  if n_elements(prefilter) ne 0 then prpara['prefilter'] = prefilter
+  if n_elements(ustat) ne 0 then prpara['ustat'] = ustat
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
+;  if keyword_set() then prpara[''] = 
+
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+;  ;; Logging
+;  help, /obj, self, output = selfinfo 
+;  red_writelog, selfinfo = selfinfo
 
   if n_elements(nthreads) eq 0 then nthread = 2 else nthread = nthreads
 
@@ -139,12 +159,6 @@ pro red::sumpinh, nthreads = nthreads $
     cam = cams[icam]
     detector = self->getdetector( cam )
 
-;         dname = self->getdark( cam, data=dd )
-;         if( n_elements(dd) eq 0 ) then begin
-;             print, inam+' : no dark found for camera ', cam
-;             continue
-;         endif
-
     self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
                        files=files, states=states, /force
 
@@ -159,16 +173,12 @@ pro red::sumpinh, nthreads = nthreads $
 
     state_list = states[uniq(states.fpi_state, sort(states.fpi_state))]
 
-    ns = n_elements(state_list)
+    Nstates = n_elements(state_list)
     ;; Loop over states and sum
-    for ss = 0L, ns - 1 do begin
+    for istate = 0L, Nstates - 1 do begin
       
-      this_state = state_list[ss]
+      this_state = state_list[istate]
       sel = where(states.fpi_state eq this_state.fpi_state)
-      
-      
-                                ;self->selectfiles, prefilter=prefilter, ustat=state_list[ss], $
-                                ;               files=files, states=states, selected=sel
 
       ;; Get the flat file name for the selected state
       self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
@@ -185,12 +195,12 @@ pro red::sumpinh, nthreads = nthreads $
       endif
 
       if( n_elements(sel) lt 1 || min(sel) lt 0 ) then begin
-        print, inam+' : '+cam+': no files found for state: '+state_list[ss].fullstate
+        print, inam+' : '+cam+': no files found for state: '+state_list[istate].fullstate
         continue
       endif
       
       pref = states[sel[0]].prefilter
-      print, inam+' : adding pinholes for state -> ' + state_list[ss].fpi_state
+      print, inam+' : adding pinholes for state -> ' + state_list[istate].fpi_state
       
       DoBackscatter = 0
       if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
@@ -204,8 +214,8 @@ pro red::sumpinh, nthreads = nthreads $
 
       ;; Sum files
 
-      ;; Dark and flat correction and bad-pixel filling done
-      ;; by red_sumfiles on each frame before alignment.
+      ;; Dark and flat correction and bad-pixel filling done by
+      ;; red_sumfiles on each frame before alignment.
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
         psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
                             backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum, verbose=2)
@@ -214,9 +224,15 @@ pro red::sumpinh, nthreads = nthreads $
                             backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
       endelse
 
-      head = red_readhead(files[sel[0]], /silent) 
-      check_fits, psum, head, /UPDATE, /SILENT        
-      if nsum gt 1 then sxaddpar, head, 'NSUMEXP', nsum, 'Number of summed exposures', before='COMMENT'
+      ;; Make FITS headers 
+      head  = red_sumheaders(files[sel], psum, nsum = nsum)
+      fxaddpar, head, 'FILENAME', file_basename(pinhname), after = 'DATE'
+
+      ;; Add some more info here, see SOLARNET deliverable D20.4 or
+      ;; later versions of that document.
+
+      self -> headerinfo_addstep, head, prstep = 'Pinhole summing' $
+                                  , prproc = inam, prpara = prpara
 
       file_mkdir, file_dirname(pinhname)
 
@@ -227,8 +243,8 @@ pro red::sumpinh, nthreads = nthreads $
         red_writedata, pinhname, fix(round(10. * psum)), header=head, filetype='ANA', overwrite = overwrite
       endelse
 
-    endfor                      ; states
+    endfor                      ; istate
 
-  endfor                        ; cam
+  endfor                        ; icam
 
 end
