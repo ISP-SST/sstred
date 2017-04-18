@@ -62,12 +62,12 @@
 ;     
 ;       Set this to get output in SI units.
 ;     
-;    cgs_conversion : out, optional, type=fltarr
+;    conversion_cgs : out, optional, type=fltarr
 ;
 ;       The conversion factor that transforms the spectrum (and cont)
 ;       to CGS units.
 ;
-;    si_conversion : out, optional, type=fltarr
+;    conversion_si : out, optional, type=fltarr
 ;
 ;       The conversion factor that transforms the spectrum (and cont)
 ;       to SI units.
@@ -92,6 +92,8 @@
 ;
 ;    2016-12-09 : JdlCR. Fixed double bug in the computation of
 ;                 "conversion_si". 
+;
+;   2017-04-18 : MGL. Remove the "conversion" keywords.
 ; 
 ;
 ;-
@@ -101,9 +103,7 @@ pro red_satlas, xstart, xend, outx, outy $
                 , nocont = nocont $
                 , cgs = cgs $
                 , cont = con $
-                , si = si $
-                , conversion_cgs = conversion_cgs $
-                , conversion_si = conversion_si
+                , si = si
 
   ;; Find the input data
   this_dir = file_dirname( routine_filepath("red_satlas"), /mark )
@@ -124,7 +124,24 @@ pro red_satlas, xstart, xend, outx, outy $
   outy = yl_fts[pos]
   con = cint_fts[pos]
   
-  if arg_present(conversion_cgs) or keyword_set(cgs) then begin
+  if keyword_set(si) then begin
+
+    clight = 2.99792458d8       ;speed of light [m/s]                                  
+    aa_to_m = 1d-10                                                                        
+    cm_to_m = 1d-2     
+    m_to_cm = 1d2
+
+    ;; To Watt/(s m2 Hz ster)
+    conversion_si = (outx*aa_to_m)^2 / (clight * cm_to_m^2 * aa_to_m )
+
+    outy *= conversion_si
+    con  *= conversion_si
+
+    return
+
+  endif
+  
+  if keyword_set(cgs) then begin
 
     clight = 2.99792458d10      ;speed of light [cm/s]
     joule_2_erg = 1d7
@@ -135,36 +152,13 @@ pro red_satlas, xstart, xend, outx, outy $
     ;; To erg/
     conversion_cgs *= (outx*aa_to_cm)^2 / clight 
 
-  endif
-      
-  if arg_present(conversion_si) or keyword_set(si) then begin
-
-    clight = 2.99792458d8       ;speed of light [m/s]                                  
-    aa_to_m = 1d-10                                                                        
-    cm_to_m = 1d-2     
-    m_to_cm = 1d2
-
-    ;; To Watt/(s m2 Hz ster)
-    conversion_si = (outx*aa_to_m)^2 / (clight * cm_to_m^2 * aa_to_m )
-
-  endif
-  
-  if(keyword_set(cgs)) then begin
-
     outy *= conversion_cgs
     con  *= conversion_cgs
+
     return
 
   endif
-
-  if(keyword_set(si)) then begin
-
-    outy *= conversion_si
-    con  *= conversion_si
-    return
-
-  endif
-  
+      
   if ~keyword_set(nocont) then begin
     outy /= con
     con[*] = 1.d0
