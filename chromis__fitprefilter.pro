@@ -21,16 +21,6 @@
 ; 
 ; :Keywords:
 ; 
-;     cgs : in, optional, type=boolean
-;   
-;        Set this to use CGS units (default is to normalize with the
-;        continuum). 
-; 
-;     si : in, optional, type=boolean
-;   
-;        Set this to use SI units (default is to normalize with the
-;        continuum).
-;
 ;    mask : in, optional, type=boolean
 ;
 ;        If selected, will allow the user to mask out spectral
@@ -54,10 +44,12 @@
 ;   2017-04-07 : MGL. Use XROI GUI to select area. Added progress
 ;                bars. 
 ;
+;   2017-04-18 : MGL. Remove si and cgs keywords, always use SI units. 
+;
 ; 
 ; 
 ;-
-pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si = si, mask = mask
+pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
@@ -65,11 +57,6 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
-
-  if keyword_set(si) and keyword_set(cgs) then begin
-    print, inam+' : Please do not set both /si and /cgs.'
-    retall
-  endif
 
   if ~ptr_valid(self.data_dirs) then begin
     print, inam+' : ERROR : undefined data_dir'
@@ -229,7 +216,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     
     ;; Load satlas
     
-    red_satlas, iwav[0]-0.1, iwav[-1]+0.1, xl, yl, cgs=cgs, si=si, cont = cont
+    red_satlas, iwav[0]-0.1, iwav[-1]+0.1, xl, yl, /si, cont = cont
     dw = xl[1] - xl[0]
     np = round((0.080 * 8) / dw)
     if(np/2*2 eq np) then np -=1
@@ -237,7 +224,8 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
     tr = chromis_profile(tw, erh=-0.02d0)
     tr/=total(tr)
     yl1 = fftconvol(yl, tr)
-    
+
+    units = 'Watt/(s m2 Hz ster)'               ; SI units
     
     ;; Prepdata
     
@@ -280,7 +268,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
       ;; save curve
 
       prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
-             fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter}
+             fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter, units:units}
 
       cgwindow
       cgplot, /add, iwav, ispec, line = 1
@@ -293,7 +281,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, cgs = cgs, si 
       y1 = interpol(yl, xl, iwav)
       prefilter = [ispec/yl1]
       prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
-             fitpars:prefilter, fts_model:y1}
+             fitpars:prefilter, fts_model:y1, units:units}
 
     endelse
 
