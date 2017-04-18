@@ -108,6 +108,8 @@
 ;
 ;   2016-12-04 : JdlCR. Fixed contalign bug when only one scan is present.
 ;
+;   2017-04-18 : MGL. New keyword momfbddir.
+;
 ;-
 pro chromis::make_crispex, rot_dir = rot_dir $
                            , square = square $
@@ -118,6 +120,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 ;                           , noflats=noflats $
                            , selscan=selscan $
                            , wbwrite = wbwrite $
+                           , momfbddir = momfbddir $
                            , nostretch=nostretch $
                            , verbose=verbose $
                            , no_timecor=no_timecor $
@@ -127,6 +130,9 @@ pro chromis::make_crispex, rot_dir = rot_dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  ;; Get keywords
+  if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
+  
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
@@ -146,7 +152,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
   ;; restored data.
 
   ;; Find timestamp subdirs
-  search_dir = self.out_dir +'/momfbd/'
+  search_dir = self.out_dir +'/'+momfbddir+'/'
   timestamps = file_basename(file_search(search_dir + '*' $
                                          , count = Ntimestamps, /test_dir))
   if Ntimestamps eq 0 then begin
@@ -173,7 +179,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
     datestamp = self.isodate+'T'+timestamp
 
     ;; Find prefilter subdirs
-    search_dir = self.out_dir +'/momfbd/'+timestamp+'/'
+    search_dir = self.out_dir +'/'+momfbddir+'/'+timestamp+'/'
     prefilters = file_basename(file_search(search_dir + '*' $
                                            , count = Nprefs, /test_dir))
     if Nprefs eq 0 then begin
@@ -197,7 +203,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
     for ipref = 0L, Nprefs-1 do begin
 
 
-      search_dir = self.out_dir + '/momfbd/' + timestamp $
+      search_dir = self.out_dir + '/'+momfbddir+'/' + timestamp $
                    + '/' + prefilters[ipref] + '/cfg/results/'
       files = file_search(search_dir + '*.'+['f0', 'momfbd', 'fits'], count = Nfiles)      
       

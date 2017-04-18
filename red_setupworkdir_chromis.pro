@@ -349,14 +349,15 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Slun, "a->polish_tseries" $
 ;            + ", /full" $
 ;            + ", /fitsoutput" $
-            + ", xbd=1280, ybd=1024" $
-            + ", np=5" $
-            + ", clip=[12, 6, 3, 1]" $
-            + ", tile=[10, 20, 30, 40]" $
-            + ", momfbddir='momfbd_pd'"
+          + ", xbd=1280, ybd=1024" $
+          + ", np=5" $
+          + ", clip=[12, 6, 3, 1]" $
+          + ", tile=[10, 20, 30, 40]" $
+          + ", momfbddir='momfbd_pd'"
 
   printf, Slun, "a->align_continuum"
-  printf, Slun, "a->make_crispex, /float, /aligncont"
+  printf, Slun, "a->make_crispex, /float, /aligncont" $
+          + ", momfbddir='momfbd_pd'"
 ;; a -> make_crispex, /noflat, /scans_only, /float, /aligncont, /wbwrite
 
   
