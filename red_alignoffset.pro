@@ -59,6 +59,8 @@
 ;
 ;     2016-11-29 : MGL. Renamed into the red_ namespace.
 ;
+;     2017-04-18 : MGL. Use red_planefit rather than planefit.
+;
 ; 
 ;-
 function red_alignoffset, image, reference, cor, window = window, fitplane = fitplane
@@ -77,9 +79,9 @@ function red_alignoffset, image, reference, cor, window = window, fitplane = fit
      yp = transpose(xp)
      ;; Subtract fitted planes, use planefit from the robust directory
      ;; in astrolib.
-     c = planefit(xp, yp, reference, 0., rplane)
+     c = red_planefit(xp, yp, reference, 0., rplane)
      reference1 = reference - rplane
-     c = planefit(xp, yp, image, 0., iplane)
+     c = red_planefit(xp, yp, image, 0., iplane)
      image1 = image - iplane
   endif else begin
      ;; Subtract median values 
