@@ -30,6 +30,8 @@
 ; 
 ;    2017-04-07 : MGL. Revised selection of commands.
 ; 
+;    2017-04-18 : MGL. Improve script file.
+; 
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
@@ -176,19 +178,32 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
     printf, Slun, "a -> prepflatcubes ;, pref='"+prefilters[ipref]+"'"
   endfor                        ; ipref
 
+  printf, Slun, ''
   printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
   printf, Slun, '; whether npar=3 or npar=4 is needed.'
-  printf, Slun, 'a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res' 
+  printf, Slun, 'a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res, /all' 
   printf, Slun, '; If you need per-pixel reflectivities for your analysis'
   printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
   printf, Slun, '; keyword:'
   printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
   printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
   printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+  printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
+  printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
+  printf, Slun, '; also in blends if they are not propely sampled.'
+  printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
+  printf, Slun, '; the following:'
+  printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
+  printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
+  printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
+  printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
+  printf, Slun, '; Then, if you have already run makegains, rerun it.'
+
   printf, Slun, ''
-  
-  printf, Slun, "a -> makegains, /preserve"
-  
+  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, /all"
+
+
+  printf, Slun, ''
   print, 'Pinholes'
   printf, Clun, '#'
   printf, Clun, '# --- Pinholes'
@@ -294,6 +309,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   endfor
   if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
+  printf, Slun, ''
   printf, Slun, 'a -> link_data' 
   printf, Slun, ';a -> split_data ; For old momfbd program.' 
   
@@ -303,10 +319,11 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Slun, 'stop'          
   printf, Slun, ''
 
-  for ipref = 0, Nprefilters-1 do begin
+  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
 
-    printf, Slun, "a -> fitprefilter, /si, /mask ;, pref = '"+prefilters[ipref]+"'"
+  for ipref = 0, Nprefilters-1 do begin
     
+    printf, Slun, ''
     printf, Slun, "a -> prepmomfbd" $
             + ", date_obs='" + isodate + "'" $
             + ", Nremove=2" $
