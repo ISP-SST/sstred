@@ -145,11 +145,6 @@ pro red::sumflat, overwrite = overwrite, $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo1
-  help, /struct, self.done, output = selfinfo2
-  red_writelog, selfinfo = [selfinfo1, selfinfo2]
-
   Ncams = n_elements(cams)
   if( Ncams eq 0) then begin
     print, inam+' : ERROR : undefined cams (and cameras)'
@@ -268,7 +263,7 @@ pro red::sumflat, overwrite = overwrite, $
       flat = float(flat-dd)
 
       ;; Make FITS headers 
-      head  = red_sumheaders(files[sel], flat,   nsum = nsum)
+      head  = red_sumheaders(files[sel], flat, nsum = nsum)
       if keyword_set(store_rawsum) then $
          shead = red_sumheaders(files[sel], summed, nsum = nsum)
       
@@ -281,12 +276,6 @@ pro red::sumflat, overwrite = overwrite, $
          self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
                                      , prproc = inam, prpara = prpara
       
-      ;; headerout = 't='+time_avg+'
-      ;; n_aver='+red_stri(nsum)+' darkcorrected' print,
-      ;; inam+' : saving ' + flatname file_mkdir,
-      ;; file_dirname(flatname) fzwrite, flat, flatname,
-      ;; headerout
-
       ;; Write ANA format flat
       print, inam+' : saving ', flatname
       fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
