@@ -24,7 +24,12 @@
 ;    all : in, optional, type=boolean
 ;
 ;       If set, bypass selection and process all data.
-; 
+;
+;    extra_nodes : in, optional, type=array
+;
+;       Make extra spline nodes at the specified wavelengths, given in
+;       Ångström from the core point.
+;
 ;    npar  : 
 ;   
 ;   
@@ -118,6 +123,8 @@
 ;
 ;   2017-04-13 : MGL. Make SOLARNET FITS headers.
 ;
+;   2017-04-20 : MGL. New keyword extra_nodes.
+;
 ;-
 pro red::fitgains, npar = npar $
                    , niter = niter $
@@ -135,6 +142,7 @@ pro red::fitgains, npar = npar $
                    , w0 = w0, w1 = w1 $
                    , nthreads = nthreads $
                    , ifit = ifit $
+                   , extra_nodes = extra_nodes $
                    , all = all
 
   ;; Defaults
@@ -144,20 +152,24 @@ pro red::fitgains, npar = npar $
   ;; Prepare for logging (after setting of defaults). Set up a
   ;; dictionary with all parameters that are in use
   prpara = dictionary()
+  if keyword_set(extra_nodes) then prpara['extra_nodes'] = extra_nodes
   if keyword_set(npar) then prpara['npar'] = npar
   if keyword_set(niter) then prpara['niter'] = niter
   if keyword_set(rebin) then prpara['rebin'] = rebin
   if keyword_set(xl) then prpara['xl'] = xl
+  if keyword_set(yl) then prpara['yl'] = yl
   if keyword_set(densegrid) then prpara['densegrid'] = densegrid
-  if keyword_set(res) then prpara['res'] = res
+;  if keyword_set(res) then prpara['res'] = res ; Don't include, output only
   if keyword_set(thres) then prpara['thres'] = thres
   if keyword_set(initcmap) then prpara['initcmap'] = initcmap
   if keyword_set(fit_reflectivity) then prpara['fit_reflectivity'] = fit_reflectivity
   if keyword_set(x0) then prpara['x0'] = x0
+  if keyword_set(x1) then prpara['x1'] = x1
   if keyword_set(state) then prpara['state'] = state
   if keyword_set(nosave) then prpara['nosave'] = nosave
   if keyword_set(myg) then prpara['myg'] = myg
   if keyword_set(w0) then prpara['w0'] = w0
+  if keyword_set(w1) then prpara['w1'] = w1
   if keyword_set(nthreads) then prpara['nthreads'] = nthreads
   if keyword_set(ifit) then prpara['ifit'] = ifit
   if keyword_set(all) then prpara['all'] = all
@@ -280,7 +292,14 @@ pro red::fitgains, npar = npar $
       end
       else:
     endcase
-    
+    Nwav = n_elements(namelist) ; Nwav has to be adjusted if w0 or w1 were used.
+
+    if n_elements(extra_nodes) gt 0 then begin
+      if n_elements(myg) eq 0 then myg = wav
+      myg = [extra_nodes, myg]
+      myg=myg[sort(myg)]
+    endif
+
     dat = cub                   ; Why make a copy of cub?
 
     ;; Init output vars
