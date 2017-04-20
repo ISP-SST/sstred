@@ -32,6 +32,9 @@
 ; 
 ;    2017-04-18 : MGL. Improve script file.
 ; 
+;    2017-04-20 : MGL. Do not include left-behind calibrations data
+;                 directories in the science data dirs.
+; 
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
@@ -281,11 +284,17 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Clun, '# --- Science data'
   printf, Clun, '# '
 
-  ;;  sciencedirs = file_search(root_dir+'/sci*/*', count = Ndirs, /fold)
+  ;; Exclude directories know not to have science data
   red_append, nonsciencedirs, pinhdirs
   red_append, nonsciencedirs, pfscandirs
   red_append, nonsciencedirs, darkdirs
   red_append, nonsciencedirs, flatdirs
+  ;; Sometimes the morning calibrations data were not deleted, so they
+  ;; have to be excluded too.
+  calibsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*calib*' $
+                                         , count = Ncalibdirs)
+  if Ncalibdirs gt 0 then red_append, nonsciencedirs, calibsubdirs
+  
   sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 
   for i = 0, Ndirs-1 do begin
