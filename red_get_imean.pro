@@ -72,7 +72,9 @@
 ;   2016-10-04 : MGL. Use cgplot. Let the subprogram find out its own
 ;                name. 
 ;
-;   2016-10-26 : MGL. Add progress bar, don't redraw plots so often. 
+;   2016-10-26 : MGL. Add progress bar, don't redraw plots so often.  
+;
+;   2017-04-20 : MGL. Plot spline nodes on the model curve.
 ; 
 ;-
 function red_get_imean, wav, dat, pp, npar, iter $
@@ -201,8 +203,8 @@ function red_get_imean, wav, dat, pp, npar, iter $
             , ytitle = 'Normalized intensity', ystyle = 1 $
             , yrange = [mmmi-abs(mmma-mmmi)*0.1,mmma+abs(mmma-mmmi)*0.1]
   
-  cgwindow, 'cgplot', /load, /over, iwav, imean, psym = 9, color = 'yellow'
-  cgwindow, 'cgplot', /add,  /over, iwav, imean, psym = 1, color = 'red'
+;  cgwindow, 'cgplot', /load, /over, iwav, imean, psym = 9, color = 'yellow'
+;  cgwindow, 'cgplot', /load,  /over, iwav, imean, psym = 1, color = 'red'
   
   print, inam + ' : Fitting data to Hermitian spline with '+red_stri(n_elements(imean)) $
          + ' node points (this might take a while) ... ', FORMAT = '(A,$)'
@@ -223,10 +225,15 @@ function red_get_imean, wav, dat, pp, npar, iter $
    
                                 ;
   if(keyword_set(bezier)) then begin
-    cgwindow, 'cgplot', /add, /over, pwl, red_bezier3(xl, yl, pwl, /linear), color = 'blue'
+    cgwindow, 'cgplot', /load, /over, pwl, red_bezier3(xl, yl, pwl, /linear), color = 'blue'
+    yyy = red_bezier3(xl, yl, iwav, /linear)
   endif else  begin
-    cgwindow, 'cgplot', /add, /over, pwl, red_intepf(xl, yl, pwl, /linear), color = 'blue'
+    cgwindow, 'cgplot', /load, /over, pwl, red_intepf(xl, yl, pwl, /linear), color = 'blue'
+    yyy = red_intepf(xl, yl, iwav, /linear)
   endelse
+  
+  cgwindow, 'cgplot', /load, /over, iwav, yyy, psym = 9, color = 'yellow'
+  cgwindow, 'cgplot', /add,  /over, iwav, yyy, psym = 1, color = 'red'
 
 ;  wait, 0.2                     ; otherwise IDL does not update the plot (?)
 
