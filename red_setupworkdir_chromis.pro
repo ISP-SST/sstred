@@ -291,10 +291,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   red_append, nonsciencedirs, flatdirs
   ;; Sometimes the morning calibrations data were not deleted, so they
   ;; have to be excluded too.
-  calibsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*calib*' $
+  calibsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*calib' $
                                          , count = Ncalibdirs)
-  if Ncalibdirs gt 0 then red_append, nonsciencedirs, calibsubdirs
-  
+  if Ncalibdirs gt 0 then begin
+    calibdirs = file_dirname(calibsubdirs)
+    calibdirs = calibdirs[uniq(calibdirs, sort(calibdirs))]
+    red_append, nonsciencedirs, calibdirs
+  end
   sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 
   for i = 0, Ndirs-1 do begin
