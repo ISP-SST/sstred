@@ -78,10 +78,10 @@ function red_find_instrumentdirs, topdir, instrument_prefix, data_prefix $
 
   levels = ''
   for i = 0, sublevels-1 do begin
-     print, 'level:', i
-     instrumentdirs = file_search(topdir+'/'+data_prefix+'*/'+levels+instrument_prefix+'*', count = count, fold = fold)
-     if count gt 0 then return, instrumentdirs
-     levels += '*/'
+    print, 'level:', i
+    instrumentdirs = file_search(topdir+'/'+data_prefix+'*/'+levels+instrument_prefix+'*', count = count, fold = fold)
+    if count gt 0 then return, instrumentdirs
+    levels += '*/'
   endfor
   
   count = 0
