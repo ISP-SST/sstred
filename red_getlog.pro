@@ -18,15 +18,32 @@
 ; 
 ; :Params:
 ; 
+;    date : in, type=string
 ; 
-; 
-; 
+;      The date for which the log data should be read.
 ; 
 ; 
 ; :Keywords:
 ; 
+;    r0 : out, optional, type=structarr
 ;   
+;       Fried parameter r0 data returned in this variable.
 ;   
+;    turret : out, optional, type=structarr
+;   
+;       Turret positionlog data returned in this variable.   
+;   
+;    pig : out, optional, type=structarr 
+;   
+;       PIG data returned in this variable.  
+;   
+;    temp : out, optional, type=structarr
+;   
+;       Data from temperature sensors returned in this variable.   
+;   
+;    weather : out, optional, type=structarr
+;   
+;       Weather data returned in this variable.   
 ;   
 ; 
 ; 
