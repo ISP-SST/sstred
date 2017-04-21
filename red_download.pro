@@ -314,7 +314,7 @@ pro red_download, date = date $
   ;; Weather log file
   if keyword_set(weather) then begin
 
-    weatherfile = 'weather-1min.log-' + strjoin(datearr, '')
+    weatherfile = 'weather.log-' + strjoin(datearr, '')
 
     if ~file_test(logdir+weatherfile) or keyword_set(overwrite) then begin
       downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/weather/' + weatherfile + '.xz' $
