@@ -419,7 +419,7 @@ pro red_download, date = date $
 
     DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate $
                             + '/' + pigfile $
-                            , file = pigfile $
+                            , file = pigfile+'_'+isodate $
                             , dir = logdir $
                             , overwrite = overwrite $
                             , path = pathpig)
@@ -428,7 +428,7 @@ pro red_download, date = date $
       dotdate = strjoin(datearr, '.')
       DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate $
                               + '/' + pigfile $
-                              , file = pigfile $
+                              , file = pigfile+'_'+isodate $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathpig)     
@@ -437,10 +437,10 @@ pro red_download, date = date $
     if DownloadOK then begin
       ;; We actually want the logfile converted to time and x/y
       ;; coordinates (in arcseconds).
-      pathpig += '_'+isodate+'_converted'
+      pathpig += '_converted'
       if ~file_test(pathpig) then begin
         print, 'red_download : Converting PIG log file...'
-        rdx_convertlog, logdir+pigfile, logdir+pigfile+'_'+isodate+'_converted' $
+        rdx_convertlog, logdir+pigfile+'_'+isodate, logdir+pigfile+'_'+isodate+'_converted' $
                         , dx=31.92, dy=14.81 $
                         , rotation=84.87, scale=4.935, average=16
       endif else begin
