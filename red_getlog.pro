@@ -56,7 +56,9 @@
 ;    2017-04-21 : MGL. First version.
 ; 
 ;    2017-04-22 : MGL. Take the different types of pointing info in
-;                 the turret log into account.
+;                 the turret log into account. Implement reading log
+;                 files for the SHABAR, for the weather station, and
+;                 for the temperature sensors.
 ; 
 ; 
 ; 
@@ -83,20 +85,146 @@ pro red_getlog, date $
   CDF_EPOCH, midnight, yr, mo, dy, 0, /COMPUTE_EPOCH ; In milliseconds
   midnight = (midnight-epoch)/1000.d                 ; Unix system time for midnight today.
 
+  
   ;; SHABAR
   if arg_present(shabar) then begin
-    print, 'red_getlog : SHABAR not implemented yet'
+    print, 'red_getlog : Get SHABAR data'
+    
+    red_download, date = isodate, /shabar, pathshabar = shabarfile
+    if shabarfile then begin
+
+      shabartemplate = { VERSION:1.0 $
+                       , DATASTART:0L $
+                       , DELIMITER:32B $
+                       , MISSINGVALUE:!VALUES.F_NAN $
+                       , COMMENTSYMBOL:'' $
+                       , FIELDCOUNT:24L $
+                       , FIELDTYPES:[5L, replicate(4L, 23)] $
+                       , FIELDNAMES:['time', 'what', 'why', 'trump' $
+                                     , replicate('val', 20)] $
+                       , FIELDLOCATIONS:[0L, 18L, 31L, 44L, 14L*lindgen(20)+58L] $
+                       , FIELDGROUPS:[0L, 1L, 2L, 3L, replicate(4L, 20)] $
+                     }
+      shabarstruct = {time:0d, what:0., why:0., trump:0., val:fltarr(20)}
+      shabardata = read_ascii(shabarfile, TEMPLATE=shabartemplate)
+
+      ;; Remove glitches
+      indx = where(shabardata.time ne 0, Nshabar)
+      
+      if Nshabar ne 0 then begin
+
+        ;; Change struct of arrays to array of structs
+
+        shabar = replicate(shabarstruct, Nshabar)
+
+        shabar.time  = shabardata.time[indx] - midnight ; In seconds since midnight
+        shabar.what  = shabardata.what[indx]
+        shabar.why   = shabardata.why[indx]
+        shabar.trump = shabardata.trump[indx]
+        shabar.val   = shabardata.val[*, indx]
+      endif                     ; Nshabar
+
+    endif
   endif
   
   ;; Temperature sensors in observing room
   if arg_present(temp) then begin
-    print, 'red_getlog : Temperature not implemented yet'
-  endif
+    
+    print, 'red_getlog : Get temperature sensor data.'
+
+    red_download, date = isodate, /temp, pathtemp = tempfile
+    if tempfile then begin
+
+      temptemplate = { VERSION:1.0 $
+                       , DATASTART:0L $
+                       , DELIMITER:32B $
+                       , MISSINGVALUE:!VALUES.F_NAN $
+                       , COMMENTSYMBOL:'' $
+                       , FIELDCOUNT:7L $
+                       , FIELDTYPES:[replicate(7L, 6), 4L] $
+                       , FIELDNAMES:['month', 'day', 'time', 'ignore', 'sensor', 'unit', 'temperature'] $
+                       , FIELDLOCATIONS:[0L, 4L, 7L, 16L, 23L, 25L, 28L] $
+                       , FIELDGROUPS:lindgen(7) $
+                     }
+      tempstruct = {time:0d, temperature:0., sensor:'', unit:''}
+      tempdata = read_ascii(tempfile, TEMPLATE=temptemplate)
+
+      ;; Change struct of arrays to array of structs
+      Ntemp = n_elements(tempdata.time)
+
+      if Ntemp gt 0 then begin
+
+        temp = replicate(tempstruct, Ntemp)
+        
+        temp.time = red_time2double(tempdata.time) ; In seconds since midnight
+        temp.temperature = tempdata.temperature
+        temp.sensor = strtrim(tempdata.sensor, 2)
+        temp.unit = red_strreplace(tempdata.unit, ':', '')
+
+      endif                     ; Ntemp
+      
+    endif                       ; tempfile
+  endif                         ; temperature
   
   ;; Weather
   if arg_present(weather) then begin
-    print, 'red_getlog : Weather not implemented yet'
-  endif
+
+    print, 'red_getlog : Get weather data.'
+      
+    red_download, date = isodate, /weather, pathweather = weatherfile
+    if weatherfile then begin
+
+; For the 1-min average file:      
+;      weathertemplate = { VERSION:1.0 $
+;                          , DATASTART:0L $
+;                          , DELIMITER:32B $
+;                          , MISSINGVALUE:!VALUES.F_NAN $
+;                          , COMMENTSYMBOL:'#' $
+;                          , FIELDCOUNT:8L $
+;                          , FIELDTYPES:replicate(5L, 8) $
+;                          , FIELDNAMES:['time', 'winddir', 'windspeed', 'temperature' $
+;                                        , 'humidity', 'pressure', 'rain', 'hail'] $
+;                          , FIELDLOCATIONS:[0L,18L,29L,38L,47L,57L,68L,77L] $
+;                          , FIELDGROUPS:lindgen(8) $
+;                        }
+      weathertemplate = { VERSION:1.0 $
+                          , DATASTART:0L $
+                          , DELIMITER:32B $
+                          , MISSINGVALUE:!VALUES.F_NAN $
+                          , COMMENTSYMBOL:'#' $
+                          , FIELDCOUNT:8L $
+                          , FIELDTYPES:[5, 3, replicate(4L, 6)] $
+                          , FIELDNAMES:['time', 'winddir', 'windspeed', 'temperature' $
+                                        , 'humidity', 'pressure', 'rain', 'hail'] $
+                          , FIELDLOCATIONS:[0L,18L,22L,26,30L,35L,41L,45L] $
+                          , FIELDGROUPS:lindgen(8) $
+                        }
+      weatherstruct = {time:0d, winddir:0d, windspeed:0d, temperature:0d $
+                       , humidity:0d, pressure:0d, rain:0d, hail:0d}
+      weatherdata = read_ascii(weatherfile, TEMPLATE=weathertemplate)
+
+      ;; Remove glitches
+      indx = where(weatherdata.time ne 0, Nweather)
+      
+      if Nweather ne 0 then begin
+
+        ;; Change struct of arrays to array of structs
+
+        weather = replicate(weatherstruct, Nweather)
+
+        weather.time        = weatherdata.time[indx] - midnight ; In seconds since midnight
+        weather.winddir     = weatherdata.winddir[indx]         ; [deg]
+        weather.windspeed   = weatherdata.windspeed[indx]       ; [m/s]
+        weather.temperature = weatherdata.temperature[indx]     ; [C]
+        weather.humidity    = weatherdata.humidity[indx]        ; [%]
+        weather.pressure    = weatherdata.pressure[indx]        ; [hPa]
+        weather.rain        = weatherdata.rain[indx]            ; [mm/h]
+        weather.hail        = weatherdata.hail[indx]            ; [mm/h]
+
+      endif                     ; Nweather
+      
+    endif                       ; weatherfile
+  endif                         ; weather
   
   
   ;; Fried parameter r0
