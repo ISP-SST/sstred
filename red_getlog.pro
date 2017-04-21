@@ -27,7 +27,7 @@
 ; 
 ;    r0 : out, optional, type=structarr
 ;   
-;       Fried parameter r0 data returned in this variable.
+;       Shack-Hartmann r0 data returned in this variable.
 ;   
 ;    turret : out, optional, type=structarr
 ;   
@@ -37,6 +37,10 @@
 ;   
 ;       PIG data returned in this variable.  
 ;   
+;    shabar : out, optional, type=structarr
+;   
+;       SHABAR r0 data returned in this variable.
+
 ;    temp : out, optional, type=structarr
 ;   
 ;       Data from temperature sensors returned in this variable.   
@@ -51,14 +55,18 @@
 ; 
 ;    2017-04-21 : MGL. First version.
 ; 
+;    2017-04-22 : MGL. Take the different types of pointing info in
+;                 the turret log into account.
+; 
 ; 
 ; 
 ; 
 ;-
 pro red_getlog, date $
-                , r0 = r0 $
-                , turret = turret $
                 , pig = pig $
+                , r0 = r0 $
+                , shabar = shabar $
+                , turret = turret $
                 , temp = temp $
                 , weather = weather
 
@@ -75,6 +83,11 @@ pro red_getlog, date $
   CDF_EPOCH, midnight, yr, mo, dy, 0, /COMPUTE_EPOCH ; In milliseconds
   midnight = (midnight-epoch)/1000.d                 ; Unix system time for midnight today.
 
+  ;; SHABAR
+  if arg_present(shabar) then begin
+    print, 'red_getlog : SHABAR not implemented yet'
+  endif
+  
   ;; Temperature sensors in observing room
   if arg_present(temp) then begin
     print, 'red_getlog : Temperature not implemented yet'
@@ -209,8 +222,10 @@ pro red_getlog, date $
                          , FIELDCOUNT:12L $
                          , FIELDTYPES:[7L, 7L, 4L, 4L, 7L, 4L, 7L, 4L, 4L, 4L, 4L, 4L] $
                          , FIELDNAMES:['date', 'time', 'az', 'el' $
-                                       , 'stony_ns_direction', 'stony_ns' $
-                                       , 'stony_ew_direction', 'stony_ew' $
+;                                       , 'stony_ns_direction', 'stony_ns' $
+;                                       , 'stony_ew_direction', 'stony_ew' $
+                                       , 'pointtag1', 'pointing1' $
+                                       , 'pointtag2', 'pointing2' $
                                        , 'parala_angle', 'solar_local_tilt' $
                                        , 'az_th', 'el_th'] $
                          , FIELDLOCATIONS:[0L, 11L, 22L, 32L, 41L, 44L, 50L, 53L, 59L, 69L, 80L, 89L] $
@@ -219,7 +234,8 @@ pro red_getlog, date $
 
       turretstruct = {time:0d $
                       , az:0., el:0. $
-                      , stony_n:0., stony_w:0. $
+                      , pointingtype1:'', pointingtype2:'' $
+                      , pointing1:0., pointing2:0. $
                       , parala_angle:0. $
                       , solar_local_tilt:0. $
                       , az_th:0., el_th:0.}
@@ -257,15 +273,63 @@ pro red_getlog, date $
         turret.solar_local_tilt = turretdata.solar_local_tilt
         turret.az_th = turretdata.az_th
         turret.el_th = turretdata.el_th
+        turret.pointing1 = turretdata.pointing1
+        turret.pointing2 = turretdata.pointing2
 
-        turret.stony_n = turretdata.stony_ns
-        negindx = where(turretdata.stony_ns_direction eq 'S', count)
-        if count gt 0 then turret[indx].stony_n *= -1
+        ;; The pointing info comes in varying forms, as defined in the
+        ;; pointtag<i> fields.
+
+        ;; [NS] value [EW] value  : Stonyhurst
+        ;; A value E value        : Az/El tracking [deg]       
+        ;; a value e value        : Az/El wanted   [deg]       
+        ;; X value Y value.       : Disk position tracking [”] 
+        ;; x value y value        : Disk position wanted   [”]  
+        ;; f value f value        : Flat field mode?       [??]
+
         
-        turret.stony_w = turretdata.stony_ew
-        negindx = where(turretdata.stony_ew_direction eq 'E', count)
-        if count gt 0 then turret[indx].stony_w *= -1
+        ;; Stonyhurst
+        indx = where( (turretdata.pointtag1 eq 'N' or turretdata.pointtag1 eq 'S') $
+                      and (turretdata.pointtag2 eq 'E' or turretdata.pointtag2 eq 'W'), count )
+        if count gt 0 then begin
+          turret[indx].pointingtype1 = 'Stonyhurst N'
+          turret[indx].pointingtype2 = 'Stonyhurst W'
 
+          negindx = where(turretdata.pointtag1[indx] eq 'S', count)
+          if count gt 0 then turret[indx[negindx]].pointing1 *= -1
+
+          negindx = where(turretdata.pointtag2[indx] eq 'E', count)
+          if count gt 0 then turret[indx[negindx]].pointing2 *= -1
+        endif
+
+        ;; Az/El tracking [deg]       
+        indx = where( (turretdata.pointtag1 eq 'A'), count )
+        if count gt 0 then turret[indx].pointingtype1 = 'Azimuth [deg]'
+        indx = where( (turretdata.pointtag2 eq 'E'), count )
+        if count gt 0 then turret[indx].pointingtype2 = 'Elevation [deg]'
+          
+        ;; Az/El wanted [deg]           
+        indx = where( (turretdata.pointtag1 eq 'a'), count )
+        if count gt 0 then turret[indx].pointingtype1 = 'Azimuth wanted [deg]'
+        indx = where( (turretdata.pointtag2 eq 'e'), count )
+        if count gt 0 then turret[indx].pointingtype2 = 'Elevation wanted [deg]'
+        
+        ;; Disk position tracking [”]
+        indx = where( (turretdata.pointtag1 eq 'X'), count )
+        if count gt 0 then turret[indx].pointingtype1 = 'Disk X [deg]'
+        indx = where( (turretdata.pointtag2 eq 'Y'), count )
+        if count gt 0 then turret[indx].pointingtype2 = 'Disk Y [deg]'
+ 
+        ;; Disk position wanted   [”]
+        indx = where( (turretdata.pointtag1 eq 'x'), count )
+        if count gt 0 then turret[indx].pointingtype1 = 'Disk X wanted [deg]'
+        indx = where( (turretdata.pointtag2 eq 'y'), count )
+        if count gt 0 then turret[indx].pointingtype2 = 'Disk Y wanted [deg]'
+        
+        ;; Flat field mode?       [??]
+        indx = where( (turretdata.pointtag1 eq 'f'), count )
+        if count gt 0 then turret[indx].pointingtype1 = 'Flat 1 [??]'
+        indx = where( (turretdata.pointtag2 eq 'f'), count )
+        if count gt 0 then turret[indx].pointingtype2 = 'Flat 2 [??]'
         
       endif                     ; Nturret
       
