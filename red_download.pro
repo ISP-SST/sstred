@@ -304,7 +304,7 @@ pro red_download, date = date $
       endif
       
       ;; Where did the uncompressed file end up?
-      pathtemp = logdir + file_basename(pathtemp)
+      if downloadOK then pathtemp = logdir + file_basename(pathtemp)
 
     endif else pathtemp = logdir + tempfile
     
@@ -335,10 +335,10 @@ pro red_download, date = date $
       if downloadOK then begin
         spawn, 'cd '+logdir+'; xz -df '+file_basename(pathweather)
         file_delete, pathweather, /allow_nonexistent
-      endif
 
-      ;; Where did the uncompressed file end up?
-      pathweather = logdir + file_basename(pathweather,'.xz')
+        ;; Where did the uncompressed file end up?
+        pathweather = logdir + file_basename(pathweather,'.xz')
+      endif
 
     endif else pathweather = logdir + weatherfile
 
@@ -369,10 +369,10 @@ pro red_download, date = date $
       if downloadOK then begin
         spawn, 'cd '+logdir+'; xz -df '+file_basename(pathshabar)
         file_delete, pathshabar, /allow_nonexistent
-      endif
 
-      ;; Where did the uncompressed file end up?
-      pathshabar = logdir + file_basename(pathshabar,'.xz')
+        ;; Where did the uncompressed file end up?
+        pathshabar = logdir + file_basename(pathshabar,'.xz')
+      endif
 
     endif else pathshabar = logdir + shabarfile
 
@@ -403,10 +403,10 @@ pro red_download, date = date $
       if downloadOK then begin
         spawn, 'cd '+logdir+'; xz -df '+file_basename(pathr0)
         file_delete, pathr0, /allow_nonexistent
-      endif
 
-      ;; Where did the uncompressed file end up?
-      pathr0 = logdir + file_basename(pathr0,'.xz')
+        ;; Where did the uncompressed file end up?
+        pathr0 = logdir + file_basename(pathr0,'.xz')
+      endif
 
     endif else pathr0 = logdir + r0file
 
