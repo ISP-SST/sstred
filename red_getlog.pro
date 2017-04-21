@@ -73,7 +73,7 @@ pro red_getlog, date $
   ;; Make sure we have the date in ISO format
   isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
   
-  ;; Times in the log files are given in Unix system time = # of
+  ;; Times in several log files are given in Unix system time = # of
   ;; seconds since 1 Jan 1970 UTC. Need the following to convert them
   ;; to seconds after midnight.
   yr = long((strsplit(isodate, '-', /extract))[0])
@@ -277,16 +277,16 @@ pro red_getlog, date $
         turret.pointing2 = turretdata.pointing2
 
         ;; The pointing info comes in varying forms, as defined in the
-        ;; pointtag<i> fields.
-
-        ;; [NS] value [EW] value  : Stonyhurst
-        ;; A value E value        : Az/El tracking [deg]       
-        ;; a value e value        : Az/El wanted   [deg]       
-        ;; X value Y value.       : Disk position tracking [”] 
-        ;; x value y value        : Disk position wanted   [”]  
-        ;; f value f value        : Flat field mode?       [??]
-
+        ;; pointtag<i> fields. We have for {pointtag1, pointing1,
+        ;; pointtag2, pointing2}:
         
+        ;; {'[NS]', value, '[EW]', value} : Stonyhurst
+        ;; {'A',    value, 'E',    value} : Az/El tracking [deg]       
+        ;; {'a',    value, 'e',    value} : Az/El wanted   [deg]       
+        ;; {'X',    value, 'Y',    value} : Disk position tracking [”] 
+        ;; {'x',    value, 'y',    value} : Disk position wanted   [”]  
+        ;; {'f',    value, 'f',    value} : Flat field mode?       [??]
+
         ;; Stonyhurst
         indx = where( (turretdata.pointtag1 eq 'N' or turretdata.pointtag1 eq 'S') $
                       and (turretdata.pointtag2 eq 'E' or turretdata.pointtag2 eq 'W'), count )
@@ -319,13 +319,13 @@ pro red_getlog, date $
         indx = where( (turretdata.pointtag2 eq 'Y'), count )
         if count gt 0 then turret[indx].pointingtype2 = 'Disk Y [deg]'
  
-        ;; Disk position wanted   [”]
+        ;; Disk position wanted [”]
         indx = where( (turretdata.pointtag1 eq 'x'), count )
         if count gt 0 then turret[indx].pointingtype1 = 'Disk X wanted [deg]'
         indx = where( (turretdata.pointtag2 eq 'y'), count )
         if count gt 0 then turret[indx].pointingtype2 = 'Disk Y wanted [deg]'
         
-        ;; Flat field mode?       [??]
+        ;; Flat field mode? [??]
         indx = where( (turretdata.pointtag1 eq 'f'), count )
         if count gt 0 then turret[indx].pointingtype1 = 'Flat 1 [??]'
         indx = where( (turretdata.pointtag2 eq 'f'), count )
