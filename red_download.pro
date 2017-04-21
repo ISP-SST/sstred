@@ -125,45 +125,66 @@
 ;    2017-04-12 : MGL. Pig log can have isodate or dotdate in the
 ;                 path. Use new convertlog as DLM and not separate
 ;                 executable. 
+;
+;    2017-04-21 : MGL. Implement downloading of log files for the
+;                 SHABAR, for the weather station, and for the
+;                 temperature sensors.
+;
+;
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
                   , all = all $
                   , logs = logs $
+                  , shabar = shabar $
+                  , pathshabar  = pathshabar  $
+                  , weather = weather $
+                  , pathweather  = pathweather  $
+                  , temp = temp $
+                  , pathtemp  = pathtemp  $
                   , pig = pig $
                   , pathpig  = pathpig  $
                   , r0 = r0 $
                   , pathr0  = pathr0  $
-                  , pathturret = pathturret  $
                   , turret = turret $
+                  , pathturret = pathturret  $
                   , armap = armap $
                   , hmi = hmi $
                   , backscatter = backscatter
 
-  any = keyword_set(pig) $
-        or keyword_set(turret)  $
+  any = n_elements(backscatter) gt 0 $
+        or keyword_set(pig) $
         or keyword_set(armap)  $
         or keyword_set(hmi)  $
-        or keyword_set(r0)  $
-        or keyword_set(all)  $
         or keyword_set(logs) $
-        or n_elements(backscatter) gt 0
+        or keyword_set(r0)  $
+        or keyword_set(shabar)  $
+        or keyword_set(temp)  $
+        or keyword_set(turret)  $
+        or keyword_set(weather)  $
+        or keyword_set(all)
 
   if ~any then logs = 1
 
   if keyword_set(all) then begin
+    armap = 1
+    backscatter = ['8542', '7772']
+    hmi = 1
     pig = 1
     r0 = 1
+    shabar = 1
+    temp = 1
     turret = 1
-    armap = 1
-    hmi = 1
-    backscatter = ['8542', '7772']
+    weather = 1
   endif
 
   if keyword_set(logs) then begin
     pig = 1
     r0 = 1
+    shabar = 1
+    temp = 1
     turret = 1
+    weather = 1
   endif
 
 
@@ -261,6 +282,103 @@ pro red_download, date = date $
   endif
 
   
+  ;; Temperature log file
+  if keyword_set(temp) then begin
+
+    tempfile = 'templog-'+strjoin(datearr, '')
+
+    if ~file_test(logdir+tempfile) or keyword_set(overwrite) then begin
+      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/temperature/' + tempfile $
+                              , file = tempfile $
+                              , dir = logdir $
+                              , overwrite = overwrite $
+                              , path = pathtemp)
+      
+      if ~downloadOK then begin ; also try in subfolder /{year}/
+        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/temperature/' + datearr[0] $
+                                + '/' + tempfile $
+                                , file = tempfile $
+                                , dir = logdir $
+                                , overwrite = overwrite $
+                                , path = pathtemp) 
+      endif
+      
+      ;; Where did the uncompressed file end up?
+      pathtemp = logdir + file_basename(pathtemp)
+
+    endif else pathtemp = logdir + tempfile
+    
+  endif
+
+  
+  ;; Weather log file
+  if keyword_set(weather) then begin
+
+    weatherfile = 'weather-1min.log-' + strjoin(datearr, '')
+
+    if ~file_test(logdir+weatherfile) or keyword_set(overwrite) then begin
+      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/weather/' + weatherfile + '.xz' $
+                              , file = weatherfile + '.xz' $
+                              , dir = logdir $
+                              , overwrite = overwrite $
+                              , path = pathweather)
+      
+      if ~downloadOK then begin ; also try in subfolder /{year}/
+        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/weather/' + datearr[0] $
+                                + '/' + weatherfile + '.xz' $
+                                , file = weatherfile + '.xz' $
+                                , dir = logdir $
+                                , overwrite = overwrite $
+                                , path = pathweather) 
+      endif
+      
+      if downloadOK then begin
+        spawn, 'cd '+logdir+'; xz -df '+file_basename(pathweather)
+        file_delete, pathweather, /allow_nonexistent
+      endif
+
+      ;; Where did the uncompressed file end up?
+      pathweather = logdir + file_basename(pathweather,'.xz')
+
+    endif else pathweather = logdir + weatherfile
+
+  endif
+
+  
+  ;; SHABAR log file
+  if keyword_set(shabar) then begin
+
+    shabarfile = 'shabar.data-'+strjoin(datearr, '')
+
+    if ~file_test(logdir+shabarfile) or keyword_set(overwrite) then begin
+      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + shabarfile + '.xz' $
+                              , file = shabarfile + '.xz' $
+                              , dir = logdir $
+                              , overwrite = overwrite $
+                              , path = pathshabar)
+      
+      if ~downloadOK then begin ; also try in subfolder /{year}/
+        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0] $
+                                + '/' + shabarfile + '.xz' $
+                                , file = shabarfile + '.xz' $
+                                , dir = logdir $
+                                , overwrite = overwrite $
+                                , path = pathshabar) 
+      endif
+      
+      if downloadOK then begin
+        spawn, 'cd '+logdir+'; xz -df '+file_basename(pathshabar)
+        file_delete, pathshabar, /allow_nonexistent
+      endif
+
+      ;; Where did the uncompressed file end up?
+      pathshabar = logdir + file_basename(pathshabar,'.xz')
+
+    endif else pathshabar = logdir + shabarfile
+
+  endif
+  
+  
   ;; R0 log file
   if keyword_set(r0) then begin
 
@@ -268,7 +386,7 @@ pro red_download, date = date $
 
     if ~file_test(logdir+r0file) or keyword_set(overwrite) then begin
       downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file + '.xz' $
-                              , file = r0file+'.xz' $
+                              , file = r0file + '.xz' $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathr0)
@@ -276,7 +394,7 @@ pro red_download, date = date $
       if ~downloadOK then begin ; also try in subfolder /{year}/
         downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0] $
                                 + '/' + r0file + '.xz' $
-                                , file = r0file+'.xz' $
+                                , file = r0file + '.xz' $
                                 , dir = logdir $
                                 , overwrite = overwrite $
                                 , path = pathr0) 
