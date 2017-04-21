@@ -186,6 +186,7 @@ pro red_download, date = date $
 
   datearr = strsplit(isodate, '-', /extract)
 
+  
   ;; Backscatter gain and psf
   if n_elements(backscatter) gt 0 then begin
     for iback = 0, n_elements(backscatter)-1 do begin
@@ -202,14 +203,15 @@ pro red_download, date = date $
       if downloadOK then begin
         spawn, 'cd '+backscatter_dir+'; tar xzf '+file_basename(backscatter_tarfile)
         file_delete, backscatter_tarfile, /allow_nonexistent
-        gfiles = file_search(backscatter_dir+'cam*.backgain.'+ backscatter[iback] + '_2012.f0', count = Nfiles)
-        ;; Due to changes in the way the Sarnoff cameras are read
-        ;; out in different years, we have to make versions of the
+        gfiles = file_search(backscatter_dir + 'cam*.backgain.' + backscatter[iback] $
+                             + '_2012.f0', count = Nfiles)
+        ;; Due to changes in the way the Sarnoff cameras are read out
+        ;; in different years, we have to make versions of the
         ;; backscatter gain for the particular year. The files
         ;; downloaded are for 2012 (and earlier), the
-        ;; backscatter_orientations matrix defined below has the
-        ;; value of the parameter needed to make the rotate()
-        ;; command do the needed transformation for 2013 and later.
+        ;; backscatter_orientations matrix defined below has the value
+        ;; of the parameter needed to make the rotate() command do the
+        ;; needed transformation for 2013 and later.
         if datearr[0] ne '2012' then begin
           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
           backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15', '16']
@@ -232,10 +234,10 @@ pro red_download, date = date $
                          eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
             iyear = where(backscatter_years eq datearr[0], Nyear)
             if Ncam eq 0 or Nyear eq 0 then begin
-              print, 'red::download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
-                     + ' in year'+datearr[0]+'.'
-              print, '               Please do "git pull" in your crispred directory and try again.'
-              print, '               Contact crispred maintainers if this does not help.'
+              print, 'red::download : Backgain orientations unknown for ' $
+                     + backscatter_cameras[icam] + ' in year'+datearr[0]+'.'
+              print, '       Please do "git pull" in your crispred directory and try again.'
+              print, '       Contact crispred maintainers if this does not help.'
               stop
             endif else begin
               ;; Read the downloaded 2012 files
@@ -243,7 +245,8 @@ pro red_download, date = date $
               pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
               fzread, bpsf, pfile, pheader
               ;; Write them with the transformation given by backscatter_orientations.
-              red_loadbackscatter, backscatter_cameras[icam], isodate, backscatter_dir, backscatter[iback] $
+              red_loadbackscatter, backscatter_cameras[icam], isodate $
+                                   , backscatter_dir, backscatter[iback] $
                                    , rotate(bgain, backscatter_orientations[iyear, icam]) $
                                    , rotate(bpsf,  backscatter_orientations[iyear, icam]) $
                                    , /write
@@ -251,25 +254,28 @@ pro red_download, date = date $
           endfor                ; ifile
         endif                   ; 2012?
       endif else begin
-        print, "red_download : Couldn't download the backscatter data for " + backscatter[iback]
+        print, "red_download : Couldn't download the backscatter data for " $
+               + backscatter[iback]
       endelse        
     endfor                      ; iback
   endif
 
+  
   ;; R0 log file
   if keyword_set(r0) then begin
 
     r0file = 'r0.data.full-'+strjoin(datearr, '')
 
     if ~file_test(logdir+r0file) or keyword_set(overwrite) then begin
-      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file+'.xz' $
+      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file + '.xz' $
                               , file = r0file+'.xz' $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathr0)
       
       if ~downloadOK then begin ; also try in subfolder /{year}/
-        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file+'.xz' $
+        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0] $
+                                + '/' + r0file + '.xz' $
                                 , file = r0file+'.xz' $
                                 , dir = logdir $
                                 , overwrite = overwrite $
@@ -288,11 +294,13 @@ pro red_download, date = date $
 
   endif
 
+  
   ;; PIG log file
   if keyword_set(pig) then begin
     pigfile = 'rmslog_guidercams'
 
-    DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate + '/' + pigfile $
+    DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate $
+                            + '/' + pigfile $
                             , file = pigfile $
                             , dir = logdir $
                             , overwrite = overwrite $
@@ -300,7 +308,8 @@ pro red_download, date = date $
 
     if ~DownloadOK then begin
       dotdate = strjoin(datearr, '.')
-      DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate + '/' + pigfile $
+      DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate $
+                              + '/' + pigfile $
                               , file = pigfile $
                               , dir = logdir $
                               , overwrite = overwrite $
@@ -312,16 +321,10 @@ pro red_download, date = date $
       ;; coordinates (in arcseconds).
       pathpig += '_'+isodate+'_converted'
       if ~file_test(pathpig) then begin
-;        pig_N = 16              ; # of positions to average when converting. Originally ~16 pos/s.
-;        convertcmd = 'cd '+logdir+'; convertlog --dx 31.92 --dy 14.81' $
-;                     + ' --rotation 84.87 --scale 4.935 '
-;        if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
         print, 'red_download : Converting PIG log file...'
-        rdx_convertlog, logdir+pigfile, logdir+pigfile+'_'+isodate+'_converted', dx=31.92, $
-                        dy=14.81, rotation=84.87, scale=4.935, average=16
-;        spawn, convertcmd+' '+pigfile+' > '+pigfile+'_'+isodate+'_converted'
-        file_link, logdir+pigfile+'_'+isodate+'_converted', 'log_pig'
-        print, 'red_download : Linked to ' + link
+        rdx_convertlog, logdir+pigfile, logdir+pigfile+'_'+isodate+'_converted' $
+                        , dx=31.92, dy=14.81 $
+                        , rotation=84.87, scale=4.935, average=16
       endif else begin
         print, 'red_download : Converted PIG log file already exists.'
       endelse
@@ -334,6 +337,7 @@ pro red_download, date = date $
     endelse
   endif
 
+  
   ;; Turret log file
 
   if keyword_set(turret) then begin
@@ -421,11 +425,12 @@ pro red_download, date = date $
     
   endif                         ; keyword_set(turret)
   
-  
+  
   ;; Active regions map
   arfile = strjoin(datearr, '')+'.1632_armap.png'
   if keyword_set(armap) then begin
-    tmp = red_geturl('http://kopiko.ifa.hawaii.edu/ARMaps/Archive/' + datearr[0]+'/'+arfile $
+    tmp = red_geturl('http://kopiko.ifa.hawaii.edu/ARMaps/Archive/' + datearr[0] $
+                     + '/' + arfile $
                      , file = arfile, dir = dir, overwrite = overwrite) 
   endif
 
