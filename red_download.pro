@@ -449,9 +449,11 @@ pro red_download, date = date $
     endif else begin
       ;; We tried to download but failed. So any existing files may
       ;; be corrupt or not correspond to the current state.
-      file_delete, pathpig, /allow_nonexistent
-      file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
-      pathpig = ''
+      if pathpig ne '' then begin
+        file_delete, pathpig, /allow_nonexistent
+        file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
+        pathpig = ''
+      endif
     endelse
   endif
 
