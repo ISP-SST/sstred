@@ -4,21 +4,21 @@
 ; Clip and optionally mirror an image the same way as the momfbd
 ; program would, using its align_clip info.
 ; 
-; :categories:
+; :Categories:
 ;
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Pit Sütterlin (as momfbd_clip.pro)
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ;    A clipped and optionally mirrored image.
 ; 
-; :params:
+; :Params:
 ; 
 ;    pic : in, type="2D array"
 ;   
@@ -36,7 +36,7 @@
 ;      the Y direction.
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -46,36 +46,36 @@
 function red_clipim, pic, cl
 
   if cl[0] GT cl[1] then begin
-     ;; Should mirror in X.
-     mi_x = cl[1]-1
-     ma_x = cl[0]-1
-     fx = 1
+    ;; Should mirror in X.
+    mi_x = cl[1]-1
+    ma_x = cl[0]-1
+    fx = 1
   endif else begin
-     ;; Should not mirror in X.
-     mi_x = cl[0]-1
-     ma_x = cl[1]-1
-     fx = 0
+    ;; Should not mirror in X.
+    mi_x = cl[0]-1
+    ma_x = cl[1]-1
+    fx = 0
   endelse
 
   if cl[2] GT cl[3] then begin
-     ;; Should mirror in Y.
-     mi_y = cl[3]-1
-     ma_y = cl[2]-1
-     fy = 1
+    ;; Should mirror in Y.
+    mi_y = cl[3]-1
+    ma_y = cl[2]-1
+    fy = 1
   endif else begin
-     ;; Should not mirror in Y.
-     mi_y = cl[2]-1
-     ma_y = cl[3]-1
-     fy = 0
+    ;; Should not mirror in Y.
+    mi_y = cl[2]-1
+    ma_y = cl[3]-1
+    fy = 0
   endelse
 
   ;; Translate the mirror settings fx and fy to the orientations
   ;; recogniced by IDL's rotate command.
   case fx+2*fy of 
-     0:  r = 0
-     1:  r = 5
-     2:  r = 7
-     3:  r = 2
+    0:  r = 0
+    1:  r = 5
+    2:  r = 7
+    3:  r = 2
   endcase
 
   ;; Return the clipped image with the specified orientation.
