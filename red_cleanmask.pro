@@ -9,12 +9,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Mats Löfdahl, ISP, 2012-10-07
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -30,7 +30,7 @@
 ; 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2012-10-07 : Written by Mats Löfdahl (MGL).
 ;
@@ -49,11 +49,11 @@ function red_cleanmask, dirtymask
   oc[1, 1] = morph_open(morph_close(mask,replicate(1,5,5)),replicate(1,5,5))
   labels = (label_region(oc, /all_neighbors))[1:dims[0], 1:dims[1]]
 
-  for i = 0, 100 do begin &$
-     aa = where(labels eq i, cnt) &$
-     if cnt eq 0 then break &$
-     print, i
-  endfor 
+  for i = 0, 100 do begin 
+    aa = where(labels eq i, cnt) 
+    if cnt eq 0 then break 
+    print, i
+  endfor                        ; i
   mg = fltarr(i)
   for ii = 0, i-1 do mg[ii] = mean(dirtymask(where(labels eq ii)))
 
