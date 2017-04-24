@@ -97,20 +97,20 @@ function red_get_imean, wav, dat, pp, npar, iter $
 
   dum = (size(pp, /dim))[0]
   for ii=0,dum-1 do begin
-     tmp = reform(pp[ii,*,*])
-     pos = where(~finite(tmp), nancount, complement=pos1)
-     if(nancount gt 0) then begin
-        tmp[pos] = median(tmp[pos1])
-        pp[ii,*,*] = temporary(tmp)
-     endif
+    tmp = reform(pp[ii,*,*])
+    pos = where(~finite(tmp), nancount, complement=pos1)
+    if(nancount gt 0) then begin
+      tmp[pos] = median(tmp[pos1])
+      pp[ii,*,*] = temporary(tmp)
+    endif
   endfor
 
   If(n_elements(rebin) eq 0) then rebin = 10L
   print, inam + ' : Rebin factor -> ' + red_stri(rebin)
-                                
+  
   dim = size(dat, /dimension)
   rdim = long(dim / rebin)
-                                
+  
   ;; Build huge wavelength array (rebin by a factor)
 
   imean = fltarr(dim[0])
@@ -123,8 +123,8 @@ function red_get_imean, wav, dat, pp, npar, iter $
   print, inam + ' : Ordering and correcting data to fit mean spectrum ... ', FORMAT = '(A,$)'
   print
   for ii = 0L, dim[0] - 1 do begin
-     red_progressbar, ii, dim[0], 'Ordering and correcting data to fit mean spectrum.', clock = clock
-     wl[ii,*,*] = wav[ii] - pp[1,*,*]
+    red_progressbar, ii, dim[0], 'Ordering and correcting data to fit mean spectrum.', clock = clock
+    wl[ii,*,*] = wav[ii] - pp[1,*,*]
   endfor
 
   wl = reform(temporary(wl), dim[0]*dim[1]*dim[2])
@@ -133,22 +133,22 @@ function red_get_imean, wav, dat, pp, npar, iter $
 
   fl = dat                      ;fltarr(dim[0], dim[1], dim[2])
   for ii = 0L, dim[0] - 1 do begin
-     red_progressbar, ii, dim[0], 'Same with the intensity.', clock = clock
-     mask = reform(dat[ii,*,*]) ge 1.e-3
-     lcom = red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
-     ;; Remove mean shape from the linear component so we don't
-     ;; introduce distortion in the average profile
-     lcom /= median(lcom) 
-     fl[ii,*,*] /= reform(pp[0,*,*]) * lcom
-     imean[ii] = median(reform(fl[ii,*,*])) 
+    red_progressbar, ii, dim[0], 'Same with the intensity.', clock = clock
+    mask = reform(dat[ii,*,*]) ge 1.e-3
+    lcom = red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
+    ;; Remove mean shape from the linear component so we don't
+    ;; introduce distortion in the average profile
+    lcom /= median(lcom) 
+    fl[ii,*,*] /= reform(pp[0,*,*]) * lcom
+    imean[ii] = median(reform(fl[ii,*,*])) 
   endfor
   
   if(keyword_set(myg) AND iter GE 0) then  begin
-     if(~keyword_set(bezier)) then begin
-        imean = red_intepf(wav-median(pp[1,*,*]),imean, iwav)
-     endif else begin
-        imean = red_bezier3(wav-median(pp[1,*,*]),imean, iwav)
-     endelse
+    if(~keyword_set(bezier)) then begin
+      imean = red_intepf(wav-median(pp[1,*,*]),imean, iwav)
+    endif else begin
+      imean = red_bezier3(wav-median(pp[1,*,*]),imean, iwav)
+    endelse
   endif
 
   fl = reform(temporary(fl), dim[0]*dim[1]*dim[2])
@@ -158,11 +158,11 @@ function red_get_imean, wav, dat, pp, npar, iter $
 
   idx = where(dat gt 0.01, count)
   if(count ge 1L) then begin
-     wl = (temporary(wl))[idx]
-     fl = (temporary(fl))[temporary(idx)]
+    wl = (temporary(wl))[idx]
+    fl = (temporary(fl))[temporary(idx)]
   endif else begin
-     print, inam+' : Error -> all pixels are zero!'
-     stop
+    print, inam+' : Error -> all pixels are zero!'
+    stop
   endelse
 
   ;; Sort elements by increasing wav
@@ -185,11 +185,11 @@ function red_get_imean, wav, dat, pp, npar, iter $
   iwav[n_elements(iwav)-1] = max(wl[bla])
 
   if keyword_set(densegrid) AND (iter ge 1) then begin
-     iwav1 = red_densegrid(iwav, thres = thres)
-     imean = red_intepf(iwav, imean , iwav1)
-     iwav = iwav1
-     print, inam + ' : Using denser grid of points to fit mean spectrum: ' $
-            + red_stri(dim[0]) + ' -> '+ red_stri(n_elements(iwav1))
+    iwav1 = red_densegrid(iwav, thres = thres)
+    imean = red_intepf(iwav, imean , iwav1)
+    iwav = iwav1
+    print, inam + ' : Using denser grid of points to fit mean spectrum: ' $
+           + red_stri(dim[0]) + ' -> '+ red_stri(n_elements(iwav1))
   endif
 
   ;; Fit to hermitian spline
@@ -215,14 +215,14 @@ function red_get_imean, wav, dat, pp, npar, iter $
   if(iter gt 0) then yl = mpfit('red_fit_hspline', imean, functargs = functargs, /quiet) else yl = imean
   xl = iwav
   print, 'done'
-                                
+  
   ;; Plot result (use coarser grid, just for displaying)
-   
+  
   np = 201L
   pr = (max(iwav) - min(iwav))
   pwl = findgen(np) / (np - 1.0) * pr + min(iwav)
   functargs = 0B 
-   
+  
                                 ;
   if(keyword_set(bezier)) then begin
     cgwindow, 'cgplot', /load, /over, pwl, red_bezier3(xl, yl, pwl, /linear), color = 'blue'

@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -31,7 +31,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -46,9 +46,9 @@ function red_densegrid, xl, thres = thres
   xld[0:*:2] = xl
                                 ;
   for ii = 0L, nt-2 do begin
-     sl = (xl[ii] + xl[ii+1])
-     dl = abs(xl[ii] - xl[ii+1])
-     if(dl ge thres) then xld[2L*ii+1] = 0.5 * sl ; Threshold (only place points if the dlambda > thres)
+    sl = (xl[ii] + xl[ii+1])
+    dl = abs(xl[ii] - xl[ii+1])
+    if(dl ge thres) then xld[2L*ii+1] = 0.5 * sl ; Threshold (only place points if the dlambda > thres)
   endfor
                                 ;
   idx = where(xld lt 1.e10, count)
