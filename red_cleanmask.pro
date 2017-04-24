@@ -36,7 +36,7 @@
 ;
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2013-06-10 : Rename the argument and add some documentation. MGL.
+;   2013-06-10 : MGL. Rename the argument and add some documentation. 
 ;
 ;-
 function red_cleanmask, dirtymask
