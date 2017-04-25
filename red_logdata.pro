@@ -37,6 +37,10 @@
 ;      log file.
 ; 
 ; :Keywords:
+;
+;   azel : out, optional, type=array
+;
+;      Azimuth and elevation.
 ; 
 ;   header : in, optional, type=string
 ;
@@ -58,7 +62,7 @@
 ;
 ;     PIG pointing info in xxx coordinates.
 ;
-;   pointing : out, optional, type="fltarr(2) or fltarr(2,N)"
+;   diskpos : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
 ;     SST pointing info in xxx coordinates. Based on PIG log data but
 ;     will use turret data if PIG data is not available or is deemed
@@ -80,6 +84,10 @@
 ;   Sundist : out, optional, type=double
 ;
 ;       Solar distance in meters.
+;
+;   Stonyhurst : out, optional, type=array
+;
+;       Stonyhurst coordinates.
 ;
 ;   zenithangle : out, optional, type=float
 ;
@@ -129,22 +137,32 @@
 ;
 ;     2017-04-22 : MGL. Use red_logdata to read the log files.
 ;
+;     2017-04-23 : MGL. New keywords use_r0_time, use_turret_time,
+;                  use_pig_time, azel, stonyhurst, diskpos. Removed
+;                  keyword pointing.
+;
 ;
 ;-
 pro red_logdata, date, time $
+                 , azel = azel $
+                 , diskpos = diskpos $
                  , header = header $
-                 , r0 = r0 $
-                 , pig = pig $
                  , mu = mu $
+                 , pig = pig $
+                 , r0 = r0 $
                  , Rsun = Rsun $
+                 , stonyhurst = stonyhurst $
                  , Sundist = Sundist $
                  , turret = turret $
                  , zenithangle = zenithangle $
-                 , pointing = pointing
+                 , use_pig_time = use_pig_time $
+                 , use_turret_time = use_turret_time $
+                 , use_r0_time = use_r0_time
 
   ;; Date in ISO format
   if n_elements(date) gt 0 then begin
-    isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
+    isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F') $
+                        , 'T', /extract))[0]
   endif else begin
     if n_elements(header) ne 0 then begin
       Ts = strmid(header[0], strpos(header[0], 'Ts=')+3, 26)
@@ -152,7 +170,8 @@ pro red_logdata, date, time $
       date = isodate
     endif else begin
       print, 'sst_logdata : No date given.'
-      date = stregex(getenv('PWD'),'[12][0-9][0-9][0-9][-.][0-1][0-9][-.][0-3][0-9]',/extract)
+      date = stregex(getenv('PWD'),'[12][0-9][0-9][0-9][-.][0-1][0-9][-.][0-3][0-9]' $
+                     , /extract)
       if date eq '' then begin
         print, 'red_logdata : No date given and PWD does not contain a date.'
         retall
@@ -161,6 +180,17 @@ pro red_logdata, date, time $
     endelse
   endelse
 
+  ;; Times in the log files are given in Unix system time = # of
+  ;; seconds since 1 Jan 1970 UTC. Need the following to convert them
+  ;; to seconds after midnight.
+  yr = long((strsplit(isodate, '-', /extract))[0])
+  mo = long((strsplit(isodate, '-', /extract))[1])
+  dy = long((strsplit(isodate, '-', /extract))[2])
+;  CDF_EPOCH, epoch, 1970, 1, 1, 0, /COMPUTE_EPOCH    ; In milliseconds
+;  CDF_EPOCH, midnight, yr, mo, dy, 0, /COMPUTE_EPOCH ; In milliseconds
+;  midnight = (midnight-epoch)/1000.d                 ; Unix system time for midnight today.
+
+  
   ;; Get the times (in seconds after midnight) for which the logdata are wanted.
   if n_elements(header) ne 0 then begin
     ;; From header(s) if given.
@@ -208,45 +238,9 @@ pro red_logdata, date, time $
            + strtrim(Ntimes, 2) + ' different points in time.'
   endelse
 
-  ;; Log file data
-  
-  if arg_present(r0) then begin
-    red_getlog, isodate, r0 = r0data
-    if n_elements(r0data) eq 0 then $
-       print, 'red_logdata : No r0 log file.'
-  endif
-
-  if arg_present(pig) $
-     or arg_present(mu) $
-     or arg_present(pointing) then begin
-    red_getlog, isodate, pig = pigdata
-    if n_elements(pigdata) eq 0 then $
-       print, 'red_logdata : No pig log file.'
-  endif
-  
-  ;; Turret log
-  if arg_present(turret) $
-     or arg_present(mu) $
-     or arg_present(pointing) $
-     or arg_present(zenithangle) then begin
-    red_getlog, isodate, turret = turretdata
-    if n_elements(turretdata) eq 0 then $
-       print, 'red_logdata : No turret log file.'
-  endif
-
-  
-  ;; Times in the log files are given in Unix system time = # of
-  ;; seconds since 1 Jan 1970 UTC. Need the following to convert them
-  ;; to seconds after midnight.
-  yr = long((strsplit(isodate, '-', /extract))[0])
-  mo = long((strsplit(isodate, '-', /extract))[1])
-  dy = long((strsplit(isodate, '-', /extract))[2])
-;  CDF_EPOCH, epoch, 1970, 1, 1, 0, /COMPUTE_EPOCH    ; In milliseconds
-;  CDF_EPOCH, midnight, yr, mo, dy, 0, /COMPUTE_EPOCH ; In milliseconds
-;  midnight = (midnight-epoch)/1000.d                 ; Unix system time for midnight today.
-
   
   ;; Calculation of solar radius and distance.
+  
   AU = 149597870700.d0          ; [m] 
   ;;Rsun_m = 6.955e8                        ; [m]
   ;;Rsun = atan(Rsun_m/AU)*180/!pi*3600. ; [arcsec]
@@ -304,13 +298,88 @@ pro red_logdata, date, time $
   ;; END get_sun ------------------------------------------------------;
 
   
-  if n_elements(r0data) ne 0 then begin
-   
-    if n_elements(T) eq 0 then begin
-      ;; Return all values
-      Ntimes = n_elements(r0data.time)
+  ;; Decide what time coordinates to use
+  if ~keyword_set(use_r0_time) $
+     && ~keyword_set(use_turret_time) $
+     && ~keyword_set(use_pig_time) then begin
+    ;; If we didn't ask for a particular time, then decide here:
+    case 1 of
+      n_elements(T) gt 0 : use_input_time = 1           ; Use input
+      n_elements(r0data) ne 0 : use_r0_time = 1         ; Every s
+      n_elements(pigdata) ne 0 : use_pig_time = 1       ; Every s?
+      n_elements(turretdata) ne 0 : use_turret_time = 1 ; Every 30 s
+      else : begin
+        print, 'red_logdata : No time coordinates!'
+        return
+      end
+    endcase
+  endif
+  
+  ;; Download log file data
+
+  get_r0_file = keyword_set(use_r0_time) $
+                || arg_present(r0)
+
+  get_pig_file = keyword_set(use_pig_time) $
+                 || arg_present(pig) $
+                 || arg_present(mu) $
+                 || arg_present(diskpos) $
+                 || arg_present(pointing)
+
+  get_turret_file = keyword_set(use_turret_time) $
+                    || arg_present(turret) $
+                    || arg_present(mu) $
+                    || arg_present(azel) $
+                    || arg_present(stonyhurst) $
+                    || arg_present(diskpos) $
+                    || arg_present(pointing) $
+                    || arg_present(zenithangle)
+  
+  if get_r0_file then begin
+    red_getlog, isodate, r0 = r0data
+    if n_elements(r0data) eq 0 then $
+       print, 'red_logdata : No r0 log file.'
+  endif
+
+  if get_pig_file then begin
+    red_getlog, isodate, pig = pigdata
+    if n_elements(pigdata) eq 0 then $
+       print, 'red_logdata : No pig log file.'
+  endif
+  
+  if get_turret_file then begin
+    red_getlog, isodate, turret = turretdata
+    if n_elements(turretdata) eq 0 then $
+       print, 'red_logdata : No turret log file.'
+  endif
+
+  
+  ;; Use the selected time
+  case 1 of
+    keyword_set(use_input_time) :
+    keyword_set(use_r0_time) : begin
       T = r0data.time
       time = T
+    end
+    keyword_set(use_pig_time) : begin
+      T = pigdata.time
+      time = T
+    end
+    keyword_set(use_turret_time) : begin
+      T = turretdata.time
+      time = T
+    end
+    else : begin
+      print, 'red_logdata : This should not happen!'
+      stop
+    end
+  endcase
+  Ntimes = n_elements(T)
+  
+  if n_elements(r0data) ne 0 then begin
+   
+    if keyword_set(use_r0_time) then begin
+      ;; Return all values
       if n_elements(r0data.r0_8x8) ne 0 then begin
         r0 = fltarr(2, Ntimes)
         r0[1, *] = median(r0data.r0_8x8, dim = 1)
@@ -320,7 +389,6 @@ pro red_logdata, date, time $
       r0[0, *] = r0data.r0_24x24
     endif else begin
       ;; Get interpolated values
-      Ntimes = n_elements(T)
       if n_elements(r0data.r0_8x8) ne 0 then begin
         r0 = fltarr(2, Ntimes)
         r0[1, *] = interpol(median(r0data.r0_8x8, dim = 1), r0data.time, T)
@@ -328,65 +396,86 @@ pro red_logdata, date, time $
         r0 = fltarr(1, Ntimes)
       endelse
       r0[0, *] = interpol(r0data.r0_24x24, r0data.time, T)
-    endelse 
+    endelse
 
-  endelse
+  endif
 
   
-  if n_elements(pigdata) ne 0 then begin
-
-    if n_elements(T) eq 0 then begin
+  if n_elements(pigdata) gt 0 then begin
+    pig = fltarr(2, Ntimes)
+    if keyword_set(use_pig_time) then begin
       ;; Return all values
-      Ntimes = n_elements(pigdata)
-      pig = fltarr(2, Ntimes)
-      T = pigdata.time
-      time = T
       pig[0, *] = pigdata.x
       pig[1, *] = pigdata.y
     endif else begin
       ;; Get interpolated values
-      pig = fltarr(2, Ntimes)
       pig[0, *] = interpol(pigdata.x, pigdata.time, T)
       pig[1, *] = interpol(pigdata.y, pigdata.time, T)
+      stop
     endelse 
 
-    if arg_present(mu) then begin
-      ;; Pig coordinates r, theta, and mu:
-      pigr = sqrt(total(pig^2,1))/Rsun ; Normalized radial coordinate
-      theta = asin(pigr)
-      mu = cos(theta)
-    endif
-
-  endelse
+  endif
 
   
-  if n_elements(turretdata) eq 0 then begin
+  if n_elements(turret) ne 0 then begin
     
-    print, 'red_logdata : No turret log file.'
-    
-  endif else begin
-    
-    if n_elements(T) eq 0 then begin
+    if keyword_set(use_turret_time) then begin
       ;; Return all values
-      Ntimes = n_elements(turretdata)
-      T = turretdata.time
-      time = T
       turret = transpose([[turretdata.az],[turretdata.el]]) ; az/el on sky
     endif else begin
       ;; Get interpolated values
       turret = fltarr(2, Ntimes) ; az/el on sky
-      turret[0, *] = interpol(turretdata.az, turret_time, t)
-      turret[1, *] = interpol(turretdata.el, turret_time, t)
+      turret[0, *] = interpol(turretdata.az, turret_time, T)
+      turret[1, *] = interpol(turretdata.el, turret_time, T)
     endelse 
     
-    if arg_present(zenithangle) then begin
-      zenithangle = 90.0 - reform(turret[1, *])
-    endif
-    
-  endelse
+  endif
 
+  
+  ;; Fill keywords
 
+  ;; Azimuth and elevation
+  if (arg_present(azel) || arg_present(zenithangle)) $
+     && n_elements(turret) then azel = turret
   
+  ;; Disk coordinates
+  if arg_present(diskpos) || arg_present(mu) then begin
+    case 1 of
+      n_elements(pig) gt 0 : begin
+        ;; Use PIG coordinates if available.
+        diskpos = pig
+      end
+      n_elements(turret) gt 0 : begin
+        ;; Use Disk X/Y from the turret log file
+        diskpos = red_turret_select_pointing(turretdata, 'Disk', time = T)
+        ;; If we did not get data for all T points, maybe try to fill
+        ;; in data by calculating from Stonyhurst?
+      end
+      else : stop
+    endcase
+  endif
+      
+  ;; Stonyhurst cordinates
+  if arg_present(stonyhurst) then begin
+    case 1 of
+      ;; Prefer if available to calculate Stonuhurst coordinates from
+      ;; pig disk coordinates?
+      n_elements(turret.stony) : stonyhurst = red_turret_select_pointing(turretdata, 'Stony', time = T)
+    endcase
+  endif
+
+  ;; Zenith angle
+  if arg_present(zenithangle) && n_elements(azel) then $
+     zenithangle = 90.0 - reform(azel[1, *])
+  
+  ;; µ
+  if arg_present(mu) && n_elements(diskpos) then begin
+    diskr = sqrt(total(diskpos^2,1))/Rsun ; Normalized radial coordinate
+    theta = asin(diskr)                   ; 
+    mu = cos(theta)
+  endif
+
+
   ;; Get the "best" pointing info from the PIG log file and the Turret
   ;; log file. The idea is to use PIG pointing info whenever possible
   ;; and use Turret pointing info when a) there is no PIG log file
