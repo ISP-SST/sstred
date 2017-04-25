@@ -12,12 +12,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Jaime de la Cruz Rodriguez (ITA-UiO 2011).
 ; 
 ; 
-; :returns:
+; :Returns:
 ;
 ;        Returns the values of the function interpolated
 ;        at the xp values.
@@ -47,7 +47,7 @@
 ;
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;        2011-04-13 : Jaime. The loop in ii should be up to np (not
 ;                     np-1).
