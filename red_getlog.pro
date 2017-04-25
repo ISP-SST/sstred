@@ -88,6 +88,7 @@ pro red_getlog, date $
   
   ;; SHABAR
   if arg_present(shabar) then begin
+    
     print, 'red_getlog : Get SHABAR data'
     
     red_download, date = isodate, /shabar, pathshabar = shabarfile
@@ -437,9 +438,9 @@ pro red_getlog, date $
           
         ;; Az/El wanted [deg]           
         indx = where( (turretdata.pointtag1 eq 'a'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Azimuth wanted [deg]'
+        if count gt 0 then turret[indx].pointingtype1 = 'Wanted Azimuth [deg]'
         indx = where( (turretdata.pointtag2 eq 'e'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Elevation wanted [deg]'
+        if count gt 0 then turret[indx].pointingtype2 = 'Wanted Elevation [deg]'
         
         ;; Disk position tracking [”]
         indx = where( (turretdata.pointtag1 eq 'X'), count )
@@ -449,9 +450,9 @@ pro red_getlog, date $
  
         ;; Disk position wanted [”]
         indx = where( (turretdata.pointtag1 eq 'x'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Disk X wanted [deg]'
+        if count gt 0 then turret[indx].pointingtype1 = 'Wanted Disk X [deg]'
         indx = where( (turretdata.pointtag2 eq 'y'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Disk Y wanted [deg]'
+        if count gt 0 then turret[indx].pointingtype2 = 'Wanted Disk Y [deg]'
         
         ;; Flat field mode? [??]
         indx = where( (turretdata.pointtag1 eq 'f'), count )
