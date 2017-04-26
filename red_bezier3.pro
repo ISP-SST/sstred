@@ -100,12 +100,12 @@ function red_bezier3, x, y, xx, linear = linear
      if(count gt 0) then begin
         a = yp[0]
         b = y[0] - a * x[0]
-        res[idx] = a * x[0] + b
+        res[idx] = a * xx[idx] + b
      endif
      if(count1 gt 0) then begin
         a = yp[n-1]
         b = y[n-1] - a * x[n-1]
-        res[idx1] = a * x[n-1] + b
+        res[idx1] = a * xx[idx1] + b
      endif
   endif else begin
      if(count gt 0) then res[idx] = y[0]
