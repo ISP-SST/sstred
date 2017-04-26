@@ -58,6 +58,8 @@
 ;
 ;   2017-03-10 : MGL. New member "developer_mode". 
 ;
+;   2017-04-26 : MGL. Use red_mpfit_version.
+;
 ;
 ;-
 pro red::initialize, filename, develop = develop
@@ -419,14 +421,16 @@ pro red::initialize, filename, develop = develop
       stop
     end
     1: begin
+      red_mpfit_version, mpfitpaths, local_version = local_version
+      self.version_mpfit = local_version 
       ;; mpfit is not under version control so we will use the time of
       ;; the latest chenge, as defined by the $Id string.
-      spawn, 'grep "\$Id" '+mpfitpaths[0]+'/*.pro', mpfit_spawnoutput
-      timestamps = STREGEX(mpfit_spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9] ' $
-                           + '[0-9][0-9]:[0-9][0-9]:[0-9][0-9]',/EXTRACT)
-      for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], '/', '-', n = 2)
-      for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], ' ', 'T')
-      self.version_mpfit = (timestamps(sort(timestamps)))[n_elements(timestamps)-1]
+;      spawn, 'grep "\$Id" '+mpfitpaths[0]+'/*.pro', mpfit_spawnoutput
+;      timestamps = STREGEX(mpfit_spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9] ' $
+;                           + '[0-9][0-9]:[0-9][0-9]:[0-9][0-9]',/EXTRACT)
+;      for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], '/', '-', n = 2)
+;      for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], ' ', 'T')
+;      self.version_mpfit = (timestamps(sort(timestamps)))[n_elements(timestamps)-1]
     end
     else: begin
       self.version_mpfit = 'Undefined'
