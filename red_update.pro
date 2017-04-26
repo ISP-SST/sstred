@@ -45,13 +45,17 @@ pro red_update
 
   print, 'red_update : Update the current crispred branch.'
   srcdir = file_dirname( routine_filepath("red_update"), /mark )
-  print, 'cd '+srcdir+'; git pull'
+  spawn, 'cd '+srcdir+'; git pull'
 
   print, 'red_update : Update the coyote library.'
   coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
   case Nwhere of
     0: print, 'The Coyote library does not seem to be installed.'
-    1: print, 'cd '+coyotepaths+'; git pull'
+    1: begin
+      spawn, 'cd '+coyotepaths+'; git pull', spawnoutput, /stderr
+      if strmatch(spawnoutput[0],'fatal*') then $
+         print, 'red_update : The Coyote library not updated, does not seem to be under git control.'
+    end
     else: begin
       print, 'red_update : Multiple Coyote directories.'
       print, '             Please make sure there is only one and that it is under git control.'
@@ -62,7 +66,11 @@ pro red_update
   idlastropaths = paths(where(strmatch(paths, '*IDLAstro/pro'), Nwhere))
   case Nwhere of
     0: print, 'The IDLAstro library does not seem to be installed.'
-    1: print, 'cd '+idlastropaths+'; git pull'
+    1: begin
+      spawn, 'cd '+idlastropaths+'; git pull', spawnoutput, /stderr
+      if strmatch(spawnoutput[0],'fatal*') then $
+         print, 'red_update : The IDLAstro library not updated, does not seem to be under git control.'
+    end
     else: begin
       print, 'red_update : Multiple IDLAstro directories.'
       print, '             Please make sure there is only one and that it is under git control.'
@@ -80,7 +88,7 @@ pro red_update
       if latest_version gt local_version then begin
         cmd = strjoin(['cd '+mpfitpaths $
                        , 'rm -f mpfit.tar.gz' $
-                       , 'wget http://cow.physics.wisc.edu/~craigm/idl/down/mpfit.tar.gz' $
+                       , 'wget --quiet http://cow.physics.wisc.edu/~craigm/idl/down/mpfit.tar.gz' $
                        , 'tar xvzf mpfit.tar.gz' $
                       ], ' ; ')
         spawn, cmd
@@ -93,8 +101,8 @@ pro red_update
   endcase
 
   print
-  print, 'IDL libraries updated (if possible).'
+  print, 'red_update : IDL libraries updated (if needed and possible).'
   print
-  print, 'Please make sure the rdx DLMs are up to date as well.' 
+  print, 'red_update : Please make sure the rdx DLMs are up to date as well.' 
   
 end
