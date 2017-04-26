@@ -438,7 +438,7 @@ pro red_logdata, date, time $
   if (arg_present(azel) || arg_present(zenithangle)) $
      && n_elements(turret) then azel = turret
   
-  ;; Disk coordinates
+  ;; Disk coordinates (Helioprojective-Cartesian coordinates)
   if arg_present(diskpos) || arg_present(mu) then begin
     case 1 of
       n_elements(pig) gt 0 : begin
@@ -471,8 +471,9 @@ pro red_logdata, date, time $
   ;; µ
   if arg_present(mu) && n_elements(diskpos) then begin
     diskr = sqrt(total(diskpos^2,1))/Rsun ; Normalized radial coordinate
-    theta = asin(diskr)                   ; 
-    mu = cos(theta)
+    mu = sqrt(1 - diskr^2)
+;    theta = asin(diskr)                   ; 
+;    mu = cos(theta)
   endif
 
 
