@@ -50,8 +50,8 @@ pro red_mpfit_version, mpfitdir, local_version = local_version, latest_version =
     ;; As the local version, we use the latest date within any of the
     ;; files.
     
-    spawn, 'grep "\$Id" '+mpfitdir+'/*.pro', mpfit_spawnoutput
-    timestamps = STREGEX(mpfit_spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]' $
+    spawn, 'grep "\$Id" '+mpfitdir+'/*.pro', spawnoutput
+    timestamps = STREGEX(spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]' $
                          ,/EXTRACT)
     for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], '/', '-', n = 2)
     for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], ' ', 'T')
@@ -64,7 +64,8 @@ pro red_mpfit_version, mpfitdir, local_version = local_version, latest_version =
     ;; archive file name.
     
     cmds = ['cd /tmp'  $
-            , 'wget wget http://cow.physics.wisc.edu/~craigm/idl/fitting.html' $
+            , 'rm -f fitting.html' $
+            , 'wget --quiet http://cow.physics.wisc.edu/~craigm/idl/fitting.html' $
             , 'grep mpfit.tar.gz fitting.html' $
            ]
     cmd = strjoin(cmds, ' ; ')
