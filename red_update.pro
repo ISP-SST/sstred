@@ -79,7 +79,7 @@ pro red_update
       print, 'MPFIT latest version: ',  latest_version
       if latest_version gt local_version then begin
         cmd = strjoin(['cd '+mpfitpaths $
-                       , 'rm mpfit.tar.gz' $
+                       , 'rm -f mpfit.tar.gz' $
                        , 'wget http://cow.physics.wisc.edu/~craigm/idl/down/mpfit.tar.gz' $
                        , 'tar xvzf mpfit.tar.gz' $
                       ], ' ; ')
