@@ -33,7 +33,9 @@
 ; :History:
 ; 
 ;    2017-04-26 : MGL. First version. Does the IDL libraries but not
-;                 the rdx dlm.
+;                 the rdx DLM.
+; 
+;    2017-04-27 : MGL. Check if the rdx DLM is the latest version.
 ; 
 ;    
 ; 
@@ -100,9 +102,31 @@ pro red_update
     end
   endcase
 
+  print, 'red_update : Check version of rdx DLMs.'
+  ;; The rdx DLM knows its own git version. However, we can't go to
+  ;; the source git repository because the !dlm_path variable only
+  ;; tells us where the compiled DLMs are, so we can't use git locally
+  ;; to find out if it's the latest version. However, the repo on
+  ;; dubshen will always be the latest version, so we can use
+  ;; git-ls-remote to find out its version.
+  spawn, 'git ls-remote -h git://dubshen.astro.su.se/hillberg/redux master', rdx_latest_hash
+  rdx_latest_hash = strmid(rdx_latest_hash, 0, 12)
+  help,/dlm,'rdx', output = rdx_dlm_version
+  dlmpos = strpos(rdx_dlm_version[1], '-g')  
+  rdx_local_hash = strmid(rdx_dlm_version[1],dlmpos+2,12)
+
   print
   print, 'red_update : IDL libraries updated (if needed and possible).'
   print
-  print, 'red_update : Please make sure the rdx DLMs are up to date as well.' 
+  if rdx_latest_hash eq rdx_local_hash then begin
+    print, 'red_update : The rdx DLMs are up to date.' 
+  endif else begin
+    print, 'red_update : Local and latest git hashes for the rdx DLMs:'
+    print, '             Local  '+rdx_local_hash
+    print, '             Latest '+rdx_latest_hash
+    print, '             Please update the rdx DLMs (git pull, compile, and install).' 
+  endelse
+   
+  
   
 end
