@@ -363,6 +363,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
 ;            + ", /fitsoutput" $
           + ", xbd=1280, ybd=1024" $
           + ", np=5" $
+          + ", /negang" $
           + ", momfbddir='momfbd_pd'"
 
   printf, Slun, "a->align_continuum"
