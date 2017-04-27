@@ -111,12 +111,14 @@
 ;   2016-11-30 : MGL. New keyword fitsoutput.
 ;
 ;   2017-01-30 : JdlCR. Allow to specify a mean offset angle to, e.g.,
-;                       create the cube aligned with the solar north.
-;                       The angle is in radians.
+;                create the cube aligned with the solar north. The
+;                angle is in radians.
 ;
 ;   2017-03-20 : MGL. New keyword momfbddir.
 ;
 ;   2017-03-24 : MGL. Add prpara info.
+;
+;   2017-04-27 : MGL. New defaults for clip and tile.
 ;
 ;
 ;
@@ -142,6 +144,7 @@ pro chromis::polish_tseries, xbd = xbd $
                              , blur = blur $
                              , offset_angle = offset_angle
   
+  ;; Get keywords
   if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
   if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
   if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
@@ -159,7 +162,6 @@ pro chromis::polish_tseries, xbd = xbd $
   if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
   if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
 
-  ;; Get keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
   
   ;; Name of this method
@@ -406,8 +408,8 @@ pro chromis::polish_tseries, xbd = xbd $
       endif else ff = 0
       
       ;; De-stretch
-      if(~keyword_set(clip)) then clip = [8, 4, 2, 1]
-      if(~keyword_set(tile)) then tile = [12, 24, 48, 64]
+      if(~keyword_set(clip)) then clip = [12, 6, 3, 1]
+      if(~keyword_set(tile)) then tile = [10, 20, 30, 40]
       if(~keyword_set(scale)) then scale = 1.0 / float(self.image_scale)
       if(~keyword_set(tstep)) then begin
         dts = dblarr(Nscans)
