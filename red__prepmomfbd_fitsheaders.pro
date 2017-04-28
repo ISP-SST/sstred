@@ -65,9 +65,9 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
  
   if n_elements(momfbddir) eq 0 then begin
     if keyword_set(no_pd) then begin
-      momfbddir = 'momfbd' 
+      momfbddir = 'momfbd_nopd' 
     endif else begin
-      momfbddir = 'momfbd_pd' 
+      momfbddir = 'momfbd' 
     endelse
   endif
 

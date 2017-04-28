@@ -363,12 +363,10 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
 ;            + ", /fitsoutput" $
           + ", xbd=1280, ybd=1024" $
           + ", np=5" $
-          + ", /negang" $
-          + ", momfbddir='momfbd_pd'"
+          + ", /negang"
 
   printf, Slun, "a->align_continuum"
-  printf, Slun, "a->make_crispex, /float, /aligncont" $
-          + ", momfbddir='momfbd_pd'"
+  printf, Slun, "a->make_crispex, /float, /aligncont"
 ;; a -> make_crispex, /noflat, /scans_only, /float, /aligncont, /wbwrite
 
   

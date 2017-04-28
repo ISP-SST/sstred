@@ -198,9 +198,9 @@ pro red::prepmomfbd, wb_states = wb_states $
   ;; Get keywords
   if n_elements(momfbddir) eq 0 then begin
     if keyword_set(no_pd) then begin
-      momfbddir = 'momfbd' 
+      momfbddir = 'momfbd_nopd' 
     endif else begin
-      momfbddir = 'momfbd_pd' 
+      momfbddir = 'momfbd' 
     endelse
   endif
   if n_elements(date_obs) eq 0 then date_obs = self.isodate
