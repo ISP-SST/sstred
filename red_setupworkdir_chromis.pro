@@ -362,8 +362,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
 ;            + ", /full" $
 ;            + ", /fitsoutput" $
           + ", xbd=1280, ybd=1024" $
-          + ", np=5" $
-          + ", /negang"
+          + ", np=5"
 
   printf, Slun, "a->align_continuum"
   printf, Slun, "a->make_crispex, /float, /aligncont"
