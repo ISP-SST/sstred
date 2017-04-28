@@ -42,16 +42,21 @@
 ; 
 ;    2016-12-30 : MGL. Make plots directly to files, without popping
 ;                 up a graphics window.
+; 
+;    2017-04-27 : MGL. New keyword momfbddir.
 ;
 ; 
 ;-
 pro chromis::align_continuum, continuum_filter = continuum_filter $
-                              , overwrite = overwrite 
+                              , overwrite = overwrite $
+                              , momfbddir = momfbddir
    
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
+  
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
@@ -69,7 +74,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   nbdetector = (*self.detectors)[nbindx[0]]
 
   ;; Find timestamp subdirs
-  search_dir = self.out_dir +'/momfbd/'
+  search_dir = self.out_dir + '/'+momfbddir+'/'
   timestamps = file_basename(file_search(search_dir + '*' $
                                          , count = Ntimestamps, /test_dir))
   if Ntimestamps eq 0 then begin
@@ -96,7 +101,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
     datestamp = self.isodate+'T'+timestamp
 
     ;; Find prefilter subdirs
-    search_dir = self.out_dir +'/momfbd/'+timestamp+'/'
+    search_dir = self.out_dir +'/'+momfbddir+'/'+timestamp+'/'
     prefilters = file_basename(file_search(search_dir + '*' $
                                            , count = Nprefs, /test_dir))
     if Nprefs eq 0 then begin
@@ -135,35 +140,41 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 
       if keyword_set(overwrite) $
          or min(file_test([nname, sname, mname, cname, xpname, ypname, cpname])) eq 0 then begin
-        
+
         ;; Find all the NB continuum images 
-        search_dir = self.out_dir + '/momfbd/' + timestamp $
+        search_dir = self.out_dir + '/'+momfbddir+'/' + timestamp $
                      + '/' + prefilters[ipref] + '/cfg/results/'
         files = file_search(search_dir + '*.'+['f0', 'momfbd', 'fits'], count = Nfiles)      
         
         self -> selectfiles, files = files, states = states $
                              , cam = nbcamera, prefilter = continuum_filter $
                              , sel = nbcindx, count = Nscans
+
         if Nscans eq 0 then continue
         nbcstates = states[nbcindx]
         
         self -> selectfiles, files = files, states = states $
-                             , cam = wbcamera, prefilter = continuum_filter $
-                             , sel = wbcindx, count = wNscans
-        if wNscans ne Nscans then continue
+                             , cam = wbcamera $
+                             , sel = wbindx, count = wNscans
+        if wNscans lt Nscans then stop;continue
 
-        if max(abs(nbcstates.scannumber - states[wbcindx].scannumber)) ne 0 then begin
-          print, inam + ' : Scan numbers in WB and NB do not match.'
-          stop
-        endif
-        
+        wbcindx = wbindx[where(states[wbindx].fpi_state eq states[nbcindx[0]].fpi_state, wNscans)]
+        if wNscans ne Nscans then continue
+print, 'wNscans', wNscans      
+
         ;; Sort
         sindx = sort(nbcstates.scannumber)
         nbcstates = states[nbcindx[sindx]]
         nbcfiles = files[nbcindx[sindx]]
+        sindx = sort(states[wbcindx].scannumber)
         wbcstates = states[wbcindx[sindx]]
         wbcfiles = files[wbcindx[sindx]]
 
+        if max(abs(nbcstates.scannumber - wbcstates.scannumber)) ne 0 then begin
+          print, inam + ' : Scan numbers in WB and NB do not match.'
+          stop
+        endif
+        
         shifts = fltarr(2, Nscans) 
         contrasts = fltarr(Nscans)  
 
@@ -219,7 +230,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
           print, inam+' : Zeroing outliers.'
           contrasts[ignore_indx] = 0
         endif
-        
+stop        
         ;; Smooth the shifts, taking image quality into account.
         shifts_smooth = fltarr(2, Nscans) 
         weights = contrasts^2
@@ -242,7 +253,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
                                                    , weight = weights, select = 0.6 )
           endelse
         endfor                  ; iaxis
-        
+stop        
         fzwrite, [nbcstates.scannumber], nname, ' '
         fzwrite, shifts, sname, ' '
         fzwrite, shifts_smooth, mname
