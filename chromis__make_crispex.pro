@@ -208,10 +208,17 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       files = file_search(search_dir + '*.'+['f0', 'momfbd', 'fits'], count = Nfiles)      
       
       ;; Find all the global WB images 
-      self -> selectfiles, files = files, states = states $
-                           , cam = wbcamera, ustat = '' $
-                           , sel = wbgindx, count = Nscans $
-                           , complement = complement, Ncomplement = Ncomplement
+;      self -> selectfiles, files = files, states = states $
+;                           , cam = wbcamera, ustat = '' $
+;                           , sel = wbgindx, count = Nscans $
+;                           , complement = complement, Ncomplement = Ncomplement
+      ;; We have no special state (or absence of state) to identify
+      ;; the global WB images but we do know that their exposure times
+      ;; are much larger than the ones corresponding to the individual
+      ;; NB states.
+      self -> extractstates, files, states
+      wbgindx = where(states.exposure gt mean(states.exposure) $
+                      , Nscans, complement = complement, Ncomplement = Ncomplement)
       wbgstates = states[wbgindx]
       wbgfiles = files[wbgindx]
 
@@ -230,13 +237,14 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       Nwav = n_elements(utunindx)
 
       ;; Unique nb prefilters
-      unbprefindx = uniq(pertuningstates.prefilter, sort(pertuningstates.prefilter))
+      unbprefindx = uniq(pertuningstates[utunindx].prefilter, sort(pertuningstates[utunindx].prefilter))
       Nnbprefs = n_elements(unbprefindx)
-      unbprefs = pertuningstates[unbprefindx].prefilter
+      unbprefs = pertuningstates[utunindx[unbprefindx]].prefilter
       unbprefsref = dblarr(Nnbprefs)
       for inbpref = 0L, Nnbprefs-1 do begin
         ;; This is the reference point of the fine tuning for this prefilter:
-        unbprefsref[inbpref] = double((strsplit(pertuningstates[unbprefindx[inbpref]].tuning,'_',/extract))[0])
+        unbprefsref[inbpref] = double((strsplit(pertuningstates[utunindx[unbprefindx[inbpref]]].tuning $
+                                                , '_', /extract))[0])
       endfor
       unbprefsref *= 1e-10       ; [m]
 
