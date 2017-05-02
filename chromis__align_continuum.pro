@@ -230,7 +230,7 @@ print, 'wNscans', wNscans
           print, inam+' : Zeroing outliers.'
           contrasts[ignore_indx] = 0
         endif
-stop        
+
         ;; Smooth the shifts, taking image quality into account.
         shifts_smooth = fltarr(2, Nscans) 
         weights = contrasts^2
@@ -253,7 +253,7 @@ stop
                                                    , weight = weights, select = 0.6 )
           endelse
         endfor                  ; iaxis
-stop        
+
         fzwrite, [nbcstates.scannumber], nname, ' '
         fzwrite, shifts, sname, ' '
         fzwrite, shifts_smooth, mname
@@ -261,7 +261,8 @@ stop
 
         ;; Plot colors representing image quality
         colors = red_wavelengthtorgb(cgscalevector(-contrasts, 400, 750), /num)
-        xrange = [-1, Nscans]
+        ;;xrange = [-1, Nscans]
+        xrange = [-1, 1] + [min(nbcstates.scannumber), max(nbcstates.scannumber)]
         title = timestamp + '/' + prefilters[ipref]
 
         ;; Plot contrasts
@@ -293,17 +294,15 @@ stop
                   , xrange = xrange, yrange = yrange $
                   , xtitle = 'scan number', ytitle = axistag[iaxis]+' shift / 1 pixel'
           
-          for iscan = 0, Nscans-1 do begin
-            cgplot, /over $
-                    , nbcstates[iscan].scannumber, shifts[iaxis, iscan] $
-                    , color = colors[iscan], psym = 16
-          endfor                 ; iscan
+          for iscan = 0, Nscans-1 do cgplot, /over $
+                                             , nbcstates[iscan].scannumber, shifts[iaxis, iscan] $
+                                             , color = colors[iscan], psym = 16
 
-          cgplot, /over, shifts_smooth[iaxis, *], color = 'red'
+          cgplot, /over, nbcstates.scannumber, shifts_smooth[iaxis, *], color = 'red'
 
           cgPS_Close, /PDF, /Delete_PS
-          
         endfor                   ; iaxis
+
       endif                      ; overwrite
     endfor                       ; ipref
   endfor                         ; itimestamp
