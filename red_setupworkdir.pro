@@ -212,6 +212,8 @@
 ;                subprograms. Make ready for setting up also for
 ;                TRIPPEL and SLITJAW data.
 ;
+;   2017-05-03 : MGL. Use hostname -I rather than hostname -i to
+;                figure out where we are.
 ;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
@@ -267,17 +269,17 @@ pro red_setupworkdir, search_dir = search_dir $
     ;; No search_dir specified. Try to find out where we are from the
     ;; ip address and search for a root_dir based on that.
     
-    spawn, 'hostname -i', ipaddress
+    spawn, 'hostname -I', ipaddress
 
     case 1 of
-      strmatch(ipaddress,'161.72.15.*') : begin
+      strmatch(ipaddress,'*161.72.15.*') : begin
         ;; At the SST in La Palma
         search_dir = "/data/disk?/*/"
         ;; We could search the camera directories as well but then
         ;; we'd end up with multiple root_dirs, which I'd now like to
         ;; disallow. - Mats
       end
-      strmatch(ipaddress,'130.237.166.*') : begin
+      strmatch(ipaddress,'*130.237.166.*') : begin
         ;; At the ISP in Stockholm
         search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
       end
