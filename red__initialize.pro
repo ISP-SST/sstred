@@ -366,7 +366,7 @@ pro red::initialize, filename, develop = develop
   coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
   case Nwhere of
     0: begin
-      print, 'The Coyote library does not seem to be installed.'
+      print, 'The Coyote library does not seem to be in your !path.'
       stop
     end
     1: begin
@@ -392,7 +392,7 @@ pro red::initialize, filename, develop = develop
   idlastropaths = paths(where(strmatch(paths, '*IDLAstro/pro'), Nwhere))
   case Nwhere of
     0: begin
-      print, 'The IDLAstro library does not seem to be installed.'
+      print, 'The IDLAstro library does not seem to be in your !path.'
       stop
     end
     1: begin
@@ -417,7 +417,7 @@ pro red::initialize, filename, develop = develop
   mpfitpaths = paths(where(strmatch(paths, '*mpfit'), Nwhere))
   case Nwhere of
     0: begin
-      print, 'The mpfit library does not seem to be installed.'
+      print, 'The mpfit library does not seem to be in your !path.'
       stop
     end
     1: begin
