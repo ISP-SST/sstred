@@ -166,8 +166,13 @@
 ;    2016-02-24 : MGL. Added another root_dir to search when in
 ;                 Stockholm. 
 ;
+;    2017-05-03 : MGL. Two changes to make it compatible with the
+;                 chromis branch: changed the keyword root_dir to
+;                 search_dir and put the setup in subdirectory
+;                 'CRISP/'. 
+;
 ;-
-pro red_setupworkdir, root_dir = root_dir $
+pro red_setupworkdir, search_dir = root_dir $
                       , out_dir = out_dir $
                       , cfgfile = cfgfile $
                       , scriptfile = scriptfile $
@@ -177,11 +182,15 @@ pro red_setupworkdir, root_dir = root_dir $
                       , stockholm = stockholm $
                       , lapalma = lapalma
 
+
+  
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')  
   if ~strmatch(out_dir,'*/') then out_dir += '/'
+  if ~strmatch(out_dir,'*CRISP*') then out_dir += 'CRISP/'
+  file_mkdir, out_dir
   
   if n_elements(date) eq 0 then begin
      ;; Date not specified. Does root_dir include the date?
@@ -277,8 +286,8 @@ pro red_setupworkdir, root_dir = root_dir $
 
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
-  openw, Clun, cfgfile, /get_lun
-  openw, Slun, scriptfile, /get_lun
+  openw, Clun, out_dir+cfgfile, /get_lun
+  openw, Slun, out_dir+scriptfile, /get_lun
 
   ;; Specify the date in the config file, ISO format.
   print, 'Date'
