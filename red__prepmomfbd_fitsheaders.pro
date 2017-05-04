@@ -86,9 +86,12 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
     for ipref = 0, Nprefs-1 do begin
       
       cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
-      cfg_files = file_search(cfg_dir+'momfbd_reduc_'+prefs[ipref]+'_?????.cfg', count = Ncfg)
+      cfg_files = file_search(cfg_dir + 'momfbd_reduc_' + prefs[ipref] $
+                              + '_?????.cfg', count = Ncfg)
       
-      progress_msg = 'Making fits headers for ' + strreplace(strreplace(cfg_dir,'//','/'),self.out_dir,'')
+      progress_msg = 'Making fits headers for ' $
+                     + red_strreplace(red_strreplace(cfg_dir,'//','/') $
+                                      , self.out_dir,'')
 
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
@@ -97,9 +100,10 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
     
         if n_elements(scanno) ne 0 then $
-           if long(scanno) ne long((strsplit(file_basename(cfg_files[icfg],'.cfg'),'_',/extract))[3]) then $
-              continue
-    
+           if long(scanno) ne long((strsplit(file_basename(cfg_files[icfg],'.cfg') $
+                                             ,'_',/extract))[3]) then $
+                                                continue
+        
 
         spawn, 'cat '+cfg_files[icfg], cfg
         Nlines = n_elements(cfg)
@@ -190,7 +194,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               if ~strmatch(cfgline,'*{') and ~strmatch(cfgline,'*}') then begin
                 cfgsplit = strsplit(cfgline, '=', /extract)
                 case cfgsplit[0] of
-                  'ALIGN_CLIP' : red_make_prpara, prpara, cfgsplit[0], red_expandrange(cfgsplit[1])
+                  'ALIGN_CLIP' : red_make_prpara, prpara, cfgsplit[0] $
+                                                  , red_expandrange(cfgsplit[1])
                   'FILENAME_TEMPLATE' : begin
                     filename_template = cfgsplit[1]
                     red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
