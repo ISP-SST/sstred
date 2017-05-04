@@ -37,6 +37,8 @@
 ; 
 ;    2017-04-27 : MGL. Check if the rdx DLM is the latest version.
 ; 
+;    2017-05-04 : MGL. Do make in the creduc/ subdirectory.
+; 
 ;    
 ; 
 ; 
@@ -48,6 +50,7 @@ pro red_update
   print, 'red_update : Update the current crispred branch.'
   srcdir = file_dirname( routine_filepath("red_update"), /mark )
   spawn, 'cd '+srcdir+'; git pull'
+  spawn, 'cd '+srcdir+'/creduc ; make'
 
   print, 'red_update : Update the coyote library.'
   coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
