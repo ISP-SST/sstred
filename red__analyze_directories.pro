@@ -132,7 +132,7 @@ pro red::analyze_directories, force = force
 
   ;; Now generate r0 statistics for the scans.
   print, inam + ' : Analyzing the science data.'
-  red_logdata, isodate, r0time, r0 = r0data ; Need the r0 sample times
+  red_logdata, isodate, r0time, r0 = r0data, /use_r0_time; Need the r0 sample times
 
   for idir = 0, Ntd-1 do begin
 
