@@ -317,7 +317,7 @@ pro red_plot_r0, dir = dir $
               + '[.-]' + string(dy, format = '(i02)')
   
   ;; Download the r0 log file if necessary
-  red_logdata, isodate, r0time, r0 = r0data
+  red_logdata, isodate, r0time, r0 = r0data, /use_r0_time
 
   Nr0 = (size(r0data, /dim))[0]
   if keyword_set(plot8) and Nr0 eq 1 then begin
