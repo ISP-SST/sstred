@@ -130,6 +130,8 @@
 ;                 SHABAR, for the weather station, and for the
 ;                 temperature sensors.
 ;
+;    2017-05-08 : MGL. Extended backscatter to 2017.
+;
 ;
 ;-
 pro red_download, date = date $
