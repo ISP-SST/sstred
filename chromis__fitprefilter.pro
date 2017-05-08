@@ -215,13 +215,12 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
     
     
     ;; Load satlas
-    
-    red_satlas, iwav[0]-0.1, iwav[-1]+0.1, xl, yl, /si, cont = cont
+    red_satlas, iwav[0]-5.1, iwav[-1]+5.1, xl, yl, /si, cont = cont 
     dw = xl[1] - xl[0]
     np = round((0.080 * 8) / dw)
     if(np/2*2 eq np) then np -=1
     tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
-    tr = chromis_profile(tw, erh=-0.02d0)
+    tr = chromis_profile(tw, erh=-0.07d0)
     tr/=total(tr)
     yl1 = fftconvol(yl, tr)
 
@@ -230,7 +229,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
     ;; Prepdata
     
     if(nwav gt 1) then begin
-       if(keyword_set(mask)) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
+      if(keyword_set(mask)) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
        dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[ipref]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
