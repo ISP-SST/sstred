@@ -131,8 +131,6 @@
 ;
 ;    2016-10-27 : MGL. Put the camera into the states if found.
 ;
-;    2017-05-08 : MGL. Match camera name to get WB status.
-;
 ; 
 ;-
 pro chromis::extractstates, strings, states $
@@ -210,29 +208,21 @@ pro chromis::extractstates, strings, states $
     filter = fxpar(head, red_keytab('prefilter'), count=count)
     if count gt 0 then states[ifile].prefilter = strtrim(filter, 2)
     camera = fxpar(head, red_keytab('camera'), count=count)
-    ;;camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
+                                ;camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
 
     if count gt 0 then begin
-      ;; The camera is given in the header
       camera = strtrim(camera,2)
       states[ifile].camera = camera
-;      states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
-;      if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
-    endif else begin
-      ;; Try to get the camera from the detector
+      if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+    endif else begin 
       self->getdetectors
       indx = where(strmatch(*self.detectors,strtrim(detector, 2)),count) 
       if count eq 1 then begin
         camera = (*self.cameras)[indx[0]]
         states[ifile].camera = camera
-;        if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
-      endif ;else begin
-;        ;; This could be a CRISP file. Try to set the WB status by
-;        ;; matching the directory.
-;        states[ifile].is_wb = strmatch(strings[ifile],'*Crisp-[DW]*')
-;      endelse
+        if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+      endif else stop
     endelse
-    states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
 
     if hastexp then begin
       ;; This is a summed file, use the single-exposure exposure
