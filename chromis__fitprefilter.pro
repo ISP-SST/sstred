@@ -272,7 +272,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
       cgwindow
       cgplot, /add, iwav, ispec, line = 1
       cgplot, /add, /over, iwav, interpol(yl1, xl+par[1], iwav)*prefilter
-      cgplot, /add, /over, iwav, chromis_prefilter(par, iwav, pref)/par[0] * max(ispec), line=2
+      cgplot, /add, /over, iwav, prefilter/par[0] * max(ispec), line=2
       cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
 
     endif else begin
