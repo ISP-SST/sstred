@@ -57,6 +57,8 @@
 ;
 ;    2017-03-13 : MGL. Leave frame numbers alone for single-frame ANA
 ;                 files.
+;
+;    2017-05-08 : MGL. Get info from directory if CRISP data.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -70,7 +72,8 @@ function red_meta2head, head, metadata=metaStruct
   if tag_exist(metaStruct, 'filename', /top_level) then begin
 
     ;; Strip directory...
-    filename = file_basename(metaStruct.filename)
+    filename  = file_basename(metaStruct.filename)
+    directory = file_dirname(metaStruct.filename)
     ;; ...and extension if needed
     barefile = filename
     barefile = file_basename(barefile, '.fits')
@@ -80,7 +83,7 @@ function red_meta2head, head, metadata=metaStruct
     if count eq 0 then begin
       ;; Preserve existing file name, this keyword should be the
       ;; name of the original file.
-      metaStruct.filename = filename
+;      metaStruct.filename = filename
       sxaddpar, newhead, 'FILENAME', filename $
                 , ' Name of original file.', before = 'COMMENT'
     endif
@@ -89,15 +92,39 @@ function red_meta2head, head, metadata=metaStruct
     dummy = fxpar(newhead, red_keytab('detector'), count=count)
     if count eq 0 then begin
 
-      ;; The camera tag consists of the string 'cam' followed by a
+      ;; The detector tag consists of the string 'cam' followed by a
       ;; roman number.
       detector = ((stregex(barefile, '(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])[0]
 
       if detector ne '' then sxaddpar, newhead, red_keytab('detector'), detector $
                                        , ' Inferred from filename.' $
                                        , before = 'COMMENT'
-    endif                       ; CAMERA
+    endif                       ; detector
 
+    ;; Camera
+    dummy = fxpar(newhead, 'CAMERA', count=count)
+    if count eq 0 then begin
+      ;; This could be a CRISP camera, in that case the camera is
+      ;; encoded in the directory
+      if strtrim(fxpar(head, 'INSTRUME'), 2) eq 'CRISP' then begin
+        case 1 of
+          strmatch(directory, '*Crisp-W*') : fxaddpar, newhead, 'CAMERA', 'Crisp-W' $
+             , 'Inferred from directory' $
+             , before = 'COMMENT'
+          strmatch(directory, '*Crisp-R*') : fxaddpar, newhead, 'CAMERA', 'Crisp-R' $
+             , 'Inferred from directory' $
+             , before = 'COMMENT'
+          strmatch(directory, '*Crisp-T*') : fxaddpar, newhead, 'CAMERA', 'Crisp-T' $
+             , 'Inferred from directory' $
+             , before = 'COMMENT'
+          strmatch(directory, '*Crisp-D*') : fxaddpar, newhead, 'CAMERA', 'Crisp-D' $
+             , 'Inferred from directory' $
+             , before = 'COMMENT'
+        endcase
+      endif
+    endif
+
+    
     ;; Exposure time
     dummy = fxpar(newhead, 'XPOSURE', count=count)
     if count eq 0 then begin
@@ -293,7 +320,6 @@ function red_meta2head, head, metadata=metaStruct
                                        , after = 'DATE'
     endif
 
-
   endif                         ; filename
 
   ;; add to the metadata if the appropriate keywords aren't there,
@@ -320,7 +346,7 @@ function red_meta2head, head, metadata=metaStruct
 ;              sxaddpar,newhead,keys[i],metaStruct.(i),before='COMMENT'
 ;           endif
 ;        endfor                  ; ikey
-
+  
   return, newhead
 
 end
