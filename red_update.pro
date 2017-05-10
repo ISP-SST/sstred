@@ -128,6 +128,7 @@ pro red_update
     print, '             Local  '+rdx_local_hash
     print, '             Latest '+rdx_latest_hash
     print, '             Please update the rdx DLMs (git pull, compile, and install).' 
+    print, '             This might mean that also your momfbd-redux code needs to be updated.'
   endelse
    
   
