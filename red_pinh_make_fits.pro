@@ -82,7 +82,6 @@
 ;   2014-01-24 : MGL. Renamed the dxoffs and dyoffs keywords to xoffs
 ;                and yoffs. Added documentation. 
 ; 
-; 
 ;   2014-04-07 : THI. Allow cross-term when fitting plane.
 ;
 ;-
@@ -118,38 +117,38 @@ pro red_pinh_make_fits, x, y, sx, sy $
 
   for ich = 1, Nch-1 do begin
 
-     ;; X tilts, differential to anchor channel
-     dxtilts[ich, *] = xtilts[ich, *]-xtilts[0, *]
+    ;; X tilts, differential to anchor channel
+    dxtilts[ich, *] = xtilts[ich, *]-xtilts[0, *]
 ;     if use_robust then begin
 ;        dxtiltsc = robust_planefit(double(xx), double(yy), dxtilts[ich, *, *], dxtiltsfit)
 ;     endif else begin
 ;        dxtiltsc = planefit(xx, yy, dxtilts[ich, *, *], 0, dxtiltsfit)
 ;     endelse
-     err = dxtilts[ich, *]*0.+1.
-     dxtiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dxtilts[ich, *]) $
-                              , err, [0., 0., 0., 0.], WEIGHTS=1D, /QUIET) 
-     xoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dxtiltsc)
+    err = dxtilts[ich, *]*0.+1.
+    dxtiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dxtilts[ich, *]) $
+                          , err, [0., 0., 0., 0.], WEIGHTS=1D, /QUIET) 
+    xoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dxtiltsc)
 
-     ;; Y tilts, differential to anchor channel
-     dytilts[ich, *] = ytilts[ich, *]-ytilts[0, *]
+    ;; Y tilts, differential to anchor channel
+    dytilts[ich, *] = ytilts[ich, *]-ytilts[0, *]
 ;     if use_robust then begin
 ;        dytiltsc = robust_planefit(double(xx), double(yy), dytilts[ich, *, *], dytiltsfit)
 ;     endif else begin
 ;        dytiltsc = planefit(xx, yy, dytilts[ich, *, *], 0, dytiltsfit)
 ;     endelse 
-     err = dytilts[ich, *]*0.+1.
-     dytiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dytilts[ich, *]) $
-                              , err, [0., 0., 0., 0.], WEIGHTS=1D, /QUIET) 
-     yoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dytiltsc)
+    err = dytilts[ich, *]*0.+1.
+    dytiltsc = MPFIT2DFUN('red_pinh_make_fits_planefunct', x, y, reform(dytilts[ich, *]) $
+                          , err, [0., 0., 0., 0.], WEIGHTS=1D, /QUIET) 
+    yoffs[*, *, ich] = red_pinh_make_fits_planefunct(sxx, syy, dytiltsc)
 
-     if n_elements(foc) ne 0 then begin
-        
-        ;; This part is not up to date or tested.
+    if n_elements(foc) ne 0 then begin
+      
+      ;; This part is not up to date or tested.
 
-        ;; Focus diversity
-        ;; The plane fit is just for display, the update is just
-        ;; the mean value.
-        dfoc[ich, *] = foc[ich, *]-foc[0, *]
+      ;; Focus diversity
+      ;; The plane fit is just for display, the update is just
+      ;; the mean value.
+      dfoc[ich, *] = foc[ich, *]-foc[0, *]
 ;        if use_robust then begin
 ;           dfocc = robust_planefit(xx, yy, dfoc, dfocfit)
 ;           ddiv[ich] = biweight_mean(dfoc[ich, *, *]) 
@@ -157,10 +156,10 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;           dfocc = planefit(xx, yy, dfoc, 0, dfocfit)
 ;           ddiv[ich] = mean(dfoc[ich, *, *]) 
 ;        endelse
-        err = foc[ich, *]*0.+1.
-        dfocc = MPFIT2DFUN('red_pinh_make_fits_planefunct', xx, yy, dfoc[ich, *] $
-                              , err, [0., 0., 0.], /QUIET) 
-        ddiv[ich] = mean(dfoc[ich, *]) 
+      err = foc[ich, *]*0.+1.
+      dfocc = MPFIT2DFUN('red_pinh_make_fits_planefunct', xx, yy, dfoc[ich, *] $
+                         , err, [0., 0., 0.], /QUIET) 
+      ddiv[ich] = mean(dfoc[ich, *]) 
 
 ;        mnn = min(dfocfit)*3
 ;        mxx = max(dfocfit)*3
@@ -169,7 +168,7 @@ pro red_pinh_make_fits, x, y, sx, sy $
 ;                    , rebin(reform(dfocfit, Npinhx, Npinhy), Npinhx*10, Npinhy*10, /samp) $
 ;                   ], mnn, mxx), 2
 
-     endif                      ; if foc     
+    endif                       ; if foc     
 
   endfor                        ; ich
 
