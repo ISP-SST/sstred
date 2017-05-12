@@ -35,6 +35,9 @@
 ;    2017-04-20 : MGL. Do not include left-behind calibrations data
 ;                 directories in the science data dirs.
 ; 
+;    2017-05-12 : MGL. Use extraclip rather than margin when calling
+;                 prepmomfbd. 
+; 
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
@@ -342,13 +345,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
             + ", Nmodes=60" $
             + ", numpoints=128" $
             + ", pref='" + prefilters[ipref] + "'" $
-            + ", margin=5 " $
+;            + ", margin=5 " $
             + ", global_keywords=['FIT_PLANE']" $
             + ", maxshift=45" $
             + ", /wb_states" $
             + ", /redux" $
             + ", /unpol" $
-            + "; , extraclip = [75,125,15,15]"
+            + ", extraclip = [75,125,15,15]"
 
   endfor                        ; ipref
 
