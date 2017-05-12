@@ -36,7 +36,7 @@
 ;                 directories in the science data dirs.
 ; 
 ;    2017-05-12 : MGL. Use extraclip rather than margin when calling
-;                 prepmomfbd. 
+;                 prepmomfbd, and don't use an empty pref keyword. 
 ; 
 ; 
 ;-
@@ -344,14 +344,14 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
             + ", Nremove=2" $
             + ", Nmodes=60" $
             + ", numpoints=128" $
-            + ", pref='" + prefilters[ipref] + "'" $
 ;            + ", margin=5 " $
             + ", global_keywords=['FIT_PLANE']" $
             + ", maxshift=45" $
             + ", /wb_states" $
             + ", /redux" $
             + ", /unpol" $
-            + ", extraclip = [75,125,15,15]"
+            + ", extraclip = [75,125,15,15]" $
+            + ";, pref='" + prefilters[ipref] + "'" 
 
   endfor                        ; ipref
 
