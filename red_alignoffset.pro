@@ -69,31 +69,31 @@ function red_alignoffset, image, reference, cor, window = window, fitplane = fit
   sr = size(reference)
   
   if not(si[1] eq sr[1] and si[2] eq sr[2]) then begin
-     print, 'Incompatbile Images : getoffset'
-     return, [0,0.]
+    print, 'Incompatbile Images : getoffset'
+    return, [0,0.]
   endif
   
   if keyword_set(fitplane) then begin
-     if sr[1] ne sr[2] then stop ; Only square windows for now
-     xp = x_coord(si[1]/2, 1)
-     yp = transpose(xp)
-     ;; Subtract fitted planes, use planefit from the robust directory
-     ;; in astrolib.
-     c = red_planefit(xp, yp, reference, 0., rplane)
-     reference1 = reference - rplane
-     c = red_planefit(xp, yp, image, 0., iplane)
-     image1 = image - iplane
+    if sr[1] ne sr[2] then stop ; Only square windows for now
+    xp = x_coord(si[1]/2, 1)
+    yp = transpose(xp)
+    ;; Subtract fitted planes, use planefit from the robust directory
+    ;; in astrolib.
+    c = red_planefit(xp, yp, reference, 0., rplane)
+    reference1 = reference - rplane
+    c = red_planefit(xp, yp, image, 0., iplane)
+    image1 = image - iplane
   endif else begin
-     ;; Subtract median values 
-     reference1 = reference-median(reference)
-     image1     = image-median(image)
+    ;; Subtract median values 
+    reference1 = reference-median(reference)
+    image1     = image-median(image)
   endelse
 
   if keyword_set(window) then begin
-     if sr[1] ne sr[2] then stop ; Only square windows for now
-     w = makewindow(sr[1]*[1, 0, 1/8.])
-     image1 *= w
-     reference1 *= w
+    if sr[1] ne sr[2] then stop ; Only square windows for now
+    w = makewindow(sr[1]*[1, 0, 1/8.])
+    image1 *= w
+    reference1 *= w
   endif
 
   ;; Maximize cross-correlation over the indeteger pixels
@@ -111,11 +111,11 @@ function red_alignoffset, image, reference, cor, window = window, fitplane = fit
   x = x0+x1
   y = y0+y1
   if n_params() ge 3 then begin
-     image1= red_shift_sub(image1, -x, -y)
-     i=findgen(si(1))#replicate(1., si(2))+x
-     j=replicate(1., si(1))#findgen(si(2))+y
-     w=i ge 0 and i le si(1)-1 and j ge 0 and j le si(2)-1.
-     cor = total(image1*reference1*w)/sqrt(total(image1^2*w)*total(reference1^2*w))
+    image1= red_shift_sub(image1, -x, -y)
+    i=findgen(si(1))#replicate(1., si(2))+x
+    j=replicate(1., si(1))#findgen(si(2))+y
+    w=i ge 0 and i le si(1)-1 and j ge 0 and j le si(2)-1.
+    cor = total(image1*reference1*w)/sqrt(total(image1^2*w)*total(reference1^2*w))
   endif
   return, [x, y]
 end
