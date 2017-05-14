@@ -161,9 +161,8 @@
 ;                instead of offset files and align_clip. Run
 ;                prepmomfbd_fitsheaders when done.
 ;
-;   2017-05-13 : THI. Specify align-clip for the reference channel, also when
-;                using transformation matrices. This align-clip serves as a frame
-;                of reference for the patch locations.
+;   2017-05-14 : THI. Calculate the patches within the common FOV, using global
+;                coordinates for the redux-code.
 ;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
@@ -351,12 +350,20 @@ pro red::prepmomfbd, wb_states = wb_states $
 
 
   ref_clip = align[0].clip
-  xsz = abs(ref_clip[0]-ref_clip[1])+1
-  ysz = abs(ref_clip[2]-ref_clip[3])+1
-  this_margin = max([0, min([xsz/3, ysz/3, margin])]) ; prevent silly margin values
-                                ; generate patch positions with margin
-  sim_x = rdx_segment( this_margin, xsz-this_margin, numpoints, /momfbd )
-  sim_y = rdx_segment( this_margin, ysz-this_margin, numpoints, /momfbd )
+  sim_roi = ref_clip
+  sim_roi[[0,2]] += margin      ; shrink the common FOV by margin along all edges.
+  sim_roi[[1,3]] -= margin
+  if sim_roi[0] gt sim_roi[1] || sim_roi[2] gt sim_roi[3] then begin
+    print, inam + ' : Error: The region of interest looks weird. sim_roi = [' + strjoin(strtrim(sim_roi,2),',') + ']'
+    print, inam + '                                               margin = ' + strtrim(margin,2)
+    return
+  endif
+  sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
+  sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
+  if ~keyword_set(redux) then begin                                         ; for the old code, the patch coordinates are relative to the align-clip area
+    sim_x -= sim_roi[0]
+    sim_y -= sim_roi[2]
+  endif
   sim_x_string = strjoin(strtrim(sim_x,2), ',')
   sim_y_string = strjoin(strtrim(sim_y,2), ',')
 
@@ -507,10 +514,11 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LF
         cfg.objects += '        DARK_NUM=0000001' + LF
 
-        cfg.objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + LF
         if keyword_set(redux) then begin
           cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
         endif else begin
+          cfg.objects += '        ALIGN_CLIP=' $
+                         + strjoin(strtrim(ref_clip,2),',') + LF
           if( align[0].xoffs_file ne '' && file_test(align[0].xoffs_file)) then $
              cfg.objects += '        XOFFSET='+align[0].xoffs_file + LF
           if( align[0].yoffs_file ne '' && file_test(align[0].yoffs_file)) then $
