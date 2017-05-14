@@ -93,6 +93,13 @@
 ;      constructing the grid of MOMFBD subfields.
 ;
 ;
+;    extraclip : in, optional, type=intarr(4), default=[0,0,0,0]
+; 
+;      A margin (in pixels) to apply to the FOV edges of the reference
+;      channel when calculating the largest common FOV. The order is
+;      [left, right, top, bottom]
+;
+;
 ; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
@@ -153,6 +160,10 @@
 ;   2017-04-10 : MGL. When redux flag is set, use geometry maps
 ;                instead of offset files and align_clip. Run
 ;                prepmomfbd_fitsheaders when done.
+;
+;   2017-05-13 : THI. Specify align-clip for the reference channel, also when
+;                using transformation matrices. This align-clip serves as a frame
+;                of reference for the patch locations.
 ;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
@@ -340,8 +351,8 @@ pro red::prepmomfbd, wb_states = wb_states $
 
 
   ref_clip = align[0].clip
-  xsz = abs(ref_clip[0,0]-ref_clip[1,0])+1
-  ysz = abs(ref_clip[2,0]-ref_clip[3,0])+1
+  xsz = abs(ref_clip[0]-ref_clip[1])+1
+  ysz = abs(ref_clip[2]-ref_clip[3])+1
   this_margin = max([0, min([xsz/3, ysz/3, margin])]) ; prevent silly margin values
                                 ; generate patch positions with margin
   sim_x = rdx_segment( this_margin, xsz-this_margin, numpoints, /momfbd )
@@ -496,11 +507,10 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LF
         cfg.objects += '        DARK_NUM=0000001' + LF
 
+        cfg.objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + LF
         if keyword_set(redux) then begin
           cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
         endif else begin
-          cfg.objects += '        ALIGN_CLIP=' $
-                         + strjoin(strtrim(ref_clip,2),',') + LF
           if( align[0].xoffs_file ne '' && file_test(align[0].xoffs_file)) then $
              cfg.objects += '        XOFFSET='+align[0].xoffs_file + LF
           if( align[0].yoffs_file ne '' && file_test(align[0].yoffs_file)) then $
