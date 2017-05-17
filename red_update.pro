@@ -39,6 +39,8 @@
 ; 
 ;    2017-05-04 : MGL. Do make in the creduc/ subdirectory.
 ; 
+;    2017-05-17 : MGL. Exit IDL after updating.
+; 
 ;    
 ; 
 ; 
@@ -130,7 +132,12 @@ pro red_update
     print, '             Please update the rdx DLMs (git pull, compile, and install).' 
     print, '             This might mean that also your momfbd-redux code needs to be updated.'
   endelse
-   
-  
+
+  ;; May want to do the following only if there was something that
+  ;; was actually updated.
+  print
+  print, 'Will exit IDL now so you can start with the fresh versions of the software.'
+  print
+  exit
   
 end
