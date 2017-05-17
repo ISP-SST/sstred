@@ -155,8 +155,8 @@ pro red::getalignment, align = align, $
 
   head = red_readhead( allstates[ref_idx[0]].filename, /silent )
   ref_dims = fxpar(head, 'NAXIS*')
-  ref_corners = red_make_corners( [ extraclip(0), ref_dims[0]-extraclip(1)-1 , $
-                                    extraclip(2), ref_dims[1]-extraclip(3)-1 ] )
+  ref_corners = red_make_corners( [ 0, ref_dims[0]-1 , $
+                                    0, ref_dims[1]-1 ] )
 
   ;; TODO invert, or re-map, if refcam is not the same as when pinholecalib was run.
   halfsize = ref_dims/2
@@ -212,11 +212,11 @@ pro red::getalignment, align = align, $
 
                                 ; round inwards
   idx = where( common_fov[*,0] lt halfsize[0], compl=cidx )
-  common_fov[idx,0] = ceil(common_fov[idx,0])
-  common_fov[cidx,0] = floor(common_fov[cidx,0])
+  common_fov[idx,0] = ceil(common_fov[idx,0] + extraclip[0])
+  common_fov[cidx,0] = floor(common_fov[cidx,0] - extraclip[1])
   idx = where( common_fov[*,1] lt halfsize[1], compl=cidx )
-  common_fov[idx,1] = ceil(common_fov[idx,1])
-  common_fov[cidx,1] = floor(common_fov[cidx,1])
+  common_fov[idx,1] = ceil(common_fov[idx,1] + extraclip[2])
+  common_fov[cidx,1] = floor(common_fov[cidx,1] - extraclip[3])
   
   common_fov = fix(common_fov)
   
