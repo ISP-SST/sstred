@@ -62,15 +62,17 @@ pro red_mpfit_version, mpfitdir, local_version = local_version, latest_version =
 
     ;; The latest version is given on the web page, next to the
     ;; archive file name.
-    
-    cmds = ['cd /tmp'  $
-            , 'rm -f fitting.html' $
-            , 'wget --quiet http://cow.physics.wisc.edu/~craigm/idl/fitting.html' $
-            , 'grep mpfit.tar.gz fitting.html' $
+
+    tmpdir = strjoin(['/tmp/',strtrim(Bin_Date(SysTime()),2),strtrim(randomu(seed),2)])
+    cmds = [ 'mkdir ' + tmpdir $
+             , 'cd ' + tmpdir  $
+             , 'wget --quiet http://cow.physics.wisc.edu/~craigm/idl/fitting.html' $
+             , 'grep mpfit.tar.gz fitting.html' $
            ]
     cmd = strjoin(cmds, ' ; ')
     
     spawn, cmd, spawnoutput
+    spawn, 'rm -r ' + tmpdir
     timestamp = (stregex(spawnoutput, '[A-Z][a-z][a-z] [0-9][0-9] [0-9][0-9][0-9][0-9]', /extract))[1]
     latest_version = date_conv(strjoin((strsplit(strtrim(timestamp,2),' ',/extract))[[1,0,2]],'-'),'FITS')
 
