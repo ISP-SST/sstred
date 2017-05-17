@@ -76,11 +76,11 @@ pro red_create_extheaders,tabhdu,extname,head
        message,'Structure tag '+keys[i]+' is not a structure.'
     
     ;; Update the main header with the tabulated keywords. After is
-    ;; 'OBS_SHDU' or keys[i-1] whichever is further down
-    if i eq 0 then after = 'OBS_SHDU' else begin
+    ;; 'OBS_HDU' or keys[i-1] whichever is further down
+    if i eq 0 then after = 'OBS_HDU' else begin
       after = keys[i-1]
-      if fxparpos(keywd,iend,after=after) lt fxparpos(keywd,iend,after='OBS_SHDU') then $
-         after = 'OBS_SHDU'
+      if fxparpos(keywd,iend,after=after) lt fxparpos(keywd,iend,after='OBS_HDU') then $
+         after = 'OBS_HDU'
     endelse
     
     tags = tag_names(tabkeywd)

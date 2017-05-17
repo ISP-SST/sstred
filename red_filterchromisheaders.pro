@@ -115,9 +115,9 @@ function red_filterchromisheaders, head, silent=silent
      ;; Add some more keywords:
      dummy = fxpar(newhead, 'TIMESYS',count=count)
      if count eq 0 then sxaddpar, newhead, 'TIMESYS', 'UTC', after = 'SOLARNET'
-     dummy = fxpar(newhead, 'OBS_SHDU',count=count)
+     dummy = fxpar(newhead, 'OBS_HDU',count=count)
      if count eq 0 then $
-        sxaddpar, newhead, 'OBS_SHDU', 1, ' Observational SOLARNET Header and Data Unit' $
+        sxaddpar, newhead, 'OBS_HDU', 1, ' Observational Header and Data Unit' $
                   , after = 'SOLARNET'
 
 

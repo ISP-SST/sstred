@@ -74,7 +74,7 @@ pro red::headerinfo_addstep, header $
   if n_elements(header) eq 0 then mkhdr, header, 0
 
 
-  prevkey = 'OBS_SHDU';'SOLARNET'
+  prevkey = 'OBS_HDU';'SOLARNET'
 
   ;; Look for existing processing steps, set stepnumber to one higher.
   stepnumber = 0
