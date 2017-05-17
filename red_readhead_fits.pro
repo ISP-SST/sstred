@@ -177,6 +177,16 @@ function red_readhead_fits, fname, $
       sxdelpar, header, 'OBS_PHDU'
     endif
 
+    ;; Correct also for OBS_SHDU, which used to be SOLARNET standard.
+    OBS_SHDU = sxpar( header, 'OBS_SHDU', comment = scomment, count=count )
+    if count gt 0 then begin
+      if n_elements(scomment) eq 0 || strtrim(scomment,2) eq '' then $
+         scomment = ' Observational Header and Data Unit'
+      fxaddpar, header, 'OBS_HDU', OBS_SHDU, scomment, after = 'OBS_SHDU'
+      sxdelpar, header, 'OBS_SHDU'
+    endif
+
+
     if n_elements(framenumber) ne 0 then begin
       ;; We may want to change or remove some header keywords
       ;; here, like FRAME1, CADENCE, and DATE-END.
