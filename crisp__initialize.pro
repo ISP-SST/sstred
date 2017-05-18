@@ -25,9 +25,20 @@
 ;
 ;   2017-03-09 : MGL. New keyword "develop".
 ;
+;   2017-03-18 : MGL. For now, allow crispred in this branch only in
+;                develop mode.
+;
 ;-
 pro crisp::initialize, filename, develop = develop
 
+  if ~keyword_set(develop) then begin
+    ;; Allow to run CRISP data only in developer mode until branches
+    ;; have been merged properly.
+    print
+    print, 'crisp::initialize : CRISP data not supported in the chromis branch of the pipeline.'
+    exit
+  endif
+  
   self->RED::initialize, filename ; Call initialize of the base-class first to load common parameters
 
                                 ; Then load CRISP specific stuff
