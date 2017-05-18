@@ -41,6 +41,9 @@
 ; 
 ;    2017-05-17 : MGL. Exit IDL after updating.
 ; 
+;    2017-05-18 : MGL. Don't require specific directory names
+;                 for the extra libraries.
+; 
 ;    
 ; 
 ; 
@@ -54,8 +57,9 @@ pro red_update
   spawn, 'cd '+srcdir+'; git pull'
   spawn, 'cd '+srcdir+'/creduc ; make'
 
+  
   print, 'red_update : Update the coyote library.'
-  coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
+  coyotepaths = file_dirname( File_Search(paths+'/cgcolor.pro', COUNT=Nwhere), /mark )
   case Nwhere of
     0: print, 'The Coyote library does not seem to be installed.'
     1: begin
@@ -70,7 +74,7 @@ pro red_update
   endcase
 
   print, 'red_update : Update the IDLAstro library.'
-  idlastropaths = paths(where(strmatch(paths, '*IDLAstro/pro'), Nwhere))
+  idlastropaths = file_dirname( File_Search(paths+'/astrolib.pro', COUNT=Nwhere), /mark )
   case Nwhere of
     0: print, 'The IDLAstro library does not seem to be installed.'
     1: begin
@@ -85,7 +89,7 @@ pro red_update
   endcase
 
   print, 'red_update : Update the mpfit library.'
-  mpfitpaths = paths(where(strmatch(paths, '*mpfit'), Nwhere))
+  mpfitpaths = file_dirname( File_Search(paths+'/mpfit.pro', COUNT=Nwhere), /mark )
   case Nwhere of
     0: print, 'The mpfit library does not seem to be installed.'
     1: begin
