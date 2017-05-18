@@ -41,8 +41,8 @@
 ; 
 ;    2017-05-17 : MGL. Exit IDL after updating.
 ; 
-;    2017-05-18 : MGL. Don't require specific directory names
-;                 for the extra libraries.
+;    2017-05-18 : MGL. Don't require specific directory names for the
+;                 extra libraries.
 ; 
 ;    
 ; 
@@ -51,12 +51,13 @@
 pro red_update
 
   paths = strsplit(!path,":",/extract) 
-
+  
   print, 'red_update : Update the current crispred branch.'
   srcdir = file_dirname( routine_filepath("red_update"), /mark )
-  spawn, 'cd '+srcdir+'; git pull'
+  spawn, 'cd '+srcdir+'; git pull', spawnoutput, /stderr
+  print, spawnoutput
+  if spawnoutput ne 'Already up-to-date.' then doexit = 1
   spawn, 'cd '+srcdir+'/creduc ; make'
-
   
   print, 'red_update : Update the coyote library.'
   coyotepaths = file_dirname( File_Search(paths+'/cgcolor.pro', COUNT=Nwhere), /mark )
@@ -64,12 +65,15 @@ pro red_update
     0: print, 'The Coyote library does not seem to be installed.'
     1: begin
       spawn, 'cd '+coyotepaths+'; git pull', spawnoutput, /stderr
+      print, spawnoutput
+      if spawnoutput ne 'Already up-to-date.' then doexit = 1
       if strmatch(spawnoutput[0],'fatal*') then $
          print, 'red_update : The Coyote library not updated, does not seem to be under git control.'
     end
     else: begin
       print, 'red_update : Multiple Coyote directories.'
       print, '             Please make sure there is only one and that it is under git control.'
+      doexit = 1
     end
   endcase
 
@@ -79,12 +83,15 @@ pro red_update
     0: print, 'The IDLAstro library does not seem to be installed.'
     1: begin
       spawn, 'cd '+idlastropaths+'; git pull', spawnoutput, /stderr
+      print, spawnoutput
+      if spawnoutput ne 'Already up-to-date.' then doexit = 1
       if strmatch(spawnoutput[0],'fatal*') then $
          print, 'red_update : The IDLAstro library not updated, does not seem to be under git control.'
     end
     else: begin
       print, 'red_update : Multiple IDLAstro directories.'
       print, '             Please make sure there is only one and that it is under git control.'
+      doexit = 1
     end
   endcase
 
@@ -103,11 +110,13 @@ pro red_update
                        , 'tar xvzf mpfit.tar.gz' $
                       ], ' ; ')
         spawn, cmd
+        doexit = 1
       endif
     end
     else: begin
       print, 'red_update : Multiple mpfit directories.'
       print, '             Please make sure there is only one.'
+      doexit = 1
     end
   endcase
 
@@ -133,15 +142,17 @@ pro red_update
     print, 'red_update : Local and latest git hashes for the rdx DLMs:'
     print, '             Local  '+rdx_local_hash
     print, '             Latest '+rdx_latest_hash
-    print, '             Please update the rdx DLMs (git pull, compile, and install).' 
+    print, '             You may want to update the rdx DLMs (git pull, compile, and install).' 
     print, '             This might mean that also your momfbd-redux code needs to be updated.'
   endelse
 
-  ;; May want to do the following only if there was something that
-  ;; was actually updated.
-  print
-  print, 'Will exit IDL now so you can start with the fresh versions of the software.'
-  print
-  exit
+  if keyword_set(doexit) then begin
+    ;; Exit if there was something that was actually updated, so user
+    ;; will start with a fresh session.
+    print
+    print, 'Will exit IDL now so you can start with the fresh versions of the software.'
+    print
+    exit
+  endif
   
 end
