@@ -42,7 +42,8 @@
 ;    2017-05-17 : MGL. Exit IDL after updating.
 ; 
 ;    2017-05-18 : MGL. Don't require specific directory names for the
-;                 extra libraries.
+;                 extra libraries. Exit only if something was actually
+;                 updated. 
 ; 
 ;    
 ; 
