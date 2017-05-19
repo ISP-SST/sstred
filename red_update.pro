@@ -56,8 +56,8 @@ pro red_update
   print, 'red_update : Update the current crispred branch.'
   srcdir = file_dirname( routine_filepath("red_update"), /mark )
   spawn, 'cd '+srcdir+'; git pull', spawnoutput, /stderr
-  print, spawnoutput
-  if spawnoutput ne 'Already up-to-date.' then doexit = 1
+  print, spawnoutput, format = '(a0)'
+  if max(strmatch(spawnoutput, 'Already up-to-date.')) eq 0 then doexit = 1
   spawn, 'cd '+srcdir+'/creduc ; make'
   
   print, 'red_update : Update the coyote library.'
@@ -66,8 +66,8 @@ pro red_update
     0: print, 'The Coyote library does not seem to be installed.'
     1: begin
       spawn, 'cd '+coyotepaths+'; git pull', spawnoutput, /stderr
-      print, spawnoutput
-      if spawnoutput ne 'Already up-to-date.' then doexit = 1
+      print, spawnoutput, format = '(a0)'
+      if max(strmatch(spawnoutput, 'Already up-to-date.')) eq 0 then doexit = 1
       if strmatch(spawnoutput[0],'fatal*') then $
          print, 'red_update : The Coyote library not updated, does not seem to be under git control.'
     end
@@ -84,8 +84,8 @@ pro red_update
     0: print, 'The IDLAstro library does not seem to be installed.'
     1: begin
       spawn, 'cd '+idlastropaths+'; git pull', spawnoutput, /stderr
-      print, spawnoutput
-      if spawnoutput ne 'Already up-to-date.' then doexit = 1
+      print, spawnoutput, format = '(a0)'
+      if max(strmatch(spawnoutput, 'Already up-to-date.')) eq 0 then doexit = 1
       if strmatch(spawnoutput[0],'fatal*') then $
          print, 'red_update : The IDLAstro library not updated, does not seem to be under git control.'
     end
