@@ -125,17 +125,10 @@ function red_readhead, fname, $
     return, 0B
   endif
   
-  ;; Remove this when rdx_filetype can recognize .momfbd files:
   if( n_elements(filetype) eq 0 ) then begin
-    
-    if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
-      filetype = 'momfbd'
-    endif else begin
-      filetype = rdx_filetype(fname)
-    endelse
-    
+    filetype = rdx_filetype(fname)
     if( filetype eq '' ) then begin
-      message, 'Cannot detect filetype. Pass it manually as', /info
+      message, 'Cannot detect filetype. Pass it manually as, e.g.,', /info
       message, "head = red_readhead('"+fname+"',filetype='fits')", /info
       status = -1
       return, 0B
@@ -179,7 +172,6 @@ function red_readhead, fname, $
     fr1 = sxpar(header, 'FRAME1', count = Npar)
     if Npar eq 1 then sxaddpar, header, 'FRAMENUM', fr1
   endif
-
 
   if n_elements(extension) eq 0 then $
      header = red_meta2head(header, meta={filename:fname})
