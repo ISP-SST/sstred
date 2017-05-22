@@ -78,6 +78,7 @@ PRO red__define
             telog:'' , $           ; Path to telescope pointing log
             pinhole_spacing:0.0, $ ; Pinhole array spacing in arcsec
             version_pipeline:'', $ ; Version info for the pipeline
+            version_pipeline_branch:'', $ ; Pipeline reposotory branch
             version_mpfit:'', $    ; Version info for mpfit
             version_coyote:'', $   ; Version info for the Coyote library
             version_idlastro:'', $ ; Version info for IDLAstro

@@ -337,15 +337,24 @@ pro red::initialize, filename, develop = develop
   git_describe_command = 'git describe --always --abbrev=12 --long --dirty=\ \(Modified\)'
   git_count_command = 'git rev-list HEAD --count'
   git_diff_command = 'git diff HEAD'
+  git_status_command = 'git status'
+
   
   ;; Pipeline version
   srcdir = file_dirname( routine_filepath("red::initialize"), /mark )
   spawn, 'cd '+srcdir+'; ' + git_describe_command, pipeline_gitoutput
   pipeline_gitoutput = red_strreplace(pipeline_gitoutput, 'release/', '')
+   spawn, 'cd '+srcdir+'; ' + git_status_command, pipeline_status 
   if strmatch(pipeline_gitoutput, '*(Modified)') then $
      self.version_problems += 'The pipeline is modified. '
   self.version_pipeline = strjoin((strsplit(pipeline_gitoutput, '-', /extract))[0:1], '-')
 
+  ;; Pipeline branch
+  spawn, 'cd '+srcdir+'; ' + git_status_command, pipeline_status
+  self.version_pipeline_branch = (strsplit(pipeline_status[0],/extract))[-1]
+  if strmatch(self.version_pipeline_branch,'*_dev') then  self.version_problems += 'Running the development branch ' $
+     + self.version_pipeline_branch
+  
   ;; Redux dlm version. We require that the ANA and MOMFBD dlms are
   ;; part of the rdx dlm and the same version.
   help,/dlm,'rdx', output = rdx_dlm_version
