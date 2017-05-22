@@ -130,16 +130,9 @@ function red_readdata, fname $
   endif
 
   if n_elements(filetype) eq 0 then begin
-
-    ;; Remove this when rdx_filetype can recognize .momfbd files:
-    if file_basename(fname,'.momfbd') ne file_basename(fname) then begin
-      filetype = 'momfbd'
-    endif else begin
-      filetype = rdx_filetype(fname)
-    endelse
-    
+    filetype = rdx_filetype(fname)
     if filetype eq '' then begin
-      message,'Cannot detect filetype. Pass it manually as',/info
+      message,'Cannot detect filetype. Pass it manually as, e.g.,',/info
       message,"img = red_readdata('"+fname+"',filetype='fits')",/info
       status = -1
       return, 0B
