@@ -36,6 +36,10 @@
 ;   
 ;   
 ;   
+;    fitsoutput : in, optional, type=boolean
+;   
+;      Set this to get output in a FITS file.
+;   
 ;    tiles : 
 ;   
 ;   
@@ -110,32 +114,48 @@
 ;
 ;   2017-04-18 : MGL. New keyword momfbddir.
 ;
+;   2017-05-24 : MGL. New keyword fitsoutput. Add prpara info.
+;
 ;-
-pro chromis::make_crispex, rot_dir = rot_dir $
-                           , square = square $
-                           , tiles=tiles $
+pro chromis::make_crispex, aligncont = aligncont $
                            , clips=clips $
-                           , scans_only = scans_only $
-                           , overwrite = overwrite $
-;                           , noflats=noflats $
-                           , selscan=selscan $
-                           , wbwrite = wbwrite $
-                           , momfbddir = momfbddir $
-                           , nostretch=nostretch $
-                           , verbose=verbose $
-                           , no_timecor=no_timecor $
+                           , fitsoutput = fitsoutput $
                            , float = float $
-                           , aligncont = aligncont
+                           , momfbddir = momfbddir $
+                           , no_timecor=no_timecor $
+                           , nostretch=nostretch $
+                           , overwrite = overwrite $
+                           , rot_dir = rot_dir $
+                           , scans_only = scans_only $
+                           , selscan=selscan $
+                           , tiles=tiles $
+                           , verbose=verbose $
+                           , wbwrite = wbwrite $
+                           , square = square $
+;                           , noflats=noflats $
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  ;; Get keywords
+ 
+  if n_elements(aligncont   ) ne 0 then red_make_prpara, prpara, 'aligncont'    , aligncont 
+  if n_elements(clips       ) ne 0 then red_make_prpara, prpara, 'clips'        , clips         
+  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
+  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
+  if n_elements(rot_dir     ) ne 0 then red_make_prpara, prpara, 'rot_dir'      , rot_dir         
+  if n_elements(scans_only  ) ne 0 then red_make_prpara, prpara, 'scans_only'   , scans_only          
+  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
+  if n_elements(tiles       ) ne 0 then red_make_prpara, prpara, 'tiles'        , tiles        
+  if n_elements(wbwrite     ) ne 0 then red_make_prpara, prpara, 'wbwrite'      , wbwrite
+  if n_elements(float       ) ne 0 then red_make_prpara, prpara, 'float'        , float  
+  if n_elements(no_timecor  ) ne 0 then red_make_prpara, prpara, 'no_timecor'   , no_timecor 
+  if n_elements(nostretch   ) ne 0 then red_make_prpara, prpara, 'nostretch'    , nostretch 
+  if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
+  if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
 
   ;; Get keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
   
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
 
   if(n_elements(rot_dir) eq 0) then rot_dir = 0B
 
@@ -315,14 +335,21 @@ pro chromis::make_crispex, rot_dir = rot_dir $
             return
          endif
          
-         restore, pfile ;; restores variable prf which is a struct
+         restore, pfile         ; Restores variable prf which is a struct
          idxpref = where(my_prefilters eq unbprefs[inbpref], count)
 
-         if(inbpref eq 0) then begin
+         if inbpref eq 0 then begin
             prefilter_curve = [0.d0]
             prefilter_wav = [0.0d0]
             prefilter_wb = [0.0d0]
-         endif
+            units = prf.units
+         endif else begin
+           if units ne prf.units then begin
+             print, inam + ' : Units in ' + pfile + ' do not match those in earlier read files.'
+             print, inam + ' : Please rerun the prefilterfit step for these data.'
+             retall
+           endif
+         endelse
          
          if(count eq 1) then begin
             prefilter_curve = [prefilter_curve, prf.pref]
@@ -336,11 +363,11 @@ pro chromis::make_crispex, rot_dir = rot_dir $
          endelse
       endfor                    ; inbpref
       
-
       rpref = 1.d0/prefilter_curve[1:*]
       prefilter_wav = prefilter_wav[1:*]
       prefilter_wb = prefilter_wb[1:*]
-      
+      prefilter_curve = prefilter_curve[1:*]
+
       ;; Do WB correction?
       if(Nwb eq Nnb) then wbcor = 1B else wbcor = 0B
 
@@ -410,7 +437,7 @@ pro chromis::make_crispex, rot_dir = rot_dir $
       tmp = red_readdata(wbgfiles[0])
       dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
       
-      if(full) then begin
+      if full then begin
         dimim[0] = nd[0]
         dimim[1] = nd[1]
       endif
@@ -418,19 +445,13 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
       ;; Create temporary cube and open output file
       d = fltarr(dimim[0], dimim[1], Nwav)  
-      if(~keyword_set(scans_only)) then begin
-        head = red_unpol_lpheader(dimim[0], dimim[1], Nwav*Nscans, float = float)
-      endif else begin
-        head = red_unpol_lpheader(dimim[0], dimim[1], Nwav, float = float)
-      endelse
-      if keyword_set(float) then extent = '.fcube' else extent = '.icube'
-      
+
       if(n_elements(odir) eq 0) then odir = self.out_dir + '/crispex/' + timestamp + '/'
       file_mkdir, odir
 
-      if(~keyword_set(scans_only)) then begin
-        ;; Open assoc file for output of multi-scan data cube.
-        ofile = 'crispex_'+midpart+'_time-corrected'+extent
+      if keyword_set(fitsoutput) then begin
+
+        ofile = 'crispex_'+midpart+'_time-corrected.fits'
 
         if file_test(odir + '/' + ofile) then begin
           if keyword_set(overwrite) then begin
@@ -443,26 +464,64 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           endelse
         endif
         
-        openw, lun, odir + '/' + ofile, /get_lun
-        writeu, lun, head
-        point_lun, lun, 0L
-        print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
-        openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
-        printf,lunf, 'nx=', dimim[0]
-        printf,lunf, 'ny=', dimim[1]
-        printf,lunf, 'nw=', Nwav
-        printf,lunf, 'nt=', Nscans
-        printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
-        if keyword_set(float) then begin
-          dat = assoc(lun, fltarr(dimim[0], dimim[1], nwav, /nozero), 512)
-          printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,/nozer), 512)"
+        ;; Make headers for nb data as well as (possibly) for wb data
+        if(keyword_set(scans_only)) then begin
+          red_mkhead, wbhead, type, [dimim[0], dimim[1]]
+          naxisx = [dimim[0], dimim[1], Nwav]
         endif else begin
-          dat = assoc(lun, intarr(dimim[0], dimim[1], nwav, /nozero), 512)
-          printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+          naxisx = [dimim[0], dimim[1], Nwav*Nscans]
         endelse
-        free_lun, lunf
-      endif 
+        red_mkhead, nbhead, type, naxisx
 
+        ;; Add info to headers
+        ;; units
+        
+        ;; Open fits file, dat is name of assoc variable
+
+      endif else begin
+        
+        if keyword_set(float) then extent = '.fcube' else extent = '.icube'
+
+        if(keyword_set(scans_only)) then begin
+          head = red_unpol_lpheader(dimim[0], dimim[1], Nwav, float = float)
+        endif else begin
+          head = red_unpol_lpheader(dimim[0], dimim[1], Nwav*Nscans, float = float)
+
+          ;; Open assoc file for output of multi-scan data cube.
+          ofile = 'crispex_'+midpart+'_time-corrected'+extent
+
+          if file_test(odir + '/' + ofile) then begin
+            if keyword_set(overwrite) then begin
+              print, 'Overwriting existing data cube:'
+              print, odir + '/' + ofile
+            endif else begin
+              print, 'This data cube exists already:'
+              print, odir + '/' + ofile
+              return
+            endelse
+          endif
+          
+          openw, lun, odir + '/' + ofile, /get_lun
+          writeu, lun, head
+          point_lun, lun, 0L
+          print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
+          openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
+          printf,lunf, 'nx=', dimim[0]
+          printf,lunf, 'ny=', dimim[1]
+          printf,lunf, 'nw=', Nwav
+          printf,lunf, 'nt=', Nscans
+          printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
+          if keyword_set(float) then begin
+            dat = assoc(lun, fltarr(dimim[0], dimim[1], nwav, /nozero), 512)
+            printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,/nozer), 512)"
+          endif else begin
+            dat = assoc(lun, intarr(dimim[0], dimim[1], nwav, /nozero), 512)
+            printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+          endelse
+          free_lun, lunf
+        endif 
+      endelse
+      
       ;; Start processing data
       if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
         tiles = [8, 16, 32, 64, 128]
@@ -540,11 +599,18 @@ pro chromis::make_crispex, rot_dir = rot_dir $
         scan_nbstates = scan_nbstates[sortindx]
 
         if(keyword_set(scans_only)) then begin
-          ofile = 'crispex_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
-                  + string(uscans[iscan], format = '(i05)') + extent
-          ofilewb = 'wb_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
-                    + string(uscans[iscan], format = '(i05)') + '.fz' 
-          if file_test(odir + '/' + ofile) then begin
+          if keyword_set(fitsoutput) then begin
+            ofile = 'crispex_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
+                    + string(uscans[iscan], format = '(i05)') + '.fits' 
+            ofilewb = 'wb_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
+                      + string(uscans[iscan], format = '(i05)') + '.fits' 
+          endif else begin
+            ofile = 'crispex_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
+                    + string(uscans[iscan], format = '(i05)') + extent
+            ofilewb = 'wb_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
+                      + string(uscans[iscan], format = '(i05)') + '.fz' 
+          endelse
+            if file_test(odir + '/' + ofile) then begin
             if keyword_set(overwrite) then begin
               print, 'Overwriting existing data cube:'
               print, odir + '/' + ofile
@@ -596,7 +662,10 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 
           if 0 then wwc = red_stretch(wwi, grid1) ; test
 
+          
+          ;; Read image and apply prefilter curve
           tmp = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav]
+
 ;          if (self.filetype eq 'ANA') then begin
 ;            tmp0 = (f0(ttf))[x0:x1, y0:y1] * tpref[iwav]
 ;            tmp1 = (f0(rrf))[x0:x1, y0:y1] * rpref[iwav]
@@ -639,7 +708,6 @@ pro chromis::make_crispex, rot_dir = rot_dir $
 ;          tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
           
           if keyword_set(aligncont) then begin
-
             
             tmp = red_shift_sub(tmp, -xshifts[iwav], -yshifts[iwav])
 
@@ -704,32 +772,49 @@ pro chromis::make_crispex, rot_dir = rot_dir $
           endif
         endif else begin
           ;; Write this scan's data cube as an individual file.
-          print, inam + ' : saving to '+ odir + '/' + ofile
-          openw, lun, odir + '/' + ofile, /get_lun
-          writeu, lun, head
+          if keyword_set(fitsoutput) then begin
+          endif else begin
+            print, inam + ' : saving to '+ odir + '/' + ofile
+            openw, lun, odir + '/' + ofile, /get_lun
+            writeu, lun, head
 ;          if(keyword_set(float)) then dat[iscan] = d else writeu, lun, fix(d + 0.5)
-          if(keyword_set(float)) then writeu, lun, d else writeu, lun, fix(d + 0.5)
-          free_lun, lun
+            if(keyword_set(float)) then writeu, lun, d else writeu, lun, fix(d + 0.5)
+            free_lun, lun
+          endelse
           if keyword_set(wbwrite) then begin
             print, inam + ' : saving to '+ odir + '/' + ofilewb
-            fzwrite, wb, odir + '/' + ofilewb, ' '
+            wbhead = red_mkhdr(wb) ; Just for now...
+            if keyword_set(fitsoutput) then begin
+              red_writedata, odir + '/' + ofilewb, wb, head = wbhead $
+                             , filetype = 'FITS', overwrite = overwrite
+            endif else begin
+              red_writedata, odir + '/' + ofilewb, wb, head = wbhead $
+                             , filetype = 'ANA', overwrite = overwrite
+;              fzwrite, wb, odir + '/' + ofilewb, ' '
+            endelse
           endif
         endelse
-
       endfor                    ; iscan
       
       if(~keyword_set(scans_only)) then begin
 
-        ;; Close assoc file for output of multi-scan data cube.
-        free_lun, lun
-        print, inam + ' : done'
-        print, inam + ' : result saved to -> '+odir+'/'+ofile 
-        if keyword_set(float) then begin
-          red_flipthecube_unpol, odir+'/'+ofile, nt = Nscans, nw = Nwav
+        if keyword_set(fitsoutput) then begin
+
+          ;; Close fits file.
+          ;; Add any extensions.
+          
         endif else begin
-          red_flipthecube_unpol, odir + '/' + ofile, /icube, nt = Nscans, nw = Nwav
+          ;; Close assoc file for output of multi-scan data cube.
+          free_lun, lun
+          print, inam + ' : done'
+          print, inam + ' : result saved to -> '+odir+'/'+ofile 
+          if keyword_set(float) then begin
+            red_flipthecube_unpol, odir+'/'+ofile, nt = Nscans, nw = Nwav
+          endif else begin
+            red_flipthecube_unpol, odir + '/' + ofile, /icube, nt = Nscans, nw = Nwav
+          endelse
+          ;;     make_crispex_sp_cube, odir+'/'+ofile, nwav, Nscans
         endelse
-        ;;     make_crispex_sp_cube, odir+'/'+ofile, nwav, Nscans
       endif
 
     endfor                      ; ipref
