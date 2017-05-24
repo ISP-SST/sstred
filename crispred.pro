@@ -39,8 +39,6 @@
 ;         shift-and-sum in red_sumfiles for summing pinholes
 ;
 ; 
-; :Returns:
-; 
 ; 
 ; :Params:
 ; 
@@ -60,8 +58,7 @@
 ; 
 ; :Dependencies:
 ;
-;    The external C++ module must be compiled and the system variable
-;    CREDUC point to creduc.so.
+;    The external C++ module in the creduc/ subdir must be compiled.
 ;
 ; 
 ; :History:
