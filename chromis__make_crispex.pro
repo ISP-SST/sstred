@@ -131,13 +131,21 @@ pro chromis::make_crispex, aligncont = aligncont $
                            , tiles=tiles $
                            , verbose=verbose $
                            , wbwrite = wbwrite $
-                           , square = square $
+                           , square = square 
 ;                           , noflats=noflats $
-
-                           ;; Name of this method
-                           inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  ;; Get keywords
   
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
+  if keyword_set(fitsoutput) then begin
+    ;; Allow only in developer mode for now
+    if ~self.developer_mode then begin
+      print, inam + ' : fitsoutput allowed only in developer mode'
+      retall
+    endif
+  endif
+
+  ;; Make prpara
   if n_elements(aligncont   ) ne 0 then red_make_prpara, prpara, 'aligncont'    , aligncont 
   if n_elements(clips       ) ne 0 then red_make_prpara, prpara, 'clips'        , clips         
   if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
@@ -153,11 +161,9 @@ pro chromis::make_crispex, aligncont = aligncont $
   if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
   if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
 
-  ;; Get keywords
+  ;; Default keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
-  
-
-  if(n_elements(rot_dir) eq 0) then rot_dir = 0B
+  if n_elements(rot_dir) eq 0 then rot_dir = 0B
 
   ;; Camera/detector identification
   self->getdetectors

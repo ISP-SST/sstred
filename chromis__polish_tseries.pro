@@ -149,8 +149,19 @@ pro chromis::polish_tseries, xbd = xbd $
                              , momfbddir = momfbddir $
                              , blur = blur $
                              , offset_angle = offset_angle
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
+  if keyword_set(fitsoutput) then begin
+    ;; Allow only in developer mode for now
+    if ~self.developer_mode then begin
+      print, inam + ' : fitsoutput allowed only in developer mode'
+      retall
+    endif
+  endif
   
-  ;; Get keywords
+  ;; Make prpara
   if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
   if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
   if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
@@ -168,15 +179,9 @@ pro chromis::polish_tseries, xbd = xbd $
   if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
   if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
 
+  ;; Default keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
   
-  ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
-
   ;; Camera/detector identification
   self->getdetectors
   wbindx = where(strmatch(*self.cameras,'Chromis-W'))
