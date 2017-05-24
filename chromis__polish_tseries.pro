@@ -61,6 +61,12 @@
 ;   
 ;   
 ;   
+;    fitsoutput : in, optional, type=boolean
+;   
+;      Set this to get output in a FITS file.
+;   
+;   
+;   
 ;    negang  : 
 ;   
 ;   
@@ -527,7 +533,7 @@ pro chromis::polish_tseries, xbd = xbd $
           ;; One should really check also for the existence of MJDREF
           ;; and JDREF but within the pipeline we can be sure we don't
           ;; use them.
-          dateref = self.isodate+'T00:00:00.000000'
+          dateref = self.isodate+'T00:00:00.000000' ; Midnight
           fxaddpar, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601'
         endif
 
