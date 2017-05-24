@@ -134,10 +134,10 @@ pro chromis::make_crispex, aligncont = aligncont $
                            , square = square $
 ;                           , noflats=noflats $
 
-  ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+                           ;; Name of this method
+                           inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   ;; Get keywords
- 
+  
   if n_elements(aligncont   ) ne 0 then red_make_prpara, prpara, 'aligncont'    , aligncont 
   if n_elements(clips       ) ne 0 then red_make_prpara, prpara, 'clips'        , clips         
   if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
@@ -266,7 +266,7 @@ pro chromis::make_crispex, aligncont = aligncont $
         unbprefsref[inbpref] = double((strsplit(pertuningstates[utunindx[unbprefindx[inbpref]]].tuning $
                                                 , '_', /extract))[0])
       endfor
-      unbprefsref *= 1e-10       ; [m]
+      unbprefsref *= 1e-10      ; [m]
 
       if(~keyword_set(scans_only)) then begin
         ;; Look for time-series calib file
@@ -294,7 +294,7 @@ pro chromis::make_crispex, aligncont = aligncont $
         restore, cfile
         if(n_elements(ff) eq 5) then full = 1 else full = 0
 
-        ;tmean = mean(tmean) / tmean
+                                ;tmean = mean(tmean) / tmean
 
         
         ;; Get the scan selection from wfiles (from the sav file)
@@ -329,38 +329,38 @@ pro chromis::make_crispex, aligncont = aligncont $
 
       ;; Load prefilters
       for inbpref = 0L, Nnbprefs-1 do begin
-         pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+'_prefilter.idlsave'
-         if ~file_test(pfile) then begin
-            print, inam + ' : prefilter file not found: '+pfile
-            return
-         endif
-         
-         restore, pfile         ; Restores variable prf which is a struct
-         idxpref = where(my_prefilters eq unbprefs[inbpref], count)
+        pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+'_prefilter.idlsave'
+        if ~file_test(pfile) then begin
+          print, inam + ' : prefilter file not found: '+pfile
+          return
+        endif
+        
+        restore, pfile          ; Restores variable prf which is a struct
+        idxpref = where(my_prefilters eq unbprefs[inbpref], count)
 
-         if inbpref eq 0 then begin
-            prefilter_curve = [0.d0]
-            prefilter_wav = [0.0d0]
-            prefilter_wb = [0.0d0]
-            units = prf.units
-         endif else begin
-           if units ne prf.units then begin
-             print, inam + ' : Units in ' + pfile + ' do not match those in earlier read files.'
-             print, inam + ' : Please rerun the prefilterfit step for these data.'
-             retall
-           endif
-         endelse
-         
-         if(count eq 1) then begin
-            prefilter_curve = [prefilter_curve, prf.pref]
-            prefilter_wav = [prefilter_wav, prf.wav]
-            prefilter_wb = [prefilter_wb, prf.wbint]
-         endif else begin
-            me = median(prf.wav)
-            prefilter_curve = [prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
-            prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
-            prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
-         endelse
+        if inbpref eq 0 then begin
+          prefilter_curve = [0.d0]
+          prefilter_wav = [0.0d0]
+          prefilter_wb = [0.0d0]
+          units = prf.units
+        endif else begin
+          if units ne prf.units then begin
+            print, inam + ' : Units in ' + pfile + ' do not match those in earlier read files.'
+            print, inam + ' : Please rerun the prefilterfit step for these data.'
+            retall
+          endif
+        endelse
+        
+        if(count eq 1) then begin
+          prefilter_curve = [prefilter_curve, prf.pref]
+          prefilter_wav = [prefilter_wav, prf.wav]
+          prefilter_wb = [prefilter_wb, prf.wbint]
+        endif else begin
+          me = median(prf.wav)
+          prefilter_curve = [prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
+          prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
+          prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
+        endelse
       endfor                    ; inbpref
       
       rpref = 1.d0/prefilter_curve[1:*]
@@ -372,11 +372,11 @@ pro chromis::make_crispex, aligncont = aligncont $
       if(Nwb eq Nnb) then wbcor = 1B else wbcor = 0B
 
 
-     
+      
       ;; if(~keyword_set(noflats)) then begin
       ;;   ;; Load clean flats and gains
       ;;   for ii = 0L, Nwav-1 do begin
-          
+      
       ;;     tff = self.out_dir + 'flats/' + self.camttag + '.' + prefilters[ipref] $
       ;;           + '.'+st.uwav[ii]+'.unpol.flat'
       ;;     rff = self.out_dir + 'flats/' + self.camrtag + '.' + prefilters[ipref] $
@@ -390,7 +390,7 @@ pro chromis::make_crispex, aligncont = aligncont $
       ;;     print,' -> '+rff
       ;;     print,' -> '+tgg
       ;;     print,' -> '+rgg
-          
+      
       ;;     if ~file_test(tff) $
       ;;        or ~file_test(rff) $
       ;;        or ~file_test(tgg) $
@@ -398,13 +398,13 @@ pro chromis::make_crispex, aligncont = aligncont $
       ;;       print, inam + ' : ERROR -> Flat/gain files not found'
       ;;       return
       ;;     endif
-          
+      
       ;;     if(ii eq 0) then begin
       ;;       dim = size(f0(tff),/dimen)
       ;;       tratio = fltarr(dim[0], dim[1], nwav)
       ;;       rratio = fltarr(dim[0], dim[1], nwav)
       ;;     endif 
-          
+      
       ;;     tmp = f0(tff)
       ;;     tmp1 = f0(tgg)
       ;;     idx = where(tmp1 gt 0.0001, count, complement = idx1)
@@ -417,7 +417,7 @@ pro chromis::make_crispex, aligncont = aligncont $
       ;;     endif
       ;;     tmp = red_fillpix(tmp, mask=red_cleanmask(mask),nthreads=6)
       ;;     tratio[*,*,ii] = temporary(tmp)
-          
+      
       ;;     tmp = f0(rff)
       ;;     tmp1 = f0(rgg)
       ;;     idx = where(tmp1 gt 0.0001, count, complement = idx1)
@@ -553,15 +553,15 @@ pro chromis::make_crispex, aligncont = aligncont $
         ;; Use interpolation to get the shifts for the selected scans.
         nb_shifts = fltarr(2, Nscans)
         for bb=0, Nscans-1 do begin
-           pos = where(align_scannumbers eq uscans[bb], cccc)
-           if(cccc eq 1) then nb_shifts[*, bb] = align_shifts[*, pos] else begin
-              nb_shifts[0, *] = interpol([reform(align_shifts[0, *])], [float(align_scannumbers)], [float(uscans)])
-              nb_shifts[1, *] = interpol([reform(align_shifts[1, *])], [float(align_scannumbers)], [float(uscans)])
-           endelse
+          pos = where(align_scannumbers eq uscans[bb], cccc)
+          if(cccc eq 1) then nb_shifts[*, bb] = align_shifts[*, pos] else begin
+            nb_shifts[0, *] = interpol([reform(align_shifts[0, *])], [float(align_scannumbers)], [float(uscans)])
+            nb_shifts[1, *] = interpol([reform(align_shifts[1, *])], [float(align_scannumbers)], [float(uscans)])
+          endelse
         endfor
         pos = where(~finite(nb_shifts), cccc)
         if(cccc gt 0) then nb_shifts[pos] = 0
-     endif
+      endif
 
 
       iprogress = 0
@@ -574,7 +574,7 @@ pro chromis::make_crispex, aligncont = aligncont $
         ;; Save the wavelength points in a separate file, common to
         ;; all the scans.
         if(iscan eq 0) then begin
- ;         wav = scan_nbstates.tun_wavelength
+                                ;         wav = scan_nbstates.tun_wavelength
           fzwrite, wav, odir + '/' + 'wav_' + prefilters[ipref] +'.f0',' '
         endif
 
@@ -610,7 +610,7 @@ pro chromis::make_crispex, aligncont = aligncont $
             ofilewb = 'wb_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
                       + string(uscans[iscan], format = '(i05)') + '.fz' 
           endelse
-            if file_test(odir + '/' + ofile) then begin
+          if file_test(odir + '/' + ofile) then begin
             if keyword_set(overwrite) then begin
               print, 'Overwriting existing data cube:'
               print, odir + '/' + ofile
@@ -638,7 +638,7 @@ pro chromis::make_crispex, aligncont = aligncont $
                              , scan_nbstates.tun_wavelength*1e7)
           yshifts = interpol([0., nb_shifts[1, iscan]], [lambdaW, lambdaC]*1e7 $
                              , scan_nbstates.tun_wavelength*1e7)
-        
+          
         endif
 
         for iwav = 0L, Nwav - 1 do begin 
@@ -751,7 +751,7 @@ pro chromis::make_crispex, aligncont = aligncont $
           ;; if(keyword_set(scans_only)) then cscl = 1.0
           norm_spect = imean / 1.0 ;/ max(imean)
           norm_factor = 1.0
-          spect_pos = wav *1.d10;+ double(prefilters[ipref])
+          spect_pos = wav *1.d10 ;+ double(prefilters[ipref])
 ;          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
           save, file = odir + '/spectfile.' + prefilters[ipref] + '.idlsave' $
                 , norm_spect, norm_factor, spect_pos
