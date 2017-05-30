@@ -260,7 +260,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
           fxaddpar, head, 'FILLED', 1, 'Missing pixels have been filled.' ; Check gain file for missing?
           fxaddpar, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
           
-          fxaddpar, head, before='DATE', 'SOLARNET', 0.5
+          fxaddpar, head, before='DATE', 'SOLARNET', 0.5, format = 'f3.1'
           fxaddpar, head, before='DATE', 'BTYPE', 'Intensity'
           fxaddpar, head, before='DATE', 'BUNIT', 'DU' ; Digital unit?
           ;; DATE_OBS should be getting the value including decimals from
