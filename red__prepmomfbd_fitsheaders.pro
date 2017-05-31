@@ -265,7 +265,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
           fxaddpar, head, before='DATE', 'BUNIT', 'DU' ; Digital unit?
           ;; DATE_OBS should be getting the value including decimals from
           ;; the raw data headers, not just integer seconds as here:
-          fxaddpar, head, before='DATE', 'DATE_OBS', datestamp
+          fxaddpar, head, before='DATE', 'DATE-OBS', datestamp
           fxaddpar, head, before='DATE', 'STARTOBS', datestamp ; IS STARTOBS needed?
 
           ;; The CDELTn keywords should not change to HPLN-TAN/HPLT-TAN
