@@ -2,7 +2,7 @@
 
 ;+
 ; Do interpolation with interpol(), but only where the input data do
-; not have gaps.
+; not have gaps. No extrapolation into the gaps.
 ;
 ; Parameters and keywords as for interpol() using the three parameters
 ; form.
@@ -19,18 +19,30 @@
 ; 
 ; :Returns:
 ; 
-;    The interpolated Y values, NaN for intervals with no input data. 
+;    The interpolated Y values, NaN for intervals with no input data.
+;
+; :Keywords:
+;
+;    tol : in, optional, type=float, default=0.1
+;
+;       "Gaps" are defined as distances between x points that are
+;       larger than dx*(1+tol), where dx is the median distance
+;       between points.
 ; 
 ; :History:
 ; 
 ;    2017-04-24 : MGL. First version.
 ; 
+;    2017-05-31 : MGL. New keyword tol.
+; 
 ; 
 ; 
 ; 
 ;-
-function red_interpol_nogaps, y, x, xp, _ref_extra = extra
+function red_interpol_nogaps, y, x, xp, tol = tol, _ref_extra = extra
 
+  if n_elements(tol) eq 0 then tol = 0.1
+  
   ;; Output variable, filled with NaNs for now.
   yp = fltarr(n_elements(xp))
   yp[*] = !Values.F_NaN
@@ -40,7 +52,7 @@ function red_interpol_nogaps, y, x, xp, _ref_extra = extra
 
   ;; Find endpoints of OK intervals. This is based on the assumption
   ;; that the data has constant dx, except for gaps.
-  indx = [0, where(dx gt median(dx)*1.1, count), n_elements(x)-1]
+  indx = [0, where(dx gt median(dx)*(1.+tol), count), n_elements(x)-1]
   if count eq 0 then return, yp
   dindx = where(deriv(indx) ne 1., Nd)
   intervals = indx[dindx]
@@ -66,3 +78,29 @@ function red_interpol_nogaps, y, x, xp, _ref_extra = extra
   return, yp
   
 end
+
+
+x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 14, 16, 17, 18, 19]/20.*!pi
+y = sin(x)
+
+xp = findgen(200)/200*!pi
+
+yp = interpol(y, x, xp, /quad)
+yp1 = red_interpol_nogaps(y, x, xp, /quad)
+yp2 = red_interpol_nogaps(y, x, xp, /quad, tol = .6)
+
+window, 1
+cgplot, x, y, psym = 16
+cgplot, /over, xp, yp, psym = 1
+cgplot, /over, xp, yp1, color = 'red', psym = 9
+
+window, 2
+cgplot, x, y, psym = 16
+cgplot, /over, xp, yp, psym = 1
+cgplot, /over, xp, yp2, color = 'red', psym = 9
+
+
+end
+
+
+
