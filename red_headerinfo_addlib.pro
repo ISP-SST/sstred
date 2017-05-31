@@ -28,6 +28,11 @@
 ;
 ; :Keywords:
 ; 
+;    prbranch : in, optional, type=string
+; 
+;      If given, this will be added as a new PRBRANia FITS header parameter.
+; 
+; 
 ;    prevkey : in, out, optional, type=string
 ;   
 ;      The keyword to place the next keyword after.
@@ -37,8 +42,11 @@
 ; 
 ;    2017-03-16 : MGL. First version.
 ; 
+;    2017-05-31 : MGL. New keyword prbranch, optionally add the
+;                 version control branch.
+; 
 ;-
-pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey
+pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey, prbranch = prbranch
 
   ;; What is the first nonexisting step number?
   stepnumber = 0
@@ -104,9 +112,17 @@ pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey
     key = 'PRVER'+stp+letter
     fxaddpar, head, key, after = prevkey $
               , prver, 'Library version/MJD of last update' 
-    prekey = key
+    prevkey = key
   endif
 
+  ;; Optionally add branch
+  if n_elements(prbranch) gt 0 then begin
+    key = 'PRBRAN'+stp+letter
+    fxaddpar, head, key, after = prevkey $
+              , prbranch, 'Version control branch' 
+    prevkey = key
+  endif
+  
 end
 
 

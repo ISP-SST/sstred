@@ -97,7 +97,7 @@ pro red::headerinfo_addstep, header $
 
   ;; Add headers with library names and versions. (Bug: Should be
   ;; listed in the order they appear in the path!)
-  red_headerinfo_addlib, header, 'SSTRED', self.version_pipeline
+  red_headerinfo_addlib, header, 'SSTRED', self.version_pipeline, prbranch = self.version_pipeline_branch
   red_headerinfo_addlib, header, 'IDLAstro', self.version_idlastro
   red_headerinfo_addlib, header, 'Coyote', self.version_coyote
   red_headerinfo_addlib, header, 'mpfit', self.version_mpfit
