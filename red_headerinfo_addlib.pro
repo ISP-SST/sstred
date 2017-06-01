@@ -30,7 +30,7 @@
 ; 
 ;    prbranch : in, optional, type=string
 ; 
-;      If given, this will be added as a new PRBRANia FITS header parameter.
+;      If given, this will be added as a new PRBRAiia FITS header parameter.
 ; 
 ; 
 ;    prevkey : in, out, optional, type=string
@@ -117,7 +117,7 @@ pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey, prbranch = prb
 
   ;; Optionally add branch
   if n_elements(prbranch) gt 0 then begin
-    key = 'PRBRAN'+stp+letter
+    key = 'PRBRA'+stp+letter
     fxaddpar, head, key, after = prevkey $
               , prbranch, 'Version control branch' 
     prevkey = key
