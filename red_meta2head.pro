@@ -60,7 +60,7 @@
 ;
 ;    2017-05-08 : MGL. Get info from directory if CRISP data.
 ; 
-;    2017-06-01 : MGL. Use red_fitsaddpar.
+;    2017-06-01 : MGL. Use red_fitsaddpar. WAVELNTH in nm.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -265,7 +265,7 @@ function red_meta2head, head, metadata=metaStruct
         endcase
 
         red_fitsaddpar, anchor = anchor, newhead $
-                        , 'WAVELNTH', wavelnth, '[m] Prefilter peak wavelength'
+                        , 'WAVELNTH', wavelnth*1e9, '[nm] Prefilter peak wavelength'
         ;; Add also the FWHM in a keyword?
 
       endif 
