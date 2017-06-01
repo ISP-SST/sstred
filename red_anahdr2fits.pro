@@ -65,6 +65,8 @@
 ;                output. 
 ;
 ;    2017-03-13 : MGL. Recognize TRIPPEL data.
+; 
+;    2017-06-01 : MGL. Use red_fitsaddpar and red_mkhdr.
 ;
 ;-
 function red_anahdr2fits, anahdr $
@@ -75,37 +77,49 @@ function red_anahdr2fits, anahdr $
   if n_elements(datatype) eq 0 then datatype = 2 ; default?
 
   if n_elements(img) ne 0 then begin
-     mkhdr, hdr, img 
+     red_mkhdr, hdr, img 
   endif else if n_elements(naxisx) ne 0 then begin
-     mkhdr, hdr, datatype, naxisx
+     red_mkhdr, hdr, datatype, naxisx
   endif else begin
      posw = strpos(anahdr, ' W=')
      if posw eq -1 then NAXIS1 = 0 else NAXIS1 = strtrim(long(strmid(anahdr, posw+3)), 2)
      posh = strpos(anahdr, ' H=')
      if posh eq -1 then NAXIS2 = 0 else NAXIS2 = strtrim(long(strmid(anahdr, posh+3)), 2)
-     mkhdr, hdr, 2, [naxis1,naxis2]
+     red_mkhdr, hdr, 2, [naxis1,naxis2]
   endelse
 
+  anchor = 'DATE'
+  
+  ;; Header date (as in the FZ output from Michiel's momfbd program)
+  dpos = strpos(anahdr, 'DATE=')
+  if dpos ne -1 then begin
+     date = (red_strreplace(strmid(anahdr, dpos+5, 19), ' ', 'T'))[0]
+     red_fitsaddpar, anchor = anchor, hdr, 'DATE', date, ''
+  endif
+  
   ;; Time info (as in CRISP raw data)
   tspos = strpos(anahdr, 'Ts=')
   tepos = strpos(anahdr, 'Te=')
   if tspos ne -1 and tepos ne -1 then begin
      Ts = strmid(anahdr, tspos+3, 26)
      Te = strmid(anahdr, tepos+3, 26)
+     red_fitsaddpar, anchor = anchor, hdr $
+                     ,'DATE-BEG' $
+                     , (red_strreplace((red_strreplace(Ts, ' ', 'T')),'.','-',n=2))[0],' '
+     red_fitsaddpar, anchor = anchor, hdr $
+                     ,'DATE-END' $
+                     , (red_strreplace((red_strreplace(Te, ' ', 'T')),'.','-',n=2))[0],' '
      exptime = red_time2double(strmid(Te, strpos(Te, ' '))) $
                - red_time2double(strmid(Ts, strpos(Ts, ' ')))
-     sxaddpar,hdr,'XPOSURE',exptime,' [s]', before='COMMENT'
-     sxaddpar,hdr,'DATE-BEG',(red_strreplace((red_strreplace(Ts, ' ', 'T')),$
-      '.','-',n=2))[0],' ', before='COMMENT'
-     sxaddpar,hdr,'DATE-END',(red_strreplace((red_strreplace(Te, ' ', 'T')),$
-      '.','-',n=2))[0],' ', after='DATE-BEG'
+     red_fitsaddpar, anchor = anchor, hdr $
+                     , 'XPOSURE', exptime, '[s]'
   end
 
   ;; Camera (as in CRISP raw data)
   campos = strpos(anahdr, '"Camera')
   if campos ne -1 then begin
      detector = 'cam' + (strsplit(strmid(anahdr, campos+8), ' ', /extract))[0]
-     sxaddpar, hdr, red_keytab('detector'), detector, 'Camera identifier'
+     red_fitsaddpar, anchor = anchor, hdr, red_keytab('detector'), detector, 'Camera identifier'
   end
 
   ;; Instrument (as in CRISP raw data)
@@ -114,18 +128,13 @@ function red_anahdr2fits, anahdr $
     strmatch(anahdr,'*CRISP-*') :          instrument = 'CRISP'
     else:
   endcase
-  if n_elements(instrument) gt 0 then sxaddpar, hdr, 'INSTRUME', instrument, ' Name of instrument'
+  if n_elements(instrument) gt 0 then red_fitsaddpar, anchor = anchor, hdr $
+     , 'INSTRUME', instrument, ' Name of instrument'
 ;  if ipos ne -1 then begin
 ;     instrument = 'Crisp-'+(strsplit(strmid(anahdr, ipos+6), ']', /extract))[0]
-;     sxaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
+;     red_fitsaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
 ;  end
   
-  ;; Header date (as in the FZ output from Michiel's momfbd program)
-  dpos = strpos(anahdr, 'DATE=')
-  if dpos ne -1 then begin
-     date = (red_strreplace(strmid(anahdr, dpos+5, 19), ' ', 'T'))[0]
-     sxaddpar, hdr, 'DATE', date, ''
-  endif
 
   ;; Observations date (as in the FZ output from Michiel's momfbd program)
   dpos = strpos(anahdr, 'DATE_OBS')
@@ -137,7 +146,7 @@ function red_anahdr2fits, anahdr $
         time_obs = strmid(anahdr, tpos+9,dpos-(tpos+9))
         if strlen(time_obs) gt 1 then date_obs += 'T' + time_obs
      endif 
-     sxaddpar, hdr, 'DATE-AVG', date_obs, '', after = 'DATE'
+     red_fitsaddpar, anchor = anchor, hdr, 'DATE-AVG', date_obs, '', after = 'DATE'
   endif
 
   ;; Should extract more info from anahdr: states of prefilter, liquid
@@ -145,8 +154,8 @@ function red_anahdr2fits, anahdr $
   ;; for them in the FITS header.
   
   ;; Add SOLARNET keyword
-  sxaddpar, hdr, 'SOLARNET', 0.5,  format = 'f3.1' $
-            , ' Fully SOLARNET-compliant=1.0, partially=0.5', before = 'COMMENT'
+  red_fitsaddpar, hdr, 'SOLARNET', 0.5,  format = 'f3.1' $
+                  , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'DATE'
 
   return,hdr
 
