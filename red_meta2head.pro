@@ -60,7 +60,8 @@
 ;
 ;    2017-05-08 : MGL. Get info from directory if CRISP data.
 ; 
-;    2017-06-01 : MGL. Use red_fitsaddpar. WAVELNTH in nm.
+;    2017-06-01 : MGL. Use red_fitsaddpar. WAVELNTH in nm. Specify
+;                 unit for WAVELNTH in WAVEUNIT.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -266,6 +267,8 @@ function red_meta2head, head, metadata=metaStruct
 
         red_fitsaddpar, anchor = anchor, newhead $
                         , 'WAVELNTH', wavelnth*1e9, '[nm] Prefilter peak wavelength'
+        red_fitsaddpar, anchor = anchor, newhead $
+                        , 'WAVEUNIT', -9, 'WAVELNTH in units 10^WAVEUNIT m = nm'
         ;; Add also the FWHM in a keyword?
 
       endif 
