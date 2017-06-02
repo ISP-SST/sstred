@@ -46,6 +46,8 @@
 ; 
 ;    2017-03-21 : MGL. New keywords discard.
 ; 
+;    2017-06-02 : MGL. Use red_fitsaddpar.
+; 
 ;-
 function red_sumheaders, files, sum $
                          , nsum = nsum $
@@ -121,32 +123,34 @@ function red_sumheaders, files, sum $
     ;; Remove NAXIS* keywords
     naxis = fxpar(head, 'NAXIS', count = count)
     for iaxis = 0, naxis-1 do sxdelpar, head, 'NAXIS'+strtrim(iaxis+1, 2)
-    fxaddpar, head, 'NAXIS', 0
+    red_fitsaddpar, head, 'NAXIS', 0
   endelse
 
   ;; New date, at better position
   sxdelpar, head, 'DATE'
-  fxaddpar, head, 'DATE', red_timestamp(/iso) $
-            , 'Creation UTC date of FITS header ', after = 'SOLARNET'
+  red_fitsaddpar, anchor = anchor, after = 'SOLARNET', /force, head $
+                  , 'DATE', red_timestamp(/iso), 'Creation UTC date of FITS header '
 
   ;; Remove some irrelevant keywords
   sxdelpar, head, 'TAB_HDUS'    ; No tabulated headers in summed file
-  sxdelpar, head, 'FRAMENUM'    ; No particular frame number
+  sxdelpar, head, 'FRAMENUM'    ; No particular frame number (unless we want to tabulate the input frame numbers?)
   sxdelpar, head, 'SCANNUM'     ; No particular scan number
   sxdelpar, head, 'FILENAME'    ; Add this later!
   sxdelpar, head, 'CADENCE'     ; Makes no sense to keep?
 
   ;; Exposure times etc.
   exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
-  fxaddpar, head, 'XPOSURE', nsum*exptime, '[s] Total exposure time'
-  fxaddpar, head, 'TEXPOSUR', exptime $
-            , '[s] Single-exposure time', before = 'XPOSURE'
-  fxaddpar, head, 'NSUMEXP', nsum $
-            , 'Number of summed exposures', before = 'XPOSURE'
+  red_fitsaddpar, anchor = anchor, head $
+                  , 'XPOSURE', nsum*exptime, '[s] Total exposure time'
+  red_fitsaddpar, anchor = anchor, head $
+                  , 'TEXPOSUR', exptime, '[s] Single-exposure time'
+  red_fitsaddpar, anchor = anchor, head $
+                  , 'NSUMEXP', nsum, 'Number of summed exposures'
   
   ;; List of frame numbers (re-use FRAMENUM for this)
-  fxaddpar, head, 'FRAMENUM', red_collapserange(frame_numbers,ld='',rd='') $
-            , 'List of frame numbers in the sum'
+  red_fitsaddpar, anchor = anchor, head $
+                  , 'FRAMENUM', red_collapserange(frame_numbers,ld='',rd='') $
+                  , 'List of frame numbers in the sum'
 
   ;; DATE-??? keywords, base them on the tabulated timestamps
   date_obs = (strsplit(fxpar(head, 'DATE-OBS'), 'T',/extract))[0]
@@ -155,14 +159,17 @@ function red_sumheaders, files, sum $
   time_end = red_timestring(max(times)+exptime)
   time_avg = red_timestring(mean(times)+exptime/2)
   if n_elements(time_end) ne 0 then $
-     fxaddpar, head, 'DATE-END', date_obs+'T'+time_end $
-               , 'Date of end of observation', after = 'DATE'
+     red_fitsaddpar, anchor = anchor, head $
+                     , 'DATE-END', date_obs+'T'+time_end $
+                     , 'Date of end of observation'
   if n_elements(time_avg) ne 0 then $
-     fxaddpar, head, 'DATE-AVG', date_obs+'T'+time_avg $
-               , 'Average date of observation', after = 'DATE'
+     red_fitsaddpar, anchor = anchor, head $
+                     , 'DATE-AVG', date_obs+'T'+time_avg $
+                     , 'Average date of observation'
   if n_elements(time_beg) ne 0 then $
-     fxaddpar, head, 'DATE-BEG', date_obs+'T'+time_beg $
-               , 'Date of start of observation', after = 'DATE'
+     red_fitsaddpar, anchor = anchor, head $
+                     , 'DATE-BEG', date_obs+'T'+time_beg $
+                     , 'Date of start of observation'
 
   ;; Add "global" metadata
   red_metadata_restore, head
