@@ -126,7 +126,8 @@
 ;
 ;   2017-04-27 : MGL. New defaults for clip and tile.
 ;
-;
+;   2017-06-05 : MGL. Works with /fitsoutput now. Add "BUNIT" and
+;                "BTYPE" to FITS header.
 ;
 ;-
 pro chromis::polish_tseries, xbd = xbd $
@@ -488,6 +489,10 @@ pro chromis::polish_tseries, xbd = xbd $
         if keyword_set(blur) then begin
           red_fitsaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
         endif
+
+        ;; Add info to headers
+        red_fitsaddpar, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
+        red_fitsaddpar, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
         ;; Add info about this step
         self -> headerinfo_addstep, hdr $
