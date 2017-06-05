@@ -126,30 +126,30 @@
 ;
 ;   2017-04-27 : MGL. New defaults for clip and tile.
 ;
-;   2017-06-05 : MGL. Works with /fitsoutput now. Add "BUNIT" and
-;                "BTYPE" to FITS header.
+;   2017-06-05 : MGL. Works with /fitsoutput now. Add 'BUNIT' and
+;                'BTYPE' to FITS header.
 ;
 ;-
-pro chromis::polish_tseries, xbd = xbd $
-                             , ybd = ybd $
-                             , np = np $
+pro chromis::polish_tseries, blur = blur $
                              , clip = clip $
-                             , tile = tile $
-                             , tstep = tstep $
-                             , scale = scale $
-;                             , ang = ang $
-;                             , shift = shift $
-                             , square = square $
-                             , negang = negang $
                              , crop = crop $
-;                             , ext_time = ext_time $
-                             , fullframe = fullframe $
-;                             , ext_date = ext_date $
-                             , timefiles = timefiles $
                              , fitsoutput = fitsoutput $
+                             , fullframe = fullframe $
                              , momfbddir = momfbddir $
-                             , blur = blur $
-                             , offset_angle = offset_angle
+                             , negang = negang $
+                             , np = np $
+                             , offset_angle = offset_angle $
+                             , scale = scale $
+                             , square = square $
+                             , tile = tile $
+                             , timefiles = timefiles $
+                             , tstep = tstep $
+                             , xbd = xbd $
+                             , ybd = ybd 
+;                             , ang = ang $
+;                             , ext_date = ext_date $
+;                             , ext_time = ext_time $
+;                             , shift = shift $
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -163,22 +163,22 @@ pro chromis::polish_tseries, xbd = xbd $
   endif
   
   ;; Make prpara
-  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
-  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
-  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
+  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
   if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip         
-  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile         
-  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep        
+  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop         
+  if n_elements(fitsoutput  ) ne 0 then red_make_prpara, prpara, 'fitsoutput'   , fitsoutput   
+  if n_elements(fullframe   ) ne 0 then red_make_prpara, prpara, 'fullframe'    , fullframe    
+  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
+  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
+  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
+  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
   if n_elements(scale       ) ne 0 then red_make_prpara, prpara, 'scale'        , scale        
   if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
-  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
-  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop         
-  if n_elements(fullframe   ) ne 0 then red_make_prpara, prpara, 'fullframe'    , fullframe    
+  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile         
   if n_elements(timefiles   ) ne 0 then red_make_prpara, prpara, 'timefiles'    , timefiles    
-  if n_elements(fitsoutput  ) ne 0 then red_make_prpara, prpara, 'fitsoutput'   , fitsoutput   
-  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
-  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
-  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
+  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep        
+  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
+  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
 
   ;; Default keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
