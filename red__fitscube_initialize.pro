@@ -46,13 +46,10 @@
 ; 
 ;    2016-03-24 : MGL. First version.
 ; 
-; 
+;    2017-06-05 : MGL. Remove WCS keywords.
 ; 
 ;-
-pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions $
-                              , wcs_time_coordinate = wcs_time_coordinate $
-                              , wcs_wave_coordinate = wcs_wave_coordinate $
-                              , scannumber = scannumber
+pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   
   ;; This kind of FITS cube is always five-dimensional, but dimensions
   ;; can be degenerate.
@@ -164,7 +161,7 @@ print, 'offset=', offset
 
   bitpix = fxpar(hdr, 'BITPIX')
   case bitpix of
-    16 : array_structure = intarr(Nx, Ny)
+     16 : array_structure = intarr(Nx, Ny)
     -32 : array_structure = fltarr(Nx, Ny)
     else : stop
   endcase
@@ -179,85 +176,8 @@ print, 'Nelements', Nelements
     rec = assoc(lun,bpad,endpos)
     rec[0] = bpad
   endif
-print, 'endpos=', endpos
-print, 'Npad', Npad
-
-
-  ;; Write the WCS extension. (This was inspired by Stein's
-  ;; wcs_crosstabulation.pro)
-  if n_elements(wcs_time_coordinate) gt 0 $
-     or n_elements(wcs_wave_coordinate) gt 0 $
-     or n_elements(scannumbers) gt 0 $
-  then begin
-    free_lun, lun               ; The file is expected to be closed for this.
-    fxbhmake,bdr,1,'EXTNAME-WCS-TABLES','For storing tabulated WCS coordinates'  
-    ;; Assume the time and wavelength arrays already have the correct
-    ;; dimensions, and that the proper C* keywords are set.
-    colno = 1
-
-    if n_elements(wcs_time_coordinate) ne 0 then begin
-      fxbaddcol, colno, bdr, wcs_time_coordinate, 'TIME-TABULATION' $
-                 , 'Table of times', TUNIT = 's'
-      t_added = 1
-      colno++
-    endif else t_added = 0
-
-    if n_elements(wcs_wave_coordinate) ne 0 then begin
-      fxbaddcol, colno, bdr, wcs_wave_coordinate, 'WAVE-TABULATION' $
-                 , 'Table of wavelengths', TUNIT = 'm'
-      w_added = 1
-      colno++
-    endif else w_added = 0
-
-    if n_elements(scannumber) ne 0 then begin
-      ;; Not part of wcs system, store in other extension? Alternate
-      ;; coordinate of the fifth dimension?
-      fxbaddcol, colno, bdr, scannumber, 'SCAN-TABULATION' $
-                 , 'Table of scan numbers'
-      s_added = 1
-      colno++
-    endif else s_added = 0
-print, t_added, w_added,  s_added
-    ;;
-    ;; Now, for the writing:
-    ;;
-    ;; 1. Create binary table extension w/the header;; bdr, file_unit
-    ;; & extension_no are outputs
-    ;;
-    fxbcreate, lun, filename, bdr, extension_no
-    ;;
-    ;; 2. Actually write the data - column 1,  row 1
-    ;;
-    colno = 1
-    if t_added then begin
-      fxbwrite, lun, wcs_time_coordinate, colno, 1
-      colno++
-    endif
-    if w_added then begin
-      fxbwrite, lun, wcs_wave_coordinate, colno, 1
-      colno++
-    endif
-    if s_added then begin
-      fxbwrite, lun, scannumber, colno, 1
-      colno++
-    endif
-    ;;
-    ;; Finished - crossing our fingers here!!
-    ;;
-    fxbfinish, lun
-    ;; Open the fits file again, so the image data can be written
-    ;; outside of this subroutine.
-    openu, lun, filename, /get_lun, /swap_if_little_endian
-  endif
-
-;  ;; Write other binary extension if any.
-;  if n_elements(tabhdu) gt 0 then begin
-;    free_lun, lun               ; The file is expected to be closed for this.
-;    red_write_tabhdu, tabhdu, filename
-;    ;; Open the fits file again, so the image data can be written
-;    ;; outside of this subroutine.
-;    openu, lun, filename, /get_lun, /swap_if_little_endian
-;  endif
+  print, 'endpos=', endpos
+  print, 'Npad', Npad
 
   ;; Set up an assoc variable for writing the frames/slices
   fileassoc = assoc(lun, array_structure, offset)
