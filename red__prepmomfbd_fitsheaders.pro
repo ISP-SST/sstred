@@ -39,6 +39,8 @@
 ; 
 ;    2017-03-24 : MGL. Add header information about this processing step.
 ; 
+;    2017-06-01 : MGL. Use red_fitsaddpar. Change some added parameters.
+; 
 ; 
 ;-
 pro red::prepmomfbd_fitsheaders, dirs = dirs $
@@ -257,25 +259,26 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
           ;; Additional keywords that should be set after momfbd
           ;; processing.
-          fxaddpar, head, 'FILLED', 1, 'Missing pixels have been filled.' ; Check gain file for missing?
-          fxaddpar, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
-          
-          fxaddpar, head, before='DATE', 'SOLARNET', 0.5, format = 'f3.1'
-          fxaddpar, head, before='DATE', 'BTYPE', 'Intensity'
-          fxaddpar, head, before='DATE', 'BUNIT', 'DU' ; Digital unit?
+          red_fitsaddpar, anchor = anchor, head, 'DATE-OBS', datestamp, after = 'DATE'
+          red_fitsaddpar, anchor = anchor, head, 'STARTOBS', datestamp ; IS STARTOBS needed?
+          red_fitsaddpar, anchor = anchor, head, 'SOLARNET', 0.5, format = 'f3.1'
+          red_fitsaddpar, anchor = anchor, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
+          red_fitsaddpar, anchor = anchor, head, 'FILLED', 1, 'Missing pixels have been filled.'          
+          red_fitsaddpar, anchor = anchor, head, 'BTYPE', 'Intensity'
+          red_fitsaddpar, anchor = anchor, head, 'BUNIT', 'DU' ; Digital unit?
           ;; DATE_OBS should be getting the value including decimals from
           ;; the raw data headers, not just integer seconds as here:
-          fxaddpar, head, before='DATE', 'DATE-OBS', datestamp
-          fxaddpar, head, before='DATE', 'STARTOBS', datestamp ; IS STARTOBS needed?
 
           ;; The CDELTn keywords should not change to HPLN-TAN/HPLT-TAN
           ;; until we know the position and orientation? /MGL
-          fxaddpar, head, before='DATE', 'CTYPE1', 'x',                     '[arcsec]'
-          fxaddpar, head, before='DATE', 'CTYPE2', 'y',                     '[arcsec]'
-          fxaddpar, head, before='DATE', 'CDELT1', float(self.image_scale), '[arcsec] x-coordinate increment'
-          fxaddpar, head, before='DATE', 'CDELT2', float(self.image_scale), '[arcsec] y-coordinate increment'
-          fxaddpar, head, before='DATE', 'CUNIT1', 'arcsec', 'Unit along axix 1'
-          fxaddpar, head, before='DATE', 'CUNIT2', 'arcsec', 'Unit along axix 2'
+          red_fitsaddpar, anchor = anchor, head, 'CTYPE1', 'INSX-TAN', 'Instrument X'
+          red_fitsaddpar, anchor = anchor, head, 'CTYPE2', 'INSY-TAN', 'Instrument Y'
+          red_fitsaddpar, anchor = anchor, head $
+                          , 'CDELT1', float(self.image_scale), 'x-coordinate increment'
+          red_fitsaddpar, anchor = anchor, head $
+                          , 'CDELT2', float(self.image_scale), 'y-coordinate increment' 
+          red_fitsaddpar, anchor = anchor, head, 'CUNIT1', 'arcsec', 'Unit along axix 1'
+          red_fitsaddpar, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axix 2'
 
           ;; Write the header file
           fxwrite, header_file, head 
