@@ -44,7 +44,10 @@
 ;   2017-04-07 : MGL. Use XROI GUI to select area. Added progress
 ;                bars. 
 ;
-;   2017-04-18 : MGL. Remove si and cgs keywords, always use SI units. 
+;   2017-04-18 : MGL. Remove si and cgs keywords, always use SI units.  
+;
+;   2017-06-05 : MGL. Construct the units string as specified in the
+;                FITS standard 3.0.
 ;
 ; 
 ; 
@@ -224,7 +227,8 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
     tr/=total(tr)
     yl1 = fftconvol(yl, tr)
 
-    units = 'Watt/(s m2 Hz ster)'               ; SI units
+    ;;units = 'Watt/(s m2 Hz ster)' ; SI units
+    units = 'W s^-1 m^-2 Hz^-1 sr^-1' ; SI units
     
     ;; Prepdata
     
