@@ -305,9 +305,9 @@ pro red_logdata, date, time $
     ;; If we didn't ask for a particular time, then decide here:
     case 1 of
       n_elements(T) gt 0 : use_input_time = 1           ; Use input
-      n_elements(r0data) ne 0 : use_r0_time = 1         ; Every s
-      n_elements(pigdata) ne 0 : use_pig_time = 1       ; Every s?
-      n_elements(turretdata) ne 0 : use_turret_time = 1 ; Every 30 s
+      arg_present(r0) ne 0 : use_r0_time = 1         ; Every s
+      arg_present(pig) ne 0 : use_pig_time = 1       ; Every s?
+      arg_present(turret) ne 0 : use_turret_time = 1 ; Every 30 s
       else : begin
         print, 'red_logdata : No time coordinates!'
         return
@@ -411,7 +411,6 @@ pro red_logdata, date, time $
       ;; Get interpolated values
       pig[0, *] = interpol(pigdata.x, pigdata.time, T)
       pig[1, *] = interpol(pigdata.y, pigdata.time, T)
-      stop
     endelse 
 
   endif
