@@ -93,9 +93,12 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
   self -> getcamtags, dir = self.data_dir
                                 ;
                                 ; get files (right now, only momfbd is supported)
+
                                 ;
-  tfiles = file_search(dir+'/'+self.camttag+'.*.momfbd', count = nimt)
-  rfiles = file_search(dir+'/'+self.camrtag+'.*.momfbd', count = nimr)
+  filetype = 'momfbd'
+  if(self.filetype eq 'ANA') then filetype = 'f0'
+  tfiles = file_search(dir+'/'+self.camttag+'.*.'+filetype, count = nimt)
+  rfiles = file_search(dir+'/'+self.camrtag+'.*.'+filetype, count = nimr)
                                 ;
   if(nimt NE nimr) then begin
                                 ;
@@ -109,7 +112,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
   pol = red_getstates_polarim(tfiles, rfiles, self.out_dir $
                               , camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag $
-                              , newflats = newflats)
+                              , newflats = newflats, ftype=filetype)
   nstat = n_elements(pol)
                                 ;
                                 ; Modulations matrices
@@ -117,6 +120,8 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ; T-Cam
   If(~keyword_set(mmt)) then begin
                                 ;
+     
+     
      search = self.out_dir+'/polcal/'+self.camttag+'.'+pol[0]->getvar(7)+'.polcal.f0'
      if(file_test(search)) then begin
         immt = (f0(search))[0:15,*,*]
@@ -144,11 +149,31 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
            psf /= total(psf, /double)
            for ii=0,15 do immt[ii,*,*] = red_convolve(reform(immt[ii,*,*]), psf)
         endif
-        
 
-
-
-        
+        if(filetype eq 'f0') then begin
+           pref = pol[0]->getvar(7)
+           pfiles = file_search(self.out_dir+'/calib/'+self.camttag+'.*'+pref+'*.xoffs', count = npf)
+           restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
+           
+           pidx = 0
+           if(npf gt 1) then begin
+              for ii=0, npf-1 do print, string(ii, format='(I4)')+'  ->  ', pfiles[ii]
+              read, pidx, prompt='Select calibration file ID to clip the modulation matrix:'
+           endif
+           
+           pfiles = pfiles[pidx]
+           xoff = f0(pfiles)
+           pfiles = strjoin([(strsplit(pfiles, '.', /extract))[0:-2], 'yoffs'], '.')
+           yoff = f0(pfiles)
+           
+           for ii=0,15 do begin
+              tmpo = red_applyoffsets(reform(immt[ii,*,*]), xoff,yoff, clips=cl[*,1])
+              if(ii eq 0) then immt0 = fltarr([16,size(tmpo, /dim)])
+              immt0[ii,*,*] = temporary(tmpo)
+           endfor
+           immt = immt0
+        endif
+           
         immt = ptr_new(red_invert_mmatrix(temporary(immt)))
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
@@ -191,7 +216,30 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         endif
         
 
-
+        if(filetype eq 'f0') then begin
+           pref = pol[0]->getvar(7)
+           pfiles = file_search(self.out_dir+'/calib/'+self.camrtag+'.*'+pref+'*.xoffs', count = npf)
+           restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
+           
+           pidx = 0
+           if(npf gt 1) then begin
+              for ii=0, npf-1 do print, string(ii, format='(I4)')+'  ->  ', pfiles[ii]
+              read, pidx, prompt='Select calibration file ID to clip the modulation matrix: '
+           endif
+           pfiles = pfiles[pidx]
+           xoff = f0(pfiles)
+           pfiles = strjoin([(strsplit(pfiles, '.', /extract))[0:-2], 'yoffs'], '.')
+           yoff = f0(pfiles)
+           
+           for ii=0,15 do begin
+              tmpo = red_applyoffsets(reform(immr[ii,*,*]), xoff,yoff, clips=cl[*,2])
+              if(ii eq 0) then immr0 = fltarr([16,size(tmpo, /dim)])
+              immr0[ii,*,*] = temporary(tmpo)
+           endfor
+           immr = immr0
+        endif
+       
+        
 
         
         immr = ptr_new(red_invert_mmatrix(temporary(immr)))
@@ -214,7 +262,8 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ; fill border information (based on 1st image)
                                 ;
   print, inam + 'reading file -> ' + (pol[0]->getvar(9))[0]
-  tmp = red_mozaic(momfbd_read((pol[0]->getvar(9))[0]))
+  if(self.filetype eq 'MOMFBD') then tmp = red_mozaic(momfbd_read((pol[0]->getvar(9))[0])) else $
+     tmp = f0((pol[0]->getvar(9))[0])
 
   dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
   for ii = 0L, nstat - 1 do pol[ii]->fillclip, x0, x1, y0, y1

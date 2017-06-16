@@ -5,5 +5,5 @@ states = {pol, tfiles:strarr(nlc), rfiles:strarr(nlc),state:' ', $
             immt:ptr_new(), immr:ptr_new(), pref:' ', destretch:0B, wb:' ',$
             wbfiles:strarr(nlc), camt:' ', camr:' ', camwb:' ',$
             x0:0L, x1:0L, y0:0L, y1:0L, telog:' ', ftfiles:strarr(nlc), $
-            frfiles:strarr(nlc), utflat:' ', urflat:' ', scan:' '}
+            frfiles:strarr(nlc), utflat:' ', urflat:' ', scan:' ', ftype:''}
 END

@@ -10,7 +10,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
                              bad = bad, nthreads=nthreads, nostretch = nostretch,$
                              scans_only = scans_only, no_cross_talk =no_cross_talk, $
                              mask = mask, overwrite = overwrite, extraclip = extraclip, $
-                             t0 = t0, t1 = t1
+                             t0 = t0, t1 = t1, no_descatter = no_descatter
 
   ;; Get procedure name
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0]) + ': '
@@ -240,7 +240,16 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
 
   tempwav = udwav - double(pref)
   totpref = 2./(red_intepf(twav, tpref, tempwav) + red_intepf(rwav, rpref, tempwav))
-  
+
+
+  do_descatter = 0
+  if((pref eq '8542' OR pref eq '7772' OR pref eq '8536') AND ~keyword_set(no_descatter)) then begin
+     pref1 = pref
+     if(pref eq '8536') then pref1 = '8542'
+     self -> loadbackscatter, self.camttag, pref1, tbg, tpsf
+     self -> loadbackscatter, self.camrtag, pref1, rbg, rpsf
+     do_descatter = 1
+  endif
 
 
   
@@ -265,7 +274,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      
      print, ' '
      ;; Check that file does not exist
-     ofile = ofiles_root+'.'+uscan[tt]+'.fcube'
+     ofile = ofiles_root+'.'+uscan[tt]+'.fits'
      if(file_test(ofile) AND ~keyword_set(overwrite)) then begin
         print, inam+'Warning, skipping processing of existing file -> '+file_basename(ofile)+''
         continue
@@ -291,15 +300,25 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
               ;;
               ;; Read, dark, flat, clip, fillpix
               ;;
-              ;fzread, iwb,  ifiles[nn,ww,ll,tt], h
-            
+                                ;fzread, iwb,  ifiles[nn,ww,ll,tt], h
+
+              if(do_descatter gt 0) then begin
+                 inbt =  red_cdescatter(f0(tfiles[nn,ww,ll,tt]) - dd[*,*,1], tbg, tpsf, nthreads = nthreads, verbose = 0)
+                 inbr =  red_cdescatter(f0(rfiles[nn,ww,ll,tt]) - dd[*,*,2], rbg, rpsf, nthreads = nthreads, verbose = 0)
+              endif else begin
+                 inbt =  f0(tfiles[nn,ww,ll,tt]) - dd[*,*,1]
+                 inbr =  f0(rfiles[nn,ww,ll,tt]) - dd[*,*,2]
+              endelse
+
+              
+
               
             ;  iwb = $
             ;     red_fillpix(red_clipim((float(iwb) - dd[*,*,0]) * ff[*,*,ww,0], cl[*,0]), nt=nthreads)
               inbt= $
-                 red_fillpix(red_clipim((f0(tfiles[nn,ww,ll,tt]) - dd[*,*,1]) * ff[*,*,ww,1], cl[*,1]), nt=nthreads)
+                 red_fillpix(red_clipim(inbt * ff[*,*,ww,1], cl[*,1]), nt=nthreads)
               inbr = $
-                 red_fillpix(red_clipim((f0(rfiles[nn,ww,ll,tt]) - dd[*,*,2]) * ff[*,*,ww,2], cl[*,2]), nt=nthreads)
+                 red_fillpix(red_clipim(inbr * ff[*,*,ww,2], cl[*,2]), nt=nthreads)
               nadd++
 
               
@@ -465,13 +484,16 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
 
      
      print, inam+'saving '+ofile
-     head = red_pol_lpheader(nx1, ny1, nwav*4L, /float)
-     openw, lun, ofile, /get_lun
-     writeu,lun, head
-     writeu,lun, float(transpose(cub,[0,1,3,2]))
-     free_lun, lun
-     if(tt eq 0) then fzwrite, tempwav, file_dirname(ofile)+'/wav.'+pref+'.f0',' '
+     ;head = red_pol_lpheader(nx1, ny1, nwav*4L, /float)
+     ;openw, lun, ofile, /get_lun
+     ;writeu,lun, head
+     ;writeu,lun, float(transpose(cub,[0,1,3,2]))
+                                ;free_lun, lun
+     writefits, ofile, float(transpose(cub,[0,1,3,2]))
      
+    ; if(tt eq 0) then fzwrite, tempwav, file_dirname(ofile)+'/wav.'+pref+'.f0',' '
+     if(tt eq 0) then writefits,  file_dirname(ofile)+'/wav_'+pref+'.f0', tempwav
+
   endfor
   
   

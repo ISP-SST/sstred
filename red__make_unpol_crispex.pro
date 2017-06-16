@@ -312,7 +312,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      openw, lun, odir + '/' + ofile, /get_lun
      writeu, lun, head
      point_lun, lun, 0L
-     dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,/nozero), 512)
+     if(~keyword_set(float)) then dat = assoc(lun, intarr(dimim[0], dimim[1], nwav,/nozero), 512) else $
+        dat = assoc(lun, fltarr(dimim[0], dimim[1], nwav,/nozero), 512)
      print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
      openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
      printf,lunf, 'nx=', dimim[0]
@@ -470,7 +471,8 @@ pro red::make_unpol_crispex, rot_dir = rot_dir, square = square, tiles=tiles, cl
      free_lun, lun
      print, inam + ' : done'
      print, inam + ' : result saved to -> '+odir+'/'+ofile 
-     red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = nscan, nw = nwav, maxsize=maxsize
+     if(~keyword_set(float)) then red_flipthecube_unpol, odir+'/'+ofile, /icube, nt = nscan, nw = nwav, maxsize=maxsize else $
+        red_flipthecube_unpol, odir+'/'+ofile,  nt = nscan, nw = nwav, maxsize=maxsize
 ;     make_crispex_sp_cube, odir+'/'+ofile, nwav, nscan
   endif
 

@@ -61,7 +61,7 @@
 ; 
 ; 
 ;-
-pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = camr, camwb = camwb, newflats = newflats
+pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = camr, camwb = camwb, newflats = newflats, ftype = ftype
   self.tfiles[*] = tfiles
   self.rfiles[*] = rfiles
   self.state = state
@@ -70,6 +70,7 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
   self.camr = camr
   self.camwb = camwb
   self.scan = (strsplit(state,'.',/extract))[0]
+  self.ftype = ftype
 
   ;; Wb images?
 
@@ -86,7 +87,7 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
   ;; Total WB image
    
   ;;state = '0'+strmid(state,1,80)
-  tmp = dir+'/'+camwb+'.'+strjoin((strsplit(state,'.',/extract))[0:1], '.')+'.momfbd'
+  tmp = dir+'/'+camwb+'.'+strjoin((strsplit(state,'.',/extract))[0:1], '.')+'.'+ftype
   if(file_test(tmp)) then begin
      self.wb = tmp
      

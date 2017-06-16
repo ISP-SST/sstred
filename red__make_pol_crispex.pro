@@ -94,6 +94,11 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
 
+  ftype = 'momfbd'
+  if(self.filetype eq 'ANA') then ftype = 'f0'
+
+
+  
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
@@ -202,7 +207,7 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
      print, f+'/stokes'
   endif
 
-  wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.momfbd', count = wbf)
+  wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.'+ftype, count = wbf)
 
   st = red_get_stkstates(tfiles)
 
@@ -373,12 +378,12 @@ pro red::make_pol_crispex, rot_dir = rot_dir, scans_only = scans_only, overwrite
         if(~keyword_set(scans_only)) then begin
            for stk = 0,3 do begin
               if(full) then begin
-                 bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]), full=ff)
+                 bla = red_rotation(tmp[*,*,stk], ang[ss], shift[0,ss], shift[1,ss], full=ff)
               endif else begin
                  bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]))
               endelse
               if(~keyword_set(nostretch)) then bla = red_stretch( temporary(bla), reform(grid[ss,*,*,*]))
-              d[*,*,stk,ww] = rotate( temporary(bla[0:dimim[0]-1, 0:dimim[1]-1]), rot_dir) 
+              d[*,*,stk,ww] = (bla[0:dimim[0]-1, 0:dimim[1]-1]) ;rotate( temporary(bla[0:dimim[0]-1, 0:dimim[1]-1]), rot_dir) 
            endfor
         endif else for stk=0,3 do d[*,*,stk,ww] = rotate(tmp[*,*,stk], rot_dir)
         

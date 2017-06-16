@@ -58,6 +58,9 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
                       wavelength_cube = wavelength_cube, float=float
 
   inam  = 'red::make_cmaps : '
+  ftype = 'momfbd'
+  if(self.filetype eq 'ANA') then ftype = 'f0'
+  
 ;  if(n_elements(cmap) eq 0) then begin
 ;     print, inam + 'Error, provide a valid image input'
 ;     return
@@ -89,10 +92,10 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
   cam = self.camttag
   if(keyword_set(reflected)) then cam = self.camrtag
 
-  wbf = file_search(dir+'/cfg/results/'+self.camwbtag+'.?????.????.momfbd', count = cw)
+  wbf = file_search(dir+'/cfg/results/'+self.camwbtag+'.?????.????.'+ftype, count = cw)
   if(keyword_set( wavelength_cube)) then begin
-     nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc1.momfbd', count = cn)
-     if(cn eq 0) then nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc4.momfbd', count = cn)
+     nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc1.'+ftype, count = cn)
+     if(cn eq 0) then nbf = file_search(dir+'/cfg/results/'+cam+'.*.lc4.'+ftype, count = cn)
      ;; wbff= file_search(dir+'/cfg/results/'+cam+'.?????.????.momfbd', count = cw1)
      ;;
      ;; States
@@ -163,8 +166,11 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      ;; get image border
      ;;
   endif else nscan = n_elements(ang)
-  if(n_elements(x0) eq 0) then dimim = red_getborder(red_mozaic(momfbd_read(wbf[0])), x0, x1, y0, y1, square=square)
-
+  if(ftype eq 'momfbd') then wbimg = red_mozaic(momfbd_read(wbf[0])) else $
+     wbimg = f0(wbf[0])
+  if(n_elements(x0) eq 0) then begin
+     dimim = red_getborder(wbimg, x0, x1, y0, y1, square=square)
+  endif
 
   nx = x1 - x0 + 1L
   ny = y1 - y0 + 1L
@@ -203,7 +209,31 @@ pro red::make_cmaps,  wbpsf = wbpsf, reflected = reflected, square=square, rot_d
      psf /= total(psf, /double)
      cmap1 = red_convolve(cmap, psf)
   endif else cmap1 = cmap
-  cmap1 = (red_applyoffsets(red_clipim(temporary(cmap1), cl[*,idx]), xoffs,yoffs))[x0:x1,y0:y1]
+
+  if(ftype eq 'f0') then begin
+     dmap = size(red_clipim((cmap1), cl[*,idx]), /dim)
+     dim = size(wbimg, /dim)
+     print, dim
+     xx0 = 0
+     xx1 = dmap[0]-1
+     yy0 = 0
+     yy1 = dmap[1]-1
+     
+     if(dmap[0] ne dim[0]) then begin
+        dx = (dmap[0] - dim[0])/2
+        xx0 = dx
+        xx1 = dx+dim[0]-1
+     endif
+     if(dmap[1] ne dim[1]) then begin
+        dy = (dmap[1] - dim[1])/2
+        yy0 = dy
+        yy1 = dy+dim[1]-1
+     endif
+     
+    
+     cmap1 = ((red_applyoffsets(red_clipim((cmap1), cl[*,idx]), xoffs,yoffs))[xx0:xx1,yy0:yy1])[x0:x1,y0:y1]
+
+  endif else   cmap1 = ((red_applyoffsets(red_clipim(temporary(cmap1), cl[*,idx]), xoffs,yoffs)))[x0:x1,y0:y1]
 
 
   ;;

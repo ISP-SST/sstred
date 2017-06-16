@@ -203,9 +203,9 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
           ny = y1 - y0 + 1
           cub = fltarr(nx, ny, ct)
       ENDIF
+
       
       cub[*, *, ii] = red_fillpix((temporary(tmp))[x0:x1, y0:y1], nthreads = 4L)
-      
   ENDFOR
   if (keyword_set(fullframe)) then cub1 = cub
 
@@ -238,7 +238,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
      endif
 
      print, inam + ' : aligning images ... ', format = '(A, $)'
-     shift = red_aligncube(cub, np, xbd = xbd, ybd = ybd, cubic = cubic);, /aligncube)
+     shift = red_aligncube(cub, np, xbd = xbd, ybd = ybd, cubic = cubic, /aligncube)
      print, 'done'
   endif else begin
      print, inam + ' : Using external shifts'
@@ -273,7 +273,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
      
   endif else begin
      ff = 0
-     for ii=0, ct-1 do cub[*,*,ii] = red_rotation(cub[*,*,ii], 0.0, sh[0,ii], sh[1,ii])
+     ;for ii=0, ct-1 do cub[*,*,ii] = red_rotation(cub[*,*,ii], 0.0, sh[0,ii], sh[1,ii])
   endelse
   
   ;; De-stretch
