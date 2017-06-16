@@ -19,8 +19,8 @@ endif
 creduc.so: $(OFILES)
 	$(CXX) -shared -o creduc.so $(OFILES) -L$(MDIR)/lib -lfftw3 -lfftw3_threads -lpthread -fopenmp
 
-install: $(INSTFILES)
-	cp $(INSTFILES) $(IDIR)
-
+#install: $(INSTFILES)
+#	cp $(INSTFILES) $(IDIR)
+#
 clean:
-	rm *.o *.so
+	rm *.o #*.so
