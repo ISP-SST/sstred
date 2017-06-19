@@ -164,6 +164,8 @@
 ;   2017-05-14 : THI. Calculate the patches within the common FOV, using global
 ;                coordinates for the redux-code.
 ;
+;   2017-06-19 : MGL. Use gradient_vogel if there is PD data.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -473,7 +475,11 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.globals += 'FPMETHOD=horint' + LF
         cfg.globals += 'BASIS=Karhunen-Loeve' + LF
         cfg.globals += 'GETSTEP=getstep_conjugate_gradient' + LF
-        cfg.globals += 'GRADIENT=gradient_diff' + LF
+        if keyword_set(no_pd) then begin
+          cfg.globals += 'GRADIENT=gradient_diff' + LF
+        endif else begin
+          cfg.globals += 'GRADIENT=gradient_vogel' + LF
+        endelse
         cfg.globals += 'MODES=' + modes + LF
         cfg.globals += 'TELESCOPE_D=0.97' + LF
         cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LF
