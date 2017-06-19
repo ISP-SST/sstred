@@ -478,7 +478,7 @@ pro red::prepmomfbd, wb_states = wb_states $
         if keyword_set(no_pd) then begin
           cfg.globals += 'GRADIENT=gradient_diff' + LF
         endif else begin
-          cfg.globals += 'GRADIENT=gradient_vogel' + LF
+          cfg.globals += 'GRADIENT=gradient_Vogel' + LF
         endelse
         cfg.globals += 'MODES=' + modes + LF
         cfg.globals += 'TELESCOPE_D=0.97' + LF
