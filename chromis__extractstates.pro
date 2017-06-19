@@ -185,7 +185,8 @@ pro chromis::extractstates, strings, states $
 
     wavelnth = fxpar(head, 'WAVELNTH', count = haswav)
     if haswav ne 0 then begin
-      if wavelnth ne '        ' then $
+;stop
+;      if wavelnth ne '        ' then $
          states[ifile].pf_wavelength = float(wavelnth)
     endif
 
@@ -325,7 +326,7 @@ pro chromis::extractstates, strings, states $
           ;; For wideband, if there is no tuning info, assume
           ;; prefilter wavelength.
           states[ifile].tun_wavelength = states[ifile].pf_wavelength
-          states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
+          states[ifile].tuning = string(round(states[ifile].tun_wavelength*10) $
                                         , format = '(i04)') $
                                  + '_+0'
         endif else if strmatch(states[ifile].filename, file_dirname((*self.dark_dir)[0])+'*') then begin
