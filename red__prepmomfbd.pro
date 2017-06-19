@@ -114,6 +114,9 @@
 ;                keyword_set, to find out if a keyword needs to be set
 ;                to a default value.
 ;
+;   2017-06-19 : THI. Added extraclip keyword to allow for user-defined edge trim for each edge
+;                Changed default margin from 5 to 0.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -132,6 +135,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , nf = nfac $
                      , weight = weight $
                      , maxshift = maxshift $
+                     , extraclip = extraclip $
                      , margin = margin
 
   ;; Name of this method
@@ -157,7 +161,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   if n_elements(nfac) gt 0 then begin
      if(n_elements(nfac) eq 1) then nfac = replicate(nfac,3)
   endif
-  if n_elements(margin) eq 0 then margin = 5
+  if n_elements(margin) eq 0 then margin = 0
   
   ;; Get states from the data folder
   d_dirs = file_search(self.out_dir+'/data/*', /TEST_DIR, count = nd)
@@ -168,7 +172,22 @@ pro red::prepmomfbd, wb_states = wb_states $
   ENDIF
   
   self -> getcamtags, dir = self.data_dir
-  
+
+  case n_elements(extraclip) of
+    0 : eclip = [0L, 0L, 0L, 0L]
+    1 : eclip = replicate(extraclip, 4)
+    2 : eclip = [ replicate(extraclip[0], 2), $
+                  replicate(extraclip[1], 2) ]
+    4 : eclip = extraclip               ; Leave as it is.
+    else : begin
+      print, inam + "ERROR: Don't know how to use keyword extraclip with " $
+             + strtrim(n_elements(extraclip), 2) + ' elements.'
+      stop
+    end
+  endcase
+
+  eclip += margin      ; add margin to extraclip along all edges.
+   
   for fff = 0, nd - 1 do begin
 
      folder_tag = file_basename(d_dirs[fff])
@@ -242,12 +261,20 @@ pro red::prepmomfbd, wb_states = wb_states $
            tclip = acl[1]
            rclip = acl[2]
 
-           xsz = abs(cl[0,0]-cl[1,0]+1)
-           ysz = abs(cl[2,0]-cl[3,0]+1)
-           this_margin = max([0, min([xsz/3, ysz/3, margin])])  ; prevent silly margin values
-           ; generate patch positions with margin
-           sim_x = rdx_segment( this_margin, xsz-this_margin, numpoints, /momfbd )
-           sim_y = rdx_segment( this_margin, ysz-this_margin, numpoints, /momfbd )
+           sim_roi = cl[*,0]
+           sim_roi[[0,2]] += eclip[[0,2]]      ; shrink the common FOV by extraclip.
+           sim_roi[[1,3]] -= eclip[[1,3]]
+           if sim_roi[0] gt sim_roi[1] || sim_roi[2] gt sim_roi[3] then begin
+             print, inam + ' : Error: The region of interest looks weird. sim_roi = [' + strjoin(strtrim(sim_roi,2),',') + ']'
+             print, inam + '                                               margin = ' + strtrim(margin,2)
+             print, inam + '                                            extraclip = [' + strjoin(strtrim(extraclip,2),',') + ']'
+             return
+           endif
+           sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
+           sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
+           ; the patch coordinates are relative to the align-clip area
+           sim_x -= sim_roi[0]
+           sim_y -= sim_roi[2]
            sim_x_string = strjoin(strtrim(sim_x,2), ',')
            sim_y_string = strjoin(strtrim(sim_y,2), ',')
 
