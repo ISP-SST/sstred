@@ -132,6 +132,8 @@
 ;    2016-10-27 : MGL. Put the camera into the states if found.
 ;
 ;    2017-05-08 : MGL. Match camera name to get WB status.
+; 
+;    2017-06-19 : MGL. Use red_fitspar_getwavelnth.
 ;
 ; 
 ;-
@@ -183,11 +185,10 @@ pro chromis::extractstates, strings, states $
     states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
     texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
 
-    wavelnth = fxpar(head, 'WAVELNTH', count = haswav)
+    red_fitspar_getwavelnth, head, wavelnth = wavelnth, haswav = haswav
     if haswav ne 0 then begin
-;stop
 ;      if wavelnth ne '        ' then $
-         states[ifile].pf_wavelength = float(wavelnth)
+      states[ifile].pf_wavelength = float(wavelnth)
     endif
 
     states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
@@ -326,7 +327,7 @@ pro chromis::extractstates, strings, states $
           ;; For wideband, if there is no tuning info, assume
           ;; prefilter wavelength.
           states[ifile].tun_wavelength = states[ifile].pf_wavelength
-          states[ifile].tuning = string(round(states[ifile].tun_wavelength*10) $
+          states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
                                         , format = '(i04)') $
                                  + '_+0'
         endif else if strmatch(states[ifile].filename, file_dirname((*self.dark_dir)[0])+'*') then begin
