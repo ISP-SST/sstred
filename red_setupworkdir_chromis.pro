@@ -229,7 +229,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
       for ipref = 0, Nprefilters-1 do begin
         printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+'" $
                 + red_strreplace(pinhdirs[i], root_dir, '') $
-                + "', pref='"+prefilters[ipref]+"'"
+                + "';, pref='"+prefilters[ipref]+"'"
       endfor                    ; ipref
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -246,7 +246,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
           for ipref = 0, Nprefilters-1 do begin
             printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+'" $
                     +  red_strreplace(pinhsubdirs[j], root_dir, '') $
-                    + "' pref='" + prefilters[ipref]+"'" 
+                    + "';, pref='" + prefilters[ipref]+"'" 
           endfor                ; ipref
         endif
       endfor                    ; j
