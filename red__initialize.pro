@@ -58,7 +58,10 @@
 ;
 ;   2017-03-10 : MGL. New member "developer_mode". 
 ;
-;   2017-04-26 : MGL. Use red_mpfit_version.
+;   2017-04-26 : MGL. Use red_mpfit_version. 
+;
+;   2017-06-19 : MGL. If multiple coyote directories, give more info
+;                about them.
 ;
 ;
 ;-
@@ -384,8 +387,8 @@ pro red::initialize, filename, develop = develop
   endfor
   
   ;; Coyote library version
-  coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
-  case Nwhere of
+  coyotepaths = paths(where(strmatch(paths,'*coyote'), Ncoyote))
+  case Ncoyote of
     0: begin
       print, 'The Coyote library does not seem to be in your !path.'
       stop
@@ -464,6 +467,15 @@ pro red::initialize, filename, develop = develop
     print
     print, 'Problem(s) with your installation:'
     print, self.version_problems
+    print
+
+    if Ncoyote gt 1 then begin
+      print, 'You seem to have multiple copies of the coyote library in your path.'
+      print, 'Here is the output of cgFindCoyoteFiles:'
+      print
+      cgFindCoyoteFiles
+    endif
+
     print
     if self.developer_mode then begin
       print, 'You are running ' + strlowcase(tag_names(self,/STRUCTURE_NAME)) + 'red in developer mode, your output'
