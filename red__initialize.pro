@@ -61,7 +61,9 @@
 ;   2017-04-26 : MGL. Use red_mpfit_version. 
 ;
 ;   2017-06-19 : MGL. If multiple coyote directories, give more info
-;                about them.
+;                about them. 
+;
+;   2017-06-20 : MGL. Clean up key-value handling.
 ;
 ;
 ;-
@@ -92,87 +94,55 @@ pro red::initialize, filename, develop = develop
   openr, lun, filename, /get_lun
   nl = 0L
   while(~eof(lun)) do begin
+
+    ;; Read a line
     line = ''
     readf, lun, line                           ; read line
-    field = (strsplit(line,' =',/extract))[0]  ; extract field
-    
-    if(strmid(line, 0, 1) eq '#') then continue
-    
-    ;; get fields
-    case field of
+
+    ;; Ignore empty or commented out lines
+    if strmid(line, 0, 1) eq '#' or strlen(strtrim(line, 2)) eq 0 then continue
+    keyval = red_parseparameter(line)
+    key = keyval[0]
+    value = red_cleanvalue(keyval[1])
+
+    ;; Get fields
+    case key of
       'root_dir': begin
-        self.root_dir = (strsplit(line,' =',/extract))[1] ; extract value
+        self.root_dir = value
         IF strmid(self.root_dir, strlen(self.root_dir)-1) NE '/' THEN $
            self.root_dir += '/'
       end
-;        'descatter_dir': begin
-;           self.descatter_dir = (strsplit(line,' =',/extract))[1] ; extract value
-;        end
-;        'dark_dir': begin
-;           self.dark_dir = (strsplit(line,' =',/extract))[1] ; extract value
-;        end
-      'dark_dir': BEGIN
-        tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-        IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-        IF ptr_valid(self.dark_dir) THEN red_append, *self.dark_dir, tmp $
-        ELSE self.dark_dir = ptr_new(tmp, /NO_COPY)
+      'camsz'           : self.camsz = value
+      'diversity'       : self.diversity = value
+      'filetype'        : self.filetype = value
+      'image_scale'     : self.image_scale = value
+      'isodate'         : self.isodate = value
+      'out_dir'         : self.out_dir = value
+      'pinhole_spacing' : self.pinhole_spacing = float(value)
+      'pixel_size'      : self.pixel_size = value
+      'polcal_dir'      : self.polcal_dir = value
+      'prefilter_dir'   : self.prefilter_dir = value
+      'telescope_d'     : self.telescope_d = value
+;        'descatter_dir' : self.descatter_dir = keyval[1]
+      'dark_dir': begin
+        if ptr_valid(self.dark_dir) then red_append, *self.dark_dir, value $
+        else self.dark_dir = ptr_new(value, /no_copy)
       end
-      'flat_dir': BEGIN
-        tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-        IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-        IF ptr_valid(self.flat_dir) THEN red_append, *self.flat_dir, tmp $
-        ELSE self.flat_dir = ptr_new(tmp, /NO_COPY)
-      END
-      'out_dir': begin
-        self.out_dir = (strsplit(line,' =',/extract))[1] ; extract value
+      'flat_dir': begin
+        if ptr_valid(self.flat_dir) then red_append, *self.flat_dir, value $
+        else self.flat_dir = ptr_new(value, /no_copy)
       end
       'pinh_dir': begin
-        tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-        if(strpos(tmp,"'") ne -1) then dum = execute('tmp = '+tmp)
-        if ptr_valid(self.pinh_dirs) then red_append, *self.pinh_dirs, tmp $
-        else self.pinh_dirs = ptr_new(tmp, /NO_COPY)
+        if ptr_valid(self.pinh_dirs) then red_append, *self.pinh_dirs, value $
+        else self.pinh_dirs = ptr_new(value, /no_copy)
       end
       'data_dir': begin
-        tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-        IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-        IF ptr_valid(self.data_dirs) THEN red_append, *self.data_dirs, tmp $
-        ELSE self.data_dirs = ptr_new(tmp, /NO_COPY)
+        if ptr_valid(self.data_dirs) then red_append, *self.data_dirs, value $
+        else self.data_dirs = ptr_new(value, /no_copy)
       end
-      'polcal_dir': begin
-        self.polcal_dir =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'filetype': begin
-        self.filetype = (strsplit(line,' =',/extract))[1]
-      end
-      'camera': BEGIN
-        tmp = strtrim((strsplit(line, '=', /extract))[1],2)
-        IF(strpos(tmp,"'") NE -1) THEN dum = execute('tmp = '+tmp)
-        IF ptr_valid(self.cameras) THEN red_append, *self.cameras, tmp $
-        ELSE self.cameras = ptr_new(tmp, /NO_COPY)
-      END
-      'prefilter_dir': begin
-        self.prefilter_dir =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'telescope_d':begin
-        self.telescope_d =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'image_scale':begin
-        self.image_scale =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'diversity':begin
-        self.diversity =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'pixel_size':begin
-        self.pixel_size =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'camsz':begin
-        self.camsz =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'isodate':begin
-        self.isodate =  (strsplit(line,' =',/extract))[1] ; extract value
-      end
-      'pinhole_spacing': begin
-        self.pinhole_spacing = float((strsplit(line,' =',/extract))[1]) ; extract value
+      'camera': begin
+        if ptr_valid(self.cameras) then red_append, *self.cameras, value $
+        else self.cameras = ptr_new(value, /no_copy)
       end
       else: begin
         print, 'red::initialize : Skipping line ',$
@@ -495,6 +465,8 @@ pro red::initialize, filename, develop = develop
 
   
   cgWindow_SetDefs, PS_Decomposed=1
+
+  stop
   
   return
 end
