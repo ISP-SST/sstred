@@ -226,8 +226,8 @@ pro red::fitgains, npar = npar $
 
       if ~keyword_set(nosave) then begin
 
+        print, inam + ' : Copying '+namelist[0]+' -> '+outnames[0]
         file_copy, namelist[0], outnames[0], /overwrite
-        print, inam + ' : Copying file -> '+outnames[0]
 
         ;; Need to set res (the cavity error map?).
         dat = readfits(ffile)
