@@ -39,6 +39,8 @@
 ;         shift-and-sum in red_sumfiles for summing pinholes
 ;
 ; 
+; :Returns:
+; 
 ; 
 ; :Params:
 ; 
@@ -58,7 +60,8 @@
 ; 
 ; :Dependencies:
 ;
-;    The external C++ module in the creduc/ subdir must be compiled.
+;    The external C++ module must be compiled and the system variable
+;    CREDUC point to creduc.so.
 ;
 ; 
 ; :History:
@@ -98,6 +101,6 @@
 ;-
 function crispred, filename, develop = develop
 
-  return, obj_new('crisp', filename)
+  return, obj_new('crisp', filename, develop = develop)
   
 end

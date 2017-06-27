@@ -7,6 +7,10 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate
                             comment:'Telescope configuration'}]
 
   
+
+  Ncpu = !cpu.hw_ncpu
+  If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
+
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
 

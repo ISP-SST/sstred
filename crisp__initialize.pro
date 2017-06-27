@@ -38,10 +38,11 @@ pro crisp::initialize, filename, develop = develop
     print, 'crisp::initialize : CRISP data not supported in the chromis branch of the pipeline.'
     exit
   endif
-  
-  self->RED::initialize, filename ; Call initialize of the base-class first to load common parameters
 
-                                ; Then load CRISP specific stuff
+  ;; Call initialize of the base-class first to load common parameters
+  self->RED::initialize, filename, develop = develop
+  
+  ;; Then load CRISP specific stuff
 
   self.docamt = 1B
   self.docamr = 1B
