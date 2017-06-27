@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Tomas Hillberg, ISP
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; :Params:
 ; 
@@ -98,8 +98,8 @@ pro crisp::selectfiles, cam = cam $
             return
         endif
         detector = self->RED::getdetector(cam)
-        
-        file_template = cam + '/' + detector + '*'
+       
+        file_template = cam + '/' + strtrim(detector, 2)+ '*'
         
         if( n_elements(dirs) gt 0 ) then dirs = [dirs] $    ; ensure it's an array, even with 1 element
         else begin 
