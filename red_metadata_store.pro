@@ -34,6 +34,8 @@
 ; :History:
 ; 
 ;    2017-03-06 : MGL. First version.
+; 
+;    2017-06-28 : MGL. Use red_fitsaddpar.
 ;
 ;-
 pro red_metadata_store, metadata $
@@ -54,7 +56,8 @@ pro red_metadata_store, metadata $
   endelse
 
   header_changed = 0
-  
+
+  anchor = 'DATE'
   ;; Loop through the keywords
   for ikeyword = 0, Nkeywords-1 do begin
     
@@ -69,7 +72,7 @@ pro red_metadata_store, metadata $
         if strmid(comment, 0, 1) ne ' ' then comment = ' '+comment
       endif
       ;; Add the keyword to the header
-      fxaddpar, head, after = 'DATE' $
+      red_fitsaddpar, anchor = anchor, head $
                 , metadata[ikeyword].keyword $
                 , metadata[ikeyword].value $
                 , comment
@@ -79,6 +82,6 @@ pro red_metadata_store, metadata $
   endfor                        ; ikeyword
 
   ;; Write the updated header to disk if it has changed.
-  if header_changed then fxwrite,fname,head 
+  if header_changed then fxwrite, fname, head 
   
 end
