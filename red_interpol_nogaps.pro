@@ -35,6 +35,8 @@
 ; 
 ;    2017-05-31 : MGL. New keyword tol.
 ; 
+;    2017-06-08 : MGL. Improve the gap finding.
+; 
 ; 
 ; 
 ; 
@@ -48,29 +50,53 @@ function red_interpol_nogaps, y, x, xp, tol = tol, _ref_extra = extra
   yp[*] = !Values.F_NaN
 
   ;; Distance between data points.
-  dx = deriv(x)
+  dx = red_differential(x)
 
   ;; Find endpoints of OK intervals. This is based on the assumption
-  ;; that the data has constant dx, except for gaps.
-  indx = [0, where(dx gt median(dx)*(1.+tol), count), n_elements(x)-1]
-  if count eq 0 then return, yp
-  dindx = where(deriv(indx) ne 1., Nd)
-  intervals = indx[dindx]
+  ;; that the data have more or less constant dx, except for gaps.
 
-  if odd(n_elements(intervals)) then stop
+  indx_largedist = where(dx gt median(dx)*(1.+tol), Nlarge)
+  if Nlarge eq 0 then begin
+    ;; No large distances detected, just do normal interpolation.
+    return, interpol(y, x, xp, _strict_extra = extra)
+  endif
+  
+  ;; Some large distances detected. We want to use only the
+  ;; stretches of data where the distances are small enough.
+  mask_smalldist = dx lt median(dx)*(1.+tol)
+  onoff = red_differential(float(dx lt median(dx)*(1.+tol)))
+  on = where(onoff gt 0)
+  off = where(onoff lt 0)
+  if n_elements(off) lt n_elements(on) then off = [off, n_elements(x)-1]
 
-  for iinterval = 0, n_elements(intervals)-1, 2 do begin
+  Nintervals = n_elements(on)
+;  
+;  indx_smalldist = where(dx lt median(dx)*(1.+tol), Nsmall)
+;  mask_gaps =  deriv(indx_smalldist) gt 1
+;  indx_gaps = [0, where(deriv(indx_smalldist) gt 1, Ngaps)]
+;    
+;  , n_elements(x)-1]
+;  if count eq 0 then return, yp
+;  dindx = where(deriv(indx) ne 1., Nd)
+;  intervals = indx[dindx]
+;
+;  if odd(n_elements(intervals)) then stop
+  
+  for iinterval = 0, Nintervals-1 do begin
 ;    print, iinterval
-    indx = where((xp ge x[intervals[iinterval]]) and (xp le x[intervals[iinterval+1]]), count)
-    if count gt 0 then begin
-;      print, 'Will interpolate'
-;      print, 'X coordinates : ', x[intervals[iinterval]:intervals[iinterval+1]]
-;      print, 'Y values : ', y[intervals[iinterval]:intervals[iinterval+1]]
-;      print, 'Xp coordinates : ', xp[indx]
-      yp[indx] = interpol(y[intervals[iinterval]:intervals[iinterval+1]] $
-                          , x[intervals[iinterval]:intervals[iinterval+1]] $
+    Npoints = off[iinterval] - on[iinterval]
+    if Npoints gt 0 then begin
+      indx = where((xp ge x[on[iinterval]]) and (xp le x[off[iinterval]-1]), count)
+      yp[indx] = interpol(y[on[iinterval]:off[iinterval]-1] $
+                          , x[on[iinterval]:off[iinterval]-1] $
                           , xp[indx], _strict_extra = extra)
-;      print, 'Yp values : ', yp[indx] 
+      if 0 then begin
+        print, 'Interpolation'
+        print, 'X coordinates : ', x[on[iinterval]:off[iinterval]-1]
+        print, 'Y values : ', y[on[iinterval]:off[iinterval]-1]
+        print, 'Xp coordinates : ', xp[indx]
+        print, 'Yp values : ', yp[indx] 
+      endif
     endif 
     
   endfor                        ; iinterval
