@@ -76,6 +76,8 @@
 ;                keywords.
 ; 
 ;   2017-06-28 : MGL. Adapt to new version of crisp::selectfiles.
+;
+;   2017-09-29 : MGL. Bugfix: states.pref --> states.prefilter.
 ; 
 ;-
 pro crisp::selectfiles, cam = cam $
@@ -140,12 +142,12 @@ pro crisp::selectfiles, cam = cam $
     selected = states.skip * 0
     prefilter = [prefilter]     ; make sure it's an array
     for ip = 0, Npref-1 do begin
-      pos = where(states.pref eq prefilter[ip])
+      pos = where(states.prefilter eq prefilter[ip])
       if( min(pos) ge 0 ) then begin
         selected[pos] = 1
       endif
                                 ; stop
-    endfor
+    endfor                      ; ip
     states[where(selected lt 1)].skip = 1
   endif
   
