@@ -157,7 +157,7 @@ pro red::sumdark, overwrite = overwrite, $
 
     self->selectfiles, cam=cam, dirs=dirs, ustat=ustat, $
                        files=files, states=states, /force
-    
+
     nf = n_elements(files)
     if( nf eq 0 || files[0] eq '') then begin
       print, inam+' : '+cam+': no files found in: '+dirstr
@@ -208,7 +208,7 @@ pro red::sumdark, overwrite = overwrite, $
         ;;$
         ;;                    , time_avg = time_avg, time_beg = time_beg, time_end = time_end)
       endelse
-      
+
       ;; The momfbd code can't read doubles.
       dark = float(dark)      
       
