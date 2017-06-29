@@ -33,9 +33,11 @@
 ;
 ;
 ;    sum_in_rdx : in, optional, type=boolean
+;
 ;      Use rdx_sumfiles.
 ;   
 ;    filter  : in, optional, type=int, default=3
+;
 ;       Size of the medianfilter to use when checking data.
 ;   
 ; 
@@ -213,7 +215,6 @@ pro red::sumflat, overwrite = overwrite, $
         endif
       endif
 
-
       ;; Read the dark frame 
       self -> get_calib, states[sel[0]], darkdata = dd, status = status
       if status ne 0 then begin
@@ -238,6 +239,7 @@ pro red::sumflat, overwrite = overwrite, $
         ;; info. Re-sort them.
         tmplist = files[sel]
         tmplist = tmplist(sort(tmplist))
+
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
           flat = rdx_sumfiles(tmplist, time_avg = time_avg, check = check, $
                               lun = lun, lim = lim, summed = summed, nsum = nsum $
