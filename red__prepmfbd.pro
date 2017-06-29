@@ -169,118 +169,118 @@ pro red::prepmfbd, numpoints = numpoints, $
   if n_elements(mfbddir) eq 0 then mfbddir = 'mfbd' 
 
   if n_elements(dirs) gt 0 then begin
-     dirs = [dirs] 
+    dirs = [dirs] 
   endif else begin
-     if ~ptr_valid(self.data_dirs) then begin
-        print, inam+' : ERROR : undefined data_dir'
-        return
-     endif
-     dirs = *self.data_dirs
+    if ~ptr_valid(self.data_dirs) then begin
+      print, inam+' : ERROR : undefined data_dir'
+      return
+    endif
+    dirs = *self.data_dirs
   endelse
 
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then begin
-     print, inam+' : ERROR : no directories defined'
-     return
+    print, inam+' : ERROR : no directories defined'
+    return
   endif else begin
-     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-     else dirstr = dirs[0]
+    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+    else dirstr = dirs[0]
   endelse
 
   if n_elements(camera) ne 0 then begin
-     ;; Check that the specified camera exists
-     campos = where(strmatch(*self.cameras,camera), nn)
-     if nn eq 1 then begin
-        cam = camera
-     endif else begin
-        print, inam + ' : ERROR -> camera not defined '+camera
-        retall
-     endelse
+    ;; Check that the specified camera exists
+    campos = where(strmatch(*self.cameras,camera), nn)
+    if nn eq 1 then begin
+      cam = camera
+    endif else begin
+      print, inam + ' : ERROR -> camera not defined '+camera
+      retall
+    endelse
   endif else begin
-     ;; Select as default the wideband camera
-     campos = where(strmatch(*self.cameras,'*-W'), nn)
-     if nn eq 1 then begin
-        cam = (*self.cameras)[campos]
-     endif else begin
-        print, inam + ' : ERROR -> camera not specified and no wideband camera defined.'
-        retall        
-     endelse
+    ;; Select as default the wideband camera
+    campos = where(strmatch(*self.cameras,'*-W'), nn)
+    if nn eq 1 then begin
+      cam = (*self.cameras)[campos]
+    endif else begin
+      print, inam + ' : ERROR -> camera not specified and no wideband camera defined.'
+      retall        
+    endelse
   endelse
 
   detector = self -> getdetector(cam)
   
   if n_elements(numpoints) eq 0 then begin
-     ;; About the same subfield size in arcsec as CRISP:
-     numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+    ;; About the same subfield size in arcsec as CRISP:
+    numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
   endif else begin
-     ;; Convert strings, just to avoid breaking existing codes.
-     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
+    ;; Convert strings, just to avoid breaking existing codes.
+    if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
   endelse
 
   for idir = 0L, Ndirs - 1 do begin
 
-     data_dir = dirs[idir]
-     folder_tag = file_basename(data_dir)
+    data_dir = dirs[idir]
+    folder_tag = file_basename(data_dir)
 
-     ;; Directory
-     if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
-        and keyword_set(nostate) then begin
-        ;; Wideband data
-        camdir = data_dir + '/' + cam + '_nostate/'
-     endif else begin
-        ;; Narrowband data
-        camdir = data_dir + '/' + cam + '/'
-     endelse
+    ;; Directory
+    if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
+       and keyword_set(nostate) then begin
+      ;; Wideband data
+      camdir = data_dir + '/' + cam + '_nostate/'
+    endif else begin
+      ;; Narrowband data
+      camdir = data_dir + '/' + cam + '/'
+    endelse
 
-     search = camdir + detector
-     files = file_search(search+'*', count = Nfiles) 
+    search = camdir + detector
+    files = file_search(search+'*', count = Nfiles) 
 
-     IF Nfiles EQ 0 THEN BEGIN
-         print, inam + ' : ERROR -> no frames found in '+search
-         print, inam + '   Did you run link_data?'
-         return
-     ENDIF 
+    IF Nfiles EQ 0 THEN BEGIN
+      print, inam + ' : ERROR -> no frames found in '+search
+      print, inam + '   Did you run link_data?'
+      return
+    ENDIF 
 
-     files = red_sortfiles(temporary(files))
-     
-     ;; Get image unique states
-     self -> extractstates, files, states
+    files = red_sortfiles(temporary(files))
+    
+    ;; Get image unique states
+    self -> extractstates, files, states
 
-     ;; Optionally remove unwanted scans
-     if n_elements(scannums) ne 0 then begin
-        if size(scannums, /tname) eq 'STRING' then $
-           scann = red_expandrange(scannums) else scann = scannums
-        match2, scann, states.scannumber, suba, subb
-        indx = where(subb ne -1)
-        files = files[indx]
-        states = states[indx]
-        Nfiles = n_elements(indx)
-     endif
+    ;; Optionally remove unwanted scans
+    if n_elements(scannums) ne 0 then begin
+      if size(scannums, /tname) eq 'STRING' then $
+         scann = red_expandrange(scannums) else scann = scannums
+      match2, scann, states.scannumber, suba, subb
+      indx = where(subb ne -1)
+      files = files[indx]
+      states = states[indx]
+      Nfiles = n_elements(indx)
+    endif
 
 
-     ;; Get unique prefilters
-     upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
-     Npref = n_elements(upref)
+    ;; Get unique prefilters
+    upref = states[uniq(states.prefilter, sort(states.prefilter))].prefilter
+    Npref = n_elements(upref)
 
-     ;; Get fullstates
-     ustate = states[uniq(states.fullstate, sort(states.fullstate))].fullstate
-     Nstates = n_elements(ustate)
+    ;; Get fullstates
+    ustate = states[uniq(states.fullstate, sort(states.fullstate))].fullstate
+    Nstates = n_elements(ustate)
 
-     ;; Get scan numbers
-     uscan = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
-     Nscans = n_elements(uscan)
+    ;; Get scan numbers
+    uscan = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
+    Nscans = n_elements(uscan)
 
-     ;; Create a config file per state and scan number
+    ;; Create a config file per state and scan number
 
-  
-     ;; Loop over scans
-     for iscan = 0L, Nscans-1 do begin
+    
+    ;; Loop over scans
+    for iscan = 0L, Nscans-1 do begin
+      
+      scan = string(uscan[iscan], format = '(i05)')
+
+      ;; Loop over prefilters
+      for istate = 0L, Nstates - 1 do begin
         
-        scan = string(uscan[iscan], format = '(i05)')
-
-        ;; Loop over prefilters
-        for istate = 0L, Nstates - 1 do begin
-           
 ;           if n_elements(pref) ne 0 then begin
 ;              if upref[ipref] NE pref then begin
 ;                 print, inam + ' : Skipping prefilter -> ' + upref[ipref]
@@ -289,83 +289,83 @@ pro red::prepmfbd, numpoints = numpoints, $
 ;           endif
 
 
-           ;; Where to put the config files:
-           outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag $
-                    + '/' + ustate[istate] + '/cfg/'
+        ;; Where to put the config files:
+        outdir = self.out_dir + '/' + mfbddir + '/' + folder_tag $
+                 + '/' + ustate[istate] + '/cfg/'
 
-           ;; Needed by momfbd:
-           file_mkdir, outdir + 'results'
-           file_mkdir, outdir + 'data'
+        ;; Needed by momfbd:
+        file_mkdir, outdir + 'results'
+        file_mkdir, outdir + 'data'
 
-           ;; Image numbers for the current scan:
-           numpos = where((states.scannumber eq scan) $
+        ;; Image numbers for the current scan:
+        numpos = where((states.scannumber eq scan) $
 ;                          AND (stat.star eq 0B) $
-                          AND (states.fullstate eq ustate[istate]) $
-                          , Ncount)
-           if(Ncount eq 0) then continue
-    
-           ;; Split scan into subsets?
-           if n_elements(Nimages) eq 0 then begin
-              Nsubscans = 1
-           endif else begin
-              Nsubscans = round(Ncount/float(Nimages))
-           endelse
+                       AND (states.fullstate eq ustate[istate]) $
+                       , Ncount)
+        if(Ncount eq 0) then continue
+        
+        ;; Split scan into subsets?
+        if n_elements(Nimages) eq 0 then begin
+          Nsubscans = 1
+        endif else begin
+          Nsubscans = round(Ncount/float(Nimages))
+        endelse
 
-           ;; Loop over subsets of the current scan
-           for isub = 0L, Nsubscans-1 do begin
+        ;; Loop over subsets of the current scan
+        for isub = 0L, Nsubscans-1 do begin
 
-              if Nsubscans eq 1 then begin
-                 cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + '.cfg'
-                 n0 = strtrim(states[numpos[0]].framenumber, 2)
-                 n1 = strtrim(states[numpos[ncount-1]].framenumber, 2)
-                 nall = strjoin([n0,n1],'-')
-                 print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
-                        + scan + ' -> image range = [' + nall + ']'
-                 oname = detector + '_' + date_obs+'T'+folder_tag $
-                         + '_' + scan + '_' + ustate[istate]
-             endif else begin
-                 subscan = red_stri(isub, ni = '(i03)')
-                 cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + ':' $
-                            + subscan + '.cfg'
-                 n0 = strtrim(states[numpos[isub*ncount/Nsubscans]].framenumber, 2)
-                 n1 = strtrim(states[numpos[((isub+1)*ncount/Nsubscans-1) $
-                                            <ncount]].framenumber, 2)
-                 nall = strjoin([n0,n1],'-')                 
-                 print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
-                        + scan + ':' + subscan + ' -> image range = [' + nall + ']'
-                 oname = detector + '_' + date_obs+'T'+folder_tag $
-                         + '_' + scan + ':' + subscan + '_' + ustate[istate]
-              endelse
+          if Nsubscans eq 1 then begin
+            cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + '.cfg'
+            n0 = strtrim(states[numpos[0]].framenumber, 2)
+            n1 = strtrim(states[numpos[ncount-1]].framenumber, 2)
+            nall = strjoin([n0,n1],'-')
+            print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
+                   + scan + ' -> image range = [' + nall + ']'
+            oname = detector + '_' + date_obs+'T'+folder_tag $
+                    + '_' + scan + '_' + ustate[istate]
+          endif else begin
+            subscan = red_stri(isub, ni = '(i03)')
+            cfg_file = 'momfbd.reduc.' + ustate[istate] + '.' + scan + ':' $
+                       + subscan + '.cfg'
+            n0 = strtrim(states[numpos[isub*ncount/Nsubscans]].framenumber, 2)
+            n1 = strtrim(states[numpos[((isub+1)*ncount/Nsubscans-1) $
+                                       <ncount]].framenumber, 2)
+            nall = strjoin([n0,n1],'-')                 
+            print, inam+' : State = ' + ustate[istate] + ' -> scan = ' $
+                   + scan + ':' + subscan + ' -> image range = [' + nall + ']'
+            oname = detector + '_' + date_obs+'T'+folder_tag $
+                    + '_' + scan + ':' + subscan + '_' + ustate[istate]
+          endelse
 
-              ;; Open config file for writing
-              openw, lun, outdir + cfg_file, /get_lun, width=2500
+          ;; Open config file for writing
+          openw, lun, outdir + cfg_file, /get_lun, width=2500
 
-              self -> get_calib, states[numpos[0]], darkname = darkname, gainname = gainname
-              caminfo = red_camerainfo(detector)
+          self -> get_calib, states[numpos[0]], darkname = darkname, gainname = gainname
+          caminfo = red_camerainfo(detector)
 
-              ;; Do the dark and gain files exist?
-              if ~file_test(darkname) then red_append, missingfiles, file_basename(darkname), /ifnotthere
-              if ~file_test(gainname) then red_append, missingfiles, file_basename(gainname), /ifnotthere
-              
-              printf, lun, 'object{'
-              printf, lun, '  WAVELENGTH=' + strtrim(states[0].pf_wavelength, 2)
-              printf, lun, '  OUTPUT_FILE=results/'+oname
-              printf, lun, '  channel{'
-              printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + camdir
-              if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
-                 and keyword_set(nostate)  then begin
-                 ;; Wideband, no state
-                 template = detector + '_' + scan + '_' $
-                            + upref[ipref] + '_%07d.fits'
-              endif else begin
-                 ;; With state
-                 template = detector + '_' + scan + '_' $
-                            + states[numpos[0]].fullstate + '_%07d.fits'
-              endelse
-              printf, lun, '    FILENAME_TEMPLATE=' + template
-              printf, lun, '    GAIN_FILE=' + gainname
-              printf, lun, '    DARK_TEMPLATE=' + darkname
-              printf, lun, '    DARK_NUM=0000001'
+          ;; Do the dark and gain files exist?
+          if ~file_test(darkname) then red_append, missingfiles, file_basename(darkname), /ifnotthere
+          if ~file_test(gainname) then red_append, missingfiles, file_basename(gainname), /ifnotthere
+          
+          printf, lun, 'object{'
+          printf, lun, '  WAVELENGTH=' + strtrim(states[0].pf_wavelength, 2)
+          printf, lun, '  OUTPUT_FILE=results/'+oname
+          printf, lun, '  channel{'
+          printf, lun, '    IMAGE_DATA_DIR=' + self.out_dir + camdir
+          if (strmatch(cam,'*-W') or strmatch(cam,'*-D')) $
+             and keyword_set(nostate)  then begin
+            ;; Wideband, no state
+            template = detector + '_' + scan + '_' $
+                       + upref[ipref] + '_%07d.fits'
+          endif else begin
+            ;; With state
+            template = detector + '_' + scan + '_' $
+                       + states[numpos[0]].fullstate + '_%07d.fits'
+          endelse
+          printf, lun, '    FILENAME_TEMPLATE=' + template
+          printf, lun, '    GAIN_FILE=' + gainname
+          printf, lun, '    DARK_TEMPLATE=' + darkname
+          printf, lun, '    DARK_NUM=0000001'
 
 ;              if upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' $
 ;                 AND ~keyword_set(no_descatter) then begin
@@ -375,54 +375,54 @@ pro red::prepmfbd, numpoints = numpoints, $
 ;                 printf, lun, '    BACK_GAIN='+bgf
 ;              endif 
 
-              printf, lun, '    INCOMPLETE'
+          printf, lun, '    INCOMPLETE'
 
-              if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
+          if(n_elements(nfac) gt 0) then printf,lun,'    NF=',red_stri(nfac[0])
 
-              printf, lun, '  }'
-              printf, lun, '}'
+          printf, lun, '  }'
+          printf, lun, '}'
 
-              ;; Global keywords
-              printf, lun, 'PROG_DATA_DIR=./data/'
-              printf, lun, 'DATE_OBS=' + date_obs
-              printf, lun, 'IMAGE_NUMS=' + nall 
-              printf, lun, 'BASIS=Karhunen-Loeve'
-              printf, lun, 'MODES=' + modes
-              printf, lun, 'NUM_POINTS=' + strtrim(numpoints, 2)
-              printf, lun, 'TELESCOPE_D=0.97'
-              printf, lun, 'ARCSECPERPIX=' + self.image_scale
-              printf, lun, 'PIXELSIZE=' + strtrim(caminfo.pixelsize, 2)
-              printf, lun, 'GETSTEP=getstep_conjugate_gradient'
-              printf, lun, 'GRADIENT=gradient_diff'
-              printf, lun, 'MAX_LOCAL_SHIFT=30'
-              printf, lun, 'NEW_CONSTRAINTS'
-              printf, lun, 'FILE_TYPE=' + self.filetype
-              printf, lun, 'FAST_QR'
-              printf, lun, 'FIT_PLANE'
-              if self.filetype eq 'MOMFBD' then begin
-                 printf, lun, 'GET_PSF'
-                 printf, lun, 'GET_PSF_AVG'
-              endif
+          ;; Global keywords
+          printf, lun, 'PROG_DATA_DIR=./data/'
+          printf, lun, 'DATE_OBS=' + date_obs
+          printf, lun, 'IMAGE_NUMS=' + nall 
+          printf, lun, 'BASIS=Karhunen-Loeve'
+          printf, lun, 'MODES=' + modes
+          printf, lun, 'NUM_POINTS=' + strtrim(numpoints, 2)
+          printf, lun, 'TELESCOPE_D=0.97'
+          printf, lun, 'ARCSECPERPIX=' + self.image_scale
+          printf, lun, 'PIXELSIZE=' + strtrim(caminfo.pixelsize, 2)
+          printf, lun, 'GETSTEP=getstep_conjugate_gradient'
+          printf, lun, 'GRADIENT=gradient_diff'
+          printf, lun, 'MAX_LOCAL_SHIFT=30'
+          printf, lun, 'NEW_CONSTRAINTS'
+          printf, lun, 'FILE_TYPE=' + self.filetype
+          printf, lun, 'FAST_QR'
+          printf, lun, 'FIT_PLANE'
+          if self.filetype eq 'MOMFBD' then begin
+            printf, lun, 'GET_PSF'
+            printf, lun, 'GET_PSF_AVG'
+          endif
 
-              ;; External keywords?
-              if(keyword_set(global_keywords)) then begin
-                 nk = n_elements(global_keywords)
-                 for ki = 0L, nk -1 do printf, lun, global_keywords[ki]
-              endif
+          ;; External keywords?
+          if(keyword_set(global_keywords)) then begin
+            nk = n_elements(global_keywords)
+            for ki = 0L, nk -1 do printf, lun, global_keywords[ki]
+          endif
 
-              free_lun, lun
-              
-           endfor               ; isub
-        endfor                  ; istate
+          free_lun, lun
+          
+        endfor                  ; isub
+      endfor                    ; istate
 
-     endfor                     ; iscan
+    endfor                      ; iscan
   endfor                        ; idir
 
   print, inam+' : done!'
 
   if n_elements(missingfiles) gt 0 then begin
-     print, 'Missing files: '
-     print, missingfiles, format = '(a0)'
+    print, 'Missing files: '
+    print, missingfiles, format = '(a0)'
   endif
 
   return
