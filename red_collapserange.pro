@@ -42,15 +42,19 @@
 ;     2009-06-11 : MGL. Ported to IDL.
 ;
 ;     2013-10-03 : MGL. Renamed to the red_ namespace.
-;
-;
-;
+; 
+;     2017-06-29 : MGL. Use rdx_ints2str, will create colon syntax
+;                  with increments.
 ;
 ;-
 function red_collapserange, arr, ld = ld, rd = rd
   
   if n_elements(ld) eq 0 then ld = '['
   if n_elements(rd) eq 0 then rd = ']'
+
+  return, ld + rdx_ints2str(arr) + rd
+
+  ;-----------------------
   
   ;; Simple cases, one or two elements
   if n_elements(arr) eq 1 then return, ld + strtrim(arr[0], 2) + rd

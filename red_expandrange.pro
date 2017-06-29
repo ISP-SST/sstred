@@ -1,8 +1,13 @@
 ; docformat = 'rst'
 
 ;+
-; Expand a comma and dash separated list of numbers given as a string
-; into an integer array, e.g. '1,3-5,7-9,11' --> [1,3,4,5,7,8,9,11].
+; Expand a comma separated list of subranges given as a string into an
+; integer array.
+;
+; Subranges can be of three kinds:
+;    1. Single numbers, expands to the number..
+;    2. Dash separated numbers, '10-15' --> [10,11,12,13,14,15].
+;    3. Colon separated numbers with increments, '10:2:20' --> [10,12,14,16,18,20].
 ; 
 ; :Categories:
 ;
@@ -35,8 +40,11 @@
 ;     2014-01-22 : MGL. Adapt to string functions moved to the str_
 ;                  namespace. 
 ; 
+;     2017-06-29 : MGL. Use rdx_str2ints, will accept colon syntax
+;                  with increments.
+; 
 ;-
-function red_expandrange,st_in
+function red_expandrange, st_in
   
   st=st_in  ; Non-destructive
   
@@ -47,6 +55,11 @@ function red_expandrange,st_in
   while st(0) lt byte('0') or st(0) gt byte('9') do st = st(1:*)
   st = string(reverse(st)) ; Reverse string
 
+  return, rdx_str2ints(st)
+
+  ;-----------------------
+  
+  
   n_commas = red_strcount(st,',')
   n_dashes = red_strcount(st,'-')
   n_sep = n_commas+n_dashes
