@@ -28,6 +28,8 @@
 ;   2017-03-18 : MGL. For now, allow crispred in this branch only in
 ;                develop mode.
 ;
+;   2017-06-28 : MGL. Removed cam{wb,r,t}-based states.
+;
 ;-
 pro crisp::initialize, filename, develop = develop
 
@@ -41,6 +43,8 @@ pro crisp::initialize, filename, develop = develop
 
   ;; Call initialize of the base-class first to load common parameters
   self->RED::initialize, filename, develop = develop
+
+  return
   
   ;; Then load CRISP specific stuff
 

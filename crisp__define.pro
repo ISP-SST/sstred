@@ -15,19 +15,14 @@
 ;
 ;   2016-05-19 : THI. Define state structures
 ;
+;   2017-06-28 : MGL. Added a few states from CHROMIS_STATE. Removed
+;                cam{wb,r,t}-based states.
+;
 ;-
 pro crisp__define
 
     struct = { CRISP, inherits RED, $
-               camt:'', $              ;
-               camr:'', $              ;
-               camwb:'', $             ;
-               docamt:0B, $            ;
-               docamr:0B, $            ;
-               docamwb:0B, $           ;
-               camttag:'', $           ;
-               camrtag:'', $           ;
-               camwbtag:'' $           ;
+               crisp_dummy:0B $ ; temporary dummy, move CRISP specific content here
              }
 
     nb = { CRISP_STATE, $
@@ -38,6 +33,9 @@ pro crisp__define
            prefilter:'', $
            pf_wavelength:0.0, $
            tun_wavelength:0.0D, $
+           exposure:0.0D, $
+           cam_settings:'', $
+           is_wb:0B, $
            lc:'' $
     }
                                 
