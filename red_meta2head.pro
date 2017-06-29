@@ -63,6 +63,9 @@
 ;    2017-06-01 : MGL. Use red_fitsaddpar. WAVELNTH in nm. Specify
 ;                 unit for WAVELNTH in WAVEUNIT.
 ; 
+;    2017-06-28 : MGL. Possibly look for date-obs in directory.
+;                 Prefilter and wavelength info for CRISP.
+; 
 ;-
 function red_meta2head, head, metadata=metaStruct
 
@@ -70,6 +73,9 @@ function red_meta2head, head, metadata=metaStruct
   if n_elements(metaStruct) eq 0 then return, head
 
   newhead = head
+
+  timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
+  dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
 
   ;; Extract metadata from the filename (for now it's all we have)
   if tag_exist(metaStruct, 'filename', /top_level) then begin
@@ -164,7 +170,26 @@ function red_meta2head, head, metadata=metaStruct
                           , 'STATE', tuninfo[0] $
                           , 'Inferred from tuning info in filename.' ;strjoin(tuninfo[2:3], '_')
         endif
-      endif
+      endif else begin
+        ;; This could be a WB CRISP image, in which case the prefilter
+        ;; is in the file name but no tuning.
+        camera = strtrim(fxpar(newhead, red_keytab('camera'), count=count), 2)
+        if strmatch(camera,'*-[DW]') then begin
+          tuninfo = stregex(barefile, '[._]([0-9][0-9][0-9][0-9])[._]' $
+                            , /extract, /subexpr)
+          if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
+                                                   , red_keytab('pref'), tuninfo[1] $
+                                                   , 'Inferred from filename.'
+          ;; Add also a tuning state if not there already. For WB it's
+          ;; just the prefilter plus zero tuning.
+          dummy = fxpar(newhead, 'STATE', count=count)
+          if count eq 0 then begin
+            red_fitsaddpar, anchor = anchor, newhead $
+                            , 'STATE', tuninfo[1]+'_'+tuninfo[1]+'_+0' $
+                            , 'WB tuning info = prefilter+0.'
+          endif
+        endif
+      endelse
     endif
 
     ;; FILTERn and WAVELNTH
@@ -218,45 +243,95 @@ function red_meta2head, head, metadata=metaStruct
       if fxpar(newhead, 'WAVELNTH') eq 0.0 then begin
 
         case strtrim(prefilter,2) of
-          '3925' : begin        ; Ca II K blue wing
+          '3925' : begin        ; CHROMIS Ca II K blue wing
             wavelnth = 3925e-10
             fwhm = 0.37e-9
             waveband = 'Ca II H & K'
           end
-          '3934' : begin        ; Ca II K core
+          '3934' : begin        ; CHROMIS Ca II K core
             wavelnth = 3934e-10
             fwhm = 0.37e-9
             waveband = 'Ca II H & K'
           end
-          '3950' : begin        ; Ca II HK wideband
+          '3950' : begin        ; CHROMIS Ca II HK wideband
             wavelnth = 3950e-10
             fwhm = 1.3e-9
             waveband = 'Ca II H & K'
           end
-          '3969' : begin        ; Ca II H core
+          '3969' : begin        ; CHROMIS Ca II H core
             wavelnth = 3969e-10
             fwhm = 0.37e-9
             waveband = 'Ca II H & K'
           end
-          '3978' : begin        ; Ca II H red wing
+          '3978' : begin        ; CHROMIS Ca II H red wing
             wavelnth = 3978e-10
             fwhm = 0.37e-9
             waveband = 'Ca II H & K'
           end
-          '3999' : begin        ; Ca II H continuum
+          '3999' : begin        ; CHROMIS Ca II H continuum
             wavelnth = 3999e-10
             fwhm = 0.37e-9
             waveband = 'Ca II H & K'
           end
-          '4862' : begin        ; H-beta core
+          '4862' : begin        ; CHROMIS H-beta core
             wavelnth = 4862e-10
             fwhm = 0.44e-9
             waveband = 'H-beta'
           end
-          '4846' : begin        ; H-beta continuum
+          '4846' : begin        ; CHROMIS H-beta continuum
             wavelnth = 4846e-10
             fwhm = 0.6e-9
             waveband = 'H-beta'
+          end
+          '5173' : begin        ; CRISP
+            wavelnth = 517.3e-9
+            fwhm = 0.30e-9
+            waveband = 'Mg b ' + strtrim(prefilter,2)
+          end
+          '5250' : begin        ; CRISP
+            wavelnth = 525.0e-9
+            fwhm = 0.30e-9
+            waveband = 'Fe I ' + strtrim(prefilter,2)
+          end
+          '5382' : begin        ; CRISP
+            wavelnth = 538.2e-9
+            fwhm = 0.33e-9
+            waveband = 'C I ' + strtrim(prefilter,2)
+          end
+          '5578' : begin        ; CRISP
+            wavelnth = 557.8e-9
+            fwhm = 0.30e-9
+            waveband = 'Fe I ' + strtrim(prefilter,2)
+          end
+          '5897' : begin        ; CRISP
+            wavelnth = 589.7e-9
+            fwhm = 0.38e-9
+            waveband = 'Na D ' + strtrim(prefilter,2)
+          end
+          '6174' : begin        ; CRISP
+            wavelnth = 617.4e-9
+            fwhm = 0.43e-9
+            waveband = 'Fe I ' + strtrim(prefilter,2)
+          end
+          '6302' : begin        ; CRISP
+            wavelnth = 630.26e-9
+            fwhm = 0.45e-9
+            waveband = 'Fe I 6301+6302' 
+          end
+          '6563' : begin        ; CRISP
+            wavelnth = 656.38e-9
+            fwhm = 0.49e-9
+            waveband = 'H-alpha' 
+          end
+          '7772' : begin        ; CRISP
+            wavelnth = 777.25e-9
+            fwhm = 0.7e-9
+            waveband = 'O I ' + strtrim(prefilter,2)
+          end
+          '8542' : begin        ; CRISP
+            wavelnth = 854.1e-9
+            fwhm = 0.93e-9
+            waveband = 'Ca II ' + strtrim(prefilter,2)
           end
           else: begin      
             wavelnth = ''
@@ -314,15 +389,22 @@ function red_meta2head, head, metadata=metaStruct
 
     date_obs = fxpar(head, 'DATE-OBS', count = count)
     if count eq 0 then begin
-      ;; If there is a properly formatted date+'T'+timestamp in the
-      ;; file name, it should be the date-obs. I.e., corresponding
-      ;; to the timestamp of the data collection directory.
-      timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
-      dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
-      date_obs = stregex(barefile, dateregex+'T'+timeregex, /extract) 
-      if date_obs ne '' then red_fitsaddpar, anchor = anchor, newhead $
-                                       , 'DATE-OBS', date_obs $
-                                       , 'Inferred from filename.'
+      ;; DATE-OBS is not yet known. Try to get it from the directory
+      ;; or, if that fails, from the file name.
+      date_obs = stregex(directory, dateregex, /extract) + 'T' $
+                 + stregex(directory, timeregex, /extract)
+      if date_obs ne 'T' then begin
+        red_fitsaddpar, anchor = anchor, newhead $
+                        , 'DATE-OBS', date_obs, 'Inferred from directory.'
+      endif else begin
+        ;; If there is a properly formatted date+'T'+timestamp in the
+        ;; file name, it should be the date-obs. I.e., corresponding
+        ;; to the timestamp of the data collection directory.
+        date_obs = stregex(barefile, dateregex+'T'+timeregex, /extract) 
+        if date_obs ne '' then red_fitsaddpar, anchor = anchor, newhead $
+                                               , 'DATE-OBS', date_obs $
+                                               , 'Inferred from filename.'
+      endelse
     endif
 
   endif                         ; filename
