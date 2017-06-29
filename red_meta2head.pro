@@ -64,7 +64,7 @@
 ;                 unit for WAVELNTH in WAVEUNIT.
 ; 
 ;    2017-06-28 : MGL. Possibly look for date-obs in directory.
-;                 Prefilter and wavelength info for CRISP.
+;                 Add prefilter and wavelength info for CRISP.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
