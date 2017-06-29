@@ -12,12 +12,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Mats Löfdahl, ISP
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -26,237 +26,288 @@
 ;   
 ;      A list of strings from which to extract the states information.
 ;   
-; 
-; :Keywords:
-; 
-;     states : out, optional, type=array(struct)
+;    states : out, optional, type=array(struct)
 ;
 ;        An array of structs, containing (partially filled) state information.
 ; 
-;     cam : in, optional, type=boolean
-;
-;        Return the camera tag. (string)
 ; 
-;     scannumber : in, optional, type=boolean
-;
-;        Return the scan-number. (int)
+; :Keywords:
 ; 
-;     prefilter : in, optional, type=boolean
 ;
-;        Return the prefilter. (string)
+;     strip_wb : in, optional, type=boolean
+;
+;        Exclude tuning information from the fullstate entries for WB
+;        cameras
 ; 
-;     pf_wavelength : in, optional, type=boolean
+;     strip_settings : in, optional, type=boolean
 ;
-;        Return the prefilter wavelength. (float)
+;        Exclude exposure/gain information from the fullstate entries.
 ; 
-;     tuning : in, optional, type=boolean
-;
-;        Return the wavelength tuning information in the form
-;        tuning_finetuning, where tuning is the approximate wavelength
-;        in Å and finetuning is the (signed) fine tuning in mÅ. (string)
 ; 
-;     tun_wavelength : in, optional, type=boolean
-;
-;        Return the tuning in decimal form [Å]. (double)
+; :History:
 ; 
-;     lc : in, optional, type=boolean
-;
-;        Return the LC state. (string)
-;
-;     framenumber : in, optional, type=boolean
-;
-;        Return the frame-number. (long)
-; 
-;     fullstate : in, optional, type=boolean
-;
-;        Return the fullstate field.
-; 
-;     polcal : in, optional, type=boolean
-;
-;        Return the polcal state information (linear polarizer
-;        and quarter-wave plate angles). (string)
-; 
-;     focus : in, optional, type=boolean
-;
-;        The focus added by the AO system (in order to compensate for
-;        prefilters with optical power). Unit?
-; 
-;     basename : in, optional, type=boolean
-;
-;        Set this to remove directory information from the beginning
-;        of the strings.
-;
-; 
-; :history:
-; 
-;   2014-01-22 : First version.
-; 
-;   2014-04-?? : MGL. Added keyword wavelength.
-;
-;   2015-09-03 : MGL. Added the "blue" keyword, will now return
-;                something meaningful also for blue tilt filter data.
-;                Bugfix in qw regular expression.
-;
-;   2016-05-19 : THI. Partial copy to the crisp class. Modify the state structures
-;                and keywords for clarity.
-;
-;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
-;                so the names match those of the corresponding SolarNet
-;                keywords.
+;    2017-07-28 : MGL. New version based on chromis::extractstates.
 ;
 ; 
 ;-
-pro crisp::extractstates, strings $
-                          , states $
-                          , cam = cam $
-                          , scannumber = scannumber $
-                          , prefilter = prefilter $
-                          , pf_wavelength = pf_wavelength $
-                          , tuning = tuning $
-                          , tun_wavelength = tun_wavelength $
-                          , lc = lc $
-                          , framenumber = framenumber $
-                          , fullstate = fullstate $
-                          , polcal = polcal $
-                          , focus = focus $
-                          , basename = basename
+pro crisp::extractstates, strings, states $
+                            , strip_wb = strip_wb $
+                            , strip_settings = strip_settings
+
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+ 
+  Nstrings = n_elements(strings)
+  if( Nstrings eq 0 ) then return
+
+  ;; Create array of structs to holed the state information
+  states = replicate( {CRISP_STATE}, Nstrings )
+  states.nframes = 1            ; single frame by default
+
+  ;; Are the strings actually names of existing files? Then look in
+  ;; the headers (for some info).
+  AreFiles = min(file_test(strings))
+
+  ;; Read headers and extract information. This should perhaps return
+  ;; an array the length of the number of frames rather than the
+  ;; number of files?
+
+  for ifile = 0, Nstrings-1 do begin
+
+    if file_test(strings[ifile]) then begin
+      head = red_readhead(strings[ifile], /silent)
+      states.filename = strings
+    endif else begin
+      mkhdr, head, ''           ; create a dummy header
+      head = red_meta2head(head, metadata = {filename:strings[ifile]})
+      print,'file does not exist: ', strings[ifile]
+      print,'state information will be incomplete!'
+    endelse
+
+    ;; Numerical keywords
+    naxis3 = fxpar(head, 'NAXIS3', count=hasnframes)
+    if hasnframes then states[ifile].nframes = naxis3
+;    states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
+;    ;; New keyword for gain from 2016.08.30:
+;    if hasgain eq 0 then states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain) 
+    states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
+    texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
+
+    red_fitspar_getwavelnth, head, wavelnth = wavelnth, haswav = haswav
+    if haswav ne 0 then begin
+;      if wavelnth ne '        ' then $
+      states[ifile].pf_wavelength = float(wavelnth)
+    endif
+
+    states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
+    states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
+
+    state = fxpar(head, 'STATE', count=hasstate)
+    if hasstate gt 0 then begin
+      states[ifile].fpi_state = state
+      state_split = strsplit( state, '_',  /extr )
+      if n_elements(state_split) gt 1 then begin
+        states[ifile].tuning = state_split[1]
+      endif
+    endif
+    
+    ;; String keywords require checking
+    detector = fxpar(head, red_keytab('detector'), count=count)
+    if count eq 0 then begin    ; Temporary fugly hack to work on data processed before 2016-08-23
+      detector = fxpar(head, red_keytab('camera'), count=count)
+    endif
+    if count gt 0 then states[ifile].detector = strtrim(detector, 2)
+    filter = fxpar(head, red_keytab('prefilter'), count=count)
+    if count gt 0 then states[ifile].prefilter = strtrim(filter, 2)
+    camera = fxpar(head, red_keytab('camera'), count=count)
+    ;;camera = fxpar(head, red_keytab('old_channel'), count=count)   ; Temporary fugly hack to work on data processed before 2016-08-23
+
+    if count gt 0 then begin
+      ;; The camera is given in the header
+      camera = strtrim(camera,2)
+      states[ifile].camera = camera
+;      states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
+;      if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+    endif else begin
+      ;; Try to get the camera from the detector
+      self->getdetectors
+      indx = where(strmatch(*self.detectors,strtrim(detector, 2)),count) 
+      if count eq 1 then begin
+        camera = (*self.cameras)[indx[0]]
+        states[ifile].camera = camera
+;        if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
+      endif ;else begin
+;        ;; This could be a CRISP file. Try to set the WB status by
+;        ;; matching the directory.
+;        states[ifile].is_wb = strmatch(strings[ifile],'*Crisp-[DW]*')
+;      endelse
+    endelse
+    states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
+
+    if hastexp then begin
+      ;; This is a summed file, use the single-exposure exposure
+      ;; time for the camera setting.
+      states[ifile].cam_settings = strtrim(string(texposur*1000 $
+                                                  , format = '(f9.2)'), 2) + 'ms'
+    end else if hasexp gt 0 then begin
+      ;; This is not a summed file.
+      states[ifile].cam_settings = strtrim(string(states[ifile].exposure*1000 $
+                                                  , format = '(f9.2)'), 2) + 'ms'
+    endif
+
+;    if hasgain gt 0 then begin
+;      if hasexp gt 0 then states[ifile].cam_settings += '_'
+;      states[ifile].cam_settings += 'G' + string(states[ifile].gain, format = '(f05.2)')
+;    endif
+
+    ;; Replace the following regexp code when this info is in the
+    ;; header.
+
+    fname = file_basename(strings[ifile], '.fits')
+
+    ;; The focus field is an f followed by a sign and at least one
+    ;; digit for the amount of focus (in ?unit?). The focus added by
+    ;; the AO system (in order to compensate for prefilters with
+    ;; optical power). Unit?
+    focus = (stregex(fname $
+                     , '(\.|^)(F[+-][0-9]+)(\.|$)' $
+                     , /extr, /subexp, /fold_case))[2,*]
+    ;; states.focus = focus   TODO: add field to states struct (in an SST class?)
+
+    ;; The CRISP tuning information consists of a four digit
+    ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
+    ;; and at least one digit for the finetuning (in mÅ). Eventually
+    ;; we will (?) have the same for CHROMIS.
+    tuninfo = stregex(fxpar(head, 'STATE') $
+                      , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
+                      , /extract, /subexpr) 
+
+    ;; For early CHROMIS data we didn't have tuning data in the
+    ;; proper form.
+    if strlen(tuninfo[0]) ne 0 then begin
+
+      ;; OK, the tuning info is in the form it should be.
+      states[ifile].tuning = tuninfo[0]
+      
+      ;; Also return the tuning in decimal form [m]:
+      states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d-10, 1d-13])
+      
+    endif else begin
+
+      ;; The tuning information is in digital units, corresponding
+      ;; to tuning. The conversion factor varies between filters.
+      ;; The scans are symmetrical (so far, 2016-09-16) around the
+      ;; line center, which gives us the zero point.
+
+      ;; Get the reference wavelength in du from a file previously
+      ;; created with chromis::hrz_zeropoint.
+      infodir = self.out_dir + 'info/'
+      zfile = infodir + 'hrz_zeropoint_' + states[ifile].prefilter + '.fz'
+
+      if file_test(zfile) then begin
+
+        refinfo = f0(zfile)
+        lambda_ref = refinfo[0]
+        du_ref     = refinfo[1]
+        convfac    = refinfo[2]
+        
+        ;; Tuning in digital units
+        du = long((stregex(fxpar(head,'STATE'), 'hrz([0-9]*)', /extract, /subexpr))[1])
+
+        ;; Tuning in [m]
+        dlambda = convfac * (du-du_ref) 
+
+        ;; Return the wavelength tuning information in the form
+        ;; tuning_finetuning, where tuning is the approximate
+        ;; wavelength in Å and finetuning is the (signed) fine
+        ;; tuning in mÅ. (string)
+        lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
+        tuning_string = strtrim(round(dlambda*1d13), 2)
+        if strmid(tuning_string, 0, 1) ne '-' then tuning_string = '+'+tuning_string
+        states[ifile].tuning = lambda_ref_string + '_' + tuning_string
+        
+        ;; Also return the tuning in decimal form [m]:
+        states[ifile].tun_wavelength = lambda_ref + dlambda
+
+      endif else begin
+
+        if states[ifile].is_wb then begin
+          ;; For wideband, if there is no tuning info, assume
+          ;; prefilter wavelength.
+          states[ifile].tun_wavelength = states[ifile].pf_wavelength
+          states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
+                                        , format = '(i04)') $
+                                 + '_+0'
+        endif else if strmatch(states[ifile].filename, file_dirname((*self.dark_dir)[0])+'*') then begin
+          ;; For darks there is no tuning info. This is a kludge,
+          ;; should really set something like states.is_dark and
+          ;; test for that?
+          states[ifile].tun_wavelength = 0
+          states[ifile].tuning = ''
+        endif else begin
+          ;; Warn about missing tuning info, but only for
+          ;; narrowband.
+          if ~quiet then begin
+            print, inam + ' : Reference wavelength in du missing.'
+            print, inam + ' : Did you run a -> hrz_zeropoint?'
+          endif
+        endelse 
+        
+      endelse
+      
+    endelse
+
+    if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
+
+    ;; The fullstate string
+    undefine, fullstate_list
+    ;; No cam settings in CRISP fullstate because exposure time varies
+    ;; while observing.
+;    if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
+    if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
+    if states[ifile].tuning ne '' then begin     
+      if keyword_set(strip_wb) then begin
+        if states[ifile].is_wb eq 0 then $
+           red_append, fullstate_list, states[ifile].tuning
+      endif else begin
+        red_append, fullstate_list, states[ifile].tuning
+      endelse
+    endif
+    states[ifile].fullstate = strjoin(fullstate_list, '_')
+
+    red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock, /predict
+
+  endfor                        ; ifile
+
+end
 
 
-  if keyword_set(basename) then begin
-    strlist = file_basename(strings)
-  endif else strlist = strings
-
-  nt = n_elements(strings)
-
-  if( nt eq 0 ) then return
-
-  ;; Quantities extracted directly from the strings ----
-
-  ;; The regular expressions below consist of three subexpressions
-  ;; enclosed in parentheses. The first subexpression matches the
-  ;; beginning of the line or a dot (the field separator). The second
-  ;; subexpression matches the field we want to extract. The third
-  ;; subexpression matches a dot or the end of the string. (With one
-  ;; exception, see the frame number field below.) When calling
-  ;; stregex with such a regular expression and the flag /subexpr, we
-  ;; get a 2D string array, the second column of which is the field we
-  ;; want to extract.
-
-  ;; In the fields identified by a text label, like focus, lc, qw,
-  ;; etc, we match with /fold_case. So if the case changes in the file
-  ;; names we are OK. If another field is defined, with the same label
-  ;; except for case, then this will fail. So don't do that!
-
-  ;; The scan number is the only field that is exactly five digits
-  ;; long:
-  if keyword_set(scannumber) then $
-     scan_list = reform((stregex(strlist,'(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*])
-
-  ;; The focus field is an f folowed by a sign and at least one digit
-  ;; for the amount of focus (in ?unit?):
-  if keyword_set(focus) then $
-     focus_list = reform((stregex(strlist,'(\.|^)(F[+-][0-9]+)(\.|$)', /extr, /subexp, /fold_case))[2,*])
-
-  ;; The frame number is the last field iff it consists entirely of
-  ;; digits. The third subexpression of the regular expression matches
-  ;; only the end of the string because that's where it is if it is
-  ;; present. We do not know the length of the frame number field so
-  ;; if the third subexpression were allowed to match a dot we would
-  ;; get false matches with the scan and prefilter fields.
-  if keyword_set(framenumber) then $
-     num_list = reform((stregex(strlist,'(\.)([0-9]+)($)', /extr, /subexp))[2,*])
-
-  ;; The camera name consists of the string 'cam' followed by a roman
-  ;; number.
-  if keyword_set(cam) then $
-     detector_list = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
-
-  ;; The prefilter is the only field that is exactly four digits
-  if keyword_set(prefilter) or keyword_set(fullstate) or keyword_set(wavelength) then $
-     prefilter_list = reform((stregex(strlist,'(\.|^)([0-9]{4})(\.|$)', /extr, /subexp))[2,*])
-
-  ;; The tuning information consists of a four digit wavelength (in Å)
-  ;; followed by an underscore, a sign (+ or -), and at least one
-  ;; digit for the finetuning (in mÅ).
-  if keyword_set(tuning) or keyword_set(dwav) or keyword_set(fullstate) then $
-     tuning_list = reform((stregex(strlist,'(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)', /extr, /subexp))[2,*])
-
-  ;; The LC state is the string 'LC' followed by a single digit
-  if keyword_set(lc) or keyword_set(fullstate) then $
-     lc_list = reform((stregex(strlist,'(\.|^)(LC[0-9])(\.|$)', /extr, /subexp, /fold_case))[2,*])
-
-  ;; For polcal
-  if keyword_set(polcal) then begin
-    ;; The linear polarizer state
-    lp_list = reform((stregex(strlist,'(\.|^)(LP[0-3][0-9]{2})(\.|$)', /extr, /subexp, /fold_case))[2,*])
-    ;; The quarter wave plate state
-    qw_list = reform((stregex(strlist,'(\.|^)(QW[0-3][0-9]{2})(\.|$)', /extr, /subexp, /fold_case))[2,*])
-  endif
-
-  ;; Quantities calculated from the extracted quantities ----
-
-  ;; The tuning as a single double precision number (in Å)
-  if keyword_set(tun_wavelength) then begin
-    tun_wavelength_list = dblarr(nt)
-    dfac = [1d, 1d-3]
-    ;; In IDL v.8 this could be done without a loop using strsplit
-    for ii = 0L, nt -1 do tun_wavelength_list[ii] = total(double(strsplit(tuning_list[ii],'_', /extract))*dfac)
-  endif
-
-  if keyword_set(fullstate) then $
-     fullstate_list = strjoin(transpose([[prefilter_list], [tuning_list], [lc_list]]), '.')
-
-  if keyword_set(pf_wavelength) then $
-     pf_wavelength_list = float(prefilter_list)*1e-10
+a = chromisred('config.txt')
 
 
-  ;; Create array with state information
+;; Test darks
+files = file_search('darks/cam*.dark', count = Nfiles)
+a -> extractstates, files, states
 
-  if keyword_set(polcal) then begin
-    states = replicate( {CRISP_POLCAL_STATE}, nt )
-    states.lp = lp_list
-    states.qw = qw_list
-  endif else begin
-    states = replicate( {CRISP_STATE}, nt )
-  endelse
-  
-  states.detector = detector_list
-  states.filename = strings
-  if keyword_set(scannumber) then states.scannumber = scan_list
-  if keyword_set(framenumber) then states.framenumber = num_list
-  if keyword_set(tuning) then states.tuning = tuning_list
-  if keyword_set(prefilter) then states.prefilter = prefilter_list
-  if keyword_set(pf_wavelength) then states.pf_wavelength = pf_wavelength_list
-  if keyword_set(dwav) then states.tun_wavelength = tun_wavelength_list
-  if keyword_set(lc) then states.lc = lc_list
-  if keyword_set(fullstate) then states.fullstate = fullstate_list
-                                ;if keyword_set(focus) then states.focus = focus_list   TODO: add field to state struct (in an SST class?)
+stop
 
-  stop
+;; Test flats
+files = file_search('flats/camXXX_*.flat', count = Nfiles)
+a -> extractstates, files, states
 
-  ;; For polarimetry
-;   if arg_present(pstates) then pstates = { state:strjoin(transpose([[lp], [qw], [pref], [wav], [lc]]), '.') $ 
-;                                            , lp:lp $
-;                                            , qw:qw $
-;                                            , pref:pref $
-;                                            , wav:wav $
-;                                            , lc:lc $
-;                                            , nums:nums $
-;                                            , files:strlist $
-;                                            , star:bytarr(nt) $ ; Empty field, see red_flagtuning.
-;                                          }
-;   
-;   ;; For polarimetry out (?)
-;   if arg_present(pstates_out) then pstates_out = { state:strjoin(transpose([[lps], [qws], [pref], [lcs]]), '.') $ 
-;                                                    , lp:float(strmid(lp, 2, 3)) $
-;                                                    , qw:float(strmid(qw, 2, 3)) $
-;                                                    , pref:pref $
-;                                                    , wav:wav $
-;                                                    , lc:lc $
-;                                                    , lcs:strmid(lc, 2, 1) $
-;                                                    , lps:lp $
-;                                                    , qws:qw $
-;                                                    , cam:cam $
-;                                                  }
-  
+
+stop
+
+;; Test narrowband
+dirN = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-N/'
+fnamesN = file_search(dirN+'*fits', count = NfilesN)
+if NfilesN gt 0 then a -> extractstates, fnamesN, statesN
+
+stop
+
+;; Test wideband
+dirW = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-W/'
+fnamesW = file_search(dirW+'*fits', count = NfilesW)
+if NfilesW gt 0 then a -> extractstates, fnamesW, statesW
+
 end
