@@ -75,6 +75,8 @@
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
 ; 
+;   2017-06-28 : MGL. Adapt to new version of crisp::selectfiles.
+; 
 ;-
 pro crisp::selectfiles, cam = cam $
                         , dirs = dirs $
@@ -120,13 +122,14 @@ pro crisp::selectfiles, cam = cam $
   endif
   
   if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
-    self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
+;    self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
+    self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
                                 ; TODO: this is a really ugly way to drop the WB states, think of something better
-    wb_cams = (strmatch( states.detector, self->getdetector('Crisp-W')) $
-               or strmatch( states.detector, self->getdetector('Crisp-D')))
-    pos = where(wb_cams gt 0)
-                                ; replace NB state-info with prefilter for the WB cameras
-    if( min(pos) ge 0 ) then states[pos].fullstate = states[pos].prefilter
+;    wb_cams = (strmatch( states.detector, self->getdetector('Crisp-W')) $
+;               or strmatch( states.detector, self->getdetector('Crisp-D')))
+;    pos = where(wb_cams gt 0)
+;                                ; replace NB state-info with prefilter for the WB cameras
+;    if( min(pos) ge 0 ) then states[pos].fullstate = states[pos].prefilter
   endif
 
   states.skip *= 0              ; always clear selection, so repeated calls with the same files/states are possible
