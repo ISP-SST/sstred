@@ -97,7 +97,11 @@ function red_sumheaders, files, sum $
       date_beg_thisfile = ftget(theader,tab, 'DATE-BEG') 
       red_append, date_beg_array, date_beg_thisfile[indx]
 
-    endif
+    endif else begin
+
+      red_append, date_beg_array, fxpar(head, 'DATE-BEG')
+      
+    endelse
     
   endfor                        ; ifile
 
@@ -154,22 +158,23 @@ function red_sumheaders, files, sum $
 
   ;; DATE-??? keywords, base them on the tabulated timestamps
   date_obs = (strsplit(fxpar(head, 'DATE-OBS'), 'T',/extract))[0]
+  anchor = 'DATE-OBS'
   times = red_time2double(strmid(DATE_BEG_ARRAY,11))
   time_beg = red_timestring(min(times))
   time_end = red_timestring(max(times)+exptime)
   time_avg = red_timestring(mean(times)+exptime/2)
-  if n_elements(time_end) ne 0 then $
-     red_fitsaddpar, anchor = anchor, head $
-                     , 'DATE-END', date_obs+'T'+time_end $
-                     , 'Date of end of observation'
-  if n_elements(time_avg) ne 0 then $
-     red_fitsaddpar, anchor = anchor, head $
-                     , 'DATE-AVG', date_obs+'T'+time_avg $
-                     , 'Average date of observation'
   if n_elements(time_beg) ne 0 then $
      red_fitsaddpar, anchor = anchor, head $
                      , 'DATE-BEG', date_obs+'T'+time_beg $
-                     , 'Date of start of observation'
+                     , 'Start time of summed observation'
+  if n_elements(time_avg) ne 0 then $
+     red_fitsaddpar, anchor = anchor, head $
+                     , 'DATE-AVG', date_obs+'T'+time_avg $
+                     , 'Average time of summed observation'
+  if n_elements(time_end) ne 0 then $
+     red_fitsaddpar, anchor = anchor, head $
+                     , 'DATE-END', date_obs+'T'+time_end $
+                     , 'End time of summed observation'
 
   ;; Add "global" metadata
   red_metadata_restore, head
