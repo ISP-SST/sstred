@@ -247,7 +247,6 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
           ;; Make header corresponding to the sum.
           head = red_sumheaders(fnames, discard = discard)
-
           self -> headerinfo_addstep, head $
                                       , prstep = 'MOMFBD image restoration' $
                                       , prpara = prpara $
@@ -265,7 +264,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
           red_fitsaddpar, anchor = anchor, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
           red_fitsaddpar, anchor = anchor, head, 'FILLED', 1, 'Missing pixels have been filled.'          
           red_fitsaddpar, anchor = anchor, head, 'BTYPE', 'Intensity'
-          red_fitsaddpar, anchor = anchor, head, 'BUNIT', 'DU' ; Digital unit?
+          red_fitsaddpar, anchor = anchor, head, 'BUNIT', 'DN' ; Digital unit?
           ;; DATE_OBS should be getting the value including decimals from
           ;; the raw data headers, not just integer seconds as here:
 
