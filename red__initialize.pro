@@ -123,12 +123,15 @@ pro red::initialize, filename, develop = develop
       'polcal_dir'      : self.polcal_dir = value
       'prefilter_dir'   : self.prefilter_dir = value
       'telescope_d'     : self.telescope_d = value
-;        'descatter_dir' : self.descatter_dir = keyval[1]
+;        'descatter_dir' : self.descatter_dir = value
       'dark_dir': begin
         if ptr_valid(self.dark_dir) then red_append, *self.dark_dir, value $
         else self.dark_dir = ptr_new(value, /no_copy)
       end
       'flat_dir': begin
+        ;;red_append, self.flat_dir, value, /point
+        ;;help, self.flat_dir
+        ;;stop
         if ptr_valid(self.flat_dir) then red_append, *self.flat_dir, value $
         else self.flat_dir = ptr_new(value, /no_copy)
       end
@@ -137,6 +140,7 @@ pro red::initialize, filename, develop = develop
         else self.pinh_dirs = ptr_new(value, /no_copy)
       end
       'data_dir': begin
+        ;;red_append, self.data_dirs, value, /point
         if ptr_valid(self.data_dirs) then red_append, *self.data_dirs, value $
         else self.data_dirs = ptr_new(value, /no_copy)
       end
@@ -463,10 +467,7 @@ pro red::initialize, filename, develop = develop
     endelse
   endif
 
-  
   cgWindow_SetDefs, PS_Decomposed=1
-
-  stop
   
   return
 end
