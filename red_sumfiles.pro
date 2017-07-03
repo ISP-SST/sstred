@@ -319,7 +319,7 @@ function red_sumfiles, files_list $
     ;; Set edges to neighbouring values since the median filter does
     ;; not modify endpoints.
     mmval[0:filter/2-1] = mmval[filter/2]        
-    mmval[Nfiles-filter/2:Nfiles-1] = mmval[Nfiles-filter/2-1] 
+    mmval[Nframes-filter/2:Nframes-1] = mmval[Nframes-filter/2-1] 
 
     goodones = abs(mval - mmval) LE lim * tmean ; Unity for frames that are OK.
     idx = where(goodones, Nsum, complement = idx1, Ncomplement = Nrejected)     
