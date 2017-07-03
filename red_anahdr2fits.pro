@@ -68,6 +68,8 @@
 ; 
 ;    2017-06-01 : MGL. Use red_fitsaddpar and red_mkhdr.
 ;
+;    2017-07-03 : THI. Also try to get camera from the ANA header.
+;
 ;-
 function red_anahdr2fits, anahdr $
                           , img = img $
@@ -135,6 +137,10 @@ function red_anahdr2fits, anahdr $
 ;     red_fitsaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
 ;  end
   
+  if strmatch(anahdr,'*CRISP-W*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-W' $
+  else if strmatch(anahdr,'*CRISP-R*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-R' $
+  else if strmatch(anahdr,'*CRISP-T*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-T'
+  else if strmatch(anahdr,'*CRISP-D*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-D'
 
   ;; Observations date (as in the FZ output from Michiel's momfbd program)
   dpos = strpos(anahdr, 'DATE_OBS')
