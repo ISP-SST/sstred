@@ -239,7 +239,7 @@ pro red::sumflat, overwrite = overwrite, $
         tmplist = files[sel]
         tmplist = tmplist(sort(tmplist))
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(tmplist, time_ave = time_avg, check = check, $
+          flat = rdx_sumfiles(tmplist, time_avg = time_avg, check = check, $
                               lun = lun, lim = lim, summed = summed, nsum = nsum $
                               , filter = filter, verbose=2)
         endif else begin
@@ -249,7 +249,7 @@ pro red::sumflat, overwrite = overwrite, $
         endelse
       endif else begin 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(files[sel], time_ave = time_avg, check = check, $
+          flat = rdx_sumfiles(files[sel], time_avg = time_avg, check = check, $
                               lim = lim, summed = summed, nsum = nsum $
                               , filter = filter, verbose=2)
         endif else begin
