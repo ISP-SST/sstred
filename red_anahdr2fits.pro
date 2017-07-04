@@ -139,7 +139,7 @@ function red_anahdr2fits, anahdr $
   
   if strmatch(anahdr,'*CRISP-W*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-W' $
   else if strmatch(anahdr,'*CRISP-R*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-R' $
-  else if strmatch(anahdr,'*CRISP-T*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-T'
+  else if strmatch(anahdr,'*CRISP-T*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-T' $
   else if strmatch(anahdr,'*CRISP-D*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-D'
 
   ;; Observations date (as in the FZ output from Michiel's momfbd program)

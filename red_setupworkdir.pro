@@ -250,7 +250,7 @@ pro red_setupworkdir, search_dir = search_dir $
     ;; Get the date from out_dir?
     pos = stregex(out_dir,'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
     if pos eq -1 then begin
-      print, 'sst_makeconfig : No date in either root_dir or out_dir.'
+      print, 'red_setupworkdir : No date in either root_dir or out_dir.'
       retall
     endif
     date = strmid(out_dir, pos+1, 10)
