@@ -375,7 +375,9 @@ function red_sumfiles, files_list $
                          , inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
         cub = red_readdata(files_list[ifile], /silent)
 
-        summed += total(cub, 3, /double)
+        if Nframes_per_file[ifile] gt 1 then summed += total(cub, 3, /double) $
+        else summed += cub
+        
         iframe += Nframes_per_file[ifile]
 
       endfor                    ; ifile
