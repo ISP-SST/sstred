@@ -10,7 +10,7 @@
 ; 
 ; :Author:
 ; 
-; 
+;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
 ; :Returns:
@@ -20,6 +20,10 @@
 ; 
 ; 
 ; :Keywords:
+;
+;    calibrations_only : in, optional, type=boolean
+;
+;      Set up to process calibration data only.
 ; 
 ;   
 ;   
@@ -37,13 +41,16 @@
 ; 
 ;    2017-05-12 : MGL. Use extraclip rather than margin when calling
 ;                 prepmomfbd, and don't use an empty pref keyword. 
+;
+;    2017-07-05 : MGL. New keyword calibrations_only.
 ; 
 ;    2017-07-19 : THI. Change pinholecalib parameter nref defaut value
 ;                 to 10.
 ;
 ; 
 ;-
-pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
+pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
+                              , calibrations_only = calibrations_only
 
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                       , [{keyword:'INSTRUME', value:'CHROMIS' $
@@ -69,23 +76,27 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Slun, 'a = chromisred("'+cfgfile+'")' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
-  ;; Download SST log files and optionally some other data from the web.
-  print, 'Log files'
-  printf, Clun, '#'
-  printf, Clun, '# --- Download SST log files'
-  printf, Clun, '#'
-  printf, Slun
-  printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
-
-  ;; Analyze directories and produce r0 plots (optional)
-  printf, Slun
-  printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
-  printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
-  printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
-  printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
-  printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
-  printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
+  ;; Download SST log files and optionally some other data from the
+  ;; web.
+  if ~keyword_set(calibrations_only) then begin
+    print, 'Log files'
+    printf, Clun, '#'
+    printf, Clun, '# --- Download SST log files'
+    printf, Clun, '#'
+    printf, Slun
+    printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
+  endif
   
+  ;; Analyze directories and produce r0 plots (optional)
+  if ~keyword_set(calibrations_only) then begin
+    printf, Slun
+    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
+    printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
+    printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
+    printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
+    printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
+    printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
+  endif
 
   print, 'Cameras'
   printf, Clun, '#'
@@ -183,34 +194,38 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
     Nprefilters = n_elements(prefilters)
   endif
 
-  for ipref = 0, Nprefilters-1 do begin
-    printf, Slun, "a -> prepflatcubes ;, pref='"+prefilters[ipref]+"'"
-  endfor                        ; ipref
+  if ~keyword_set(calibrations_only) then begin  
+    for ipref = 0, Nprefilters-1 do begin
+      printf, Slun, "a -> prepflatcubes ;, pref='"+prefilters[ipref]+"'"
+    endfor                      ; ipref
+  endif
+  
+  if ~keyword_set(calibrations_only) then begin  
+    printf, Slun, ''
+    printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
+    printf, Slun, '; whether npar=3 or npar=4 is needed.'
+    printf, Slun, 'a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res, /all' 
+    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+    printf, Slun, '; keyword:'
+    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+    printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
+    printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
+    printf, Slun, '; also in blends if they are not propely sampled.'
+    printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
+    printf, Slun, '; the following:'
+    printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
+    printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
+    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
+    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
+    printf, Slun, '; Then, if you have already run makegains, rerun it.'
 
-  printf, Slun, ''
-  printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-  printf, Slun, '; whether npar=3 or npar=4 is needed.'
-  printf, Slun, 'a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res, /all' 
-  printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-  printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-  printf, Slun, '; keyword:'
-  printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-  printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
-  printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
-  printf, Slun, '; also in blends if they are not propely sampled.'
-  printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
-  printf, Slun, '; the following:'
-  printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
-  printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
-  printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
-  printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
-  printf, Slun, '; Then, if you have already run makegains, rerun it.'
-
-  printf, Slun, ''
-  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
-
+    printf, Slun, ''
+    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
+  endif
+  
 
   printf, Slun, ''
   print, 'Pinholes'
@@ -252,10 +267,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
       endfor                    ; j
     endelse
   endfor                        ; i
-  printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib, nref=10'
-;    printf, Slun, 'a -> diversitycalib'
 
+  if ~keyword_set(calibrations_only) then begin  
+    printf, Slun, ''
+    printf, Slun, 'a -> pinholecalib, nref=10'
+;    printf, Slun, 'a -> diversitycalib'
+  endif
   
   print, 'Prefilter scan'
   printf, Clun, '#'
@@ -285,6 +302,16 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
   ;; here is where the command should be written to the script file.
 
   
+  if keyword_set(calibrations_only) then begin
+    ;; We don't need science data for the calibrations_only setup. 
+    free_lun, Clun
+    ;; We'll end the script file with an end statement so it
+    ;; can be run with .run or .rnew.
+    printf, Slun, 'end'
+    free_lun, Slun
+    return
+  endif
+
   print, 'Science'
   printf, Clun, '#'
   printf, Clun, '# --- Science data'

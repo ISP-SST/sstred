@@ -1,4 +1,51 @@
-pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, Institute for Solar Physics
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; 
+; 
+; 
+; 
+; :Keywords:
+;
+;    calibrations_only : in, optional, type=boolean
+;
+;      Set up to process calibration data only.
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+;
+;    2017-07-05 : MGL. New keyword calibrations_only.
+; 
+; 
+; 
+; 
+; 
+; 
+;-
+pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
+                            , calibrations_only = calibrations_only
 
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                       , [{keyword:'INSTRUME', value:'CRISP' $
@@ -28,13 +75,16 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Slun, 'a = crispred("'+cfgfile+'")' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
-  ;; Download SST log files and optionally some other data from the web.
-  print, 'Log files'
-  printf, Clun, '#'
-  printf, Clun, '# --- Download SST log files'
-  printf, Clun, '#'
-  printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
-
+  ;; Download SST log files and optionally some other data from the
+  ;; web. 
+  if ~keyword_set(calibrations_only) then begin
+    print, 'Log files'
+    printf, Clun, '#'
+    printf, Clun, '# --- Download SST log files'
+    printf, Clun, '#'
+    printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
+  endif
+  
   print, 'Cameras'
   printf, Clun, '#'
   printf, Clun, '# --- Cameras'
@@ -135,99 +185,107 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate
   ;; some of the method calls, so add it commented out. (This if
   ;; because for some years we don't have properly prepared
   ;; backgains and psfs for the relevant cameras.)
-  maybe_nodescatter = strarr(Nprefilters)
-  indx7772 = where(prefilters eq '7772', N7772)
-  if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
-
-  for ipref = 0, Nprefilters-1 do begin
-    printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
-            + "' " + maybe_nodescatter[ipref]
-  endfor
-
-  print, 'Pinholes'
-  printf, Clun, '#'
-  printf, Clun, '# --- Pinholes'
-  printf, Clun, '#'
-  pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
-  for i = 0, Ndirs-1 do begin
-    pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
-    if Nsubdirs gt 0 then begin
-      printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-      printf, Slun, 'a -> setpinhdir, root_dir+"' $
-              + red_strreplace(pinhdirs[i], root_dir, '')+'"'
-;        printf, Slun, 'a -> sumpinh_new'
-      for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                + prefilters[ipref]+"'" $
-                + maybe_nodescatter[ipref]
-      endfor
-    endif else begin
-      pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
-      for j = 0, Nsubdirs-1 do begin
-        pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
-                                     , count = Nsubsubdirs, /fold)
-        if Nsubsubdirs gt 0 then begin
-          printf, Clun, 'pinh_dir = ' $
-                  + red_strreplace(pinhsubdirs[j], root_dir, '')
-          printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                  + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
-;              printf, Slun, 'a -> sumpinh_new'
-          for ipref = 0, Nprefilters-1 do begin
-            printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                    + prefilters[ipref] + "'" $
-                    + maybe_nodescatter[ipref]
-          endfor                ; ipref
-        endif                   ; Nsubsubdirs
-      endfor                    ; j
-    endelse                     ; Nsubdirs
-  endfor                        ; i
+  if ~keyword_set(calibrations_only) then begin  
+    maybe_nodescatter = strarr(Nprefilters)
+    indx7772 = where(prefilters eq '7772', N7772)
+    if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
+  endif
   
-  print, 'Polcal'
-  printf, Clun, '#'
-  printf, Clun, '# --- Polcal'
-  printf, Clun, '#'
-;  Npol = 0
-  polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
-  if Npol gt 0 then begin
-    polprefs = file_basename(polcaldirs)
-    for i = 0, Npol-1 do begin
-      polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
-                                  , count = Nsubdirs, /fold)
+  if ~keyword_set(calibrations_only) then begin  
+    for ipref = 0, Nprefilters-1 do begin
+      printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
+              + "' " + maybe_nodescatter[ipref]
+    endfor
+  endif
+
+  if ~keyword_set(calibrations_only) then begin  
+    print, 'Pinholes'
+    printf, Clun, '#'
+    printf, Clun, '# --- Pinholes'
+    printf, Clun, '#'
+    pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
+    for i = 0, Ndirs-1 do begin
+      pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
       if Nsubdirs gt 0 then begin
-        printf, Clun, 'polcal_dir = ' $
-                + red_strreplace(polcaldirs[i], root_dir, '')
-;        Npol += 1
-        printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-                + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-        printf, Slun, 'a -> sumpolcal, /check'
+        printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
+        printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                + red_strreplace(pinhdirs[i], root_dir, '')+'"'
+;        printf, Slun, 'a -> sumpinh_new'
+        for ipref = 0, Nprefilters-1 do begin
+          printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                  + prefilters[ipref]+"'" $
+                  + maybe_nodescatter[ipref]
+        endfor
       endif else begin
-        polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
+        pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
-          polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
-                                         , count = Nsubsubdirs, /fold)
+          pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
+                                       , count = Nsubsubdirs, /fold)
           if Nsubsubdirs gt 0 then begin
-            printf, Clun, 'polcal_dir = ' $
-                    + red_strreplace(polcalsubdirs[j], root_dir, '')
-;              Npol += 1
-            printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-                    + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-            printf, Slun, 'a -> sumpolcal, /check' 
-          endif
+            printf, Clun, 'pinh_dir = ' $
+                    + red_strreplace(pinhsubdirs[j], root_dir, '')
+            printf, Slun, 'a -> setpinhdir, root_dir+"' $
+                    + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+;              printf, Slun, 'a -> sumpinh_new'
+            for ipref = 0, Nprefilters-1 do begin
+              printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+                      + prefilters[ipref] + "'" $
+                      + maybe_nodescatter[ipref]
+            endfor              ; ipref
+          endif                 ; Nsubsubdirs
         endfor                  ; j
-      endelse
+      endelse                   ; Nsubdirs
     endfor                      ; i
+  endif
 
-    for ipref = 0, Npol-1 do begin
-      printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
-              + maybe_nodescatter[ipref]
-      printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
-              + strtrim(Nthreads, 2)
-    endfor                      ; ipref
-    
-  endif else begin
-    polprefs = ''
-  endelse                       ; Npol
+  if ~keyword_set(calibrations_only) then begin  
+    print, 'Polcal'
+    printf, Clun, '#'
+    printf, Clun, '# --- Polcal'
+    printf, Clun, '#'
+;  Npol = 0
+    polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
+    if Npol gt 0 then begin
+      polprefs = file_basename(polcaldirs)
+      for i = 0, Npol-1 do begin
+        polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
+                                    , count = Nsubdirs, /fold)
+        if Nsubdirs gt 0 then begin
+          printf, Clun, 'polcal_dir = ' $
+                  + red_strreplace(polcaldirs[i], root_dir, '')
+;        Npol += 1
+          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+          printf, Slun, 'a -> sumpolcal, /check'
+        endif else begin
+          polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
+          for j = 0, Nsubdirs-1 do begin
+            polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
+                                           , count = Nsubsubdirs, /fold)
+            if Nsubsubdirs gt 0 then begin
+              printf, Clun, 'polcal_dir = ' $
+                      + red_strreplace(polcalsubdirs[j], root_dir, '')
+;              Npol += 1
+              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+              printf, Slun, 'a -> sumpolcal, /check' 
+            endif
+          endfor                ; j
+        endelse
+      endfor                    ; i
 
+      for ipref = 0, Npol-1 do begin
+        printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
+                + maybe_nodescatter[ipref]
+        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
+                + strtrim(Nthreads, 2)
+      endfor                    ; ipref
+      
+    endif else begin
+      polprefs = ''
+    endelse                     ; Npol
+  endif
+  
   
   print, 'Prefilter scan'
   printf, Clun, '#'
@@ -257,6 +315,17 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate
   ;; here is where the command should be written to the script file.
 
   
+  
+  if keyword_set(calibrations_only) then begin
+    ;; We don't need science data for the calibrations_only setup. 
+    free_lun, Clun
+    ;; We'll end the script file with an end statement so it
+    ;; can be run with .run or .rnew.
+    printf, Slun, 'end'
+    free_lun, Slun
+    return
+  endif
+
   print, 'Science'
   printf, Clun, '#'
   printf, Clun, '# --- Science data'
