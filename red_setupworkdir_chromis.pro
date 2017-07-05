@@ -73,9 +73,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun,'image_scale = 0.0379'   ; Measured in May 2016.
   printf, Clun, 'diversity = 3.35e-3'   ; Nominal value for 2016.
 
-  printf, Slun, 'a = chromisred("'+cfgfile+'")' 
+  if keyword_set(calibrations_only) then begin
+    printf, Slun, 'a = chromisred("'+cfgfile+'",/dev)' 
+  endif else begin
+    printf, Slun, 'a = chromisred("'+cfgfile+'")' 
+  endelse
   printf, Slun, 'root_dir = "' + root_dir + '"'
-
+  
   ;; Download SST log files and optionally some other data from the
   ;; web.
   if ~keyword_set(calibrations_only) then begin

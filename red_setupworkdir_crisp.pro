@@ -72,7 +72,11 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun,'isodate = '+isodate
 
   ;; printf, Slun, '.r crispred'
-  printf, Slun, 'a = crispred("'+cfgfile+'")' 
+  if keyword_set(calibrations_only) then begin
+    printf, Slun, 'a = chromisred("'+cfgfile+'",/dev)' 
+  endif else begin
+    printf, Slun, 'a = chromisred("'+cfgfile+'")' 
+  endelse
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Download SST log files and optionally some other data from the
