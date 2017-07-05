@@ -64,6 +64,8 @@
 ;   2015-05-07: MGL. With a *, run all directories.
 ; 
 ;   2016-02-17 : MGL. New keyword "all".
+; 
+;   2017-07-05 : MGL. Use rdx_cbezier3 rather than cbezier3.
 ;
 ;
 ;-
@@ -284,7 +286,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
                  ;;
                  print, inam+'shifting cube ... ', format='(A,$)'
                  for yy = 0, ny-1 do for xx=0, nx-1 do begin
-                    cub1[*,xx,yy] = cbezier3(udwav, cub1[*,xx,yy], udwav+cmap[xx,yy])
+                    cub1[*,xx,yy] = rdx_cbezier3(udwav, cub1[*,xx,yy], udwav+cmap[xx,yy])
                  endfor
                  print, 'done'
               endelse
