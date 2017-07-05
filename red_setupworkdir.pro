@@ -23,7 +23,11 @@
 ;      setupdir will look for the root_dir based on the site.
 ; 
 ; :Keywords:
-; 
+;
+;    calibrations_only : in, optional, type=boolean
+;
+;      Set up to process calibration data only.
+;
 ;    cfgfile : in, optional, type=string, default='config.txt'
 ; 
 ;      The name of the generated config file.
@@ -215,6 +219,8 @@
 ;   2017-05-03 : MGL. Use hostname -I rather than hostname -i to
 ;                figure out where we are.
 ;
+;   2017-07-05 : MGL. New keyword calibrations_only.
+;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
                       , out_dir = out_dir $
@@ -222,7 +228,8 @@ pro red_setupworkdir, search_dir = search_dir $
                       , instruments = instruments $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
-                      , date = date
+                      , date = date $
+                      , calibrations_only = calibrations_only
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS']
   
@@ -346,73 +353,89 @@ pro red_setupworkdir, search_dir = search_dir $
 
   ;; Work directories
 
-  if total(strmatch(testdirs,'*spec*',/fold)) and strmatch(instruments, 'TRIPPEL') then begin
-    setup_trippel = 1
-    odirs = file_search(out_dir + 'TRIPPEL*', count = Nodirs)
-    if Nodirs eq 0 then begin
-      trippel_dir = out_dir + 'TRIPPEL/'  
-    endif else begin
-      print
-      print, 'Existing TRIPPEL work dirs in '+out_dir+' :'
-      print, file_basename(odirs), format = '(a0)'
-      trippel_dir = ''
-      print, 'Use an existing directory or create a new one.'
-      read, 'Specify TRIPPEL workdir name: ', trippel_dir
-      trippel_dir = out_dir + trippel_dir + '/'
-    endelse
-    red_append, workdirs, trippel_dir
-  endif else setup_trippel = 0
+  if keyword_set(calibrations_only) then begin
 
-  if total(strmatch(testdirs,'*slit*',/fold)) and strmatch(instruments, 'TRIPPEL') then begin
-    setup_slitjaw = 1
-    odirs = file_search(out_dir + 'SLITJAW*', count = Nodirs)
-    if Nodirs eq 0 then begin
-      slitjaw_dir = out_dir + 'SLITJAW/'  
-    endif else begin
-      print
-      print, 'Existing SLITJAW work dirs in '+out_dir+' :'
-      print, file_basename(odirs), format = '(a0)'
-      slitjaw_dir = ''
-      print, 'Use an existing directory or create a new one.'
-      read, 'Specify SLITJAW workdir name: ', slitjaw_dir
-      slitjaw_dir = out_dir + slitjaw_dir + '/'
-    endelse
-    red_append, workdirs, slitjaw_dir
-  endif else setup_slitjaw = 0
+    if total(strmatch(testdirs,'*chromis*',/fold)) and strmatch(instruments, 'CHROMIS') then begin
+      chromis_dir = out_dir + 'CHROMIS-calibrations/'  
+      setup_chromis = 1
+    endif else setup_chromis = 0
+
+    if total(strmatch(testdirs,'*crisp*',/fold)) and strmatch(instruments, 'CRISP') then begin
+      chromis_dir = out_dir + 'CRISP-calibrations/'  
+      setup_crisp = 1
+    endif else setup_crisp = 0
+
+  endif else begin
+    
+    if total(strmatch(testdirs,'*spec*',/fold)) and strmatch(instruments, 'TRIPPEL') then begin
+      setup_trippel = 1
+      odirs = file_search(out_dir + 'TRIPPEL*', count = Nodirs)
+      if Nodirs eq 0 then begin
+        trippel_dir = out_dir + 'TRIPPEL/'  
+      endif else begin
+        print
+        print, 'Existing TRIPPEL work dirs in '+out_dir+' :'
+        print, file_basename(odirs), format = '(a0)'
+        trippel_dir = ''
+        print, 'Use an existing directory or create a new one.'
+        read, 'Specify TRIPPEL workdir name: ', trippel_dir
+        trippel_dir = out_dir + trippel_dir + '/'
+      endelse
+      red_append, workdirs, trippel_dir
+    endif else setup_trippel = 0
+
+    if total(strmatch(testdirs,'*slit*',/fold)) and strmatch(instruments, 'TRIPPEL') then begin
+      setup_slitjaw = 1
+      odirs = file_search(out_dir + 'SLITJAW*', count = Nodirs)
+      if Nodirs eq 0 then begin
+        slitjaw_dir = out_dir + 'SLITJAW/'  
+      endif else begin
+        print
+        print, 'Existing SLITJAW work dirs in '+out_dir+' :'
+        print, file_basename(odirs), format = '(a0)'
+        slitjaw_dir = ''
+        print, 'Use an existing directory or create a new one.'
+        read, 'Specify SLITJAW workdir name: ', slitjaw_dir
+        slitjaw_dir = out_dir + slitjaw_dir + '/'
+      endelse
+      red_append, workdirs, slitjaw_dir
+    endif else setup_slitjaw = 0
+    
+    if total(strmatch(testdirs,'*chromis*',/fold)) and strmatch(instruments, 'CHROMIS') then begin
+      setup_chromis = 1
+      odirs = file_search(out_dir + 'CHROMIS*', count = Nodirs)
+      if Nodirs eq 0 then begin
+        chromis_dir = out_dir + 'CHROMIS/'  
+      endif else begin
+        print
+        print, 'Existing CHROMIS work dirs in '+out_dir+' :'
+        print, file_basename(odirs), format = '(a0)'
+        chromis_dir = ''
+        print, 'Use an existing directory or create a new one.'
+        read, 'Specify CHROMIS workdir name: ', chromis_dir
+        chromis_dir = out_dir + chromis_dir + '/'
+      endelse
+      red_append, workdirs, chromis_dir
+    endif else setup_chromis = 0
+
+    if total(strmatch(testdirs,'*crisp*',/fold)) and strmatch(instruments, 'CRISP') then begin
+      setup_crisp = 1
+      odirs = file_search(out_dir + 'CRISP*', count = Nodirs)
+      if Nodirs eq 0 then begin
+        crisp_dir = out_dir + 'CRISP/'  
+      endif else begin
+        print, 'Existing CRISP work dirs in '+out_dir+' :'
+        print, file_basename(odirs), format = '(a0)'
+        crisp_dir = ''
+        print, 'Use an existing directory or create a new one.'
+        read, 'Specify CRISP workdir name: ', crisp_dir
+        crisp_dir = out_dir + crisp_dir + '/'
+      endelse
+      red_append, workdirs, crisp_dir
+    endif else setup_crisp = 0
+    
+  endelse
   
-  if total(strmatch(testdirs,'*chromis*',/fold)) and strmatch(instruments, 'CHROMIS') then begin
-    setup_chromis = 1
-    odirs = file_search(out_dir + 'CHROMIS*', count = Nodirs)
-    if Nodirs eq 0 then begin
-      chromis_dir = out_dir + 'CHROMIS/'  
-    endif else begin
-      print
-      print, 'Existing CHROMIS work dirs in '+out_dir+' :'
-      print, file_basename(odirs), format = '(a0)'
-      chromis_dir = ''
-      print, 'Use an existing directory or create a new one.'
-      read, 'Specify CHROMIS workdir name: ', chromis_dir
-      chromis_dir = out_dir + chromis_dir + '/'
-    endelse
-    red_append, workdirs, chromis_dir
-  endif else setup_chromis = 0
-
-  if total(strmatch(testdirs,'*crisp*',/fold)) and strmatch(instruments, 'CRISP') then begin
-    setup_crisp = 1
-    odirs = file_search(out_dir + 'CRISP*', count = Nodirs)
-    if Nodirs eq 0 then begin
-      crisp_dir = out_dir + 'CRISP/'  
-    endif else begin
-      print, 'Existing CRISP work dirs in '+out_dir+' :'
-      print, file_basename(odirs), format = '(a0)'
-      crisp_dir = ''
-      print, 'Use an existing directory or create a new one.'
-      read, 'Specify CRISP workdir name: ', crisp_dir
-      crisp_dir = out_dir + crisp_dir + '/'
-    endelse
-    red_append, workdirs, crisp_dir
-  endif else setup_crisp = 0
-
   if n_elements(workdirs) eq 0 then return
   
   ;; Common setup tasks
@@ -451,8 +474,10 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; -----------------------------------------------------------------------------------------
   if setup_slitjaw then red_setupworkdir_slitjaw, slitjaw_dir, root_dir, cfgfile, scriptfile, isodate
   if setup_trippel then red_setupworkdir_trippel, trippel_dir, root_dir, cfgfile, scriptfile, isodate
-  if setup_chromis then red_setupworkdir_chromis, chromis_dir, root_dir, cfgfile, scriptfile, isodate
-  if setup_crisp then red_setupworkdir_crisp, crisp_dir, root_dir, cfgfile, scriptfile, isodate
+  if setup_chromis then red_setupworkdir_chromis, chromis_dir, root_dir, cfgfile, scriptfile, isodate $
+     , calibrations_only = calibrations_only
+  if setup_crisp then red_setupworkdir_crisp, crisp_dir, root_dir, cfgfile, scriptfile, isodate $
+     , calibrations_only = calibrations_only
 
   ;; Write message and then we are done.
   print
