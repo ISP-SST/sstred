@@ -349,25 +349,35 @@ pro red_setupworkdir, search_dir = search_dir $
   If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
 
   ;; Used for detecting instruments
-  testdirs = file_search(root_dir+'/*/*/*', count = Ndirs)
+  testdirs = file_search(root_dir+'/*/*/*', /test_directory, count = Ndirs)
 
   ;; Work directories
 
   if keyword_set(calibrations_only) then begin
 
-    if total(strmatch(testdirs,'*chromis*',/fold)) and strmatch(instruments, 'CHROMIS') then begin
+    print, 'Setup for calibration data processing only!'
+
+    setup_trippel = 0
+    setup_slitjaw = 0
+    
+    if total(strmatch(testdirs,'*chromis*',/fold)) gt 0 $
+       and total(strmatch(instruments, 'CHROMIS')) gt 0 then begin
       chromis_dir = out_dir + 'CHROMIS-calibrations/'  
+      red_append, workdirs, chromis_dir
       setup_chromis = 1
     endif else setup_chromis = 0
 
-    if total(strmatch(testdirs,'*crisp*',/fold)) and strmatch(instruments, 'CRISP') then begin
-      chromis_dir = out_dir + 'CRISP-calibrations/'  
+    if total(strmatch(testdirs,'*crisp*',/fold))  gt 0 $
+       and total(strmatch(instruments, 'CRISP')) gt 0 then begin
+      crisp_dir = out_dir + 'CRISP-calibrations/'  
+      red_append, workdirs, crisp_dir
       setup_crisp = 1
     endif else setup_crisp = 0
 
   endif else begin
     
-    if total(strmatch(testdirs,'*spec*',/fold)) and strmatch(instruments, 'TRIPPEL') then begin
+    if total(strmatch(testdirs,'*spec*',/fold)) gt 0 $
+       and total(strmatch(instruments, 'TRIPPEL')) gt 0 then begin
       setup_trippel = 1
       odirs = file_search(out_dir + 'TRIPPEL*', count = Nodirs)
       if Nodirs eq 0 then begin
@@ -384,7 +394,8 @@ pro red_setupworkdir, search_dir = search_dir $
       red_append, workdirs, trippel_dir
     endif else setup_trippel = 0
 
-    if total(strmatch(testdirs,'*slit*',/fold)) and strmatch(instruments, 'TRIPPEL') then begin
+    if total(strmatch(testdirs,'*slit*',/fold)) gt 0 $
+       and total(strmatch(instruments, 'TRIPPEL')) gt 0 then begin
       setup_slitjaw = 1
       odirs = file_search(out_dir + 'SLITJAW*', count = Nodirs)
       if Nodirs eq 0 then begin
@@ -401,7 +412,8 @@ pro red_setupworkdir, search_dir = search_dir $
       red_append, workdirs, slitjaw_dir
     endif else setup_slitjaw = 0
     
-    if total(strmatch(testdirs,'*chromis*',/fold)) and strmatch(instruments, 'CHROMIS') then begin
+    if total(strmatch(testdirs,'*chromis*',/fold)) gt 0 $
+       and total(strmatch(instruments, 'CHROMIS')) gt 0 then begin
       setup_chromis = 1
       odirs = file_search(out_dir + 'CHROMIS*', count = Nodirs)
       if Nodirs eq 0 then begin
@@ -418,7 +430,8 @@ pro red_setupworkdir, search_dir = search_dir $
       red_append, workdirs, chromis_dir
     endif else setup_chromis = 0
 
-    if total(strmatch(testdirs,'*crisp*',/fold)) and strmatch(instruments, 'CRISP') then begin
+    if total(strmatch(testdirs,'*crisp*',/fold)) gt 0 $
+       and total(strmatch(instruments, 'CRISP')) gt 0 then begin
       setup_crisp = 1
       odirs = file_search(out_dir + 'CRISP*', count = Nodirs)
       if Nodirs eq 0 then begin
@@ -481,22 +494,22 @@ pro red_setupworkdir, search_dir = search_dir $
 
   ;; Write message and then we are done.
   print
-  if strmatch(instruments, 'TRIPPEL') then begin
+  if total(strmatch(instruments, 'TRIPPEL')) gt 0 then begin
     print, 'TRIPPEL setup in ' + trippel_dir
   endif else begin
     print, 'No TRIPPEL setup.'
   endelse
-  if strmatch(instruments, 'SLITJAW') then begin
+  if total(strmatch(instruments, 'SLITJAW')) gt 0 then begin
     print, 'SLITJAW setup in ' + slitjaw_dir
   endif else begin
     print, 'No slitjaw setup.'
   endelse
-  if strmatch(instruments, 'CHROMIS') then begin
+  if total(strmatch(instruments, 'CHROMIS')) gt 0 then begin
     print, 'CHROMIS setup in ' + chromis_dir
   endif else begin
     print, 'No CHROMIS setup.'
   endelse
-  if strmatch(instruments, 'CRISP') then begin
+  if total(strmatch(instruments, 'CRISP')) gt 0 then begin
     print, 'CRISP setup in ' + crisp_dir
   endif else begin
     print, 'No CRISP setup.'
