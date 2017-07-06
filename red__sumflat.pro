@@ -100,6 +100,9 @@
 ; 
 ;   2017-03-13 : MGL. Use red_sumheaders.
 ;
+;   2017-07-06 : THI. Get framenumbers and timestamps from rdx_sumfiles
+;                and pass them on to red_sumheaders.
+;
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
@@ -241,9 +244,8 @@ pro red::sumflat, overwrite = overwrite, $
         tmplist = tmplist(sort(tmplist))
 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(tmplist, time_avg = time_avg, check = check, $
-                              lun = lun, lim = lim, summed = summed, nsum = nsum $
-                              , filter = filter, verbose=2)
+          flat = rdx_sumfiles(tmplist, check=check, lun=lun, lim=lim, summed=summed, nsum=nsum, filter=filter, $
+                   framenumbers=framenumbers, time_beg=time_beg, time_end=time_end, time_avg=time_avg, verbose=2)
         endif else begin
           flat = red_sumfiles(tmplist, check = check, $
 ;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
@@ -265,9 +267,11 @@ pro red::sumflat, overwrite = overwrite, $
       flat = float(flat-dd)
 
       ;; Make FITS headers 
-      head  = red_sumheaders(files[sel], flat, nsum = nsum)
+      head  = red_sumheaders(files[sel], flat, nsum=nsum, framenumbers=framenumbers, $
+                             time_beg=time_beg, time_end=time_end, time_avg=time_avg )
       if keyword_set(store_rawsum) then $
-         shead = red_sumheaders(files[sel], summed, nsum = nsum)
+         shead = red_sumheaders(files[sel], summed, nsum=nsum, framenumbers=framenumbers, $
+                             time_beg=time_beg, time_end=time_end, time_avg=time_avg)
       
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document. 

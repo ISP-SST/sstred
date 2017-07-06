@@ -39,6 +39,25 @@
 ;      The number of summed frames. Specify this if some were excluded
 ;      from the sum. 
 ; 
+;    framenumbers : in, optional, type=intarr
+;      
+;      Framenumbers to be used for the supplied files. If not supplied,
+;      the framenumbers will be parsed from the headers. 
+; 
+;    time_beg : in, optional, type=string
+;      
+;      The start-time for the summed burst.
+; 
+;    time_end : in, optional, type=string
+;      
+;      The end-time for the summed burst.
+; 
+;    time_avg : in, optional, type=string
+;      
+;      The average time for the summed burst.
+;
+;    If any of the time_* keywords is not supplied, the headers will be
+;    parsed instead.
 ; 
 ; :History:
 ; 
@@ -48,10 +67,16 @@
 ; 
 ;    2017-06-02 : MGL. Use red_fitsaddpar.
 ; 
+;    2017-07-06 : THI. Adding keywords: framenumbers, time_beg, time_end, time_avg
+; 
 ;-
 function red_sumheaders, files, sum $
-                         , nsum = nsum $
-                         , discard = discard
+                       , nsum = nsum $
+                       , discard = discard $
+                       , framenumbers = framenumbers $
+                       , time_beg = time_beg $
+                       , time_end = time_end $
+                       , time_avg = time_avg
 
   if n_elements(nsum) gt 0 and n_elements(discard) gt 0 then begin
     print, 'red_sumheaders : Do not use both nsum and discard.'
@@ -59,60 +84,79 @@ function red_sumheaders, files, sum $
   endif
     
   Nfiles = n_elements(files)
+  if Nfiles eq 0 then begin
+      print, 'red_sumheaders: no files provided.'
+      return,''
+  endif
+    
+  get_framenumbers = 0
+  if n_elements(framenumbers) eq 0 then get_framenumbers = 1
   
-  for ifile = 0, Nfiles-1 do begin
-    
-    head = red_readhead(files[ifile])
-
-    ;; The number of frames in the file
-    Nframes = fxpar(head, 'NAXIS3', count = count)
-    if count eq 0 then begin
-      Nframes = 1
-      if n_elements(discard) ne 0 then if total(float(discard)) gt 0.0 then continue
-      indx = [0]
-    endif else begin
-      indx = lindgen(Nframes)
-      if n_elements(discard) ne 0 then begin
-        ;; DISCARD can be one number or two comma-separated numbers.
-        discard = strsplit(discard, ',', /extract)
-        ;; Are we discarding all frames?
-        if total(long(discard)) ge Nframes then continue
-        ;; First element is the number of frames discarded from the
-        ;; beginning.
-        indx = indx[long(discard[0]):*]
-        ;; Second element (if any) is the number of frames
-        ;; discarded from the end.
-        if n_elements(discard) gt 1 then $
-           indx = indx[0:-1-long(discard[1])]
-      endif
-    endelse
-
-    frame_numbers_thisfile = indx + fxpar(head, 'FRAMENUM', count = count)
-    if count gt 0 then red_append, frame_numbers, frame_numbers_thisfile[indx]
-
-    tab_hdus = fxpar(head, 'TAB_HDUS')
-    if tab_hdus ne '' then begin
-
-      tab = readfits(files[ifile], theader, /exten, /silent)
-      date_beg_thisfile = ftget(theader,tab, 'DATE-BEG') 
-      red_append, date_beg_array, date_beg_thisfile[indx]
-
-    endif else begin
-
-      red_append, date_beg_array, fxpar(head, 'DATE-BEG')
+  get_times = 0
+  if n_elements(time_beg) eq 0 || $
+     n_elements(time_end) eq 0 || $
+     n_elements(time_avg) eq 0 then get_times = 1
+  
+  if get_framenumbers || get_times then begin ; we need to parse the headers
+    for ifile = 0, Nfiles-1 do begin
       
-    endelse
-    
-  endfor                        ; ifile
+      head = red_readhead(files[ifile])
 
-  if n_elements(Nsum) eq 0 then begin
-    Nsum = n_elements(date_beg_array)
+      ;; The number of frames in the file
+      Nframes = fxpar(head, 'NAXIS3', count = count)
+
+      if count eq 0 then begin
+        Nframes = 1
+        if n_elements(discard) ne 0 then if total(float(discard)) gt 0.0 then continue
+        indx = [0]
+      endif else begin
+        indx = lindgen(Nframes)
+        if n_elements(discard) ne 0 then begin
+          ;; DISCARD can be one number or two comma-separated numbers.
+          discard = strsplit(discard, ',', /extract)
+          ;; Are we discarding all frames?
+          if total(long(discard)) ge Nframes then continue
+          ;; First element is the number of frames discarded from the
+          ;; beginning.
+          indx = indx[long(discard[0]):*]
+          ;; Second element (if any) is the number of frames
+          ;; discarded from the end.
+          if n_elements(discard) gt 1 then $
+             indx = indx[0:-1-long(discard[1])]
+        endif
+      endelse
+
+      ; only get framenumbers if necessary
+      if get_framenumbers then begin
+        frame_numbers_thisfile = indx + fxpar(head, 'FRAMENUM', count = count)
+        if count gt 0 then red_append, framenumbers, frame_numbers_thisfile[indx]
+      endif
+
+      ; only get timestamps if necessary
+      if get_times then begin
+        tab_hdus = fxpar(head, 'TAB_HDUS')
+        if tab_hdus ne '' then begin
+          tab = readfits(files[ifile], theader, /exten, /silent)
+          date_beg_thisfile = ftget(theader,tab, 'DATE-BEG') 
+          red_append, date_beg_array, date_beg_thisfile[indx]
+        endif else begin
+          red_append, date_beg_array, fxpar(head, 'DATE-BEG')
+        endelse
+      endif
+    endfor                        ; ifile
   endif else begin
-    if n_elements(date_beg_array) ne Nsum then begin
+    head = red_readhead(files[0]) ; read a single header to use as template
+  endelse
+  
+  if n_elements(Nsum) eq 0 then begin
+    Nsum = n_elements(framenumbers)
+  endif else begin
+    if n_elements(framenumbers) ne Nsum then begin
       ;; If we could get info about the rejected frame numbers from
       ;; both red_sumfiles and rdx_sumfiles we could use that here!
-      print, 'red_sumheaders : n_elements(date_beg_array) ne Nsum'
+      print, 'red_sumheaders : n_elements(framenumbers) ne Nsum'
       print, '   The DATE_??? and FNUMSUM keywords may be slightly off.' 
+      stop
     endif
   endelse
 
@@ -153,16 +197,18 @@ function red_sumheaders, files, sum $
   
   ;; List of frame numbers (re-use FRAMENUM for this)
   red_fitsaddpar, anchor = anchor, head $
-                  , 'FRAMENUM', red_collapserange(frame_numbers,ld='',rd='') $
+                  , 'FRAMENUM', red_collapserange(framenumbers,ld='',rd='') $
                   , 'List of frame numbers in the sum'
 
   ;; DATE-??? keywords, base them on the tabulated timestamps
   date_obs = (strsplit(fxpar(head, 'DATE-OBS'), 'T',/extract))[0]
   anchor = 'DATE-OBS'
-  times = red_time2double(strmid(DATE_BEG_ARRAY,11))
-  time_beg = red_timestring(min(times))
-  time_end = red_timestring(max(times)+exptime)
-  time_avg = red_timestring(mean(times)+exptime/2)
+  if get_times then begin
+    times = red_time2double(strmid(date_beg_array,11))
+    time_beg = red_timestring(min(times))
+    time_end = red_timestring(max(times)+exptime)
+    time_avg = red_timestring(mean(times)+exptime/2)
+  endif
   if n_elements(time_beg) ne 0 then $
      red_fitsaddpar, anchor = anchor, head $
                      , 'DATE-BEG', date_obs+'T'+time_beg $

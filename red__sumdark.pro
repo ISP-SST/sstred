@@ -96,6 +96,9 @@
 ;
 ;   2017-03-16 : MGL. Add FITS headers about this processing step.
 ;
+;   2017-07-06 : THI. Get framenumbers and timestamps from rdx_sumfiles
+;                and pass them on to red_sumheaders.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
@@ -200,8 +203,8 @@ pro red::sumdark, overwrite = overwrite, $
       
       ;; Do the summing
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-        dark = rdx_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
-                            , nsum=nsum, filter=filter, verbose=2)
+        dark = rdx_sumfiles(files[sel], check=check, lun=lun, summed=darksum, nsum=nsum, filter=filter, $
+            framenumbers=framenumbers, time_beg=time_beg, time_end=time_end, time_avg=time_avg, verbose=2)
       endif else begin
         dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
                             , nsum=nsum, filter=filter)
@@ -213,7 +216,8 @@ pro red::sumdark, overwrite = overwrite, $
       dark = float(dark)      
       
       ;; Make FITS headers 
-      head = red_sumheaders(files[sel], dark, nsum = nsum)
+      head = red_sumheaders(files[sel], dark, nsum=nsum, framenumbers=framenumbers, $
+                            time_beg=time_beg, time_end=time_end, time_avg=time_avg )
 ;      headsum  = red_sumheaders(files[sel], darksum, nsum = nsum)
       
       ;; Add some more info here, see SOLARNET deliverable D20.4 or

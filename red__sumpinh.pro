@@ -81,6 +81,10 @@
 ; 
 ;   2017-04-13 : MGL. Construct SOLARNET metadata fits header.
 ; 
+;   2017-07-06 : THI. Get framenumbers and timestamps from rdx_sumfiles
+;                and pass them on to red_sumheaders.
+;
+;
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , no_descatter = no_descatter $
@@ -217,15 +221,18 @@ pro red::sumpinh, nthreads = nthreads $
       ;; Dark and flat correction and bad-pixel filling done by
       ;; red_sumfiles on each frame before alignment.
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-        psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
-                            backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum, verbose=2)
+        psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, $
+                 gain=gain, backscatter_gain=bgt, backscatter_psf=Psft, $
+                 nsum=nsum, framenumbers=framenumbers, time_beg=time_beg, $
+                 time_end=time_end, time_avg=time_avg, verbose=2 )
       endif else begin
         psum = red_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
                             backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
       endelse
 
       ;; Make FITS headers 
-      head  = red_sumheaders(files[sel], psum, nsum = nsum)
+      head  = red_sumheaders(files[sel], psum, nsum=nsum, framenumbers=framenumbers, $
+                             time_beg=time_beg, time_end=time_end, time_avg=time_avg)
       fxaddpar, head, 'FILENAME', file_basename(pinhname), after = 'DATE'
 
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
