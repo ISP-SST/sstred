@@ -67,6 +67,8 @@
 ;
 ;   2016-09-08 : MGL. Speed up.
 ;
+;   2017-07-06 : THI. Use rdx_readdata to also support compressed data.
+;
 ;-
 pro chromis::split_data, split_dir = split_dir $
                          , uscan = uscan $
@@ -216,7 +218,7 @@ pro chromis::split_data, split_dir = split_dir $
            if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
 
            ;; Read the data cube
-           cube = red_readdata(files[ifile], header = head, /silent)
+           cube = rdx_readdata(files[ifile], header = head)
            
            dims = size(cube, /dim)
            Nframes = dims[2]

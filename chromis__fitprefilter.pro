@@ -49,6 +49,8 @@
 ;   2017-06-05 : MGL. Construct the units string as specified in the
 ;                FITS standard 3.0.
 ;
+;   2017-07-06 : THI. Use rdx_readdata to also support compressed data.
+;
 ; 
 ; 
 ;-
@@ -149,8 +151,8 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
 ;    print, inam+'loading files for state -> '+ustate[istate]
     
     for kk=0L, count-1 do begin
-      tmp = float(red_readdata(states[pos[kk]].filename, /silent))
-      tmpwb = float(red_readdata(states1[pos[kk]].filename, /silent))
+      tmp = float(rdx_readdata(states[pos[kk]].filename))
+      tmpwb = float(rdx_readdata(states1[pos[kk]].filename))
       
       dim = size(tmp,/dim)
       dx = round(dim[0]*0.12)

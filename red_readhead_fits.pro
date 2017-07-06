@@ -30,6 +30,7 @@
 ; 
 ;    2017-03-13 : MGL. Deal with camera software OBS_PHDU bug.
 ; 
+;    2017-07-06 : THI. Use rdx_readhead to get header.
 ; 
 ; 
 ;-
@@ -43,62 +44,8 @@ function red_readhead_fits, fname, $
   ;; Are we here for an extension or the primary HDU?
   if n_elements(extension) eq 0 then begin
     ;; primary
-    red_rdfits, fname, header = header
 
-    if fxpar(header, 'SOLARNET') eq 0 then begin
-      caminfo = red_camerainfo( red_detectorname(fname,head=header) )
-      if strmatch(caminfo.model,'PointGrey*') then begin 
-        ;; We could add a date check here as well.
-
-        ;; Old PointGrey data header filtering to bring it
-        ;; to solarnet compliance. 
-        header = red_filterchromisheaders(header, silent=silent)
-      endif
-    endif
-    ;; Quick and dirty table reading to get date-beg and
-    ;; date-end. Should rewrite this to propagate the whole
-    ;; table through the pipeline! /MGL
-    date_beg = sxpar(header, 'DATE-BEG', count = Nbeg)
-    if Nbeg eq 0 then begin
-      tab_hdus = fxpar(header, 'TAB_HDUS')
-      if tab_hdus ne '' then begin
-        
-        ;; At some point, implement removing bad frames from
-        ;; the tabulated list. /MGL
-        
-        tab = readfits(fname, theader, /exten, /silent)
-
-        if n_elements(tab) gt 1 then begin ; -1 if error
-          
-          date_beg_array = ftget(theader,tab, 'DATE-BEG') 
-          
-          fxaddpar, header, 'DATE-BEG', date_beg_array[0] $
-                    , 'First in DATE-BEG table.', after = 'DATE'
-          
-          isodate = (strsplit(date_beg_array[0], 'T', /extract))[0]
-          time_beg_array = red_time2double(red_strreplace(date_beg_array,isodate+'T',''))
-          
-          date_end = sxpar(header, 'DATE-END', count = Nend)
-          if Nend eq 0 then begin
-            ;; time_end = time_beg_array[-1] + sxpar(header, 'XPOSURE')
-            time_end = time_beg_array[n_elements(time_beg_array)-1] + sxpar(header, 'XPOSURE')
-            date_end = isodate + 'T' + red_time2double(time_end, /inv)
-            fxaddpar, header, 'DATE-END', date_end $
-                      , 'Last in DATE-BEG table + XPOSURE.' $
-                      , after = 'DATE-BEG'
-          endif
-
-          date_avg = sxpar(header, 'DATE-AVG', count = Navg)
-          if Navg eq 0 then begin
-            time_avg = mean(time_beg_array) + sxpar(header, 'XPOSURE')/2.
-            date_avg = isodate + 'T' + red_time2double(time_avg, /inv)
-            sxaddpar, header, 'DATE-AVG', date_avg $
-                      , 'Average of DATE-BEG table + XPOSURE/2.' $
-                      , after = 'DATE-BEG'
-          endif                 ; Navg
-        endif                   ; tab
-      endif                     ; tab_hdus
-    endif                       ; Nbeg
+    header = rdx_readhead(fname)
 
     ;; Hack to get the prefilter from the file name in data
     ;; from 2016.08.30.
