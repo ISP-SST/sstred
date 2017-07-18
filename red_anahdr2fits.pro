@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Make a fits header out of and ANA header
+; Make a fits header out of an ANA header
 ; 
 ; :Categories:
 ;
