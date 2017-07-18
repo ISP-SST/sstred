@@ -183,8 +183,9 @@ pro red::sumpinh, nthreads = nthreads $
       
       this_state = state_list[istate]
       sel = where(states.fpi_state eq this_state.fpi_state)
-
-      ;; Get the flat file name for the selected state
+      
+      ;; Get the pinholes file name for the selected state, as well as
+      ;; dark and flat data.
       self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
                          pinhname = pinhname, status = status
       if( status ne 0 ) then begin
@@ -205,7 +206,7 @@ pro red::sumpinh, nthreads = nthreads $
       
       pref = states[sel[0]].prefilter
       print, inam+' : adding pinholes for state -> ' + state_list[istate].fpi_state
-      
+  
       DoBackscatter = 0
       if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
         self -> loadbackscatter, detector, pref, bgt, Psft
