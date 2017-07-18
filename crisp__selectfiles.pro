@@ -61,6 +61,11 @@
 ;
 ;        Re-populate files/states.
 ; 
+;     polcal : in, optional, type=boolean
+; 
+;        Set this to add polcal-specific items in the states, qw and
+;        lp. 
+; 
 ;     selected : out, optional, type=intarr
 ;
 ;         Return the indices for the selection. If this is not specified,
@@ -77,7 +82,9 @@
 ; 
 ;   2017-06-28 : MGL. Adapt to new version of crisp::selectfiles.
 ;
-;   2017-09-29 : MGL. Bugfix: states.pref --> states.prefilter.
+;   2017-06-29 : MGL. Bugfix: states.pref --> states.prefilter.
+;
+;   2017-07-06 : MGL. New keyword polcal.
 ; 
 ;-
 pro crisp::selectfiles, cam = cam $
@@ -91,10 +98,11 @@ pro crisp::selectfiles, cam = cam $
                         , nremove = nremove $
                         , force = force $
                         , selected = selected $
-                        , strip_settings = strip_settings
+                        , strip_settings = strip_settings $
+                        , polcal = polcal
 
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+ 
   if( n_elements(force) gt 0 || n_elements(files) eq 0 ) then begin
 
     if( n_elements(cam) ne 1 ) then begin
@@ -112,20 +120,22 @@ pro crisp::selectfiles, cam = cam $
     endelse
     
     path_spec = dirs + '/' + file_template
-    
+
+    print, 212
     files = file_search(path_spec)
     files = files(where( strpos(files, '.lcd.') LT 0, nf) )
-    files = red_sortfiles(files)
+;    files = red_sortfiles(files) ; Slow! Move sorting to when we have a single state?
     force = 1                   ; we have new files, force extractstates
   endif
   
   if( n_elements(files) eq 0 || files[0] eq '' ) then begin
+    print, 111
     return
   endif
-  
+
   if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
 ;    self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
-    self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
+    self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings, polcal = polcal
                                 ; TODO: this is a really ugly way to drop the WB states, think of something better
 ;    wb_cams = (strmatch( states.detector, self->getdetector('Crisp-W')) $
 ;               or strmatch( states.detector, self->getdetector('Crisp-D')))
