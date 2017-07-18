@@ -54,7 +54,7 @@ pro red::getdetectors, dir = dir
   tagfil = self.out_dir+'/detectors.idlsave'
   if(file_test(tagfil)) then begin
     restore, tagfil
-    if n_elements(detectors) gt 0 then self.detectors = ptr_new(detectors, /NO_COPY)
+    if n_elements(detectors) gt 0 then self.detectors = ptr_new(strtrim(detectors, 2), /NO_COPY)
     return
   endif
   
