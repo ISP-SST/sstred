@@ -84,7 +84,7 @@
 ;
 ;   2017-06-29 : MGL. Bugfix: states.pref --> states.prefilter.
 ;
-;   2017-07-06 : MGL. New keyword polcal.
+;   2017-07-06 : MGL. New keyword polcal. Do not sort files.
 ; 
 ;-
 pro crisp::selectfiles, cam = cam $
