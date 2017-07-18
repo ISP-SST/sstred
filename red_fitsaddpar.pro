@@ -53,6 +53,9 @@
 ; 
 ;    2017-05-30 : MGL. First version.
 ; 
+;    2017-07-17 : MGL. Make robust to name and value being unit length
+;                 arrays. 
+; 
 ; 
 ; 
 ; 
@@ -87,26 +90,26 @@ pro red_fitsaddpar, header, name, value, comment $
     ;; work.
     if n_elements(comment) eq 0 then begin
       ;; If the comment keyword is not given, use existing comment if any.
-      oldvalue = fxpar(header, name, comment = oldcomment, count = oldcount)
+      oldvalue = fxpar(header, name[0], comment = oldcomment, count = oldcount)
       if oldcount gt 0 then comment = oldcomment[0]
     endif
-    sxdelpar, header, name
+    sxdelpar, header, name[0]
   endif
   
   if n_elements(comment) eq 0 then begin
-    fxaddpar, header, name, value $
+    fxaddpar, header, name[0], value[0] $
               , after = aft, before = bef $
               , _strict_extra = extra
   endif else begin
     ;; Strip heading and trailing spaces from comment, fxaddpar will
     ;; add one space at the beginning.
-    fxaddpar, header, name, value, strtrim(comment, 2) $
+    fxaddpar, header, name[0], value[0], strtrim(comment, 2) $
               , after = aft, before = bef $
               , _strict_extra = extra
   endelse
   
   ;; Set this to use in next call
-  anchor = name
+  anchor = name[0]
 
   ;; Print what we did
   if 0 then begin
@@ -115,9 +118,9 @@ pro red_fitsaddpar, header, name, value, comment $
       1 : anchstring = ' ; New anchor=' + anchor
     endcase
     case 1 of
-      n_elements(aft) : print, 'Added ' + name + ' after '  + aft + anchstring
-      n_elements(bef) : print, 'Added ' + name + ' before ' + bef + anchstring
-      else:  print, 'Added ' + name + anchstring
+      n_elements(aft) : print, 'Added ' + name[0] + ' after '  + aft + anchstring
+      n_elements(bef) : print, 'Added ' + name[0] + ' before ' + bef + anchstring
+      else:  print, 'Added ' + name[0] + anchstring
     endcase
   endif
   
