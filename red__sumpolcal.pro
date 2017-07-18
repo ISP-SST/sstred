@@ -29,8 +29,14 @@
 ;   
 ;   
 ;   
-;    check : 
-;   
+;    check : in, optional, type=boolean
+;
+;
+;    sum_in_rdx : in, optional, type=boolean
+;
+;      Use rdx_sumfiles.
+;
+;    outdir : in, optional, type=string
 ;   
 ;   
 ; 
@@ -48,136 +54,163 @@
 ;
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
+;
+;   2017-07-06 : MGL. Adapt to new pipeline mechanisms. Add keywords
+;                dirs, outdir, sum_in_rdx. Add metadata handling.
+;                Remove keyword old.
 ; 
 ;
 ;-
-pro red::sumpolcal, remove = remove, ucam = ucam, check=check, old = old
+pro red::sumpolcal, check=check $
+                    , dirs = dirs $
+                    , outdir = outdir $
+                    , overwrite = overwrite $
+                    , remove = remove $
+                    , sum_in_rdx = sum_in_rdx $
+                    , ucam = ucam 
+           
+  ;; Defaults
+  if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
+  else if ptr_valid(self.polcal_dir) then dirs = *self.polcal_dir
+  
+  ;; Prepare for logging (after setting of defaults).
+  ;; Set up a dictionary with all parameters that are in use
+  prpara = dictionary()
+  ;; Boolean keywords
+  if keyword_set(check) then prpara['check'] = check
+  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
+  ;; Non-boolean keywords
+  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
+  if n_elements(outdir) ne 0 then prpara['outdir'] = outdir
+  if n_elements(ucam) ne 0 then prpara['ucam'] = ucam
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
-                                ;
-  if(~self.dopolcal) then begin
-    print, inam + ' : Error -> undefined polcal_dir in '+self.filename
+  self -> getdetectors 
+  cams = *self.cameras
+  detectors = *self.detectors
+  Ncams = n_elements(cams)
+  if Ncams eq 0 then begin
+    print, inam+' : ERROR : undefined cams (and cameras)'
+    return
   endif
 
   ;; Loop cameras
-  for ic = 0, 1 do begin
-    firsttime = 1B
-    case ic of
-      0 : begin
-        cam = self.camt
-        doit = self.docamt
-      end
+  for icam = 0, n_elements(cams)-1 do begin
 
-      1 : begin
-        cam = self.camr
-        doit = self.docamr
-      end
-    endcase
-
-    IF(keyword_set(ucam)) THEN BEGIN
-      IF cam NE ucam THEN BEGIN
+    cam = cams[icam]
+    
+    if strmatch(cam,'*-[DW]') then continue ; Wideband cameras don't have polcal data
+    
+    if keyword_set(ucam) then begin
+      if cam ne ucam then begin
         print, inam + ' : skipping '+cam
         continue
       endif
     endif
-    if(~doit) then begin
-      print, inam+' : nothing to do for '+cam
-      continue
-    endif
 
-    ;; Find files
-    spawn, 'find ' + self.polcal_dir + '/' + cam + "/ | grep im.ex | grep -v '.lcd.'", files
     
-    nt = n_elements(files)
-    if(files[0] eq '') then begin
-      print, inam+' : no files found in '+self.polcal_dir+'/'+cam+', skipping camera!'
-      continue
-    endif
+    self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
+                       files=files, states=states, nremove=remove, /force, /polcal
 
-    ;; Sort files based on image number
-    files = red_sortfiles(files)
+    
+    state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
 
-    ;; Get image states
-    pstat = red_getstates_polcal(files)
-    if(keyword_set(remove)) then pstat.star[*] = red_flagchange(pstat.qw)
+    Nstates = n_elements(state_list)
+
+;    ;; Find files
+;    spawn, 'find ' + self.polcal_dir + '/' + cam + "/ | grep im.ex | grep -v '.lcd.'", files
+;    
+;    nt = n_elements(files)
+;    if(files[0] eq '') then begin
+;      print, inam+' : no files found in '+self.polcal_dir+'/'+cam+', skipping camera!'
+;      continue
+;    endif
+;
+;    ;; Sort files based on image number
+;    files = red_sortfiles(files)
+
+
+    
+;    ;; Get image states
+;    pstat = red_getstates_polcal(files)
+
+    ; if(keyword_set(remove)) then pstat.star[*] = red_flagchange(pstat.qw)
 
     ;; Unique states
-    ustate = pstat.state[uniq(pstat.state, sort(pstat.state))]
-    ns = n_elements(ustate)
+;    ustate = pstat.state[uniq(pstat.state, sort(pstat.state))]
+;    Nstates = n_elements(ustate)
 
-    print, inam+' : found '+red_stri(ns)+' states for '+cam
+    print, inam+' : found '+red_stri(Nstates)+' states for '+cam
 
-    ;; Sum images
-    outdir = self.out_dir + '/polcal_sums/' + cam+'/'
-    file_mkdir, outdir
-    if(keyword_set(old)) then begin
-      outdir1 = self.out_dir + '/polcal_old/' + cam+'/'
-      file_mkdir, outdir1
-    endif
     camtag = (strsplit(file_basename(files[0]), '.',/extract))[0]
 
-    ddf = self.out_dir+'/darks/'+camtag+'.summed.0000001'
-    if(file_test(ddf)) then begin
-      ;; ddh = fzhead(ddf) 
-      fzread, tmp, ddf, ddh     ; Work around fzhead bug.
-      pos = strsplit(ddh,' ')
-      ddh = strmid(ddh, pos[1], pos[n_elements(pos)-1])
-    endif else ddh = ' '
+    for istate = 0L, Nstates - 1 do begin 
+ 
+      self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
+                         files=files, states=states, selected=sel, /polcal
 
-    for ss = 0L, ns - 1 do begin ;ns-1
-      pos = where((pstat.state eq ustate[ss]) AND (pstat.star eq 0B), count)
-      if(count eq 0) then continue
+;      pos = where((pstat.state eq ustate[istate]) AND (pstat.star eq 0B), count)
+;      if(count eq 0) then continue
 
-      print, inam+' : adding frames for '+cam+' -> '+ustate[ss]
-      pcal = red_sumfiles(files[pos], time = time, summed = polcalsum, check=check)
 
-      ;; head = fzhead(files[pos[count/2-1]])
-      fzread, tmp, files[pos[count/2-1]], head ; Work around fzhead bug.
-      h = head
+      ;; Get the polcal file name for the selected state
+      self -> get_calib, states[sel[0]] $
+                         , polsname = polsname, status = status
+;      polsname = polsname[0]
 
-      ;; Save average of the sum (for IDL polcal)
-      namout = camtag+'.'+ustate[ss]+'.'+pstat.nums[pos[0]]
-      print, inam+' : saving '+outdir+namout 
-      fzwrite, float(pcal), outdir+namout, h
-
-      ;; Save un-normalized sums for polcal
-      if(keyword_set(old)) then begin
-        h1 = red_get_polcalheader(files[pos[0]], head, n_elements(pos), pstat, date = date)
-        namout1 = camtag + '_im' + date + '.fp0.1234.1234.'+$
-                  strcompress(string(float(strmid(pstat.qw[pos[0]],2,3)),format='(F6.2)'),/remove)+'.'+ $
-                  pstat.lc[pos[0]]+'.'+pstat.nums[pos[0]]
-        print, inam + ' : saving ' + outdir1 + namout1
-        pref = pstat.pref[pos[0]]
-        outdir2 = outdir1 + pref + '/'
-        file_mkdir, outdir2 
-        fzwrite, polcalsum, outdir2 + namout1, h1
+      if n_elements(outdir) ne 0 then begin
+        polsname = outdir + '/' + cam + '/' + file_basename(polsname)
       endif
 
-      if(firsttime eq 1B) then begin
-        if(keyword_set(old)) then begin
-          openw, lun, outdir2+'/'+camtag+'_lg'+date, /get_lun, width = 300
-        endif
-        firsttime = 0B
-      endif
-      if(keyword_set(old)) then printf,lun, h1
-    endfor                      ; (ss)
+      file_mkdir, file_dirname(polsname)
 
-    if(file_test(ddf)) then begin
-      if(keyword_set(old)) then begin
-        ddlink = camtag+'_dd'+date+'.'+red_stri(long((strsplit(ddh,' ',/extract))[0]), ni='(I07)')
-        if(file_test(outdir2+ddlink)) then spawn,'rm '+outdir2+ddlink
-        spawn, 'ln -s '+ddf+' '+outdir2+ddlink
-      endif
-    endif
-    if(keyword_set(old)) then begin
-      printf, lun, ddh
-      free_lun, lun
-    endif
-  endfor                        ;(ic)
-  return
+      print, inam+' : summing polcal for state -> ' + state_list[istate]
+      print, inam+' : to be saved in ' + polsname
+      if(keyword_set(check)) then openw, lun, red_strreplace(polsname,'.fits','_discarded.txt') $
+                                         , width = 500, /get_lun
+      
+      filelist = files[sel]
+      filelist = filelist(sort(filelist))
+
+      print, inam+' : summing frames for '+cam+' -> '+state_list[istate]
+      if keyword_set(sum_in_rdx) and rdx_hasopencv() then begin
+        pcal = rdx_sumfiles(filelist, lun = lun, lim = lim $
+                            , nsum = nsum, filter = filter $
+                            , check = check, discarded = discarded, framenumbers = framenumbers $
+                            , time_beg = time_beg, time_end = time_end, time_avg = time_avg $
+                            , verbose=2)
+      endif else begin
+        pcal = red_sumfiles(filelist, check = check, lun = lun, lim = lim $
+;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
+                            , nsum = nsum, filter = filter)
+      endelse
+
+      ;; Make FITS headers 
+      head  = red_sumheaders(filelist, pcal, nsum=nsum, framenumbers=framenumbers, $
+                             time_beg=time_beg, time_end=time_end, time_avg=time_avg )
+
+      ;; Add some more info here, see SOLARNET deliverable D20.4 or
+      ;; later versions of that document. 
+      red_fitsaddpar, head, 'STATE', state_list[istate], 'Polcal state'
+      self -> headerinfo_addstep, head, prstep = 'Polcal summing' $
+                                  , prproc = inam, prpara = prpara
+
+;      ;; Write ANA format pcal
+;      print, inam+' : saving ', polcname
+;      fxaddpar, head, 'FILENAME', file_basename(polcname), after = 'DATE'
+;      red_writedata, polcname, polc, header=head, filetype='ANA', overwrite = overwrite
+
+      ;; Write FITS format pcal
+      print, inam+' : saving ', polsname
+      red_fitsaddpar, head, 'FILENAME', file_basename(polsname), after = 'DATE'
+      red_writedata, polsname, pcal, header=head, filetype='FITS', overwrite = overwrite
+
+      if keyword_set(check) then free_lun, lun
+
+    endfor                      ; istate
+
+  endfor                        ; icam
+
 end
