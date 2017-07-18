@@ -33,6 +33,11 @@
 ; 
 ; :Keywords:
 ; 
+; 
+;     polcal : in, optional, type=boolean
+; 
+;        Set this to add polcal-specific items in the states, qw and
+;        lp. 
 ;
 ;     strip_wb : in, optional, type=boolean
 ;
@@ -46,13 +51,16 @@
 ; 
 ; :History:
 ; 
-;    2017-07-28 : MGL. New version based on chromis::extractstates.
+;   2017-07-28 : MGL. New version based on chromis::extractstates.
+;
+;   2017-07-06 : MGL. New keyword polcal. Do not sort files.
 ;
 ; 
 ;-
 pro crisp::extractstates, strings, states $
-                            , strip_wb = strip_wb $
-                            , strip_settings = strip_settings
+                          , strip_wb = strip_wb $
+                          , strip_settings = strip_settings $
+                          , polcal = polcal
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -61,9 +69,23 @@ pro crisp::extractstates, strings, states $
   if( Nstrings eq 0 ) then return
 
   ;; Create array of structs to holed the state information
-  states = replicate( {CRISP_STATE}, Nstrings )
+  if keyword_set(polcal) then begin
+    states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
+  endif else begin
+    states = replicate( {CRISP_STATE}, Nstrings )
+  endelse
   states.nframes = 1            ; single frame by default
 
+  ;; Some info from file names
+  if keyword_set(polcal) then begin
+    red_extractstates,strings,lc=lc,qw=qw,lp=lp
+    states.qw = qw
+    states.lp = lp
+  endif else begin
+    red_extractstates,strings,lc=lc
+  endelse
+  states.lc = lc
+  
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
   AreFiles = min(file_test(strings))
@@ -247,10 +269,10 @@ pro crisp::extractstates, strings, states $
         endif else begin
           ;; Warn about missing tuning info, but only for
           ;; narrowband.
-          if ~quiet then begin
+;          if ~quiet then begin
             print, inam + ' : Reference wavelength in du missing.'
             print, inam + ' : Did you run a -> hrz_zeropoint?'
-          endif
+;          endif
         endelse 
         
       endelse
@@ -264,6 +286,10 @@ pro crisp::extractstates, strings, states $
     ;; No cam settings in CRISP fullstate because exposure time varies
     ;; while observing.
 ;    if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
+    if keyword_set(polcal) then begin
+      red_append, fullstate_list, states[ifile].lp
+      red_append, fullstate_list, states[ifile].qw
+    endif
     if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
     if states[ifile].tuning ne '' then begin     
       if keyword_set(strip_wb) then begin
@@ -273,6 +299,7 @@ pro crisp::extractstates, strings, states $
         red_append, fullstate_list, states[ifile].tuning
       endelse
     endif
+    red_append, fullstate_list, states[ifile].lc
     states[ifile].fullstate = strjoin(fullstate_list, '_')
 
     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock, /predict
@@ -282,7 +309,14 @@ pro crisp::extractstates, strings, states $
 end
 
 
-a = chromisred('config.txt')
+a = crispred('config.txt', /dev)
+
+
+;; Test polcal
+files = file_search('/storage/sand02/Incoming/2016.09.19/Polcal/8542/12:44:29/Crisp-T/cam*', count = Nfiles)
+a -> extractstates, files, pstates, /polcal
+
+stop
 
 
 ;; Test darks
