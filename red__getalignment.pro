@@ -93,7 +93,7 @@ pro red::getalignment, align = align, $
     restore, alignfile
   endif else begin
     print, inam + ' : Alignment file missing.'
-    print, inam + ' : Did you run a -> pinholecalib_thi ?'
+    print, inam + ' : Did you run a -> pinholecalib ?'
     return
   endelse
 
