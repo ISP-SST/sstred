@@ -305,7 +305,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Slun, 'a -> getoffsets' 
   
   printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib'
+  printf, Slun, 'a -> pinholecalib, nref=10'
   
   printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
