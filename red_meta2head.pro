@@ -66,6 +66,8 @@
 ;    2017-06-28 : MGL. Possibly look for date-obs in directory.
 ;                 Add prefilter and wavelength info for CRISP.
 ; 
+;    2017-07-21 : MGL. Further improvements for CRISP data.
+; 
 ;-
 function red_meta2head, head, metadata=metaStruct
 
@@ -154,42 +156,62 @@ function red_meta2head, head, metadata=metaStruct
     endif
 
     ;; Prefilter and tuning info
-    dummy = fxpar(newhead, red_keytab('pref'), count=count)
-    if count eq 0 then begin
+    dummy = fxpar(newhead, red_keytab('pref'), count=Npref)
+    dummy = fxpar(newhead, 'STATE', count=Nstate)
+    if Npref eq 0 or Nstate eq 0 then begin
       ;; Try to find tuning info on standard form in the file name
       tuninfo = stregex(barefile, '([0-9][0-9][0-9][0-9])[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                         , /extract, /subexpr) 
-      if tuninfo[0] ne '' then begin
-        if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
-                                                 , red_keytab('pref'), tuninfo[1] $
-                                                 , 'Inferred from tuning info in filename.'
-        ;; Add also the tuning state if not there already
-        dummy = fxpar(newhead, 'STATE', count=count)
-        if count eq 0 then begin
-          red_fitsaddpar, anchor = anchor, newhead $
-                          , 'STATE', tuninfo[0] $
-                          , 'Inferred from tuning info in filename.' ;strjoin(tuninfo[2:3], '_')
+
+      if Npref eq 0 then begin
+        if tuninfo[0] ne '' then begin
+          if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
+                                                   , red_keytab('pref'), tuninfo[1] $
+                                                   , 'Inferred from tuning info in filename.'
         endif
-      endif else begin
-        ;; This could be a WB CRISP image, in which case the prefilter
-        ;; is in the file name but no tuning.
-        camera = strtrim(fxpar(newhead, red_keytab('camera'), count=count), 2)
+      endif
+      
+      ;; Add also the tuning state if not there already
+      if Nstate eq 0 then begin
+        camera = strtrim(fxpar(newhead, red_keytab('camera'), count=Ncam), 2)
         if strmatch(camera,'*-[DW]') then begin
+          ;; WB (CRISP?)
           tuninfo = stregex(barefile, '[._]([0-9][0-9][0-9][0-9])[._]' $
                             , /extract, /subexpr)
           if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
                                                    , red_keytab('pref'), tuninfo[1] $
                                                    , 'Inferred from filename.'
-          ;; Add also a tuning state if not there already. For WB it's
-          ;; just the prefilter plus zero tuning.
-          dummy = fxpar(newhead, 'STATE', count=count)
           if count eq 0 then begin
             red_fitsaddpar, anchor = anchor, newhead $
-                            , 'STATE', tuninfo[1]+'_'+tuninfo[1]+'_+0' $
+                            , 'STATE', tuninfo[1]+'_'+tuninfo[1]+'_+0000' $
                             , 'WB tuning info = prefilter+0.'
           endif
-        endif
-      endelse
+        endif else begin
+          ;; NB
+          red_fitsaddpar, anchor = anchor, newhead $
+                          , 'STATE', red_strreplace(tuninfo[0], '.', '_') $
+                          , 'Inferred from tuning info in filename.' ;strjoin(tuninfo[2:3], '_')          
+        endelse
+      endif
+;      endif else begin
+;        ;; This could be a WB CRISP image, in which case the prefilter
+;        ;; is in the file name but no tuning.
+;        if strmatch(camera,'*-[DW]') then begin
+;          tuninfo = stregex(barefile, '[._]([0-9][0-9][0-9][0-9])[._]' $
+;                            , /extract, /subexpr)
+;          if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
+;                                                   , red_keytab('pref'), tuninfo[1] $
+;                                                   , 'Inferred from filename.'
+;          ;; Add also a tuning state if not there already. For WB it's
+;          ;; just the prefilter plus zero tuning.
+;          dummy = fxpar(newhead, 'STATE', count=count)
+;          if count eq 0 then begin
+;            red_fitsaddpar, anchor = anchor, newhead $
+;                            , 'STATE', tuninfo[1]+'_'+tuninfo[1]+'_+0' $
+;                            , 'WB tuning info = prefilter+0.'
+;          endif
+;        endif
+;      endelse
     endif
 
     ;; FILTERn and WAVELNTH
