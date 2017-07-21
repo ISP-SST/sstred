@@ -136,7 +136,7 @@ pro chromis::selectfiles, cam = cam $
   count = 0L                  
   ncomplement = n_elements(files)
 
-  if( n_elements(force) gt 0 || n_elements(files) eq 0 ) then begin
+  if( keyword_set(force) || n_elements(files) eq 0 ) then begin
 
     if( n_elements(cam) ne 1 ) then begin
       print,inam+': Only a single cam supported.'
