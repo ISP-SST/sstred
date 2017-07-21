@@ -202,93 +202,98 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     endfor
   endif
 
-  if ~keyword_set(calibrations_only) then begin  
-    print, 'Pinholes'
-    printf, Clun, '#'
-    printf, Clun, '# --- Pinholes'
-    printf, Clun, '#'
-    pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
-    for i = 0, Ndirs-1 do begin
-      pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
-      if Nsubdirs gt 0 then begin
-        printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-        printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                + red_strreplace(pinhdirs[i], root_dir, '')+'"'
-;        printf, Slun, 'a -> sumpinh_new'
-        for ipref = 0, Nprefilters-1 do begin
-          printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                  + prefilters[ipref]+"'" $
-                  + maybe_nodescatter[ipref]
-        endfor
-      endif else begin
-        pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
-        for j = 0, Nsubdirs-1 do begin
-          pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
-                                       , count = Nsubsubdirs, /fold)
-          if Nsubsubdirs gt 0 then begin
-            printf, Clun, 'pinh_dir = ' $
-                    + red_strreplace(pinhsubdirs[j], root_dir, '')
-            printf, Slun, 'a -> setpinhdir, root_dir+"' $
-                    + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
-;              printf, Slun, 'a -> sumpinh_new'
-            for ipref = 0, Nprefilters-1 do begin
-              printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                      + prefilters[ipref] + "'" $
-                      + maybe_nodescatter[ipref]
-            endfor              ; ipref
-          endif                 ; Nsubsubdirs
-        endfor                  ; j
-      endelse                   ; Nsubdirs
-    endfor                      ; i
-  endif
+  print, 'Pinholes'
+  printf, Clun, '#'
+  printf, Clun, '# --- Pinholes'
+  printf, Clun, '#'
+  pinhdirs = file_search(root_dir+'/pinh*/*', count = Ndirs, /fold)
+  for i = 0, Ndirs-1 do begin
+    pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
+    if Nsubdirs gt 0 then begin
+      printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
+;         printf, Slun, 'a -> setpinhdir, root_dir+"' $
+;                 + red_strreplace(pinhdirs[i], root_dir, '')+'"'
+; ;        printf, Slun, 'a -> sumpinh_new'
+;         for ipref = 0, Nprefilters-1 do begin
+;           printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+;                   + prefilters[ipref]+"'" $
+;                   + maybe_nodescatter[ipref]
+;         endfor
+      printf, Slun, 'a -> sumpinh, /pinhole_align, dirs=root_dir+"' $
+              + red_strreplace(pinhdirs[i], root_dir, '')
+    endif else begin
+      pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
+      for j = 0, Nsubdirs-1 do begin
+        pinhsubsubdirs = file_search(pinhsubdirs[j]+'/crisp*' $
+                                     , count = Nsubsubdirs, /fold)
+        if Nsubsubdirs gt 0 then begin
+          printf, Clun, 'pinh_dir = ' $
+                  + red_strreplace(pinhsubdirs[j], root_dir, '')
+;             printf, Slun, 'a -> setpinhdir, root_dir+"' $
+;                     + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
+; ;              printf, Slun, 'a -> sumpinh_new'
+;             for ipref = 0, Nprefilters-1 do begin
+;               printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
+;                       + prefilters[ipref] + "'" $
+;                       + maybe_nodescatter[ipref]
+;             endfor              ; ipref
+          printf, Slun, 'a -> sumpinh, /pinhole_align, dirs=root_dir+"' $
+                  + red_strreplace(pinhsubsubdirs[j], root_dir, '') 
+        endif                   ; Nsubsubdirs
+      endfor                    ; j
+    endelse                     ; Nsubdirs
+  endfor                        ; i
 
-  if ~keyword_set(calibrations_only) then begin  
-    print, 'Polcal'
-    printf, Clun, '#'
-    printf, Clun, '# --- Polcal'
-    printf, Clun, '#'
+
+  print, 'Polcal'
+  printf, Clun, '#'
+  printf, Clun, '# --- Polcal'
+  printf, Clun, '#'
 ;  Npol = 0
-    polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
-    if Npol gt 0 then begin
-      polprefs = file_basename(polcaldirs)
-      for i = 0, Npol-1 do begin
-        polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
-                                    , count = Nsubdirs, /fold)
-        if Nsubdirs gt 0 then begin
-          printf, Clun, 'polcal_dir = ' $
-                  + red_strreplace(polcaldirs[i], root_dir, '')
+  polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
+  if Npol gt 0 then begin
+    polprefs = file_basename(polcaldirs)
+    for i = 0, Npol-1 do begin
+      polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
+                                  , count = Nsubdirs, /fold)
+      if Nsubdirs gt 0 then begin
+        printf, Clun, 'polcal_dir = ' $
+                + red_strreplace(polcaldirs[i], root_dir, '')
 ;        Npol += 1
-          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-          printf, Slun, 'a -> sumpolcal, /check'
-        endif else begin
-          polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
-          for j = 0, Nsubdirs-1 do begin
-            polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
-                                           , count = Nsubsubdirs, /fold)
-            if Nsubsubdirs gt 0 then begin
-              printf, Clun, 'polcal_dir = ' $
-                      + red_strreplace(polcalsubdirs[j], root_dir, '')
+;          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+;                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+        printf, Slun, 'a -> sumpolcal, /check, dirs=root_dir+"' $
+                + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+      endif else begin
+        polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
+        for j = 0, Nsubdirs-1 do begin
+          polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
+                                         , count = Nsubsubdirs, /fold)
+          if Nsubsubdirs gt 0 then begin
+            printf, Clun, 'polcal_dir = ' $
+                    + red_strreplace(polcalsubdirs[j], root_dir, '')
 ;              Npol += 1
-              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-              printf, Slun, 'a -> sumpolcal, /check' 
-            endif
-          endfor                ; j
-        endelse
-      endfor                    ; i
+;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
+;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+            printf, Slun, 'a -> sumpolcal, /check, dirs= root_dir+"' $
+                    + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+          endif
+        endfor                  ; j
+      endelse
+    endfor                      ; i
 
+    if ~keyword_set(calibrations_only) then begin  
       for ipref = 0, Npol-1 do begin
         printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
                 + maybe_nodescatter[ipref]
         printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
                 + strtrim(Nthreads, 2)
       endfor                    ; ipref
+    endif
       
-    endif else begin
-      polprefs = ''
-    endelse                     ; Npol
-  endif
+  endif else begin
+    polprefs = ''
+  endelse                       ; Npol
   
   
   print, 'Prefilter scan'
