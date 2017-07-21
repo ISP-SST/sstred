@@ -244,18 +244,21 @@ pro red::sumflat, overwrite = overwrite, $
         tmplist = tmplist(sort(tmplist))
 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(tmplist, check=check, lun=lun, lim=lim, summed=summed, nsum=nsum, filter=filter, $
-                   framenumbers=framenumbers, time_beg=time_beg, time_end=time_end, time_avg=time_avg, verbose=2)
+          flat = rdx_sumfiles(tmplist, check=check, lun=lun $
+                              , lim=lim, summed=summed, nsum=nsum, filter=filter $
+                              , discarded = discarded, framenumbers = framenumbers $
+                              , time_beg=time_beg, time_end=time_end, time_avg=time_avg $
+                              , verbose=2)
         endif else begin
-          flat = red_sumfiles(tmplist, check = check, $
-;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
-                              lun = lun, lim = lim, summed = summed, nsum = nsum, filter = filter)
+          flat = red_sumfiles(tmplist, check = check, lun = lun $
+;                                 , time_avg = time_avg, time_beg = time_beg, time_end = time_end $
+                              , lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endif else begin 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
-          flat = rdx_sumfiles(files[sel], time_avg = time_avg, check = check, $
-                              lim = lim, summed = summed, nsum = nsum $
-                              , filter = filter, verbose=2)
+          flat = rdx_sumfiles(files[sel], time_avg = time_avg, check = check $
+                              , lim = lim, summed = summed, nsum = nsum, filter = filter $
+                              , verbose=2)
         endif else begin
           flat = red_sumfiles(files[sel], check = check, $
 ;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
