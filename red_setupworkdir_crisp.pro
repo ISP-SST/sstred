@@ -73,9 +73,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;; printf, Slun, '.r crispred'
   if keyword_set(calibrations_only) then begin
-    printf, Slun, 'a = chromisred("'+cfgfile+'",/dev)' 
+    printf, Slun, 'a = crispred("'+cfgfile+'",/dev)' 
   endif else begin
-    printf, Slun, 'a = chromisred("'+cfgfile+'")' 
+    printf, Slun, 'a = crispred("'+cfgfile+'")' 
   endelse
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
@@ -119,7 +119,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     for idir = 0, n_elements(darkdirs)-1 do begin
       printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir] $
                                                  , root_dir, '')
-      printf, Slun, 'a -> sumdark, /check, dirs=root_dir+"' $
+      printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
               + red_strreplace(darkdirs[idir], root_dir, '') + '"'
     endfor                      ; idir
   endif                         ; Nsubdirs
@@ -163,7 +163,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         wls = wls[WHERE(wls ne '')]
         wavelengths = strjoin(wls, ' ')
         ;; Print to script file
-        printf, Slun, 'a -> sumflat, /check, dirs=root_dir+"' $
+        printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
                 + red_strreplace(flatdirs[idir], root_dir, '') $
                 + '"  ; ' + camdirs+' ('+wavelengths+')'
 
@@ -219,7 +219,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                   + prefilters[ipref]+"'" $
 ;                   + maybe_nodescatter[ipref]
 ;         endfor
-      printf, Slun, 'a -> sumpinh, /pinhole_align, dirs=root_dir+"' $
+      printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
               + red_strreplace(pinhdirs[i], root_dir, '')
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -237,7 +237,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                       + prefilters[ipref] + "'" $
 ;                       + maybe_nodescatter[ipref]
 ;             endfor              ; ipref
-          printf, Slun, 'a -> sumpinh, /pinhole_align, dirs=root_dir+"' $
+          printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
                   + red_strreplace(pinhsubsubdirs[j], root_dir, '') 
         endif                   ; Nsubsubdirs
       endfor                    ; j
@@ -262,7 +262,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;        Npol += 1
 ;          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-        printf, Slun, 'a -> sumpolcal, /check, dirs=root_dir+"' $
+        printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                 + red_strreplace(polcaldirs[i], root_dir, '')+'"'
       endif else begin
         polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
@@ -275,7 +275,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;              Npol += 1
 ;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-            printf, Slun, 'a -> sumpolcal, /check, dirs= root_dir+"' $
+            printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs= root_dir+"' $
                     + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
           endif
         endfor                  ; j
