@@ -102,16 +102,18 @@ pro crisp::selectfiles, cam = cam $
                         , polcal = polcal
 
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
- 
-  if( n_elements(force) gt 0 || n_elements(files) eq 0 ) then begin
+
+  if( keyword_set(force) || n_elements(files) eq 0 ) then begin
 
     if( n_elements(cam) ne 1 ) then begin
       print,inam+': Only a single cam supported.'
       return
     endif
     detector = self->RED::getdetector(cam)
-    
-    file_template = cam + '/' + strtrim(detector, 2)+ '*'
+
+    if( n_elements(subdir) ne 1 ) then subdir = cam
+
+    file_template = subdir + '/' + strtrim(detector, 2)+ '*'
     
     if( n_elements(dirs) gt 0 ) then dirs = [dirs] $ ; ensure it's an array, even with 1 element
     else begin 
@@ -127,7 +129,7 @@ pro crisp::selectfiles, cam = cam $
 ;    files = red_sortfiles(files) ; Slow! Move sorting to when we have a single state?
     force = 1                   ; we have new files, force extractstates
   endif
-  
+
   if( n_elements(files) eq 0 || files[0] eq '' ) then begin
     print, 111
     return
