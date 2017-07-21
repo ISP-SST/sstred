@@ -78,13 +78,20 @@ pro crisp::extractstates, strings, states $
 
   ;; Some info from file names
   if keyword_set(polcal) then begin
-    red_extractstates,strings,lc=lc,qw=qw,lp=lp
+    red_extractstates,strings, lc=lc $
+                      , wav = wav, pref = pref $
+                      , qw=qw, lp=lp
     states.qw = qw
     states.lp = lp
   endif else begin
-    red_extractstates,strings,lc=lc
+    red_extractstates,strings, lc=lc $
+                      , wav = wav, pref = pref
   endelse
+
+  ;; Keywords LC and FPI_STATE specify the NB state also for WB data!
   states.lc = lc
+  states.fpi_state = pref+'_'+wav 
+
   
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
@@ -126,13 +133,12 @@ pro crisp::extractstates, strings, states $
 
     state = fxpar(head, 'STATE', count=hasstate)
     if hasstate gt 0 then begin
-      states[ifile].fpi_state = state
       state_split = strsplit( state, '_',  /extr )
       if n_elements(state_split) gt 1 then begin
         states[ifile].tuning = state_split[1]
       endif
     endif
-    
+
     ;; String keywords require checking
     detector = fxpar(head, red_keytab('detector'), count=count)
     if count eq 0 then begin    ; Temporary fugly hack to work on data processed before 2016-08-23
@@ -255,7 +261,7 @@ pro crisp::extractstates, strings, states $
 
         if states[ifile].is_wb then begin
           ;; For wideband, if there is no tuning info, assume
-          ;; prefilter wavelength.
+          ;; prefilter wavelength. (This )
           states[ifile].tun_wavelength = states[ifile].pf_wavelength
           states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
                                         , format = '(i04)') $
@@ -299,7 +305,7 @@ pro crisp::extractstates, strings, states $
         red_append, fullstate_list, states[ifile].tuning
       endelse
     endif
-    red_append, fullstate_list, states[ifile].lc
+    if states[ifile].is_wb eq 0 then red_append, fullstate_list, states[ifile].lc
     states[ifile].fullstate = strjoin(fullstate_list, '_')
 
     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock, /predict
