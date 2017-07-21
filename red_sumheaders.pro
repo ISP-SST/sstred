@@ -156,7 +156,7 @@ function red_sumheaders, files, sum $
       ;; both red_sumfiles and rdx_sumfiles we could use that here!
       print, 'red_sumheaders : n_elements(framenumbers) ne Nsum'
       print, '   The DATE_??? and FNUMSUM keywords may be slightly off.' 
-      stop
+;      stop
     endif
   endelse
 
