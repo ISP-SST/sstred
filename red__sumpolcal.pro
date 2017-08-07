@@ -31,6 +31,10 @@
 ;   
 ;    check : in, optional, type=boolean
 ;
+;    nthreads  : in, optional, type=integer
+;   
+;       The number of threads to use for summing and backscatter correction.
+;
 ;
 ;    sum_in_rdx : in, optional, type=boolean
 ;
@@ -58,11 +62,14 @@
 ;   2017-07-06 : MGL. Adapt to new pipeline mechanisms. Add keywords
 ;                dirs, outdir, sum_in_rdx. Add metadata handling.
 ;                Remove keyword old.
+;
+;   2017-08-07 : MGL. New keyword nthreads.
 ; 
 ;
 ;-
 pro red::sumpolcal, check=check $
                     , dirs = dirs $
+                    , nthreads = nthreads $
                     , outdir = outdir $
                     , overwrite = overwrite $
                     , remove = remove $
@@ -72,7 +79,7 @@ pro red::sumpolcal, check=check $
   ;; Defaults
   if( n_elements(dirs) gt 0 ) then dirs = [dirs] $
   else if ptr_valid(self.polcal_dir) then dirs = *self.polcal_dir
-  
+
   ;; Prepare for logging (after setting of defaults).
   ;; Set up a dictionary with all parameters that are in use
   prpara = dictionary()
@@ -177,12 +184,14 @@ pro red::sumpolcal, check=check $
       print, inam+' : summing frames for '+cam+' -> '+state_list[istate]
       if keyword_set(sum_in_rdx) and rdx_hasopencv() then begin
         pcal = rdx_sumfiles(filelist, lun = lun, lim = lim $
+                            , nthreads = nthreads $
                             , nsum = nsum, filter = filter $
                             , check = check, discarded = discarded, framenumbers = framenumbers $
                             , time_beg = time_beg, time_end = time_end, time_avg = time_avg $
                             , verbose=2)
       endif else begin
         pcal = red_sumfiles(filelist, check = check, lun = lun, lim = lim $
+                            , nthreads = nthreads $
 ;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
                             , nsum = nsum, filter = filter)
       endelse

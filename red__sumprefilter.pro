@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -24,16 +24,23 @@
 ;    step  : 
 ;   
 ;   
+;
+;    nthreads  : in, optional, type=integer
+;   
+;       The number of threads to use for summing.
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
+;
+;   2017-08-07 : MGL. New keyword nthreads.
 ; 
 ; 
 ;-
-pro red::sumprefilter, step = step
+pro red::sumprefilter, step = step $
+                    , nthreads = nthreads 
                                 ;
   if(~keyword_set(step)) then step = 1L
                                 ;
@@ -86,7 +93,7 @@ pro red::sumprefilter, step = step
      print, inam+'adding images for state-> '+ustate[ss]
                                 ;
                                 ; sum files and remove dark
-     prf[ss,*,*] = red_sumfiles(files[pos], time = time) - dd
+     prf[ss,*,*] = red_sumfiles(files[pos], time = time, nthreads = nthreads) - dd
                                 ;
                                 ; Get wavelength from header
      hdr = strsplit(fzhead(files[pos[0]]),/extract)

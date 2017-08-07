@@ -18,6 +18,10 @@
 ;   
 ;   
 ;    ustat  : 
+;
+;    nthreads  : in, optional, type=integer
+;   
+;       The number of threads to use for summing.
 ;   
 ;   
 ;   
@@ -103,10 +107,13 @@
 ;   2017-07-06 : THI. Get framenumbers and timestamps from rdx_sumfiles
 ;                and pass them on to red_sumheaders.
 ;
+;   2017-08-07 : MGL. New keyword nthreads.
+;
 ;
 ;-
 pro red::sumflat, overwrite = overwrite, $
                   ustat = ustat, $
+                  nthreads = nthreads, $
 ;                  old = old, $
                   remove = remove, $
                   cams = cams, $
@@ -245,22 +252,26 @@ pro red::sumflat, overwrite = overwrite, $
 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
           flat = rdx_sumfiles(tmplist, check=check, lun=lun $
+                              , nthreads = nthreads $
                               , lim=lim, summed=summed, nsum=nsum, filter=filter $
                               , discarded = discarded, framenumbers = framenumbers $
                               , time_beg=time_beg, time_end=time_end, time_avg=time_avg $
                               , verbose=2)
         endif else begin
           flat = red_sumfiles(tmplist, check = check, lun = lun $
+                              , nthreads = nthreads $
 ;                                 , time_avg = time_avg, time_beg = time_beg, time_end = time_end $
                               , lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endif else begin 
         if( keyword_set(sum_in_rdx) and rdx_hasopencv() ) then begin
           flat = rdx_sumfiles(files[sel], time_avg = time_avg, check = check $
+                              , nthreads = nthreads $
                               , lim = lim, summed = summed, nsum = nsum, filter = filter $
                               , verbose=2)
         endif else begin
           flat = red_sumfiles(files[sel], check = check, $
+                              , nthreads = nthreads $
 ;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
                               lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse

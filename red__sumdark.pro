@@ -32,6 +32,10 @@
 ; 
 ;      A list of cameras (or rather camera subdirs).
 ;
+;    nthreads  : in, optional, type=integer
+;   
+;       The number of threads to use for summing.
+;
 ;    sum_in_rdx : in, optional, type=boolean
 ;
 ;      Use rdx_sumfiles.
@@ -99,11 +103,14 @@
 ;   2017-07-06 : THI. Get framenumbers and timestamps from rdx_sumfiles
 ;                and pass them on to red_sumheaders.
 ;
+;   2017-08-07 : MGL. New keyword nthreads.
+;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
                   dirs = dirs, $
+                  nthreads = nthreads, $
                   sum_in_rdx = sum_in_rdx, $
                   filter = filter
 
@@ -203,10 +210,13 @@ pro red::sumdark, overwrite = overwrite, $
       
       ;; Do the summing
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-        dark = rdx_sumfiles(files[sel], check=check, lun=lun, summed=darksum, nsum=nsum, filter=filter, $
-            framenumbers=framenumbers, time_beg=time_beg, time_end=time_end, time_avg=time_avg, verbose=2)
+        dark = rdx_sumfiles(files[sel], check=check, lun=lun, summed=darksum, nsum=nsum, filter=filter $
+                            , nthreads = nthreads $
+                            , framenumbers=framenumbers $
+                            , time_beg=time_beg, time_end=time_end, time_avg=time_avg, verbose=2)
       endif else begin
         dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
+                            , nthreads = nthreads $
                             , nsum=nsum, filter=filter)
         ;;$
         ;;                    , time_avg = time_avg, time_beg = time_beg, time_end = time_end)

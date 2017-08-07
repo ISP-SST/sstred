@@ -16,7 +16,7 @@
 ; 
 ;    nthreads : in, optional, type=integer, default=2
 ;   
-;      The number of threads to use for bad-pixel filling.
+;      The number of threads to use for summing and bad-pixel filling.
 ;   
 ;    no_descatter : in, optional, type=boolean 
 ;   
@@ -223,11 +223,13 @@ pro red::sumpinh, nthreads = nthreads $
       ;; red_sumfiles on each frame before alignment.
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
         psum = rdx_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, $
-                 gain=gain, backscatter_gain=bgt, backscatter_psf=Psft, $
-                 nsum=nsum, framenumbers=framenumbers, time_beg=time_beg, $
-                 time_end=time_end, time_avg=time_avg, verbose=2 )
+                            nthreads = nthreads, $
+                            gain=gain, backscatter_gain=bgt, backscatter_psf=Psft, $
+                            nsum=nsum, framenumbers=framenumbers, time_beg=time_beg, $
+                            time_end=time_end, time_avg=time_avg, verbose=2 )
       endif else begin
         psum = red_sumfiles(files[sel], pinhole_align=pinhole_align, dark=dd, gain=gain, $
+                            nthreads = nthreads, $
                             backscatter_gain=bgt, backscatter_psf=Psft, nsum=nsum)
       endelse
 
