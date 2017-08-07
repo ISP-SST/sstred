@@ -275,7 +275,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;              Npol += 1
 ;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-            printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs= root_dir+"' $
+            printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                     + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
           endif
         endfor                  ; j
