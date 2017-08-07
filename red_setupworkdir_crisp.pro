@@ -37,9 +37,9 @@
 ; :History:
 ;
 ;    2017-07-05 : MGL. New keyword calibrations_only.
-; 
-; 
-; 
+;
+;    2017-08-07 : MGL. Set nthreads in script file and use when
+;                 calling the summing methods.
 ; 
 ; 
 ; 
@@ -54,9 +54,6 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             comment:'Telescope configuration'}]
 
   
-
-  Ncpu = !cpu.hw_ncpu
-  If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
 
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
@@ -79,6 +76,13 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endelse
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
+  ;; Specify default number of threads in script
+  Ncpu = !cpu.hw_ncpu
+  If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
+  printf, Slun, 'nthreads='+strtrim(nthreads, 2)
+  
+
+  
   ;; Download SST log files and optionally some other data from the
   ;; web. 
   if ~keyword_set(calibrations_only) then begin
@@ -120,7 +124,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir] $
                                                  , root_dir, '')
       printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
-              + red_strreplace(darkdirs[idir], root_dir, '') + '"'
+              + red_strreplace(darkdirs[idir], root_dir, '') + '", nthreads=nthreads'
     endfor                      ; idir
   endif                         ; Nsubdirs
   
@@ -164,8 +168,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         wavelengths = strjoin(wls, ' ')
         ;; Print to script file
         printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
-                + red_strreplace(flatdirs[idir], root_dir, '') $
-                + '"  ; ' + camdirs+' ('+wavelengths+')'
+                + red_strreplace(flatdirs[idir], root_dir, '')+ '"' $
+                + ', nthreads=nthreads' $
+                + '  ; ' + camdirs+' ('+wavelengths+')'
 
         red_append, prefilters, wls
 
@@ -220,7 +225,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                   + maybe_nodescatter[ipref]
 ;         endfor
       printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
-              + red_strreplace(pinhdirs[i], root_dir, '') + '"'
+              + red_strreplace(pinhdirs[i], root_dir, '') + '"' $
+              + ', nthreads=nthreads'
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
       for j = 0, Nsubdirs-1 do begin
@@ -238,7 +244,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                       + maybe_nodescatter[ipref]
 ;             endfor              ; ipref
           printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
-                  + red_strreplace(pinhsubsubdirs[j], root_dir, '')  + '"'
+                  + red_strreplace(pinhsubsubdirs[j], root_dir, '')  + '"' $
+                  + ', nthreads=nthreads'
         endif                   ; Nsubsubdirs
       endfor                    ; j
     endelse                     ; Nsubdirs
@@ -263,7 +270,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
         printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
-                + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+                + red_strreplace(polcaldirs[i], root_dir, '')+'"' $
+                + ', nthreads=nthreads'
       endif else begin
         polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -276,7 +284,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
             printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
-                    + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+                    + red_strreplace(polcalsubdirs[j], root_dir, '')+'"' $
+                    + ', nthreads=nthreads'
           endif
         endfor                  ; j
       endelse
@@ -286,8 +295,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       for ipref = 0, Npol-1 do begin
         printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
                 + maybe_nodescatter[ipref]
-        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=" $
-                + strtrim(Nthreads, 2)
+        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=nthreads"
       endfor                    ; ipref
     endif
       

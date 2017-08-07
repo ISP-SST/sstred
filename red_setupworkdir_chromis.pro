@@ -43,6 +43,9 @@
 ;                 prepmomfbd, and don't use an empty pref keyword. 
 ;
 ;    2017-07-05 : MGL. New keyword calibrations_only.
+;
+;    2017-08-07 : MGL. Set nthreads in script file and use when
+;                 calling the summing methods.
 ; 
 ;    2017-07-19 : THI. Change pinholecalib parameter nref defaut value
 ;                 to 10.
@@ -79,6 +82,11 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, 'a = chromisred("'+cfgfile+'")' 
   endelse
   printf, Slun, 'root_dir = "' + root_dir + '"'
+
+  ;; Specify default number of threads in script
+  Ncpu = !cpu.hw_ncpu
+  If Ncpu le 2 then Nthreads = 2 else Nthreads = round(Ncpu*.75) <20
+  printf, Slun, 'nthreads='+strtrim(nthreads, 2)
   
   ;; Download SST log files and optionally some other data from the
   ;; web.
@@ -134,7 +142,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir] $
                                                  , root_dir, '')
       printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
-              + red_strreplace(darkdirs[idir], root_dir, '') + '"'
+              + red_strreplace(darkdirs[idir], root_dir, '') + '"' $
+              + ', nthreads=nthreads'
     endfor                      ; idir
   endif                         ; Nsubdirs
   
@@ -178,8 +187,9 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
         wls = wls[WHERE(wls ne '')]
         wavelengths = strjoin(wls, ' ')
         ;; Print to script file
-        printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
-                + red_strreplace(flatdirs[idir], root_dir, '') $
+        printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
+                + ', nthreads=nthreads' $
+                + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') $
                 + '"  ; ' + camdirs+' ('+wavelengths+')'
 
         red_append, prefilters, wls
@@ -246,8 +256,9 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;              + red_strreplace(pinhdirs[i], root_dir, '')+'"'
 ;        printf, Slun, 'a -> sumpinh_new'
       for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+'" $
-                + red_strreplace(pinhdirs[i], root_dir, '') $
+        printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
+                + ', nthreads=nthreads' $
+                + ", dirs=root_dir+'" + red_strreplace(pinhdirs[i], root_dir, '') $
                 + "';, pref='"+prefilters[ipref]+"'"
       endfor                    ; ipref
     endif else begin
@@ -263,8 +274,9 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                  + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
 ;              printf, Slun, 'a -> sumpinh_new'
           for ipref = 0, Nprefilters-1 do begin
-            printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+'" $
-                    +  red_strreplace(pinhsubdirs[j], root_dir, '') $
+            printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
+                    + ', nthreads=nthreads' $
+                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[j], root_dir, '') $
                     + "';, pref='" + prefilters[ipref]+"'" 
           endfor                ; ipref
         endif
