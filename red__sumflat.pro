@@ -270,10 +270,10 @@ pro red::sumflat, overwrite = overwrite, $
                               , lim = lim, summed = summed, nsum = nsum, filter = filter $
                               , verbose=2)
         endif else begin
-          flat = red_sumfiles(files[sel], check = check, $
+          flat = red_sumfiles(files[sel], check = check $
                               , nthreads = nthreads $
 ;                                  time_avg = time_avg, time_beg = time_beg, time_end = time_end, $
-                              lim = lim, summed = summed, nsum = nsum, filter = filter)
+                              , lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endelse
 
