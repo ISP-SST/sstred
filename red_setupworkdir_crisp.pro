@@ -220,7 +220,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                   + maybe_nodescatter[ipref]
 ;         endfor
       printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
-              + red_strreplace(pinhdirs[i], root_dir, '')
+              + red_strreplace(pinhdirs[i], root_dir, '') + '"'
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
       for j = 0, Nsubdirs-1 do begin
@@ -238,7 +238,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;                       + maybe_nodescatter[ipref]
 ;             endfor              ; ipref
           printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
-                  + red_strreplace(pinhsubsubdirs[j], root_dir, '') 
+                  + red_strreplace(pinhsubsubdirs[j], root_dir, '')  + '"'
         endif                   ; Nsubsubdirs
       endfor                    ; j
     endelse                     ; Nsubdirs
