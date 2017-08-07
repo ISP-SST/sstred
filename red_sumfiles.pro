@@ -190,7 +190,7 @@ function red_sumfiles, files_list $
   ;; Name of this subprogram
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  if n_elements(nthreads) eq 0 then nthreads = 2 else nthreads = nthreads
+  if n_elements(nthreads) eq 0 then nthreads = 2
 
   DoDescatter = n_elements(backscatter_gain) gt 0 and n_elements(backscatter_psf) gt 0
 
