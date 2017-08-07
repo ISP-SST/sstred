@@ -51,8 +51,8 @@ function red_detectorname, file, head=head
   ;; First try to get the detector from the headers
   
   if status eq 0 then begin
-     detector = sxpar(head, 'DETECTOR')
-     if detector ne '' then return, detector
+     detector = fxpar(head, 'DETECTOR')
+     if detector ne '' then return, strtrim(detector, 2)
   endif
 
   ;; Backup: try with the file name
