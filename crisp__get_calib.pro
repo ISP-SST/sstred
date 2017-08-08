@@ -212,8 +212,9 @@ pro crisp::get_calib, states $
        or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
 
       flattag = detector
-      flattag += '_' + states[istate].prefilter
-      flattag += '_' + states[istate].tuning
+      if( states[istate].fullstate ne '' ) then begin
+        flattag += '_' + states[istate].fullstate
+      endif
 
       fname = self.out_dir+'/flats/' + flattag + '.flat'
       if arg_present(flatname) then begin
