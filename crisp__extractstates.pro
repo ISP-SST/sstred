@@ -68,7 +68,7 @@ pro crisp::extractstates, strings, states $
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
-  ;; Create array of structs to holed the state information
+  ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
     states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
   endif else begin
@@ -88,11 +88,6 @@ pro crisp::extractstates, strings, states $
                       , wav = wav, pref = pref
   endelse
 
-  ;; Keywords LC and FPI_STATE specify the NB state also for WB data!
-  states.lc = lc
-  states.fpi_state = pref+'_'+wav 
-
-  
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
   AreFiles = min(file_test(strings))
@@ -131,13 +126,13 @@ pro crisp::extractstates, strings, states $
     states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
     states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
 
-    state = fxpar(head, 'STATE', count=hasstate)
-    if hasstate gt 0 then begin
-      state_split = strsplit( state, '_',  /extr )
-      if n_elements(state_split) gt 1 then begin
-        states[ifile].tuning = state_split[1]
-      endif
-    endif
+;    state = fxpar(head, 'STATE', count=hasstate)
+;    if hasstate gt 0 then begin
+;      state_split = strsplit( state, '_',  /extr )
+;      if n_elements(state_split) gt 1 then begin
+;        states[ifile].tuning = state_split[1]
+;      endif
+;    endif
 
     ;; String keywords require checking
     detector = fxpar(head, red_keytab('detector'), count=count)
@@ -163,12 +158,7 @@ pro crisp::extractstates, strings, states $
       if count eq 1 then begin
         camera = (*self.cameras)[indx[0]]
         states[ifile].camera = camera
-;        if camera eq 'Chromis-W' or camera eq 'Chromis-D' then states[ifile].is_wb = 1
-      endif ;else begin
-;        ;; This could be a CRISP file. Try to set the WB status by
-;        ;; matching the directory.
-;        states[ifile].is_wb = strmatch(strings[ifile],'*Crisp-[DW]*')
-;      endelse
+      endif 
     endelse
     states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
 
@@ -204,12 +194,11 @@ pro crisp::extractstates, strings, states $
 
     ;; The CRISP tuning information consists of a four digit
     ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
-    ;; and at least one digit for the finetuning (in mÅ). Eventually
-    ;; we will (?) have the same for CHROMIS.
+    ;; and at least one digit for the finetuning (in mÅ).
     tuninfo = stregex(fxpar(head, 'STATE') $
                       , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                       , /extract, /subexpr) 
-
+    states[ifile].tuning = tuninfo[0]
     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
     ;; The fullstate string
@@ -230,12 +219,30 @@ pro crisp::extractstates, strings, states $
         red_append, fullstate_list, states[ifile].tuning
       endelse
     endif
-    if states[ifile].is_wb eq 0 then red_append, fullstate_list, states[ifile].lc
+    if states[ifile].is_wb eq 0 then red_append, fullstate_list, lc[ifile]
     if n_elements(fullstate_list) gt 0 then states[ifile].fullstate = strjoin(fullstate_list, '_')
 
     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock, /predict
 
   endfor                        ; ifile
+
+  ;; Some things differ between NB and WB
+  wbindx = where(states.is_wb, Nwb, comp=nbindx, Ncomp = Nnb)
+  if Nwb gt 0 then begin
+
+    ;; Keywords LC and FPI_STATE should specify the NB state also for
+    ;; WB data! Fix this!!
+
+    states[wbindx].lc = ''
+    states[wbindx].fpi_state = pref[wbindx]+'_'+pref[wbindx]+'+0'
+    states[wbindx].tun_wavelength = states[wbindx].pf_wavelength
+  endif
+  if Nnb gt 0 then begin
+    states[nbindx].lc = lc[nbindx]
+    states[nbindx].fpi_state = pref[nbindx]+'_'+wav[nbindx]
+    states[nbindx].tun_wavelength = double(pref[nbindx])*1d-10 + double(wav[nbindx])*1d-13
+  endif
+
 
 end
 
