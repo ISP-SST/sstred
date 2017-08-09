@@ -43,7 +43,9 @@
 ;                keywords.     
 ;
 ;   2016-08-31 : MGL. Use red_detectorname instead of red_getcamtag.
-;                Rename camtags.idlsave to detectors.idlsave.
+;                Rename camtags.idlsave to detectors.idlsave.     
+;
+;   2017-08-09 : MGL. Better default dir for finding detector tags. 
 ; 
 ;-
 pro red::getdetectors, dir = dir
@@ -57,8 +59,18 @@ pro red::getdetectors, dir = dir
     if n_elements(detectors) gt 0 then self.detectors = ptr_new(strtrim(detectors, 2), /NO_COPY)
     return
   endif
-  
-  if(~keyword_set(dir) && ptr_valid(self.dark_dir) ) then dir = *self.dark_dir
+
+  if n_elements(dir) eq 0 then begin
+    case 1 of
+      ptr_valid(self.dark_dir) : dir = *self.dark_dir
+      ptr_valid(self.flat_dir) : dir = *self.flat_dir
+      ptr_valid(self.pinh_dir) : dir = *self.pinh_dir
+      else : begin
+        print, inam + ' : Cannot find detector names.'
+        retall
+      end
+    endcase
+  endif
 
   for i=0, n_elements(*self.cameras)-1 do begin
     path_spec = dir + '/' + (*self.cameras)[i] + '/*'
