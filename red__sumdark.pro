@@ -44,6 +44,16 @@
 ;
 ;       Size of the medianfilter to use when checking data.
 ;   
+;    outdir : in, optional, type=string
+;   
+;       Write the summed files in this directory instead of in the
+;       directory given by get_calib.
+;   
+;    softlink : in, optional, type=boolean
+;   
+;       Generate softlinks to the summed files from the file names
+;       given by get_calib. 
+;   
 ; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
@@ -105,7 +115,7 @@
 ;
 ;   2017-08-07 : MGL. New keyword nthreads.
 ; 
-;   2016-08-10 : MGL. New keyword outdir.
+;   2016-08-10 : MGL. New keywords outdir and softlink.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -113,6 +123,7 @@ pro red::sumdark, overwrite = overwrite, $
                   cams = cams, $
                   dirs = dirs, $
                   outdir = outdir, $
+                  softlink = softlink, $
                   nthreads = nthreads, $
                   sum_in_rdx = sum_in_rdx, $
                   filter = filter
@@ -194,9 +205,13 @@ pro red::sumdark, overwrite = overwrite, $
       ;; Get the name of the darkfile
       self -> get_calib, states[sel[0]], darkname = darkname, status = status
       if status ne 0 then stop
-
-      if n_elements(outdir) ne 0 then darkname = outdir + '/' + file_basename(darkname)
-
+      
+      if n_elements(outdir) ne 0 then begin
+        origname = darkname     ; The original darkname, might softlink to this
+        darkname = outdir + '/' + file_basename(darkname)
+        sourcename = red_strreplace(darkname,red_strreplace(file_dirname(origname),self.out_dir+'/','')+'/','')
+      endif
+      
       file_mkdir, file_dirname(darkname)
 
       if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
@@ -254,6 +269,13 @@ pro red::sumdark, overwrite = overwrite, $
       
       if keyword_set(check) then begin
         free_lun, lun
+      endif
+
+      if keyword_set(softlink) and n_elements(outdir) ne 0 then begin
+        file_delete, origname, /allow_nonexistent
+        file_link, sourcename, origname
+        file_delete, origname+'.fits', /allow_nonexistent
+        file_link, sourcename+'.fits', origname+'.fits'
       endif
 
     endfor                      ; states

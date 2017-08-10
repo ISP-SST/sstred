@@ -44,6 +44,16 @@
 ;
 ;       Size of the medianfilter to use when checking data.
 ;   
+;    outdir : in, optional, type=string
+;   
+;       Write the summed files in this directory instead of in the
+;       directory given by get_calib.
+;   
+;    softlink : in, optional, type=boolean
+;   
+;       Generate softlinks to the summed files from the file names
+;       given by get_calib. 
+;   
 ; 
 ; 
 ; :History:
@@ -108,6 +118,8 @@
 ;                and pass them on to red_sumheaders.
 ;
 ;   2017-08-07 : MGL. New keyword nthreads.
+; 
+;   2016-08-10 : MGL. New keyword softlink.
 ;
 ;
 ;-
@@ -123,6 +135,7 @@ pro red::sumflat, overwrite = overwrite, $
                   prefilter = prefilter, $
                   dirs = dirs, $
                   outdir = outdir, $
+                  softlink = softlink, $
                   sum_in_rdx = sum_in_rdx, $
                   filter = filter
 
@@ -206,12 +219,13 @@ pro red::sumflat, overwrite = overwrite, $
                          , flatname = flatname, sflatname = sflatname, status = status
 
       if n_elements(outdir) ne 0 then begin
+        origname = flatname     ; The original flatname, might softlink to this
+        sorigname = sflatname   ; The original sflatname, might softlink to this
         flatname = outdir + '/' + file_basename(flatname)
         sflatname = outdir + '/' + file_basename(sflatname)
-;           file_mkdir, outdir
-      endif else begin
-;           file_mkdir, file_dirname(flatname)
-      endelse
+        sourcename = red_strreplace(flatname,red_strreplace(file_dirname(origname),self.out_dir+'/','')+'/','')
+        ssourcename = red_strreplace(sflatname,red_strreplace(file_dirname(sorigname),self.out_dir+'/','')+'/','')
+      endif 
 
       file_mkdir, file_dirname(flatname)
 
@@ -229,6 +243,7 @@ pro red::sumflat, overwrite = overwrite, $
       self -> get_calib, states[sel[0]], darkdata = dd, status = status
       if status ne 0 then begin
         print, inam+' : no dark found for camera ', cam
+        stop
         continue
       endif
 
@@ -318,6 +333,19 @@ pro red::sumflat, overwrite = overwrite, $
       endif
 
       if keyword_set(check) then free_lun, lun
+
+      if keyword_set(softlink) and n_elements(outdir) ne 0 then begin
+        file_delete, origname, /allow_nonexistent
+        file_link, sourcename, origname
+        file_delete, origname+'.fits', /allow_nonexistent
+        file_link, sourcename+'.fits', origname+'.fits'
+        if keyword_set(store_rawsum) then begin
+          file_delete, sorigname, /allow_nonexistent
+          file_link, ssourcename, sorigname
+          file_delete, sorigname+'.fits', /allow_nonexistent
+          file_link, ssourcename+'.fits', sorigname+'.fits'
+        endif
+      endif
 
     endfor                      ; istate
 
