@@ -265,9 +265,10 @@ pro chromis::get_calib, states $
      if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
 
         pinhtag = detector
-        if( states[istate].prefilter ne '' ) then begin
-            pinhtag += '_' + states[istate].prefilter + '_' + states[istate].fpi_state
-        endif
+;        if( states[istate].prefilter ne '' ) then begin
+          pinhtag += '_' + states[istate].prefilter $
+                     + '_' + states[istate].fpi_state
+;        endif
 ;         if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
 ;             pinhtag += '_' + states[istate].tuning
 ;         endif
