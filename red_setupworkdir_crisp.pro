@@ -163,7 +163,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         ;; failed data set followed by a good data set. For AM/PM data
         ;; there is no way to do the right thing for all data but may
         ;; be good enough for pinholes.
-        printf, Slun, 'spawn, "ln -sf '+outdir+'/* '+file_dirname(outdir)+'/"'
+        printf, Slun, 'spawn, "cd '+file_dirname(outdir)+' ; ln -sf '+file_basename(outdir)+'/* ./"'
       endif
       
     endfor                      ; idir
@@ -233,7 +233,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
           ;; want if there is a failed data set followed by a good
           ;; data set. For AM/PM data there is no way to do the right
           ;; thing for all data but may be good enough for pinholes.
-          printf, Slun, 'spawn, "ln -sf '+outdir+'/* '+file_dirname(outdir)+'/"'
+          printf, Slun, 'spawn, "cd '+file_dirname(outdir)+' ; ln -sf '+file_basename(outdir)+'/* ./"'
         endif
        
         red_append, prefilters, wls
