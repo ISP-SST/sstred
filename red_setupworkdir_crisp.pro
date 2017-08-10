@@ -145,7 +145,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         ;; For /calibrations_only we want to output the summed data in
         ;; timestamp directories so we can handle multiple sets.
         outdir = 'darks/' + file_basename(darkdirs[idir])
-        outdirkey = ', outdir="'+outdir+'"'
+        outdirkey = ', outdir="'+outdir+'", /softlink'
       endif else outdirkey = ''
 
       ;; Print to script file
@@ -153,18 +153,6 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + red_strreplace(darkdirs[idir], root_dir, '') + '"' $
               + ', nthreads=nthreads' $
               + outdirkey 
-      
-      if keyword_set(calibrations_only) then begin
-        ;; If the summed data are written to a subdirectory of the
-        ;; ordinary directory, we need soft links so later processing
-        ;; of pinhole data can use them without human intervention.
-        ;; Using the f flag with ln will result in links to later data
-        ;; overwriting earlier. This is what you want if there is a
-        ;; failed data set followed by a good data set. For AM/PM data
-        ;; there is no way to do the right thing for all data but may
-        ;; be good enough for pinholes.
-        printf, Slun, 'spawn, "cd '+file_dirname(outdir)+' ; ln -sf '+file_basename(outdir)+'/* ./"'
-      endif
       
     endfor                      ; idir
   endif                         ; Nsubdirs
@@ -214,7 +202,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
           ;; For /calibrations_only we want to output the summed data
           ;; in timestamp directories so we can handle multiple sets.
           outdir = 'flats/' + file_basename(flatdirs[idir])
-          outdirkey = ', outdir="'+outdir+'"'
+          outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
         endif else outdirkey = ''
 
         ;; Print to script file
@@ -224,18 +212,6 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + outdirkey $
                 + '  ; ' + camdirs+' ('+wavelengths+')'
 
-        if keyword_set(calibrations_only) then begin
-          ;; If the summed data are written to a subdirectory of the
-          ;; ordinary directory, we need soft links so later
-          ;; processing of pinhole data can use them without human
-          ;; intervention. Using the f flag with ln will result in
-          ;; links to later data overwriting earlier. This is what you
-          ;; want if there is a failed data set followed by a good
-          ;; data set. For AM/PM data there is no way to do the right
-          ;; thing for all data but may be good enough for pinholes.
-          printf, Slun, 'spawn, "cd '+file_dirname(outdir)+' ; ln -sf '+file_basename(outdir)+'/* ./"'
-        endif
-       
         red_append, prefilters, wls
 
       endif                     ; Nfiles
