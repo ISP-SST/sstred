@@ -201,7 +201,7 @@ pro crisp::get_calib, states $
                                                 , status = darkstatus, /silent)
         endif else if arg_present(darkhead) then begin
           darkhead[0, istate] = red_readhead(dname, status = darkstatus, /silent)
-        endif
+        endif else darkstatus = 0
         status = status or darkstatus
         if darkstatus eq -1 then print, inam + ' : Problems reading file ' + dname
       endif else begin
@@ -232,7 +232,7 @@ pro crisp::get_calib, states $
         endif else if arg_present(flathead) then begin
           flathead[0, istate] = red_readhead(fname, status = flatstatus, /silent)
 ;          if status eq 0 then status = flatstatus
-        endif
+        endif else flatstatus = 0
         status = status or flatstatus
         if flatstatus eq -1 then print, inam + ' : Problems reading file ' + fname
       endif else begin
@@ -253,11 +253,9 @@ pro crisp::get_calib, states $
         if arg_present(sflatdata) then begin
           sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead $
                                                  , status = sflatstatus, /silent)
-;          if status eq 0 then status = sflatstatus
         endif else if arg_present(flathead) then begin
           sflathead[0, istate] = red_readhead(sfname, status = sflatstatus, /silent)
-;          if status eq 0 then status = sflatstatus
-        endif
+        endif else sflatstatus = 0
         status = status or sflatstatus
         if sflatstatus eq -1 then print, inam + ' : Problems reading file ' + sfname
       endif else begin
@@ -288,7 +286,7 @@ pro crisp::get_calib, states $
         endif else if arg_present(gainhead) then begin
           gainhead[0, istate] = red_readhead(fname, status = gainstatus, /silent)
 ;          if status eq 0 then status = gainstatus
-        endif
+        endif else gainstatus = 0
         status = status or gainstatus
         if gainstatus eq -1 then print, inam + ' : Problems reading file ' + fname
       endif else begin
@@ -353,11 +351,9 @@ pro crisp::get_calib, states $
         if arg_present(polsdata) then begin
           polsdata[0, 0, istate] = red_readdata(pname, header = polshead $
                                                 , status = polsstatus, /silent)
-;          if status eq 0 then status = polsstatus
         endif else if arg_present(polshead) then begin
           polshead[0, istate] = red_readhead(pname, status = polsstatus, /silent)
-;          if status eq 0 then status = polsstatus
-        endif
+        endif else polsstatus = 0
         status = status or polsstatus
         if polsstatus eq -1 then print, inam + ' : Problems reading file ' + pname
       endif else begin
@@ -387,7 +383,7 @@ pro crisp::get_calib, states $
         endif else if arg_present(polchead) then begin
           polchead[0, istate] = red_readhead(pname, status = polcstatus, /silent)
 ;          if status eq 0 then status = polcstatus
-        endif
+        endif else polcstatus = 0
         status = status or polcstatus
         if polcstatus eq -1 then print, inam + ' : Problems reading file ' + pname
       endif else begin
