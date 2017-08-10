@@ -128,6 +128,9 @@ pro crisp::get_calib, states $
                       , polsname = polsname, polsdata = polsdata, polshead = polshead $
                       , sflatname = sflatname, sflatdata = sflatdata, sflathead = sflathead 
 
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+ 
   Nstates = n_elements(states)
 
   if Nstates eq 0 then begin
@@ -196,25 +199,25 @@ pro crisp::get_calib, states $
         if arg_present(darkdata) then begin
           darkdata[0, 0, istate] = red_readdata(dname, header = darkhead $
                                                 , status = darkstatus, /silent)
-          if status eq 0 then status = darkstatus
         endif else if arg_present(darkhead) then begin
           darkhead[0, istate] = red_readhead(dname, status = darkstatus, /silent)
-          if status eq 0 then status = darkstatus
         endif
+        status = status or darkstatus
+        if darkstatus eq -1 then print, inam + ' : Problems reading file ' + dname
       endif else begin
         if( arg_present(darkdata) || arg_present(darkhead) ) then status = -1
+        print, inam + ' : File not found ' + dname
       endelse
 
     endif                       ; Darks
 
     ;; Flats
-    if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) $
-       or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
+    flattag = detector
+    if( states[istate].fullstate ne '' ) then begin
+      flattag += '_' + states[istate].fullstate
+    endif
 
-      flattag = detector
-      if( states[istate].fullstate ne '' ) then begin
-        flattag += '_' + states[istate].fullstate
-      endif
+    if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead)  then begin
 
       fname = self.out_dir+'/flats/' + flattag + '.flat'
       if arg_present(flatname) then begin
@@ -225,14 +228,21 @@ pro crisp::get_calib, states $
         if arg_present(flatdata) then begin
           flatdata[0, 0, istate] = red_readdata(fname, header = flathead $
                                                 , status = flatstatus, /silent)
-          if status eq 0 then status = flatstatus
+;          if status eq 0 then status = flatstatus
         endif else if arg_present(flathead) then begin
           flathead[0, istate] = red_readhead(fname, status = flatstatus, /silent)
-          if status eq 0 then status = flatstatus
+;          if status eq 0 then status = flatstatus
         endif
+        status = status or flatstatus
+        if flatstatus eq -1 then print, inam + ' : Problems reading file ' + fname
       endif else begin
         if( arg_present(flatdata) || arg_present(flathead) ) then status = -1
+        print, inam + ' : File not found ' + fname
       endelse
+
+    endif
+
+    if arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
 
       sfname = self.out_dir+'/flats/' + flattag + '_summed.flat'
       if arg_present(sflatname) then begin
@@ -243,13 +253,16 @@ pro crisp::get_calib, states $
         if arg_present(sflatdata) then begin
           sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead $
                                                  , status = sflatstatus, /silent)
-          if status eq 0 then status = sflatstatus
+;          if status eq 0 then status = sflatstatus
         endif else if arg_present(flathead) then begin
           sflathead[0, istate] = red_readhead(sfname, status = sflatstatus, /silent)
-          if status eq 0 then status = sflatstatus
+;          if status eq 0 then status = sflatstatus
         endif
+        status = status or sflatstatus
+        if sflatstatus eq -1 then print, inam + ' : Problems reading file ' + sfname
       endif else begin
         if( arg_present(sflatdata) || arg_present(sflathead) ) then status = -1
+        print, inam + ' : File not found ' + sfname
       endelse
 
     endif                       ; Flats
@@ -271,13 +284,16 @@ pro crisp::get_calib, states $
         if arg_present(gaindata) then begin
           gaindata[0, 0, istate] = red_readdata(fname, header = gainhead $
                                                 , status = gainstatus, /silent)
-          if status eq 0 then status = gainstatus
+;          if status eq 0 then status = gainstatus
         endif else if arg_present(gainhead) then begin
           gainhead[0, istate] = red_readhead(fname, status = gainstatus, /silent)
-          if status eq 0 then status = gainstatus
+;          if status eq 0 then status = gainstatus
         endif
+        status = status or gainstatus
+        if gainstatus eq -1 then print, inam + ' : Problems reading file ' + fname
       endif else begin
         if( arg_present(gaindata) || arg_present(gainhead) ) then status = -1
+        print, inam + ' : File not found ' + fname
       endelse
 
     endif                       ; Gains
@@ -287,10 +303,11 @@ pro crisp::get_calib, states $
     if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
 
       pinhtag = detector
-      if( states[istate].fpi_state ne '' ) then begin
-        ;;pinhtag += '_' + states[istate].prefilter + '_' + fpi_state
-        pinhtag += '_' + states[istate].fpi_state
-      endif
+;      if( states[istate].fpi_state ne '' ) then begin
+        pinhtag += '_' + states[istate].prefilter $
+                   + '_' + states[istate].fpi_state $
+                   + '_' + states[istate].lc
+;      endif
 ;         if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
 ;             pinhtag += '_' + states[istate].tuning
 ;         endif
@@ -300,19 +317,27 @@ pro crisp::get_calib, states $
         pinhname[istate] = pname
       endif
 
-      if file_test(pname) then begin
-        if arg_present(pinhdata) then begin
-          pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead $
-                                                , status = pinhstatus, /silent)
-          if status eq 0 then status = pinhstatus
-        endif else if arg_present(pinhhead) then begin
+      if arg_present(pinhdata) then begin
+        if file_test(pname) then begin
+          pinhdata[0, 0, istate] = red_readdata(pname, status = pinhstatus, /silent)
+          if pinhstatus eq -1 then print, inam + ' : Problems reading file ' + pname
+        endif else begin
+          pinhstatus = -1
+          print, inam + ' : File not found ' + pname
+        endelse
+        status = status or pinhstatus
+      endif
+      if arg_present(pinhhead) then begin
+        if file_test(pname) then begin
           pinhhead[0, istate] = red_readhead(pname, status = pinhstatus, /silent)
-          if status eq 0 then status = pinhstatus
-        endif
-      endif else begin
-        if( arg_present(pinhdata) || arg_present(pinhhead) ) then status = -1
-      endelse
-      
+          if pinhstatus eq -1 then print, inam + ' : Problems reading file ' + pname
+        endif else begin
+          pinhstatus = -1
+          print, inam + ' : File not found ' + pname
+        endelse
+        status = status or pinhstatus
+      endif
+    
     endif                       ; Pinholes
 
     ;; Polcal sum
@@ -328,13 +353,16 @@ pro crisp::get_calib, states $
         if arg_present(polsdata) then begin
           polsdata[0, 0, istate] = red_readdata(pname, header = polshead $
                                                 , status = polsstatus, /silent)
-          if status eq 0 then status = polsstatus
+;          if status eq 0 then status = polsstatus
         endif else if arg_present(polshead) then begin
           polshead[0, istate] = red_readhead(pname, status = polsstatus, /silent)
-          if status eq 0 then status = polsstatus
+;          if status eq 0 then status = polsstatus
         endif
+        status = status or polsstatus
+        if polsstatus eq -1 then print, inam + ' : Problems reading file ' + pname
       endif else begin
         if( arg_present(polsdata) || arg_present(polshead) ) then status = -1
+        print, inam + ' : File not found ' + pname
       endelse
       
     endif                       ; Polcal sum
@@ -355,13 +383,16 @@ pro crisp::get_calib, states $
         if arg_present(polcdata) then begin
           polcdata[0, 0, istate] = red_readdata(pname, header = polchead $
                                                 , status = polcstatus, /silent)
-          if status eq 0 then status = polcstatus
+;          if status eq 0 then status = polcstatus
         endif else if arg_present(polchead) then begin
           polchead[0, istate] = red_readhead(pname, status = polcstatus, /silent)
-          if status eq 0 then status = polcstatus
+;          if status eq 0 then status = polcstatus
         endif
+        status = status or polcstatus
+        if polcstatus eq -1 then print, inam + ' : Problems reading file ' + pname
       endif else begin
         if( arg_present(polcdata) || arg_present(polchead) ) then status = -1
+        print, inam + ' : File not found ' + pname
       endelse
       
     endif                       ; Polcal
