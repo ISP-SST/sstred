@@ -104,12 +104,15 @@
 ;                and pass them on to red_sumheaders.
 ;
 ;   2017-08-07 : MGL. New keyword nthreads.
+; 
+;   2016-08-10 : MGL. New keyword outdir.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
                   check = check, $
                   cams = cams, $
                   dirs = dirs, $
+                  outdir = outdir, $
                   nthreads = nthreads, $
                   sum_in_rdx = sum_in_rdx, $
                   filter = filter
@@ -133,6 +136,7 @@ pro red::sumdark, overwrite = overwrite, $
   if n_elements(cams) ne 0 then prpara['cams'] = cams
   if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
   if n_elements(filter) ne 0 then prpara['filter'] = filter
+  if n_elements(outdir) ne 0 then prpara['outdir'] = outdir
 ;  if keyword_set() then prpara[''] = 
 ;  if keyword_set() then prpara[''] = 
 ;  if keyword_set() then prpara[''] = 
@@ -190,6 +194,8 @@ pro red::sumdark, overwrite = overwrite, $
       ;; Get the name of the darkfile
       self -> get_calib, states[sel[0]], darkname = darkname, status = status
       if status ne 0 then stop
+
+      if n_elements(outdir) ne 0 then darkname = outdir + '/' + file_basename(darkname)
 
       file_mkdir, file_dirname(darkname)
 
