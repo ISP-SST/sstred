@@ -40,6 +40,10 @@
 ;
 ;    2017-08-07 : MGL. Set nthreads in script file and use when
 ;                 calling the summing methods.
+;
+;    2017-08-10 : MGL. When in /calibrations_only mode, write summed
+;                 output to timestamp subdirectories, with softlinks
+;                 to ordinary outdir for darks and flats.
 ; 
 ; 
 ; 
@@ -110,6 +114,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun, 'out_dir = ' + work_dir
 
+  
   print, 'Darks'
   printf, Clun, '#'
   printf, Clun, '# --- Darks'
@@ -118,16 +123,53 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   darksubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'dark' $
                                         , count = Nsubdirs)
   if Nsubdirs gt 0 then begin
+    ;; There are CRISP darks!
+
+    ;; Directories with camera dirs below:    
     darkdirs = file_dirname(darksubdirs)
     darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
-    for idir = 0, n_elements(darkdirs)-1 do begin
+    Ndarkdirs = n_elements(darkdirs)
+
+    ;; Loop over the darkdirs, write each to the config file and
+    ;; to the script file
+    for idir = 0, Ndarkdirs-1 do begin
+
+      ;; Config file
+
       printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir] $
                                                  , root_dir, '')
+
+      ;; Script file
+      
+      if keyword_set(calibrations_only) then begin
+        ;; For /calibrations_only we want to output the summed data in
+        ;; timestamp directories so we can handle multiple sets.
+        outdir = 'darks/' + file_basename(darkdirs[idir])
+        outdirkey = ', outdir="'+outdir+'"'
+      endif else outdirkey = ''
+
+      ;; Print to script file
       printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
-              + red_strreplace(darkdirs[idir], root_dir, '') + '", nthreads=nthreads'
+              + red_strreplace(darkdirs[idir], root_dir, '') + '"' $
+              + ', nthreads=nthreads' $
+              + outdirkey 
+      
+      if keyword_set(calibrations_only) then begin
+        ;; If the summed data are written to a subdirectory of the
+        ;; ordinary directory, we need soft links so later processing
+        ;; of pinhole data can use them without human intervention.
+        ;; Using the f flag with ln will result in links to later data
+        ;; overwriting earlier. This is what you want if there is a
+        ;; failed data set followed by a good data set. For AM/PM data
+        ;; there is no way to do the right thing for all data but may
+        ;; be good enough for pinholes.
+        printf, Slun, 'spawn, "ln -sf '+outdir+'/* '+file_dirname(outdir)+'/"'
+      endif
+      
     endfor                      ; idir
   endif                         ; Nsubdirs
   
+
   print, 'Flats'
   printf, Clun, '#'
   printf, Clun, '# --- Flats'
@@ -166,12 +208,34 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         wls = wls[uniq(wls, sort(wls))]
         wls = wls[WHERE(wls ne '')]
         wavelengths = strjoin(wls, ' ')
+
+        
+        if keyword_set(calibrations_only) then begin
+          ;; For /calibrations_only we want to output the summed data
+          ;; in timestamp directories so we can handle multiple sets.
+          outdir = 'flats/' + file_basename(flatdirs[idir])
+          outdirkey = ', outdir="'+outdir+'"'
+        endif else outdirkey = ''
+
         ;; Print to script file
         printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
                 + red_strreplace(flatdirs[idir], root_dir, '')+ '"' $
                 + ', nthreads=nthreads' $
+                + outdirkey $
                 + '  ; ' + camdirs+' ('+wavelengths+')'
 
+        if keyword_set(calibrations_only) then begin
+          ;; If the summed data are written to a subdirectory of the
+          ;; ordinary directory, we need soft links so later
+          ;; processing of pinhole data can use them without human
+          ;; intervention. Using the f flag with ln will result in
+          ;; links to later data overwriting earlier. This is what you
+          ;; want if there is a failed data set followed by a good
+          ;; data set. For AM/PM data there is no way to do the right
+          ;; thing for all data but may be good enough for pinholes.
+          printf, Slun, 'spawn, "ln -sf '+outdir+'/* '+file_dirname(outdir)+'/"'
+        endif
+       
         red_append, prefilters, wls
 
       endif                     ; Nfiles
@@ -216,17 +280,18 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
     if Nsubdirs gt 0 then begin
       printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-;         printf, Slun, 'a -> setpinhdir, root_dir+"' $
-;                 + red_strreplace(pinhdirs[i], root_dir, '')+'"'
-; ;        printf, Slun, 'a -> sumpinh_new'
-;         for ipref = 0, Nprefilters-1 do begin
-;           printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-;                   + prefilters[ipref]+"'" $
-;                   + maybe_nodescatter[ipref]
-;         endfor
+      
+      if keyword_set(calibrations_only) then begin
+        ;; For /calibrations_only we want to output the summed data in
+        ;; timestamp directories so we can handle multiple sets.
+        outdir = 'pinhs/' + file_basename(pinhdirs[i])
+        outdirkey = ', outdir="'+outdir+'"'
+      endif else outdirkey = ''
+
       printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
               + red_strreplace(pinhdirs[i], root_dir, '') + '"' $
-              + ', nthreads=nthreads'
+              + ', nthreads=nthreads' $
+              + outdirkey 
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
       for j = 0, Nsubdirs-1 do begin
@@ -235,17 +300,18 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         if Nsubsubdirs gt 0 then begin
           printf, Clun, 'pinh_dir = ' $
                   + red_strreplace(pinhsubdirs[j], root_dir, '')
-;             printf, Slun, 'a -> setpinhdir, root_dir+"' $
-;                     + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
-; ;              printf, Slun, 'a -> sumpinh_new'
-;             for ipref = 0, Nprefilters-1 do begin
-;               printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-;                       + prefilters[ipref] + "'" $
-;                       + maybe_nodescatter[ipref]
-;             endfor              ; ipref
+          
+          if keyword_set(calibrations_only) then begin
+            ;; For /calibrations_only we want to output the summed data in
+            ;; timestamp directories so we can handle multiple sets.
+            outdir = 'pinhs/' + file_basename(pinhsubdirs[j])
+            outdirkey = ', outdir="'+outdir+'"'
+          endif else outdirkey = ''
+
           printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
                   + red_strreplace(pinhsubsubdirs[j], root_dir, '')  + '"' $
-                  + ', nthreads=nthreads'
+                  + ', nthreads=nthreads' $
+                  + outdirkey 
         endif                   ; Nsubsubdirs
       endfor                    ; j
     endelse                     ; Nsubdirs
@@ -269,9 +335,18 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;        Npol += 1
 ;          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
+        
+        if keyword_set(calibrations_only) then begin
+          ;; For /calibrations_only we want to output the summed data in
+          ;; timestamp directories so we can handle multiple sets.
+          outdir = 'polcal_sums/' + file_basename(polcaldirs[i])
+          outdirkey = ', outdir="'+outdir+'"'
+        endif else outdirkey = ''
+
         printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                 + red_strreplace(polcaldirs[i], root_dir, '')+'"' $
-                + ', nthreads=nthreads'
+                + ', nthreads=nthreads' $
+                + outdirkey 
       endif else begin
         polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -283,9 +358,18 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;              Npol += 1
 ;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
+            
+            if keyword_set(calibrations_only) then begin
+              ;; For /calibrations_only we want to output the summed data in
+              ;; timestamp directories so we can handle multiple sets.
+              outdir = 'polcal_sums/' + file_basename(polcalsubdirs[j])
+              outdirkey = ', outdir="'+outdir+'"'
+            endif else outdirkey = ''
+            
             printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                     + red_strreplace(polcalsubdirs[j], root_dir, '')+'"' $
-                    + ', nthreads=nthreads'
+                    + ', nthreads=nthreads' $
+                    + outdirkey 
           endif
         endfor                  ; j
       endelse
