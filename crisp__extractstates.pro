@@ -87,7 +87,10 @@ pro crisp::extractstates, strings, states $
     red_extractstates,strings, lc=lc $
                       , wav = wav, pref = pref
   endelse
-
+  states.lc = lc
+;  states.fpi_state = pref+'_'+wav
+  states.fpi_state = wav
+  
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
   AreFiles = min(file_test(strings))
@@ -233,13 +236,13 @@ pro crisp::extractstates, strings, states $
     ;; Keywords LC and FPI_STATE should specify the NB state also for
     ;; WB data! Fix this!!
 
-    states[wbindx].lc = ''
-    states[wbindx].fpi_state = pref[wbindx]+'_'+pref[wbindx]+'+0'
+;    states[wbindx].lc = ''
+;    states[wbindx].fpi_state = pref[wbindx]+'_'+pref[wbindx]+'+0'
     states[wbindx].tun_wavelength = states[wbindx].pf_wavelength
   endif
   if Nnb gt 0 then begin
-    states[nbindx].lc = lc[nbindx]
-    states[nbindx].fpi_state = pref[nbindx]+'_'+wav[nbindx]
+;    states[nbindx].lc = lc[nbindx]
+;    states[nbindx].fpi_state = pref[nbindx]+'_'+wav[nbindx]
     states[nbindx].tun_wavelength = double(pref[nbindx])*1d-10 + double(wav[nbindx])*1d-13
   endif
 
