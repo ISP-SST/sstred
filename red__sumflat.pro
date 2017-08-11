@@ -120,6 +120,9 @@
 ;   2017-08-07 : MGL. New keyword nthreads.
 ; 
 ;   2016-08-10 : MGL. New keyword softlink.
+; 
+;   2016-08-11 : MGL. When writing the rawsum, write also a FITS
+;                version of it.
 ;
 ;
 ;-
@@ -311,25 +314,30 @@ pro red::sumflat, overwrite = overwrite, $
          self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
                                      , prproc = inam, prpara = prpara
       
-      ;; Write ANA format flat
+      ;; Write ANA format averaged flat
       print, inam+' : saving ', flatname
       fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
       red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
 
-      ;; Write FITS format flat
+      ;; Write FITS format averaged flat
       print, inam+' : saving ', flatname+'.fits'
       fxaddpar, head, 'FILENAME', file_basename(flatname+'.fits'), after = 'DATE'
       red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
 
       
-      ;; Output the raw (if requested) and averaged flats
+      ;; Output the raw (if requested) flats
       if keyword_set(store_rawsum) then begin
+        ;; ANA
         fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
         headerout = 't='+time_avg+' n_sum='+red_stri(nsum)
         print, inam+' : saving ' + sflatname
         file_mkdir, file_dirname(sflatname)
         flat_raw = long(temporary(summed))
         fzwrite, flat_raw, sflatname, headerout
+        ;; FITS
+        print, inam+' : saving ', sflatname+'.fits'
+        fxaddpar, shead, 'FILENAME', file_basename(sflatname+'.fits'), after = 'DATE'
+        red_writedata, sflatname+'.fits', flat, header=shead, filetype='FITS', overwrite = overwrite
       endif
 
       if keyword_set(check) then free_lun, lun
