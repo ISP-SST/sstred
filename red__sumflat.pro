@@ -337,7 +337,7 @@ pro red::sumflat, overwrite = overwrite, $
         ;; FITS
         print, inam+' : saving ', sflatname+'.fits'
         fxaddpar, shead, 'FILENAME', file_basename(sflatname+'.fits'), after = 'DATE'
-        red_writedata, sflatname+'.fits', flat, header=shead, filetype='FITS', overwrite = overwrite
+        red_writedata, sflatname+'.fits', flat_raw, header=shead, filetype='FITS', overwrite = overwrite
       endif
 
       if keyword_set(check) then free_lun, lun
