@@ -46,6 +46,10 @@
 ;
 ;    2017-08-07 : MGL. Set nthreads in script file and use when
 ;                 calling the summing methods.
+;
+;    2017-08-10 : MGL. When in /calibrations_only mode, write summed
+;                 output to timestamp subdirectories, with softlinks
+;                 to ordinary outdir for darks and flats.
 ; 
 ;    2017-07-19 : THI. Change pinholecalib parameter nref defaut value
 ;                 to 10.
@@ -99,10 +103,11 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
   endif
   
+  printf, Slun
+  printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
+  
   ;; Analyze directories and produce r0 plots (optional)
   if ~keyword_set(calibrations_only) then begin
-    printf, Slun
-    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
     printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
     printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
     printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
@@ -137,13 +142,31 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   if Nsubdirs gt 0 then begin
     darkdirs = file_dirname(darksubdirs)
     darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
+    Ndarkdirs = n_elements(darkdirs)
+
     printf, Slun
-    for idir = 0, n_elements(darkdirs)-1 do begin
+    ;; Loop over the darkdirs, write each to the config file and
+    ;; to the script file
+    for idir = 0, Ndarkdirs-1 do begin
+
+      ;; Config file
+
       printf, Clun, 'dark_dir = '+red_strreplace(darkdirs[idir] $
                                                  , root_dir, '')
+
+      ;; Script file
+      
+      if keyword_set(calibrations_only) then begin
+        ;; For /calibrations_only we want to output the summed data in
+        ;; timestamp directories so we can handle multiple sets.
+        outdir = 'darks/' + file_basename(darkdirs[idir])
+        outdirkey = ', outdir="'+outdir+'", /softlink'
+      endif else outdirkey = ''
+      
       printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
               + red_strreplace(darkdirs[idir], root_dir, '') + '"' $
-              + ', nthreads=nthreads'
+              + ', nthreads=nthreads' $
+              + outdirkey 
     endfor                      ; idir
   endif                         ; Nsubdirs
   
@@ -186,11 +209,20 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
         wls = wls[uniq(wls, sort(wls))]
         wls = wls[WHERE(wls ne '')]
         wavelengths = strjoin(wls, ' ')
+        
+        if keyword_set(calibrations_only) then begin
+          ;; For /calibrations_only we want to output the summed data
+          ;; in timestamp directories so we can handle multiple sets.
+          outdir = 'flats/' + file_basename(flatdirs[idir])
+          outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
+        endif else outdirkey = ''
+        
         ;; Print to script file
         printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
+                + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') + '"' $
                 + ', nthreads=nthreads' $
-                + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') $
-                + '"  ; ' + camdirs+' ('+wavelengths+')'
+                + outdirkey $
+                + ' ; ' + camdirs+' ('+wavelengths+')'
 
         red_append, prefilters, wls
 
@@ -252,12 +284,18 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     if Nsubdirs gt 0 then begin
       printf, Slun
       printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-;      printf, Slun, 'a -> setpinhdir, root_dir+"' $
-;              + red_strreplace(pinhdirs[i], root_dir, '')+'"'
-;        printf, Slun, 'a -> sumpinh_new'
+      
+      if keyword_set(calibrations_only) then begin
+        ;; For /calibrations_only we want to output the summed data in
+        ;; timestamp directories so we can handle multiple sets.
+        outdir = 'pinhs/' + file_basename(pinhdirs[i])
+        outdirkey = ', outdir="'+outdir+'"'
+      endif else outdirkey = ''
+
       for ipref = 0, Nprefilters-1 do begin
         printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                 + ', nthreads=nthreads' $
+                + outdirkey $
                 + ", dirs=root_dir+'" + red_strreplace(pinhdirs[i], root_dir, '') $
                 + "';, pref='"+prefilters[ipref]+"'"
       endfor                    ; ipref
@@ -270,12 +308,18 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
         if Nsubsubdirs gt 0 then begin
           printf, Clun, 'pinh_dir = ' $
                   + red_strreplace(pinhsubdirs[j], root_dir, '')
-;          printf, Slun, 'a -> setpinhdir, root_dir+"' $
-;                  + red_strreplace(pinhsubdirs[j], root_dir, '')+'"'
-;              printf, Slun, 'a -> sumpinh_new'
+          
+          if keyword_set(calibrations_only) then begin
+            ;; For /calibrations_only we want to output the summed data in
+            ;; timestamp directories so we can handle multiple sets.
+            outdir = 'pinhs/' + file_basename(pinhsubdirs[j])
+            outdirkey = ', outdir="'+outdir+'"'
+          endif else outdirkey = ''
+
           for ipref = 0, Nprefilters-1 do begin
             printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                     + ', nthreads=nthreads' $
+                    + outdirkey $
                     + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[j], root_dir, '') $
                     + "';, pref='" + prefilters[ipref]+"'" 
           endfor                ; ipref
