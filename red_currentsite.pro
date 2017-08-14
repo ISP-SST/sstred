@@ -59,6 +59,9 @@
 ;-
 pro red_currentsite, site = site, search_dirs = search_dirs
   
+  ;; Name of this subroutine
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
   spawn, "ip addr show | grep -Po 'inet \K[\d.]+'", ipv4addresses
 
   ;; Check if any of the addresses matches the local range of
@@ -94,5 +97,7 @@ pro red_currentsite, site = site, search_dirs = search_dirs
       retall
     end
   endcase
-
+  
+  print, inam + ' : We are in ', site, '.'
+  
 end
