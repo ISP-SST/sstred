@@ -346,21 +346,29 @@ pro crisp::get_calib, states $
       if arg_present(polsname) then begin
         polsname[istate] = pname
       endif
-
-      if file_test(pname) then begin
-        if arg_present(polsdata) then begin
-          polsdata[0, 0, istate] = red_readdata(pname, header = polshead $
-                                                , status = polsstatus, /silent)
-        endif else if arg_present(polshead) then begin
-          polshead[0, istate] = red_readhead(pname, status = polsstatus, /silent)
-        endif else polsstatus = 0
-        status = status or polsstatus
-        if polsstatus eq -1 then print, inam + ' : Problems reading file ' + pname
-      endif else begin
-        if( arg_present(polsdata) || arg_present(polshead) ) then status = -1
-        print, inam + ' : File not found ' + pname
-      endelse
       
+      if arg_present(polsdata) then begin
+        if file_test(pname) then begin
+          polsdata[0, 0, istate] = red_readdata(pname, status = polsstatus, /silent)
+          if polsstatus eq -1 then print, inam + ' : Problems reading file ' + pname
+        endif else begin
+          polsstatus = -1
+          print, inam + ' : File not found ' + pname
+        endelse
+        status = polsstatus
+      endif
+
+      if arg_present(polshead) then begin
+        if file_test(pname) then begin
+          polshead[0, istate] = red_readhead(pname, status = polsstatus, /silent)
+          if polsstatus eq -1 then print, inam + ' : Problems reading file ' + pname
+        endif else begin
+          polsstatus = -1
+          print, inam + ' : File not found ' + pname
+        endelse
+        status = polsstatus
+      endif
+
     endif                       ; Polcal sum
 
 
