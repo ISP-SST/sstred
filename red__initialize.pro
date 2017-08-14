@@ -359,9 +359,21 @@ pro red::initialize, filename, develop = develop
   momfbd_dlm_version = strjoin((strsplit(strmid(momfbd_dlm_version[1],dlmpos+8), '-', /extract))[0:1], '-')
 
   if ana_dlm_version ne self.version_reduxdlm then self.version_problems += 'ANA DLM not identical to redux DLM'
-  if momfbd_dlm_version ne self.version_reduxdlm then self.version_problems += 'MOMFBD  DLM not identical to redux DLM'
-
-
+  if momfbd_dlm_version ne self.version_reduxdlm then self.version_problems += 'MOMFBD DLM not identical to redux DLM'
+  
+  rdx_dlm_required_versionstr = '0.0.8-79'
+  rdx_dlm_required_version = strsplit(rdx_dlm_required_versionstr, '-.', /EXTRACT)
+  rdx, version=rdx_dlm_version
+  rdx_dlm_version = strsplit(rdx_dlm_version, '-.', /EXTRACT)
+  n_elem = min([n_elements(rdx_dlm_required_version),n_elements(rdx_dlm_version)])
+  for i=0,n_elem-1 do begin
+    if rdx_dlm_version[i] gt rdx_dlm_required_version[i] then break
+    if rdx_dlm_version[i] lt rdx_dlm_required_version[i] then begin
+      self.version_problems += 'The RDX DLM should be updated to version >= ' + rdx_dlm_required_versionstr
+      break
+    endif
+  endfor
+  
   ;; Coyote library version
   coyotepaths = paths(where(strmatch(paths,'*coyote'), Nwhere))
   case Nwhere of
