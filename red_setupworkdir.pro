@@ -224,6 +224,8 @@
 ;   2017-08-11 : MGL. Write a 0README file in the created work
 ;                directories when run in /calibrations_only mode. 
 ;
+;   2017-08-14 : MGL. Use red_currentsite.
+;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
                       , out_dir = out_dir $
@@ -274,33 +276,12 @@ pro red_setupworkdir, search_dir = search_dir $
   isodate = red_strreplace(date, '.', '-', n = 2)
   date = red_strreplace(isodate, '-', '.', n = 2)
 
-  if n_elements(search_dir) eq 0 then begin
-    
-    ;; No search_dir specified. Try to find out where we are from the
-    ;; ip address and search for a root_dir based on that.
-    
-    spawn, 'hostname -I', ipaddress
+  if n_elements(search_dir) eq 0 then red_currentsite, site=site, search_dir=search_dir
 
-    case 1 of
-      strmatch(ipaddress,'*161.72.15.*') : begin
-        ;; At the SST in La Palma
-        search_dir = "/data/disk?/*/"
-        ;; We could search the camera directories as well but then
-        ;; we'd end up with multiple root_dirs, which I'd now like to
-        ;; disallow. - Mats
-      end
-      strmatch(ipaddress,'*130.237.166.*') : begin
-        ;; At the ISP in Stockholm
-        search_dir = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
-      end
-    endcase
-
-    ;; Make sure search_dir ends with a slash before we append the date
-    for i = 0, n_elements(search_dir)-1 do begin
-      if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
-    endfor
-
-  endif                         ; No search_dir given
+  ;; Make sure search_dir ends with a slash before we append the date
+  for i = 0, n_elements(search_dir)-1 do begin
+    if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
+  endfor
   
   ;; We now have a search_dir, but it could be a regular expression or
   ;; an array of directories and/or regular expressions. It could
