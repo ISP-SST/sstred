@@ -246,7 +246,6 @@ pro red::sumflat, overwrite = overwrite, $
       self -> get_calib, states[sel[0]], darkdata = dd, status = status
       if status ne 0 then begin
         print, inam+' : no dark found for camera ', cam
-        stop
         continue
       endif
 
