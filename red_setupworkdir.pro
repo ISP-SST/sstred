@@ -405,36 +405,6 @@ pro red_setupworkdir, search_dir = search_dir $
         end
       endcase
       
-;      if total(strmatch(testdirs,all_regexps[iinstr],/fold)) gt 0 $
-;         and total(strmatch(instruments, all_instruments[iinstr])) gt 0 then begin
-;        odirs = file_search(out_dir + all_instruments[iinstr]+'*', count = Nodirs)
-;        if Nodirs eq 0 then begin
-;          workdir = out_dir + all_instruments[iinstr]+'/'  
-;        endif else begin
-;          print
-;          print, 'Existing '+all_instruments[iinstr]+' work dirs in '+out_dir+' :'
-;          print, file_basename(odirs), format = '(a0)'
-;          workdir = ''
-;          print, 'Use an existing directory or create a new one.'
-;          read, 'Specify '+all_instruments[iinstr]+' workdir name: ', workdir
-;          workdir = out_dir + workdir + '/'
-;        endelse
-;        all_messages[iinstr] += 'Setup in '+workdir
-;      endif else begin
-;        workdir = ''
-;        if total(strmatch(instruments, all_instruments[iinstr])) eq 0 then begin
-;          all_messages[iinstr] += 'Not asked for'
-;          print,  all_messages[iinstr]
-;          print, testdirs
-;          print, '----'
-;        endif else begin         
-;          all_messages[iinstr] += 'No data'
-;          print,  all_messages[iinstr]
-;          print, testdirs
-;          print, '----'
-;        endelse
-;      endelse
-      
     endelse
 
     if workdir ne '' then begin
