@@ -50,6 +50,8 @@
 ;    2017-08-10 : MGL. When in /calibrations_only mode, write summed
 ;                 output to timestamp subdirectories, with softlinks
 ;                 to ordinary outdir for darks and flats.
+;
+;    2017-08-16 : MGL. Stop early if there are no darks and/or flats.
 ; 
 ;    2017-07-19 : THI. Change pinholecalib parameter nref defaut value
 ;                 to 10.
@@ -64,6 +66,19 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                           , comment:'Name of instrument'} $
                          , {keyword:'TELCONFG', value:'Schupmann, imaging table', $
                             comment:'Telescope configuration'}]
+
+
+  ;; Are there darks and flats?
+  darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
+                                        , count = Ndarkdirs)
+  flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
+                                        , count = Nflatdirs)
+
+  if Ndarkdirs eq 0 then begin
+    print, 'No CHROMIS darks were found. No setup generated.'
+    return
+  endif
+  
   
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
@@ -102,9 +117,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun
     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
   endif
-  
-  printf, Slun
-  printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
+
+  if Nflatdirs gt 0 then begin
+    ;; This step requires flats. And the hrz --> tuning conversion is
+    ;; not needed if we don't have them.
+    printf, Slun
+    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
+  endif
   
   ;; Analyze directories and produce r0 plots (optional)
   if ~keyword_set(calibrations_only) then begin
@@ -137,9 +156,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Darks'
   printf, Clun, '#'
   
-  darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
-                                        , count = Nsubdirs)
-  if Nsubdirs gt 0 then begin
+  if Ndarkdirs gt 0 then begin
     darkdirs = file_dirname(darksubdirs)
     darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
     Ndarkdirs = n_elements(darkdirs)
@@ -169,15 +186,22 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + outdirkey 
     endfor                      ; idir
   endif                         ; Nsubdirs
+
+
+  if Nflatdirs eq 0 then begin
+    print, 'No CHROMIS flats were found. Stop after summing darks.'
+    free_lun, Clun
+    free_lun, Slun
+    return
+  endif
+ 
   
   print, 'Flats'
   printf, Clun, '#'
   printf, Clun, '# --- Flats'
   printf, Clun, '#'
 
-  flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
-                                        , count = Nsubdirs)
-  if Nsubdirs gt 0 then begin
+  if Nflatdirs gt 0 then begin
     ;; There are CHROMIS flats!
 
     ;; Directories with camera dirs below:
