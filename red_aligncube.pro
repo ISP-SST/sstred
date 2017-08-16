@@ -91,6 +91,8 @@ function red_aligncube, cub, np $
   noref = 1
                                 ;
   for i = 0L, n_elements(maxj)-1 do begin
+    
+    red_progressbar, i, n_elements(maxj), 'Calculate image shifts', clock = clock
 
     ;; Current sub-cube
     cube = dblarr(dim[0], dim[1], maxj[i])
@@ -130,16 +132,21 @@ function red_aligncube, cub, np $
       shifts[0, last] = tempoff
       last += maxj[i]
       oldref = temporary(nref)
-    endelse
+    endelse                     ; i
   endfor
   
   ;; Subtract the average
   shifts[0,*] -= median(shifts[0,*])
   shifts[1,*] -= median(shifts[1,*])
   
-  if keyword_set(aligncube) then for ii = 0L, dim[2]-1 do $
+  if keyword_set(aligncube) then for ii = 0L, dim[2]-1 do begin
+
+    red_progressbar, i, n_elements(maxj), 'Apply the image shifts', clock = clock
+
     cub[*, *, ii] = red_shift_im(cub[*, *, ii], shifts[0, ii], shifts[1, ii] $
                                  , cubic = cubic)
+
+  endfor                        ; ii
 
   return, shifts
   
