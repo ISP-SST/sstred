@@ -44,6 +44,8 @@
 ;    2017-08-10 : MGL. When in /calibrations_only mode, write summed
 ;                 output to timestamp subdirectories, with softlinks
 ;                 to ordinary outdir for darks and flats.
+;
+;    2017-08-16 : MGL. Stop early if there are no darks and/or flats.
 ; 
 ; 
 ; 
@@ -58,6 +60,16 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             comment:'Telescope configuration'}]
 
   
+  ;; Are there darks and flats?
+  darksubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'dark' $
+                                        , count = Ndarkdirs)
+  flatsubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'flat' $
+                                        , count = Nflatdirs)
+  
+  if Ndarkdirs eq 0 then begin
+    print, 'No CRISP darks were found. No setup generated.'
+    return
+  endif
 
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
@@ -120,9 +132,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Darks'
   printf, Clun, '#'
   
-  darksubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'dark' $
-                                        , count = Nsubdirs)
-  if Nsubdirs gt 0 then begin
+  if Ndarkdirs gt 0 then begin
     ;; There are CRISP darks!
 
     ;; Directories with camera dirs below:    
@@ -158,14 +168,20 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif                         ; Nsubdirs
   
 
+  if Nflatdirs eq 0 then begin
+    print, 'No CRISP flats were found. Stop after summing darks.'
+    free_lun, Clun
+    free_lun, Slun
+    return
+  endif
+ 
+  
   print, 'Flats'
   printf, Clun, '#'
   printf, Clun, '# --- Flats'
   printf, Clun, '#'
 
-  flatsubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'flat' $
-                                        , count = Nsubdirs)
-  if Nsubdirs gt 0 then begin
+  if Nflatdirs gt 0 then begin
     ;; There are CRISP flats!
 
     ;; Directories with camera dirs below:
