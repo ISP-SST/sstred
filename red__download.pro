@@ -124,6 +124,7 @@
 ;                 executable. 
 ;
 ;    2017-08-18 : THI. Also download the FPI calibration values (linedef.py)
+;                 Include FPI calibration in implied downloads.
 ;
 ;-
 pro red::download, overwrite = overwrite $
@@ -150,8 +151,11 @@ pro red::download, overwrite = overwrite $
         or keyword_set(logs) $
         or n_elements(backscatter) gt 0
 
-  if ~any then logs = 1
-
+  if ~any then begin 
+    logs = 1
+    linedefs = 1
+  endif
+  
   if keyword_set(all) then begin
      pig = 1
      linedefs = 1
