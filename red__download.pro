@@ -123,12 +123,15 @@
 ;                 path. Use new convertlog as DLM and not separate
 ;                 executable. 
 ;
+;    2017-08-18 : THI. Also download the FPI calibration values (linedef.py)
+;
 ;-
 pro red::download, overwrite = overwrite $
                   , all = all $
                   , logs = logs $
                   , pig = pig $
                   , pathpig  = pathpig  $
+                  , linedefs = linedefs $
                   , r0 = r0 $
                   , pathr0  = pathr0  $
                   , pathturret = pathturret  $
@@ -141,6 +144,7 @@ pro red::download, overwrite = overwrite $
         or keyword_set(turret)  $
         or keyword_set(armap)  $
         or keyword_set(hmi)  $
+        or keyword_set(linedefs)  $
         or keyword_set(r0)  $
         or keyword_set(all)  $
         or keyword_set(logs) $
@@ -150,6 +154,7 @@ pro red::download, overwrite = overwrite $
 
   if keyword_set(all) then begin
      pig = 1
+     linedefs = 1
      r0 = 1
      turret = 1
      armap = 1
@@ -252,6 +257,48 @@ pro red::download, overwrite = overwrite $
            print, "red::download : Couldn't download the backscatter data for " + backscatter[iback]
         endelse        
      endfor                     ; iback
+  endif
+
+  ;; linedefs
+  if keyword_set(linedefs) AND (min(where(*self.cameras eq 'Chromis-N')) ne -1) then begin
+    dotdate = strjoin(datearr, '.')
+    ldpath = 'http://www.royac.iac.es/Logfiles/CHROMIS/linedef/'
+    downloadOK = red_geturl(ldpath , contents=ldfiles )
+    if downloadOK then begin
+      todays_linedefs = ldfiles[where(strmatch(ldfiles, 'linedef.py-'+dotdate+'*', /FOLD_CASE) EQ 1)]
+      todays_linedef_times = todays_linedefs
+      for i=0,n_elements(todays_linedef_times)-1 do begin
+        todays_linedef_times[i] = red_time_conv( strmid(todays_linedef_times[i],strlen(todays_linedef_times[i])-8,8) )
+      endfor
+      ntlt = n_elements( todays_linedef_times )
+      if ntlt gt 0 then begin 
+        red_append,all_dirs,*self.dark_dir      ; list all data directories of the day
+        red_append,all_dirs,*self.flat_dir
+        red_append,all_dirs,*self.pinh_dirs
+        red_append,all_dirs,*self.data_dirs
+        idx = where(strmatch(all_dirs, '*CHROMIS-calib*', /FOLD_CASE) EQ 1, compl=cidx)
+        all_dirs = all_dirs[cidx]               ; skip calib-directories (often saved/copied by accident)
+        for i=0,n_elements(all_dirs)-1 do begin
+          red_append, all_times, red_Time_conv( strmid(all_dirs[i],strlen(all_dirs[i])-8,8) )
+        endfor
+        data_times = all_times[uniq(all_times, sort(all_times))]
+        for i=0,n_elements(data_times)-1 do begin
+          lastidx = max(where( todays_linedef_times lt data_times[i] ))
+          if lastidx lt 0 then begin  ; TODO: if no calib exists, get one from previous day?
+            print, 'red::download : There is not calibration done before the data: ' + $
+              all_dirs[ where(all_times eq data_times[i]) ]
+            stop
+          endif else begin
+            red_append, used_linedefs, todays_linedef_times[lastidx]
+          endelse
+        endfor
+        used_linedefs = used_linedefs[uniq(used_linedefs, sort(used_linedefs))]
+        todays_linedefs = todays_linedefs[ where(todays_linedef_times eq used_linedefs) ]
+        for i=0,n_elements(todays_linedefs)-1 do begin
+          downloadOK = red_geturl( ldpath+todays_linedefs[i], dir=dir, overwrite = overwrite )
+        endfor
+      endif
+    endif
   endif
 
   ;; R0 log file
