@@ -32,6 +32,11 @@
 ;                 of parsing files.
 ; 
 ;-
+function range, first, last, step
+  ; this is just a dummy function to prevent errors since some linedef.py uses range()
+  return, 0
+end
+
 pro chromis::hrz_zeropoint
 
   ;; Name of this method
@@ -72,6 +77,9 @@ pro chromis::hrz_zeropoint
     free_lun, lun
   endif
   
+  idx = where(strmatch(varnames, '*calib*', /FOLD_CASE) EQ 1, compl=cidx)
+  varnames = varnames[cidx]               ; skip calib-parameters
+
   lambda_list = [ 0.0d, $                           ; 0-position in the wheel is open
                   3925.0d-10, $                     ; Ca II K blue wing
                   3933.7d-10, $                     ; Ca II K core
