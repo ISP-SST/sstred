@@ -76,7 +76,7 @@
 ;     2014-01-10 : MGL. Add some error handling.
 ; 
 ;     2017-08-18 : THI. Workaround so that paths/filenames with ":"
-;                  does not fail.
+;                  does not fail. Get rid of warning when download fails.
 ; 
 ;-
 function red_geturl, url $
@@ -217,7 +217,7 @@ function red_geturl, url $
      endif else begin
 
         path = ''
-        file_delete, tmpfile
+        file_delete, tmpfile, /ALLOW_NONEXISTENT
         if n_elements(respcode) eq 0 then begin
            print, 'red_geturl : Download failed.'
         endif else begin
