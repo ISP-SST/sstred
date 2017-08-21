@@ -1,16 +1,66 @@
-pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
+; docformat = 'rst'
+
+;+
+; Sets up a work directory for the TRIPPEL instrument.
+;
+; :Categories:
+;
+;   SST pipeline
+;
+; :Author:
+;
+;   Mats Löfdahl, Institute for Solar Physics
+;
+; :Params:
+;
+;   work_dir    : in, type = string,
+;                 A name of the directory to set up the directory tree at and to
+;                 where the config file and the doit.pro script should be put.
+;
+;   root_dir    : in, type = string,
+;                 A name of the directory where the raw data is stored for a
+;                 date given in isodate.
+;
+;   cfgfile     : in, type = string,
+;                 A name of the config file, the default value is 'config.txt'.
+;
+;   scriptfile  : in, type = string,
+;                 A name of the set-up script, the default value is 'doit.pro'.
+;
+;   isodate     : in, type = string,
+;                 A date given in ISO format (e.g., 2017-08-23) to search raw
+;                 data for in root_dir.
+;
+; :Keywords:
+;
+;   calibrations_only : in, optional, type = boolean,
+;                       Set up to process calibration data only.
+;                       Currently, a dummy keyword that does nothing.
+;
+; :History:
+;
+;   2017-08-21 : AVS. A calibrations_only keyword is added.  An rst format
+;                 header is added as well.
+;-
+pro red_setupworkdir_trippel,           $
+  work_dir,                             $
+  root_dir,                             $
+  cfgfile,                              $
+  scriptfile,                           $
+  isodate,                              $
+  calibrations_only = calibrations_only ;
 
   file_mkdir, work_dir
-  
+
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                       , [{keyword:'INSTRUME', value:'TRIPPEL' $
                           , comment:'Name of instrument'} $
                          , {keyword:'TELCONFG', value:'Schupmann, spectrograph table', $
                             comment:'Telescope configuration'}]
-  
+
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
-  
+
   openw, Clun, work_dir + cfgfile,    /get_lun
   openw, Slun, work_dir + scriptfile, /get_lun
 
@@ -21,7 +71,7 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
 
-  printf, Slun, 'a = trippelred("'+cfgfile+'")' 
+  printf, Slun, 'a = trippelred("'+cfgfile+'")'
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Download SST log files and optionally some other data from the web.
@@ -51,7 +101,7 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
   printf, Clun, '#'
   printf, Clun, '# --- Darks'
   printf, Clun, '#'
-  
+
   darksubdirs = red_find_instrumentdirs(root_dir, 'spec', '*dark*' $
                                         , count = Nsubdirs)
   if Nsubdirs gt 0 then begin
@@ -65,7 +115,7 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
               + red_strreplace(darkdirs[idir], root_dir, '') + '"'
     endfor                      ; idir
   endif                         ; Nsubdirs
-  
+
   print, 'Flats'
   printf, Clun, '#'
   printf, Clun, '# --- Flats'
@@ -92,14 +142,14 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
                                                  , root_dir, '')
 
       ;; Script file
-      
+
       ;; Look for wavelengths in those flatsubdirs that match
       ;; flatdirs[idir]! Also collect prefilters.
       indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
       fnames = file_search(flatsubdirs[indx]+'/cam*', count = Nfiles)
 
       if Nfiles gt 0 then begin
-        
+
         camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
 
         red_extractstates, fnames, /basename, pref = wls
@@ -127,9 +177,9 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
     spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
     Nprefilters = n_elements(prefilters)
   endif
-  
+
   printf, Slun, "a -> makegains, /preserve"
-  
+
   print, 'Pinholes'
   printf, Clun, '#'
   printf, Clun, '# --- Pinholes'
@@ -160,14 +210,14 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
 ;              printf, Slun, 'a -> sumpinh_new'
           for ipref = 0, Nprefilters-1 do begin
             printf, Slun, "a -> sumpinh, /pinhole_align, pref='" $
-                    + prefilters[ipref]+"'" 
+                    + prefilters[ipref]+"'"
           endfor                ; ipref
         endif
       endfor                    ; j
     endelse
   endfor                        ; i
 
-  
+
   print, 'Science'
   printf, Clun, '#'
   printf, Clun, '# --- Science data'
@@ -195,15 +245,15 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate
             red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
           endif
         endfor                  ; j
-      endelse 
+      endelse
     endif
   endfor
   if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
 
-  
+
   free_lun, Clun
   free_lun, Slun
 
-  
+
 end
