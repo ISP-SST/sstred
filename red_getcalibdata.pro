@@ -131,57 +131,11 @@ pro red_getcalibdata,       $
   ; If search_dirs are not given, pick them depending on the current computer
   ; location.
   if ( n_elements( search_dirs ) eq 0 ) then begin
+
     message, 'search_dirs are not given and are set depending on the ' + $
-      'current computer location.', $
-      /informational
+      'current computer location.', /informational
 
-    ; Which computer you are running this at the moment?
-    ;
-    ; Old 'hostname -I' doesn't work on La Palma under an old OpenSuSE
-    ; installation therefore the only supported keyword there is -i that gives
-    ; the right IP-address on La Palma but not in Stockholm.  There are more
-    ; robust but less trivial ways to get the IPv4-address of the machine.  As
-    ; for 31 July 2017, the following works:
-    ;   $ ip addr show | grep -Po 'inet \K[\d.]+'
-    ; or
-    ;   $ /sbin/ifconfig -a | grep -Po 't addr:\K[\d.]+'
-    ; Both produce a list of IPv4-addresses for each network interface on La
-    ; Palma as well as in Stockholm.  You can narrow the list to only one
-    ; address by specifying 'ip addr show eth0' or '/sbin/ifconfig eth0' but it
-    ; is better to use full listing as some interfaces might be temporarily off
-    ; the network.
-    spawn, "ip addr show | grep -Po 'inet \K[\d.]+'", ipv4addresses
-
-    ; Check if any of the addressess matches the local range of IPv4-addresses.
-    case 1 of
-      max( strmatch( ipv4addresses, '*161.72.15.*' ) ) : begin
-        ; SST network address range on La Palma.
-        ; Observed data is in any folder mounted at /data/, either disk? or
-        ; camera?, or some other drive.  As Pit said on 28 July 2017, we should
-        ; search /data/camera? folders only if it is really necessary.  Observed
-        ; data must be frist transfered to /data/disk? folders, by default to
-        ; disk1.  The inner directory level is either CHROMIS folder for CHROMIS
-        ; data or something different, usually the name of the insitute like
-        ; ISP, UK, UIO, for CRISP data.  For example,
-        ;   /data/disk1/CHROMIS/2017.04.05
-        ;   /data/disk1/ISP/2017.04.05
-        ;search_dirs = "/data/*/*/" ; Full contents of /data folder.
-        search_dirs = "/data/disk?/*/" ; Only /data/disk? storages.
-      end
-      max( strmatch( ipv4addresses, '*130.237.166.*' ) ) : begin
-        ; ISP network range at AlbaNova in Stockholm.
-        ; Transfered data is stored in all the sandboxes at /storage/sand*.
-        ; The inner directory level is either empty, or Incoming, or
-        ; Incoming/Checked.  For example:
-        ;   /storage/sand04n/2017.04.05
-        ;   /storage/sand05/Incoming/2017.04.05
-        search_dirs = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
-      end
-      else : begin
-        message, 'No matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )
-        retall
-      end
-    endcase
+    red_currentsite, site = site, search_dirs = search_dirs
 
   endif ; no search_dirs are given
 
