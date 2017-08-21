@@ -37,6 +37,7 @@
 ; 
 ;   2017-04-26 : MGL. First version. 
 ; 
+;   2017-08-21 : MGL. Protect the spawned grep command from tcsh.
 ; 
 ; 
 ; 
@@ -50,7 +51,8 @@ pro red_mpfit_version, mpfitdir, local_version = local_version, latest_version =
     ;; As the local version, we use the latest date within any of the
     ;; files.
     
-    spawn, 'grep "\$Id" '+mpfitdir+'/*.pro', spawnoutput
+    spawn, 'bash -c ''grep "\$Id" '+mpfitdir+'/*.pro''', spawnoutput
+
     timestamps = STREGEX(spawnoutput,'[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]' $
                          ,/EXTRACT)
     for i = 0, n_elements(timestamps)-1 do timestamps[i] = red_strreplace(timestamps[i], '/', '-', n = 2)
