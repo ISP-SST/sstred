@@ -229,6 +229,7 @@
 ;   2017-08-14 : MGL. Use loops instead of duplicating code for
 ;                different instruments.
 ;
+;   2017-08-21 : AVS. Call red_setupworkdir_* using call_procedure.
 ;-
 pro red_setupworkdir, search_dir = search_dir $
                       , out_dir = out_dir $
@@ -276,19 +277,32 @@ pro red_setupworkdir, search_dir = search_dir $
   date = date[0]
 
   ;; Date in ISO format and with dots.
-  isodate = red_strreplace(date, '.', '-', n = 2)
-  date = red_strreplace(isodate, '-', '.', n = 2)
+  isodate = red_strreplace( date,    '.', '-', n = 2 )
+  date    = red_strreplace( isodate, '-', '.', n = 2 )
 
-  if n_elements(search_dir) eq 0 then red_currentsite, site=site, search_dir=search_dir
+  ;; If search_dirs are not given, pick them depending on the current location.
+  if ( n_elements( search_dirs ) eq 0 ) then begin
 
-  ;; We now have a search_dir, but it could be a regular expression or
-  ;; an array of directories and/or regular expressions. It could
-  ;; include the date but then again it might not. Make sure
-  ;; search_dir ends with a slash before we append the date
-  for i = 0, n_elements(search_dir)-1 do begin
-    if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
-    if file_basename(search_dir[i]) ne date then search_dir[i] += date
-  endfor
+    message, 'search_dirs are not given and are set depending on the ' + $
+      'current computer location.', /informational
+
+    red_currentsite, site = site, search_dir = search_dir
+
+  endif ; no search_dirs are given
+
+  ;; search_dir might be a single path or an array of paths that, in turn,
+  ;; could be either a regular directory name or a regular expression.
+  for i = 0, n_elements( search_dir ) - 1 do begin
+
+    ;; Each search directory must end with a slash.
+    if ~strmatch( search_dir[ i ], '*/' ) then search_dir[ i ] += '/'
+
+    ;; Add the date directory at the end if it is not added yet.
+    if ( file_basename( search_dir[ i ] ) ne date ) then begin
+      search_dir[ i ] += date
+    endif
+
+  endfor ; all search_dir
 
   ;; Now search
   found_dir = file_search(search_dir, count = Nfound)
@@ -325,16 +339,11 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; Make sure root_dir ends with a slash.
   if ~strmatch(root_dir,'*/') then root_dir += '/'
 
-
   ;; Telescope location:
   ;; wikipedia, geo:28.759733,-17.880736
   ;; Mats C:        28.759693, -17.880757
   ;; wikipedia says altitude is 2360 m. Should add 20 m for height of tower?
   obsgeo_xyz = round(red_obsgeo(28.759733d,-17.880736d, 2360d))
-
-
-
-
 
   all_instruments = ['CHROMIS', 'CRISP', 'TRIPPEL', 'SLITJAW']
   all_regexps = '*'+['chromis', 'crisp', 'spec', 'slit']+'*'
@@ -465,23 +474,29 @@ pro red_setupworkdir, search_dir = search_dir $
         free_lun, rlun
       endif
 
-      ;; Write string metadata
-      red_metadata_store, fname = workdir + '/info/metadata.fits' $
-                          , [{keyword:'OBSRVTRY', value:'Observatorio del Roque de los Muchachos (ORM)' $
-                              , comment:'Name of observatory'} $
-                             , {keyword:'TELESCOP', value:'Swedish 1-meter Solar Telescope (SST)' $
-                                , comment:'Name of telescope'} $
-                             , {keyword:'OBJECT', value:'Sun', comment:''} $
-                            ]
+      ;; Write string metadata.
+      red_metadata_store, fname = workdir + '/info/metadata.fits',      $
+        [ { keyword : 'OBSRVTRY',                                       $
+            value   : 'Observatorio del Roque de los Muchachos (ORM)',  $
+            comment : 'Name of observatory' },                          $
+          { keyword : 'TELESCOP',                                       $
+            value   : 'Swedish 1-meter Solar Telescope (SST)',          $
+            comment : 'Name of telescope' },                            $
+          { keyword : 'OBJECT',                                         $
+            value   : 'Sun',                                            $
+            comment : '' } ]                                            ;
 
-      ;; Write numerical metadata
-      red_metadata_store, fname = workdir + '/info/metadata.fits' $
-                          , [{keyword:'OBSGEO-Z', value:obsgeo_xyz[2] $
-                              , comment:'[m] SST location'}, $
-                             {keyword:'OBSGEO-Y', value:obsgeo_xyz[1] $
-                              , comment:'[m] SST location'}, $
-                             {keyword:'OBSGEO-X', value:obsgeo_xyz[0] $
-                              , comment:'[m] SST location'}]
+      ;; Write numerical metadata.
+      red_metadata_store, fname = workdir + '/info/metadata.fits',      $
+        [ { keyword : 'OBSGEO-Z',                                       $
+            value   : obsgeo_xyz[ 2 ],                                  $
+            comment : '[m] SST location' },                             $
+          { keyword : 'OBSGEO-Y',                                       $
+            value   : obsgeo_xyz[ 1 ],                                  $
+            comment : '[m] SST location' },                             $
+          { keyword : 'OBSGEO-X',                                       $
+            value   : obsgeo_xyz[ 0 ],                                  $
+            comment : '[m] SST location' } ]                            ;
 
       ;; Setup the different instruments
       call_procedure, 'red_setupworkdir_' + all_instruments[iinstr],  $
