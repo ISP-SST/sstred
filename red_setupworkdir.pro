@@ -2,26 +2,26 @@
 
 ;+
 ; Makes a pipeline config file.
-; 
+;
 ; :Categories:
 ;
 ;    SST observations
-; 
-; 
+;
+;
 ; :Author:
-; 
+;
 ;    Mats Löfdahl, 2013-07-08
-; 
-; 
+;
+;
 ; :Params:
-; 
+;
 ;    search_dir : in, string
-; 
+;
 ;      The top directory of your saved data, with or wthout a date. Or
 ;      a regular expression that matches the top directory. Or an
 ;      array of directories and regular expressions. If not given,
 ;      setupdir will look for the root_dir based on the site.
-; 
+;
 ; :Keywords:
 ;
 ;    calibrations_only : in, optional, type=boolean
@@ -29,57 +29,57 @@
 ;      Set up to process calibration data only.
 ;
 ;    cfgfile : in, optional, type=string, default='config.txt'
-; 
+;
 ;      The name of the generated config file.
-; 
+;
 ;    download_all : in, optional, type=boolean
 ;
 ;      Set this to download auxiliary data, like SDO/HMI images and AR
 ;      maps. Otherwise download SST log file only.
 ;
 ;    scriptfile : in, optional, type=string, default='doit.pro'
-; 
+;
 ;      The name of the generated script file. The script file can be
 ;      run in an idl session with "@doit.pro" (assuming the default
 ;      name). It will perform the basic things, like co-adding of
 ;      darks, flats, etc. Later commands, that involve human
 ;      interaction are present in the file but commented out.
-; 
-;    date : in, optional, type=string, default='From out_dir if possible' 
-; 
+;
+;    date : in, optional, type=string, default='From out_dir if possible'
+;
 ;      The date (in iso format) the data was collected.
-; 
+;
 ;    out_dir : in, optional, type=string, default='Current directory'
-; 
+;
 ;      The output directory, under which instrument-specific
 ;      directories are created.
 ;
-; 
+;
 ; :History:
-; 
+;
 ;    2013-07-10 : MGL. Will now get a date from out_dir if none is
 ;                 present in root_dir.
-; 
+;
 ;    2013-08-29 : MGL. Any subdirectory that is not a known
 ;                 calibration data directory (darks, flats, etc.) is a
 ;                 potential science data directory.
-; 
+;
 ;    2013-08-30 : MGL. Take care of prefilter scans.
-; 
+;
 ;    2013-11-25 : MGL. Renamed from original name sst_makeconfig and
 ;                 moved to Crispred repository. You can now use
 ;                 regular expressions for root_dir. New keywords
 ;                 "date", "lapalma" and "stockholm". Made root_dir a
-;                 keyword. 
-; 
+;                 keyword.
+;
 ;    2013-11-26 : MGL. Various improvements. The "new" flat field
 ;                 procedure. Find out which cameras and wavelengths
 ;                 are present in the raw flats directories.
-; 
+;
 ;    2013-11-29 : MGL. Changed the order of some commands in the
 ;                 doit.pro file. Add "/descatter" keyword to
-;                 sum_data_intdif call only for wavelengths > 7700. 
-; 
+;                 sum_data_intdif call only for wavelengths > 7700.
+;
 ;    2013-12-02 : MGL. Bugfixes. Add slash at end of root_dir. Can now
 ;                 deal with empty raw flats directories. Gets the
 ;                 prefilters from the summed flats instead.
@@ -93,7 +93,7 @@
 ;    2013-12-09 : Pit. Allow root_dir to be the actual date directory.
 ;
 ;    2013-12-19 : MGL. Download SST logfiles and some other data from
-;                 the web. 
+;                 the web.
 ;
 ;    2013-12-20 : MGL. Change calls from fitgains or fitgains_ng to
 ;                 fitgains or fitgains,/fit_reflectivity and with
@@ -109,10 +109,10 @@
 ;    2014-01-09 : MGL. Bugfix isodate in config file.
 ;
 ;    2014-01-10 : MGL. The download command is now a method, write it
-;                 in that form in the script.; 
+;                 in that form in the script.;
 ;
 ;    2014-01-22 : MGL. Adapt to string functions moved to the str_
-;                 namespace. 
+;                 namespace.
 ;
 ;    2014-01-23 : MGL. No need to give /lapalma keyword, we'll
 ;                 know by examining the host name.
@@ -125,10 +125,10 @@
 ;                 "Incoming/".
 ;
 ;    2015-08-12 : THI. Use demodulate rather than (recently renamed)
-;                 demodulate2. 
+;                 demodulate2.
 ;
 ;    2015-09-01 : MGL. Changed faulty text output when handling prefilter
-;                 scan data. 
+;                 scan data.
 ;
 ;    2016-02-15 : MGL. Remove (incomplete) definition of descatter_dir
 ;                 from config file.
@@ -157,19 +157,19 @@
 ;                 directories without a prefilter level in between.
 ;
 ;    2016-02-24 : MGL. Added another root_dir to search when in
-;                 Stockholm. 
+;                 Stockholm.
 ;
 ;    2016-05-03 : THI. Get prefilter from filenames instead of dirname
-;                 so we don't rely on a specific directory structure. 
+;                 so we don't rely on a specific directory structure.
 ;
 ;    2016-05-04 : MGL. Removed keywords stockholm and lapalma. Renamed
 ;                 root_dir to search_dir. Cleaned up the search for a
 ;                 root_dir, decide where to look based on the
-;                 hostname. Also cleaned up the date handling a bit. 
+;                 hostname. Also cleaned up the date handling a bit.
 ;
 ;    2016-05-05 : MGL. Separate the CRISP and CHROMIS setups into two
 ;                 subdirectories under out_dir. Clean up in the
-;                 searching for subdirectories for darks and flats.  
+;                 searching for subdirectories for darks and flats.
 ;
 ;    2016-05-17 : MGL. Changed Stockholm search dirs to accommodate
 ;                 "sand15n" type mounted disk names. Removed some
@@ -177,15 +177,15 @@
 ;                 part. New keywords exclude_chromis and
 ;                 exclude_crisp. Use the new camera in the
 ;                 config file. Make an instance of chromisred rather
-;                 than crispred in the CHROMIS script.  
+;                 than crispred in the CHROMIS script.
 ;
 ;    2016-05-18 : MGL. Use sumdark's dirs keyword instead of
-;                 setdarkdir.  
+;                 setdarkdir.
 ;
 ;    2016-05-30 : MGL. Don't zero Sarnoff tap borders for
-;                 CHROMIS cameras.   
+;                 CHROMIS cameras.
 ;
-;    2016-06-04 : MGL. CHROMIS image scale.   
+;    2016-06-04 : MGL. CHROMIS image scale.
 ;
 ;    2016-08-12 : MGL. Detect the presence of CRISP and CHROMIS data.
 ;                 Remove keywords exclude_crisp and exclude_chromis.
@@ -193,10 +193,10 @@
 ;    2016-08-23 : THI. Rename camtag to detector and channel to camera,
 ;                 so the names match those of the corresponding SolarNet
 ;                 keywords.
-; 
+;
 ;    2016-09-08 : MGL. Add analyze_directories and red_plot_r0 to the
 ;                 script file, but commented out.
-; 
+;
 ;    2016-09-19 : MGL. Add hrz_zeropoint.
 ;
 ;    2017-01-25 : MGL. Added (nominal) diversity.
@@ -222,7 +222,7 @@
 ;   2017-07-05 : MGL. New keyword calibrations_only.
 ;
 ;   2017-08-11 : MGL. Write a 0README file in the created work
-;                directories when run in /calibrations_only mode. 
+;                directories when run in /calibrations_only mode.
 ;
 ;   2017-08-14 : MGL. Use red_currentsite.
 ;
@@ -240,8 +240,8 @@ pro red_setupworkdir, search_dir = search_dir $
                       , calibrations_only = calibrations_only
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS']
-  
-  if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')  
+
+  if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')
   if ~strmatch(out_dir,'*/') then out_dir += '/'
 
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
@@ -289,7 +289,7 @@ pro red_setupworkdir, search_dir = search_dir $
     if ~strmatch(search_dir[i],'*/') then search_dir[i] += '/'
     if file_basename(search_dir[i]) ne date then search_dir[i] += date
   endfor
-  
+
   ;; Now search
   found_dir = file_search(search_dir, count = Nfound)
 
@@ -301,7 +301,7 @@ pro red_setupworkdir, search_dir = search_dir $
 
   print, 'Looked for data from '+date+' in:'
   for i = 0, n_elements(search_dir)-1 do print, search_dir[i]
-  
+
   case Nfound of
     0: begin
       print, "Didn't find any data."
@@ -321,7 +321,7 @@ pro red_setupworkdir, search_dir = search_dir $
       return
     end
   endcase
-  
+
   ;; Make sure root_dir ends with a slash.
   if ~strmatch(root_dir,'*/') then root_dir += '/'
 
@@ -332,16 +332,16 @@ pro red_setupworkdir, search_dir = search_dir $
   ;; wikipedia says altitude is 2360 m. Should add 20 m for height of tower?
   obsgeo_xyz = round(red_obsgeo(28.759733d,-17.880736d, 2360d))
 
-  
-  
 
-  
+
+
+
   all_instruments = ['CHROMIS', 'CRISP', 'TRIPPEL', 'SLITJAW']
   all_regexps = '*'+['chromis', 'crisp', 'spec', 'slit']+'*'
   Ninstruments = n_elements(all_instruments)
 
   all_messages = strmid(all_instruments+'            ',0,max(strlen(all_instruments))+1)+': '
-  
+
   ;; Used for detecting instruments
   testdirs = file_search(root_dir+'/*/*/*', /test_directory, count = Ndirs)
 
@@ -351,12 +351,12 @@ pro red_setupworkdir, search_dir = search_dir $
     if keyword_set(calibrations_only) then begin
 
       if all_instruments[iinstr] eq 'CRISP' or all_instruments[iinstr] eq 'CHROMIS' then begin
-        
+
         print, 'Setting up for '+all_instruments[iinstr]+', calibration data processing only!'
 
         if total(strmatch(testdirs,all_regexps[iinstr],/fold)) gt 0 $
            and total(strmatch(instruments, all_instruments[iinstr])) gt 0 then begin
-          workdir = out_dir + all_instruments[iinstr]+'-calibrations/'  
+          workdir = out_dir + all_instruments[iinstr]+'-calibrations/'
           all_messages[iinstr] += 'Setup in '+workdir
         endif else begin
           workdir = ''
@@ -366,12 +366,12 @@ pro red_setupworkdir, search_dir = search_dir $
             all_messages[iinstr] += 'Not asked for'
           endelse
         endelse
-        
+
       endif else begin
         workdir = ''
         all_messages[iinstr] += 'Not in /calibration_only mode'
       endelse
-      
+
     endif else begin
 
       print, 'Setting up for '+all_instruments[iinstr]+'.'
@@ -384,14 +384,14 @@ pro red_setupworkdir, search_dir = search_dir $
         end
         total(strmatch(testdirs,all_regexps[iinstr],/fold)) : begin
           ;; There is no data for this instrument
-          workdir = ''      
+          workdir = ''
           all_messages[iinstr] += 'No data'
         end
         else : begin
           ;; We asked for this instrument and there seems to be data
           odirs = file_search(out_dir + all_instruments[iinstr]+'*', count = Nodirs)
           if Nodirs eq 0 then begin
-            workdir = out_dir + all_instruments[iinstr]+'/'  
+            workdir = out_dir + all_instruments[iinstr]+'/'
           endif else begin
             print
             print, 'Existing '+all_instruments[iinstr]+' work dirs in '+out_dir+' :'
@@ -404,11 +404,11 @@ pro red_setupworkdir, search_dir = search_dir $
           all_messages[iinstr] += 'Setup in '+workdir
         end
       endcase
-      
+
     endelse
 
     if workdir ne '' then begin
-      
+
       file_mkdir, workdir
 
       if keyword_set(calibrations_only) then begin
@@ -473,7 +473,7 @@ pro red_setupworkdir, search_dir = search_dir $
                                 , comment:'Name of telescope'} $
                              , {keyword:'OBJECT', value:'Sun', comment:''} $
                             ]
-      
+
       ;; Write numerical metadata
       red_metadata_store, fname = workdir + '/info/metadata.fits' $
                           , [{keyword:'OBSGEO-Z', value:obsgeo_xyz[2] $
@@ -484,19 +484,13 @@ pro red_setupworkdir, search_dir = search_dir $
                               , comment:'[m] SST location'}]
 
       ;; Setup the different instruments
-      case all_instruments[iinstr] of
-        'CHROMIS' : red_setupworkdir_chromis, workdir, root_dir, cfgfile, scriptfile, isodate $
-                                              , calibrations_only = calibrations_only
-        'CRISP'   : red_setupworkdir_crisp,   workdir, root_dir, cfgfile, scriptfile, isodate $
-                                              , calibrations_only = calibrations_only
-        'SLITJAW' : red_setupworkdir_slitjaw, workdir, root_dir, cfgfile, scriptfile, isodate
-        'TRIPPEL' : red_setupworkdir_trippel, workdir, root_dir, cfgfile, scriptfile, isodate
-        else : retall
-      endcase
-      
+      call_procedure, 'red_setupworkdir_' + all_instruments[iinstr],  $
+        workdir, root_dir, cfgfile, scriptfile, isodate,              $
+        calibrations_only = calibrations_only                         ;
+
     endif
   endfor
-  
+
   ;; Write message and then we are done.
     ;; Loop over all defined instruments
   for iinstr = 0, Ninstruments-1 do begin
