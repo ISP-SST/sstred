@@ -543,13 +543,21 @@ pro red_setupworkdir, search_dir = search_dir $
               value   : obsgeo_xyz[ 0 ],                                  $
               comment : '[m] SST location' } ]                            ;
 
-        ;;
+        ;; If there are several root_dirs, a corresponding suffix must be added
+        ;; to the doit.pro script and the config.txt file to separate them.
+        ;suffix = ( nfound_dirs gt 1 ) ? string( irootdir + 1, format = '( i01 )' ) : ''
+        if ( nfound_dirs gt 1 ) then begin
+          suffix = string( irootdir + 1, format = '( i01 )' )
+        endif else begin
+          suffix = ''
+        endelse
+        config_file = add_suffix( cfgfile,    suffix )
+        script_file = add_suffix( scriptfile, suffix )
 
         ;; Setup the different instruments.
-        call_procedure, 'red_setupworkdir_' + instrument,  $
-          workdir, root_dir, cfgfile, scriptfile, isodate, $
-          calibrations_only = calibrations_only            ;
-
+        call_procedure, 'red_setupworkdir_' + instrument,       $
+          workdir, root_dir, config_file, script_file, isodate, $
+          calibrations_only = calibrations_only                 ;
       endif
     endfor
 
