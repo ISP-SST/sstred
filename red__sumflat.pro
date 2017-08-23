@@ -123,6 +123,9 @@
 ; 
 ;   2016-08-11 : MGL. When writing the rawsum, write also a FITS
 ;                version of it.
+; 
+;   2016-08-23 : MGL. When writing the rawsum, write only the FITS
+;                version.
 ;
 ;
 ;-
@@ -326,13 +329,13 @@ pro red::sumflat, overwrite = overwrite, $
       
       ;; Output the raw (if requested) flats
       if keyword_set(store_rawsum) then begin
-        ;; ANA
-        fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
-        headerout = 't='+time_avg+' n_sum='+red_stri(nsum)
-        print, inam+' : saving ' + sflatname
-        file_mkdir, file_dirname(sflatname)
-        flat_raw = long(temporary(summed))
-        fzwrite, flat_raw, sflatname, headerout
+;        ;; ANA
+;        fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
+;        headerout = 't='+time_avg+' n_sum='+red_stri(nsum)
+;        print, inam+' : saving ' + sflatname
+;        file_mkdir, file_dirname(sflatname)
+;        flat_raw = long(temporary(summed))
+;        fzwrite, flat_raw, sflatname, headerout
         ;; FITS
         print, inam+' : saving ', sflatname+'.fits'
         fxaddpar, shead, 'FILENAME', file_basename(sflatname+'.fits'), after = 'DATE'
@@ -347,8 +350,8 @@ pro red::sumflat, overwrite = overwrite, $
         file_delete, origname+'.fits', /allow_nonexistent
         file_link, sourcename+'.fits', origname+'.fits'
         if keyword_set(store_rawsum) then begin
-          file_delete, sorigname, /allow_nonexistent
-          file_link, ssourcename, sorigname
+;          file_delete, sorigname, /allow_nonexistent
+;          file_link, ssourcename, sorigname
           file_delete, sorigname+'.fits', /allow_nonexistent
           file_link, ssourcename+'.fits', sorigname+'.fits'
         endif
