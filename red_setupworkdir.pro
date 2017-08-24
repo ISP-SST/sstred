@@ -1,11 +1,11 @@
 ; docformat = 'rst'
 
-function add_suffix, filename, suffix = suffix
 ;+
 ; This function parses the filename and separates it into the name itself and
 ; the extension.  If there is no extension, only the name is taken.  It adds a
 ; specified suffix inbetween or nothing if the suffix is not given.
 ;-
+function add_suffix, filename, suffix = suffix
   if ( n_elements( suffix ) eq 0 ) then suffix = ''
   filenamelen = strlen( filename )
   if ( filenamelen eq 0 ) then begin
@@ -551,8 +551,8 @@ pro red_setupworkdir, search_dir = search_dir $
         endif else begin
           suffix = ''
         endelse
-        config_file = add_suffix( cfgfile,    suffix )
-        script_file = add_suffix( scriptfile, suffix )
+        config_file = add_suffix( cfgfile,    suffix = suffix )
+        script_file = add_suffix( scriptfile, suffix = suffix )
 
         ;; Setup the different instruments.
         call_procedure, 'red_setupworkdir_' + instrument,       $
