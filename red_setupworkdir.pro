@@ -1,29 +1,6 @@
 ; docformat = 'rst'
 
 ;+
-; This function parses the filename and separates it into the name itself and
-; the extension.  If there is no extension, only the name is taken.  It adds a
-; specified suffix inbetween or nothing if the suffix is not given.
-;-
-function add_suffix, filename, suffix = suffix
-  if ( n_elements( suffix ) eq 0 ) then suffix = ''
-  filenamelen = strlen( filename )
-  if ( filenamelen eq 0 ) then begin
-    message, 'filename must not be empty.'
-    retall
-  endif
-  dotpos = strpos( filename, '.', /reverse_search )
-  if ( dotpos ne -1 ) then begin
-    name      = strmid( filename, 0,      dotpos               )
-    extension = strmid( filename, dotpos, filenamelen - dotpos )
-  endif else begin
-    name      = filename
-    extension = ''
-  endelse
-  return, name + suffix + extension
-end
-
-;+
 ; Makes a pipeline config file.
 ;
 ; :Categories:
@@ -258,6 +235,10 @@ end
 ;   2017-08-23 : AVS. Loop over all root_dirs from found_dirs.
 ;
 ;   2017-08-23 : AVS. Function add_suffix is added.
+;
+;   2017-08-24 : MGL. Rename add_suffix to red_add_suffix and move to
+;                a file of its own.
+;
 ;-
 pro red_setupworkdir, search_dir = search_dir $
                       , out_dir = out_dir $
@@ -551,8 +532,8 @@ pro red_setupworkdir, search_dir = search_dir $
         endif else begin
           suffix = ''
         endelse
-        config_file = add_suffix( cfgfile,    suffix = suffix )
-        script_file = add_suffix( scriptfile, suffix = suffix )
+        config_file = red_add_suffix( cfgfile,    suffix = suffix )
+        script_file = red_add_suffix( scriptfile, suffix = suffix )
 
         ;; Setup the different instruments.
         call_procedure, 'red_setupworkdir_' + instrument,       $
