@@ -45,6 +45,10 @@
 ;   2017-08-11 : AVS. Added search_dirs keyword to be able to run in different
 ;                     locations where old data is stored.
 ;   2017-08-14 : AVS. Changed cd calls to pushd/popd for a better portability.
+;   2017-08-24 : AVS. Logic in internal loops have been moved to
+;                     red_setupworkdir.  Instead call red_setupworkdir with the
+;                     proper keywords and the doit.pro/config.txt pairs will be
+;                     created outside this script.
 ;-
 pro red_getcalibdata,       $
   date        = date,       $
@@ -53,9 +57,6 @@ pro red_getcalibdata,       $
 
   ; Instruments to process data for.  TRIPPEL and SLITJAW are not included yet.
   instruments = [ 'CHROMIS', 'CRISP' ]
-
-  ; The telescope geographic location.
-  obsgeo_xyz = round( red_obsgeo( 28.759733d, -17.880736d, 2360d ) )
 
   ; The default calling sequence is to specify the output directory in out_dir
   ; and it should contain the date as the last subdirectory, for example,
@@ -128,136 +129,8 @@ pro red_getcalibdata,       $
 
   ;goto, jump1
 
-  ; If search_dirs are not given, pick them depending on the current computer
-  ; location.
-  if ( n_elements( search_dirs ) eq 0 ) then begin
-
-    message, 'search_dirs are not given and are set depending on the ' + $
-      'current computer location.', /informational
-
-    red_currentsite, site = site, search_dirs = search_dirs
-
-  endif ; no search_dirs are given
-
-  for i = 0, n_elements( search_dirs ) - 1 do begin
-
-    ; Each search directory must end with a slash.
-    if ~strmatch( search_dirs[ i ], '*/' ) then search_dirs[ i ] += '/'
-
-    ; Include the date directory at the end, if it is not added yet.
-    if ( file_basename( search_dirs[ i ] ) ne date ) then begin
-      search_dirs[ i ] += date
-    endif
-
-  endfor
-
-  ; Search all directories.  This might be slow for non-mounted camera? or
-  ; disk? folders.
-  found_dirs = file_search( search_dirs, count = nfound_dirs )
-
-  ; Remove duplicates.
-  if nfound_dirs gt 1 then begin
-    found_dirs  = found_dirs[ uniq( found_dirs, sort( found_dirs ) ) ]
-    nfound_dirs = n_elements( found_dirs )
-  endif
-
-  if ( nfound_dirs eq 0 ) then begin
-    print, 'No data is found for ' + date + '.'
-    return
-  endif
-
-  ; Loop over all found directories.
-  for i = 0, nfound_dirs - 1 do begin
-
-    ; For each found directory, a doit.pro script and a config.txt file are
-    ; generated.  They differ by the number offset such as doit02.pro etc.
-    found_dir = found_dirs[ i ]
-
-    ; Each found dir must end with a slash.
-    if ~strmatch( found_dir, '*/' ) then found_dir += '/'
-
-    ; Instrument directories are named Chromis-D, Chromis-N, and Chromis-W for
-    ; the CHROMIS data and Crisp-R, Crisp-T, and Crisp-W for the CRISP data.
-    ; They are nested at the third level from the root of each found directory.
-    ; For example,
-    ;   .../2017.05.02 /CHROMIS-flats /8545     /Chromis-W
-    ;   .../2017.05.02 /Darks         /12:09:18 /Crisp-T
-    ; where .../2017.05.02 is the current found directory.
-    instrument_dirs = file_search( found_dir + '*/*/*', $
-      /test_directory,                                  $
-      count = ninstrument_dirs                          )
-
-    if ( ninstrument_dirs eq 0 ) then begin
-      message, 'No instrument directories found in ' + found_dir, /informational
-      continue
-    endif else begin
-      message, 'Data found in ' + found_dir, /informational
-    endelse
-
-    ; Run over all instruments and ...
-    for inst = 0, n_elements( instruments ) - 1 do begin
-
-      instrument = instruments[ inst ]
-
-      ; Check if this instrument is present in the instrument directories.  An
-      ; instrument diretory is somethin like
-      ;   /storage/sand04/Incoming/2017.07.01/CHROMIS-darks/14:24:47/Chromis-D
-      ; that ends with /<instrument>-<[DWT],[RTW]>.
-      if ( max( strmatch( instrument_dirs, $
-                  '*\/' + instrument + '-*', /fold_case ) ) gt 0 ) then begin
-
-        ; A work dir is, for example, .../CRISP-calibrations/.
-        work_dir = out_dir + instrument + '-calibrations/'
-
-        ; If work_dir doesn't exist, create it and put the preliminary metadata
-        ; inside.
-        if ~file_test( work_dir, /directory ) then begin
-
-          file_mkdir, work_dir
-
-          ; Write string metadata
-          red_metadata_store, fname = work_dir + '/info/metadata.fits',    $
-            [ { keyword : 'OBSRVTRY',                                      $
-                value   : 'Observatorio del Roque de los Muchachos (ORM)', $
-                comment : 'Name of observatory' },                         $
-              { keyword : 'TELESCOP',                                      $
-                value   : 'Swedish 1-meter Solar Telescope (SST)',         $
-                comment : 'Name of telescope' },                           $
-              { keyword : 'OBJECT',                                        $
-                value   : 'Sun',                                           $
-                comment : '' } ]
-
-          ; Write numerical metadata
-          red_metadata_store, fname = work_dir + '/info/metadata.fits',    $
-            [ { keyword : 'OBSGEO-Z',                                      $
-                value   : obsgeo_xyz[ 2 ],                                 $
-                comment : '[m] SST location' },                            $
-              { keyword : 'OBSGEO-Y',                                      $
-                value   : obsgeo_xyz[ 1 ],                                 $
-                comment : '[m] SST location' },                            $
-              { keyword : 'OBSGEO-X',                                      $
-                value   : obsgeo_xyz[ 0 ],                                 $
-                comment : '[m] SST location' } ]
-
-        endif ; if work_dir doesn't exist
-
-        ; Set the config file name and the script file name.  Each name has a
-        ; two-figure extension, e.g., doit00.pro to separate scripts for
-        ; different found folders.
-        config_file = string( 'config', i, '.txt', format = '( a, i02, a )' )
-        script_file = string( 'doit',   i, '.pro', format = '( a, i02, a )' )
-
-        ; A generic interfaces to different instrumental subroutines.
-        call_procedure, 'red_setupworkdir_' + instrument,         $
-          work_dir, found_dir, config_file, script_file, isodate, $
-          calibrations_only = 1                                   ;
-        print, instrument + ' setup in ' + work_dir
-
-      endif ; instrument in instrument_dirs
-
-    endfor ; instruments[ inst ]
-
-  endfor ; found_dirs[ i ]
+  red_setupworkdir, search_dir = search_dirs, out_dir = out_dir, $
+    instruments = instruments, date = date, /calibrations_only
 
   ;return
 ;jump1:
@@ -278,7 +151,7 @@ pro red_getcalibdata,       $
       message, 'At ' + instrument_dir, /informational
 
       ; Find all scripts.
-      doit_files = file_search( 'doit??.pro', count = nfound_scripts )
+      doit_files = file_search( 'doit*.pro', count = nfound_scripts )
 
       if ( nfound_scripts ge 0 ) then begin
 
