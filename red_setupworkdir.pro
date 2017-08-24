@@ -15,14 +15,15 @@
 ;
 ; :Params:
 ;
-;    search_dir : in, string
+;
+; :Keywords:
+;
+;    search_dirs : in, optional, type = array of strings
 ;
 ;      The top directory of your saved data, with or wthout a date. Or
 ;      a regular expression that matches the top directory. Or an
 ;      array of directories and regular expressions. If not given,
 ;      setupdir will look for the root_dir based on the site.
-;
-; :Keywords:
 ;
 ;    calibrations_only : in, optional, type=boolean
 ;
@@ -239,8 +240,11 @@
 ;   2017-08-24 : MGL. Rename add_suffix to red_add_suffix and move to
 ;                a file of its own.
 ;
+;   2017-08-24 : AVS. Make search_dir plural.  If it is a single string, IDL
+;                allows to use the array indexing such as seach_dirs[ 0 ].
+;
 ;-
-pro red_setupworkdir, search_dir = search_dir $
+pro red_setupworkdir, search_dirs = search_dirs $
                       , out_dir = out_dir $
                       , cfgfile = cfgfile $
                       , instruments = instruments $
@@ -258,13 +262,13 @@ pro red_setupworkdir, search_dir = search_dir $
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
 
   if n_elements(date) eq 0 then begin
-    ;; Date not specified. Does search_dir include the date?
-    if n_elements(search_dir) gt 0 then begin
-      for i = 0, n_elements(search_dir)-1 do begin
-        pos = stregex(search_dir[i],'/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
+    ;; Date not specified.  Do search_dirs include the date?
+    if n_elements( search_dirs ) gt 0 then begin
+      for i = 0, n_elements( search_dirs ) - 1 do begin
+        pos = stregex( search_dirs[ i ], '/[12][0-9][0-9][0-9][.-][01][0-9][.-][0-3][0-9]')
         if pos ne -1 then begin
-          ;; Date present in search_dir[i]
-          date = strmid(search_dir[i], pos+1, 10)
+          ;; Date present in search_dirs[ i ]
+          date = strmid( search_dirs[ i ], pos + 1, 10 )
           break
         endif
       endfor                    ; i
@@ -295,27 +299,27 @@ pro red_setupworkdir, search_dir = search_dir $
     message, 'search_dirs are not given and are set depending on the ' + $
       'current computer location.', /informational
 
-    red_currentsite, site = site, search_dir = search_dir
+    red_currentsite, site = site, search_dirs = search_dirs
 
   endif ; no search_dirs are given
 
-  ;; search_dir might be a single path or an array of paths that, in turn,
+  ;; search_dirs might be a single path or an array of paths that, in turn,
   ;; could be either a regular directory name or a regular expression.
-  for i = 0, n_elements( search_dir ) - 1 do begin
+  for i = 0, n_elements( search_dirs ) - 1 do begin
 
     ;; Each search directory must end with a slash.
-    if ~strmatch( search_dir[ i ], '*/' ) then search_dir[ i ] += '/'
+    if ~strmatch( search_dirs[ i ], '*/' ) then search_dirs[ i ] += '/'
 
     ;; Add the date directory at the end if it is not added yet.
-    if ( file_basename( search_dir[ i ] ) ne date ) then begin
-      search_dir[ i ] += date
+    if ( file_basename( search_dirs[ i ] ) ne date ) then begin
+      search_dirs[ i ] += date
     endif
 
-  endfor ; all search_dir
+  endfor ; all search_dirs
 
-  ;; Search all search_dir for the specified date.  This might be slow on La
+  ;; Search all search_dirs for the specified date.  This might be slow on La
   ;; Palma for non-mounted /data/camera? or /data/disk? directories.
-  found_dir = file_search( search_dir, count = nfound_dirs )
+  found_dir = file_search( search_dirs, count = nfound_dirs )
 
   ;; Maybe some searches returned the same result?
   if ( nfound_dirs gt 1 ) then begin
@@ -324,7 +328,7 @@ pro red_setupworkdir, search_dir = search_dir $
   endif
 
   print, 'Looked for data from ' + date + ' in:'
-  for i = 0, n_elements( search_dir ) - 1 do print, search_dir[ i ]
+  for i = 0, n_elements( search_dirs ) - 1 do print, search_dirs[ i ]
 
   case nfound_dirs of
     0: begin

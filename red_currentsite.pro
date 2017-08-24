@@ -3,7 +3,7 @@
 ;+
 ; Figure out the current site and default data directories and
 ; similar.
-; 
+;
 ; Old 'hostname -I' doesn't work on La Palma under an old OpenSuSE
 ; installation therefore the only supported keyword there is -i that gives
 ; the right IP-address on La Palma but not in Stockholm.  There are more
@@ -21,44 +21,37 @@
 ; :Categories:
 ;
 ;    SST pipeline
-; 
-; 
+;
+;
 ; :Author:
-; 
+;
 ;    Mats Löfdahl, Institute for Solar Physics
-; 
-; 
+;
+;
 ; :Returns:
-; 
+;
 ;    A string identifying the current site, like "AlbaNova", "La
 ;    Palma", etc.
-; 
-; 
+;
+;
 ; :Params:
-; 
-; 
-; 
-; 
-; 
-; 
+;
+;
+;
 ; :Keywords:
-; 
-;   search_dirs : out, optional, type=strarr
-;   
-;      Where to search for raw data.
-; 
-; 
+;
+;   search_dirs : out, optional, type = array of strings
+;
+;      Where to search for raw data.  Could be an array or a single string.
+;
+;
 ; :History:
-; 
-;    2017-08-15 : MGL. First version based on logic by Andrii
-;                 Sukhorukov. 
-; 
-; 
-; 
-; 
+;
+;    2017-08-15 : MGL. First version based on logic by Andrii Sukhorukov.
+;
 ;-
 pro red_currentsite, site = site, search_dirs = search_dirs
-  
+
   ;; Name of this subroutine
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
@@ -97,7 +90,7 @@ pro red_currentsite, site = site, search_dirs = search_dirs
       retall
     end
   endcase
-  
+
   print, inam + ' : We are in ', site, '.'
-  
+
 end
