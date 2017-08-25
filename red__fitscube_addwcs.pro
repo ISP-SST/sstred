@@ -45,38 +45,73 @@
 ; 
 ;    2016-03-24 : MGL. First version.
 ; 
+;    2016-08-25 : MGL. Add spatial coordinates.
+; 
 ; 
 ; 
 ;-
-pro red::fitscube_addwcs, filename, wcs_wave_coordinate, wcs_time_coordinate $
-                          , scannumber = scannumber
+pro red::fitscube_addwcs, filename $
+                          , wcs_hpln_coordinate $
+                          , wcs_hplt_coordinate $
+                          , wcs_wave_coordinate $
+                          , wcs_time_coordinate
 
   ;; Write the WCS extension. (This was inspired by Stein's
   ;; wcs_crosstabulation.pro)
 
-  if max([n_elements(wcs_time_coordinate) $
-          , n_elements(wcs_wave_coordinate) $
-          , n_elements(scannumbers)]) eq 0 then return
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Get the dimensions. Allow one of them to be scalar, the other has
-  ;; to be (Ntunes x Nscans).
-  wdims = size(wcs_time_coordinate, /dim)
+  ;; Get the dimensions (using x for hpln and y for hplt).
+  xdims = size(wcs_hpln_coordinate, /dim)
+  ydims = size(wcs_hplt_coordinate, /dim)
+  wdims = size(wcs_wave_coordinate, /dim)
   tdims = size(wcs_time_coordinate, /dim)
-  if n_elements(wdims) eq 1 and n_elements(tdims) eq 1 then begin
-    ;; Both are scalars!
-    return
-  endif else if n_elements(wdims) eq 1 then begin
-    Ntunes = tdims[0]
-    Nscans = tdims[1]
-  endif else begin
-    Ntunes = wdims[0]
-    Nscans = wdims[1]
-  endelse
+
+  Nxdims = n_elements(xdims)
+  Nydims = n_elements(ydims)
+  Nwdims = n_elements(wdims)
+  Ntdims = n_elements(tdims)
+
+  indx0 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 0, N0)
+  indx4 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 4, N4)
+  
+  ;; At least one of the arrays have to be non-scalar. Any non-scalars
+  ;; must have the same dimensions: (2 x 2 x Ntunes x Nscans). (Maybe
+  ;; we have to allow for degenerate trailing dimensions for scan-only
+  ;; cubes?)
+  if N0+N4 ne 4 or N4 eq 0 then begin
+    print, inam + ' : At least one of the arrays has the wrong dimensions.'
+    help, wcs_hpln_coordinate $
+          , wcs_hplt_coordinate $
+          , wcs_wave_coordinate $
+          , wcs_time_coordinate
+    stop
+    retall
+  endif
+
+  ;; Get the dimensions from a non-scalar
+  case (where(indx4))[0] of
+    0 : dims = xdims
+    1 : dims = ydims
+    2 : dims = wdims
+    3 : dims = tdims
+    else: begin
+      print, 'This should not happen!'
+      stop
+    end
+  endcase
+  Nx     = dims[0]
+  Ny     = dims[1]
+  Ntunes = dims[2]
+  Nscans = dims[3]
   
   ;; An array to store both wave and time coordinates
-  wave_time_coords = dblarr(2, Ntunes, Nscans)
-  wave_time_coords[0, *, *] = wcs_wave_coordinate
-  wave_time_coords[1, *, *] = wcs_time_coordinate
+  wcs_coords = dblarr(4, Nx, Ny, Ntunes, Nscans)
+  wcs_coords[0, *, *, *, *] = wcs_hpln_coordinate
+  wcs_coords[1, *, *, *, *] = wcs_hplt_coordinate
+  wcs_coords[2, *, *, *, *] = wcs_wave_coordinate
+  wcs_coords[3, *, *, *, *] = wcs_time_coordinate
 
   ;; If the main header doesn't have the EXTEND keyword, add it now.
   fxhmodify, filename, 'EXTEND', !true, 'The file has extension(s).'
@@ -84,52 +119,14 @@ pro red::fitscube_addwcs, filename, wcs_wave_coordinate, wcs_time_coordinate $
   ;; Make the binary extension header
   fxbhmake, bdr, 1, 'WCS-TAB', 'For storing tabulated WCS tabulations'
   
-  fxbaddcol, 1, bdr, wave_time_coords,  'WAVE+TIME',  'Coordinate array'
-  fxbaddcol, 2, bdr, findgen(Ntunes)+1, 'WAVE-INDEX', 'Index for tuning/wavelength'
-  fxbaddcol, 3, bdr, findgen(Nscans)+1, 'TIME-INDEX', 'Index for repeat/time'
+  fxbaddcol, 1, bdr, wcs_coords,  'POINT+WAVE+TIME',  'Coordinate array'
+  fxbaddcol, 2, bdr, findgen(Ntunes)+1, 'HPLN-INDEX', 'Index for helioprojective longitude'
+  fxbaddcol, 3, bdr, findgen(Nscans)+1, 'HPLT-INDEX', 'Index for helioprojective latitude'
+  fxbaddcol, 4, bdr, findgen(Ntunes)+1, 'WAVE-INDEX', 'Index for tuning/wavelength'
+  fxbaddcol, 5, bdr, findgen(Nscans)+1, 'TIME-INDEX', 'Index for repeat/time'
   
   fxbcreate, unit, filename, bdr, extension_no
-  fxbwrite, unit, wave_time_coords, 1, 1 ; Write coordinates as column 1, row 1
+  fxbwrite, unit, wcs_coords, 1, 1 ; Write coordinates as column 1, row 1
   fxbfinish, unit
-  
-
-;
-;  if n_elements(scannumber) ne 0 then begin
-;    ;; Not part of wcs system, store in other extension? Alternate
-;    ;; coordinate of the fifth dimension?
-;    fxbaddcol, colno, bdr, scannumber, 'SCAN-TABULATION' $
-;               , 'Table of scan numbers'
-;    colno++
-;  endif 
-
-;  ;;
-;  ;; Now, for the writing:
-;  ;;
-;  ;; 1. Create binary table extension w/the header;; bdr, file_unit
-;  ;; & extension_no are outputs
-;  ;;
-;  fxbcreate, lun, filename, bdr, extension_no
-;
-;  ;;
-;  ;; 2. Actually write the data - column 1,  row 1
-;  ;;
-;  if n_elements(scannumber) gt 0 then begin
-;    fxbwrite, lun, scannumber, colno, 1
-;    print, 'Wrote scan'
-;  endif
-;
-;  ;;
-;  ;; Finished - crossing our fingers here!!
-;  ;;
-;  fxbfinish, lun
-
-;  ;; Write other binary extension if any.
-;  if n_elements(tabhdu) gt 0 then begin
-;    free_lun, lun               ; The file is expected to be closed for this.
-;    red_write_tabhdu, tabhdu, filename
-;    ;; Open the fits file again, so the image data can be written
-;    ;; outside of this subroutine.
-;    openu, lun, filename, /get_lun, /swap_if_little_endian
-;  endif
 
 end
