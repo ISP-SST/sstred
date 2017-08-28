@@ -148,51 +148,107 @@ pro red_getcalibdata,       $
     if file_test( instrument_dir, /directory ) then begin
 
       pushd, instrument_dir ;cd, instrument_dir
-      message, 'At ' + instrument_dir, /informational
+      message, 'at ' + instrument_dir, /informational
 
       ; Find all scripts.
       doit_files = file_search( 'doit*.pro', count = nfound_scripts )
 
-      if ( nfound_scripts ge 0 ) then begin
+      if ( nfound_scripts gt 0 ) then begin
 
         for f = 0, nfound_scripts - 1 do begin
 
-          message, 'Script file: ' + doit_files[ f ], /informational
+          doit_file = doit_files[ f ]
+          message, 'script file: ' + doit_file, /informational
 
-          ; Open the script file as a plain text...
-          openr, flun, doit_files[ f ], /get_lun
-          tstr = ""
+          ; Read the script file line by line in an array of strings.
+          openr, doit_lun, doit_file, /get_lun
+          doit_str = ""
+          while ~eof( doit_lun ) do begin
+            readf, doit_lun, doit_str
+            doit_str = strtrim( doit_str, 2 )
+            if ( doit_str ne '' ) then red_append, doit_lines, doit_str
+          endwhile
+          free_lun, doit_lun
 
-          while ~eof( flun ) do begin
+          ; The done*.log file has the same suffix as doit*.pro.
+          dotpos = strpos( doit_file, '.pro', /reverse_search )
+          ; No need to check for match as the doit*.pro name is already matched.
+          done_file = doit_file
+          strput, done_file, 'done', 0      ; doit*.pro -> done*.pro
+          strput, done_file, '.log', dotpos ; done*.pro -> done*.log
 
-            ; ...parse it line-by-line and...
-            readf, flun, tstr
-            tstr = strtrim( tstr, 2 )
+          if ( file_test( done_file ) ) then begin
+            ; Read the done*.log line by line into an array of strings.
+            openr, done_lun, done_file, /get_lun
+            done_str = ""
+            while ~eof( done_lun ) do begin
+              readf, done_lun, done_str
+              done_str = strtrim( done_str, 2 )
+              if ( done_str ne '' ) then red_append, done_lines, done_str
+            endwhile
+            free_lun, done_lun
+          endif else begin
+            ; No done*.log file, nothing has been processed before.
+            done_lines = [ ]
+          endelse
+          ; Create the done*.log file anew by opening it for writing.
+          openw, done_lun, done_file, /get_lun
+          free_lun, done_lun
 
-            ; ...execute each line but empty ones and end statements.
-            if (    ( tstr ne ''    ) $
-                 && ( tstr ne 'end' ) ) then begin
+          n_doit_lines = n_elements( doit_lines )
+          n_done_lines = n_elements( done_lines )
+
+          for iline = 0, n_doit_lines - 1 do begin
+            line = doit_lines[ iline ]
+
+            ; Execute each line but the end statement.
+            if ( line ne 'end' ) then begin
+
+              ; Search if the line has been completed before.
+              if ( n_done_lines gt 0 ) then begin
+                is_done = -1
+                for idoneline = 0, n_done_lines - 1 do begin
+                  is_done = strpos( done_lines[ idoneline ], line )
+                  if ( is_done ge 0 ) then begin
+                    message, 'line "' + line + '" has been completed before.', $
+                      /informational
+                    ; Append the old completed line to the new done*.log file.
+                    openw, done_lun, done_file, width = 256, /append, /get_lun
+                    printf, done_lun, done_lines[ idoneline ]
+                    free_lun, done_lun
+                    ; Exit the for-loop over done lines.
+                    break
+                  endif
+                endfor ; idoneline
+                if ( is_done ge 0 ) then continue ; Next doit line.
+              endif
+
+              ; The line has not been done before.  Execute now and write to the
+              ; done*.log file with the corresponding time-stamp.
 
               ; Note: execute() function doesn't work in IDL Virtual Machine.
               ; There must be a possible but more complicated solution using
               ; call_procedure, call_function, and call_method tools.
-              result = execute( tstr )
+              result = execute( line )
               if ~result then begin
-                message, 'Failed execute() at line = ' + tstr, /informational
+                message, 'execute("' + line + '") failed.', /informational
               endif else begin
-                message, 'Executed line: ' + tstr, /informational
+                message, 'execute("' + line + '") succeeded.', /informational
+                ; Append the completed line to the done*.log file.
+                openw, done_lun, done_file, width = 256, /append, /get_lun
+                printf, done_lun, line + ' ; ' + red_timestamp( /iso, /utc )
+                free_lun, done_lun
               endelse
-
-            endif
-
-          endwhile ; eof( flun )
-
-          free_lun, flun
+            endif ; line ne 'end'
+          endfor ; line = doit_lines[ iline ]
 
           ; Destroy the reduction class.  It is always named "a" in doit.pro.
           obj_destroy, a
+          ; Nullify the doit_lines and the done_lines arrays (only in IDL > v8.*).
+          doit_lines = [ ]
+          done_lines = [ ]
 
-        endfor ; doit_files[ f ]
+        endfor ; doit_file = doit_files[ f ]
 
       endif ; nfound_scripts > 0
 
