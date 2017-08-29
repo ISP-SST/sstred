@@ -49,6 +49,9 @@
 ;
 ;    2017-08-15 : MGL. First version based on logic by Andrii Sukhorukov.
 ;
+;    2017-08-29 : MGL. Use dnsdomainname to match also nodes that do
+;                 not have world-wide ipv4 addresses.
+;
 ;-
 pro red_currentsite, site = site, search_dirs = search_dirs
 
@@ -56,11 +59,13 @@ pro red_currentsite, site = site, search_dirs = search_dirs
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   spawn, "ip addr show | grep -Po 'inet \K[\d.]+'", ipv4addresses
-
+  spawn, 'dnsdomainname', dnsdomainname
+  
   ;; Check if any of the addresses matches the local range of
   ;; IPv4-addresses.
   case 1 of
-    max( strmatch( ipv4addresses, '*161.72.15.*' ) ) : begin
+    strmatch(dnsdomainname, '*royac.iac.es' ) $
+       || max( strmatch( ipv4addresses, '*161.72.15.*' ) ) : begin
       ;; SST network address range on La Palma.
       site = "La Palma"
       ;; Observed data is in any folder mounted at /data/, either disk? or
