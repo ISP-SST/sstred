@@ -223,21 +223,24 @@ pro red_getcalibdata,       $
                 if ( is_done ge 0 ) then continue ; Next doit line.
               endif
 
-              ; The line has not been done before.  Execute now and write to the
-              ; done*.log file with the corresponding time-stamp.
-
-              ; Note: execute() function doesn't work in IDL Virtual Machine.
-              ; There must be a possible but more complicated solution using
-              ; call_procedure, call_function, and call_method tools.
+              ; The line has not been executed before.  Run it and write to the
+              ; done*.log file with the corresponding UTC time-stamp.
+              ; Warning: execute() function does not work in IDL Virtual Machine.
               result = execute( line )
               if ~result then begin
                 message, 'execute("' + line + '") failed.', /informational
               endif else begin
                 message, 'execute("' + line + '") succeeded.', /informational
-                ; Append the completed line to the done*.log file.
-                openw, done_lun, done_file, width = 256, /append, /get_lun
-                printf, done_lun, line + ' ; ' + red_timestamp( /iso, /utc )
-                free_lun, done_lun
+                ; Only method calls such as a->sumdark must be saved.
+                is_redclass_method = stregex( line,         $
+                  '^a *-> *sum(dark|flat|pinh|polcal) *,',  $
+                  /boolean )                                ;
+                if is_redclass_method then begin
+                  ; Append the completed line to the done*.log file.
+                  openw, done_lun, done_file, width = 256, /append, /get_lun
+                  printf, done_lun, line + ' ; ' + red_timestamp( /iso, /utc )
+                  free_lun, done_lun
+                endif
               endelse
             endif ; line ne 'end'
           endfor ; line = doit_lines[ iline ]
