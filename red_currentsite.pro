@@ -28,32 +28,39 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ;
 ;
-; :Returns:
-;
-;    A string identifying the current site, like "AlbaNova", "La
-;    Palma", etc.
-;
-;
-; :Params:
-;
-;
-;
 ; :Keywords:
 ;
-;   search_dirs : out, optional, type = array of strings
+;   dnsdomainname :  out, optional, type=string
 ;
-;      Where to search for raw data.  Could be an array or a single string.
+;      The output of shell commend dnsdomainname.
 ;
+;   ipv4addresses : out, optional, type=strarr
+;
+;      The found ipv4 addresses.
+;
+;   search_dirs : out, optional, type=strarr
+;
+;      Where to search for raw data.  Could be an array or a single
+;      string. 
+;
+;   site :  out, optional, type=string
+;
+;      A string identifying the current site, like "AlbaNova", "La
+;      Palma", etc.
 ;
 ; :History:
 ;
 ;    2017-08-15 : MGL. First version based on logic by Andrii Sukhorukov.
 ;
 ;    2017-08-29 : MGL. Use dnsdomainname to match also nodes that do
-;                 not have world-wide ipv4 addresses.
+;                 not have world-wide ipv4 addresses. New keywords
+;                 ipv4addresses and dnsdomainname.
 ;
 ;-
-pro red_currentsite, site = site, search_dirs = search_dirs
+pro red_currentsite, site = site $
+                     , search_dirs = search_dirs $
+                     , ipv4addresses = ipv4addresses $
+                     , dnsdomainname = dnsdomainname
 
   ;; Name of this subroutine
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
