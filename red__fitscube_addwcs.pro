@@ -20,26 +20,30 @@
 ;
 ;       The name of the file.
 ;
+; :Keywords:
 ;
-;    head : in, type=strarr
+;    wcs_hpln_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
 ;
-;       The complete fits header of the file. The NAXIS* and BITPIX
-;       keywords are used to set the file up.
+;      The spatial HPLN coordinate for the four corners of the
+;      (Ntunes, Nscans) frame. 
+;
+;    wcs_hplt_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
+;
+;      The spatial HPLT coordinate for the four corners of the
+;      (Ntunes, Nscans) frame. 
+;
+;    wcs_wave_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
+;
+;      The wavelength coordinates for the (Ntunes, Nscans) frame.
+;
+;    wcs_time_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
+;
+;      The time coordinates for the (Ntunes, Nscans) frame.
 ;
 ;
-;    lun : out, type=integer
-;
-;       The logical unit of the opened file.
 ;
 ;
-;    fileassoc : out, type="file assoc variable"
 ;
-;       An assoc variable that can be used to write (and read!) data
-;       slices. 
-;
-;    dimensions : in, type=intarr
-;
-;       The dimensions of the data cube.
 ;
 ; :History:
 ; 
