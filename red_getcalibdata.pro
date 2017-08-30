@@ -25,7 +25,7 @@
 ;                 default = 'current working directory'
 ;
 ;   search_dirs : in, optional, type = array of strings,
-;                 default = '/storage/sand04/... in Stockholm or /data/disk?/...
+;                 default = '/storage/sand*/... in Stockholm or /data/disk?/...
 ;                 on La Palma'.
 ;
 ; :History:
@@ -51,6 +51,8 @@
 ;                     created outside this script.
 ;   2017-08-28 : AVS. Logging of done (successfully executed) lines from
 ;                     doit*.pro scripts to done*.log logs is added.
+;   2017-08-30 : AVS. a) Default values of out_dir are provided. b) Use current
+;                     date if date or out_dir do not specify it.
 ;-
 pro red_getcalibdata,       $
   date        = date,       $
@@ -64,12 +66,31 @@ pro red_getcalibdata,       $
   ; and it should contain the date as the last subdirectory, for example,
   ; /scratch/asukh/2017.07.15.
 
-  ; If out_dir is not given, set it to the current directory.
+  ; If out_dir is not given, set it to some commonly-agreed place otherwise use
+  ; the current directory.
   if ( n_elements( out_dir ) eq 0 ) then begin
-    out_dir = getenv( 'PWD' )
-    message, 'out_dir is not given and is set to the current working ' + $
-      'directory, ' + out_dir, $
-      /informational
+    case ( get_login_info( ) ).machine_name of
+      'camera4' : begin
+        ; This is the default storage on camera4 that is a local HDD drive.
+        out_dir = '/scratch'
+      end
+      'transport1' : begin
+        ; This is a local HDD drive that might be used to transfer processed
+        ; calibration data from La Palma to Stockholm.  Don't use /data/disk2/*
+        ; as I did before because it overlaps with the search_dirs mask in
+        ; red_currentsite.
+        out_dir = '/scratch/calibration-data'
+      end
+      'freija' : begin
+        ; This my temporary folder.
+        out_dir = '/scratch/asukh/calibration-data'
+      end
+      else : begin
+        out_dir = getenv( 'PWD' )
+        message, 'out_dir is not given and is set to the current working ' + $
+          'directory, ' + out_dir, $
+          /informational
+      end
   endif
 
   ; out_dir must end with a slash.
@@ -98,15 +119,16 @@ pro red_getcalibdata,       $
       ; Replace '-' separators to '.'.
       date = red_strreplace( date, '-', '.', n = 2 )
     endif else begin
-      message, 'Date format is wrong, "' + date + '"'
+      message, 'date format is wrong, "' + date + '"'
       retall
     endelse
   endelse
 
   if ( date eq '' ) then begin
     if ( out_dir_date eq '' ) then begin
-      message, 'Either date or out_dir must specify the date.'
-      retall
+      message, 'neither date nor out_dir specify the date, so, the current ' + $
+        'date is taken.', /informational
+      date = strmid( red_timestamp( /utc, /iso ), 0, 10 )
     endif else begin
       ; The date is specified by the out_dir only.
       date = out_dir_date
@@ -129,16 +151,12 @@ pro red_getcalibdata,       $
   isodate = red_strreplace( date,    '.', '-', n = 2 )
   date    = red_strreplace( isodate, '-', '.', n = 2 )
 
-  ;goto, jump1
-
   red_setupworkdir, search_dir = search_dirs, out_dir = out_dir, $
     instruments = instruments, date = date, /calibrations_only
 
-  ;return
-;jump1:
-  ; The current directory is where you run this scrip.  Push it to the stack and
-  ; and go the out_dir directory.
-  pushd, out_dir ; cd, out_dir
+  ; The current directory is where you run this script.  Push it to the
+  ; directory stack and go the out_dir directory.
+  pushd, out_dir
 
   ; Go to each instrument directory (if exists) and run all generated scripts
   ; inside one by one.
@@ -149,7 +167,7 @@ pro red_getcalibdata,       $
     ; Check if the directory exists
     if file_test( instrument_dir, /directory ) then begin
 
-      pushd, instrument_dir ;cd, instrument_dir
+      pushd, instrument_dir
       message, 'at ' + instrument_dir, /informational
 
       ; Find all scripts.
