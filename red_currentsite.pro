@@ -4,19 +4,18 @@
 ; Figure out the current site and default data directories and
 ; similar.
 ;
-; Old 'hostname -I' doesn't work on La Palma under an old OpenSuSE
-; installation therefore the only supported keyword there is -i that gives
-; the right IP-address on La Palma but not in Stockholm.  There are more
-; robust but less trivial ways to get the IPv4-address of the machine.  As
-; for 31 July 2017, the following works:
+; Old 'hostname -I' doesn't work on La Palma under an old OpenSuSE installation
+; therefore the only supported keyword there is -i that gives the right
+; IP-address on La Palma but not in Stockholm.  There are more robust but less
+; trivial ways to get the IPv4-address of the machine.  As for 31 July 2017, the
+; following works:
 ;   $ ip addr show | grep -Po 'inet \K[\d.]+'
 ; or
 ;   $ /sbin/ifconfig -a | grep -Po 't addr:\K[\d.]+'
-; Both produce a list of IPv4-addresses for each network interface on La
-; Palma as well as in Stockholm.  You can narrow the list to only one
-; address by specifying 'ip addr show eth0' or '/sbin/ifconfig eth0' but it
-; is better to use full listing as some interfaces might be temporarily off
-; the network.
+; Both produce a list of IPv4-addresses for each network interface on La Palma
+; as well as in Stockholm.  You can narrow the list to only one address by
+; specifying 'ip addr show eth0' or '/sbin/ifconfig eth0' but it is better to
+; use full listing as some interfaces might be temporarily off the network.
 ;
 ; :Categories:
 ;
@@ -32,7 +31,7 @@
 ;
 ;   dnsdomainname :  out, optional, type=string
 ;
-;      The output of shell commend dnsdomainname.
+;      The output of shell command dnsdomainname.
 ;
 ;   ipv4addresses : out, optional, type=strarr
 ;
@@ -41,7 +40,7 @@
 ;   search_dirs : out, optional, type=strarr
 ;
 ;      Where to search for raw data.  Could be an array or a single
-;      string. 
+;      string.
 ;
 ;   site :  out, optional, type=string
 ;
@@ -56,23 +55,20 @@
 ;                 not have world-wide ipv4 addresses. New keywords
 ;                 ipv4addresses and dnsdomainname.
 ;
+;    2017-08-30 : AVS. Call message instead of inam.  Some code clean-up.
 ;-
 pro red_currentsite, site = site $
                      , search_dirs = search_dirs $
                      , ipv4addresses = ipv4addresses $
                      , dnsdomainname = dnsdomainname
 
-  ;; Name of this subroutine
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
   spawn, "ip addr show | grep -Po 'inet \K[\d.]+'", ipv4addresses
   spawn, 'dnsdomainname', dnsdomainname
-  
-  ;; Check if any of the addresses matches the local range of
-  ;; IPv4-addresses.
+
+  ;; Check if any of the addresses match the local range of IPv4-addresses.
   case 1 of
-    strmatch(dnsdomainname, '*royac.iac.es' ) $
-       || max( strmatch( ipv4addresses, '*161.72.15.*' ) ) : begin
+            strmatch( dnsdomainname, '*royac.iac.es' ) $
+    || max( strmatch( ipv4addresses, '*161.72.15.*'  ) ) : begin
       ;; SST network address range on La Palma.
       site = "La Palma"
       ;; Observed data is in any folder mounted at /data/, either disk? or
@@ -98,11 +94,11 @@ pro red_currentsite, site = site $
       search_dirs = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
     end
     else : begin
-      message, 'No matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )
+      message, 'no matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )
       retall
     end
   endcase
 
-  print, inam + ' : We are in ', site, '.'
+  message, 'we are in ' + site + '.', /informational
 
 end

@@ -49,6 +49,8 @@
 ;                     red_setupworkdir.  Instead call red_setupworkdir with the
 ;                     proper keywords and the doit.pro/config.txt pairs will be
 ;                     created outside this script.
+;   2017-08-28 : AVS. Logging of done (successfully executed) lines from
+;                     doit*.pro scripts to done*.log logs is added.
 ;-
 pro red_getcalibdata,       $
   date        = date,       $
