@@ -33,11 +33,19 @@
 ;               momfbd
 ;	If not set auto-detection will be attempted.
 ;
-;    framenumber : in: optional, type=integer
+;    select_frame : in: optional, type=integer
 ;
 ;       Specify to get header corresponding to a single frame in a
 ;       multi-frame image file.
 ;
+;    date_beg : out, type=strarr
+;
+;       The timestamps for exposure start.
+; 
+;    framenumbers : out, type=intarr
+;
+;       The framenumbers extracted from the file metadata.
+; 
 ;    noexternal : in, optional, type=boolean
 ;
 ;       Set this to not read any external FITS header.
@@ -106,11 +114,16 @@
 ;   2017-03-16 : MGL. Look for (and optionally read) an external FITS
 ;                header.
 ;
+;   2017-09-01 : THI. Get date_beg and framenumbers from file. Rename
+;                keyword framenumber to select_frame.
+;
 ;
 ;-
 function red_readhead, fname, $
                        filetype = filetype, $
-                       framenumber = framenumber, $
+                       date_beg = date_beg, $
+                       framenumbers = framenumbers, $
+                       select_frame = select_frame, $
                        noexternal = noexternal, $
                        structheader = structheader, $
                        status = status, $
@@ -148,7 +161,9 @@ function red_readhead, fname, $
     end
     'FITS' : begin
       header = red_readhead_fits(fname, $
-                                 framenumber = framenumber, $
+                                 date_beg = date_beg, $
+                                 framenumbers = framenumbers, $
+                                 select_frame = select_frame, $
                                  silent = silent, $
                                  extension = extension)
       hname = hdir+'/'+file_basename(fname, '.fits')   + '.fitsheader'

@@ -69,6 +69,8 @@
 ; 
 ;    2017-07-06 : THI. Adding keywords: framenumbers, time_beg, time_end, time_avg
 ; 
+;    2017-09-01 : THI. Get date_beg and framenumbers from file.
+;
 ;-
 function red_sumheaders, files, sum $
                        , nsum = nsum $
@@ -100,12 +102,11 @@ function red_sumheaders, files, sum $
   if get_framenumbers || get_times then begin ; we need to parse the headers
     for ifile = 0, Nfiles-1 do begin
       
-      head = red_readhead(files[ifile])
+      head = red_readhead(files[ifile],date_beg=date_beg_thisfile,framenumbers=frame_numbers_thisfile)
 
       ;; The number of frames in the file
-      Nframes = fxpar(head, 'NAXIS3', count = count)
-
-      if count eq 0 then begin
+      Nframes = n_elements(frame_numbers_thisfile)
+      if Nframes eq 0 then begin
         Nframes = 1
         if n_elements(discard) ne 0 then if total(float(discard)) gt 0.0 then continue
         indx = [0]
@@ -127,17 +128,15 @@ function red_sumheaders, files, sum $
       endelse
 
       ; only get framenumbers if necessary
-      if get_framenumbers then begin
-        frame_numbers_thisfile = indx + fxpar(head, 'FRAMENUM', count = count)
-        if count gt 0 then red_append, framenumbers, frame_numbers_thisfile[indx]
+      if get_framenumbers && (n_elements(frame_numbers_thisfile) gt max(indx)) then begin
+        frame_numbers_thisfile = frame_numbers_thisfile[indx]
+        red_append, framenumbers, frame_numbers_thisfile[indx]
       endif
 
       ; only get timestamps if necessary
       if get_times then begin
-        tab_hdus = fxpar(head, 'TAB_HDUS')
-        if tab_hdus ne '' then begin
-          tab = readfits(files[ifile], theader, /exten, /silent)
-          date_beg_thisfile = ftget(theader,tab, 'DATE-BEG') 
+        if (n_elements(date_beg_thisfile) gt max(indx)) then begin
+          date_beg_thisfile = date_beg_thisfile[indx]
           red_append, date_beg_array, date_beg_thisfile[indx]
         endif else begin
           red_append, date_beg_array, fxpar(head, 'DATE-BEG')

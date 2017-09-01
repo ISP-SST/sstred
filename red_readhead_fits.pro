@@ -23,6 +23,18 @@
 ;
 ;       The name of the data file.
 ; 
+;    date_beg : out, type=strarr
+;
+;       The timestamps for exposure start.
+; 
+;    framenumbers : out, type=intarr
+;
+;       The framenumbers extracted from the file metadata.
+; 
+;    select_frame : in, type=int
+;
+;       Only get meta-data for a specific frame. (TODO: implement)
+; 
 ; :History:
 ; 
 ;    2017-03-10 : MGL. Moved reading of headers from ANA fz format
@@ -32,10 +44,14 @@
 ; 
 ;    2017-07-06 : THI. Use rdx_readhead to get header.
 ; 
+;    2017-09-01 : THI. Get date_beg and framenumbers from file.
+;
 ; 
 ;-
 function red_readhead_fits, fname, $
-                            framenumber = framenumber, $
+                            date_beg = date_beg, $
+                            framenumbers = framenumbers, $
+                            select_frame = select_frame, $
                             silent = silent, $
                             extension = extension
 
@@ -45,7 +61,7 @@ function red_readhead_fits, fname, $
   if n_elements(extension) eq 0 then begin
     ;; primary
 
-    header = rdx_readhead(fname)
+    header = rdx_readhead(fname,date_beg=date_beg,framenumbers=framenumbers)
 
     ;; Hack to get the prefilter from the file name in data
     ;; from 2016.08.30.
@@ -134,7 +150,7 @@ function red_readhead_fits, fname, $
     endif
 
 
-    if n_elements(framenumber) ne 0 then begin
+    if n_elements(select_frame) ne 0 then begin
       ;; We may want to change or remove some header keywords
       ;; here, like FRAME1, CADENCE, and DATE-END.
     endif
