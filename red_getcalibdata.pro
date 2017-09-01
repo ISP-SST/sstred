@@ -91,6 +91,7 @@ pro red_getcalibdata,       $
           'directory, ' + out_dir, $
           /informational
       end
+    endcase
   endif
 
   ; out_dir must end with a slash.
