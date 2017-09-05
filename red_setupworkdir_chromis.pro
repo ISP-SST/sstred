@@ -38,6 +38,9 @@
 ;    2017-05-12 : MGL. Use extraclip rather than margin when calling
 ;                 prepmomfbd, and don't use an empty pref keyword. 
 ; 
+;    2017-07-19 : THI. Change pinholecalib parameter nref defaut value
+;                 to 10.
+;
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
@@ -250,7 +253,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate
     endelse
   endfor                        ; i
   printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib, nref=6'
+  printf, Slun, 'a -> pinholecalib, nref=10'
 ;    printf, Slun, 'a -> diversitycalib'
 
   

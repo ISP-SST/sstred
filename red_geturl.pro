@@ -75,6 +75,9 @@
 ;
 ;     2014-01-10 : MGL. Add some error handling.
 ; 
+;     2017-08-18 : THI. Workaround so that paths/filenames with ":"
+;                  does not fail. Get rid of warning when download fails.
+; 
 ;-
 function red_geturl, url $
                      , file = file $
@@ -95,6 +98,20 @@ function red_geturl, url $
   urlComponents = parse_url(url)
 ;  tmp = (strsplit(url,'/',/extract, count = n))
   
+  ; parse_url is broken, it can not handle file/dirnames with ':' as it will be interpreted as a
+  ; port-separator. The hack below tries to fix the mess.
+  slash_pos = strpos( urlComponents.Host, '/' )
+  if slash_pos ne -1 then begin
+    urlComponents.Host = strmid( urlComponents.Host, 0, slash_pos )
+    port_pos = strpos( urlComponents.Host, ':' )    ; did the original url conain a port?
+    if port_pos ne -1 then begin
+      host_len = strlen( urlComponents.Host )
+      urlComponents.Port = strmid( urlComponents.Host, port_pos+1, host_len-(port_pos+1))
+    endif else begin
+      urlComponents.Port = '80'     ; re-set the default, as it was most likely set to '', or garbage, by parse_url
+    endelse
+  endif
+
   if DiskIO then begin
 
      ;; Download to local file if necessary, then read the local file
@@ -200,7 +217,7 @@ function red_geturl, url $
      endif else begin
 
         path = ''
-        file_delete, tmpfile
+        file_delete, tmpfile, /ALLOW_NONEXISTENT
         if n_elements(respcode) eq 0 then begin
            print, 'red_geturl : Download failed.'
         endif else begin

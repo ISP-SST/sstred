@@ -80,6 +80,9 @@
 ;   2017-04-10 : MGL. Changed threshold default to 0 due to
 ;                reimplementation of rdx_img_align.
 ;
+;   2017-07-19 : THI. Change pinholecalib parameter nref defaut value
+;                to 10.
+;
 ;-
 pro red::pinholecalib, threshold = threshold $
                            , max_shift = max_shift $
@@ -98,7 +101,7 @@ pro red::pinholecalib, threshold = threshold $
   red_writelog, selfinfo = selfinfo, logfile = logfile
 
   if(n_elements(threshold) eq 0) then threshold = 0.0
-  if(n_elements(nref) eq 0) then nref = 5
+  if(n_elements(nref) eq 0) then nref = 10
   if( n_elements(dir) gt 0 ) then dir = [dir] $
   else if ptr_valid(self.pinh_dirs) then dir = *self.pinh_dirs
   self -> getdetectors, dir = dir
