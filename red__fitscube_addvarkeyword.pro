@@ -334,10 +334,7 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
 
           ;; Some space before END
           red_fitsaddpar, bdr, /before, anchor = 'END', '',''
-
-
-print, bdr         
-stop          
+  
           ;; Write it to the file
           fxbcreate, blun, filename, bdr           ; Create the extension in the file
           fxbwrite,  blun, values, 1, 1            ; Write keyword values as column 1, row 1
