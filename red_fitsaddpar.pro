@@ -166,7 +166,7 @@ pro red_fitsaddpar, header, name, value, comment $
       ;; Protect keyword name from fxaddpar's positioning.
       ichar = where(match)
       if strlen(values[ikey]) le 72 then begin
-        names_ikey = pchars[ichar]+strtrim(iprotect)+pchars[ichar]
+        names_ikey = pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar]
         fxaddpar, header, names_ikey, values[ikey] $
                   , after = aft, before = bef $
                   , _strict_extra = extra
