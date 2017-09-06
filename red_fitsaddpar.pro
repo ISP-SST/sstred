@@ -64,7 +64,10 @@
 ; 
 ;    2017-09-05 : MGL. Parameters name, value, comment can be arrays.
 ;                 Override some of the positioning of fxaddpar by
-;                 protecting blank and COMMENT keywords.
+;                 protecting blank and COMMENT keywords. 
+; 
+;    2017-09-06 : MGL. Line-wrap blank and COMMENT keywords if needed.
+;                 Remove trailing blank lines.
 ; 
 ; 
 ; 
@@ -108,14 +111,15 @@ pro red_fitsaddpar, header, name, value, comment $
   pnames = ['COMMENT ', '        ']
   pchars = ['+',        '-'       ]
   Nchars = n_elements(pchars)
-  pindx = where(namefields eq pnames[0] or $
-                namefields eq pnames[1], Nprotect)
-  for iprotect = 0, Nprotect-1 do begin
-    ichar = where(namefields[pindx[iprotect]] eq pnames)
-    header[pindx[iprotect]] = string(pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar], '(A-8)') $
-                              + strmid(header[pindx[iprotect]], 8)
-  endfor                        ; iprotect
-  
+  iprotect = 0
+;  pindx = where(namefields eq pnames[0] or $
+;                namefields eq pnames[1], Nprotect)
+;  for iprotect = 0, Nprotect-1 do begin
+;    ichar = where(namefields[pindx[iprotect]] eq pnames)
+;    header[pindx[iprotect]] = string(pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar], '(A-8)')+'= ' $
+;                              + "'"+strmid(header[pindx[iprotect]], 8)+"'"
+;  endfor                        ; iprotect
+;stop
   for ikey = 0, Nkeys-1 do begin
     
     if n_elements(anchor) ne 0 then begin
@@ -136,7 +140,7 @@ pro red_fitsaddpar, header, name, value, comment $
       if keyword_set(before) then bef = before
     endelse
 
-    if keyword_set(force) then begin
+    if keyword_set(force) and max(strtrim(names[ikey],2) eq strtrim(pnames, 2)) eq 0 then begin
       ;; Remove existing occurrence of parameter so positioning will
       ;; work.
       if comments[ikey] eq '' then begin
@@ -147,26 +151,55 @@ pro red_fitsaddpar, header, name, value, comment $
       sxdelpar, header, names[ikey]
     endif
 
-    ;; Protect name if needed.
-    case strmid(names[ikey],0,8) of
-      pnames[0] : begin
-        names_ikey = pchars[0]+strtrim(iprotect)+pchars[0]
+    ;; Special handling of blank and COMMENT keywords.
+    match = strtrim(names[ikey],2) eq strtrim(pnames, 2)
+    if max(match) eq 0 then begin
+      ;; No special handling needed.
+      names_ikey = names[ikey]
+      ;; Strip heading and trailing spaces from comment, fxaddpar will
+      ;; add one space at the beginning.
+      fxaddpar, header, names_ikey, values[ikey], strtrim(comments[ikey], 2) $
+                , after = aft, before = bef $
+                , _strict_extra = extra
+      iprotect++
+    endif else begin
+      ;; Protect keyword name from fxaddpar's positioning.
+      ichar = where(match)
+      if strlen(values[ikey]) le 72 then begin
+        names_ikey = pchars[ichar]+strtrim(iprotect)+pchars[ichar]
+        fxaddpar, header, names_ikey, values[ikey] $
+                  , after = aft, before = bef $
+                  , _strict_extra = extra
         iprotect++
-      end
-      pnames[1] : begin
-        names_ikey = pchars[1]+strtrim(iprotect)+pchars[1]
-        iprotect++
-      end
-      else: names_ikey = names[ikey]
-    endcase    
-    ;; Strip heading and trailing spaces from comment, fxaddpar will
-    ;; add one space at the beginning.
-    comments_ikey = strtrim(comments[ikey], 2)
-    fxaddpar, header, names_ikey, values[ikey], comments_ikey $
-              , after = aft, before = bef $
-              , _strict_extra = extra
-    
-    ;; Set this to use in next call
+      endif else begin
+        ;; Line-wrap the value string
+        words = strsplit(values[ikey], /extract)
+        rep = 0
+        repeat begin
+          if rep gt 0 then begin
+            aft = names_ikey
+            undefine, bef
+          endif
+          ii = (where(total(strlen(words)+1, /cumulative) gt 68, N68))[0]
+          if N68 eq 0 then begin
+            wrapped_line = strjoin(words, ' ')
+          endif else begin
+            wrapped_line = strjoin(words[0:ii-1], ' ')
+            words = words[ii:*]
+          endelse
+          names_ikey = pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar]
+          fxaddpar, header, names_ikey, wrapped_line $
+                    , after = aft, before = bef $
+                    , _strict_extra = extra
+          if N68 eq 0 then break ; Exit repeat loop
+          anchor = names_ikey
+          iprotect++
+          rep++
+        endrep until 0
+      endelse
+    endelse
+
+    ;; Set anchor to use for next keyword.
     anchor = names_ikey
 
     ;; Print what we did
@@ -184,19 +217,25 @@ pro red_fitsaddpar, header, name, value, comment $
 
   endfor                        ; ikey
 
-  stop
-  
   ;; Now undo the protection
   firstchars = strmid(header,0,1)
   pindx = where(firstchars eq pchars[0] or $
                 firstchars eq pchars[1], Nprotect)
   for iprotect = 0, Nprotect-1 do begin
     ichar = where(firstchars[pindx[iprotect]] eq pchars)
-    header[pindx[iprotect]] = pnames[ichar] + strmid(header[pindx[iprotect]], 8)
+    header[pindx[iprotect]] = pnames[ichar] + strmid(header[pindx[iprotect]], 11)
+    ;; Strmid from pos 11 removed the first single quote. We need to
+    ;; also remove the final quote and any slash that might come
+    ;; after.
+    pos=strpos(header[pindx[iprotect]],"'",/reverse_search)
+    if pos ne -1 then header[pindx[iprotect]] = strmid(header[pindx[iprotect]],0,pos)
+    if strlen(header[pindx[iprotect]]) ne 80 then $
+       header[pindx[iprotect]] = strmid(header[pindx[iprotect]]+strjoin(replicate(' ', 80)), 0, 80)
   endfor                        ; iprotect
-  
-  stop
-  
+
+  ;; Remove trailing empty lines
+  header = header[0:where(strmatch(header, 'END *'), Nmatch)]
+ 
 end
 
 ;; Ideas:
