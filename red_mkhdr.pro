@@ -47,7 +47,9 @@
 ;
 ;   2017-03-22 : MGL. Add TIMESYS. 
 ;
-;   2017-05-30 : MGL. Use red_fitsaddpar.
+;   2017-05-30 : MGL. Use red_fitsaddpar. 
+;
+;   2017-09-06 : MGL. Use new features in red_fitsaddpar.
 ; 
 ;-
 pro red_mkhdr, header, im, naxisx, _ref_extra = extra 
@@ -68,17 +70,10 @@ pro red_mkhdr, header, im, naxisx, _ref_extra = extra
   
   red_fitsaddpar, header, 'LONGSTRN', 'OGIP 1.0', 'The OGIP long string convention may be used.' $
               , before = 'COMMENT'
-  red_fitsaddpar, header, 'COMMENT', "" $
+  red_fitsaddpar, header, '', '', before = 'LONGSTRN' 
+  red_fitsaddpar, header, ['COMMENT', '', ''], ["This FITS file may contain long string keyword values that are continued over multiple keywords.  This convention uses the '&' character at the end of a string which is then continued on subsequent keywords whose name = 'CONTINUE'.", '', ''] $
               , after = 'LONGSTRN'
-  red_fitsaddpar, header, 'COMMENT', "on subsequent keywords whose name = 'CONTINUE'." $
-              , after = 'LONGSTRN'
-  red_fitsaddpar, header, 'COMMENT', 'character at the end of a string which is then continued' $
-              , after = 'LONGSTRN'
-  red_fitsaddpar, header, 'COMMENT', "continued over multiple keywords.  This convention uses the '&'" $
-              , after = 'LONGSTRN'
-  red_fitsaddpar, header, 'COMMENT', 'This FITS file may contain long string keyword values that are' $
-              , after = 'LONGSTRN'
-
+  
 end
 
 red_mkhdr,header,0 
