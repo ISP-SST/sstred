@@ -5,8 +5,8 @@
 ; SOLARNET document, appendix I.
 ;
 ; To make implementation easier, we'll have each keyword in an
-; extension of its own. The extenstions name is "VAR-EXT-" followed by
-; the name of the keyword.
+; extension of its own. The extenstion's name is "VAR-EXT-" followed
+; by the name of the keyword.
 ; 
 ; :Categories:
 ;
@@ -38,7 +38,9 @@
 ; 
 ; :History:
 ; 
-;   2017-09-06 : MGL. First version.
+;   2017-09-06 : MGL. First version, supporting pixel-to-pixel
+;                association and coordinate association for tabulated
+;                time. 
 ; 
 ; 
 ; 
