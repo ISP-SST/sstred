@@ -105,7 +105,7 @@ pro chromis::hrz_zeropoint
         linedef.prefilter = prefilter_list[linedef.wheel]
         linedef.lambda_ref = lambda_list[linedef.wheel]
       endif else begin
-        print, inam+' : Calibration data not available for wheel-position '+strtrim(string(linedef.wheel,/print),2)
+        ;print, inam+' : Unrecognized linedef for wheel-position '+strtrim(string(linedef.wheel,/print),2)+' will be ignored.'
         continue
       endelse
       red_append, linedefs, linedef
