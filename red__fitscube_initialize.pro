@@ -118,7 +118,7 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
     
   ;; Scan number = repetition = major time dimension (although time
   ;; varies during scans as well).
-  red_fitsaddpar, hdr, 'CTYPE5', 'TIME-TAB', 'Time, function of tuning and scan number', anchor = anchor 
+  red_fitsaddpar, hdr, 'CTYPE5', 'UTC--TAB', 'Time, function of tuning and scan number', anchor = anchor 
   red_fitsaddpar, hdr, 'CNAME5', 'Time since DATEREF, increases with dim. 3 and 5', anchor = anchor 
   red_fitsaddpar, hdr, 'CUNIT5', 's', anchor = anchor 
   red_fitsaddpar, hdr, 'PS5_0', 'WCS-TAB',   'EXTNAME; EXTVER=EXTLEVEL=1 is default', anchor = anchor 
