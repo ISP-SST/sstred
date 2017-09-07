@@ -69,16 +69,18 @@
 ;    2017-09-06 : MGL. Line-wrap blank and COMMENT keywords if needed.
 ;                 Remove trailing blank lines.
 ; 
+;    2017-09-06 : MGL. Renamed from red_fitsaddpar.
+; 
 ; 
 ; 
 ; 
 ;-
-pro red_fitsaddpar, header, name, value, comment $
-                    , anchor = anchor $
-                    , after = after $
-                    , before = before $
-                    , force = force $
-                    , _ref_extra = extra
+pro red_fitsaddkeyword, header, name, value, comment $
+                        , anchor = anchor $
+                        , after = after $
+                        , before = before $
+                        , force = force $
+                        , _ref_extra = extra
 
   ;; Protect input and set defaults
   if n_elements(name)    eq 0 then names    = '' else names    = name
