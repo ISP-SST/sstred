@@ -308,7 +308,7 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
           for n_extra = 0, N_extra_axes-1 do begin
             n = n_extra+2       ; column number
             fxbaddcol, n, bdr, reform(extra_coordinate1,1,dims[n_extra]) $
-                       , extra_labels[n_extra] + '_' + keyword_name $
+                       , extra_labels[n_extra] + '-' + keyword_name $
                        , 'Tabulations of ' + extra_labels[n_extra] + ' for ' + keyword_name $
                        , tunit = extra_units[n_extra]
             red_fitsaddpar, bdr, /before, anchor = 'TFORM'+strtrim(n, 2) $
