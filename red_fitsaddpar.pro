@@ -221,6 +221,7 @@ pro red_fitsaddpar, header, name, value, comment $
   firstchars = strmid(header,0,1)
   pindx = where(firstchars eq pchars[0] or $
                 firstchars eq pchars[1], Nprotect)
+  
   for iprotect = 0, Nprotect-1 do begin
     ichar = where(firstchars[pindx[iprotect]] eq pchars)
     header[pindx[iprotect]] = pnames[ichar] + strmid(header[pindx[iprotect]], 11)
@@ -229,6 +230,9 @@ pro red_fitsaddpar, header, name, value, comment $
     ;; after.
     pos=strpos(header[pindx[iprotect]],"'",/reverse_search)
     if pos ne -1 then header[pindx[iprotect]] = strmid(header[pindx[iprotect]],0,pos)
+    ;; Quotes in the COMMENT line may have been doubled
+    header[pindx[iprotect]] = red_strreplace(header[pindx[iprotect]], "''", "'", n = 40)
+    ;; Make sure the length is 80 characters
     if strlen(header[pindx[iprotect]]) ne 80 then $
        header[pindx[iprotect]] = strmid(header[pindx[iprotect]]+strjoin(replicate(' ', 80)), 0, 80)
   endfor                        ; iprotect
