@@ -40,6 +40,9 @@
 ;    2017-08-16 : MGL. First version, based on code from
 ;                 chromis::polish_tseries. 
 ; 
+;    2017-09-07 : MGL. Add WCS coordinates and some variable-keywords
+;                 to the file. 
+; 
 ; 
 ; 
 ; 
@@ -106,6 +109,10 @@ pro chromis::make_wb_cube, dir $
   ;; Should be generalized to multiple NB cameras if CHROMIS gets
   ;; polarimetry. We don't need to identify any PD cameras for
   ;; restored data.
+
+  ;; Get metadata from logfiles
+  red_logdata, self.isodate, time_r0, r0 = metadata_r0
+  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
 
   ;; Search for restored WB images
   case self.filetype of
@@ -240,10 +247,10 @@ pro chromis::make_wb_cube, dir $
   endfor                        ; iscan
 
   if n_elements(tstep) eq 0 then begin
-    dts = dblarr(Nscans)
-    for iscan = 0L, Nscans - 1 do dts[iscan] = red_time2double(time[iscan])
-    tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*])))) <Nscans
+    dts = red_time2double(time)
+    tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*]))))
   endif
+  tstep = tstep < (Nscans-1)
 
   print, inam + ' : Using the following parameters for de-stretching the time-series: '
   print, '   tstep [~3 m. (?)]= ', tstep
@@ -310,6 +317,9 @@ pro chromis::make_wb_cube, dir $
 ;        w_array = fltarr(1)
   ;;w_array[0] = wstates.tun_wavelength
   w_array = replicate(float(prefilter)/10., 1, Nscans) ; In [nm]
+  hpln_array = dblarr(2, 2, 1, Nscans)   ; HPLN position for corners of FOV
+  hplt_array = dblarr(2, 2, 1, Nscans)   ; HPLT position for corners of FOV
+  
 ;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
 ;                                                         , comment:'time-coordinates'}, $
 ;                                       WAVE-TABULATION: {val:w_array $
@@ -344,8 +354,17 @@ pro chromis::make_wb_cube, dir $
 
 
   for iscan = 0, Nscans-1 do begin
+
     self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
                                , iscan = iscan
+
+    red_wcs_hpl_coords, t_array[0, iscan], metadata_pig, time_pig $
+                        , Nx, Ny, self.image_scale $
+                        , hpln, hplt
+      
+    hpln_array[*, *, 0, iscan] = hpln
+    hplt_array[*, *, 0, iscan] = hplt
+
   endfor                        ; iscan
   free_lun, lun
   print, inam + ' : Wrote file '+odir + ofil
@@ -425,45 +444,56 @@ pro chromis::make_wb_cube, dir $
     
   endif
   
-;        ;; Experimental extra tabulated data:
-;        Ntuning = 1
-;        temp_array = fltarr(Ntemp)
-;        r0_array   = fltarr(Nr0)
-;        temp_array[0] = cos(s_array/max(s_array)) ; Really function of scannumber
-;        r0_array[0]   = sin(s_array/max(s_array)) ; Really function of time, i.e., of tuning and scannumber
-;        
-;
-;        red_fitsaddpar, hdr, 'TABULATD', 'TABULATIONS;ATMOS_R0,AMB_TEMP'
-;
-;        fxbhmake,bdr,1,'TABULATIONS','For storing tabulated keywords'
-;        fxbaddcol, 1, bdr, r0_array, 'ATMOS_R0', TUNIT = 'm', 'Table of atmospheric r0'
-;        fxbadd, bdr, '1CTYP1', 'TIME-TAB', 'Time since DATEREF, tabulated for ATMOS_R0'
-;        fxbadd, bdr, '1CNAM1', 'Time since DATEREF for ATMOS_R0'
-;        fxbadd, bdr, '1S1_0', 'TABULATIONS', 'Extension w/tabulations for ATMOS_R0'
-;        fxbadd, bdr, '1S1_1', 'TIME-ATMOS_R0', 'TTYPE of col. w/TIME for ATMOS_R0'
-;        fxbaddcol, 2, bdr, r0_time, 'TIME-ATMOS_R0', 'Tabulations of TIME for ATMOS_R0', tunit = 's'
-;        
-;        
-;        fxbaddcol, 3, bdr, temp_array, 'AMB_TEMP', TUNIT = 'K', 'Table of ambient temperature'
-;        fxbcreate, lun, filename, bdr, extension_no
-;        fxbwrite, lun, r0_array, 1, 1
-;        fxbwrite, lun, temp_array, 2, 1
-;        fxbfinish, lun
-;    
 
-  self -> fitscube_addwcs, odir + ofil, w_array, t_array
-;                                     , scannumber = s_array
-;
-;
-;cccc = red_readdata(odir+ofil, head = hhhh)
-;stop
-;        
-;fxbopen, tlun, odir + ofil, 'WCS-TAB', bhhh
-;fxbread, tlun, wavetime_tab, 'WAVE+TIME'
-;fxbclose, tlun
-;
-;
-;
-;stop
+  ;; Add the WCS coordinates
+  self -> fitscube_addwcs, odir + ofil $
+                           , hpln_array, hplt_array $
+                           , transpose(rebin(w_array, 1, Nscans, 2, 2, /sample) $
+                                       , [2, 3, 0, 1]) $
+                           , transpose(rebin(t_array, 1, Nscans, 2, 2, /sample) $
+                                       , [2, 3, 0, 1])
+  
+  ;; Add variable keywords.
+  self -> fitscube_addvarkeyword, odir + ofil $
+                                  , 'SCANNUM', comment = 'Scan number' $
+                                  , s_array, keyword_value = s_array[0] $
+                                  , axis_numbers = 5
+  
+  self -> fitscube_addvarkeyword, odir + ofil $
+                                  , 'XPOSURE', comment = 'Summed exposure times' $
+                                  , tunit = 'ms' $
+                                  , wstates.exposure, keyword_value = mean(wstates.exposure) $
+                                  , axis_numbers = 5 
+
+  tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
+  if Nt gt 0 then begin
+    ;;print, time_r0[tindx_r0]
+    ;;print, metadata_r0[*, tindx_r0]
+    self -> fitscube_addvarkeyword, odir + ofil, 'ATMOS_R0' $
+                                    , comment = 'Atmospheric coherence length' $
+                                    , tunit = 'm' $
+                                    , metadata_r0[*, tindx_r0] $
+                                    , extra_coordinate1 = [24, 8] $             ; WFS subfield sizes 
+                                    , extra_labels      = ['WFSZ'] $            ; Axis labels for metadata_r0
+                                    , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
+                                    , extra_units       = ['pix'] $               ; Axis units for metadata_r0
+                                    , keyword_value = mean(metadata_r0[1, tindx_r0]) $
+                                    , time_coordinate = time_r0[tindx_r0] $
+                                    , time_unit       = 's'
+  endif
+
+
+  if 0 then begin
+    scn = red_fitskeyword(odir + ofil, 'SCANNUM', comment = comment, variable_values = scn_values)
+    xps = red_fitskeyword(odir + ofil, 'XPOSURE', comment = comment, variable_values = xps_values)
+    print, scn, xps
+    help, scn_values, xps_values
+    print, scn_values.values, xps_values.values
+    
+    r0 = red_fitskeyword(odir + ofil, 'ATMOS_R0', comment = comment, variable_values = r0_values)
+    help, r0_values
+  endif
+  
+
 
 end
