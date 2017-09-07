@@ -40,6 +40,8 @@
 ;    2017-03-24 : MGL. Add header information about this processing step.
 ; 
 ;    2017-06-01 : MGL. Use red_fitsaddpar. Change some added parameters.
+;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
 ; 
 ;-
@@ -258,26 +260,26 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
           ;; Additional keywords that should be set after momfbd
           ;; processing.
-          red_fitsaddpar, anchor = anchor, head, 'DATE-OBS', datestamp, after = 'DATE'
-          red_fitsaddpar, anchor = anchor, head, 'STARTOBS', datestamp ; IS STARTOBS needed?
-          red_fitsaddpar, anchor = anchor, head, 'SOLARNET', 0.5, format = 'f3.1'
-          red_fitsaddpar, anchor = anchor, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
-          red_fitsaddpar, anchor = anchor, head, 'FILLED', 1, 'Missing pixels have been filled.'          
-          red_fitsaddpar, anchor = anchor, head, 'BTYPE', 'Intensity'
-          red_fitsaddpar, anchor = anchor, head, 'BUNIT', 'DN' ; Digital unit?
+          red_fitsaddkeyword, anchor = anchor, head, 'DATE-OBS', datestamp, after = 'DATE'
+          red_fitsaddkeyword, anchor = anchor, head, 'STARTOBS', datestamp ; IS STARTOBS needed?
+          red_fitsaddkeyword, anchor = anchor, head, 'SOLARNET', 0.5, format = 'f3.1'
+          red_fitsaddkeyword, anchor = anchor, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
+          red_fitsaddkeyword, anchor = anchor, head, 'FILLED', 1, 'Missing pixels have been filled.'          
+          red_fitsaddkeyword, anchor = anchor, head, 'BTYPE', 'Intensity'
+          red_fitsaddkeyword, anchor = anchor, head, 'BUNIT', 'DN' ; Digital unit?
           ;; DATE_OBS should be getting the value including decimals from
           ;; the raw data headers, not just integer seconds as here:
 
           ;; The CDELTn keywords should not change to HPLN-TAN/HPLT-TAN
           ;; until we know the position and orientation? /MGL
-          red_fitsaddpar, anchor = anchor, head, 'CTYPE1', 'INSX-TAN', 'Instrument X'
-          red_fitsaddpar, anchor = anchor, head, 'CTYPE2', 'INSY-TAN', 'Instrument Y'
-          red_fitsaddpar, anchor = anchor, head $
+          red_fitsaddkeyword, anchor = anchor, head, 'CTYPE1', 'INSX-TAN', 'Instrument X'
+          red_fitsaddkeyword, anchor = anchor, head, 'CTYPE2', 'INSY-TAN', 'Instrument Y'
+          red_fitsaddkeyword, anchor = anchor, head $
                           , 'CDELT1', float(self.image_scale), 'x-coordinate increment'
-          red_fitsaddpar, anchor = anchor, head $
+          red_fitsaddkeyword, anchor = anchor, head $
                           , 'CDELT2', float(self.image_scale), 'y-coordinate increment' 
-          red_fitsaddpar, anchor = anchor, head, 'CUNIT1', 'arcsec', 'Unit along axix 1'
-          red_fitsaddpar, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axix 2'
+          red_fitsaddkeyword, anchor = anchor, head, 'CUNIT1', 'arcsec', 'Unit along axix 1'
+          red_fitsaddkeyword, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axix 2'
 
           ;; Write the header file
           fxwrite, header_file, head 

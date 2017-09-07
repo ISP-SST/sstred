@@ -70,6 +70,8 @@
 ;
 ;    2017-07-03 : THI. Also try to get camera from the ANA header.
 ;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;
 ;-
 function red_anahdr2fits, anahdr $
                           , img = img $
@@ -96,7 +98,7 @@ function red_anahdr2fits, anahdr $
   dpos = strpos(anahdr, 'DATE=')
   if dpos ne -1 then begin
     date = (red_strreplace(strmid(anahdr, dpos+5, 19), ' ', 'T'))[0]
-    red_fitsaddpar, anchor = anchor, hdr, 'DATE', date, ''
+    red_fitsaddkeyword, anchor = anchor, hdr, 'DATE', date, ''
   endif
   
   ;; Time info (as in CRISP raw data)
@@ -105,23 +107,23 @@ function red_anahdr2fits, anahdr $
   if tspos ne -1 and tepos ne -1 then begin
     Ts = strmid(anahdr, tspos+3, 26)
     Te = strmid(anahdr, tepos+3, 26)
-    red_fitsaddpar, anchor = anchor, hdr $
-                    ,'DATE-BEG' $
-                    , (red_strreplace((red_strreplace(Ts, ' ', 'T')),'.','-',n=2))[0],' '
-    red_fitsaddpar, anchor = anchor, hdr $
-                    ,'DATE-END' $
-                    , (red_strreplace((red_strreplace(Te, ' ', 'T')),'.','-',n=2))[0],' '
+    red_fitsaddkeyword, anchor = anchor, hdr $
+                        ,'DATE-BEG' $
+                        , (red_strreplace((red_strreplace(Ts, ' ', 'T')),'.','-',n=2))[0],' '
+    red_fitsaddkeyword, anchor = anchor, hdr $
+                        ,'DATE-END' $
+                        , (red_strreplace((red_strreplace(Te, ' ', 'T')),'.','-',n=2))[0],' '
     exptime = red_time2double(strmid(Te, strpos(Te, ' '))) $
               - red_time2double(strmid(Ts, strpos(Ts, ' ')))
-    red_fitsaddpar, anchor = anchor, hdr $
-                    , 'XPOSURE', exptime, '[s]'
+    red_fitsaddkeyword, anchor = anchor, hdr $
+                        , 'XPOSURE', exptime, '[s]'
   end
 
   ;; Camera (as in CRISP raw data)
   campos = strpos(anahdr, '"Camera')
   if campos ne -1 then begin
     detector = 'cam' + (strsplit(strmid(anahdr, campos+8), ' ', /extract))[0]
-    red_fitsaddpar, anchor = anchor, hdr, red_keytab('detector'), detector, 'Camera identifier'
+    red_fitsaddkeyword, anchor = anchor, hdr, red_keytab('detector'), detector, 'Camera identifier'
   end
 
   ;; Instrument (as in CRISP raw data)
@@ -130,17 +132,17 @@ function red_anahdr2fits, anahdr $
     strmatch(anahdr,'*CRISP-*') :          instrument = 'CRISP'
     else:
   endcase
-  if n_elements(instrument) gt 0 then red_fitsaddpar, anchor = anchor, hdr $
+  if n_elements(instrument) gt 0 then red_fitsaddkeyword, anchor = anchor, hdr $
      , 'INSTRUME', instrument, ' Name of instrument'
 ;  if ipos ne -1 then begin
 ;     instrument = 'Crisp-'+(strsplit(strmid(anahdr, ipos+6), ']', /extract))[0]
-;     red_fitsaddpar, hdr, 'INSTRUME', instrument, 'Name of instrument'
+;     red_fitsaddkeyword, hdr, 'INSTRUME', instrument, 'Name of instrument'
 ;  end
   
-  if strmatch(anahdr,'*CRISP-W*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-W' $
-  else if strmatch(anahdr,'*CRISP-R*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-R' $
-  else if strmatch(anahdr,'*CRISP-T*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-T' $
-  else if strmatch(anahdr,'*CRISP-D*',/FOLD) then red_fitsaddpar, anchor = anchor, hdr, 'CAMERA', 'Crisp-D'
+  if strmatch(anahdr,'*CRISP-W*',/FOLD) then red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', 'Crisp-W' $
+  else if strmatch(anahdr,'*CRISP-R*',/FOLD) then red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', 'Crisp-R' $
+  else if strmatch(anahdr,'*CRISP-T*',/FOLD) then red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', 'Crisp-T' $
+  else if strmatch(anahdr,'*CRISP-D*',/FOLD) then red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', 'Crisp-D'
 
   ;; Observations date (as in the FZ output from Michiel's momfbd program)
   dpos = strpos(anahdr, 'DATE_OBS')
@@ -152,7 +154,7 @@ function red_anahdr2fits, anahdr $
       time_obs = strmid(anahdr, tpos+9,dpos-(tpos+9))
       if strlen(time_obs) gt 1 then date_obs += 'T' + time_obs
     endif 
-    red_fitsaddpar, anchor = anchor, hdr, 'DATE-AVG', date_obs, '', after = 'DATE'
+    red_fitsaddkeyword, anchor = anchor, hdr, 'DATE-AVG', date_obs, '', after = 'DATE'
   endif
 
   ;; Should extract more info from anahdr: states of prefilter, liquid
@@ -160,8 +162,8 @@ function red_anahdr2fits, anahdr $
   ;; for them in the FITS header.
   
   ;; Add SOLARNET keyword
-  red_fitsaddpar, hdr, 'SOLARNET', 0.5,  format = 'f3.1' $
-                  , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'DATE'
+  red_fitsaddkeyword, hdr, 'SOLARNET', 0.5,  format = 'f3.1' $
+                      , 'Fully SOLARNET-compliant=1.0, partially=0.5', before = 'DATE'
 
   return,hdr
 

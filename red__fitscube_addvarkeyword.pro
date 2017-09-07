@@ -41,6 +41,8 @@
 ;   2017-09-06 : MGL. First version, supporting pixel-to-pixel
 ;                association and coordinate association for tabulated
 ;                time. 
+;
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
 ; 
 ; 
@@ -69,7 +71,7 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  extension_name = 'VAR-EXT-'+keyword_name     ; Variable keyword extension for keyword <keyword_name>.
+  extension_name = 'VAR-EXT-'+keyword_name ; Variable keyword extension for keyword <keyword_name>.
 
   if n_elements(comment) eq 0 then comment = ''
   
@@ -211,7 +213,7 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
 
   if n_elements(new_var_keys) eq 0 then stop
   fxhmodify, filename, 'VAR_KEYS', new_var_keys, 'SOLARNET variable-keyword'
-    
+  
   
   ;;
   case association of
@@ -230,79 +232,79 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
           if dims[-1] ne n_elements(time_coordinate) then stop ; dim mismatch
 
           ;; Need time reference for this
-          red_fitsaddpar, bdr $
-                          , 'DATEREF' $
-                          , self.isodate+'T00:00:00.000' $
-                          , 'Time reference is midnight'
+          red_fitsaddkeyword, bdr $
+                              , 'DATEREF' $
+                              , self.isodate+'T00:00:00.000' $
+                              , 'Time reference is midnight'
 
           ;; Add column for the data to the binary extension header ====================
           n = 1                 ; column number
           ;; Add the column
           fxbaddcol, n, bdr, values, keyword_name $
                      , 'Table of SOLARNET variable-keyword', tunit = tunit
-          red_fitsaddpar, bdr, /before, anchor = 'TFORM1' $
-                          , ['', 'COMMENT'                          , ''] $
-                          , ['', 'Column 1: Tabulated '+keyword_name, '']
+          red_fitsaddkeyword, bdr, /before, anchor = 'TFORM1' $
+                              , ['', 'COMMENT'                          , ''] $
+                              , ['', 'Column 1: Tabulated '+keyword_name, '']
           
           ;; Specify the axes ----------------------------------------------------------
           for i_extra = 0, N_extra_axes-1 do begin
             i = i_extra+1       ; Array dimension/axis for "extra" (non-time) coordinates
-            red_fitsaddpar, bdr $
-                            , string(i,n,format = '((i0),"CNAM",(i0))') $
-                            , 'Coord. ' + strtrim(i, 2) + ' for col. ' + strtrim(n, 2) $
-                            + ' (' + keyword_name + ') is ' + extra_names[i_extra]
-            red_fitsaddpar, bdr $
-                            , string(i,n,format = '((i0),"CTYP",(i0))') $
-                            , extra_labels[i_extra]+'-TAB' $ 
-                            , 'Not a WCS coordinate.'
-            red_fitsaddpar, bdr $
-                            , string(i,n,format = '((i0),"CUNI",(i0))') $
-                            , extra_units[i_extra]
+            red_fitsaddkeyword, bdr $
+                                , string(i,n,format = '((i0),"CNAM",(i0))') $
+                                , 'Coord. ' + strtrim(i, 2) + ' for col. ' + strtrim(n, 2) $
+                                + ' (' + keyword_name + ') is ' + extra_names[i_extra]
+            red_fitsaddkeyword, bdr $
+                                , string(i,n,format = '((i0),"CTYP",(i0))') $
+                                , extra_labels[i_extra]+'-TAB' $ 
+                                , 'Not a WCS coordinate.'
+            red_fitsaddkeyword, bdr $
+                                , string(i,n,format = '((i0),"CUNI",(i0))') $
+                                , extra_units[i_extra]
             
             m = 0               ; Extension column 0
-            red_fitsaddpar, bdr $
-                            , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
-                            , 'VAR-EXT-'+keyword_name $
-                            , 'Axis '+strtrim(i, 2)+' in col. '+strtrim(n, 2)+' is in VAR-EXT-'+keyword_name
+            red_fitsaddkeyword, bdr $
+                                , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
+                                , 'VAR-EXT-'+keyword_name $
+                                , 'Axis '+strtrim(i, 2)+' in col. '+strtrim(n, 2)+' is in VAR-EXT-'+keyword_name
             m = 1               ; Extension column 1
-            red_fitsaddpar, bdr $
-                            , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
-                            , extra_labels[i_extra]+'-'+keyword_name $
-                            , 'Col. with val. for axis '+strtrim(i, 2)+' of col. '+strtrim(m, 2)
+            red_fitsaddkeyword, bdr $
+                                , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
+                                , extra_labels[i_extra]+'-'+keyword_name $
+                                , 'Col. with val. for axis '+strtrim(i, 2)+' of col. '+strtrim(m, 2)
             m = 3               ; Extension column 3
-            red_fitsaddpar, bdr $
-                            , string(i,n,m,format='((i0),"PV",(i0),"_",(i0))'), 1 $
-                            , extra_labels[i_extra] + ' 1st (only) coord. in ' $
-                            + extra_labels[i_extra] + '-' + keyword_name 
+            red_fitsaddkeyword, bdr $
+                                , string(i,n,m,format='((i0),"PV",(i0),"_",(i0))'), 1 $
+                                , extra_labels[i_extra] + ' 1st (only) coord. in ' $
+                                + extra_labels[i_extra] + '-' + keyword_name 
           endfor
           
           i = N_extra_axes + 1  ; Time array axis comes after the extra axes
-          red_fitsaddpar, bdr $
-                          , string(i,n,format = '((i0),"CNAM",(i0))') $
-                          , 'Coord. '+strtrim(i, 2)+' for col. '+strtrim(n, 2)+' ('+keyword_name+') is time.'
-          red_fitsaddpar, bdr $
-                          , string(i,n,format = '((i0),"CTYP",(i0))') $
-                          , 'UTC--TAB' $ 
-                          , 'WCS time coordinate, tabulated.'
-          red_fitsaddpar, bdr $
-                          , string(i,n,format = '((i0),"CUNI",(i0))') $
-                          , time_unit
-
+          red_fitsaddkeyword, bdr $
+                              , string(i,n,format = '((i0),"CNAM",(i0))') $
+                              , 'Coord. '+strtrim(i, 2)+' for col. '+strtrim(n, 2)+' ('+keyword_name+') is time.'
+          red_fitsaddkeyword, bdr $
+                              , string(i,n,format = '((i0),"CTYP",(i0))') $
+                              , 'UTC--TAB' $ 
+                              , 'WCS time coordinate, tabulated.'
+          red_fitsaddkeyword, bdr $
+                              , string(i,n,format = '((i0),"CUNI",(i0))') $
+                              , time_unit
+          
           m = 0                 ; Extension column 0
-          red_fitsaddpar, bdr $
-                          , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
-                          , 'VAR-EXT-'+keyword_name $
-                          , 'Axis '+strtrim(i, 2)+' in col. '+strtrim(n, 2)+' is in VAR-EXT-'+keyword_name
+          red_fitsaddkeyword, bdr $
+                              , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
+                              , 'VAR-EXT-'+keyword_name $
+                              , 'Axis '+strtrim(i, 2)+' in col. '+strtrim(n, 2)+' is in VAR-EXT-'+keyword_name
           m = 1                 ; Extension column 1
-          red_fitsaddpar, bdr $
-                          , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
-                          , 'TIME-'+keyword_name $
-                          , 'Col. with val. for axis '+strtrim(i, 2)+' of col. '+strtrim(m, 2)
+          red_fitsaddkeyword, bdr $
+                              , string(i,n,m,format='((i0),"PS",(i0),"_",(i0))') $
+                              , 'TIME-'+keyword_name $
+                              , 'Col. with val. for axis '+strtrim(i, 2)+' of col. '+strtrim(m, 2)
           m = 3                 ; Extension column 3
-          red_fitsaddpar, bdr $
-                          , string(i,n,m,format='((i0),"PV",(i0),"_",(i0))') $
-                          , 1 $
-                          , 'UTC 1st (only) coord. in TIME-' + keyword_name 
+          red_fitsaddkeyword, bdr $
+                              , string(i,n,m,format='((i0),"PV",(i0),"_",(i0))') $
+                              , 1 $
+                              , 'UTC 1st (only) coord. in TIME-' + keyword_name 
           
           ;; Add columns for any tabulated extra axes =====================================
           for n_extra = 0, N_extra_axes-1 do begin
@@ -311,12 +313,12 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
                        , extra_labels[n_extra] + '-' + keyword_name $
                        , 'Tabulations of ' + extra_labels[n_extra] + ' for ' + keyword_name $
                        , tunit = extra_units[n_extra]
-            red_fitsaddpar, bdr, /before, anchor = 'TFORM'+strtrim(n, 2) $
-                            , ['', 'COMMENT', ''] $
-                            , ['' $
-                               , 'Column '+strtrim(n, 2)+': '+extra_names[n_extra] + ' (coord. ' $
-                               + strtrim(n_extra+1, 2) + ' for ' + keyword_name + ')' $
-                               , '']
+            red_fitsaddkeyword, bdr, /before, anchor = 'TFORM'+strtrim(n, 2) $
+                                , ['', 'COMMENT', ''] $
+                                , ['' $
+                                   , 'Column '+strtrim(n, 2)+': '+extra_names[n_extra] + ' (coord. ' $
+                                   + strtrim(n_extra+1, 2) + ' for ' + keyword_name + ')' $
+                                   , '']
           endfor                ; n_extra
 
 
@@ -324,16 +326,16 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $ ;, association
           n = N_extra_axes + 2  ; column number
           fxbaddcol, n, bdr, reform(time_coordinate, 1, dims[N_extra_axes]), 'TIME-'+keyword_name $
                      , 'Tabulations of TIME for '+keyword_name, tunit = time_unit
-          red_fitsaddpar, bdr, before = 'TFORM'+strtrim(N_extra_axes+2, 2) $
-                          , ['', 'COMMENT', ''] $
-                          , ['' $
-                             , 'Column ' + strtrim(N_extra_axes+2, 2) $
-                             + ': Measurement times (coord. ' $
-                             + strtrim(N_extra_axes+1, 2) + ' for ' + keyword_name + ')' $
-                             , '']
+          red_fitsaddkeyword, bdr, before = 'TFORM'+strtrim(N_extra_axes+2, 2) $
+                              , ['', 'COMMENT', ''] $
+                              , ['' $
+                                 , 'Column ' + strtrim(N_extra_axes+2, 2) $
+                                 + ': Measurement times (coord. ' $
+                                 + strtrim(N_extra_axes+1, 2) + ' for ' + keyword_name + ')' $
+                                 , '']
 
           ;; Some space before END
-          red_fitsaddpar, bdr, /before, anchor = 'END', '',''
+          red_fitsaddkeyword, bdr, /before, anchor = 'END', '',''
   
           ;; Write it to the file
           fxbcreate, blun, filename, bdr           ; Create the extension in the file

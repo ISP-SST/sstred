@@ -38,6 +38,8 @@
 ; 
 ;    2017-08-17 : MGL. First version, based on code from
 ;                 chromis::make_crispex. 
+;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
 ; 
 ; 
@@ -160,8 +162,9 @@ pro chromis::make_nb_cube, wcfile $
 ;
 
   search_dir = file_dirname(wbgfiles[0])+'/'
-  
-  files = file_search(search_dir + '*.'+['f0', 'momfbd', 'fits'], count = Nfiles)      
+  extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
+
+  files = file_search(search_dir + '*.'+extension, count = Nfiles)      
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
@@ -323,98 +326,99 @@ pro chromis::make_nb_cube, wcfile $
   if(n_elements(odir) eq 0) then odir = self.out_dir + '/nb_cubes/' 
   file_mkdir, odir
   
-  if keyword_set(fitsoutput) then begin
-    
-    ofile = 'nb_'+midpart+'_time-corrected.fits'
-    
-    if file_test(odir + '/' + ofile) then begin
-      if keyword_set(overwrite) then begin
-        print, 'Overwriting existing data cube:'
-        print, odir + '/' + ofile
-      endif else begin
-        print, 'This data cube exists already:'
-        print, odir + '/' + ofile
-        return
-      endelse
-    endif
+;  if keyword_set(fitsoutput) then begin
 
-    ;; Make FITS header for the NB cube
-;    if ~keyword_set(scans_only) then begin
-    hdr = wchead                                           ; Start with the WB cube header
-    check_fits, d, hdr, /update                            ; Get the type right
-    red_fitsaddpar, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
-                    , 'Creation UTC date of FITS header'   ;
-;    if keyword_set(blur) then begin
-;      red_fitsaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
-;    endif
-    anchor = 'DATE' 
-    red_fitsaddpar, anchor = anchor, hdr, 'FILENAME', ofile ; New file name
-    
-    ;; Add info about this step
-    self -> headerinfo_addstep, hdr $
-                                , prstep = 'Prepare NB science data cube' $
-                                , prpara = prpara $
-                                , prproc = inam
-    
-    ;; Add info to headers
-    red_fitsaddpar, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
-    red_fitsaddpar, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
-    
-    ;; Open fits file, dat is name of assoc variable
-    dims = [Nx, Ny, Nwav, 1, Nscans] ;
-    self -> fitscube_initialize, odir + ofile, hdr, lun, fileassoc, dims 
-      
-;    endif else begin
-;      ;; Make headers for nb data as well as (possibly) for wb data
-;      if keyword_set(float) then type = 4 else type = 2
-;      red_mkhead, wbhead, type, [Nx, Ny]
-;      naxisx = [Nx, Ny, Nwav]
-;      red_mkhead, nbhead, type, naxisx
-;    endelse
-    
-  endif else begin
-    
-    if keyword_set(float) then extent = '.fcube' else extent = '.icube'
+  ofile = 'nb_'+midpart+'_corrected.fits'
 
-    if(keyword_set(scans_only)) then begin
-      head = red_unpol_lpheader(Nx, Ny, Nwav, float = float)
+  if file_test(odir + '/' + ofile) then begin
+    if keyword_set(overwrite) then begin
+      print, 'Overwriting existing data cube:'
+      print, odir + '/' + ofile
     endif else begin
-      head = red_unpol_lpheader(Nx, Ny, Nwav*Nscans, float = float)
-
-      ;; Open assoc file for output of multi-scan data cube.
-      ofile = 'crispex_'+midpart+'_time-corrected'+extent
-
-      if file_test(odir + '/' + ofile) then begin
-        if keyword_set(overwrite) then begin
-          print, 'Overwriting existing data cube:'
-          print, odir + '/' + ofile
-        endif else begin
-          print, 'This data cube exists already:'
-          print, odir + '/' + ofile
-          return
-        endelse
-      endif
-      
-      openw, lun, odir + '/' + ofile, /get_lun
-      writeu, lun, head
-      point_lun, lun, 0L
-      print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
-      openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
-      printf,lunf, 'nx=', Nx
-      printf,lunf, 'ny=', Ny
-      printf,lunf, 'nw=', Nwav
-      printf,lunf, 'nt=', Nscans
-      printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
-      if keyword_set(float) then begin
-        dat = assoc(lun, fltarr(Nx, Ny, nwav, /nozero), 512)
-        printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,/nozer), 512)"
-      endif else begin
-        dat = assoc(lun, intarr(Nx, Ny, nwav, /nozero), 512)
-        printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
-      endelse
-      free_lun, lunf
+      print, 'This data cube exists already:'
+      print, odir + '/' + ofile
+      return
     endelse
-  endelse
+  endif
+
+  ;; Make FITS header for the NB cube
+;  if ~keyword_set(scans_only) then begin
+  hdr = wchead                                           ; Start with the WB cube header
+  check_fits, d, hdr, /update                            ; Get the type right
+  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $ ; DATE with time
+                      , 'Creation UTC date of FITS header' ;
+  if keyword_set(blur) then begin
+    red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
+  endif
+  anchor = 'DATE' 
+  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', ofile ; New file name
+  
+  ;; Add info about this step
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'Prepare NB science data cube' $
+                              , prpara = prpara $
+                              , prproc = inam
+  
+  ;; Add info to headers
+  red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
+  red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
+  
+  ;; Open fits file, dat is name of assoc variable
+  dims = [Nx, Ny, Nwav, 1, Nscans] ;
+  self -> fitscube_initialize, odir + ofile, hdr, lun, fileassoc, dims 
+  
+;  endif else begin
+;    ;; Make headers for nb data as well as (possibly) for wb data
+;    if keyword_set(float) then type = 4 else type = 2
+;    red_mkhead, wbhead, type, [dimim[0], dimim[1]]
+;    naxisx = [dimim[0], dimim[1], Nwav]
+;    red_mkhead, nbhead, type, naxisx
+;  endelse
+
+  
+;  endif else begin
+;    
+;    if keyword_set(float) then extent = '.fcube' else extent = '.icube'
+;
+;    if(keyword_set(scans_only)) then begin
+;      head = red_unpol_lpheader(Nx, Ny, Nwav, float = float)
+;    endif else begin
+;      head = red_unpol_lpheader(Nx, Ny, Nwav*Nscans, float = float)
+;
+;      ;; Open assoc file for output of multi-scan data cube.
+;      ofile = 'crispex_'+midpart+'_time-corrected'+extent
+;
+;      if file_test(odir + '/' + ofile) then begin
+;        if keyword_set(overwrite) then begin
+;          print, 'Overwriting existing data cube:'
+;          print, odir + '/' + ofile
+;        endif else begin
+;          print, 'This data cube exists already:'
+;          print, odir + '/' + ofile
+;          return
+;        endelse
+;      endif
+;      
+;      openw, lun, odir + '/' + ofile, /get_lun
+;      writeu, lun, head
+;      point_lun, lun, 0L
+;      print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
+;      openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
+;      printf,lunf, 'nx=', Nx
+;      printf,lunf, 'ny=', Ny
+;      printf,lunf, 'nw=', Nwav
+;      printf,lunf, 'nt=', Nscans
+;      printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
+;      if keyword_set(float) then begin
+;        dat = assoc(lun, fltarr(Nx, Ny, nwav, /nozero), 512)
+;        printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,/nozer), 512)"
+;      endif else begin
+;        dat = assoc(lun, intarr(Nx, Ny, nwav, /nozero), 512)
+;        printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
+;      endelse
+;      free_lun, lunf
+;    endelse
+;  endelse
 
   ;; Set up for collecting time and wavelength data
   tbeg_array = dblarr(Nwav, Nscans)         ; Time beginning for state
@@ -475,10 +479,10 @@ pro chromis::make_nb_cube, wcfile $
 
     ;; Save the wavelength points in a separate file, common to
     ;; all the scans.
-    if(iscan eq 0) then begin
-                                ;         wav = scan_nbstates.tun_wavelength
-      fzwrite, wav, odir + '/' + 'wav_' + prefilter +'.f0',' '
-    endif
+;    if(iscan eq 0) then begin
+;                                ;         wav = scan_nbstates.tun_wavelength
+;      fzwrite, wav, odir + '/' + 'wav_' + prefilter +'.f0',' '
+;    endif
 
     ;; The files in this scan, sorted in tuning wavelength order.
     self -> selectfiles, files = pertuningfiles, states = pertuningstates $
@@ -568,25 +572,32 @@ pro chromis::make_nb_cube, wcfile $
       ;; Wavelength
       w_array[iwav, iscan] = scan_nbstates[iwav].tun_wavelength
 
-      ;; Pointing (Maybe we should average between tbeg and tend
-      ;; if there are several points in the interval? Depends on
-      ;; how noisy the positions are.)
-      hpln = interpol(metadata_pig[0, *], time_pig, tavg_array[iwav, iscan])
-      hplt = interpol(metadata_pig[1, *], time_pig, tavg_array[iwav, iscan])
-      ;; (hpln, hplt) are coordinates for the center of the FOV.
-      ;; Now tabulate the corner coordinates, assuming the FOV is
-      ;; aligned to solar coordinates. [The distance between the
-      ;; center of the FOV and the centers of the corner pixels is
-      ;; pixelsize*(Nx-1)/2 and pixelsize*(Ny-1), resp.]
-      hpln_array[0, 0, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d
-      hpln_array[1, 0, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d  
-      hpln_array[0, 1, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d 
-      hpln_array[1, 1, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d 
-      hplt_array[0, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d
-      hplt_array[1, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d 
-      hplt_array[0, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
-      hplt_array[1, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
-
+      red_wcs_hpl_coords, tavg_array[iwav, iscan], metadata_pig, time_pig $
+                          , Nx, Ny, self.image_scale $
+                          , hpln, hplt
+      
+      hpln_array[*, *, iwav, iscan] = hpln
+      hplt_array[*, *, iwav, iscan] = hplt
+      
+;      ;; Pointing (Maybe we should average between tbeg and tend
+;      ;; if there are several points in the interval? Depends on
+;      ;; how noisy the positions are.)
+;      hpln = interpol(metadata_pig[0, *], time_pig, tavg_array[iwav, iscan])
+;      hplt = interpol(metadata_pig[1, *], time_pig, tavg_array[iwav, iscan])
+;      ;; (hpln, hplt) are coordinates for the center of the FOV.
+;      ;; Now tabulate the corner coordinates, assuming the FOV is
+;      ;; aligned to solar coordinates. [The distance between the
+;      ;; center of the FOV and the centers of the corner pixels is
+;      ;; pixelsize*(Nx-1)/2 and pixelsize*(Ny-1), resp.]
+;      hpln_array[0, 0, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d
+;      hpln_array[1, 0, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d  
+;      hpln_array[0, 1, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d 
+;      hpln_array[1, 1, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d 
+;      hplt_array[0, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d
+;      hplt_array[1, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d 
+;      hplt_array[0, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
+;      hplt_array[1, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
+;stop
       ;; Collect some more info for this frame here, like file
       ;; name, exposure time, detector gain, etc. Put this in FITS
       ;; tabulated keywords later.
@@ -703,19 +714,19 @@ pro chromis::make_nb_cube, wcfile $
 ;    if(~keyword_set(scans_only)) then begin
     ;; Write this scan's data cube to assoc file
     if keyword_set(no_timecor) then tscl = 1 else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
-    if keyword_set(fitsoutput) then begin
+;    if keyword_set(fitsoutput) then begin
       for iwav = 0, Nwav-1 do $
          self -> fitscube_addframe, fileassoc, d[*, *, iwav] * tscl $
                                     , Nscan = Nscans, Ntuning = Nwav $
                                     , iscan = iscan, ituning = iwav 
-    endif else begin
-      if(keyword_set(float)) then begin
-        dat[iscan] = d*tscl
-      endif else begin
-        d1 = round(d*tscl)
-        dat[iscan] = fix(d1)
-      endelse
-    endelse
+;    endif else begin
+;      if(keyword_set(float)) then begin
+;        dat[iscan] = d*tscl
+;      endif else begin
+;        d1 = round(d*tscl)
+;        dat[iscan] = fix(d1)
+;      endelse
+;    endelse
     if(keyword_set(verbose)) then begin
       print, inam +'scan=',iscan,', max=', max(d1)            
     endif

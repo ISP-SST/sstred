@@ -41,7 +41,8 @@
 ;                 chromis::polish_tseries. 
 ; 
 ;    2017-09-07 : MGL. Add WCS coordinates and some variable-keywords
-;                 to the file. 
+;                 to the file. Changed red_fitsaddpar -->
+;                 red_addfitskeyword.  
 ; 
 ; 
 ; 
@@ -288,20 +289,20 @@ pro chromis::make_wb_cube, dir $
 
   ;; Make header. Start with header from last input file, it has
   ;; info about MOMFBD processing.
-  check_fits, cub, hdr, /update                                ; Get dimensions right
-  red_fitsaddpar, hdr, 'DATE', red_timestamp(/iso) $           ; DATE witht time
-                  , 'Creation UTC date of FITS header'         ;
-  red_fitsaddpar, hdr, 'BITPIX', 16 $                          ; Because we round() before saving. 
-                  , 'Number of bits per data pixel'            ;
-  red_fitsaddpar, hdr, 'FILENAME', ofil, anchor = 'DATE'       ; New file name
+  check_fits, cub, hdr, /update                              ; Get dimensions right
+  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE witht time
+                      , 'Creation UTC date of FITS header'   ;
+  red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round() before saving. 
+                      , 'Number of bits per data pixel'      ;
+  red_fitsaddkeyword, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
 
   if keyword_set(blur) then begin
-    red_fitsaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
+    red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
   endif
 
   ;; Add info to headers
-  red_fitsaddpar, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
-  red_fitsaddpar, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
+  red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
+  red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -313,12 +314,12 @@ pro chromis::make_wb_cube, dir $
   s_array = lonarr(Nscans)
   s_array[0] = wstates.scannumber
   t_array = dblarr(1, Nscans)
-  t_array[0] = red_time2double(time)                             ; In [s] since midnight
+  t_array[0] = red_time2double(time)                   ; In [s] since midnight
 ;        w_array = fltarr(1)
   ;;w_array[0] = wstates.tun_wavelength
   w_array = replicate(float(prefilter)/10., 1, Nscans) ; In [nm]
-  hpln_array = dblarr(2, 2, 1, Nscans)   ; HPLN position for corners of FOV
-  hplt_array = dblarr(2, 2, 1, Nscans)   ; HPLT position for corners of FOV
+  hpln_array = dblarr(2, 2, 1, Nscans)                 ; HPLN position for corners of FOV
+  hplt_array = dblarr(2, 2, 1, Nscans)                 ; HPLT position for corners of FOV
   
 ;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
 ;                                                         , comment:'time-coordinates'}, $
@@ -340,7 +341,7 @@ pro chromis::make_wb_cube, dir $
     ;; and JDREF but within the pipeline we can be sure we don't
     ;; use them.
     dateref = self.isodate+'T00:00:00.000000' ; Midnight
-    red_fitsaddpar, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
+    red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
   endif
 
   help, round(cub)

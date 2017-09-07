@@ -64,6 +64,8 @@
 ;                Remove keyword old.
 ;
 ;   2017-08-07 : MGL. New keyword nthreads.
+;
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
 ;
 ;-
@@ -202,7 +204,7 @@ pro red::sumpolcal, check=check $
 
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document. 
-      red_fitsaddpar, head, 'STATE', state_list[istate], 'Polcal state'
+      red_fitsaddkeyword, head, 'STATE', state_list[istate], 'Polcal state'
       self -> headerinfo_addstep, head, prstep = 'Polcal summing' $
                                   , prproc = inam, prpara = prpara
 
@@ -213,7 +215,7 @@ pro red::sumpolcal, check=check $
 
       ;; Write FITS format pcal
       print, inam+' : saving ', polsname
-      red_fitsaddpar, head, 'FILENAME', file_basename(polsname), after = 'DATE'
+      red_fitsaddkeyword, head, 'FILENAME', file_basename(polsname), after = 'DATE'
       red_writedata, polsname, pcal, header=head, filetype='FITS', overwrite = overwrite
 
       if keyword_set(check) then free_lun, lun

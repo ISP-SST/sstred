@@ -129,6 +129,8 @@
 ;   2017-06-05 : MGL. Works with /fitsoutput now. Add 'BUNIT' and
 ;                'BTYPE' to FITS header.
 ;
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;
 ;-
 pro chromis::polish_tseries, blur = blur $
                              , clip = clip $
@@ -462,6 +464,38 @@ pro chromis::polish_tseries, blur = blur $
             , tstep, clip, tile, scale, ang, shift, grid, time, date $
             , wfiles, tmean, crop, mang, x0, x1, y0, y1, ff, nd
 
+      ;; Sample saved quantities with comments about their use in make_crispex:
+      ;;
+      ;; TSTEP           LONG      =            5          [Not used]
+      ;; CLIP            INT       = Array[4]              [Not used]
+      ;; TILE            INT       = Array[4]              [Not used]
+      ;; SCALE           FLOAT     =       26.3852         [Not used]
+      ;; ANG             DOUBLE    = Array[5]              [Yes]
+      ;; SHIFT           DOUBLE    = Array[2, 5]           [Yes]
+      ;; GRID            FLOAT     = Array[5, 2, 40, 25]   [Yes]
+      ;; TIME            STRING    = Array[5]              [Not used]
+      ;; DATE            STRING    = Array[5]              [Not used]
+      ;; WFILES          STRING    = Array[5]              [Yes]
+      ;; TMEAN           FLOAT     = Array[5]              [Yes]
+      ;; CROP            INT       = Array[4]              [Not used]
+      ;; MANG            DOUBLE    =        6.2653633      [Not used]
+      ;; X0              LONG      =            0          [Yes]
+      ;; X1              LONG      =         1831          [Yes]
+      ;; Y0              LONG      =            0          [Yes]
+      ;; Y1              LONG      =         1151          [Yes]
+      ;; FF              INT       =        0              [Yes] ( = [maxangle, mdx0, mdx1, mdy0, mdy1] if fullframe)
+      ;; ND              UNDEFINED = <Undefined>           [Yes] (2d array if fullframe)
+      ;;
+      ;; (Some of) these quantities should really go into the metadata
+      ;; of the FITS file for two reasons: documentation and use in
+      ;; make_crispex. The latter so we can avoid using the save file.
+      ;;
+      ;; Already in prpara: clip, crop, fullframe (same as ff?), grid.
+      ;; So we could parse prpara to get those. Can make_crispex
+      ;; calculate x0,x1,y0,y1 from naxis1 and naxis2 and any of the
+      ;; other parameters?
+
+      
       ;; Normalize intensity
       me = mean(tmean)
       for iscan = 0L, Nscans - 1 do cub[*,*,iscan] *= (me / tmean[iscan])
@@ -480,19 +514,19 @@ pro chromis::polish_tseries, blur = blur $
         ;; Make header. Start with header from last input file, it has
         ;; info about MOMFBD processing.
         check_fits, cub, hdr, /update                          ; Get dimensions right
-        red_fitsaddpar, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
+        red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
                         , 'Creation UTC date of FITS header'   ;
-        red_fitsaddpar, hdr, 'BITPIX', 16 $                    ; Because we round() before saving. 
+        red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round() before saving. 
                         , 'Number of bits per data pixel'      ;
-        red_fitsaddpar, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
+        red_fitsaddkeyword, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
 
         if keyword_set(blur) then begin
-          red_fitsaddpar, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
+          red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
         endif
 
         ;; Add info to headers
-        red_fitsaddpar, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
-        red_fitsaddpar, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
+        red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
+        red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
         ;; Add info about this step
         self -> headerinfo_addstep, hdr $
@@ -529,7 +563,7 @@ pro chromis::polish_tseries, blur = blur $
           ;; and JDREF but within the pipeline we can be sure we don't
           ;; use them.
           dateref = self.isodate+'T00:00:00.000000' ; Midnight
-          red_fitsaddpar, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
+          red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
         endif
 
         help, round(cub)
@@ -557,7 +591,7 @@ pro chromis::polish_tseries, blur = blur $
 ;        r0_array[0]   = sin(s_array/max(s_array)) ; Really function of time, i.e., of tuning and scannumber
 ;        
 ;
-;        red_fitsaddpar, hdr, 'TABULATD', 'TABULATIONS;ATMOS_R0,AMB_TEMP'
+;        red_fitsaddkeyword, hdr, 'TABULATD', 'TABULATIONS;ATMOS_R0,AMB_TEMP'
 ;
 ;        fxbhmake,bdr,1,'TABULATIONS','For storing tabulated keywords'
 ;        fxbaddcol, 1, bdr, r0_array, 'ATMOS_R0', TUNIT = 'm', 'Table of atmospheric r0'

@@ -37,6 +37,8 @@
 ; 
 ;    2017-06-28 : MGL. Use red_fitsaddpar.
 ;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;
 ;-
 pro red_metadata_store, metadata $
                         , fname = fname $
@@ -72,10 +74,10 @@ pro red_metadata_store, metadata $
         if strmid(comment, 0, 1) ne ' ' then comment = ' '+comment
       endif
       ;; Add the keyword to the header
-      red_fitsaddpar, anchor = anchor, head $
-                , metadata[ikeyword].keyword $
-                , metadata[ikeyword].value $
-                , comment
+      red_fitsaddkeyword, anchor = anchor, head $
+                          , metadata[ikeyword].keyword $
+                          , metadata[ikeyword].value $
+                          , comment
       header_changed = 1
     endif
 

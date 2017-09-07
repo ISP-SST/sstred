@@ -46,6 +46,8 @@
 ;                 version control branch.
 ; 
 ;    2017-06-01 : MGL. Use red_fitsaddpar.
+;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
 ;-
 pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey, prbranch = prbranch
@@ -106,19 +108,19 @@ pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey, prbranch = prb
     if n_elements(prlibcomment) eq 0 then prlibcomment = 'Software library'
     if prcount gt 0 then prlibcomment += ' containing '+prproc
   endif else prlibcomment = 'Additional software library'
-  red_fitsaddpar, anchor = anchor, head, key, prlib, prlibcomment, after = prevkey
+  red_fitsaddkeyword, anchor = anchor, head, key, prlib, prlibcomment, after = prevkey
 
   ;; Add the version
   if n_elements(prver) gt 0 then begin
     key = 'PRVER'+stp+letter
-    red_fitsaddpar, anchor = anchor, head, key $
+    red_fitsaddkeyword, anchor = anchor, head, key $
               , prver, 'Library version/MJD of last update' 
   endif
 
   ;; Optionally add branch
   if n_elements(prbranch) gt 0 then begin
     key = 'PRBRA'+stp+letter
-    red_fitsaddpar, anchor = anchor, head, key $
+    red_fitsaddkeyword, anchor = anchor, head, key $
               , prbranch, 'Version control branch' 
   endif
   
@@ -127,15 +129,15 @@ end
 
 
 mkhdr, head, 0
-red_fitsaddpar, head, 'PRSTEP1', 'First step!'
-red_fitsaddpar, head, 'PRPROC1', 'firstproc'
+red_fitsaddkeyword, head, 'PRSTEP1', 'First step!'
+red_fitsaddkeyword, head, 'PRPROC1', 'firstproc'
 
 red_headerinfo_addlib, head, 'monkey','39';, prevkey = 'DATE'
 red_headerinfo_addlib, head, 'kitten','0.345';, prevkey = prevkey
 red_headerinfo_addlib, head, 'hedgehog','1.4.3';, prevkey = prevkey
 
-red_fitsaddpar, head, 'PRSTEP2', 'Second step!'
-red_fitsaddpar, head, 'PRPROC2', 'secondproc'
+red_fitsaddkeyword, head, 'PRSTEP2', 'Second step!'
+red_fitsaddkeyword, head, 'PRPROC2', 'secondproc'
 
 red_headerinfo_addlib, head, 'monkey','39';, prevkey = 'DATE'
 red_headerinfo_addlib, head, 'kitten','0.345';, prevkey = prevkey

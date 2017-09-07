@@ -71,6 +71,8 @@
 ; 
 ;    2017-09-01 : THI. Get date_beg and framenumbers from file.
 ;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;
 ;-
 function red_sumheaders, files, sum $
                        , nsum = nsum $
@@ -170,12 +172,12 @@ function red_sumheaders, files, sum $
     ;; Remove NAXIS* keywords
     naxis = fxpar(head, 'NAXIS', count = count)
     for iaxis = 0, naxis-1 do sxdelpar, head, 'NAXIS'+strtrim(iaxis+1, 2)
-    red_fitsaddpar, head, 'NAXIS', 0
+    red_fitsaddkeyword, head, 'NAXIS', 0
   endelse
 
   ;; New date, at better position
   sxdelpar, head, 'DATE'
-  red_fitsaddpar, anchor = anchor, after = 'SOLARNET', /force, head $
+  red_fitsaddkeyword, anchor = anchor, after = 'SOLARNET', /force, head $
                   , 'DATE', red_timestamp(/iso), 'Creation UTC date of FITS header '
 
   ;; Remove some irrelevant keywords
@@ -187,15 +189,15 @@ function red_sumheaders, files, sum $
 
   ;; Exposure times etc.
   exptime = sxpar(head, 'XPOSURE', count=count, comment=exptime_comment)
-  red_fitsaddpar, anchor = anchor, head $
+  red_fitsaddkeyword, anchor = anchor, head $
                   , 'XPOSURE', nsum*exptime, '[s] Total exposure time'
-  red_fitsaddpar, anchor = anchor, head $
+  red_fitsaddkeyword, anchor = anchor, head $
                   , 'TEXPOSUR', exptime, '[s] Single-exposure time'
-  red_fitsaddpar, anchor = anchor, head $
+  red_fitsaddkeyword, anchor = anchor, head $
                   , 'NSUMEXP', nsum, 'Number of summed exposures'
   
   ;; List of frame numbers (re-use FRAMENUM for this)
-  red_fitsaddpar, anchor = anchor, head $
+  red_fitsaddkeyword, anchor = anchor, head $
                   , 'FRAMENUM', red_collapserange(framenumbers,ld='',rd='') $
                   , 'List of frame numbers in the sum'
 
@@ -209,15 +211,15 @@ function red_sumheaders, files, sum $
     time_avg = red_timestring(mean(times)+exptime/2)
   endif
   if n_elements(time_beg) ne 0 then $
-     red_fitsaddpar, anchor = anchor, head $
+     red_fitsaddkeyword, anchor = anchor, head $
                      , 'DATE-BEG', date_obs+'T'+time_beg $
                      , 'Start time of summed observation'
   if n_elements(time_avg) ne 0 then $
-     red_fitsaddpar, anchor = anchor, head $
+     red_fitsaddkeyword, anchor = anchor, head $
                      , 'DATE-AVG', date_obs+'T'+time_avg $
                      , 'Average time of summed observation'
   if n_elements(time_end) ne 0 then $
-     red_fitsaddpar, anchor = anchor, head $
+     red_fitsaddkeyword, anchor = anchor, head $
                      , 'DATE-END', date_obs+'T'+time_end $
                      , 'End time of summed observation'
 

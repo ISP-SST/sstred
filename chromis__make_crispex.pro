@@ -116,8 +116,11 @@
 ;
 ;   2017-05-24 : MGL. New keyword fitsoutput. Add prpara info.
 ;
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;
 ;-
 pro chromis::make_crispex, aligncont = aligncont $
+                           , blur = blur $
                            , clips=clips $
                            , fitsoutput = fitsoutput $
                            , float = float $
@@ -147,19 +150,20 @@ pro chromis::make_crispex, aligncont = aligncont $
 
   ;; Make prpara
   if n_elements(aligncont   ) ne 0 then red_make_prpara, prpara, 'aligncont'    , aligncont 
+  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
   if n_elements(clips       ) ne 0 then red_make_prpara, prpara, 'clips'        , clips         
+  if n_elements(float       ) ne 0 then red_make_prpara, prpara, 'float'        , float  
   if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
+  if n_elements(no_timecor  ) ne 0 then red_make_prpara, prpara, 'no_timecor'   , no_timecor 
+  if n_elements(nostretch   ) ne 0 then red_make_prpara, prpara, 'nostretch'    , nostretch 
   if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
+  if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
   if n_elements(rot_dir     ) ne 0 then red_make_prpara, prpara, 'rot_dir'      , rot_dir         
   if n_elements(scans_only  ) ne 0 then red_make_prpara, prpara, 'scans_only'   , scans_only          
+  if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
   if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
   if n_elements(tiles       ) ne 0 then red_make_prpara, prpara, 'tiles'        , tiles        
   if n_elements(wbwrite     ) ne 0 then red_make_prpara, prpara, 'wbwrite'      , wbwrite
-  if n_elements(float       ) ne 0 then red_make_prpara, prpara, 'float'        , float  
-  if n_elements(no_timecor  ) ne 0 then red_make_prpara, prpara, 'no_timecor'   , no_timecor 
-  if n_elements(nostretch   ) ne 0 then red_make_prpara, prpara, 'nostretch'    , nostretch 
-  if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
-  if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
 
   ;; Default keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
@@ -197,6 +201,10 @@ pro chromis::make_crispex, aligncont = aligncont $
   endif
   timestamps = timestamps[sindx]
   print, inam + ' : Selected -> '+ strjoin(timestamps, ', ')
+  
+  ;; Get metadata from logfiles
+  red_logdata, self.isodate, time_r0, r0 = metadata_r0
+  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
 
   ;; Loop over timestamp directories
   for itimestamp = 0L, Ntimestamps-1 do begin
@@ -274,7 +282,7 @@ pro chromis::make_crispex, aligncont = aligncont $
       endfor
       unbprefsref *= 1e-10      ; [m]
 
-      if(~keyword_set(scans_only)) then begin
+      if ~keyword_set(scans_only) then begin
         ;; Look for time-series calib file
         csearch = self.out_dir + '/calib_tseries/tseries_' + prefilters[ipref] $
                   + '_' + datestamp + '*_calib.sav'
@@ -300,9 +308,20 @@ pro chromis::make_crispex, aligncont = aligncont $
         restore, cfile
         if(n_elements(ff) eq 5) then full = 1 else full = 0
 
-                                ;tmean = mean(tmean) / tmean
+        ;;tmean = mean(tmean) / tmean
 
-        
+        ;; Read the header from the WB cube.
+        if keyword_set(fitsoutput) then begin
+          wcfile = red_strreplace(cfile, 'tseries_', 'wb_')
+          wcfile = red_strreplace(wcfile, '_calib.sav', '_corrected_im.fits')
+          if ~file_test(wcfile) then begin
+            print, 'WB cube in fits format missing, please run polish_tseries with /fitsoutput.'
+            print, 'wcfile'
+            retall
+          endif
+          wchead = red_readhead(wcfile)
+        endif
+
         ;; Get the scan selection from wfiles (from the sav file)
         wbgfiles = wfiles
         self -> extractstates, wbgfiles, wbgstates
@@ -332,6 +351,7 @@ pro chromis::make_crispex, aligncont = aligncont $
       ;; Prepare for making output file names
       midpart = prefilters[ipref] + '_' + datestamp + '_scans=' $ 
                 + red_collapserange(uscans, ld = '', rd = '')
+      if keyword_set(blur) then midpart += '_blurred'
 
       ;; Load prefilters
       for inbpref = 0L, Nnbprefs-1 do begin
@@ -441,13 +461,16 @@ pro chromis::make_crispex, aligncont = aligncont $
 
       ;; Load WB image and define the image border
       tmp = red_readdata(wbgfiles[0])
-      dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
+      
+      ;;dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
+      dimim = [x1-x0+1, y1-y0+1]
       
       if full then begin
         dimim[0] = nd[0]
         dimim[1] = nd[1]
       endif
-
+      Nx = dimim[0]
+      Ny = dimim[1]
 
       ;; Create temporary cube and open output file
       d = fltarr(dimim[0], dimim[1], Nwav)  
@@ -469,20 +492,40 @@ pro chromis::make_crispex, aligncont = aligncont $
             return
           endelse
         endif
-        
-        ;; Make headers for nb data as well as (possibly) for wb data
-        if(keyword_set(scans_only)) then begin
+
+        ;; Make FITS header for the NB cube
+        if ~keyword_set(scans_only) then begin
+          hdr = wchead                                         ; Start with the WB cube header
+          check_fits, d, hdr, /update                          ; Get the type right
+          red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
+                          , 'Creation UTC date of FITS header' ;
+          if keyword_set(blur) then begin
+            red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
+          endif
+          anchor = 'DATE' 
+          red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', ofile ; New file name
+          
+          ;; Add info about this step
+          self -> headerinfo_addstep, hdr $
+                                      , prstep = 'Prepare NB science data cube' $
+                                      , prpara = prpara $
+                                      , prproc = inam
+          
+          ;; Add info to headers
+          red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
+          red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
+          
+          ;; Open fits file, dat is name of assoc variable
+          dims = [dimim[0], dimim[1], Nwav, 1, Nscans]         ;
+          self -> fitscube_initialize, odir + ofile, hdr, lun, fileassoc, dims 
+              
+        endif else begin
+          ;; Make headers for nb data as well as (possibly) for wb data
+          if keyword_set(float) then type = 4 else type = 2
           red_mkhead, wbhead, type, [dimim[0], dimim[1]]
           naxisx = [dimim[0], dimim[1], Nwav]
-        endif else begin
-          naxisx = [dimim[0], dimim[1], Nwav*Nscans]
+          red_mkhead, nbhead, type, naxisx
         endelse
-        red_mkhead, nbhead, type, naxisx
-
-        ;; Add info to headers
-        ;; units
-        
-        ;; Open fits file, dat is name of assoc variable
 
       endif else begin
         
@@ -525,8 +568,16 @@ pro chromis::make_crispex, aligncont = aligncont $
             printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
           endelse
           free_lun, lunf
-        endif 
+        endelse
       endelse
+
+      ;; Set up for collecting time and wavelength data
+      tbeg_array = dblarr(Nwav, Nscans)    ; Time beginning for state
+      tend_array = dblarr(Nwav, Nscans)    ; Time end for state
+      tavg_array = dblarr(Nwav, Nscans)    ; Time average for state
+      w_array = dblarr(Nwav, Nscans)       ; Wavelengths
+      hpln_array = dblarr(2, 2, Nwav, Nscans) ; HPLN position for corners of FOV
+      hplt_array = dblarr(2, 2, Nwav, Nscans) ; HPLT position for corners of FOV
       
       ;; Start processing data
       if(~keyword_set(tiles) OR (~keyword_set(clips))) then begin
@@ -584,7 +635,6 @@ pro chromis::make_crispex, aligncont = aligncont $
           fzwrite, wav, odir + '/' + 'wav_' + prefilters[ipref] +'.f0',' '
         endif
 
-
         ;; The files in this scan, sorted in tuning wavelength order.
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
                              , cam = wbcamera, scan = uscans[iscan] $
@@ -594,7 +644,7 @@ pro chromis::make_crispex, aligncont = aligncont $
         sortindx = sort(scan_wbstates.tun_wavelength)
         scan_wbfiles = scan_wbfiles[sortindx]
         scan_wbstates = scan_wbstates[sortindx]
-
+        
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
                              , cam = nbcamera, scan = uscans[iscan] $
                              , sel = scan_nbindx, count = count
@@ -603,7 +653,7 @@ pro chromis::make_crispex, aligncont = aligncont $
         sortindx = sort(scan_nbstates.tun_wavelength)
         scan_nbfiles = scan_nbfiles[sortindx]
         scan_nbstates = scan_nbstates[sortindx]
-
+        
         if(keyword_set(scans_only)) then begin
           if keyword_set(fitsoutput) then begin
             ofile = 'crispex_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
@@ -627,7 +677,7 @@ pro chromis::make_crispex, aligncont = aligncont $
             endelse
           endif
         endif
-
+        
         wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
 
         if keyword_set(aligncont) then begin
@@ -651,10 +701,49 @@ pro chromis::make_crispex, aligncont = aligncont $
           ;; state = strjoin((strsplit(file_basename(st.ofiles[iwav,iscan]),'.',/extract))[1:*],'.')
           state = ufpi_states[iwav]
 
-;          ttf = f + '/' + self.camttag+'.'+state
-;          rrf = f + '/' + self.camrtag+'.'+state
-;          wwf = f + '/' + self.camwbtag+'.'+state
-;          print, inam + ' : processing state -> '+state 
+          ;; Collect info about this frame here.
+          
+          nbhead = red_readhead(scan_nbfiles[iwav])
+
+          ;; DATE-??? keywords
+          red_fitspar_getdates, nbhead $
+                                , date_beg = date_beg $
+                                , date_end = date_end $
+                                , date_avg = date_avg
+          tbeg_array[iwav, iscan] = red_time2double((strsplit(date_beg,'T',/extract))[1])
+          tend_array[iwav, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
+          tavg_array[iwav, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+;          tbeg_array[iwav, iscan] = red_time2double((strsplit(fxpar(nbhead, 'DATE-BEG'),'T',/extract))[1])
+;          tend_array[iwav, iscan] = red_time2double((strsplit(fxpar(nbhead, 'DATE-END'),'T',/extract))[1])
+;          tavg_array[iwav, iscan] = red_time2double((strsplit(fxpar(nbhead, 'DATE-AVG'),'T',/extract))[1])
+          ;;(tbeg_array[iwav, iscan]+tend_array[iwav, iscan])/2d
+
+          ;; Wavelength
+          w_array[iwav, iscan] = scan_nbstates[iwav].tun_wavelength
+
+          ;; Pointing (Maybe we should average between tbeg and tend
+          ;; if there are several points in the interval? Depends on
+          ;; how noisy the positions are.)
+          hpln = interpol(metadata_pig[0, *], time_pig, tavg_array[iwav, iscan])
+          hplt = interpol(metadata_pig[1, *], time_pig, tavg_array[iwav, iscan])
+          ;; (hpln, hplt) are coordinates for the center of the FOV.
+          ;; Now tabulate the corner coordinates, assuming the FOV is
+          ;; aligned to solar coordinates. [The distance between the
+          ;; center of the FOV and the centers of the corner pixels is
+          ;; pixelsize*(Nx-1)/2 and pixelsize*(Ny-1), resp.]
+          hpln_array[0, 0, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d
+          hpln_array[1, 0, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d  
+          hpln_array[0, 1, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d 
+          hpln_array[1, 1, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d 
+          hplt_array[0, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d
+          hplt_array[1, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d 
+          hplt_array[0, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
+          hplt_array[1, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
+
+          ;; Collect some more info for this frame here, like file
+          ;; name, exposure time, detector gain, etc. Put this in FITS
+          ;; tabulated keywords later.
+
           red_progressbar, iprogress, Nprogress $
                            , clock = clock, /predict $
                            , 'Processing scan ' $
@@ -750,6 +839,7 @@ pro chromis::make_crispex, aligncont = aligncont $
           
         endfor                  ; iwav
 
+        
         if n_elements(imean) eq 0 then begin 
           imean = fltarr(nwav)
           for ii = 0L, nwav-1 do imean[ii] = median(d[*,*,ii])
@@ -762,16 +852,24 @@ pro chromis::make_crispex, aligncont = aligncont $
           save, file = odir + '/spectfile.' + prefilters[ipref] + '.idlsave' $
                 , norm_spect, norm_factor, spect_pos
         endif
-        
-        
+
+        if keyword_set(blur) then d = smooth(d, [29, 29, 1], /edge_wrap)
+
         if(~keyword_set(scans_only)) then begin
           ;; Write this scan's data cube to assoc file
           if keyword_set(no_timecor) then tscl = 1 else tscl = mean(prefilter_wb) / tmean[iscan]
-          if(keyword_set(float)) then begin
-            dat[iscan] = d*tscl
+          if keyword_set(fitsoutput) then begin
+            for iwav = 0, Nwav-1 do $
+               self -> fitscube_addframe, fileassoc, d[*, *, iwav] * tscl $
+                                          , Nscan = Nscans, Ntuning = Nwav $
+                                          , iscan = iscan, ituning = iwav 
           endif else begin
-            d1 = round(d*tscl)
-            dat[iscan] = fix(d1)
+            if(keyword_set(float)) then begin
+              dat[iscan] = d*tscl
+            endif else begin
+              d1 = round(d*tscl)
+              dat[iscan] = fix(d1)
+            endelse
           endelse
           if(keyword_set(verbose)) then begin
             print, inam +'scan=',iscan,', max=', max(d1)            
@@ -807,7 +905,26 @@ pro chromis::make_crispex, aligncont = aligncont $
         if keyword_set(fitsoutput) then begin
 
           ;; Close fits file.
+          free_lun, lun
+          print, inam + ' : Wrote file '+odir + ofile
+          
           ;; Add any extensions.
+          self -> fitscube_addwcs, odir + ofile, hpln_array, hplt_array $
+                                   , transpose(rebin(w_array, Nwav, Nscans, 2, 2, /sample) $
+                                               , [2, 3, 0, 1]) $
+                                   , transpose(rebin(tavg_array, Nwav, Nscans, 2, 2, /sample) $
+                                               , [2, 3, 0, 1]) 
+          
+          ;; Modify some headers
+          value = fxpar(nbhead, 'CAMERA', comment = comment, count = count)
+          if count eq 1 then fxhmodify, odir + ofile, 'CAMERA', value, comment
+          value = fxpar(nbhead, 'DETECTOR', comment = comment, count = count)
+          if count eq 1 then fxhmodify, odir + ofile, 'DETECTOR', value, comment
+          fxhmodify, odir + ofile, 'DATE-BEG', self.isodate + 'T' + red_timestring(min(tbeg_array))
+          fxhmodify, odir + ofile, 'DATE-AVG', self.isodate + 'T' + red_timestring(mean(tavg_array))
+          fxhmodify, odir + ofile, 'DATE-END', self.isodate + 'T' + red_timestring(max(tend_array))
+
+          ;; Make a flipped cube
           
         endif else begin
           ;; Close assoc file for output of multi-scan data cube.

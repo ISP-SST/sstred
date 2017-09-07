@@ -67,6 +67,8 @@
 ;                 Add prefilter and wavelength info for CRISP.
 ; 
 ;    2017-07-21 : MGL. Further improvements for CRISP data.
+;
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -97,7 +99,7 @@ function red_meta2head, head, metadata=metaStruct
       ;; Preserve existing file name, this keyword should be the
       ;; name of the original file.
 ;      metaStruct.filename = filename
-      red_fitsaddpar, anchor = anchor, newhead, 'FILENAME', filename, 'Name of original file.'
+      red_fitsaddkeyword, anchor = anchor, newhead, 'FILENAME', filename, 'Name of original file.'
     endif
 
     ;; Detector ID (check that this is the correct keyword...)
@@ -108,7 +110,7 @@ function red_meta2head, head, metadata=metaStruct
       ;; roman number.
       detector = ((stregex(barefile, '(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])[0]
 
-      if detector ne '' then red_fitsaddpar, anchor = anchor, newhead $
+      if detector ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                              , red_keytab('detector'), detector $
                                              , 'Inferred from filename.'
     endif                       ; detector
@@ -120,13 +122,13 @@ function red_meta2head, head, metadata=metaStruct
       ;; encoded in the directory
       if strtrim(fxpar(head, 'INSTRUME'), 2) eq 'CRISP' then begin
         case 1 of
-          strmatch(directory, '*Crisp-W*') : red_fitsaddpar, anchor = anchor, newhead $
+          strmatch(directory, '*Crisp-W*') : red_fitsaddkeyword, anchor = anchor, newhead $
              , 'CAMERA', 'Crisp-W', 'Inferred from directory'
-          strmatch(directory, '*Crisp-R*') : red_fitsaddpar, anchor = anchor, newhead $
+          strmatch(directory, '*Crisp-R*') : red_fitsaddkeyword, anchor = anchor, newhead $
              , 'CAMERA', 'Crisp-R', 'Inferred from directory'
-          strmatch(directory, '*Crisp-T*') : red_fitsaddpar, anchor = anchor, newhead $
+          strmatch(directory, '*Crisp-T*') : red_fitsaddkeyword, anchor = anchor, newhead $
              , 'CAMERA', 'Crisp-T', 'Inferred from directory'
-          strmatch(directory, '*Crisp-D*') : red_fitsaddpar, anchor = anchor, newhead $
+          strmatch(directory, '*Crisp-D*') : red_fitsaddkeyword, anchor = anchor, newhead $
              , 'CAMERA', 'Crisp-D', 'Inferred from directory'
         endcase
       endif
@@ -139,7 +141,7 @@ function red_meta2head, head, metadata=metaStruct
       xposure = stregex(barefile, '([0-9]*)[.]([0-9]*)ms' $
                         , /extract, /subexpr) 
       if xposure[0] ne '' then begin
-        red_fitsaddpar, anchor = anchor, newhead $
+        red_fitsaddkeyword, anchor = anchor, newhead $
                         , 'XPOSURE', float(strjoin(xposure[1:2], '.'))/1000., '[s] Inferred from filename.'
       endif
     endif
@@ -150,7 +152,7 @@ function red_meta2head, head, metadata=metaStruct
       detgain = stregex(barefile, 'G([0-9]*)[.]([0-9]*)' $
                         , /extract, /subexpr) 
       if detgain[0] ne '' then begin
-        red_fitsaddpar, anchor = anchor, newhead $
+        red_fitsaddkeyword, anchor = anchor, newhead $
                         , 'DETGAIN', float(strjoin(detgain[1:2], '.')), 'Inferred from filename.'
       endif
     endif
@@ -165,7 +167,7 @@ function red_meta2head, head, metadata=metaStruct
 
       if Npref eq 0 then begin
         if tuninfo[0] ne '' then begin
-          if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
+          if tuninfo[1] ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                                    , red_keytab('pref'), tuninfo[1] $
                                                    , 'Inferred from tuning info in filename.'
         endif
@@ -178,17 +180,17 @@ function red_meta2head, head, metadata=metaStruct
           ;; WB (CRISP?)
           tuninfo = stregex(barefile, '[._]([0-9][0-9][0-9][0-9])[._]' $
                             , /extract, /subexpr)
-          if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
+          if tuninfo[1] ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                                    , red_keytab('pref'), tuninfo[1] $
                                                    , 'Inferred from filename.'
           if count eq 0 then begin
-            red_fitsaddpar, anchor = anchor, newhead $
+            red_fitsaddkeyword, anchor = anchor, newhead $
                             , 'STATE', tuninfo[1]+'_'+tuninfo[1]+'_+0000' $
                             , 'WB tuning info = prefilter+0.'
           endif
         endif else begin
           ;; NB
-          red_fitsaddpar, anchor = anchor, newhead $
+          red_fitsaddkeyword, anchor = anchor, newhead $
                           , 'STATE', red_strreplace(tuninfo[0], '.', '_') $
                           , 'Inferred from tuning info in filename.' ;strjoin(tuninfo[2:3], '_')          
         endelse
@@ -199,14 +201,14 @@ function red_meta2head, head, metadata=metaStruct
 ;        if strmatch(camera,'*-[DW]') then begin
 ;          tuninfo = stregex(barefile, '[._]([0-9][0-9][0-9][0-9])[._]' $
 ;                            , /extract, /subexpr)
-;          if tuninfo[1] ne '' then red_fitsaddpar, anchor = anchor, newhead $
+;          if tuninfo[1] ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
 ;                                                   , red_keytab('pref'), tuninfo[1] $
 ;                                                   , 'Inferred from filename.'
 ;          ;; Add also a tuning state if not there already. For WB it's
 ;          ;; just the prefilter plus zero tuning.
 ;          dummy = fxpar(newhead, 'STATE', count=count)
 ;          if count eq 0 then begin
-;            red_fitsaddpar, anchor = anchor, newhead $
+;            red_fitsaddkeyword, anchor = anchor, newhead $
 ;                            , 'STATE', tuninfo[1]+'_'+tuninfo[1]+'_+0' $
 ;                            , 'WB tuning info = prefilter+0.'
 ;          endif
@@ -228,7 +230,7 @@ function red_meta2head, head, metadata=metaStruct
         camera = fxpar(head, red_keytab('camera'), count=count)
         if count eq 0 then begin
           ;;  TDB: can we extract filter-info without the camera-tag?
-          red_fitsaddpar, anchor = anchor, newhead, red_keytab('pref'), wheelpos
+          red_fitsaddkeyword, anchor = anchor, newhead, red_keytab('pref'), wheelpos
         endif else begin
 
           if camera eq 'Chromis-N' then begin
@@ -249,7 +251,7 @@ function red_meta2head, head, metadata=metaStruct
             endcase
           endelse
           
-          red_fitsaddpar, anchor = anchor, newhead  $
+          red_fitsaddkeyword, anchor = anchor, newhead  $
                           , red_keytab('pref'), filter1 $
                           , 'Inferred from filter wheel position in filename.'
           
@@ -362,9 +364,9 @@ function red_meta2head, head, metadata=metaStruct
           end
         endcase
 
-        red_fitsaddpar, anchor = anchor, newhead $
+        red_fitsaddkeyword, anchor = anchor, newhead $
                         , 'WAVELNTH', wavelnth*1e9, '[nm] Prefilter peak wavelength'
-        red_fitsaddpar, anchor = anchor, newhead $
+        red_fitsaddkeyword, anchor = anchor, newhead $
                         , 'WAVEUNIT', -9, 'WAVELNTH in units 10^WAVEUNIT m = nm'
         ;; Add also the FWHM in a keyword?
 
@@ -388,11 +390,11 @@ function red_meta2head, head, metadata=metaStruct
       filenumber = ((stregex(barefile, '(\.|_)([0-9]+)($)', /extr, /subexp))[2,*])[0]
       if filenumber ne '' then begin
         if sxpar(newhead, 'NAXIS') gt 2 then begin
-          red_fitsaddpar, anchor = anchor, newhead $
+          red_fitsaddkeyword, anchor = anchor, newhead $
                           , red_keytab('frame'), 10000L*long(filenumber) $
                           , '(number of first frame) Inferred from filename.'
         endif else begin
-          red_fitsaddpar, anchor = anchor, newhead $
+          red_fitsaddkeyword, anchor = anchor, newhead $
                           , red_keytab('frame'), long(filenumber) $
                           , 'Inferred from filename.'  
         endelse
@@ -404,7 +406,7 @@ function red_meta2head, head, metadata=metaStruct
       ;; The scan number is the only field that is exactly five
       ;; digits long:
       scannumber = ((stregex(barefile, '(_|\.|^)([0-9]{5})(_|\.|$)', /extr, /subexp))[2,*])[0]
-      if scannumber ne '' then red_fitsaddpar, anchor = anchor, newhead $
+      if scannumber ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                                , red_keytab('scannumber'), long(scannumber) $
                                                , 'Inferred from filename.'
     endif
@@ -416,14 +418,14 @@ function red_meta2head, head, metadata=metaStruct
       date_obs = stregex(directory, dateregex, /extract) + 'T' $
                  + stregex(directory, timeregex, /extract)
       if date_obs ne 'T' then begin
-        red_fitsaddpar, anchor = anchor, newhead $
+        red_fitsaddkeyword, anchor = anchor, newhead $
                         , 'DATE-OBS', date_obs, 'Inferred from directory.'
       endif else begin
         ;; If there is a properly formatted date+'T'+timestamp in the
         ;; file name, it should be the date-obs. I.e., corresponding
         ;; to the timestamp of the data collection directory.
         date_obs = stregex(barefile, dateregex+'T'+timeregex, /extract) 
-        if date_obs ne '' then red_fitsaddpar, anchor = anchor, newhead $
+        if date_obs ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                                , 'DATE-OBS', date_obs $
                                                , 'Inferred from filename.'
       endelse
@@ -452,7 +454,7 @@ function red_meta2head, head, metadata=metaStruct
   
 ;        for ikey = 0, n_elements(keys)-1 do begin
 ;           if somecheck(keys[i]) then begin
-;              red_fitsaddpar, anchor = anchor,newhead,keys[i],metaStruct.(i)
+;              red_fitsaddkeyword, anchor = anchor,newhead,keys[i],metaStruct.(i)
 ;           endif
 ;        endfor                  ; ikey
   
