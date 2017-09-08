@@ -51,7 +51,7 @@
 ;
 ;   2017-09-06 : MGL. Use new features in red_fitsaddpar.
 ;
-;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ;-
 pro red_mkhdr, header, im, naxisx, _ref_extra = extra 

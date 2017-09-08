@@ -68,7 +68,7 @@
 ; 
 ;    2017-07-21 : MGL. Further improvements for CRISP data.
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct

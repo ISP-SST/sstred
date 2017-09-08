@@ -47,7 +47,7 @@
 ; 
 ;    2017-06-01 : MGL. Use red_fitsaddpar.
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ;-
 pro red_headerinfo_addlib, head, prlib, prver, prevkey = prevkey, prbranch = prbranch

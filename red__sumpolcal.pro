@@ -65,7 +65,7 @@
 ;
 ;   2017-08-07 : MGL. New keyword nthreads.
 ;
-;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ;
 ;-

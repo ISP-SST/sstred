@@ -37,7 +37,7 @@
 ; 
 ;    2017-06-28 : MGL. Use red_fitsaddpar.
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ;
 ;-
 pro red_metadata_store, metadata $

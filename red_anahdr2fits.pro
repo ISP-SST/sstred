@@ -70,7 +70,7 @@
 ;
 ;    2017-07-03 : THI. Also try to get camera from the ANA header.
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ;
 ;-
 function red_anahdr2fits, anahdr $

@@ -116,7 +116,7 @@
 ;
 ;   2017-05-24 : MGL. New keyword fitsoutput. Add prpara info.
 ;
-;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ;
 ;-
 pro chromis::make_crispex, aligncont = aligncont $

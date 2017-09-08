@@ -42,7 +42,7 @@
 ; 
 ;    2017-09-07 : MGL. Add WCS coordinates and some variable-keywords
 ;                 to the file. Changed red_fitsaddpar -->
-;                 red_addfitskeyword.  
+;                 red_fitsaddkeyword.  
 ; 
 ; 
 ; 
@@ -471,9 +471,9 @@ pro chromis::make_wb_cube, dir $
     ;;print, time_r0[tindx_r0]
     ;;print, metadata_r0[*, tindx_r0]
     self -> fitscube_addvarkeyword, odir + ofil, 'ATMOS_R0' $
+                                    , metadata_r0[*, tindx_r0] $
                                     , comment = 'Atmospheric coherence length' $
                                     , tunit = 'm' $
-                                    , metadata_r0[*, tindx_r0] $
                                     , extra_coordinate1 = [24, 8] $             ; WFS subfield sizes 
                                     , extra_labels      = ['WFSZ'] $            ; Axis labels for metadata_r0
                                     , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
@@ -485,13 +485,15 @@ pro chromis::make_wb_cube, dir $
 
 
   if 0 then begin
-    scn = red_fitskeyword(odir + ofil, 'SCANNUM', comment = comment, variable_values = scn_values)
-    xps = red_fitskeyword(odir + ofil, 'XPOSURE', comment = comment, variable_values = xps_values)
+    fname = odir + ofil
+    hhh = headfits(fname)
+    scn = red_fitskeyword(fname, 'SCANNUM', comment = comment, variable_values = scn_values)
+    xps = red_fitskeyword(fname, 'XPOSURE', comment = comment, variable_values = xps_values)
     print, scn, xps
     help, scn_values, xps_values
     print, scn_values.values, xps_values.values
     
-    r0 = red_fitskeyword(odir + ofil, 'ATMOS_R0', comment = comment, variable_values = r0_values)
+    r0 = red_fitskeyword(fname, 'ATMOS_R0', comment = comment, variable_values = r0_values)
     help, r0_values
   endif
   

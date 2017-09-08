@@ -41,7 +41,7 @@
 ; 
 ;    2017-06-01 : MGL. Use red_fitsaddpar. Change some added parameters.
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ; 
 ;-

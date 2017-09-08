@@ -39,7 +39,7 @@
 ;    2017-08-17 : MGL. First version, based on code from
 ;                 chromis::make_crispex. 
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ;    2017-09-08 : MGL. Copy variable-keywords from the WB cube.
 ; 

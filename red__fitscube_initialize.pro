@@ -48,7 +48,7 @@
 ; 
 ;    2017-06-05 : MGL. Remove WCS keywords.
 ;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
 ;-
 pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions

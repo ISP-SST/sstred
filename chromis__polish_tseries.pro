@@ -129,7 +129,7 @@
 ;   2017-06-05 : MGL. Works with /fitsoutput now. Add 'BUNIT' and
 ;                'BTYPE' to FITS header.
 ;
-;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
+;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ;
 ;-
 pro chromis::polish_tseries, blur = blur $
