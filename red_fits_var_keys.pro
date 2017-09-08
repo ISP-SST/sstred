@@ -63,6 +63,24 @@ function red_fits_var_keys, hdr $
   ;; Get the existing var_keys keyword
   var_keys = fxpar(hdr, 'VAR_KEYS', count = Nmatch, comment = var_keys_comment)
 
+  if Nmatch eq 0 then begin
+    ;; This header does not have a VAR_KEYS keyword.
+    if n_elements(new_keyword) ne 0 then begin
+      ;; But we want to add one!
+      new_extension = 'VAR-EXT-'+new_keyword ; Variable keyword extension for keyword <keyword_name>.
+      keywords   = [ new_keyword   ]
+      extensions = [ new_extension ]
+      var_keys = new_extension + ';' + new_keyword
+      fxaddpar, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', after = 'DATE'
+      return, keywords
+    endif else begin
+      ;; Just return 0
+      undefine, extensions
+      var_keys = ''
+      return, 0
+    end
+  endif
+  
   ;; Split into keywords (some of which have extension names in
   ;; front).
   keywords = strsplit(var_keys, ',', /extract)
