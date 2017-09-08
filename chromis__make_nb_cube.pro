@@ -41,7 +41,7 @@
 ;
 ;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_addfitskeyword. 
 ; 
-; 
+;    2017-09-08 : MGL. Copy variable-keywords from the WB cube.
 ; 
 ; 
 ;-
@@ -343,10 +343,12 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; Make FITS header for the NB cube
 ;  if ~keyword_set(scans_only) then begin
-  hdr = wchead                                           ; Start with the WB cube header
-  check_fits, d, hdr, /update                            ; Get the type right
-  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $ ; DATE with time
+  hdr = wchead                                             ; Start with the WB cube header
+  check_fits, d, hdr, /update                              ; Get the type right
+  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
                       , 'Creation UTC date of FITS header' ;
+  red_fitsdelkeyword, hdr, 'VAR_KEYS'                                ; Start fresh with variable-keywords. 
+
   if keyword_set(blur) then begin
     red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
   endif
@@ -780,6 +782,17 @@ pro chromis::make_nb_cube, wcfile $
   fxhmodify, odir + ofile, 'DATE-AVG', self.isodate + 'T' + red_timestring(mean(tavg_array))
   fxhmodify, odir + ofile, 'DATE-END', self.isodate + 'T' + red_timestring(max(tend_array))
 
+  ;; Copy variable-keywords from wb cube file.
+  self -> fitscube_addvarkeyword, odir + ofile, 'SCANNUM',  old_filename = wcfile
+  self -> fitscube_addvarkeyword, odir + ofile, 'ATMOS_R0', old_filename = wcfile
+
+  ;; Add also XPOSURE but based on NB data
+  
+  hdr = headfits(odir + ofile)
+  
+  stop
+  
+  
 stop
   
   ;; Make a flipped cube
