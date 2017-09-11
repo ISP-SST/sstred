@@ -28,6 +28,9 @@
 ;                 default = '/storage/sand*/... in Stockholm or /data/disk?/...
 ;                 on La Palma'.
 ;
+;   restart     : in, optional, type = boolean,
+;                 default = False
+;
 ; :History:
 ;
 ;   2017-07-17 : AVS. Initial commit.
@@ -53,11 +56,14 @@
 ;                     doit*.pro scripts to done*.log logs is added.
 ;   2017-08-30 : AVS. a) Default values of out_dir are provided. b) Use current
 ;                     date if date or out_dir do not specify it.
+;   2017-09-11 : AVS. A new keywor, /restart, is added to avoid re-creating
+;                     existing script/config files in case of a restart.
 ;-
-pro red_getcalibdata,       $
-  date        = date,       $
-  out_dir     = out_dir,    $
-  search_dirs = search_dirs ;
+pro red_getcalibdata,        $
+  date        = date,        $
+  out_dir     = out_dir,     $
+  search_dirs = search_dirs, $
+  restart     = restart      ;
 
   ; Instruments to process data for.  TRIPPEL and SLITJAW are not included yet.
   instruments = [ 'CHROMIS', 'CRISP' ]
@@ -152,8 +158,12 @@ pro red_getcalibdata,       $
   isodate = red_strreplace( date,    '.', '-', n = 2 )
   date    = red_strreplace( isodate, '-', '.', n = 2 )
 
-  red_setupworkdir, search_dir = search_dirs, out_dir = out_dir, $
-    instruments = instruments, date = date, /calibrations_only
+  ; If /restart is set then the instrument directories with corresponding
+  ; script and config files inside will not be updated and will be kept as is.
+  if ~keyword_set( restart ) then begin
+    red_setupworkdir, search_dir = search_dirs, out_dir = out_dir, $
+      instruments = instruments, date = date, /calibrations_only
+  endif
 
   ; The current directory is where you run this script.  Push it to the
   ; directory stack and go the out_dir directory.
