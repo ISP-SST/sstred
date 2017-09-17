@@ -361,7 +361,7 @@ pro red::initialize, filename, develop = develop
   if ana_dlm_version ne self.version_reduxdlm then self.version_problems += 'ANA DLM not identical to redux DLM'
   if momfbd_dlm_version ne self.version_reduxdlm then self.version_problems += 'MOMFBD DLM not identical to redux DLM'
   
-  rdx_dlm_required_versionstr = '0.0.8-79'
+  rdx_dlm_required_versionstr = '0.0.9-2'
   rdx_dlm_required_version = strsplit(rdx_dlm_required_versionstr, '-.', /EXTRACT)
   rdx, version=rdx_dlm_version
   rdx_dlm_version = strsplit(rdx_dlm_version, '-.', /EXTRACT)
