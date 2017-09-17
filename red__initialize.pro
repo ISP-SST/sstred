@@ -461,9 +461,9 @@ pro red::initialize, filename, develop = develop
       print
       print, 'Just restart with the /develop keyword set:'
       print
-      print, 'IDL> a = ' + strlowcase(tag_names(self,/STRUCTURE_NAME)) + "red('config.txt', /develop)"
+      print, '     a = ' + strlowcase(tag_names(self,/STRUCTURE_NAME)) + "red('config.txt', /develop)"
       print
-      exit
+      retall
     endelse
   endif
 
