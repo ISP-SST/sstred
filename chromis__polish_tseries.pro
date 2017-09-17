@@ -241,7 +241,7 @@ pro chromis::polish_tseries, xbd = xbd $
         'MOMFBD': extension = '.momfbd'
         'FITS': extension = '.fits'
       endcase
-      files = file_search(search_dir + '*'+extension, count = Nfiles)      
+      files = file_search(search_dir + '*'+self->getdetector('Chromis-W')+'*'+extension, count = Nfiles)
 
       ;; Find the global WB images and the number of scans.
 ;      self -> selectfiles, files = files, states = states $
