@@ -291,7 +291,9 @@ pro red::download, overwrite = overwrite $
           if lastidx lt 0 then begin  ; TODO: if no calib exists, get one from previous day?
             print, 'red::download : There is not calibration done before the data: ' + $
               all_dirs[ where(all_times eq data_times[i]) ]
-            stop
+            print, 'red::download : It is safe to ignore this warning if this dataset will not be used for science ' + $
+              ' (it might be an early-morning test or calibration).'
+            continue
           endif else begin
             red_append, used_linedefs, todays_linedef_times[lastidx]
           endelse
