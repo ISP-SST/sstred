@@ -414,7 +414,7 @@ pro chromis::polish_tseries, xbd = xbd $
       if(~keyword_set(tstep)) then begin
         dts = dblarr(Nscans)
         for iscan = 0L, Nscans - 1 do dts[iscan] = red_time2double(time[iscan])
-        tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*])))) <Nscans
+        tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*])))) <Nscans-1
       endif
 
       print, inam + ' : Using the following parameters for de-stretching the time-series: '
