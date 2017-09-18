@@ -257,8 +257,8 @@ pro chromis::polish_tseries, xbd = xbd $
       wfiles = files[windx]
 
       ;; Select scan numbers
-      selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
-      tmp = red_select_subset(selectionlist $
+      selectionlist = wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber
+      tmp = red_select_subset(strtrim(selectionlist, 2) $
                               , qstring = inam + ' : Select scans:' $
                               , count = Nscans, indx = scanindx)
 
