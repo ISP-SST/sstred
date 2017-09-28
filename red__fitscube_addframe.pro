@@ -54,6 +54,4 @@ pro red::fitscube_addframe, fileassoc, frame $
 
   fileassoc[iframe] = frame
   
-  stats, fileassoc[iframe] - frame, name = 'inside'
-  
 end
