@@ -176,7 +176,6 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
           cube_out[ispectrum] = reform(subcube[ix, iy, *])
         endfor                  ; iy
       endfor                    ; ix
-      print, 'Done'
 
       iprogress++
       
