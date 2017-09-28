@@ -50,3 +50,31 @@ pro red_fitsdelkeyword, hdr, name
   sxdelpar, hdr, name
   
 end
+
+mkhdr, h, 0
+
+;; Add a long string keyword:
+fxaddpar, h, 'TEST', 'A very long string that will need to be continued on the next line using the OGIP LONGSTRN convention.'
+print
+print, h
+
+;; Remove the keyword with sxdelpar, notice that the CONTINUE line is
+;; still there:
+sxdelpar, h, 'TEST'
+print
+print, h
+
+
+
+mkhdr, h, 0
+
+;; Try again, but now delete with red_fitsdelkeyword
+fxaddpar, h, 'TEST', 'A very long string that will need to be continued on the next line using the OGIP LONGSTRN convention.'
+red_fitsdelkeyword, h, 'TEST'
+print
+print, h
+
+
+
+
+end
