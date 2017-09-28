@@ -60,6 +60,8 @@ function red_fits_var_keys, hdr $
                             , new_extension = new_extension $
                             , var_keys = var_keys
 
+  ;;  Format : var_keys = 'VAR-EXT-1;KEYWD_1,KEYWD_2[He_I],VAR-EXT-2;KEYWD_3'
+
   ;; Get the existing var_keys keyword
   var_keys = fxpar(hdr, 'VAR_KEYS', count = Nmatch, comment = var_keys_comment)
 
