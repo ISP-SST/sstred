@@ -39,7 +39,7 @@
 ;
 ;   search_dirs : out, optional, type=strarr
 ;
-;      Where to search for raw data.  Could be an array or a single
+;      Where to search for raw data. Could be an array or a single
 ;      string.
 ;
 ;   site :  out, optional, type=string
@@ -49,13 +49,16 @@
 ;
 ; :History:
 ;
-;    2017-08-15 : MGL. First version based on logic by Andrii Sukhorukov.
+;    2017-08-15 : MGL. First version based on logic by Andrii
+;                 Sukhorukov.
 ;
 ;    2017-08-29 : MGL. Use dnsdomainname to match also nodes that do
 ;                 not have world-wide ipv4 addresses. New keywords
 ;                 ipv4addresses and dnsdomainname.
 ;
-;    2017-08-30 : AVS. Call message instead of inam.  Some code clean-up.
+;    2017-08-30 : AVS. Call message instead of inam. Some code
+;                 clean-up.
+;
 ;-
 pro red_currentsite, site = site $
                      , search_dirs = search_dirs $
