@@ -142,7 +142,7 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
 
   ;; Pad to mod 2880 bytes
   Npad = 2880 - (80L*Nlines mod 2880) ; Number of bytes of padding
-  if npad GT 0 then writeu, lun, replicate(32B,Npad)
+  if Npad GT 0 then writeu, lun, replicate(32B,Npad)
   Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
   offset = Nblock*2880          ; Offset to start of data
 print, 'offset=', offset
