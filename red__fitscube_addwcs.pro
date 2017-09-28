@@ -20,6 +20,11 @@
 ;
 ;       The name of the file.
 ;
+;    wcs : in, type=struct
+;
+;       The WCS coordinates hpln, hplt, wave, time as fltarr(2, 2,
+;       Ntunes, Nscans) arrays.
+;
 ; :Keywords:
 ;
 ;    wcs_hpln_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
@@ -44,21 +49,29 @@
 ;
 ;
 ;
-;
 ; :History:
 ; 
 ;    2016-03-24 : MGL. First version.
 ; 
 ;    2016-08-25 : MGL. Add spatial coordinates.
 ; 
+;    2016-09-28 : MGL. Add a new parameter wcs. 
+; 
 ; 
 ; 
 ;-
-pro red::fitscube_addwcs, filename $
+pro red::fitscube_addwcs, filename, wcs $
                           , wcs_hpln_coordinate $
                           , wcs_hplt_coordinate $
                           , wcs_wave_coordinate $
                           , wcs_time_coordinate
+
+  if n_elements(wcs) ne 0 then begin
+    wcs_hpln_coordinate = wcs.hpln
+    wcs_hplt_coordinate = wcs.hplt
+    wcs_wave_coordinate = wcs.wave
+    wcs_time_coordinate = wcs.time   
+  endif
 
   ;; Write the WCS extension. (This was inspired by Stein's
   ;; wcs_crosstabulation.pro)
