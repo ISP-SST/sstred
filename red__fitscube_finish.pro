@@ -52,7 +52,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   free_lun, lun              
   
   if n_elements(wcs) gt 0 then begin
-    self -> fitscube_addwcs, filename, wcs = wcs
+    self -> fitscube_addwcs, filename, wcs
   endif
   
   if ~arg_present(flipfile) then begin
