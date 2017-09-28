@@ -41,6 +41,12 @@
 ;       For a pixel-to-pixel association with, e.g., NAXIS2 and
 ;       NAXIS4, use axis_numbers=[2,4].
 ;   
+;   flipped : in, optional, type=boolean
+;
+;       Set this if the keyword should be added to a "flipped" cube.
+;       Only needed for coordinate-association keywords but does no
+;       harm for other association types.
+;
 ;   keyword_value : in, optional, type=varies
 ;
 ;       The value of the keyword in the main header.
@@ -60,7 +66,9 @@
 ;
 ;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
-;   2017-09-08 : MGL. New keyword old_filename.
+;   2017-09-08 : MGL. New keyword old_filename. 
+; 
+;   2017-09-13 : MGL. New keyword flipped.
 ; 
 ; 
 ;-
@@ -83,7 +91,8 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
                                  , time_unit       = time_unit $
                                  , wavelength_coordinates = wavelength_coordinates $
                                  , wavelength_delta       = wavelength_delta $
-                                 , wavelength_units       = wavelength_units
+                                 , wavelength_units       = wavelength_units $
+                                 , flipped = flipped
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
