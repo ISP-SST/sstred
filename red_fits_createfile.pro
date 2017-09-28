@@ -57,6 +57,13 @@
 ;       Binary extensions to be added to the fits file. See
 ;       documentation in red_writedata.pro.
 ; 
+;    wcs_time : in, optional, type=dblarr
+; 
+;       WCS time coordinate to be added in a binary extension.
+; 
+;    wcs_wavelength : in, optional, type=dblarr
+; 
+;       WCS wavelength coordinate to be added in a binary extension.
 ; 
 ; :History:
 ; 
@@ -64,10 +71,17 @@
 ; 
 ;    2016-12-07 : MGL. New keyword tabhdu.
 ; 
+;    2017-03-23 : MGL. New keywords wcs_time and wcs_wavelength.
+; 
 ; 
 ; 
 ;-
-pro red_fits_createfile, filename, head, lun, fileassoc, tabhdu = tabhdu
+pro red_fits_createfile, filename, head, lun, fileassoc $
+                         , tabhdu = tabhdu $
+                         , wcs_time = wcs_time $
+                         , wcs_wavelength = wcs_wavelength $
+                         , wcs_time_dimension = wcs_time_dimension $
+                         , wcs_wavelength_dimension = wcs_wavelength_dimension
 
   ;; Open the new fits file
   openw, lun, filename, /get_lun, /swap_if_little_endian
@@ -119,7 +133,55 @@ pro red_fits_createfile, filename, head, lun, fileassoc, tabhdu = tabhdu
      rec[0] = bpad
   endif
 
-  ;; Write binary extension if any.
+  ;; Write the WCS extension. (This was inspired by Stein Haugan's
+  ;; wcs_crosstabulation.pro)
+  if n_elements(wcs_time) gt 0 or n_elements(wcs_wavelength) gt 0 then begin
+    free_lun, lun               ; The file is expected to be closed for this.
+    fxbhmake,bdr,1,'EXTNAME-WCS-TABLES','For storing tabulated WCS coordinates'  
+    ;; Assume the time and wavelength arrays already have the correct
+    ;; dimensions, and that the proper C* keywords are set.
+    colno = 1
+    if n_elements(wcs_time_coordinate) then begin
+      fxbaddcol, colno, bdr, wcs_time_coordinate, 'TIME-TABULATION' $
+                 , 'Table of times', TUNIT = 's'
+      t_added = 1
+      colno++
+    endif else t_added = 0
+    if n_elements(wcs_wavelength_coordinate) then begin
+      fxbaddcol, colno, bdr, wcs_wavelength_coordinate, 'WAVE-TABULATION' $
+                 , 'Table of wavelengths', TUNIT = 'm'
+      w_added = 1
+      colno++
+    endif else w_added = 0
+    ;;
+    ;; Now, for the writing:
+    ;;
+    ;; 1. Create binary table extension w/the header;; bdr, file_unit
+    ;; & extension_no are outputs
+    ;;
+    fxbcreate, lun, filename, bdr, extension_no
+    ;;
+    ;; 2. Actually write the data - column 1,  row 1
+    ;;
+    colno = 1
+    if n_elements(wcs_time_coordinate) then begin
+      fxbwrite, lun, wcs_time_coordinate, colno, 1
+      colno++
+    endif
+    if n_elements(wcs_wavelength_coordinate) then begin
+      fxbwrite, lun, wcs_wavelength_coordinate, colno, 1
+      colno++
+    endif
+    ;;
+    ;; Finished - crossing our fingers here!!
+    ;;
+    fxbfinish, lun
+    ;; Open the fits file again, so the image data can be written
+    ;; outside of this subroutine.
+    openu, lun, filename, /get_lun, /swap_if_little_endian
+  endif
+
+  ;; Write other binary extension if any.
   if n_elements(tabhdu) gt 0 then begin
     free_lun, lun               ; The file is expected to be closed for this.
     red_write_tabhdu, tabhdu, filename
