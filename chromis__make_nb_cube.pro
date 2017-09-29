@@ -41,8 +41,10 @@
 ;
 ;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
 ; 
-;    2017-09-08 : MGL. Copy variable-keywords from the WB cube.
+;    2017-09-08 : MGL. Copy variable-keywords from the WB cube. 
 ; 
+;    2017-09-28 : MGL. Add more variable-keywords. Make a flipped cube
+;                 and copy variable keywords to it.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -53,7 +55,7 @@ pro chromis::make_nb_cube, wcfile $
                            , nostretch = nostretch $
                            , overwrite = overwrite $
 ;                           , rot_dir = rot_dir $
-                           , scans_only = scans_only $
+;                           , scans_only = scans_only $
                            , selscan = selscan $
                            , tiles_cont = tiles_cont $
                            , verbose = verbose $
@@ -74,7 +76,7 @@ pro chromis::make_nb_cube, wcfile $
   if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
   if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
 ;  if n_elements(rot_dir     ) ne 0 then red_make_prpara, prpara, 'rot_dir'      , rot_dir         
-  if n_elements(scans_only  ) ne 0 then red_make_prpara, prpara, 'scans_only'   , scans_only          
+;  if n_elements(scans_only  ) ne 0 then red_make_prpara, prpara, 'scans_only'   , scans_only          
   if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
   if n_elements(tiles_cont       ) ne 0 then red_make_prpara, prpara, 'tiles_cont'        , tiles_cont        
   if n_elements(wbwrite     ) ne 0 then red_make_prpara, prpara, 'wbwrite'      , wbwrite
@@ -328,15 +330,16 @@ pro chromis::make_nb_cube, wcfile $
   
 ;  if keyword_set(fitsoutput) then begin
 
-  ofile = 'nb_'+midpart+'_corrected.fits'
-
-  if file_test(odir + '/' + ofile) then begin
+  ofile = 'nb_'+midpart+'_corrected_im.fits'
+  filename = odir+ofile
+  
+  if file_test(filename) then begin
     if keyword_set(overwrite) then begin
       print, 'Overwriting existing data cube:'
-      print, odir + '/' + ofile
+      print, filename
     endif else begin
       print, 'This data cube exists already:'
-      print, odir + '/' + ofile
+      print, filename
       return
     endelse
   endif
@@ -364,10 +367,23 @@ pro chromis::make_nb_cube, wcfile $
   ;; Add info to headers
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
-  
+
+  ;; WB and NB data come from different cameras.
+  red_fitsaddkeyword, hdr, 'CAMERA',   nbstates[0].camera
+  ;; Get DETGAIN, DETOFFS, DETMODEL, DETFIRM from .fitsheader file,
+  ;; i.e., red_readhead(.momfbd file). This would have to be handled
+  ;; differently with CRISP because each Stokes image is a mix of two
+  ;; detectors. 
+  mhd=red_readhead(nbfiles[0])  ; Header of momfbd output file
+  red_fitsaddkeyword, hdr, 'DETECTOR', red_fitskeyword(mhd, 'DETECTOR', comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETGAIN',  red_fitskeyword(mhd, 'DETGAIN',  comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETOFFS',  red_fitskeyword(mhd, 'DETOFFS',  comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETMODEL', red_fitskeyword(mhd, 'DETMODEL', comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETFIRM',  red_fitskeyword(mhd, 'DETFIRM',  comment = dcomment), dcomment
+
   ;; Open fits file, dat is name of assoc variable
   dims = [Nx, Ny, Nwav, 1, Nscans] ;
-  self -> fitscube_initialize, odir + ofile, hdr, lun, fileassoc, dims 
+  self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
   
 ;  endif else begin
 ;    ;; Make headers for nb data as well as (possibly) for wb data
@@ -426,9 +442,19 @@ pro chromis::make_nb_cube, wcfile $
   tbeg_array = dblarr(Nwav, Nscans)         ; Time beginning for state
   tend_array = dblarr(Nwav, Nscans)         ; Time end for state
   tavg_array = dblarr(Nwav, Nscans)         ; Time average for state
-  w_array = dblarr(Nwav, Nscans)            ; Wavelengths
-  hpln_array = dblarr(2, 2, Nwav, Nscans)   ; HPLN position for corners of FOV
-  hplt_array = dblarr(2, 2, Nwav, Nscans)   ; HPLT position for corners of FOV
+  date_beg_array = strarr(Nwav, Nscans)         ; DATE-BEG for state
+  date_end_array = strarr(Nwav, Nscans)         ; DATE-END for state
+  date_avg_array = strarr(Nwav, Nscans)         ; DATE-AVG for state
+;  w_array = dblarr(Nwav, Nscans)            ; Wavelengths
+;  hpln_array = dblarr(2, 2, Nwav, Nscans)   ; HPLN position for corners of FOV
+;  hplt_array = dblarr(2, 2, Nwav, Nscans)   ; HPLT position for corners of FOV
+  exp_array = fltarr(Nwav, Nscans)
+
+  wcs = replicate({  wave:dblarr(2,2) $
+                   , hplt:dblarr(2,2) $
+                   , hpln:dblarr(2,2) $
+                   , time:dblarr(2,2) $
+                  }, Nwav, Nscans)
   
   ;; Start processing data
   if(~keyword_set(tiles_cont) OR (~keyword_set(clips_cont))) then begin
@@ -505,29 +531,29 @@ pro chromis::make_nb_cube, wcfile $
     scan_nbfiles = scan_nbfiles[sortindx]
     scan_nbstates = scan_nbstates[sortindx]
     
-    if(keyword_set(scans_only)) then begin
-      if keyword_set(fitsoutput) then begin
-        ofile = 'crispex_' + prefilter + '_' + datestamp + '_scan=' $
-                + string(uscans[iscan], format = '(i05)') + '.fits' 
-        ofilewb = 'wb_' + prefilter + '_' + datestamp + '_scan=' $
-                  + string(uscans[iscan], format = '(i05)') + '.fits' 
-      endif else begin
-        ofile = 'crispex_' + prefilter + '_' + datestamp + '_scan=' $
-                + string(uscans[iscan], format = '(i05)') + extent
-        ofilewb = 'wb_' + prefilter + '_' + datestamp + '_scan=' $
-                  + string(uscans[iscan], format = '(i05)') + '.fz' 
-      endelse
-      if file_test(odir + '/' + ofile) then begin
-        if keyword_set(overwrite) then begin
-          print, 'Overwriting existing data cube:'
-          print, odir + '/' + ofile
-        endif else begin
-          print, 'Skip to next scan, this one exists already:'
-          print, odir + '/' + ofile
-          continue              ; Skip to next iteration of "for iscan ..." loop.
-        endelse
-      endif
-    endif
+;    if(keyword_set(scans_only)) then begin
+;      if keyword_set(fitsoutput) then begin
+;        ofile = 'crispex_' + prefilter + '_' + datestamp + '_scan=' $
+;                + string(uscans[iscan], format = '(i05)') + '.fits' 
+;        ofilewb = 'wb_' + prefilter + '_' + datestamp + '_scan=' $
+;                  + string(uscans[iscan], format = '(i05)') + '.fits' 
+;      endif else begin
+;        ofile = 'crispex_' + prefilter + '_' + datestamp + '_scan=' $
+;                + string(uscans[iscan], format = '(i05)') + extent
+;        ofilewb = 'wb_' + prefilter + '_' + datestamp + '_scan=' $
+;                  + string(uscans[iscan], format = '(i05)') + '.fz' 
+;      endelse
+;      if file_test(odir + '/' + ofile) then begin
+;        if keyword_set(overwrite) then begin
+;          print, 'Overwriting existing data cube:'
+;          print, odir + '/' + ofile
+;        endif else begin
+;          print, 'Skip to next scan, this one exists already:'
+;          print, odir + '/' + ofile
+;          continue              ; Skip to next iteration of "for iscan ..." loop.
+;        endelse
+;      endif
+;    endif
 
     ;; Read global WB file to use as reference when destretching
     ;; pertuning wb files and then the corresponding nb files.
@@ -563,6 +589,9 @@ pro chromis::make_nb_cube, wcfile $
                             , date_beg = date_beg $
                             , date_end = date_end $
                             , date_avg = date_avg
+      date_beg_array[iwav, iscan] = date_beg
+      date_end_array[iwav, iscan] = date_end
+      date_avg_array[iwav, iscan] = date_avg
       tbeg_array[iwav, iscan] = red_time2double((strsplit(date_beg,'T',/extract))[1])
       tend_array[iwav, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
       tavg_array[iwav, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
@@ -572,14 +601,25 @@ pro chromis::make_nb_cube, wcfile $
       ;;(tbeg_array[iwav, iscan]+tend_array[iwav, iscan])/2d
 
       ;; Wavelength
-      w_array[iwav, iscan] = scan_nbstates[iwav].tun_wavelength
-
-      red_wcs_hpl_coords, tavg_array[iwav, iscan], metadata_pig, time_pig $
+;      w_array[iwav, iscan] = scan_nbstates[iwav].tun_wavelength
+      wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength
+      wcs[iwav, iscan].time = red_time2double((strsplit(date_avg,'T',/extract))[1])
+      
+;      red_wcs_hpl_coords, tavg_array[iwav, iscan], metadata_pig, time_pig $
+      red_wcs_hpl_coords, wcs[iwav, iscan].time[0, 0], metadata_pig, time_pig $
                           , Nx, Ny, self.image_scale $
                           , hpln, hplt
       
-      hpln_array[*, *, iwav, iscan] = hpln
-      hplt_array[*, *, iwav, iscan] = hplt
+      wcs[iwav, iscan].hpln = hpln
+      wcs[iwav, iscan].hplt = hplt
+;      hpln_array[*, *, iwav, iscan] = hpln
+;      hplt_array[*, *, iwav, iscan] = hplt
+
+
+      
+
+      
+      exp_array[iwav, iscan] = scan_nbstates[iwav].exposure
       
 ;      ;; Pointing (Maybe we should average between tbeg and tend
 ;      ;; if there are several points in the interval? Depends on
@@ -762,53 +802,75 @@ pro chromis::make_nb_cube, wcfile $
 
 ;  if keyword_set(fitsoutput) then begin
 
-  ;; Close fits file.
-  free_lun, lun
-  print, inam + ' : Wrote file '+odir + ofile
+  ;; Close fits file and make a flipped version.
+  self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs
+
+  self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
+                                  , comment = 'Beginning of observation' $
+                                  , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
+                                  , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, filename, 'DATE-END', date_end_array $
+                                  , comment = 'End time of observation' $
+                                  , keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
+                                  , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, filename, 'DATE-AVG', date_avg_array $
+                                  , comment = 'Average time of observation' $
+                                  , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
+                                  , axis_numbers = [3, 5] 
+
   
-  ;; Add any extensions.
-  self -> fitscube_addwcs, odir + ofile, hpln_array, hplt_array $
-                           , transpose(rebin(w_array, Nwav, Nscans, 2, 2, /sample) $
-                                       , [2, 3, 0, 1]) $
-                           , transpose(rebin(tavg_array, Nwav, Nscans, 2, 2, /sample) $
-                                       , [2, 3, 0, 1]) 
+
   
-  ;; Modify some headers
-  value = fxpar(nbhead, 'CAMERA', comment = comment, count = count)
-  if count eq 1 then fxhmodify, odir + ofile, 'CAMERA', value, comment
-  value = fxpar(nbhead, 'DETECTOR', comment = comment, count = count)
-  if count eq 1 then fxhmodify, odir + ofile, 'DETECTOR', value, comment
-  fxhmodify, odir + ofile, 'DATE-BEG', self.isodate + 'T' + red_timestring(min(tbeg_array))
-  fxhmodify, odir + ofile, 'DATE-AVG', self.isodate + 'T' + red_timestring(mean(tavg_array))
-  fxhmodify, odir + ofile, 'DATE-END', self.isodate + 'T' + red_timestring(max(tend_array))
+  ;; Modify some headers (should do in flipfile as well) Or should
+  ;; they be var-keys?
+;  fxhmodify, filename, 'DATE-BEG', self.isodate + 'T' + red_timestring(min(tbeg_array))
+;  fxhmodify, filename, 'DATE-AVG', self.isodate + 'T' + red_timestring(mean(tavg_array))
+;  fxhmodify, filename, 'DATE-END', self.isodate + 'T' + red_timestring(max(tend_array))
 
   ;; Copy variable-keywords from wb cube file.
-  self -> fitscube_addvarkeyword, odir + ofile, 'SCANNUM',  old_filename = wcfile
-  self -> fitscube_addvarkeyword, odir + ofile, 'ATMOS_R0', old_filename = wcfile
+  self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile
+  self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile
 
   ;; Add also XPOSURE but based on NB data
-  
-  hdr = headfits(odir + ofile)
-  
-  stop
-  
-  
-stop
-  
-  ;; Make a flipped cube
-  
-;  endif else begin
-;    ;; Close assoc file for output of multi-scan data cube.
-;    free_lun, lun
-;    print, inam + ' : done'
-;    print, inam + ' : result saved to -> '+odir+'/'+ofile 
-;    if keyword_set(float) then begin
-;      red_flipthecube_unpol, odir+'/'+ofile, nt = Nscans, nw = Nwav
-;    endif else begin
-;      red_flipthecube_unpol, odir + '/' + ofile, /icube, nt = Nscans, nw = Nwav
-;    endelse
-;    ;;     make_crispex_sp_cube, odir+'/'+ofile, nwav, Nscans
-;  endelse
-;endif
+  self -> fitscube_addvarkeyword, filename $
+                                  , 'XPOSURE', comment = 'Summed exposure times' $
+                                  , tunit = 'ms' $
+                                  , exp_array, keyword_value = mean(exp_array) $
+                                  , axis_numbers = [3, 5] 
 
+
+  ;; Copy some variable-keywords from the ordinary nb cube to the
+  ;; flipped version.
+  self -> fitscube_addvarkeyword, flipfile, 'SCANNUM',  old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'ATMOS_R0', old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
+
+
+  ;; Status 2017-09-13 (before vacation): Flipping the cube works as
+  ;; far as the data cube and the wcs keywords (although reading the
+  ;; wcs coordinates should be tested). It remains to get the
+  ;; variable-keywords right in the flipped cube (if we want them
+  ;; there at all). This goes for both adding var-keys from scratch
+  ;; and adding them by copying from the non-flipped cube.
+
+  if 0 then begin
+
+    im=readfits(filename)  
+    sp=readfits(flipfile)
+
+    him=headfits(filename)  
+    hsp=headfits(flipfile)
+
+    scn = red_fitskeyword(filename, 'SCANNUM', comment = comment, variable_values = scn_values)
+    xps = red_fitskeyword(filename, 'XPOSURE', comment = comment, variable_values = xps_values)
+    print, scn, xps
+
+    r0 = red_fitskeyword(filename, 'ATMOS_R0', comment = comment, variable_values = r0_values)
+    help, r0_values
+  
+    
+  endif
+  
 end
