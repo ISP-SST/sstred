@@ -141,6 +141,8 @@
 ;                  use_pig_time, azel, stonyhurst, diskpos. Removed
 ;                  keyword pointing.
 ;
+;     2017-06-08 : MGL. Use red_interpol_nogaps.
+;
 ;
 ;-
 pro red_logdata, date, time $
@@ -391,11 +393,11 @@ pro red_logdata, date, time $
       ;; Get interpolated values
       if n_elements(r0data.r0_8x8) ne 0 then begin
         r0 = fltarr(2, Ntimes)
-        r0[1, *] = interpol(median(r0data.r0_8x8, dim = 1), r0data.time, T)
+        r0[1, *] = red_interpol_nogaps(median(r0data.r0_8x8, dim = 1), r0data.time, T)
       endif else begin
         r0 = fltarr(1, Ntimes)
       endelse
-      r0[0, *] = interpol(r0data.r0_24x24, r0data.time, T)
+      r0[0, *] = red_interpol_nogaps(r0data.r0_24x24, r0data.time, T)
     endelse
 
   endif
@@ -409,8 +411,8 @@ pro red_logdata, date, time $
       pig[1, *] = pigdata.y
     endif else begin
       ;; Get interpolated values
-      pig[0, *] = interpol(pigdata.x, pigdata.time, T)
-      pig[1, *] = interpol(pigdata.y, pigdata.time, T)
+      pig[0, *] = red_interpol_nogaps(pigdata.x, pigdata.time, T)
+      pig[1, *] = red_interpol_nogaps(pigdata.y, pigdata.time, T)
     endelse 
 
   endif
@@ -424,8 +426,8 @@ pro red_logdata, date, time $
     endif else begin
       ;; Get interpolated values
       turret = fltarr(2, Ntimes) ; az/el on sky
-      turret[0, *] = interpol(turretdata.az, turret_time, T)
-      turret[1, *] = interpol(turretdata.el, turret_time, T)
+      turret[0, *] = red_interpol_nogaps(turretdata.az, turret_time, T)
+      turret[1, *] = red_interpol_nogaps(turretdata.el, turret_time, T)
     endelse 
     
   endif
