@@ -35,7 +35,8 @@
 ;   
 ;    pig : out, optional, type=structarr 
 ;   
-;       PIG data returned in this variable.  
+;       PIG data returned in this variable, undefined if unsuccessful
+;       read.   
 ;   
 ;    shabar : out, optional, type=structarr
 ;   
@@ -59,6 +60,8 @@
 ;                 the turret log into account. Implement reading log
 ;                 files for the SHABAR, for the weather station, and
 ;                 for the temperature sensors.
+; 
+;    2017-10-02 : MGL. Check pig data for successful read.
 ; 
 ; 
 ; 
@@ -316,22 +319,24 @@ pro red_getlog, date $
 
       pigstruct = {time:0d, x:0., y:0.} 
 
-      pigdata = read_ascii(pigfile, TEMPLATE=pigtemplate)
+      pigdata = read_ascii(pigfile, TEMPLATE=pigtemplate, count = count)
 
-      ;;  Remove glitches
-      indx = where(pigdata.time ne 0, Npig) 
-      
-      if Npig ne 0 then begin
-
-        ;; Change struct of arrays to array of structs
-        pig = replicate(pigstruct, Npig)
-
-        pig.time = pigdata.time[indx] - midnight
-        pig.x = pigdata.x[indx]
-        pig.y = pigdata.y[indx]
+      if count gt 0 then begin
         
-      endif                     ; Npig
-      
+        ;;  Remove glitches
+        indx = where(pigdata.time ne 0, Npig) 
+        
+        if Npig ne 0 then begin
+
+          ;; Change struct of arrays to array of structs
+          pig = replicate(pigstruct, Npig)
+
+          pig.time = pigdata.time[indx] - midnight
+          pig.x = pigdata.x[indx]
+          pig.y = pigdata.y[indx]
+          
+        endif                   ; Npig
+      endif                     ; Successful read      
     endif                       ; pigfile
   endif                         ; PIG
  
