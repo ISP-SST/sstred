@@ -171,6 +171,8 @@
 ;                 search_dir and put the setup in subdirectory
 ;                 'CRISP/'. 
 ;
+;    2017-10-02 : MGL. Changed /mnt/sand to /storage/sand.
+;
 ;-
 pro red_setupworkdir, search_dir = root_dir $
                       , out_dir = out_dir $
@@ -247,7 +249,7 @@ pro red_setupworkdir, search_dir = root_dir $
      endif
   endif else begin
      if keyword_set(stockholm) then begin
-        search_dir = ["/mnt/sand??/", "/mnt/sand??/Incoming/", "/mnt/sand??/Incoming/Checked/"]
+        search_dir = ["/storage/sand??/", "/storage/sand??/Incoming/", "/storage/sand??/Incoming/Checked/"]
      endif else begin
          if ~strmatch(root_dir,'*/') then root_dir += '/'
         search_dir = root_dir
