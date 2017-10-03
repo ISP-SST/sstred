@@ -771,7 +771,9 @@ pro red::prepmomfbd, wb_states = wb_states $
                 ;; Use the real file name, not the link, because the
                 ;; links (even in the dir w/o _nostate) do not have
                 ;; the NB state info.
-                fullname = file_readlink(ref_states[ref_sel[0]].filename)
+                fullname = ref_states[ref_sel[0]].filename
+                if file_test(fullname,/symlink) gt 0 then fullname = file_readlink(fullname)
+                
                 img_dir = file_dirname(fullname,/mark)
                 filename = file_basename(fullname)
                 pos = STREGEX(filename, '[0-9]{7}', length=len)
