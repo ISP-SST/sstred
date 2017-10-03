@@ -187,7 +187,7 @@ pro chromis::split_data, split_dir = split_dir $
            mask = replicate(1b, Nfiles)
            FOR iscan = 1L, Nscans-1 DO BEGIN
               IF f_scan[iscan]-f_scan[0] LT 0 THEN BEGIN
-                 print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans[iscan]
+                 print, inam+' : WARNING : '+cam+': Incomplete scan nr ' + strtrim(scans[iscan],2)
                  print, inam+'             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
                         + strtrim(f_scan(0), 2) + ' files.  Skipping it'
                  mask[where(states.scannumber EQ scans[iscan])] = 0
