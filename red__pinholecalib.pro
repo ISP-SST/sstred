@@ -83,6 +83,8 @@
 ;   2017-07-19 : THI. Change pinholecalib parameter nref defaut value
 ;                to 10.
 ;
+;   2017-10-04 : MGL. Add progressbar.
+;
 ;-
 pro red::pinholecalib, threshold = threshold $
                            , max_shift = max_shift $
@@ -171,6 +173,9 @@ pro red::pinholecalib, threshold = threshold $
     
     last_prefilter = ''
     for iref=0, n_elements(ref_states_unique)-1 do begin
+
+      red_progressbar, iref, n_elements(ref_states_unique), clock = clock, /predict, ''
+      
       cam_idx = where(cam_states.fpi_state eq ref_states_unique[iref].fpi_state)
       if n_elements(cam_idx) ne 1 || max(cam_idx) lt 0 then begin
         print, inam, ' : No (unique) pair of pinhole images.'
@@ -183,11 +188,15 @@ pro red::pinholecalib, threshold = threshold $
       if this_prefilter ne last_prefilter then undefine, this_init
       
       ref_fn = ref_states_unique[iref].filename
-      print, 'loading reference file: ', ref_fn
+      red_progressbar, iref, n_elements(ref_states_unique), clock = clock, /predict $
+                       , 'load ref im '+file_basename(ref_fn)
+;      print, 'loading reference file: ', ref_fn
       ref_img = red_readdata( ref_fn, /silent )
       
       cam_fn = cam_states[cam_idx].filename
-      print, 'loading camera file: ', cam_fn
+      red_progressbar, iref, n_elements(ref_states_unique), clock = clock, /predict $
+                       , 'load cam im '+file_basename(cam_fn)
+;      print, 'loading camera file: ', cam_fn
       cam_img = red_readdata( cam_fn, /silent )
       
       rdims = size( ref_img, /dim )
