@@ -51,13 +51,16 @@
 ;
 ;   2017-07-06 : THI. Use rdx_readdata to also support compressed data.
 ;
+;   2016-10-05 : MGL. Selection list now includes mu and number of
+;                files in directories and has a default selection
+;                based on those numbers.
 ; 
 ; 
 ;-
 pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+': '
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Logging
   help, /obj, self, output = selfinfo 
@@ -78,17 +81,37 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
     else dirstr = dirs[0]
   endelse
 
-  ;; Select data folder containing a quiet-Sun-disk-center dataset
+  ;; Find some info about the directories
+  fnames = strarr(Ndirs)
+  times = dblarr(Ndirs)
+  Nfiles = lonarr(Ndirs)
+  for idir = 0, Ndirs-1 do begin
+    fnames[idir] = (file_search(dirs[idir]+'/Chromis-W/*fits', count = nf))[0]
+    Nfiles[idir] = nf
+    hdr = red_readhead(fnames[idir])
+    red_fitspar_getdates, hdr, date_beg = date_beg 
+    times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
+  endfor                        ; idir
+  red_logdata, self.isodate, times, mu = mu, zenithangle = za
 
-  idx = 0L
-  if(Ndirs gt 1) then begin
-    print, inam+'Time stamps found:'
-    for ii = 0, Ndirs-1 do print, '   '+red_stri(ii)+' -> '+file_basename(dirs[ii])
-    read, idx, prompt='Please select folder ID: '
+  ;; Select data folder containing a quiet-Sun-disk-center dataset
+  default = 0
+  findx = where(Nfiles lt median(Nfiles) and mu gt 0.9, Nwhere)
+  if Nwhere gt 0 then begin
+    tmp = min(abs(times[findx]-red_time2double('13:00:00')), ml)
+    default = findx[ml]
   endif
+  stop
+  selectionlist = file_basename(dirs) $
+                  + ' (µ=' +string(mu,format='(f4.2)') + ', #files='+strtrim(Nfiles,2) + ')'
+  tmp = red_select_subset(selectionlist $
+                          , qstring = 'Select data to be processed' $
+                          , count = Nselect, indx = sindx, default = default)
+  idx = sindx[0]
+  print, inam + ' : Will process the following data:'
+  print, selectionlist[idx], format = '(a0)'
   dirs = dirs[idx]
-  print, inam+'Selected -> '+dirs
-  
+
   ;; Get files and states
   
   cams = *self.cameras
@@ -109,7 +132,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
   if(n_elements(scan) eq 0) then scan = 0
   idx=where(states[*].scannumber eq scan, ct)
   if(ct eq 0) then begin
-    print, inam+'ERROR, invalid scan number'
+    print, inam+' : ERROR, invalid scan number'
     return
   endif
   
@@ -138,7 +161,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
     darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+states1[istate].cam_settings+'.dark.fits', count=ct)
 
     if(ct ne 1) then begin
-      print, inam+'ERROR, cannot find dark file'
+      print, inam+' : ERROR, cannot find dark file'
       stop
     endif
     dd = red_readdata(darkfile, /silent)
