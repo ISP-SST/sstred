@@ -85,25 +85,49 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
   fnames = strarr(Ndirs)
   times = dblarr(Ndirs)
   Nfiles = lonarr(Ndirs)
+  xs = 1920
+  ys = 1200
+  ims = fltarr(xs, ys, Ndirs)
+  contr = fltarr(Ndirs)
   for idir = 0, Ndirs-1 do begin
     fnames[idir] = (file_search(dirs[idir]+'/Chromis-W/*fits', count = nf))[0]
+    ims[0, 0, idir] = total(red_readdata(fnames[idir], /silent), 3)
+    contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
     Nfiles[idir] = nf
     hdr = red_readhead(fnames[idir])
     red_fitspar_getdates, hdr, date_beg = date_beg 
     times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
   endfor                        ; idir
+
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
 
-  ;; Select data folder containing a quiet-Sun-disk-center dataset
-  default = 0
-  findx = where(Nfiles lt median(Nfiles) and mu gt 0.9, Nwhere)
-  if Nwhere gt 0 then begin
-    tmp = min(abs(times[findx]-red_time2double('13:00:00')), ml)
-    default = findx[ml]
-  endif
-  stop
   selectionlist = file_basename(dirs) $
                   + ' (µ=' +string(mu,format='(f4.2)') + ', #files='+strtrim(Nfiles,2) + ')'
+  mos = fltarr(xs/5*Ndirs, ys/5)
+  for idir = 0, Ndirs-1 do mos[idir*xs/5:(idir+1)*xs/5-1, *] $
+     = rebin(ims[*, *, idir], xs/5, ys/5)/median(ims[*, *, idir])
+                                   
+  ;; Select data folder containing a quiet-Sun-disk-center dataset
+
+  ;; Select default
+  default = 0
+  ;; Deselect directories with many files, far from disc center, with
+  ;; large contrast (possibly spots?).
+  findx = where(Nfiles lt 150 and mu gt 0.9 and contr lt median(contr), Nwhere)
+  if Nwhere gt 0 then begin
+    ;; Have to pick one!
+    tmp = min(abs(times[findx]-red_time2double('13:00:00')), ml) ; Near local noon good?
+    default = findx[ml]
+  endif
+
+  ;; Display some visual hints
+  scrollwindow, xs = xs/5*Ndirs, ys = ys/5
+  tv, bytscl(mos, .6, 1.4)
+  for idir = 0, Ndirs-1 do $
+     cgtext, 5+idir*xs/5, 5, align = 0, /device, color = default eq idir?'cyan':'green' $
+             , strtrim(idir, 2)+' : '+red_strreplace(selectionlist[idir], 'µ', '$\mu$')
+
+  ;; Do the selection
   tmp = red_select_subset(selectionlist $
                           , qstring = 'Select data to be processed' $
                           , count = Nselect, indx = sindx, default = default)
