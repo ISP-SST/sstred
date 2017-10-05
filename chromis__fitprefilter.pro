@@ -20,6 +20,11 @@
 ; 
 ; 
 ; :Keywords:
+;
+;    dir : in, optional, type=string
+;
+;        Set this to the time-stamp directory to use and bypass the
+;        selection dialogue. 
 ; 
 ;    mask : in, optional, type=boolean
 ;
@@ -53,11 +58,12 @@
 ;
 ;   2016-10-05 : MGL. Selection list now includes mu and number of
 ;                files in directories and has a default selection
-;                based on those numbers.
+;                based on those numbers. Also display mosaic of FOV
+;                for the different directories. New keyword dir.
 ; 
 ; 
 ;-
-pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
+pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, dir = dir
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -66,76 +72,89 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
 
-  if ~ptr_valid(self.data_dirs) then begin
-    print, inam+' : ERROR : undefined data_dir'
-    return
-  endif
-  dirs = *self.data_dirs
+  if n_elements(dir) eq 0 then begin
+    
+    if ~ptr_valid(self.data_dirs) then begin
+      print, inam+' : ERROR : undefined data_dir'
+      return
+    endif
+    dirs = *self.data_dirs
 
-  Ndirs = n_elements(dirs)
-  if( Ndirs eq 0) then begin
-    print, inam+' : ERROR : no directories defined'
-    return
+    Ndirs = n_elements(dirs)
+    if( Ndirs eq 0) then begin
+      print, inam+' : ERROR : no directories defined'
+      return
+    endif else begin
+      if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+      else dirstr = dirs[0]
+    endelse
+
+    ;; Find some info about the directories
+    fnames = strarr(Ndirs)
+    times = dblarr(Ndirs)
+    Nfiles = lonarr(Ndirs)
+    xs = 1920
+    ys = 1200
+    ims = fltarr(xs, ys, Ndirs)
+    contr = fltarr(Ndirs)
+    for idir = 0, Ndirs-1 do begin
+      fnames[idir] = (file_search(dirs[idir]+'/Chromis-W/*fits', count = nf))[0]
+      ims[0, 0, idir] = total(red_readdata(fnames[idir], /silent), 3)
+      contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
+      Nfiles[idir] = nf
+      hdr = red_readhead(fnames[idir])
+      red_fitspar_getdates, hdr, date_beg = date_beg 
+      times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
+    endfor                      ; idir
+
+    red_logdata, self.isodate, times, mu = mu, zenithangle = za
+
+    selectionlist = file_basename(dirs) $
+                    + ' (µ=' +string(mu,format='(f4.2)') + ', #files='+strtrim(Nfiles,2) + ')'
+    mos = fltarr(xs/5*Ndirs, ys/5)
+    for idir = 0, Ndirs-1 do mos[idir*xs/5:(idir+1)*xs/5-1, *] $
+       = rebin(ims[*, *, idir], xs/5, ys/5)/median(ims[*, *, idir])
+    
+    ;; Select data folder containing a quiet-Sun-disk-center dataset
+
+    ;; Select default
+    default = 0
+    ;; Deselect directories with many files, far from disc center, with
+    ;; large contrast (possibly spots?).
+    findx = where(Nfiles lt 150 and mu gt 0.9 and contr lt median(contr), Nwhere)
+    if Nwhere gt 0 then begin
+      ;; Have to pick one!
+      tmp = min(abs(times[findx]-red_time2double('13:00:00')), ml) ; Near local noon good?
+      default = findx[ml]
+    endif
+
+    ;; Display some visual hints
+    scrollwindow, xs = xs/5*Ndirs, ys = ys/5
+    tv, bytscl(mos, .6, 1.4)
+    for idir = 0, Ndirs-1 do $
+       cgtext, 5+idir*xs/5, 5, align = 0, /device, color = default eq idir?'cyan':'green' $
+               , strtrim(idir, 2)+' : '+red_strreplace(selectionlist[idir], 'µ', '$\mu$')
+
+    ;; Do the selection
+    tmp = red_select_subset(selectionlist $
+                            , qstring = 'Select data to be processed' $
+                            , count = Nselect, indx = sindx, default = default)
+    idx = sindx[0]
+    print, inam + ' : Will process the following data:'
+    print, selectionlist[idx], format = '(a0)'
+    dirs = dirs[idx]
   endif else begin
-    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-    else dirstr = dirs[0]
+    
+    if file_test(dir) then begin
+      dirs = dir
+    endif else begin
+      ;; Maybe just the timestamp dir?
+      td = file_dirname((*self.data_dirs)[0])
+      dirs = td + '/' + dir
+    endelse
+    
   endelse
-
-  ;; Find some info about the directories
-  fnames = strarr(Ndirs)
-  times = dblarr(Ndirs)
-  Nfiles = lonarr(Ndirs)
-  xs = 1920
-  ys = 1200
-  ims = fltarr(xs, ys, Ndirs)
-  contr = fltarr(Ndirs)
-  for idir = 0, Ndirs-1 do begin
-    fnames[idir] = (file_search(dirs[idir]+'/Chromis-W/*fits', count = nf))[0]
-    ims[0, 0, idir] = total(red_readdata(fnames[idir], /silent), 3)
-    contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
-    Nfiles[idir] = nf
-    hdr = red_readhead(fnames[idir])
-    red_fitspar_getdates, hdr, date_beg = date_beg 
-    times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
-  endfor                        ; idir
-
-  red_logdata, self.isodate, times, mu = mu, zenithangle = za
-
-  selectionlist = file_basename(dirs) $
-                  + ' (µ=' +string(mu,format='(f4.2)') + ', #files='+strtrim(Nfiles,2) + ')'
-  mos = fltarr(xs/5*Ndirs, ys/5)
-  for idir = 0, Ndirs-1 do mos[idir*xs/5:(idir+1)*xs/5-1, *] $
-     = rebin(ims[*, *, idir], xs/5, ys/5)/median(ims[*, *, idir])
-                                   
-  ;; Select data folder containing a quiet-Sun-disk-center dataset
-
-  ;; Select default
-  default = 0
-  ;; Deselect directories with many files, far from disc center, with
-  ;; large contrast (possibly spots?).
-  findx = where(Nfiles lt 150 and mu gt 0.9 and contr lt median(contr), Nwhere)
-  if Nwhere gt 0 then begin
-    ;; Have to pick one!
-    tmp = min(abs(times[findx]-red_time2double('13:00:00')), ml) ; Near local noon good?
-    default = findx[ml]
-  endif
-
-  ;; Display some visual hints
-  scrollwindow, xs = xs/5*Ndirs, ys = ys/5
-  tv, bytscl(mos, .6, 1.4)
-  for idir = 0, Ndirs-1 do $
-     cgtext, 5+idir*xs/5, 5, align = 0, /device, color = default eq idir?'cyan':'green' $
-             , strtrim(idir, 2)+' : '+red_strreplace(selectionlist[idir], 'µ', '$\mu$')
-
-  ;; Do the selection
-  tmp = red_select_subset(selectionlist $
-                          , qstring = 'Select data to be processed' $
-                          , count = Nselect, indx = sindx, default = default)
-  idx = sindx[0]
-  print, inam + ' : Will process the following data:'
-  print, selectionlist[idx], format = '(a0)'
-  dirs = dirs[idx]
-
+  
   ;; Get files and states
   
   cams = *self.cameras
