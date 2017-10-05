@@ -41,6 +41,8 @@
 ;                  indx for the selected indices.
 ;
 ;     2016-09-26 : MGL. If none selected, undefine indx.
+;
+;     2016-10-05 : MGL. Allow non-string defaults.
 ; 
 ; 
 ; 
@@ -55,7 +57,7 @@ function red_select_subset, list, count = count, help = help, qstring = qstring,
   endif
 
   if n_elements(qstring) eq 0 then qstring = 'Select some'
-  if n_elements(default) eq 0 then default = '*'
+  if n_elements(default) eq 0 then dflt = '*' else dflt = strtrim(default, 2)
 
   numbers = string(indgen(Nelements), format = '(i4)')
   
@@ -70,10 +72,10 @@ function red_select_subset, list, count = count, help = help, qstring = qstring,
      print, '  3. An asterisk to select the entire list.'
      print, '  4. An dash to select nothing.'
   endif 
-  read, qstring+' [default='+default+']: ', selection
+  read, qstring+' [default='+dflt+']: ', selection
 
-  if n_elements(selection) eq 0 then selection = default
-  if selection eq '' then selection = default
+  if n_elements(selection) eq 0 then selection = dflt
+  if selection eq '' then selection = dflt
 
   case selection of 
     
