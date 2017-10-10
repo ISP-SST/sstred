@@ -35,9 +35,6 @@
 ; 
 ;    2017-10-10 : MGL. First version.
 ; 
-; 
-; 
-; 
 ;-
 pro chromis::plot_pointing, file = file
 
@@ -53,14 +50,8 @@ pro chromis::plot_pointing, file = file
   psym_data = 16
 
   symsize_calib = 0.3
-  symsize_data = .5
+  symsize_data = .7
 
-  ;; Parameters to convert from time to wavelengths to plot colors.
-  col_tbeg = 7                  ; hours
-  col_tend = 19                 ; hours
-  col_wbeg = 380.               ; nm
-  col_wend = 700.               ; nm
-  
   ;; Get pointing data
   red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
 
@@ -68,6 +59,31 @@ pro chromis::plot_pointing, file = file
                             , title = 'SST '+self.isodate + ' pointing'
 
   dirs = file_search('dir-analysis/'+self.isodate+'/*', count = Ndirs)
+
+
+  ;; Parameters to convert from time to wavelengths to plot colors.
+  col_wbeg = 400.               ; nm
+  col_wend = 650.               ; nm
+  col_tbeg = 24.
+  col_tend = 0.
+  for idir = 0, Ndirs-1 do begin
+    if file_basename(dirs[idir]) eq 'CHROMIS-data' $
+       or file_basename(dirs[idir]) eq 'Science' then begin
+      subdirs = file_search(dirs[idir]+'/??:??:??', count = Nsubdirs)
+      if Nsubdirs gt 0 then begin
+        for isubdir = 0, Nsubdirs-1 do begin
+          openr, lun, /get_lun, subdirs[isubdir]+'/interval.txt'
+          readf, lun, tbeg
+          readf, lun, tend
+          free_lun, lun
+          col_tbeg <= tbeg
+          col_tend >= tend
+        endfor                  ; isubdir
+      endif
+    endif
+  endfor                        ; idir
+  col_tbeg = floor(col_tbeg)
+  col_tend = ceil(col_tend)
 
   for idir = 0, Ndirs-1 do begin
 
@@ -106,7 +122,13 @@ pro chromis::plot_pointing, file = file
       
     endif
   endfor                ; idir
-  
-  if n_elements(file) gt 0 then cgPS_Close
+
+  cgcolorbar, /vertical, divisions = col_tend-col_tbeg, minrange = col_tbeg, maxrange = col_tend $
+              , palette = red_WavelengthToRGB(findgen(256)/256.*(col_wend-col_wbeg)+col_wbeg) $
+              , position = [0.88, !y.window[0], 0.90, !y.window[1]], format = '(i0)'
+
+  cgtext, 0.88, !y.window[0]-.03, 'UT', /normal, align = 1, charsize = 1.2
+
+  if keyword_set(file) gt 0 then cgPS_Close
 
 end
