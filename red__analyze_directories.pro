@@ -168,7 +168,7 @@ pro red::analyze_directories, force = force
            
            if keyword_set(force) or ~file_test(scanfile) then begin
 
-              print, inam + ' : Analyse the scans in '+timedirs[idir]
+              print, inam + ' : Analyze the scans in '+timedirs[idir]
               
               fnames = file_search(root_dir+timedirs[idir]+cdir + '/*cam*', count = Nfile)
               
@@ -176,7 +176,7 @@ pro red::analyze_directories, force = force
 
                  ;; Write the scanfile
                  openw, flun, /get_lun, scanfile
-                 
+
                  self -> extractstates, fnames, states
 ;nums = filenos, scan = scannos, pref = prefilts
                  
