@@ -49,6 +49,8 @@
 ;    2017-06-05 : MGL. Remove WCS keywords.
 ;
 ;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
+;
+;    2017-10-06 : MGL. Headers for tabulating spatial coordinates.
 ; 
 ;-
 pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
@@ -83,31 +85,49 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   red_fitsaddkeyword, hdr, 'PC5_5', 1.0, 'No rotations', anchor = anchor 
 
   ;; Spatial coordinate 1
-  red_fitsaddkeyword, hdr, 'CTYPE1', 'INSX-TAN', 'Instrument X', anchor = anchor
+;;  red_fitsaddkeyword, hdr, 'CTYPE1', 'INSX-TAN', 'Instrument X', anchor = anchor
+  red_fitsaddkeyword, hdr, 'CTYPE1', 'HPLN-TAB', 'SOLAR X', anchor = anchor
 ;  red_fitsaddkeyword, hdr, 'CTYPE1', 'HPLN-TAN', 'SOLAR X'; , anchor = anchor , after = 'FILENAME'
   red_fitsaddkeyword, hdr, 'CUNIT1', 'arcsec', 'Unit along axis 1', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'CDELT1', float(self.image_scale), '[arcsec] x-coordinate resolution', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'CRPIX1', (Nx+1.0)/2.0, 'Center pixel in x direction', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'CRVAL1', 0., 'Coord. 1 coordinates start', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CDELT1', float(self.image_scale), '[arcsec] x-coordinate resolution', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CRPIX1', (Nx+1.0)/2.0, 'Center pixel in x direction', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CRVAL1', 0., 'Coord. 1 coordinates start', anchor = anchor 
 ;  red_fitsaddkeyword, hdr, 'CRVAL1', ??, '[arcsec] Center x solar coordinate', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CNAME1', 'Spatial X', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PS1_0', 'WCS-TAB', 'EXTNAME; EXTVER=EXTLEVEL=1 is default', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PS1_1', 'POINT+WAVE+TIME', 'TTYPE for column w/coordinates', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PV1_3', 1, 'Coord. 1 is tabulated coordinate number 1', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CRPIX1', 0, 'Unity transform', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CRVAL1', 0, 'Unity transform', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CDELT1', 1, 'Unity transform', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CSYER1', 60, 'Orientation unknown', anchor = anchor 
 
   ;; Spatial coordinate 2
-  red_fitsaddkeyword, hdr, 'CTYPE2', 'INSY-TAN', 'Instrument Y', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CTYPE2', 'INSY-TAN', 'Instrument Y', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CTYPE2', 'HPLT-TAB', 'SOLAR Y', anchor = anchor 
 ;  red_fitsaddkeyword, hdr, 'CTYPE2', 'HPLT-TAN', '[arcsec]', 'SOLAR Y', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CUNIT2', 'arcsec', 'Unit along axis 2', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'CDELT2', float(self.image_scale), '[arcsec] y-coordinate resolution', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'CRPIX2', (Ny+1.0)/2.0, 'Center pixel in y direction', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'CRVAL2', 0., 'Coord. 2 coordinates start', anchor = anchor 
-;  red_fitsaddkeyword, hdr, 'CRVAL2', ??, '[arcsec] Center y solar coordinate', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CDELT2', float(self.image_scale), '[arcsec] y-coordinate resolution', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CRPIX2', (Ny+1.0)/2.0, 'Center pixel in y direction', anchor = anchor 
+;;  red_fitsaddkeyword, hdr, 'CRVAL2', 0., 'Coord. 2 coordinates start', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CNAME2', 'Spatial Y', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PS2_0', 'WCS-TAB', 'EXTNAME; EXTVER=EXTLEVEL=1 is default', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PS2_1', 'POINT+WAVE+TIME', 'TTYPE for column w/coordinates', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PV2_3', 2, 'Coord. 2 is tabulated coordinate number 2', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CRPIX2', 0, 'Unity transform', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CRVAL2', 0, 'Unity transform', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CDELT2', 1, 'Unity transform', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'CSYER2', 60, 'Orientation unknown', anchor = anchor 
+
 
   ;; Tuning, tabulated wavelength
   red_fitsaddkeyword, hdr, 'CTYPE3', 'WAVE-TAB', 'Wavelength, function of tuning and scan number', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CNAME3', 'Wavelength', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CUNIT3', 'nm', 'Wavelength unit, tabulated for dim. 3 and 5', anchor = anchor 
   red_fitsaddkeyword, hdr, 'PS3_0', 'WCS-TAB', 'EXTNAME; EXTVER=EXTLEVEL=1 is default', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'PS3_1', 'WAVE+TIME', 'TTYPE for column w/coordinates', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PS3_1', 'POINT+WAVE+TIME', 'TTYPE for column w/coordinates', anchor = anchor 
 ;  red_fitsaddkeyword, hdr, 'PS3_2', 'WAVE-INDEX', 'TTYPE for INDEX, anchor = anchor 
-  red_fitsaddkeyword, hdr, 'PV3_3', 1, 'Coord. 3 is tabulated coordinate number 1', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PV3_3', 3, 'Coord. 3 is tabulated coordinate number 3', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CRPIX3', 0, 'Unity transform', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CRVAL3', 0, 'Unity transform', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CDELT3', 1, 'Unity transform', anchor = anchor 
@@ -124,9 +144,9 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   red_fitsaddkeyword, hdr, 'CNAME5', 'Time since DATEREF, increases with dim. 3 and 5', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CUNIT5', 's', anchor = anchor 
   red_fitsaddkeyword, hdr, 'PS5_0', 'WCS-TAB',   'EXTNAME; EXTVER=EXTLEVEL=1 is default', anchor = anchor 
-  red_fitsaddkeyword, hdr, 'PS5_1', 'WAVE+TIME', 'TTYPE for column w/coordinates', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PS5_1', 'POINT+WAVE+TIME', 'TTYPE for column w/coordinates', anchor = anchor 
 ;  red_fitsaddkeyword, hdr,'PS5_2', 'TIME-INDEX','TTYPE for INDEX, anchor = anchor 
-  red_fitsaddkeyword, hdr, 'PV5_3', 2, 'Coord. 5 is tabulated coordinate number 2', anchor = anchor 
+  red_fitsaddkeyword, hdr, 'PV5_3', 4, 'Coord. 5 is tabulated coordinate number 4', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CRPIX5', 0, 'Unity transform', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CRVAL5', 0, 'Unity transform', anchor = anchor 
   red_fitsaddkeyword, hdr, 'CDELT5', 1, 'Unity transform', anchor = anchor 
