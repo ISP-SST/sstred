@@ -42,9 +42,10 @@
 ; 
 ;    2017-09-07 : MGL. Add WCS coordinates and some variable-keywords
 ;                 to the file. Changed red_fitsaddpar -->
-;                 red_fitsaddkeyword.  
-; 
-; 
+;                 red_fitsaddkeyword.   
+;
+;    2017-09-28 : MGL. WCS coordinates as a single struct parameter to
+;                 fitscube_addwcs.
 ; 
 ; 
 ;-
@@ -317,10 +318,16 @@ pro chromis::make_wb_cube, dir $
   t_array[0] = red_time2double(time)                   ; In [s] since midnight
 ;        w_array = fltarr(1)
   ;;w_array[0] = wstates.tun_wavelength
-  w_array = replicate(float(prefilter)/10., 1, Nscans) ; In [nm]
-  hpln_array = dblarr(2, 2, 1, Nscans)                 ; HPLN position for corners of FOV
-  hplt_array = dblarr(2, 2, 1, Nscans)                 ; HPLT position for corners of FOV
-  
+;  w_array = replicate(float(prefilter)/10., 1, Nscans) ; In [nm]
+;  hpln_array = dblarr(2, 2, 1, Nscans)                 ; HPLN position for corners of FOV
+;  hplt_array = dblarr(2, 2, 1, Nscans)                 ; HPLT position for corners of FOV
+
+  wcs = replicate({  wave:dblarr(2,2) $
+                     , hplt:dblarr(2,2) $
+                     , hpln:dblarr(2,2) $
+                     , time:dblarr(2,2) $
+                  }, 1, Nscans)
+
 ;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
 ;                                                         , comment:'time-coordinates'}, $
 ;                                       WAVE-TABULATION: {val:w_array $
@@ -363,8 +370,12 @@ pro chromis::make_wb_cube, dir $
                         , Nx, Ny, self.image_scale $
                         , hpln, hplt
       
-    hpln_array[*, *, 0, iscan] = hpln
-    hplt_array[*, *, 0, iscan] = hplt
+    wcs[0, iscan].wave = float(prefilter)/10.
+    wcs[0, iscan].time = t_array[iscan]
+    wcs[0, iscan].hpln = hpln
+    wcs[0, iscan].hplt = hplt
+;    hpln_array[*, *, 0, iscan] = hpln
+;    hplt_array[*, *, 0, iscan] = hplt
 
   endfor                        ; iscan
   free_lun, lun
@@ -447,12 +458,13 @@ pro chromis::make_wb_cube, dir $
   
 
   ;; Add the WCS coordinates
-  self -> fitscube_addwcs, odir + ofil $
-                           , hpln_array, hplt_array $
-                           , transpose(rebin(w_array, 1, Nscans, 2, 2, /sample) $
-                                       , [2, 3, 0, 1]) $
-                           , transpose(rebin(t_array, 1, Nscans, 2, 2, /sample) $
-                                       , [2, 3, 0, 1])
+  self -> fitscube_addwcs, odir + ofil, wcs
+;  $
+;                           , hpln_array, hplt_array $
+;                           , transpose(rebin(w_array, 1, Nscans, 2, 2, /sample) $
+;                                       , [2, 3, 0, 1]) $
+;                           , transpose(rebin(t_array, 1, Nscans, 2, 2, /sample) $
+;                                       , [2, 3, 0, 1])
   
   ;; Add variable keywords.
   self -> fitscube_addvarkeyword, odir + ofil $
@@ -497,6 +509,5 @@ pro chromis::make_wb_cube, dir $
     help, r0_values
   endif
   
-
 
 end
