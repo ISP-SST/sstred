@@ -117,6 +117,8 @@
 ;   2017-06-19 : THI. Added extraclip keyword to allow for user-defined edge trim for each edge
 ;                Changed default margin from 5 to 0.
 ;
+;   2017-10-10 : THI. Bugfix: the extraclip was wrongly applied to mirrored channels
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -185,8 +187,8 @@ pro red::prepmomfbd, wb_states = wb_states $
       stop
     end
   endcase
-
-  eclip += margin      ; add margin to extraclip along all edges.
+  eclip = abs(eclip)    ; force positive values in extraclip
+  eclip += abs(margin)  ; add margin to extraclip along all edges.
    
   for fff = 0, nd - 1 do begin
 
@@ -261,9 +263,14 @@ pro red::prepmomfbd, wb_states = wb_states $
            tclip = acl[1]
            rclip = acl[2]
 
-           sim_roi = cl[*,0]
-           sim_roi[[0,2]] += eclip[[0,2]]      ; shrink the common FOV by extraclip.
+           sim_roi = intarr(4)
+           sim_roi[0] = min(cl[0:1,0])          ; sim_roi has to be normal-ordered, i.e. firstVal < lastVal
+           sim_roi[1] = max(cl[0:1,0])
+           sim_roi[2] = min(cl[2:3,0])
+           sim_roi[3] = max(cl[2:3,0])
+           sim_roi[[0,2]] += eclip[[0,2]]       ; shrink the common FOV by extraclip.
            sim_roi[[1,3]] -= eclip[[1,3]]
+
            ; the patch coordinates are relative to the align-clip area
            sim_x = rdx_segment( 0, abs(sim_roi[1]-sim_roi[0]), numpoints, /momfbd )
            sim_y = rdx_segment( 0, abs(sim_roi[3]-sim_roi[2]), numpoints, /momfbd )
