@@ -132,6 +132,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
     printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
     printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
+    printf, Slun, '; a -> plot_pointing ; Plot pointing throughout the day.'
   endif
 
   print, 'Cameras'
