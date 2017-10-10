@@ -38,9 +38,11 @@
 ;-
 pro chromis::plot_pointing, file = file
 
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  
   if n_elements(file) gt 0 then begin
     if size(1,/tname) ne 'STRING' && keyword_set(file) then begin
-      cgPS_Open, 'dir-analysis/pointing.png', /decomposed
+      cgPS_Open, 'dir-analysis/pointing_'+self.isodate+'.png', /decomposed
     endif else begin
       cgPS_Open, file, /decomposed
     endelse
@@ -82,53 +84,59 @@ pro chromis::plot_pointing, file = file
       endif
     endif
   endfor                        ; idir
-  col_tbeg = floor(col_tbeg)
-  col_tend = ceil(col_tend)
 
-  for idir = 0, Ndirs-1 do begin
-
-    subdirs = file_search(dirs[idir]+'/??:??:??', count = Nsubdirs)
+  if col_tbeg lt col_tend then begin
     
-    if Nsubdirs gt 0 then begin
-    
-      for isubdir = 0, Nsubdirs-1 do begin
+    col_tbeg = floor(col_tbeg)
+    col_tend = ceil(col_tend)
 
-        openr, lun, /get_lun, subdirs[isubdir]+'/interval.txt'
-        readf, lun, tbeg
-        readf, lun, tend
-        free_lun, lun
+    for idir = 0, Ndirs-1 do begin
 
-        indx = where(time_pig ge tbeg*3600 and time_pig le tend*3600, count)
-
-        if count gt 0 then begin
-
-          
-          if file_basename(dirs[idir]) eq 'CHROMIS-data' $
-             or file_basename(dirs[idir]) eq 'Science' then begin
-            psym = psym_data
-            symsize = symsize_data
-            col_wavelengths = (time_pig[indx]/3600.-col_tbeg)/(col_tend-col_tbeg) $
-                              * (col_wend-col_wbeg) + col_wbeg
-            colors = red_WavelengthToRGB(col_wavelengths, /num)
-          endif else begin
-            psym = psym_calib
-            symsize = symsize_calib
-            colors = 0
-          endelse
-        endif
-        red_plot_diskcoordinates, /over, metadata_pig, indx = indx, rsun=rsun, rplot=1.01 $
-                                  , color = colors, psym = psym, symsize = symsize
-      endfor
+      subdirs = file_search(dirs[idir]+'/??:??:??', count = Nsubdirs)
       
-    endif
-  endfor                ; idir
+      if Nsubdirs gt 0 then begin
+        
+        for isubdir = 0, Nsubdirs-1 do begin
 
-  cgcolorbar, /vertical, divisions = col_tend-col_tbeg, minrange = col_tbeg, maxrange = col_tend $
-              , palette = red_WavelengthToRGB(findgen(256)/256.*(col_wend-col_wbeg)+col_wbeg) $
-              , position = [0.88, !y.window[0], 0.90, !y.window[1]], format = '(i0)'
+          openr, lun, /get_lun, subdirs[isubdir]+'/interval.txt'
+          readf, lun, tbeg
+          readf, lun, tend
+          free_lun, lun
 
-  cgtext, 0.88, !y.window[0]-.03, 'UT', /normal, align = 1, charsize = 1.2
+          indx = where(time_pig ge tbeg*3600 and time_pig le tend*3600, count)
 
+          if count gt 0 then begin
+            
+            if file_basename(dirs[idir]) eq 'CHROMIS-data' $
+               or file_basename(dirs[idir]) eq 'Science' then begin
+              psym = psym_data
+              symsize = symsize_data
+              col_wavelengths = (time_pig[indx]/3600.-col_tbeg)/(col_tend-col_tbeg) $
+                                * (col_wend-col_wbeg) + col_wbeg
+              colors = red_WavelengthToRGB(col_wavelengths, /num)
+            endif else begin
+              psym = psym_calib
+              symsize = symsize_calib
+              colors = 0
+            endelse
+
+            red_plot_diskcoordinates, /over, metadata_pig, indx = indx, rsun=rsun, rplot=1.01 $
+                                      , color = colors, psym = psym, symsize = symsize
+          endif
+
+        endfor
+        
+      endif
+    endfor                      ; idir
+  
+    cgcolorbar, /vertical, divisions = col_tend-col_tbeg, minrange = col_tbeg, maxrange = col_tend $
+                , palette = red_WavelengthToRGB(findgen(256)/256.*(col_wend-col_wbeg)+col_wbeg) $
+                , position = [0.88, !y.window[0], 0.90, !y.window[1]], format = '(i0)'
+
+    cgtext, 0.88, !y.window[0]-.03, 'UT', /normal, align = 1, charsize = 1.2
+
+  endif
+  
   if keyword_set(file) gt 0 then cgPS_Close
 
 end
