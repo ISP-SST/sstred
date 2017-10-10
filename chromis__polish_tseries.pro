@@ -61,12 +61,6 @@
 ;   
 ;   
 ;   
-;    fitsoutput : in, optional, type=boolean
-;   
-;      Set this to get output in a FITS file.
-;   
-;   
-;   
 ;    negang  : 
 ;   
 ;   
@@ -114,28 +108,17 @@
 ;   2016-11-03 : MGL. Removed keywords ext_time, ext_date, ang, and
 ;                shift. 
 ;
-;   2016-11-30 : MGL. New keyword fitsoutput.
-;
 ;   2017-01-30 : JdlCR. Allow to specify a mean offset angle to, e.g.,
 ;                create the cube aligned with the solar north. The
 ;                angle is in radians.
 ;
 ;   2017-03-20 : MGL. New keyword momfbddir.
 ;
-;   2017-03-24 : MGL. Add prpara info.
-;
 ;   2017-04-27 : MGL. New defaults for clip and tile.
 ;
-;   2017-06-05 : MGL. Works with /fitsoutput now. Add 'BUNIT' and
-;                'BTYPE' to FITS header.
-;
-;   2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
-;
 ;-
-pro chromis::polish_tseries, blur = blur $
-                             , clip = clip $
+pro chromis::polish_tseries, clip = clip $
                              , crop = crop $
-                             , fitsoutput = fitsoutput $
                              , fullframe = fullframe $
                              , momfbddir = momfbddir $
                              , negang = negang $
@@ -156,19 +139,9 @@ pro chromis::polish_tseries, blur = blur $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  if keyword_set(fitsoutput) then begin
-    ;; Allow only in developer mode for now
-    if ~self.developer_mode then begin
-      print, inam + ' : fitsoutput allowed only in developer mode'
-      retall
-    endif
-  endif
-  
   ;; Make prpara
-  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
   if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip         
   if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop         
-  if n_elements(fitsoutput  ) ne 0 then red_make_prpara, prpara, 'fitsoutput'   , fitsoutput   
   if n_elements(fullframe   ) ne 0 then red_make_prpara, prpara, 'fullframe'    , fullframe    
   if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
   if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
@@ -415,10 +388,7 @@ pro chromis::polish_tseries, blur = blur $
           cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], ang[iscan], shift[0,iscan] $
                                         , shift[1,iscan], full=ff)
         endfor                   ; iscan
-        
-        ;; Note that the fullsize option changes the FOV of the array.
-        ;; This may make it necessary to adjust some header info.
- 
+
       endif else ff = 0
       
       ;; De-stretch
@@ -453,7 +423,6 @@ pro chromis::polish_tseries, blur = blur $
       ;; Prepare for making output file names
       midpart = prefilters[ipref] + '_' + datestamp + '_scans=' $
                 + red_collapserange(uscans, ld = '', rd = '')
-      if keyword_set(blur) then midpart += '_blurred'
 
       ;; Save angles, shifts and de-stretch grids
       odir = self.out_dir + '/calib_tseries/'
@@ -464,177 +433,16 @@ pro chromis::polish_tseries, blur = blur $
             , tstep, clip, tile, scale, ang, shift, grid, time, date $
             , wfiles, tmean, crop, mang, x0, x1, y0, y1, ff, nd
 
-      ;; Sample saved quantities with comments about their use in make_crispex:
-      ;;
-      ;; TSTEP           LONG      =            5          [Not used]
-      ;; CLIP            INT       = Array[4]              [Not used]
-      ;; TILE            INT       = Array[4]              [Not used]
-      ;; SCALE           FLOAT     =       26.3852         [Not used]
-      ;; ANG             DOUBLE    = Array[5]              [Yes]
-      ;; SHIFT           DOUBLE    = Array[2, 5]           [Yes]
-      ;; GRID            FLOAT     = Array[5, 2, 40, 25]   [Yes]
-      ;; TIME            STRING    = Array[5]              [Not used]
-      ;; DATE            STRING    = Array[5]              [Not used]
-      ;; WFILES          STRING    = Array[5]              [Yes]
-      ;; TMEAN           FLOAT     = Array[5]              [Yes]
-      ;; CROP            INT       = Array[4]              [Not used]
-      ;; MANG            DOUBLE    =        6.2653633      [Not used]
-      ;; X0              LONG      =            0          [Yes]
-      ;; X1              LONG      =         1831          [Yes]
-      ;; Y0              LONG      =            0          [Yes]
-      ;; Y1              LONG      =         1151          [Yes]
-      ;; FF              INT       =        0              [Yes] ( = [maxangle, mdx0, mdx1, mdy0, mdy1] if fullframe)
-      ;; ND              UNDEFINED = <Undefined>           [Yes] (2d array if fullframe)
-      ;;
-      ;; (Some of) these quantities should really go into the metadata
-      ;; of the FITS file for two reasons: documentation and use in
-      ;; make_crispex. The latter so we can avoid using the save file.
-      ;;
-      ;; Already in prpara: clip, crop, fullframe (same as ff?), grid.
-      ;; So we could parse prpara to get those. Can make_crispex
-      ;; calculate x0,x1,y0,y1 from naxis1 and naxis2 and any of the
-      ;; other parameters?
-
-      
       ;; Normalize intensity
       me = mean(tmean)
       for iscan = 0L, Nscans - 1 do cub[*,*,iscan] *= (me / tmean[iscan])
 
-      if keyword_set(blur) then cub = smooth(cub, [29, 29, 1], /edge_wrap)
-
-      if keyword_set(fitsoutput) then begin
-        ;; Save WB results as a fits file
-        ofil = 'wb_'+midpart+'_corrected_im.fits'
-        print, inam + ' : saving WB corrected cube -> ' + odir + ofil
-
-        ;; Add the wavelength and Stokes dimensions
-        dims = [nx, ny, 1, 1, Nscans]
-        cub = reform(cub, dims, /overwrite) 
-
-        ;; Make header. Start with header from last input file, it has
-        ;; info about MOMFBD processing.
-        check_fits, cub, hdr, /update                          ; Get dimensions right
-        red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
-                        , 'Creation UTC date of FITS header'   ;
-        red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round() before saving. 
-                        , 'Number of bits per data pixel'      ;
-        red_fitsaddkeyword, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
-
-        if keyword_set(blur) then begin
-          red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
-        endif
-
-        ;; Add info to headers
-        red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
-        red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
-
-        ;; Add info about this step
-        self -> headerinfo_addstep, hdr $
-                                    , prstep = 'Prepare WB science data cube' $
-                                    , prpara = prpara $
-                                    , prproc = inam
-        
-
-        ;; Make time tabhdu extension with Nscans rows
-        s_array = lonarr(Nscans)
-        s_array[0] = wstates.scannumber
-        t_array = dblarr(1, Nscans)
-        t_array[0] = red_time2double(time)                       ; In [s] since midnight
-;        w_array = fltarr(1)
-        ;;w_array[0] = wstates.tun_wavelength
-        w_array = replicate(float(prefilters[0])/10., 1, Nscans) ; In [nm]
-;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
-;                                                         , comment:'time-coordinates'}, $
-;                                       WAVE-TABULATION: {val:w_array $
-;                                                         , comment:'wavelength-coordinates'}, $
-;                                       comment: ' For storing tabulated keywords'}}
-;        tabhdu = {tabulations: {time: {val:t_array $
-;                                       , comment:'time-coordinates'}, $
-;                                wavelength: {val:w_array $
-;                                             , comment:'wavelength-coordinates'}, $
-;                                scannumber: {val:s_array $
-;                                             , comment:'scannumbers'}, $
-;                                comment: ' For storing tabulated keywords'}}
-        
-        ;; TIME reference value, all times are seconds since midnight.
-        dateref = fxpar(hdr, 'DATEREF', count = count)
-        if count eq 0 then begin
-          ;; One should really check also for the existence of MJDREF
-          ;; and JDREF but within the pipeline we can be sure we don't
-          ;; use them.
-          dateref = self.isodate+'T00:00:00.000000' ; Midnight
-          red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
-        endif
-
-        help, round(cub)
-        print, 'n_elements:', n_elements(cub)
-        ;; Write the file
-;        red_fits_createfile, odir + ofil, hdr, lun, fileassoc;, tabhdu = tabhdu
-        self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims ; $
-;                                     , wcs_time_coordinate = t_array $
-;                                     , wcs_wave_coordinate = w_array $
-;                                     , scannumber = s_array
-
-
-        for iscan = 0, Nscans-1 do begin
-          self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
-                                     , iscan = iscan
-        endfor                  ; iscan
-        free_lun, lun
-        print, inam + ' : Wrote file '+odir + ofil
-
-;        ;; Experimental extra tabulated data:
-;        Ntuning = 1
-;        temp_array = fltarr(Ntemp)
-;        r0_array   = fltarr(Nr0)
-;        temp_array[0] = cos(s_array/max(s_array)) ; Really function of scannumber
-;        r0_array[0]   = sin(s_array/max(s_array)) ; Really function of time, i.e., of tuning and scannumber
-;        
-;
-;        red_fitsaddkeyword, hdr, 'TABULATD', 'TABULATIONS;ATMOS_R0,AMB_TEMP'
-;
-;        fxbhmake,bdr,1,'TABULATIONS','For storing tabulated keywords'
-;        fxbaddcol, 1, bdr, r0_array, 'ATMOS_R0', TUNIT = 'm', 'Table of atmospheric r0'
-;        fxbadd, bdr, '1CTYP1', 'TIME-TAB', 'Time since DATEREF, tabulated for ATMOS_R0'
-;        fxbadd, bdr, '1CNAM1', 'Time since DATEREF for ATMOS_R0'
-;        fxbadd, bdr, '1S1_0', 'TABULATIONS', 'Extension w/tabulations for ATMOS_R0'
-;        fxbadd, bdr, '1S1_1', 'TIME-ATMOS_R0', 'TTYPE of col. w/TIME for ATMOS_R0'
-;        fxbaddcol, 2, bdr, r0_time, 'TIME-ATMOS_R0', 'Tabulations of TIME for ATMOS_R0', tunit = 's'
-;        
-;        
-;        fxbaddcol, 3, bdr, temp_array, 'AMB_TEMP', TUNIT = 'K', 'Table of ambient temperature'
-;        fxbcreate, lun, filename, bdr, extension_no
-;        fxbwrite, lun, r0_array, 1, 1
-;        fxbwrite, lun, temp_array, 2, 1
-;        fxbfinish, lun
-;    
-
-        self -> fitscube_addwcs, odir + ofil, w_array, t_array
-;                                     , scannumber = s_array
-;
-;
-;cccc = red_readdata(odir+ofil, head = hhhh)
-;stop
-;        
-;fxbopen, tlun, odir + ofil, 'WCS-TAB', bhhh
-;fxbread, tlun, wavetime_tab, 'WAVE+TIME'
-;fxbclose, tlun
-;
-;
-;
-;stop
-      endif else begin
-
-        ;; Save WB results as lp_cube
-        ofil = 'wb_'+midpart+'_corrected.icube'
-        print, inam + ' : saving WB corrected cube -> ' + odir + ofil
-        red_lp_write, fix(round(temporary(cub))), odir + ofil
-
-      endelse
-
-
+      ;; Save WB results as lp_cube
+      ofil = 'wb_'+midpart+'_corrected.icube'
+      print, inam + ' : saving WB corrected cube -> ' + odir + ofil
+      red_lp_write, fix(round(temporary(cub))), odir + ofil
+      
     endfor                      ; ipref
   endfor                        ; itimestamp
-
 
 end
