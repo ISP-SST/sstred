@@ -182,7 +182,7 @@ function red_sumheaders, files, sum $
 
   ;; Remove some irrelevant keywords
   sxdelpar, head, 'TAB_HDUS'    ; No tabulated headers in summed file
-  sxdelpar, head, 'FRAMENUM'    ; No particular frame number (unless we want to tabulate the input frame numbers?)
+  sxdelpar, head, 'FRAMENUM'    ; No particular frame number
   sxdelpar, head, 'SCANNUM'     ; No particular scan number
   sxdelpar, head, 'FILENAME'    ; Add this later!
   sxdelpar, head, 'CADENCE'     ; Makes no sense to keep?
@@ -196,9 +196,9 @@ function red_sumheaders, files, sum $
   red_fitsaddkeyword, anchor = anchor, head $
                   , 'NSUMEXP', nsum, 'Number of summed exposures'
   
-  ;; List of frame numbers (re-use FRAMENUM for this)
+  ;; List of frame numbers.
   red_fitsaddkeyword, anchor = anchor, head $
-                  , 'FRAMENUM', red_collapserange(framenumbers,ld='',rd='') $
+                  , 'FNUMSUM', red_collapserange(framenumbers,ld='',rd='') $
                   , 'List of frame numbers in the sum'
 
   ;; DATE-??? keywords, base them on the tabulated timestamps
