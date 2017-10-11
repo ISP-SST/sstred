@@ -1,7 +1,9 @@
 ; docformat = 'rst'
 
 ;+
-; Add extensions to a fits file.
+; Add a WCS extension to a fitscube file.
+;
+; This was inspired by Stein's wcs_crosstabulation.pro
 ; 
 ; :Categories:
 ;
@@ -10,7 +12,7 @@
 ; 
 ; :Author:
 ; 
-;    Mats Löfdahl
+;    Mats Löfdahl, ISP
 ; 
 ; 
 ; 
@@ -25,30 +27,6 @@
 ;       The WCS coordinates hpln, hplt, wave, time as fltarr(2, 2,
 ;       Ntunes, Nscans) arrays.
 ;
-; :Keywords:
-;
-;    wcs_hpln_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
-;
-;      The spatial HPLN coordinate for the four corners of the
-;      (Ntunes, Nscans) frame. 
-;
-;    wcs_hplt_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
-;
-;      The spatial HPLT coordinate for the four corners of the
-;      (Ntunes, Nscans) frame. 
-;
-;    wcs_wave_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
-;
-;      The wavelength coordinates for the (Ntunes, Nscans) frame.
-;
-;    wcs_time_coordinate : in, type="fltarr(2, 2, Ntunes, Nscans)"
-;
-;      The time coordinates for the (Ntunes, Nscans) frame.
-;
-;
-;
-;
-;
 ; :History:
 ; 
 ;    2016-03-24 : MGL. First version.
@@ -57,33 +35,20 @@
 ; 
 ;    2016-09-28 : MGL. Add a new parameter wcs. 
 ; 
-; 
+;    2016-10-11 : MGL. Remove keywords
+;                 wcs_{hpln,hplt,wave,time}_coordinate.
 ; 
 ;-
-pro red::fitscube_addwcs, filename, wcs $
-                          , wcs_hpln_coordinate $
-                          , wcs_hplt_coordinate $
-                          , wcs_wave_coordinate $
-                          , wcs_time_coordinate
-
-  if n_elements(wcs) ne 0 then begin
-    wcs_hpln_coordinate = wcs.hpln
-    wcs_hplt_coordinate = wcs.hplt
-    wcs_wave_coordinate = wcs.wave
-    wcs_time_coordinate = wcs.time   
-  endif
-
-  ;; Write the WCS extension. (This was inspired by Stein's
-  ;; wcs_crosstabulation.pro)
+pro red::fitscube_addwcs, filename, wcs
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Get the dimensions (using x for hpln and y for hplt).
-  xdims = size(wcs_hpln_coordinate, /dim)
-  ydims = size(wcs_hplt_coordinate, /dim)
-  wdims = size(wcs_wave_coordinate, /dim)
-  tdims = size(wcs_time_coordinate, /dim)
+  xdims = size(wcs.hpln, /dim)
+  ydims = size(wcs.hplt, /dim)
+  wdims = size(wcs.wave, /dim)
+  tdims = size(wcs.time, /dim)
 
   Nxdims = n_elements(xdims)
   Nydims = n_elements(ydims)
@@ -99,10 +64,7 @@ pro red::fitscube_addwcs, filename, wcs $
   ;; cubes?)
   if N0+N4 ne 4 or N4 eq 0 then begin
     print, inam + ' : At least one of the arrays has the wrong dimensions.'
-    help, wcs_hpln_coordinate $
-          , wcs_hplt_coordinate $
-          , wcs_wave_coordinate $
-          , wcs_time_coordinate
+    help, wcs
     stop
     retall
   endif
@@ -125,10 +87,10 @@ pro red::fitscube_addwcs, filename, wcs $
   
   ;; An array to store both wave and time coordinates
   wcs_coords = dblarr(4, Nx, Ny, Ntunes, Nscans)
-  wcs_coords[0, *, *, *, *] = wcs_hpln_coordinate
-  wcs_coords[1, *, *, *, *] = wcs_hplt_coordinate
-  wcs_coords[2, *, *, *, *] = wcs_wave_coordinate
-  wcs_coords[3, *, *, *, *] = wcs_time_coordinate
+  wcs_coords[0, *, *, *, *] = wcs.hpln
+  wcs_coords[1, *, *, *, *] = wcs.hplt
+  wcs_coords[2, *, *, *, *] = wcs.wave
+  wcs_coords[3, *, *, *, *] = wcs.time
 
   ;; If the main header doesn't have the EXTEND keyword, add it now.
   fxhmodify, filename, 'EXTEND', !true, 'The file has extension(s).'
@@ -136,7 +98,7 @@ pro red::fitscube_addwcs, filename, wcs $
   ;; Make the binary extension header
   fxbhmake, bdr, 1, 'WCS-TAB', 'For storing tabulated WCS tabulations'
   
-  fxbaddcol, 1, bdr, wcs_coords,  'POINT+WAVE+TIME',  'Coordinate array'
+  fxbaddcol, 1, bdr, wcs_coords, 'POINT+WAVE+TIME', 'Coordinate array'
   fxbaddcol, 2, bdr, findgen(Ntunes)+1, 'HPLN-INDEX', 'Index for helioprojective longitude'
   fxbaddcol, 3, bdr, findgen(Nscans)+1, 'HPLT-INDEX', 'Index for helioprojective latitude'
   fxbaddcol, 4, bdr, findgen(Ntunes)+1, 'WAVE-INDEX', 'Index for tuning/wavelength'
