@@ -173,6 +173,8 @@
 ;
 ;    2017-10-02 : MGL. Changed /mnt/sand to /storage/sand.
 ;
+;    2017-10-11 : MGL. Use nmodes keyword in prepmomfbd.
+;
 ;-
 pro red_setupworkdir, search_dir = root_dir $
                       , out_dir = out_dir $
@@ -610,7 +612,8 @@ pro red_setupworkdir, search_dir = root_dir $
         printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
      endelse
      printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
-             + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
+             + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5" $
+             + ", Nmodes=60 " $
              + maybe_nodescatter[ipref]
   endfor
 
