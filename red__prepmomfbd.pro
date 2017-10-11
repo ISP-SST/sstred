@@ -148,7 +148,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   red_writelog, selfinfo = selfinfo
 
 
-  if(n_elements(msh) eq 0) then maxshift='30'
+  if n_elements(maxshift) eq 0 then maxshift='30'
   ;; Get keywords
   IF ~keyword_set(date_obs) THEN BEGIN
         ;;; guess it from root_dir
