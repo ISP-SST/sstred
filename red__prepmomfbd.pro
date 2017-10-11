@@ -85,21 +85,20 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ;
-;   2013-06-13, JdlCR : added support for scan-dependent gains -> 
-;                       using keyword "/newgains".
+;   2013-06-13 : JdlCR. Added support for scan-dependent gains ->
+;                using keyword "/newgains".
 ;
-;   2013-06-28, JdlCR : added NF (object) option 
+;   2013-06-28 : JdlCR. Added NF (object) option 
 ; 
 ;   2013-08-27 : MGL. Added support for logging. Let the subprogram
 ;                find out its own name.
 ;
-;   2013-12-19   PS  Work based on the link directory
-;                    guess date before asking
-;                    adapt to changed link directory names
-;                    NEWGAINS is the default now (removed), use OLDGAINS
+;   2013-12-19   PS. Work based on the link directory guess date
+;                before asking adapt to changed link directory names
+;                NEWGAINS is the default now (removed), use OLDGAINS
 ;
-;   2014-01-10   PS  remove keyword outformat, use self.filetype.
-;                to not be a string.
+;   2014-01-10   PS. Remove keyword outformat, use self.filetype. to
+;                not be a string.
 ;
 ;   2016-02-15 : MGL. Use red_loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
@@ -107,17 +106,20 @@
 ;   2016-02-15 : MGL. Get just the file names from
 ;                red_loadbackscatter, do not read the files.
 ;
-;   2016-04-18 : THI. Added margin keyword to allow for user-defined edge trim
-;                Changed numpoints keyword to be a number rather than a string.
+;   2016-04-18 : THI. Added margin keyword to allow for user-defined
+;                edge trim Changed numpoints keyword to be a number
+;                rather than a string.
 ;
 ;   2016-04-21 : MGL. Added some documentation. Use n_elements, not
 ;                keyword_set, to find out if a keyword needs to be set
 ;                to a default value.
 ;
-;   2017-06-19 : THI. Added extraclip keyword to allow for user-defined edge trim for each edge
-;                Changed default margin from 5 to 0.
+;   2017-06-19 : THI. Added extraclip keyword to allow for
+;                user-defined edge trim for each edge Changed default
+;                margin from 5 to 0.
 ;
-;   2017-10-10 : THI. Bugfix: the extraclip was wrongly applied to mirrored channels
+;   2017-10-10 : THI. Bugfix: the extraclip was wrongly applied to
+;                mirrored channels
 ;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
