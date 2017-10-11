@@ -613,7 +613,7 @@ pro red_setupworkdir, search_dir = root_dir $
      endelse
      printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + date_momfbd $
              + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5" $
-             + ", Nmodes=60 " $
+             + ", Nmodes=51 " $
              + maybe_nodescatter[ipref]
   endfor
 
