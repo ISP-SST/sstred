@@ -296,7 +296,7 @@ pro red::sumflat, overwrite = overwrite, $
                               , lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endelse
-
+help, flat, summed
       ;; Subtract dark and make floating point
       flat = float(flat-dd)
 
@@ -329,17 +329,10 @@ pro red::sumflat, overwrite = overwrite, $
       
       ;; Output the raw (if requested) flats
       if keyword_set(store_rawsum) then begin
-;        ;; ANA
-;        fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
-;        headerout = 't='+time_avg+' n_sum='+red_stri(nsum)
-;        print, inam+' : saving ' + sflatname
-;        file_mkdir, file_dirname(sflatname)
-;        flat_raw = long(temporary(summed))
-;        fzwrite, flat_raw, sflatname, headerout
         ;; FITS
         print, inam+' : saving ', sflatname+'.fits'
         fxaddpar, shead, 'FILENAME', file_basename(sflatname+'.fits'), after = 'DATE'
-        red_writedata, sflatname+'.fits', flat_raw, header=shead, filetype='FITS', overwrite = overwrite
+        red_writedata, sflatname+'.fits', long(temporary(summed)), header=shead, filetype='FITS', overwrite = overwrite
       endif
 
       if keyword_set(check) then free_lun, lun
