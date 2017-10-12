@@ -28,6 +28,11 @@
 ;   
 ;      The modes to include in the expansions of the wavefront phases.
 ;   
+;    nmodes : in, optional, type=integer, default=51
+;
+;      If keyword modes is not given, use the Nmodes most significant
+;      KL modes.
+;   
 ;    date_obs : in, optional, type=string
 ;   
 ;      The date of observations in ISO (YYYY-MM-DD) format. If not
