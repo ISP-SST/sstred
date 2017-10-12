@@ -128,12 +128,14 @@ pro chromis::plot_pointing, file = file
         
       endif
     endfor                      ; idir
-  
-    cgcolorbar, /vertical, divisions = col_tend-col_tbeg, minrange = col_tbeg, maxrange = col_tend $
-                , palette = red_WavelengthToRGB(findgen(256)/256.*(col_wend-col_wbeg)+col_wbeg) $
-                , position = [0.88, !y.window[0], 0.90, !y.window[1]], format = '(i0)'
 
-    cgtext, 0.88, !y.window[0]-.03, 'UT', /normal, align = 1, charsize = 1.2
+    position = [0.85, !y.window[0], 0.87, !y.window[1]]
+    cgcolorbar, /vertical, /right $
+                , divisions = col_tend-col_tbeg, minrange = col_tbeg, maxrange = col_tend $
+                , palette = red_WavelengthToRGB(findgen(256)/256.*(col_wend-col_wbeg)+col_wbeg) $
+                , position = position, format = '(i0)'
+
+    cgtext, position[2], position[1]-.03, 'UT', /normal, align = 0, charsize = 1.2
 
   endif
   
