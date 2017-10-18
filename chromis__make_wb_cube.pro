@@ -46,6 +46,9 @@
 ;
 ;    2017-09-28 : MGL. WCS coordinates as a single struct parameter to
 ;                 fitscube_addwcs.
+;
+;    2017-10-18 : MGL. Use new keyword dimensions in call to method
+;                 fitscube_addwcs. 
 ; 
 ; 
 ;-
@@ -458,7 +461,7 @@ pro chromis::make_wb_cube, dir $
   
 
   ;; Add the WCS coordinates
-  self -> fitscube_addwcs, odir + ofil, wcs
+  self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
 ;  $
 ;                           , hpln_array, hplt_array $
 ;                           , transpose(rebin(w_array, 1, Nscans, 2, 2, /sample) $
