@@ -32,17 +32,24 @@
 ;   force : in, optional, type=boolean
 ;   
 ;      Remove any existing data and calculate new stats.
-; 
+;
+;   repairflats : in, optional, type=boolean
+;
+;      Many "raw flats" files are broken due to a bug in sumflats. Set
+;      this to reconstruct and save them based on other data.
+;      Temporary keyword, will be removed later. 
 ; 
 ; :History:
 ; 
 ;   2017-10-12 : MGL. First version.
 ; 
+;   2017-10-15 : MGL. New keyword repairflats.
+; 
 ; 
 ; 
 ; 
 ;-
-pro red_calibdata_stats, dir = dir, force = force, dates = dates
+pro red_calibdata_stats, dir = dir, force = force, dates = dates, repairflats = repairflats
 
   if n_elements(dir) eq 0 then dir = '/freija-scratch/asukh/calibration-data/'
   if ~strmatch( dir, '*/' ) then dir += '/'
@@ -141,6 +148,13 @@ pro red_calibdata_stats, dir = dir, force = force, dates = dates
                     dark = red_readdata(dn, /silent)
 
                     data = long((data + dark)*Nsumexp)
+
+                    if keyword_set(repairflats) then begin
+                      ;; Store the repaired summed flat, overwriting
+                      ;; the faulty one. 
+                      fxaddpar, h, 'DATE', red_timestamp(/iso), 'Creation UTC date of FITS header'
+                      writefits, fnames[ifile], data, h
+                    endif
                     
                   endif
 
@@ -176,7 +190,7 @@ pro red_calibdata_stats, dir = dir, force = force, dates = dates
         endfor                  ; itype
       endfor                    ; iinstr
     endif
-stop
+
   endfor                        ; idate
   
 end
