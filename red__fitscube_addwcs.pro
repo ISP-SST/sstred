@@ -104,7 +104,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   if n_elements(dimensions) ge 1 then Nx      = long(dimensions[0]) else Nx      = Nxdims 
   if n_elements(dimensions) ge 2 then Ny      = long(dimensions[1]) else Ny      = Nydims 
   if n_elements(dimensions) ge 3 then Ntuning = long(dimensions[2]) else Ntuning = Nwdims 
-  if n_elements(dimensions) ge 4 then Nstokes = long(dimensions[3]) else Nstokes = Nstokes
+;  if n_elements(dimensions) ge 4 then Nstokes = long(dimensions[3]) else Nstokes = Nstokes
   if n_elements(dimensions) ge 5 then Nscans  = long(dimensions[4]) else Nscans  = Ntdims 
 
   ;; We don't want to tabulate WAVE and/or TIME if the dimension is
@@ -164,6 +164,8 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   ;; Modify the main header. ---------------------------------------------------------------
   
   hdr = headfits(filename)
+  Naxis = fxpar(hdr,'NAXIS')
+
   red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
 
   anchor = 'FILENAME'
@@ -175,6 +177,17 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC4_4', 1.0, 'No rotations' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC5_5', 1.0, 'No rotations'
 
+  ;; The header could be a copy from a file that has WCS in it, so
+  ;; better remove old WCS related keywords.
+  keywords = strmid(hdr, 0, 8)
+  for iax = 0, Naxis-1 do begin
+    ckeywords = keywords[where(strmatch(keywords.trim(),'C*'+strtrim(iax+1, 2)), Nc)]
+    pkeywords = keywords[where(strmatch(keywords.trim(),'P[SV]*'+strtrim(iax+1, 2)+'_*'), Np)]
+    for ikey = 0, Nc-1 do red_fitsdelkeyword, hdr, ckeywords[ikey]
+    for ikey = 0, Np-1 do red_fitsdelkeyword, hdr, pkeywords[ikey]
+  endfor                        ; iax
+
+  ;; Now add the new keywords
   coordno = 1                   ; Tabulated coordinate number, for PVi_3 keywords
   
   ;; First spatial dimension, corner coordinates always tabulated 
@@ -211,7 +224,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT3', 'nm', 'Wavelength unit, tabulated for dim. 3 and 5' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'PS3_0', 'WCS-TAB', 'EXTNAME; EXTVER=EXTLEVEL=1 is default' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'PS3_1', ttype, 'TTYPE for column w/coordinates' 
-    if WriteWaveIndex then red_fitsaddkeyword, anchor = anchor, hdr, 'PS3_2', 'WAVE-INDEX', 'TTYPE for INDEX' 
+    if WriteWaveIndex then red_fitsaddkeyword, anchor = anchor, hdr, 'PS3_2', 'WAVE-INDEX', 'TTYPE for INDEX'
     red_fitsaddkeyword, anchor = anchor, hdr, 'PV3_3', coordno++, 'Coord. 3 tabulated coordinate number' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX3', 0, 'Unity transform' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL3', 0, 'Unity transform' 
