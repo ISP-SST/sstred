@@ -123,9 +123,7 @@ pro chromis::plot_pointing, file = file
             red_plot_diskcoordinates, /over, metadata_pig, indx = indx, rsun=rsun, rplot=1.01 $
                                       , color = colors, psym = psym, symsize = symsize
           endif
-
-        endfor
-        
+        endfor                  ; isubdir
       endif
     endfor                      ; idir
 

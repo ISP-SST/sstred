@@ -73,7 +73,7 @@
 ;                Use current date if date or out_dir do not specify
 ;                it.
 ;
-;   2017-09-11 : AVS. A new keywor, /restart, is added to avoid
+;   2017-09-11 : AVS. A new keyword, /restart, is added to avoid
 ;                re-creating existing script/config files in case of a
 ;                restart.
 ;

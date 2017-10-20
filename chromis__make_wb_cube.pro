@@ -319,30 +319,12 @@ pro chromis::make_wb_cube, dir $
   s_array[0] = wstates.scannumber
   t_array = dblarr(1, Nscans)
   t_array[0] = red_time2double(time)                   ; In [s] since midnight
-;        w_array = fltarr(1)
-  ;;w_array[0] = wstates.tun_wavelength
-;  w_array = replicate(float(prefilter)/10., 1, Nscans) ; In [nm]
-;  hpln_array = dblarr(2, 2, 1, Nscans)                 ; HPLN position for corners of FOV
-;  hplt_array = dblarr(2, 2, 1, Nscans)                 ; HPLT position for corners of FOV
 
   wcs = replicate({  wave:dblarr(2,2) $
                      , hplt:dblarr(2,2) $
                      , hpln:dblarr(2,2) $
                      , time:dblarr(2,2) $
                   }, 1, Nscans)
-
-;        tabhdu = {EXTNAME-WCS-TABLES: {TIME-TABULATION: {val:t_array  $
-;                                                         , comment:'time-coordinates'}, $
-;                                       WAVE-TABULATION: {val:w_array $
-;                                                         , comment:'wavelength-coordinates'}, $
-;                                       comment: ' For storing tabulated keywords'}}
-;        tabhdu = {tabulations: {time: {val:t_array $
-;                                       , comment:'time-coordinates'}, $
-;                                wavelength: {val:w_array $
-;                                             , comment:'wavelength-coordinates'}, $
-;                                scannumber: {val:s_array $
-;                                             , comment:'scannumbers'}, $
-;                                comment: ' For storing tabulated keywords'}}
   
   ;; TIME reference value, all times are seconds since midnight.
   dateref = fxpar(hdr, 'DATEREF', count = count)
@@ -357,15 +339,9 @@ pro chromis::make_wb_cube, dir $
   help, round(cub)
   print, 'n_elements:', n_elements(cub)
   ;; Write the file
-;        red_fits_createfile, odir + ofil, hdr, lun, fileassoc;, tabhdu = tabhdu
-  self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims ; $
-;                                     , wcs_time_coordinate = t_array $
-;                                     , wcs_wave_coordinate = w_array $
-;                                     , scannumber = s_array
-
+  self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims 
 
   for iscan = 0, Nscans-1 do begin
-
     self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
                                , iscan = iscan
 
@@ -377,9 +353,6 @@ pro chromis::make_wb_cube, dir $
     wcs[0, iscan].time = t_array[iscan]
     wcs[0, iscan].hpln = hpln
     wcs[0, iscan].hplt = hplt
-;    hpln_array[*, *, 0, iscan] = hpln
-;    hplt_array[*, *, 0, iscan] = hplt
-
   endfor                        ; iscan
   free_lun, lun
   print, inam + ' : Wrote file '+odir + ofil
@@ -456,18 +429,10 @@ pro chromis::make_wb_cube, dir $
     ;; Note that the strarr wfiles cannot be read by fxbreadm!
     fxbread, bunit, rWFILES, 'WFILES', 1
     fxbclose, bunit
-    
   endif
-  
 
   ;; Add the WCS coordinates
   self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
-;  $
-;                           , hpln_array, hplt_array $
-;                           , transpose(rebin(w_array, 1, Nscans, 2, 2, /sample) $
-;                                       , [2, 3, 0, 1]) $
-;                           , transpose(rebin(t_array, 1, Nscans, 2, 2, /sample) $
-;                                       , [2, 3, 0, 1])
   
   ;; Add variable keywords.
   self -> fitscube_addvarkeyword, odir + ofil $
@@ -483,14 +448,12 @@ pro chromis::make_wb_cube, dir $
 
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin
-    ;;print, time_r0[tindx_r0]
-    ;;print, metadata_r0[*, tindx_r0]
     self -> fitscube_addvarkeyword, odir + ofil, 'ATMOS_R0' $
                                     , metadata_r0[*, tindx_r0] $
                                     , comment = 'Atmospheric coherence length' $
                                     , tunit = 'm' $
-                                    , extra_coordinate1 = [24, 8] $             ; WFS subfield sizes 
-                                    , extra_labels      = ['WFSZ'] $            ; Axis labels for metadata_r0
+                                    , extra_coordinate1 = [24, 8] $               ; WFS subfield sizes 
+                                    , extra_labels      = ['WFSZ'] $              ; Axis labels for metadata_r0
                                     , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
                                     , extra_units       = ['pix'] $               ; Axis units for metadata_r0
                                     , keyword_value = mean(metadata_r0[1, tindx_r0]) $
