@@ -44,7 +44,9 @@
 ;    2017-09-08 : MGL. Copy variable-keywords from the WB cube. 
 ; 
 ;    2017-09-28 : MGL. Add more variable-keywords. Make a flipped cube
-;                 and copy variable keywords to it.
+;                 and copy variable keywords to it. 
+; 
+;    2017-10-20 : MGL. Add a WCS extension.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -119,6 +121,16 @@ pro chromis::make_nb_cube, wcfile $
   ;; wbgfiles (WideBand Global).
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
+
+  ;; Read wcs extension of wb file to get pointing info
+  fxbopen, wlun, wcfile, 'WCS-TAB', wbdr
+  ttype1 = fxpar(wbdr, 'TTYPE1')
+;  ttype2 = fxpar(wbdr, 'TTYPE2')
+;  ttype3 = fxpar(wbdr, 'TTYPE3')
+  fxbread, wlun, wwcs, ttype1
+;  fxbread, wlun, whpln_index, ttype2
+;  fxbread, wlun, whplt_index, ttype3
+  fxbclose, wlun
 
   x0 = wcX01Y01[0]
   x1 = wcX01Y01[1]
@@ -455,6 +467,20 @@ pro chromis::make_nb_cube, wcfile $
                    , hpln:dblarr(2,2) $
                    , time:dblarr(2,2) $
                   }, Nwav, Nscans)
+
+  ;; The narrowband cube is aligned to the wideband cube and all
+  ;; narrowband scan positions are aligned to each other. So get hpln
+  ;; and hplt from the wideband cube wcs coordinates.
+  for iscan = 0L, Nscans-1 do begin
+    for iwav = 0, Nwav-1 do begin
+      ;; We rely here on hpln and hplt being the first two tabulated
+      ;; coordinates. To make this more general, we should get the
+      ;; actual indices from the headers. Maybe later...
+      wcs[iwav, iscan].hpln = reform(wwcs[0,*,*,iscan])
+      wcs[iwav, iscan].hplt = reform(wwcs[1,*,*,iscan])
+    endfor                      ; iwav
+  endfor                        ; iscan
+  
   
   ;; Start processing data
   if(~keyword_set(tiles_cont) OR (~keyword_set(clips_cont))) then begin
@@ -595,28 +621,17 @@ pro chromis::make_nb_cube, wcfile $
       tbeg_array[iwav, iscan] = red_time2double((strsplit(date_beg,'T',/extract))[1])
       tend_array[iwav, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
       tavg_array[iwav, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
-;          tbeg_array[iwav, iscan] = red_time2double((strsplit(fxpar(nbhead, 'DATE-BEG'),'T',/extract))[1])
-;          tend_array[iwav, iscan] = red_time2double((strsplit(fxpar(nbhead, 'DATE-END'),'T',/extract))[1])
-;          tavg_array[iwav, iscan] = red_time2double((strsplit(fxpar(nbhead, 'DATE-AVG'),'T',/extract))[1])
-      ;;(tbeg_array[iwav, iscan]+tend_array[iwav, iscan])/2d
 
-      ;; Wavelength
-;      w_array[iwav, iscan] = scan_nbstates[iwav].tun_wavelength
+      ;; Wavelength and time
       wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength
       wcs[iwav, iscan].time = red_time2double((strsplit(date_avg,'T',/extract))[1])
-      
-;      red_wcs_hpl_coords, tavg_array[iwav, iscan], metadata_pig, time_pig $
-      red_wcs_hpl_coords, wcs[iwav, iscan].time[0, 0], metadata_pig, time_pig $
-                          , Nx, Ny, self.image_scale $
-                          , hpln, hplt
-      
-      wcs[iwav, iscan].hpln = hpln
-      wcs[iwav, iscan].hplt = hplt
-;      hpln_array[*, *, iwav, iscan] = hpln
-;      hplt_array[*, *, iwav, iscan] = hplt
 
-
-      
+;      ;; Pointing
+;      red_wcs_hpl_coords, wcs[iwav, iscan].time[0, 0], metadata_pig, time_pig $
+;                          , Nx, Ny, self.image_scale $
+;                          , hpln, hplt
+;      wcs[iwav, iscan].hpln = hpln
+;      wcs[iwav, iscan].hplt = hplt
 
       
       exp_array[iwav, iscan] = scan_nbstates[iwav].exposure
