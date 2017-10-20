@@ -50,24 +50,6 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
 
   ;; Close the file
   free_lun, lun              
-  
-  if n_elements(wcs) gt 0 then begin
-    self -> fitscube_addwcs, filename, wcs
-  endif
-  
-  if ~arg_present(flipfile) then begin
-    ;; If we don't want to flip, we are done now.
-    return
-  endif
-  
-  ;; Construct the name of the flipped file.
-  if strmatch(filename, '*_im.fits') then begin
-    flipfile = red_strreplace(filename, '_im.fits', '_sp.fits')
-  endif else begin
-    flipfile = red_strreplace(filename, '.fits', '_sp.fits')
-  endelse
-
-  print, inam + ' : Making flipped file ' + filename
 
   ;; Original file header
   him = headfits(filename)
@@ -79,6 +61,27 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   Ntuning = long(dimensions[2])
   Nstokes = long(dimensions[3])
   Nscans  = long(dimensions[4])
+
+  if n_elements(wcs) gt 0 then begin
+    self -> fitscube_addwcs, filename, wcs, dimensions = dimensions
+  endif
+  
+  if ~arg_present(flipfile) then begin
+    ;; If we don't want to flip, we are done now.
+    return
+  endif
+
+  ;; Update header after WCS was added
+  him = headfits(filename)
+  
+  ;; Construct the name of the flipped file.
+  if strmatch(filename, '*_im.fits') then begin
+    flipfile = red_strreplace(filename, '_im.fits', '_sp.fits')
+  endif else begin
+    flipfile = red_strreplace(filename, '.fits', '_sp.fits')
+  endelse
+
+  print, inam + ' : Making flipped file ' + flipfile
 
   reorder = [2, 4, 3, 0, 1]
   if n_elements(reorder) ne Naxis then stop
@@ -184,8 +187,10 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
 
   ;; Close the files
   free_lun, ilun, flun              
-  
+
   ;; Copy WCS extension to flipped file
-  red_fits_copybinext, filename, flipfile, 'WCS-TAB'
+  if n_elements(wcs) gt 0 then begin
+    red_fits_copybinext, filename, flipfile, 'WCS-TAB'
+  endif
 
 end
