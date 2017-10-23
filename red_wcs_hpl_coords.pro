@@ -59,40 +59,26 @@
 ; 
 ; :Keywords:
 ; 
-;    align_ang : in, optional, type=fltarr
-;
-;      Rotational correction angle to be applied to the logged pointing.
 ;   
-;    align_shift : in, optional, type=fltarr
-;
-;      Alignment shifts to be applied to the logged pointing.
+;   
+;   
+; 
 ; 
 ; :History:
 ; 
 ;   2017-08-17 : MGL. First version.
 ; 
-;   2017-10-20 : MGL. New keywords align_ang and align_shift. 
+; 
 ; 
 ; 
 ;-
-pro red_wcs_hpl_coords, time, pointing, pointing_time, Nx, Ny, image_scale, hpln, hplt $
-                        , align_ang = align_ang, align_shift = align_shift
+pro red_wcs_hpl_coords, time, pointing, pointing_time, Nx, Ny, image_scale, hpln, hplt
 
-  ;; Logged coordinates for the center of the FOV:
+  ;; Coordinates for the center of the FOV:
 
   hpln = interpol(pointing[0, *], pointing_time, time)
   hplt = interpol(pointing[1, *], pointing_time, time)
-  
-  ;; Correct logged coordinates for alignment done in post processing.
-  ;; To do this we need to know the orientation of the image with
-  ;; respect to the hpln/hplt coordinate system.
-  if n_elements(align_ang) gt 0 or n_elements(align_shift) gt 0 then begin
-
-    ;; Do the correction
-
-  endif
-  
-  
+ 
   ;; Now tabulate the corner coordinates, assuming the FOV is aligned
   ;; to solar coordinates. [The distance between the center of the FOV
   ;; and the centers of the corner pixels is pixelsize*(Nx-1)/2 and
