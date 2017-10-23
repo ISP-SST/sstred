@@ -341,18 +341,47 @@ pro chromis::make_wb_cube, dir $
   ;; Write the file
   self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims 
 
+  ;; The prefilter is the same for the whole cube.
+  wcs[*, *].wave = float(prefilter)/10.
+
+  ;; Get pointing at center of FOV
+  red_wcs_hpl_coords, t_array[0, *], metadata_pig, time_pig $
+                      , hpln, hplt
+  
+  ;; The alignment routine (red_aligncube) subtracts the median of the
+  ;; cross-correlation measured image shifts but removes no trends. So
+  ;; it really tries to make the pointing the same during the whole
+  ;; sequence without allowing for drifts. So we should make the
+  ;; pointing metadata constant in time, let's use the median:
+  hpln = median(hpln)
+  hplt = median(hplt)
+
+  ;; But what we want to tablulate is the pointing in the corners of
+  ;; the FOV. Assume hpln and hplt are the coordinates of the center
+  ;; of the FOV. 
+  wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[1, 1, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
+  
+  wcs.hplt[0, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+  
+  
   for iscan = 0, Nscans-1 do begin
     self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
                                , iscan = iscan
 
-    red_wcs_hpl_coords, t_array[0, iscan], metadata_pig, time_pig $
-                        , Nx, Ny, self.image_scale $
-                        , hpln, hplt
+;    red_wcs_hpl_coords, t_array[0, iscan], metadata_pig, time_pig $
+;                        , Nx, Ny, self.image_scale $
+;                        , hpln, hplt
       
-    wcs[0, iscan].wave = float(prefilter)/10.
+;    wcs[0, iscan].wave = float(prefilter)/10.
     wcs[0, iscan].time = t_array[iscan]
-    wcs[0, iscan].hpln = hpln
-    wcs[0, iscan].hplt = hplt
+;    wcs[0, iscan].hpln = hpln
+;    wcs[0, iscan].hplt = hplt
   endfor                        ; iscan
   free_lun, lun
   print, inam + ' : Wrote file '+odir + ofil
