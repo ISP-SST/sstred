@@ -1,9 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Calculate hpln and hplt coordinates for the four corners of an image.
-;
-; Todo: implement rotation of the FOV.
+; Calculate hpln and hplt coordinates, optionally for the four corners
+; of an image. 
 ;
 ; :Categories:
 ;
@@ -33,18 +32,6 @@
 ;      The time coordinates corresponding to the pointing array in
 ;      seconds since midnight.
 ;
-;    Nx : in, type=integer
-;
-;      The image X size in pixels.
-;
-;    Ny : in, type=integer
-;
-;      The image Y size in pixels.
-;
-;    image_scale : in, type=
-;
-;
-;
 ;    hpln : out, type="dblarr(2,2)"
 ;
 ;       The HPLN coordinates of the FOV corners.
@@ -59,8 +46,17 @@
 ; 
 ; :Keywords:
 ; 
-;   
-;   
+;    Nx : in, optional, type=integer
+;
+;      The image X size in pixels.
+;
+;    Ny : in, optional, type=integer
+;
+;      The image Y size in pixels.
+;
+;    image_scale : in, optional, type=float
+;
+;      The image scale in arcsec/pixel.
 ;   
 ; 
 ; 
@@ -68,23 +64,28 @@
 ; 
 ;   2017-08-17 : MGL. First version.
 ; 
-; 
-; 
+;   2017-10-23 : MGL. Change parameters Nx, Ny, and image_scale into
+;                (optional) keywords.
 ; 
 ;-
-pro red_wcs_hpl_coords, time, pointing, pointing_time, Nx, Ny, image_scale, hpln, hplt
+pro red_wcs_hpl_coords, time, pointing, pointing_time, hpln, hplt $
+                        , Nx = Nx, Ny = Ny, image_scale = image_scale
 
   ;; Coordinates for the center of the FOV:
 
   hpln = interpol(pointing[0, *], pointing_time, time)
   hplt = interpol(pointing[1, *], pointing_time, time)
- 
-  ;; Now tabulate the corner coordinates, assuming the FOV is aligned
-  ;; to solar coordinates. [The distance between the center of the FOV
-  ;; and the centers of the corner pixels is pixelsize*(Nx-1)/2 and
-  ;; pixelsize*(Ny-1), resp.]
 
-  hpln = hpln + [[-1, 1],[-1, 1]] * double(image_scale) * (Nx-1)/2.d
-  hplt = hplt + [[-1,-1],[ 1, 1]] * double(image_scale) * (Ny-1)/2.d
+  if n_elements(Nx) ne 0 and n_elements(Ny) ne 0 and n_elements(image_scale) ne 0 then begin
+    
+    ;; Now tabulate the corner coordinates, assuming the FOV is aligned
+    ;; to solar coordinates. [The distance between the center of the FOV
+    ;; and the centers of the corner pixels is pixelsize*(Nx-1)/2 and
+    ;; pixelsize*(Ny-1), resp.]
+
+    hpln = hpln + [[-1, 1],[-1, 1]] * double(image_scale) * (Nx-1)/2.d
+    hplt = hplt + [[-1,-1],[ 1, 1]] * double(image_scale) * (Ny-1)/2.d
+
+  endif
   
 end
