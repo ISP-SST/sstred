@@ -620,8 +620,8 @@ pro chromis::make_nb_cube, wcfile $
       tavg_array[iwav, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
       ;; Wavelength and time
-      wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength
-      wcs[iwav, iscan].time = red_time2double((strsplit(date_avg,'T',/extract))[1])
+      wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength*1d9
+      wcs[iwav, iscan].time = tavg_array[iwav, iscan]
 
       ;; Exposure time
       exp_array[iwav, iscan] = scan_nbstates[iwav].exposure
