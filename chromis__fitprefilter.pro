@@ -198,7 +198,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
 
   for istate =0L, Nstates-1 do begin
 
-    red_progressbar, istate, Nstates, 'Loop over states: '+ustate[istate], clock = clock, /predict
+    red_progressbar, istate, Nstates, 'Loop over states: '+ustate[istate], /predict
 
     darkfile = file_search(self.out_dir +'/darks/'+detector+'_'+states[istate].cam_settings+'.dark.fits', count=ct)
     darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+states1[istate].cam_settings+'.dark.fits', count=ct)
@@ -275,7 +275,7 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
 
   for ipref=0, npref-1 do begin
 
-    red_progressbar, ipref, Npref, 'Loop over prefilters: ' + upref[ipref], clock = clock, /predict
+    red_progressbar, ipref, Npref, 'Loop over prefilters: ' + upref[ipref], /predict
 
     ;; copy spectra for each prefilter
     

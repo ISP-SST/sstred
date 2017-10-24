@@ -259,7 +259,7 @@ pro chromis::polish_tseries, clip = clip $
       ;; Read headers to get obs_time and load the images into a cube
       for iscan = 0L, Nscans -1 do begin
         
-        red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube', clock = clock
+        red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
         tmp = red_readdata(wfiles[iscan], head = hdr)
 
@@ -334,7 +334,7 @@ pro chromis::polish_tseries, clip = clip $
       
       ;; De-rotate images in the cube
       for iscan = 0L, Nscans -1 do begin
-        red_progressbar, iscan, Nscans, inam+' : De-rotating images.', clock = clock
+        red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
         cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
       endfor                    ; iscan
       
@@ -357,7 +357,7 @@ pro chromis::polish_tseries, clip = clip $
 ;        endif 
 ;
 ;        for iscan = 0L, Nscans - 1 do begin
-;          red_progressbar, iscan, Nscans, inam+' : Applying shifts to images.', clock = clock
+;          red_progressbar, iscan, Nscans, inam+' : Applying shifts to images.'
 ;          cub[*,*,iscan] = red_shift_im(cub[*,*,iscan], shift[0,iscan], shift[1,iscan])
 ;        endfor                  ; iscan
 ;
@@ -383,7 +383,7 @@ pro chromis::polish_tseries, clip = clip $
         cub[*,*,0] = temporary(dum)
 
         for iscan=1, Nscans-1 do begin
-          red_progressbar, clock = clock, iscan, Nscans $
+          red_progressbar, iscan, Nscans $
                            , inam+' : Making full-size cube, de-rotating and shifting.'
           cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], ang[iscan], shift[0,iscan] $
                                         , shift[1,iscan], full=ff)
@@ -410,7 +410,7 @@ pro chromis::polish_tseries, clip = clip $
       grid = red_destretch_tseries(cub, scale, tile, clip, tstep)
 
       for iscan = 0L, Nscans - 1 do begin
-        red_progressbar, iscan, Nscans, inam+' : Applying the stretches.', clock = clock
+        red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
         cub[*,*,iscan] = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
       endfor                    ; iscan
 

@@ -111,7 +111,7 @@ pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icub
   for ii = 0L, Ntimes - 1 do begin
     ;;print, 'processing part '+string(ii,format='(A,I3)')+' of '+string(ntimes-1,format='(A,I3)')
     if Ntimes ne 1 then $
-       red_progressbar, clock = clock, ii, Ntimes $
+       red_progressbar, ii, Ntimes $
                         , 'Flipping the cube '+strtrim(ny1, 2)+' rows at a time'
 
     if(~keyword_set(icube)) then $
@@ -122,7 +122,7 @@ pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icub
     ;; Read
     for it = 0LL, Nt - 1 do begin
       if Ntimes eq 1 then $
-         red_progressbar, clock = clock, it, Nt, 'Reading the cube'
+         red_progressbar, it, Nt, 'Reading the cube'
       for iw = 0LL, Nw - 1 do begin
         ele = it * Nw * Ntimes + iw * Ntimes + ii
         cub[*,*,iw,it] = a[ele]             
@@ -135,7 +135,7 @@ pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icub
     ;; Write
     for iy = 0L, Ny1 - 1 do begin
       if Ntimes eq 1 then $
-         red_progressbar, clock = clock, iy, Ny1, 'Writing the transposed cube'
+         red_progressbar, iy, Ny1, 'Writing the transposed cube'
       for ix = 0L, Nx1 - 1 do begin
         b[k] = cub[*,*,ix,iy]
         k += 1L

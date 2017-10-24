@@ -610,7 +610,7 @@ pro chromis::make_crispex, aligncont = aligncont $
           nbhead = red_readhead(scan_nbfiles[iwav])
 
           red_progressbar, iprogress, Nprogress $
-                           , clock = clock, /predict $
+                           , /predict $
                            , 'Processing scan ' $
                            + strtrim(uscans[iscan], 2) + ' state=' + state 
 

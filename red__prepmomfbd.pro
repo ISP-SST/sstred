@@ -425,7 +425,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 
     for iscan=0L, Nscans-1 do begin
 
-      red_progressbar, iscan, Nscans, 'Config info for WB', clock = clock, /predict
+      red_progressbar, iscan, Nscans, 'Config info for WB', /predict
 
       if n_elements(escan) ne 0 then if iscan ne escan then continue 
 
@@ -624,7 +624,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 
         for iscan=0L, Nscans-1 do begin
           
-          red_progressbar, iscan, Nscans, 'Config info for NB', clock = clock, /predict
+          red_progressbar, iscan, Nscans, 'Config info for NB', /predict
       
           if n_elements(escan) ne 0 then if iscan ne escan then continue 
 
@@ -841,7 +841,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   
   for icfg=0, n_elements(cfg_list)-1 do begin
     
-    red_progressbar, clock = clock, icfg, n_elements(cfg_list) $
+    red_progressbar, icfg, n_elements(cfg_list) $
                      , 'Write config file ' + red_strreplace(cfg_list[icfg].file, self.out_dir, '')
 
     if( ~file_test(cfg_list[icfg].dir, /directory) ) then begin

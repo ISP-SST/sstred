@@ -627,7 +627,7 @@ pro chromis::make_nb_cube, wcfile $
       exp_array[iwav, iscan] = scan_nbstates[iwav].exposure
       
       red_progressbar, iprogress, Nprogress $
-                       , clock = clock, /predict $
+                       , /predict $
                        , 'Processing scan ' $
                        + strtrim(uscans[iscan], 2) + ' state=' + state 
 

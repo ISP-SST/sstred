@@ -180,7 +180,7 @@ print, 'wNscans', wNscans
 
         for iscan = 0, Nscans-1 do begin
           
-          red_progressbar, iscan, Nscans, clock = clock, /predict $
+          red_progressbar, iscan, Nscans, /predict $
                            , 'Aligning continuum vs wideband for '+timestamp $
                            + '/' + prefilters[ipref]
 

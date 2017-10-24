@@ -287,7 +287,7 @@ function red_sumfiles, files_list $
     
     if DoCheck then begin
       cub[0, 0, iframe] = red_readdata(files_list[ifile], header = head, /silent)
-      red_progressbar, iframe, Nframes, inam+' : loading files in memory', clock = clock
+      red_progressbar, iframe, Nframes, inam+' : loading files in memory'
     endif else begin
       head = red_readhead(files_list[ifile], /silent)
     endelse
@@ -371,7 +371,7 @@ function red_sumfiles, files_list $
 
       for ifile = 0, Nfiles-1 do begin
         
-        red_progressbar, clock = clock, iframe, Nframes $
+        red_progressbar, iframe, Nframes $
                          , inam+' : reading and summing '+strtrim(Nsum, 2)+' files'
         cub = red_readdata(files_list[ifile], /silent)
 
@@ -439,7 +439,7 @@ function red_sumfiles, files_list $
 
             ;; If checked, we already have the frames in memory.
             thisframe = double(cub[*, *, iframe])
-            red_progressbar, clock = clock, iframe, Nframes $
+            red_progressbar, iframe, Nframes $
                              , inam+' : summing '+strtrim(Nsum, 2)+' checked frames'
 
           endif else begin
@@ -452,7 +452,7 @@ function red_sumfiles, files_list $
             thisframe = double(cub[*, *, ii])
             ii += 1
             
-            red_progressbar, clock = clock, iframe, Nframes $
+            red_progressbar, iframe, Nframes $
                              , inam+' : summing '+strtrim(Nsum, 2)+' frames'
 
           endelse

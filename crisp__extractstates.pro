@@ -225,7 +225,7 @@ pro crisp::extractstates, strings, states $
     if states[ifile].is_wb eq 0 then red_append, fullstate_list, lc[ifile]
     if n_elements(fullstate_list) gt 0 then states[ifile].fullstate = strjoin(fullstate_list, '_')
 
-    red_progressbar, ifile, Nstrings, 'Extract state info from file headers', clock = clock, /predict
+    red_progressbar, ifile, Nstrings, 'Extract state info from file headers', /predict
 
   endfor                        ; ifile
 

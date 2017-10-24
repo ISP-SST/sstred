@@ -158,7 +158,7 @@ pro chromis::make_wb_cube, dir $
   ;; Read headers to get obs_time and load the images into a cube
   for iscan = 0L, Nscans -1 do begin
     
-    red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube', clock = clock
+    red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
 
@@ -216,7 +216,7 @@ pro chromis::make_wb_cube, dir $
   ;; De-rotate images in the cube, has to be done before we can
   ;; calculate the alignment
   for iscan = 0L, Nscans -1 do begin
-    red_progressbar, iscan, Nscans, inam+' : De-rotating images.', clock = clock
+    red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
     cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
   endfor                        ; iscan
 
@@ -245,7 +245,7 @@ pro chromis::make_wb_cube, dir $
   cub = fltarr([nd, Nscans])
   cub[*,*,0] = temporary(dum)
   for iscan=1, Nscans-1 do begin
-    red_progressbar, clock = clock, iscan, Nscans $
+    red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
                                   , ang[iscan], shift[0,iscan], shift[1,iscan])
@@ -267,7 +267,7 @@ pro chromis::make_wb_cube, dir $
   grid = red_destretch_tseries(cub, scale, tile, clip, tstep)
 
   for iscan = 0L, Nscans - 1 do begin
-    red_progressbar, iscan, Nscans, inam+' : Applying the stretches.', clock = clock
+    red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
     cub[*,*,iscan] = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
   endfor                        ; iscan
 

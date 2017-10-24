@@ -163,7 +163,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
     for iscan = 0L, Nscans-1 do begin
 
       ;; Read a subcube frame by frame
-      red_progressbar, iprogress, Nstokes*Nscans, clock = clock, /predict $
+      red_progressbar, iprogress, Nstokes*Nscans, /predict $
                        , 'Flip the cube, istokes,iscan='+strtrim(istokes, 2)+','+strtrim(iscan, 2)+' - read'
       for ituning = 0, Ntuning-1 do begin
         iframe = ituning + Ntuning*(istokes + Nstokes*iscan)
@@ -171,7 +171,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
       endfor                    ; ituning
 
       ;; Write the subcube spectrum by spectrum
-      red_progressbar, iprogress, Nstokes*Nscans, clock = clock, /predict $
+      red_progressbar, iprogress, Nstokes*Nscans, /predict $
                        , 'Flip the cube, istokes,iscan='+strtrim(istokes, 2)+','+strtrim(iscan, 2)+' - write'
       for ix = 0L, Nx-1 do begin
         for iy = 0L, Ny-1 do begin

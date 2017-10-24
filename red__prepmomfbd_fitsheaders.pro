@@ -100,7 +100,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
 
-        red_progressbar, icfg, Ncfg, progress_msg, clock=clock, /predict
+        red_progressbar, icfg, Ncfg, progress_msg, /predict
 
     
         if n_elements(scanno) ne 0 then $

@@ -209,7 +209,7 @@ pro chromis::link_data, link_dir = link_dir $
               printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
            endif
 
-           red_progressbar, ifile, Nfiles, inam+' : creating linker for '+cam, clock = clock
+           red_progressbar, ifile, Nfiles, inam+' : creating linker for '+cam
            
         endfor                  ; ifile
         free_lun, lun

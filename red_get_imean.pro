@@ -123,7 +123,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
   print, inam + ' : Ordering and correcting data to fit mean spectrum ... ', FORMAT = '(A,$)'
   print
   for ii = 0L, dim[0] - 1 do begin
-    red_progressbar, ii, dim[0], 'Ordering and correcting data to fit mean spectrum.', clock = clock
+    red_progressbar, ii, dim[0], 'Ordering and correcting data to fit mean spectrum.'
     wl[ii,*,*] = wav[ii] - pp[1,*,*]
   endfor
 
@@ -133,7 +133,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
 
   fl = dat                      ;fltarr(dim[0], dim[1], dim[2])
   for ii = 0L, dim[0] - 1 do begin
-    red_progressbar, ii, dim[0], 'Same with the intensity.', clock = clock
+    red_progressbar, ii, dim[0], 'Same with the intensity.'
     mask = reform(dat[ii,*,*]) ge 1.e-3
     lcom = red_get_linearcomp(wav[ii], pp, npar,reflect=reflect)
     ;; Remove mean shape from the linear component so we don't
