@@ -70,14 +70,17 @@
 ;     2017-05-08 : MGL. Try to make predictions more robust. Adapt
 ;                  output line to teminal width.
 ; 
+;     2017-10-24 : MGL. Replace keyword clock with a common block. 
+; 
 ; 
 ;-
 pro red_progressbar, i, N, message $
                      , barlength = barlength $
                      , nobar = nobar $
-                     , clock = clock $
                      , predict = predict
 
+  common red_progressbar_common, clock
+  
   if n_elements(message) eq 0 then message = 'Progress'
   bb = string(13B)              ; CR w/o LF
 
@@ -89,7 +92,7 @@ pro red_progressbar, i, N, message $
 
   percentdone = norm * i
 
-  if arg_present(clock) then begin
+;  if arg_present(clock) then begin
     if i eq 0 or n_elements(clock) eq 0 then begin
       ;; Remember starting time
       clock = { start:tic(), times:dblarr(N) }
@@ -103,7 +106,7 @@ pro red_progressbar, i, N, message $
       prediction = ' ('+red_timestring(round(time_remaining), Nsecdec = 0, /interval)+' remaining)' 
     endif else prediction = '' 
     time = 'in ' + red_timestring(round(time), Nsecdec = 0, /interval) + prediction
-  endif else time = ''
+;  endif else time = ''
 
   outlength = (TERMINAL_SIZE( ))[0] ; Base output length on terminal width
   outline = string(replicate(32B, outlength))
@@ -144,6 +147,7 @@ N=500
 ;for i=0,N-1 do begin red_progressbar,i,N,'Test', /nobar & wait,.1 & end
 
 
-for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /predict & wait,.1 & end    
+for i=0,N-1 do begin red_progressbar,i,N,'Test', /predict & wait,.1 & end    
+;for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /predict & wait,.1 & end    
 
 end
