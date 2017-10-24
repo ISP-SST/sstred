@@ -92,21 +92,19 @@ pro red_progressbar, i, N, message $
 
   percentdone = norm * i
 
-;  if arg_present(clock) then begin
-    if i eq 0 or n_elements(clock) eq 0 then begin
-      ;; Remember starting time
-      clock = { start:tic(), times:dblarr(N) }
-    endif
-    clock.times[i] = toc(clock.start)
-    time = clock.times[i]
+  if i eq 0 or n_elements(clock) eq 0 then begin
+    ;; Remember starting time
+    clock = { start:tic(), times:dblarr(N) }
+  endif
+  clock.times[i] = toc(clock.start)
+  time = clock.times[i]
 
-    if keyword_set(predict) and i gt 1 then begin
-      dt = median(deriv(clock.times[0:i]))
-      time_remaining = (N-i) * dt
-      prediction = ' ('+red_timestring(round(time_remaining), Nsecdec = 0, /interval)+' remaining)' 
-    endif else prediction = '' 
-    time = 'in ' + red_timestring(round(time), Nsecdec = 0, /interval) + prediction
-;  endif else time = ''
+  if keyword_set(predict) and i gt 1 then begin
+    dt = median(deriv(clock.times[0:i]))
+    time_remaining = (N-i) * dt
+    prediction = ' ('+red_timestring(round(time_remaining), Nsecdec = 0, /interval)+' remaining)' 
+  endif else prediction = '' 
+  time = 'in ' + red_timestring(round(time), Nsecdec = 0, /interval) + prediction
 
   outlength = (TERMINAL_SIZE( ))[0] ; Base output length on terminal width
   outline = string(replicate(32B, outlength))
