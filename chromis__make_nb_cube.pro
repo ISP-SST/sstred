@@ -451,16 +451,13 @@ pro chromis::make_nb_cube, wcfile $
 ;  endelse
 
   ;; Set up for collecting time and wavelength data
-  tbeg_array = dblarr(Nwav, Nscans)         ; Time beginning for state
-  tend_array = dblarr(Nwav, Nscans)         ; Time end for state
-  tavg_array = dblarr(Nwav, Nscans)         ; Time average for state
-  date_beg_array = strarr(Nwav, Nscans)         ; DATE-BEG for state
-  date_end_array = strarr(Nwav, Nscans)         ; DATE-END for state
-  date_avg_array = strarr(Nwav, Nscans)         ; DATE-AVG for state
-;  w_array = dblarr(Nwav, Nscans)            ; Wavelengths
-;  hpln_array = dblarr(2, 2, Nwav, Nscans)   ; HPLN position for corners of FOV
-;  hplt_array = dblarr(2, 2, Nwav, Nscans)   ; HPLT position for corners of FOV
-  exp_array = fltarr(Nwav, Nscans)
+  tbeg_array = dblarr(Nwav, Nscans)     ; Time beginning for state
+  tend_array = dblarr(Nwav, Nscans)     ; Time end for state
+  tavg_array = dblarr(Nwav, Nscans)     ; Time average for state
+  date_beg_array = strarr(Nwav, Nscans) ; DATE-BEG for state
+  date_end_array = strarr(Nwav, Nscans) ; DATE-END for state
+  date_avg_array = strarr(Nwav, Nscans) ; DATE-AVG for state
+  exp_array = fltarr(Nwav, Nscans)      ; Total exposure time
 
   wcs = replicate({  wave:dblarr(2,2) $
                    , hplt:dblarr(2,2) $
@@ -626,39 +623,9 @@ pro chromis::make_nb_cube, wcfile $
       wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength
       wcs[iwav, iscan].time = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
-;      ;; Pointing
-;      red_wcs_hpl_coords, wcs[iwav, iscan].time[0, 0], metadata_pig, time_pig $
-;                          , Nx, Ny, self.image_scale $
-;                          , hpln, hplt
-;      wcs[iwav, iscan].hpln = hpln
-;      wcs[iwav, iscan].hplt = hplt
-
-      
+      ;; Exposure time
       exp_array[iwav, iscan] = scan_nbstates[iwav].exposure
       
-;      ;; Pointing (Maybe we should average between tbeg and tend
-;      ;; if there are several points in the interval? Depends on
-;      ;; how noisy the positions are.)
-;      hpln = interpol(metadata_pig[0, *], time_pig, tavg_array[iwav, iscan])
-;      hplt = interpol(metadata_pig[1, *], time_pig, tavg_array[iwav, iscan])
-;      ;; (hpln, hplt) are coordinates for the center of the FOV.
-;      ;; Now tabulate the corner coordinates, assuming the FOV is
-;      ;; aligned to solar coordinates. [The distance between the
-;      ;; center of the FOV and the centers of the corner pixels is
-;      ;; pixelsize*(Nx-1)/2 and pixelsize*(Ny-1), resp.]
-;      hpln_array[0, 0, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d
-;      hpln_array[1, 0, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d  
-;      hpln_array[0, 1, iwav, iscan] = hpln - double(self.image_scale) * (Nx-1)/2.d 
-;      hpln_array[1, 1, iwav, iscan] = hpln + double(self.image_scale) * (Nx-1)/2.d 
-;      hplt_array[0, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d
-;      hplt_array[1, 0, iwav, iscan] = hplt - double(self.image_scale) * (Ny-1)/2.d 
-;      hplt_array[0, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
-;      hplt_array[1, 1, iwav, iscan] = hplt + double(self.image_scale) * (Ny-1)/2.d 
-;stop
-      ;; Collect some more info for this frame here, like file
-      ;; name, exposure time, detector gain, etc. Put this in FITS
-      ;; tabulated keywords later.
-
       red_progressbar, iprogress, Nprogress $
                        , clock = clock, /predict $
                        , 'Processing scan ' $
