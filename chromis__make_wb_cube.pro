@@ -494,13 +494,13 @@ pro chromis::make_wb_cube, dir $
   if 0 then begin
     fname = odir + ofil
     hhh = headfits(fname)
-    scn = red_fitskeyword(fname, 'SCANNUM', comment = comment, variable_values = scn_values)
-    xps = red_fitskeyword(fname, 'XPOSURE', comment = comment, variable_values = xps_values)
+    scn = red_fitsgetkeyword(fname, 'SCANNUM', comment = comment, variable_values = scn_values)
+    xps = red_fitsgetkeyword(fname, 'XPOSURE', comment = comment, variable_values = xps_values)
     print, scn, xps
     help, scn_values, xps_values
     print, scn_values.values, xps_values.values
     
-    r0 = red_fitskeyword(fname, 'ATMOS_R0', comment = comment, variable_values = r0_values)
+    r0 = red_fitsgetkeyword(fname, 'ATMOS_R0', comment = comment, variable_values = r0_values)
     help, r0_values
   endif
   

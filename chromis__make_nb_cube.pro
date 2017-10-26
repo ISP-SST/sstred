@@ -387,11 +387,11 @@ pro chromis::make_nb_cube, wcfile $
   ;; differently with CRISP because each Stokes image is a mix of two
   ;; detectors. 
   mhd=red_readhead(nbfiles[0])  ; Header of momfbd output file
-  red_fitsaddkeyword, hdr, 'DETECTOR', red_fitskeyword(mhd, 'DETECTOR', comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETGAIN',  red_fitskeyword(mhd, 'DETGAIN',  comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETOFFS',  red_fitskeyword(mhd, 'DETOFFS',  comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETMODEL', red_fitskeyword(mhd, 'DETMODEL', comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETFIRM',  red_fitskeyword(mhd, 'DETFIRM',  comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETECTOR', red_fitsgetkeyword(mhd, 'DETECTOR', comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETGAIN',  red_fitsgetkeyword(mhd, 'DETGAIN',  comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETOFFS',  red_fitsgetkeyword(mhd, 'DETOFFS',  comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETMODEL', red_fitsgetkeyword(mhd, 'DETMODEL', comment = dcomment), dcomment
+  red_fitsaddkeyword, hdr, 'DETFIRM',  red_fitsgetkeyword(mhd, 'DETFIRM',  comment = dcomment), dcomment
 
   ;; Open fits file, dat is name of assoc variable
   dims = [Nx, Ny, Nwav, 1, Nscans] ;
@@ -845,11 +845,11 @@ pro chromis::make_nb_cube, wcfile $
     him=headfits(filename)  
     hsp=headfits(flipfile)
 
-    scn = red_fitskeyword(filename, 'SCANNUM', comment = comment, variable_values = scn_values)
-    xps = red_fitskeyword(filename, 'XPOSURE', comment = comment, variable_values = xps_values)
+    scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scn_values)
+    xps = red_fitsgetkeyword(filename, 'XPOSURE', comment = comment, variable_values = xps_values)
     print, scn, xps
 
-    r0 = red_fitskeyword(filename, 'ATMOS_R0', comment = comment, variable_values = r0_values)
+    r0 = red_fitsgetkeyword(filename, 'ATMOS_R0', comment = comment, variable_values = r0_values)
     help, r0_values
   
     

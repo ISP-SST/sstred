@@ -101,8 +101,8 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
     ;; We will copy the variable keyword from this file.
 
     ;; Read the values
-    value = red_fitskeyword(old_filename, keyword_name, comment = comment $
-                          , variable_values = variable_values)
+    value = red_fitsgetkeyword(old_filename, keyword_name, comment = comment $
+                               , variable_values = variable_values)
 
     if n_elements(variable_values) eq 0 then return ; No variable values
     

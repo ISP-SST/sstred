@@ -111,7 +111,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
     for ikey = 0, Nc-1 do begin
       iline = where(ckeywords[ikey] eq keywords)
       theline = hsp[iline]
-;     cvalue = red_fitskeyword(him, ckeywords[ikey], comment = ccomment)
+;     cvalue = red_fitsgetkeyword(him, ckeywords[ikey], comment = ccomment)
 ;      ckeyword = red_strreplace(ckeywords[ikey], strtrim(iax+1, 2), strtrim(reorder[iax]+1, 2))
       ckeyword = red_strreplace(ckeywords[ikey], strtrim(reorder[iax]+1, 2), strtrim(iax+1, 2))
 ;      red_fitsaddkeyword, hsp, ckeyword, cvalue, ccomment
@@ -122,7 +122,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
     for ikey = 0, Np-1 do begin
       iline = where(pkeywords[ikey] eq keywords)
       theline = hsp[iline]
-;      pvalue = red_fitskeyword(him, pkeywords[ikey], comment = pcomment)
+;      pvalue = red_fitsgetkeyword(him, pkeywords[ikey], comment = pcomment)
       pkeyword = red_strreplace(pkeywords[ikey], strtrim(reorder[iax]+1, 2)+'_', strtrim(iax+1, 2)+'_')
 ;      red_fitsaddkeyword, hsp, pkeyword, pvalue, pcomment
       strput, theline, pkeyword
