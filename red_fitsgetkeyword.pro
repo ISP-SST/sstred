@@ -1,8 +1,12 @@
 ; docformat = 'rst'
 
 ;+
-; Read a keyword from a FITS header. Like fxpar but also checks for
-; SOLARNET variable-keywords.
+; Read a keyword from a FITS header.
+;
+; Like fxpar but also checks for SOLARNET variable-keywords and
+; implements record-valued keywords, see the Calabretta et al. draft
+; from 2004, "Representations of distortions in FITS world coordinate
+; systems".
 ; 
 ; :Categories:
 ;
@@ -35,7 +39,7 @@
 ;     
 ;        Value for the added parameter. See documentation for fxaddpar. 
 ;     
-;     comment : in, optional, type=string
+;     comment : out, optional, type=string
 ;     
 ;        A comment. See documentation for fxaddpar. 
 ; 
@@ -44,6 +48,12 @@
 ;        The directory in which the file can be found. Only needed
 ;        when a variable-keyword needs to be read and the filename is
 ;        not given as the first parameter.
+;     
+;     field_specifiers : out, optional, type=strarr
+;     
+;        If this keyword is present and the "name" is a record-valued
+;        header keyword, the returned values are stripped of the
+;        field-specifiers, which are instead returned here.
 ;     
 ;     variable_values : out, optional, type=struct
 ;
@@ -56,17 +66,19 @@
 ; 
 ;    2017-08-30 : MGL. First version.
 ; 
-;    2017-10-26 : MGL. Renamed from red_fitskeyword.
-; 
+;    2017-10-26 : MGL. Renamed from red_fitskeyword. Implemented
+;                 record-valued keywords.
 ; 
 ; 
 ; 
 ;-
 function red_fitsgetkeyword, filename_or_header, name $
+                             , count = count $
                              , dir = dir $
                              , coordinate_values = coordinate_values $
                              , coordinate_names = coordinate_names $
                              , ignore_variable = ignore_variable $
+                             , field_specifiers = field_specifiers $
                              , variable_values = variable_values $
                              , _ref_extra = extra
 
@@ -85,13 +97,47 @@ function red_fitsgetkeyword, filename_or_header, name $
     end
     else : begin
       hdr = filename_or_header
-      filename = dir+fxpar(hdr, 'FILENAME')
+      maybe_filename = fxpar(hdr, 'FILENAME', count = cnt)
+      if cnt gt 0 then filename = dir+maybe_filename
     end
   endcase
 
   ;; Read the keyword
-  value = fxpar(hdr, name, value, _strict_extra = extra)
+  value = fxpar(hdr, name, comment = comment, _strict_extra = extra, count = count)
 
+  ;; Missing keyword
+  if count eq 0 then return, 0
+
+  if count gt 1 then begin
+    ;; If this keyword occurs more than once, it might be a
+    ;; record-valued keyword. Return all values as a strarr, also
+    ;; return all comments in a strarr. fxpar cannot do this so we
+    ;; will have to work around this.
+    xhdr = hdr                  ; Protect the header
+    namefields = strtrim(strmid(hdr,0,8),2)
+    pos = where(strmatch(namefields, strtrim(name, 2)))
+    value = strarr(count)
+    comment = strarr(count)
+    for i = 0, count-1 do begin
+      ;; Replace all occurences of the keyword with a temporary,
+      ;; numbered name.
+      xhdr[pos[i]] = string('TMP'+strtrim(i+1, 2)+'         ',format='(a8)') $
+                     + strmid(hdr[pos[i]], 8)
+    endfor                      ; i
+    value = fxpar(xhdr, 'TMP*', comment = comment, _strict_extra = extra)
+    if arg_present(field_specifiers) then begin
+      ;; Strip the values of field specifiers and return them in this keyword.
+      field_specifiers = strarr(count)
+      for i = 0, count-1 do begin
+        rec_parts = strsplit(value[i], ':', /extract)
+        field_specifiers[i] = strtrim(rec_parts[0], 2)
+        value[i]            = strtrim(rec_parts[1], 2)
+      endfor                    ; i
+    endif
+    return, value
+  endif
+  
+  ;; Deal with the SOLARNET variable-keywords mechanism.
   if arg_present(variable_values) then begin
 
     ;; Is this a variable-keyword?
@@ -190,3 +236,25 @@ function red_fitsgetkeyword, filename_or_header, name $
   return, value                 ; Return the value from the header.
   
 end
+
+
+;; Test implementation of record-valued keywords
+mkhdr, hdr, 0
+names = ['TEST1', 'TEST2 field.1', 'TEST2 field.2']
+values = [14, 3.1, 4.5]
+comments = ['Normal keyword', 'Record valued', 'Record valued again']
+red_fitsaddkeyword, hdr, names, values, comments
+print, hdr
+print
+
+a = red_fitsgetkeyword(hdr, 'TEST2')
+print, a
+
+b = red_fitsgetkeyword(hdr, 'TEST2', field_specifiers = field_specifiers, count = cnt)
+print, b
+print, field_specifiers
+
+c = red_fitsgetkeyword(hdr, 'TEST1')
+
+end
+
