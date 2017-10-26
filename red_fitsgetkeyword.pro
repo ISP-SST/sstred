@@ -56,17 +56,19 @@
 ; 
 ;    2017-08-30 : MGL. First version.
 ; 
+;    2017-10-26 : MGL. Renamed from red_fitskeyword.
+; 
 ; 
 ; 
 ; 
 ;-
-function red_fitskeyword, filename_or_header, name $
-                          , dir = dir $
-                          , coordinate_values = coordinate_values $
-                          , coordinate_names = coordinate_names $
-                          , ignore_variable = ignore_variable $
-                          , variable_values = variable_values $
-                          , _ref_extra = extra
+function red_fitsgetkeyword, filename_or_header, name $
+                             , dir = dir $
+                             , coordinate_values = coordinate_values $
+                             , coordinate_names = coordinate_names $
+                             , ignore_variable = ignore_variable $
+                             , variable_values = variable_values $
+                             , _ref_extra = extra
 
   if n_elements(dir) eq 0 then dir = './'
   
