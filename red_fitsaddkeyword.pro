@@ -2,6 +2,15 @@
 
 ;+
 ; Add a parameter to a FITS header, wrapper around fxaddpar.
+;
+; The routine implements record-valued keywords, see the Calabretta et
+; al. draft from 2004, "Representations of distortions in FITS world
+; coordinate systems". Contrary to "normal" keywords, record-valued
+; keywords can occur added multiple times (with different field
+; specifiers) in a header. But with red_fitsaddkeyword you can only
+; add them in the same call, any old occurences are removed. It is the
+; user's responsibility to make sure any combination of keyword and
+; field-specifier is only added once in this call.
 ; 
 ; :Categories:
 ;
@@ -24,7 +33,10 @@
 ;     name : in, type=strarr
 ;     
 ;        The name of the added parameter/keyword. See documentation
-;        for fxaddpar, but here it can be an array.
+;        for fxaddpar, but here it can be an array. If name has two
+;        parts, separated by a space character, the first part is
+;        interpreted as the name of a record-valued keyword with the
+;        second part as the field-specifier.
 ;     
 ;     value : in, type=array
 ;     
@@ -71,7 +83,7 @@
 ; 
 ;    2017-09-06 : MGL. Renamed from red_fitsaddpar.
 ; 
-; 
+;    2017-10-26 : MGL. Implemented record-valued keywords.
 ; 
 ; 
 ;-
@@ -103,16 +115,16 @@ pro red_fitsaddkeyword, header, name, value, comment $
   Nlines = where(strmatch(header, 'END *'), Nmatch)
   if Nmatch eq 0 then stop
   header = header[0:Nlines]
-  
+
   ;; Protect existing blank, COMMENT and CONTINUE keywords by
   ;; replacing them with keywords of the form +i+, -i-, or *i*, where
   ;; i is a number and the surrounding characters depend on which
   ;; keyword it is that is protected. This will override
   ;; fxaddpar's placement rules.
   namefields = strmid(header,0,8)
-  pnames = ['COMMENT ', '        ']
-  pchars = ['+',        '-'       ]
-  Nchars = n_elements(pchars)
+  pnames = ['COMMENT ', '        '      ]
+  pchars = ['+',        '-'       , '*' ] ; One extra for record-valued keywords
+;  Nchars = n_elements(pchars)
   iprotect = 0
 ;  pindx = where(namefields eq pnames[0] or $
 ;                namefields eq pnames[1], Nprotect)
@@ -154,52 +166,99 @@ pro red_fitsaddkeyword, header, name, value, comment $
     endif
 
     ;; Special handling of blank and COMMENT keywords.
-    match = strtrim(names[ikey],2) eq strtrim(pnames, 2)
-    if max(match) eq 0 then begin
-      ;; No special handling needed.
-      names_ikey = names[ikey]
-      ;; Strip heading and trailing spaces from comment, fxaddpar will
-      ;; add one space at the beginning.
-      fxaddpar, header, names_ikey, values[ikey], strtrim(comments[ikey], 2) $
-                , after = aft, before = bef $
-                , _strict_extra = extra
-      iprotect++
-    endif else begin
-      ;; Protect keyword name from fxaddpar's positioning.
-      ichar = where(match)
-      if strlen(values[ikey]) le 72 then begin
+    match = (strtrim(names[ikey],2) eq strtrim(pnames, 2))
+    ;; Also record-valued keywords have to be handled. They consist of
+    ;; two parts separated by a space character. The first part is a
+    ;; regular FITS header keyword, the second part (the field
+    ;; specifier) is either a string with capital letters A-Z and the
+    ;; character minus and underscore (the field identifier) OR a
+    ;; field identifier followed by a period and a field index (a
+    ;; number).
+    record_regex = '^([-_A-Z0-9]*) ([-_.A-Z0-9]*)'
+    case 1 of
+      max(match) gt 0: begin
+        ;; Protect COMMENT and blank keywords from fxaddpar's
+        ;; positioning.
+        ichar = where(match)
+        if strlen(values[ikey]) le 72 then begin
+          names_ikey = pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar]
+          fxaddpar, header, names_ikey, values[ikey] $
+                    , after = aft, before = bef $
+                    , _strict_extra = extra
+          iprotect++
+        endif else begin
+          ;; Line-wrap the value string
+          words = strsplit(values[ikey], /extract)
+          rep = 0
+          repeat begin
+            if rep gt 0 then begin
+              aft = names_ikey
+              undefine, bef
+            endif
+            ii = (where(total(strlen(words)+1, /cumulative) gt 68, N68))[0]
+            if N68 eq 0 then begin
+              wrapped_line = strjoin(words, ' ')
+            endif else begin
+              wrapped_line = strjoin(words[0:ii-1], ' ')
+              words = words[ii:*]
+            endelse
+            names_ikey = pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar]
+            fxaddpar, header, names_ikey, wrapped_line $
+                      , after = aft, before = bef $
+                      , _strict_extra = extra
+            if N68 eq 0 then break ; Exit repeat loop
+            anchor = names_ikey
+            iprotect++
+            rep++
+          endrep until 0
+        endelse
+      end
+      stregex(names[ikey], record_regex, /boolean) : begin
+        ;; This is a record-valued keyword
+
+        ichar = n_elements(pchars)-1 ; The last element in pchars is used for this
+
+        ;; Split the record-valued keyword
+;        rec_parts     = stregex(names[ikey], record_regex, /subexpr, /extract)
+        rec_parts     = strsplit(names[ikey], ' ', /extract)
+        rec_name      = rec_parts[0]
+        rec_fieldspec = rec_parts[1]
+
+        ;; Construct the value string
+        rec_value     = rec_fieldspec + ': ' + strtrim(values[ikey], 2)
+
+        ;; Remove any existing occurrences of rec_name in the header
+        red_fitsdelkeyword, header, rec_name
+        
+        ;; Add the record_valued keyword in a protected form, so as to
+        ;; not have it removed if it is added more than once in this
+        ;; call.
         names_ikey = pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar]
-        fxaddpar, header, names_ikey, values[ikey] $
+        
+        ;; Store the real keyword name in a hash so we can put it into
+        ;; the header during the cleaning phase below.
+        if n_elements(rec_hash) eq 0 then rec_hash = hash()
+        rec_hash[names_ikey] = rec_name
+
+        ;; Strip heading and trailing spaces from comment, fxaddpar will
+        ;; add one space at the beginning.
+        fxaddpar, header, names_ikey, rec_value, strtrim(comments[ikey], 2) $
+                  , after = aft, before = bef $
+                  , _strict_extra = extra
+
+        iprotect++
+      end
+      else : begin
+        ;; No special handling needed.
+        names_ikey = names[ikey]
+        ;; Strip heading and trailing spaces from comment, fxaddpar will
+        ;; add one space at the beginning.
+        fxaddpar, header, names_ikey, values[ikey], strtrim(comments[ikey], 2) $
                   , after = aft, before = bef $
                   , _strict_extra = extra
         iprotect++
-      endif else begin
-        ;; Line-wrap the value string
-        words = strsplit(values[ikey], /extract)
-        rep = 0
-        repeat begin
-          if rep gt 0 then begin
-            aft = names_ikey
-            undefine, bef
-          endif
-          ii = (where(total(strlen(words)+1, /cumulative) gt 68, N68))[0]
-          if N68 eq 0 then begin
-            wrapped_line = strjoin(words, ' ')
-          endif else begin
-            wrapped_line = strjoin(words[0:ii-1], ' ')
-            words = words[ii:*]
-          endelse
-          names_ikey = pchars[ichar]+strtrim(iprotect, 2)+pchars[ichar]
-          fxaddpar, header, names_ikey, wrapped_line $
-                    , after = aft, before = bef $
-                    , _strict_extra = extra
-          if N68 eq 0 then break ; Exit repeat loop
-          anchor = names_ikey
-          iprotect++
-          rep++
-        endrep until 0
-      endelse
-    endelse
+      end
+    endcase
 
     ;; Set anchor to use for next keyword.
     anchor = names_ikey
@@ -223,7 +282,8 @@ pro red_fitsaddkeyword, header, name, value, comment $
   firstchars = strmid(header,0,1)
   pindx = where(firstchars eq pchars[0] or $
                 firstchars eq pchars[1], Nprotect)
-  
+
+  ;; First COMMENT and blank keywords
   for iprotect = 0, Nprotect-1 do begin
     ichar = where(firstchars[pindx[iprotect]] eq pchars)
     header[pindx[iprotect]] = pnames[ichar] + strmid(header[pindx[iprotect]], 11)
@@ -238,7 +298,19 @@ pro red_fitsaddkeyword, header, name, value, comment $
     if strlen(header[pindx[iprotect]]) ne 80 then $
        header[pindx[iprotect]] = strmid(header[pindx[iprotect]]+strjoin(replicate(' ', 80)), 0, 80)
   endfor                        ; iprotect
+  
+  ;; Replace any protected record-valued keyword names with the actual
+  ;; names.
+  pindx = where(firstchars eq pchars[n_elements(pchars)-1], Nprotect)
+  for iprotect = 0, Nprotect-1 do begin
+    
+    pname = strtrim(strmid(header[pindx[iprotect]], 0, 8), 2)
+    header[pindx[iprotect]] = string(rec_hash[pname]+'         ',format='(a8)') $
+                              + strmid(header[pindx[iprotect]], 8)
+      
+  endfor                        ; iprotect
 
+  
   ;; Remove trailing empty lines
   header = header[0:where(strmatch(header, 'END *'), Nmatch)]
  
@@ -248,3 +320,27 @@ end
 ;;
 ;; * Allow BEFORE and AFTER to be arrays of parameter names, to be
 ;;   tested for existence in order. Use first match.
+
+
+
+;; Test implementation of record-valued keywords
+mkhdr, hdr, 0
+print, hdr
+print
+
+names = ['TEST1', 'TEST2 field.1', 'TEST2 field.2']
+values = [14, 3.1, 4.5]
+comments = ['Normal keyword', 'Record valued', 'Record valued again']
+red_fitsaddkeyword, hdr, names, values, comments
+print, hdr
+print
+
+names = ['TEST1', 'TEST2 field.1', 'TEST2 field.7']
+values =  [17, 30.1, 40.5]
+comments = ['Normal keyword', 'Record valued', 'Record valued again'] + ': new value'
+red_fitsaddkeyword, hdr, names, values, comments
+
+print, hdr
+print
+
+end
