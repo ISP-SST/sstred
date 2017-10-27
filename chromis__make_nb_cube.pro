@@ -48,9 +48,11 @@
 ; 
 ;    2017-10-20 : MGL. Add a WCS extension.
 ; 
+;    2017-10-27 : MGL. New keyword noaligncont.
+; 
 ;-
 pro chromis::make_nb_cube, wcfile $
-                           , aligncont = aligncont $
+                           , noaligncont = noaligncont $
                            , clips_cont = clips_cont $
                            , momfbddir = momfbddir $
                            , no_timecor = no_timecor $
@@ -68,9 +70,9 @@ pro chromis::make_nb_cube, wcfile $
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Make prpara
-  if n_elements(aligncont   ) ne 0 then red_make_prpara, prpara, 'aligncont'    , aligncont 
+  if n_elements(noaligncont ) ne 0 then red_make_prpara, prpara, 'noaligncont'  , noaligncont 
   if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
-  if n_elements(clips_cont       ) ne 0 then red_make_prpara, prpara, 'clips_cont'        , clips_cont         
+  if n_elements(clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
   if n_elements(float       ) ne 0 then red_make_prpara, prpara, 'float'        , float  
   if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
   if n_elements(no_timecor  ) ne 0 then red_make_prpara, prpara, 'no_timecor'   , no_timecor 
@@ -486,7 +488,7 @@ pro chromis::make_nb_cube, wcfile $
   endif
 
     
-  if keyword_set(aligncont) and prefilter eq '3950' then begin
+  if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
     
     ;; Get shifts based on continuum vs wideband alignment.
     
@@ -582,25 +584,30 @@ pro chromis::make_nb_cube, wcfile $
     ;; pertuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
 
-    if keyword_set(aligncont) and prefilter eq '3950' then begin
-      
+    if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
 
-      ;; Get these from somewhere else (scan_wbstates does not
-      ;; have the WB tuning or prefilter!):
-      lambdaW = 3950e-10
-      lambdaC = 3998.640d-10 + 1.258d-10
+;      ;; Get these from somewhere else (scan_wbstates does not
+;      ;; have the WB tuning or prefilter!):
+;      lambdaW = 3950e-10
+;      lambdaC = 3998.640d-10 + 1.258d-10
       
-      xshifts = interpol([0., nb_shifts[0, iscan]], [lambdaW, lambdaC]*1e7 $
+      icont = where(scan_nbstates.prefilter eq '3999')
+      xshifts = interpol([0., nb_shifts[0, iscan]] $
+;                         , [lambdaW, lambdaC]*1e7 $
+                         , [scan_wbstates[icont].tun_wavelength $
+                            , scan_nbstates[icont].tun_wavelength]*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
-      yshifts = interpol([0., nb_shifts[1, iscan]], [lambdaW, lambdaC]*1e7 $
+      yshifts = interpol([0., nb_shifts[1, iscan]] $
+                         , [scan_wbstates[icont].tun_wavelength $
+                            , scan_nbstates[icont].tun_wavelength]*1e7 $
+;                         , [lambdaW, lambdaC]*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
-      
     endif
 
     for iwav = 0L, Nwav - 1 do begin 
-      ;; state = strjoin((strsplit(file_basename(st.ofiles[iwav,iscan]),'.',/extract))[1:*],'.')
+
       state = ufpi_states[iwav]
 
       ;; Collect info about this frame here.
@@ -637,71 +644,17 @@ pro chromis::make_nb_cube, wcfile $
         grid1 = red_dsgridnest(wb, wwi, tiles_cont, clips_cont)
       endif
 
-      if 0 then wwc = red_stretch(wwi, grid1) ; test
-
-      
       ;; Read image and apply prefilter curve
       nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav]
 
-;          if (self.filetype eq 'ANA') then begin
-;            tmp0 = (f0(ttf))[x0:x1, y0:y1] * tpref[iwav]
-;            tmp1 = (f0(rrf))[x0:x1, y0:y1] * rpref[iwav]
-;          endif else begin
-;            tmp_raw0 = momfbd_read(ttf)
-;            tmp_raw1 = momfbd_read(rrf)
-;
-;            tmp0 = (red_mozaic(tmp_raw0))[x0:x1, y0:y1] * tpref[iwav]
-;            tmp1 = (red_mozaic(tmp_raw1))[x0:x1, y0:y1] * rpref[iwav]
-
-
-;; The following part is not ported yet:
-;; ***********************************************************
-;            ;; Apply flat ratio after convolving with the PSF of the
-;            ;; patch: red_img2momfbd
-;            if(~keyword_set(noflats)) then begin
-;              trat = (red_mozaic(red_img2momfbd(tmp_raw0, tratio[*,*,iwav])))[x0:x1, y0:y1]
-;              rrat = (red_mozaic(red_img2momfbd(tmp_raw1, rratio[*,*,iwav])))[x0:x1, y0:y1]
-;              
-;              tmp0 = temporary(tmp0) * temporary(trat) 
-;              tmp1 = temporary(tmp1) * temporary(rrat) 
-;            endif
-;; ***********************************************************
-
-
-
-;          endelse 
-
-;          ;; Combine cameras, compute scale factor avoiding borders...
-;          dim = size(tmp0,/dim)
-;          xx0 = round(dim[0] * 0.15)
-;          xx1 = round(dim[0] * 0.85)
-;          yy0 = round(dim[1] * 0.15)
-;          yy1 = round(dim[1] * 0.85)
-;          
-;          me = median(tmp0[xx0:xx1,yy0:yy1] + tmp1[xx0:xx1,yy0:yy1]) * 0.5
-;          sclt = me / (median(tmp0[xx0:xx1,yy0:yy1]))
-;          sclr = me / (median(tmp1[xx0:xx1,yy0:yy1]))
-      
-;          tmp = (temporary(tmp0) * sclt + temporary(tmp1) * sclr) 
-      
-      if keyword_set(aligncont) and prefilter eq '3950' then begin
-        
+      if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
+        ;; Apply alignment to compensate for time-variable chromatic
+        ;; aberrations.
         nbim = red_shift_sub(nbim, -xshifts[iwav], -yshifts[iwav])
-
-;            ;; This is the continuum point for a Ca scan, has to be
-;            ;; different for a Hb scan:
-;            continnumpoint = scan_nbstates[iwav].fpi_state eq '3999_4000_+0'
-;            if continnumpoint then begin
-;              ;; Stretch the nb cont image to its wb image
-;              gridx = red_dsgridnest(wwi, nbim, tiles_cont, clips_cont)
-;              nbim = red_stretch(temporary(nbim), gridx)
-;            endif
       endif
 
       ;; Apply destretch to anchor camera and prefilter correction
       if wbcor then nbim = red_stretch(temporary(nbim), grid1)
-      
-;      if(~keyword_set(scans_only)) then begin
 
       ;; Apply derot, align, dewarp based on the output from
       ;; polish_tseries
@@ -713,76 +666,19 @@ pro chromis::make_nb_cube, wcfile $
     
       d[*,*,iwav] = rotate(temporary(nbim), rot_dir) 
 
-;      endif else d[*,*,iwav] = rotate( temporary(nbim), rot_dir)
-
       iprogress++               ; update progress counter
       
     endfor                      ; iwav
-
     
-;    if n_elements(imean) eq 0 then begin 
-;      imean = fltarr(nwav)
-;      for ii = 0L, nwav-1 do imean[ii] = median(d[*,*,ii])
-;      ;;cscl = 4.0                    ; 32768 / 4096
-;      ;; if(keyword_set(scans_only)) then cscl = 1.0
-;      norm_spect = imean / 1.0  ;/ max(imean)
-;      norm_factor = 1.0
-;      spect_pos = wav *1.d10 ;+ double(prefilters[ipref])
-;;          print, inam + ' : saving -> '+odir + '/spectfile.'+prefilters[ipref]+'.idlsave'
-;      save, file = odir + '/spectfile.' + prefilter + '.idlsave' $
-;            , norm_spect, norm_factor, spect_pos
-;    endif
-
-;    if keyword_set(blur) then d = smooth(d, [29, 29, 1], /edge_wrap)
-
-;    if(~keyword_set(scans_only)) then begin
-    ;; Write this scan's data cube to assoc file
     if keyword_set(no_timecor) then tscl = 1 else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
-;    if keyword_set(fitsoutput) then begin
       for iwav = 0, Nwav-1 do $
          self -> fitscube_addframe, fileassoc, d[*, *, iwav] * tscl $
                                     , Nscan = Nscans, Ntuning = Nwav $
                                     , iscan = iscan, ituning = iwav 
-;    endif else begin
-;      if(keyword_set(float)) then begin
-;        dat[iscan] = d*tscl
-;      endif else begin
-;        d1 = round(d*tscl)
-;        dat[iscan] = fix(d1)
-;      endelse
-;    endelse
     if(keyword_set(verbose)) then begin
       print, inam +'scan=',iscan,', max=', max(d1)            
     endif
-;     endif else begin
-;       ;; Write this scan's data cube as an individual file.
-;       if keyword_set(fitsoutput) then begin
-;       endif else begin
-;         print, inam + ' : saving to '+ odir + '/' + ofile
-;         openw, lun, odir + '/' + ofile, /get_lun
-;         writeu, lun, head
-; ;          if(keyword_set(float)) then dat[iscan] = d else writeu, lun, fix(d + 0.5)
-;         if(keyword_set(float)) then writeu, lun, d else writeu, lun, fix(d + 0.5)
-;         free_lun, lun
-;       endelse
-;       if keyword_set(wbwrite) then begin
-;         print, inam + ' : saving to '+ odir + '/' + ofilewb
-;         wbhead = red_mkhdr(wb)  ; Just for now...
-;         if keyword_set(fitsoutput) then begin
-;           red_writedata, odir + '/' + ofilewb, wb, head = wbhead $
-;                          , filetype = 'FITS', overwrite = overwrite
-;         endif else begin
-;           red_writedata, odir + '/' + ofilewb, wb, head = wbhead $
-;                          , filetype = 'ANA', overwrite = overwrite
-; ;              fzwrite, wb, odir + '/' + ofilewb, ' '
-;         endelse
-;       endif
-;     endelse
   endfor                        ; iscan
-    
-;  if(~keyword_set(scans_only)) then begin
-
-;  if keyword_set(fitsoutput) then begin
 
   ;; Close fits file and make a flipped version.
   self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs
@@ -800,9 +696,6 @@ pro chromis::make_nb_cube, wcfile $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
 
-  
-
-  
   ;; Modify some headers (should do in flipfile as well) Or should
   ;; they be var-keys?
 ;  fxhmodify, filename, 'DATE-BEG', self.isodate + 'T' + red_timestring(min(tbeg_array))
@@ -828,14 +721,6 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
-
-
-  ;; Status 2017-09-13 (before vacation): Flipping the cube works as
-  ;; far as the data cube and the wcs keywords (although reading the
-  ;; wcs coordinates should be tested). It remains to get the
-  ;; variable-keywords right in the flipped cube (if we want them
-  ;; there at all). This goes for both adding var-keys from scratch
-  ;; and adding them by copying from the non-flipped cube.
 
   if 0 then begin
 
