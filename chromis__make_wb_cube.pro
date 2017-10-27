@@ -18,21 +18,75 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
-; :Returns:
-; 
-; 
 ; :Params:
 ; 
+;     dir : in, type=string
 ; 
-; 
-; 
+;       The directory where the momfbd output is stored.
 ; 
 ; 
 ; :Keywords:
-; 
-;   
-;   
-;   
+;
+;    scannos : in, optional, type=string, default="ask"
+;
+;       Choose scan numbers to include in the sequence by entering a
+;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
+;       string '*' to include all.
+;
+;    clip : in, optional, type=array 
+;
+;       Successive clips to use when calculating stretch vectors. See
+;       red_destretch_tseries. 
+;
+;    crop : in, optional, type=array, default="[0,0,0,0]"
+;
+;      After red_getborder delivers a FOV [xl,xh,yl,yh], the array
+;      given here will be used to limit the FOV further to
+;      [xl+crop[0],xh-crop[1],yl+[crop[3],y-crop[3]h]. 
+;
+;    origsize : in, optional, type=boolean
+;
+;      The FOV is enlarged to accommodate compensation for field
+;      rotation. Set this keyword to crop the FOV to the original
+;      size. 
+;
+;    negang : in, optional, type=booean 
+;
+;      Set this to apply the field rotation angles with the opposite
+;      sign. 
+;
+;    np : in, optional, type=integer
+;
+;      Length of subcubes to use for alignment. See red_aligncube.
+;
+;    offset_angle : in, optional, type=float
+;
+;      Offset angle to be added to the field rotation angles.
+;
+;    square : in, optional, type=boolean
+;
+;      Set this to make the FOV square. See red_getborder.
+;
+;    tile : in, optional, type=array
+;
+;       Successive tiles to use when calculating stretch vectors. See
+;       red_destretch_tseries. 
+;
+;    tstep : in, optional, type=integer, default="3 min equivalent" 
+;
+;      The number of time steps used as a window when doing unsharp
+;      masking in the destretching. See red_destretch_tseries.
+;
+;    xbd : in, optional, type=integer, default=256
+;
+;      The X size in pixels of the FOV used for alignment. See
+;      red_aligncube. 
+;
+;    ybd : in, optional, type=integer, default=256
+;
+;      The Y size in pixels of the FOV used for alignment. See
+;      red_aligncube.  
+;
 ; 
 ; 
 ; :History:
@@ -49,21 +103,22 @@
 ;
 ;    2017-10-18 : MGL. Use new keyword dimensions in call to method
 ;                 fitscube_addwcs. 
+;
+;    2017-10-27 : MGL. Cleaned up and documented keywords, new keyword
+;                 scannos. 
 ; 
 ; 
 ;-
 pro chromis::make_wb_cube, dir $
-                           , all = all $
+                           , scannos = scannos $
                            , clip = clip $
                            , crop = crop $
                            , origsize = origsize $
                            , negang = negang $
                            , np = np $
                            , offset_angle = offset_angle $
-                           , scale = scale $
                            , square = square $
                            , tile = tile $
-                           , timefiles = timefiles $
                            , tstep = tstep $
                            , xbd = xbd $
                            , ybd = ybd 
@@ -90,10 +145,8 @@ pro chromis::make_wb_cube, dir $
   if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
   if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
   if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
-  if n_elements(scale       ) ne 0 then red_make_prpara, prpara, 'scale'        , scale        
   if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
   if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile         
-  if n_elements(timefiles   ) ne 0 then red_make_prpara, prpara, 'timefiles'    , timefiles    
   if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep        
   if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
   if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
@@ -101,7 +154,6 @@ pro chromis::make_wb_cube, dir $
   IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
   if n_elements(clip) eq 0 then clip = [12, 6, 3, 1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
-  if n_elements(scale) eq 0 then scale = 1.0 / float(self.image_scale)
 
   ;; Camera/detector identification
   self->getdetectors
@@ -139,18 +191,35 @@ pro chromis::make_wb_cube, dir $
   prefilter = wstates[0].prefilter
   datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
 
-  if ~keyword_set(all) then begin
-    ;; Select scan numbers
-    selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
-    tmp = red_select_subset(selectionlist $
-                            , qstring = inam + ' : Select scans:' $
-                            , count = Nscans, indx = scanindx)
-    
+  ;; Get a subset of the available scans, either through the scannos
+  ;; keyword or by a selection dialogue.
+  if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
+    if n_elements(scannos) gt 0 then begin
+      ;; Selected a subset through the scannos keyword
+      uscans = red_expandrange(scannos)
+      match2, uscans, wstates.scannumber, scanindx
+      if max(scanindx eq -1) eq 1 then begin
+        print, inam + ' : You asked for scans ' + scannos + '. However, scans ' $
+               + red_collapserange(uscans[where(scanindx eq -1)], ld = '', rd = '') $
+               + ' are not available.'
+        print, 'Please change the scannos keyword to a subset of ' $
+               + red_collapserange(wstates.scannumber, ld = '', rd = '') $
+               + ' and try again.'
+        retall
+      endif
+      Nscans = n_elements(scanindx)
+    endif else begin
+      ;; Selection dialogue
+      selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
+      tmp = red_select_subset(selectionlist $
+                              , qstring = inam + ' : Select scans:' $
+                              , count = Nscans, indx = scanindx)
+    endelse
     wstates = wstates[scanindx]
-    wfiles = wfiles[scanindx]
+    wfiles  = wfiles[scanindx]
   endif
-  uscans = wstates.scannumber
   
+  uscans = wstates.scannumber
   time = strarr(Nscans)
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
@@ -259,12 +328,12 @@ pro chromis::make_wb_cube, dir $
 
   print, inam + ' : Using the following parameters for de-stretching the time-series: '
   print, '   tstep [~3 m. (?)]= ', tstep
-  print, '   scale [pixels / arcsec] = ', scale
+  print, '   scale [pixels / arcsec] = ', 1.0/float(self.image_scale)
   print, '   tile = ['+strjoin(string(tile, format='(I3)'),',')+']'
   print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
   ;; Calculate stretch vectors
-  grid = red_destretch_tseries(cub, scale, tile, clip, tstep)
+  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep)
 
   for iscan = 0L, Nscans - 1 do begin
     red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
