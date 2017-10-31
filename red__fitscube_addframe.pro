@@ -50,7 +50,7 @@ pro red::fitscube_addframe, fileassoc, frame $
 
   iframe = long(ituning) + long(istokes)*long(Ntuning) $
            + long(iscan)*long(Ntuning)*long(Nstokes)
-  print, 'Adding frame ', iscan, iframe
+;  print, 'Adding frame ', iscan, iframe
 
   fileassoc[iframe] = frame
   
