@@ -5,7 +5,9 @@
 ; momfbd-restored narrow-band images.
 ;
 ; It reads all temporal de-rotation and de-stretching information from
-; the wideband cube produced by companion method make_wb_cube.
+; the wideband cube produced by companion method make_wb_cube. Cavity
+; maps are added to the WCS metadata as distortions to the wavelength
+; coordinate. 
 ; 
 ; :Categories:
 ;
@@ -29,10 +31,39 @@
 ; 
 ; :Keywords:
 ; 
+;     cmap_fwhm : in, type=float, default=7
 ;   
-;   
-;   
-; 
+;       FWHM in pixels of kernel used for smoothing the cavity map.
+;
+;     clips_cont : in, optional, type=array
+;
+;       Used to compute stretch vectors for the continuum alignment. 
+;
+;     notimecor : in, optional, type=boolean
+;
+;       Skip temporal correction of intensities.
+;
+;     noaligncont : in, optional, type=boolean
+;
+;       Do not do the align continuum to wideband step.
+;
+;     nocavitymap : in, optional, type=boolean
+;
+;       Do not add cavity maps to the WCS metadata.
+;
+;     overwrite : in, optional, type=boolean
+;
+;       Don't care if cube is already on disk, overwrite it
+;       with a new version.
+;
+;     tiles_cont : in, optional, type=array
+;
+;       Used to compute stretch vectors for the continuum alignment. 
+;
+;     verbose : in, optional, type=boolean
+;
+;       Some extra screen output.
+;
 ; 
 ; :History:
 ; 
@@ -50,61 +81,63 @@
 ; 
 ;    2017-10-27 : MGL. New keyword noaligncont.
 ; 
+;    2017-10-30 : MGL. Incorporate code from red::make_cmaps to add
+;                 cavity maps as wavelength distortions to the WCS
+;                 metadata. New keyword nocavitymap. Documentation and
+;                 cleanup. 
+; 
 ;-
 pro chromis::make_nb_cube, wcfile $
                            , noaligncont = noaligncont $
+                           , nocavitymap = nocavitymap $
+                           , cmap_fwhm = cmap_fwhm $
                            , clips_cont = clips_cont $
-                           , momfbddir = momfbddir $
-                           , no_timecor = no_timecor $
-                           , nostretch = nostretch $
+                           , notimecor = notimecor $
                            , overwrite = overwrite $
-;                           , rot_dir = rot_dir $
-;                           , scans_only = scans_only $
-                           , selscan = selscan $
                            , tiles_cont = tiles_cont $
-                           , verbose = verbose $
-                           , wbwrite = wbwrite 
-;                           , noflats=noflats $
+                           , verbose = verbose 
+
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Make prpara
-  if n_elements(noaligncont ) ne 0 then red_make_prpara, prpara, 'noaligncont'  , noaligncont 
-  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
-  if n_elements(clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
-  if n_elements(float       ) ne 0 then red_make_prpara, prpara, 'float'        , float  
-  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
-  if n_elements(no_timecor  ) ne 0 then red_make_prpara, prpara, 'no_timecor'   , no_timecor 
-  if n_elements(nostretch   ) ne 0 then red_make_prpara, prpara, 'nostretch'    , nostretch 
-  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
-  if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
-;  if n_elements(rot_dir     ) ne 0 then red_make_prpara, prpara, 'rot_dir'      , rot_dir         
-;  if n_elements(scans_only  ) ne 0 then red_make_prpara, prpara, 'scans_only'   , scans_only          
-  if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
-  if n_elements(tiles_cont       ) ne 0 then red_make_prpara, prpara, 'tiles_cont'        , tiles_cont        
-  if n_elements(wbwrite     ) ne 0 then red_make_prpara, prpara, 'wbwrite'      , wbwrite
+  if n_elements( noaligncont ) ne 0 then red_make_prpara, prpara, 'noaligncont'  , noaligncont 
+  if n_elements( nocavitymap ) ne 0 then red_make_prpara, prpara, 'nocavitymap'  , nocavitymap 
+  if n_elements( clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
+  if n_elements( notimecor   ) ne 0 then red_make_prpara, prpara, 'notimecor'    , notimecor 
+  if n_elements( np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
+  if n_elements( overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
+  if n_elements( tiles_cont  ) ne 0 then red_make_prpara, prpara, 'tiles_cont'   , tiles_cont        
+  if n_elements( cmap_fwhm   ) ne 0 then red_make_prpara, prpara, 'cmap_fwhm'    , cmap_fwhm
 
   ;; Default keywords
-  if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
-  if n_elements(rot_dir) eq 0 then rot_dir = 0B
+  if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
+  if n_elements(tiles_cont) eq 0 or n_elements(clips_cont) eq 0 then begin
+    tiles_cont = [8, 16, 32, 64, 128]
+    clips_cont = [8, 4,  2,  1,  1  ]
+  endif
+
 
   ;; Camera/detector identification
   self->getdetectors
-  wbindx = where(strmatch(*self.cameras,'Chromis-W'))
-  wbcamera = (*self.cameras)[wbindx[0]]
+  wbindx     = where(strmatch(*self.cameras,'Chromis-W'))
+  wbcamera   = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
-  nbindx = where(strmatch(*self.cameras,'Chromis-N')) 
-  nbcamera = (*self.cameras)[nbindx[0]]
+  nbindx     = where(strmatch(*self.cameras,'Chromis-N')) 
+  nbcamera   = (*self.cameras)[nbindx[0]]
   nbdetector = (*self.detectors)[nbindx[0]]
   ;; Should be generalized to multiple NB cameras if CHROMIS gets
   ;; polarimetry. We don't need to identify any PD cameras for
   ;; restored data.
 
   ;; Get metadata from logfiles
-  red_logdata, self.isodate, time_r0, r0 = metadata_r0
-  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
+;  red_logdata, self.isodate, time_r0, r0 = metadata_r0                 ; Seeing
+;  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun ; Pointing
 
+  ;; We do currently not correct for the small scale cavity map in
+  ;; CHROMIS data. (We should get this from earlier meta data!)
+  remove_smallscale = 0       
   
   ;; Read the header from the corrected WB cube. Variables begin with
   ;; WC for Wideband Cube. 
@@ -118,7 +151,7 @@ pro chromis::make_nb_cube, wcfile $
   fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
   fxbreadm, bunit, row = 1 $
             , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-            , ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
   ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
   ;; wbgfiles (WideBand Global).
   fxbread, bunit, wbgfiles, 'WFILES', 1
@@ -146,37 +179,6 @@ pro chromis::make_nb_cube, wcfile $
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   
-  
-  
-  
-
-;
-;  
-;  ;; Find prefilter subdirs
-;  search_dir = self.out_dir +'/'+momfbddir+'/'+timestamp+'/'
-;  prefilters = file_basename(file_search(search_dir + '*' $
-;                                         , count = Nprefs, /test_dir))
-;  if Nprefs eq 0 then begin
-;    print, inam + ' : No prefilter sub-directories found in: ' + search_dir
-;    continue                    ; Next timestamp
-;  endif
-;  
-;  ;; Select prefilter folders
-;  selectionlist = strtrim(indgen(Nprefs), 2)+ '  -> ' + prefilters
-;  tmp = red_select_subset(selectionlist $
-;                          , qstring = inam + ' : Select prefilter directory ID:' $
-;                          , count = Nprefs, indx = sindx)
-;  if Nprefs eq 0 then begin
-;    print, inam + ' : No prefilter sub-folders selected.'
-;    continue                    ; Go to next timestamp
-;  endif
-;  prefilters = prefilters[sindx]
-;  print, inam + ' : Selected -> '+ strjoin(prefilters, ', ')
-;
-;  ;; Loop over WB prefilters
-;  for ipref = 0L, Nprefs-1 do begin
-;
-
   search_dir = file_dirname(wbgfiles[0])+'/'
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
 
@@ -277,9 +279,26 @@ pro chromis::make_nb_cube, wcfile $
   nbstates = pertuningstates[nbindx]
   nbfiles = pertuningfiles[nbindx]
   
-    ;; Prepare for making output file names
+  ;; Prepare for making output file names
+  if(n_elements(odir) eq 0) then odir = self.out_dir + '/nb_cubes/' 
   midpart = prefilter + '_' + datestamp + '_scans=' $ 
             + red_collapserange(uscans, ld = '', rd = '')
+  ofile = 'nb_'+midpart+'_corrected_im.fits'
+  filename = odir+ofile
+
+  ;; Already done?
+  if file_test(filename) then begin
+    if keyword_set(overwrite) then begin
+      print, 'Overwriting existing data cube:'
+      print, filename
+    endif else begin
+      print, 'This data cube exists already:'
+      print, filename
+      return
+    endelse
+  endif
+
+  file_mkdir, odir
 
   ;; Load prefilters
   for inbpref = 0L, Nnbprefs-1 do begin
@@ -328,47 +347,85 @@ pro chromis::make_nb_cube, wcfile $
   ;; Load WB image and define the image border
   tmp = red_readdata(wbgfiles[0])
 
-;  if full then begin
+  ;; Spatial dimensions that match the WB cube
   Nx = wcND[0]
   Ny = wcND[1]
-;  endif else begin
-;    Nx = x1-x0+1
-;    Ny = y1-y0+1
-;  endelse
   
-  ;; Create temporary cube and open output file
-  d = fltarr(Nx, Ny, Nwav)  
-  
-  if(n_elements(odir) eq 0) then odir = self.out_dir + '/nb_cubes/' 
-  file_mkdir, odir
-  
-;  if keyword_set(fitsoutput) then begin
+  ;; Create cubes for science data and scan-adapted cavity maps.
+  d = fltarr(Nx, Ny, Nwav)
+  cavitymaps = fltarr(Nx, Ny, Nscans)
 
-  ofile = 'nb_'+midpart+'_corrected_im.fits'
-  filename = odir+ofile
-  
-  if file_test(filename) then begin
-    if keyword_set(overwrite) then begin
-      print, 'Overwriting existing data cube:'
-      print, filename
+
+  if ~keyword_set(nocavitymap) then begin
+
+    ;; Read the original cavity map
+    istate = 0                  ; Just pick one
+    cfile = self.out_dir + 'flats/spectral_flats/' $
+            + strjoin([nbstates[istate].detector $
+                       ,nbstates[istate].cam_settings $
+                       ,nbstates[istate].prefilter $
+                       , 'fit_results.sav'] $
+                      , '_')
+
+    if ~file_test(cfile) then begin
+      print, inam + ' : Error, calibration file not found -> '+cfile
+      stop
+    endif
+    restore, cfile                 ; The cavity map is in a struct called "fit". 
+    cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
+    cmap /= 10.                    ; Make it [nm]
+    fit = 0B                       ; Don't need the fit struct anymore.
+    
+    if keyword_set(remove_smallscale) then begin
+      ;; If the small scale is already corrected, then include only the
+      ;; low-resolution component in the metadata. The blurring kernel
+      ;; should match how the low resolution component was removed when
+      ;; making flats.
+      npix = 30                 ; Can we get this parameter from earlier headers?
+      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+      cpsf /= total(cpsf, /double)
+      cmap = red_convolve(temporary(cmap), cpsf)
+      cmap1 = cmap
     endif else begin
-      print, 'This data cube exists already:'
-      print, filename
-      return
+      ;; If the small scale is not already corrected, then we still want
+      ;; to blur the cavity map slightly.
+      npsf = round(fwhm * 7.)
+      if((npsf/2)*2 eq npsf) then npsf += 1L
+      psf = red_get_psf(npsf, npsf, fwhm, fwhm)
+      psf /= total(psf, /double)
+      ;; Leave the orignal cmap alone, we might need it later.
+      cmap1 = red_convolve(cmap, psf)
     endelse
-  endif
+    
+    ;; Read the output of the pinhole calibrations so we can do the same
+    ;; to the cavity maps as was done to the raw data in the momfbd
+    ;; step. This output is in a struct "alignments" in the save file
+    ;; 'calib/alignments.sav'
+    restore,'calib/alignments.sav'
+    ;; Should be based on state1 or state2 in the struct? make_cmaps
+    ;; says "just pick one close to continuum (last state?)".
+    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
+    case Nalign of
+      0    : stop               ; Should not happen!
+      1    : amap = invert(      alignments[indx].map           )
+      else : amap = invert( mean(alignments[indx].map, dim = 3) )
+    endcase
+    cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
+    cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
 
+    ;; Replace the line below with the equivalent code using
+    ;; Tomas' maps.
+    ; cmap1 = (red_applyoffsets(red_clipim(temporary(cmap1), cl[*,idx]), xoffs,yoffs))[x0:x1,y0:y1]
+    
+  endif
+  
   ;; Make FITS header for the NB cube
-;  if ~keyword_set(scans_only) then begin
   hdr = wchead                                             ; Start with the WB cube header
   check_fits, d, hdr, /update                              ; Get the type right
   red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
                       , 'Creation UTC date of FITS header' ;
   red_fitsdelkeyword, hdr, 'VAR_KEYS'                                ; Start fresh with variable-keywords. 
 
-  if keyword_set(blur) then begin
-    red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
-  endif
   anchor = 'DATE' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', ofile ; New file name
   
@@ -388,78 +445,25 @@ pro chromis::make_nb_cube, wcfile $
   ;; i.e., red_readhead(.momfbd file). This would have to be handled
   ;; differently with CRISP because each Stokes image is a mix of two
   ;; detectors. 
-  mhd=red_readhead(nbfiles[0])  ; Header of momfbd output file
+  mhd = red_readhead(nbfiles[0]) ; Header of momfbd output file
   red_fitsaddkeyword, hdr, 'DETECTOR', red_fitsgetkeyword(mhd, 'DETECTOR', comment = dcomment), dcomment
   red_fitsaddkeyword, hdr, 'DETGAIN',  red_fitsgetkeyword(mhd, 'DETGAIN',  comment = dcomment), dcomment
   red_fitsaddkeyword, hdr, 'DETOFFS',  red_fitsgetkeyword(mhd, 'DETOFFS',  comment = dcomment), dcomment
   red_fitsaddkeyword, hdr, 'DETMODEL', red_fitsgetkeyword(mhd, 'DETMODEL', comment = dcomment), dcomment
   red_fitsaddkeyword, hdr, 'DETFIRM',  red_fitsgetkeyword(mhd, 'DETFIRM',  comment = dcomment), dcomment
 
-  ;; Open fits file, dat is name of assoc variable
-  dims = [Nx, Ny, Nwav, 1, Nscans] ;
+  ;; Initialize fits file, set up for writing the data part.
+  dims = [Nx, Ny, Nwav, 1, Nscans] 
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
-  
-;  endif else begin
-;    ;; Make headers for nb data as well as (possibly) for wb data
-;    if keyword_set(float) then type = 4 else type = 2
-;    red_mkhead, wbhead, type, [dimim[0], dimim[1]]
-;    naxisx = [dimim[0], dimim[1], Nwav]
-;    red_mkhead, nbhead, type, naxisx
-;  endelse
-
-  
-;  endif else begin
-;    
-;    if keyword_set(float) then extent = '.fcube' else extent = '.icube'
-;
-;    if(keyword_set(scans_only)) then begin
-;      head = red_unpol_lpheader(Nx, Ny, Nwav, float = float)
-;    endif else begin
-;      head = red_unpol_lpheader(Nx, Ny, Nwav*Nscans, float = float)
-;
-;      ;; Open assoc file for output of multi-scan data cube.
-;      ofile = 'crispex_'+midpart+'_time-corrected'+extent
-;
-;      if file_test(odir + '/' + ofile) then begin
-;        if keyword_set(overwrite) then begin
-;          print, 'Overwriting existing data cube:'
-;          print, odir + '/' + ofile
-;        endif else begin
-;          print, 'This data cube exists already:'
-;          print, odir + '/' + ofile
-;          return
-;        endelse
-;      endif
-;      
-;      openw, lun, odir + '/' + ofile, /get_lun
-;      writeu, lun, head
-;      point_lun, lun, 0L
-;      print, inam+' assoc file -> ',  odir + '/' + file_basename(ofile,extent)+'.assoc.pro'
-;      openw, lunf, odir + '/' + file_basename(ofile,extent)+'.assoc.pro', /get_lun
-;      printf,lunf, 'nx=', Nx
-;      printf,lunf, 'ny=', Ny
-;      printf,lunf, 'nw=', Nwav
-;      printf,lunf, 'nt=', Nscans
-;      printf,lunf, "openr,lun,'"+ofile+"', /get_lun"
-;      if keyword_set(float) then begin
-;        dat = assoc(lun, fltarr(Nx, Ny, nwav, /nozero), 512)
-;        printf,lunf, "dat = assoc(lun, fltarr(nx,ny,nw,/nozer), 512)"
-;      endif else begin
-;        dat = assoc(lun, intarr(Nx, Ny, nwav, /nozero), 512)
-;        printf,lunf, "dat = assoc(lun, intarr(nx,ny,nw,/nozer), 512)"
-;      endelse
-;      free_lun, lunf
-;    endelse
-;  endelse
 
   ;; Set up for collecting time and wavelength data
-  tbeg_array = dblarr(Nwav, Nscans)     ; Time beginning for state
-  tend_array = dblarr(Nwav, Nscans)     ; Time end for state
-  tavg_array = dblarr(Nwav, Nscans)     ; Time average for state
+  tbeg_array     = dblarr(Nwav, Nscans) ; Time beginning for state
+  tend_array     = dblarr(Nwav, Nscans) ; Time end for state
+  tavg_array     = dblarr(Nwav, Nscans) ; Time average for state
   date_beg_array = strarr(Nwav, Nscans) ; DATE-BEG for state
   date_end_array = strarr(Nwav, Nscans) ; DATE-END for state
   date_avg_array = strarr(Nwav, Nscans) ; DATE-AVG for state
-  exp_array = fltarr(Nwav, Nscans)      ; Total exposure time
+  exp_array      = fltarr(Nwav, Nscans) ; Total exposure time
 
   wcs = replicate({  wave:dblarr(2,2) $
                    , hplt:dblarr(2,2) $
@@ -469,7 +473,8 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; The narrowband cube is aligned to the wideband cube and all
   ;; narrowband scan positions are aligned to each other. So get hpln
-  ;; and hplt from the wideband cube wcs coordinates.
+  ;; and hplt from the wideband cube wcs coordinates, this should
+  ;; apply to all frames in a scan.
   for iscan = 0L, Nscans-1 do begin
     for iwav = 0, Nwav-1 do begin
       ;; We rely here on hpln and hplt being the first two tabulated
@@ -480,17 +485,12 @@ pro chromis::make_nb_cube, wcfile $
     endfor                      ; iwav
   endfor                        ; iscan
   
-  
-  ;; Start processing data
-  if(~keyword_set(tiles_cont) OR (~keyword_set(clips_cont))) then begin
-    tiles_cont = [8, 16, 32, 64, 128]
-    clips_cont = [8, 4, 2, 1, 1]
-  endif
-
-    
+  ;; Continuum alignment only done for Ca II scans (so far). H beta is
+  ;; not as wide so should be OK.
   if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
     
-    ;; Get shifts based on continuum vs wideband alignment.
+    ;; Get wavelength-variable shifts based on continuum vs wideband
+    ;; alignment.
     
     aligndir = self.out_dir + '/align/' + timestamp $
                + '/' + prefilter + '/'
@@ -511,31 +511,23 @@ pro chromis::make_nb_cube, wcfile $
 
     ;; Use interpolation to get the shifts for the selected scans.
     nb_shifts = fltarr(2, Nscans)
-    for bb=0, Nscans-1 do begin
-      pos = where(align_scannumbers eq uscans[bb], cccc)
-      if(cccc eq 1) then nb_shifts[*, bb] = align_shifts[*, pos] else begin
-        nb_shifts[0, *] = interpol([reform(align_shifts[0, *])], [float(align_scannumbers)], [float(uscans)])
-        nb_shifts[1, *] = interpol([reform(align_shifts[1, *])], [float(align_scannumbers)], [float(uscans)])
+    for iscan=0L, Nscans-1 do begin
+      pos = where(align_scannumbers eq uscans[iscan], cccc)
+      if cccc eq 1 then nb_shifts[*, iscan] = align_shifts[*, pos] else begin
+        nb_shifts[0, *] = interpol([reform(align_shifts[0, *])] $
+                                   , [float(align_scannumbers)], [float(uscans)])
+        nb_shifts[1, *] = interpol([reform(align_shifts[1, *])] $
+                                   , [float(align_scannumbers)], [float(uscans)])
       endelse
     endfor
     pos = where(~finite(nb_shifts), cccc)
-    if(cccc gt 0) then nb_shifts[pos] = 0
+    if cccc gt 0 then nb_shifts[pos] = 0
   endif
 
 
   iprogress = 0
   Nprogress = Nscans*Nwav
   for iscan = 0L, Nscans-1 do begin
-
-    if(n_elements(selscan) gt 0) then if selscan ne strtrim(uscans[iscan], 2) then continue
-;        print, inam + ' : processing scan -> '+strtrim(uscans[iscan], 2)
-
-    ;; Save the wavelength points in a separate file, common to
-    ;; all the scans.
-;    if(iscan eq 0) then begin
-;                                ;         wav = scan_nbstates.tun_wavelength
-;      fzwrite, wav, odir + '/' + 'wav_' + prefilter +'.f0',' '
-;    endif
 
     ;; The files in this scan, sorted in tuning wavelength order.
     self -> selectfiles, files = pertuningfiles, states = pertuningstates $
@@ -555,35 +547,11 @@ pro chromis::make_nb_cube, wcfile $
     sortindx = sort(scan_nbstates.tun_wavelength)
     scan_nbfiles = scan_nbfiles[sortindx]
     scan_nbstates = scan_nbstates[sortindx]
-    
-;    if(keyword_set(scans_only)) then begin
-;      if keyword_set(fitsoutput) then begin
-;        ofile = 'crispex_' + prefilter + '_' + datestamp + '_scan=' $
-;                + string(uscans[iscan], format = '(i05)') + '.fits' 
-;        ofilewb = 'wb_' + prefilter + '_' + datestamp + '_scan=' $
-;                  + string(uscans[iscan], format = '(i05)') + '.fits' 
-;      endif else begin
-;        ofile = 'crispex_' + prefilter + '_' + datestamp + '_scan=' $
-;                + string(uscans[iscan], format = '(i05)') + extent
-;        ofilewb = 'wb_' + prefilter + '_' + datestamp + '_scan=' $
-;                  + string(uscans[iscan], format = '(i05)') + '.fz' 
-;      endelse
-;      if file_test(odir + '/' + ofile) then begin
-;        if keyword_set(overwrite) then begin
-;          print, 'Overwriting existing data cube:'
-;          print, odir + '/' + ofile
-;        endif else begin
-;          print, 'Skip to next scan, this one exists already:'
-;          print, odir + '/' + ofile
-;          continue              ; Skip to next iteration of "for iscan ..." loop.
-;        endelse
-;      endif
-;    endif
-
+   
     ;; Read global WB file to use as reference when destretching
-    ;; pertuning wb files and then the corresponding nb files.
+    ;; per-tuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
-
+    
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
@@ -635,11 +603,11 @@ pro chromis::make_nb_cube, wcfile $
       
       red_progressbar, iprogress, Nprogress $
                        , /predict $
-                       , 'Processing scan ' $
+                       , 'Processing scan=' $
                        + strtrim(uscans[iscan], 2) + ' state=' + state 
 
       ;; Get destretch to anchor camera (residual seeing)
-      if(wbcor) then begin
+      if wbcor then begin
         wwi = (red_readdata(scan_wbfiles[iwav]))[x0:x1, y0:y1]
         grid1 = red_dsgridnest(wb, wwi, tiles_cont, clips_cont)
       endif
@@ -657,32 +625,100 @@ pro chromis::make_nb_cube, wcfile $
       if wbcor then nbim = red_stretch(temporary(nbim), grid1)
 
       ;; Apply derot, align, dewarp based on the output from
-      ;; polish_tseries
-
+      ;; make_wb_cube
       nbim = red_rotation(temporary(nbim), ang[iscan], $
                           wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-      if(~keyword_set(nostretch)) then $
-         nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
+      nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
     
-      d[*,*,iwav] = rotate(temporary(nbim), rot_dir) 
-
+;      d[*,*,iwav] = rotate(temporary(nbim), rot_dir) 
+      d[*,*,iwav] = temporary(nbim)
+      
       iprogress++               ; update progress counter
       
     endfor                      ; iwav
     
-    if keyword_set(no_timecor) then tscl = 1 else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
-      for iwav = 0, Nwav-1 do $
-         self -> fitscube_addframe, fileassoc, d[*, *, iwav] * tscl $
-                                    , Nscan = Nscans, Ntuning = Nwav $
-                                    , iscan = iscan, ituning = iwav 
+    if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
+    for iwav = 0, Nwav-1 do $
+       self -> fitscube_addframe, fileassoc, d[*, *, iwav] * tscl $
+                                  , Nscan = Nscans, Ntuning = Nwav $
+                                  , iscan = iscan, ituning = iwav
+    
+    if ~keyword_set(nocavitymap) then begin
+      
+      ;; Apply the same derot, align, dewarp as for the science data
+      cmap11 = red_rotation(cmap1, ang[iscan], $
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+      cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+      
+      ;; cavitymaps[0, 0, iscan] = rotate(cmap11, rot_dir) 
+      cavitymaps[0, 0, iscan] = cmap11
+
+      ;; The following block of code is inactive but we want to keep
+      ;; it around in case it is needed later. It does further
+      ;; operations on the cavity maps based on what is done to the
+      ;; science data, such as stretching based on the extra
+      ;; per-tuning wideband objects, as well as blurring based on the
+      ;; momfbd psfs. It should probably have a boolean keyword that
+      ;; activates it. (This code will have to be updated to the
+      ;; current pipeline style before it can be used.)
+      if 0 then begin
+        wb = (red_mozaic(momfbd_read(wbf[ss])))[x0:x1,y0:y1]
+        for ww = 0L, nw - 1 do begin
+          
+          iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
+          iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
+          
+          ;; Load images
+          iwb = (red_mozaic(momfbd_read(iwbf)))[x0:x1,y0:y1]
+          im = momfbd_read(st.ofiles[ww,ss])
+          
+          ;; get dewarp from WB
+          igrid = red_dsgridnest(wb, iwb, itiles, iclip)
+          
+          ;; Convolve CMAP and apply wavelength dep. de-warp
+          cmap2 =  red_stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
+          
+          ;; Derotate and shift
+          if(full) then begin
+            cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+                                 total(shift[1,ss]), full=ff)
+          endif else begin
+            cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+                                 total(shift[1,ss]))
+          endelse
+          
+          ;; Time de-warp
+          cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+          
+          ;; Flip any of the axes?
+          cmap2 = rotate(temporary(cmap2), rot_dir)
+          
+          ;; write to disk
+;           writeu, lun2, fix(round((cmap2)*1000.))
+          if(~keyword_set(float)) then $
+             writeu, lun2, fix(round(temporary(cmap2)*1000.)) $
+          else $
+             writeu, lun2, float((temporary(cmap2)*1000.))
+        endfor                  ; ww
+      endif
+
+      
+    endif
+    
+      
     if(keyword_set(verbose)) then begin
       print, inam +'scan=',iscan,', max=', max(d1)            
     endif
+    
   endfor                        ; iscan
 
   ;; Close fits file and make a flipped version.
   self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs
 
+  ;; Add cavity maps as WAVE distortions 
+  if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cavitymaps
+
+  ;; Add some variable keywords
   self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
                                   , comment = 'Beginning of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
@@ -695,13 +731,7 @@ pro chromis::make_nb_cube, wcfile $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
-
-  ;; Modify some headers (should do in flipfile as well) Or should
-  ;; they be var-keys?
-;  fxhmodify, filename, 'DATE-BEG', self.isodate + 'T' + red_timestring(min(tbeg_array))
-;  fxhmodify, filename, 'DATE-AVG', self.isodate + 'T' + red_timestring(mean(tavg_array))
-;  fxhmodify, filename, 'DATE-END', self.isodate + 'T' + red_timestring(max(tend_array))
-
+ 
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile
   self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile
@@ -736,8 +766,9 @@ pro chromis::make_nb_cube, wcfile $
 
     r0 = red_fitsgetkeyword(filename, 'ATMOS_R0', comment = comment, variable_values = r0_values)
     help, r0_values
-  
-    
   endif
+
+  print, inam + ' : Narrowband cube stored in:'
+  print, filename
   
 end
