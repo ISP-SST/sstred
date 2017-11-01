@@ -635,7 +635,6 @@ pro chromis::make_nb_cube, wcfile $
       nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
     
       self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                 , Nscan = Nscans, Ntuning = Nwav $
                                  , iscan = iscan, ituning = iwav
       
       iprogress++               ; update progress counter
