@@ -330,7 +330,8 @@ pro chromis::make_nb_cube, wcfile $
       prefilter_wb = [prefilter_wb, prf.wbint]
     endif else begin
       me = median(prf.wav)
-      prefilter_curve = [prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
+      prefilter_curve = [prefilter_curve $
+                         , red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
       prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
       prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
     endelse
@@ -352,7 +353,7 @@ pro chromis::make_nb_cube, wcfile $
   Ny = wcND[1]
   
   ;; Create cubes for science data and scan-adapted cavity maps.
-  d = fltarr(Nx, Ny, Nwav)
+;  cub = fltarr(Nx, Ny, Nwav)
   cavitymaps = fltarr(Nx, Ny, Nscans)
 
 
@@ -420,8 +421,9 @@ pro chromis::make_nb_cube, wcfile $
   endif
   
   ;; Make FITS header for the NB cube
-  hdr = wchead                                             ; Start with the WB cube header
-  check_fits, d, hdr, /update                              ; Get the type right
+  hdr = wchead                  ; Start with the WB cube header
+  red_fitsaddkeyword, hdr, 'BITPIX', -32                   ; float
+;  check_fits, cub, hdr, /update                              ; Get the type right
   red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
                       , 'Creation UTC date of FITS header' ;
   red_fitsdelkeyword, hdr, 'VAR_KEYS'                                ; Start fresh with variable-keywords. 
@@ -574,6 +576,8 @@ pro chromis::make_nb_cube, wcfile $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
+    if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
+    
     for iwav = 0L, Nwav - 1 do begin 
 
       state = ufpi_states[iwav]
@@ -612,8 +616,8 @@ pro chromis::make_nb_cube, wcfile $
         grid1 = red_dsgridnest(wb, wwi, tiles_cont, clips_cont)
       endif
 
-      ;; Read image and apply prefilter curve
-      nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav]
+      ;; Read image, apply prefilter curve and temporal scaling
+      nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
 
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
@@ -630,18 +634,13 @@ pro chromis::make_nb_cube, wcfile $
                           wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
       nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
     
-;      d[*,*,iwav] = rotate(temporary(nbim), rot_dir) 
-      d[*,*,iwav] = temporary(nbim)
+      self -> fitscube_addframe, fileassoc, temporary(nbim) $
+                                 , Nscan = Nscans, Ntuning = Nwav $
+                                 , iscan = iscan, ituning = iwav
       
       iprogress++               ; update progress counter
-      
+
     endfor                      ; iwav
-    
-    if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
-    for iwav = 0, Nwav-1 do $
-       self -> fitscube_addframe, fileassoc, d[*, *, iwav] * tscl $
-                                  , Nscan = Nscans, Ntuning = Nwav $
-                                  , iscan = iscan, ituning = iwav
     
     if ~keyword_set(nocavitymap) then begin
       
@@ -650,7 +649,6 @@ pro chromis::make_nb_cube, wcfile $
                             wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
       cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
       
-      ;; cavitymaps[0, 0, iscan] = rotate(cmap11, rot_dir) 
       cavitymaps[0, 0, iscan] = cmap11
 
       ;; The following block of code is inactive but we want to keep
@@ -690,15 +688,6 @@ pro chromis::make_nb_cube, wcfile $
           ;; Time de-warp
           cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
           
-          ;; Flip any of the axes?
-          cmap2 = rotate(temporary(cmap2), rot_dir)
-          
-          ;; write to disk
-;           writeu, lun2, fix(round((cmap2)*1000.))
-          if(~keyword_set(float)) then $
-             writeu, lun2, fix(round(temporary(cmap2)*1000.)) $
-          else $
-             writeu, lun2, float((temporary(cmap2)*1000.))
         endfor                  ; ww
       endif
 
