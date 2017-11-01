@@ -30,28 +30,34 @@
 ; 
 ;    2016-03-24 : MGL. First version.
 ; 
+;    2017-11-01 : MGL. Get the cube dimensions from the file instead
+;                 of from keywords.
 ; 
 ;-
 pro red::fitscube_addframe, fileassoc, frame $
                               , ituning = ituning $
                               , istokes = istokes $
-                              , iscan = iscan $
-                              , Ntuning = Ntuning $
-                              , Nstokes = Nstokes $
-                              , Nscan = Nscan 
-
-  if n_elements(Ntuning) eq 0 then Ntuning = 1L
-  if n_elements(Nstokes) eq 0 then Nstokes = 1L
-  if n_elements(Nscan)   eq 0 then Nscans  = 1L
+                              , iscan = iscan
 
   if n_elements(ituning) eq 0 then ituning = 0L
   if n_elements(istokes) eq 0 then istokes = 0L
   if n_elements(iscan)   eq 0 then iscan   = 0L
+  
+  ;; Get dimensions from the file
+  lun = (size(fileassoc,/struc)).file_lun
+  fs = fstat(lun)
+  dimensions = long(fxpar(headfits(fs.name), 'NAXIS*'))
+  Nx      = dimensions[0]
+  Ny      = dimensions[1]
+  Ntuning = dimensions[2]
+  Nstokes = dimensions[3]
+  Nscans  = dimensions[4]
 
-  iframe = long(ituning) + long(istokes)*long(Ntuning) $
-           + long(iscan)*long(Ntuning)*long(Nstokes)
-;  print, 'Adding frame ', iscan, iframe
+  ;; Calculate the frame number
+  iframe = long(ituning) + long(istokes)*Ntuning $
+           + long(iscan)*Ntuning*Nstokes
 
+  ;; Write the frame
   fileassoc[iframe] = frame
   
 end
