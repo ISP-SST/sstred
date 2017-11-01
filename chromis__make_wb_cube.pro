@@ -42,7 +42,7 @@
 ;
 ;      After red_getborder delivers a FOV [xl,xh,yl,yh], the array
 ;      given here will be used to limit the FOV further to
-;      [xl+crop[0],xh-crop[1],yl+[crop[3],y-crop[3]h]. 
+;      [xl+crop[0],xh-crop[1],yl+[crop[3],y-crop[3]].
 ;
 ;    origsize : in, optional, type=boolean
 ;
@@ -137,19 +137,19 @@ pro chromis::make_wb_cube, dir $
   endif
   
   ;; Make prpara
-  if n_elements(dir         ) ne 0 then red_make_prpara, prpara, 'dir'          , dir    
-  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur         
-  if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip         
-  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop         
-  if n_elements(origsize    ) ne 0 then red_make_prpara, prpara, 'origsize'     , origsize    
-  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
-  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
-  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
-  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
-  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile         
-  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep        
-  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
-  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
+  if n_elements(dir         ) ne 0 then red_make_prpara, prpara, 'dir'          , dir
+  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur
+  if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip
+  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop
+  if n_elements(origsize    ) ne 0 then red_make_prpara, prpara, 'origsize'     , origsize
+  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang
+  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np
+  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle
+  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square
+  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile
+  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep
+  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd
+  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd
 
   IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
   if n_elements(clip) eq 0 then clip = [12, 6, 3, 1]
@@ -243,7 +243,8 @@ pro chromis::make_wb_cube, dir $
       cub = fltarr(nx, ny, Nscans)
     endif
     
-    red_fitspar_getdates, hdr, date_avg = date_avg, count_avg = hasdateavg, comment_avg = comment_avg
+    red_fitspar_getdates, hdr, date_avg = date_avg $
+                          , count_avg = hasdateavg, comment_avg = comment_avg
 
     if hasdateavg then begin
       date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
@@ -273,7 +274,7 @@ pro chromis::make_wb_cube, dir $
   tmean = tmean/mean(tmean)
   for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
 
-  ;; Might not be needed?
+  ;; Set aside non-rotated and non-shifted cube
   cub1 = cub
   
   ang = red_lp_angles(time, date)
@@ -292,7 +293,8 @@ pro chromis::make_wb_cube, dir $
   ;; Align cube
   if(~keyword_set(np)) then begin
     np = 0L
-    read, np, prompt = inam +' : Please introduce the factor to recompute the reference image: '
+    prompt = inam +' : Please introduce the factor to recompute the reference image: '
+    read, np, prompt = prompt
   endif
 
   ;; Calculate the image shifts
@@ -365,7 +367,7 @@ pro chromis::make_wb_cube, dir $
   check_fits, cub, hdr, /update                              ; Get dimensions right
   red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE witht time
                       , 'Creation UTC date of FITS header'   ;
-  red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round() before saving. 
+  red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round before saving.
                       , 'Number of bits per data pixel'      ;
   red_fitsaddkeyword, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
 
@@ -425,9 +427,9 @@ pro chromis::make_wb_cube, dir $
   hpln = median(hpln)
   hplt = median(hplt)
 
-  ;; But what we want to tablulate is the pointing in the corners of
+  ;; But what we want to tabulate is the pointing in the corners of
   ;; the FOV. Assume hpln and hplt are the coordinates of the center
-  ;; of the FOV. 
+  ;; of the FOV.
   wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
   wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
   wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
@@ -442,58 +444,12 @@ pro chromis::make_wb_cube, dir $
   for iscan = 0, Nscans-1 do begin
     self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
                                , iscan = iscan
-
-;    red_wcs_hpl_coords, t_array[0, iscan], metadata_pig, time_pig $
-;                        , Nx, Ny, self.image_scale $
-;                        , hpln, hplt
-      
-;    wcs[0, iscan].wave = float(prefilter)/10.
     wcs[0, iscan].time = t_array[iscan]
-;    wcs[0, iscan].hpln = hpln
-;    wcs[0, iscan].hplt = hplt
   endfor                        ; iscan
   free_lun, lun
   print, inam + ' : Wrote file '+odir + ofil
 
   print, inam + ' : Add calibration data to file '+odir + ofil
-  ;; Save angles, shifts and de-stretch grids  -- This should make it
-  ;;                                              into a file extension
-  ;;                                              instead!
-;  ofil = 'tseries_'+midpart+'_calib.sav'
-;  print, inam + ' : saving calibration data -> ' + odir + ofil
-;  save, file = odir + ofil $
-;        , tstep, clip, tile, scale, ang, shift, grid, time, date $
-;        , wfiles, tmean, crop, mang, x0, x1, y0, y1, ff, nd
-  
-  ;; Sample saved quantities with comments about their use in make_crispex:
-  ;;
-  ;; TSTEP           LONG      =            5          [Not used]
-  ;; CLIP            INT       = Array[4]              [Not used]
-  ;; TILE            INT       = Array[4]              [Not used]
-  ;; SCALE           FLOAT     =       26.3852         [Not used]
-  ;; ANG             DOUBLE    = Array[5]              [Yes]
-  ;; SHIFT           DOUBLE    = Array[2, 5]           [Yes]
-  ;; GRID            FLOAT     = Array[5, 2, 40, 25]   [Yes]
-  ;; TIME            STRING    = Array[5]              [Not used]
-  ;; DATE            STRING    = Array[5]              [Not used]
-  ;; WFILES          STRING    = Array[5]              [Yes]
-  ;; TMEAN           FLOAT     = Array[5]              [Yes]
-  ;; CROP            INT       = Array[4]              [Not used]
-  ;; MANG            DOUBLE    =        6.2653633      [Not used]
-  ;; X0              LONG      =            0          [Yes]
-  ;; X1              LONG      =         1831          [Yes]
-  ;; Y0              LONG      =            0          [Yes]
-  ;; Y1              LONG      =         1151          [Yes]
-  ;; FF              INT       =        0              [Yes] ( = [maxangle, mdx0, mdx1, mdy0, mdy1] if fullframe)
-  ;; ND              UNDEFINED = <Undefined>           [Yes] (2d array if fullframe)
-  ;;
-  ;; (Some of) these quantities should really go into the metadata
-  ;; of the FITS file for two reasons: documentation and use in
-  ;; make_crispex. The latter so we can avoid using the save file.
-  ;;
-  ;; Can make_crispex calculate x0,x1,y0,y1 from naxis1 and naxis2 and
-  ;; any of the other parameters?
-
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
   x01y01 = [X0, X1, Y0, Y1]
   fxbaddcol, col, bhdr, ANG,    'ANG'
@@ -528,6 +484,35 @@ pro chromis::make_wb_cube, dir $
     fxbread, bunit, rWFILES, 'WFILES', 1
     fxbclose, bunit
   endif
+  ;; Sample saved quantities with comments about their use in make_crispex:
+  ;;
+  ;; TSTEP           LONG      =            5          [Not used]
+  ;; CLIP            INT       = Array[4]              [Not used]
+  ;; TILE            INT       = Array[4]              [Not used]
+  ;; SCALE           FLOAT     =       26.3852         [Not used]
+  ;; ANG             DOUBLE    = Array[5]              [Yes]
+  ;; SHIFT           DOUBLE    = Array[2, 5]           [Yes]
+  ;; GRID            FLOAT     = Array[5, 2, 40, 25]   [Yes]
+  ;; TIME            STRING    = Array[5]              [Not used]
+  ;; DATE            STRING    = Array[5]              [Not used]
+  ;; WFILES          STRING    = Array[5]              [Yes]
+  ;; TMEAN           FLOAT     = Array[5]              [Yes]
+  ;; CROP            INT       = Array[4]              [Not used]
+  ;; MANG            DOUBLE    =        6.2653633      [Not used]
+  ;; X0              LONG      =            0          [Yes]
+  ;; X1              LONG      =         1831          [Yes]
+  ;; Y0              LONG      =            0          [Yes]
+  ;; Y1              LONG      =         1151          [Yes]
+  ;; FF              INT       =        0              [Yes] ( = [maxangle, mdx0, mdx1, mdy0, mdy1] if fullframe)
+  ;; ND              UNDEFINED = <Undefined>           [Yes] (2d array if fullframe)
+  ;;
+  ;; (Some of) these quantities should really go into the metadata
+  ;; of the FITS file for two reasons: documentation and use in
+  ;; make_crispex. The latter so we can avoid using the save file.
+  ;;
+  ;; Can make_crispex calculate x0,x1,y0,y1 from naxis1 and naxis2 and
+  ;; any of the other parameters?
+
 
   ;; Add the WCS coordinates
   self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
