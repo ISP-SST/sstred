@@ -75,32 +75,25 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   ;; Open the new fits file
   openw, lun, filename, /get_lun, /swap_if_little_endian
 
+  ;; Strip trailing empty lines from hdr
+  hdr = hdr[0:where(strmid(hdr,0,3) eq 'END')]
+  
   ;; Make byte-version of header and write it to the file.
   Nlines = n_elements(hdr)     
-  bhdr = replicate(32B, 80L*Nlines)
-  for n = 0L, Nlines-1 do bhdr[80*n] = byte(hdr[n])
+  bhdr=reform(byte(hdr),80L*Nlines)
+  ;bhdr = replicate(32B, 80L*Nlines)
+  ;for n = 0L, Nlines-1 do bhdr[80*n] = byte(hdr[n])
   writeu, lun, bhdr
 
   ;; Pad to mod 2880 bytes
   Npad = 2880 - (80L*Nlines mod 2880) ; Number of bytes of padding
   if Npad GT 0 then writeu, lun, replicate(32B,Npad)
-  Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-  offset = Nblock*2880          ; Offset to start of data
-print, 'offset=', offset
+  StartPos = 80L*Nlines + Npad
+;  print, 'StartPos=', StartPos
   
   ;; Now prepare for the data part
   Nslices = Ntuning * Nstokes * Nscans
   Nelements = Nx * Ny * Nslices
-
-;  naxis = sxpar(hdr,'NAXIS')
-;  dims = lonarr(2)
-;  Nelements = 1L
-;  Nslices = 1L
-;  for i = 1, 2 do begin
-;     dims[i-1] = sxpar(hdr,'NAXIS'+strtrim(i, 2))
-;     Nelements *= dims[i-1]
-;     if i gt 1 then Nslices *= dims[i-1]
-;  endfor
 
   bitpix = fxpar(hdr, 'BITPIX')
   case bitpix of
@@ -108,21 +101,21 @@ print, 'offset=', offset
     -32 : array_structure = fltarr(Nx, Ny)
     else : stop
   endcase
-help, array_structure
-print, 'Nelements', Nelements
+;  help, array_structure
+;  print, 'Nelements', Nelements
 
   ;; Pad the file, including the data part, to mod 2880 bytes
-  endpos = offset + Nelements*abs(bitpix)/8 ; End position of data
-  Npad = 2880 - (endpos mod 2880)
-  if npad GT 0 and npad LT 2880 then begin
+  EndPos = StartPos + Nelements*abs(bitpix)/8 ; End position of data
+  Npad = 2880 - (EndPos mod 2880)
+  if Npad gt 0 and Npad lt 2880 then begin
     bpad = bytarr(Npad)
-    rec = assoc(lun,bpad,endpos)
+    rec = assoc(lun,bpad,EndPos)
     rec[0] = bpad
   endif
-  print, 'endpos=', endpos
-  print, 'Npad', Npad
+;  print, 'EndPos=', EndPos
+;  print, 'Npad', Npad
 
   ;; Set up an assoc variable for writing the frames/slices
-  fileassoc = assoc(lun, array_structure, offset)
+  fileassoc = assoc(lun, array_structure, StartPos)
 
 end
