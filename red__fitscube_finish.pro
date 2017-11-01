@@ -45,7 +45,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
 
   inam = red_subprogram(/low, calling = inam1)
   
-  filename = (fstat(lun)).name ; Get the name while the file is still open.
+  filename = (fstat(lun)).name  ; Get the file name while the file is still open.
   print, inam + ' : Closing fitscube file ' + filename
 
   ;; Close the file
@@ -138,9 +138,11 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   openw, flun, flipfile, /get_lun, /swap_if_little_endian ; Output file
 
   ;; Write the header of the flipped cube
+  hsp = hsp[0:where(strmid(hsp,0,3) eq 'END')] ; Strip trailing empty lines
   Nlines = n_elements(hsp)     
-  bhdr = replicate(32B, 80L*Nlines)
-  for n = 0L, Nlines-1 do bhdr[80*n] = byte(hsp[n])
+  bhdr=reform(byte(hsp),80L*Nlines) ; Byte version of header
+;  bhdr = replicate(32B, 80L*Nlines)
+;  for n = 0L, Nlines-1 do bhdr[80*n] = byte(hsp[n])
   writeu, flun, bhdr
  
   ;; Make assoc variables
