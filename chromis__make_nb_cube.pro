@@ -39,10 +39,6 @@
 ;
 ;       Used to compute stretch vectors for the continuum alignment. 
 ;
-;     notimecor : in, optional, type=boolean
-;
-;       Skip temporal correction of intensities.
-;
 ;     noaligncont : in, optional, type=boolean
 ;
 ;       Do not do the align continuum to wideband step.
@@ -50,6 +46,10 @@
 ;     nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
+;
+;     notimecor : in, optional, type=boolean
+;
+;       Skip temporal correction of intensities.
 ;
 ;     overwrite : in, optional, type=boolean
 ;
@@ -88,14 +88,14 @@
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
-                           , noaligncont = noaligncont $
-                           , nocavitymap = nocavitymap $
-                           , cmap_fwhm = cmap_fwhm $
                            , clips_cont = clips_cont $
+                           , cmap_fwhm = cmap_fwhm $
+                           , nocavitymap = nocavitymap $
                            , notimecor = notimecor $
                            , overwrite = overwrite $
                            , tiles_cont = tiles_cont $
-                           , verbose = verbose 
+                           , verbose = verbose $
+                           , noaligncont = noaligncont 
 
   
   ;; Name of this method

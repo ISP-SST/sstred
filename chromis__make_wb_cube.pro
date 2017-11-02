@@ -27,12 +27,6 @@
 ; 
 ; :Keywords:
 ;
-;    scannos : in, optional, type=string, default="ask"
-;
-;       Choose scan numbers to include in the sequence by entering a
-;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
-;       string '*' to include all.
-;
 ;    clip : in, optional, type=array 
 ;
 ;       Successive clips to use when calculating stretch vectors. See
@@ -43,12 +37,6 @@
 ;      After red_getborder delivers a FOV [xl,xh,yl,yh], the array
 ;      given here will be used to limit the FOV further to
 ;      [xl+crop[0],xh-crop[1],yl+[crop[3],y-crop[3]].
-;
-;    origsize : in, optional, type=boolean
-;
-;      The FOV is enlarged to accommodate compensation for field
-;      rotation. Set this keyword to crop the FOV to the original
-;      size. 
 ;
 ;    negang : in, optional, type=booean 
 ;
@@ -62,6 +50,18 @@
 ;    offset_angle : in, optional, type=float
 ;
 ;      Offset angle to be added to the field rotation angles.
+;
+;    origsize : in, optional, type=boolean
+;
+;      The FOV is enlarged to accommodate compensation for field
+;      rotation. Set this keyword to crop the FOV to the original
+;      size. 
+;
+;    scannos : in, optional, type=string, default="ask"
+;
+;       Choose scan numbers to include in the sequence by entering a
+;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
+;       string '*' to include all.
 ;
 ;    square : in, optional, type=boolean
 ;
@@ -104,24 +104,23 @@
 ;    2017-10-18 : MGL. Use new keyword dimensions in call to method
 ;                 fitscube_addwcs. 
 ;
-;    2017-10-27 : MGL. Cleaned up and documented keywords, new keyword
-;                 scannos. 
+;    2017-10-27 : MGL. New keyword scannos.
 ; 
 ; 
 ;-
 pro chromis::make_wb_cube, dir $
-                           , scannos = scannos $
                            , clip = clip $
                            , crop = crop $
-                           , origsize = origsize $
                            , negang = negang $
                            , np = np $
                            , offset_angle = offset_angle $
+                           , origsize = origsize $
                            , square = square $
                            , tile = tile $
                            , tstep = tstep $
                            , xbd = xbd $
-                           , ybd = ybd 
+                           , ybd = ybd $
+                           , scannos = scannos 
 ;                             , ang = ang $
 ;                             , ext_date = ext_date $
 ;                             , ext_time = ext_time $
@@ -266,7 +265,7 @@ pro chromis::make_wb_cube, dir $
     tmean[iscan] = median(cub[*,*,iscan])
     
   endfor                        ; iscan
-
+stop
   ;; Plot the intensity variations
   cgplot, uscans, tmean, xtitle = 'Scan number', ytitle = 'Mean WB intensity', psym=-1, /ynozero
 
