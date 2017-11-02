@@ -27,16 +27,24 @@
 ; 
 ; :Keywords:
 ;
+;    autocrop : in, optional, type=booean
+;
+;      Try to determine the largest FOV that avoids any bad momfbd
+;      subfields along the edges. If this keyword is set, the input
+;      value of the crop keyword is ignored and is set to the
+;      auto-detected crop parameters.
+;
 ;    clip : in, optional, type=array 
 ;
-;       Successive clips to use when calculating stretch vectors. See
-;       red_destretch_tseries. 
+;      Successive clips to use when calculating stretch vectors. See
+;      red_destretch_tseries. 
 ;
-;    crop : in, optional, type=array, default="[0,0,0,0]"
+;    crop : in, out, optional, type=array, default="[0,0,0,0]"
 ;
-;      After red_getborder delivers a FOV [xl,xh,yl,yh], the array
-;      given here will be used to limit the FOV further to
-;      [xl+crop[0],xh-crop[1],yl+[crop[3],y-crop[3]].
+;      The array given here will be used to limit the FOV to
+;      [xl+crop[0],xh-crop[1],yl+[crop[3],yh-crop[3]]. If /autocrop,
+;      then the auto detected crop is returned in this keyword
+;      instead.
 ;
 ;    negang : in, optional, type=booean 
 ;
@@ -51,21 +59,11 @@
 ;
 ;      Offset angle to be added to the field rotation angles.
 ;
-;    origsize : in, optional, type=boolean
-;
-;      The FOV is enlarged to accommodate compensation for field
-;      rotation. Set this keyword to crop the FOV to the original
-;      size. 
-;
 ;    scannos : in, optional, type=string, default="ask"
 ;
 ;       Choose scan numbers to include in the sequence by entering a
 ;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
 ;       string '*' to include all.
-;
-;    square : in, optional, type=boolean
-;
-;      Set this to make the FOV square. See red_getborder.
 ;
 ;    tile : in, optional, type=array
 ;
@@ -104,18 +102,19 @@
 ;    2017-10-18 : MGL. Use new keyword dimensions in call to method
 ;                 fitscube_addwcs. 
 ;
-;    2017-10-27 : MGL. New keyword scannos.
-; 
+;    2017-10-27 : MGL. New keyword scannos. 
+;
+;    2017-11-02 : MGL. New keyword autocrop. Remove keywords square
+;                 and origsize.
 ; 
 ;-
 pro chromis::make_wb_cube, dir $
+                           , autocrop = autocrop $
                            , clip = clip $
                            , crop = crop $
                            , negang = negang $
                            , np = np $
                            , offset_angle = offset_angle $
-                           , origsize = origsize $
-                           , square = square $
                            , tile = tile $
                            , tstep = tstep $
                            , xbd = xbd $
@@ -140,18 +139,16 @@ pro chromis::make_wb_cube, dir $
   if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur
   if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip
   if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop
-  if n_elements(origsize    ) ne 0 then red_make_prpara, prpara, 'origsize'     , origsize
   if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang
   if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np
   if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle
-  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square
   if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile
   if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep
   if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd
   if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd
 
-  IF n_elements(crop) NE 4 THEN crop = [0,0,0,0]
-  if n_elements(clip) eq 0 then clip = [12, 6, 3, 1]
+  IF n_elements(crop) NE 4 THEN crop = [0, 0, 0, 0]
+  if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
 
   ;; Camera/detector identification
@@ -222,6 +219,57 @@ pro chromis::make_wb_cube, dir $
   time = strarr(Nscans)
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
+
+  if keyword_set(autocrop) then begin
+
+    ;; Get statistics from momfbd subfields
+    for iscan = 0L, Nscans -1 do begin
+      red_progressbar, iscan, Nscans, 'Analyze momfbd subfields for autocrop', /predict
+
+      mr = momfbd_read(wfiles[iscan], /img)
+
+      if iscan eq 0 then begin
+        subf_dims = size(mr.patch.img, /dim)
+        Ssubf_y = subf_dims[0]
+        Ssubf_x = subf_dims[1]
+        Nsubf_y = subf_dims[2]
+        Nsubf_x = subf_dims[3]
+        subf_mean   = fltarr(Nsubf_x, Nsubf_y, Nscans)
+        subf_median = fltarr(Nsubf_x, Nsubf_y, Nscans)
+        subf_stddev = fltarr(Nsubf_x, Nsubf_y, Nscans)
+      endif
+
+      for isubf_x = 0, Nsubf_x-1 do for isubf_y = 0, Nsubf_y-1 do begin
+        subf_mean[isubf_x, isubf_y, iscan]   = mean(mr.patch[isubf_y, isubf_x].img)
+        subf_median[isubf_x, isubf_y, iscan] = median(mr.patch[isubf_y, isubf_x].img)
+        subf_stddev[isubf_x, isubf_y, iscan] = stddev(mr.patch[isubf_y, isubf_x].img)
+      endfor                    ; isubf_x, isubf_y
+    endfor                      ; iscan
+
+    subf_detect = total(subf_stddev*subf_median^2, 3)
+
+    ;; Try removing subfields in X first because it's the longest dimension
+    subf_detect_x = max(subf_detect/median(subf_detect),dim=2)
+    i0 = -1
+    i1 = Nsubf_x
+    repeat i0++ until subf_detect_x[i0] lt 2
+    repeat i1-- until subf_detect_x[i1] lt 2
+
+    ;; Then Y
+    subf_detect_y = max(subf_detect[i0:i1, *]/median(subf_detect[i0:i1]),dim=1)
+    j0 = -1
+    j1 = Nsubf_y
+    repeat j0++ until subf_detect_y[j0] lt 2
+    repeat j1-- until subf_detect_y[j1] lt 2
+
+    im = red_mozaic(mr, /clip)
+    im_dim = size(im, /dim)
+
+    overlapfacs = [Ssubf_x*Nsubf_x/float(im_dim[0])*[1, 1], Ssubf_y*Nsubf_y/float(im_dim[1])*[1, 1]] * 0.8
+    
+    crop = ceil( [[i0, (Nsubf_x-1-i1)]*Ssubf_x, [j0, (Nsubf_y-1-j1)]*Ssubf_y] / overlapfacs )
+    
+  endif
   
   ;; Read headers to get obs_time and load the images into a cube
   for iscan = 0L, Nscans -1 do begin
@@ -231,19 +279,20 @@ pro chromis::make_wb_cube, dir $
     im = red_readdata(wfiles[iscan], head = hdr)
 
     if iscan eq 0 then begin
-      dim = size(im, /dimension)
-      dimim = red_getborder(im, x0, x1, y0, y1, square = square)
-      x0 += crop[0]
-      x1 -= crop[1]
-      y0 += crop[2]
-      y1 -= crop[3]
-      nx = x1 - x0 + 1
-      ny = y1 - y0 + 1
-      cub = fltarr(nx, ny, Nscans)
+      im_dim = size(im, /dim)
+      x0 = crop[0]
+      x1 = im_dim[0]-1 - crop[1]
+      y0 = crop[2]
+      y1 = im_dim[1]-1 - crop[3]
+      Nx = x1 - x0 + 1
+      Ny = y1 - y0 + 1
+      cub = fltarr(Nx, Ny, Nscans)
     endif
     
-    red_fitspar_getdates, hdr, date_avg = date_avg $
-                          , count_avg = hasdateavg, comment_avg = comment_avg
+    red_fitspar_getdates, hdr $
+                          , date_avg = date_avg $
+                          , count_avg = hasdateavg $
+                          , comment_avg = comment_avg
 
     if hasdateavg then begin
       date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
@@ -265,9 +314,9 @@ pro chromis::make_wb_cube, dir $
     tmean[iscan] = median(cub[*,*,iscan])
     
   endfor                        ; iscan
-stop
+  
   ;; Plot the intensity variations
-  cgplot, uscans, tmean, xtitle = 'Scan number', ytitle = 'Mean WB intensity', psym=-1, /ynozero
+  cgplot, uscans, tmean/mean(tmean), xtitle = 'Scan number', ytitle = 'Intensity correction', psym=-1, /ynozero
 
   ;; Normalize intensity
   tmean = tmean/mean(tmean)
@@ -296,8 +345,11 @@ stop
     read, np, prompt = prompt
   endif
 
+  if n_elements(xbd) eq 0 then xbd = round(Nx*0.9)
+  if n_elements(ybd) eq 0 then ybd = round(Ny*0.9)
+  
   ;; Calculate the image shifts
-  shift = red_aligncube(cub, np, xbd = xbd, ybd = ybd) ;, cubic = cubic, /aligncube)
+  shift = red_aligncube(cub, np, xbd = xbd, ybd = ybd, xc = Nx/2, yc = Ny/2) ;, cubic = cubic, /aligncube)
 
   ;; Get maximum angle and maximum shift in each direction
   maxangle = max(abs(ang))
@@ -340,12 +392,6 @@ stop
     red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
     cub[*,*,iscan] = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
   endfor                        ; iscan
-
-  if keyword_set(origsize) then begin
-    stop
-    cub = 'crop the cube to original size here?'
-    ;; Change any other parameters that need changing
-  endif
 
   ;; Prepare for making output file names
   odir = self.out_dir + '/wb_cubes/'
