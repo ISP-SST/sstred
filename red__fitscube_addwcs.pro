@@ -269,7 +269,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   ;; Make the binary extension. ------------------------------------------------------------
 
   ;; Make the header
-  fxbhmake, bdr, 1, 'WCS-TAB', 'For storing tabulated WCS tabulations'
+  fxbhmake, bdr, 1, 'WCS-TAB', 'For storing tabulated WCS coordinates'
   colno = 1
   fxbaddcol, colno++, bdr, wcs_coords, ttype, 'Coordinate array'
   fxbaddcol, colno++, bdr, [1., Nx], 'HPLN-INDEX', 'Index for helioprojective longitude'
