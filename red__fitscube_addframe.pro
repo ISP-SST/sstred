@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Add a frame to a fitscube file.
 ; 
 ; :Categories:
 ;
@@ -10,14 +10,20 @@
 ; 
 ; :Author:
 ; 
+;    Mats Löfdahl, Institute for Solar Physics
 ; 
-; 
-; 
-; :Returns:
 ; 
 ; 
 ; :Params:
-; 
+;
+;    fileassoc : in, type=integer
+;
+;       The assoc variable set up to access the main data part of the
+;       file in which to add the frame.
+;
+;    frame : in, type=array
+;
+;       The image frame to add.
 ; 
 ; :Keywords:
 ; 
