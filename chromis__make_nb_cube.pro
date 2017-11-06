@@ -88,28 +88,29 @@
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
-                           , clips_cont = clips_cont $
                            , cmap_fwhm = cmap_fwhm $
+                           , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , notimecor = notimecor $
                            , overwrite = overwrite $
                            , tiles_cont = tiles_cont $
                            , verbose = verbose $
-                           , noaligncont = noaligncont 
+                           , clips_cont = clips_cont 
 
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Make prpara
+  if n_elements( clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
+  if n_elements( cmap_fwhm   ) ne 0 then red_make_prpara, prpara, 'cmap_fwhm'    , cmap_fwhm
   if n_elements( noaligncont ) ne 0 then red_make_prpara, prpara, 'noaligncont'  , noaligncont 
   if n_elements( nocavitymap ) ne 0 then red_make_prpara, prpara, 'nocavitymap'  , nocavitymap 
-  if n_elements( clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
   if n_elements( notimecor   ) ne 0 then red_make_prpara, prpara, 'notimecor'    , notimecor 
   if n_elements( np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
   if n_elements( overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
   if n_elements( tiles_cont  ) ne 0 then red_make_prpara, prpara, 'tiles_cont'   , tiles_cont        
-  if n_elements( cmap_fwhm   ) ne 0 then red_make_prpara, prpara, 'cmap_fwhm'    , cmap_fwhm
+  if n_elements( wcfile      ) ne 0 then red_make_prpara, prpara, 'wcfile'       , wcfile
 
   ;; Default keywords
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
