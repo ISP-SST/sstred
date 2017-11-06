@@ -22,22 +22,43 @@
 ; 
 ; :Params:
 ; 
+;    ims : in, type=array
 ; 
-; 
-; 
+;      An image or an image cube (up to 8 dimensions, where the first
+;      two are the image dimensions) to be cropped.
 ; 
 ; 
 ; :Keywords:
+;
+;    centered : in, optional, type=boolean
+;
+;      Set this to get a centered FOV.
 ;
 ;    corners : in, out, optional, type=array
 ;
 ;      Corner coordinates [llx,lly,urx,ury]. If the FOV is selected
 ;      specified with other keywords the corners are returned in this
 ;      keyword.
+;
+;    pad : in, optional, type="number or string", default=0
+;
+;      Either a number used to fill in out-of-bounds pixels or a
+;      string with a method to calculate such a number from the
+;      cropped image ("mean" or "median").
+;
+;    size : in, optional, type="integer or array"
 ; 
+;      Set this to a FOV size to only select center of FOV
+;      interactively. If an array, it is interpreted as sx=size[0],
+;      sy=size[1]. If a single integer, sx=sy=size.
+; 
+;    xc : in, out, optional, type=integer
 ;   
+;      X pixel coordinate of center of FOV. 
+;
+;    yc : in, out, optional, type=integer
 ;   
-;   
+;      Y pixel coordinate of center of FOV. 
 ; 
 ; 
 ; :History:
