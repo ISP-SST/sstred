@@ -425,12 +425,6 @@ pro chromis::make_nb_cube, wcfile $
   hdr = wchead                  ; Start with the WB cube header
   red_fitsaddkeyword, hdr, 'BITPIX', -32                   ; float
 ;  check_fits, cub, hdr, /update                              ; Get the type right
-  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
-                      , 'Creation UTC date of FITS header' ;
-  red_fitsdelkeyword, hdr, 'VAR_KEYS'                                ; Start fresh with variable-keywords. 
-
-  anchor = 'DATE' 
-  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', ofile ; New file name
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
