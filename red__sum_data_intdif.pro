@@ -158,7 +158,8 @@ pro red::sum_data_intdif, cam = cam $
      if(keyword_set(pref)) then begin
         pos = where(upref eq pref, count)
         if(count eq 0) then begin
-           print, inam + 'User supplied prefilter is wrong -> '+ pref
+           print, inam + 'User supplied prefilter '+pref+' not found in '+dir
+           continue
         endif else sel_pref = 0B
         
      endif 
