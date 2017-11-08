@@ -5,6 +5,10 @@
 ;
 ; A 3D array is interpreted as an image cube where the first two
 ; dimensions are spatial.
+;
+; If no or only partial FOV information is given with keywords, use
+; the XROI GUI to either modify an initial ROI/FOV or define a new one
+; from scratch. The last ROI is used.
 ; 
 ; :Categories:
 ;
@@ -40,6 +44,11 @@
 ;      specified with other keywords the corners are returned in this
 ;      keyword.
 ;
+;    nocropping : in, optional, type=boolean
+;
+;      Don't actually do any cropping, return after establishing
+;      the "corners" keyword. 
+;
 ;    pad : in, optional, type="number or string", default=0
 ;
 ;      Either a number used to fill in out-of-bounds pixels or a
@@ -65,19 +74,19 @@
 ; 
 ;    2017-11-06 : MGL. First version.
 ; 
-; 
-; 
-; 
-; 
+;    2017-11-07 : MGL. New keyword nocropping. Use the XROI GUI to
+;                 define the corners if keywords do not provide enough
+;                 information.
 ; 
 ;-
 function red_crop, ims $
-                   , corners = corners $
-                   , size = size $
                    , centered = centered $
+                   , corners = corners $
+                   , nocropping = nocropping $
+                   , pad = pad $
+                   , size = size $
                    , xc = xc $
-                   , yc = yc $
-                   , pad = pad
+                   , yc = yc 
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -86,6 +95,7 @@ function red_crop, ims $
 
   ;; Interpret the size keyword if given
   case n_elements(size) of
+    0 : 
     1 : begin
       Sx = size
       Sy = size          
@@ -110,23 +120,65 @@ function red_crop, ims $
       corners[0:1] = [xc-Sx/2, yc-Sy/2]          ; Lower
       corners[2:3] = corners[0:1] + [Sx, Sy] - 1 ; Upper
     end
-    n_elements(size) gt 0 : begin
-      ;; The size is specified. Use mouse to get center of FOV.
-      stop
-    end
-    n_elements(xc) gt 0 and n_elements(yc) gt 0 : begin
-      ;; The center coordinates are given. Use mouse to get size.
-      stop
-    end
-    n_elements(corners) ne 4 : begin
-      ;; We cannot use the corner keyword as input. Use mouse to get
-      ;; both size and location of FOV.
-      stop
-    end
-    else : begin
+    n_elements(corners) eq 4 : begin
       ;; Carry on, I guess we can use the corner keyword as input!
     end
+    else : begin
+
+      ;; We are lacking some information, use mouse to select ROI from
+      ;; first image in the cube. Make a predefined ROI that the user
+      ;; can change, using whatever partial info that was given.
+
+      ;; Make it centered as default.
+      if n_elements(xc) gt 0 then X_in = xc else X_in = dims[0]/2
+      if n_elements(yc) gt 0 then Y_in = yc else Y_in = dims[1]/2
+      if n_elements(size) gt 0 then begin
+        ;; We have the size keyword, use Sx and Sy derived from it.
+        X_in += [-1,  1, 1, -1]*Sx/2
+        Y_in += [-1, -1, 1,  1]*Sy/2
+      endif else begin
+        ;; Just pick a size, why not half the original dimensions?
+        X_in += [-1,  1, 1, -1]*dims[0]/4
+        Y_in += [-1, -1, 1,  1]*dims[1]/4
+      endelse
+      roi_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
+
+      ;; Define the display image in an unusual way to allow for
+      ;; multiple dimensions.
+      dispim = bytscl(reform(ims[0:dims[0]*dims[1]-1], dims[0:1]))
+
+      print
+      print, 'Use the XROI GUI to either modify an initial ROI/FOV or define a new one from scratch.'
+      print, 'Select Quit in the File menu. The last ROI is used.'
+      print
+      
+      ;; Fire up the XROI GUI.
+      xroi, dispim, regions_in = [roi_in], regions_out = roi, /block $
+            , tools = ['Translate-Scale', 'Rectangle'] $
+            , title = 'Modify or define ROI'
+      roi[-1] -> getproperty, roi_xrange = roi_x
+      roi[-1] -> getproperty, roi_yrange = roi_y
+
+      obj_destroy, roi_in
+      obj_destroy, roi
+
+      xc = round(mean(roi_x))
+      yc = round(mean(roi_y))
+      Sx = round(roi_x[1])-round(roi_x[0])
+      Sy = round(roi_y[1])-round(roi_y[0])
+      corners = lonarr(4)
+      corners[0:1] = [xc-Sx/2, yc-Sy/2]          ; Lower
+      corners[2:3] = corners[0:1] + [Sx, Sy] - 1 ; Upper
+
+      size = [Sx, Sy]
+      
+    end
   endcase
+
+  if keyword_set(nocropping) then begin
+    print, inam + ' : Returning after establishing the corners.'
+    return, 0
+  endif
   
   Sx = long(corners[2] - corners[0] + 1)
   Sy = long(corners[3] - corners[1] + 1)
@@ -439,10 +491,14 @@ end
 
 oldimage = findgen(100, 100, 5, 3, 4)
 
+; Test out-of-bounds
 ;newimage = red_crop(oldimage, corners = corners, xc = 99, yc = 2, size = 12, pad = 'median')
 
+; Test oversized image
+;newimage = red_crop(oldimage, corners = corners, /center, size = 120, pad = 'median')
 
-newimage = red_crop(oldimage, corners = corners, /center, size = 120, pad = 'median')
 
+; Test ROI selection
+newimage = red_crop(oldimage, corners = corners, size = size, /nocrop)
 
 end
