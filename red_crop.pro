@@ -142,6 +142,7 @@ function red_crop, ims $
         Y_in += [-1, -1, 1,  1]*dims[1]/4
       endelse
       roi_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
+      roi_in -> setproperty, name = 'Default'
 
       ;; Define the display image in an unusual way to allow for
       ;; multiple dimensions.
