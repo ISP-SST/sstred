@@ -46,7 +46,14 @@
 ;      then the auto detected crop is returned in this keyword
 ;      instead.
 ;
-;    negang : in, optional, type=booean 
+;    interactive : in, optional, type=boolean
+;
+;      Set this keyword to define the FOV by use of the XROI GUI. If
+;      autocrop is set, then use the so defined FOV as an
+;      initialization of the FOV in the GUI. Otherwise use the crop
+;      keyword (or its default).
+;
+;    negang : in, optional, type=boolean 
 ;
 ;      Set this to apply the field rotation angles with the opposite
 ;      sign. 
@@ -105,13 +112,16 @@
 ;    2017-10-27 : MGL. New keyword scannos. 
 ;
 ;    2017-11-02 : MGL. New keyword autocrop. Remove keywords square
-;                 and origsize.
+;                 and origsize. 
+;
+;    2017-11-08 : MGL. New keyword interactive.
 ; 
 ;-
 pro chromis::make_wb_cube, dir $
                            , autocrop = autocrop $
                            , clip = clip $
                            , crop = crop $
+                           , interactive = interactive $
                            , negang = negang $
                            , np = np $
                            , offset_angle = offset_angle $
@@ -147,7 +157,6 @@ pro chromis::make_wb_cube, dir $
   if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd
   if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd
 
-  IF n_elements(crop) NE 4 THEN crop = [0, 0, 0, 0]
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
 
@@ -220,13 +229,17 @@ pro chromis::make_wb_cube, dir $
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
 
-  if keyword_set(autocrop) then begin
+  if keyword_set(autocrop) or keyword_set(interactive) then begin
+
+    dispim = 0.0
 
     ;; Get statistics from momfbd subfields
     for iscan = 0L, Nscans -1 do begin
       red_progressbar, iscan, Nscans, 'Analyze momfbd subfields for autocrop', /predict
 
       mr = momfbd_read(wfiles[iscan], /img)
+      
+      if keyword_set(interactive) then dispim += red_mozaic(mr, /clip)
 
       if iscan eq 0 then begin
         subf_dims = size(mr.patch.img, /dim)
@@ -266,29 +279,99 @@ pro chromis::make_wb_cube, dir $
     im_dim = size(im, /dim)
 
     overlapfacs = [Ssubf_x*Nsubf_x/float(im_dim[0])*[1, 1], Ssubf_y*Nsubf_y/float(im_dim[1])*[1, 1]] * 0.8
+
+    ;; If user selected autocrop, then do use the detected cropping.
+    ;; If user selected interactive, then use the detected cropping
+    ;; only if crop keyword was not provided.
+    if keyword_set(autocrop) or $
+       (keyword_set(interactive) and n_elements(crop) eq 0) then begin
+      roi_name = 'Autocrop'
+      crop = ceil( [[i0, (Nsubf_x-1-i1)]*Ssubf_x, [j0, (Nsubf_y-1-j1)]*Ssubf_y] / overlapfacs )
+    endif
     
-    crop = ceil( [[i0, (Nsubf_x-1-i1)]*Ssubf_x, [j0, (Nsubf_y-1-j1)]*Ssubf_y] / overlapfacs )
+  endif
+
+  ;; Default cropping
+  case n_elements(crop) of
+    1 : begin                   ; Same crop from all sides
+      roi_name = 'From crop keyword'
+      crop = replicate(crop, 4)
+    end
+    2 : begin                   ; One crop in X, another in Y
+      roi_name = 'From crop keyword'
+      crop = [crop[0], crop[0], crop[1], crop[1]]
+    end
+    4 : begin                   ; Leave it alone
+      if n_elements(roi_name) eq 0 then roi_name = 'From crop keyword'
+    end
+    else : begin
+      roi_name = 'Default'
+      crop = [0, 0, 0, 0]
+    end
+  endcase
+
+;  hdr = red_readhead(wfiles[0])
+;  im_dim = fxpar(hdr, 'NAXIS*')
+  if n_elements(im) eq  0 then begin
+    ;; Could have been read above
+    mr = momfbd_read(wfiles[0], /img)
+    im = red_mozaic(mr, /clip)
+  endif
+  im_dim = size(im, /dim)
+  x0 = crop[0]
+  x1 = im_dim[0]-1 - crop[1]
+  y0 = crop[2]
+  y1 = im_dim[1]-1 - crop[3]
+  Nx = x1 - x0 + 1
+  Ny = y1 - y0 + 1
+  
+  if keyword_set(interactive) then begin
+
+    ;; Use XROI GUI to select a rectangular area. 
+
+    ;; Initialize the FOV
+    X_in = [x0, x1, x1, x0]
+    Y_in = [y0, y0, y1, y1]
+    roi_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
+    roi_in -> setproperty, name = roi_name
+
+    print
+    print, 'Use the XROI GUI to either modify an initial ROI/FOV or define a new'
+    print, 'one from scratch. Look for bad (hightened contrast) subfields.'
+    print, 'Select Quit in the File menu. The last ROI is used.'
+    print
+    
+    ;; Fire up the XROI GUI.
+    xroi, bytscl(dispim), regions_in = [roi_in], regions_out = roi, /block $
+          , tools = ['Translate-Scale', 'Rectangle'] $
+          , title = 'Modify or define FOV based on summed image'
+    roi[-1] -> getproperty, roi_xrange = roi_x
+    roi[-1] -> getproperty, roi_yrange = roi_y
+
+    obj_destroy, roi_in
+    obj_destroy, roi
+
+    ;; We don't want out-of-bounds coordinates here
+    x0 = round(roi_x[0]) >0
+    y0 = round(roi_y[0]) >0
+    x1 = round(roi_x[1]) <(im_dim[0]-1)
+    y1 = round(roi_y[1]) <(im_dim[1]-1)
+
+    Nx = x1 - x0 + 1
+    Ny = y1 - y0 + 1
+
+    crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]
     
   endif
   
   ;; Read headers to get obs_time and load the images into a cube
+  cub = fltarr(Nx, Ny, Nscans)
   for iscan = 0L, Nscans -1 do begin
     
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
 
-    if iscan eq 0 then begin
-      im_dim = size(im, /dim)
-      x0 = crop[0]
-      x1 = im_dim[0]-1 - crop[1]
-      y0 = crop[2]
-      y1 = im_dim[1]-1 - crop[3]
-      Nx = x1 - x0 + 1
-      Ny = y1 - y0 + 1
-      cub = fltarr(Nx, Ny, Nscans)
-    endif
-    
     red_fitspar_getdates, hdr $
                           , date_avg = date_avg $
                           , count_avg = hasdateavg $
