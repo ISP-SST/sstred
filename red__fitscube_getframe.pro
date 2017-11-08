@@ -111,5 +111,7 @@ pro red::fitscube_getframe, filename_or_fileassoc, frame $
   endif
 
   frame = fileassoc[iframe]
+
+  free_lun, lun
   
 end
