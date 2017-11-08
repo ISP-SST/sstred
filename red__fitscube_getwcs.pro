@@ -145,7 +145,7 @@ pro red::fitscube_getwcs, filename $
     ;; Assume distortions are always given in lookup form. (We can
     ;; actually check this in the CPDIS* main header keyword.)
     
-    dist = mrdfits( filename, 'WCSDVARR', chdr, status = status)
+    distortions = mrdfits( filename, 'WCSDVARR', chdr, status = status, /silent)
 
     ;; So far we have only implemented distortions in the wavelength
     ;; coordinate, so we'll assume this is all there could be. But
@@ -154,11 +154,11 @@ pro red::fitscube_getwcs, filename $
     if status eq 0 then begin
       ;; Leave the distortions keyword undefined if there is no
       ;; WCSDVARR extension.
-      dist = reform(wave_distortions $
-                    , fxpar(hdr, 'NAXIS1'), fxpar(hdr, 'NAXIS2') $
-                    , 1, 1, fxpar(hdr, 'NAXIS5'), /overwrite)
+      distortions = reform(distortions $
+                           , fxpar(hdr, 'NAXIS1'), fxpar(hdr, 'NAXIS2') $
+                           , 1, 1, fxpar(hdr, 'NAXIS5'), /overwrite)
       
-      distortions = { WAVE:dist }
+      distortions = { WAVE:distortions }
     endif
 
     
