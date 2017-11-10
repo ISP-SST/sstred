@@ -35,6 +35,10 @@
 ;                 files from red_readhead.pro.
 ; 
 ;    2017-03-17 : MGL. New keyword "version".
+;
+;   2017-11-10 : MGL. Use the new roi field in the struct returned by
+;                momfbd_read to get predictable dimensions that match
+;                the output of red_readdata.
 ; 
 ; 
 ; 
@@ -44,8 +48,10 @@ function red_readhead_momfbd, fname, version = version
   compile_opt idl2
 
   mr = momfbd_read(fname, /names) ; Use /names to avoid reading the data parts
-  red_mkhdr, header, 4, [mr.clip[0,1,1]-mr.clip[0,1,0]+1 $
-                         , mr.clip[0,0,1]-mr.clip[0,0,0]+1]
+
+  red_mkhdr, header, 4, [mr.roi[1]-mr.roi[0]+1 $
+                         , mr.roi[3]-mr.roi[2]+1]
+
   header = header[where(header ne replicate(' ',80))] ; Remove blank lines
 
   date_avg = mr.date + 'T' + mr.time
