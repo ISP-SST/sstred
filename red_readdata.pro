@@ -107,6 +107,9 @@
 ;
 ;   2016-12-07 : MGL. Use readfits so we can read 4-dimensional cubes.
 ;
+;   2017-11-10 : MGL. Use the new /crop option with red_mozaic to get
+;                predictable dimensions.
+;
 ;
 ;-
 function red_readdata, fname $
@@ -227,7 +230,7 @@ function red_readdata, fname $
 
     'MOMFBD' : begin
       mr = momfbd_read(fname, /img)
-      data = red_mozaic(mr, /clip)
+      data = red_mozaic(mr, /crop)
     end
 
   endcase
