@@ -132,10 +132,6 @@ pro chromis::make_nb_cube, wcfile $
   ;; polarimetry. We don't need to identify any PD cameras for
   ;; restored data.
 
-  ;; Get metadata from logfiles
-;  red_logdata, self.isodate, time_r0, r0 = metadata_r0                 ; Seeing
-;  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun ; Pointing
-
   ;; We do currently not correct for the small scale cavity map in
   ;; CHROMIS data. (We should get this from earlier meta data!)
   remove_smallscale = 0       
@@ -161,11 +157,7 @@ pro chromis::make_nb_cube, wcfile $
   ;; Read wcs extension of wb file to get pointing info
   fxbopen, wlun, wcfile, 'WCS-TAB', wbdr
   ttype1 = fxpar(wbdr, 'TTYPE1')
-;  ttype2 = fxpar(wbdr, 'TTYPE2')
-;  ttype3 = fxpar(wbdr, 'TTYPE3')
   fxbread, wlun, wwcs, ttype1
-;  fxbread, wlun, whpln_index, ttype2
-;  fxbread, wlun, whplt_index, ttype3
   fxbclose, wlun
 
   x0 = wcX01Y01[0]
@@ -354,9 +346,7 @@ pro chromis::make_nb_cube, wcfile $
   Ny = wcND[1]
   
   ;; Create cubes for science data and scan-adapted cavity maps.
-;  cub = fltarr(Nx, Ny, Nwav)
   cavitymaps = fltarr(Nx, Ny, Nscans)
-
 
   if ~keyword_set(nocavitymap) then begin
 
@@ -424,7 +414,6 @@ pro chromis::make_nb_cube, wcfile $
   ;; Make FITS header for the NB cube
   hdr = wchead                  ; Start with the WB cube header
   red_fitsaddkeyword, hdr, 'BITPIX', -32                   ; float
-;  check_fits, cub, hdr, /update                              ; Get the type right
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -553,21 +542,14 @@ pro chromis::make_nb_cube, wcfile $
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
 
-;      ;; Get these from somewhere else (scan_wbstates does not
-;      ;; have the WB tuning or prefilter!):
-;      lambdaW = 3950e-10
-;      lambdaC = 3998.640d-10 + 1.258d-10
-      
       icont = where(scan_nbstates.prefilter eq '3999')
       xshifts = interpol([0., nb_shifts[0, iscan]] $
-;                         , [lambdaW, lambdaC]*1e7 $
                          , [scan_wbstates[icont].tun_wavelength $
                             , scan_nbstates[icont].tun_wavelength]*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
       yshifts = interpol([0., nb_shifts[1, iscan]] $
                          , [scan_wbstates[icont].tun_wavelength $
                             , scan_nbstates[icont].tun_wavelength]*1e7 $
-;                         , [lambdaW, lambdaC]*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
@@ -654,41 +636,33 @@ pro chromis::make_nb_cube, wcfile $
       ;; activates it. (This code will have to be updated to the
       ;; current pipeline style before it can be used.)
       if 0 then begin
-        wb = (red_mozaic(momfbd_read(wbf[ss])))[x0:x1,y0:y1]
+        wb = (red_readdata(wbf[ss]))[x0:x1,y0:y1]
         for ww = 0L, nw - 1 do begin
           
           iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
           iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
           
           ;; Load images
-          iwb = (red_mozaic(momfbd_read(iwbf)))[x0:x1,y0:y1]
+          iwb = (red_readdata(iwbf))[x0:x1,y0:y1]
           im = momfbd_read(st.ofiles[ww,ss])
           
           ;; get dewarp from WB
           igrid = red_dsgridnest(wb, iwb, itiles, iclip)
           
           ;; Convolve CMAP and apply wavelength dep. de-warp
-          cmap2 =  red_stretch((red_mozaic(red_conv_cmap(cmap, im)))[x0:x1, y0:y1], igrid)
+          cmap2 = red_stretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid)
           
           ;; Derotate and shift
-          if(full) then begin
-            cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
-                                 total(shift[1,ss]), full=ff)
-          endif else begin
-            cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
-                                 total(shift[1,ss]))
-          endelse
+          cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+                               total(shift[1,ss]), full=wcFF)
           
           ;; Time de-warp
           cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
           
         endfor                  ; ww
       endif
-
-      
     endif
     
-      
     if(keyword_set(verbose)) then begin
       print, inam +'scan=',iscan,', max=', max(d1)            
     endif
@@ -734,22 +708,6 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
-
-  if 0 then begin
-
-    im=readfits(filename)  
-    sp=readfits(flipfile)
-
-    him=headfits(filename)  
-    hsp=headfits(flipfile)
-
-    scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scn_values)
-    xps = red_fitsgetkeyword(filename, 'XPOSURE', comment = comment, variable_values = xps_values)
-    print, scn, xps
-
-    r0 = red_fitsgetkeyword(filename, 'ATMOS_R0', comment = comment, variable_values = r0_values)
-    help, r0_values
-  endif
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
