@@ -46,12 +46,12 @@
 ; 
 ;-
 function red_mozaic, momfbd_struct, clip = clip, crop = crop
-                                ;
+  
   return, mozaic(momfbd_struct.patch.img, $
                  momfbd_struct.patch[*,0].xl, $
                  momfbd_struct.patch[*,0].xh, $
                  momfbd_struct.patch[0,*].yl, $
                  momfbd_struct.patch[0,*].yh, $
                  clip=clip, crop=crop)
-                                ;
+  
 end
