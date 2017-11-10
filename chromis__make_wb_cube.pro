@@ -235,11 +235,12 @@ pro chromis::make_wb_cube, dir $
 
     ;; Get statistics from momfbd subfields
     for iscan = 0L, Nscans -1 do begin
+
       red_progressbar, iscan, Nscans, 'Analyze momfbd subfields for autocrop', /predict
 
       mr = momfbd_read(wfiles[iscan], /img)
-      
-      if keyword_set(interactive) then dispim += red_mozaic(mr, /clip)
+
+      if keyword_set(interactive) then dispim += red_mozaic(mr, /crop)
 
       if iscan eq 0 then begin
         subf_dims = size(mr.patch.img, /dim)
@@ -275,11 +276,14 @@ pro chromis::make_wb_cube, dir $
     repeat j0++ until subf_detect_y[j0] lt 2
     repeat j1-- until subf_detect_y[j1] lt 2
 
-    im = red_mozaic(mr, /clip)
-    im_dim = size(im, /dim)
+    hdr = red_readhead(wfiles[0])
+    im_dim = fxpar(hdr, 'NAXIS*')
+
+;    im = red_mozaic(mr, /clip)
+;    im_dim = size(im, /dim)
 
     overlapfacs = [Ssubf_x*Nsubf_x/float(im_dim[0])*[1, 1], Ssubf_y*Nsubf_y/float(im_dim[1])*[1, 1]] * 0.8
-
+print, 234
     ;; If user selected autocrop, then do use the detected cropping.
     ;; If user selected interactive, then use the detected cropping
     ;; only if crop keyword was not provided.
@@ -310,14 +314,8 @@ pro chromis::make_wb_cube, dir $
     end
   endcase
 
-;  hdr = red_readhead(wfiles[0])
-;  im_dim = fxpar(hdr, 'NAXIS*')
-  if n_elements(im) eq  0 then begin
-    ;; Could have been read above
-    mr = momfbd_read(wfiles[0], /img)
-    im = red_mozaic(mr, /clip)
-  endif
-  im_dim = size(im, /dim)
+  hdr = red_readhead(wfiles[0])
+  im_dim = fxpar(hdr, 'NAXIS*')
   x0 = crop[0]
   x1 = im_dim[0]-1 - crop[1]
   y0 = crop[2]
@@ -519,10 +517,10 @@ pro chromis::make_wb_cube, dir $
   t_array = dblarr(1, Nscans)
   t_array[0] = red_time2double(time)                   ; In [s] since midnight
 
-  wcs = replicate({  wave:dblarr(2,2) $
-                     , hplt:dblarr(2,2) $
-                     , hpln:dblarr(2,2) $
-                     , time:dblarr(2,2) $
+  wcs = replicate({ wave:dblarr(2,2) $
+                  , hplt:dblarr(2,2) $
+                  , hpln:dblarr(2,2) $
+                  , time:dblarr(2,2) $
                   }, 1, Nscans)
   
   ;; TIME reference value, all times are seconds since midnight.
