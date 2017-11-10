@@ -218,8 +218,8 @@ function red_crop, ims $
   ;; Actual roi in the input array, safeguarded for out-of-bounds
   ;; indices.
   in_roi = lonarr(4)
-  in_roi[0:1] = roi[0:1] >0 <(dims-1)   ; Lower
-  in_roi[2:3] = roi[2:3] >0 <(dims-1)   ; Upper
+  in_roi[0:1] = roi[0:1] >0 <(dims[0]-1)   ; Lower
+  in_roi[2:3] = roi[2:3] >0 <(dims[1]-1)   ; Upper
 
   ;; Spatial roi in the output array. Normally [0,Sx-1,0,Sy-1] but
   ;; needs to match the possibly undersized (because of out-of-bounds)
