@@ -36,9 +36,12 @@
 ; 
 ;    2017-03-17 : MGL. New keyword "version".
 ;
-;   2017-11-10 : MGL. Use the new roi field in the struct returned by
-;                momfbd_read to get predictable dimensions that match
-;                the output of red_readdata.
+;    2017-11-10 : MGL. Use the new roi field in the struct returned by
+;                 momfbd_read to get predictable dimensions that match
+;                 the output of red_readdata.
+;
+;    2017-11-12 : MGL. Update dimensions to match new convention in
+;                 struct returned by momfbd_read.
 ; 
 ; 
 ; 
@@ -50,7 +53,7 @@ function red_readhead_momfbd, fname, version = version
   mr = momfbd_read(fname, /names) ; Use /names to avoid reading the data parts
 
   red_mkhdr, header, 4, [mr.roi[1]-mr.roi[0]+1 $
-                         , mr.roi[3]-mr.roi[2]+1]
+                         , mr.roi[3]-mr.roi[2]+1] - 2*mr.margin 
 
   header = header[where(header ne replicate(' ',80))] ; Remove blank lines
 
