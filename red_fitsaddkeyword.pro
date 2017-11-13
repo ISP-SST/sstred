@@ -126,7 +126,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
   ;; fxaddpar's placement rules.
   namefields = strmid(header,0,8)
   pnames = ['COMMENT ', '        ', 'HISTORY ']
-  pchars = ['+',        '-'       , '@',      ]
+  pchars = ['+',        '-'       , '@'       ]
   red_append, pchars, '*'       ; One extra protection character for record-valued keywords
 ;  Nchars = n_elements(pchars)
   iprotect = 0
