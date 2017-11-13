@@ -60,7 +60,8 @@
 ;   
 ;        The name of the parameter relative to which this parameter
 ;        will be positioned. Decide on before/after based on logical
-;        value of those two keywords. (Don't use COMMENT as anchor!) 
+;        value of those two keywords. (Don't use COMMENT or HISTORY as
+;        anchor!)
 ; 
 ;     force : in, optional, type=boolean
 ; 
@@ -84,6 +85,8 @@
 ;    2017-09-06 : MGL. Renamed from red_fitsaddpar.
 ; 
 ;    2017-10-26 : MGL. Implemented record-valued keywords.
+; 
+;    2017-11-13 : MGL. Implemented HISTORY keywords.
 ; 
 ; 
 ;-
@@ -122,8 +125,9 @@ pro red_fitsaddkeyword, header, name, value, comment $
   ;; keyword it is that is protected. This will override
   ;; fxaddpar's placement rules.
   namefields = strmid(header,0,8)
-  pnames = ['COMMENT ', '        '      ]
-  pchars = ['+',        '-'       , '*' ] ; One extra for record-valued keywords
+  pnames = ['COMMENT ', '        ', 'HISTORY ']
+  pchars = ['+',        '-'       , '@',      ]
+  red_append, pchars, '*'       ; One extra protection character for record-valued keywords
 ;  Nchars = n_elements(pchars)
   iprotect = 0
 ;  pindx = where(namefields eq pnames[0] or $
@@ -280,10 +284,13 @@ pro red_fitsaddkeyword, header, name, value, comment $
 
   ;; Now undo the protection
   firstchars = strmid(header,0,1)
-  pindx = where(firstchars eq pchars[0] or $
-                firstchars eq pchars[1], Nprotect)
+  for ich = 0, n_elements(pchars)-2 do begin
+    wh = where(firstchars eq pchars[ich], Nwh)
+    if Nwh gt 0 then red_append, pindx, wh
+  endfor                        ; ich
+  Nprotect = n_elements(pindx)
 
-  ;; First COMMENT and blank keywords
+  ;; First COMMENT, HISTORY, and blank keywords
   for iprotect = 0, Nprotect-1 do begin
     ichar = where(firstchars[pindx[iprotect]] eq pchars)
     header[pindx[iprotect]] = pnames[ichar] + strmid(header[pindx[iprotect]], 11)
@@ -303,11 +310,9 @@ pro red_fitsaddkeyword, header, name, value, comment $
   ;; names.
   pindx = where(firstchars eq pchars[n_elements(pchars)-1], Nprotect)
   for iprotect = 0, Nprotect-1 do begin
-    
     pname = strtrim(strmid(header[pindx[iprotect]], 0, 8), 2)
     header[pindx[iprotect]] = string(rec_hash[pname]+'         ',format='(a8)') $
                               + strmid(header[pindx[iprotect]], 8)
-      
   endfor                        ; iprotect
 
   
@@ -320,6 +325,15 @@ end
 ;;
 ;; * Allow BEFORE and AFTER to be arrays of parameter names, to be
 ;;   tested for existence in order. Use first match.
+
+mkhdr, hdr, 0
+print, hdr
+
+names = ['HISTORY', '', 'COMMENT', 'HISTORY']
+values = ['Some history that is relevant to the file. It could be long enough to span several lines. Or at least I hope it can.', '', "I'd like to add a comment", 'Another piece of history that is relevant to the file. It could be long enough to span several lines. Or at least I hope it can.']
+red_fitsaddkeyword, hdr, names, values, comments
+print, hdr
+stop
 
 
 
