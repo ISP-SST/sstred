@@ -31,34 +31,38 @@
 ; 
 ;    2017-03-13 : MGL. First version.
 ; 
+;    2017-11-14 : MGL. Check that the file exists.
+; 
 ; 
 ;-
 pro red_metadata_restore, head, fname = fname
 
   if n_elements(fname) eq 0 then fname = 'info/metadata.fits' 
-
-  metahead = headfits(fname)
-
-  if n_elements(head) eq 0 then begin
-    head = metahead
-    return
-  endif
   
-  ;; Add metadata info to the provided header
-  Nlines = n_elements(metahead)
-  for iline = 0, Nlines-1 do begin
+  if file_test(fname) then begin
     
-    keyword = (strsplit(metahead[iline], ' =', /extract))[0]
-    if keyword eq 'COMMENT' then continue
+    metahead = headfits(fname)
 
-    oldvalue = sxpar(head, keyword, comment = comment, count = count)
-    if count eq 0 then begin
-      metavalue = sxpar(metahead, keyword, comment = metacomment)
-      sxaddpar, head, keyword, metavalue, metacomment
+    if n_elements(head) eq 0 then begin
+      head = metahead
+      return
     endif
     
-  endfor                        ; iline
-  
-  
+    ;; Add metadata info to the provided header
+    Nlines = n_elements(metahead)
+    for iline = 0, Nlines-1 do begin
+      
+      keyword = (strsplit(metahead[iline], ' =', /extract))[0]
+      if keyword eq 'COMMENT' then continue
+
+      oldvalue = sxpar(head, keyword, comment = comment, count = count)
+      if count eq 0 then begin
+        metavalue = sxpar(metahead, keyword, comment = metacomment)
+        sxaddpar, head, keyword, metavalue, metacomment
+      endif
+      
+    endfor                      ; iline
+    
+  endif  
 
 end
