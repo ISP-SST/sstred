@@ -86,7 +86,9 @@ pro red::fitscube_addcmap, filename, cmaps
   red_fitsaddkeyword, anchor = anchor, chdr, 'CRVAL2', 1, 'Image array pixel coordinate' 
   red_fitsaddkeyword, anchor = anchor, chdr, 'CRPIX3', 1, 'Distortion array reference pixel' 
   red_fitsaddkeyword, anchor = anchor, chdr, 'CDELT3', 1, 'Grid step size in 3rd coordinate'
-  red_fitsaddkeyword, anchor = anchor, chdr, 'CRVAL3', 1, 'Image array pixel coordinate' 
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CRVAL3', 1, 'Image array pixel coordinate'
+
+  red_fitsaddkeyword, anchor = anchor, chdr, ['', 'HISTORY'], ['', 'These wavelength coordinate distortions were generated from the cavity map, shifted, rotated, and cropped as the science data.']
 
   ;; Write the image extension and the updated header. -----------------------------------------
   
