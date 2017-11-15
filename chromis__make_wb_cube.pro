@@ -114,7 +114,9 @@
 ;    2017-11-02 : MGL. New keyword autocrop. Remove keywords square
 ;                 and origsize. 
 ;
-;    2017-11-08 : MGL. New keyword interactive.
+;    2017-11-08 : MGL. New keyword interactive. 
+;
+;    2017-11-15 : MGL. Scale data to make use of dynamic range.
 ; 
 ;-
 pro chromis::make_wb_cube, dir $
@@ -402,7 +404,7 @@ print, 234
   ;; Normalize intensity
   tmean = tmean/mean(tmean)
   for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
-
+  
   ;; Set aside non-rotated and non-shifted cube
   cub1 = cub
   
@@ -486,15 +488,18 @@ print, 234
 
   ;; Add the wavelength and Stokes dimensions
   dims = [nx, ny, 1, 1, Nscans]
-  cub = reform(cub, dims, /overwrite) 
+  cub = reform(cub, dims, /overwrite)
+
+  ;; Make it a 2-byte integer array
+  cub = fix(round(cub*30000./max(cub)))
 
   ;; Make header. Start with header from last input file, it has
   ;; info about MOMFBD processing.
   check_fits, cub, hdr, /update                              ; Get dimensions right
   red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE witht time
                       , 'Creation UTC date of FITS header'   ;
-  red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round before saving.
-                      , 'Number of bits per data pixel'      ;
+;  red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round before saving.
+;                      , 'Number of bits per data pixel'      ;
   red_fitsaddkeyword, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
 
   if keyword_set(blur) then begin
@@ -533,7 +538,7 @@ print, 234
     red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
   endif
 
-  help, round(cub)
+;  help, round(cub)
   print, 'n_elements:', n_elements(cub)
   ;; Write the file
   self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims 
@@ -568,7 +573,7 @@ print, 234
   
   
   for iscan = 0, Nscans-1 do begin
-    self -> fitscube_addframe, fileassoc, round(cub[*, *, 0, 0, iscan]) $
+    self -> fitscube_addframe, fileassoc, cub[*, *, 0, 0, iscan] $
                                , iscan = iscan
     wcs[0, iscan].time = t_array[iscan]
   endfor                        ; iscan
