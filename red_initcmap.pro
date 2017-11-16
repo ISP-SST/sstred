@@ -43,7 +43,7 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2017-11-16 : Use red_parab_fit.
+;   2017-11-16 : MGL. Use red_parab_fit.
 ; 
 ; 
 ;-
