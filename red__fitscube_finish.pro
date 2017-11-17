@@ -40,6 +40,8 @@
 ; 
 ;   2017-09-11 : MGL. First version.
 ; 
+;   2017-11-16 : MGL. Now works with integer cubes.
+; 
 ;-
 pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
 
@@ -56,6 +58,8 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   Naxis = fxpar(him,'NAXIS')
   dimensions = fxpar(him,'NAXIS*')
 
+  bitpix = fxpar(him,'BITPIX')
+  
   Nx      = long(dimensions[0])
   Ny      = long(dimensions[1])
   Ntuning = long(dimensions[2])
@@ -150,16 +154,27 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
   offset_in = Nblock*2880          ; Offset to start of data
   print, 'offset_in=', offset_in
-  cube_in = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)  
 
   Nlines = n_elements(hsp)     
   Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
   offset_out = Nblock*2880      ; Offset to start of data
   print, 'offset_out=', offset_out
-  cube_out = assoc(flun, fltarr(Ntuning, /nozero), offset_out)
-
+  
+  case bitpix of
+    16 : begin
+      cube_in  = assoc(ilun, intarr(Nx, Ny, /nozero), offset_in)
+      cube_out = assoc(flun, intarr(Ntuning, /nozero), offset_out)
+      subcube  = intarr(Nx, Ny, Ntuning)
+    end
+    -32 : begin
+      cube_in  = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)
+      cube_out = assoc(flun, fltarr(Ntuning, /nozero), offset_out)
+      subcube  = fltarr(Nx, Ny, Ntuning)
+    end
+    else : stop
+  endcase
+  
   ;; Loop over subcubes
-  subcube = fltarr(Nx, Ny, Ntuning)
   iprogress = 0
   for istokes = 0L, Nstokes-1 do begin
     for iscan = 0L, Nscans-1 do begin
