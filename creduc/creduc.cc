@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <omp.h>
+#include <algorithm>
 //#include <complex.h>
 #include <iostream>
 #include "types.h"
@@ -360,6 +361,14 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
   float **dat = var2dim<float>(dat1, npix, nwav);
   double **pars = var2dim<double>(pars1, npix, npar);
   float **ratio = var2dim<float>(ratio1, npix, nwav);
+
+
+
+  float ma = 0.0;
+  size_t ndat = (size_t)npix * (size_t)nwav;
+  for(size_t ii = 0; ii<ndat; ii++) ma = std::max(ma, dat1[ii]);
+  
+  
   //
   // Init MPFIT struct and loop
   //
@@ -373,11 +382,11 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
   fitpars[0].limited[0] = 1;
   fitpars[0].limited[1] = 1;
   fitpars[0].limits[0] = 0;
-  fitpars[0].limits[1] = 4096;
+  fitpars[0].limits[1] = 3.0*ma;
   fitpars[1].limited[0] = 1;
   fitpars[1].limited[1] = 1;
-  fitpars[1].limits[0] = -0.3;
-  fitpars[1].limits[1] = 0.3;
+  fitpars[1].limits[0] = -0.4;
+  fitpars[1].limits[1] = 0.4;
   for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
   //
   mp_config_struct config;
@@ -518,6 +527,13 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
   
   memset(&fitpars[0], 0, sizeof(fitpars));
 
+
+  float ma = 0.0;
+  size_t ndat = (size_t)npix * (size_t)nwav;
+  for(size_t ii = 0; ii<ndat; ii++) ma = std::max(ma, dat1[ii]);
+  
+  
+  
   
   fprintf(stderr, "cfitgain2 : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
 
@@ -561,11 +577,11 @@ void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, flo
       fitpars[0].limited[0] = 1;
       fitpars[0].limited[1] = 1;
       fitpars[0].limits[0] = 0;
-      fitpars[0].limits[1] = 4096;
+      fitpars[0].limits[1] = 3.0*ma;
       fitpars[1].limited[0] = 1;
       fitpars[1].limited[1] = 1;
-      fitpars[1].limits[0] = -0.3;
-      fitpars[1].limits[1] = 0.3;
+      fitpars[1].limits[0] = -0.4;
+      fitpars[1].limits[1] = 0.4;
       if(npar > 2){
 	fitpars[2].limits[0] = fpi[0].rhr -0.1;
 	fitpars[2].limits[1] = 0.99;
