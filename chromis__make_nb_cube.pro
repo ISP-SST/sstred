@@ -37,7 +37,11 @@
 ;
 ;     clips_cont : in, optional, type=array
 ;
-;       Used to compute stretch vectors for the continuum alignment. 
+;       Used to compute stretch vectors for the continuum alignment.
+;
+;     integer : in, optional, type=boolean
+;
+;       Store as integers instead of floats.
 ;
 ;     noaligncont : in, optional, type=boolean
 ;
@@ -86,9 +90,12 @@
 ;                 metadata. New keyword nocavitymap. Documentation and
 ;                 cleanup. 
 ; 
+;    2017-11-16 : MGL. New keyword integer.
+; 
 ;-
 pro chromis::make_nb_cube, wcfile $
                            , cmap_fwhm = cmap_fwhm $
+                           , integer = integer $
                            , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , notimecor = notimecor $
@@ -103,6 +110,7 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; Make prpara
   if n_elements( clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
+  if n_elements( integer     ) ne 0 then red_make_prpara, prpara, 'integer'      , integer
   if n_elements( cmap_fwhm   ) ne 0 then red_make_prpara, prpara, 'cmap_fwhm'    , cmap_fwhm
   if n_elements( noaligncont ) ne 0 then red_make_prpara, prpara, 'noaligncont'  , noaligncont 
   if n_elements( nocavitymap ) ne 0 then red_make_prpara, prpara, 'nocavitymap'  , nocavitymap 
@@ -276,7 +284,11 @@ pro chromis::make_nb_cube, wcfile $
   if(n_elements(odir) eq 0) then odir = self.out_dir + '/nb_cubes/' 
   midpart = prefilter + '_' + datestamp + '_scans=' $ 
             + red_collapserange(uscans, ld = '', rd = '')
-  ofile = 'nb_'+midpart+'_corrected_im.fits'
+  if keyword_set(integer) then begin
+    ofile = 'nb_'+midpart+'_corrected_int_im.fits'
+  endif else begin
+    ofile = 'nb_'+midpart+'_corrected_im.fits'
+  endelse
   filename = odir+ofile
 
   ;; Already done?
@@ -413,7 +425,68 @@ pro chromis::make_nb_cube, wcfile $
   
   ;; Make FITS header for the NB cube
   hdr = wchead                  ; Start with the WB cube header
-  red_fitsaddkeyword, hdr, 'BITPIX', -32                   ; float
+  if keyword_set(integer) then begin
+
+    ;; We need to find out BZERO and BSCALE. For now we have to read
+    ;; through all data in the cube. If the momfbd output files could
+    ;; store min and max values in the future, this would be quicker.
+    iprogress = 0
+    Nprogress = Nscans*Nwav
+
+    for iscan = 0L, Nscans-1 do begin
+
+      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                           , cam = nbcamera, scan = uscans[iscan] $
+                           , sel = scan_nbindx, count = count
+      scan_nbfiles = pertuningfiles[scan_nbindx]
+
+      if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
+
+      for iwav = 0L, Nwav - 1 do begin
+
+;        nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
+        red_progressbar, iprogress, Nprogress $
+                         , /predict $
+                         , 'Calculating BZERO and BSCALE' 
+  
+        mr = momfbd_read(scan_nbfiles[iwav], /img)
+        ;; Min and max after scaling to units in file
+        datamax_thisfile = max(mr.patch.img * rpref[iwav] * tscl, min = datamin_thisfile)
+
+        ;; Global min and max
+        if iscan eq 0 and iwav eq 0 then begin
+          datamin = datamin_thisfile
+          datamax = datamax_thisfile
+        endif else begin
+          datamin <= datamin_thisfile
+          datamax >= datamax_thisfile
+        endelse
+
+        iprogress++
+        
+      endfor                    ; iwav
+    endfor                      ; iscan
+
+    ;; Approximate min and max values after scaling to 2-byte
+    ;; integers. Don't use -32768 and 32767, want to leave some margin
+    ;; for altered physical values due to resampling (most likely to
+    ;; lower abs values, but still...).
+    arraymin = -32000.
+    arraymax =  32000.
+
+    ;; BZERO and BSCALE
+    bscale = (datamax-datamin)/(arraymax-arraymin)
+    bzero = datamin - arraymin*bscale
+    
+    ;; Set keywords for rescaled integers
+    red_fitsaddkeyword, hdr, 'BITPIX', 16
+    red_fitsaddkeyword, hdr, 'BZERO', bzero
+    red_fitsaddkeyword, hdr, 'BSCALE', bscale
+    
+  endif else begin
+    ;; If not rescaled integers, we just need to set BITPIX for floats
+    red_fitsaddkeyword, hdr, 'BITPIX', -32
+  endelse
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -610,9 +683,14 @@ pro chromis::make_nb_cube, wcfile $
       nbim = red_rotation(temporary(nbim), ang[iscan], $
                           wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
       nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
-    
-      self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                 , iscan = iscan, ituning = iwav
+
+      if keyword_set(integer) then begin
+        self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
+                                   , iscan = iscan, ituning = iwav
+      endif else begin
+        self -> fitscube_addframe, fileassoc, temporary(nbim) $
+                                   , iscan = iscan, ituning = iwav
+      endelse
       
       iprogress++               ; update progress counter
 
