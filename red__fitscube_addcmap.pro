@@ -71,8 +71,7 @@ pro red::fitscube_addcmap, filename, cmaps
 
   ;; Construct a header for the image extension with the lookup table. ---------------------------
   
-  mkhdr, chdr, cmaps
-  red_fitsaddkeyword, chdr, 'XTENSION', 'IMAGE', 'Image extension'
+  mkhdr, chdr, cmaps, /image
   anchor = 'DATE'
   red_fitsaddkeyword, anchor = anchor, chdr, 'EXTNAME', 'WCSDVARR', 'WCS distortion array'
   red_fitsaddkeyword, anchor = anchor, chdr, 'EXTVER', 1, 'Distortion array version number'
