@@ -300,25 +300,7 @@ pro red_logdata, date, time $
   ;; END get_sun ------------------------------------------------------;
 
   
-  ;; Decide what time coordinates to use
-  if ~keyword_set(use_r0_time) $
-     && ~keyword_set(use_turret_time) $
-     && ~keyword_set(use_pig_time) then begin
-    ;; If we didn't ask for a particular time, then decide here:
-    case 1 of
-      n_elements(T) gt 0 : use_input_time = 1           ; Use input
-      arg_present(r0) ne 0 : use_r0_time = 1         ; Every s
-      arg_present(pig) ne 0 : use_pig_time = 1       ; Every s?
-      arg_present(turret) ne 0 : use_turret_time = 1 ; Every 30 s
-      else : begin
-        print, 'red_logdata : No time coordinates!'
-        return
-      end
-    endcase
-  endif
-  
-  ;; Download log file data
-
+  ;; Decide what files to download
   get_r0_file = keyword_set(use_r0_time) $
                 || arg_present(r0)
 
@@ -337,6 +319,30 @@ pro red_logdata, date, time $
                     || arg_present(pointing) $
                     || arg_present(zenithangle)
   
+
+  ;; Decide what time coordinates to use
+  if ~keyword_set(use_r0_time) $
+     && ~keyword_set(use_turret_time) $
+     && ~keyword_set(use_pig_time) then begin
+    ;; If we didn't ask for a particular time, then decide here:
+    case 1 of
+      n_elements(T) gt 0   : use_input_time = 1  ; Use input
+      get_r0_file          : use_r0_time = 1     ; Every s
+      get_pig_file ne 0    : use_pig_time = 1    ; Every s?
+      get_turret_file ne 0 : use_turret_time = 1 ; Every 30 s
+      else : begin
+        print, 'red_logdata : No time coordinates!'
+        return
+      end
+    endcase
+  endif
+
+  ;; Revise download decisions?
+  get_r0_file     = get_r0_file     || keyword_set(use_r0_time)
+  get_pig_file    = get_pig_file    || keyword_set(use_pig_time) 
+  get_turret_file = get_turret_file || keyword_set(use_turret_time) 
+  
+  ;; Get the log data
   if get_r0_file then begin
     red_getlog, isodate, r0 = r0data
     if n_elements(r0data) eq 0 then $
@@ -345,8 +351,14 @@ pro red_logdata, date, time $
 
   if get_pig_file then begin
     red_getlog, isodate, pig = pigdata
-    if n_elements(pigdata) eq 0 then $
-       print, 'red_logdata : No pig log file.'
+    if n_elements(pigdata) eq 0 then begin
+      print, 'red_logdata : No pig log file.'
+      if use_pig_time then begin
+        use_pig_time = 0
+        use_turret_time = 1
+        get_turret_file = 1
+      endif
+    endif
   endif
   
   if get_turret_file then begin
@@ -418,7 +430,7 @@ pro red_logdata, date, time $
   endif
 
   
-  if n_elements(turret) ne 0 then begin
+  if n_elements(turretdata) gt 0 then begin
     
     if keyword_set(use_turret_time) then begin
       ;; Return all values
@@ -437,16 +449,16 @@ pro red_logdata, date, time $
 
   ;; Azimuth and elevation
   if (arg_present(azel) || arg_present(zenithangle)) $
-     && n_elements(turret) then azel = turret
+     && n_elements(turret) gt 0 then azel = turret
   
   ;; Disk coordinates (Helioprojective-Cartesian coordinates)
   if arg_present(diskpos) || arg_present(mu) then begin
     case 1 of
-      n_elements(pig) gt 0 : begin
+      n_elements(pigdata) gt 0 : begin
         ;; Use PIG coordinates if available.
         diskpos = pig
       end
-      n_elements(turret) gt 0 : begin
+      n_elements(turretdata) gt 0 : begin
         ;; Use Disk X/Y from the turret log file
         diskpos = red_turret_select_pointing(turretdata, 'Disk', time = T)
         ;; If we did not get data for all T points, maybe try to fill
@@ -461,7 +473,9 @@ pro red_logdata, date, time $
     case 1 of
       ;; Prefer if available to calculate Stonuhurst coordinates from
       ;; pig disk coordinates?
-      n_elements(turret.stony) : stonyhurst = red_turret_select_pointing(turretdata, 'Stony', time = T)
+      n_elements(turret.stony) gt 0 : begin
+        stonyhurst = red_turret_select_pointing(turretdata, 'Stony', time = T)
+      end
     endcase
   endif
 
