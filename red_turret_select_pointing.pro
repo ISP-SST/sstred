@@ -53,7 +53,7 @@ function red_turret_select_pointing, turretdata, pointingtype, time = time
   ;; Find data of the specified type
   plength = strlen(pointingtype)
   indx = where( (strmid(turretdata.pointingtype1, 0, plength) eq pointingtype) $
-                && (strmid(turretdata.pointingtype2, 0, plength) eq pointingtype) $
+                and (strmid(turretdata.pointingtype2, 0, plength) eq pointingtype) $
                 , count, complement=cindx, ncomplement=ccount)
 
   if count eq 0 then begin
@@ -82,8 +82,7 @@ function red_turret_select_pointing, turretdata, pointingtype, time = time
     pointing[0, cindx] = !Values.F_NaN
     pointing[1, cindx] = !Values.F_NaN
   endif
-  
-  
-  
 
+  return, pointing
+  
 end
