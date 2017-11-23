@@ -353,7 +353,7 @@ pro red_logdata, date, time $
     red_getlog, isodate, pig = pigdata
     if n_elements(pigdata) eq 0 then begin
       print, 'red_logdata : No pig log file.'
-      if use_pig_time then begin
+      if keyword_set(use_pig_time) then begin
         use_pig_time = 0
         use_turret_time = 1
         get_turret_file = 1
