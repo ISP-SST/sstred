@@ -48,8 +48,7 @@ function red_turret_select_pointing, turretdata, pointingtype, time = time
     interpolate_time = 1
   endelse
   Ntimes = n_elements(time)
-;  pointing = fltarr(2, Ntimes)
-  pointing = replicate(!Values.F_NaN, 2, Ntimes)
+  pointing = replicate(!Values.F_NaN, 2, Ntimes) ; Return NaNs where no data is available
 
   ;; Find data of the specified type
   plength = strlen(pointingtype)
@@ -60,7 +59,6 @@ function red_turret_select_pointing, turretdata, pointingtype, time = time
   if count eq 0 then begin
     ;; No coordinates of the specified type available. Return NaNs to
     ;; signal no data available.
-;    pointing[*, *] = !Values.F_NaN
     return, pointing
   endif
   
@@ -76,12 +74,6 @@ function red_turret_select_pointing, turretdata, pointingtype, time = time
     pointing[0, indx] = turretdata[indx].pointing1
     pointing[1, indx] = turretdata[indx].pointing2
   
-;    ;; Return NaNs where no data is available
-;    if ccount gt 0 then begin
-;      pointing[0, cindx] = !Values.F_NaN
-;      pointing[1, cindx] = !Values.F_NaN
-;    endif
-
   endelse
 
   return, pointing
