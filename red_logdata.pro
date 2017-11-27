@@ -438,8 +438,8 @@ pro red_logdata, date, time $
     endif else begin
       ;; Get interpolated values
       turret = fltarr(2, Ntimes) ; az/el on sky
-      turret[0, *] = red_interpol_nogaps(turretdata.az, turret_time, T)
-      turret[1, *] = red_interpol_nogaps(turretdata.el, turret_time, T)
+      turret[0, *] = red_interpol_nogaps(turretdata.az, turretdata.time, T)
+      turret[1, *] = red_interpol_nogaps(turretdata.el, turretdata.time, T)
     endelse 
     
   endif
