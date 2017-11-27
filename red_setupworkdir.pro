@@ -240,8 +240,11 @@
 ;   2017-08-24 : MGL. Rename add_suffix to red_add_suffix and move to
 ;                a file of its own.
 ;
-;   2017-08-24 : AVS. Make search_dir plural.  If it is a single string, IDL
-;                allows to use the array indexing such as seach_dirs[ 0 ].
+;   2017-08-24 : AVS. Make search_dir plural. If it is a single
+;                string, IDL allows to use the array indexing such as
+;                seach_dirs[ 0 ].
+;
+;   2017-11-27 : MGL. Set altitude to 2380 m.
 ;
 ;-
 pro red_setupworkdir, search_dirs = search_dirs $
@@ -358,8 +361,11 @@ pro red_setupworkdir, search_dirs = search_dirs $
     ;; Telescope location:
     ;; wikipedia, geo:28.759733,-17.880736
     ;; Mats C:        28.759693, -17.880757
-    ;; wikipedia says altitude is 2360 m. Should add 20 m for height of tower?
-    obsgeo_xyz = round( red_obsgeo( 28.759733d, -17.880736d, 2360d ) )
+    ;; wikipedia says altitude is 2360 m. Should add 20 m for height
+    ;; of tower?
+    ;; Altitude 2360 plus a few meters according to Google's
+    ;; elevation service. Allowing for the tower we get 2380 m.
+    obsgeo_xyz = round( red_obsgeo( 28.759733d, -17.880736d, 2380d ) )
 
     all_instruments =       [ 'CHROMIS', 'CRISP', 'TRIPPEL', 'SLITJAW' ]
     all_regexps     = '*' + [ 'chromis', 'crisp', 'spec',    'slit'    ] + '*'
