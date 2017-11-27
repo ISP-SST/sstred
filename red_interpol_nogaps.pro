@@ -41,7 +41,7 @@
 ; 
 ; 
 ;-
-function red_interpol_nogaps, y, x, xp, tol = tol, _ref_extra = extra
+function red_interpol_nogaps, y, x, xp, tol = tol, test = test, _ref_extra = extra
 
   if n_elements(tol) eq 0 then tol = 0.1
   
@@ -87,18 +87,21 @@ function red_interpol_nogaps, y, x, xp, tol = tol, _ref_extra = extra
     Npoints = off[iinterval] - on[iinterval]
     if Npoints gt 0 then begin
       indx = where((xp ge x[on[iinterval]]) and (xp le x[off[iinterval]-1]), count)
-      yp[indx] = interpol(y[on[iinterval]:off[iinterval]-1] $
-                          , x[on[iinterval]:off[iinterval]-1] $
-                          , xp[indx], _strict_extra = extra)
-      if 0 then begin
-        print, 'Interpolation'
-        print, 'X coordinates : ', x[on[iinterval]:off[iinterval]-1]
-        print, 'Y values : ', y[on[iinterval]:off[iinterval]-1]
-        print, 'Xp coordinates : ', xp[indx]
-        print, 'Yp values : ', yp[indx] 
+      if count gt 0 then begin
+        yp[indx] = interpol(y[on[iinterval]:off[iinterval]-1] $
+                            , x[on[iinterval]:off[iinterval]-1] $
+                            , xp[indx], _strict_extra = extra)
+        if keyword_set(test) then begin
+          print, 'Interpolation'
+          print, 'X coordinates : ', x[on[iinterval]:off[iinterval]-1]
+          print, 'Y values : ', y[on[iinterval]:off[iinterval]-1]
+          print, 'Xp coordinates : ', xp[indx]
+          print, 'Yp values : ', yp[indx] 
+          stop
+        endif
       endif
     endif 
-    
+
   endfor                        ; iinterval
 
   return, yp
