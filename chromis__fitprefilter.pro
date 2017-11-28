@@ -347,9 +347,10 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
       colors = ['blue', 'red', 'black']
       lines = [3, 0, 2]
       lines = [0, 2, 0]
-      cgplot, /add, iwav, ispec, line = lines[0], color = colors[0]
-      cgplot, /add, /over, iwav, interpol(yl1, xl+par[1], iwav)*prefilter, color = colors[1], line = lines[1]
-      cgplot, /add, /over, iwav, prefilter/par[0] * max(ispec), color = colors[2], line = lines[2]
+      cgplot, /add, iwav/10., ispec, line = lines[0], color = colors[0] $
+              , xtitle = '$\lambda$ / 1 nm'
+      cgplot, /add, /over, iwav/10., interpol(yl1, xl+par[1], iwav)*prefilter, color = colors[1], line = lines[1]
+      cgplot, /add, /over, iwav/10., prefilter/par[0] * max(ispec), color = colors[2], line = lines[2]
       
       cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
           , title = ['obs scan', 'model scan', 'fitted prefilter'], line = lines, color = colors
