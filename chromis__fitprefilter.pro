@@ -56,10 +56,12 @@
 ;
 ;   2017-07-06 : THI. Use rdx_readdata to also support compressed data.
 ;
-;   2016-10-05 : MGL. Selection list now includes mu and number of
+;   2017-10-05 : MGL. Selection list now includes mu and number of
 ;                files in directories and has a default selection
 ;                based on those numbers. Also display mosaic of FOV
 ;                for the different directories. New keyword dir.
+;
+;   2017-11-28 : MGL. Add legends and color to diagnostic plot.
 ; 
 ; 
 ;-
@@ -342,9 +344,16 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
              fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter, units:units}
 
       cgwindow
-      cgplot, /add, iwav, ispec, line = 1
-      cgplot, /add, /over, iwav, interpol(yl1, xl+par[1], iwav)*prefilter
-      cgplot, /add, /over, iwav, prefilter/par[0] * max(ispec), line=2
+      colors = ['blue', 'red', 'black']
+      lines = [3, 0, 2]
+      lines = [0, 2, 0]
+      cgplot, /add, iwav, ispec, line = lines[0], color = colors[0]
+      cgplot, /add, /over, iwav, interpol(yl1, xl+par[1], iwav)*prefilter, color = colors[1], line = lines[1]
+      cgplot, /add, /over, iwav, prefilter/par[0] * max(ispec), color = colors[2], line = lines[2]
+      
+      cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
+          , title = ['obs scan', 'model scan', 'fitted prefilter'], line = lines, color = colors
+      
       cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
 
     endif else begin
