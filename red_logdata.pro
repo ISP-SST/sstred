@@ -457,6 +457,10 @@ pro red_logdata, date, time $
       n_elements(pigdata) gt 0 : begin
         ;; Use PIG coordinates if available.
         diskpos = pig
+        ;; If NaNs, try to get from turret
+        tmp = where(finite(total(diskpos, 1)),compl=nanindx,ncompl=nnan)
+        for inan = 0, Nnan-1 do diskpos[*, nanindx[inan]] = $
+           red_turret_select_pointing(turretdata, 'Disk', time = T[nanindx[inan]])
       end
       n_elements(turretdata) gt 0 : begin
         ;; Use Disk X/Y from the turret log file
