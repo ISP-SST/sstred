@@ -294,10 +294,10 @@ pro red::prepmomfbd, wb_states = wb_states $
            sim_roi[[1,3]] -= eclip[[1,3]]
 
            ; the patch coordinates are relative to the align-clip area
-           sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
-           sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
-           sim_x -= sim_roi[0]
-           sim_y -= sim_roi[2]
+           sim_x = rdx_segment( 0, sim_roi[1]-sim_roi[0], numpoints, /momfbd )
+           sim_y = rdx_segment( 0, sim_roi[3]-sim_roi[2], numpoints, /momfbd )
+           sim_x += eclip[0]
+           sim_y += eclip[2]
            sim_x_string = strjoin(strtrim(sim_x,2), ',')
            sim_y_string = strjoin(strtrim(sim_y,2), ',')
 
