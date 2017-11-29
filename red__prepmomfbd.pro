@@ -150,7 +150,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , weight = weight $
                      , maxshift = maxshift $
                      , extraclip = extraclip $
-                     , margin = margin
+                     , margin = margin $
+                     , nmodes = nmodes
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
