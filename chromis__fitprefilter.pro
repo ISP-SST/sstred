@@ -347,13 +347,22 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
       colors = ['blue', 'red', 'black']
       lines = [3, 0, 2]
       lines = [0, 2, 0]
+      psyms = [16, -3, -3]
       cgplot, /add, iwav/10., ispec, line = lines[0], color = colors[0] $
-              , xtitle = '$\lambda$ / 1 nm'
-      cgplot, /add, /over, iwav/10., interpol(yl1, xl+par[1], iwav)*prefilter, color = colors[1], line = lines[1]
-      cgplot, /add, /over, iwav/10., prefilter/par[0] * max(ispec), color = colors[2], line = lines[2]
+              , xtitle = '$\lambda$ / 1 nm', psym = psyms[0]
+      cgplot, /add, /over, iwav/10., interpol(yl1, xl+par[1], iwav)*prefilter $
+              , color = colors[1], line = lines[1], psym = psyms[1]
+      cgplot, /add, /over, iwav/10., prefilter/par[0] * max(ispec), color = colors[2], line = lines[2], psym = psyms[2]
       
+      cglegend, /add, align = 3, /data $
+                , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
+                , title = ['obs scan'], color = colors[0], psym = psyms[0], length = 0.0
       cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
-          , title = ['obs scan', 'model scan', 'fitted prefilter'], line = lines, color = colors
+                , title = ['model scan'], line = lines[1], color = colors[1], length = 0.05
+      cglegend, /add, align = 2, /data $
+                , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
+;                , location = [mean(!x.crange)*1.9, mean(!y.crange)*.02] $
+                , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
       
       cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
 
