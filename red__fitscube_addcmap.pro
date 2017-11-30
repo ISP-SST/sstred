@@ -91,7 +91,7 @@ pro red::fitscube_addcmap, filename, cmaps
 
   ;; Write the image extension and the updated header. -----------------------------------------
   
-  mgl_fxhmodify, filename, new_header = hdr
+  red_fitsmodheader, filename, new_header = hdr
   writefits, filename, cmaps, chdr, heap, /append
 
 end

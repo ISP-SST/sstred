@@ -263,7 +263,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL5', wcs.time[0], 'Just a single time'  
   endelse
   
-  mgl_fxhmodify, filename, new_header = hdr
+  red_fitsmodheader, filename, new_header = hdr
 
   
   ;; Make the binary extension. ------------------------------------------------------------
