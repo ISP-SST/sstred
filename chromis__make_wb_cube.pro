@@ -268,15 +268,25 @@ pro chromis::make_wb_cube, dir $
     subf_detect_x = max(subf_detect/median(subf_detect),dim=2)
     i0 = -1
     i1 = Nsubf_x
-    repeat i0++ until subf_detect_x[i0] lt 2
-    repeat i1-- until subf_detect_x[i1] lt 2
-
+    repeat i0++ until subf_detect_x[i0] lt 2 or i0 eq Nsubf_x-1
+    repeat i1-- until subf_detect_x[i1] lt 2 or i1 eq 0
+    if i0 ge i1 then begin
+      ;; Failed autodetection, use entire FOV
+      i0 = 0
+      i1 = Nsubf_x-1      
+    endif
+    
     ;; Then Y
     subf_detect_y = max(subf_detect[i0:i1, *]/median(subf_detect[i0:i1]),dim=1)
     j0 = -1
     j1 = Nsubf_y
-    repeat j0++ until subf_detect_y[j0] lt 2
-    repeat j1-- until subf_detect_y[j1] lt 2
+    repeat j0++ until subf_detect_y[j0] lt 2 or j0 eq Nsubf_y-1
+    repeat j1-- until subf_detect_y[j1] lt 2 or j1 eq 0
+    if j0 ge j1 then begin
+      ;; Failed autodetection, use entire FOV
+      j0 = 0
+      j1 = Nsubf_y-1    
+    endif
 
     hdr = red_readhead(wfiles[0])
     im_dim = fxpar(hdr, 'NAXIS*')
@@ -285,7 +295,7 @@ pro chromis::make_wb_cube, dir $
 ;    im_dim = size(im, /dim)
 
     overlapfacs = [Ssubf_x*Nsubf_x/float(im_dim[0])*[1, 1], Ssubf_y*Nsubf_y/float(im_dim[1])*[1, 1]] * 0.8
-print, 234
+
     ;; If user selected autocrop, then do use the detected cropping.
     ;; If user selected interactive, then use the detected cropping
     ;; only if crop keyword was not provided.
