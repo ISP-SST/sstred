@@ -320,7 +320,7 @@ DONE:
 
 
 
-;; Test the modified routine by doing IDL> .rn mgl_fxhmodify
+;; Test the modified routine by doing IDL> .rn red_fitsmodheader
 
 fname = 'tmp.fits'
 data = findgen(50, 35)
@@ -340,7 +340,7 @@ print
 ;; Adding more than 36 new headers should trigger adding more space
 ;; for the header.
 for i = 0, 40 do fxaddpar, hdr1, 'TEST'+string(i, format = '(i02)'),  i, 'comment '+string(i, format = '(i02)')
-mgl_fxhmodify, fname, new_header = hdr1
+red_fitsmodheader, fname, new_header = hdr1
 
 spawn, 'ls -l '+fname
 hdr2 = headfits(fname)
@@ -358,7 +358,7 @@ print, stddev(data-data2)
 
 ;; Removing the new headers should trigger removing the extra space. 
 for i = 0, 40 do sxdelpar, hdr2, 'TEST'+string(i, format = '(i02)')
-mgl_fxhmodify, fname, new_header = hdr2
+red_fitsmodheader, fname, new_header = hdr2
 spawn, 'ls -l '+fname
 hdr3 = headfits(fname)
 print
