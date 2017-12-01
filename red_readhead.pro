@@ -116,6 +116,8 @@
 ;
 ;   2017-09-01 : THI. Get date_beg and framenumbers from file. Rename
 ;                keyword framenumber to select_frame.
+; 
+;   2017-12-01 : MGL. Use status from red_readhead_fits.
 ;
 ;
 ;-
@@ -165,7 +167,9 @@ function red_readhead, fname, $
                                  framenumbers = framenumbers, $
                                  select_frame = select_frame, $
                                  silent = silent, $
+                                 status = status, $
                                  extension = extension)
+      if status ne 0 then return, 0B
       hname = hdir+'/'+file_basename(fname, '.fits')   + '.fitsheader'
     end
     'MOMFBD' : begin
@@ -229,6 +233,17 @@ function red_readhead, fname, $
   return, header
 
 end
+
+
+;; Test broken file
+
+dir='/storage/sand05n/Incoming/2017.04.20/CHROMIS-flats/18:34:10/Chromis-N/'
+fname='sst_camXXX_00004_0036400_wheel00006_hrz34410.fits'
+
+header = red_readhead(dir+fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
+print, status
+
+stop
 
 cd,'/storage/sand02/Incoming/2016.09.19/CHROMIS-flats/11:21:22/Chromis-N',current=curdir
 fname = 'sst_camXXX_00000_0000000_wheel00005_hrz32061.fits'
