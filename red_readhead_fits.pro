@@ -34,6 +34,10 @@
 ;    select_frame : in, type=int
 ;
 ;       Only get meta-data for a specific frame. (TODO: implement)
+;
+;    status : out, optional, type=integer
+;
+;       0 is succeeded, -1 otherwise.
 ; 
 ; :History:
 ; 
@@ -45,23 +49,33 @@
 ;    2017-07-06 : THI. Use rdx_readhead to get header.
 ; 
 ;    2017-09-01 : THI. Get date_beg and framenumbers from file.
+; 
+;    2017-12-01 : MGL. New keyword status, use status from rdx_readhead.
 ;
 ; 
 ;-
 function red_readhead_fits, fname, $
                             date_beg = date_beg, $
+                            extension = extension, $
                             framenumbers = framenumbers, $
                             select_frame = select_frame, $
                             silent = silent, $
-                            extension = extension
+                            status = status
 
   compile_opt idl2
 
+  if ~file_test(fname) then begin
+    status = -1
+    return, 0
+  endif
+  
   ;; Are we here for an extension or the primary HDU?
   if n_elements(extension) eq 0 then begin
     ;; primary
 
-    header = rdx_readhead(fname,date_beg=date_beg,framenumbers=framenumbers)
+    header = rdx_readhead(fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
+
+    if status ne 0 then return, 0
 
     ;; Hack to get the prefilter from the file name in data
     ;; from 2016.08.30.
@@ -155,13 +169,26 @@ function red_readhead_fits, fname, $
       ;; here, like FRAME1, CADENCE, and DATE-END.
     endif
   endif else begin
+    
     ;; EXTENSION header
     elun = fxposit(fname,extension,/readonly,/no_fpack)
     fxhread,elun,header
     free_lun,elun
+
+    status = 0                  ; Set to -1 if we detect a problem!
+    
   endelse
 
   return, header
 
 end
 
+;; Test broken file
+
+dir='/storage/sand05n/Incoming/2017.04.20/CHROMIS-flats/18:34:10/Chromis-N/'
+fname='sst_camXXX_00004_0036400_wheel00006_hrz34410.fits'
+
+header = red_readhead_fits(dir+fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
+print, status
+
+end
