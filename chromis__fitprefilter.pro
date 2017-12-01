@@ -25,11 +25,22 @@
 ;
 ;        Set this to the time-stamp directory to use and bypass the
 ;        selection dialogue. 
-; 
+;
+;    hints : in, optional, type=boolean
+;
+;        If set, various hints will aid in the selection of time-stamp
+;        directory. The selection dialogue will have more info than
+;        just the time stamps and the FOV of the directories will be
+;        displayed.
+;
 ;    mask : in, optional, type=boolean
 ;
-;        If selected, will allow the user to mask out spectral
-;        positions from the fit.
+;        If set, will allow the user to mask out spectral positions
+;        from the fit.
+;
+;    scan : in, optional, type=integer, default=0
+;
+;        Use data from a single scan only.
 ; 
 ; 
 ; :History:
@@ -62,10 +73,19 @@
 ;                for the different directories. New keyword dir.
 ;
 ;   2017-11-28 : MGL. Add legends and color to diagnostic plot.
+;
+;   2017-12-01 : MGL. New keyword hints. Reorganize hints
+;                calculations. 
 ; 
 ; 
 ;-
-pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, dir = dir
+pro chromis::fitprefilter, dir = dir $
+                           , hints = hints $
+                           , mask = mask $
+;                           , pref = pref $
+                           , scan = scan ;$
+;                           , time = time 
+                           
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -75,6 +95,8 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
   red_writelog, selfinfo = selfinfo
 
   if n_elements(dir) eq 0 then begin
+
+    ;; Directory not provided, user has to choose one.
     
     if ~ptr_valid(self.data_dirs) then begin
       print, inam+' : ERROR : undefined data_dir'
@@ -91,55 +113,112 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
       else dirstr = dirs[0]
     endelse
 
-    ;; Find some info about the directories
-    fnames = strarr(Ndirs)
-    times = dblarr(Ndirs)
-    Nfiles = lonarr(Ndirs)
-    xs = 1920
-    ys = 1200
-    ims = fltarr(xs, ys, Ndirs)
-    contr = fltarr(Ndirs)
-    for idir = 0, Ndirs-1 do begin
-      fnames[idir] = (file_search(dirs[idir]+'/Chromis-W/*fits', count = nf))[0]
-      ims[0, 0, idir] = total(red_readdata(fnames[idir], /silent), 3)
-      contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
-      Nfiles[idir] = nf
-      hdr = red_readhead(fnames[idir])
-      red_fitspar_getdates, hdr, date_beg = date_beg 
-      times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
-    endfor                      ; idir
+    if keyword_set(hints) then begin
 
-    red_logdata, self.isodate, times, mu = mu, zenithangle = za
+      ;; Find some info about the directories
+      
+      prefs = strarr(Ndirs)
+      fnames = strarr(Ndirs)
+      times = dblarr(Ndirs)
+      Nfiles = lonarr(Ndirs)
+      contr = fltarr(Ndirs)
 
-    selectionlist = file_basename(dirs) $
-                    + ' (µ=' +string(mu,format='(f4.2)') + ', #files='+strtrim(Nfiles,2) + ')'
-    mos = fltarr(xs/5*Ndirs, ys/5)
-    for idir = 0, Ndirs-1 do mos[idir*xs/5:(idir+1)*xs/5-1, *] $
-       = rebin(ims[*, *, idir], xs/5, ys/5)/median(ims[*, *, idir])
+      ;; First get mu and zenith angle
+      timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
+      for idir = 0, Ndirs-1 do begin
+        times[idir] = red_time2double(stregex(dirs[idir], timeregex, /extract))
+      endfor                    ; idir
+      red_logdata, self.isodate, times, mu = mu, zenithangle = za
+
+      
+      for idir = 0, Ndirs-1 do begin
+
+        print, dirs[idir]
+        
+        fnamesN = file_search(dirs[idir]+'/Chromis-N/*fits', count = nf)
+        fnamesW = file_search(dirs[idir]+'/Chromis-W/*fits', count = nf)
+        Nfiles[idir] = nf
+
+        if n_elements(ims) eq 0 then begin
+          hdr = red_readhead(fnamesN[0])
+          xs = red_fitsgetkeyword(hdr, 'NAXIS1')
+          ys = red_fitsgetkeyword(hdr, 'NAXIS2')
+          ims = fltarr(xs, ys, Ndirs)
+          mos = fltarr(xs/5*Ndirs, ys/5)
+        endif
+
+        ims[0, 0, idir] = total(red_readdata(fnamesW[0], /silent), 3)
+        mos[idir*xs/5:(idir+1)*xs/5-1, *] $
+           = rebin(ims[*, *, idir], xs/5, ys/5)/median(ims[*, *, idir])
+        
+        ;; Get more hints only for potentially interesting dirs
+        if nf gt 0 && nf lt 1000 && mu[idir] gt 0.9 then begin
+
+          self -> extractstates, fnamesN, sts
+          prefs[idir] = ', prefs='+strjoin(sts[uniq(sts.prefilter,sort(sts.prefilter))].prefilter, ',')
+
+          contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
+
+;          red_fitspar_getdates, hdr, date_beg = date_beg 
+;          times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
+
+        endif
+      endfor                    ; idir
+
+      ;; Select data folder containing a quiet-Sun-disk-center dataset
+
+      ;; Default based on some heuristics of unknown value. Deselect
+      ;; directories with many files, far from disc center, with large
+      ;; contrast (possibly spots?).
+      findx = where(Nfiles gt 0 and Nfiles lt 400 $
+                    and mu gt 0.9 $
+                    and contr lt median(contr) $
+                    , Nwhere)
+;      findx = where(Nfiles lt 500 and mu gt 0.9, Nwhere)
+
+      case Nwhere of
+        0 : tmp = min(za, default) ; Default default is close to local noon
+        1 : default = findx[0]
+        else : begin            ; Have to pick one of findx
+          tmp = min(za[findx], ml) 
+          default = findx[ml]
+        end
+      endcase
+      
+      selectionlist = file_basename(dirs) $
+                      + ' (µ=' +string(mu,format='(f4.2)') $
+                      + ', #files='+strtrim(Nfiles,2) $
+                      + prefs $
+                      + ')'
+      
+      hintlist = file_basename(dirs) $
+                 + ' (µ=' +string(mu,format='(f4.2)') $
+                 + ', #files='+strtrim(Nfiles,2) $
+                 + ')'
+      
+
+      ;; Display some visual hints
+      scrollwindow, xs = xs/5*Ndirs, ys = ys/5
+      tv, bytscl(mos, .6, 1.4)
+      for idir = 0, Ndirs-1 do $
+         cgtext, 5+idir*xs/5, 5, align = 0, /device, color = default eq idir?'cyan':'green' $
+                 , strtrim(idir, 2)+' : '+red_strreplace(hintlist[idir], 'µ', '$\mu$')
+      
+      qstring = 'Select data to be processed'
+
+    endif else begin
+
+      ;; No hints
+      selectionlist = file_basename(dirs)
+      qstring = 'Select data to be processed (call with /hints to get more info or with dir=(timestamp) to bypass)'
+      default = 0
+      
+    endelse
+
     
-    ;; Select data folder containing a quiet-Sun-disk-center dataset
-
-    ;; Select default
-    default = 0
-    ;; Deselect directories with many files, far from disc center, with
-    ;; large contrast (possibly spots?).
-    findx = where(Nfiles lt 150 and mu gt 0.9 and contr lt median(contr), Nwhere)
-    if Nwhere gt 0 then begin
-      ;; Have to pick one!
-      tmp = min(abs(times[findx]-red_time2double('13:00:00')), ml) ; Near local noon good?
-      default = findx[ml]
-    endif
-
-    ;; Display some visual hints
-    scrollwindow, xs = xs/5*Ndirs, ys = ys/5
-    tv, bytscl(mos, .6, 1.4)
-    for idir = 0, Ndirs-1 do $
-       cgtext, 5+idir*xs/5, 5, align = 0, /device, color = default eq idir?'cyan':'green' $
-               , strtrim(idir, 2)+' : '+red_strreplace(selectionlist[idir], 'µ', '$\mu$')
-
     ;; Do the selection
     tmp = red_select_subset(selectionlist $
-                            , qstring = 'Select data to be processed' $
+                            , qstring = qstring $
                             , count = Nselect, indx = sindx, default = default)
     idx = sindx[0]
     print, inam + ' : Will process the following data:'
@@ -344,12 +423,13 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
              fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter, units:units}
 
       cgwindow
+      mx = max([ispec, interpol(yl1, xl+par[1], iwav)*prefilter, prefilter/par[0] * max(ispec)]) * 1.05
+
       colors = ['blue', 'red', 'black']
-      lines = [3, 0, 2]
       lines = [0, 2, 0]
       psyms = [16, -3, -3]
       cgplot, /add, iwav/10., ispec, line = lines[0], color = colors[0] $
-              , xtitle = '$\lambda$ / 1 nm', psym = psyms[0]
+              , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx]
       cgplot, /add, /over, iwav/10., interpol(yl1, xl+par[1], iwav)*prefilter $
               , color = colors[1], line = lines[1], psym = psyms[1]
       cgplot, /add, /over, iwav/10., prefilter/par[0] * max(ispec), color = colors[2], line = lines[2], psym = psyms[2]
@@ -361,7 +441,6 @@ pro chromis::fitprefilter, time = time, scan = scan, pref = pref, mask = mask, d
                 , title = ['model scan'], line = lines[1], color = colors[1], length = 0.05
       cglegend, /add, align = 2, /data $
                 , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
-;                , location = [mean(!x.crange)*1.9, mean(!y.crange)*.02] $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
       
       cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
