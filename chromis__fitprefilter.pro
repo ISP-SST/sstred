@@ -38,10 +38,18 @@
 ;        If set, will allow the user to mask out spectral positions
 ;        from the fit.
 ;
+;    noabsunits : in, optional, type=boolean
+;
+;        If set, skip calibrations to establish absolute intensity
+;        units. 
+;
 ;    scan : in, optional, type=integer, default=0
 ;
-;        Use data from a single scan only.
-; 
+;        Use data from this single scan only.
+;
+;    useflats : in, optional, type=boolean
+;
+;        Select between flats directories rather than science data. 
 ; 
 ; :History:
 ; 
@@ -75,21 +83,37 @@
 ;   2017-11-28 : MGL. Add legends and color to diagnostic plot.
 ;
 ;   2017-12-01 : MGL. New keyword hints. Reorganize hints
-;                calculations. 
+;                calculations. New keyword useflats.
+;
+;   2017-12-01 : MGL. New keyword noabsunits.
 ; 
 ; 
 ;-
 pro chromis::fitprefilter, dir = dir $
+                           , useflats = useflats $
+                           , noabsunits = noabsunits $
                            , hints = hints $
                            , mask = mask $
 ;                           , pref = pref $
                            , scan = scan ;$
 ;                           , time = time 
-                           
+  
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  ;; For now! We may be able to work around this later!
+  noabsunits = keyword_set(useflats)
+  
+  if keyword_set(noabsunits) then begin
+    units = 'dn'                ; "Digital number"
+    unitscalib = 0
+  endif else begin
+    ;; units = 'Watt/(s m2 Hz ster)' ; SI units
+    units = 'W s^-1 m^-2 Hz^-1 sr^-1' ; SI units
+    unitscalib = 1
+  endelse
+  
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
@@ -98,12 +122,34 @@ pro chromis::fitprefilter, dir = dir $
 
     ;; Directory not provided, user has to choose one.
     
-    if ~ptr_valid(self.data_dirs) then begin
-      print, inam+' : ERROR : undefined data_dir'
-      return
-    endif
-    dirs = *self.data_dirs
+    if keyword_set(useflats) then begin
 
+      if ~ptr_valid(self.flat_dir) then begin
+        print, inam+' : ERROR : undefined flat_dir'
+        return
+      endif
+      dirs = *self.flat_dir
+
+      ;; In flats directories WB and NB data are often separated. So
+      ;; use only directories where there actually are NB data.
+      indx = where(file_test(dirs+'/Chromis-N'), cnt)
+      if cnt eq 0 then begin
+        print, inam + ' : No flats directories with NB data.'
+        print, dirs
+        retall
+      endif
+      dirs = dirs[indx]
+
+    endif else begin
+      
+      if ~ptr_valid(self.data_dirs) then begin
+        print, inam+' : ERROR : undefined data_dir'
+        return
+      endif
+      dirs = *self.data_dirs
+
+    endelse
+    
     Ndirs = n_elements(dirs)
     if( Ndirs eq 0) then begin
       print, inam+' : ERROR : no directories defined'
@@ -135,9 +181,13 @@ pro chromis::fitprefilter, dir = dir $
 
         print, dirs[idir]
         
-        fnamesN = file_search(dirs[idir]+'/Chromis-N/*fits', count = nf)
-        fnamesW = file_search(dirs[idir]+'/Chromis-W/*fits', count = nf)
-        Nfiles[idir] = nf
+        fnamesN = file_search(dirs[idir]+'/Chromis-N/*fits', count = NfilesN)
+        Nfiles[idir] = NfilesN
+        if keyword_set(unitscalib) then begin
+          fnamesW = file_search(dirs[idir]+'/Chromis-W/*fits', count = NfilesW)
+        endif else begin
+          NfilesW = 0
+        endelse
 
         if n_elements(ims) eq 0 then begin
           hdr = red_readhead(fnamesN[0])
@@ -147,12 +197,16 @@ pro chromis::fitprefilter, dir = dir $
           mos = fltarr(xs/5*Ndirs, ys/5)
         endif
 
-        ims[0, 0, idir] = total(red_readdata(fnamesW[0], /silent), 3)
+        if keyword_set(unitscalib) && NfilesW gt 0 then begin
+          ims[0, 0, idir] = total(red_readdata(fnamesW[0], /silent), 3)
+        endif else begin
+          ims[0, 0, idir] = total(red_readdata(fnamesN[0], /silent), 3)
+        endelse
         mos[idir*xs/5:(idir+1)*xs/5-1, *] $
            = rebin(ims[*, *, idir], xs/5, ys/5)/median(ims[*, *, idir])
         
         ;; Get more hints only for potentially interesting dirs
-        if nf gt 0 && nf lt 1000 && mu[idir] gt 0.9 then begin
+        if NfilesN gt 0 && NfilesN lt 1000 && mu[idir] gt 0.9 then begin
 
           self -> extractstates, fnamesN, sts
           prefs[idir] = ', prefs='+strjoin(sts[uniq(sts.prefilter,sort(sts.prefilter))].prefilter, ',')
@@ -224,6 +278,7 @@ pro chromis::fitprefilter, dir = dir $
     print, inam + ' : Will process the following data:'
     print, selectionlist[idx], format = '(a0)'
     dirs = dirs[idx]
+    
   endif else begin
     
     if file_test(dir) then begin
@@ -239,122 +294,134 @@ pro chromis::fitprefilter, dir = dir $
   ;; Get files and states
   
   cams = *self.cameras
-  detector = self->getdetector( cams[-1] )
-  detectorwb = self->getdetector( cams[0] )
 
-  files = file_search(dirs+'/'+cams[-1]+'/*.fits', count=nfiles)
-  files1 = file_search(dirs+'/'+cams[0]+'/*.fits', count=nfiles1)
-  ;;
-  files = red_sortfiles(files)
-  files1= red_sortfiles(files1)
-  
-  self->extractstates, files, states
-  self->extractstates, files1, states1
+  detector = self->getdetector( cams[-1] )
+  filesNB = file_search(dirs+'/'+cams[-1]+'/*.fits', count=nfilesNB)
+  filesNB = red_sortfiles(filesNB)
+  self->extractstates, filesNB, statesNB
+
+  if keyword_set(unitscalib) then begin
+    filesWB = file_search(dirs+'/'+cams[0]+'/*.fits', count=nfilesWB)
+    detectorwb = self->getdetector( cams[0] )
+    filesWB = red_sortfiles(filesWB)
+    self -> extractstates, filesWB, statesWB
+  endif
   
   ;; Read one scan (scan 0 by default)
   
-  if(n_elements(scan) eq 0) then scan = 0
-  idx=where(states[*].scannumber eq scan, ct)
-  if(ct eq 0) then begin
+  if n_elements(scan) eq 0 then scan = 0
+  idx=where(statesNB[*].scannumber eq scan, ct)
+  if ct eq 0 then begin
     print, inam+' : ERROR, invalid scan number'
     return
   endif
   
   ;; Sort selected states and files
   
-  idx1 = sort(states[idx].tun_wavelength)
+  idx1 = sort(statesNB[idx].tun_wavelength)
   ;;
-  states = states[idx[idx1]]
-  states1 = states1[idx[idx1]]
+  statesNB = statesNB[idx[idx1]]
+  if keyword_set(unitscalib) then statesWB = statesWB[idx[idx1]]
   
-  ustate = states[uniq(states[*].tun_wavelength, sort(states[*].tun_wavelength))].fullstate  
+  ustate = statesNB[uniq(statesNB[*].tun_wavelength, sort(statesNB[*].tun_wavelength))].fullstate  
   Nstates = n_elements(ustate)
   
   ;; load data and compute mean spectrum
 
-  spec = dblarr(Nstates)
-  wav   = dblarr(Nstates)
-  pref  = strarr(Nstates)
+  spec   = dblarr(Nstates)
+  wav    = dblarr(Nstates)
+  pref   = strarr(Nstates)
   specwb = dblarr(Nstates)
 
   for istate =0L, Nstates-1 do begin
 
     red_progressbar, istate, Nstates, 'Loop over states: '+ustate[istate], /predict
 
-    darkfile = file_search(self.out_dir +'/darks/'+detector+'_'+states[istate].cam_settings+'.dark.fits', count=ct)
-    darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+states1[istate].cam_settings+'.dark.fits', count=ct)
-
-    if(ct ne 1) then begin
-      print, inam+' : ERROR, cannot find dark file'
+    self -> get_calib, statesNB[istate], darkdata=darkN, status = status
+    if status ne 0 then begin
+      print, inam+' : ERROR, cannot find dark file for NB'
       stop
     endif
-    dd = red_readdata(darkfile, /silent)
-    ddwb = red_readdata(darkfilewb, /silent)
+
+    if keyword_set(unitscalib) then begin
+      self -> get_calib, statesWB[istate], darkdata=darkW, status = status
+      if status ne 0 then begin
+        print, inam+' : ERROR, cannot find dark file for WB'
+        stop
+      endif
+    endif
+
+;    darkfile = file_search(self.out_dir +'/darks/'+detector+'_'+statesNB[istate].cam_settings+'.dark.fits', count=ct)
+;    darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+statesWB[istate].cam_settings+'.dark.fits', count=ct)
+
+;    darkN = red_readdata(darkfile, /silent)
+;    darkW = red_readdata(darkfilewb, /silent)
 
     ;; Let's not assume that all images for one state must be in the
     ;; same file... just in case.
     
-    pos = where(states[*].fullstate eq ustate[istate], count)
+    pos = where(statesNB[*].fullstate eq ustate[istate], count)
 ;    print, inam+'loading files for state -> '+ustate[istate]
-    
+
     for kk=0L, count-1 do begin
-      tmp = float(rdx_readdata(states[pos[kk]].filename))
-      tmpwb = float(rdx_readdata(states1[pos[kk]].filename))
       
-      dim = size(tmp,/dim)
-      dx = round(dim[0]*0.12)
-      dy = round(dim[1]*0.12)
-      
-      nsli = 1
-      if(n_elements(dim) gt 2) then begin
-         nsli = dim[2]
-         tmp   = total(  tmp,3, /double) / double(nsli)
-         tmpwb = total(tmpwb,3, /double) / double(nsli)
+      imsN = float(rdx_readdata(statesNB[pos[kk]].filename))
+      dim = size(imsN, /dim)
+      if n_elements(dim) gt 2 then nsli = double(dim[2]) else nsli = 1d
+      imsN = total(imsN, 3, /double) / nsli
+      imsN -= darkN
+
+      if keyword_set(unitscalib) then begin
+        imsW = float(rdx_readdata(statesWB[pos[kk]].filename))
+        dim = size(imsW, /dim)
+        if n_elements(dim) gt 2 then nsli = double(dim[2]) else nsli = 1d
+        imsW = total(imsW, 3, /double) / nsli
+        imsW -= darkW
       endif
-
-      tmp   -= dd
-      tmpwb -= ddwb
       
-      if(keyword_set(mask)) then begin
+      if keyword_set(mask) then begin
 
-         if(kk eq 0 and istate eq 0) then begin
-            mmask = red_select_area(tmp[*,*,0], /noedge, /xroi)
-            nzero = where(mmask gt 0)
-            bla = tmp[*,*,0]
-            ind = array_indices(bla, nzero)
-         endif
-         
- 
-         tmp1 = double(tmp[reform(ind[0,*]),reform(ind[1,*])])
-         tmpwb1 = double(tmpwb[reform(ind[0,*]),reform(ind[1,*])])
-         
+        if kk eq 0 and istate eq 0 then begin
+          mmask = red_select_area(imsN[*,*,0], /noedge, /xroi)
+          nzero = where(mmask gt 0)
+          bla = imsN[*,*,0]
+          ind = array_indices(bla, nzero)
+        endif
+        
+        imsN1 = double(imsN[reform(ind[0,*]),reform(ind[1,*])])
+        if keyword_set(unitscalib) then imsW1 = double(imsW[reform(ind[0,*]),reform(ind[1,*])])
+        
       endif else begin
- 
-         tmp1 = double(tmp[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
-         tmpwb1 = double(tmpwb[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
+        
+        dx = round(dim[0]*0.12)
+        dy = round(dim[1]*0.12)
+
+        imsN1 = double(imsN[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
+        if keyword_set(unitscalib) then imsW1 = double(imsW[dx:dim[0]-dx-1,dy:dim[1]-dy-1])
         
       endelse ;; if mask
 
-      spec[istate] += median(tmp1)
-      specwb[istate] += median(tmpwb1)
+      spec[istate] += median(imsN1)
+      if keyword_set(unitscalib) then specWB[istate] += median(imsW1)
 
     endfor                      ; kk
 
     spec[istate] /= count
-    specwb[istate] /= count
+    if keyword_set(unitscalib) then specwb[istate] /= count
     
-    wav[istate] = states[pos[0]].tun_wavelength*1.d10
-    pref[istate] = states[pos[0]].prefilter
+    wav[istate]  = statesNB[pos[0]].tun_wavelength*1.d10
+    pref[istate] = statesNB[pos[0]].prefilter
+    
   endfor                        ; istate
 
 
-  ;; loop prefilters
+  ;; Loop prefilters
 
   file_mkdir, self.out_dir+'/prefilter_fits/'
   upref = pref[uniq(pref, sort(pref))] 
   npref = n_elements(upref)
 
-  for ipref=0, npref-1 do begin
+  for ipref = 0L, npref-1 do begin
 
     red_progressbar, ipref, Npref, 'Loop over prefilters: ' + upref[ipref], /predict
 
@@ -363,68 +430,65 @@ pro chromis::fitprefilter, dir = dir $
     idx = where(pref eq upref[ipref], nwav)
     iwav = wav[idx]
     ispec = spec[idx]
-    wbint = mean(specwb[idx])
-    
+    if keyword_set(unitscalib) then wbint = mean(specwb[idx]) else wbint = 1.
     
     ;; Load satlas
     red_satlas, iwav[0]-5.1, iwav[-1]+5.1, xl, yl, /si, cont = cont 
     dw = xl[1] - xl[0]
     np = round((0.080 * 8) / dw)
-    if(np/2*2 eq np) then np -=1
+    if np/2*2 eq np then np -=1
     tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
     tr = chromis_profile(tw, erh=-0.07d0)
-    tr/=total(tr)
+    tr /= total(tr)
     yl1 = fftconvol(yl, tr)
 
-    ;;units = 'Watt/(s m2 Hz ster)' ; SI units
-    units = 'W s^-1 m^-2 Hz^-1 sr^-1' ; SI units
-    
     ;; Prepdata
     
-    if(nwav gt 1) then begin
-      if(keyword_set(mask)) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
+    if Nwav gt 1 then begin
+
+      if keyword_set(mask) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
       dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[ipref]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
       fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 7)
-      ;;
+      
       fitpars[0].limited[*] = [1,0]
       fitpars[0].limits[*] = [0.d0, 0.0d0]
-      ;;
+      
       fitpars[1].limited[*] = [1,1]
       fitpars[1].limits[*] = [-1.0,1.0]
-      ;;
+      
       fitpars[2].limited[*] = [1,1]
       fitpars[2].limits[*] = [-3.0d0,+3.0d0]
-      ;;
+      
       fitpars[3].limited[*] = [1,1]
       fitpars[3].limits[*] = [2.0d0, 7.5d0]
-      ;;
+      
       fitpars[4].limited[*] = [1,1]
       fitpars[4].limits[*] = [2.5d0, 3.5d0]
       fitpars[4].fixed = 1
-      ;;
+      
       fitpars[5].limited[*] = [1,1]
       fitpars[5].limits[*] = [-1.d0, 1.d0]
-      ;;
+      
       fitpars[6].limited[*] = [1,1]
       fitpars[6].limits[*] = [-1.d0, 1.d0]
       
       
       ;; Now call mpfit
-
+      
       par = [max(ispec) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
       par = mpfit('chromis_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
       prefilter = chromis_prefilter(par, dat.iwav, dat.pref)
       
       ;; save curve
-
+      
       prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
              fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter, units:units}
-
+      
       cgwindow
       mx = max([ispec, interpol(yl1, xl+par[1], iwav)*prefilter, prefilter/par[0] * max(ispec)]) * 1.05
-
+      
       colors = ['blue', 'red', 'black']
       lines = [0, 2, 0]
       psyms = [16, -3, -3]
@@ -444,18 +508,18 @@ pro chromis::fitprefilter, dir = dir $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
       
       cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
-
+      
     endif else begin
 
       y1 = interpol(yl, xl, iwav)
       prefilter = [ispec/yl1]
       prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
-             fitpars:prefilter, fts_model:y1, units:units}
-
+            fitpars:prefilter, fts_model:y1, units:units}
+      
     endelse
-
+    
     save, file=self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave', prf
-
+    
   endfor                        ; ipref
   
   
