@@ -85,7 +85,7 @@
 ;   2017-12-01 : MGL. New keyword hints. Reorganize hints
 ;                calculations. New keyword useflats.
 ;
-;   2017-12-01 : MGL. New keyword noabsunits.
+;   2017-12-04 : MGL. New keyword noabsunits.
 ; 
 ; 
 ;-
