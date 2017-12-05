@@ -517,7 +517,7 @@ pro chromis::make_wb_cube, dir $
   endif
 
   ;; Add info to headers
-  red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'DU', 'Units in array'
+  red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
   ;; Add info about this step
