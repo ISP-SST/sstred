@@ -40,7 +40,7 @@
 ;-
 pro red_fitsdelkeyword, hdr, name
 
-  ;; There is no fxdelpar so we have to use scdelpar. However,
+  ;; There is no fxdelpar so we have to use sxdelpar. However,
   ;; sxdelpar is not aware of the OGIP LONGSTRN convention, so if the
   ;; keyword is continued on the next line, the CONTINUE line is not
   ;; removed. So we first make sure the keyword is short, then we
