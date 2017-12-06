@@ -267,7 +267,7 @@ pro red::fitscube_convertlp, inname $
                               , prstep = 'Convert science data cube from LP format' $
                               , prpara = prpara $
                               , prproc = inam
-stop
+
   self -> fitscube_initialize, oname, hdr, olun, fileassoc, dims 
 
   wcs = replicate({  wave:dblarr(2,2) $
