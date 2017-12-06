@@ -21,7 +21,7 @@
 ;
 ;       Threshold for identifying a strong enough pinhole.
 ;
-;    max_shift : in, optional, type=int, default=100
+;    max_shift : in, optional, type=int, default=200
 ;
 ;       Only consider mappings with a linear shift < max_shift pixels.
 ;
@@ -85,6 +85,8 @@
 ;
 ;   2017-10-04 : MGL. Add progressbar.
 ;
+;   2017-12-06 : THI. Added a simple tool for verifying the calibrations.
+;
 ;-
 pro red::pinholecalib, threshold = threshold $
                            , max_shift = max_shift $
@@ -93,7 +95,8 @@ pro red::pinholecalib, threshold = threshold $
                            , dir = dir $
                            , cams = cams $
                            , refcam = refcam $
-                           , verbose = verbose
+                           , verbose = verbose $
+                           , verify = verify
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -206,12 +209,17 @@ pro red::pinholecalib, threshold = threshold $
         continue
       endif
       
+      this_map = rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init, threshold=threshold, verbose=verbose, max_shift=max_shift )
+      
+      if (last_prefilter ne this_prefilter) then begin
+        if keyword_set(verify) then this_map = red_phverify( ref_img, cam_img, this_map )
+      endif else begin
+        ; TODO: sanity check for maps within the same prefilter.
+        ; e.g. check how different this_map is from this_init ??
+      endelse
       red_append, alignments, { state1:ref_states_unique[iref] $
                                 , state2:cam_states[cam_idx] $
-                                , map:rdx_img_align( ref_img, cam_img, nref=nref $
-                                                     , h_init=this_init, threshold=threshold $
-                                                     , verbose=verbose, max_shift=max_shift ) }
-
+                                , map:this_map }
       last_prefilter = this_prefilter
     endfor                      ; iref
     
