@@ -59,7 +59,8 @@
 ;   2017-03-16 : MGL. First version.
 ;
 ;   2017-03-16 : MGL. Use red_headerinfo_addlib.
-; 
+;
+;   2017-12-06 : MGL. Remove trailing blank lines.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
@@ -85,13 +86,13 @@ pro red::headerinfo_addstep, header $
   endrep until count eq 0
 
   if n_elements(prstep) eq 0 then prstep = 'Unknown'
-  fxaddpar, header, 'PRSTEP'+stp, prstep, ' Processing step name', after = prevkey
+  fxaddpar, header, 'PRSTEP'+stp, prstep, 'Processing step name', after = prevkey
   prevkey = 'PRSTEP'+stp
 
   ;; Procedure name
   if n_elements(prproc) ne 0 then begin
     key = 'PRPROC'+stp
-    fxaddpar, header, key, prproc, ' Name of procedure used', after = prevkey
+    fxaddpar, header, key, prproc, 'Name of procedure used', after = prevkey
     prevkey = key
   endif
 
@@ -110,7 +111,7 @@ pro red::headerinfo_addstep, header $
     prm = strjoin(prmode, ',')
     key = 'PRMODE'+stp
     if prm ne '' then begin
-      fxaddpar,header, key, prm, ' Processing mode', after = prevkey
+      fxaddpar,header, key, prm, 'Processing mode', after = prevkey
       prevkey = key
     end
   endif
@@ -133,13 +134,18 @@ pro red::headerinfo_addstep, header $
       else : stop
     endcase
     fxaddpar, header, key, prp, after = prevkey $
-              , ' List of parameters/options for PRPROC'+stp
+              , 'List of parameters/options for PRPROC'+stp
     prevkey = key
   endif
 
   ;; Add headers with other step info.
 ;  fxaddpar, header, 'VERSION', 0, 'FITS file processing generation/version'
 ;  fxaddpar, header, 'LEVEL',   0, 'Data level of fits file'
+  
+  ;; Remove trailing blank lines
+  Nlines = where(strmatch(header, 'END *'), Nmatch)
+  if Nmatch eq 0 then stop
+  header = header[0:Nlines]
 
 end
 
