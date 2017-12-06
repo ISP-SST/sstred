@@ -72,11 +72,12 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   fxaddpar, hdr, 'NAXIS', 5, 'Number of data axes'
   for i = 0, 4 do fxaddpar, hdr, 'NAXIS'+strtrim(i+1, 2), dimensions[i]
 
+  anchor = 'SOLARNET'
+  
   ;; Some more standard edits of the header
-  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
+  red_fitsaddkeyword, anchor = anchor, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
                       , 'Creation UTC date of FITS header' ;
-  anchor = 'DATE' 
-  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', ofile ; New file name
+  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', filename ; New file name
 
   ;; VAR_KEYS keyword will have to be added again if variable keywords
   ;; are added or copied.
