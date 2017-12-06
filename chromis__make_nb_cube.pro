@@ -317,9 +317,9 @@ pro chromis::make_nb_cube, wcfile $
     idxpref = where(my_prefilters eq unbprefs[inbpref], count)
     
     if inbpref eq 0 then begin
-      prefilter_curve = [0.d0]
-      prefilter_wav = [0.0d0]
-      prefilter_wb = [0.0d0]
+;      prefilter_curve = [0.d0]
+;      prefilter_wav = [0.0d0]
+;      prefilter_wb = [0.0d0]
       units = prf.units
     endif else begin
       if units ne prf.units then begin
@@ -329,23 +329,30 @@ pro chromis::make_nb_cube, wcfile $
       endif
     endelse
     
-    if(count eq 1) then begin
-      prefilter_curve = [prefilter_curve, prf.pref]
-      prefilter_wav = [prefilter_wav, prf.wav]
-      prefilter_wb = [prefilter_wb, prf.wbint]
+    if count eq 1 then begin
+      red_append, prefilter_curve, prf.pref
+      red_append, prefilter_wav, prf.wav
+      red_append, prefilter_wb, prf.wbint
+;      prefilter_curve = [prefilter_curve, prf.pref]
+;      prefilter_wav = [prefilter_wav, prf.wav]
+;      prefilter_wb = [prefilter_wb, prf.wbint]
     endif else begin
       me = median(prf.wav)
-      prefilter_curve = [prefilter_curve $
-                         , red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
-      prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
-      prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
+;      prefilter_curve = [prefilter_curve $
+;                         , red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
+;      prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
+;      prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
+      red_append, prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)
+      red_append, prefilter_wav, wav[idxpref]*1.d10
+      red_append, prefilter_wb, replicate(prf.wbint, count)
     endelse
+    
   endfor                        ; inbpref
     
-  rpref = 1.d0/prefilter_curve[1:*]
-  prefilter_wav = prefilter_wav[1:*]
-  prefilter_wb = prefilter_wb[1:*]
-  prefilter_curve = prefilter_curve[1:*]
+  rpref = 1.d0/prefilter_curve
+;  prefilter_wav = prefilter_wav[1:*]
+;  prefilter_wb = prefilter_wb[1:*]
+;  prefilter_curve = prefilter_curve[1:*]
 
   ;; Do WB correction?
   if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
