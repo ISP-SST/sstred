@@ -243,7 +243,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
         ;; the header during the cleaning phase below.
         if n_elements(rec_hash) eq 0 then rec_hash = hash()
         rec_hash[names_ikey] = rec_name
-
+        
         ;; Strip heading and trailing spaces from comment, fxaddpar will
         ;; add one space at the beginning.
         fxaddpar, header, names_ikey, rec_value, strtrim(comments[ikey], 2) $
@@ -253,8 +253,14 @@ pro red_fitsaddkeyword, header, name, value, comment $
         iprotect++
       end
       else : begin
-        ;; No special handling needed.
+        ;; No special handling of the name needed.
         names_ikey = names[ikey]
+        
+        ;; If placement is specified, then delete any old occurence of
+        ;; the keyword.
+        if n_elements(bef) eq 0 and n_elements(aft) eq 0 then $
+           red_fitsdelkeyword, header, names_ikey
+        
         ;; Strip heading and trailing spaces from comment, fxaddpar will
         ;; add one space at the beginning.
         fxaddpar, header, names_ikey, values[ikey], strtrim(comments[ikey], 2) $
