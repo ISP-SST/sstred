@@ -793,6 +793,7 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'XPOSURE',  old_filename = filename, /flipped
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
