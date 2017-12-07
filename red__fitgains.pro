@@ -215,6 +215,7 @@ pro red::fitgains, npar = npar $
     wfile = red_strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')  ; Input flat wavelengths
     sfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.sav') ; Output save file
     pfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.png') ; Plot file
+    pfile0 = red_strreplace(files[ifile], '_filenames.txt', '_fit_results0.png') ; Plot file
 
     self -> extractstates, namelist, states
     outnames = self -> filenames('cavityflat', states)
@@ -337,6 +338,8 @@ pro red::fitgains, npar = npar $
                          , xl = xl, rebin = rebin, densegrid = densegrid, thres = thres $
                          , myg = myg, reflec = fit_reflectivity $
                          , title = title + ' iter='+strtrim(iiter, 2))
+
+      if iiter eq 0 then cgcontrol, output = pfile0
       
       ;; Pixel-to-pixel fits using a C++ routine to speed-up things
       if iiter eq 0 then begin
