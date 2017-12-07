@@ -168,14 +168,16 @@ pro red::fitscube_convertlp, inname $
 
   
   ;; Get times from NB file headers.
-  t_array = dblarr(Nscans)      ; WB time
-  tbeg_array     = dblarr(Nwav, Nscans) ; Time beginning for state
-  tavg_array     = dblarr(Nwav, Nscans) ; Time average for state
-  tend_array     = dblarr(Nwav, Nscans) ; Time end for state
-  date_beg_array = strarr(Nwav, Nscans) ; DATE-BEG for state
-  date_avg_array = strarr(Nwav, Nscans) ; DATE-AVG for state
-  date_end_array = strarr(Nwav, Nscans) ; DATE-END for state
-  exp_array      = fltarr(Nwav, Nscans) ; Total exposure time
+  t_array = dblarr(Nscans)               ; WB time
+  tbeg_array     = dblarr(Nwav, Nscans)  ; Time beginning for state
+  tavg_array     = dblarr(Nwav, Nscans)  ; Time average for state
+  tend_array     = dblarr(Nwav, Nscans)  ; Time end for state
+  date_beg_array = strarr(Nwav, Nscans)  ; DATE-BEG for state
+  date_avg_array = strarr(Nwav, Nscans)  ; DATE-AVG for state
+  date_end_array = strarr(Nwav, Nscans)  ; DATE-END for state
+  exp_array      = fltarr(Nwav, Nscans)  ; Total exposure time
+  sexp_array     = fltarr(Nwav, Nscans) ; Single exposure time
+  nsum_array     = lonarr(Nwav, Nscans) ; Single exposure time
   
   for iscan = 0L, Nscans-1 do begin
 
@@ -205,6 +207,8 @@ pro red::fitscube_convertlp, inname $
       these_tavg_array = dblarr(Nselected)
       these_tend_array = dblarr(Nselected)
       these_exp_array = dblarr(Nselected)
+      these_sexp_array = dblarr(Nselected)
+      these_nsum_array = dblarr(Nselected)
       for iselected = 0L, Nselected-1 do begin
         thishdr = red_readhead(rawfiles[selected[iselected]])
         red_fitspar_getdates, thishdr $
@@ -214,7 +218,9 @@ pro red::fitscube_convertlp, inname $
         these_tbeg_array[iselected] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
         these_tavg_array[iselected] = red_time2double((strsplit(date_avg, 'T', /extract))[1])
         these_tend_array[iselected] = red_time2double((strsplit(date_end, 'T', /extract))[1])
-        these_exp_array[iselected]  = fxpar(thishdr, 'XPOSURE')
+        these_sexp_array[iselected] = fxpar(thishdr, 'XPOSURE')
+        these_nsum_array[iselected] = fxpar(thishdr, 'NAXIS3')
+        these_exp_array[iselected] = these_sexp_array[iselected]*these_nsum_array[iselected] 
       endfor                    ; iselected
       date_beg_array[iwav, iscan] = date_beg
       date_end_array[iwav, iscan] = date_end
@@ -223,44 +229,54 @@ pro red::fitscube_convertlp, inname $
       tavg_array[iwav,iscan] = mean(these_tavg_array)
       tend_array[iwav,iscan] = max(these_tend_array)
       exp_array[iwav,iscan]  = total(these_exp_array)
+      sexp_array[iwav,iscan] = mean(these_sexp_array)
+      nsum_array[iwav,iscan] = total(these_nsum_array)
     endfor                      ; iwav
     
   endfor                        ; iscan
   
   ;; Make header
   red_mkhdr, hdr, datatype, dims
-  
+
+  ;; Copy some keywords from the last raw data frame.
   anchor = 'DATE'
-  red_fitsaddkeyword, anchor = anchor, hdr, 'SOLARNET', 0.5
-  red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1, 'Observational Header and Data Unit'
-  red_fitsaddkeyword, anchor = anchor, hdr, 'INSTRUME', strupcase((strsplit(wbcamera, '-', /extract))[0])
-  red_fitsaddkeyword, anchor = anchor, hdr, 'DATE-OBS', date_obs
-  red_fitsaddkeyword, anchor = anchor, hdr, 'WAVEUNIT', -9, 'WAVELNTH in units 10^WAVEUNIT m = nm'
+  red_fitscopykeyword, anchor = anchor, hdr, 'EXTNAME' , thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'SOLARNET', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'OBS_HDU' , thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'ORIGIN'  , thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'TELESCOP', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'INSTRUME', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'CAMERA'  , thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'DETECTOR', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'DATE-OBS', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'WAVEUNIT', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'OBSERVER', thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'OBJECT'  , thishdr
+  red_fitscopykeyword, anchor = anchor, hdr, 'CADENCE' , thishdr
+  
 ;  red_fitsaddkeyword, anchor = anchor, hdr, 'WAVELNTH', ?, 'Characteristic wavelength'
-;  red_fitsaddkeyword, anchor = anchor, hdr, 'DETGAIN'
-;  red_fitsaddkeyword, anchor = anchor, hdr, 'DETOFFS'
-;  red_fitsaddkeyword, anchor = anchor, hdr, 'DETMODEL'
-;  red_fitsaddkeyword, anchor = anchor, hdr, 'DETFIRM'
 ;  red_fitsaddkeyword, anchor = anchor, hdr, ''
 ;  red_fitsaddkeyword, anchor = anchor, hdr, ''
 ;  red_fitsaddkeyword, anchor = anchor, hdr, ''
 ;  red_fitsaddkeyword, anchor = anchor, hdr, ''
 ;  red_fitsaddkeyword, anchor = anchor, hdr, ''
   
-  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', oname
-  if is_wb then begin
-    red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', wbcamera
-    red_fitsaddkeyword, anchor = anchor, hdr, 'DETECTOR', wbdetector
-  endif else begin
-    red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', nbcamera
-    red_fitsaddkeyword, anchor = anchor, hdr, 'DETECTOR', nbdetector
-  endelse
+;  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', oname
+;  if is_wb then begin
+;    red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', wbcamera
+;    red_fitsaddkeyword, anchor = anchor, hdr, 'DETECTOR', wbdetector
+;  endif else begin
+;    red_fitsaddkeyword, anchor = anchor, hdr, 'CAMERA', nbcamera
+;    red_fitsaddkeyword, anchor = anchor, hdr, 'DETECTOR', nbdetector
+;  endelse
   dateref = self.isodate+'T00:00:00.000000' ; Midnight
   red_fitsaddkeyword, anchor = anchor, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601'
 
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
+  ;; Add "global" metadata
+  red_metadata_restore, hdr
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -355,9 +371,20 @@ pro red::fitscube_convertlp, inname $
                                   , axis_numbers = 5
 
   self -> fitscube_addvarkeyword, oname $
-                                  , 'XPOSURE', comment = 'Summed exposure times' $
-                                  , tunit = 'ms' $
+                                  , 'XPOSURE', comment = '[s] Total exposure time' $
+                                  , tunit = 's' $
                                   , exp_array, keyword_value = mean(exp_array) $
+                                  , axis_numbers = [3, 5] 
+
+  self -> fitscube_addvarkeyword, oname $
+                                  , 'TEXPOSUR', comment = '[s] Single-exposure time' $
+                                  , tunit = 's' $
+                                  , sexp_array, keyword_value = mean(sexp_array) $
+                                  , axis_numbers = [3, 5] 
+
+  self -> fitscube_addvarkeyword, oname $
+                                  , 'NSUMEXP', comment = 'Number of summed exposures' $
+                                  , nsum_array, keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5] 
 
   ;; Copy some variable-keywords from the ordinary nb cube to the
@@ -368,5 +395,7 @@ pro red::fitscube_convertlp, inname $
   self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = oname, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = oname, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'XPOSURE',  old_filename = oname, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'TEXPOSUR', old_filename = oname, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'NSUMEXP',  old_filename = oname, /flipped
 
 end
