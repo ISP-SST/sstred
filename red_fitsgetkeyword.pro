@@ -67,7 +67,9 @@
 ;    2017-08-30 : MGL. First version.
 ; 
 ;    2017-10-26 : MGL. Renamed from red_fitskeyword. Implemented
-;                 record-valued keywords.
+;                 record-valued keywords..
+; 
+;    2017-12-07 : MGL. New keyword comment.
 ; 
 ; 
 ; 
@@ -75,6 +77,7 @@
 function red_fitsgetkeyword, filename_or_header, name $
                              , count = count $
                              , dir = dir $
+                             , comment = comment $
                              , coordinate_values = coordinate_values $
                              , coordinate_names = coordinate_names $
                              , ignore_variable = ignore_variable $
