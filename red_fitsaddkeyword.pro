@@ -65,8 +65,8 @@
 ; 
 ;     force : in, optional, type=boolean
 ; 
-;        Set this to force positioning for existing parameters.
-;        Implied by anchor keyword.
+;        Set this to force positioning for existing keywords. Implied
+;        by anchor keyword.
 ; 
 ; :History:
 ; 
