@@ -99,10 +99,11 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
 
   ;; Pad to mod 2880 bytes
   Npad = 2880 - (80L*Nlines mod 2880) ; Number of bytes of padding
-  if Npad GT 0 then writeu, lun, replicate(32B,Npad)
+  if Npad eq 2880 then Npad = 0
+  if Npad gt 0 then writeu, lun, replicate(32B,Npad)
   StartPos = 80L*Nlines + Npad
-;  print, 'StartPos=', StartPos
-  
+  print, 'StartPos=', StartPos
+
   ;; Now prepare for the data part
   Nslices = Ntuning * Nstokes * Nscans
   Nelements = Nx * Ny * Nslices
