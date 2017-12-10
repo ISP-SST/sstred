@@ -156,6 +156,10 @@ pro chromis::extractstates, strings, states $
   st = scope_traceback(/structure)
   if st[1].routine eq 'CHROMIS::HRZ_ZEROPOINT' then quiet = 1 else quiet = 0
 
+  strings = strtrim(strings,2)
+  idx = where( strings ne '' )
+  if min(idx) ge 0 then strings = strings[ idx ] $
+  else return
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
