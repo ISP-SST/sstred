@@ -205,7 +205,7 @@ pro chromis::make_nb_cube, wcfile $
   pertuningfiles = files[complement]
   pertuningstates = states[complement]
 
-  ;; Unique tuning states
+  ;; Unique tuning states, sorted by wavelength
   utunindx = uniq(pertuningstates.fpi_state, sort(pertuningstates.fpi_state))
   Nwav = n_elements(utunindx)
   sortindx = sort(pertuningstates[utunindx].tun_wavelength)
@@ -530,7 +530,9 @@ pro chromis::make_nb_cube, wcfile $
   date_end_array = strarr(Nwav, Nscans) ; DATE-END for state
   date_avg_array = strarr(Nwav, Nscans) ; DATE-AVG for state
   exp_array      = fltarr(Nwav, Nscans) ; Total exposure time
-
+  sexp_array     = fltarr(Nwav, Nscans) ; Single exposure time
+  nsum_array     = lonarr(Nwav, Nscans) ; Number of summed exposures
+ 
   wcs = replicate({  wave:dblarr(2,2) $
                    , hplt:dblarr(2,2) $
                    , hpln:dblarr(2,2) $
@@ -595,16 +597,7 @@ pro chromis::make_nb_cube, wcfile $
   Nprogress = Nscans*Nwav
   for iscan = 0L, Nscans-1 do begin
 
-    ;; The files in this scan, sorted in tuning wavelength order.
-    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                         , cam = wbcamera, scan = uscans[iscan] $
-                         , sel = scan_wbindx, count = count
-    scan_wbfiles = pertuningfiles[scan_wbindx]
-    scan_wbstates =  pertuningstates[scan_wbindx]
-    sortindx = sort(scan_wbstates.tun_wavelength)
-    scan_wbfiles = scan_wbfiles[sortindx]
-    scan_wbstates = scan_wbstates[sortindx]
-    
+    ;; The NB files in this scan, sorted in tuning wavelength order.
     self -> selectfiles, files = pertuningfiles, states = pertuningstates $
                          , cam = nbcamera, scan = uscans[iscan] $
                          , sel = scan_nbindx, count = count
@@ -613,7 +606,18 @@ pro chromis::make_nb_cube, wcfile $
     sortindx = sort(scan_nbstates.tun_wavelength)
     scan_nbfiles = scan_nbfiles[sortindx]
     scan_nbstates = scan_nbstates[sortindx]
-   
+
+    ;; The WB files in this scan, sorted as the NB files
+    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                         , cam = wbcamera, scan = uscans[iscan] $
+                         , sel = scan_wbindx, count = count
+    scan_wbfiles = pertuningfiles[scan_wbindx]
+    scan_wbstates = pertuningstates[scan_wbindx]
+    match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
+;      sortindx = sort(scan_wbstates.tun_wavelength)
+    scan_wbfiles = scan_wbfiles[sortindx]
+    scan_wbstates = scan_wbstates[sortindx]
+    
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
@@ -660,7 +664,9 @@ pro chromis::make_nb_cube, wcfile $
       wcs[iwav, iscan].time = tavg_array[iwav, iscan]
 
       ;; Exposure time
-      exp_array[iwav, iscan] = scan_nbstates[iwav].exposure
+      exp_array[iwav, iscan]  = fxpar(nbhead, 'XPOSURE')
+      sexp_array[iwav, iscan] = fxpar(nbhead, 'TEXPOSUR')
+      nsum_array[iwav, iscan] = fxpar(nbhead, 'NSUMEXP')
       
       red_progressbar, iprogress, Nprogress $
                        , /predict $
@@ -698,7 +704,7 @@ pro chromis::make_nb_cube, wcfile $
         self -> fitscube_addframe, fileassoc, temporary(nbim) $
                                    , iscan = iscan, ituning = iwav
       endelse
-      
+
       iprogress++               ; update progress counter
 
     endfor                      ; iwav
@@ -778,14 +784,23 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile
   self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile
 
-  ;; Add also XPOSURE but based on NB data
   self -> fitscube_addvarkeyword, filename $
                                   , 'XPOSURE', comment = 'Summed exposure times' $
-                                  , tunit = 'ms' $
+                                  , tunit = 's' $
                                   , exp_array, keyword_value = mean(exp_array) $
                                   , axis_numbers = [3, 5] 
 
+  self -> fitscube_addvarkeyword, filename $
+                                  , 'TEXPOSUR', comment = '[s] Single-exposure time' $
+                                  , tunit = 's' $
+                                  , sexp_array, keyword_value = mean(sexp_array) $
+                                  , axis_numbers = [3, 5] 
 
+  self -> fitscube_addvarkeyword, filename $
+                                  , 'NSUMEXP', comment = 'Number of summed exposures' $
+                                  , nsum_array, keyword_value = mean(nsum_array) $
+                                  , axis_numbers = [3, 5]
+  
   ;; Copy some variable-keywords from the ordinary nb cube to the
   ;; flipped version.
   self -> fitscube_addvarkeyword, flipfile, 'SCANNUM',  old_filename = filename, /flipped
@@ -794,6 +809,8 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
   self -> fitscube_addvarkeyword, flipfile, 'XPOSURE',  old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'TEXPOSUR', old_filename = filename, /flipped
+  self -> fitscube_addvarkeyword, flipfile, 'NSUMEXP',  old_filename = filename, /flipped
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
