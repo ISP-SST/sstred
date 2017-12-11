@@ -31,13 +31,13 @@
 ; 
 ; :Keywords:
 ; 
-;     cmap_fwhm : in, type=float, default=7
-;   
-;       FWHM in pixels of kernel used for smoothing the cavity map.
-;
 ;     clips_cont : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the continuum alignment.
+;
+;     cmap_fwhm : in, type=float, default=7
+;   
+;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
 ;     integer : in, optional, type=boolean
 ;
@@ -94,6 +94,7 @@
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
+                           , clips_cont = clips_cont $
                            , cmap_fwhm = cmap_fwhm $
                            , integer = integer $
                            , noaligncont = noaligncont $
@@ -101,8 +102,7 @@ pro chromis::make_nb_cube, wcfile $
                            , notimecor = notimecor $
                            , overwrite = overwrite $
                            , tiles_cont = tiles_cont $
-                           , verbose = verbose $
-                           , clips_cont = clips_cont 
+                           , verbose = verbose 
 
   
   ;; Name of this method
