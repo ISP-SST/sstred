@@ -546,16 +546,7 @@ pro chromis::make_crispex, aligncont = aligncont $
           fzwrite, wav, odir + '/' + 'wav_' + prefilters[ipref] +'.f0',' '
         endif
 
-        ;; The files in this scan, sorted in tuning wavelength order.
-        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , cam = wbcamera, scan = uscans[iscan] $
-                             , sel = scan_wbindx, count = count
-        scan_wbfiles = pertuningfiles[scan_wbindx]
-        scan_wbstates =  pertuningstates[scan_wbindx]
-        sortindx = sort(scan_wbstates.tun_wavelength)
-        scan_wbfiles = scan_wbfiles[sortindx]
-        scan_wbstates = scan_wbstates[sortindx]
-        
+        ;; The NB files in this scan, sorted in tuning wavelength order.
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
                              , cam = nbcamera, scan = uscans[iscan] $
                              , sel = scan_nbindx, count = count
@@ -564,6 +555,19 @@ pro chromis::make_crispex, aligncont = aligncont $
         sortindx = sort(scan_nbstates.tun_wavelength)
         scan_nbfiles = scan_nbfiles[sortindx]
         scan_nbstates = scan_nbstates[sortindx]
+
+        ;; The WB files in this scan, sorted as the NB files
+        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                             , cam = wbcamera, scan = uscans[iscan] $
+                             , sel = scan_wbindx, count = count
+        scan_wbfiles = pertuningfiles[scan_wbindx]
+        scan_wbstates = pertuningstates[scan_wbindx]
+        match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
+;        sortindx = sort(scan_wbstates.tun_wavelength)
+        scan_wbfiles = scan_wbfiles[sortindx]
+        scan_wbstates = scan_wbstates[sortindx]
+        
+
         
         if(keyword_set(scans_only)) then begin
           ofile = 'crispex_' + prefilters[ipref] + '_' + datestamp + '_scan=' $
