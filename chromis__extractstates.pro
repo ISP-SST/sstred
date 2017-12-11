@@ -156,6 +156,10 @@ pro chromis::extractstates, strings, states $
   st = scope_traceback(/structure)
   if st[1].routine eq 'CHROMIS::HRZ_ZEROPOINT' then quiet = 1 else quiet = 0
 
+  strings = strtrim(strings,2)
+  idx = where( strings ne '' )
+  if min(idx) ge 0 then strings = strings[ idx ] $
+  else return
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
@@ -187,17 +191,19 @@ pro chromis::extractstates, strings, states $
     endif else begin
       
       red_progressbar, ifile, Nstrings, 'Extract state info from file headers', /predict
-
+      status = -1
       if file_test(strings[ifile]) then begin
-        head = red_readhead(strings[ifile], /silent)
+        head = red_readhead(strings[ifile], /silent, status=status)
         states[ifile].filename = strings[ifile]
       endif else begin
-        mkhdr, head, ''         ; create a dummy header
-        head = red_meta2head(head, metadata = {filename:strings[ifile]})
         print,'file does not exist: ', strings[ifile]
         print,'state information will be incomplete!'
       endelse
-
+      if status ne 0 then begin
+        mkhdr, head, ''         ; create a dummy header
+        head = red_meta2head(head, metadata = {filename:strings[ifile]})
+      endif
+      
       ;; Numerical keywords
       naxis3 = fxpar(head, 'NAXIS3', count=hasnframes)
       if hasnframes then states[ifile].nframes = naxis3

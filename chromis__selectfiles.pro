@@ -158,6 +158,10 @@ pro chromis::selectfiles, cam = cam $
 
     files = file_search(path_spec)
     files = files[where( strpos(files, '.lcd.') LT 0, nf)]
+    files = strtrim(files,2)
+    idx = where( files ne '' )
+    if min(idx) ge 0 then files = files[ idx ] $
+    else return
     files = red_sortfiles(files)
     force = 1                   ; we have new files, force extractstates
   endif

@@ -211,6 +211,10 @@ pro red::sumflat, overwrite = overwrite, $
     endelse
 
     state_list = [states[uniq(states.fullstate, sort(states.fullstate))].fullstate]
+    state_list = strtrim(state_list,2)
+    idx = where( state_list ne '' )
+    if min(idx) ge 0 then state_list = state_list[ idx ] $
+    else continue
 
     Nstates = n_elements(state_list)
 

@@ -323,7 +323,7 @@ pro red::initialize, filename, develop = develop
   srcdir = file_dirname( routine_filepath("red::initialize"), /mark )
   spawn, 'cd '+srcdir+'; ' + git_describe_command, pipeline_gitoutput
   pipeline_gitoutput = red_strreplace(pipeline_gitoutput, 'release/', '')
-   spawn, 'cd '+srcdir+'; ' + git_status_command, pipeline_status 
+  spawn, 'cd '+srcdir+'; ' + git_status_command, pipeline_status 
   if strmatch(pipeline_gitoutput, '*(Modified)') then $
      self.version_problems += 'The pipeline is modified. '
   self.version_pipeline = strjoin((strsplit(pipeline_gitoutput, '-', /extract))[0:1], '-')
@@ -350,9 +350,9 @@ pro red::initialize, filename, develop = develop
   if momfbd_dlm_version ne self.version_reduxdlm then self.version_problems += 'MOMFBD DLM not identical to redux DLM'
   
   rdx_dlm_required_versionstr = '1.0.0-1'
-  rdx_dlm_required_version = strsplit(rdx_dlm_required_versionstr, '-.', /EXTRACT)
+  rdx_dlm_required_version = fix(strsplit(rdx_dlm_required_versionstr, '-.', /EXTRACT))
   rdx, version=rdx_dlm_version
-  rdx_dlm_version = strsplit(rdx_dlm_version, '-.', /EXTRACT)
+  rdx_dlm_version = fix(strsplit(rdx_dlm_version, '-.', /EXTRACT))
   n_elem = min([n_elements(rdx_dlm_required_version),n_elements(rdx_dlm_version)])
   for i=0,n_elem-1 do begin
     if rdx_dlm_version[i] gt rdx_dlm_required_version[i] then break
@@ -361,7 +361,7 @@ pro red::initialize, filename, develop = develop
       break
     endif
   endfor
-  
+
   ;; Coyote library version
   coyotepaths = paths(where(strmatch(paths,'*coyote'), Ncoyote))
   case Ncoyote of
