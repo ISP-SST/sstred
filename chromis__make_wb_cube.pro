@@ -373,6 +373,17 @@ pro chromis::make_wb_cube, dir $
     crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]
     
   endif
+
+  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
+  tavg_array     = dblarr(1, Nscans) ; Time average for state
+  tend_array     = dblarr(1, Nscans) ; Time end for state
+  date_beg_array = strarr(1, Nscans) ; DATE-BEG for state
+  date_avg_array = strarr(1, Nscans) ; DATE-AVG for state
+  date_end_array = strarr(1, Nscans) ; DATE-END for state
+  exp_array      = fltarr(1, Nscans) ; Total exposure time
+  sexp_array     = fltarr(1, Nscans) ; Single exposure time
+  nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
+
   
   ;; Read headers to get obs_time and load the images into a cube
   cub = fltarr(Nx, Ny, Nscans)
@@ -383,10 +394,23 @@ pro chromis::make_wb_cube, dir $
     im = red_readdata(wfiles[iscan], head = hdr)
 
     red_fitspar_getdates, hdr $
+                          , date_beg = date_beg $
+                          , date_end = date_end $
                           , date_avg = date_avg $
                           , count_avg = hasdateavg $
                           , comment_avg = comment_avg
+    date_beg_array[0, iscan] = date_beg
+    date_end_array[0, iscan] = date_end
+    date_avg_array[0, iscan] = date_avg
+    tbeg_array[0, iscan] = red_time2double((strsplit(date_beg,'T',/extract))[1])
+    tend_array[0, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
+    tavg_array[0, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
+    ;; Exposure time
+    exp_array[0, iscan]  = fxpar(hdr, 'XPOSURE')
+    sexp_array[0, iscan] = fxpar(hdr, 'TEXPOSUR')
+    nsum_array[0, iscan] = fxpar(hdr, 'NSUMEXP')
+    
     if hasdateavg then begin
       date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
       ddate = date_avg_split[0]
@@ -530,8 +554,8 @@ pro chromis::make_wb_cube, dir $
   s_array = lonarr(Nscans)
   s_array[0] = wstates.scannumber
   t_array = dblarr(1, Nscans)
-  t_array[0] = red_time2double(time)                   ; In [s] since midnight
-
+  t_array[0] = red_time2double(time) ; In [s] since midnight
+  
   wcs = replicate({ wave:dblarr(2,2) $
                   , hplt:dblarr(2,2) $
                   , hpln:dblarr(2,2) $
@@ -666,9 +690,20 @@ pro chromis::make_wb_cube, dir $
   
   self -> fitscube_addvarkeyword, odir + ofil $
                                   , 'XPOSURE', comment = 'Summed exposure times' $
-                                  , tunit = 'ms' $
-                                  , wstates.exposure, keyword_value = mean(wstates.exposure) $
-                                  , axis_numbers = 5 
+                                  , tunit = 's' $
+                                  , exp_array, keyword_value = mean(exp_array) $
+                                  , axis_numbers = [3, 5] 
+
+  self -> fitscube_addvarkeyword, odir + ofil $
+                                  , 'TEXPOSUR', comment = '[s] Single-exposure time' $
+                                  , tunit = 's' $
+                                  , sexp_array, keyword_value = mean(sexp_array) $
+                                  , axis_numbers = [3, 5] 
+
+  self -> fitscube_addvarkeyword, odir + ofil $
+                                  , 'NSUMEXP', comment = 'Number of summed exposures' $
+                                  , nsum_array, keyword_value = mean(nsum_array) $
+                                  , axis_numbers = [3, 5]
 
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin
