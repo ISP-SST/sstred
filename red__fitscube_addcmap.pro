@@ -62,7 +62,7 @@ pro red::fitscube_addcmap, filename, cmaps
 
   ;; Record-valued keyword DPj NAXIS 1-3 because the cavity map cube
   ;; has 3 axes (dimensions), they have to be added together: 
-  names = 'DP'+j+' ' + ['NAXES', 'NAXIS.1', 'NAXIS.2', 'NAXIS.3']
+  names = 'DP'+j+' ' + ['NAXES', 'AXIS.1', 'AXIS.2', 'AXIS.3']
   ;; There are 3 axes in the cavity map cube, they correspond to
   ;; axes 1, 2, and 5 in the main HDU:
   values = [3, 1, 2, 5]       
