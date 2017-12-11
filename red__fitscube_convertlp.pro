@@ -176,8 +176,8 @@ pro red::fitscube_convertlp, inname $
   date_avg_array = strarr(Nwav, Nscans)  ; DATE-AVG for state
   date_end_array = strarr(Nwav, Nscans)  ; DATE-END for state
   exp_array      = fltarr(Nwav, Nscans)  ; Total exposure time
-  sexp_array     = fltarr(Nwav, Nscans) ; Single exposure time
-  nsum_array     = lonarr(Nwav, Nscans) ; Single exposure time
+  sexp_array     = fltarr(Nwav, Nscans)  ; Single exposure time
+  nsum_array     = lonarr(Nwav, Nscans)  ; Number of summed exposures
   
   for iscan = 0L, Nscans-1 do begin
 
