@@ -431,9 +431,12 @@ pro chromis::make_crispex, aligncont = aligncont $
 
       ;; Load WB image and define the image border
       tmp = red_readdata(wbgfiles[0])
-      
-      ;;dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
-      dimim = [x1-x0+1, y1-y0+1]
+
+      if keyword_set(scans_only) then begin
+        dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
+      endif else begin
+        dimim = [x1-x0+1, y1-y0+1]
+      endelse
       
       if full then begin
         dimim[0] = nd[0]
