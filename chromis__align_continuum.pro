@@ -203,7 +203,7 @@ print, 'wNscans', wNscans
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
 
-            if rit gt 100 then stop
+            if rit gt 1000 then stop
             
             shifts[0, iscan] = shifts_total
 
