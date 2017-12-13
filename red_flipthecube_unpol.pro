@@ -32,13 +32,18 @@
 ; 
 ;    2016-11-01 : MGL. Transpose entire cube without asking if enough
 ;                 memory. 
+;
+;    2017-12-13 : MGL. New keyword Ny_limit.
 ; 
 ; 
 ;-
-pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icube
+pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icube $
+                           , Ny_limit = Ny_limit
   
   inam = 'flipthecube_unpol: '
 
+  if n_elements(Ny_limit) eq 0 then Ny_limit = 1
+  
   Nt = long64(Nt)
   Nw = long64(Nw)
 
@@ -68,7 +73,7 @@ pro red_flipthecube_unpol, file, Nw = Nw, Nt = Nt, maxsize=maxsize, icube = icub
   Nx1 = Nx
   if(~keyword_set(maxsize)) then maxsize = 256L
   Ny1 = red_findthedim(Ny, maxsize)
-  if Ny1 eq 1 then begin
+  if Ny1 le Ny_limit then begin
 
     if free*0.75 gt cubesize then begin
 

@@ -28,6 +28,11 @@
 ;       before applying the stretching that aligns it to the anchor
 ;       wideband image.
 ;
+;    ny_limit : in, optional, type=integer
+;
+;       Used in red_flipthecube_unpol to help determine whether the
+;       cube should be flipped in memory.
+;
 ;    rot_dir  : 
 ;   
 ;   
@@ -112,13 +117,16 @@
 ;
 ;   2017-05-24 : MGL. Add prpara info.
 ;
+;   2017-12-13 : MGL. New keyword Ny_limit.
+;
 ;-
 pro chromis::make_crispex, aligncont = aligncont $
                            , clips=clips $
                            , float = float $
                            , momfbddir = momfbddir $
                            , no_timecor=no_timecor $
-                           , nostretch=nostretch $
+                           , nostretch=nostretch $ $
+                           , Ny_limit = Ny_limit $
                            , overwrite = overwrite $
                            , rot_dir = rot_dir $
                            , scans_only = scans_only $
@@ -761,9 +769,11 @@ pro chromis::make_crispex, aligncont = aligncont $
         print, inam + ' : done'
         print, inam + ' : result saved to -> '+odir+'/'+ofile 
         if keyword_set(float) then begin
-          red_flipthecube_unpol, odir+'/'+ofile, nt = Nscans, nw = Nwav
+          red_flipthecube_unpol, odir+'/'+ofile, nt = Nscans, nw = Nwav $
+                                 , Ny_limit = Ny_limit
         endif else begin
-          red_flipthecube_unpol, odir + '/' + ofile, /icube, nt = Nscans, nw = Nwav
+          red_flipthecube_unpol, odir + '/' + ofile, /icube, nt = Nscans, nw = Nwav $
+                                 , Ny_limit = Ny_limit
         endelse
         ;;     make_crispex_sp_cube, odir+'/'+ofile, nwav, Nscans
       
