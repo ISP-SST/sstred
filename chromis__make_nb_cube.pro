@@ -108,6 +108,10 @@ pro chromis::make_nb_cube, wcfile $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  ;; Temporarily disable cavity maps by default, can still be be
+  ;; written with explicit nocavitymap=0.
+  if n_elements(nocavitymap) eq 0 then nocavitymap = 1
+  
   ;; Make prpara
   if n_elements( clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
   if n_elements( integer     ) ne 0 then red_make_prpara, prpara, 'integer'      , integer
@@ -814,5 +818,6 @@ pro chromis::make_nb_cube, wcfile $
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
+  
   
 end
