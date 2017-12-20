@@ -61,6 +61,8 @@
 ;   2017-03-16 : MGL. Use red_headerinfo_addlib.
 ;
 ;   2017-12-06 : MGL. Remove trailing blank lines.
+;
+;   2017-12-20 : MGL. Write prpara dictionaries in json format.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
@@ -121,16 +123,7 @@ pro red::headerinfo_addstep, header $
     key = 'PRPARA'+stp
     case typename(prpara) of
       'STRING' : prp = strjoin(strtrim(prpara, 2), ',')
-      'DICTIONARY' : begin
-        keys = prpara.keys()
-        for ipara = 0, n_elements(prpara)-1 do begin
-          value = prpara[keys[ipara]]
-          if n_elements(value) eq 1 then $
-             value = strtrim(value, 2) else value = '['+strjoin(strtrim(value, 2), ',')+']'
-          red_append, prp, strtrim(keys[ipara], 2) + '=' + value
-        endfor                  ; ipara
-        prp = strjoin(strtrim(prp, 2), ',')
-      end
+      'DICTIONARY' : prp = json_serialize(prpara)
       else : stop
     endcase
     fxaddpar, header, key, prp, after = prevkey $
