@@ -57,7 +57,7 @@
 ; 
 ;     force : in, optional, type=boolean
 ;
-;        Re-populate files/states.
+;        Re-populate files.
 ;
 ;     scan : in, optional, type=intarr
 ;
@@ -105,6 +105,9 @@
 ;                be forwarded to extractstates
 ;
 ;   2016-10-27 : MGL. New keywords count, complement, and ncomplement.
+;
+;   2017-12-20 : MGL. Always do extractstates, if the files are the
+;                same this is a fast operation now because of caching.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -172,9 +175,7 @@ pro chromis::selectfiles, cam = cam $
   
   if( n_elements(files) eq 1 ) then files = [files]
   
-  if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
-    self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
-  endif
+  self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
 
   if( n_elements(states) eq 1 ) then states = [states]
   
@@ -270,5 +271,21 @@ pro chromis::selectfiles, cam = cam $
     dummy = temporary(states)
     dummy = temporary(files)
   endelse
+
+end
+
+a = chromisred(/dev)
+
+files = file_search('/scratch/mats/2016.09.19/CHROMIS-jaime_recipe/data/09:28:36/Chromis-N/*', count = Nfiles1)
+print, Nfiles1
+a -> selectfiles, files = files, states = states, scan = [3, 4, 5], sel = sel
+
+print, states[sel].tun_wavelength
+
+files = file_search('/scratch/mats/2016.09.19/CHROMIS-jaime_recipe/data/09:28:36/Chromis-W/*', count = Nfiles2)
+print, nfiles2
+a -> selectfiles, files = files, states = states, scan = [3, 4, 5], sel = sel
+print, states[sel].tun_wavelength
+
 
 end
