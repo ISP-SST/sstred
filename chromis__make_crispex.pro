@@ -141,20 +141,20 @@ pro chromis::make_crispex, aligncont = aligncont $
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Make prpara
-  if n_elements(aligncont   ) ne 0 then red_make_prpara, prpara, 'aligncont'    , aligncont 
-  if n_elements(clips       ) ne 0 then red_make_prpara, prpara, 'clips'        , clips         
-  if n_elements(float       ) ne 0 then red_make_prpara, prpara, 'float'        , float  
-  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
-  if n_elements(no_timecor  ) ne 0 then red_make_prpara, prpara, 'no_timecor'   , no_timecor 
-  if n_elements(nostretch   ) ne 0 then red_make_prpara, prpara, 'nostretch'    , nostretch 
-  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
-  if n_elements(overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
-  if n_elements(rot_dir     ) ne 0 then red_make_prpara, prpara, 'rot_dir'      , rot_dir         
-  if n_elements(scans_only  ) ne 0 then red_make_prpara, prpara, 'scans_only'   , scans_only          
-  if n_elements(selscan     ) ne 0 then red_make_prpara, prpara, 'selscan'      , selscan 
-  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
-  if n_elements(tiles       ) ne 0 then red_make_prpara, prpara, 'tiles'        , tiles        
-  if n_elements(wbwrite     ) ne 0 then red_make_prpara, prpara, 'wbwrite'      , wbwrite
+  red_make_prpara, prpara, aligncont 
+  red_make_prpara, prpara, clips         
+  red_make_prpara, prpara, float  
+  red_make_prpara, prpara, momfbddir    
+  red_make_prpara, prpara, no_timecor 
+  red_make_prpara, prpara, nostretch 
+  red_make_prpara, prpara, np           
+  red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, rot_dir         
+  red_make_prpara, prpara, scans_only          
+  red_make_prpara, prpara, selscan 
+  red_make_prpara, prpara, square       
+  red_make_prpara, prpara, tiles        
+  red_make_prpara, prpara, wbwrite
 
   ;; Default keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 

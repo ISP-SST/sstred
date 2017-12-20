@@ -142,12 +142,12 @@ pro red::fitscube_crop, infile $
   endif
 
   ;; Make prpara
-  if n_elements( roi    ) ne 0 then red_make_prpara, prpara, 'roi',    roi 
-  if n_elements( infile     ) ne 0 then red_make_prpara, prpara, 'infile',     infile 
-  if n_elements( nospectral ) ne 0 then red_make_prpara, prpara, 'nospectral', nospectral 
-  if n_elements( outfile    ) ne 0 then red_make_prpara, prpara, 'outfile',    outfile 
-  if n_elements( overwrite  ) ne 0 then red_make_prpara, prpara, 'overwrite',  overwrite 
-  if n_elements( size       ) ne 0 then red_make_prpara, prpara, 'size',       size
+  red_make_prpara, prpara, roi 
+  red_make_prpara, prpara, infile 
+  red_make_prpara, prpara, nospectral 
+  red_make_prpara, prpara, outfile 
+  red_make_prpara, prpara, overwrite 
+  red_make_prpara, prpara, size
 
   ;; Read header,
   in_hdr = headfits(infile)

@@ -56,14 +56,12 @@ pro red::fitscube_convertlp, inname $
   inam = red_subprogram(/low, calling = inam1)
 
   ;; Make prpara
-  if n_elements( headerdata   ) ne 0 then red_make_prpara, prpara, 'headerdata'  , headerdata         
-  if n_elements( headerfile   ) ne 0 then red_make_prpara, prpara, 'headerfile'  , headerfile       
-  if n_elements( outdir       ) ne 0 then red_make_prpara, prpara, 'outdir'      , outdir      
-  if n_elements( outname      ) ne 0 then red_make_prpara, prpara, 'outname'     , outname      
-  if n_elements( overwrite    ) ne 0 then red_make_prpara, prpara, 'overwrite'   , overwrite       
-  if n_elements( polarimetric ) ne 0 then red_make_prpara, prpara, 'polarimetric', polarimetric 
-  
-
+  red_make_prpara, prpara, headerdata         
+  red_make_prpara, prpara, headerfile       
+  red_make_prpara, prpara, outdir      
+  red_make_prpara, prpara, outname      
+  red_make_prpara, prpara, overwrite       
+  red_make_prpara, prpara, polarimetric 
   
   dir = file_dirname(inname)+'/'
   iname = file_basename(inname)

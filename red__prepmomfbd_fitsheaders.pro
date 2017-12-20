@@ -122,22 +122,22 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             ;; Make list of possible global keywords complete!
             'FILE_TYPE' : begin
               file_type = cfgsplit[1]
-              red_make_prpara, Gprpara, cfgsplit[0], cfgsplit[1]
+              red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
             end
             'IMAGE_NUMS'      : begin
               ;; These are actually file numbers, several frames in each file.
               file_nums = red_expandrange(cfgsplit[1]) 
-              red_make_prpara, Gprpara, cfgsplit[0], file_nums
+              red_make_prpara, Gprpara, paraname = cfgsplit[0], file_nums
             end
-            'MODES' : red_make_prpara, Gprpara, cfgsplit[0], red_expandrange(cfgsplit[1])
-            'SIM_X' : red_make_prpara, Gprpara, cfgsplit[0], red_expandrange(cfgsplit[1])
-            'SIM_Y' : red_make_prpara, Gprpara, cfgsplit[0], red_expandrange(cfgsplit[1])
+            'MODES' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+            'SIM_X' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+            'SIM_Y' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
             ;; Ignored config lines:
             'PROG_DATA_DIR' : 
             else : begin
               case n_elements(cfgsplit) of
-                1: red_make_prpara, Gprpara, cfg[iline]
-                2: red_make_prpara, Gprpara, cfgsplit[0], cfgsplit[1]
+                1: red_make_prpara, Gprpara, paraname = cfg[iline], ''
+                2: red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
                 else: stop
               endcase
             end
@@ -163,12 +163,12 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               case cfgsplit[0] of
                 'OUTPUT_FILE' : begin
                   output_file = cfgsplit[1]
-                  red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                  red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1]
                 end
                 else : begin
                   case n_elements(cfgsplit) of
-                    1: red_make_prpara, prpara, cfg[iline]
-                    2: red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                    1: red_make_prpara, prpara, paraname = cfg[iline], ''
+                    2: red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1]
                     else: stop
                   endcase
                 end
@@ -198,28 +198,28 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               if ~strmatch(cfgline,'*{') and ~strmatch(cfgline,'*}') then begin
                 cfgsplit = strsplit(cfgline, '=', /extract)
                 case cfgsplit[0] of
-                  'ALIGN_CLIP' : red_make_prpara, prpara, cfgsplit[0] $
+                  'ALIGN_CLIP' : red_make_prpara, prpara, paraname = cfgsplit[0] $
                                                   , red_expandrange(cfgsplit[1])
                   'FILENAME_TEMPLATE' : begin
                     filename_template = cfgsplit[1]
-                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                    red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1]
                   end
                   'GAIN_FILE'         : begin
                     gain_file = cfgsplit[1]
-                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1] 
+                    red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1] 
                   end
                   'IMAGE_DATA_DIR'    : begin
                     image_data_dir = cfgsplit[1]
-                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                    red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1]
                   end
                   'DISCARD'           : begin
                     discard = long(cfgsplit[1])
-                    red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                    red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1]
                   end
                   else : begin
                     case n_elements(cfgsplit) of
-                      1: red_make_prpara, prpara, cfg[iline]
-                      2: red_make_prpara, prpara, cfgsplit[0], cfgsplit[1]
+                      1: red_make_prpara, prpara, paraname = cfg[iline], ''
+                      2: red_make_prpara, prpara, paraname = cfgsplit[0], cfgsplit[1]
                       else: stop
                     endcase
                   end

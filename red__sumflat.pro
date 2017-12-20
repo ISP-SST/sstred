@@ -155,23 +155,18 @@ pro red::sumflat, overwrite = overwrite, $
 
   ;; Prepare for logging (after setting of defaults).
   ;; Set up a dictionary with all parameters that are in use
-  prpara = dictionary()
-  ;; Boolean keywords
-  if keyword_set(check) then prpara['check'] = check
-  if keyword_set(overwrite) then prpara['overwrite'] = overwrite
-  if keyword_set(store_rawsum) then prpara['store_rawsum'] = store_rawsum
-  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
-  ;; Non-boolean keywords
-  if n_elements(cams) ne 0 then prpara['cams'] = cams
-  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
-  if n_elements(filter) ne 0 then prpara['filter'] = filter
-  if n_elements(lim) ne 0 then prpara['lim'] = lim
-  if n_elements(outdir) ne 0 then prpara['outdir'] = outdir
-  if n_elements(prefilter) ne 0 then prpara['prefilter'] = prefilter
-  if n_elements(ustat) ne 0 then prpara['ustat'] = ustat
-;  if keyword_set() then prpara[''] = 
-;  if keyword_set() then prpara[''] = 
-;  if keyword_set() then prpara[''] = 
+  red_make_prpara, prpara, check
+  red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, store_rawsum
+  red_make_prpara, prpara, sum_in_rdx
+  red_make_prpara, prpara, cams
+  red_make_prpara, prpara, dirs
+  red_make_prpara, prpara, filter
+  red_make_prpara, prpara, lim
+  red_make_prpara, prpara, outdir
+  red_make_prpara, prpara, prefilter
+  red_make_prpara, prpara, ustat
+ 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])

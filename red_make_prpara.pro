@@ -45,7 +45,7 @@
 ;-
 pro red_make_prpara, prpara, parameter, paraname = paraname
 
-  if n_elements(paraname) eq 0 then paraname = strupcase(scope_varname(parameter, level = -1))
+  if n_elements(paraname) eq 0 then paraname = (strupcase(scope_varname(parameter, level = -1)))[0]
   
   if n_elements(prpara) eq 0 then prpara = dictionary() ; Initialize with an empty dictionary.
   

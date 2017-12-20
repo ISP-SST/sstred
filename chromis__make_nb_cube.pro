@@ -113,16 +113,16 @@ pro chromis::make_nb_cube, wcfile $
   if n_elements(nocavitymap) eq 0 then nocavitymap = 1
   
   ;; Make prpara
-  if n_elements( clips_cont  ) ne 0 then red_make_prpara, prpara, 'clips_cont'   , clips_cont         
-  if n_elements( integer     ) ne 0 then red_make_prpara, prpara, 'integer'      , integer
-  if n_elements( cmap_fwhm   ) ne 0 then red_make_prpara, prpara, 'cmap_fwhm'    , cmap_fwhm
-  if n_elements( noaligncont ) ne 0 then red_make_prpara, prpara, 'noaligncont'  , noaligncont 
-  if n_elements( nocavitymap ) ne 0 then red_make_prpara, prpara, 'nocavitymap'  , nocavitymap 
-  if n_elements( notimecor   ) ne 0 then red_make_prpara, prpara, 'notimecor'    , notimecor 
-  if n_elements( np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
-  if n_elements( overwrite   ) ne 0 then red_make_prpara, prpara, 'overwrite'    , overwrite
-  if n_elements( tiles_cont  ) ne 0 then red_make_prpara, prpara, 'tiles_cont'   , tiles_cont        
-  if n_elements( wcfile      ) ne 0 then red_make_prpara, prpara, 'wcfile'       , wcfile
+  red_make_prpara, prpara, clips_cont         
+  red_make_prpara, prpara, integer
+  red_make_prpara, prpara, cmap_fwhm
+  red_make_prpara, prpara, noaligncont 
+  red_make_prpara, prpara, nocavitymap 
+  red_make_prpara, prpara, notimecor 
+  red_make_prpara, prpara, np           
+  red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, tiles_cont        
+  red_make_prpara, prpara, wcfile
 
   ;; Default keywords
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0

@@ -84,14 +84,12 @@ pro red::sumpolcal, check=check $
 
   ;; Prepare for logging (after setting of defaults).
   ;; Set up a dictionary with all parameters that are in use
-  prpara = dictionary()
-  ;; Boolean keywords
-  if keyword_set(check) then prpara['check'] = check
-  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
-  ;; Non-boolean keywords
-  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
-  if n_elements(outdir) ne 0 then prpara['outdir'] = outdir
-  if n_elements(ucam) ne 0 then prpara['ucam'] = ucam
+  red_make_prpara, prpara, check
+  red_make_prpara, prpara, sum_in_rdx
+  red_make_prpara, prpara, dirs
+  red_make_prpara, prpara, outdir
+  red_make_prpara, prpara, ucam
+ 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])

@@ -67,10 +67,9 @@ pro chromis::prepflatcubes, flatdir = flatdir $
 
   ;; Prepare for logging (after setting of defaults).
   ;; Set up a dictionary with all parameters that are in use
-  prpara = dictionary()
-  if n_elements(flatdir) ne 0 then prpara['flatdir'] = flatdir
-  if n_elements(pref) ne 0 then prpara['pref'] = pref
-
+  red_make_prpara, prpara, flatdir
+  red_make_prpara, prpara, pref
+  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 

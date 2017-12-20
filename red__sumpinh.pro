@@ -109,22 +109,17 @@ pro red::sumpinh, nthreads = nthreads $
 
   ;; Prepare for logging (after setting of defaults).
   ;; Set up a dictionary with all parameters that are in use
-  prpara = dictionary()
-  ;; Boolean keywords
-  if keyword_set(no_descatter) then prpara['no_descatter'] = no_descatter
-  if keyword_set(overwrite) then prpara['overwrite'] = overwrite
-  if keyword_set(sum_in_rdx) then prpara['sum_in_rdx'] = sum_in_rdx
-  if keyword_set(pinhole_align) ne 0 then prpara['pinhole_align'] = pinhole_align
-  if keyword_set(brightest_only) ne 0 then prpara['brightest_only'] = brightest_only
-  ;; Non-boolean keywords
-  if n_elements(cams) ne 0 then prpara['cams'] = cams
-  if n_elements(dirs) ne 0 then prpara['dirs'] = dirs
-  if n_elements(prefilter) ne 0 then prpara['prefilter'] = prefilter
-  if n_elements(ustat) ne 0 then prpara['ustat'] = ustat
-  if n_elements(outdir) ne 0 then prpara['outdir'] = outdir
-;  if keyword_set() then prpara[''] = 
-;  if keyword_set() then prpara[''] = 
-;  if keyword_set() then prpara[''] = 
+  red_make_prpara, prpara, no_descatter
+  red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, sum_in_rdx
+  red_make_prpara, prpara, pinhole_align
+  red_make_prpara, prpara, brightest_only 
+  red_make_prpara, prpara, cams
+  red_make_prpara, prpara, dirs
+  red_make_prpara, prpara, prefilter
+  red_make_prpara, prpara, ustat
+  red_make_prpara, prpara, outdir
+
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])

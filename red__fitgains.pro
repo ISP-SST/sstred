@@ -151,28 +151,31 @@ pro red::fitgains, npar = npar $
   
   ;; Prepare for logging (after setting of defaults). Set up a
   ;; dictionary with all parameters that are in use
-  prpara = dictionary()
-  if keyword_set(extra_nodes) then prpara['extra_nodes'] = extra_nodes
-  if keyword_set(npar) then prpara['npar'] = npar
-  if keyword_set(niter) then prpara['niter'] = niter
-  if keyword_set(rebin) then prpara['rebin'] = rebin
-  if keyword_set(xl) then prpara['xl'] = xl
-  if keyword_set(yl) then prpara['yl'] = yl
-  if keyword_set(densegrid) then prpara['densegrid'] = densegrid
-;  if keyword_set(res) then prpara['res'] = res ; Don't include, output only
-  if keyword_set(thres) then prpara['thres'] = thres
-  if keyword_set(initcmap) then prpara['initcmap'] = initcmap
-  if keyword_set(fit_reflectivity) then prpara['fit_reflectivity'] = fit_reflectivity
-  if keyword_set(x0) then prpara['x0'] = x0
-  if keyword_set(x1) then prpara['x1'] = x1
-  if keyword_set(state) then prpara['state'] = state
-  if keyword_set(nosave) then prpara['nosave'] = nosave
-  if keyword_set(myg) then prpara['myg'] = myg
-  if keyword_set(w0) then prpara['w0'] = w0
-  if keyword_set(w1) then prpara['w1'] = w1
-  if keyword_set(nthreads) then prpara['nthreads'] = nthreads
-  if keyword_set(ifit) then prpara['ifit'] = ifit
-  if keyword_set(all) then prpara['all'] = all
+  red_make_prpara, prpara, extra_nodes
+  red_make_prpara, prpara, npar
+  red_make_prpara, prpara, niter
+  red_make_prpara, prpara, rebin
+  red_make_prpara, prpara, xl
+  red_make_prpara, prpara, yl
+  red_make_prpara, prpara, densegrid
+  red_make_prpara, prpara, thres
+  red_make_prpara, prpara, initcmap
+  red_make_prpara, prpara, fit_reflectivity
+  red_make_prpara, prpara, x0
+  red_make_prpara, prpara, x1
+  red_make_prpara, prpara, state
+  red_make_prpara, prpara, nosave
+  red_make_prpara, prpara, myg
+  red_make_prpara, prpara, w0
+  red_make_prpara, prpara, w1
+  red_make_prpara, prpara, nthreads
+  red_make_prpara, prpara, ifit
+  red_make_prpara, prpara, all
+  red_make_prpara, prpara, 
+  red_make_prpara, prpara, 
+  red_make_prpara, prpara, 
+  red_make_prpara, prpara, 
+  red_make_prpara, prpara, 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])

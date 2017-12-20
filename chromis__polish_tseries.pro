@@ -140,20 +140,20 @@ pro chromis::polish_tseries, clip = clip $
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Make prpara
-  if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip         
-  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop         
-  if n_elements(fullframe   ) ne 0 then red_make_prpara, prpara, 'fullframe'    , fullframe    
-  if n_elements(momfbddir   ) ne 0 then red_make_prpara, prpara, 'momfbddir'    , momfbddir    
-  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang       
-  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np           
-  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle 
-  if n_elements(scale       ) ne 0 then red_make_prpara, prpara, 'scale'        , scale        
-  if n_elements(square      ) ne 0 then red_make_prpara, prpara, 'square'       , square       
-  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile         
-  if n_elements(timefiles   ) ne 0 then red_make_prpara, prpara, 'timefiles'    , timefiles    
-  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep        
-  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd          
-  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd          
+  red_make_prpara, prpara, clip         
+  red_make_prpara, prpara, crop         
+  red_make_prpara, prpara, fullframe    
+  red_make_prpara, prpara, momfbddir    
+  red_make_prpara, prpara, negang       
+  red_make_prpara, prpara, np           
+  red_make_prpara, prpara, offset_angle 
+  red_make_prpara, prpara, scale        
+  red_make_prpara, prpara, square       
+  red_make_prpara, prpara, tile         
+  red_make_prpara, prpara, timefiles    
+  red_make_prpara, prpara, tstep        
+  red_make_prpara, prpara, ybd          
+  red_make_prpara, prpara, xbd          
 
   ;; Default keywords
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
