@@ -212,7 +212,7 @@ pro red::pinholecalib, threshold = threshold $
         continue
       endif
       
-      this_map = rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init, threshold=threshold,
+      this_map = rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init, threshold=threshold, $
         smooth=smooth, verbose=verbose, max_shift=max_shift )
       
       if (last_prefilter ne this_prefilter) then begin
