@@ -145,19 +145,19 @@ pro chromis::make_wb_cube, dir $
   if n_elements(dir) eq 0 then begin
     print, inam + ' : Please specify the directory with momfbd output.'
   endif
-  
+ 
   ;; Make prpara
-  if n_elements(dir         ) ne 0 then red_make_prpara, prpara, 'dir'          , dir
-  if n_elements(blur        ) ne 0 then red_make_prpara, prpara, 'blur'         , blur
-  if n_elements(clip        ) ne 0 then red_make_prpara, prpara, 'clip'         , clip
-  if n_elements(crop        ) ne 0 then red_make_prpara, prpara, 'crop'         , crop
-  if n_elements(negang      ) ne 0 then red_make_prpara, prpara, 'negang'       , negang
-  if n_elements(np          ) ne 0 then red_make_prpara, prpara, 'np'           , np
-  if n_elements(offset_angle) ne 0 then red_make_prpara, prpara, 'offset_angle' , offset_angle
-  if n_elements(tile        ) ne 0 then red_make_prpara, prpara, 'tile'         , tile
-  if n_elements(tstep       ) ne 0 then red_make_prpara, prpara, 'tstep'        , tstep
-  if n_elements(ybd         ) ne 0 then red_make_prpara, prpara, 'ybd'          , ybd
-  if n_elements(xbd         ) ne 0 then red_make_prpara, prpara, 'xbd'          , xbd
+  red_make_prpara, prpara, dir
+  red_make_prpara, prpara, blur
+  red_make_prpara, prpara, clip
+  red_make_prpara, prpara, crop
+  red_make_prpara, prpara, negang
+  red_make_prpara, prpara, np
+  red_make_prpara, prpara, offset_angle
+  red_make_prpara, prpara, tile
+  red_make_prpara, prpara, tstep
+  red_make_prpara, prpara, ybd
+  red_make_prpara, prpara, xbd
 
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
