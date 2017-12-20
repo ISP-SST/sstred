@@ -87,6 +87,8 @@
 ;
 ;   2017-12-06 : THI. Added a simple tool for verifying the calibrations.
 ;
+;   2017-12-06 : THI. Add keyword smooth to pinholecalib, which is passed on to rdx_img_align.
+;                Pass the pref keyword to selectfiles.
 ;-
 pro red::pinholecalib, threshold = threshold $
                            , max_shift = max_shift $
@@ -95,6 +97,7 @@ pro red::pinholecalib, threshold = threshold $
                            , dir = dir $
                            , cams = cams $
                            , refcam = refcam $
+                           , smooth = smooth $
                            , verbose = verbose $
                            , verify = verify
 
@@ -159,7 +162,7 @@ pro red::pinholecalib, threshold = threshold $
   nf = n_elements( all_files )
   
   self->selectfiles, files=all_files, states=states, cam = cams[refcam] $
-                     , /strip_settings, selected=selection
+                     , /strip_settings, selected=selection, prefilter=pref
   ref_states = states[selection]
   ref_states_unique = ref_states.fpi_state
   ;; We discard multiple pinhole files for the same state
@@ -167,7 +170,7 @@ pro red::pinholecalib, threshold = threshold $
   for icam = 0, Ncams-1 do begin
     if icam EQ refcam then continue
     self->selectfiles, files=all_files, states=states, cam = cams[icam] $
-                       , /strip_settings, selected=selection
+                       , /strip_settings, selected=selection, prefilter=pref
     cam_states = states[selection]
 
     cam_states_unique = cam_states.fpi_state
@@ -209,7 +212,8 @@ pro red::pinholecalib, threshold = threshold $
         continue
       endif
       
-      this_map = rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init, threshold=threshold, verbose=verbose, max_shift=max_shift )
+      this_map = rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init, threshold=threshold,
+        smooth=smooth, verbose=verbose, max_shift=max_shift )
       
       if (last_prefilter ne this_prefilter) then begin
         if keyword_set(verify) then this_map = red_phverify( ref_img, cam_img, this_map )
