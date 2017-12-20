@@ -167,10 +167,6 @@ pro chromis::extractstates, strings, states $
   states = replicate( {CHROMIS_STATE}, Nstrings )
   states.nframes = 1            ; single frame by default
 
-  ;; Are the strings actually names of existing files? Then look in
-  ;; the headers (for some info).
-  AreFiles = min(file_test(strings))
-
   ;; Read headers and extract information. This should perhaps return
   ;; an array the length of the number of frames rather than the
   ;; number of files?
