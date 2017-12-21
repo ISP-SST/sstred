@@ -67,7 +67,7 @@
 ;                find out its own name.
 ; 
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
-;                new keyword no_descatter..
+;                new keyword no_descatter.
 ; 
 ;   2017-12-20 : MGL. Store gains with metadata headers.
 ; 

@@ -66,6 +66,8 @@
 ;   2017-04-06 : MGL. Make version for CHROMIS without backscatter or
 ;                zeroing of detector tap borders.
 ; 
+;   2017-12-20 : MGL. Store gains with metadata headers.
+; 
 ; 
 ;-
 pro chromis::makegains, nthreads = nthreads $
