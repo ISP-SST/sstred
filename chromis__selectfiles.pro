@@ -108,6 +108,8 @@
 ;
 ;   2017-12-20 : MGL. Always do extractstates, if the files are the
 ;                same this is a fast operation now because of caching.
+;
+;   2017-12-21 : MGL. Do extractstates only if needed.
 ; 
 ;-
 pro chromis::selectfiles, cam = cam $
@@ -174,8 +176,12 @@ pro chromis::selectfiles, cam = cam $
   endif
   
   if( n_elements(files) eq 1 ) then files = [files]
-  
-  self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
+
+  ;; Get new states if necessary
+  if keyword_set(force) $                             ; If we choose to
+     || n_elements(files) ne n_elements(states) $     ; If numbers don't agree
+     || ~min(file_same(files,states.filename)) then $ ; If the actual files are not the same
+        self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
 
   if( n_elements(states) eq 1 ) then states = [states]
   
