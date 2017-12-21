@@ -49,11 +49,12 @@ pro red_make_prpara, prpara, parameter, paraname = paraname
   
   if n_elements(prpara) eq 0 then prpara = dictionary() ; Initialize with an empty dictionary.
   
-  if n_elements(paraname) eq 0 then return ; May have run to just define the dictionary?
-
+  if n_elements(paraname) eq 0 then return  ; May have run to just define the dictionary?
+  if strtrim(paraname, 2) eq '' then return ; No parameter name
+  
   if n_elements(parameter) eq 0 then return ; Set to empty string if no value!
 
-  prpara[paraname] = parameter
+  prpara[strtrim(paraname, 2)] = parameter
 
 end
 
