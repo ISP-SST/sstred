@@ -263,9 +263,8 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL5', wcs.time[0], 'Just a single time'  
   endelse
   
-  red_fitsmodheader, filename, new_header = hdr
+  modfits, filename, 0, hdr
 
-  
   ;; Make the binary extension. ------------------------------------------------------------
 
   ;; Make the header

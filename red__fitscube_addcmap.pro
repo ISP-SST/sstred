@@ -90,8 +90,8 @@ pro red::fitscube_addcmap, filename, cmaps
   red_fitsaddkeyword, anchor = anchor, chdr, ['', 'HISTORY'], ['', 'These wavelength coordinate distortions were generated from the cavity map, shifted, rotated, and cropped as the science data.']
 
   ;; Write the image extension and the updated header. -----------------------------------------
-  
-  red_fitsmodheader, filename, new_header = hdr
+  modfits, filename, 0, hdr
+
   writefits, filename, cmaps, chdr, heap, /append
 
 end
