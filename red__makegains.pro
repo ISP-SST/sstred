@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -59,7 +59,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -67,16 +67,33 @@
 ;                find out its own name.
 ; 
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
-;                new keyword no_descatter.
+;                new keyword no_descatter..
 ; 
-; 
+;   2017-12-20 : MGL. Store gains with metadata headers.
 ; 
 ;-
-pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam, pref = pref, min = min, max = max, bad=bad, preserve=preserve, smoothsize = smoothsize;, cavityfree=cavityfree
-                                ;
+pro red::makegains, no_descatter = no_descatter $
+                    , nthreads = nthreads $
+                    , cam = cam $
+                    , pref = pref $
+                    , min = min $
+                    , max = max $
+                    , bad=bad $
+                    , preserve=preserve $
+                    , smoothsize = smoothsize ;, cavityfree=cavityfree
+                                
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  red_make_prpara, prpara, no_descatter 
+  red_make_prpara, prpara, cam 
+  red_make_prpara, prpara, pref 
+  red_make_prpara, prpara, min 
+  red_make_prpara, prpara, max 
+  red_make_prpara, prpara, bad 
+  red_make_prpara, prpara, preserve  
+  red_make_prpara, prpara, smoothsize
+  
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
@@ -85,12 +102,11 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
   tosearch = self.out_dir+'/flats/*.flat.fits'
   
   files = file_search(tosearch, count = ct)
-                                ;
+
   if(ct eq 0) then begin
      print, inam+' : No flats found in: ' + tosearch
   endif
-                                ;
-  firsttime = 1B
+
   for ii = 0L, ct -1 do begin
      tmp = strsplit(file_basename(files[ii]), '._', /extract)
      if(keyword_set(pref)) then begin
@@ -99,14 +115,12 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
            continue
         endif
      endif
-                                ;fzread, flat, files[ii], head
-     flat = red_readdata(files[ii])
-     
-                                ;
-                                ; Only one camera?
-                                ;
+     ;;fzread, flat, files[ii], head
+     flat = red_readdata(files[ii], head = hdr)
+
+     ;; Only one camera?
      if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
-                             ;
+
      if ~keyword_set(no_descatter) then begin
         if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
            self -> loadbackscatter, tmp[0], tmp[1], bg, psf
@@ -123,14 +137,22 @@ pro red::makegains, no_descatter = no_descatter, nthreads = nthreads, cam = cam,
      gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
      
      namout = file_basename(files[ii], '.flat.fits')+'.gain'
-     
      outdir = self.out_dir+'/gaintables/'
-     h = ' ';head
-                                ;
-                                ; Output gaintable
+
+     ;; Edit the header
+     red_fitsaddkeyword, 'FILENAME', outdir+namout
+     self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
+                                 , prproc = inam, prpara = prpara
+   
+     
+     ;; Output gaintable
      file_mkdir, outdir
      print, inam+' : saving '+outdir+namout
-     fzwrite, float(gain), outdir+namout, h
+;     fzwrite, float(gain), outdir+namout, h
+     red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
+
+stop
+     
   endfor
                                 ;
   return
