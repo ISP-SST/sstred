@@ -116,32 +116,36 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         Gstart = (where(strmatch(cfg,'}*'),Nmatch))[Nmatch-1] + 1
         undefine, Gprpara       ; Start fresh
         for iline = Gstart, Nlines-1 do begin
-          cfgsplit = strsplit(cfg[iline], '=', /extract)
-          
-          case cfgsplit[0] of
-            ;; Make list of possible global keywords complete!
-            'FILE_TYPE' : begin
-              file_type = cfgsplit[1]
-              red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
-            end
-            'IMAGE_NUMS'      : begin
-              ;; These are actually file numbers, several frames in each file.
-              file_nums = red_expandrange(cfgsplit[1]) 
-              red_make_prpara, Gprpara, paraname = cfgsplit[0], file_nums
-            end
-            'MODES' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
-            'SIM_X' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
-            'SIM_Y' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
-            ;; Ignored config lines:
-            'PROG_DATA_DIR' : 
-            else : begin
-              case n_elements(cfgsplit) of
-                1: red_make_prpara, Gprpara, paraname = cfg[iline], ''
-                2: red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
-                else: stop
-              endcase
-            end
-          endcase
+
+          if cfg[iline] ne '' then begin
+            cfgsplit = strsplit(cfg[iline], '=', /extract)
+            
+            case cfgsplit[0] of
+              ;; Make list of possible global keywords complete!
+              'FILE_TYPE' : begin
+                file_type = cfgsplit[1]
+                red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
+              end
+              'IMAGE_NUMS'      : begin
+                ;; These are actually file numbers, several frames in each file.
+                file_nums = red_expandrange(cfgsplit[1]) 
+                red_make_prpara, Gprpara, paraname = cfgsplit[0], file_nums
+              end
+              'MODES' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+              'SIM_X' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+              'SIM_Y' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+              ;; Ignored config lines:
+              'PROG_DATA_DIR' : 
+              else : begin
+                case n_elements(cfgsplit) of
+                  1: red_make_prpara, Gprpara, paraname = cfg[iline], ''
+                  2: red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
+                  else: stop
+                endcase
+              end
+            endcase
+          endif
+
         endfor                  ; iline
         
         
