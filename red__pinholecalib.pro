@@ -87,8 +87,12 @@
 ;
 ;   2017-12-06 : THI. Added a simple tool for verifying the calibrations.
 ;
-;   2017-12-06 : THI. Add keyword smooth to pinholecalib, which is passed on to rdx_img_align.
+;   2017-12-20 : THI. Add keyword smooth to pinholecalib, which is passed on to rdx_img_align.
 ;                Pass the pref keyword to selectfiles.
+;
+;   2017-12-21 : THI. Print a warning, and some suggestions how to proceed,
+;                if the pinhole calibration fails for some state(s).
+;
 ;-
 pro red::pinholecalib, threshold = threshold $
                            , max_shift = max_shift $
@@ -238,11 +242,44 @@ pro red::pinholecalib, threshold = threshold $
         img2 = red_readdata( alignments[failedmaps[ifailed]].state2.filename, /silent )
         alignments[failedmaps[ifailed]].map = rdx_img_align( ref_img, img2 $
                                                              , nref=nref, h_init=this_init $
-                                                             , threshold=threshold $
-                                                             , verbose=verbose )
+                                                             , threshold=threshold, smooth=smooth $
+                                                             , verbose=verbose, max_shift=max_shift )
       endfor                    ; ifailed
     endif
 
+    failedmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] ne 1) )
+    if max(failedmaps) ge 0 then begin
+      LF = string(10b)
+      print, LF + 'Failed to match pinholes for the following states:'
+      for ifailed=0, n_elements(failedmaps)-1 do begin
+        msg = '    alignments[' + strtrim(failedmaps[ifailed],2) + ']: '
+        msg += alignments[failedmaps[ifailed]].state1.detector + ':' + alignments[failedmaps[ifailed]].state1.tuning + ' <-> '
+        msg += alignments[failedmaps[ifailed]].state2.detector + ':' + alignments[failedmaps[ifailed]].state2.tuning
+        print, msg
+      endfor                    ; ifailed
+      print, LF + 'Have a look at the pinholes/mapping that they look sane. For example:' + LF
+      print, 'restore,"calib/alignments.sav"'
+      print, 'ind = ' + strtrim( max(failedmaps), 2 )
+      print, 'ph1 = red_readdata( alignments[ind].state1.filename )'
+      print, 'ph2 = red_readdata( alignments[ind].state2.filename )'
+      print, 'print, alignments[ind].map'
+      print, 'sz = size(ph2,/dim)'
+      print, 'window, 0, xs=sz[0], ys=sz[1]'
+      print, 'tvscl, ph2'
+      print, 'window, 1, xs=sz[0], ys=sz[1]'
+      print, 'tvscl, rdx_img_project( alignments[ind].map, ph1 )'
+      print, 'blink, [0,1]'
+      print, LF + 'If the images look fine, but the matrix does not look like:'
+      print, ' ~\pm{1}     ~0     x-origin' 
+      print, '   ~0     ~\pm{1}   y-origin' 
+      print, '   ~0        ~0        1' + LF
+      print, 'Try to make a better fit by tweaking the parameters in the call (shown here with the default values):' + LF
+      print, 'map = rdx_img_align( ph1, ph2, nref=4, threshold=0.0, smooth=0, max_shift=200, verbose=0)' + LF
+      print, 'Use verbose=2 to get more info from the calibration.'
+      print, 'There should be ~100 keypoints (=pinholes) found in each image.'
+      print, 'Once you find parameters that gives sane matrices for the previous failures, re-run a->pinholecalib with those parameters.'
+      stop
+    endif
   endfor                        ; icam
 
   save, file = output_file, alignments
