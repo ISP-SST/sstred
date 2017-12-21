@@ -79,10 +79,14 @@ pro chromis::makegains, nthreads = nthreads $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+  red_make_prpara, prpara, bad 
+  red_make_prpara, prpara, cam 
+  red_make_prpara, prpara, max 
+  red_make_prpara, prpara, min 
+  red_make_prpara, prpara, pref 
+  red_make_prpara, prpara, smoothsize
 
+  
   tosearch = self.out_dir+'/flats/*.flat.fits'
   
   files = file_search(tosearch, count = Nfiles)
@@ -102,21 +106,27 @@ pro chromis::makegains, nthreads = nthreads $
       endif
     endif
 
-    flat = red_readdata(files[ifile])
-    
+    flat = red_readdata(files[ifile], head = hdr)
+
     ;; Only one camera?
     if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
 
     gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, /preserve, smoothsize=smoothsize)
     
     namout = file_basename(files[ifile], '.flat.fits')+'.gain'
-    
     outdir = self.out_dir+'/gaintables/'
 
+    ;; Edit the header
+    red_fitsaddkeyword, hdr, 'FILENAME', outdir+namout
+    self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
+                                , prproc = inam, prpara = prpara
+    
     ;; Output gaintable
     file_mkdir, outdir
     print, inam+' : saving '+outdir+namout
-    fzwrite, float(gain), outdir+namout, ' '
+    ;;fzwrite, float(gain), outdir+namout, ' '
+    overwrite = 1
+    red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
 
   endfor                        ;  ifile
   
