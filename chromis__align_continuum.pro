@@ -126,8 +126,6 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 
       odir = self.out_dir + '/align/' + timestamp $
                      + '/' + prefilters[ipref] + '/'
-      file_mkdir, odir
-
       
       nname = odir+'scan_numbers.fz'
       sname = odir+'continuum_shifts.fz'
@@ -253,6 +251,8 @@ print, 'wNscans', wNscans
                                                    , weight = weights, select = 0.6 )
           endelse
         endfor                  ; iaxis
+
+        file_mkdir, odir
 
         fzwrite, [nbcstates.scannumber], nname, ' '
         fzwrite, shifts, sname, ' '
