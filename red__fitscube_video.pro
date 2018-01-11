@@ -55,15 +55,19 @@
 ;    rgbgamma : in, optional, type=fltarr(3), default="[1,1,1]"
 ;
 ;      Gamma values for the RGB channels. The total gamma correction
-;      is of the form data(channel)^(gamma*rgbgamma(channel)).
+;      is of the form data(channel)^(gamma*rgbgamma(channel)).    
+;                    
+;    rgbfac : in, optional, type=fltarr(3), default="[1,1,1]"
+;
+;      Multiplicative factors for the RGB channels.
 ;
 ;    tickcolor : in, optional, type=byte, default=0
 ;   
-;       The color of the tickmarks, 0=black, 255=white.   
+;      The color of the tickmarks, 0=black, 255=white.   
 ;
 ;    tickmarks : in, optional, type=boolean
 ;   
-;       Set this to draw arcsec tickmarks.
+;      Set this to draw arcsec tickmarks.
 ; 
 ; :History:
 ; 
@@ -75,11 +79,12 @@ pro red::fitscube_video, infile $
                          , clip = clip $
                          , fps = fps $
                          , gamma = gamma $
-                         , rgbgamma = rgbgamma $
                          , golden = golden $
                          , iwave = iwave $
                          , istokes = istokes $
                          , outfile = outfile $
+                         , rgbfac = rgbfac $
+                         , rgbgamma = rgbgamma $
                          , tickcolor = tickcolor $
                          , tickmarks = tickmarks
   
@@ -110,15 +115,11 @@ pro red::fitscube_video, infile $
   if n_elements(tickcolor) eq 0 then tickcolor = 0B else tickcolor = byte(tickcolor)
 
   ;; Gamma and color
-  if keyword_set(golden) then rgbgamma = [0.7, 1.2, 7.0]
-  if n_elements(gamma) ne 0 or n_elements(rgbgamma) ne 0 then begin
-    if n_elements(gamma) eq 0 then gamma = 1.0
-    if n_elements(rgbgamma) eq 0 then rgbgamma = [1., 1., 1.]
-    totalgamma = gamma*rgbgamma
-    ;; If neither gamma nor rgbgamma was defined, then save time by
-    ;; not defining totalgamma and therefore not doing the
-    ;; exponentiation below.
-  endif                         
+  if n_elements(rgbfac) eq 0 then rgbfac = [1., 1., 1.]
+  if keyword_set(golden) then rgbgamma = [0.6, 1.0, 6.0]  
+  if n_elements(gamma) eq 0 then gamma = 1.0
+  if n_elements(rgbgamma) eq 0 then rgbgamma = [1., 1., 1.]
+  totalgamma = gamma*rgbgamma
   
   vidcube = dblarr([1, Nx, Ny, Nframes])
 
@@ -155,12 +156,10 @@ pro red::fitscube_video, infile $
 
   ;; Do the RGB stuff
   vidcube = rebin(vidcube,[3, Nx, Ny, Nframes],/samp)
-  if n_elements(totalgamma) ne 0 then begin
-    vidcube[0, *, *, *] = vidcube[0, *, *, *]^totalgamma[0]
-    vidcube[1, *, *, *] = vidcube[1, *, *, *]^totalgamma[1]
-    vidcube[2, *, *, *] = vidcube[2, *, *, *]^totalgamma[2]
-  endif 
-
+  vidcube[0, *, *, *] = rgbfac[0]*vidcube[0, *, *, *]^totalgamma[0]
+  vidcube[1, *, *, *] = rgbfac[1]*vidcube[1, *, *, *]^totalgamma[1]
+  vidcube[2, *, *, *] = rgbfac[2]*vidcube[2, *, *, *]^totalgamma[2]
+   
   ;; Should be byte scaled
   vidcube *= 255d
   vidcube = byte(round(vidcube >0 <255))
