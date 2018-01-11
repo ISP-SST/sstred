@@ -21,7 +21,13 @@
 ; 
 ; 
 ; :Keywords:
-; 
+;
+;    bit_rate : in, optional, type=integer
+;
+;      The target output data rate, in bits per second. See IDL
+;      documentation for write_video and
+;      IDLffVideoWrite::AddVideoStream.
+;
 ;    clip : in, optional, type=integer, default=2
 ;
 ;      A number between 0 and 50 that indicates the percentage of
@@ -76,6 +82,7 @@
 ; 
 ;-
 pro red::fitscube_video, infile $
+                         , bit_rate = bit_rate $
                          , clip = clip $
                          , fps = fps $
                          , gamma = gamma $
@@ -196,7 +203,7 @@ pro red::fitscube_video, infile $
   endif
 
   ;; Write the video
-  write_video, outfile, vidcube, video_fps = fps
+  write_video, outfile, vidcube, video_fps = fps, bit_rate = bit_rate 
   
 end
 
