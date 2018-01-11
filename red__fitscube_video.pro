@@ -28,29 +28,38 @@
 ;      pixels to clip off either end of the cube histogram before
 ;      performing a linear stretch.
 ;
-;    fps : in, optional, type=integer
+;    fps : in, optional, type=integer, default=5
 ;
 ;      Frames per second.
 ;
-;    gamma : in, optional, type="float or fltarr(3)"
+;    gamma : in, optional, type=float
 ;
-;      Log scale gamma, scalar or rgb.
+;      Log scale gamma.
 ;
 ;    golden : in, optional, type=boolean
 ;
-;      Set to display in a golden color scheme.
+;      Set rgbgamma to produce a golden color scheme.
 ;
 ;    iwave : in, optional, type=integer, default=0
 ;
-;
+;      The index of the wavelength to be shown in the movie. 
 ;
 ;    istokes : in, optional, type=integer, default=0
 ;
-;
+;      The index of the Stokes component to be shown in the movie.
 ;
 ;    outfile : in, optional, type=string, default='same as infile but with mp4 extension'
 ;
-;       
+;      The path to the output file.       
+;                    
+;    rgbgamma : in, optional, type=fltarr(3), default="[1,1,1]"
+;
+;      Gamma values for the RGB channels. The total gamma correction
+;      is of the form data(channel)^(gamma*rgbgamma(channel)).
+;
+;    tickcolor : in, optional, type=byte, default=0
+;   
+;       The color of the tickmarks, 0=black, 255=white.   
 ;
 ;    tickmarks : in, optional, type=boolean
 ;   
@@ -66,10 +75,12 @@ pro red::fitscube_video, infile $
                          , clip = clip $
                          , fps = fps $
                          , gamma = gamma $
+                         , rgbgamma = rgbgamma $
                          , golden = golden $
                          , iwave = iwave $
                          , istokes = istokes $
                          , outfile = outfile $
+                         , tickcolor = tickcolor $
                          , tickmarks = tickmarks
   
   inam = red_subprogram(/low, calling = inam1)
@@ -96,9 +107,18 @@ pro red::fitscube_video, infile $
   if n_elements(istokes) eq 0 then istokes = 0
   if n_elements(fps) eq 0 then fps = 5
   if n_elements(clip) eq 0 then clip = 2
+  if n_elements(tickcolor) eq 0 then tickcolor = 0B else tickcolor = byte(tickcolor)
 
-  if keyword_set(golden) then gamma = [0.7, 1.2, 7.0]
-  if n_elements(gamma) eq 1 then gamma = [gamma, gamma, gamma]
+  ;; Gamma and color
+  if keyword_set(golden) then rgbgamma = [0.7, 1.2, 7.0]
+  if n_elements(gamma) ne 0 or n_elements(rgbgamma) ne 0 then begin
+    if n_elements(gamma) eq 0 then gamma = 1.0
+    if n_elements(rgbgamma) eq 0 then rgbgamma = [1., 1., 1.]
+    totalgamma = gamma*rgbgamma
+    ;; If neither gamma nor rgbgamma was defined, then save time by
+    ;; not defining totalgamma and therefore not doing the
+    ;; exponentiation below.
+  endif                         
   
   vidcube = dblarr([1, Nx, Ny, Nframes])
 
@@ -135,10 +155,10 @@ pro red::fitscube_video, infile $
 
   ;; Do the RGB stuff
   vidcube = rebin(vidcube,[3, Nx, Ny, Nframes],/samp)
-  if n_elements(gamma) ne 0 then begin
-    vidcube[0, *, *, *] = vidcube[0, *, *, *]^gamma[0]
-    vidcube[1, *, *, *] = vidcube[1, *, *, *]^gamma[1]
-    vidcube[2, *, *, *] = vidcube[2, *, *, *]^gamma[2]
+  if n_elements(totalgamma) ne 0 then begin
+    vidcube[0, *, *, *] = vidcube[0, *, *, *]^totalgamma[0]
+    vidcube[1, *, *, *] = vidcube[1, *, *, *]^totalgamma[1]
+    vidcube[2, *, *, *] = vidcube[2, *, *, *]^totalgamma[2]
   endif 
 
   ;; Should be byte scaled
@@ -148,7 +168,6 @@ pro red::fitscube_video, infile $
   ;; Tickmarks?
   if keyword_set(tickmarks) then begin
     ;; Code inspired by Luc's tickbox_f.ana
-    ma = 0B
     marg = min(dims[0:1])/20 ;30
     hmarg = 0
     sc = float(self.image_scale)
@@ -162,18 +181,18 @@ pro red::fitscube_video, infile $
       dd = fix(marg/2 * fac)
       x = round(hmarg+thickness-1+i*pix)
       ;; Along horizontal bottom
-      vidcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), 0:dd, *] = ma
+      vidcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), 0:dd, *] = tickcolor
       ;; Along horizontal top
-      vidcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), ((Ny+1-dd) >0):Ny-1, *] = ma
+      vidcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), ((Ny+1-dd) >0):Ny-1, *] = tickcolor
     endfor                      ; i
     for j = 1B, Ly do begin
       fac = 0.4 * (2 + ((j mod 5) eq 0) + ((j mod 10) eq 0))/2.
       dd = fix(marg/2 * fac)
       y = round(hmarg+thickness-1+j*pix)
       ;; Along vertical left
-      vidcube[*, 0:dd, ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = ma
+      vidcube[*, 0:dd, ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = tickcolor
       ;; Along vertical right
-      vidcube[*, ((Nx-1-dd) >0):(Nx-1), ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = ma
+      vidcube[*, ((Nx-1-dd) >0):(Nx-1), ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = tickcolor
     endfor                      ; j
   endif
 
