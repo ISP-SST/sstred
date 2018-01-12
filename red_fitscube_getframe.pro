@@ -63,8 +63,10 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
                            , ituning = ituning $
                            , istokes = istokes $
                            , iscan = iscan
-
-  if size(filename_or_fileassoc, /tname) eq 'STRING' then begin
+  
+  if size(filename_or_fileassoc, /tname) eq 'STRING' then open_and_close = 1 else open_and_close = 0
+  
+  if open_and_close then begin
     ;; We have the file name, open the file and set up an assoc
     ;; variable.
     filename = filename_or_fileassoc
@@ -113,6 +115,7 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
 
   frame = fileassoc[iframe]
 
-  free_lun, lun
+  ;; Close if we opened.
+  if open_and_close then free_lun, lun
   
 end
