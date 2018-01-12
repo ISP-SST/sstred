@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Get a frame from a fitscube file.
+; Get a frame from an SST fitscube file.
 ; 
 ; :Categories:
 ;
@@ -53,16 +53,17 @@
 ; 
 ;     2017-11-03 : MGL. First version.
 ; 
-; 
+;     2018-01-12 : MGL. Doesn't need to be a method, rename
+;                  red::fitscube_getframe to red_fitscube_getframe. 
 ; 
 ; 
 ;-
-pro red::fitscube_getframe, filename_or_fileassoc, frame $
-                            , iframe = iframe $
-                            , ituning = ituning $
-                            , istokes = istokes $
-                            , iscan = iscan
-  
+pro red_fitscube_getframe, filename_or_fileassoc, frame $
+                           , iframe = iframe $
+                           , ituning = ituning $
+                           , istokes = istokes $
+                           , iscan = iscan
+
   if size(filename_or_fileassoc, /tname) eq 'STRING' then begin
     ;; We have the file name, open the file and set up an assoc
     ;; variable.
