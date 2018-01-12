@@ -34,6 +34,10 @@
 ;      pixels to clip off either end of the cube histogram before
 ;      performing a linear stretch.
 ;
+;    crop : in, optional, type=boolean
+;
+;      Crop by use of a GUI.
+;
 ;    fps : in, optional, type=integer, default=5
 ;
 ;      Frames per second.
@@ -80,12 +84,13 @@
 ;    2018-01-10 : MGL. First version.
 ; 
 ;    2018-01-12 : MGL. Use subroutine red_fitscube_getframe rather
-;                 than method fitscube_getframe.
+;                 than method fitscube_getframe. New keyword: crop.
 ; 
 ;-
 pro red::fitscube_video, infile $
                          , bit_rate = bit_rate $
                          , clip = clip $
+                         , crop = crop $
                          , fps = fps $
                          , gamma = gamma $
                          , golden = golden $
@@ -123,20 +128,25 @@ pro red::fitscube_video, infile $
   if n_elements(clip) eq 0 then clip = 2
   if n_elements(tickcolor) eq 0 then tickcolor = 0B else tickcolor = byte(tickcolor)
 
-  ;; Gamma and color
+  ;; Gamma and color settings
   if n_elements(rgbfac) eq 0 then rgbfac = [1., 1., 1.]
   if keyword_set(golden) then rgbgamma = [0.6, 1.0, 6.0]  
   if n_elements(gamma) eq 0 then gamma = 1.0
   if n_elements(rgbgamma) eq 0 then rgbgamma = [1., 1., 1.]
   totalgamma = gamma*rgbgamma
-  
-  vidcube = dblarr([1, Nx, Ny, Nframes])
 
+  ;; Read the data
+  vidcube = dblarr([Nx, Ny, Nframes])
   for iframe = 0, Nframes-1 do begin
     red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iframe
-    vidcube[0, *, *, iframe] = frame
+    vidcube[*, *, iframe] = frame
   endfor                        ; iframe
 
+  if keyword_set(crop) then vidcube = red_crop(vidcube)
+  newdims = size(vidcube, /dim)
+  Nx = newdims[0]
+  Ny = newdims[1]  
+  
   if clip ne 0 then begin
     ;; Code to do histogram clip, stolen from cgclipscl.pro
     maxr = Max(vidcube, MIN=minr, /NAN)
@@ -164,19 +174,19 @@ pro red::fitscube_video, infile $
   vidcube /= max(vidcube)
 
   ;; Do the RGB stuff
-  vidcube = rebin(vidcube,[3, Nx, Ny, Nframes],/samp)
-  vidcube[0, *, *, *] = rgbfac[0]*vidcube[0, *, *, *]^totalgamma[0]
-  vidcube[1, *, *, *] = rgbfac[1]*vidcube[1, *, *, *]^totalgamma[1]
-  vidcube[2, *, *, *] = rgbfac[2]*vidcube[2, *, *, *]^totalgamma[2]
+  rgbcube = fltarr(3, Nx, Ny, Nframes)
+  rgbcube[0, *, *, *] = rgbfac[0]*vidcube^totalgamma[0]
+  rgbcube[1, *, *, *] = rgbfac[1]*vidcube^totalgamma[1]
+  rgbcube[2, *, *, *] = rgbfac[2]*vidcube^totalgamma[2]
    
   ;; Should be byte scaled
-  vidcube *= 255d
-  vidcube = byte(round(vidcube >0 <255))
+  rgbcube *= 255d
+  rgbcube = byte(round(rgbcube >0 <255))
 
   ;; Tickmarks?
   if keyword_set(tickmarks) then begin
     ;; Code inspired by Luc's tickbox_f.ana
-    marg = min(dims[0:1])/20 ;30
+    marg = min([Nx, Ny])/20 >30 ;30
     hmarg = 0
     sc = float(self.image_scale)
     pix = 1./sc
@@ -189,23 +199,23 @@ pro red::fitscube_video, infile $
       dd = fix(marg/2 * fac)
       x = round(hmarg+thickness-1+i*pix)
       ;; Along horizontal bottom
-      vidcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), 0:dd, *] = tickcolor
+      rgbcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), 0:dd, *] = tickcolor
       ;; Along horizontal top
-      vidcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), ((Ny+1-dd) >0):Ny-1, *] = tickcolor
+      rgbcube[*, ((x-thickness/2) >0):((x+thickness/2) <(Nx-1)), ((Ny+1-dd) >0):Ny-1, *] = tickcolor
     endfor                      ; i
     for j = 1B, Ly do begin
       fac = 0.4 * (2 + ((j mod 5) eq 0) + ((j mod 10) eq 0))/2.
       dd = fix(marg/2 * fac)
       y = round(hmarg+thickness-1+j*pix)
       ;; Along vertical left
-      vidcube[*, 0:dd, ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = tickcolor
+      rgbcube[*, 0:dd, ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = tickcolor
       ;; Along vertical right
-      vidcube[*, ((Nx-1-dd) >0):(Nx-1), ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = tickcolor
+      rgbcube[*, ((Nx-1-dd) >0):(Nx-1), ((y-thickness/2) >0):((y+thickness/2) <(Ny-1)), *] = tickcolor
     endfor                      ; j
   endif
 
   ;; Write the video
-  write_video, outfile, vidcube, video_fps = fps, bit_rate = bit_rate 
+  write_video, outfile, rgbcube, video_fps = fps, bit_rate = bit_rate 
   
 end
 
