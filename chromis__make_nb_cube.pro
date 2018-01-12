@@ -31,9 +31,9 @@
 ; 
 ; :Keywords:
 ; 
-;     clips_cont : in, optional, type=array
+;     clips : in, optional, type=array
 ;
-;       Used to compute stretch vectors for the continuum alignment.
+;       Used to compute stretch vectors for the wideband alignment.
 ;
 ;     cmap_fwhm : in, type=float, default=7
 ;   
@@ -60,9 +60,9 @@
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
-;     tiles_cont : in, optional, type=array
+;     tiles : in, optional, type=array
 ;
-;       Used to compute stretch vectors for the continuum alignment. 
+;       Used to compute stretch vectors for the wideband alignment. 
 ;
 ;     verbose : in, optional, type=boolean
 ;
@@ -94,14 +94,14 @@
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
-                           , clips_cont = clips_cont $
+                           , clips = clips $
                            , cmap_fwhm = cmap_fwhm $
                            , integer = integer $
                            , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , notimecor = notimecor $
                            , overwrite = overwrite $
-                           , tiles_cont = tiles_cont $
+                           , tiles = tiles $
                            , verbose = verbose 
 
   
@@ -109,11 +109,11 @@ pro chromis::make_nb_cube, wcfile $
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   ;; Temporarily disable cavity maps by default, can still be be
-  ;; written with explicit nocavitymap=0.
+  ;; written (experimentally) with explicit nocavitymap=0.
   if n_elements(nocavitymap) eq 0 then nocavitymap = 1
   
   ;; Make prpara
-  red_make_prpara, prpara, clips_cont         
+  red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, noaligncont 
@@ -121,14 +121,14 @@ pro chromis::make_nb_cube, wcfile $
   red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, overwrite
-  red_make_prpara, prpara, tiles_cont        
+  red_make_prpara, prpara, tiles        
   red_make_prpara, prpara, wcfile
 
   ;; Default keywords
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
-  if n_elements(tiles_cont) eq 0 or n_elements(clips_cont) eq 0 then begin
-    tiles_cont = [8, 16, 32, 64, 128]
-    clips_cont = [8, 4,  2,  1,  1  ]
+  if n_elements(tiles) eq 0 or n_elements(clips) eq 0 then begin
+    tiles = [8, 16, 32, 64, 128]
+    clips = [8, 4,  2,  1,  1  ]
   endif
 
 
@@ -680,7 +680,7 @@ pro chromis::make_nb_cube, wcfile $
       ;; Get destretch to anchor camera (residual seeing)
       if wbcor then begin
         wwi = (red_readdata(scan_wbfiles[iwav]))[x0:x1, y0:y1]
-        grid1 = red_dsgridnest(wb, wwi, tiles_cont, clips_cont)
+        grid1 = red_dsgridnest(wb, wwi, tiles, clips)
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
