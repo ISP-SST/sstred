@@ -79,6 +79,8 @@
 ; 
 ;    2018-01-10 : MGL. First version.
 ; 
+;    2018-01-12 : MGL. Use subroutine red_fitscube_getframe rather
+;                 than method fitscube_getframe.
 ; 
 ;-
 pro red::fitscube_video, infile $
@@ -131,7 +133,7 @@ pro red::fitscube_video, infile $
   vidcube = dblarr([1, Nx, Ny, Nframes])
 
   for iframe = 0, Nframes-1 do begin
-    self -> fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iframe
+    red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iframe
     vidcube[0, *, *, iframe] = frame
   endfor                        ; iframe
 

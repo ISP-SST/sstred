@@ -85,6 +85,9 @@
 ;                 Renamed keyword corners to roi and changed the order
 ;                 of elements.
 ; 
+;    2018-01-12 : MGL. Use subroutine red_fitscube_getframe rather
+;                 than method fitscube_getframe.
+; 
 ; 
 ;-
 pro red::fitscube_crop, infile $
@@ -160,48 +163,48 @@ pro red::fitscube_crop, infile $
   ;; array.
   case 1 of
     n_elements(iscan) ne 0 and n_elements(istokes) ne 0 and n_elements(ituning) ne 0 : begin
-      self -> fitscube_getframe, infile, dispim $
-                                 , ituning = ituning $
-                                 , istokes = istokes $
-                                 , iscan = iscan
+      red_fitscube_getframe, infile, dispim $
+                             , ituning = ituning $
+                             , istokes = istokes $
+                             , iscan = iscan
     end
     n_elements(iscan) ne 0 and n_elements(istokes) ne 0 : begin
       dispim = 0.0
       for ituning = 0, naxis[2]-1 do begin
-        self -> fitscube_getframe, infile, thisframe $
-                                   , ituning = ituning $
-                                   , istokes = istokes $
-                                   , iscan = iscan
+        red_fitscube_getframe, infile, thisframe $
+                               , ituning = ituning $
+                               , istokes = istokes $
+                               , iscan = iscan
         dispim += thisframe
       endfor                    ; ituning
     end
     n_elements(iscan) ne 0 and n_elements(ituning) ne 0 : begin
       dispim = 0.0
       for istokes = 0, naxis[3]-1 do begin
-        self -> fitscube_getframe, infile, thisframe $
-                                   , ituning = ituning $
-                                   , istokes = istokes $
-                                   , iscan = iscan
+        red_fitscube_getframe, infile, thisframe $
+                               , ituning = ituning $
+                               , istokes = istokes $
+                               , iscan = iscan
         dispim += thisframe
       endfor                    ; istokes
     end
     n_elements(istokes) ne 0 and n_elements(ituning) ne 0 : begin
       dispim = 0.0
       for iscan = 0, naxis[4]-1 do begin
-        self -> fitscube_getframe, infile, thisframe $
-                                   , ituning = ituning $
-                                   , istokes = istokes $
-                                   , iscan = iscan
+        red_fitscube_getframe, infile, thisframe $
+                               , ituning = ituning $
+                               , istokes = istokes $
+                               , iscan = iscan
         dispim += thisframe
       endfor                    ; iscan
     end
     keyword_set(nospectral) : begin
       dispim = 0.0
       for iscan = 0, naxis[4]-1 do begin
-        self -> fitscube_getframe, infile, thisframe $
-                                   , ituning = ituning $
-                                   , istokes = istokes $
-                                   , iscan = iscan
+        red_fitscube_getframe, infile, thisframe $
+                               , ituning = ituning $
+                               , istokes = istokes $
+                               , iscan = iscan
         dispim += thisframe
       endfor                    ; iscan
     end
@@ -236,7 +239,7 @@ pro red::fitscube_crop, infile $
   Nframes = round(product(dims[2:*]))
   for iframe = 0, Nframes-1 do begin
     red_progressbar, iframe, Nframes, /predict, 'Copying cropped frames'
-    self -> fitscube_getframe, infile, frame, iframe = iframe
+    red_fitscube_getframe, infile, frame, iframe = iframe
     frame = frame[roi[0]:roi[1], roi[2]:roi[3]]
     self -> fitscube_addframe, fileassoc, temporary(frame), iframe = iframe
   endfor                        ; iframe
