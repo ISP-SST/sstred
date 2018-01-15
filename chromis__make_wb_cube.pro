@@ -382,7 +382,7 @@ pro chromis::make_wb_cube, dir $
   endfor                        ; iscan
 
   ;; Prepare for making output file names
-  odir = self.out_dir + '/wb_cubes/'
+  odir = self.out_dir + '/cubes_wb/'
   file_mkdir, odir
   midpart = prefilter + '_' + datestamp + '_scans=' $
             + red_collapserange(uscans, ld = '', rd = '')

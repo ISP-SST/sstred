@@ -285,7 +285,7 @@ pro chromis::make_nb_cube, wcfile $
   nbfiles = pertuningfiles[nbindx]
   
   ;; Prepare for making output file names
-  if(n_elements(odir) eq 0) then odir = self.out_dir + '/nb_cubes/' 
+  if(n_elements(odir) eq 0) then odir = self.out_dir + '/cubes_nb/' 
   midpart = prefilter + '_' + datestamp + '_scans=' $ 
             + red_collapserange(uscans, ld = '', rd = '')
   if keyword_set(integer) then begin
