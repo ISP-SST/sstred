@@ -47,6 +47,9 @@
 ;    2017-10-18 : MGL. WCS related file header keywords moved here
 ;                 from fitscube_initialize method. New keyword
 ;                 dimensions. 
+;
+;    2018-01-16 : MGL. Allow for degenerate trailing dimensions of
+;                 scan-only cubes.
 ; 
 ;-
 pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
@@ -65,15 +68,32 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   Nydims = n_elements(ydims)
   Nwdims = n_elements(wdims)
   Ntdims = n_elements(tdims)
+
+  ;; Degenerate trailing dimensions?
+  if Nxdims eq 3 then begin
+    xdims = [xdims, 1]
+    Nxdims = n_elements(xdims)
+  endif
+  if Nydims eq 3 then begin
+    ydims = [ydims, 1]
+    Nydims = n_elements(ydims)
+  endif
+  if Nwdims eq 3 then begin
+    wdims = [wdims, 1]
+    Nwdims = n_elements(wdims)
+  endif
+  if Ntdims eq 3 then begin
+    tdims = [tdims, 1]
+    Ntdims = n_elements(tdims)
+  endif
   
   indx0 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 0, N0)
+  indx3 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 3, N3)
   indx4 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 4, N4)
   
   ;; At least one of the arrays have to be non-scalar. Any non-scalars
-  ;; must have the same dimensions: (2 x 2 x Ntunes x Nscans). (Maybe
-  ;; we have to allow for degenerate trailing dimensions for scan-only
-  ;; cubes?)
-  if N0+N4 ne 4 or N4 eq 0 then begin
+  ;; must have the same dimensions: (2 x 2 x Ntunes x Nscans).
+  if N0+N4 ne 4 || N4 eq 0 then begin
     print, inam + ' : At least one of the arrays has the wrong dimensions.'
     help, wcs
     stop
