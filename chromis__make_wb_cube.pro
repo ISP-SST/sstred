@@ -150,7 +150,6 @@ pro chromis::make_wb_cube, dir $
  
   ;; Make prpara
   red_make_prpara, prpara, dir
-  red_make_prpara, prpara, blur
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
   red_make_prpara, prpara, negang
