@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Make a FITS data cubes with momfbd-restored images, one scan per file.
+; Make FITS data cubes with momfbd-restored images, one scan per file.
 ; 
 ; :Categories:
 ;
