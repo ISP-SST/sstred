@@ -130,13 +130,13 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   ;; We don't want to tabulate WAVE and/or TIME if the dimension is
   ;; just 1 long, then no tabulation needed.
   TabulateWave = Sw gt 1
-  TabulateTime = St gt 1
+  TabulateTime = St gt 1 || Sw gt 1
   ;; We don't want to write the index arrays for WAVE and TIME if the
   ;; coordinate is not tabulated, or there is exactly one coordinate
   ;; tabulated for each pixel because then the default index array
   ;; works.
-  WriteWaveIndex = TabulateWave and (Sw ne Ntuning)
-  WriteTimeIndex = TabulateTime and (St ne Nscans)
+  WriteWaveIndex = TabulateWave && (Sw ne Ntuning)
+  WriteTimeIndex = TabulateTime && (St ne Nscans || Sw ne Ntuning)
 
   ;; An array to store the coordinates: wcs_coordinates. First
   ;; dimension is the number of tabulated coordinates, then follow the
@@ -148,14 +148,14 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   colno = 0
 
   case 1 of
-    TabulateWave and TabulateTime : begin
+    TabulateWave && TabulateTime : begin
       ;; Both WAVE and TIME
       wcs_coords[colno++, *, *, *, *] = wcs.hpln
       wcs_coords[colno++, *, *, *, *] = wcs.hplt
       wcs_coords[colno++, *, *, *, *] = wcs.wave
       wcs_coords[colno++, *, *, *, *] = wcs.time
     end
-    TabulateWave or TabulateTime : begin
+    TabulateWave || TabulateTime : begin
       ;; WAVE or TIME but not both
       wcs_coords[colno++, *, *, *] = wcs.hpln
       wcs_coords[colno++, *, *, *] = wcs.hplt
@@ -265,7 +265,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   ;; Scan number = repetition = major time dimension. But time varies
   ;; during scans as well, so we can only avoid tabulating if both St
   ;; and Sw are unity.
-  if TabulateTime or TabulateWave then begin
+  if TabulateTime || TabulateWave then begin
     red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE5', 'UTC--TAB', 'Time, function of tuning and scan number' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CNAME5', 'Time since DATEREF, increases with dim. 3 and 5' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT5', 's' 
