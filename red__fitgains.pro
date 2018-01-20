@@ -171,11 +171,6 @@ pro red::fitgains, npar = npar $
   red_make_prpara, prpara, nthreads
   red_make_prpara, prpara, ifit
   red_make_prpara, prpara, all
-  red_make_prpara, prpara, 
-  red_make_prpara, prpara, 
-  red_make_prpara, prpara, 
-  red_make_prpara, prpara, 
-  red_make_prpara, prpara, 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
