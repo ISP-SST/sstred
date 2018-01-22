@@ -72,6 +72,9 @@
 ; 
 ;     2017-10-24 : MGL. Replace keyword clock with a common block. 
 ; 
+;     2018-01-22 : MGL. Allow not calling red_progressbar for every
+;                  iteration. 
+; 
 ; 
 ;-
 pro red_progressbar, i, N, message $
@@ -79,7 +82,18 @@ pro red_progressbar, i, N, message $
                      , nobar = nobar $
                      , predict = predict
 
-  common red_progressbar_common, clock
+  common red_progressbar_common, clock, times, iterations, icnt
+
+  ;; Initialize
+  if i eq 0 or n_elements(clock) eq 0 then begin
+
+    clock = tic()
+    icnt = i
+
+    times = dblarr(N)
+    iterations = lindgen(N)
+    
+  endif  
   
   if n_elements(message) eq 0 then message = 'Progress'
   bb = string(13B)              ; CR w/o LF
@@ -90,46 +104,53 @@ pro red_progressbar, i, N, message $
     else: norm = 100. / (N - 1.0)  
   endcase
 
-  percentdone = norm * i
-
-  if i eq 0 or n_elements(clock) eq 0 then begin
-    ;; Remember starting time
-    clock = { start:tic(), times:dblarr(N) }
-  endif
-  clock.times[i] = toc(clock.start)
-  time = clock.times[i]
+  if i eq N-1 then percentdone = 100. else percentdone = norm * i
+  prediction = '' 
 
   if keyword_set(predict) and i gt 1 then begin
-    dt = median(deriv(clock.times[0:i]))
-    time_remaining = (N-i) * dt
-    prediction = ' ('+red_timestring(round(time_remaining), Nsecdec = 0, /interval)+' remaining)' 
-  endif else prediction = '' 
-  time = 'in ' + red_timestring(round(time), Nsecdec = 0, /interval) + prediction
 
-  outlength = (TERMINAL_SIZE( ))[0] ; Base output length on terminal width
-  outline = string(replicate(32B, outlength))
-  
-  if n_elements(barlength) eq 0 then barlength = 20
-  if keyword_set(nobar) then begin
+    times[i] = toc(clock)
+    iterations[i] = i
+    
+    indx = where(times ne 0.0, Ntimed)
+    if Ntimed gt 1 then begin
+      
+      dt = median( (times[indx[1:*]]-times[indx[0:Ntimed-2]]) / (iterations[indx[1:*]]-iterations[indx[0:Ntimed-2]]) )
+      
+      
+      time_remaining = (N-i) * dt
+      
+      prediction = ' ('+red_timestring(round(time_remaining), Nsecdec = 0, /interval)+' remaining)'
+    endif
+    
+    time = 'in ' + red_timestring(round(toc(clock)), Nsecdec = 0, /interval) + prediction
 
-    strput, outline, string( message + ' -> ' $
-           , percentdone, '% ' + time + '   ', FORMAT = '(A,F5.1,A,$)')
-
-  endif else begin
-
-    time += ': '
-
-    elength = floor(norm*i/100.*barlength)
-    mlength = barlength-elength
-    bar = ''
-    if elength gt 0 then bar += string(replicate(61B, elength))     ; Replicated '='
-    if mlength gt 0 then bar += string(replicate(45B, mlength))     ; Replicated '-'
-    strput, outline, string('[' + bar + '] ' $
-           , percentdone, '% ' + time + message + '   ', FORMAT = '(A,F5.1,A,$)')
-
-  endelse
-
-  print, bb, outline, FORMAT = '(A,A,$)'
+    outlength = (TERMINAL_SIZE( ))[0] ; Base output length on terminal width
+    outline = string(replicate(32B, outlength))
+    
+    if n_elements(barlength) eq 0 then barlength = 20
+    if keyword_set(nobar) then begin
+      
+      strput, outline, string( message + ' -> ' $
+                               , percentdone, '% ' + time + '   ', FORMAT = '(A,F5.1,A,$)')
+      
+    endif else begin
+      
+      time += ': '
+      
+      elength = floor(percentdone/100*barlength)
+      mlength = barlength-elength
+      bar = ''
+      if elength gt 0 then bar += string(replicate(61B, elength)) ; Replicated '='
+      if mlength gt 0 then bar += string(replicate(45B, mlength)) ; Replicated '-'
+      strput, outline, string('[' + bar + '] ' $
+                              , percentdone, '% ' + time + message + '   ', FORMAT = '(A,F5.1,A,$)')
+      
+    endelse
+    
+    print, bb, outline, FORMAT = '(A,A,$)'
+    
+  endif  
   
   if i eq N-1 then begin
     undefine, clock
@@ -138,14 +159,18 @@ pro red_progressbar, i, N, message $
 
 end
 
-N=500
+
+N=50000
 ;for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock & wait,.1 & end    
 ;for i=0,N-1 do begin red_progressbar,i,N,'Test' & wait,.1 & end
 ;for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /nobar& wait,.1 & end    
 ;for i=0,N-1 do begin red_progressbar,i,N,'Test', /nobar & wait,.1 & end
 
+for i=0,N-1 do begin & if i mod 100 eq 0 or i eq N-1 then red_progressbar,i,N,'Test', /predict & wait,.001 & end    
 
-for i=0,N-1 do begin red_progressbar,i,N,'Test', /predict & wait,.1 & end    
+
+
+for i=0,N-1 do begin red_progressbar,i,N,'Test', /predict & wait,.001 & end    
 ;for i=0,N-1 do begin red_progressbar,i,N,'Test',clock=clock, /predict & wait,.1 & end    
 
 end
