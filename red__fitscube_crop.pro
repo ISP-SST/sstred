@@ -304,16 +304,17 @@ pro red::fitscube_crop, infile $
       ;; Note that the strarr wfiles cannot be read by fxbreadm!
       fxbread, bunit, rWFILES, 'WFILES', 1
       fxbclose, bunit
+      wfiles_col = where(strtrim(fxpar(bbhdr,'TTYPE*'),2) eq 'WFILES')+1
       
       ;; Change rX01Y01 = [x0,x1,y0,y1] due to cropping
       cX01Y01 = rX01Y01[[0, 0, 2, 2]] + roi
 
       ;; Write the extension
-      fxbcreate, bunit, outfile, bhdr
+      fxbcreate, bunit, outfile, bbhdr
       fxbwritm, bunit $
                 , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
                 ,  rANG,  rCROP,  rFF,  rGRID,  rND,  rSHIFT,  rTMEAN,  cX01Y01
-      fxbwrite, bunit, wfiles, wfiles_col, 1
+      fxbwrite, bunit, rWFILES, wfiles_col, 1
       fxbfinish, bunit
       
     endif
