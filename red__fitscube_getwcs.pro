@@ -79,7 +79,11 @@ pro red::fitscube_getwcs, filename $
   if TabulateHPLN then i_hpln = (where(strmatch(coord_names,'HPLN')))[0]
   if TabulateHPLT then i_hplt = (where(strmatch(coord_names,'HPLT')))[0]
   if TabulateWAVE then i_wave = (where(strmatch(coord_names,'WAVE')))[0]
-  if TabulateTIME then i_time = (where(strmatch(coord_names,'TIME')))[0]
+  if TabulateTIME then begin
+    i_time = (where(strmatch(coord_names,'TIME')))[0]
+    if i_time eq 3 and n_elements(coord_dims) eq 3 then coord_dims = [coord_dims, 1]
+  endif
+
 
   if TabulateHPLN then N_hpln = coord_dims[i_hpln] else N_hpln = 1
   if TabulateHPLT then N_hplt = coord_dims[i_hplt] else N_hplt = 1
