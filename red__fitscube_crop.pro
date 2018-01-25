@@ -250,7 +250,9 @@ pro red::fitscube_crop, infile $
   hpl_dims = size(wcs_coord.hplt, /dim)
   xx = roi[[[0,1],[0,1]]]/float(Naxis[0]-1)
   yy = roi[[[2,2],[3,3]]]/float(Naxis[1]-1)
-  for i_wave = 0, hpl_dims[2]-1 do for i_time = 0, hpl_dims[3]-1 do begin
+  Ntun = hpl_dims[2]
+  if n_elements(hpl_dims) le 3 then Nscans = 0 else Nscans = hpl_dims[3]
+  for i_wave = 0, Ntun-1 do for i_time = 0, Nscans-1 do begin
     wcs_coord[i_wave, i_time].hpln = interpolate(old_wcs_coord[i_wave, i_time].hpln, xx, yy)
     wcs_coord[i_wave, i_time].hplt = interpolate(old_wcs_coord[i_wave, i_time].hplt, xx, yy)
   endfor                        ; iwave, itime
@@ -319,19 +321,33 @@ pro red::fitscube_crop, infile $
       
     endif
     
-    ;; Copy any other binary extensions
-    if fcb.xtension[iext] eq 'BINTABLE' then begin
-      print, inam + ' : Copying extension '+ fcb.extname[iext]
-      red_fits_copybinext, infile, outfile, fcb.extname[iext]
-      if n_elements(flipfile) ne 0 then $
-         red_fits_copybinext, infile, flipfile, fcb.extname[iext]
-      continue                  ; Next extension
-    endif
-
-    ;; Extensions that we dont' know how to handle:
-    print, inam + ' : Can only copy binary extensions.'
-    print, fcb.xtension[iext]
-    stop
+    ;; Copy other extensions
+    case fcb.xtension[iext] of
+      'BINTABLE' : begin
+        print, inam + ' : Copying extension '+ fcb.extname[iext]
+        red_fits_copybinext, infile, outfile, fcb.extname[iext]
+        if n_elements(flipfile) ne 0 then $
+           red_fits_copybinext, infile, flipfile, fcb.extname[iext]
+      end
+      'IMAGE' : begin
+        if fcb.extname[iext] eq 'WBIMAGE' then begin
+          extim = readfits(infile, ehdr, ext = iext)
+          ;; Crop also the image extension
+          extim = extim[roi[0]:roi[1], roi[2]:roi[3]]
+          check_fits, extim, ehdr, /update
+          fxaddpar, ehdr, 'DATE', red_timestamp(/utc, /iso)
+          ;; Should add a PRPARA processing step for cropping in ehdr?
+          ;; Or is it enough that the main header shows the cropping?
+          writefits, outfile, extim, ehdr, /append
+        endif else stop
+      end
+      else : begin
+        ;; Extensions that we dont' know how to handle:
+        print, inam + ' : Can only copy binary extensions.'
+        print, fcb.xtension[iext]
+        stop
+      end
+    endcase
     
   endfor                        ; iext
 
