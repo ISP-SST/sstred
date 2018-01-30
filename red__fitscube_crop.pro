@@ -208,6 +208,10 @@ pro red::fitscube_crop, infile $
         dispim += thisframe
       endfor                    ; iscan
     end
+    else : begin
+      ;; If the keywords gave no clue, default to the first frame. 
+      red_fitscube_getframe, infile, dispim
+    end
   endcase
   tmp = red_crop(dispim $
                  , centered = centered $
