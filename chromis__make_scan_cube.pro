@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Make FITS data cubes with momfbd-restored images, one scan per file.
+; Make FITS data cubes with momfbd-restored narrowband images, one
+; scan per file.
 ; 
 ; :Categories:
 ;
@@ -61,6 +62,9 @@
 ;    2018-01-19 : MGL. First version, based on code from
 ;                 chromis::make_wb_cube and chromis::make_nb_cube.
 ; 
+;    2018-01-30 : MGL. Add the corresponding wideband image in an
+;                 image extension.
+; 
 ;-
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
@@ -83,9 +87,11 @@ pro chromis::make_scan_cube, dir $
   
   ;; Make prpara
   red_make_prpara, prpara, dir
+  red_make_prpara, prpara, autocrop
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop     
-  red_make_prpara, prpara, integer
+  red_make_prpara, prpara, integer  
+  red_make_prpara, prpara, interactive
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap    
   red_make_prpara, prpara, overwrite
@@ -477,7 +483,6 @@ pro chromis::make_scan_cube, dir $
     if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
 
     nbhdr = red_readhead(scan_nbfiles[0]) ; Use for main header
-    wbhdr = red_readhead(scan_wbfiles[0]) ; Use for header of wb data extension?
     
     ;; Make FITS header for the NB cube
     hdr = nbhdr                 ; Start with the NB cube header
@@ -547,7 +552,7 @@ pro chromis::make_scan_cube, dir $
     
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
-    wb = (red_readdata(wfiles[iscan]))[x0:x1, y0:y1]
+    wbim = (red_readdata(wfiles[iscan], head = wbhdr))[x0:x1, y0:y1]
     
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
@@ -601,7 +606,7 @@ pro chromis::make_scan_cube, dir $
       ;; Get destretch to anchor camera (residual seeing)
       if wbcor then begin
         wwi = (red_readdata(scan_wbfiles[iwav]))[x0:x1, y0:y1]
-        grid1 = red_dsgridnest(wb, wwi, tile, clip)
+        grid1 = red_dsgridnest(wbim, wwi, tile, clip)
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
@@ -702,7 +707,21 @@ pro chromis::make_scan_cube, dir $
                                     , 'NSUMEXP', comment = 'Number of summed exposures' $
                                     , nsum_array, keyword_value = mean(nsum_array) $
                                     , axis_numbers = [3]
-    
+
+
+    ;; Include the global WB image as an image extension
+    ehdr=wbhdr
+    fxaddpar, ehdr, 'XTENSION', 'IMAGE'
+    sxdelpar, ehdr, 'SIMPLE'
+    check_fits, wbim, ehdr, /update
+    fxaddpar, ehdr, 'DATE', red_timestamp(/utc, /iso)
+    anchor = 'DATE'
+    red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'WBIMAGE', 'Wideband image'
+    red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
+    red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
+    writefits, filename, wbim, ehdr, /append
+
+    ;; Done with this scan.
     print, inam + ' : Narrowband cube stored in:'
     print, filename
     
