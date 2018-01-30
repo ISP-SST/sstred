@@ -81,8 +81,12 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
       endfor                    ; isubf_x, isubf_y
     endfor                      ; ifile
 
-    subf_detect = total(subf_stddev*subf_median^2, 3)
-
+    if size(subf_stddev, /n_dim) eq 2 then begin
+      subf_detect = subf_stddev*subf_median^2
+    endif else begin
+      subf_detect = total(subf_stddev*subf_median^2, 3)
+    endelse
+    
     ;; Try removing subfields in X first because it's the longest dimension
     subf_detect_x = max(subf_detect/median(subf_detect),dim=2)
     i0 = -1
