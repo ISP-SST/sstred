@@ -50,7 +50,9 @@
 ;    fileassoc : out, type="file assoc variable"
 ;
 ;       An assoc variable that can be used to write (and read!) data
-;       slices. 
+;       slices.
+;
+; :Keywords:
 ;
 ;    tabhdu : in, type=struct
 ; 

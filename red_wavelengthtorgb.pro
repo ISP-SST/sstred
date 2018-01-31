@@ -20,7 +20,9 @@
 ; 
 ; :Params:
 ; 
-;    lambda : Wavelength in nm.
+;    lambda : in, optional, type=float
+;
+;       Wavelength in nm.
 ; 
 ; :Keywords:
 ; 

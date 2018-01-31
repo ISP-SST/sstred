@@ -58,10 +58,6 @@
 ;       Run in developer mode.
 ; 
 ; 
-; :Dependencies:
-;
-;    The external C++ module must be compiled and the system variable
-;    CREDUC point to creduc.so.
 ;
 ; 
 ; :History:

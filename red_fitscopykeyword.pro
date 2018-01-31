@@ -33,7 +33,9 @@
 ; 
 ; :Keywords:
 ; 
-;     Any keywords are used when calling red_fitsaddkeyword.
+;     _ref_extra : in, optional
+;
+;        Any keywords are used when calling red_fitsaddkeyword.
 ; 
 ; :History:
 ; 

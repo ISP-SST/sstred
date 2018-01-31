@@ -30,7 +30,7 @@
 ; 
 ; :Params:
 ; 
-;    strings : in, type=strarr
+;    metaname : in, type=strarr
 ;   
 ;      A list of strings to translate to SOLARNET keywords
 ;   
@@ -50,43 +50,43 @@
 ; 
 function red_keytab, metaname
 
-compile_opt idl2
+  compile_opt idl2
 
 ; did you pass me strings?
-if size(metaname,/type) ne 7 then message,'Input must be type string (array)'
+  if size(metaname,/type) ne 7 then message,'Input must be type string (array)'
 
-nstr = n_elements(metaname)
+  nstr = n_elements(metaname)
 
-fitsname = metaname
+  fitsname = metaname
 
 ;; The translation table.
 ;; Add your own translations here.
-keyword_translator_table = [['cam',         'CAMERA'  ],$
-                            ['camera',      'CAMERA'  ],$
-                            ['camtag',      'DETECTOR'],$
-                            ['detector',    'DETECTOR'],$
-                            ['frame',       'FRAMENUM'],$
-                            ['framenumber', 'FRAMENUM'],$
-                            ['pref',        'FILTER1' ],$
-                            ['prefilter',   'FILTER1' ],$
-                            ['camdir',      'CAMERA'  ],$
-                            ['old_channel', 'INSTRUME'],$
-                            ['instrume',    'INSTRUME'],$
-                            ['scan',        'SCANNUM' ],$
-                            ['scannumber',  'SCANNUM' ]]
+  keyword_translator_table = [['cam',         'CAMERA'  ],$
+                              ['camera',      'CAMERA'  ],$
+                              ['camtag',      'DETECTOR'],$
+                              ['detector',    'DETECTOR'],$
+                              ['frame',       'FRAMENUM'],$
+                              ['framenumber', 'FRAMENUM'],$
+                              ['pref',        'FILTER1' ],$
+                              ['prefilter',   'FILTER1' ],$
+                              ['camdir',      'CAMERA'  ],$
+                              ['old_channel', 'INSTRUME'],$
+                              ['instrume',    'INSTRUME'],$
+                              ['scan',        'SCANNUM' ],$
+                              ['scannumber',  'SCANNUM' ]]
 
-    for i = 0, nstr-1 do begin
-        
-        test = strlowcase(metaname[i])
-        
-        idx = where(keyword_translator_table[0,*] eq test,cnt)
-        
-        if cnt eq 1 then fitsname[i] = keyword_translator_table[1,idx] $
-        else message,'Translation error, no unambiguous keyword translation found.'
+  for i = 0, nstr-1 do begin
     
-    endfor
+    test = strlowcase(metaname[i])
+    
+    idx = where(keyword_translator_table[0,*] eq test,cnt)
+    
+    if cnt eq 1 then fitsname[i] = keyword_translator_table[1,idx] $
+    else message,'Translation error, no unambiguous keyword translation found.'
+    
+  endfor
 
-    return,fitsname
+  return,fitsname
 
 end
 

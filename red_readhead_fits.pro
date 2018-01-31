@@ -22,7 +22,9 @@
 ;    fname : in, type=string
 ;
 ;       The name of the data file.
-; 
+;
+; :Keywords:
+;
 ;    date_beg : out, type=strarr
 ;
 ;       The timestamps for exposure start.

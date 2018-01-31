@@ -16,33 +16,33 @@
 ; 
 ; :Keywords:
 ; 
-;  top_info_strings : in, optional, type=strarr
+;   top_info_strings : in, optional, type=strarr
 ; 
 ;      Lines of text that will appear near the top of the log file. 
 ; 
 ; 
-;  mid_info_strings : in, optional, type=strarr
+;   mid_info_strings : in, optional, type=strarr
 ; 
 ;      Lines of text that will appear in the middle the log file,
 ;      after the parameters and before the git info. 
 ; 
 ; 
-;  bottom_info_strings : in, optional, type=strarr
+;   bottom_info_strings : in, optional, type=strarr
 ; 
 ;      Lines of text that will appear at the bottom of the log file. 
 ; 
 ; 
-;  self_info : in, optional, type=strarr
+;   selfinfo : in, optional, type=strarr
 ; 
 ;      Structure of the form { parameter_name1:parameter_value1,
 ;      parameter_name2:parameter_value2, ...}. Will be pretty printed
 ;      into the log file. 
 ; 
-;  logfile : in, out, optional, type=string
+;   logfile : in, out, optional, type=string
 ; 
 ;      The name (including path) of the log file.
 ; 
-;  add : in, optional, type=boolean
+;   add : in, optional, type=boolean
 ; 
 ;      Set this to add info to an already existing logfile. The
 ;      contents of the keywords *_info_strings will be used, in order.
@@ -50,7 +50,7 @@
 ; 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-08-23 : MGL. First version.
 ; 

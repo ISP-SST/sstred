@@ -23,7 +23,7 @@
 ; 
 ; :Keywords:
 ; 
-;     clips : in, optional, type=array
+;     clip : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
 ;
@@ -43,16 +43,12 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
-;     notimecor : in, optional, type=boolean
-;
-;       Skip temporal correction of intensities.
-;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
-;     tiles : in, optional, type=array
+;     tile : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
@@ -69,6 +65,7 @@
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
                              , clip = clip $
+                             , cmap_fwhm = cmap_fwhm $
                              , crop = crop $
                              , integer = integer $
                              , interactive = interactive $

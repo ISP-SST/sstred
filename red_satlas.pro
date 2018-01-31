@@ -62,16 +62,6 @@
 ;     
 ;       Set this to get output in SI units.
 ;     
-;    conversion_cgs : out, optional, type=fltarr
-;
-;       The conversion factor that transforms the spectrum (and cont)
-;       to CGS units.
-;
-;    conversion_si : out, optional, type=fltarr
-;
-;       The conversion factor that transforms the spectrum (and cont)
-;       to SI units.
-;   
 ; 
 ; 
 ; :History:

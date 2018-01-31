@@ -19,9 +19,9 @@
 ; 
 ; :Params:
 ; 
-;    hdr : in, type=string array
+;    dirty_hdr : in, type=strarr
 ;
-;       The header, string array(36) from a FITS file.
+;       The header from a FITS file.
 ;
 ; :Keywords:
 ;

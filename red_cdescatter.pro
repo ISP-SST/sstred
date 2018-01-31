@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -37,13 +37,13 @@
 ;   
 ;      Number of threads to use.
 ;   
-;    verbose  : in, optional, boolean
+;    verbose  : in, optional, type=boolean
 ;   
 ;      Set this to get verbose info about what's going on.
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 

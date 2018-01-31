@@ -34,15 +34,14 @@
 ;   
 ;   
 ;   
-;    lc  : 
+;    sumlc  : 
 ;   
 ;   
 ;   
-;    psf  : 
+;    psfw  : 
 ;   
 ;   
 ;   
-;    nthreads : 
 ;   
 ;   all : in, optional, type=boolean
 ;   

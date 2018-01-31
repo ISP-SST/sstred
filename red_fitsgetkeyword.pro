@@ -28,17 +28,13 @@
 ;        If strarr: The FITS header. See documentation for fxpar.
 ;        If string: The file name.
 ; 
-; 
-; :Keywords:
-; 
 ;     name : in, type=string
 ;     
 ;        The name of the keyword. See documentation for fxpar.  
 ;     
-;     value : in
-;     
-;        Value for the added parameter. See documentation for fxaddpar. 
-;     
+; 
+; :Keywords:
+; 
 ;     comment : out, optional, type=string
 ;     
 ;        A comment. See documentation for fxaddpar. 

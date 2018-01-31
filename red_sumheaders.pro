@@ -4,6 +4,9 @@
 ; Calculates the combined FITS header for files summed with
 ; red_sumfiles or rdx_sumfiles or by momfbd processing.
 ; 
+; If any of the time_* keywords is not supplied, the headers will be
+; parsed instead.
+; 
 ; :Categories:
 ;
 ;    SST pipeline
@@ -56,9 +59,6 @@
 ;      
 ;      The average time for the summed burst.
 ;
-;    If any of the time_* keywords is not supplied, the headers will be
-;    parsed instead.
-; 
 ; :History:
 ; 
 ;    2017-03-13 : MGL. First version.

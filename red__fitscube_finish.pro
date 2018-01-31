@@ -18,7 +18,7 @@
 ; 
 ; :Params:
 ; 
-;    ilun : in, type=integer
+;    lun : in, type=integer
 ; 
 ;      The logical unit number of the fitscube file to finish.
 ; 

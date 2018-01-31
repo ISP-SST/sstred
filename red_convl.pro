@@ -8,42 +8,43 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Jaime de la Cruz Rodriguez (ISP-KVA 2010)
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
 ; 
-;   A : in, 
+;   A : in
 ;   
 ;      The "function" A. A is padded to n_elements(B)/2+2 points.
 ;   
-;   B : 
+;   B : in
 ;   
 ;      The "kernel". Must be on the same grid as A.
 ;   
 ; 
 ; :Keywords:
 ; 
-;   plot : in, boolean
+;   plot : in, type=boolean
 ;   
 ;     Set this to make a plot.
 ;   
-;   usefft : in, boolean
+;   usefft : in, type=boolean
 ;   
 ;     Set this to use FFT, otherwise use convol() from IDL.
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
-;   2014-01-07 : PS red_legend -> al_legend (from astron)
+;   2014-01-07 : PS. red_legend -> al_legend (from astron)
+;
 ;-
 function red_convl, A, B, plot=plot, usefft=usefft
 

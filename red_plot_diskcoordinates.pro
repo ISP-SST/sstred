@@ -15,7 +15,7 @@
 ; 
 ; :Params:
 ; 
-;   diskpos : in, type=fltarr(2,Npoints)
+;   diskpos : in, type="fltarr(2,Npoints)"
 ; 
 ;      The disk position coordinates X=diskpos[0,*], Y=diskpos[1,*].
 ;      Assumed to be normalized to unit solar radius, unless Rsun is
@@ -40,7 +40,7 @@
 ; 
 ;      Set this to overplot an existing plot.
 ;
-;   indx :  in, optional, type=array(Npoints)
+;   indx :  in, optional, type="array(Npoints)"
 ;   
 ;      Plot only diskpos[*,indx].
 ; 

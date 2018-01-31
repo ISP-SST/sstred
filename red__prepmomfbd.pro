@@ -24,7 +24,7 @@
 ;   
 ;      The size of MOMFBD subfields.
 ;   
-;    modes : in, optional, type=string, default= '2-45,50,52-55,65,66'
+;    modes : in, optional, type=string, default="'2-45,50,52-55,65,66'"
 ;   
 ;      The modes to include in the expansions of the wavefront phases.
 ;   
@@ -98,7 +98,7 @@
 ;      constructing the grid of MOMFBD subfields.
 ;
 ;
-;    extraclip : in, optional, type=intarr(4), default=[0,0,0,0]
+;    extraclip : in, optional, type="intarr(4)", default="[0,0,0,0]"
 ; 
 ;      A margin (in pixels) to apply to the FOV edges of the reference
 ;      channel when calculating the largest common FOV. The order is

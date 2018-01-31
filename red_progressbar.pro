@@ -38,11 +38,6 @@
 ;
 ;       The length of the status bar in number of characters.
 ;
-;    clock : in, out, optional, type=struct
-;
-;       Remember the 'tic/toc' clock in this variable and use it when
-;       finishing.
-;
 ;    predict : in, optional, type=boolean
 ;
 ;       Print a prediction for the remaining time. Does nothing if the

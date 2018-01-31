@@ -49,10 +49,6 @@
 ;
 ;       Number of frames actually summed
 ;
-;    old :  in, optional, type=boolean 
-;   
-;       Set this for data with the "old" header format.
-;   
 ;    check  : in, optional, type=boolean
 ;   
 ;       Check for bad frames before summing.

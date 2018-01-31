@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;     Frank Varosi, NASA/GSFC 1992.
 ;
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -44,21 +44,21 @@
 ;      save computing time, otherwise will give the FT as output.
 ;      Ignored if NO_FT.
 ;   
-;    NO_FT : in, boolean
+;    NO_FT : in, type=boolean
 ;   
 ;      Set this if you do not want to use FFT for the convolution.
 ;   
-;    CORRELATE : in, boolean
+;    CORRELATE : in, type=boolean
 ;    
 ;      Set this to do correlation rather than convolution.
 ;   
-;    AUTO_CORRELATION : in, boolean
+;    AUTO_CORRELATION : in, type=boolean
 ;   
 ;     Set this to do auto-correlation. Incompatible with NO_FT.
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   1997-10-?? : Converted to IDL V5.0. W. Landsman. 
 ; 

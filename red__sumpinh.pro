@@ -26,7 +26,7 @@
 ;   
 ;      Do only for this state.
 ;   
-;    pref : in, optional, type=string
+;    prefilter : in, optional, type=string
 ;   
 ;       Set this keyword to the prefilter you want to sum pinholes
 ;       from. Otherwise, sum pinholes for all prefilters.

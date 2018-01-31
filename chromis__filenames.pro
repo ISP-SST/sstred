@@ -56,12 +56,49 @@
 ;       string (only frame number implemented - used in momfbd config
 ;       files).
 ; 
-;    wild_* : in, optional, type="boolean or string"
+;    wild_detector  : in, optional, type="boolean or string"
 ;   
 ;       If a string, use this as part of the search string. (It does
 ;       not have to be a wild card, it can also be a fixed string). If
 ;       not a string but still true, construct the proper type of wild
 ;       card.
+;
+;    wild_camera : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_fullstate : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_scannumber : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_framenumber : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_tuning : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_prefilter : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_exposure : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_gain : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
+;    wild_cam_settings : in, optional, type="boolean or string"
+;
+;       See wild_detector.
+;
 ; 
 ; :History:
 ; 

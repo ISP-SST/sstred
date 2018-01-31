@@ -32,14 +32,10 @@
 ; 
 ; :Keywords:
 ; 
-;    image : in
+;    _ref_extra : in, optional
 ;
 ;      See documentation for mkhdr.pro.
 ;   
-;    extend : in
-;
-;      See documentation for mkhdr.pro.
-; 
 ; 
 ; :History:
 ;

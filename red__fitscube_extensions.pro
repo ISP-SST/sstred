@@ -21,26 +21,6 @@
 ;       The name of the file.
 ;
 ;
-;    head : in, type=strarr
-;
-;       The complete fits header of the file. The NAXIS* and BITPIX
-;       keywords are used to set the file up.
-;
-;
-;    lun : out, type=integer
-;
-;       The logical unit of the opened file.
-;
-;
-;    fileassoc : out, type="file assoc variable"
-;
-;       An assoc variable that can be used to write (and read!) data
-;       slices. 
-;
-;    dimensions : in, type=intarr
-;
-;       The dimensions of the data cube.
-;
 ; :History:
 ; 
 ;    2016-03-24 : MGL. First version.

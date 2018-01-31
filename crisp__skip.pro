@@ -8,17 +8,17 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
 ; 
-;    stat : 
+;    states : 
 ;   
 ;   
 ;   
@@ -31,7 +31,7 @@
 ; 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 

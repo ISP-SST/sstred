@@ -14,14 +14,6 @@
 ; 
 ; :Keywords:
 ; 
-;    wb_states  :  in, optional, 
-;   
-;   
-;   
-;    outformat  :  in, optional, 
-;   
-;   
-;   
 ;    nostate  :  in, optional, type=boolean
 ;   
 ;       For wideband data, if not set, the mfbd sets will be set up as
@@ -50,8 +42,6 @@
 ;   
 ;   
 ;   
-;    skip  :  in, optional, 
-;    
 ;    scannums : in, optional, type=array
 ;   
 ;        Specify which scans to prep. 
@@ -60,8 +50,6 @@
 ;    pref : in, optional
 ;   
 ;        The prefilter for which to generate mfbd config files. 
-;   
-;    nremove :  in, optional, 
 ;   
 ;    camera : in, optional, type=string, default="Crisp-W or Chromis-W"
 ;

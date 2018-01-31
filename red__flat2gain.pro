@@ -1,18 +1,20 @@
 ; docformat = 'rst'
 ;+
 ;    Make (inverse) gain table from flat field (or sum thereof).
-; 
+;
+;    All (accepted) keywords will be forwarded to red_flat2gain
+
 ; :Categories:
 ;
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Tomas Hillberg, 2016
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -24,15 +26,14 @@
 ; 
 ; :Keywords:
 ;
-;    All (accepted) keywords will be forwarded to red_flat2gain
 ;
 ;
-; :history:
+; :History:
 ; 
 ; 
 ;-
 function red::flat2gain, flat, _REF_EXTRA = ex
     
-    return, red_flat2gain( flat, _EXTRA = ex )   ; will silently ignore unrecognized keywords
+  return, red_flat2gain( flat, _EXTRA = ex ) ; will silently ignore unrecognized keywords
     
 end

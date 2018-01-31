@@ -21,7 +21,7 @@
 ; 
 ; :Keywords:
 ;
-;    aligncontkludge : in, optional, type=boolean
+;    aligncont : in, optional, type=boolean
 ;
 ;       Set this to activate a kludge where the misaligned Ca
 ;       continuum narrowband image is stretched to its wideband image

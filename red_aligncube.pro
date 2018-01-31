@@ -20,9 +20,9 @@
 ; 
 ; :Params:
 ; 
-;    cub : in, type=array(x,y,t)
+;    cub : in, type="array(x,y,t)"
 ;   
-;       An data cube with the sequence of images to align.
+;       A data cube with the sequence of images to align.
 ;   
 ;    np : in, optional, type=integer, default=4
 ;     

@@ -35,9 +35,13 @@
 ;    uscan : in, optional
 ;   
 ;   
-;    all_data : Not only split complete sequences, but everything found 
+;    all_data : in, optional, type=boolean
+;
+;         Split not only complete sequences, but everything found 
 ;   
-;    pref : Only process prefilter 'pref'
+;    pref : in, optional, type=string
+;
+;        Process only prefilter 'pref'
 ; 
 ; :History:
 ; 

@@ -26,10 +26,6 @@
 ; 
 ; :Keywords:
 ;
-;    file : in, type=string
-;
-;	The file from which the header came.
-;
 ; :History:
 ; 
 ;    2016-05-20 : MGL. First version.
@@ -49,9 +45,9 @@
 ;
 ;    2016-05-31 : MGL. Add filename to the header.
 ;
-;    2016-05-31 : JLF. Added silent keyword (suppresses printing SOLARNET
-;		  compliance message. 
-;		  Started using red_keytab for keywords we aren't sure of.
+;    2016-05-31 : JLF. Added silent keyword (suppresses printing
+;                 SOLARNET compliance message. Started using
+;                 red_keytab for keywords we aren't sure of.
 ;
 ;    2016-05-31 : MGL. Added filter wavelengths and FWHMs based on a
 ;                 table in an email from Aluxa. (If we knew the filter

@@ -15,10 +15,6 @@
 ; 
 ; :Keywords:
 ; 
-;    no_descatter  : 
-;   
-;   
-;   
 ;    nthreads  : 
 ;   
 ;   
@@ -40,10 +36,6 @@
 ;   
 ;   
 ;    bad : 
-;   
-;   
-;   
-;    preserve : 
 ;   
 ;   
 ;   

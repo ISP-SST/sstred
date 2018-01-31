@@ -33,7 +33,7 @@
 ;               momfbd
 ;	If not set auto-detection will be attempted.
 ;
-;    select_frame : in: optional, type=integer
+;    select_frame : in, optional, type=integer
 ;
 ;       Specify to get header corresponding to a single frame in a
 ;       multi-frame image file.

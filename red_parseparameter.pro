@@ -37,7 +37,7 @@
 ; 
 ; :Keywords:
 ; 
-;   pos : in, optinal
+;   pos : in, optional
 ;
 ;      Position of first character of key in paramArr 
 ;

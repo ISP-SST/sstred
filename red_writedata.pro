@@ -18,7 +18,7 @@
 ; 
 ; :Params:
 ; 
-;    fname : in, type=string
+;    filename : in, type=string
 ;
 ;       The file name.
 ;

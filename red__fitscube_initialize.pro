@@ -22,7 +22,7 @@
 ;       The name of the file to create.
 ;
 ;
-;    head : in, type=strarr
+;    hdr : in, type=strarr
 ;
 ;       The complete fits header of the file. The NAXIS* and BITPIX
 ;       keywords are used to set the file up.

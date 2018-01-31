@@ -12,9 +12,6 @@
 ;
 ;   Andrii V. Sukhorukov, Institute for Solar Physics, asukh@astro.su.se
 ;
-; :Params:
-;
-;   None
 ;
 ; :Keywords:
 ;

@@ -7,12 +7,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Tomas Hillberg, 2016
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -24,7 +24,7 @@
 ; 
 ; :Keywords:
 ;
-;    preserve : in, optional, boolean
+;    preserve : in, optional, type=boolean
 ;   
 ;      If set, don't zero borders between Sarnoff taps.
 ;
@@ -32,7 +32,7 @@
 ;    (Other keywords will be forwarded to red_flat2gain)
 ;
 ;
-; :history:
+; :History:
 ; 
 ; 
 ;-

@@ -22,15 +22,19 @@
 ; 
 ; :Keywords:
 ; 
-;    link_dir  : 
+;    link_dir : in, optional
 ;   
 ;   
-;    uscan  : 
+;    uscan : in, optional
 ;   
 ;   
-;    all_data    : Not only link complete sequences, but everything found 
+;    all_data : in, optional, type=boolean
+;
+;       Link not only complete sequences, but everything found 
 ;   
-;    pref        : Only process prefilter 'pref'
+;    pref : in, optional, type=string
+;
+;       Process only prefilter 'pref'
 ; 
 ; :History:
 ; 

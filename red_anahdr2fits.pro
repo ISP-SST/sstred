@@ -35,7 +35,7 @@
 ;       The dimensions of the array.
 ;
 ;
-;    datatype : in, optional, integer
+;    datatype : in, optional, type=integer
 ;
 ;       The data type of the array.
 ;

@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -43,7 +43,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -53,9 +53,9 @@
 ; 
 ;-
 
-FUNCTION red_eff, dmm
-return, 1./sqrt(4*total(dmm^2, 1))
-END
+function red_eff, dmm
+  return, 1./sqrt(4*total(dmm^2, 1))
+end
 
 
 pro red::polcal, cams = cams, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref

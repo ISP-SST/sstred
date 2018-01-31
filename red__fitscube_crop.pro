@@ -91,13 +91,14 @@
 ; 
 ;-
 pro red::fitscube_crop, infile $
-                        , roi = roi $
+                        , centered = centered $
                         , iscan = iscan $
                         , istokes = istokes $
                         , ituning = ituning $
                         , nospectral = nospectral $
                         , outfile = outfile $
                         , overwrite = overwrite $
+                        , roi = roi $
                         , size = size $
                         , xc = xc $
                         , yc = yc 

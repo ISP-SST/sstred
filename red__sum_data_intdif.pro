@@ -21,32 +21,6 @@
 ; 
 ; :Keywords:
 ; 
-;    scan  : 
-;   
-;   
-;   
-;    cam  : 
-;   
-;   
-;   
-;    pref  : 
-;   
-;   
-;   
-;    debug  : 
-;   
-;   
-;   
-;    lc  : 
-;   
-;   
-;   
-;    psf  : 
-;   
-;   
-;   
-;    nthreads : 
-;   
 ;    no_descatter : in, optional, type=boolean 
 ;   
 ;      Don't do back-scatter compensation.

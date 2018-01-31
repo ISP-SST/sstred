@@ -100,10 +100,6 @@
 ; 
 ; 
 ;    metrics : out, optional 
-;
-;    margin : in, optional, type=integer
-; 
-;       Margin for momfbd to use for swapping tilts for image shifts.
 ; 
 ;
 ;    xtemplates : 

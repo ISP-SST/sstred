@@ -23,12 +23,6 @@
 ;   
 ;       The number of threads to use for summing.
 ;   
-;   
-;   
-;    old  : 
-;   
-;   
-;   
 ;    remove  : 
 ;   
 ;   
@@ -132,7 +126,6 @@
 pro red::sumflat, overwrite = overwrite, $
                   ustat = ustat, $
                   nthreads = nthreads, $
-;                  old = old, $
                   remove = remove, $
                   cams = cams, $
                   check = check, $
