@@ -26,7 +26,9 @@
 ; 
 ; :Keywords:
 ;
+;    _ref_extra : in, optional
 ;
+;       Any keywords are used when calling red_flat2gain.
 ;
 ; :History:
 ; 

@@ -28,8 +28,9 @@
 ;   
 ;      If set, don't zero borders between Sarnoff taps.
 ;
+;    _ref_extra : in, optional
 ;
-;    (Other keywords will be forwarded to red_flat2gain)
+;       Any other keywords are used when calling red_flat2gain.
 ;
 ;
 ; :History:
