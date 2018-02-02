@@ -62,36 +62,34 @@
 ; 
 ; 
 ;-
-pro chromis::makegains, nthreads = nthreads $
+pro chromis::makegains, bad=bad $
                         , cam = cam $
-                        , pref = pref $
-                        , min = min $
                         , max = max $
-                        , bad=bad $
-                        , smoothsize = smoothsize
+                        , min = min $
+                        , nthreads = nthreads $
+                        , pref = pref $
+                        , smoothsize = smoothsize 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-  red_make_prpara, prpara, bad 
+  
+  red_make_prpara, prpara, bad
   red_make_prpara, prpara, cam 
   red_make_prpara, prpara, max 
   red_make_prpara, prpara, min 
   red_make_prpara, prpara, pref 
   red_make_prpara, prpara, smoothsize
-
   
   tosearch = self.out_dir+'/flats/*.flat.fits'
   
   files = file_search(tosearch, count = Nfiles)
 
-  if(Nfiles eq 0) then begin
+  if Nfiles eq 0 then begin
     print, inam+' : No flats found in: ' + tosearch
   endif
 
-  firsttime = 1B
   for ifile = 0L, Nfiles -1 do begin
-
+    
     tmp = strsplit(file_basename(files[ifile]), '._', /extract)
     if(keyword_set(pref)) then begin
       if(tmp[1] ne pref) then begin
@@ -122,6 +120,6 @@ pro chromis::makegains, nthreads = nthreads $
     overwrite = 1
     red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
 
-  endfor                        ;  ifile
-  
+  endfor                        ; ifile
+                                
 end
