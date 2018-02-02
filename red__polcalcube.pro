@@ -56,10 +56,18 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     stop
   endif
 
-  cams = [self.camt, self.camr]
+  ;; Files and states
+  files = file_search(self.out_dir + 'polcal_sums/*/cam*', count = count)
+  self -> extractstates, files, states
+
+  ;; Get cameras
+  cams = (states[uniq(states.camera, sort(states.camera))]).camera
+  ;;cams = [self.camt, self.camr]
+
   ;; Loop camera
   first = 1B
-  for icam = 0, 1 do begin
+  for icam = 0, n_elements(cams)-1 do begin
+    
     if(keyword_set(cam)) then begin
       if(cams[icam] ne cam) then begin
         print, inam + ' : skipping cam -> '+cams[icam]+' != '+cam
@@ -67,28 +75,32 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       endif
     endif
     print, inam + ' : processing '+cams[icam]
+    
+    self -> selectfiles, files, states, cam = cams[icam], sel = sel
+    selstates = states[sel]
+    selfiles = files[sel]
+    
+    detector = (strsplit(file_basename(selfiles[0]),'.',/extract))[0]
+;    stat = red_getstates_polcal_out(selfiles)
 
-    ;; Files and states
-    files = file_search(self.out_dir + 'polcal_sums/'+cams[icam]+'/camX*', count = count)
+    upref = (states[uniq(selstates.pref, sort(states.pref))]).pref
+    uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
+    ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
+    ulc = (selstates[uniq(selstates.lcs, sort(selstates.lc))]).lc
 
-    detector = (strsplit(file_basename(files[0]),'.',/extract))[0]
-    stat = red_getstates_polcal_out(files)
-    upref = stat.pref[uniq(stat.pref, sort(stat.pref))]
-    uqw = stat.qws[uniq(stat.qw, sort(stat.qw))]
-    ulp = stat.lps[uniq(stat.lp, sort(stat.lp))]
-    ulc = stat.lcs[uniq(stat.lcs, sort(stat.lcs))]
     Npref = n_elements(upref)
     Nqw = n_elements(uqw)
     Nlp = n_elements(ulp)
     Nlc = n_elements(ulc)
     
     ;; Load dark
-    df = self.out_dir + '/darks/'+detector+'.dark'
-    if(~file_test(df)) then begin
-      print, inam + ' : ERROR, dark file not found -> '+df
-      return
-    endif
-    dd = f0(df)
+    self -> get_calib, selstates[0], darkdata = dd, status = status
+;    df = self.out_dir + '/darks/'+detector+'.dark'
+;    if(~file_test(df)) then begin
+;      print, inam + ' : ERROR, dark file not found -> '+df
+;      return
+;    endif
+;    dd = f0(df)
 
     ;; Loop prefilters
     if(first) then begin
@@ -127,13 +139,13 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       for ilp = 0, Nlp - 1 do begin
         for iqw = 0, Nqw - 1 do begin
           for ilc = 0, Nlc-1 do begin
-            istate = ulp[ilp]+'.'+uqw[iqw]+'.'+upref[ipref]+'.'+ulc[ilc]
-            indx = where(stat.state eq istate, count)
+            statestring = ulp[ilp]+'.'+uqw[iqw]+'.'+upref[ipref]+'.'+ulc[ilc]
+            indx = where(selstates.state eq statestring, count)
             if count ne 1 then begin
-              print, inam + ' : ERROR, irregular state -> '+ istate
+              print, inam + ' : ERROR, irregular state -> '+ statestring
               stop
-            endif else print, inam + ' : loading -> '+cams[icam]+'.'+istate
-            d[ilc,iqw,ilp,*,*] = f0(files[indx]) - dd
+            endif else print, inam + ' : loading -> '+cams[icam]+'.'+statestring
+            d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx]) - dd
             if dodescatter then $
                d[ilc,iqw,ilp,*,*] = red_cdescatter(reform(d[ilc,iqw,ilp,*,*]) $
                                                    , bg, psf, /verbose, nthreads = nthreads)
