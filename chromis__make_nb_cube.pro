@@ -68,6 +68,11 @@
 ;
 ;       Some extra screen output.
 ;
+;     wbsave : in, optional, type=boolean
+;
+;       Save a cube with the wideband per-tuning align-images. For
+;       debugging of alignment with extra wideband objects.
+;
 ; 
 ; :History:
 ; 
@@ -90,7 +95,9 @@
 ;                 metadata. New keyword nocavitymap. Documentation and
 ;                 cleanup. 
 ; 
-;    2017-11-16 : MGL. New keyword integer.
+;    2017-11-16 : MGL. New keyword integer. 
+; 
+;    2018-02-01 : MGL. New keyword wbsave.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -102,7 +109,8 @@ pro chromis::make_nb_cube, wcfile $
                            , notimecor = notimecor $
                            , overwrite = overwrite $
                            , tiles = tiles $
-                           , verbose = verbose 
+                           , verbose = verbose $
+                           , wbsave = wbsave
 
   
   ;; Name of this method
@@ -526,6 +534,11 @@ pro chromis::make_nb_cube, wcfile $
   dims = [Nx, Ny, Nwav, 1, Nscans] 
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
+  if keyword_set(wbsave) then begin
+    wbfilename = strreplace(filename, 'nb_', 'wbalign_')
+    self -> fitscube_initialize, wbfilename, hdr, wblun, wbfileassoc, dims 
+  endif
+  
   ;; Set up for collecting time and wavelength data
   tbeg_array     = dblarr(Nwav, Nscans) ; Time beginning for state
   tend_array     = dblarr(Nwav, Nscans) ; Time end for state
@@ -685,7 +698,7 @@ pro chromis::make_nb_cube, wcfile $
 
       ;; Read image, apply prefilter curve and temporal scaling
       nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
-
+      
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
         ;; aberrations.
@@ -709,6 +722,18 @@ pro chromis::make_nb_cube, wcfile $
                                    , iscan = iscan, ituning = iwav
       endelse
 
+      if keyword_set(wbsave) then begin
+        ;; Same operations as on narrowband image, except for
+        ;; "aligncont".
+        wbim = wwi * tscl
+        wbim = red_stretch(temporary(wbim), grid1)
+        wbim = red_rotation(temporary(wbim), ang[iscan], $
+                          wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+        wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
+        self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
+                                   , iscan = iscan, ituning = iwav
+      endif
+      
       iprogress++               ; update progress counter
 
     endfor                      ; iwav
@@ -766,7 +791,9 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; Close fits file and make a flipped version.
   self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs
+  if keyword_set(wbsave) then self -> fitscube_finish, wblun, flipfile = wbflipfile, wcs = wcs
 
+  
   ;; Add cavity maps as WAVE distortions 
   if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cavitymaps
 
@@ -804,6 +831,7 @@ pro chromis::make_nb_cube, wcfile $
                                   , 'NSUMEXP', comment = 'Number of summed exposures' $
                                   , nsum_array, keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5]
+
   
   ;; Copy some variable-keywords from the ordinary nb cube to the
   ;; flipped version.
@@ -818,6 +846,21 @@ pro chromis::make_nb_cube, wcfile $
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
-  
+
+  if keyword_set(wbsave) then begin
+    ;; Add some of the variable keywords
+    self -> fitscube_addvarkeyword, wbfilename, 'SCANNUM',  old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'ATMOS_R0', old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'DATE-BEG', old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'DATE-AVG', old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'DATE-END', old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'XPOSURE',  old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'TEXPOSUR', old_filename = filename
+    self -> fitscube_addvarkeyword, wbfilename, 'NSUMEXP',  old_filename = filename
+
+    print, inam + ' : Wideband align cube stored in:'
+    print, wbfilename
+  endif
+
   
 end
