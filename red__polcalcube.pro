@@ -43,6 +43,8 @@
 ;   2016-02-15 : MGL. Use loadbackscatter. Remove keyword descatter,
 ;                new keyword no_descatter.
 ; 
+;   2018-02-02 : MGL. Adapt to new codebase.
+; 
 ; 
 ;-
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
