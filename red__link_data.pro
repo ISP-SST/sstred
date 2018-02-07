@@ -163,14 +163,18 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
         linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
         openw, lun, linkername, /get_lun
         printf, lun, '#!/bin/bash'
-         
+
         ;; Print links
         ntot = 100. / (nt - 1.0)
         bb = string(13b)
          
         outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '/'
         outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
-         
+        
+        ;; Make directories
+        printf, lun, 'mkdir -p ', outdir
+        if(wb) then printf, lun, 'mkdir -p ', outdir1
+        
         for ii = 0L, nt - 1 do begin
            if(stat.star[ii]) then continue
            if uscan ne '' then if stat.scan[ii] NE uscan then continue
@@ -190,10 +194,7 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
         free_lun, lun
         print, ' '
          
-        ;; Create folder and link data
-        file_mkdir, outdir
-        if(wb) then file_mkdir, outdir1
-         
+        ;; run link data script
         print, inam+' : executing '+  linkername
         spawn, '/bin/bash ' + linkername
          
