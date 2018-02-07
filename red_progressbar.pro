@@ -40,8 +40,7 @@
 ;
 ;    predict : in, optional, type=boolean
 ;
-;       Print a prediction for the remaining time. Does nothing if the
-;       clock keyword is not used.
+;       Print a prediction for the remaining time. 
 ; 
 ; :History:
 ; 
