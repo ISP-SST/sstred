@@ -175,6 +175,8 @@
 ;
 ;    2017-10-11 : MGL. Use nmodes keyword in prepmomfbd.
 ;
+;    2018-02-07 : MGL. New search directory structure for AlbaNova.
+;
 ;-
 pro red_setupworkdir, search_dir = root_dir $
                       , out_dir = out_dir $
@@ -251,12 +253,16 @@ pro red_setupworkdir, search_dir = root_dir $
      endif
   endif else begin
      if keyword_set(stockholm) then begin
-        search_dir = ["/storage/sand??/", "/storage/sand??/Incoming/", "/storage/sand??/Incoming/Checked/"]
+;        search_dir = ["/storage/sand??/", "/storage/sand??/Incoming/", "/storage/sand??/Incoming/Checked/"]
+        splitdate = strsplit(date, '-.', /extract)
+        search_dir = '/data/' + splitdate[0] + '/' $
+                     + strjoin(splitdate[0:1], '.') + '/' $
+                     + strjoin(splitdate, '.') + '/'
      endif else begin
          if ~strmatch(root_dir,'*/') then root_dir += '/'
         search_dir = root_dir
      endelse
-        ;;; is search_dir already the one we look for?
+     ;; Is search_dir already the one we look for?
      IF file_basename(search_dir) EQ date THEN BEGIN
          found_dir = search_dir
          Nfound = 1
