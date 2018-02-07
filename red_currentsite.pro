@@ -29,6 +29,11 @@
 ;
 ; :Keywords:
 ;
+;   date : in, optional, type=string
+;
+;      The date in ISO format, needed to construct the search_dir for
+;      some sites.
+;
 ;   dnsdomainname :  out, optional, type=string
 ;
 ;      The output of shell command dnsdomainname.
@@ -59,8 +64,11 @@
 ;    2017-08-30 : AVS. Call message instead of inam. Some code
 ;                 clean-up.
 ;
+;    2018-02-07 : MGL. New search directory structure for AlbaNova.
+;
 ;-
 pro red_currentsite, site = site $
+                     , date = date $
                      , search_dirs = search_dirs $
                      , ipv4addresses = ipv4addresses $
                      , dnsdomainname = dnsdomainname
@@ -89,12 +97,21 @@ pro red_currentsite, site = site $
     max( strmatch( ipv4addresses, '*130.237.166.*' ) ) : begin
       ;; ISP network range at AlbaNova in Stockholm.
       site =  "AlbaNova"
-      ;; Transfered data is stored in all the sandboxes at /storage/sand*.
-      ;; The inner directory level is either empty, or Incoming, or
-      ;; Incoming/Checked.  For example:
-      ;;   /storage/sand04n/2017.04.05
-      ;;   /storage/sand05/Incoming/2017.04.05
-      search_dirs = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/']
+      if n_elements(date) eq 0 then begin
+        ;; Transfered data is stored in all the sandboxes at /storage/sand*.
+        ;; The inner directory level is either empty, or Incoming, or
+        ;; Incoming/Checked.  For example:
+        ;;   /storage/sand04n/2017.04.05
+        ;;   /storage/sand05/Incoming/2017.04.05
+        search_dirs = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/', 'data/']
+      endif else begin
+        ;; New directory structure since February 2018:
+        ;; /data/YYYY/YYYY.MM/YYYY.MM.DD
+        splitdate = strsplit(date, '-.', /extract)
+        search_dirs = '/data/' + splitdate[0] + '/' $
+                      + strjoin(splitdate[0:1], '.') + '/' $
+                      + strjoin(splitdate, '.') + '/'
+      endelse
     end
     else : begin
       message, 'no matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )

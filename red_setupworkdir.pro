@@ -302,7 +302,7 @@ pro red_setupworkdir, search_dirs = search_dirs $
     message, 'search_dirs are not given and are set depending on the ' + $
       'current computer location.', /informational
 
-    red_currentsite, site = site, search_dirs = search_dirs
+    red_currentsite, site = site, search_dirs = search_dirs, date = date
 
   endif ; no search_dirs are given
 
