@@ -67,19 +67,20 @@
 ;    2018-02-07 : MGL. New search directory structure for AlbaNova.
 ;
 ;-
-pro red_currentsite, site = site $
-                     , date = date $
-                     , search_dirs = search_dirs $
+pro red_currentsite, date = date $
+                     , dnsdomainname = dnsdomainname $
                      , ipv4addresses = ipv4addresses $
-                     , dnsdomainname = dnsdomainname
+                     , search_dirs = search_dirs $
+                     , site = site 
 
   spawn, "ip addr show | grep -Po 'inet \K[\d.]+'", ipv4addresses
   spawn, 'dnsdomainname', dnsdomainname
 
-  ;; Check if any of the addresses match the local range of IPv4-addresses.
+  ;; Check if any of the addresses match the local range of
+  ;; IPv4-addresses.
   case 1 of
-            strmatch( dnsdomainname, '*royac.iac.es' ) $
-    || max( strmatch( ipv4addresses, '*161.72.15.*'  ) ) : begin
+    strmatch( dnsdomainname, '*royac.iac.es' ) $
+       || max( strmatch( ipv4addresses, '*161.72.15.*'  ) ) : begin
       ;; SST network address range on La Palma.
       site = "La Palma"
       ;; Observed data is in any folder mounted at /data/, either disk? or
@@ -105,8 +106,9 @@ pro red_currentsite, site = site $
         ;;   /storage/sand05/Incoming/2017.04.05
         search_dirs = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/', 'data/']
       endif else begin
-        ;; New directory structure since February 2018:
-        ;; /data/YYYY/YYYY.MM/YYYY.MM.DD
+        ;; New directory structure since February 2018, decoupled from
+        ;; names of sandboxes where data is actually stored. Also
+        ;; applies to older data: /data/YYYY/YYYY.MM/YYYY.MM.DD
         splitdate = strsplit(date, '-.', /extract)
         search_dirs = '/data/' + splitdate[0] + '/' $
                       + strjoin(splitdate[0:1], '.') + '/' $
