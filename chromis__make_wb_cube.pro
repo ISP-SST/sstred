@@ -120,6 +120,9 @@
 ; 
 ;    2018-01-12 : MGL. Use red_bad_subfield_crop.
 ; 
+;    2018-02-08 : MGL. Get logged diskpos (pig or turret) rather than
+;                 just pig data.
+; 
 ;-
 pro chromis::make_wb_cube, dir $
                            , autocrop = autocrop $
@@ -177,7 +180,7 @@ pro chromis::make_wb_cube, dir $
 
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0
-  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
+  red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
 
   ;; Search for restored WB images
   case self.filetype of
@@ -451,7 +454,7 @@ pro chromis::make_wb_cube, dir $
   wcs[*, *].wave = float(prefilter)/10.
 
   ;; Get pointing at center of FOV
-  red_wcs_hpl_coords, t_array[0, *], metadata_pig, time_pig $
+  red_wcs_hpl_coords, t_array[0, *], metadata_pointing, time_pointing $
                       , hpln, hplt
   
   ;; The alignment routine (red_aligncube) subtracts the median of the

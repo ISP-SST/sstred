@@ -61,6 +61,9 @@
 ;    2018-01-30 : MGL. Add the corresponding wideband image in an
 ;                 image extension.
 ; 
+;    2018-02-08 : MGL. Get logged diskpos (pig or turret) rather than
+;                 just pig data.
+; 
 ;-
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
@@ -121,7 +124,7 @@ pro chromis::make_scan_cube, dir $
 
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0
-  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
+  red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
 
 
   ;; Search for restored images
@@ -630,7 +633,7 @@ pro chromis::make_scan_cube, dir $
 
     
     ;; Get pointing at center of FOV for the different tunings.
-    red_wcs_hpl_coords, tavg_array, metadata_pig, time_pig $
+    red_wcs_hpl_coords, tavg_array, metadata_pointing, time_pointing $
                         , hpln, hplt
  
     ;; The narrowband cube is aligned to the global wideband image
