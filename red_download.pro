@@ -217,7 +217,9 @@ pro red_download, date = date $
                               eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
                  iyear = where(backscatter_years eq datearr[0], Nyear)
                  if Ncam eq 0 or Nyear eq 0 then begin
-                    print, 'red::download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
+                    print, 'red::download : ' + backscatter[iback] $
+                           + ' backgain orientations unknown for ' $
+                           + backscatter_cameras[icam] $
                            + ' in year'+datearr[0]+'.'
                     print, '               Please do "git pull" in your crispred directory and try again.'
                     print, '               Contact crispred maintainers if this does not help.'
