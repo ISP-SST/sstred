@@ -114,6 +114,10 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                               , camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag $
                               , newflats = newflats, ftype=filetype)
   nstat = n_elements(pol)
+  
+  pref = pol[0]->getvar(7)
+  restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
+  
                                 ;
                                 ; Modulations matrices
                                 ;
@@ -151,9 +155,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         endif
 
         if(filetype eq 'f0') then begin
-           pref = pol[0]->getvar(7)
            pfiles = file_search(self.out_dir+'/calib/'+self.camttag+'.*'+pref+'*.xoffs', count = npf)
-           restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
            
            pidx = 0
            if(npf gt 1) then begin
@@ -217,9 +219,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         
 
         if(filetype eq 'f0') then begin
-           pref = pol[0]->getvar(7)
            pfiles = file_search(self.out_dir+'/calib/'+self.camrtag+'.*'+pref+'*.xoffs', count = npf)
-           restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
            
            pidx = 0
            if(npf gt 1) then begin
@@ -257,6 +257,7 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
   for ii = 0L, nstat - 1 do begin
      pol[ii]->setvar, 5, value = ptr_new(immt)
      pol[ii]->setvar, 6, value = ptr_new(immr)
+     pol[ii]->setvar, 25, value = cl[*,0]
   endfor
                                 ;
                                 ; fill border information (based on 1st image)
