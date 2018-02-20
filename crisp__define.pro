@@ -36,13 +36,13 @@ pro crisp__define
            exposure:0.0D, $
            cam_settings:'', $
            is_wb:0B, $
-           lc:'' $
+           lc:0B $
     }
                                 
     pc = { CRISP_POLCAL_STATE, $
            inherits CRISP_STATE, $
-           lp:'', $
-           qw:'' $
+           lp:0.0, $
+           qw:0.0 $
     }
                                 
 end
