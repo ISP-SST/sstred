@@ -161,12 +161,12 @@ pro red_extractstates, strings $
   ;; long:
   if arg_present(scan) or arg_present(rscan)  or $
      arg_present(hscan) or arg_present(states) then $
-        scan = reform((stregex(strlist,'(\.|^)([0-9]{5})(\.|$)', /extr, /subexp))[2,*])
+        scan = reform((stregex(strlist,'(_|\.|^)([0-9]{5})(_|\.|$)', /extr, /subexp))[2,*])
 
   ;; The focus field is an f folowed by a sign and at least one digit
   ;; for the amount of focus (in ?unit?):
   if arg_present(focus) then $
-     focus = reform((stregex(strlist,'(\.|^)(F[+-][0-9]+)(\.|$)', /extr, /subexp, /fold_case))[2,*])
+     focus = reform((stregex(strlist,'(_|\.|^)(F[+-][0-9]+)(_|\.|$)', /extr, /subexp, /fold_case))[2,*])
 
   ;; The frame number is the last field iff it consists entirely of
   ;; digits. The third subexpression of the regular expression matches
@@ -175,63 +175,43 @@ pro red_extractstates, strings $
   ;; if the third subexpression were allowed to match a dot we would
   ;; get false matches with the scan and pref fields.
   if arg_present(nums) or arg_present(states) or arg_present(pstates) then $
-     nums = reform((stregex(strlist,'(\.)([0-9]+)($)', /extr, /subexp))[2,*])
+     nums = reform((stregex(strlist,'(_|\.)([0-9]+)($)', /extr, /subexp))[2,*])
 
   ;; The camera name consists of the string 'cam' followed by a roman
   ;; number.
   if arg_present(cam) or arg_present(pstates_out) then $
-     cam = reform((stregex(strlist,'(\.|^)(cam[IVX]+)(\.|$)', /extr, /subexp))[2,*])
-
-
-  ;; Now take care of blue data, anything after this section is
-  ;; then irrelevant so we can return when we are done.
-  if keyword_set(blue) then begin
-
-     ;; If the directory names for blue data were standardized labels
-     ;; corresponding to interference filters, we could use it to set
-     ;; pref keyword and add it to the fullstate keyword. For now only
-     ;; the tilt filter will return something that is not an empty
-     ;; string. 
-
-     ;; For blue tilt filter data, the wavelength is encoded as a
-     ;; substring like "ca39684".
-     if arg_present(wav) or arg_present(dwav) then begin
-        wav = reform((stregex(strlist,'(\.|^)ca(39[0-9][0-9][0-9])(\.|$)', /extr, /subexp))[2,*])
-        dwav = float(wav)/10.   ; [Å]
-     endif 
-
-     if arg_present(fullstate) then $
-        fullstate = reform((stregex(strlist,'(\.|^)(ca39[0-9][0-9][0-9])(\.|$)', /extr, /subexp))[2,*])
-
-    return
-
-  endif                         ; blue
+     cam = reform((stregex(strlist,'(_|\.|^)(cam[IVX]+)(_|\.|$)', /extr, /subexp))[2,*])
   
-
   ;; The prefilter is the only field that is exactly four digits
   if arg_present(pref) or arg_present(fullstate) or arg_present(lambda) or $
      arg_present(states) or arg_present(pstates) or arg_present(pstates_out) then $
-        pref = reform((stregex(strlist,'(\.|^)([0-9]{4})(\.|$)', /extr, /subexp))[2,*])
+        pref = reform((stregex(strlist,'(_|\.|^)([0-9]{4})(_|\.|$)', /extr, /subexp))[2,*])
   
   ;; The tuning information consists of a four digit wavelength (in Å)
   ;; followed by an underscore, a sign (+ or -), and at least one
   ;; digit for the finetuning (in mÅ).
   if arg_present(wav) or arg_present(dwav) or arg_present(fullstate) or $
      arg_present(states) or arg_present(pstates) then $
-        wav = reform((stregex(strlist,'(\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(\.|$)', /extr, /subexp))[2,*])
-  
+        wav = reform((stregex(strlist,'(_|\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(_|\.|$)', /extr, /subexp))[2,*])
+
   ;; The LC state is the string 'LC' followed by a single digit
   if arg_present(lc) or arg_present(fullstate) or arg_present(states) or $
      arg_present(pstates) or arg_present(pstates_out) then $
-        lc = reform((stregex(strlist,'(\.|^)(LC[0-9])(\.|$)', /extr, /subexp, /fold_case))[2,*])
-
+        lc = long(red_strreplace(reform( $
+             (stregex(strlist,'(_|\.|^)(LC[0-9])(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
+                                , 'lc',''))
+  
   ;; For polcal, the linear polarizer state
   if arg_present(lp) or arg_present(pstates) or arg_present(pstates_out) then $
-     lp = reform((stregex(strlist,'(\.|^)(LP[0-3][0-9]{2})(\.|$)', /extr, /subexp, /fold_case))[2,*])
+     lp = float(red_strreplace(reform( $
+          (stregex(strlist,'(_|\.|^)(LP[0-3][0-9]{2})(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
+                              , 'LP', ''))
 
   ;; For polcal, the quarter wave plate state
   if arg_present(qw) or arg_present(pstates) or arg_present(pstates_out) then $
-     qw = reform((stregex(strlist,'(\.|^)(QW[0-3][0-9]{2})(\.|$)', /extr, /subexp, /fold_case))[2,*])
+     qw = float(red_strreplace(reform( $
+          (stregex(strlist,'(_|\.|^)(QW[0-3][0-9]{2})(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
+                               , 'qw', ''))
 
 
   ;; Quantities calculated from the extracted quantities ----
@@ -252,7 +232,7 @@ pro red_extractstates, strings $
         hscan[ii] = hs   
      endfor
   endif
-                               
+                      
   if arg_present(fullstate) or arg_present(states) then $
      fullstate = strjoin(transpose([[pref], [wav], [lc]]), '.')
 
@@ -287,8 +267,8 @@ pro red_extractstates, strings $
   
   ;; For polarimetry out (?)
   if arg_present(pstates_out) then pstates_out = { state:strjoin(transpose([[lps], [qws], [pref], [lcs]]), '.') $ 
-                                                   , lp:float(strmid(lp, 2, 3)) $
-                                                   , qw:float(strmid(qw, 2, 3)) $
+                                                   , lp:lp $
+                                                   , qw:qw $
                                                    , pref:pref $
                                                    , wav:wav $
                                                    , lc:lc $
