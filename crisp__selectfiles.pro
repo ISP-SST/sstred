@@ -149,6 +149,20 @@ pro crisp::selectfiles, cam = cam $
   states.skip *= 0              ; always clear selection, so repeated calls with the same files/states are possible
   if( keyword_set(nremove) ) then self->skip, states, nremove
 
+  Ncam = n_elements(cam)
+  if( Ncam gt 0 ) then begin
+    selected = [states.skip] * 0
+    camt = [cam]                ; make sure it's an array
+    for ip = 0, Ncam-1 do begin
+      pos = where(states.camera eq camt[ip],count)
+      if( count ne 0 ) then begin
+        selected[pos] = 1
+      endif
+    endfor
+    pos = where(selected lt 1,count)
+    if( count ne 0 ) then states[pos].skip = 1
+  endif
+  
   Npref = n_elements(prefilter)
   if( Npref gt 0 ) then begin
     selected = states.skip * 0
