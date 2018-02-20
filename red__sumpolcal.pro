@@ -200,10 +200,20 @@ pro red::sumpolcal, check=check $
       head  = red_sumheaders(filelist, pcal, nsum=nsum, framenumbers=framenumbers, $
                              time_beg=time_beg, time_end=time_end, time_avg=time_avg )
 
+      ;; Add polarimetry keywords (May want this to be done in
+      ;; red_sumheaders?)
+      anchor = 'CAMERA'
+      red_fitsaddkeyword, anchor = anchor, head, 'CALIB_QW', states[sel[0]].qw $
+                          , '[deg] Quarterwave plate angle'
+      red_fitsaddkeyword, anchor = anchor, head, 'CALIB_LP', states[sel[0]].lp $
+                          , '[deg] Linear polarizer angle'
+      red_fitsaddkeyword, anchor = anchor, head, 'POL_LC',   states[sel[0]].lc $
+                          , 'Liquid crystal state number'
+    
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document. 
-      red_fitsaddkeyword, head, 'STATE', state_list[istate], 'Polcal state'
-      self -> headerinfo_addstep, head, prstep = 'Polcal summing' $
+      red_fitsaddkeyword, anchor = anchor, head, 'STATE', state_list[istate], 'Polcal state'
+      self -> headerinfo_addstep, head, prstep = 'Summing' $
                                   , prproc = inam, prpara = prpara
 
 ;      ;; Write ANA format pcal
