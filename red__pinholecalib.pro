@@ -87,11 +87,13 @@
 ;
 ;   2017-12-06 : THI. Added a simple tool for verifying the calibrations.
 ;
-;   2017-12-20 : THI. Add keyword smooth to pinholecalib, which is passed on to rdx_img_align.
-;                Pass the pref keyword to selectfiles.
+;   2017-12-20 : THI. Add keyword smooth to pinholecalib, which is
+;                passed on to rdx_img_align. Pass the pref keyword to
+;                selectfiles.
 ;
-;   2017-12-21 : THI. Print a warning, and some suggestions how to proceed,
-;                if the pinhole calibration fails for some state(s).
+;   2017-12-21 : THI. Print a warning, and some suggestions how to
+;                proceed, if the pinhole calibration fails for some
+;                state(s).
 ;
 ;-
 pro red::pinholecalib, threshold = threshold $
