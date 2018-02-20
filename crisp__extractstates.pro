@@ -210,8 +210,8 @@ pro crisp::extractstates, strings, states $
     ;; while observing.
 ;    if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
     if keyword_set(polcal) then begin
-      red_append, fullstate_list, 'LP'+strtrim(long(states[ifile].lp), 2)
-      red_append, fullstate_list, 'qw'+strtrim(long(states[ifile].qw), 2)
+      red_append, fullstate_list, 'LP'+string(round(states[ifile].lp), format = '(i03)')
+      red_append, fullstate_list, 'qw'+string(round(states[ifile].qw), format = '(i03)')
 ;      red_append, fullstate_list, states[ifile].lp
 ;      red_append, fullstate_list, states[ifile].qw
     endif
