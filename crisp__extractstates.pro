@@ -90,7 +90,7 @@ pro crisp::extractstates, strings, states $
   states.lc = lc
 ;  states.fpi_state = pref+'_'+wav
   states.fpi_state = wav
-  
+
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
   AreFiles = min(file_test(strings))
@@ -210,8 +210,10 @@ pro crisp::extractstates, strings, states $
     ;; while observing.
 ;    if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
     if keyword_set(polcal) then begin
-      red_append, fullstate_list, states[ifile].lp
-      red_append, fullstate_list, states[ifile].qw
+      red_append, fullstate_list, 'LP'+strtrim(long(states[ifile].lp), 2)
+      red_append, fullstate_list, 'qw'+strtrim(long(states[ifile].qw), 2)
+;      red_append, fullstate_list, states[ifile].lp
+;      red_append, fullstate_list, states[ifile].qw
     endif
     if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
     if states[ifile].tuning ne '' then begin     
@@ -222,9 +224,9 @@ pro crisp::extractstates, strings, states $
         red_append, fullstate_list, states[ifile].tuning
       endelse
     endif
-    if states[ifile].is_wb eq 0 then red_append, fullstate_list, lc[ifile]
+    if states[ifile].is_wb eq 0 then red_append, fullstate_list, 'lc'+strtrim(lc[ifile], 2)
     if n_elements(fullstate_list) gt 0 then states[ifile].fullstate = strjoin(fullstate_list, '_')
-
+    
     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', /predict
 
   endfor                        ; ifile
