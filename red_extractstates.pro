@@ -17,8 +17,6 @@
 ;     Mats Löfdahl, ISP
 ; 
 ; 
-; :returns:
-; 
 ; 
 ; :Params:
 ; 
@@ -98,7 +96,7 @@
 ;        only relevant for CRISP data.  
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2014-01-22 : First version.
 ; 
@@ -135,7 +133,7 @@ pro red_extractstates, strings $
   nt = n_elements(strings)
 
   if keyword_set(basename) then begin
-     strlist = file_basename(strings)
+    strlist = file_basename(strings)
   endif else strlist = strings
 
   if nt eq 0 then return
@@ -199,13 +197,13 @@ pro red_extractstates, strings $
      arg_present(pstates) or arg_present(pstates_out) then $
         lc = long(red_strreplace(reform( $
              (stregex(strlist,'(_|\.|^)(LC[0-9])(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
-                                , 'lc',''))
+                                 , 'lc',''))
   
   ;; For polcal, the linear polarizer state
   if arg_present(lp) or arg_present(pstates) or arg_present(pstates_out) then $
      lp = float(red_strreplace(reform( $
           (stregex(strlist,'(_|\.|^)(LP[0-3][0-9]{2})(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
-                              , 'LP', ''))
+                               , 'LP', ''))
 
   ;; For polcal, the quarter wave plate state
   if arg_present(qw) or arg_present(pstates) or arg_present(pstates_out) then $
@@ -218,21 +216,21 @@ pro red_extractstates, strings $
 
   ;; The tuning as a single double precision number (in Å)
   if arg_present(dwav) or arg_present(states) then begin
-     dwav = dblarr(nt)
-     dfac = [1d, 1d-3]
-     ;; In IDL v.8 this could be done without a loop using strsplit
-     for ii = 0L, nt -1 do dwav[ii] = total(double(strsplit(wav[ii],'_', /extract))*dfac)
+    dwav = dblarr(nt)
+    dfac = [1d, 1d-3]
+    ;; In IDL v.8 this could be done without a loop using strsplit
+    for ii = 0L, nt -1 do dwav[ii] = total(double(strsplit(wav[ii],'_', /extract))*dfac)
   endif
 
   if arg_present(hscan) or arg_present(rscan) or arg_present(states) then begin
-     rscan = strarr(nt)
-     hscan = strarr(nt)
-     for ii = 0L, nt -1 do begin
-        rscan[ii] = red_decode_scan(scan[ii], hscan=hs)
-        hscan[ii] = hs   
-     endfor
+    rscan = strarr(nt)
+    hscan = strarr(nt)
+    for ii = 0L, nt -1 do begin
+      rscan[ii] = red_decode_scan(scan[ii], hscan=hs)
+      hscan[ii] = hs   
+    endfor
   endif
-                      
+  
   if arg_present(fullstate) or arg_present(states) then $
      fullstate = strjoin(transpose([[pref], [wav], [lc]]), '.')
 
