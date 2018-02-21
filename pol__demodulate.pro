@@ -159,13 +159,13 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
   wbclip = self.wbclip
   if wbclip[0] gt wbclip[1] then begin
     print, inam + 'Wideband channel is mirrored: Reversing x'
-    immt = reverse( immt, 2, /OVRWRITE )
-    immr = reverse( immr, 2, /OVRWRITE )
+    immt = reverse( immt, 2, /OVERWRITE )
+    immr = reverse( immr, 2, /OVERWRITE )
   endif
   if wbclip[2] gt wbclip[3] then begin
     print, inam + 'Wideband channel is mirrored: Reversing y'
-    immt = reverse( immt, 3, /OVRWRITE )
-    immr = reverse( immr, 3, /OVRWRITE )
+    immt = reverse( immt, 3, /OVERWRITE )
+    immr = reverse( immr, 3, /OVERWRITE )
   endif
 
   ;; Convert the demodulation matrix into patches (like the momfbd
