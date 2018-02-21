@@ -256,7 +256,7 @@ a = crispred('config.txt', /dev)
 
 
 ;; Test polcal
-files = file_search('/storage/sand02/Incoming/2016.09.19/Polcal/8542/12:44:29/Crisp-T/cam*', count = Nfiles)
+files = file_search('/data/2016/2016.09/2016.09.19/Polcal/8542/12:44:29/Crisp-T/cam*', count = Nfiles)
 a -> extractstates, files, pstates, /polcal
 
 stop
