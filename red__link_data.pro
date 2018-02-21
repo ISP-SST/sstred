@@ -172,8 +172,8 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
         outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
         
         ;; Make directories
-        printf, lun, 'mkdir -p ', outdir
-        if(wb) then printf, lun, 'mkdir -p ', outdir1
+        printf, lun, 'mkdir -p ' + outdir
+        if(wb) then printf, lun, 'mkdir -p ' + outdir1
         
         for ii = 0L, nt - 1 do begin
            if(stat.star[ii]) then continue
