@@ -61,14 +61,18 @@
 ;
 ;     2016-02-19 : MGL. Allow to write both gain and psf.
 ;
+;     2018-02-26: JdlCR. Added a "silent" keyword to loadbackscatter so
+;                  the output from prepmomfbd can actually be read.
+;
 ;-
 pro red::loadbackscatter, cam, pref, bgain, bpsf $
                           , bgfile = bgfile $
                           , bpfile = bpfile $
-                          , write = write
+                          , write = write $
+                          , silent = silent
 
   red_loadbackscatter, cam, self.isodate, self.descatter_dir, pref, bgain, bpsf, $
-                       bgfile = bgfile , bpfile = bpfile, write = write
+                       bgfile = bgfile , bpfile = bpfile, write = write, silent = silent
                        
 
 end

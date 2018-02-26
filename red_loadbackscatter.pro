@@ -61,11 +61,15 @@
 ;
 ;     2016-02-19 : MGL. Allow to write both gain and psf.
 ;
+;     2018-02-26: JdlCR. Added a "silent" keyword to loadbackscatter so
+;                 the output from prepmomfbd can actually be read.
+;
 ;-
 pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
                           , bgfile = bgfile $
                           , bpfile = bpfile $
-                          , write = write
+                         , write = write $
+                         , silent = silent
 
   year = (strsplit(date, '.-', /extract))[0]
   
@@ -103,8 +107,7 @@ pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
         ;; Read the gain if wanted
 
         if file_test(bgfile) then begin
-           
-           print, 'red_loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
+           if(~keyword_set(silent)) then print, 'red_loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
            bgain = f0(bgfile)
            
         endif else begin
@@ -123,7 +126,7 @@ pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
 
         if file_test(bpfile) then begin
            
-           print, 'red_loadbackscatter : Loading backscatter psf for ' + cam + ', ' + pref
+            if(~keyword_set(silent)) then print, 'red_loadbackscatter : Loading backscatter psf for ' + cam + ', ' + pref
            bpsf  = f0(bpfile)
            
         endif else begin

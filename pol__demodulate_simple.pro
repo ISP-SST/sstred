@@ -87,6 +87,7 @@
 ; 
 ; 
 ;-
+
 pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destretch = no_destretch, $
                       no_filter = no_filter, overwrite = overwrite, img = res, sp = sp, power_sp = power_sp, $
                       cmap = cmap, nosave=nosave, noclip = noclip, savecams = savecams, mdate = mdate, $
@@ -255,11 +256,11 @@ pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destre
   head = fzhead(self.tfiles[0])
   dum = strsplit(head, ' =', /extract)
   
-  time_obs = dum[1]
   if(n_elements(ext_time) gt 0) then begin
      iscan = long(self.scan)
      if(n_elements(ext_time) gt iscan + 1) then time_obs = ext_time[iscan]
-  endif
+  endif else   time_obs = dum[1]
+
    
   ;; telescope model
    
@@ -313,7 +314,7 @@ pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destre
   if(~keyword_set(nosave)) then begin
      file_mkdir, outdir
      print, inam + 'saving file -> '+ outdir + outname
-     head = 'TIME_OBS='+time_obs+' DATE_OBS='+dum[3]
+     head = 'TIME_OBS='+time_obs+' DATE_OBS='+mdate
      fzwrite, res, outdir + outname, head+''
                                 
      if(keyword_set(cmap)) then begin
