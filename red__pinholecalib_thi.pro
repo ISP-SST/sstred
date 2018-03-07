@@ -79,10 +79,10 @@ PRO red::pinholecalib_thi, threshold = threshold $
     help, /obj, self, output = selfinfo 
     red_writelog, selfinfo = selfinfo, logfile = logfile
 
-    if(n_elements(threshold) eq 0) then threshold = 0.1
+    if(n_elements(threshold) eq 0) then threshold = 0.0
     if(n_elements(refcam) eq 0) THEN refcam = 0
     if(n_elements(verbose) eq 0) THEN verbose = 0
-    if(n_elements(nref) eq 0) THEN nref = 5
+    if(n_elements(nref) eq 0) THEN nref = 10
    
     Ncams = 3
 
