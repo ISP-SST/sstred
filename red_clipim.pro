@@ -42,6 +42,8 @@
 ; 
 ;   2013-06-10 : Added some documentation. Mats Löfdahl (MGL). 
 ;
+;   2018-03-07 : THI: Allow passing arrays with trivial dimensions.
+;
 ;-
 function red_clipim, pic, cl
 
@@ -79,7 +81,7 @@ function red_clipim, pic, cl
   endcase
 
   ;; Return the clipped image with the specified orientation.
-  return, rotate(pic[mi_x:ma_x, mi_y:ma_y], r)
+  return, rotate((reform(pic))[mi_x:ma_x, mi_y:ma_y], r)
 
 end
 
