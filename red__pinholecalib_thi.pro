@@ -63,18 +63,6 @@
 ;
 ;-
 
-function make_corners, clip
-    dim = size(clip,/dim)
-    corners = intarr(4,3)
-    if dim(0) gt 3 then begin
-        corners(*,2) = 1
-        corners([0,2], 0) = clip(0)
-        corners([1,3], 0) = clip(1)
-        corners([0,1], 1) = clip(2)
-        corners([2,3], 1) = clip(3)
-    endif
-    return, corners
-end
 
 
 PRO red::pinholecalib_thi, threshold = threshold $
@@ -151,7 +139,7 @@ PRO red::pinholecalib_thi, threshold = threshold $
     tmp = f0(fw[0])
     dim = size(tmp,/dim)
 
-    corners = make_corners( [ extraclip(0), dim[0]-extraclip(1)-1, extraclip(2), dim[1]-extraclip(3)-1] )
+    corners = red_make_corners( [ extraclip(0), dim[0]-extraclip(1)-1, extraclip(2), dim[1]-extraclip(3)-1] )
   
     h_init = fltarr(3, 3, Ncams)
 
