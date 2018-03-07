@@ -59,6 +59,9 @@
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
+;   2018-03-07 : THI:  Re-writing the CRISP polarimetry to properly
+;                apply clips/offsets to the demodulation matrices.
+; 
 ; 
 ;-
 pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = camr, camwb = camwb, newflats = newflats, ftype = ftype
@@ -71,7 +74,20 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
   self.camwb = camwb
   self.scan = (strsplit(state,'.',/extract))[0]
   self.ftype = ftype
+  self.tclip = [0,0,0,0]
+  self.rclip = [0,0,0,0]
+  
+  inam = 'pol::assign_states : '
 
+  ; load align_clips
+  clipfile = fdir+'/calib/align_clips.'+pref+'.sav'
+  if file_test(clipfile) then begin
+    restore, clipfile
+    wbclip = cl[*,0]
+    self.tclip = cl[*,1]
+    self.rclip = cl[*,2]
+  endif
+  
   ;; Wb images?
 
   for ii = 0L, n_elements(self.tfiles) - 1 do begin
@@ -109,5 +125,23 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
         
   endfor
 
-  return
+  this_tuning = long((strsplit(state,'._',/extract))[3])
+  xotfiles = file_search( fdir+'/calib/'+camt+'.*'+pref+'*.xoffs', count=nxot )
+  if nxot gt 0 then begin
+    tunings = lonarr(nxot)
+    for i=0,nxot-1 do begin
+      tunings[i] = long((strsplit(file_basename(xotfiles[i]), '._', /extract))[3])
+    end
+    tunings = abs(tunings-this_tuning)
+    idx = where(tunings eq min(tunings))
+    if min(idx) ge 0 then self.xotfile = xotfiles[idx[0]]
+  endif
+  
+  if file_test(self.xotfile) then begin
+    self.yotfile = red_strreplace( self.xotfile, '.xoffs', '.yoffs' )
+    self.xorfile = red_strreplace( self.xotfile, camt, camr )
+    self.yorfile = red_strreplace( self.xorfile, '.xoffs', '.yoffs' )
+  endif else self.xotfile = ' '
+
+  
 end

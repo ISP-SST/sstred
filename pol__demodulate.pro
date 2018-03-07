@@ -85,6 +85,9 @@
 ; 
 ;   2013-07-12 : MGL. Use red_read_azel, not read_azel.
 ; 
+;   2018-03-07 : THI:  Re-writing the CRISP polarimetry to properly
+;                apply clips/offsets to the demodulation matrices.
+; 
 ; 
 ;-
 pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = no_destretch, $
@@ -114,7 +117,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
   outdir = file_dirname(self.tfiles[0]) + '/stokes/'
   outname = 'stokesIQUV.'+self.state+'.f0'
    
-  if(~keyword_set(overwrite)) then begin
+  if(~keyword_set(nosave) && ~keyword_set(overwrite)) then begin
      if file_test(outdir + outname) then begin
         print, inam + 'WARNING, output file exists -> skipping'
         print, inam + ' -> use keyword overwrite = 1 to overwrite the file!'
@@ -129,17 +132,20 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
    
   self -> loadimages
   
+  tclip = self.tclip
+  rclip = self.rclip
+  
   ;; load files
   if(~keyword_set(noflat)) then begin
-     utflat = f0(self.utflat)
-     urflat = f0(self.urflat)
+     utflat = red_clipim( f0(self.utflat), tclip )
+     urflat = red_clipim( f0(self.urflat), rclip )
      tgain = fltarr([size(utflat,/dim), 4])
      rgain = fltarr([size(urflat,/dim), 4])
      for ii = 0,3 do begin
         print, inam + 'loading -> '+self.ftfiles[ii]
-        tgain[*,*,ii] = f0(self.ftfiles[ii])
+        tgain[*,*,ii] = red_clipim( f0(self.ftfiles[ii]), tclip )
         print, inam + 'loading -> '+self.frfiles[ii]
-        rgain[*,*,ii] = f0(self.frfiles[ii])
+        rgain[*,*,ii] = red_clipim( f0(self.frfiles[ii]), rclip )
      endfor
   endif
 
@@ -155,26 +161,41 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
      print, 'done'
   endif
 
-  ;; fugly fix for the case when the WB channel is mirrored
-  wbclip = self.wbclip
-  if wbclip[0] gt wbclip[1] then begin
-    print, inam + 'Wideband channel is mirrored: Reversing x'
-    immt = reverse( immt, 2, /OVERWRITE )
-    immr = reverse( immr, 2, /OVERWRITE )
-  endif
-  if wbclip[2] gt wbclip[3] then begin
-    print, inam + 'Wideband channel is mirrored: Reversing y'
-    immt = reverse( immt, 3, /OVERWRITE )
-    immr = reverse( immr, 3, /OVERWRITE )
-  endif
-
   ;; Convert the demodulation matrix into patches (like the momfbd
   ;; images) and convolve with the PSFs from the patches.
-   
+  if file_test(self.xotfile) && file_test(self.yotfile) then begin
+    xoff = rdx_cacheget( self.xotfile, count=count )
+    if count lt 1 then begin
+      print, inam + 'loading -> ' + self.xotfile
+      xoff = f0( self.xotfile )
+      rdx_cache, self.xotfile, xoff
+    endif
+    yoff = rdx_cacheget( self.yotfile, count=count )
+    if count lt 1 then begin
+      print, inam + 'loading -> ' + self.yotfile
+      yoff = f0( self.yotfile )
+      rdx_cache, self.yotfile, yoff
+    endif
+  endif
   immt = red_matrix2momfbd((*self.timg[0]), (*self.timg[1]),$
-                           (*self.timg[2]),(*self.timg[3]), immt)
+                           (*self.timg[2]),(*self.timg[3]), immt, xoff=xoff, yoff=yoff )
+                           
+  if file_test(self.xorfile) && file_test(self.yorfile) then begin
+    xoff = rdx_cacheget( self.xorfile, count=count )
+    if count lt 1 then begin
+      print, inam + 'loading -> ' + self.xorfile
+      xoff = f0( self.xorfile )
+      rdx_cache, self.xorfile, xoff
+    endif
+    yoff = rdx_cacheget( self.yorfile, count=count )
+    if count lt 1 then begin
+      print, inam + 'loading -> ' + self.yorfile
+      yoff = f0( self.yorfile )
+      rdx_cache, self.yorfile, yoff
+    endif
+  endif
   immr = red_matrix2momfbd((*self.rimg[0]), (*self.rimg[1]),$
-                           (*self.rimg[2]),(*self.rimg[3]), immr)
+                           (*self.rimg[2]),(*self.rimg[3]), immr, xoff=xoff, yoff=yoff)
 
   ;; Create arrays for the mozaics
 
@@ -375,7 +396,7 @@ pro pol::demodulate, state = state, tiles = tiles, clip = clip, no_destretch = n
       
   ;; Save result
                                 
-  if(keyword_set(savecams)) then begin
+  if(~keyword_set(nosave) && keyword_set(savecams)) then begin
      odir = file_dirname(self.tfiles[0]) + '/demodulated_cameras/'
      file_mkdir, odir
      

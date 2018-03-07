@@ -53,6 +53,8 @@
 ; 
 ;   2015-03-31 : MGL. Use red_download to get turret log file.
 ; 
+;   2018-03-07 : THI:  Re-writing the CRISP polarimetry to properly
+;                apply clips/offsets to the demodulation matrices.
 ; 
 ;-
 function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch $
@@ -116,7 +118,12 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
   nstat = n_elements(pol)
   
   pref = pol[0]->getvar(7)
-  restore, self.out_dir+'/calib/align_clips.'+pref+'.sav'
+  clipfile = self.out_dir+'/calib/align_clips.'+pref+'.sav'
+  if file_test(clipfile) then begin
+    restore, clipfile
+    tclip = cl[*,1]
+    rclip = cl[*,2]
+  endif
   
                                 ;
                                 ; Modulations matrices
@@ -154,29 +161,21 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
            for ii=0,15 do immt[ii,*,*] = red_convolve(reform(immt[ii,*,*]), psf)
         endif
 
-        if(filetype eq 'f0') then begin
-           pfiles = file_search(self.out_dir+'/calib/'+self.camttag+'.*'+pref+'*.xoffs', count = npf)
-           
-           pidx = 0
-           if(npf gt 1) then begin
-              for ii=0, npf-1 do print, string(ii, format='(I4)')+'  ->  ', pfiles[ii]
-              read, pidx, prompt='Select calibration file ID to clip the modulation matrix:'
-           endif
-           
-           pfiles = pfiles[pidx]
-           xoff = f0(pfiles)
-           pfiles = strjoin([(strsplit(pfiles, '.', /extract))[0:-2], 'yoffs'], '.')
-           yoff = f0(pfiles)
-           
-           for ii=0,15 do begin
-              tmpo = red_applyoffsets(reform(immt[ii,*,*]), xoff,yoff, clips=cl[*,1])
-              if(ii eq 0) then immt0 = fltarr([16,size(tmpo, /dim)])
-              immt0[ii,*,*] = temporary(tmpo)
-           endfor
-           immt = immt0
+        if n_elements(tclip) eq 4 then begin
+          nx = abs(tclip[1] - tclip[0]) + 1
+          ny = abs(tclip[3] - tclip[2]) + 1
+            
+          print,'Clipping transmitted modulation matrix to '+red_stri(nx)+' x '+red_stri(ny)
+            
+          tmp = make_array( 16, nx, ny, type=size(immt, /type) )
+          for ii=0,15 do begin
+            tmp[ii,*,*] = red_clipim( reform(immt[ii,*,*]), tclip )
+          endfor
+          immt = temporary(tmp)
         endif
-           
+        
         immt = ptr_new(red_invert_mmatrix(temporary(immt)))
+        
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
         return, 0
@@ -216,33 +215,22 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
            psf /= total(psf, /double)
            for ii=0,15 do immr[ii,*,*] = red_convolve(reform(immr[ii,*,*]), psf)
         endif
+     
+        if n_elements(rclip) eq 4 then begin
+          nx = abs(rclip[1] - rclip[0]) + 1
+          ny = abs(rclip[3] - rclip[2]) + 1
         
-
-        if(filetype eq 'f0') then begin
-           pfiles = file_search(self.out_dir+'/calib/'+self.camrtag+'.*'+pref+'*.xoffs', count = npf)
-           
-           pidx = 0
-           if(npf gt 1) then begin
-              for ii=0, npf-1 do print, string(ii, format='(I4)')+'  ->  ', pfiles[ii]
-              read, pidx, prompt='Select calibration file ID to clip the modulation matrix: '
-           endif
-           pfiles = pfiles[pidx]
-           xoff = f0(pfiles)
-           pfiles = strjoin([(strsplit(pfiles, '.', /extract))[0:-2], 'yoffs'], '.')
-           yoff = f0(pfiles)
-           
-           for ii=0,15 do begin
-              tmpo = red_applyoffsets(reform(immr[ii,*,*]), xoff,yoff, clips=cl[*,2])
-              if(ii eq 0) then immr0 = fltarr([16,size(tmpo, /dim)])
-              immr0[ii,*,*] = temporary(tmpo)
-           endfor
-           immr = immr0
+          print,'Clipping reflected modulation matrix to '+red_stri(nx)+' x '+red_stri(ny)
+        
+          tmp = make_array( 16, nx, ny, type=size(immr, /type) )
+          for ii=0,15 do begin
+            tmp[ii,*,*] = red_clipim( reform(immr[ii,*,*]), rclip )
+          endfor
+          immr = temporary(tmp)
         endif
-       
-        
-
-        
+         
         immr = ptr_new(red_invert_mmatrix(temporary(immr)))
+        
      endif else begin
         print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
         return, 0
@@ -257,7 +245,6 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
   for ii = 0L, nstat - 1 do begin
      pol[ii]->setvar, 5, value = ptr_new(immt)
      pol[ii]->setvar, 6, value = ptr_new(immr)
-     pol[ii]->setvar, 25, value = cl[*,0]
   endfor
                                 ;
                                 ; fill border information (based on 1st image)
