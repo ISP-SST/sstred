@@ -61,7 +61,7 @@
 ; 
 ;   2018-03-07 : THI:  Re-writing the CRISP polarimetry to properly
 ;                apply clips/offsets to the demodulation matrices.
-; 
+;                Bugfix: exclude scan-number when constructing gain-name.
 ; 
 ;-
 pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = camr, camwb = camwb, newflats = newflats, ftype = ftype
@@ -118,7 +118,7 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
 ;  print, urflat, file_test(urflat), format='(A,I2)'
 
   dum = 1
-  if(~keyword_set(newflats)) then dum=2
+  if( keyword_set(newflats) ) then dum=2
   for ii = 0L, n_elements(self.tfiles) - 1 do begin
      self.ftfiles[ii] = fdir + '/gaintables/' + camt + '.' + strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[dum:4], '.')+'.gain'
      self.frfiles[ii] = fdir + '/gaintables/' + camr + '.' + strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[dum:4], '.')+'.gain'
