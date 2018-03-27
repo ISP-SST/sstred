@@ -88,7 +88,9 @@
 ; 
 ;    2017-11-13 : MGL. Implemented HISTORY keywords.
 ; 
-; 
+;    2018-03-27 : MGL. Record-valued keywords, values with zero
+;                 decimals are printed as integers.
+;
 ;-
 pro red_fitsaddkeyword, header, name, value, comment $
                         , anchor = anchor $
@@ -175,7 +177,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
     ;; two parts separated by a space character. The first part is a
     ;; regular FITS header keyword, the second part (the field
     ;; specifier) is either a string with capital letters A-Z and the
-    ;; character minus and underscore (the field identifier) OR a
+    ;; characters minus and underscore (the field identifier) OR a
     ;; field identifier followed by a period and a field index (a
     ;; number).
     record_regex = '^([-_A-Z0-9]*) ([-_.A-Z0-9]*)'
@@ -229,8 +231,12 @@ pro red_fitsaddkeyword, header, name, value, comment $
         rec_fieldspec = rec_parts[1]
 
         ;; Construct the value string
-        rec_value     = rec_fieldspec + ': ' + strtrim(values[ikey], 2)
-
+        if values[ikey] eq long(values[ikey]) then begin
+          rec_value = rec_fieldspec + ': ' + strtrim(long(values[ikey]), 2)          
+        endif else begin
+          rec_value = rec_fieldspec + ': ' + strtrim(values[ikey], 2)
+        endelse
+        
         ;; Remove any existing occurrences of rec_name in the header
         red_fitsdelkeyword, header, rec_name
         
@@ -335,6 +341,7 @@ end
 mkhdr, hdr, 0
 print, hdr
 
+
 names = ['HISTORY', '', 'COMMENT', 'HISTORY']
 values = ['Some history that is relevant to the file. It could be long enough to span several lines. Or at least I hope it can.', '', "I'd like to add a comment", 'Another piece of history that is relevant to the file. It could be long enough to span several lines. Or at least I hope it can.']
 red_fitsaddkeyword, hdr, names, values, comments
@@ -349,7 +356,7 @@ print, hdr
 print
 
 names = ['TEST1', 'TEST2 field.1', 'TEST2 field.2']
-values = [14, 3.1, 4.5]
+values = [14, 3.1, 4]
 comments = ['Normal keyword', 'Record valued', 'Record valued again']
 red_fitsaddkeyword, hdr, names, values, comments
 print, hdr
