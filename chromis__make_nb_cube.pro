@@ -97,7 +97,9 @@
 ; 
 ;    2017-11-16 : MGL. New keyword integer. 
 ; 
-;    2018-02-01 : MGL. New keyword wbsave.
+;    2018-02-01 : MGL. New keyword wbsave. 
+; 
+;    2018-03-27 : MGL. Change sign on cmap. 
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -397,6 +399,7 @@ pro chromis::make_nb_cube, wcfile $
     restore, cfile                 ; The cavity map is in a struct called "fit". 
     cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
     cmap /= 10.                    ; Make it [nm]
+    cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
     fit = 0B                       ; Don't need the fit struct anymore.
     
     if keyword_set(remove_smallscale) then begin
