@@ -117,10 +117,6 @@ pro chromis::make_nb_cube, wcfile $
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-  ;; Temporarily disable cavity maps by default, can still be be
-  ;; written (experimentally) with explicit nocavitymap=0.
-  if n_elements(nocavitymap) eq 0 then nocavitymap = 1
   
   ;; Make prpara
   red_make_prpara, prpara, clips         
@@ -210,10 +206,6 @@ pro chromis::make_nb_cube, wcfile $
   ;; NB states.
   wbindx = where(states.exposure gt mean(states.exposure)*1.5 $
                   , Nscans, complement = complement, Ncomplement = Ncomplement)
-;  wbstates = states[wbindx]
-;  wbfiles = files[wbindx]
-
-;  self -> selectfiles, files = files, states = states, cam = nbcamera, sel = sel
   
   ;; All the per-tuning files and states
   pertuningfiles = files[complement]
@@ -242,43 +234,11 @@ pro chromis::make_nb_cube, wcfile $
   endfor                        ; inbpref
   
   unbprefsref *= 1e-10          ; [m]
-  
-;  if ~keyword_set(scans_only) then begin
-  ;; Look for time-series calib file
-;  csearch = self.out_dir + '/calib_tseries/tseries_' + prefilters[ipref] $
-;            + '_' + datestamp + '*_calib.sav'
-;  cfiles = file_search(csearch, count = Ncfiles)
-;  case Ncfiles of
-;    0: begin
-;      print, inam + ' : Could not find calibration file: ' + csearch
-;      print, inam + ' : Try executing make_wb_cube on this dataset first!'
-;      return
-;    end
-;    1: cfile = cfiles[0]
-;    else: begin
-;      repeat begin
-;        tmp = red_select_subset(cfiles $
-;                                , qstring = inam + ' : Select calibration file (scan subset).' $
-;                                , count = Ncfileselect, indx = cindx, default = '-')
-;      endrep until Ncfileselect eq 1
-;      cfile = cfiles[cindx[0]]
-;    end
-;  endcase
-;
-;        print, inam + ' : Loading calibration file -> '+file_basename(cfile)
-;        restore, cfile
 
   ;; Get the scan selection from wfiles (from the sav file)
-;  wbgfiles = wfiles
   self -> extractstates, wbgfiles, wbgstates
   uscans = wbgstates.scannumber
   Nscans = n_elements(uscans)
-;  endif else begin
-;    full = 0
-;    uscans = wbgstates[uniq(wbgstates.scannumber, sort(wbgstates.scannumber))].scannumber
-;    Nscans = n_elements(uscans)
-;    tmean = replicate(1.0, Nscans) ; Dummy time correction
-;  endelse
 
   ;; Per-tuning files, wb and nb, only for selected scans
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
@@ -331,9 +291,6 @@ pro chromis::make_nb_cube, wcfile $
     idxpref = where(my_prefilters eq unbprefs[inbpref], count)
     
     if inbpref eq 0 then begin
-;      prefilter_curve = [0.d0]
-;      prefilter_wav = [0.0d0]
-;      prefilter_wb = [0.0d0]
       units = prf.units
     endif else begin
       if units ne prf.units then begin
@@ -347,15 +304,8 @@ pro chromis::make_nb_cube, wcfile $
       red_append, prefilter_curve, prf.pref
       red_append, prefilter_wav, prf.wav
       red_append, prefilter_wb, prf.wbint
-;      prefilter_curve = [prefilter_curve, prf.pref]
-;      prefilter_wav = [prefilter_wav, prf.wav]
-;      prefilter_wb = [prefilter_wb, prf.wbint]
     endif else begin
       me = median(prf.wav)
-;      prefilter_curve = [prefilter_curve $
-;                         , red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)]
-;      prefilter_wav = [prefilter_wav, wav[idxpref]*1.d10]
-;      prefilter_wb = [prefilter_wb, replicate(prf.wbint, count)]
       red_append, prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)
       red_append, prefilter_wav, wav[idxpref]*1.d10
       red_append, prefilter_wb, replicate(prf.wbint, count)
@@ -364,9 +314,6 @@ pro chromis::make_nb_cube, wcfile $
   endfor                        ; inbpref
     
   rpref = 1.d0/prefilter_curve
-;  prefilter_wav = prefilter_wav[1:*]
-;  prefilter_wb = prefilter_wb[1:*]
-;  prefilter_curve = prefilter_curve[1:*]
 
   ;; Do WB correction?
   if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
@@ -438,15 +385,12 @@ pro chromis::make_nb_cube, wcfile $
     endcase
     cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
     cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
-
-    ;; Replace the line below with the equivalent code using
-    ;; Tomas' maps.
-    ; cmap1 = (red_applyoffsets(red_clipim(temporary(cmap1), cl[*,idx]), xoffs,yoffs))[x0:x1,y0:y1]
     
   endif
   
   ;; Make FITS header for the NB cube
   hdr = wchead                  ; Start with the WB cube header
+
   if keyword_set(integer) then begin
 
     ;; We need to find out BZERO and BSCALE. For now we have to read
@@ -466,12 +410,12 @@ pro chromis::make_nb_cube, wcfile $
 
       for iwav = 0L, Nwav - 1 do begin
 
-;        nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
         red_progressbar, iprogress, Nprogress $
                          , /predict $
                          , 'Calculating BZERO and BSCALE' 
   
         mr = momfbd_read(scan_nbfiles[iwav], /img)
+
         ;; Min and max after scaling to units in file
         datamax_thisfile = max(mr.patch.img * rpref[iwav] * tscl, min = datamin_thisfile)
 
@@ -634,7 +578,6 @@ pro chromis::make_nb_cube, wcfile $
     scan_wbfiles = pertuningfiles[scan_wbindx]
     scan_wbstates = pertuningstates[scan_wbindx]
     match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
-;      sortindx = sort(scan_wbstates.tun_wavelength)
     scan_wbfiles = scan_wbfiles[sortindx]
     scan_wbstates = scan_wbstates[sortindx]
     
@@ -645,7 +588,6 @@ pro chromis::make_nb_cube, wcfile $
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
-
       icont = where(scan_nbstates.prefilter eq '3999')
       xshifts = interpol([0., nb_shifts[0, iscan]] $
                          , [scan_wbstates[icont].tun_wavelength $
