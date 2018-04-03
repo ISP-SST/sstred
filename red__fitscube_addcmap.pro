@@ -62,16 +62,19 @@ pro red::fitscube_addcmap, filename, cmaps
   ;; has 3 axes (dimensions): 1, 2, and 5 in the main HDU.
   red_append, names, ['NAXES', 'AXIS.1', 'AXIS.2', 'AXIS.3']
   red_append, values, [3, 1, 2, 5]
-  red_append, comments, ['3 axes in the lookup table', 'Spatial X', 'Spatial Y', 'Scan number']
+  red_append, comments, ['3 axes in the lookup table' $
+                         , 'Spatial X', 'Spatial Y', 'Scan number']
   ;; In the extended distortions notation, the distortions are
   ;; associated to "stage 1" and should be applied at "stage 6".
   red_append, names, ['ASSOCIATE', 'APPLY']
   red_append, values, [1, 6]
-  red_append, comments, ['Associated stage', 'Apply stage']
+  red_append, comments, ['Association stage (pixel coordinates)' $
+                         , 'Application stage (world coordinates)']
   ;; Error and distortion mechanism
   red_append, names, ['CWERR', 'CWDIS.LOOKUP']
   red_append, values, [max(abs(cmaps)), 1]
-  red_append, comments, ['[nm] Max distortion', 'Distortions in lookup table']
+  red_append, comments, ['[nm] Max distortion (this correction step)' $
+                         , 'Distortions in lookup table']
   ;; Add the DWj keyword name
   names = 'DW'+j+' ' + names
   ;; Write to the header
