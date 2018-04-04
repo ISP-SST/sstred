@@ -16,9 +16,16 @@
 ; 
 ; :Keywords:
 ; 
-;    wb_states : 
+;    wb_states : in, optional, type=boolean
 ;   
+;      Generate extra WB objects, one per NB state, using the TRACE
+;      config file keyword.
 ;   
+;    old_wb_states : in, optional, type=boolean
+;   
+;      Generate extra WB objects, one per NB state, using the old
+;      mechanism where they are explicitly specified in the config
+;      file.
 ;   
 ;    numpoints : in, optional, type=integer, default=88
 ;   
@@ -170,6 +177,9 @@
 ;                coordinates for the redux-code.
 ;
 ;   2017-06-19 : MGL. Use gradient_vogel if there is PD data.
+;
+;   2018-03-29 : MGL. New keyword old_wb_states. With /wb_states,
+;                generate extra WB objects by use of TRACE keyword.
 ;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
@@ -504,6 +514,7 @@ pro red::prepmomfbd, wb_states = wb_states $
         endcase
         cfg.globals += 'SIM_X=' + sim_x_string + LF
         cfg.globals += 'SIM_Y=' + sim_y_string + LF
+        if keyword_set(wb_states) then cfg.globals += 'TRACE' + LF
 
         ;; External keywords?
         if(keyword_set(global_keywords)) then begin
@@ -760,7 +771,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               cfg_list[cfg_idx].objects += '    }' + LF
               cfg_list[cfg_idx].objects += '}' + LF
               
-              if(keyword_set(wb_states)) then begin
+              if keyword_set(old_wb_states) then begin
 
                 ;; select WB files with the same framenumbers
                 self->selectfiles, prefilter=upref[ipref], scan=scannumber, $
