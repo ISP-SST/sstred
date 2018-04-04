@@ -148,6 +148,9 @@ function red_sumheaders, files, sum $
   endif else begin
     head = red_readhead(files[0]) ; read a single header to use as template
   endelse
+
+  ;; Remove duplicate framenumbers
+  framenumbers = framenumbers[uniq(framenumbers, sort(framenumbers))]
   
   if n_elements(Nsum) eq 0 then begin
     Nsum = n_elements(framenumbers)
