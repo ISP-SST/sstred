@@ -58,7 +58,7 @@
 ;      Set this to apply the field rotation angles with the opposite
 ;      sign. 
 ;
-;    np : in, optional, type=integer
+;    np : in, optional, type=integer, default=3
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
 ;
@@ -329,11 +329,12 @@ pro chromis::make_wb_cube, dir $
   endfor                        ; iscan
 
   ;; Align cube
-  if(~keyword_set(np)) then begin
-    np = 0L
-    prompt = inam +' : Please introduce the factor to recompute the reference image: '
-    read, np, prompt = prompt
-  endif
+  if n_elements(np) eq 0 then np = 3
+;  if(~keyword_set(np)) then begin
+;    np = 0L
+;    prompt = inam +' : Please introduce the factor to recompute the reference image: '
+;    read, np, prompt = prompt
+;  endif
 
   if n_elements(xbd) eq 0 then xbd = round(Nx*0.9)
   if n_elements(ybd) eq 0 then ybd = round(Ny*0.9)
