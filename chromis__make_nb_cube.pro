@@ -541,17 +541,32 @@ pro chromis::make_nb_cube, wcfile $
     align_scannumbers = f0(nname)
     align_shifts = f0(sname)
 
-    ;; Use interpolation to get the shifts for the selected scans.
+    ;; Check that we have alignment for all scan numbers
+    match2, uscans, align_scannumbers, suba, subb
+    missing_indx = where(suba eq -1, Nmissing)
+    if Nmissing gt 0 then begin
+      print, inam+' : Alignment missing for these scan numbers:'
+      print, uscans[missing_indx]
+      print, inam+' : Please rerun a -> align_continuum'
+      retall
+    endif
+    
+    ;; Select align shifts for the relevant scan numbers.
     nb_shifts = fltarr(2, Nscans)
-    for iscan=0L, Nscans-1 do begin
-      pos = where(align_scannumbers eq uscans[iscan], cccc)
-      if cccc eq 1 then nb_shifts[*, iscan] = align_shifts[*, pos] else begin
-        nb_shifts[0, *] = interpol([reform(align_shifts[0, *])] $
-                                   , [float(align_scannumbers)], [float(uscans)])
-        nb_shifts[1, *] = interpol([reform(align_shifts[1, *])] $
-                                   , [float(align_scannumbers)], [float(uscans)])
-      endelse
-    endfor
+    nb_shifts[0, *] = align_shifts[0, suba]
+    nb_shifts[1, *] = align_shifts[1, suba]
+  
+;    ;; Use interpolation to get the shifts for the selected scans.
+;    nb_shifts = fltarr(2, Nscans)
+;    for iscan=0L, Nscans-1 do begin
+;      pos = where(align_scannumbers eq uscans[iscan], cccc)
+;      if cccc eq 1 then nb_shifts[*, iscan] = align_shifts[*, pos] else begin
+;        nb_shifts[0, *] = interpol([reform(align_shifts[0, *])] $
+;                                   , [float(align_scannumbers)], [float(uscans)])
+;        nb_shifts[1, *] = interpol([reform(align_shifts[1, *])] $
+;                                   , [float(align_scannumbers)], [float(uscans)])
+;      endelse
+;    endfor
     pos = where(~finite(nb_shifts), cccc)
     if cccc gt 0 then nb_shifts[pos] = 0
   endif
