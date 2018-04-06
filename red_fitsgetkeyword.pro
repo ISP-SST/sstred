@@ -3,11 +3,31 @@
 ;+
 ; Read a keyword from a FITS header.
 ;
-; Like fxpar but also checks for SOLARNET variable-keywords and
-; implements record-valued keywords, see the Calabretta et al. draft
+; Like fxpar but also checks for SOLARNET variable-keywords. It also
+; reads record-valued keywords, see the Calabretta et al. draft
 ; from 2004, "Representations of distortions in FITS world coordinate
-; systems".
-; 
+; systems", and HIERARCH keywords, see  Wicenec, A., Grosbol,
+; P., & Pence, W. 2009, "The ESO HIERARCH Keyword Conventions",
+; https://fits.gsfc.nasa.gov/registry/hierarch/hierarch.pdf.
+;
+; In case the same keyword was written with more than one of these
+; mechanisms, the returned values will be taken from HIERARCH with the
+; highest priority, record-valued second, and normal keyword last
+; (possibly SOLARNET-variable).
+;
+; * HIERARCH keywords are returned as the same kind of array of lists
+;   used as input by red_fitsaddkeyword_hierarch.
+;
+; * Record-valued keywords are returned as a strarr unless the
+;   field_specifiers keyword is present, in which case the returned
+;   value is an array of values and the field specifiers are returned
+;   in the keyword.
+;
+; * SOLARNET variable keywords are returned as just the
+;   average/min/max value in the "normal" keyword with the same name.
+;   The variable info is returned in keywords is specified. Which
+;   keywords depends on the type of variable keyword.
+;
 ; :Categories:
 ;
 ;    SST pipeline
@@ -63,11 +83,11 @@
 ;    2017-08-30 : MGL. First version.
 ; 
 ;    2017-10-26 : MGL. Renamed from red_fitskeyword. Implemented
-;                 record-valued keywords..
+;                 record-valued keywords.
 ; 
 ;    2017-12-07 : MGL. New keyword comment.
 ; 
-; 
+;    2018-04-06 : MGL. Read also HIERARCH keywords.
 ; 
 ;-
 function red_fitsgetkeyword, filename_or_header, name $
@@ -101,7 +121,30 @@ function red_fitsgetkeyword, filename_or_header, name $
     end
   endcase
 
-  ;; Read the keyword
+  ;; Check for HIERARCH with the wanted name.
+  hindx = where(strmatch(hdr, 'HIERARCH ' + name + ' *'), Nmatch)
+  if Nmatch gt 0 then begin
+    for imatch = 0, Nmatch-1 do begin
+      line = red_strreplace(hdr[hindx[imatch]], 'HIERARCH ' + name + ' ', '')
+      split_line = strsplit(line,'=',/extract)
+      field_spec = strtrim(split_line[0], 2)
+      split_line = strsplit(split_line[1], '/', /extract)
+      field_value = split_line[0]
+      if n_elements(split_line) ge 2 then begin
+        field_comment = strjoin(split_line[1:*], ' ')
+        field_list = list(field_spec, field_value, field_comment)
+      endif else begin
+        field_list = list(field_spec, field_value)
+      endelse
+      red_append, hierarch_fields, field_list
+    endfor                      ; imatch
+
+    ;; No need to look further if we found HIERARCH keywords!
+    return, hierarch_fields
+
+  endif
+  
+  ;; Check for multiple occurences. 
   value = fxpar(hdr, name, comment = comment, _strict_extra = extra, count = count)
 
   ;; Missing keyword
