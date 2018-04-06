@@ -129,7 +129,7 @@ function red_fitsgetkeyword, filename_or_header, name $
       split_line = strsplit(line,'=',/extract)
       field_spec = strtrim(split_line[0], 2)
       split_line = strsplit(split_line[1], '/', /extract)
-      field_value = split_line[0]
+      tmp = execute('field_value='+split_line[0]) ; Get the value with the correct type
       if n_elements(split_line) ge 2 then begin
         field_comment = strjoin(split_line[1:*], ' ')
         field_list = list(field_spec, field_value, field_comment)
