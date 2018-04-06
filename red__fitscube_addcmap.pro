@@ -35,6 +35,11 @@
 ; 
 ;    2017-03-22: MGL. Implement extension of (Calabretta et al. 2004). 
 ; 
+;    2018-04-06 : MGL. The Calabretta mechanism is not enough, instead
+;                 use new extension of this mechanism with keywords
+;                 stored both with the Calabretta record-valued
+;                 mechansim and the HIERARCH convention.
+; 
 ;-
 pro red::fitscube_addcmap, filename, cmaps
 
@@ -78,7 +83,27 @@ pro red::fitscube_addcmap, filename, cmaps
   ;; Add the DWj keyword name
   names = 'DW'+j+' ' + names
   ;; Write to the header
+  oldanchor = anchor
   red_fitsaddkeyword, anchor = anchor, hdr, names, values, comments
+  
+  ;; Do it again with the HIERARCH convention. Avoid dots in the
+  ;; names, please!
+  undefine, hierarch_fields
+  ;; The HIERARCH representation of the records is an array of lists.
+  ;; The lists consist of: The keyword names, the field names, the
+  ;; value, the comment. The only list element that can be omitted is
+  ;; the comment.
+  red_append, hierarch_fields, list('NAME'        ,'Cavity error' ,'Type of correction'                         )
+  red_append, hierarch_fields, list('EXTVER'      ,1              ,'Extension version number'                   )
+  red_append, hierarch_fields, list('NAXES'       ,3              ,'3 axes in the lookup table'                 )
+  red_append, hierarch_fields, list('AXIS1'       ,1              ,'Spatial X'                                  )
+  red_append, hierarch_fields, list('AXIS2'       ,2              ,'Spatial Y'                                  )
+  red_append, hierarch_fields, list('AXIS3'       ,5              ,'Scan number'                                )
+  red_append, hierarch_fields, list('ASSOCIATE'   ,1              ,'Association stage (pixel coordinates)'      )
+  red_append, hierarch_fields, list('APPLY'       ,6              ,'Application stage (world coordinates)'      )
+  red_append, hierarch_fields, list('CWERR'       ,max(abs(cmaps)),'[nm] Max distortion (this correction step)' )
+  red_append, hierarch_fields, list('CWDIS LOOKUP',1              ,'Distortions in lookup table'                )
+  red_fitsaddkeyword_hierarch, anchor = oldanchor, hdr, 'DW'+j, hierarch_fields
 
   ;; Construct a header for the image extension with the lookup table. ---------------------------
   
