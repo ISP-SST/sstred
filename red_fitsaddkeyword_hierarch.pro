@@ -78,7 +78,7 @@ pro red_fitsaddkeyword_hierarch, hdr, name, fields $
   hdr = hdr[0:Nlines]
 
   ;; Remove any existing occurrences of rec_name in the header
-  red_fitsdelkeyword, hdr, name
+  red_fitsdelkeyword, hdr, name, /hierarch_only
   
   pchar = '+'
 

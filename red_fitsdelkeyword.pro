@@ -25,9 +25,9 @@
 ; 
 ; :Keywords:
 ; 
+;   hierarch_only : in, optional, type=boolean
 ;   
-;   
-;   
+;     Remove only the HIERARCH version of the keyword.
 ; 
 ; 
 ; :History:
@@ -36,8 +36,10 @@
 ; 
 ;   2018-04-06 : MGL. Delete also HIERARCH keywords.
 ; 
+;   2018-04-06 : MGL. New keyword hierarch_only.
+; 
 ;-
-pro red_fitsdelkeyword, hdr, name
+pro red_fitsdelkeyword, hdr, name, hierarch_only = hierarch_only
 
   ;; There is no fxdelpar so we have to use sxdelpar. However,
   ;; sxdelpar is not aware of the OGIP LONGSTRN convention, so if the
@@ -45,16 +47,20 @@ pro red_fitsdelkeyword, hdr, name
   ;; removed. So we first make sure the keyword is short, then we
   ;; remove it.
 
-  fxaddpar, hdr, name, 'del', 'del'
-  sxdelpar, hdr, name
-
+  if ~keyword_set(hierarch_only) then begin
+    fxaddpar, hdr, name, 'del', 'del'
+    sxdelpar, hdr, name
+  endif
+  
   ;; The above commands take care of ordinary keywords, as well as
   ;; record-valued keywords. But not HIERARCH keywords! So we rewrite
   ;; such lines as "normal" (but protected) keywords and then  remove
   ;; them. 
 
   hindx = where(strmatch(hdr, 'HIERARCH ' + name + ' *'), Nmatch)
-  for imatch = 0, Nmatch-1 do hdr[hindx[imatch]] = "+DEL+    = 'DEL'"
+  for imatch = 0, Nmatch-1 do $
+     hdr[hindx[imatch]] $
+     = "+DEL+    = 'DEL'                                                                "
   sxdelpar, hdr, "+DEL+"
   
 end
