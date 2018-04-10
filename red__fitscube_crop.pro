@@ -13,9 +13,9 @@
 ; 
 ; :Params:
 ; 
-;    infile
+;    infile : in, type=string
 ; 
-; 
+;      The name of the file containing the fitscube to be cropped.
 ; 
 ; 
 ; :Keywords:
@@ -347,7 +347,7 @@ pro red::fitscube_crop, infile $
         endif else stop
       end
       else : begin
-        ;; Extensions that we dont' know how to handle:
+        ;; Extensions that we don't know how to handle:
         print, inam + ' : Can only copy binary extensions.'
         print, fcb.xtension[iext]
         stop
