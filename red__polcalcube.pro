@@ -59,15 +59,13 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
   endif
 
   ;; Files and states
-  files = file_search(self.out_dir + 'polcal_sums/*/cam*', count = count)
-  self -> extractstates, files, states
+  files = file_search(self.out_dir + 'polcal_sums/*/*.fits', count = count)
+  self -> extractstates, files, states, /polcal
 
   ;; Get cameras
   cams = (states[uniq(states.camera, sort(states.camera))]).camera
-  ;;cams = [self.camt, self.camr]
 
   ;; Loop camera
-  first = 1B
   for icam = 0, n_elements(cams)-1 do begin
     
     if(keyword_set(cam)) then begin
@@ -78,17 +76,21 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     endif
     print, inam + ' : processing '+cams[icam]
     
-    self -> selectfiles, files, states, cam = cams[icam], sel = sel
+    self -> selectfiles, files = files, states = states $
+                         , cam = cams[icam], sel = sel
     selstates = states[sel]
     selfiles = files[sel]
+
+    detector = selstates[0].detector
     
-    detector = (strsplit(file_basename(selfiles[0]),'.',/extract))[0]
+
+;    detector = (strsplit(file_basename(selfiles[0]),'.',/extract))[0]
 ;    stat = red_getstates_polcal_out(selfiles)
 
-    upref = (states[uniq(selstates.pref, sort(states.pref))]).pref
+    upref = (states[uniq(selstates.prefilter, sort(states.prefilter))]).prefilter
     uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
     ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
-    ulc = (selstates[uniq(selstates.lcs, sort(selstates.lc))]).lc
+    ulc = (selstates[uniq(selstates.lc, sort(selstates.lc))]).lc
 
     Npref = n_elements(upref)
     Nqw = n_elements(uqw)
@@ -97,29 +99,21 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     
     ;; Load dark
     self -> get_calib, selstates[0], darkdata = dd, status = status
-;    df = self.out_dir + '/darks/'+detector+'.dark'
-;    if(~file_test(df)) then begin
-;      print, inam + ' : ERROR, dark file not found -> '+df
-;      return
-;    endif
-;    dd = f0(df)
 
-    ;; Loop prefilters
-    if(first) then begin
-      first = 0
-      if keyword_set(pref) then begin
-        indx = where(upref eq pref, count)
-        if(count eq 0) then begin
-          print, inam + ' : ERROR, user provided prefilter is not on the list -> '+pref
-          print, inam + ' : Available prefilters are:'
-          for ipref = 0, Npref-1 do print, ipref, +' -> '+upref[ipref], FORMAT='(I3,A)'
-          read, ipref, prompt = 'Select prefilter number: '
-          upref = upref[ipref]
-        endif else upref = upref[indx]
-      endif 
-    endif
+    ;; Take pref keyword into account
+    if keyword_set(pref) then begin
+      indx = where(upref eq pref, count)
+      if(count eq 0) then begin
+        print, inam + ' : ERROR, user provided prefilter is not on the list -> '+pref
+        print, inam + ' : Available prefilters are:'
+        for ipref = 0, Npref-1 do print, ipref, +' -> '+upref[ipref], FORMAT='(I3,A)'
+        read, ipref, prompt = 'Select prefilter number: '
+        upref = upref[ipref]
+      endif else upref = upref[indx]
+    endif 
 
     Npref = n_elements(upref)
+    ;; Loop prefilters
     for ipref = 0, Npref-1 do begin
       
       print, inam + ' : Processing prefilter -> '+upref[ipref]
@@ -132,26 +126,40 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       endif
 
       ;; Read data
-      dim = size(f0(f[0]), /dimension)
+      dim = fxpar(headfits(files[0]), 'NAXIS*')
       Nx = dim[0]
       Ny = dim[1]
       d = fltarr(Nlc, Nqw, Nlp, Nx, Ny)
       d1d = fltarr(Nlc, Nqw, Nlp)
 
+      iloop = 0
+      Nloop = Nlp*Nqw*Nlc
       for ilp = 0, Nlp - 1 do begin
         for iqw = 0, Nqw - 1 do begin
           for ilc = 0, Nlc-1 do begin
-            statestring = ulp[ilp]+'.'+uqw[iqw]+'.'+upref[ipref]+'.'+ulc[ilc]
-            indx = where(selstates.state eq statestring, count)
+
+            undefine, fullstate_list
+            red_append, fullstate_list, 'LP'+string(round(ulp[ilp]), format = '(i03)')
+            red_append, fullstate_list, 'qw'+string(round(uqw[iqw]), format = '(i03)')
+            red_append, fullstate_list, upref[ipref]
+            red_append, fullstate_list, '*_*'
+            red_append, fullstate_list, 'lc'+strtrim(long(ulc[ilc]), 2)
+            statestring = strjoin(fullstate_list, '_')
+            
+            indx = where(strmatch(selstates.fullstate,statestring ),count)
             if count ne 1 then begin
               print, inam + ' : ERROR, irregular state -> '+ statestring
               stop
-            endif else print, inam + ' : loading -> '+cams[icam]+'.'+statestring
-            d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx]) - dd
+            endif 
+            red_progressbar, iloop, Nloop, /predict, cams[icam]+' : '+file_basename(selfiles[indx])
+            d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx], /silent) - dd
             if dodescatter then $
                d[ilc,iqw,ilp,*,*] = red_cdescatter(reform(d[ilc,iqw,ilp,*,*]) $
-                                                   , bg, psf, /verbose, nthreads = nthreads)
+                                                   , bg, psf, nthreads = nthreads)
             d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
+
+            iloop++
+            
           endfor                ; ilc
         endfor                  ; iqw
       endfor                    ; ilp
