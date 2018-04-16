@@ -45,6 +45,8 @@
 ; 
 ;   2018-02-02 : MGL. Adapt to new codebase.
 ; 
+;   2018-04-16 : MGL. Write single FITS files with extensions.
+; 
 ; 
 ;-
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
@@ -82,10 +84,6 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     selfiles = files[sel]
 
     detector = selstates[0].detector
-    
-
-;    detector = (strsplit(file_basename(selfiles[0]),'.',/extract))[0]
-;    stat = red_getstates_polcal_out(selfiles)
 
     upref = (states[uniq(selstates.prefilter, sort(states.prefilter))]).prefilter
     uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
@@ -139,7 +137,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
           for ilc = 0, Nlc-1 do begin
 
             undefine, fullstate_list
-            red_append, fullstate_list, 'LP'+string(round(ulp[ilp]), format = '(i03)')
+            red_append, fullstate_list, 'lp'+string(round(ulp[ilp]), format = '(i03)')
             red_append, fullstate_list, 'qw'+string(round(uqw[iqw]), format = '(i03)')
             red_append, fullstate_list, upref[ipref]
             red_append, fullstate_list, '*_*'
@@ -167,18 +165,22 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       ;; Save data
       outdir = self.out_dir + '/polcal_cubes/'
       file_mkdir, outdir
-      print, inam + ' : saving '+outdir+detector+'.'+upref[ipref]+'.3d.fits'
-      writefits, outdir+detector+'.'+upref[ipref]+'.3d.fits', temporary(d)
+      
+      pname = outdir+detector+'_'+upref[ipref]+'_polcalcube.fits'
+      print, inam + ' : saving '+pname
+      writefits, pname, d
 
-      ;; 1D data and states
-      print, inam + ' : saving '+outdir+detector+'.'+upref[ipref]+'.1d.fits'
-      writefits,outdir+detector+'.'+upref[ipref]+'.1d.fits', d1d
-      qw = float(strmid(uqw,2))
-      lp = float(strmid(ulp,2))
-      print, inam + ' : saving '+outdir+detector+'.'+upref[ipref]+'.qw.fits'
-      writefits, outdir+detector+'.'+upref[ipref]+'.qw.fits', qw
-      print, inam + ' : saving '+outdir+detector+'.'+upref[ipref]+'.lp.fits'
-      writefits, outdir+detector+'.'+upref[ipref]+'.lp.fits', lp
+      mkhdr, ehdr, d1d, /image
+      red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'D1D', '1D polcal data'
+      writefits, pname, d1d, ehdr, /append
+
+      mkhdr, ehdr, uqw, /image
+      red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'QW', 'Quarter wave plate angles'
+      writefits, pname, uqw, ehdr, /append
+
+      mkhdr, ehdr, ulp, /image
+      red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'LP', 'Linear polarrizer angles'
+      writefits, pname, ulp, ehdr, /append
 
     endfor                      ; ipref
   endfor                        ; icam
