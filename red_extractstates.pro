@@ -178,7 +178,7 @@ pro red_extractstates, strings $
   ;; The camera name consists of the string 'cam' followed by a roman
   ;; number.
   if arg_present(cam) or arg_present(pstates_out) then $
-     cam = reform((stregex(strlist,'(_|\.|^)(cam[IVX]+)(_|\.|$)', /extr, /subexp))[2,*])
+     cam = reform((stregex(file_basename(strlist),'(_|\.|^)(cam[IVX]+)(_|\.|$)', /extr, /subexp))[2,*])
   
   ;; The prefilter is the only field that is exactly four digits
   if arg_present(pref) or arg_present(fullstate) or arg_present(lambda) or $
@@ -200,11 +200,13 @@ pro red_extractstates, strings $
                                  , 'lc',''))
   
   ;; For polcal, the linear polarizer state
-  if arg_present(lp) or arg_present(pstates) or arg_present(pstates_out) then $
-     lp = float(red_strreplace(reform( $
-          (stregex(strlist,'(_|\.|^)(LP[0-3][0-9]{2})(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
-                               , 'LP', ''))
-
+  if arg_present(lp) or arg_present(pstates) or arg_present(pstates_out) then begin
+    strlst = red_strreplace(file_basename(strlist),'_LP','_lp')
+    lp = float(red_strreplace(reform( $
+         (stregex(strlst,'(_|\.|^)(LP[0-3][0-9]{2})(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
+                              , 'lp', ''))
+  endif
+  
   ;; For polcal, the quarter wave plate state
   if arg_present(qw) or arg_present(pstates) or arg_present(pstates_out) then $
      qw = float(red_strreplace(reform( $
