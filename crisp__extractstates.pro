@@ -33,6 +33,9 @@
 ; 
 ; :Keywords:
 ; 
+;     force : in, optional, type=boolean
+;
+;        Do not use cached states.
 ; 
 ;     polcal : in, optional, type=boolean
 ; 
@@ -54,10 +57,14 @@
 ;   2017-07-28 : MGL. New version based on chromis::extractstates.
 ;
 ;   2017-07-06 : MGL. New keyword polcal. Do not sort files.
-;
 ; 
+;   2018-04-16 : MGL. Make old-style CRISP files a special case,
+;                working more like in the old code base.
+;   
+;
 ;-
 pro crisp::extractstates, strings, states $
+                          , force = force $
                           , strip_wb = strip_wb $
                           , strip_settings = strip_settings $
                           , polcal = polcal
@@ -67,6 +74,163 @@ pro crisp::extractstates, strings, states $
  
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
+
+  ;; If the first string ends with a number, assume all the strings
+  ;; are old-style CRISP file names.
+;  if (strsplit(strings[0], '.', /extract, count = Nsplit))[Nsplit-1] ne 'fits' then begin
+  if strmatch(strmid(strings[0],strlen(strings[0])-1,1),'[0-9]') then begin
+
+    if keyword_set(polcal) then begin
+      states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
+    endif else begin
+      states = replicate( {CRISP_STATE}, Nstrings )
+    endelse
+
+    print, inam + ' : Try to extract state info from cache'
+    for ifile = 0, Nstrings-1 do begin
+
+      if keyword_set(force) then $
+         cnt = 0 $
+      else $
+         this_cache = rdx_cacheget(strings[ifile], count = cnt)
+  
+      if cnt gt 0 then states[ifile] = this_cache.state
+
+    endfor                      ; ifile
+
+    ;; Anything not already cached?
+    ncindx = where(states.filename ne strings, Nnotcached)
+
+    if Nnotcached eq 0 then return
+
+    print, inam + ' : Get un-cached state info from file names'
+    ;; Most of the info is in the file names
+    if keyword_set(polcal) then begin
+      red_extractstates, strings[ncindx] $
+                         , basename  = basename   $
+                         , cam       = detector   $
+                         , dwav      = dwav       $
+                         , focus     = focus      $
+                         , fullstate = fullstate  $
+;                         , hscan     = hscan      $
+                         , lambda    = lambda     $
+                         , lc        = lc         $
+                         , lp        = lp         $
+                         , nums      = nums       $
+                         , pref      = pref       $
+                         , qw        = qw         $
+;                         , rscan     = rscan      $
+                         , scan      = scan       $
+                         , wav       = wav        
+      states[ncindx].qw = qw
+      states[ncindx].lp = lp
+    endif else begin
+      red_extractstates, strings[ncindx] $
+                         , basename  = basename   $
+                         , cam       = detector   $
+                         , dwav      = dwav       $
+                         , focus     = focus      $
+                         , fullstate = fullstate  $
+;                         , hscan     = hscan      $
+                         , lambda    = lambda     $
+                         , lc        = lc         $
+                         , nums      = nums       $
+                         , pref      = pref       $
+;                         , rscan     = rscan      $
+                         , scan      = scan       $
+                         , wav       = wav        
+    endelse
+
+    ;; Rewrite wav without zero-padding in the finetuning part
+    wav = pref+'_'+strmid(wav,5,1)+strtrim(abs(round((dwav-pref)*1000)),2)
+
+    
+    states[ncindx].detector         = detector ; "camXIX" 
+    states[ncindx].filename         = strings  ; File names in input strings
+    states[ncindx].framenumber      = nums     ; Frame numbers
+    states[ncindx].lc               = lc       ; Liquid crystal state
+    states[ncindx].nframes          = 1        ; Single frame in old CRISP files
+    states[ncindx].pf_wavelength    = lambda   ; [nm] Prefilter wavelength
+    states[ncindx].prefilter        = pref     ; "6302"
+    states[ncindx].scannumber       = scan     ; Scan number
+
+    
+    ;; Some info is in the ANA headers
+    for ifile = 0L, Nnotcached-1 do begin
+      
+      if ifile mod 100 eq 0 then $
+         red_progressbar, ifile, Nnotcached, 'Get remaining state info from ANA headers', /predict
+
+      anahdr = fzhead(strings[ncindx[ifile]])    ; Read the ANA header
+
+      ;; Exposure time [s]
+      tspos = strpos(anahdr, 'Ts=')
+      tepos = strpos(anahdr, 'Te=')
+      if tspos ne -1 and tepos ne -1 then begin
+        Ts = strmid(anahdr, tspos+3, 26)
+        Te = strmid(anahdr, tepos+3, 26)
+        states[ncindx[ifile]].exposure = red_time2double(strmid(Te, strpos(Te, ' '))) $
+                                         - red_time2double(strmid(Ts, strpos(Ts, ' ')))
+      endif
+
+      ;; Camera "Crisp-W" etc.
+      states[ncindx[ifile]].camera = red_strreplace((stregex(anahdr,'(\[)(CRISP-[WDTR]+)(\])' $
+                                                             , /extr, /subexp))[2] $
+                                                    , 'CRISP', 'Crisp') 
+      states[ncindx[ifile]].is_wb = strmatch(states[ncindx[ifile]].camera,'*-[DW]') 
+
+      if states[ncindx[ifile]].is_wb then begin
+        states[ncindx[ifile]].tun_wavelength = states[ncindx[ifile]].pf_wavelength ; [nm] Tuning wavelength
+        states[ncindx[ifile]].tuning         = states[ncindx[ifile]].prefilter+'_+0'      ; "6302_+0"
+      endif else begin
+        states[ncindx[ifile]].tun_wavelength = dwav[ifile]/10d ; [nm] Tuning wavelength
+        states[ncindx[ifile]].tuning         = wav[ifile]      ; "6301_+100"
+      endelse
+
+      ;; For CHROMIS, states.fullstate is the settings and the fpi_state
+      ;; (e.g. "12.00ms_G10.00_3934_3934_+0") but for (old) CRISP we
+      ;; don't have an exact expsure time setting and no info about the
+      ;; camera gain. On the other hand, the LC state is important and
+      ;; known. So construct it like this: "6302_6302_+0_lc0'" (or
+      ;; without the LC part for WB).
+      states[ncindx[ifile]].fullstate = states[ncindx[ifile]].prefilter $
+                                        + '_' + states[ncindx[ifile]].tuning
+      if ~states[ncindx[ifile]].is_wb then $
+         states[ncindx[ifile]].fullstate += '_' + 'lc' + strtrim(long(states[ncindx[ifile]].lc), 2)
+    endfor                      ; ifile
+
+    ;; Add polcal state if neccessary
+    if keyword_set(polcal) then $
+       states[ncindx].fullstate = 'lp' + string(lp, format = '(i03)') + '_' $
+                                  + 'qw' + string(qw, format = '(i03)') + '_' $
+                                  + states[ncindx].fullstate
+    
+    
+;   states[ncindx].skip             =  ;
+
+    ;; states.fpi_state is the prefilter and the tuning
+    ;; "6302_6301_+100", NB info also for WB
+    states[ncindx].fpi_state = states[ncindx].prefilter + '_' + wav
+
+    ;; states.settings is exposure time and camera gain for CHROMIS
+    ;; (e.g., "12.00ms_G10.00") but we don't know the gain for CRISP.
+    ;; So use only exposure time!
+    states[ncindx].cam_settings = string(states[ncindx].exposure*1e3 $
+                                         , format = '(f05.2)')+'ms' 
+
+    ;; Store in cache
+    for ifile = 0L, Nnotcached-1 do $
+       rdx_cache, strings[ncindx[ifile]], { state:states[ncindx[ifile]] }
+    
+
+    return
+
+  endif
+
+  ;; If we get to this point, the strings are FITS files. So the
+  ;; following code should be revised once CRISP is run with the new
+  ;; camera system.
+  
 
   ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
@@ -210,7 +374,7 @@ pro crisp::extractstates, strings, states $
     ;; while observing.
 ;    if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
     if keyword_set(polcal) then begin
-      red_append, fullstate_list, 'LP'+string(round(states[ifile].lp), format = '(i03)')
+      red_append, fullstate_list, 'lp'+string(round(states[ifile].lp), format = '(i03)')
       red_append, fullstate_list, 'qw'+string(round(states[ifile].qw), format = '(i03)')
 ;      red_append, fullstate_list, states[ifile].lp
 ;      red_append, fullstate_list, states[ifile].qw
