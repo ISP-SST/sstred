@@ -302,9 +302,10 @@ pro crisp::get_calib, states $
 
       pinhtag = detector
 ;      if( states[istate].fpi_state ne '' ) then begin
-        pinhtag += '_' + states[istate].prefilter $
-                   + '_' + states[istate].fpi_state $
-                   + '_' + states[istate].lc
+      pinhtag += '_' + states[istate].prefilter $
+                 + '_' + states[istate].fpi_state $
+                 + '_' + 'lc' + strtrim(long(states[istate].lc), 2)
+      
 ;      endif
 ;         if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
 ;             pinhtag += '_' + states[istate].tuning
