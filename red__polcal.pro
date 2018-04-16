@@ -44,6 +44,8 @@
 ; 
 ;   2018-04-11 : MGL. Adapt to new codebase.
 ; 
+;   2018-04-16 : MGL. Read single FITS files with extensions.
+; 
 ;-
 pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref
 
@@ -54,8 +56,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
   if n_elements(nthreads) eq 0 then nthreads = 7
 
   ;; Search for cubes
-  rgx = self.out_dir + '/polcal_cubes/cam*.????.3d.fits'
-  f = file_search(rgx, count = Ncubes)
+  f = file_search(self.out_dir + '/polcal_cubes/cam*.????.polcalcube.fits', count = Ncubes)
   if Ncubes eq 0 then begin    
     print, inam + ' : ERROR, no valid polcal files found in '+self.out_dir + '/polcal_cubes/'
     return
@@ -101,16 +102,18 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
   if(~keyword_set(nodual) AND (count eq 2)) then begin
     print, inam + ' : Found 2 cameras for selected prefilter'
     
+    rname = dir+ucam[0]+root+'polcalcube.fits'
+    tname = dir+ucam[1]+root+'polcalcube.fits'
+
     ;; Load 1D data
     dir = self.out_dir + '/polcal_cubes/'
     root = '.'+pref+'.'
-    
-    r1d = readfits(dir+ucam[0]+root+'1d.fits')
-    t1d = readfits(dir+ucam[1]+root+'1d.fits')
-    rqw = readfits(dir+ucam[0]+root+'qw.fits')
-    tqw = readfits(dir+ucam[1]+root+'qw.fits')
-    rlp = readfits(dir+ucam[0]+root+'lp.fits')
-    tlp = readfits(dir+ucam[1]+root+'lp.fits')
+    r1d = mrdfits(rname,'D1D')
+    t1d = mrdfits(tname,'D1D')
+    rqw = mrdfits(rname,'QW')
+    tqw = mrdfits(tname,'QW')
+    rlp = mrdfits(rname,'LP')
+    tlp = mrdfits(tname,'LP')
 
     ;; Get offset and delta (using QWP angle as reference)
     qlt = (red_polcal_fit(t1d, tqw, tlp, norm=4))[16:17]
@@ -141,7 +144,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
            + 'V =' + string(dum[3]*100., format='(F5.1)') + '%'
     
     ;; Do fits and save
-    data = red_readdata(f[0])
+    data = red_readdata(rname)
     mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=nthreads)
     file_mkdir, outdir
     oname = outdir + ucam[0]+'.'+pref+'.polcal.fits'
@@ -150,7 +153,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
 
     red_writedata, oname, reform(mm, [16,dim[2],dim[3]], /overwrite), filetype='FITS', /overwrite
 
-    data = red_readdata(f[1])
+    data = red_readdata(tname)
     mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=nthreads)
     oname = outdir + ucam[1]+'.'+pref+'.polcal.fits'
     print, inam + ' : saving '+oname
