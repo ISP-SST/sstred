@@ -96,7 +96,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
       
       print, inam + 'Using -> '+dirs
     endif
-  ENDIF
+  endif
 
   for idir = 0, n_elements(dirs)-1 do begin
 
@@ -118,12 +118,11 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
 
     for cc = 0, ncam-1 do begin
       if(n_elements(cam) gt 0) then if(cams[cc] ne cam) then continue
-      ;;
-      ;; search files
-      ;;
-      IF (keyword_set(pref)) THEN $
+
+      ;; Search files
+      if (keyword_set(pref)) then $
          search = dir + '/' + cams[cc]+'.'+pref+'.intdif.icube' $
-      ELSE $
+      else $
          search = dir + '/' + cams[cc]+'.*.intdif.icube'
       cfile = file_search(search, count = count)
       dfile = dir+'/'+file_basename(cfile,'icube')+'save'
@@ -144,11 +143,9 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
       dfile = dfile[toread]
       print, inam + 'using -> '+cfile
 
-      ;;
       ;; Open files
-      ;;
       restore, dfile
-      ;; variables in there:  
+      ;; Variables in there:  
       ;;  done, uwav, ulc, uscan, nw, nlc, ns, pref, nx, ny, udwav
       openr, lun, cfile, /get_lun
       dat = assoc(lun, intarr(nx, ny, nw, nlc,/nozero), 512)
@@ -162,12 +159,11 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
       cmap = reform((temporary(fit)).pars[1,*,*])
       udwav = double(udwav)
 
-      ;;
-      ;; The real cavity-map has quite large shifts, but only the local
-      ;; fine structure affects momfbd. With this option, we only
-      ;; compensate for the fine local structure, removing the large
-      ;; scale features
-      ;;
+      ;; The real cavity-map has quite large shifts, but only the
+      ;; local fine structure affects momfbd. With this option, we
+      ;; only compensate for the fine local structure, removing the
+      ;; large scale features.
+
       if(keyword_set(smallscale)) then begin
         print, inam+'correcting only for local line shifts ... ', format='(A,$)'
         npix = 30
@@ -178,10 +174,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
         print, 'done'
       endif
 
-
-      ;;
-      ;; load cavity-error free flats
-      ;;
+      ;; Load cavity-error free flats
       flats = fltarr(nx, ny, nw)
       for ww=0, nw-1 do begin
         ffile = self.out_dir + '/flats/'+strjoin([cams[cc],pref,uwav[ww]],'.')+'.unpol.flat'
@@ -193,10 +186,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
         flats[*,*,ww] = f0(ffile)
       endfor
 
-
-      ;;
       ;; Existing scans?
-      ;;
       idx = where(done ne 0, count)
       if(count eq 0) then begin
         print, inam + 'have you run red::sum_data_intdif? -> returning'
@@ -207,9 +197,8 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
       print, inam + 't0 = '+red_stri(t0)+', t1 = '+red_stri(t1)
       print, inam + 'Looping through scans'
       print, ' '
-      ;;
-      ;; sum images
-      ;;
+
+      ;; Sum images
       for ss = t0, t1 do begin 
         if(n_elements(scan) gt 0) then begin
           if(uscan[ss] ne scan) then begin
@@ -218,9 +207,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
           endif
         endif
 
-        ;;
         ;; Get timeaver bounds
-        ;;
         dt = timeaver/2
         x0 = (ss-dt)>t0
         x1 = (x0 + timeaver-1)
@@ -230,9 +217,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
         endif
         print, inam + 'x0 = '+red_stri(x0)+', x1 = '+red_stri(x1)
 
-        ;;
-        ;; read data
-        ;;
+        ;; Read data
         if((ss eq t0) or (n_elements(cub) eq 0)) then begin
           for ii = x0, x1 do begin
             print, string(13B),inam +'adding t = '+red_stri(ii)+' / '+red_stri(x1), format='(A,A,I0,A,I0,$)' 
@@ -266,9 +251,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
             endelse
             cub1 = double(cub2)
 
-            ;;
             ;; Convolve data
-            ;;
             if(keyword_set(psfw)) then begin
               print, inam + 'convolving data ... ', format='(A,$)'
               for ww = 0, nw-1 do begin
@@ -278,9 +261,7 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
               print, 'done'
             endif
 
-            ;;
             ;; Shift spectra
-            ;;
             print, inam+'shifting cube ... ', format='(A,$)'
             for yy = 0, ny-1 do for xx=0, nx-1 do begin
               cub1[*,xx,yy] = rdx_cbezier3(udwav, cub1[*,xx,yy], udwav+cmap[xx,yy])
@@ -288,28 +269,25 @@ pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, de
             print, 'done'
           endelse
           
-          ;;
           ;; Compute new gains
-          ;;
           FOR ww = 0, nw-1 DO BEGIN
             ofile = strjoin([cams[cc],uscan[ss],pref,uwav[ww], ulc[ll]],'.')+'.gain'
             
-            IF keyword_set(sumlc) AND ll GT 0 THEN BEGIN
+            if keyword_set(sumlc) and ll gt 0 then begin
               print, 'creating link '+outdir+ofile
-              file_delete, outdir+ofile, /ALLOW_NONEXISTENT
+              file_delete, outdir+ofile, /allow_nonexistent
               ofile_0 = strjoin([cams[cc],uscan[ss],pref,uwav[ww], ulc[0]],'.')+'.gain'
               file_link, outdir+ofile_0, outdir+ofile
-            ENDIF ELSE BEGIN 
+            endif else begin 
               rat = flats[*, *, ww] * reform(cub2[ww, *, *]/cub1[ww, *, *])
 
               g = float(self->flat2gain(temporary(rat), min = min, max = max, bad = bad, $
                                         smooth = smooth, preserve = preserve))
-              ;;
+
               ;; Save gains
-              ;;
               print, 'saving '+ outdir+ofile
               fzwrite, float(g), outdir+ofile, ' '
-            ENDELSE
+            endelse
           endfor                ; ww
           
         endfor                  ; ll
