@@ -147,7 +147,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     data = red_readdata(rname)
     mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=nthreads)
     file_mkdir, outdir
-    oname = outdir + ucam[0]+'.'+pref+'.polcal.fits'
+    oname = outdir + ucam[0]+'_'+pref+'_polcal.fits'
     print, inam + ' : saving '+oname
     dim = size(mm,/dim)
 
@@ -155,7 +155,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
 
     data = red_readdata(tname)
     mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=nthreads)
-    oname = outdir + ucam[1]+'.'+pref+'.polcal.fits'
+    oname = outdir + ucam[1]+'_'+pref+'_polcal.fits'
     print, inam + ' : saving '+oname
     dim = size(mm,/dim)
 
