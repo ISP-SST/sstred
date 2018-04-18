@@ -71,6 +71,18 @@
 ;         Return the indices for the selection. If this is not specified,
 ;         the files/states arrays will be over-written to only contain the
 ;         selection.
+;
+;     count : out, optional, type=integer
+;
+;         The number of selected files.
+;
+;     complement : out, optional, type=intarr
+;
+;         The complement of selected.
+;
+;     ncomplement : out, optional, type=integer
+;
+;         The number of non-selected files.
 ; 
 ; :History:
 ; 
@@ -85,9 +97,14 @@
 ;   2017-06-29 : MGL. Bugfix: states.pref --> states.prefilter.
 ;
 ;   2017-07-06 : MGL. New keyword polcal. Do not sort files.
+;
+;   2018-04-18 : MGL. New keywords count, complement, and ncomplement.
 ; 
 ;-
 pro crisp::selectfiles, cam = cam $
+                        , count = count $
+                        , complement = complement $
+                        , ncomplement = ncomplement $
                         , dirs = dirs $
                         , files = files $
                         , states = states $
@@ -102,6 +119,10 @@ pro crisp::selectfiles, cam = cam $
                         , polcal = polcal
 
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+
+  ;; Unless we select any
+  count = 0L                  
+  ncomplement = n_elements(files)
 
   if( keyword_set(force) || n_elements(files) eq 0 ) then begin
 
@@ -188,12 +209,16 @@ pro crisp::selectfiles, cam = cam $
     states[where(selected lt 1)].skip = 1
   endif
 
-  selected = where( states.skip lt 1 )
+  selected = where( states.skip lt 1, count $
+                   , complement = complement, Ncomplement = Ncomplement)
   
-  if arg_present(selected) then return
+  if arg_present(selected) then begin
+    if count eq 0 then undefine,selected ; don't return -1
+    return
+  endif
   
                                 ; if keyword selected is not present, return selected subsets as new files/states
-  if( min(selected) ge 0 ) then begin
+  if count ne 0 then begin
     states = states[selected]
     files = states.filename
   endif else begin              ; return empty files/states
