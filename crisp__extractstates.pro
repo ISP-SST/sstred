@@ -77,7 +77,9 @@ pro crisp::extractstates, strings, states $
 
   ;; If the first string ends with a number, assume all the strings
   ;; are old-style CRISP file names.
-;  if (strsplit(strings[0], '.', /extract, count = Nsplit))[Nsplit-1] ne 'fits' then begin
+;  if (strsplit(strings[0], '.', /extract, count = Nsplit))[Nsplit-1]
+;  ne 'fits' then begin
+
   if strmatch(strmid(strings[0],strlen(strings[0])-1,1),'[0-9]') then begin
 
     if keyword_set(polcal) then begin
@@ -365,7 +367,10 @@ pro crisp::extractstates, strings, states $
     tuninfo = stregex(fxpar(head, 'STATE') $
                       , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                       , /extract, /subexpr) 
-    states[ifile].tuning = tuninfo[0]
+    
+    ;; Make tuning without zero-padding in the finetuning part
+    split_tuning = strsplit(tuninfo[0], '_', /extract)
+    states[ifile].tuning = split_tuning[0] + '_' + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
     ;; The fullstate string
