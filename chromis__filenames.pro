@@ -246,7 +246,7 @@ function chromis::filenames, datatype, states $
     cam_settings = strsplit(states[istate].cam_settings, '_', /extract)
     if ~keyword_set(wild_exposure)    then exposure    = cam_settings[0]
     if ~keyword_set(wild_gain)        then gain        = cam_settings[1]
-
+    
     undefine, tag_list
     dir = ''
     ext = ''
@@ -460,9 +460,7 @@ function chromis::filenames, datatype, states $
           dir = self.out_dir+'/pinhs/'
           red_append, tag_list, detector
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             ;; Should be replaced with the NB tuning info!
-             red_append, tag_list, tuning
+          red_append, tag_list, states[istate].fpi_state ; The NB state also in WB
           ext = '.pinh'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
