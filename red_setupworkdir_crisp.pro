@@ -256,12 +256,12 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
   endif
   
-  if ~keyword_set(calibrations_only) then begin  
-    for ipref = 0, Nprefilters-1 do begin
-      printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
-              + "' " + maybe_nodescatter[ipref]
-    endfor
-  endif
+;  if ~keyword_set(calibrations_only) then begin  
+;    for ipref = 0, Nprefilters-1 do begin
+;      printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
+;              + "' " + maybe_nodescatter[ipref]
+;    endfor
+;  endif
 
   print, 'Pinholes'
   printf, Clun, '#'
@@ -369,9 +369,11 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
     if ~keyword_set(calibrations_only) then begin  
       for ipref = 0, Npol-1 do begin
-        printf, Slun, "a -> polcalcube, pref='"+polprefs[ipref]+"' " $
-                + maybe_nodescatter[ipref]
-        printf, Slun, "a -> polcal, pref='"+polprefs[ipref]+"', nthreads=nthreads"
+        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "' " $
+                + ", nthreads=nthreads" $
+                + maybe_nodescatter[ipref] 
+        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "' " $
+                + ", nthreads=nthreads"
       endfor                    ; ipref
     endif
       
@@ -456,13 +458,13 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, 'a -> link_data' 
   
   for ipref = 0, Nprefilters-1 do begin
-    if total(prefilters[ipref] eq polprefs) gt 0 then begin
+;    if total(prefilters[ipref] eq polprefs) gt 0 then begin
       printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
               + maybe_nodescatter[ipref]
-    endif else begin
-      printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
-              + maybe_nodescatter[ipref]
-    endelse
+;    endif else begin
+;      printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
+;              + maybe_nodescatter[ipref]
+;    endelse
   endfor                        ; ipref
 
   
@@ -488,6 +490,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
   printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
   printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+  printf, Slun, ''
+  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
   printf, Slun, ''
 
   printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
