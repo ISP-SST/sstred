@@ -201,7 +201,7 @@ pro red_extractstates, strings $
   
   ;; For polcal, the linear polarizer state
   if arg_present(lp) or arg_present(pstates) or arg_present(pstates_out) then begin
-    strlst = red_strreplace(file_basename(strlist),'_LP','_lp')
+    strlst = red_strreplace(file_basename(strlist),'LP','lp')
     lp = float(red_strreplace(reform( $
          (stregex(strlst,'(_|\.|^)(LP[0-3][0-9]{2})(_|\.|$)', /extr, /subexp, /fold_case))[2,*]) $
                               , 'lp', ''))
