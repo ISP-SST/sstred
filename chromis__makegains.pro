@@ -58,7 +58,10 @@
 ;   2017-04-06 : MGL. Make version for CHROMIS without backscatter or
 ;                zeroing of detector tap borders.
 ; 
-;   2017-12-20 : MGL. Store gains with metadata headers.
+;   2017-12-20 : MGL. Store gains with metadata headers. 
+; 
+;   2018-04-19 : MGL. Rewrote using filenames() method, separate
+;                ordinary flats and cavity-free flats.
 ; 
 ; 
 ;-
@@ -80,46 +83,72 @@ pro chromis::makegains, bad=bad $
   red_make_prpara, prpara, pref 
   red_make_prpara, prpara, smoothsize
   
-  tosearch = self.out_dir+'/flats/*.flat.fits'
+  tosearch = self.out_dir+'/flats/*flat.fits'
   
   files = file_search(tosearch, count = Nfiles)
-
+  
   if Nfiles eq 0 then begin
-    print, inam+' : No flats found in: ' + tosearch
+    print, inam+' : No flats found : ' + tosearch
   endif
 
-  for ifile = 0L, Nfiles -1 do begin
+  ;; We want to run separately for regular and cavity-free flats 
+  cindx = where(strmatch(files, '*cavity*'), complement = findx)
+  
+  for iscav = 0, 1 do begin
+
+    if iscav then begin
+      flatname = files[cindx]
+    endif else begin
+      flatname = files[findx]
+    endelse
+    Nfiles = n_elements(flatname)
+    if Nfiles eq 0 then continue
     
-    tmp = strsplit(file_basename(files[ifile]), '._', /extract)
-    if(keyword_set(pref)) then begin
-      if(tmp[1] ne pref) then begin
-        print, inam+' : skipping prefilter -> '+tmp[1]
-        continue
+    self -> extractstates, flatname, states
+
+    if iscav then begin
+      gainname = self -> filenames('gain', states)
+      ;; self -> get_calib, states, gainname = gainname
+    endif else begin
+      gainname = self -> filenames('cavityfree_gain', states)
+      ;; self -> get_calib, states, gainname = gainname
+    endelse
+    
+    for ifile = 0L, Nfiles -1 do begin
+      
+      tmp = strsplit(file_basename(flatname[ifile]), '._', /extract)
+      if(keyword_set(pref)) then begin
+        if(tmp[1] ne pref) then begin
+          print, inam+' : skipping prefilter -> '+tmp[1]
+          continue
+        endif
       endif
-    endif
-
-    flat = red_readdata(files[ifile], head = hdr)
-
-    ;; Only one camera?
-    if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
-
-    gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, /preserve, smoothsize=smoothsize)
-    
-    namout = file_basename(files[ifile], '.flat.fits')+'.gain'
-    outdir = self.out_dir+'/gaintables/'
-
-    ;; Edit the header
-    red_fitsaddkeyword, hdr, 'FILENAME', outdir+namout
-    self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
-                                , prproc = inam, prpara = prpara
-    
-    ;; Output gaintable
-    file_mkdir, outdir
-    print, inam+' : saving '+outdir+namout
-    ;;fzwrite, float(gain), outdir+namout, ' '
-    overwrite = 1
-    red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
-
-  endfor                        ; ifile
-                                
+      
+      flat = red_readdata(flatname[ifile], head = hdr)
+      
+      ;; Only one camera?
+      if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
+      
+      gain = self -> flat2gain(flat, ma=max, mi=min, bad=bad $
+                               , /preserve, smoothsize=smoothsize)
+      
+;    namout = file_basename(flatname[ifile], '.flat.fits')+'.gain'
+;    outdir = self.out_dir+'/gaintables/'
+      
+      ;; Edit the header
+      red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
+      self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
+                                  , prproc = inam, prpara = prpara
+      
+      ;; Output gaintable
+      file_mkdir, file_dirname(gainname[ifile])
+      print, inam+' : Saving '+gainname[ifile]
+      ;;fzwrite, float(gain), outdir+namout, ' '
+      overwrite = 1
+      red_writedata, gainname[ifile], float(gain), header = hdr,$
+                     filetype='fits', overwrite = overwrite
+      
+    endfor                      ; ifile
+  endfor                        ; iscav
+  
 end
