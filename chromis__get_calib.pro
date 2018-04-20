@@ -30,10 +30,6 @@
 ; 
 ;        The data in the dark file(s) appropriate to the state(s).    
 ; 
-;    darkhead : out, optional, type=array 
-; 
-;        The header of the dark file(s) appropriate to the state(s).      
-; 
 ;    flatname : out, optional, type=strarr 
 ; 
 ;       The name(s) of the flat file(s) appropriate to the state(s).
@@ -41,10 +37,6 @@
 ;    flatdata : out, optional, type=array 
 ; 
 ;        The data in the flat file(s) appropriate to the state(s).
-; 
-;    flathead : out, optional, type=array 
-; 
-;        The header of the flat file(s) appropriate to the state(s).
 ; 
 ;    sflatname : out, optional, type=strarr 
 ; 
@@ -54,10 +46,6 @@
 ; 
 ;        The data in the summed flat file(s) appropriate to the state(s).
 ; 
-;    sflathead : out, optional, type=array 
-; 
-;        The header of the summed flat file(s) appropriate to the state(s).
-; 
 ;    gainname : out, optional, type=strarr 
 ; 
 ;       The name(s) of the gain file(s) appropriate to the state(s).
@@ -65,10 +53,6 @@
 ;    gaindata : out, optional, type=array 
 ; 
 ;        The data in the gain file(s) appropriate to the state(s).
-; 
-;    gainhead : out, optional, type=array 
-; 
-;        The header of the gain file(s) appropriate to the state(s).
 ; 
 ;    pinhname : out, optional, type=strarr 
 ; 
@@ -78,10 +62,6 @@
 ;   
 ;        The data in the pinhole file(s) appropriate to the state(s).  
 ; 
-;    pinhhead : out, optional, type=array
-;   
-;        The header of the pinhole file(s) appropriate to the state(s).  
-;   
 ;    status : out, optional, type=integer
 ; 
 ;        The status of the operation, 0 for success.
@@ -102,220 +82,139 @@
 ;    2016-09-04 : THI. Wideband pinhole names without narrowband
 ;                 tuning info. 
 ; 
+;    2018-04-18 : MGL. Rewrote using filenames() method. Removed
+;                 keywords for returning file headers.
+; 
 ; 
 ;-
 pro chromis::get_calib, states $
+                        , no_fits = no_fits $
                         , status = status $
-                        , darkname = darkname, darkdata = darkdata, darkhead = darkhead $
-                        , flatname = flatname, flatdata = flatdata, flathead = flathead $
-                        , gainname = gainname, gaindata = gaindata, gainhead = gainhead $
-                        , pinhname = pinhname, pinhdata = pinhdata, pinhhead = pinhhead $
-                        , sflatname = sflatname, sflatdata = sflatdata, sflathead = sflathead 
+                        , darkname  = darkname,  darkdata  = darkdata   $
+                        , flatname  = flatname,  flatdata  = flatdata   $
+                        , gainname  = gainname,  gaindata  = gaindata   $
+                        , pinhname  = pinhname,  pinhdata  = pinhdata   $
+                        , sflatname = sflatname, sflatdata = sflatdata 
 
   Nstates = n_elements(states)
 
   if Nstates eq 0 then begin
-     status = -1
-     return
+    status = -1
+    return
   endif
 
-  if arg_present(darkname)  or arg_present(darkdata)  then darkname = strarr(Nstates)   
-  if arg_present(flatname)  or arg_present(flatdata)  then flatname = strarr(Nstates) 
-  if arg_present(gainname)  or arg_present(gaindata)  then gainname = strarr(Nstates) 
-  if arg_present(pinhname)  or arg_present(pinhdata)  then pinhname = strarr(Nstates) 
-  if arg_present(sflatname) or arg_present(sflatdata) then sflatname = strarr(Nstates) 
+  if arg_present(darkname)  or arg_present(darkdata)  then $
+     darkname = self -> filenames('dark'   , states, no_fits = no_fits)
+  if arg_present(flatname)  or arg_present(flatdata)  then $
+     flatname = self -> filenames('flat'   , states, no_fits = no_fits)
+  if arg_present(gainname)  or arg_present(gaindata)  then $
+     gainname = self -> filenames('gain'   , states, no_fits = no_fits)
+  if arg_present(pinhname)  or arg_present(pinhdata)  then $
+     pinhname = self -> filenames('pinh'   , states, no_fits = no_fits)
+  if arg_present(sflatname) or arg_present(sflatdata) then $
+     sflatname = self -> filenames('sumflat', states, no_fits = no_fits)
 
-  if arg_present(darkdata) $
-     or arg_present(flatdata) $
-     or arg_present(gaindata) $
-     or arg_present(sflatdata) $
-     or arg_present(pinhdata) then begin
-
-     ;; Assume this is all for the same camera type, at least for the
-     ;; actual data. Otherwise we cannot return the actual data in a
-     ;; single array.
-     detector = states[0].detector
-     caminfo = red_camerainfo(detector)
-
-     if arg_present(darkdata) then darkdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-     if arg_present(flatdata) then flatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-     if arg_present(gaindata) then gaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-     if arg_present(pinhdata) then pinhdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-     if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  endif
-
-  Nheadlines = 100              ; Assume max numer of header lines
-  if arg_present(darkhead) then darkhead = arr(Nheadlines,Nstates) 
-  if arg_present(flathead) then flathead = arr(Nheadlines,Nstates) 
-  if arg_present(gainhead) then gainhead = arr(Nheadlines,Nstates) 
-  if arg_present(pinhhead) then pinhhead = arr(Nheadlines,Nstates) 
-  if arg_present(sflathead) then sflathead = arr(Nheadlines,Nstates) 
+  ;; Assume this is all for the same camera type, at least for the
+  ;; actual data. Otherwise we cannot return the actual data in a
+  ;; single array.
+  detector = states[0].detector
+  caminfo = red_camerainfo(detector)
+  
+  if arg_present(darkdata)  then darkdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  if arg_present(flatdata)  then flatdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  if arg_present(gaindata)  then gaindata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  if arg_present(pinhdata)  then pinhdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  
 
   status = 0
 
   for istate = 0, Nstates-1 do begin
 
-     detector = states[istate].detector
+    
+    ;; Darks
+    if arg_present(darkdata) then begin
 
-     ;; Darks
-     if arg_present(darkname) or arg_present(darkdata) or arg_present(darkhead) then begin
-
-        darktag = detector
-        if( states[istate].cam_settings ne '' ) then begin
-            darktag += '_' + states[istate].cam_settings
+      if n_elements(darkname) ne 0 && file_test(darkname[istate]) then begin
+        if arg_present(darkdata) then begin
+          darkdata[0, 0, istate] = red_readdata(darkname[istate] $
+                                                , status = darkstatus, /silent)
+          if status eq 0 then status = darkstatus
         endif
+      endif else status = -1
+      
+    endif                       ; Darks
 
-        dname = self.out_dir+'/darks/' + darktag + '.dark'
-        if arg_present(darkname) then begin
-            darkname[istate] = dname
+    ;; Flats
+    if arg_present(flatdata) then begin
+      
+      if n_elements(flatname) ne 0 && file_test(flatname[istate]) then begin
+        if arg_present(flatdata) then begin
+          flatdata[0, 0, istate] = red_readdata(flatname[istate] $
+                                                , status = flatstatus, /silent)
+          if status eq 0 then status = flatstatus
         endif
+      endif else  status = -1
+      
+    endif                       ; Flats
 
-        if file_test(dname) then begin
-            if arg_present(darkdata) then begin
-                darkdata[0, 0, istate] = red_readdata(dname, header = darkhead $
-                                                      , status = darkstatus, /silent)
-                if status eq 0 then status = darkstatus
-            endif else if arg_present(darkhead) then begin
-                darkhead[0, istate] = red_readhead(dname, status = darkstatus, /silent)
-                if status eq 0 then status = darkstatus
-            endif
-        endif else begin
-            if( arg_present(darkdata) || arg_present(darkhead) ) then status = -1
-        endelse
+    ;; Summed flats
+    if arg_present(sflatdata) then begin
 
-     endif                      ; Darks
-
-     ;; Flats
-     if arg_present(flatname) or arg_present(flatdata) or arg_present(flathead) $
-        or arg_present(sflatname) or arg_present(sflatdata) or arg_present(sflathead) then begin
-
-        flattag = detector
-        if( states[istate].fullstate ne '' ) then begin
-            flattag += '_' + states[istate].fullstate
+      if  n_elements(sflatname) ne 0 && file_test(sflatname[istate]) then begin
+        if arg_present(sflatdata) then begin
+          sflatdata[0, 0, istate] = red_readdata(sflatname[istate] $
+                                                 , status = sflatstatus, /silent)
+          if status eq 0 then status = sflatstatus
         endif
+      endif else  status = -1
+      
+    endif                       ; Summed flats
 
-        fname = self.out_dir+'/flats/' + flattag + '.flat'
-        if arg_present(flatname) then begin
-            flatname[istate] = fname
-        endif
+    ;; Gains
+    if arg_present(gaindata) then begin
 
-        if file_test(fname) then begin
-            if arg_present(flatdata) then begin
-                flatdata[0, 0, istate] = red_readdata(fname, header = flathead $
-                                                      , status = flatstatus, /silent)
-                if status eq 0 then status = flatstatus
-            endif else if arg_present(flathead) then begin
-                flathead[0, istate] = red_readhead(fname, status = flatstatus, /silent)
-                if status eq 0 then status = flatstatus
-            endif
-        endif else begin
-            if( arg_present(flatdata) || arg_present(flathead) ) then status = -1
-        endelse
+      if  n_elements(gainname) ne 0 && file_test(gainname[istate]) then begin
+        if arg_present(gaindata) then begin
+          gaindata[0, 0, istate] = red_readdata(gainname[istate] $
+                                                , status = gainstatus, /silent)
+          if status eq 0 then status = gainstatus
+        endif 
+      endif else status = -1
+      
+    endif                       ; Gains
 
-        sfname = self.out_dir+'/flats/' + flattag + '_summed.flat'
-        if arg_present(sflatname) then begin
-            sflatname[istate] = sfname
-        endif
-           
-        if file_test(sfname) then begin
-            if arg_present(sflatdata) then begin
-                sflatdata[0, 0, istate] = red_readdata(sfname, header = sflathead $
-                                                      , status = sflatstatus, /silent)
-                if status eq 0 then status = sflatstatus
-            endif else if arg_present(flathead) then begin
-                sflathead[0, istate] = red_readhead(sfname, status = sflatstatus, /silent)
-                if status eq 0 then status = sflatstatus
-            endif
-        endif else begin
-            if( arg_present(sflatdata) || arg_present(sflathead) ) then status = -1
-        endelse
+    
+    ;; Pinholes
+    if arg_present(pinhdata) then begin
 
-     endif                      ; Flats
-
-     ;; Gains
-     if arg_present(gainname) or arg_present(gaindata) or arg_present(gainhead) then begin
-
-        gaintag = detector
-        if( states[istate].fullstate ne '' ) then begin
-           gaintag += '_' + states[istate].fullstate
-        endif
-
-        fname = self.out_dir+'/gaintables/' + gaintag + '.gain'
-        if arg_present(gainname) then begin
-           gainname[istate] = fname
-        endif
-
-        if file_test(fname) then begin
-           if arg_present(gaindata) then begin
-              gaindata[0, 0, istate] = red_readdata(fname, header = gainhead $
-                                                    , status = gainstatus, /silent)
-              if status eq 0 then status = gainstatus
-           endif else if arg_present(gainhead) then begin
-              gainhead[0, istate] = red_readhead(fname, status = gainstatus, /silent)
-              if status eq 0 then status = gainstatus
-           endif
-        endif else begin
-           if( arg_present(gaindata) || arg_present(gainhead) ) then status = -1
-        endelse
-
-     endif                      ; Gains
-
-     
-     ;; Pinholes
-     if arg_present(pinhname) or arg_present(pinhdata) or arg_present(pinhhead) then begin
-
-        pinhtag = detector
-;        if( states[istate].prefilter ne '' ) then begin
-          pinhtag += '_' + states[istate].prefilter $
-                     + '_' + states[istate].fpi_state
-;        endif
-;         if( states[istate].is_wb eq 0 and states[istate].tuning ne '' ) then begin
-;             pinhtag += '_' + states[istate].tuning
-;         endif
-
-        pname = self.out_dir+'/pinhs/' + pinhtag + '.pinh'
-        if arg_present(pinhname) then begin
-            pinhname[istate] = pname
-        endif
-
-        if file_test(pname) then begin
-            if arg_present(pinhdata) then begin
-                pinhdata[0, 0, istate] = red_readdata(pname, header = pinhhead $
-                                                     , status = pinhstatus, /silent)
-                if status eq 0 then status = pinhstatus
-            endif else if arg_present(pinhhead) then begin
-                pinhhead[0, istate] = red_readhead(pname, status = pinhstatus, /silent)
-                if status eq 0 then status = pinhstatus
-            endif
-        endif else begin
-            if( arg_present(pinhdata) || arg_present(pinhhead) ) then status = -1
-        endelse
-        
-     endif                      ; Pinholes
+      if  n_elements(pinhname) ne 0 && file_test(pinhname[istate]) then begin
+        if arg_present(pinhdata) then begin
+          pinhdata[0, 0, istate] = red_readdata(pinhname[istate] $
+                                                , status = pinhstatus, /silent)
+          if status eq 0 then status = pinhstatus
+        endif 
+      endif else status = -1
+      
+    endif                       ; Pinholes
 
   endfor                        ; istate
 
   ;; Reduce dimensions if possible
   if Nstates eq 1 then begin
 
-     if arg_present(darkname)  then darkname = darkname[0]
-     if arg_present(flatname)  then flatname = flatname[0]
-     if arg_present(gainname)  then gainname = gainname[0]
-     if arg_present(pinhname)  then pinhname = pinhname[0]
-     if arg_present(sflatname) then sflatname = sflatname[0]
+    if arg_present(darkname)  then darkname = darkname[0]
+    if arg_present(flatname)  then flatname = flatname[0]
+    if arg_present(gainname)  then gainname = gainname[0]
+    if arg_present(pinhname)  then pinhname = pinhname[0]
+    if arg_present(sflatname) then sflatname = sflatname[0]
 
-     if arg_present(darkdata)  then darkdata = darkdata[*, *, 0]
-     if arg_present(flatdata)  then flatdata = flatdata[*, *, 0]
-     if arg_present(GAINdata)  then gaindata = gaindata[*, *, 0]
-     if arg_present(pinhdata)  then pinhdata = pinhdata[*, *, 0] 
-     if arg_present(sflatdata) then sflatdata = sflatdata[*, *, 0]
-     
-     if arg_present(darkhead)  then darkhead = darkhead[*, 0]
-     if arg_present(flathead)  then flathead = flathead[*, 0]
-     if arg_present(gainhead)  then gainhead = gainhead[*, 0]
-     if arg_present(pinhhead)  then pinhhead = pinhhead[*, 0]
-     if arg_present(sflathead) then sflathead = sflathead[*, 0]
-     
+    if arg_present(darkdata)  then darkdata = darkdata[*, *, 0]
+    if arg_present(flatdata)  then flatdata = flatdata[*, *, 0]
+    if arg_present(gaindata)  then gaindata = gaindata[*, *, 0]
+    if arg_present(pinhdata)  then pinhdata = pinhdata[*, *, 0] 
+    if arg_present(sflatdata) then sflatdata = sflatdata[*, *, 0]
+    
   endif
 
 end
