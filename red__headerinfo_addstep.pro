@@ -142,3 +142,74 @@ pro red::headerinfo_addstep, header $
 
 end
 
+;; Mail with list of approved PRSTEP labels from 2018-02.16, Subject:
+;; Re: [solarnet-20.3] [solarnet-50.2] Do you sum, add or stack
+;; images?
+
+;; Below is our summary of the discussion on what to put in the
+;; PRSTEPn keywords. Remember that the *order* of the processing steps
+;; is specified by the n. In other words: 
+
+;; PRSTEP1 = ‘BINNING’
+;; PRSTEP2 = ‘FIXED-PATTERN-REMOVAL’
+
+;; is different from 
+
+;; PRSTEP1 = ‘FIXED-PATTERN-REMOVAL’
+;; PRSTEP2 = ‘BINNING’
+
+;; This makes in unnecessary to have two types of BINNING (on-chip or
+;; post-readout).
+
+;; - There was some discussion about the following descriptions: are
+;;   they accurate enough? 
+
+;; BINNING               (This is ok, given the explanation above)
+;; CALIBRATION           (When necessary, XXX-CALIBRATION or
+;;                        CALIBRATION-XXX may be used, with no further
+;;                        rules on what XXX might be) 
+;; ALIGNMENT             (When necessary, XXX-ALIGNMENT or
+;;                        ALIGNMENT-XXX, as for CALIBRATION)  
+;; PIXEL-FILLING         (Instead of may other, awkward suggestions) 
+;; DISTORTION-CORRECTION (When necessary, XXX-DISTORTION-CORRECTION or
+;;                        DISTORTION-CORRECTION-XXX, as for
+;;                        CALIBRATION)  
+
+
+;; - New suggestions for processing steps, any objections?: 
+
+;; SUBTRACTION
+;; MULTIPLICATION
+;; FILTERING
+;; EDGE-DETECTION
+;; THRESHOLDING
+;; BINARIZATION
+;; INTERFEROMETRY-SPECKLING
+;; DECONVOLUTION-SPECKLING
+;; DEMODULATION
+;; DEROTATION  (of rotating FOVs in movies)
+;; INVERTING
+;; DESTRETCHING
+;; LINE-FITTING
+
+
+;; - For some processing steps we had several suggestions. The
+;;   majority of the respondents prefer the following alternatives:  
+
+;; SUMMING               (rather than STACKING or (CO-)ADDING)
+;; BIAS-CORRECTION       (rather than BIAS-SUBTRACTION)
+;; DARK-SUBTRACTION      (rather than DARK-CORRECTION)
+;; FLATFIELDING          (rather than FLAT-CORRECTION or FLAT-DIVISION)
+
+          
+;; - There have been no objections to the following descriptions:
+
+;; FIXED-PATTERN-REMOVAL 
+;; MOMFBD 
+;; DESPIKING   
+
+
+;; -- 
+;; Stein & Terje
+
+
