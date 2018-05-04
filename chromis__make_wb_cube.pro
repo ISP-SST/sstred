@@ -53,6 +53,12 @@
 ;      initialization of the FOV in the GUI. Otherwise use the crop
 ;      keyword (or its default).
 ;
+;    limb_data : in, optional, type=boolean
+;
+;      Set for data where the limb is in the FOV. Makes sure to
+;      measure the median intensity for normalization on disk. Also
+;      disables autocrop.
+;
 ;    negang : in, optional, type=boolean 
 ;
 ;      Set this to apply the field rotation angles with the opposite
@@ -123,12 +129,15 @@
 ;    2018-02-08 : MGL. Get logged diskpos (pig or turret) rather than
 ;                 just pig data.
 ; 
+;    2018-05-03 : MGL. New keyword limb_data. 
+; 
 ;-
 pro chromis::make_wb_cube, dir $
                            , autocrop = autocrop $
                            , clip = clip $
                            , crop = crop $
                            , interactive = interactive $
+                           , limb_data = limb_data $
                            , negang = negang $
                            , np = np $
                            , offset_angle = offset_angle $
@@ -166,6 +175,8 @@ pro chromis::make_wb_cube, dir $
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
 
+  if keyword_set(limb_data) then autocrop = 0
+  
   ;; Camera/detector identification
   self->getdetectors
   wbindx = where(strmatch(*self.cameras,'Chromis-W'))
@@ -299,9 +310,23 @@ pro chromis::make_wb_cube, dir $
     endelse
 
     cub[*, *, iscan] = red_fillpix((temporary(im))[x0:x1, y0:y1], nthreads = 4L)
-
+    
     ;; Measure time-dependent intensity variation (sun moves in the Sky)
-    tmean[iscan] = median(cub[*,*,iscan])
+    if keyword_set(limb_data) then begin
+      ;; For limb data, calculate the median in a strip of pixels with
+      ;; a certain width, from the limb inward.
+      strip_width = 5.                                                ; Approximate width, 5 arsec
+      strip_width = round(strip_width/float(self.image_scale))        ; Converted to pixels
+      if iscan gt 0 then wdelete ; Don't use more than one window for the bimodal plots
+      bimodal_threshold = cgOtsu_Threshold(cub[*, *, iscan], /PlotIt) ; Threshold at the limb
+      disk_mask = cub[*, *, iscan] gt bimodal_threshold               
+      strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
+      strip_indx = where(strip_mask, Nmask) ; Indices within the strip
+      if Nmask eq 0 then stop
+      tmean[iscan] = median((cub[*, *, iscan])[strip_indx])
+    endif else begin
+      tmean[iscan] = median(cub[*,*,iscan])
+    endelse
     
   endfor                        ; iscan
   
