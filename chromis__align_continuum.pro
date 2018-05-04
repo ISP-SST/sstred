@@ -22,6 +22,11 @@
 ;   
 ;       The continuum prefilter, identifying images to be aligned to
 ;       the wideband images.
+;
+;    limb_data : in, optional, type=boolean
+;
+;      Set for data where the limb is in the FOV. Makes sure to use a
+;      subfield on the disk for alignment.
 ;   
 ;    overwrite  : in, optional, type=boolean
 ;   
@@ -44,12 +49,15 @@
 ;                 up a graphics window.
 ; 
 ;    2017-04-27 : MGL. New keyword momfbddir.
+; 
+;    2018-05-04 : MGL. New keyword limb_data. 
 ;
 ; 
 ;-
 pro chromis::align_continuum, continuum_filter = continuum_filter $
-                              , overwrite = overwrite $
-                              , momfbddir = momfbddir
+                              , limb_data = limb_data $
+                              , momfbddir = momfbddir $
+                              , overwrite = overwrite 
    
   
   ;; Name of this method
@@ -185,10 +193,41 @@ print, 'wNscans', wNscans
           im1o = red_readdata(nbcfiles[iscan]) 
           im2o = red_readdata(wbcfiles[iscan]) 
 
-          msz = 1024
           shifts_total = [0., 0.]
-          im1c = red_centerpic(im1o, sz = msz)
-          im2c = red_centerpic(im2o, sz = msz)
+
+          if keyword_set(limb_data) then begin
+            ;; For limb data, calculate the median in a strip of pixels with
+            ;; a certain width, from the limb inward.
+            if iscan gt 0 then wdelete                           ; Don't use more than one window for the bimodal plots
+            bimodal_threshold1 = cgOtsu_Threshold(im1o, /PlotIt) ; Threshold at the limb
+            wdelete                                              ; Don't use more than one window for the bimodal plots
+            bimodal_threshold2 = cgOtsu_Threshold(im2o, /PlotIt) ; Threshold at the limb
+            disk_mask = (im1o gt bimodal_threshold1) and (im2o gt bimodal_threshold2)
+            area = total(disk_mask) ; [pixels^2]
+
+            ;; Read out as large a subfield centered on the
+            ;; center-of-mass as possible, but not larger than 1024.
+            ;; (Using private subroutines for now!)
+            if iscan eq 0 then msz = 1024
+            msz++
+            cm = round(red_centroid(disk_mask))
+            repeat begin
+              msz--
+              if msz lt 100 then stop
+              msk = red_pic_at_coord(disk_mask, cm[0], cm[1], msz, msz, mode = 0)
+              ;; Check that the subfield is within the original image
+              ;; (i.e., the dimensions are [msz,msz]) and all pixels
+              ;; are within the mask
+;              print, msz, min(size(msk, /dim)),  min(msk), round(total(msk)), long(msz)*long(msz)
+            endrep until min(size(msk, /dim)) eq msz && min(msk) eq 1
+            if odd(msz) then msz--
+            im1c = red_pic_at_coord(im1o, cm[0], cm[1], msz, msz, mode = 0)
+            im2c = red_pic_at_coord(im2o, cm[0], cm[1], msz, msz, mode = 0)
+          endif else begin     
+            msz = 1024
+            im1c = red_centerpic(im1o, sz = msz)
+            im2c = red_centerpic(im2o, sz = msz)
+          endelse
           
           rit = 0
           repeat begin
@@ -196,8 +235,17 @@ print, 'wNscans', wNscans
             shifts_new = red_alignoffset(im1c, im2c, /window, /fitplane)
             shifts_total = shifts_total + shifts_new
 
-            im2c = red_centerpic(red_shift_sub(im2o, shifts_total[0], shifts_total[1]), sz = msz)
-
+            if keyword_set(limb_data) then begin
+              ;; For limb data, calculate the median in a strip of pixels with
+              ;; a certain width, from the limb inward.
+              im2c = red_pic_at_coord(red_shift_sub(im2o, shifts_total[0], shifts_total[1]) $
+                                      , cm[0], cm[1], msz, msz, mode = 0)
+            endif else begin     
+              ;; For non-limb data, use a centered FOV.
+              im2c = red_centerpic(red_shift_sub(im2o, shifts_total[0], shifts_total[1]) $
+                                   , sz = msz)
+            endelse
+            
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
 
