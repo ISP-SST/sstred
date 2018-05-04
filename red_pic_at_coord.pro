@@ -56,7 +56,7 @@
 ;   2018-05-04 : MGL. Add to pipeline repository as red_pic_at_coord.
 ;
 ;-
-function red_pic_at_coord, pic, x, y, xSize, ySize, mode=mode 
+function red_pic_at_coord, pic, x, y, xSize, ySize, mode = mode 
   
   llx = x - xSize/2 
   lly = y - ySize/2 
