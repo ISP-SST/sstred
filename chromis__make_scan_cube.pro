@@ -239,7 +239,8 @@ pro chromis::make_scan_cube, dir $
     cavitymap = fltarr(Nx, Ny, 1)
 
     ;; Read the original cavity map
-    istate = 0                  ; Just pick one
+    pindx = where(nbstates.prefilter ne '3999')
+    istate = pindx[0]           ; Just pick one that is not Ca continuum
     cfile = self.out_dir + 'flats/spectral_flats/' $
             + strjoin([nbstates[istate].detector $
                        ,nbstates[istate].cam_settings $
