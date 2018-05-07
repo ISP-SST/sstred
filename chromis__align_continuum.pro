@@ -51,6 +51,8 @@
 ;    2017-04-27 : MGL. New keyword momfbddir.
 ; 
 ;    2018-05-04 : MGL. New keyword limb_data. 
+; 
+;    2018-05-07 : MGL. Improvements in filtering measurements.
 ;
 ; 
 ;-
@@ -64,21 +66,19 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
-  
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
 
+  maxshifts = 30
+  
   ;; The default continuum state for Ca II scans
   if n_elements(continuum_filter) eq 0 then continuum_filter = '3999'
 
   ;; Camera/detector identification
   self->getdetectors
-  wbindx = where(strmatch(*self.cameras,'Chromis-W'))
-  wbcamera = (*self.cameras)[wbindx[0]]
+  wbindx     = where(strmatch(*self.cameras,'Chromis-W'))
+  wbcamera   = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
-  nbindx = where(strmatch(*self.cameras,'Chromis-N')) 
-  nbcamera = (*self.cameras)[nbindx[0]]
+  nbindx     = where(strmatch(*self.cameras,'Chromis-N')) 
+  nbcamera   = (*self.cameras)[nbindx[0]]
   nbdetector = (*self.detectors)[nbindx[0]]
 
   ;; Find timestamp subdirs
@@ -91,8 +91,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   endif
 
   ;; Select timestamp folders
-  selectionlist = strtrim(indgen(Ntimestamps), 2)+ '  -> ' + timestamps
-  tmp = red_select_subset(selectionlist $
+  tmp = red_select_subset(timestamps $
                           , qstring = inam + ' : Select timestamp directory ID:' $
                           , count = Ntimestamps, indx = sindx)
   if Ntimestamps eq 0 then begin
@@ -118,8 +117,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
     endif
     
     ;; Select prefilter folders
-    selectionlist = strtrim(indgen(Nprefs), 2)+ '  -> ' + prefilters
-    tmp = red_select_subset(selectionlist $
+    tmp = red_select_subset(prefilters $
                             , qstring = inam + ' : Select prefilter directory ID:' $
                             , count = Nprefs, indx = sindx)
     if Nprefs eq 0 then begin
@@ -133,22 +131,22 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
     for ipref = 0L, Nprefs-1 do begin
 
       odir = self.out_dir + '/align/' + timestamp $
-                     + '/' + prefilters[ipref] + '/'
+             + '/' + prefilters[ipref] + '/'
       
-      nname = odir+'scan_numbers.fz'
-      sname = odir+'continuum_shifts.fz'
-      mname = odir+'continuum_shifts_smoothed.fz'
-      cname = odir+'continuum_contrasts.fz'
+      nname = odir + 'scan_numbers.fz'
+      sname = odir + 'continuum_shifts.fz'
+      mname = odir + 'continuum_shifts_smoothed.fz'
+      cname = odir + 'continuum_contrasts.fz'
 
-      xpname = odir+'plot_Xshifts.ps' ; Will be converted to pdf 
-      ypname = odir+'plot_Yshifts.ps'
-      cpname = odir+'plot_contrasts.ps'
+      xpname = odir + 'plot_Xshifts.ps' ; Will be converted to pdf 
+      ypname = odir + 'plot_Yshifts.ps'
+      cpname = odir + 'plot_contrasts.ps'
 
       if keyword_set(overwrite) $
          or min(file_test([nname, sname, mname, cname, xpname, ypname, cpname])) eq 0 then begin
 
         ;; Find all the NB continuum images 
-        search_dir = self.out_dir + '/'+momfbddir+'/' + timestamp $
+        search_dir = self.out_dir + '/' + momfbddir + '/' + timestamp $
                      + '/' + prefilters[ipref] + '/cfg/results/'
         files = file_search(search_dir + '*.'+['f0', 'momfbd', 'fits'], count = Nfiles)      
         
@@ -162,19 +160,19 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
         self -> selectfiles, files = files, states = states $
                              , cam = wbcamera $
                              , sel = wbindx, count = wNscans
-        if wNscans lt Nscans then stop;continue
+        if wNscans lt Nscans then stop ;continue
 
         wbcindx = wbindx[where(states[wbindx].fpi_state eq states[nbcindx[0]].fpi_state, wNscans)]
         if wNscans ne Nscans then continue
-print, 'wNscans', wNscans      
+        print, 'wNscans', wNscans      
 
         ;; Sort
-        sindx = sort(nbcstates.scannumber)
+        sindx     = sort(nbcstates.scannumber)
         nbcstates = states[nbcindx[sindx]]
-        nbcfiles = files[nbcindx[sindx]]
-        sindx = sort(states[wbcindx].scannumber)
+        nbcfiles  = files[nbcindx[sindx]]
+        sindx     = sort(states[wbcindx].scannumber)
         wbcstates = states[wbcindx[sindx]]
-        wbcfiles = files[wbcindx[sindx]]
+        wbcfiles  = files[wbcindx[sindx]]
 
         if max(abs(nbcstates.scannumber - wbcstates.scannumber)) ne 0 then begin
           print, inam + ' : Scan numbers in WB and NB do not match.'
@@ -182,18 +180,19 @@ print, 'wNscans', wNscans
         endif
         
         shifts = fltarr(2, Nscans) 
-        contrasts = fltarr(Nscans)  
+        contrasts = fltarr(Nscans)
+
+        xyc = lonarr(2, Nscans)
+        ssz = lonarr(Nscans)
 
         for iscan = 0, Nscans-1 do begin
           
           red_progressbar, iscan, Nscans, /predict $
-                           , 'Aligning continuum vs wideband for '+timestamp $
+                           , 'Measuring contrasts for '+timestamp $
                            + '/' + prefilters[ipref]
 
           im1o = red_readdata(nbcfiles[iscan]) 
           im2o = red_readdata(wbcfiles[iscan]) 
-
-          shifts_total = [0., 0.]
 
           if keyword_set(limb_data) then begin
             ;; For limb data, calculate the median in a strip of pixels with
@@ -220,10 +219,67 @@ print, 'wNscans', wNscans
               ;; are within the mask
 ;              print, msz, min(size(msk, /dim)),  min(msk), round(total(msk)), long(msz)*long(msz)
             endrep until min(size(msk, /dim)) eq msz && min(msk) eq 1
+
             if odd(msz) then msz--
-            im1c = red_pic_at_coord(im1o, cm[0], cm[1], msz, msz, mode = 0)
-            im2c = red_pic_at_coord(im2o, cm[0], cm[1], msz, msz, mode = 0)
+
+            xyc[*, iscan] = cm
+            ssz[iscan] = msz
+
+            im1c = red_pic_at_coord(im1o, xyc[0, iscan], xyc[1, iscan], ssz[iscan], ssz[iscan], mode = 0)
+            im2c = red_pic_at_coord(im2o, xyc[0, iscan], xyc[1, iscan], ssz[iscan], ssz[iscan], mode = 0)
+
+;            im1c = red_pic_at_coord(im1o, cm[0], cm[1], msz, msz, mode = 0)
+;            im2c = red_pic_at_coord(im2o, cm[0], cm[1], msz, msz, mode = 0)
+
           endif else begin     
+            ;; For non-limb data, use a centered FOV.
+            msz = 1024
+            im1c = red_centerpic(im1o, sz = msz)
+            im2c = red_centerpic(im2o, sz = msz)
+          endelse
+
+          contrasts[iscan] = stddev(im1c)/mean(im1c)
+
+        endfor                  ; iscan
+
+        ;; If there are outliers in the contrasts (maybe caused by
+        ;; failed restoration), then remove them from the analysis.
+        ;; The biweight_mean function returns weight zero for
+        ;; outliers.
+        contrast_mean = biweight_mean(contrasts,contrast_sigma,w)
+        include_mask = w gt 0.0
+        ignore_indx = where(~include_mask, count)
+        if count gt 0 then begin
+          print, inam+' : '+strtrim(count, 2)+' contrast outliers ignored.'
+          print, inam+' : Mean contrast w/o outliers: ', contrast_mean
+          print, inam+' : Contrast outlier min,mean,median,max:'
+          print, min(contrasts[ignore_indx])
+          print, mean(contrasts[ignore_indx])
+          print, median(contrasts[ignore_indx])
+          print, max(contrasts[ignore_indx])
+;          print, inam+' : Zeroing outliers.'
+;          contrasts[ignore_indx] = 0
+        endif
+        
+        for iscan = 0, Nscans-1 do begin
+          
+          red_progressbar, iscan, Nscans, /predict $
+                           , 'Aligning continuum vs wideband for '+timestamp $
+                           + '/' + prefilters[ipref]
+
+          if ~include_mask[iscan] then continue ; Don't calculate shifts for scans that will be ignored
+          
+          im1o = red_readdata(nbcfiles[iscan]) 
+          im2o = red_readdata(wbcfiles[iscan]) 
+
+          shifts_total = [0., 0.]
+
+          if keyword_set(limb_data) then begin
+            ;; Use the previously calculated subfield
+            im1c = red_pic_at_coord(im1o, xyc[0, iscan], xyc[1, iscan], ssz[iscan], ssz[iscan], mode = 0)
+            im2c = red_pic_at_coord(im2o, xyc[0, iscan], xyc[1, iscan], ssz[iscan], ssz[iscan], mode = 0)
+          endif else begin     
+            ;; For non-limb data, use a centered FOV.
             msz = 1024
             im1c = red_centerpic(im1o, sz = msz)
             im2c = red_centerpic(im2o, sz = msz)
@@ -236,12 +292,9 @@ print, 'wNscans', wNscans
             shifts_total = shifts_total + shifts_new
 
             if keyword_set(limb_data) then begin
-              ;; For limb data, calculate the median in a strip of pixels with
-              ;; a certain width, from the limb inward.
               im2c = red_pic_at_coord(red_shift_sub(im2o, shifts_total[0], shifts_total[1]) $
-                                      , cm[0], cm[1], msz, msz, mode = 0)
+                                      , xyc[0, iscan], xyc[1, iscan], ssz[iscan], ssz[iscan], mode = 0)
             endif else begin     
-              ;; For non-limb data, use a centered FOV.
               im2c = red_centerpic(red_shift_sub(im2o, shifts_total[0], shifts_total[1]) $
                                    , sz = msz)
             endelse
@@ -249,37 +302,27 @@ print, 'wNscans', wNscans
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
 
-            if rit gt 1000 then stop
+            if rit gt 1000 then continue
             
             shifts[0, iscan] = shifts_total
 
-            contrasts[iscan] = stddev(im1c)/mean(im1c)
-            
+            ;; Diverging?
+            if sqrt(total(shifts_total^2)) gt maxshifts then continue
+
           endrep until max(abs(shifts_new)) lt 0.001
 
         endfor                  ; iscan
 
-        ;; If there are outliers in the contrasts (maybe caused by
-        ;; failed restoration), then remove them from the analysis.
-        ;; The biweight_mean function returns weight zero for
-        ;; outliers.
-        contrast_mean = biweight_mean(contrasts,contrast_sigma,w)
-        ignore_indx = where(w eq 0.0, count)
-        if count gt 0 then begin
-          print, inam+' : '+strtrim(count, 2)+' contrast outliers ignored.'
-          print, inam+' : Mean contrast w/o outliers: ', contrast_mean
-          print, inam+' : Contrast outlier min,mean,median,max:'
-          print, min(contrasts[ignore_indx])
-          print, mean(contrasts[ignore_indx])
-          print, median(contrasts[ignore_indx])
-          print, max(contrasts[ignore_indx])
-          print, inam+' : Zeroing outliers.'
-          contrasts[ignore_indx] = 0
-        endif
+
+
+        ;; Any outliers in the shifts?
+        shifts_mean = biweight_mean(sqrt(total(shifts^2,1)),shifts_sigma,shifts_w)              
+        include_mask *= shifts_w gt 0.0
+        include_indx = where(include_mask)
 
         ;; Smooth the shifts, taking image quality into account.
         shifts_smooth = fltarr(2, Nscans) 
-        weights = contrasts^2
+        weights = contrasts^2 * include_mask
         smooth_window = 35
         for iaxis = 0, 1 do begin
           ;; X and Y axis loop
@@ -293,10 +336,10 @@ print, 'wNscans', wNscans
                           , weights = weights, yfit = shifts_fit)
             shifts_smooth[iaxis, *] = shifts_fit
           endif else begin
-             ;; Use weighted smoothing
-             shifts_smooth[iaxis, *] = red_wsmooth(nbcstates.scannumber, shifts[iaxis, *] $
-                                                   , smooth_window, 2 $
-                                                   , weight = weights, select = 0.6 )
+            ;; Use weighted smoothing
+            shifts_smooth[iaxis, *] = red_wsmooth(nbcstates.scannumber, shifts[iaxis, *] $
+                                                  , smooth_window, 2 $
+                                                  , weight = weights, select = 0.6 )
           endelse
         endfor                  ; iaxis
 
@@ -317,13 +360,15 @@ print, 'wNscans', wNscans
 
         cgPS_Open, cpname, /decomposed
         cgplot, [0], /nodata $
-                , xrange = xrange, yrange = [min(contrasts), max(contrasts)] + 0.01*[-1, 1] $
-                , title = title $
-                , xtitle = 'scan number', ytitle = 'RMS contrast' 
+                , xrange = xrange $
+                , yrange = [min(contrasts), max(contrasts)] + 0.01*[-1, 1] $
+                , title  = title $
+                , xtitle = 'scan number' $
+                , ytitle = 'RMS contrast' 
         for iscan = 0, Nscans-1 do cgplot, /over $
                                            , nbcstates[iscan].scannumber, contrasts[iscan] $
                                            , color = colors[iscan], psym = 16
-
+        cgplot, /over, nbcstates[include_indx].scannumber, contrasts[include_indx], psym = 9, symsize = 2
         cgPS_Close, /PDF, /Delete_PS
 
         ;; Plot shifts
@@ -336,7 +381,7 @@ print, 'wNscans', wNscans
             1: cgPS_Open, ypname, /decomposed
           endcase
            
-          yrange = [min(shifts[iaxis, *]), max(shifts[iaxis, *])] + 0.2*[-1, 1]
+          yrange = [min(shifts[iaxis, include_indx]), max(shifts[iaxis, include_indx])] + 0.2*[-1, 1]
           cgplot, [0], /nodata, color = 'blue' $
                   , title = title $
                   , xrange = xrange, yrange = yrange $
@@ -349,11 +394,11 @@ print, 'wNscans', wNscans
           cgplot, /over, nbcstates.scannumber, shifts_smooth[iaxis, *], color = 'red'
 
           cgPS_Close, /PDF, /Delete_PS
-        endfor                   ; iaxis
+        endfor                  ; iaxis
 
-      endif                      ; overwrite
-    endfor                       ; ipref
-  endfor                         ; itimestamp
+      endif                     ; overwrite
+    endfor                      ; ipref
+  endfor                        ; itimestamp
 
   print
   print, inam + ' : Please inspect the smooting results shown in align/??:??:??/????/*.pdf.'
