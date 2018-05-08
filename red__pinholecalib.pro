@@ -164,7 +164,7 @@ pro red::pinholecalib, threshold = threshold $
     return
   endif
 
-  all_files = file_search( ph_dir + '*.pinh' )
+  all_files = file_search( ph_dir + '*.pinh.fits' )
   nf = n_elements( all_files )
   
   self->selectfiles, files=all_files, states=states, cam = cams[refcam] $
