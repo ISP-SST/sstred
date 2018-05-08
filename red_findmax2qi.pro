@@ -8,12 +8,12 @@
 ;    SST observations
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ;    Mats Löfdahl, 2011
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -25,7 +25,7 @@
 ;      the largest value. If c is larger, we crop it to such a 3x3
 ;      array.
 ;
-; :history:
+; :History:
 ; 
 ;    2013-09-11 : MGL. Renamed to red_findmax2qi for inclusion in
 ;                 crispred pipeline.
@@ -50,15 +50,15 @@ function red_findmax2qi, c, verbose = verbose
   ;; Peak not surrounded by smaller values?
   csdim = size(cs, /dim)
   if xp eq 0 or xp eq csdim(0)-1 or yp eq 0 or yp eq csdim(1)-1 then begin
-     ;; We could choose to return the max position anyway, but for now
-     ;; we do not.
-     print,'findmax2QI : Peak on border'
-     retall
+    ;; We could choose to return the max position anyway, but for now
+    ;; we do not.
+    print,'findmax2QI : Peak on border'
+    retall
   endif
 
   if max(cdim) gt 3 then begin
-     if keyword_set(verbose) then print,'findmax2QI : larger than 3x3, cropping'
-     cs = c[xp-1:xp+1, yp-1:yp+1]
+    if keyword_set(verbose) then print,'findmax2QI : larger than 3x3, cropping'
+    cs = c[xp-1:xp+1, yp-1:yp+1]
   endif else cs = c
   
   ;; 2D parabolic fit, b array is coefficients in this fit:
@@ -87,4 +87,4 @@ function red_findmax2qi, c, verbose = verbose
 
   return, [xmax,ymax] + [xp, yp]
 
-end; findmax2QI
+end                             ; findmax2QI
