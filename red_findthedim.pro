@@ -35,7 +35,7 @@
 function red_findthedim, ny, maxs
   res = 0L
   for ii = 1L, maxs do begin
-     if((ny / ii) * ii EQ ny) then res = ii
+    if((ny / ii) * ii EQ ny) then res = ii
   endfor
   print, 'findthedim: using ny1 = '+string(res, format='(I5)')
   return, res
