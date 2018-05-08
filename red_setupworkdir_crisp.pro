@@ -468,9 +468,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endfor                        ; ipref
 
   
-  printf, Slun, ''
-  printf, Slun, 'a -> getalignclips_new' 
-  printf, Slun, 'a -> getoffsets' 
+;  printf, Slun, ''
+;  printf, Slun, 'a -> getalignclips_new' 
+;  printf, Slun, 'a -> getoffsets' 
   
   printf, Slun, ''
   printf, Slun, 'a -> pinholecalib, nref=10'
