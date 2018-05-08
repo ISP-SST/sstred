@@ -87,16 +87,6 @@ pro chromis::link_data, all_data = all_data $
     endif
   endelse
   
-;  if n_elements(dirs) gt 0 then begin
-;    dirs = [dirs] 
-;  endif else begin
-;    if ~ptr_valid(self.data_dirs) then begin
-;      print, inam+' : ERROR : undefined data_dir'
-;      return
-;    endif
-;    dirs = *self.data_dirs
-;  endelse
-
   Ndirs = n_elements(dirs)
   if( Ndirs eq 0) then begin
     print, inam+' : ERROR : no directories defined'
