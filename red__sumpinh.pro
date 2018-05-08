@@ -256,9 +256,9 @@ pro red::sumpinh, nthreads = nthreads $
 
       print, inam+' : saving ' + pinhname
       if keyword_set(pinhole_align) then begin
-        red_writedata, pinhname, psum, header=head, filetype='ANA', overwrite = overwrite
+        red_writedata, pinhname, psum, header=head, overwrite = overwrite
       endif else begin
-        red_writedata, pinhname, fix(round(10. * psum)), header=head, filetype='ANA', overwrite = overwrite
+        red_writedata, pinhname, fix(round(10. * psum)), header=head, overwrite = overwrite
       endelse
 
     endfor                      ; istate

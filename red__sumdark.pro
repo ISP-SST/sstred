@@ -115,7 +115,9 @@
 ;
 ;   2017-08-07 : MGL. New keyword nthreads.
 ; 
-;   2016-08-10 : MGL. New keywords outdir and softlink.
+;   2016-08-10 : MGL. New keywords outdir and softlink. 
+; 
+;   2018-04-18 : MGL. Write only in FITS format.
 ;
 ;-
 pro red::sumdark, overwrite = overwrite, $
@@ -207,7 +209,7 @@ pro red::sumdark, overwrite = overwrite, $
       
       file_mkdir, file_dirname(darkname)
 
-      if( ~keyword_set(overwrite) && file_test(darkname) && file_test(darkname+'.fits')) then begin
+      if ~keyword_set(overwrite) && file_test(darkname) then begin
         print, inam+' : file exists: ' + darkname + ' , skipping! (run sumdark, /overwrite to recreate)'
         continue
       endif
@@ -219,19 +221,31 @@ pro red::sumdark, overwrite = overwrite, $
 
       print, inam+' : summing darks -> ' + file_basename(darkname)
       if(keyword_set(check)) then begin
-        openw, lun, darkname + '_discarded.txt', width = 500, /get_lun
+        openw, lun, red_strreplace(darkname, '.fits', '_discarded.txt'), width = 500, /get_lun
       endif
       
       ;; Do the summing
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin
-        dark = rdx_sumfiles(files[sel], check=check, lun=lun, summed=darksum, nsum=nsum, filter=filter $
+        dark = rdx_sumfiles(files[sel] $
+                            , check = check $
+                            , lun = lun $
+                            , summed = darksum $
+                            , nsum = nsum $
+                            , filter = filter $
                             , nthreads = nthreads $
-                            , framenumbers=framenumbers $
-                            , time_beg=time_beg, time_end=time_end, time_avg=time_avg, verbose=2)
+                            , framenumbers = framenumbers $
+                            , time_beg = time_beg $
+                            , time_end = time_end $
+                            , time_avg = time_avg $
+                            , verbose = 2)
       endif else begin
-        dark = red_sumfiles(files[sel], check = check, lun = lun, summed = darksum $
+        dark = red_sumfiles(files[sel] $
+                            , check = check $
+                            , lun = lun $
+                            , summed = darksum $
                             , nthreads = nthreads $
-                            , nsum=nsum, filter=filter)
+                            , nsum = nsum $
+                            , filter = filter)
         ;;$
         ;;                    , time_avg = time_avg, time_beg = time_beg, time_end = time_end)
       endelse
@@ -250,15 +264,15 @@ pro red::sumdark, overwrite = overwrite, $
       self -> headerinfo_addstep, head, prstep = 'Dark summing' $
                                   , prproc = inam, prpara = prpara
 
-      ;; Write ANA format dark
-      print, inam+' : saving ', darkname
-      fxaddpar, head, 'FILENAME', file_basename(darkname), after = 'DATE'
-      red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
+;      ;; Write ANA format dark
+;      print, inam+' : saving ', darkname
+;      fxaddpar, head, 'FILENAME', file_basename(darkname), after = 'DATE'
+;      red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
 
       ;; Write FITS format dark
-      print, inam+' : saving ', darkname+'.fits'
-      fxaddpar, head, 'FILENAME', file_basename(darkname)+'.fits'
-      red_writedata, darkname+'.fits', dark, header=head, filetype='fits', overwrite = overwrite
+      print, inam+' : saving ', darkname
+      fxaddpar, head, 'FILENAME', file_basename(darkname)
+      red_writedata, darkname, dark, header=head, filetype = 'fits', overwrite = overwrite
       
       if keyword_set(check) then begin
         free_lun, lun
@@ -267,8 +281,8 @@ pro red::sumdark, overwrite = overwrite, $
       if keyword_set(softlink) and n_elements(outdir) ne 0 then begin
         file_delete, origname, /allow_nonexistent
         file_link, sourcename, origname
-        file_delete, origname+'.fits', /allow_nonexistent
-        file_link, sourcename+'.fits', origname+'.fits'
+;        file_delete, origname+'.fits', /allow_nonexistent
+;        file_link, sourcename+'.fits', origname+'.fits'
       endif
 
     endfor                      ; states

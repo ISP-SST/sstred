@@ -120,6 +120,8 @@
 ; 
 ;   2016-08-23 : MGL. When writing the rawsum, write only the FITS
 ;                version.
+; 
+;   2018-04-18 : MGL. Write only in FITS format.
 ;
 ;
 ;-
@@ -288,7 +290,7 @@ pro red::sumflat, overwrite = overwrite, $
                               , lim = lim, summed = summed, nsum = nsum, filter = filter)
         endelse
       endelse
-help, flat, summed
+
       ;; Subtract dark and make floating point
       flat = float(flat-dd)
 
@@ -308,23 +310,23 @@ help, flat, summed
          self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
                                      , prproc = inam, prpara = prpara
       
-      ;; Write ANA format averaged flat
-      print, inam+' : saving ', flatname
-      fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
-      red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
+;      ;; Write ANA format averaged flat
+;      print, inam+' : saving ', flatname
+;      fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
+;      red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
 
       ;; Write FITS format averaged flat
-      print, inam+' : saving ', flatname+'.fits'
-      fxaddpar, head, 'FILENAME', file_basename(flatname+'.fits'), after = 'DATE'
-      red_writedata, flatname+'.fits', flat, header=head, filetype='FITS', overwrite = overwrite
+      print, inam+' : saving ', flatname
+      fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
+      red_writedata, flatname, flat, header=head, filetype='FITS', overwrite = overwrite
 
       
       ;; Output the raw (if requested) flats
       if keyword_set(store_rawsum) then begin
         ;; FITS
-        print, inam+' : saving ', sflatname+'.fits'
-        fxaddpar, shead, 'FILENAME', file_basename(sflatname+'.fits'), after = 'DATE'
-        red_writedata, sflatname+'.fits', long(temporary(summed)), header=shead, filetype='FITS', overwrite = overwrite
+        print, inam+' : saving ', sflatname
+        fxaddpar, shead, 'FILENAME', file_basename(sflatname), after = 'DATE'
+        red_writedata, sflatname, long(temporary(summed)), header=shead, filetype='FITS', overwrite = overwrite
       endif
 
       if keyword_set(check) then free_lun, lun
@@ -332,13 +334,13 @@ help, flat, summed
       if keyword_set(softlink) and n_elements(outdir) ne 0 then begin
         file_delete, origname, /allow_nonexistent
         file_link, sourcename, origname
-        file_delete, origname+'.fits', /allow_nonexistent
-        file_link, sourcename+'.fits', origname+'.fits'
+;        file_delete, origname+'.fits', /allow_nonexistent
+;        file_link, sourcename+'.fits', origname+'.fits'
         if keyword_set(store_rawsum) then begin
-;          file_delete, sorigname, /allow_nonexistent
-;          file_link, ssourcename, sorigname
-          file_delete, sorigname+'.fits', /allow_nonexistent
-          file_link, ssourcename+'.fits', sorigname+'.fits'
+          file_delete, sorigname, /allow_nonexistent
+          file_link, ssourcename, sorigname
+;          file_delete, sorigname+'.fits', /allow_nonexistent
+;          file_link, ssourcename+'.fits', sorigname+'.fits'
         endif
       endif
 
