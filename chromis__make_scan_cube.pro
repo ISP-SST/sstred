@@ -35,6 +35,10 @@
 ;
 ;       Store as integers instead of floats.
 ;
+;     limb_data : in, optional, type=boolean
+;
+;       Set for data where the limb is in the FOV. Disables autocrop.
+;
 ;     noaligncont : in, optional, type=boolean
 ;
 ;       Do not do the align continuum to wideband step.
@@ -64,6 +68,8 @@
 ;    2018-02-08 : MGL. Get logged diskpos (pig or turret) rather than
 ;                 just pig data.
 ; 
+;    2018-05-08 : MGL. New keyword limb_data. 
+; 
 ;-
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
@@ -72,6 +78,7 @@ pro chromis::make_scan_cube, dir $
                              , crop = crop $
                              , integer = integer $
                              , interactive = interactive $
+                             , limb_data = limb_data $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
                              , overwrite = overwrite $
@@ -101,6 +108,8 @@ pro chromis::make_scan_cube, dir $
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
   if n_elements(clip) eq 0 then clip = [8, 4,  2,  1,  1  ]
   if n_elements(tile) eq 0 then tile = [8, 16, 32, 64, 128]
+
+  if keyword_set(limb_data) then autocrop = 0
 
   ;; Output directory
   if(n_elements(odir) eq 0) then odir = self.out_dir + '/cubes_scan/' 
