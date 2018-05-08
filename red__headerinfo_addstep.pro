@@ -170,7 +170,7 @@ end
 ;;                        rules on what XXX might be) 
 ;; ALIGNMENT             (When necessary, XXX-ALIGNMENT or
 ;;                        ALIGNMENT-XXX, as for CALIBRATION)  
-;; PIXEL-FILLING         (Instead of may other, awkward suggestions) 
+;; PIXEL-FILLING         (Instead of many other, awkward suggestions) 
 ;; DISTORTION-CORRECTION (When necessary, XXX-DISTORTION-CORRECTION or
 ;;                        DISTORTION-CORRECTION-XXX, as for
 ;;                        CALIBRATION)  
