@@ -122,13 +122,12 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
     ;; If user selected autocrop, then do use the detected cropping.
     ;; If user selected interactive, then use the detected cropping
     ;; only if crop keyword was not provided.
-    if keyword_set(autocrop) or $
-       (keyword_set(interactive) and n_elements(crop) eq 0) then begin
+    if keyword_set(autocrop) || $
+       (keyword_set(interactive) && n_elements(crop) eq 0) then begin
       roi_name = 'Autocrop'
       crop = ceil( [[i0, (Nsubf_x-1-i1)]*Ssubf_x, [j0, (Nsubf_y-1-j1)]*Ssubf_y] / overlapfacs )
     endif
   endif
-  
 
   ;; Default cropping
   case n_elements(crop) of
@@ -149,6 +148,12 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
     end
   endcase
 
+  if crop[0] lt 0 || crop[2] lt 0 $
+     || crop[1] ge im_dim[0] || crop[3] ge im_dim[1] then begin
+    roi_name = 'Default'
+    crop = [0, 0, 0, 0]
+  endif
+  
   hdr = red_readhead(files[0])
   im_dim = fxpar(hdr, 'NAXIS*')
   x0 = crop[0]
@@ -178,6 +183,7 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
     xroi, bytscl(dispim), regions_in = [roi_in], regions_out = roi, /block $
           , tools = ['Translate-Scale', 'Rectangle'] $
           , title = 'Modify or define FOV based on summed image'
+
     roi[-1] -> getproperty, roi_xrange = roi_x
     roi[-1] -> getproperty, roi_yrange = roi_y
 
