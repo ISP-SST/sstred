@@ -94,14 +94,14 @@ pro red_getcalibdata,         $
   if ( n_elements( out_dir ) eq 0 ) then begin
     case ( get_login_info( ) ).machine_name of
       'camera4' : begin
-        ;; This is the default storage on camera4 that is a local HDD drive.
-        out_dir = '/scratch'
+          ;; This is the default storage for camera4, it is the NFS mounted
+          ;; directory of same name on transport1 for easy transfers
+        out_dir = '/scratch/calibration-data'
       end
       'transport1' : begin
-        ;; This is a local HDD drive that might be used to transfer
+        ;; This is a local (=fast) SDD drive that should be used to transfer
         ;; processed calibration data from La Palma to Stockholm.
-        ;; Don't use /data/disk2/* as I did before because it overlaps
-        ;; with the search_dirs mask in red_currentsite.
+        ;; It is available from outside as royac6::calib/ for rsync  
         out_dir = '/scratch/calibration-data'
       end
       'freija' : begin
