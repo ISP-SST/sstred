@@ -45,6 +45,7 @@ function red_readhead_ana, fname
       len = strlen(anaheader)
       for i=0,len-1, 80 do begin
         card = strmid(anaheader,i,80)
+	if (nc=strlen(card)) lt 80 then card+=string(replicate(32b,80-nc))
         red_append, header, card
         if strmid( card, 0, 2 ) eq 'END' then break
       endfor                    ; i
