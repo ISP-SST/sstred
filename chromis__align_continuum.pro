@@ -337,14 +337,14 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
               ;; Very few scans, use weighted average
               shifts_smooth[iaxis, *] = total(shifts[iaxis, *]*weights)/total(weights)
             end
-            Ninlcude le 7 : begin
+            Ninclude le 7 : begin
               ;; Few scans, use a linear fit
               P = mpfitexpr('P[0]+P[1]*X' $
                             , nbcstates.scannumber, shifts[iaxis, *] $
                             , weights = weights, yfit = shifts_fit)
               shifts_smooth[iaxis, *] = shifts_fit
             end
-            Ninlcude le smooth_window : begin
+            Ninclude le smooth_window : begin
               ;; A few more, use a weighted quadratic fit
               P = mpfitexpr('P[0]+P[1]*X+P[2]*X*X' $
                             , nbcstates.scannumber, shifts[iaxis, *] $
