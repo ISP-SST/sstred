@@ -327,7 +327,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   endif
   refcam_name = cams[refcam]
 
-  ;; NB: this will overwrite exising offset files !!
+  ;; NB: this will overwrite existing offset files !!
   self -> getalignment, align=align, cams=cams, refcam=refcam, prefilters=pref $
                         , output_dir = offset_dir $
                         , extraclip=extraclip, /overwrite $
@@ -378,13 +378,13 @@ pro red::prepmomfbd, wb_states = wb_states $
   endif
   sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
   sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
-  if ~keyword_set(redux) then begin                                         ; for the old code, the patch coordinates are relative to the align-clip area
+  if ~keyword_set(redux) then begin ; for the old code, the patch coordinates are relative to the align-clip area
     sim_x -= sim_roi[0]
     sim_y -= sim_roi[2]
   endif
   sim_x_string = strjoin(strtrim(sim_x,2), ',')
   sim_y_string = strjoin(strtrim(sim_y,2), ',')
-
+  
   for idir=0L, Ndirs-1 do begin
     
     dir = dirs[idir]+'/'
@@ -671,13 +671,15 @@ pro red::prepmomfbd, wb_states = wb_states $
 ;                                 , gainname = gainname, darkname = darkname, status = status
 ;              if( status lt 0 ) then stop ;continue
               
-              darkname = self -> filenames('dark', state_list[state_idx[0]], /no_fits)
+;              darkname = self -> filenames('dark', state_list[state_idx[0]], /no_fits)
+              darkname = self -> filenames('dark', state_list[state_idx[0]])
               if(~keyword_set(unpol)) then begin
                 if(keyword_set(oldgains)) then begin
 ;                  search = self.out_dir+'/gaintables/'+self.camttag + '.' + ustat1[ii] + '*.gain'
                   stop
                   ;; Not implemented in chromis::filenames yet.
-                  gainname = a -> filenames('oldgain', state_list[state_idx[0]], /no_fits)
+;                  gainname = a -> filenames('oldgain', state_list[state_idx[0]], /no_fits)
+                  gainname = a -> filenames('oldgain', state_list[state_idx[0]])
                 endif else begin
                   ;;search =
                   ;;self.out_dir+'/gaintables/'+folder_tag+'/'+self.camttag
@@ -685,10 +687,12 @@ pro red::prepmomfbd, wb_states = wb_states $
                   gainname = self -> filenames('scangain', state_list[state_idx[0]] $
                                                , timestamp = stregex(state_list[state_idx[0]].filename $
                                                                      ,'[0-9][0-9]:[0-9][0-9]:[0-9][0-9]' $
-                                                                     ,/extr), /no_fits)
+                                                                     ,/extr))
+;                                                                     ,/extr), /no_fits)
                 endelse
               endif else begin
-                  gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]], /no_fits)
+;                  gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]], /no_fits)
+                  gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
 ;
 ;                 search = self.out_dir+'/gaintables/'+self.camttag + $
 ;                          '.' + strmid(ustat1[ii], idx[0], $
