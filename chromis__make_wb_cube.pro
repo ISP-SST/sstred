@@ -199,7 +199,11 @@ pro chromis::make_wb_cube, dir $
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
   endcase
-  files = file_search(dir + '*'+extension, count = Nfiles)      
+  files = file_search(dir + '*' + extension, count = Nfiles)
+  if Nfiles eq 0 then begin
+    print, inam + ' : No files matching regexp: ' + dir + '*' + extension
+    retall
+  endif
   ;; We have no special state (or absence of state) to identify
   ;; the global WB images but we do know that their exposure times
   ;; are much larger than the ones corresponding to the individual
@@ -245,9 +249,9 @@ pro chromis::make_wb_cube, dir $
   time = strarr(Nscans)
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
-
+  
   red_bad_subfield_crop, wfiles, crop, autocrop = autocrop,  interactive = interactive
-
+  
   hdr = red_readhead(wfiles[0])
   im_dim = fxpar(hdr, 'NAXIS*')
   x0 = crop[0]
