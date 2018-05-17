@@ -94,6 +94,9 @@ pro red::make_pol_crispex, filter = filter $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  ftype = 'momfbd'
+  if(self.filetype eq 'ANA') then ftype = 'f0'
+
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo
@@ -202,7 +205,7 @@ pro red::make_pol_crispex, filter = filter $
     print, f+'/stokes'
   endif
 
-  wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.momfbd', count = wbf)
+  wbfiles = file_search(f+'/'+self.camwbtag+'.?????.'+pref+'.'+ftype, count = wbf)
 
   st = red_get_stkstates(tfiles)
 
@@ -337,7 +340,7 @@ pro red::make_pol_crispex, filter = filter $
       if(~keyword_set(scans_only)) then begin
         for stk = 0,3 do begin
           if(full) then begin
-            bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]), full=ff)
+            bla = red_rotation(tmp[*,*,stk], ang[ss], shift[0,ss], shift[1,ss], full=ff)
           endif else begin
             bla = red_rotation(tmp[*,*,stk], ang[ss], total(shift[0,ss]), total(shift[1,ss]))
           endelse
