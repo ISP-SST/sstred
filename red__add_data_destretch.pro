@@ -197,7 +197,8 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      isodate = ''
      read, isodate, prompt=inam+'please enter the ISO-date of the observations (YYYY-MM-DD): '
   endif else isodate = self.isodate
-  date = strjoin(strsplit(isodate,'-./', /extract),'.')
+  date = strjoin(strsplit(isodate,'-./', /extract),'/')
+  year = fix((strsplit(date,'/',/extract))[0])
   
   ;; Download Turret position log file if needed and read azel angles
   ;; from it. MGL 2015-04-01
@@ -382,7 +383,7 @@ pro red::add_data_destretch, scan = scan, min = min, max = max, smooth = smooth,
      ;;
      ;; Load telescope matrix
      ;;
-     mtel = red_telmat(pref, telpos, itime, /no_zero)
+     mtel = red_telmat(pref, telpos, itime, /no_zero, year = year)
      imtel = invert(mtel)
      imtel /= imtel[0]
 
