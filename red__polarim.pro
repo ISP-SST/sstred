@@ -8,12 +8,12 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
 ; 
-; :returns:
+; :Returns:
 ; 
 ; 
 ; :Params:
@@ -47,7 +47,7 @@
 ;   
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
@@ -67,32 +67,32 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ; Search for folders with reduced data
                                 ;
   if(~keyword_set(dir)) then begin
-     dir = file_search(self.out_dir + '/momfbd/*', /test_dir, count = ndir)
+    dir = file_search(self.out_dir + '/momfbd/*', /test_dir, count = ndir)
                                 ;
-     if(ndir eq 0) then begin
-        print, inam+'no directories found in '+self.out_dir+'/momfbd'
-        return, 0
-     endif
+    if(ndir eq 0) then begin
+      print, inam+'no directories found in '+self.out_dir+'/momfbd'
+      return, 0
+    endif
                                 ;
-     idx = 0L
-     if(ndir gt 1) then begin
-        print, inam + 'found '+red_stri(ndir)+' sub-folders:'
-        for jj = 0, ndir - 1 do print, red_stri(jj,ni='(I2)')+' -> '+dir[jj]
-        read,idx,prompt = inam+'Please select state ID: '
-        dir = dir[idx]
-     endif
+    idx = 0L
+    if(ndir gt 1) then begin
+      print, inam + 'found '+red_stri(ndir)+' sub-folders:'
+      for jj = 0, ndir - 1 do print, red_stri(jj,ni='(I2)')+' -> '+dir[jj]
+      read,idx,prompt = inam+'Please select state ID: '
+      dir = dir[idx]
+    endif
 
-     dir = file_search(dir + '/*', /test_dir, count = ndir)
-     idx = 0L
-     if(ndir gt 1) then begin
-        print, inam + 'found '+red_stri(ndir)+' sub-folders:'
-        for jj = 0, ndir - 1 do print, red_stri(jj,ni='(I2)')+' -> '+file_basename(dir[jj])
-        read,idx,prompt = inam+'Please select state ID: '
-        dir = dir[idx]
-     endif
+    dir = file_search(dir + '/*', /test_dir, count = ndir)
+    idx = 0L
+    if(ndir gt 1) then begin
+      print, inam + 'found '+red_stri(ndir)+' sub-folders:'
+      for jj = 0, ndir - 1 do print, red_stri(jj,ni='(I2)')+' -> '+file_basename(dir[jj])
+      read,idx,prompt = inam+'Please select state ID: '
+      dir = dir[idx]
+    endif
 
-     dir+= '/cfg/results/' 
-     print, inam + 'Processing state -> '+dir
+    dir+= '/cfg/results/' 
+    print, inam + 'Processing state -> '+dir
   endif
   self -> getdetectors, dir = self.data_dir
                                 ;
@@ -103,9 +103,9 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
   if(nimt NE nimr) then begin
                                 ;
-     print, inam + 'WARNING, different number of images found for each camera:'
-     print, self.camttag+' -> '+red_stri(nimt)
-     print, self.camrtag+' -> '+red_stri(nimr)
+    print, inam + 'WARNING, different number of images found for each camera:'
+    print, self.camttag+' -> '+red_stri(nimt)
+    print, self.camrtag+' -> '+red_stri(nimr)
                                 ;
   endif
                                 ;
@@ -121,67 +121,67 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ; T-Cam
   If(~keyword_set(mmt)) then begin
                                 ;
-     search = self.out_dir+'/polcal/'+self.camttag+'.'+pol[0]->getvar(7)+'.polcal.f0'
-     if(file_test(search)) then begin
-        immt = (f0(search))[0:15,*,*]
+    search = self.out_dir+'/polcal/'+self.camttag+'.'+pol[0]->getvar(7)+'.polcal.f0'
+    if(file_test(search)) then begin
+      immt = (f0(search))[0:15,*,*]
 
-        ;; interpolate CCD tabs?
-        if(~keyword_set(no_ccdtabs)) then begin
-           for ii = 0, 15 do immt[ii,*,*] = red_mask_ccd_tabs(reform(immt[ii,*,*]))
-        endif
+      ;; interpolate CCD tabs?
+      if(~keyword_set(no_ccdtabs)) then begin
+        for ii = 0, 15 do immt[ii,*,*] = red_mask_ccd_tabs(reform(immt[ii,*,*]))
+      endif
 
-        ;; Check NaNs
-        for ii = 0, 15 do begin
-           mask = 1B -( ~finite(reform(immt[ii,*,*])))
-           idx = where(mask, count)
-           if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask=mask)
-        endfor
+      ;; Check NaNs
+      for ii = 0, 15 do begin
+        mask = 1B -( ~finite(reform(immt[ii,*,*])))
+        idx = where(mask, count)
+        if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask=mask)
+      endfor
 
-        immt = ptr_new(red_invert_mmatrix(temporary(immt)))
-     endif else begin
-        print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
-        return, 0
-     endelse
+      immt = ptr_new(red_invert_mmatrix(temporary(immt)))
+    endif else begin
+      print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
+      return, 0
+    endelse
                                 ;
   endif else begin
-     immt = red_invert_mmatrix(temporary(mmt))
+    immt = red_invert_mmatrix(temporary(mmt))
   endelse
                                 ;
                                 ; R-Cam
   If(~keyword_set(mmr)) then begin
                                 ;
-     search = self.out_dir+'/polcal/'+self.camrtag+'.'+pol[0]->getvar(7)+'.polcal.f0'
-     if(file_test(search)) then begin
-        immr = (f0(search))[0:15,*,*]
+    search = self.out_dir+'/polcal/'+self.camrtag+'.'+pol[0]->getvar(7)+'.polcal.f0'
+    if(file_test(search)) then begin
+      immr = (f0(search))[0:15,*,*]
 
-        ;; interpolate CCD tabs?
-        if(~keyword_set(no_ccdtabs)) then begin
-           for ii = 0, 15 do immr[ii,*,*] = red_mask_ccd_tabs(reform(immr[ii,*,*]))
-        endif
+      ;; interpolate CCD tabs?
+      if(~keyword_set(no_ccdtabs)) then begin
+        for ii = 0, 15 do immr[ii,*,*] = red_mask_ccd_tabs(reform(immr[ii,*,*]))
+      endif
 
 
-        ;; Check NaNs
-        for ii = 0, 15 do begin
-           mask = 1B - ( ~finite(reform(immr[ii,*,*])))
-           idx = where(mask, count)
-           if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask=mask)
-        endfor
+      ;; Check NaNs
+      for ii = 0, 15 do begin
+        mask = 1B - ( ~finite(reform(immr[ii,*,*])))
+        idx = where(mask, count)
+        if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask=mask)
+      endfor
 
-        immr = ptr_new(red_invert_mmatrix(temporary(immr)))
-     endif else begin
-        print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
-        return, 0
-     endelse
+      immr = ptr_new(red_invert_mmatrix(temporary(immr)))
+    endif else begin
+      print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
+      return, 0
+    endelse
                                 ;
   endif else begin
-     immr = red_invert_mmatrix(temporary(mmr))
+    immr = red_invert_mmatrix(temporary(mmr))
   endelse
                                 ;
                                 ; Pointers to immt and immr
                                 ;
   for ii = 0L, nstat - 1 do begin
-     pol[ii]->setvar, 5, value = ptr_new(immt)
-     pol[ii]->setvar, 6, value = ptr_new(immr)
+    pol[ii]->setvar, 5, value = ptr_new(immt)
+    pol[ii]->setvar, 6, value = ptr_new(immr)
   endfor
                                 ;
                                 ; fill border information (based on 1st image)
@@ -196,11 +196,11 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
   red_download, date = self.isodate, /turret, pathturret = turretfile
   if turretfile then begin
-     print, inam + 'Using SST position LOG -> ' + turretfile
-     for ii = 0L, nstat - 1 do pol[ii]->setvar, 18, value = turretfile
+    print, inam + 'Using SST position LOG -> ' + turretfile
+    for ii = 0L, nstat - 1 do pol[ii]->setvar, 18, value = turretfile
   endif else begin
-     print, 'red__polarim : No Turret log file'
-     stop
+    print, 'red__polarim : No Turret log file'
+    stop
   endelse 
                                 ;
                                 ; Print states
