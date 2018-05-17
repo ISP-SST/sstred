@@ -71,7 +71,8 @@ pro red::prepflatcubes_lc4, flatdir = flatdir $
                             , nthreads = nthreads $
                             , cam = cam $
                             , pref = pref $
-                            , verbose = verbose 
+                            , verbose = verbose  $
+                            , centwav = centwav
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -183,6 +184,17 @@ pro red::prepflatcubes_lc4, flatdir = flatdir $
       ;; Save results (separate fits files for old fortran fitgains_ng)
       outname = cam[cc]+ '.'+ upref+filestem+'.flats_data.fits'
       outname1 = cam[cc]+'.'+ upref+filestem+'.flats_wav.fits'
+      
+      if(keyword_set(centwav)) then begin
+        imean = total(total(cub,2,/double),2, /double)/(n_elements(cub[0,*,*]))
+        dum = min(imean,p)
+        if(p ge 1 AND p le (n_elements(wav)-2)) then begin
+          co = parab_fit(wav[p-1:p+1], imean[p-1:p+1])
+          w0 =  -0.5d0 * co[1] / co[2]
+        endif else w0 = wav[0]
+        wav -= w0
+        print, inam+' w0=',w0
+      endif
       
       writefits,  outdir + outname, cub
       writefits,  outdir + outname1, wav
