@@ -61,7 +61,8 @@
 ;-
 function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destretch $
                        , dir = dir, square = square, newflats = newflats $
-                       , no_ccdtabs = no_ccdtabs
+                       , no_ccdtabs = no_ccdtabs, smooth = smooth
+  
   inam = 'red::polarim : '
                                 ;
                                 ; Search for folders with reduced data
@@ -98,8 +99,10 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ;
                                 ; get files (right now, only momfbd is supported)
                                 ;
-  tfiles = file_search(dir+'/'+self.camttag+'.*.momfbd', count = nimt)
-  rfiles = file_search(dir+'/'+self.camrtag+'.*.momfbd', count = nimr)
+  filetype = 'momfbd'
+  if(self.filetype eq 'ANA') then filetype = 'f0'
+  tfiles = file_search(dir+'/'+self.camttag+'.*.'+filetype, count = nimt)
+  rfiles = file_search(dir+'/'+self.camrtag+'.*.'+filetype, count = nimr)
                                 ;
   if(nimt NE nimr) then begin
                                 ;
@@ -115,6 +118,15 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                               , camt = self.camttag, camr = self.camrtag, camwb = self.camwbtag $
                               , newflats = newflats)
   nstat = n_elements(pol)
+  
+  pref = pol[0]->getvar(7)
+  clipfile = self.out_dir+'/calib/align_clips.'+pref+'.sav'
+  if file_test(clipfile) then begin
+    restore, clipfile
+    tclip = cl[*,1]
+    rclip = cl[*,2]
+  endif
+  
                                 ;
                                 ; Modulations matrices
                                 ;
@@ -137,7 +149,30 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask=mask)
       endfor
 
+      if(n_elements(smooth) gt 0) then begin
+        dpix = round(smooth)*3
+        if((dpix/2)*2 eq dpix) then dpix -= 1
+        dpsf = double(smooth)
+        psf = red_get_psf(dpix, dpix, dpsf, dpsf)
+        psf /= total(psf, /double)
+        for ii=0,15 do immt[ii,*,*] = red_convolve(reform(immt[ii,*,*]), psf)
+      endif
+
+      if n_elements(tclip) eq 4 then begin
+        nx = abs(tclip[1] - tclip[0]) + 1
+        ny = abs(tclip[3] - tclip[2]) + 1
+        
+        print,'Clipping transmitted modulation matrix to '+red_stri(nx)+' x '+red_stri(ny)
+        
+        tmp = make_array( 16, nx, ny, type=size(immt, /type) )
+        for ii=0,15 do begin
+          tmp[ii,*,*] = red_clipim( reform(immt[ii,*,*]), tclip )
+        endfor
+        immt = temporary(tmp)
+      endif
+
       immt = ptr_new(red_invert_mmatrix(temporary(immt)))
+      
     endif else begin
       print, inam + 'ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
       return, 0
@@ -167,6 +202,29 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
         if count gt 0 then immr[ii,*,*] = red_fillpix(reform(immr[ii,*,*]), mask=mask)
       endfor
 
+      ;;smooth?
+      if(n_elements(smooth) gt 0) then begin
+        dpix = round(smooth)*3
+        if((dpix/2)*2 eq dpix) then dpix -= 1
+        dpsf = double(smooth)
+        psf = red_get_psf(dpix, dpix, dpsf, dpsf)
+        psf /= total(psf, /double)
+        for ii=0,15 do immr[ii,*,*] = red_convolve(reform(immr[ii,*,*]), psf)
+      endif
+      
+      if n_elements(rclip) eq 4 then begin
+        nx = abs(rclip[1] - rclip[0]) + 1
+        ny = abs(rclip[3] - rclip[2]) + 1
+        
+        print,'Clipping reflected modulation matrix to '+red_stri(nx)+' x '+red_stri(ny)
+        
+        tmp = make_array( 16, nx, ny, type=size(immr, /type) )
+        for ii=0,15 do begin
+          tmp[ii,*,*] = red_clipim( reform(immr[ii,*,*]), rclip )
+        endfor
+        immr = temporary(tmp)
+      endif
+
       immr = ptr_new(red_invert_mmatrix(temporary(immr)))
     endif else begin
       print, inam + 'ERROR, polcal data not found in ' + self.out_dir+'/polcal/'
@@ -187,8 +245,9 @@ function red::polarim, mmt = mmt, mmr = mmr, filter = filter, destretch = destre
                                 ; fill border information (based on 1st image)
                                 ;
   print, inam + 'reading file -> ' + (pol[0]->getvar(9))[0]
-  tmp = red_mozaic(momfbd_read((pol[0]->getvar(9))[0]))
-
+  if(self.filetype eq 'MOMFBD') then tmp = red_mozaic(momfbd_read((pol[0]->getvar(9))[0])) else $
+     tmp = f0((pol[0]->getvar(9))[0])
+  
   dimim = red_getborder(tmp, x0, x1, y0, y1, square=square)
   for ii = 0L, nstat - 1 do pol[ii]->fillclip, x0, x1, y0, y1
                                 ;
