@@ -75,6 +75,9 @@
 ;   2014-11-29 : JdlCR, added support for fullframe cubes (aka,
 ;                despite rotation and shifts, the entire FOV is inside
 ;                the image
+;
+;   2016-05-30 : JdlCR, added support for Fourier filtering the different
+;                Stokes parameters
 ;-
 pro red::make_pol_crispex, filter = filter $
                            , float = float $
@@ -318,6 +321,13 @@ pro red::make_pol_crispex, filter = filter $
       ;; Load image and apply prefilter correction
       print, inam + ' : loading -> '+file_basename(st.ofiles[ww,ss])
       tmp = (f0(st.ofiles[ww,ss]))[x0:x1,y0:y1,*] * tpref[ww]
+
+      ;; Filter data ?
+      if(tfi gt 0) then tmp[*,*,0] = red_filterim(tmp[*,*,0], ffi)
+      if(tfq gt 0) then tmp[*,*,1] = red_filterim(tmp[*,*,1], ffq)
+      if(tfu gt 0) then tmp[*,*,2] = red_filterim(tmp[*,*,2], ffu)
+      if(tfv gt 0) then tmp[*,*,3] = red_filterim(tmp[*,*,3], ffv)
+      
       if(keyword_set(filter)) then begin
         tmp = red_fftfilt(temporary(tmp), filter)
       endif 
