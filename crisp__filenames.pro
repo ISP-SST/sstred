@@ -416,7 +416,7 @@ function crisp::filenames, datatype, states $
           dir = self.out_dir+'/polcal/'
           red_append, tag_list, detector
           red_append, tag_list, prefilter
-          ext = '.polcal'
+          red_append, tag_list, 'polcal'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
         
