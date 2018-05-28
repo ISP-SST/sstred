@@ -114,10 +114,6 @@ pro chromis::fitprefilter, dir = dir $
     unitscalib = 1
   endelse
   
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
-
   if n_elements(dir) eq 0 then begin
 
     ;; Directory not provided, user has to choose one.
