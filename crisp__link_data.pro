@@ -25,7 +25,7 @@
 ;   
 ;    all_data : in, optional, type=boolean
 ;
-;       Not only link complete sequences, but everything found 
+;       Link not only complete sequences, but everything found 
 ;   
 ;    pref : in, optional, type=string
 ;
@@ -53,7 +53,12 @@
 ;   2018-04-12 : MGL. Adapt to new codebase.
 ;  
 ;-
-pro crisp::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PREF = pref, nremove=nremove
+pro crisp::link_data, all_data = all_data $
+                      , dirs = dirs $
+                      , nremove=nremove $
+                      , pref = pref $
+                      , uscan = uscan $
+                      , link_dir = link_dir 
 
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
@@ -61,34 +66,36 @@ pro crisp::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, P
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(dirs) gt 0 then begin
-    dirs = [dirs] 
-  endif else begin
-    if ~ptr_valid(self.data_dirs) then begin
-      print, inam+' : ERROR : undefined data_dir'
-      return
-    endif
+  if n_elements(dirs) eq 0 then begin
+    ;; No dirs given in keyword, use default
     dirs = *self.data_dirs
+  endif else begin
+    if ~file_test(dirs, /dir) then begin
+      ;; The keyword doesn't point to an existing directory.
+      ;; Try to interpret as a selection from the default dirs.
+      dirs = file_dirname((*self.data_dirs)[0])+'/'+dirs
+    endif
   endelse
 
   Ndirs = n_elements(dirs)
   if( Ndirs eq 0) then begin
     print, inam+' : ERROR : no directories defined'
     return
-  endif else begin
-    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
-    else dirstr = dirs[0]
-  endelse
+  endif ;else begin
+;    if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
+;    else dirstr = dirs[0]
+;  endelse
+
+  linkerdir = self.out_dir + '/' + 'link_scripts' + '/'
+  file_mkdir, linkerdir
 
   cams = *self.cameras
   Ncams = n_elements(cams)
-  
-  Ndirs = n_elements(*self.data_dirs)
-  
+    
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin
-    print, inam + ' : Folder -> ' + self.data_dirs[idir]
-    data_dir = self.data_dirs[idir]
+    data_dir = dirs[idir]
+    print, inam + ' : Folder -> ' + data_dir
     folder_tag = strsplit(data_dir,'/',/extract)
     nn = n_elements(folder_tag) - 1
     folder_tag = folder_tag[nn]
@@ -96,6 +103,7 @@ pro crisp::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, P
     for icam = 0L, Ncams-1 do begin
 
       cam = cams[icam]
+      detector = self->getdetector( cam )
       iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
 
 ;       case icam of
@@ -125,10 +133,11 @@ pro crisp::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, P
 ;           end
 ;        endcase
       
-      if(~doit) then continue
+;      if(~doit) then continue
 
-      files = file_search(data_dir + '/' + cam + '/camX*')
+      files = file_search(data_dir + '/' + cam + '/cam*', count = Nfiles)
       files = files(where(strpos(files, '.lcd.') LT 0, nf))
+      Nfiles = n_elements(files)
       
       if(files[0] eq '') then begin
         print, inam+' : ERROR : '+cam+': no files found in: '+$
@@ -140,90 +149,157 @@ pro crisp::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, P
       files = red_sortfiles(files)
       
       ;; Get states
-      stat = red_getstates(files)
+      self->extractstates, files, states
+;     stat = red_getstates(files)
       
 
       ;; only one prefilter?
-      IF keyword_set(pref) THEN BEGIN
-        idx = where(stat.pref EQ pref, np)
-        IF np EQ 0 THEN BEGIN
+      if keyword_set(pref) then begin
+        idx = where(states.prefilter eq pref, Np)
+        if Np eq 0 then begin
           print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
-          CONTINUE
-        ENDIF
-        files = files(idx)
-        nf = np
-        stat = red_getstates(files)
-      ENDIF
+          continue
+        endif
+        Nfiles = Np
+        files = files[idx]
+        states = states[idx]
+      endif
 
 
-        ;;; check for complete scans only
-      IF ~keyword_set(all_data) THEN BEGIN
-        scans = stat.scan(uniq(stat.scan))
-        n_scans = n_elements(scans)
-        f_scan = lonarr(n_scans)
-        FOR i = 0, n_scans-1 DO $
-           f_scan(i) = n_elements(where(stat.scan EQ scans(i)))
-        idx = replicate(1b, nf)
-        FOR i = 1, n_scans-1 DO BEGIN
-          IF f_scan(i)-f_scan(0) LT 0 THEN BEGIN
-            print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans(i)
-            print, inam+'             only '+strtrim(f_scan(i), 2)+' of '+strtrim(f_scan(0), 2)+' files.  Skipping it'
-            idx(where(stat.scan EQ scans(i))) = 0
-          ENDIF
-        ENDFOR
-              ;;; re-generate stats, numbers
-        files = (temporary(files))(where(idx))
-        nf = n_elements(files)
-        stat = red_getstates(files)
-      ENDIF
+      ;; Check for complete scans only
+      if ~keyword_set(all_data) then begin
+        scans = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
+;        scans = stat.scan(uniq(stat.scan))
+        
+        Nscans = n_elements(scans)
+        f_scan = lonarr(Nscans)
+        for iscan = 0L, Nscans-1 do $
+           f_scan[iscan] = n_elements(where(states.scannumber eq scans[iscan]))
+        mask = replicate(1B, Nfiles)
+        for iscan = 1L, Nscans-1 do begin
+          if f_scan[iscan]-f_scan[0] lt 0 then begin
+            print, inam + ' : WARNING : ' + cam + ': Incomplete scan nr ' + strtrim(scans[iscan], 2)
+            print, inam + '             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
+                   + strtrim(f_scan(0), 2) + ' files.  Skipping it'
+            mask[where(states.scannumber EQ scans[iscan])] = 0
+          endif
+        endfor
+        idx = where(mask)
+        files = (temporary(files))[idx]
+        Nfiles = n_elements(files)
+        states = states[idx]
+      endif
+;        Nscans = n_elements(scans)
+;        f_scan = lonarr(Nscans)
+;        for iscan = 0L, Nscans-1 do $
+;           f_scan[iscan] = n_elements(where(states.scannumber eq scans[iscan]))
+;        idx = replicate(1b, nf)
+;        FOR iscan = 1, Nscans-1 DO BEGIN
+;          IF f_scan(i)-f_scan(0) LT 0 THEN BEGIN
+;            print, inam+' : WARNING : '+cam+': Incomplete scan nr '+scans(i)
+;            print, inam+'             only '+strtrim(f_scan(i), 2)+' of '+strtrim(f_scan(0), 2)+' files.  Skipping it'
+;            idx(where(stat.scan EQ scans(i))) = 0
+;          ENDIF
+;        ENDFOR
+;              ;;; re-generate stats, numbers
+;        files = (temporary(files))(where(idx))
+;        nf = n_elements(files)
+;        stat = red_getstates(files)
+;      endif
       
       
       ;; Flag nremove
-      red_flagtuning, stat, nremove
+;      red_flagtuning, stat, nremove ; Did we move this functionality to momfbd? red_setupworkdir_crips doesn't call link_data with nremove set anyway!
       
       ;; Create linker script
-      nt = n_elements(files)
-      camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
+      Nfiles = n_elements(files)
+
+      linkername = linkerdir + cam + '_science_linker_'+folder_tag+'.sh'
+      openw, lun, linkername, /get_lun
+      printf, lun, '#!/bin/bash'
+
+      
+;      nt = n_elements(files)
+;      camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
       
       linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
       openw, lun, linkername, /get_lun
       printf, lun, '#!/bin/bash'
       
-      ;; Print links
-      ntot = 100. / (nt - 1.0)
-      bb = string(13b)
+;     ;; Print links
+;      Ntot = 100. / (Nt - 1.0)
+;      bb = string(13b)
       
+      ;; Create folders
       outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '/'
-      outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
-      
-      for ii = 0L, nt - 1 do begin
-        if(stat.star[ii]) then continue
-        if uscan ne '' then if stat.scan[ii] NE uscan then continue
-                                ;
-        namout = outdir + camtag + '.' + stat.scan[ii] +'.'+ stat.state[ii] + '.' +stat.nums[ii]
-        
-        printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
-        
-        if(wb) then begin
-          namout = outdir1 + camtag + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
-          printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
-        endif
-        
-        print, bb, inam+' : creating linker for '+cam+$
-               ' -> ', ii * ntot, '%', FORMAT = '(A,A,F5.1,A,$)'
-      endfor
-      free_lun, lun
-      print, ' '
-      
-      ;; Create folder and link data
       file_mkdir, outdir
-      if(wb) then file_mkdir, outdir1
+      if iswb[icam] then begin
+        outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
+        file_mkdir, outdir1
+      endif
       
-      print, inam+' : executing '+  linkername
+      for ifile = 0L, Nfiles - 1 do begin
+;           if(stat.star[ifile]) then continue
+        if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
+
+        namout = outdir + detector $
+                 + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                 + '_' + strtrim(states[ifile].fullstate, 2) $
+                 + '_' + string(states[ifile].framenumber, format = '(i07)')
+        
+        printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
+        
+        if iswb[icam] then begin
+          namout = outdir1 + detector $
+                   + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                   + '_' + strtrim(states[ifile].prefilter, 2) $
+                   + '_' + string(states[ifile].framenumber, format = '(i07)')
+          
+          printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
+        endif
+
+        red_progressbar, ifile, Nfiles, inam+' : creating linker for '+cam
+        
+      endfor                    ; ifile
+      
+;      for ii = 0L, nt - 1 do begin
+;        if(stat.star[ii]) then continue
+;        if uscan ne '' then if stat.scan[ii] NE uscan then continue
+;                                ;
+;        namout = outdir + camtag $
+;                  + '.' + stat.scan[ii] $
+;                  + '.' + stat.state[ii] $
+;                  + '.' + stat.nums[ii]
+;        
+;        printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
+;        
+;        if(wb) then begin
+;          namout = outdir1 + camtag + '.' + stat.scan[ii]+ '.' +stat.pref[ii] + '.' +stat.nums[ii]
+;          printf, lun, 'ln -sf '+ files[ii] + ' ' + namout
+;        endif
+;        
+;        print, bb, inam+' : creating linker for '+cam+$
+;               ' -> ', ii * ntot, '%', FORMAT = '(A,A,F5.1,A,$)'
+;      endfor
+      free_lun, lun
+      
+      ;; Link data
+      print, inam + ' : executing '+  linkername
+      spawn, 'chmod a+x ' + linkername
       spawn, '/bin/bash ' + linkername
       
-    endfor
-  endfor
-  
-  return
+      
+    endfor                      ; icam
+  endfor                        ; idir
+;      ;; Create folder and link data
+;      file_mkdir, outdir
+;      if(wb) then file_mkdir, outdir1
+;      
+;      print, inam+' : executing '+  linkername
+;      spawn, '/bin/bash ' + linkername
+;      
+;    endfor
+;  endfor
+;  
+;  return
 end
