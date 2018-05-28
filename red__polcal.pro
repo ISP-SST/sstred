@@ -56,7 +56,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
   if n_elements(nthreads) eq 0 then nthreads = 7
 
   ;; Search for cubes
-  f = file_search(self.out_dir + '/polcal_cubes/cam*.????.polcalcube.fits', count = Ncubes)
+  f = file_search(self.out_dir + '/polcal_cubes/cam*_????_polcalcube.fits', count = Ncubes)
   if Ncubes eq 0 then begin    
     print, inam + ' : ERROR, no valid polcal files found in '+self.out_dir + '/polcal_cubes/'
     return
@@ -66,7 +66,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
   mpref = strarr(Ncubes)
   mcam = strarr(Ncubes)
   for icube = 0, Ncubes-1 do begin
-    tmp = strsplit(file_basename(f[icube]),'.',/extract)
+    tmp = strsplit(file_basename(f[icube]),'_',/extract)
     mcam[icube] = tmp[0]
     mpref[icube] = tmp[1]
   endfor
@@ -98,16 +98,17 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
   idx = where(mpref eq pref, count)
   f = f[idx]
   ucam = mcam[idx]
-  
+
   if(~keyword_set(nodual) AND (count eq 2)) then begin
     print, inam + ' : Found 2 cameras for selected prefilter'
     
+    ;; Load data
+    dir = self.out_dir + '/polcal_cubes/'
+    root = '_'+pref+'_'
+
     rname = dir+ucam[0]+root+'polcalcube.fits'
     tname = dir+ucam[1]+root+'polcalcube.fits'
-
-    ;; Load 1D data
-    dir = self.out_dir + '/polcal_cubes/'
-    root = '.'+pref+'.'
+    
     r1d = mrdfits(rname,'D1D')
     t1d = mrdfits(tname,'D1D')
     rqw = mrdfits(rname,'QW')
