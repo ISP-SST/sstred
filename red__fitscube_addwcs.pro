@@ -124,7 +124,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   if n_elements(dimensions) ge 1 then Nx      = long(dimensions[0]) else Nx      = Nxdims 
   if n_elements(dimensions) ge 2 then Ny      = long(dimensions[1]) else Ny      = Nydims 
   if n_elements(dimensions) ge 3 then Ntuning = long(dimensions[2]) else Ntuning = Nwdims 
-;  if n_elements(dimensions) ge 4 then Nstokes = long(dimensions[3]) else Nstokes = Nstokes
+  if n_elements(dimensions) ge 4 then Nstokes = long(dimensions[3])
   if n_elements(dimensions) ge 5 then Nscans  = long(dimensions[4]) else Nscans  = Ntdims 
 
   ;; We don't want to tabulate WAVE and/or TIME if the dimension is
@@ -258,9 +258,9 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   
   ;; Stokes
   red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE4', 'STOKES', 'Stokes vector [I,Q,U,V]'
-  red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX4', 1, 'First (and only) quantity is I' 
-  red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL4', 1, 'First (and only) quantity is I' 
-  red_fitsaddkeyword, anchor = anchor, hdr, 'CDELT4', 1, '[1,2,3,4] = [I,Q,U,V]' 
+  red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX4', 1, 'Index of Stokes components in pixel 1' 
+  red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL4', 1, 'The first Stokes index is 1' 
+  red_fitsaddkeyword, anchor = anchor, hdr, 'CDELT4', 1, 'Stokes indices [1,2,3,4] --> [I,Q,U,V]' 
     
   ;; Scan number = repetition = major time dimension. But time varies
   ;; during scans as well, so we can only avoid tabulating if both St
