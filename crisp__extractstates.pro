@@ -185,8 +185,8 @@ pro crisp::extractstates, strings, states $
         states[ncindx[ifile]].tun_wavelength = states[ncindx[ifile]].pf_wavelength ; [nm] Tuning wavelength
         states[ncindx[ifile]].tuning         = states[ncindx[ifile]].prefilter+'_+0'      ; "6302_+0"
       endif else begin
-        states[ncindx[ifile]].tun_wavelength = dwav[ifile]/10d ; [nm] Tuning wavelength
-        states[ncindx[ifile]].tuning         = wav[ifile]      ; "6301_+100"
+        states[ncindx[ifile]].tun_wavelength = dwav[ifile]*1e-10 ; [nm] Tuning wavelength
+        states[ncindx[ifile]].tuning         = wav[ifile]        ; "6301_+100"
       endelse
 
       ;; For CHROMIS, states.fullstate is the settings and the fpi_state
