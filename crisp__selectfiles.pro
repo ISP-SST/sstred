@@ -60,6 +60,10 @@
 ;     force : in, optional, type=boolean
 ;
 ;        Re-populate files/states.
+;
+;     scan : in, optional, type=intarr
+;
+;        Only return files matching these scan numbers.
 ; 
 ;     polcal : in, optional, type=boolean
 ; 
@@ -100,6 +104,9 @@
 ;
 ;   2018-04-18 : MGL. New keywords count, complement, and ncomplement.
 ; 
+;   2018-05-25 : MGL. Add selection by scannumber, framenumbers, and
+;                fpi_states. 
+; 
 ;-
 pro crisp::selectfiles, cam = cam $
                         , count = count $
@@ -109,7 +116,10 @@ pro crisp::selectfiles, cam = cam $
                         , files = files $
                         , states = states $
                         , prefilter = prefilter $
+                        , framenumbers = framenumbers $
+                        , scan = scan $
                         , ustat = ustat $
+                        , fpi_states = fpi_states $
                         , flat = flat $
                         , dark = dark $
                         , nremove = nremove $
@@ -198,6 +208,30 @@ pro crisp::selectfiles, cam = cam $
     states[where(selected lt 1)].skip = 1
   endif
   
+  Nframes = n_elements(framenumbers)
+  if( Nframes gt 0 ) then begin
+    selected = [states.skip] * 0
+    tframes = [framenumbers]    ; make sure it's an array
+    for is = 0, Nframes-1 do begin
+      pos = where(states.framenumber eq tframes[is],count)
+      if( count ne 0 ) then selected[pos] = 1
+    endfor
+    pos = where(selected lt 1,count)
+    if( count ne 0 ) then states[pos].skip = 1
+  endif
+  
+  Nscan = n_elements(scan)
+  if( Nscan gt 0 ) then begin
+    selected = [states.skip] * 0
+    tscans = [scan]             ; make sure it's an array
+    for is = 0, Nscan-1 do begin
+      pos = where(states.scannumber eq tscans[is],count)
+      if( count ne 0 ) then selected[pos] = 1
+    endfor
+    pos = where(selected lt 1,count)
+    if( count ne 0 ) then states[pos].skip = 1
+  endif
+  
   Nstates = n_elements(ustat)
   if( Nstates gt 0 ) then begin
     selected = states.skip * 0
@@ -209,8 +243,19 @@ pro crisp::selectfiles, cam = cam $
     states[where(selected lt 1)].skip = 1
   endif
 
+  Nfpi = n_elements(fpi_states)
+  if( Nfpi gt 0 ) then begin
+    selected = states.skip * 0
+    tfpi = [fpi_states]         ; make sure it's an array
+    for ip = 0, Nfpi-1 do begin
+      pos = where(states.fpi_state eq tfpi[ip])
+      if( min(pos) ge 0 ) then selected[pos] = 1
+    endfor
+    states[where(selected lt 1)].skip = 1
+  endif
+
   selected = where( states.skip lt 1, count $
-                   , complement = complement, Ncomplement = Ncomplement)
+                    , complement = complement, Ncomplement = Ncomplement)
   
   if arg_present(selected) then begin
     if count eq 0 then undefine,selected ; don't return -1
