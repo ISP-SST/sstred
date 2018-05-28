@@ -154,7 +154,10 @@ pro red::sumpolcal, check=check $
     camtag = (strsplit(file_basename(files[0]), '.',/extract))[0]
 
     for istate = 0L, Nstates - 1 do begin 
- 
+
+      red_progressbar, istate, Nstates, /predict $
+                       , 'Summing polcal for '+cam+' ' + state_list[istate]
+            
       self->selectfiles, prefilter=prefilter, ustat=state_list[istate], $
                          files=files, states=states, selected=sel, /polcal
 
@@ -163,9 +166,7 @@ pro red::sumpolcal, check=check $
 
 
       ;; Get the polcal file name for the selected state
-      self -> get_calib, states[sel[0]] $
-                         , polsname = polsname, status = status
-;      polsname = polsname[0]
+      polsname = self -> filenames('pols', states[sel[0]])
 
       if n_elements(outdir) ne 0 then begin
         polsname = outdir + '/' + cam + '/' + file_basename(polsname)
@@ -173,22 +174,22 @@ pro red::sumpolcal, check=check $
 
       file_mkdir, file_dirname(polsname)
 
-      print, inam+' : summing polcal for state -> ' + state_list[istate]
-      print, inam+' : to be saved in ' + polsname
-      if(keyword_set(check)) then openw, lun, red_strreplace(polsname,'.fits','_discarded.txt') $
-                                         , width = 500, /get_lun
+;      print, inam+' : summing polcal for state -> ' + state_list[istate]
+;      print, inam+' : to be saved in ' + polsname
+      if keyword_set(check) then openw, lun, red_strreplace(polsname,'.fits','_discarded.txt') $
+                                        , width = 500, /get_lun
       
       filelist = files[sel]
       filelist = filelist(sort(filelist))
 
-      print, inam+' : summing frames for '+cam+' -> '+state_list[istate]
+;      print, inam+' : summing frames for '+cam+' -> '+state_list[istate]
       if keyword_set(sum_in_rdx) and rdx_hasopencv() then begin
         pcal = rdx_sumfiles(filelist, lun = lun, lim = lim $
                             , nthreads = nthreads $
                             , nsum = nsum, filter = filter $
                             , check = check, discarded = discarded, framenumbers = framenumbers $
-                            , time_beg = time_beg, time_end = time_end, time_avg = time_avg $
-                            , verbose=2)
+                            , time_beg = time_beg, time_end = time_end, time_avg = time_avg) ; $
+;        , verbose=2)
       endif else begin
         pcal = red_sumfiles(filelist, check = check, lun = lun, lim = lim $
                             , nthreads = nthreads $
@@ -222,7 +223,7 @@ pro red::sumpolcal, check=check $
 ;      red_writedata, polcname, polc, header=head, filetype='ANA', overwrite = overwrite
 
       ;; Write FITS format pcal
-      print, inam+' : saving ', polsname
+;      print, inam+' : saving ', polsname
       red_fitsaddkeyword, head, 'FILENAME', file_basename(polsname), after = 'DATE'
       red_writedata, polsname, pcal, header=head, filetype='FITS', overwrite = overwrite
 
