@@ -21,23 +21,29 @@
 ;      The FITS header.
 ; 
 ; :Keywords:
+;   
+;   anchor : in, optional, type=string
+;
+;     See documentation of red_fitsaddkeyword.
 ; 
 ;   fname : in, optional, type=string, default='info/metadata.fits'
-;   
-;   
-; 
-; 
+;
+;     Name of file from which to read the metadata.
+;
 ; :History:
 ; 
 ;    2017-03-13 : MGL. First version.
 ; 
 ;    2017-11-14 : MGL. Check that the file exists.
 ; 
+;    2018-05-25 : MGL. New keyword anchor.
+; 
 ; 
 ;-
-pro red_metadata_restore, head, fname = fname
+pro red_metadata_restore, head, fname = fname, anchor = anchor
 
-  if n_elements(fname) eq 0 then fname = 'info/metadata.fits' 
+  if n_elements(fname) eq 0 then fname = 'info/metadata.fits'
+  if n_elements(anchor) eq 0 then anchor = 'DATE'
   
   if file_test(fname) then begin
     
@@ -55,11 +61,7 @@ pro red_metadata_restore, head, fname = fname
       keyword = (strsplit(metahead[iline], ' =', /extract))[0]
       if keyword eq 'COMMENT' then continue
 
-      oldvalue = sxpar(head, keyword, comment = comment, count = count)
-      if count eq 0 then begin
-        metavalue = sxpar(metahead, keyword, comment = metacomment)
-        sxaddpar, head, keyword, metavalue, metacomment
-      endif
+      red_fitscopykeyword, anchor = anchor, head, keyword, metahead
       
     endfor                      ; iline
     
