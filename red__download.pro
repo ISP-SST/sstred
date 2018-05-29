@@ -206,22 +206,23 @@ pro red::download, overwrite = overwrite $
            ;; command do the needed transformation for 2013 and later.
            if datearr[0] ne '2012' then begin
               backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
-              backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15', '16', '17']
+              backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18']
               backscatter_orientations = bytarr(n_elements(backscatter_years) $
                                                 , n_elements(backscatter_cameras))
               ;; Change orientations here if needed. Let's hope the
               ;; orientation never changed *during* an observation
               ;; season...
-              backscatter_orientations[0, *] = [0, 0, 0, 0] ; 2008 - same as 2012?
-              backscatter_orientations[1, *] = [0, 0, 0, 0] ; 2009 - same as 2012?
-              backscatter_orientations[2, *] = [0, 0, 0, 0] ; 2010 - same as 2012?
-              backscatter_orientations[3, *] = [0, 0, 0, 0] ; 2011 - same as 2012?
-              backscatter_orientations[4, *] = [0, 0, 0, 0] ; 2012
-              backscatter_orientations[5, *] = [0, 0, 7, 0] ; 2013
-              backscatter_orientations[6, *] = [0, 0, 7, 0] ; 2014 - same as 2013
-              backscatter_orientations[7, *] = [0, 7, 7, 0] ; 2015
-              backscatter_orientations[8, *] = [0, 7, 7, 0] ; 2016 - same as 2015?
-              backscatter_orientations[9, *] = [0, 7, 7, 0] ; 2017 - same as 2015?
+              backscatter_orientations[ 0, *] = [0, 0, 0, 0] ; 2008 - same as 2012?
+              backscatter_orientations[ 1, *] = [0, 0, 0, 0] ; 2009 - same as 2012?
+              backscatter_orientations[ 2, *] = [0, 0, 0, 0] ; 2010 - same as 2012?
+              backscatter_orientations[ 3, *] = [0, 0, 0, 0] ; 2011 - same as 2012?
+              backscatter_orientations[ 4, *] = [0, 0, 0, 0] ; 2012
+              backscatter_orientations[ 5, *] = [0, 0, 7, 0] ; 2013
+              backscatter_orientations[ 6, *] = [0, 0, 7, 0] ; 2014 - same as 2013
+              backscatter_orientations[ 7, *] = [0, 7, 7, 0] ; 2015
+              backscatter_orientations[ 8, *] = [0, 7, 7, 0] ; 2016 - same as 2015?
+              backscatter_orientations[ 9, *] = [0, 7, 7, 0] ; 2017 - same as 2015?
+              backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2018 - same as 2015?
               for ifile = 0, Nfiles-1 do begin
                  icam = where(backscatter_cameras $
                               eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
