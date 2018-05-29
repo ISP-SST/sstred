@@ -43,6 +43,8 @@
 ;-
 pro red::fitscube_addcmap, filename, cmaps
 
+  inam = red_subprogram(/low, calling = inam1)
+
   ;; Keywords numbered with j=3 because WAVE is coordinate 3
   j = '3'
 
@@ -50,6 +52,16 @@ pro red::fitscube_addcmap, filename, cmaps
 
   hdr = headfits(filename)
 
+  ;; Check that dimensions match
+  naxis = fxpar(hdr, 'NAXIS*')
+  cdims = size(cmaps, /dim)
+  if naxis[0] ne cdims[0] || naxis[1] ne cdims[1] || naxis[4] ne cdims[2] then begin
+    print, inam + ' : Dimensions do not match'
+    print, 'Cube: ', naxis
+    print, 'Cmap: ', cdims
+    stop
+  endif
+  
   ;; If the main header doesn't have the EXTEND keyword, add it now.
   red_fitsaddkeyword, hdr, 'EXTEND', !true, 'The file has extension(s).'
 
