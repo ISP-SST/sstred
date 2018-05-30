@@ -111,28 +111,30 @@
 ;
 ;   2017-12-21 : MGL. Do extractstates only if needed.
 ; 
+;   2018-05-30 : MGL. Add selection by fpi_states.
+; 
 ;-
 pro chromis::selectfiles, cam = cam $
-                          , count = count $
                           , complement = complement $
-                          , ncomplement = ncomplement $
-                          , dirs = dirs $
-                          , subdir = subdir $
-                          , files = files $
-                          , states = states $
-                          , prefilter = prefilter $
-                          , framenumbers = framenumbers $
-                          , scan = scan $
-                          , ustat = ustat $
-                          , flat = flat $
+                          , count = count $
                           , dark = dark $
-                          , nremove = nremove $
+                          , dirs = dirs $
+                          , files = files $
+                          , flat = flat $
                           , force = force $
+                          , fpi_states = fpi_states $
+                          , framenumbers = framenumbers $
+                          , ncomplement = ncomplement $
+                          , nremove = nremove $
+                          , prefilter = prefilter $
+                          , scan = scan $
                           , selected = selected $
+                          , states = states $
                           , strip_settings = strip_settings $
-                          , strip_wb = strip_wb
+                          , strip_wb = strip_wb $
+                          , subdir = subdir $
+                          , ustat = ustat 
 
-  
   compile_opt idl2
   
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -261,6 +263,18 @@ pro chromis::selectfiles, cam = cam $
     if( count ne 0 ) then states[pos].skip = 1
   endif
 
+  Nfpi = n_elements(fpi_states)
+  if( Nfpi gt 0 ) then begin
+    selected = states.skip * 0
+    tfpi = [fpi_states]         ; make sure it's an array
+    for ip = 0, Nfpi-1 do begin
+      pos = where(states.fpi_state eq tfpi[ip])
+      if( min(pos) ge 0 ) then selected[pos] = 1
+    endfor
+    states[where(selected lt 1)].skip = 1
+  endif
+
+  
   selected = where(states.skip lt 1, count $
                    , complement = complement, Ncomplement = Ncomplement)
   
