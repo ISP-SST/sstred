@@ -205,8 +205,8 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   ;; Close the files
   free_lun, ilun, flun              
 
-  ;; Copy WCS extension to flipped file
   if n_elements(wcs) gt 0 then begin
+    ;; Copy WCS extension to flipped file
     red_fits_copybinext, filename, flipfile, 'WCS-TAB'
   endif
 
