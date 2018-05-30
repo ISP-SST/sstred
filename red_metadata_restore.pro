@@ -57,9 +57,20 @@ pro red_metadata_restore, head, fname = fname, anchor = anchor
     ;; Add metadata info to the provided header
     Nlines = n_elements(metahead)
     for iline = 0, Nlines-1 do begin
+
+      ;; Skip lines that don't have keywords with values.
+      if strmid(metahead[iline], 8, 1) ne '=' then continue
       
       keyword = (strsplit(metahead[iline], ' =', /extract))[0]
-      if keyword eq 'COMMENT' then continue
+
+      ;; Skip some administrative keywords
+      if keyword eq 'SIMPLE' $
+         or keyword eq 'BITPIX' $
+         or keyword eq 'NAXIS' $
+         or keyword eq 'EXTEND' $
+         or keyword eq 'DATE' $
+         or keyword eq 'LONGSTRN' $
+      then continue
 
       red_fitscopykeyword, anchor = anchor, head, keyword, metahead
       
