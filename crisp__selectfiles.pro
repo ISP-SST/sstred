@@ -126,6 +126,7 @@ pro crisp::selectfiles, cam = cam $
                         , force = force $
                         , selected = selected $
                         , strip_settings = strip_settings $
+                        , subdir = subdir $
                         , polcal = polcal
 
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
