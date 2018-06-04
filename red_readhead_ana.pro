@@ -21,16 +21,29 @@
 ;    fname : in, type=string
 ;
 ;       The name of the data file.
+;
+; :Keywords:
+;
+;    date_beg : out, type=strarr
+;
+;       The timestamps for exposure start.
+; 
+;    framenumbers : out, type=intarr
+;
+;       The framenumbers extracted from the file metadata.
+;    
 ; 
 ; :History:
 ; 
 ;    2017-03-10 : MGL. Moved reading of headers from ANA fz format
 ;                 files from red_readhead.pro.
 ; 
-; 
+;    2018-06-04 : MGL. New keywords date_beg and framenumbers.
 ; 
 ;-
-function red_readhead_ana, fname
+function red_readhead_ana, fname, $
+                           date_beg = date_beg, $
+                           framenumbers = framenumbers
 
   compile_opt idl2
 
@@ -49,6 +62,8 @@ function red_readhead_ana, fname
         red_append, header, card
         if strmid( card, 0, 2 ) eq 'END' then break
       endfor                    ; i
+
+      framenumbers = fxpar(header, 'FRAMENUM')
 
     endif else begin
 
@@ -80,7 +95,14 @@ function red_readhead_ana, fname
       ;; Get what other info is possible from the anaheader:
       header = red_anahdr2fits(anaheader, datatype = dtyp, naxisx = naxisx)
 
+      if arg_present(framenumbers) then begin
+        lastpart = (strsplit(fname, '[._]', /extract))[-1]
+        if strlen(lastpart) eq 7 then framenumbers = long(lastpart)
+      endif
+      
     endelse
+
+    date_beg = fxpar(header, 'DATE-BEG')
 
   endif
 
