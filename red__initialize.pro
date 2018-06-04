@@ -65,8 +65,9 @@
 ;
 ;   2017-06-20 : MGL. Clean up key-value handling.
 ;
-;   2017-11-08 : THI: Bump the rdx-version dependence.
-; 
+;   2017-11-08 : THI: Bump the rdx-version dependence. 
+;
+;   2018-05-31 : MGL. Set self.refcam to camera ending in '-W'. 
 ;
 ;-
 pro red::initialize, filename, develop = develop
@@ -252,10 +253,12 @@ pro red::initialize, filename, develop = develop
   ;; Fields that depend on fields defined above:
   self.log_dir = self.out_dir+'/downloads/sstlogs/'
   self.telog = self.log_dir+'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)+'_final'
-  self.descatter_dir = self.out_dir+'/downloads/backscatter/'
-
-
-
+  self.descatter_dir = self.out_dir+'/downloads/backscatter/'  
+  if ptr_valid(self.cameras) then begin
+    self.refcam = where(strmatch(*self.cameras,'*-W'), Nmatch)
+    if Nmatch eq 0 then stop
+  endif
+  
   ;; print fields
   IF ptr_valid(self.dark_dir) THEN BEGIN
     if(self.dopolcal) then print, 'red::initialize : polcal_dir = '+ self.polcal_dir
