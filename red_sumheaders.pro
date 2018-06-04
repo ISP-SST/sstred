@@ -105,7 +105,6 @@ function red_sumheaders, files, sum $
     for ifile = 0, Nfiles-1 do begin
       
       head = red_readhead(files[ifile],date_beg=date_beg_thisfile,framenumbers=frame_numbers_thisfile)
-
       ;; The number of frames in the file
       Nframes = n_elements(frame_numbers_thisfile)
       if Nframes eq 0 then begin
@@ -198,7 +197,7 @@ function red_sumheaders, files, sum $
                   , 'TEXPOSUR', exptime, '[s] Single-exposure time'
   red_fitsaddkeyword, anchor = anchor, head $
                   , 'NSUMEXP', nsum, 'Number of summed exposures'
-  
+
   ;; List of frame numbers.
   red_fitsaddkeyword, anchor = anchor, head $
                   , 'FNUMSUM', red_collapserange(framenumbers,ld='',rd='') $
