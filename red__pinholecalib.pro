@@ -96,16 +96,16 @@
 ;                state(s).
 ;
 ;-
-pro red::pinholecalib, threshold = threshold $
-                           , max_shift = max_shift $
-                           , nref = nref $
-                           , pref = pref $
-                           , dir = dir $
-                           , cams = cams $
-                           , refcam = refcam $
-                           , smooth = smooth $
-                           , verbose = verbose $
-                           , verify = verify
+pro red::pinholecalib, cams = cams $
+                       , dir = dir $
+                       , max_shift = max_shift $
+                       , nref = nref $
+                       , pref = pref $
+                       , refcam = refcam $
+                       , smooth = smooth $
+                       , threshold = threshold $
+                       , verbose = verbose $
+                       , verify = verify
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
