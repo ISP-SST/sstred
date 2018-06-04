@@ -157,7 +157,9 @@ function red_readhead, fname, $
   ;; external header file.
   case strupcase(filetype) of
     'ANA' : begin
-      header = red_readhead_ana(fname)
+      header = red_readhead_ana(fname, $
+                                date_beg = date_beg, $
+                                framenumbers = framenumbers)
       hname = file_basename(fname, '.fz')
       hname = hdir+'/'+file_basename(hname, '.f0') + '.fitsheader'
     end
