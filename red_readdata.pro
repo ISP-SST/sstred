@@ -45,10 +45,10 @@
 ;
 ;	Output the return status, 0 for success, -1 for failure.
 ;
-;    framenumber : in, optional, type=integer
+;    nslice : in, optional, type=integer
 ;
 ;       Read just this frame from a data cube. (Implemented only for
-;       FITS files for now.)
+;       FITS files for now, and that needs some work, too.)
 ;
 ;    extension : in, optional, type=string
 ;
@@ -110,16 +110,18 @@
 ;   2017-11-10 : MGL. Use the new /crop option with red_mozaic to get
 ;                predictable dimensions.
 ;
+;   2018-06-04 : MGL. Renamed keyword framenumber to nslice. Support
+;                compressed fits files.
 ;
 ;-
 function red_readdata, fname $
-                       , header = header $
-                       , filetype = filetype $
-                       , structheader = structheader $
-                       , status = status $
-                       , silent = silent $
-                       , framenumber = framenumber $
                        , extension = extension $
+                       , filetype = filetype $
+                       , header = header $
+                       , nslice = nslice $
+                       , silent = silent $
+                       , status = status $
+                       , structheader = structheader $
                        , tabkey = tabkey
 
   compile_opt idl2
@@ -158,21 +160,68 @@ function red_readdata, fname $
 
     'FITS' : begin
 
-      ;; Data stored in fits files, but what kind?
-      red_rdfits, fname, header = header
-      bit_shift = 0
-      if fxpar(header, 'SOLARNET') eq 0 then begin
-        caminfo = red_camerainfo( red_detectorname(fname,head=header) )
-        if strmatch(caminfo.model,'PointGrey*') then begin 
-          ;; This is the first version PointGrey data from
-          ;; spring 2016. Hack to load it:
-          uint = 1
-          swap = 0
-          bit_shift = -4
+      ;; Read the original header
+      header = headfits(fname)
+      
+      if fxpar(header, 'SOLARNET') ne 0 then begin
+        ;; This is a SOLARNET file 
+
+        ;; Read the data and get the header that is consistent with
+        ;; the actual data (e.g., if compressed).
+        data = rdx_readdata(fname, status = status, header = header $
+                            , date_beg = date_beg)
+
+        if n_elements(nslice) ne 0 then begin
+          
+          dims = size(data, /dim)
+          Ndims = n_elements(dims)
+          if Ndims gt 3 then data = reform(data, dims[0], dims[1] $
+                                           , round(product(dims[2:*])), /overwrite)
+          data = data[*, *, Nslice]
+
+          ;; Change the header so it is consistent with the selected
+          ;; slice
+          for iaxis = 1, fxpar(header, 'NAXIS') do sxdelpar, header, 'NAXIS'+strtrim(iaxis, 2)
+          fxaddpar, header, 'NAXIS', n_elements(dims),'NAXIS of slice'
+          for iaxis = 1, fxpar(header, 'NAXIS') do fxaddpar, header, 'NAXIS'+strtrim(iaxis, 2), dims[iaxis-1]
+          ;; And set the FRAMENUM keyword.
+          fxaddpar, header, 'FRAMENUM', fxpar(header, 'FRAMENUM', comment = comment)+Nslice $
+                    , 'Frame number of slice '+strtrim(Nslice, 2)
+          fxaddpar, header, 'DATE-BEG', date_beg[nslice] $
+                    , 'DATE-BEG of slice '+strtrim(Nslice, 2)
+
+          date = (strsplit(date_beg[nslice], 'T', /extract))[0]
+          time_beg = red_time2double((strsplit(date_beg[nslice], 'T', /extract))[1])
+          fxaddpar, header, 'DATE-END' $
+                    , date + 'T' + red_timestring(time_beg + fxpar(header, 'XPOSURE')) $
+                    , 'DATE-END of slice '+strtrim(Nslice, 2)
+          fxaddpar, header, 'DATE-AVG' $
+                    , date + 'T' + red_timestring(time_beg + fxpar(header, 'XPOSURE')/2d) $
+                    , 'DATE-AVG of slice '+strtrim(Nslice, 2)
+          
+          status = 0
         endif
 
-      endif
+        return, data
+
+      endif                     ; End SOLARNET files
+
+      ;; Now take care of non-SOLARNET data files.
       
+      ;; Data stored in fits files, but what kind?
+      header = headfits(fname)
+;      red_rdfits, fname, header = header
+      bit_shift = 0
+
+      caminfo = red_camerainfo( red_detectorname(fname,head=header) )
+      if strmatch(caminfo.model,'PointGrey*') then begin 
+        ;; This is the first version PointGrey data from
+        ;; spring 2016. Hack to load it:
+        uint = 1
+        swap = 0
+        bit_shift = -4
+      endif
+
       ;; Now read the data
       
       ;; primary HDU
@@ -181,13 +230,13 @@ function red_readdata, fname $
           ;; readfits does not support uint data so use Pit's
           ;; red_rdfits instead. 
           red_rdfits, fname, image = data $
-                      , uint=uint, swap=swap, framenumber = framenumber
+                      , uint=uint, swap=swap, framenumber = nslice
           ;; Compensate for initial weird format
           if bit_shift ne 0 then data = ishft(data, bit_shift)
         endif else begin
           ;; By default use readfits so we can read 4-dimensional
           ;; cubes.
-          data = readfits(fname, Nslice = framenumber, silent = silent)
+          data = readfits(fname, Nslice = nslice, silent = silent)
         endelse
 
         ;; Does it need to be byteswapped?
@@ -237,7 +286,7 @@ function red_readdata, fname $
   
   if arg_present(header) then $
      header = red_readhead(fname, structheader = structheader, $
-                           framenumber = framenumber, silent=silent,$
+                           silent=silent,$
                            extension=extension)
 
   status = 0
@@ -246,6 +295,19 @@ function red_readdata, fname $
 
 end
 
+
+;; Test compressed file
+fname = '/nadir-scratch/tomas/wfwfs/ffov_12_compressed/sst_camXXXVI_00000_0000000.fits'
+d = red_readdata(fname, h = h, status = status)
+d = red_readdata(fname, h = h, status = status, nslice = 11)
+
+;; Test fitsheader file
+fname = '/scratch/mats/2016.09.19/CHROMIS-jaime_recipe/momfbd/09:28:36/3950/cfg/results/camXXX_2016-09-19T09:28:36_00120_12.00ms_G10.00_3934_3934_-430.fitsheader'
+dd = red_readdata(fname, h = hd, status = status)
+
+date_beg = red_fitsgetkeyword(fname, 'DATE-BEG', variable_values = date_begs, count = count)
+
+stop
 
 cd,'/storage/sand02/Incoming/2016.09.19/CHROMIS-flats/11:21:22/Chromis-N',current=curdir
 fname = 'sst_camXXX_00000_0000000_wheel00005_hrz32061.fits'
