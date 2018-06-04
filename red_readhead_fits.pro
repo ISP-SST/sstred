@@ -185,10 +185,21 @@ function red_readhead_fits, fname, $
 
 end
 
+
+
+;; Test compressed file
+fname = '/nadir-scratch/tomas/wfwfs/ffov_12_compressed/sst_camXXXVI_00000_0000000.fits'
+header = red_readhead_fits(fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
+h = headfits(fname)
+hh = red_readhead(fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
+stop
+
 ;; Test broken file
 
 dir='/storage/sand05n/Incoming/2017.04.20/CHROMIS-flats/18:34:10/Chromis-N/'
-fname='sst_camXXX_00004_0036400_wheel00006_hrz34410.fits'
+dir='/data/2017/2017.04/2017.04.20/CHROMIS-flats/18:34:10/Chromis-N/'
+fname = 'sst_camXXX_00004_0036400_wheel00006_hrz34410.fits' ; Broken file
+fname = 'sst_camXXX_00004_0034000_wheel00006_hrz33138.fits' ; OK file
 
 header = red_readhead_fits(dir+fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
 print, status
