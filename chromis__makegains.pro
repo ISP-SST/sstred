@@ -86,6 +86,7 @@ pro chromis::makegains, bad=bad $
   tosearch = self.out_dir+'/flats/*flat.fits'
   
   files = file_search(tosearch, count = Nfiles)
+
   
   if Nfiles eq 0 then begin
     print, inam+' : No flats found : ' + tosearch
@@ -107,10 +108,10 @@ pro chromis::makegains, bad=bad $
     self -> extractstates, flatname, states
 
     if iscav then begin
-      gainname = self -> filenames('gain', states)
+      gainname = self -> filenames('cavityfree_gain', states)
       ;; self -> get_calib, states, gainname = gainname
     endif else begin
-      gainname = self -> filenames('cavityfree_gain', states)
+      gainname = self -> filenames('gain', states)
       ;; self -> get_calib, states, gainname = gainname
     endelse
     
@@ -139,7 +140,7 @@ pro chromis::makegains, bad=bad $
       red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
       self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
                                   , prproc = inam, prpara = prpara
-      
+    
       ;; Output gaintable
       file_mkdir, file_dirname(gainname[ifile])
       print, inam+' : Saving '+gainname[ifile]
