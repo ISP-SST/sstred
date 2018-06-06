@@ -113,7 +113,7 @@ pro red::prepmfbd, numpoints = numpoints, $
   if n_elements(mfbddir) eq 0 then mfbddir = 'mfbd' 
      
   for fff = 0, self.ndir - 1 do begin
-     data_dir = self.data_list[fff]
+     data_dir = (*self.data_list)[fff]
      spawn, 'find ' + data_dir + '/' + self.camwb+ '/ | grep im.ex | grep -v ".lcd."', files
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1

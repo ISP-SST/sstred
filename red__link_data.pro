@@ -66,8 +66,8 @@ pro red::link_data, link_dir = link_dir, uscan = uscan, ALL_DATA = all_data, PRE
                                 
   ;; Create file list
   for ff = 0L, self.ndir - 1 do begin
-     print, inam + ' : Folder -> ' + self.data_list[ff]
-     data_dir = self.data_list[ff]
+     print, inam + ' : Folder -> ' + (*self.data_list)[ff]
+     data_dir = (*self.data_list)[ff]
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1
      folder_tag = folder_tag[nn]

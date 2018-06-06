@@ -122,14 +122,13 @@ pro red::initialize, filename
            self.pinh_dir = (strsplit(line,' =',/extract))[1] ; extract value
         end
         'data_dir': begin
-
-           if(strpos(line,"'") ne -1) then begin
-              tmp = (strsplit(line,'=',/extract))[1]
-              dum = execute('tmp=' + tmp)
-           endif else tmp = (strsplit(line,' =',/extract))[1]
-           nn = n_elements(tmp)
-           self.ndir = nn
-           for ii = 0, nn-1 do self.data_list[ii] = tmp[ii]
+          if(strpos(line,"'") ne -1) then begin
+            tmp = (strsplit(line,'=',/extract))[1]
+            dum = execute('tmp=' + tmp)
+          endif else tmp = (strsplit(line,' =',/extract))[1]
+          if ptr_valid(self.data_list) then red_append, *self.data_list, tmp $
+          else self.data_list = ptr_new(tmp, /no_copy)
+          self.ndir = n_elements(*self.data_list)
         end
         'polcal_dir': begin
            self.polcal_dir =  (strsplit(line,' =',/extract))[1] ; extract value
@@ -185,10 +184,12 @@ pro red::initialize, filename
      FOR i = 0, n_elements(*self.dark_dir)-1 DO $
        IF strmid((*self.dark_dir)[i], 0, 1) NE '/' AND strlen((*self.dark_dir)[i]) GT 0 $
        THEN (*self.dark_dir)[i] = self.root_dir + (*self.dark_dir)[i]
+     FOR i = 0, n_elements(*self.data_list)-1 DO $
+       IF strmid((*self.data_list)[i], 0, 1) NE '/' AND strlen((*self.data_list)[i]) GT 0 $
+       THEN (*self.data_list)[i] = self.root_dir + (*self.data_list)[i]
 ;     if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then self.dark_dir = self.root_dir + self.dark_dir
      if(strmid(self.pinh_dir, 0, 1) NE '/' AND strlen(self.pinh_dir) gt 0) then self.pinh_dir = self.root_dir + self.pinh_dir
      if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then self.prefilter_dir = self.root_dir + self.prefilter_dir
-     if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
      if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then self.polcal_dir = self.root_dir + self.polcal_dir
 ;     if(strmid(self.descatter_dir, 0, 1) NE '/' AND strlen(self.descatter_dir) gt 0) then self.descatter_dir = self.root_dir + self.descatter_dir
   endif
@@ -281,14 +282,14 @@ pro red::initialize, filename
   if(self.dodata) then begin
      nn = self.ndir
      if(nn eq 1) then begin
-        print, 'red::initialize : data_dir = '+ self.data_list[0]
-        self.data_dir = self.data_list[0]
+        print, 'red::initialize : data_dir = '+ (*self.data_list)[0]
+        self.data_dir = (*self.data_list)[0]
      endif else begin
         print, 'red::initialize : data_dirs :'
-        for k = 0, nn-1 do print, string(k, format='(I5)') + ' -> ' + self.data_list[k]
+        for k = 0, nn-1 do print, string(k, format='(I5)') + ' -> ' + (*self.data_list)[k]
         id = 0
         ;; read, id, prompt = "red::initialize : select default folder's id :"
-        self.data_dir = self.data_list[id]
+        self.data_dir = (*self.data_list)[id]
      endelse
   endif
   if(self.docamt) then print, 'red::initialize : cam_T = '+ self.camt

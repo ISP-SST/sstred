@@ -24,7 +24,7 @@ PRO red__define
             dark_dir:ptr_new(),$    ; The directory where raw dark frames are stored
             flat_dir:ptr_new(),$    ; The directories where raw flat fields are stored
             data_dir:'',$           ; The directory where raw science data is stored
-            data_list:strarr(100),$ ;
+            data_list:ptr_new(),$   ; The directories where raw science data is stored
             ndir:0B, $              ;
             pinh_dir:'',$           ; The directory where raw pinhole array data is stored
             prefilter_dir:'',$      ;

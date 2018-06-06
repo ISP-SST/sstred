@@ -99,7 +99,7 @@ pro red::prepmomfbd2, wb_states = wb_states, outformat = outformat, numpoints = 
                                 ; get states from the data folder
                                 ;
   for fff = 0, self.ndir - 1 do begin
-     data_dir = self.data_list[fff]
+     data_dir = (*self.data_list)[fff]
      spawn, 'find ' + (data_dir) + '/' + self.camt + '/ | grep im.ex', files
      folder_tag = strsplit(data_dir,'/',/extract)
      nn = n_elements(folder_tag) - 1

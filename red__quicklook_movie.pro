@@ -72,10 +72,10 @@ pro red::quicklook_movie, dark = dark, gain =  gain, clip = clip, $
                                 ; list files
   if(self.ndir GT 1) then begin
      print, inam + 'found folders:'
-     for ii=0,self.ndir-1 do print, string(ii,format='(I3)')+' -> '+self.data_list[ii]
+     for ii=0,self.ndir-1 do print, string(ii,format='(I3)')+' -> '+(*self.data_list)[ii]
      ichoice = 0L
      read, ichoice, promp = 'Choose ID of the data folder: '
-     folder = self.data_list[ichoice]
+     folder = (*self.data_list)[ichoice]
   endif else folder = self.data_dir
   
   ; If search pattern is given, use that, otherwise just use *im*
