@@ -21,23 +21,28 @@
 ; 
 ; :Keywords:
 ; 
-;    no_descatter : in, optional, type=boolean 
-;   
-;      Don't do back-scatter compensation.
-;   
 ;   all : in, optional, type=boolean
 ;   
 ;      Process all data sets.
 ; 
+;   no_descatter : in, optional, type=boolean 
+;   
+;      Don't do back-scatter compensation.
+;
+;   tdirs : in, optional, type=strarr
+;
+;      Time-stamp directories, should exist in data/ subdirectory (or
+;      wherever keyword link_data points to).
+;
 ; :History:
 ;
 ;   2013-07-01 : JdlCR : Created!
 ; 
 ;   2013-07-24 : Use red_show rather than show.
 ;
-;   2014-01-02 : PS take out nremove (selection only done in prepmomfbd)
-;                  use linked data, to skip incomplete scans
-;
+;   2014-01-02 : PS take out nremove (selection only done in
+;                prepmomfbd) use linked data, to skip incomplete
+;                scans.
 ;
 ;   2015-05-05 : MGL. With a *, run all directories.
 ; 
@@ -47,265 +52,338 @@
 ;   2016-02-16 : MGL. New keyword "all".
 ;
 ;   2016-08-23 : THI. Rename camtag to detector and channel to camera,
-;                so the names match those of the corresponding SolarNet
-;                keywords.
+;                so the names match those of the corresponding
+;                SOLARNET keywords.
 ; 
+;   2018-04-18 : MGL. Adapt to new code-base. New keyword tdir.
+;
 ;
 ;-
-pro red::sum_data_intdif, cam = cam $
-                          , t1 = t1 $
-                          , nthreads = nthreads $
-                          , pref = pref $
-                          , verbose = verbose, overwrite=overwrite $
-                          , no_descatter = no_descatter $
-                          , show = show $
+pro red::sum_data_intdif, all = all $
+                          , cam = cam $
+                          , tdir = tdir $
                           , link_dir = link_dir $
-                          , all = all
+                          , no_descatter = no_descatter $
+                          , nthreads = nthreads $
+                          , overwrite=overwrite $
+                          , pref = pref $
+                          , show = show $
+                          , t1 = t1 $
+                          , verbose = verbose 
 
-  inam = 'red::sum_data_intdif : '
-  
-  IF NOT keyword_set(link_dir) THEN link_dir = '/data'
-  
-  ;; outdir = self.out_dir + '/cmap_intdif/'
-  ucam = [self.camr, self.camt]
-  
-  ;; Search files.  Use links created by link_data
 
-  dirs = file_search(self.out_dir + link_dir+'/*', COUNT = nd,/test_dir)
-  IF nd EQ 0 THEN BEGIN
-    print, inam + 'ERROR: No data found - did you run link_data?'
-    if(debug) then stop else return
-  ENDIF
-  IF nd GT 1 and ~keyword_set(all) THEN BEGIN
-    FOR ii = 0, nd-1 DO print, red_stri(ii)+' -> '+ $
-                               file_basename(dirs[ii])
+  ;; Name of this method
+  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-    idx = ''
-    read, idx, prom = inam + 'Please select folder (* for all of them): '
-    if idx ne '*' then begin
-      dirs = dirs[long(idx)]
-      
-      print, inam + 'Using -> '+dirs
+  ;; Use links created by link_data as default.
+  if n_elements(link_dir) eq 0 then link_dir = self.out_dir + '/' + 'data'
+
+  if n_elements(tdir) ne 0 then begin
+    eindx = where(file_test(link_dir + '/' + tdir, /directory), Nexists)
+    if Nexists eq 0 then begin
+      print, inam + ' : ERROR: None of the given timestamp directories exist in ' + link_dir
+      print, inam + ' :        Did you run link_data?'
+      if keyword_set(debug) then stop else return
     endif
-  ENDIF
+    ;; At least one tdir exists so proceed with that
+    dirs =  link_dir + '/' + tdir[eindx]
+    Ndirs = n_elements(dirs)
+    print, inam + ' : Processing given time-stamp directories in ' $
+           + link_dir + ' : '
+    print, file_basename(dirs)
+  endif else begin
+    dirs = file_search(link_dir + '/*', count = Ndirs, /test_dir)
+    if Ndirs eq 0 then begin
+      print, inam + ' : ERROR: No data found in ' + link_dir
+      print, inam + ' :      - did you run link_data?'
+      if keyword_set(debug) then stop else return
+    endif
+    ;; There are subdirectories in link_dir.
+    if Ndirs eq 1 or keyword_set(all) then begin
+      ;; We want all subdirectories (or there is only one), so proceed
+      ;; with them (it).
+      print, inam + ' : Processing all time-stamp directories in ' $
+             + link_dir + ' : '
+      print, file_basename(dirs)
+    endif else begin
+      ;; Make a selection from the available time-stamp directories
+      tmp = red_select_subset(file_basename(dirs)$
+                              , qstring = inam + ' : Select timestamp directory ID:' $
+                              , count = Ndirs, indx = sindx)
+      if Ndirs eq 0 then begin
+        print, inam + ' : No timestamp sub-folders selected.'
+        return                  ; Nothing more to do
+      endif 
+      dirs = dirs[sindx]
+      print, inam + ' : Processing selected time-stamp directories in ' $
+             + link_dir + ' : '
+      print, file_basename(dirs)
+    endelse
+    
+  endelse
+  
 
-  for idir = 0, n_elements(dirs)-1 do begin
+
+  ;; Find the narrowband cameras.
+  self -> getdetectors
+  cams = *self.cameras
+  detectors = *self.detectors
+  is_wb = strmatch(cams,'*-[DW]')
+  is_nb = ~is_wb
+  cams = cams[where(~is_wb, Nnb)]
+  detectors = detectors[where(~is_wb, Nnb)]
+  if Nnb eq 0 then stop
+  Ncams = n_elements(cams)
+  
+  for idir = 0, Ndirs-1 do begin
 
     dir = dirs[idir]
 
-    ;; Get camera tags
-    self -> getdetectors, dir = dir
-    ctag = [self.camrtag, self.camttag]
-    
-    ;;outdir += file_basename(dir)+'/'
-    outdir = self.out_dir + '/cmap_intdif/' + file_basename(dir)+'/'
+;    ;; Get camera tags
+;    self -> getdetectors, dir = dir
+;    ctag = [self.camrtag, self.camttag]
+
+    outdir = self.out_dir + '/cmap_intdif/' + file_basename(dir) + '/'
     file_mkdir, outdir
     
-    files = file_search(dir+ '/' + self.camr + '/cam*', count = nf)
+    files = file_search(dir+ '/' + cams[0] + '/cam*', count = Nfiles)
 
-    if(nf eq 0) then begin
-      print, inam + 'ERROR, data folder is empty'
-      if(debug) then stop else return
+    if Nfiles eq 0 then begin
+      print, inam + ' : ERROR, data folder is empty'
+      if keyword_set(debug) then stop else return
     endif
     
-    files = red_sortfiles(temporary(files))
+ ;   files = red_sortfiles(temporary(files))
 
     ;; Extract tags from file names
-    state = red_getstates(files, /LINKS)
-                                
+;    state = red_getstates(files, /links)
+    self -> extractstates, files, states
+    
     ;; Remove frames
     ;;red_flagtuning, state, remove
 
     ;; Build my states
-    mpref = state.pref
+    mpref = states.prefilter
     upref = reform([mpref[uniq(mpref, sort(mpref))]])
-    np = n_elements(upref)
+    Npref = n_elements(upref)
 
     sel_pref = 1B
-    if(keyword_set(pref)) then begin
+    if n_elements(pref) gt 0 then begin
       pos = where(upref eq pref, count)
-      if(count eq 0) then begin
-        print, inam + 'User supplied prefilter '+pref+' not found in '+dir
+      if count eq 0 then begin
+        print, inam + ' : User supplied prefilter '+pref+' not found in '+dir
         continue
       endif else sel_pref = 0B
-      
     endif 
 
     if(sel_pref) then begin
-      
-      if(np eq 1) then begin
-        ip = 0 
+      if(Npref eq 1) then begin
+        pref = upref[0]
       endif else begin
-        print, inam + 'Found prefilters:'
-        for ii = 0, np - 1 do print, string(ii, format='(I3)') + ' -> ' + upref[ii]
-        ip = 0L
-        read, ip, prompt = 'Select state id: '
+        while Npref ne 1 do begin
+          tmp = red_select_subset(file_basename(dirs)$
+                                  , qstring = inam + ' : Select a single prefilter:' $
+                                  , count = Npref, indx = sindx)
+        endwhile
+        pref = pref[sindx[0]]
+;        print, inam + ' : Found prefilters:'
+;        for ii = 0, Npref - 1 do print, string(ii, format='(I3)') + ' -> ' + upref[ii]
+;        ip = 0L
+;        read, ip, prompt = 'Select state id: '
       endelse
-
-      pref = upref[ip]
     endif
-    print, inam + 'Selected prefilter -> ' + pref
-
+    print, inam + ' : Selected prefilter -> ' + pref
+    
     ;; Isolate files from prefilter
-    idx = where(mpref eq pref, count)
-    mwav = state.wav[idx]
-    mdwav = state.dwav[idx]
-    mlc = state.lc[idx]
-    mscan = state.scan[idx]
-    mnum = state.nums[idx]
-    mfiles = state.files[idx]
-    mstar = state.star[idx]
+    self->selectfiles, files = files, states = states $
+                       , prefilter = pref, sel = sel, count = Nselect
+    if Nselect eq 0 then stop
+    
+    selstates = states[sel]
+    selfiles = files[sel]
+
+;    idx = where(mpref eq pref, count)
+;    mwav = state.wav[idx]
+;    mdwav = state.dwav[idx]
+;    mlc = state.lc[idx]
+;    mscan = state.scan[idx]
+;    mnum = state.nums[idx]
+;    mfiles = state.files[idx]
+;    mstar = state.star[idx]
+
+    mwav   = selstates.tuning
+    mlc    = selstates.lc
+    mscan  = selstates.scannumber
+    mfiles = selstates.filename
+    mstar  = lonarr(Nselect)    ; all zeros
  
-    uscan = mscan[uniq(mscan, sort(mscan))]
-    ulc = mlc[uniq(mlc, sort(mlc))]
-    uwav = mwav[uniq(mwav, sort(mdwav))]
-    udwav = float(mdwav[uniq(mdwav, sort(mdwav))] - double(pref))
-    ns = n_elements(uscan)
-    nw = n_elements(uwav)
-    nlc = n_elements(ulc)
+;    uscan = mscan[uniq(mscan, sort(mscan))]
+;    ulc = mlc[uniq(mlc, sort(mlc))]
+;    uwav = mwav[uniq(mwav, sort(mdwav))]
+;    udwav = float(mdwav[uniq(mdwav, sort(mdwav))] - double(pref))
 
-    ;; Start summing 
+    uscan = selstates[uniq(selstates.scannumber, sort(selstates.scannumber))].scannumber
+    Nscans = n_elements(uscan)
 
-    ;; if(n_elements(t0) ne 0) then begin
-    ;;    lscan = long(uscan)
-    ;;    tt0 = where(lscan eq t0, count)
-    ;;    if(count eq 0) then begin
-    ;;       print, inam + 'Scan',t0,' not found -> starting at t0 = 0.'
-    ;;       tt0 = 0L
-    ;;    endif
-    ;; endif else tt0 = 0L
-    if(n_elements(t1) ne 0) then begin
+    ulc = selstates[uniq(selstates.lc, sort(selstates.lc))].lc
+    Nlc = n_elements(ulc)
+
+    ;; Sorted in wavelength order
+    indx = uniq(selstates.tun_wavelength, sort(selstates.tun_wavelength))
+    Ntunings = n_elements(indx)
+    uwav = selstates[indx].tuning
+    udwav = selstates[indx].tun_wavelength
+
+    ;; Start summing
+    if n_elements(t1) ne 0 then begin
       lscan = long(uscan)
       tt1 = where(lscan eq t1, count)
-      if(count eq 0) then begin
-        print, inam + 'Scan',t1,' not found -> ending at t1 = ',ns-1
-        tt1 = ns-1L
+      if count eq 0 then begin
+        print, inam + ' : Scan', t1, ' not found -> ending at t1 = ', Nscans-1
+        tt1 = Nscans-1L
       endif
-    endif else tt1 = ns-1
+    endif else tt1 = Nscans-1
 
     
-    for cc = 0, 1 do begin
-      if(keyword_set(cam)) then begin
-        if ucam[cc] ne cam then begin
-          print, inam + 'skipping cam -> '+ucam[cc]+' != '+cam
+    for icam = 0, Ncams-1 do begin
+      ;; Did we select a camera?
+      if n_elements(cam) ne 0 then begin
+        if cams[icam] ne cam then begin
+          print, inam + ' : Skipping cam -> '+cams[icam]+' != '+cam
           continue
         endif
-      end
+      endif
       
       ;; Descatter?
-      if(~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
-        self -> loadbackscatter, ctag[cc], pref, bff, pff
+      if ~keyword_set(no_descatter) $
+         and self.dodescatter $
+         and (pref eq '8542' or pref eq '7772') then begin
+        self -> loadbackscatter, detectors[icam], pref, bff, pff
       endif
 
-      tempdir=dir + '/' + ucam[cc]+'/'
-      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
-      mmfiles = tempdir + ctag[cc]+strmid(mfiles,longi,200)
-      cfile = outdir + '/' + ctag[cc] + '.'+ pref + '.intdif.icube'
-      dfile = outdir + '/' + ctag[cc] + '.'+ pref + '.intdif.save'
+;      tempdir = dir + '/' + cams[icam]+'/'
+;      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
+;      mmfiles = tempdir + detectors[icam]+strmid(mfiles,longi,200)
+      mmfiles = mfiles
+      cfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.icube'
+      dfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.save'
+
+;; We could change the icube + save files to fitscubes with the save
+;; info in the header/extensions.
       
-      if(file_test(dfile) and ~keyword_set(overwrite)) then begin
-        print, inam + 'WARNING! Data files already exist:'
+      if file_test(dfile) and ~keyword_set(overwrite) then begin
+        print, inam + ' : WARNING! Data files already exist:'
         print, dfile
         print, cfile
-        print, inam + 'you can overwrite them with /overwrite, otherwise we will resume the summing!'
+        print, inam + ' : You can overwrite them with /overwrite, otherwise we will resume the summing!'
         restore, dfile
         idx = where(done eq 0, count)
         if count eq 0 then begin
-          print, inam + 'nothing to do for '+ctag[cc]
+          print, inam + ' : Nothing to do for '+detectors[icam]
           continue
         endif else tt0 = idx[0]
         openu, lun, cfile, /get_lun
       endif else begin
-        done = bytarr(ns)
+        done = bytarr(Nscans)
         openw, lun, cfile, /get_lun
         tt0 = 0L
       endelse
-      dim = size(f0(mmfiles[0]),/dim)
-      head = red_pol_lpheader(dim[0], dim[1], n_elements(ulc)*(tt1+1L)*n_elements(uwav))
+;      dim = size(f0(mmfiles[0]),/dim)
+      hdr = red_readhead(mmfiles[0])
+      dim = fxpar(hdr, 'NAXIS*')
+      Nx = dim[0]
+      Ny = dim[1]
+
+      head = red_pol_lpheader(Nx, Ny, Nlc*(tt1+1L)*Ntunings)
       writeu,lun, head
-      dat = assoc(lun, intarr(dim[0],dim[1],/nozer), 512)
-      nx = dim[0]
-      ny = dim[1]
+      dat = assoc(lun, intarr(Nx, Ny, /nozer), 512)
 
       ;; Load dark file
-      df = self.out_dir+'/darks/'+ctag[cc]+'.dark'
-      if(file_test(df)) then dd = f0(df) else begin
-        print, inam + 'ERROR, dark-file not found -> '+df
-        stop
-      endelse
-
+;      df = self.out_dir+'/darks/'+detectors[icam]+'.dark'
+;      if(file_test(df)) then dd = f0(df) else begin
+;        print, inam + ' : ERROR, dark-file not found -> '+df
+;        stop
+;      endelse
+;      
+      self -> get_calib, selstates[0], darkdata = dd
 
       ;; Load fitgains results
-      cmf = self.out_dir + '/flats/spectral_flats/' + ctag[cc] + '.' + $
+      cmf = self.out_dir + '/flats/spectral_flats/' + detectors[icam] + '.' + $
             pref + '.' + 'fit_results.sav'
       
       ;; Loop wavelengths within the scan
-      for ss = tt0[0], tt1[0] do begin
+      for iscan = tt0[0], tt1[0] do begin
         
-        for ll = 0L, nlc - 1 do begin
+        for ilc = 0L, Nlc - 1 do begin
 
-          scstate = strarr(nw)
+;          scstate = strarr(Ntunings)
 
-          for ww = 0L, nw - 1 do begin
+          for ituning = 0L, Ntunings - 1 do begin
 
-            istate = strjoin([uscan[ss], pref,uwav[ww], ulc[ll]],'.')
-            scstate[ww] = istate
+            istate = strjoin([uscan[iscan], pref,uwav[ituning], ulc[ilc]],'.')
+;            scstate[ituning] = istate
             
-            idx = where((mwav EQ uwav[ww]) AND (mlc EQ ulc[ll]) AND $
-                        (mscan EQ uscan[ss]) AND mstar eq 0, count)
+            idx = where((mwav EQ uwav[ituning]) AND (mlc EQ ulc[ilc]) AND $
+                        (mscan EQ uscan[iscan]) AND mstar eq 0, count)
             
             if(count eq 0) then begin
-              print, inam + 'no files found for state -> ' + istate
+              print, inam + ' : No files found for state -> ' + istate
             endif else begin
-              print, inam + 'Found ' + red_stri(count) + ' images -> '+istate 
+              print, inam + ' : Found ' + red_stri(count) + ' images -> '+istate 
             endelse
             
-            gf = self.out_dir+'/flats/'+strjoin([ctag[cc], pref, uwav[ww], 'unpol.flat'], '.')
             
             ;; Load flat
-            ;;if(file_test(gf)) then g =
-            ;;red_flat2gain(f0(gf),/preserve,
-            ;;mi=mi,ma=ma,smooth=smooth,bad=bad) else begin
-            if(file_test(gf)) then begin
-              g = f0(gf)
-              g = median(g) / g
-              badpixels = where(~finite(g), count)
-              if(count gt 0) then g[badpixels] = 0.0
-            endif else begin
-              print, inam + 'ERROR, gain file not found -> ', gf
-              stop
-            endelse
+            self -> get_calib, selstates[0], flatdata = g
+;            gf = self.out_dir+'/flats/'+strjoin([detectors[icam], pref, uwav[ituning], 'unpol.flat'], '.')
+;            if(file_test(gf)) then begin
+;              g = f0(gf)
+;              g = median(g) / g
+;              badpixels = where(~finite(g), count)
+;              if(count gt 0) then g[badpixels] = 0.0
+;            endif else begin
+;              print, inam + ' : ERROR, gain file not found -> ', gf
+;              stop
+;            endelse
             
-            if(keyword_set(verbose)) then print, transpose(file_basename(mmfiles[idx]))
+            if keyword_set(verbose) then print, file_basename(mmfiles[idx]),format='(a0)'
             tmp = red_sumfiles(mmfiles[idx], /check) - dd
 
-            if(~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
+            if ~keyword_set(no_descatter) $
+               && self.dodescatter $
+               && (pref eq '8542' || pref eq '7772') then begin
               tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
             endif
             
             tmp = red_fillpix((temporary(tmp)*g), $
                               nthreads=nthreads)
 
-            
-            ele = ss*nlc*nw + ll*nw + ww
+            ele = iscan*Nlc*Ntunings + ilc*Ntunings + ituning
             dat[ele] = fix(round(7.0 * tmp))
 
-            if(keyword_set(show)) then begin
+            if keyword_set(show) then begin
               if n_elements(mydum) eq 0 then begin
                 mydum = 1
                 red_show, red_histo_opt(tmp)
               endif
-              red_show, red_histo_opt(tmp),/now
+              red_show, red_histo_opt(tmp), /nowin
             endif
-          endfor
-        endfor
-        done[ss] = 1B
-        save, file=dfile, done, uwav, ulc, uscan, nw, nlc, ns, pref, nx, ny, udwav
-      endfor
-      free_lun, lun
-    endfor
 
-    save, file=dfile, done, uwav, ulc, uscan, nw, nlc, ns, pref, nx, ny, udwav
+          endfor                ; ituning
+        endfor                  ; ilc
+
+        done[iscan] = 1B
+        ;; Save incomplete results
+        save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref, Nx, Ny, udwav
+
+      endfor                    ; iscan
+
+      free_lun, lun
+
+    endfor                      ; icam
+
+    ;; Save final results
+    save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref, Nx, Ny, udwav
 
   endfor                        ; idir
 
