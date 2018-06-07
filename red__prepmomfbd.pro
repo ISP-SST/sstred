@@ -333,8 +333,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                         , extraclip=extraclip, /overwrite $
                         , makeoffsets = ~keyword_set(redux)
 
-  ref_idx = where( align.state1.camera eq refcam_name )
-  if max(ref_idx) lt 0 then begin
+  ref_idx = where( align.state1.camera eq refcam_name, Nref)
+  if Nref eq 0 then begin
     print, inam, ' : Failed to get alignment for refererence camera: ', refcam_name
     return
   endif
@@ -391,7 +391,7 @@ pro red::prepmomfbd, wb_states = wb_states $
     folder_tag = file_basename(dir)
     
     if file_test(dir + refcam_name + '_nostate/',/directory) then subdir = refcam_name + '_nostate/'
-
+    
     print, inam + ' : Search for reference files in ' + dir
     self->selectfiles, cam=refcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
                        files=ref_files, states=ref_states, nremove=remove, /force ;, /strip_wb
@@ -628,14 +628,14 @@ pro red::prepmomfbd, wb_states = wb_states $
 
       ;;if icam ne refcam then begin
       if ~iswb[icam] then begin ; This excludes also a WB PD camera
-
-        ;; get a list of all states for this camera
+        
+        ;; Get a list of all states for this camera
         self->selectfiles, cam=cams[icam], dirs=dir, files=files, $
                            states=states, nremove=remove, /force
 
         for iscan=0L, Nscans-1 do begin
           
-          red_progressbar, iscan, Nscans, 'Config info for NB', /predict
+          red_progressbar, iscan, Nscans, 'Config info for NB '+cams[icam], /predict
       
           if n_elements(escan) ne 0 then if iscan ne escan then continue 
 
