@@ -168,8 +168,9 @@ function red_readdata, fname $
 
         ;; Read the data and get the header that is consistent with
         ;; the actual data (e.g., if compressed).
-        data = rdx_readdata(fname, status = status, header = header $
-                            , date_beg = date_beg)
+        data = rdx_readdata(fname, status = status)
+        header = rdx_readhead(fname, status = status $
+                              , date_beg = date_beg, framenumber = framenumber)
 
         if n_elements(nslice) ne 0 then begin
           
