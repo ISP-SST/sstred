@@ -349,6 +349,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axix 2'
 
             ;; Write the header file
+            fxaddpar,head,'EXTEND','T' ; Required by fxwrite
             fxwrite, header_file, head 
 
           endfor                ; itrace
