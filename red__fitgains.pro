@@ -30,6 +30,10 @@
 ;       Make extra spline nodes at the specified wavelengths, given in
 ;       Ångström from the core point.
 ;
+;    pref : in, optional, type=string
+;
+;       Select prefilter to process.
+;
 ;    npar  : 
 ;   
 ;   
@@ -125,25 +129,29 @@
 ;
 ;   2017-04-20 : MGL. New keyword extra_nodes.
 ;
+;   2018-06-08 : MGL. New keyword pref.
+;
 ;-
-pro red::fitgains, npar = npar $
-                   , niter = niter $
-                   , rebin = rebin $
-                   , xl = xl, yl = yl $
+pro red::fitgains, all = all $
                    , densegrid = densegrid $
-                   , res = res $
-                   , thres = thres $
-                   , initcmap = initcmap $
-                   , fit_reflectivity = fit_reflectivity $
-                   , x0 = x0, x1 = x1 $
-                   , state = state $
-                   , nosave = nosave $
-                   , myg = myg $
-                   , w0 = w0, w1 = w1 $
-                   , nthreads = nthreads $
-                   , ifit = ifit $
                    , extra_nodes = extra_nodes $
-                   , all = all
+                   , fit_reflectivity = fit_reflectivity $
+                   , ifit = ifit $
+                   , initcmap = initcmap $
+                   , myg = myg $
+                   , niter = niter $
+                   , nosave = nosave $
+                   , npar = npar $
+                   , nthreads = nthreads $
+                   , pref = pref $
+                   , rebin = rebin $
+                   , res = res $
+                   , state = state $
+                   , thres = thres $
+                   , w0 = w0, w1 = w1 $
+                   , x0 = x0, x1 = x1 $
+                   , xl = xl, yl = yl 
+  
 
   ;; Defaults
   if n_elements(niter) eq 0 then niter = 3L
@@ -151,26 +159,27 @@ pro red::fitgains, npar = npar $
   
   ;; Prepare for logging (after setting of defaults). Set up a
   ;; dictionary with all parameters that are in use
-  red_make_prpara, prpara, extra_nodes
-  red_make_prpara, prpara, npar
-  red_make_prpara, prpara, niter
-  red_make_prpara, prpara, rebin
-  red_make_prpara, prpara, xl
-  red_make_prpara, prpara, yl
+  red_make_prpara, prpara, all
   red_make_prpara, prpara, densegrid
-  red_make_prpara, prpara, thres
-  red_make_prpara, prpara, initcmap
+  red_make_prpara, prpara, extra_nodes
   red_make_prpara, prpara, fit_reflectivity
-  red_make_prpara, prpara, x0
-  red_make_prpara, prpara, x1
-  red_make_prpara, prpara, state
-  red_make_prpara, prpara, nosave
+  red_make_prpara, prpara, ifit
+  red_make_prpara, prpara, initcmap
   red_make_prpara, prpara, myg
+  red_make_prpara, prpara, niter
+  red_make_prpara, prpara, nosave
+  red_make_prpara, prpara, npar
+  red_make_prpara, prpara, nthreads
+  red_make_prpara, prpara, pref
+  red_make_prpara, prpara, rebin
+  red_make_prpara, prpara, state
+  red_make_prpara, prpara, thres
   red_make_prpara, prpara, w0
   red_make_prpara, prpara, w1
-  red_make_prpara, prpara, nthreads
-  red_make_prpara, prpara, ifit
-  red_make_prpara, prpara, all
+  red_make_prpara, prpara, x0
+  red_make_prpara, prpara, x1
+  red_make_prpara, prpara, xl
+  red_make_prpara, prpara, yl
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -183,21 +192,47 @@ pro red::fitgains, npar = npar $
   print, inam + ' : Found '+strtrim(Nfiles, 2)+' files'
 
   ;; Select data
-  selectionlist = strarr(Nfiles)
+  selectionlist = red_strreplace(file_basename(files),'_filenames.txt','') ;strarr(Nfiles)
 
-  for ifile = 0L, Nfiles-1 do begin
-    spawn, 'cat ' + files[ifile], namelist
-    self -> extractstates, namelist, states
-    selectionlist[ifile] = states[0].prefilter + ' ' + states[0].cam_settings
-  endfor                        ; ifile
-  if keyword_set(all) then begin
-    Nselect = Nfiles
-    sindx = indgen(Nselect)
-  endif else begin
-    tmp = red_select_subset(selectionlist $
-                            , qstring = 'Select data to be processed' $
-                            , count = Nselect, indx = sindx)
-  endelse
+;  for ifile = 0L, Nfiles-1 do begin
+;    spawn, 'cat ' + files[ifile], namelist
+;    self -> extractstates, namelist, states
+;    selectionlist[ifile] = states[0].prefilter + ' ' + states[0].cam_settings
+;  endfor                        ; ifile
+  
+  case 1 of
+
+    keyword_set(all) : begin
+      Nselect = Nfiles
+      sindx = indgen(Nselect)
+    end
+
+    n_elements(pref) ne 0 : begin
+      sindx = where(strmatch(selectionlist, '*_'+pref), Nselect)
+      if Nselect eq 0 then begin
+        print, inam + ' : Keyword pref='+pref+' does not correspond to any output from prepflatcube.'
+        print, files
+        stop
+      end
+    end
+    
+    else : begin
+      tmp = red_select_subset(selectionlist $
+                              , qstring = 'Select data to be processed' $
+                              , count = Nselect, indx = sindx)
+    end
+
+  endcase
+  
+
+;  if keyword_set(all) then begin
+;    Nselect = Nfiles
+;    sindx = indgen(Nselect)
+;  endif else begin
+;    tmp = red_select_subset(selectionlist $
+;                            , qstring = 'Select data to be processed' $
+;                            , count = Nselect, indx = sindx)
+;  endelse
 
   for iselect = 0L, Nselect-1 do begin
 
@@ -264,6 +299,9 @@ pro red::fitgains, npar = npar $
         '3934' : nparr = 3
         '3969' : nparr = 3
         '4862' : nparr = 3
+        '6302' : nparr = 2
+        '6563' : nparr = 5
+        '8542' : nparr = 5
         else: nparr = 2         ; default
       endcase
     endif else nparr = npar
@@ -292,14 +330,14 @@ pro red::fitgains, npar = npar $
       else:
     endcase
     Nwav = n_elements(namelist) ; Nwav has to be adjusted if w0 or w1 were used.
-
+      
     if n_elements(extra_nodes) gt 0 then begin
       if n_elements(myg) eq 0 then myg = wav
       myg = [extra_nodes, myg]
-      myg=myg[sort(myg)]
-    endif
+      myg = myg[sort(myg)]
+    endif 
 
-    dat = cub                   ; Why make a copy of cub?
+    dat = cub                   ; Why do we make a copy of cub?
 
     ;; Init output vars
     dims = size(dat, /dim)
@@ -386,9 +424,9 @@ pro red::fitgains, npar = npar $
         self -> headerinfo_addstep, head, prstep = 'Make cavity free flats' $
                                     , prproc = inam, prpara = prpara
 
-        writefits, outnames[iwav], output, head
-        ;; fzwrite, reform(ratio[iwav,*,*]), outnames[iwav], 'npar='+red_stri(npar_t)
         print, inam + ' : Saving file -> '+outnames[iwav]
+        red_writedata, outnames[iwav], output, header = head, /overwrite
+
       endfor                    ; iwav
       
       fit = {pars:res, yl:yl, xl:xl, oname:outnames}
