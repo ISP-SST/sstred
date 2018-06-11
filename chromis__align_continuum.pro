@@ -322,44 +322,49 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 
 
         ;; Any outliers in the shifts?
-        shifts_mean = biweight_mean(sqrt(total(shifts^2,1)),shifts_sigma,shifts_w)              
-        include_mask *= shifts_w gt 0.0
-        include_indx = where(include_mask)
+        if Nscans eq 1 then begin
+          shifts_smooth = shifts
+          include_indx = [0]
+        endif else begin
+          shifts_mean = biweight_mean(sqrt(total(shifts^2,1)),shifts_sigma,shifts_w)              
+          include_mask *= shifts_w gt 0.0
+          include_indx = where(include_mask)
 
-        ;; Smooth the shifts, taking image quality into account.
-        shifts_smooth = fltarr(2, Nscans) 
-        weights = contrasts^2 * include_mask
-        Ninclude = total(include_mask)
-        smooth_window = 35
-        for iaxis = 0, 1 do begin ; X and Y axis loop
-          case 1 of
-            Ninclude le 3 : begin
-              ;; Very few scans, use weighted average
-              shifts_smooth[iaxis, *] = total(shifts[iaxis, *]*weights)/total(weights)
-            end
-            Ninclude le 7 : begin
-              ;; Few scans, use a linear fit
-              P = mpfitexpr('P[0]+P[1]*X' $
-                            , nbcstates.scannumber, shifts[iaxis, *] $
-                            , weights = weights, yfit = shifts_fit)
-              shifts_smooth[iaxis, *] = shifts_fit
-            end
-            Ninclude le smooth_window : begin
-              ;; A few more, use a weighted quadratic fit
-              P = mpfitexpr('P[0]+P[1]*X+P[2]*X*X' $
-                            , nbcstates.scannumber, shifts[iaxis, *] $
-                            , weights = weights, yfit = shifts_fit)
-              shifts_smooth[iaxis, *] = shifts_fit
-            end
-            else : begin
-              ;; Use weighted smoothing
-              shifts_smooth[iaxis, *] = red_wsmooth(nbcstates.scannumber, shifts[iaxis, *] $
-                                                    , smooth_window, 2 $
-                                                    , weight = weights, select = 0.6 )
-            end
-          endcase
-        endfor                  ; iaxis
-
+          ;; Smooth the shifts, taking image quality into account.
+          shifts_smooth = fltarr(2, Nscans) 
+          weights = contrasts^2 * include_mask
+          Ninclude = total(include_mask)
+          smooth_window = 35
+          for iaxis = 0, 1 do begin ; X and Y axis loop
+            case 1 of
+              Ninclude le 3 : begin
+                ;; Very few scans, use weighted average
+                shifts_smooth[iaxis, *] = total(shifts[iaxis, *]*weights)/total(weights)
+              end
+              Ninclude le 7 : begin
+                ;; Few scans, use a linear fit
+                P = mpfitexpr('P[0]+P[1]*X' $
+                              , nbcstates.scannumber, shifts[iaxis, *] $
+                              , weights = weights, yfit = shifts_fit)
+                shifts_smooth[iaxis, *] = shifts_fit
+              end
+              Ninclude le smooth_window : begin
+                ;; A few more, use a weighted quadratic fit
+                P = mpfitexpr('P[0]+P[1]*X+P[2]*X*X' $
+                              , nbcstates.scannumber, shifts[iaxis, *] $
+                              , weights = weights, yfit = shifts_fit)
+                shifts_smooth[iaxis, *] = shifts_fit
+              end
+              else : begin
+                ;; Use weighted smoothing
+                shifts_smooth[iaxis, *] = red_wsmooth(nbcstates.scannumber, shifts[iaxis, *] $
+                                                      , smooth_window, 2 $
+                                                      , weight = weights, select = 0.6 )
+              end
+            endcase
+          endfor                ; iaxis
+        endelse
+        
         file_mkdir, odir
 
         fzwrite, [nbcstates.scannumber], nname, ' '
