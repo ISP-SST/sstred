@@ -56,6 +56,10 @@
 ;    2017-07-19 : THI. Change pinholecalib parameter nref defaut value
 ;                 to 10.
 ;
+;    2018-06-11 : MGL. Do hrz conversion here rather than putting the
+;                 commands into the doit script. Split several
+;                 commands into one per prefilter.
+;
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
@@ -118,6 +122,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
   endif
 
+  
   if Nflatdirs gt 0 then begin
     ;; This step requires flats. And the hrz --> tuning conversion is
     ;; not needed if we don't have them.
@@ -210,6 +215,10 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
     Nflatdirs = n_elements(flatdirs)
 
+    ;; Do the linedefs and hrz_calib thing
+    red_download_linedefs, isodate, flatdirs, work_dir
+    chromis_hrz_zeropoint, work_dir
+
     ;; Loop over the flatdirs, write each to the config file and
     ;; to the script file
     printf, Slun
@@ -229,45 +238,56 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       if Nfiles gt 0 then begin
         
         camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
-
-        red_extractstates, fnames, /basename, pref = wls
-        wls = wls[uniq(wls, sort(wls))]
+        red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd
+        indx = uniq(wls, sort(wls))
+        wls = wls[indx]
+        this_is_wb = this_is_wb[indx]
+        this_is_pd = this_is_pd[indx]
         wls = wls[WHERE(wls ne '')]
-        wavelengths = strjoin(wls, ' ')
-        
-        if keyword_set(calibrations_only) then begin
-          ;; For /calibrations_only we want to output the summed data
-          ;; in timestamp directories so we can handle multiple sets.
-          outdir = 'flats/' + file_basename(flatdirs[idir])
-          outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
-        endif else outdirkey = ''
-        
-        ;; Print to script file
-        printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
-                + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') + '"' $
-                + ', nthreads=nthreads' $
-                + outdirkey $
-                + ' ; ' + camdirs+' ('+wavelengths+')'
 
-        red_append, prefilters, wls
+        if n_elements(wls) gt 0 then begin
+          wavelengths = strjoin(wls, ' ')
+          
+          if keyword_set(calibrations_only) then begin
+            ;; For /calibrations_only we want to output the summed data
+            ;; in timestamp directories so we can handle multiple sets.
+            outdir = 'flats/' + file_basename(flatdirs[idir])
+            outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
+          endif else outdirkey = ''
+        
+          ;; Print to script file
+          printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
+                  + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') + '"' $
+                  + ', nthreads=nthreads' $
+                  + outdirkey $
+                  + ' ; ' + camdirs+' ('+wavelengths+')'
 
+          red_append, prefilters, wls
+          red_append, is_wb, this_is_wb
+          red_append, is_pd, this_is_pd
+        endif
       endif                     ; Nfiles
     endfor                      ; idir
   endif                         ; Nsubdirs
-
-  if n_elements(prefilters) gt 0 then $
-     prefilters = prefilters[uniq(prefilters, sort(prefilters))]
+  
   Nprefilters = n_elements(prefilters)
-  if Nprefilters eq 0 then begin
-    ;; This can happen if flats were already summed in La Palma. Look
-    ;; for prefilters in the summed flats directory instead.
+  if Nprefilters gt 0 then begin
+    indx = uniq(prefilters, sort(prefilters))
+    is_wb = is_wb[indx]
+    is_pd = is_pd[indx]
+    prefilters = prefilters[indx]
+  endif else begin
+    ;; This can happen if flats were already summed in La Palma and
+    ;; then deleted. Look for prefilters in the summed flats directory
+    ;; instead.
     spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
-    Nprefilters = n_elements(prefilters)
-  endif
+    ;; Need to set also cameras here.
+  endelse
+  Nprefilters = n_elements(prefilters)
 
   if ~keyword_set(calibrations_only) then begin  
     for ipref = 0, Nprefilters-1 do begin
-      printf, Slun, "a -> prepflatcubes ;, pref='"+prefilters[ipref]+"'"
+      if ~is_wb[ipref] then printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
     endfor                      ; ipref
   endif
   
@@ -275,7 +295,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, ''
     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
     printf, Slun, '; whether npar=3 or npar=4 is needed.'
-    printf, Slun, 'a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res, /all' 
+    for ipref = 0, Nprefilters-1 do begin
+      if ~is_wb[ipref] then begin
+        printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res, pref='" $
+                + prefilters[ipref] + "'"
+      end
+    endfor                      ; ipref
     printf, Slun, '; If you need per-pixel reflectivities for your analysis'
     printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
     printf, Slun, '; keyword:'
@@ -294,9 +319,11 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, '; Then, if you have already run makegains, rerun it.'
 
     printf, Slun, ''
+
     printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
+
   endif
-  
+    
 
   printf, Slun, ''
   print, 'Pinholes'
@@ -322,7 +349,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + ', nthreads=nthreads' $
                 + outdirkey $
                 + ", dirs=root_dir+'" + red_strreplace(pinhdirs[i], root_dir, '') $
-                + "';, pref='"+prefilters[ipref]+"'"
+                + "', pref='"+prefilters[ipref]+"'"
       endfor                    ; ipref
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
@@ -441,7 +468,6 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   printf, Slun, ''
   printf, Slun, 'a -> link_data' 
-  printf, Slun, ';a -> split_data ; For old momfbd program.' 
   
   printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
@@ -451,23 +477,23 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
 
+  printf, Slun, ''
   for ipref = 0, Nprefilters-1 do begin
-    
-    printf, Slun, ''
-    printf, Slun, "a -> prepmomfbd" $
-            + ", date_obs='" + isodate + "'" $
-            + ", Nremove=2" $
-            + ", Nmodes=60" $
-            + ", numpoints=128" $
+    if is_wb[ipref] then begin
+      printf, Slun, "a -> prepmomfbd" $
+              + ", date_obs='" + isodate + "'" $
+              + ", Nremove=2" $
+              + ", Nmodes=60" $
+              + ", numpoints=128" $
 ;            + ", margin=5 " $
-            + ", global_keywords=['FIT_PLANE']" $
-            + ", maxshift=45" $
-            + ", /wb_states" $
-            + ", /redux" $
-            + ", /unpol" $
-            + ", extraclip = [75,125,15,15]" $
-            + ";, pref='" + prefilters[ipref] + "'" 
-
+              + ", global_keywords=['FIT_PLANE']" $
+              + ", maxshift=45" $
+              + ", /wb_states" $
+              + ", /redux" $
+              + ", /unpol" $
+              + ", extraclip = [75,125,15,15]" $
+              + ", pref='" + prefilters[ipref] + "'" 
+    endif
   endfor                        ; ipref
 
   printf, Slun, ''
