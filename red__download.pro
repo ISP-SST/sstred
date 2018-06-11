@@ -171,7 +171,6 @@ pro red::download, overwrite = overwrite $
      turret = 1
   endif
 
-
   dir = 'downloads/'            ; Make this part of the crispred class structure?
 ;  logdir = dir+'sstlogs/'
 
