@@ -106,10 +106,14 @@
 ;                something meaningful also for blue tilt filter data.
 ;                Bugfix in qw regular expression.
 ;
+;   2018-06-11 : MGL. Add conversion from CHROMIS wheel status to
+;                prefilter. New keywords is_wb and is_pd.
 ;
 ; 
 ;-
 pro red_extractstates, strings $
+                       , is_wb = is_wb $
+                       , is_pd = is_pd $
                        , states = states $
                        , pstates = pstates $
                        , pstates_out = pstates_out $
@@ -182,9 +186,44 @@ pro red_extractstates, strings $
   
   ;; The prefilter is the only field that is exactly four digits
   if arg_present(pref) or arg_present(fullstate) or arg_present(lambda) or $
-     arg_present(states) or arg_present(pstates) or arg_present(pstates_out) then $
-        pref = reform((stregex(strlist,'(_|\.|^)([0-9]{4})(_|\.|$)', /extr, /subexp))[2,*])
-  
+     arg_present(states) or arg_present(pstates) or arg_present(pstates_out) or $
+     arg_present(is_wb) or arg_present(is_pd) $
+  then begin
+
+    pref = reform((stregex(strlist,'(_|\.|^)([0-9]{4})(_|\.|$)', /extr, /subexp))[2,*])
+    is_wb = bytarr(n_elements(pref))
+    is_pd = bytarr(n_elements(pref))
+
+    ;; Chromis files have "wheel0000i" instead of prefilter
+    indx = where(pref eq '', Nwhere)
+    for iwhere = 0, Nwhere-1 do begin
+      camera = stregex(strings[indx[iwhere]], 'Chromis-[WDN]', /extract)
+      wheel = stregex(strlist[indx[iwhere]], 'wheel0000[0-9]', /extract)
+      if camera ne '' and wheel ne '' then begin
+        if camera eq 'Chromis-N' then begin
+          ;; Chromis-N
+          case wheel of
+            'wheel00001' : pref[iwhere] = '3925' ; Ca II K blue wing
+            'wheel00002' : pref[iwhere] = '3934' ; Ca II K core
+            'wheel00003' : pref[iwhere] = '3969' ; Ca II H core
+            'wheel00004' : pref[iwhere] = '3978' ; Ca II H red wing
+            'wheel00005' : pref[iwhere] = '3999' ; Ca II H continuum
+            'wheel00006' : pref[iwhere] = '4862' ; H-beta core
+            else :
+          endcase
+        endif else begin
+          ;; Chromis-W and Chromis-D
+          case wheel of
+            'wheel00006' : pref[iwhere] = '4846' ; H-beta continuum
+            else         : pref[iwhere] = '3950' ; Ca II HK wideband
+          endcase
+        endelse
+      endif
+      is_wb[iwhere] = ~strmatch(camera, '*-N')
+      is_pd[iwhere] =  strmatch(camera, '*-D')
+    endfor                      ; iwhere
+  endif
+    
   ;; The tuning information consists of a four digit wavelength (in Å)
   ;; followed by an underscore, a sign (+ or -), and at least one
   ;; digit for the finetuning (in mÅ).
