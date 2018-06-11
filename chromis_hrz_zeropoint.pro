@@ -1,5 +1,32 @@
+; docformat = 'rst'
+
+;+
+; Find the zero point of CHROMIS scans with wavelength given in HRE
+; digital units.
+;
+; The zero points are stored in files to be used by the extractstates
+; method.
+;
+; Subroutine version of hrz_zeropoint method.
+; 
+; :Categories:
+;
+;    CRISP pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl
+; 
+; 
+; 
+; :History:
+;
+;    2018-06-11 : MGL. First version.
+;
+;-
 function range, first, last, step
-                                ; this is just a dummy function to prevent errors since some linedef.py uses range()
+  ;; this is just a dummy function to prevent errors since some linedef.py uses range()
   return, 0
 end
 
