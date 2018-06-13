@@ -77,7 +77,7 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   ;; Some more standard edits of the header
   red_fitsaddkeyword, anchor = anchor, hdr, 'DATE', red_timestamp(/iso) $   ; DATE with time
                       , 'Creation UTC date of FITS header' ;
-  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', filename ; New file name
+  red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', file_basename(filename) ; New file name
 
   ;; VAR_KEYS keyword will have to be added again if variable keywords
   ;; are added or copied.
