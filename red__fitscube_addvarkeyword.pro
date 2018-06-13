@@ -47,16 +47,30 @@
 ;       Only needed for coordinate-association keywords but does no
 ;       harm for other association types.
 ;
+;   comment : in, optional, type=string
+;
+;       The keyword comment in the main header.
+; 
 ;   keyword_value : in, optional, type=varies
 ;
-;       The value of the keyword in the main header.
+;       The keyword value in the main header.
+; 
+;   keyword_method : in, optional, type=string, default='first'
+;
+;       The keyword value in the main header to be calculated with
+;       this method. One of 'first', 'last', 'mean', 'median', 'min',
+;       'max'. 
 ; 
 ;   old_filename : in, optional, type=string
 ; 
 ;       If this is given, any values parameter (and many other
 ;       keywords) will be ignored and the information will be
 ;       collected from this file instead.
-; 
+;
+;   _ref_extra :  in, optional
+;
+;       Any extra keywords are used when positioning keywords in the
+;       main header, see red_fitsaddkeyword.
 ; 
 ; :History:
 ; 
@@ -68,7 +82,10 @@
 ; 
 ;   2017-09-08 : MGL. New keyword old_filename. 
 ; 
-;   2017-09-13 : MGL. New keyword flipped.
+;   2017-09-13 : MGL. New keyword flipped. 
+; 
+;   2018-06-13 : MGL. New keyword keyword_method. Allow keyword
+;                positioning keywords. 
 ; 
 ; 
 ;-
@@ -76,6 +93,7 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
                                  , old_filename = old_filename $
                                  , axis_numbers = axis_numbers $
                                  , keyword_value = keyword_value $
+                                 , keyword_method = keyword_method $
                                  , comment = comment $
                                  , tunit = tunit $
                                  , extra_coordinate1 = extra_coordinate1 $
@@ -92,10 +110,17 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
                                  , wavelength_coordinates = wavelength_coordinates $
                                  , wavelength_delta       = wavelength_delta $
                                  , wavelength_units       = wavelength_units $
-                                 , flipped = flipped
-
+                                 , flipped = flipped $
+                                 , _ref_extra = extra
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
+
+  ;; The header
+  hdr = headfits(filename) 
+
+  ;; If the main header doesn't have the EXTEND keyword, add it now.
+  red_fitsaddkeyword, hdr, 'EXTEND', !true, 'The file has extension(s).'
 
   if n_elements(old_filename) gt 0 then begin
     ;; We will copy the variable keyword from this file.
@@ -106,9 +131,6 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
 
     if n_elements(variable_values) eq 0 then return ; No variable values
     
-    ;; If the main header doesn't have the EXTEND keyword, add it now.
-    fxhmodify, filename, 'EXTEND', !true, 'The file has extension(s).'
-
     old_hdr = headfits(old_filename)
     old_keywords = red_fits_var_keys(old_hdr, extensions = extensions)
     
@@ -121,9 +143,13 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
     keywords = red_fits_var_keys(hdr, new_keyword = keyword_name $
                                  , new_extension = new_extension $
                                  , var_keys = var_keys)
-    fxhmodify, filename, keyword_name, value, comment
-    fxhmodify, filename, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords'
 
+    red_fitsaddkeyword, hdr, keyword_name, value, comment, _strict_extra = extra
+    red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'
+
+    ;; Write the modified header 
+    modfits, filename, 0, hdr
+    
     ;; Open the old binary extension and transfer header and data to
     ;; an extension in the new file.
     fxbopen,   olun, old_filename, new_extension, bdr
@@ -140,15 +166,15 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
     fxbfinish, blun             
     fxbclose,  olun
 
-
     return
+
   endif
 
   
   ;; We are making a new variable-keyword extension from scratch
 ;  extension_name = 'VAR-EXT-'+keyword_name ; Variable keyword extension for keyword <keyword_name>.
-;
-;  if n_elements(comment) eq 0 then comment = ''
+
+  if n_elements(comment) ne 0 then keyword_comment = comment
   
   if n_elements(time_coordinate) gt 0 $
      || n_elements(spatial_coordinates) gt 0 $
@@ -181,20 +207,36 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
     if n_elements(association) eq 0 then association =  'static'
   endelse
 
-
   ;; If there is any reason not to add the extension, then return now!
 
-
-  ;; If the main header doesn't have the EXTEND keyword, add it now.
-  fxhmodify, filename, 'EXTEND', !true, 'The file has extension(s).'
-
+  
   if n_elements(keyword_value) ne 0 then begin
-    fxhmodify, filename, keyword_name, keyword_value, 'Variable-keyword, provided value'
+    ;; The header keyword value is given in keyword
+    if n_elements(keyword_comment) eq 0 then begin
+      keyword_comment = 'Variable-keyword (provided value)'
+    endif else begin
+      keyword_comment += ' (provided value)'
+    endelse
+    red_fitsaddkeyword, hdr, keyword_name, keyword_value, keyword_comment, _strict_extra = extra
   endif else begin
-    fxhmodify, filename, keyword_name, values[0], 'Variable-keyword, first value'
+    ;; The header keyword value is calculated from the variable values
+    if n_elements(keyword_method) eq 0 then keyword_method = 'first'
+    case keyword_method of
+      'first'  : keyword_value = values[0]
+      'last'   : keyword_value = values[-1]
+      'mean'   : keyword_value = mean(values)
+      'median' : keyword_value = median(values)
+      'min'    : keyword_value = min(values)
+      'max'    : keyword_value = max(values)
+    endcase
+    if n_elements(keyword_comment) eq 0 then begin
+      keyword_comment = 'Variable-keyword ('+keyword_method+' value)'
+    endif else begin
+      keyword_comment += ' ('+keyword_method+' value)'
+    endelse
+    red_fitsaddkeyword, hdr, keyword_name, keyword_value, keyword_comment, _strict_extra = extra
   endelse
 
-  hdr = headfits(filename) 
   keywords = red_fits_var_keys(hdr, new_keyword = keyword_name $
                                , new_extension = extension_name $
                                , var_keys = var_keys)
@@ -285,8 +327,12 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
 ;
 ;  endelse
 
-  fxhmodify, filename, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords'
+  red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'  
+
+  ;; Write the modified header 
+  modfits, filename, 0, hdr
   
+
   
   ;;
   case association of
