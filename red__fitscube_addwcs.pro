@@ -186,10 +186,13 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   hdr = headfits(filename)
   Naxis = fxpar(hdr,'NAXIS')
 
+  ;; If the main header doesn't have the EXTEND keyword, add it now.
+  red_fitsaddkeyword, hdr, 'EXTEND', !true, 'The file has extension(s).'
+
+  ;; DATEREF is added to the WCS time coordinate
   red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
 
   anchor = 'FILENAME'
-  red_fitsaddkeyword, anchor = anchor, hdr, 'EXTEND', !true, 'The file has extension(s).'
   
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC1_1', 1.0, 'No rotations' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC2_2', 1.0, 'No rotations' 
