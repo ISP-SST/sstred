@@ -433,15 +433,13 @@ pro chromis::make_wb_cube, dir $
   ;; Make header. Start with header from last input file, it has
   ;; info about MOMFBD processing.
   check_fits, cub, hdr, /update                              ; Get dimensions right
-  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE witht time
-                      , 'Creation UTC date of FITS header'   ;
-;  red_fitsaddkeyword, hdr, 'BITPIX', 16 $                    ; Because we round before saving.
-;                      , 'Number of bits per data pixel'      ;
-  red_fitsaddkeyword, hdr, 'FILENAME', ofil, anchor = 'DATE' ; New file name
+;  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
+;                      , AFTER = 'SIMPLE' $
+;                      , 'Creation UTC date of FITS header' ;
+  anchor = 'DATE'
 
-  if keyword_set(blur) then begin
-    red_fitsaddkeyword, hdr, before='DATE', 'COMMENT', 'Intentionally blurred version'
-  endif
+  ;; Add some keywords
+  red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1
 
   ;; Add info to headers
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
@@ -586,31 +584,58 @@ pro chromis::make_wb_cube, dir $
   self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
   
   ;; Add variable keywords.
+  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-BEG', date_beg_array $
+                                  , anchor = anchor $
+                                  , comment = 'Beginning of observation' $
+                                  ;;, keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
+                                  , keyword_method = 'first' $
+                                  , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-END', date_end_array $
+                                  , anchor = anchor $
+                                  , comment = 'End time of observation' $
+                                  ;;, keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
+                                  , keyword_method = 'last' $
+                                  , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-AVG', date_avg_array $
+                                  , anchor = anchor $
+                                  , comment = 'Average time of observation' $
+                                  , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
+                                  , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, odir + ofil $
                                   , 'SCANNUM', comment = 'Scan number' $
-                                  , s_array, keyword_value = s_array[0] $
+                                  , anchor = anchor $
+                                  , s_array $
+                                  ;;, keyword_value = s_array[0] $
+                                  , keyword_method = 'first' $
                                   , axis_numbers = 5
   
   self -> fitscube_addvarkeyword, odir + ofil $
                                   , 'XPOSURE', comment = 'Summed exposure times' $
+                                  , anchor = anchor $
                                   , tunit = 's' $
-                                  , exp_array, keyword_value = mean(exp_array) $
+                                  , exp_array $
+                                  , keyword_method = 'median' $
                                   , axis_numbers = [3, 5] 
 
   self -> fitscube_addvarkeyword, odir + ofil $
                                   , 'TEXPOSUR', comment = '[s] Single-exposure time' $
+                                  , anchor = anchor $
                                   , tunit = 's' $
-                                  , sexp_array, keyword_value = mean(sexp_array) $
+                                  , sexp_array $
+                                  , keyword_method = 'median' $
                                   , axis_numbers = [3, 5] 
 
   self -> fitscube_addvarkeyword, odir + ofil $
                                   , 'NSUMEXP', comment = 'Number of summed exposures' $
-                                  , nsum_array, keyword_value = mean(nsum_array) $
+                                  , anchor = anchor $
+                                  , nsum_array $
+                                  , keyword_method = 'median' $
                                   , axis_numbers = [3, 5]
 
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin
     self -> fitscube_addvarkeyword, odir + ofil, 'ATMOS_R0' $
+                                    , anchor = anchor $
                                     , metadata_r0[*, tindx_r0] $
                                     , comment = 'Atmospheric coherence length' $
                                     , tunit = 'm' $
@@ -618,7 +643,8 @@ pro chromis::make_wb_cube, dir $
                                     , extra_labels      = ['WFSZ'] $              ; Axis labels for metadata_r0
                                     , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
                                     , extra_units       = ['pix'] $               ; Axis units for metadata_r0
-                                    , keyword_value = mean(metadata_r0[1, tindx_r0]) $
+                                    ;;, keyword_value = mean(metadata_r0[1, tindx_r0]) $
+                                    , keyword_method = 'mean' $
                                     , time_coordinate = time_r0[tindx_r0] $
                                     , time_unit       = 's'
   endif
