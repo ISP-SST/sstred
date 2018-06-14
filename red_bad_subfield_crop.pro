@@ -129,6 +129,9 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
     endif
   endif
 
+  hdr = red_readhead(files[0])
+  im_dim = fxpar(hdr, 'NAXIS*')
+
   ;; Default cropping
   case n_elements(crop) of
     1 : begin                   ; Same crop from all sides
@@ -154,8 +157,6 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
     crop = [0, 0, 0, 0]
   endif
   
-  hdr = red_readhead(files[0])
-  im_dim = fxpar(hdr, 'NAXIS*')
   x0 = crop[0]
   x1 = im_dim[0]-1 - crop[1]
   y0 = crop[2]
