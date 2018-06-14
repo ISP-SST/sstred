@@ -46,10 +46,15 @@
 ;      then the auto detected crop is returned in this keyword
 ;      instead.
 ;
+;    align_interactive : in, optional, type=boolean
+;
+;      Set this keyword to define the alignment FOV by use of the XROI
+;      GUI.
+;
 ;    interactive : in, optional, type=boolean
 ;
-;      Set this keyword to define the FOV by use of the XROI GUI. If
-;      autocrop is set, then use the so defined FOV as an
+;      Set this keyword to define the data cube FOV by use of the XROI
+;      GUI. If autocrop is set, then use the so defined FOV as an
 ;      initialization of the FOV in the GUI. Otherwise use the crop
 ;      keyword (or its default).
 ;
@@ -131,8 +136,11 @@
 ; 
 ;    2018-05-03 : MGL. New keyword limb_data. 
 ; 
+;    2018-06-14 : MGL. New keyword align_interactive.
+; 
 ;-
 pro chromis::make_wb_cube, dir $
+                           , align_interactive = align_interactive $
                            , autocrop = autocrop $
                            , clip = clip $
                            , crop = crop $
@@ -171,6 +179,7 @@ pro chromis::make_wb_cube, dir $
   red_make_prpara, prpara, tstep
   red_make_prpara, prpara, ybd
   red_make_prpara, prpara, xbd
+  red_make_prpara, prpara, align_interactive
 
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
@@ -367,9 +376,46 @@ pro chromis::make_wb_cube, dir $
 
   if n_elements(xbd) eq 0 then xbd = round(Nx*0.9)
   if n_elements(ybd) eq 0 then ybd = round(Ny*0.9)
+
+  ;; Define (default) alignment FOV
+  xc = Nx/2
+  yc = Ny/2
+  align_size = [xbd, ybd]
+
+  if keyword_set(align_interactive) then begin
+    
+    print
+    print, 'Use the XROI GUI to either modify an initial alignment ROI/FOV or define a new one from scratch.'
+    print, 'Select Quit in the File menu. The last ROI is used.'
+    print
+
+    ;; Define default roi
+    X_in = xc + [-1,  1, 1, -1]*xbd/2 
+    Y_in = yc + [-1, -1, 1,  1]*ybd/2
+    roiobject_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
+    roiobject_in -> setproperty, name = 'Default'
+
+    ;; Fire up the XROI GUI.
+    dispim = bytscl(total(cub, 3))
+    xroi, dispim, regions_in = [roiobject_in], regions_out = roiobject, /block $
+          , tools = ['Translate-Scale', 'Rectangle'] $
+          , title = 'Modify or define alignment ROI'
+    roiobject[-1] -> getproperty, roi_xrange = roi_x
+    roiobject[-1] -> getproperty, roi_yrange = roi_y
+
+    obj_destroy, roiobject_in
+    obj_destroy, roiobject
+
+    xc = round(mean(roi_x))
+    yc = round(mean(roi_y))
+
+    align_size = [round(roi_x[1])-round(roi_x[0]), round(roi_y[1])-round(roi_y[0])]
+
+  endif 
   
   ;; Calculate the image shifts
-  shift = red_aligncube(cub, np, xbd = xbd, ybd = ybd, xc = Nx/2, yc = Ny/2) ;, cubic = cubic, /aligncube)
+  shift = red_aligncube(cub, np, xbd = align_size[0], ybd = align_size[1] $
+                        , xc = xc, yc = yc) ;, cubic = cubic, /aligncube)
 
   ;; Get maximum angle and maximum shift in each direction
   maxangle = max(abs(ang))
