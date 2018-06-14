@@ -212,7 +212,7 @@ pro red_download, date = date $
               backscatter_orientations[ 7, *] = [0, 7, 7, 0] ; 2015
               backscatter_orientations[ 8, *] = [0, 7, 7, 0] ; 2016 - same as 2015?
               backscatter_orientations[ 9, *] = [0, 7, 7, 0] ; 2017 - same as 2015?
-              backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2017 - same as 2015?
+              backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2018 - same as 2015?
               for ifile = 0, Nfiles-1 do begin
                  icam = where(backscatter_cameras $
                               eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
