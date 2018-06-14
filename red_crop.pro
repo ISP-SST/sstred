@@ -120,7 +120,7 @@ function red_crop, ims $
       ;; The roi is completely specified by size and center
       ;; coordinates.
       roi = lonarr(4)
-      roi[0:1] = [xc-Sx/2, yc-Sy/2]          ; Lower
+      roi[0:1] = [xc-Sx/2, yc-Sy/2]      ; Lower
       roi[2:3] = roi[0:1] + [Sx, Sy] - 1 ; Upper
     end
     n_elements(roi) eq 4 : begin
@@ -171,7 +171,7 @@ function red_crop, ims $
       Sx = round(roi_x[1])-round(roi_x[0])
       Sy = round(roi_y[1])-round(roi_y[0])
       roi = lonarr(4)
-      roi[[0, 2]] = [xc-Sx/2, yc-Sy/2]          ; Lower
+      roi[[0, 2]] = [xc-Sx/2, yc-Sy/2]         ; Lower
       roi[[1, 3]] = roi[[0, 2]] + [Sx, Sy] - 1 ; Upper
 
       size = [Sx, Sy]
