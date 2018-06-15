@@ -38,6 +38,12 @@
 ; 
 ; :Keywords:
 ;
+;   ao_lock : out, optional, type=array
+;
+;      Fraction of time the AO was running in closed loop. 2 s running
+;      average, 1 s cadence. Given on r0 time coordinate, interpolated
+;      values not returned.
+;
 ;   azel : out, optional, type=array
 ;
 ;      Azimuth and elevation.
@@ -143,9 +149,12 @@
 ;
 ;     2017-06-08 : MGL. Use red_interpol_nogaps.
 ;
+;     2018-06-15 : MGL. New keyword ao_lock.
+;
 ;
 ;-
 pro red_logdata, date, time $
+                 , ao_lock = ao_lock $
                  , azel = azel $
                  , diskpos = diskpos $
                  , header = header $
@@ -302,7 +311,7 @@ pro red_logdata, date, time $
   
   ;; Decide what files to download
   get_r0_file = keyword_set(use_r0_time) $
-                || arg_present(r0)
+                || arg_present(r0) || arg_present(ao_lock)
 
   get_pig_file = keyword_set(use_pig_time) $
                  || arg_present(pig) $
@@ -391,7 +400,7 @@ pro red_logdata, date, time $
   Ntimes = n_elements(T)
   
   if n_elements(r0data) ne 0 then begin
-   
+
     if keyword_set(use_r0_time) then begin
       ;; Return all values
       if n_elements(r0data.r0_8x8) ne 0 then begin
@@ -401,6 +410,7 @@ pro red_logdata, date, time $
         r0 = fltarr(1, Ntimes)
       endelse
       r0[0, *] = r0data.r0_24x24
+      ao_lock = r0data.closedloop
     endif else begin
       ;; Get interpolated values
       if n_elements(r0data.r0_8x8) ne 0 then begin
@@ -410,6 +420,7 @@ pro red_logdata, date, time $
         r0 = fltarr(1, Ntimes)
       endelse
       r0[0, *] = red_interpol_nogaps(r0data.r0_24x24, r0data.time, T)
+      ;; Don't return ao_lock interpolated values.
     endelse
 
   endif
