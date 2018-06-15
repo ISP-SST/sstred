@@ -246,6 +246,8 @@
 ;
 ;   2017-11-27 : MGL. Set altitude to 2380 m.
 ;
+;   2018-06-15 : MGL. Add fits keyword AO_NMODE.
+;
 ;-
 pro red_setupworkdir, search_dirs = search_dirs $
                       , out_dir = out_dir $
@@ -511,32 +513,44 @@ pro red_setupworkdir, search_dirs = search_dirs $
         endif
 
         ;; Write string metadata.
-        red_metadata_store, fname = workdir + '/info/metadata.fits',      $
-          [ { keyword : 'OBSRVTRY',                                       $
-              value   : 'Observatorio del Roque de los Muchachos (ORM)',  $
-              comment : 'Name of observatory' },                          $
-            { keyword : 'TELESCOP',                                       $
-              value   : 'Swedish 1-meter Solar Telescope (SST)',          $
-              comment : 'Name of telescope' },                            $
-            { keyword : 'OBJECT',                                         $
-              value   : 'Sun',                                            $
-              comment : '' } ]                                            ;
+        red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
+                            [ { keyword : 'OBSRVTRY',                                       $
+                                value   : 'Observatorio del Roque de los Muchachos (ORM)',  $
+                                comment : 'Name of observatory' },                          $
+                              { keyword : 'TELESCOP',                                       $
+                                value   : 'Swedish 1-meter Solar Telescope (SST)',          $
+                                comment : 'Name of telescope' },                            $
+                              { keyword : 'OBJECT',                                         $
+                                value   : 'Sun',                                            $
+                                comment : '' } ] ;
 
-        ;; Write numerical metadata.
-        red_metadata_store, fname = workdir + '/info/metadata.fits',      $
-          [ { keyword : 'OBSGEO-Z',                                       $
-              value   : obsgeo_xyz[ 2 ],                                  $
-              comment : '[m] SST location' },                             $
-            { keyword : 'OBSGEO-Y',                                       $
-              value   : obsgeo_xyz[ 1 ],                                  $
-              comment : '[m] SST location' },                             $
-            { keyword : 'OBSGEO-X',                                       $
-              value   : obsgeo_xyz[ 0 ],                                  $
-              comment : '[m] SST location' } ]                            ;
+        year = long((strsplit(isodate, '-', /extract))[0])
+        if year lt 2013 then begin
+          ao_nmode = 37L
+          modename = 'Karhunen-Loeve'
+        endif else begin
+          ao_nmode = 84L
+          modename = 'Mirror'
+        endelse
+        
+        ;; Write numerical (LONG) metadata.
+        red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
+                            [ { keyword : 'OBSGEO-Z',                                       $
+                                value   : obsgeo_xyz[ 2 ],                                  $
+                                comment : '[m] SST location' },                             $
+                              { keyword : 'OBSGEO-Y',                                       $
+                                value   : obsgeo_xyz[ 1 ],                                  $
+                                comment : '[m] SST location' },                             $
+                              { keyword : 'OBSGEO-X',                                       $
+                                value   : obsgeo_xyz[ 0 ],                                  $
+                                comment : '[m] SST location' },                             $
+                              { keyword : 'AO_NMODE',                                       $
+                                value   : ao_nmode,                                         $
+                                comment : 'Number of AO corrected '+modename+' modes' } ] ;
 
         ;; If there are several root_dirs, a corresponding suffix must be added
         ;; to the doit.pro script and the config.txt file to separate them.
-        ;suffix = ( nfound_dirs gt 1 ) ? string( irootdir + 1, format = '( i01 )' ) : ''
+        ;;suffix = ( nfound_dirs gt 1 ) ? string( irootdir + 1, format = '( i01 )' ) : ''
         if ( nfound_dirs gt 1 ) then begin
           suffix = string( irootdir + 1, format = '( i01 )' )
         endif else begin
