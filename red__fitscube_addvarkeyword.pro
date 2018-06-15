@@ -395,7 +395,7 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
                                 , string(i,n,m,format='((i0),"PV",(i0),"_",(i0))'), 1 $
                                 , extra_labels[i_extra] + ' 1st (only) coord. in ' $
                                 + extra_labels[i_extra] + '-' + keyword_name 
-          endfor
+          endfor                ; i_extra
           
           i = N_extra_axes + 1  ; Time array axis comes after the extra axes
           red_fitsaddkeyword, bdr $
@@ -457,17 +457,21 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
           red_fitsaddkeyword, bdr, /before, anchor = 'END', '',''
   
           ;; Write it to the file
-          fxbcreate, blun, filename, bdr           ; Create the extension in the file
-          fxbwrite,  blun, values, 1, 1            ; Write keyword values as column 1, row 1
-          fxbwrite,  blun, extra_coordinate1, 2, 1 ; Extra coordinate as column 2, row 1
-          fxbwrite,  blun, time_coordinate, 3, 1   ; Write time as column 3, row 1
-          fxbfinish, blun                          ; Close the binary extension
+          fxbcreate, blun, filename, bdr ; Create the extension in the file
+          colno = 1
+          fxbwrite,  blun, values, colno++, 1               ; Write keyword values as column 1, row 1
+          if n_elements(extra_coordinate1) gt 0 then $      ;
+             fxbwrite,  blun, extra_coordinate1, colno++, 1 ; Extra coordinate as next column, row 1
+          if n_elements(extra_coordinate2) gt 0 then $      ;
+             fxbwrite,  blun, extra_coordinate2, colno++, 1 ; Extra coordinate as next column, row 1
+          fxbwrite,  blun, time_coordinate, colno++, 1      ; Write time as next column, row 1
+          fxbfinish, blun                                   ; Close the binary extension
           
           help, time_coordinate, values
 
           return
 
-        end
+        end 
         else : begin
           print, inam + ' : Association "' + association + '" cannot handle this kind of data yet.'
 
