@@ -46,7 +46,9 @@
 ;     filename_or_header : in, type="string or strarr"
 ; 
 ;        If strarr: The FITS header. See documentation for fxpar.
-;        If string: The file name.
+;        If string: The file name. Must be the file name to get
+;        variable keywords, unless the file in in the current
+;        directory. 
 ; 
 ;     name : in, type=string
 ;     
@@ -88,6 +90,9 @@
 ;    2017-12-07 : MGL. New keyword comment.
 ; 
 ;    2018-04-06 : MGL. Read also HIERARCH keywords.
+; 
+;    2018-06-15 : MGL. Return variable keywords with the full fitscube
+;                 dimensions.
 ; 
 ;-
 function red_fitsgetkeyword, filename_or_header, name $
@@ -221,6 +226,9 @@ function red_fitsgetkeyword, filename_or_header, name $
         ;; This should do it for single-valued pixel-to-pixel associated
         ;; variable-keywords:
         fxbread, tlun, values, name
+
+        tdim1 = fxpar(bdr, 'TDIM1')
+        values = reform(values,long(strsplit(strmid(tdim1,1,strlen(tdim1)-2),',',/extr)))
         
         ;; The variable_values keyword should be a struct
         variable_values = { association:association   $
