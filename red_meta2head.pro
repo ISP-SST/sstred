@@ -69,6 +69,8 @@
 ;    2017-07-21 : MGL. Further improvements for CRISP data.
 ;
 ;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
+;
+;    2018-06-15 : MGL. Add WAVEMIN, WAVEMAX, WAVEBAND to the header.
 ; 
 ;-
 function red_meta2head, head, metadata=metaStruct
@@ -365,9 +367,15 @@ function red_meta2head, head, metadata=metaStruct
         endcase
 
         red_fitsaddkeyword, anchor = anchor, newhead $
-                        , 'WAVELNTH', wavelnth*1e9, '[nm] Prefilter peak wavelength'
+                            , 'WAVELNTH', wavelnth*1e9, '[nm] Prefilter peak wavelength'
         red_fitsaddkeyword, anchor = anchor, newhead $
-                        , 'WAVEUNIT', -9, 'WAVELNTH in units 10^WAVEUNIT m = nm'
+                            , 'WAVEMIN', (wavelnth-fwhm/2)*1e9, '[nm] Prefilter min wavelength (0.5 peak)'
+        red_fitsaddkeyword, anchor = anchor, newhead $
+                            , 'WAVEMAX', (wavelnth+fwhm/2)*1e9, '[nm] Prefilter max wavelength (0.5 peak)'
+        red_fitsaddkeyword, anchor = anchor, newhead $
+                            , 'WAVEBAND', waveband
+        red_fitsaddkeyword, anchor = anchor, newhead $
+                            , 'WAVEUNIT', -9, 'WAVELNTH in units 10^WAVEUNIT m = nm'
         ;; Add also the FWHM in a keyword?
 
       endif 
