@@ -228,7 +228,7 @@ function red_fitsgetkeyword, filename_or_header, name $
         fxbread, tlun, values, name
 
         tdim1 = fxpar(bdr, 'TDIM1')
-        values = reform(values,long(strsplit(strmid(tdim1,1,strlen(tdim1)-2),',',/extr)))
+        values = reform(values,(long(strsplit(strmid(tdim1,1,strlen(tdim1)-2),',',/extr)))[1:*])
         
         ;; The variable_values keyword should be a struct
         variable_values = { association:association   $
