@@ -222,7 +222,10 @@ pro red::pinholecalib, cams = cams $
         smooth=smooth, verbose=verbose, max_shift=max_shift )
       
       if (last_prefilter ne this_prefilter) then begin
-        if keyword_set(verify) then this_map = red_phverify( ref_img, cam_img, this_map )
+        if keyword_set(verify) then begin
+          this_map = red_phverify( ref_img, cam_img, this_map )
+          this_init = this_map
+        endif
       endif else begin
         ; TODO: sanity check for maps within the same prefilter.
         ; e.g. check how different this_map is from this_init ??

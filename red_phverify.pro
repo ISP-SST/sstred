@@ -23,7 +23,7 @@ PRO phv_timer_callback, id, info
     XYOUTS, (*info).drawSz[0]/2, (*info).drawSz[1]-20, 'map(ph1)', CHARSIZE=1, /DEVICE
     (*info).disp_mapped = 1
   ENDELSE
-  
+  (*info).timerid = Timer.set( 1, 'phv_timer_callback', info )
 END
 
 PRO phv_update_imgs, info
@@ -37,7 +37,7 @@ PRO phv_update_imgs, info
   phv_update_img, (*info).draw, (*info).ph2, (*info).drawSz[0]/2, (*info).drawSz[1], (*info).drawSz[0]/2, 0
   XYOUTS, (*info).drawSz[0]/2, (*info).drawSz[1]-20, 'ph2', CHARSIZE=1, /DEVICE
 
-  (*info).timerid = Timer.set( 1, 'phv_timer_callback', info, /repeat )
+ (*info).timerid = Timer.set( 1, 'phv_timer_callback', info )
 
 END
 
