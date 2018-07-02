@@ -1,65 +1,87 @@
+; docformat = 'rst'
+
 ;+
-; NAME:
-;   quote
-; PURPOSE:   (one line only)
-;   Convert a string into one safe for including in a mySQL query
-; DESCRIPTION:
-;   Similar to the mysql function quote.  Leading and trailing blanks
-;   are removed.  Leading and trailing quotes are preserved but are considered
-;   to be delimiters for the string provided there is a leading and a trailing
-;   quote.  If there is just one it is considered to be interior to the string.
-;   An interior single quote is converted to \' and a backslash is converted
-;   to \\.  Embedded newlines (string(10B)) are quoted with '\n' where n is
-;   the letter n.
-;   On output, the string will have leading and trailing quotes added
-;   if they weren't already there. However, if the string is a scalar
-;   and it is 'NULL' (4 characters) after stripping blanks 
-;   it is returned as is without quotes.
-;   The input can either be a single string or a string array. If an array,
-;   the strings are joined with a quoted newline separator. For example,
-;    s = quote(['this text output','more of the output']) produces
-;    " 'this text output\nmore of the output' " as a scalar string. This 
-;    feature exists to support comment fields of type TEXT or BLOB.
-;   In multiline cases (input is a string array or contains 10B newline 
-;   characters) empty or all whitespace lines at the begining or end
-;   of the total string will be trimmed. A single such line comes back as
-;   a ''.
-; CATEGORY:
-;   Database
-; CALLING SEQUENCE:
-;   result = quote(string)
-; INPUTS:
-;   string - String to be processed- if a string array, the strings are
-;            joined with a newline quoted after each string including the
-;            last. Embedded newline characters (10B) are also quoted in
-;            this way.
-; OPTIONAL INPUT PARAMETERS:
-; KEYWORD INPUT PARAMETERS:
-;  LITERAL- Flag, if set, some of the processing of quote is not done,
-;              specifically removal of trailing/leading blanks, special
-;              treatment for the string 'NULL', and removal of leading and
-;              null/whitepace lines in the multiline cases. The processing 
-;              of single quotes and backslashes in the input string is the same.
-; OUTPUTS:
-;   return value is a string that is ready for mySQL
-; KEYWORD OUTPUT PARAMETERS:
-; COMMON BLOCKS:
-; SIDE EFFECTS:
-; RESTRICTIONS:
-; Newlines are currently quoted with two characters: '\n' where the
-; n is a literal lower case n. It is inadvisable to try to use an
-; actual '\n' within the string to be quoted, although it will work
-; currently if the string is a scalar and contains no embedded 10B characters.
-; PROCEDURE:
-; MODIFICATION HISTORY:
-;  Written by Marc W. Buie, Lowell Observatory, 2003/08/12
-;  2006/10/27, Peter L. Collins, Lowell Observatory
-;              add support for string array input (with newlines)
-;  2006/11/28, PLC, allow literal (string(10B)) newlines in str.
-;  2006/12/11, PLC, disconnect LITERAL flag from rank of str and
-;                   (except if LITERAL) trim leading and trailing 
-;                    null or all whitespace lines in the multiline cases.
-;  2016/10/24, MWB, added support for quoting a semi-colon
+; Convert a string into one safe for including in a mySQL query
+; 
+; Similar to the mysql function quote. Leading and trailing blanks are
+; removed. Leading and trailing quotes are preserved but are
+; considered to be delimiters for the string provided there is a
+; leading and a trailing quote. If there is just one it is considered
+; to be interior to the string. An interior single quote is converted
+; to \' and a backslash is converted to \\. Embedded newlines
+; (string(10B)) are quoted with '\n' where n is the letter n.
+;
+; On output, the string will have leading and trailing quotes added if
+; they weren't already there. However, if the string is a scalar and
+; it is 'NULL' (4 characters) after stripping blanks it is returned as
+; is without quotes.
+;
+; The input can either be a single string or a string array. If an
+; array, the strings are joined with a quoted newline separator. For
+; example, s = quote(['this text output','more of the output'])
+; produces " 'this text output\nmore of the output' " as a scalar
+; string. This feature exists to support comment fields of type TEXT
+; or BLOB. In multiline cases (input is a string array or contains 10B
+; newline characters) empty or all whitespace lines at the begining or
+; end of the total string will be trimmed. A single such line comes
+; back as a ''.
+;
+; Newlines are currently quoted with two characters: '\n' where the n
+; is a literal lower case n. It is inadvisable to try to use an actual
+; '\n' within the string to be quoted, although it will work currently
+; if the string is a scalar and contains no embedded 10B characters.
+;
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, Institute for Solar Physics
+; 
+;    Originally by Marc W. Buie, Lowell Observatory as quote.pro
+;
+; :Returns:
+; 
+;   Return value is a string that is ready for mySQL.
+; 
+; :Params:
+; 
+;   str : in, type=string
+;
+;      String(s) to be processed. If a string array, the strings are
+;      joined with a newline quoted after each string including the
+;      last. Embedded newline characters (10B) are also quoted in
+;      this way.
+; 
+; 
+; :Keywords:
+; 
+;   literal : in, optional, type=boolean
+;
+;     if set, some of the processing of quote is not done,
+;     specifically removal of trailing/leading blanks, special
+;     treatment for the string 'NULL', and removal of leading and
+;     null/whitepace lines in the multiline cases. The processing of
+;     single quotes and backslashes in the input string is the same.
+; 
+; 
+; :History:
+; 
+;  2003-08-12 : MWB. First version
+;
+;  2006-10-27 : Peter L. Collins, Lowell Observatory. Add support for
+;               string array input (with newlines)
+;
+;  2006-11-28 : PLC. Allow literal (string(10B)) newlines in str.
+;
+;  2006-12-11 : PLC. Disconnect LITERAL flag from rank of str and
+;               (except if LITERAL) trim leading and trailing null or
+;               all whitespace lines in the multiline cases.
+;
+;  2016-10-24 : MWB, added support for quoting a semi-colon
+; 
 ;-
 function red_mysql_quote,str,LITERAL=literal
 
