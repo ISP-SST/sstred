@@ -48,7 +48,11 @@
 ;    column_types : out, optional, type=strarr
 ;
 ;      Column types, all columns.
-;   
+;
+;    distinct : in, optional, type=boolean
+;
+;      Do SELECT DISTINCT, returning only distinct (unique) matches. 
+;
 ;    verbose : in, type=boolean
 ;
 ;      Flag turns on debugging output to standard out.
@@ -57,11 +61,14 @@
 ; 
 ;   2018-06-28 : MGL. First version.
 ; 
+;   2018-07-02 : MGL. New keyword distinct.
+; 
 ;-
 function red_mysql_select, lun $
                            , column_names = column_names $
                            , column_types = column_types $
                            , count = count $
+                           , distinct = distinct $
                            , select_expression = select_expression $
                            , table = table $
                            , verbose = verbose $
@@ -98,8 +105,10 @@ function red_mysql_select, lun $
   endfor                        ; icol ;
 
   ;; Construct and submit the query.
-  query = 'SELECT ' + select_expression
-  if n_eleemnts(table) gt 0 then $
+  query = 'SELECT '
+  if keyword_set(distinct) then query += 'DISTINCT '
+  query += select_expression
+  if n_elements(table) gt 0 then $
      query += ' FROM '+table
   if n_elements(where_statement) gt 0 then $
      query += ' WHERE '+where_condition
