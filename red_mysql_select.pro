@@ -110,12 +110,16 @@ function red_mysql_select, lun $
   query += select_expression
   if n_elements(table) gt 0 then $
      query += ' FROM '+table
-  if n_elements(where_statement) gt 0 then $
+  if n_elements(where_condition) gt 0 then $
      query += ' WHERE '+where_condition
   query += ';'
   red_mysql_cmd, lun, query, result, Nlines, debug=verbose
-  Nlines--                      ; First line is the heads
-  if Nlines le 0 then stop
+  if n_elements(Nlines) eq 0 then Nlines = 0 else Nlines-- ; First line is the heads
+
+  if Nlines eq 0 then begin
+    count = Nlines
+    return, -1
+  endif
 
   ;; First digest the column headings (split on tabs)
   heads = strsplit(result[0],tab,/extract,/preserve_null)
@@ -162,7 +166,7 @@ function red_mysql_select, lun $
     endfor                      ; icol
   endfor                        ; iline
 
-  count = Nlines
+  if n_elements(Nlines) eq 0 then count = 0 else count = Nlines
 
   return, output
   
