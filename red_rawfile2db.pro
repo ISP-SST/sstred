@@ -63,22 +63,19 @@ pro red_rawfile2db, dbinfo, force = force
            + strtrim(Nfiles, 2) + ' files.'
     print
 
-    stop                        ; OK so far
-    
     ;; For each such combo, look in dataset table for a corresponding
     ;; line.
-    where_condition = 'dataset='+red_mysql_quote(uset[iset]) $
-                      + ' && instrument='+red_mysql_quote(instrument)
+    where_condition = 'ts='+red_mysql_quote(strjoin(strsplit(uset[iset],'T',/extract),' '))
     dataset = red_mysql_select(SQLhandle $
                                , column_names = datasets_column_names $
                                , column_types = datasets_column_types $
                                , table = 'datasets' $
                                , select_expression = '*' $
                                , where_condition = where_condition $
-                               , ngood = Nsetlines, /verbose)
+                               , count = Nsetlines, /verbose)
 
     case Nsetlines of
-      0 : stop                          ; Something's wrong, should have at least the heads
+      0 : doupdate = 1                  ; No match
       1 : doupdate = 1                  ; Only the heads.
       2 : doupdate = keyword_set(force) ; It's there, update the if /force.
       else : stop                       ; Could there even be more than one line?
@@ -88,14 +85,22 @@ pro red_rawfile2db, dbinfo, force = force
       ;; Update the line
       undefine, fields, values
 
-      red_append, fields, 'DETFIRM'
-      red_append, values, red_mysql_quote(dbinfo[0].DETFIRM)
+      red_append, fields, 'ts'
+      red_append, values, red_mysql_quote(strjoin(strsplit(uset[iset],'T',/extract),' '))
 
+      red_append, fields, 'observer'
+      red_append, values, red_mysql_quote(dbinfo[0].observer)
+
+      red_append, fields, 'description'
+      red_append, values, red_mysql_quote(dbinfo[0].object $
+                                          + ' ' + dbinfo[0].waveband)
+      
       ;; Add more fields and values that correspond to columns in the
       ;; table.
 
       ;; Write the lines into the database
-      red_mysql_replace, 'datasets', fields, values 
+      red_mysql_replace, SQLhandle, 'datasets', fields, values
+      
     endif
 
 
@@ -113,23 +118,26 @@ pro red_rawfile2db, dbinfo, force = force
 ;                                 , where_condition = where_condition $
 ;                                 , ngood = Nlines, /verbose)
 ;    print, Nfiles eq Nlines
+
+
+;    stop                        ; OK so far
     
     for ifile = 0, Nfiles-1 do begin
       
       ;; For each file, look in img_files table. Select lines with
       ;; dataset_id from dataset table.
-      where_condition = 'data_id='+strtrim(dataset.id, 2) $
-                        + ' && file_number='+dbinfo[indx[ifile]].filenumber
+      where_condition = 'data_set='+red_mysql_quote(strtrim(dataset.ts, 2)) $
+                        + ' && filename='+red_mysql_quote(dbinfo[indx[ifile]].filename)
       img_files = red_mysql_select(SQLhandle $
                                    , column_names = img_files_column_names $
                                    , column_types = img_files_column_types $
                                    , table = 'img_files' $
                                    , select_expression = '*' $
                                    , where_condition = where_condition $
-                                   , ngood = Nlines, /verbose)
+                                   , count = Nlines, /verbose)
 
       case Nlines of
-        0 : stop                          ; Something's wrong, should have at least the heads
+        0 : doupdate = 1                  ; No match
         1 : doupdate = 1                  ; Only the heads.
         2 : doupdate = keyword_set(force) ; It's there, update the if /force.
         else : stop                       ; Could there even be more than one line?
@@ -143,7 +151,7 @@ pro red_rawfile2db, dbinfo, force = force
         red_append, values, red_mysql_quote(dbinfo[0].INSTRUME)
         
         red_append, fields, 'DATA_SET'
-        red_append, values, strtrim(dataset.id, 2)
+        red_append, values, red_mysql_quote(strtrim(dataset.ts, 2))
 
         red_append, fields, 'FILENAME'
         red_append, values, red_mysql_quote(dbinfo[0].FILENAME)
@@ -155,9 +163,9 @@ pro red_rawfile2db, dbinfo, force = force
         ;; table.
 
         ;; Write the fields into the database
-        red_mysql_replace, 'img_files', fields, values 
+        red_mysql_replace, SQLhandle, 'img_files', fields, values 
       endif
-
+      stop
     
       for iframe = 0, Nframes-1 do begin
         
