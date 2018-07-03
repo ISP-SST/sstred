@@ -41,23 +41,23 @@ function red_romannumber, x
 
      ;; Translate from roman numeral to long integer
 
-     roman = strupcase(x)
+    roman = strupcase(red_strreplace(x, 'cam', ''))
      
-     if roman eq '' then return, 0                                       
-     if strmid(roman,0,1) eq "M"  then return, 1000 + red_romannumber(strmid(roman, 1))
-     if strmid(roman,0,2) eq "CM" then return,  900 + red_romannumber(strmid(roman, 2))
-     if strmid(roman,0,1) eq "D"  then return,  500 + red_romannumber(strmid(roman, 1))
-     if strmid(roman,0,2) eq "CD" then return,  400 + red_romannumber(strmid(roman, 2))
-     if strmid(roman,0,1) eq "C"  then return,  100 + red_romannumber(strmid(roman, 1))
-     if strmid(roman,0,2) eq "XC" then return,   90 + red_romannumber(strmid(roman, 2))
-     if strmid(roman,0,1) eq "L"  then return,   50 + red_romannumber(strmid(roman, 1))
-     if strmid(roman,0,2) eq "XL" then return,   40 + red_romannumber(strmid(roman, 2))
-     if strmid(roman,0,1) eq "X"  then return,   10 + red_romannumber(strmid(roman, 1))
-     if strmid(roman,0,2) eq "IX" then return,    9 + red_romannumber(strmid(roman, 2))
-     if strmid(roman,0,1) eq "V"  then return,    5 + red_romannumber(strmid(roman, 1))
-     if strmid(roman,0,2) eq "IV" then return,    4 + red_romannumber(strmid(roman, 2))
-     if strmid(roman,0,1) eq "I"  then return,    1 + red_romannumber(strmid(roman, 1))
-     
+    if roman eq '' then return, 0                                       
+    if strmid(roman,0,1) eq "M"  then return, 1000 + red_romannumber(strmid(roman, 1))
+    if strmid(roman,0,2) eq "CM" then return,  900 + red_romannumber(strmid(roman, 2))
+    if strmid(roman,0,1) eq "D"  then return,  500 + red_romannumber(strmid(roman, 1))
+    if strmid(roman,0,2) eq "CD" then return,  400 + red_romannumber(strmid(roman, 2))
+    if strmid(roman,0,1) eq "C"  then return,  100 + red_romannumber(strmid(roman, 1))
+    if strmid(roman,0,2) eq "XC" then return,   90 + red_romannumber(strmid(roman, 2))
+    if strmid(roman,0,1) eq "L"  then return,   50 + red_romannumber(strmid(roman, 1))
+    if strmid(roman,0,2) eq "XL" then return,   40 + red_romannumber(strmid(roman, 2))
+    if strmid(roman,0,1) eq "X"  then return,   10 + red_romannumber(strmid(roman, 1))
+    if strmid(roman,0,2) eq "IX" then return,    9 + red_romannumber(strmid(roman, 2))
+    if strmid(roman,0,1) eq "V"  then return,    5 + red_romannumber(strmid(roman, 1))
+    if strmid(roman,0,2) eq "IV" then return,    4 + red_romannumber(strmid(roman, 2))
+    if strmid(roman,0,1) eq "I"  then return,    1 + red_romannumber(strmid(roman, 1))
+    
   endif else begin
 
      arabics = [1000,  900, 500,  400, 100,   90,  50,   40,  10,    9,   5,    4,   1 ]
