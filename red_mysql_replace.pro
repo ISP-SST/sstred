@@ -58,7 +58,7 @@ pro red_mysql_replace, handle, table, fields, values, verbose = verbose
 
   if keyword_set(verbose) then print, query
   
-  red_mysql_check, handle, /reopen
+  red_mysql_check, handle
   red_mysql_cmd, handle, query, DEBUG=verbose
 
 end
