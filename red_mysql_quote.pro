@@ -86,9 +86,9 @@
 function red_mysql_quote,str,LITERAL=literal
 
   self='QUOTE: '
-  if badpar(str,7, [0,1], caller=self+'(str) ',RANK =strrank) then return,''
-  if badpar(literal,[0,1,2,3], 0, caller=self+'(LITERAL) ', $
-            default=0) then return,''
+  if red_badpar(str,7, [0,1], caller=self+'(str) ',RANK =strrank) then return,''
+  if red_badpar(literal,[0,1,2,3], 0, caller=self+'(LITERAL) ', $
+                default=0) then return,''
 
   strvector = (strrank eq 1)
   multiline = strvector
