@@ -120,7 +120,12 @@ pro red_rawfile2db, dbinfo, force = force
 ;    print, Nfiles eq Nlines
 
 
-;    stop                        ; OK so far
+    instrument_info = red_mysql_select(SQLhandle $
+                                       , table = 'instruments' $
+                                       , select_expression = '*' $
+                                       , where_condition = 'name='+red_mysql_quote(dbinfo[indx[0]].INSTRUME) $
+                                       , count = Ninstruments, /verbose)
+    if Ninstruments ne 1 then stop
     
     for ifile = 0, Nfiles-1 do begin
       
@@ -136,6 +141,10 @@ pro red_rawfile2db, dbinfo, force = force
                                    , where_condition = where_condition $
                                    , count = Nlines, /verbose)
 
+      stop
+      ;; Problem: The code below writes multiple lines with the same
+      ;; info. I think we have to make the filename column primary.
+      
       case Nlines of
         0 : doupdate = 1                  ; No match
         1 : doupdate = 1                  ; Only the heads.
@@ -148,7 +157,7 @@ pro red_rawfile2db, dbinfo, force = force
         undefine, fields, values
  
         red_append, fields, 'INSTRUMENT'
-        red_append, values, red_mysql_quote(dbinfo[0].INSTRUME)
+        red_append, values, strtrim(instrument_info.id, 2)
         
         red_append, fields, 'DATA_SET'
         red_append, values, red_mysql_quote(strtrim(dataset.ts, 2))
@@ -165,35 +174,51 @@ pro red_rawfile2db, dbinfo, force = force
         ;; Write the fields into the database
         red_mysql_replace, SQLhandle, 'img_files', fields, values 
       endif
-      stop
-    
-      for iframe = 0, Nframes-1 do begin
+      
+      for iframe = 0, dbinfo[indx[ifile]].Nframes-1 do begin
         
         ;; For each frame, look in img_frames table. Select lines with
         ;; file_id from img_file table.
         where_condition = 'file_id='+strtrim(img_files.id, 2) $
-                          + ' && frame_number='+dbinfo[indx[ifile]].framenumber
+                          + ' && frame_number='+strtrim(dbinfo[indx[ifile]].framenumbers[iframe], 2)
         img_frames = red_mysql_select(SQLhandle $
                                       , column_names = img_frames_column_names $
                                       , column_types = img_frames_column_types $
                                       , table = 'img_frames' $
                                       , select_expression = '*' $
                                       , where_condition = where_condition $
-                                      , ngood = Nlines, /verbose)
+                                      , count = Nlines, /verbose)
 
         case Nlines of
-          0 : stop            
-          ;; Something's wrong, should have at least the heads
-          1 :  doupdate = 1
-          ;; Only the heads. Add a line with info selected based on the
-          ;; column heads.
-          2 : doupdate = keyword_set(force)
-          ;; It's there, update the if /force.
-          else : stop
-          ;; Could there even be more than one line?
+          0 : doupdate = 1                  ; No match
+          1 : doupdate = 1                  ; Only the heads.
+          2 : doupdate = keyword_set(force) ; It's there, update the if /force.
+          else : stop                       ; Could there even be more than one line?
         endcase
+
+        if doupdate then begin
+          ;; Update the line
+          undefine, fields, values
+          
+          red_append, fields, 'FILE_ID'
+          red_append, values, strtrim(img_files.id, 2)
+         
+          red_append, fields, 'FRAME_NUMBER'
+          red_append, values, strtrim(dbinfo[indx[ifile]].framenumbers[iframe], 2)
+          
+          red_append, fields, 'TIME_BEG'
+          red_append, values, red_mysql_quote((strsplit(dbinfo[indx[ifile]].date_begs[iframe],'T',/extract))[1])
+          
+          
+          ;; Add more fields and values that correspond to columns in the
+          ;; table.
+          stop
+          ;; Write the fields into the database
+          red_mysql_replace, SQLhandle, 'img_frames', fields, values 
+        endif
         
       endfor                    ; iframe
+      stop
     endfor                      ; ifile
   endfor                        ; iset
 
