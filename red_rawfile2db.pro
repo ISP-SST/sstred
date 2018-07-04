@@ -77,7 +77,7 @@ pro red_rawfile2db, dbinfo, force = force
     case Nsetlines of
       0 : doupdate = 1                  ; No match
       1 : doupdate = 1                  ; Only the heads.
-      2 : doupdate = keyword_set(force) ; It's there, update the if /force.
+      2 : doupdate = keyword_set(force) ; It's there, update if /force.
       else : stop                       ; Could there even be more than one line?
     endcase
     
@@ -148,7 +148,7 @@ pro red_rawfile2db, dbinfo, force = force
       case Nlines of
         0 : doupdate = 1                  ; No match
         1 : doupdate = 1                  ; Only the heads.
-        2 : doupdate = keyword_set(force) ; It's there, update the if /force.
+        2 : doupdate = keyword_set(force) ; It's there, update if /force.
         else : stop                       ; Could there even be more than one line?
       endcase
 
@@ -192,7 +192,7 @@ pro red_rawfile2db, dbinfo, force = force
         case Nlines of
           0 : doupdate = 1                  ; No match
           1 : doupdate = 1                  ; Only the heads.
-          2 : doupdate = keyword_set(force) ; It's there, update the if /force.
+          2 : doupdate = keyword_set(force) ; It's there, update if /force.
           else : stop                       ; Could there even be more than one line?
         endcase
 
