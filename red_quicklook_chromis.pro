@@ -211,9 +211,9 @@ pro red_quicklook_chromis, root, dark=dark, flat=flat, cam=cam, $
      print,string(13B), 'loading -> '+ file_basename(st.files[idx]),format='(A,A,$)'
 
      if(~keyword_set(rms_select)) then begin
-        if(ii eq 0) then tmp = readfits(st.files[idx], /silent) $
-        else tmp = readfits(st.files[idx], /silent, nslice=0)
-     endif else tmp = rms_select(readfits(st.files[idx],/silent))
+       if(ii eq 0) then tmp = red_readdata(st.files[idx], /silent) $
+       else tmp = red_readdata(st.files[idx], /silent, nslice=0)
+     endif else tmp = rms_select(red_readdata(st.files[idx],/silent))
      
      ;; init some stuff
      
