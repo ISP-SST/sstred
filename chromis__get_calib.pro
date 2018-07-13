@@ -90,11 +90,12 @@
 pro chromis::get_calib, states $
                         , no_fits = no_fits $
                         , status = status $
-                        , darkname  = darkname,  darkdata  = darkdata   $
-                        , flatname  = flatname,  flatdata  = flatdata   $
-                        , gainname  = gainname,  gaindata  = gaindata   $
-                        , pinhname  = pinhname,  pinhdata  = pinhdata   $
-                        , sflatname = sflatname, sflatdata = sflatdata 
+                        , darkstatus  = darkstatus,  darkname  = darkname,  darkdata  = darkdata   $
+                        , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata   $
+                        , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata   $
+                        , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata   $
+                        , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata
+  
 
   Nstates = n_elements(states)
 
