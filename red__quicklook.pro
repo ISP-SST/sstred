@@ -97,16 +97,22 @@ pro red::quicklook, align = align $
                           , count = Nsets, indx = ichoice)
 
   dirs = (*self.data_dirs)[ichoice] 
+
   
   ;; If search pattern is given, use that, otherwise just use *
   if keyword_set(pattern) then pat = "*" + pattern + "*" else pat = "*"
   
 
   for iset = 0, Nsets-1 do begin
-                                ;stop
+
+    timestamp = file_basename(dirs[iset])
+    outdir = self.out_dir +'/quicklook/'+timestamp+'/'
+    file_mkdir, outdir
+    
+    
     searchstring = dirs[iset] + '/' + cam + '/' + pat
     files = red_file_search(searchstring, count = Nfiles)
- 
+    
     if files[0] eq '' then begin
       print, inam + ' : ERROR -> no frames found in '+dirs[iset]
       continue
@@ -114,7 +120,27 @@ pro red::quicklook, align = align $
 
     self -> extractstates, files, states
     ustat = states[uniq(states.tun_wavelength, sort(states.tun_wavelength))].fullstate
+    upref = states(uniq(states.prefilter, sort(states.prefilter))).prefilter
+    Npref = n_elements(upref)
 
+    if 1 then begin
+
+      ;; Plot r0
+
+      cgcontrol, /delete, /all
+
+      pname = states[0].camera
+      pname += '_' + 'quick'
+      pname += '_' + self.isodate
+      pname += '_' + timestamp
+      pname += '_' + strjoin(upref, ',') 
+      pname += '.pdf'
+      
+      red_plot_r0_stats, states, pname = outdir+pname
+      stop
+      
+    endif
+    
     if n_elements(ustat) gt 1 then begin
       ;; Select states.
       tmp = red_select_subset(ustat $
@@ -124,7 +150,8 @@ pro red::quicklook, align = align $
     endif else begin
       Nstates = 1
     endelse
-    
+
+
 
     for istate = 0, Nstates-1 do begin
       
@@ -145,10 +172,6 @@ pro red::quicklook, align = align $
     
       print, inam + ' : found scans -> '+red_stri(Nscans)
 
-      timestamp = file_basename(dirs[iset])
-
-      outdir = self.out_dir +'/quicklook/'+timestamp+'/'
-      stop
       namout = states[sel[0]].camera
       namout += '_' + 'quick'
       namout += '_' + self.isodate
@@ -159,8 +182,6 @@ pro red::quicklook, align = align $
 
       if ~keyword_set(overwrite) and file_test(outdir+namout) then continue
 
-      
-      file_mkdir, outdir
       
 ;      Ntot = 100. / (Nscans - 1.0)
 
@@ -288,6 +309,7 @@ pro red::quicklook, align = align $
       ;; Add tickmarks here?
       write_jpeg, outdir+red_strreplace(namout, '.mp4', '_scan='+strtrim(uscan[ml], 2)+'.jpg') $
                   , im, q = 100
+
       
     endfor                      ; istate
   endfor                        ; iset
