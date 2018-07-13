@@ -85,6 +85,9 @@
 ;    2018-04-18 : MGL. Rewrote using filenames() method. Removed
 ;                 keywords for returning file headers.
 ; 
+;    2018-07-11 : MGL. New keywords, individual status for the
+;                 different kinds of data.
+; 
 ; 
 ;-
 pro chromis::get_calib, states $
