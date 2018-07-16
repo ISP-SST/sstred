@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Delete a row from a table
+; Delete a row from a table.
 ; 
 ; :Categories:
 ;
