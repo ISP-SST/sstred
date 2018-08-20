@@ -475,7 +475,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, 'stop'          
   printf, Slun, ''
 
-  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
+  ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
+  printf, Slun, "a -> fitprefilter, /mask
 
   printf, Slun, ''
   for ipref = 0, Nprefilters-1 do begin
@@ -494,7 +495,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + ", extraclip = [75,125,15,15]" $
               + ", pref='" + prefilters[ipref] + "'" 
     endif
-  endfor                        ; ipref
+  endfor                        ; ipref ;
 
   printf, Slun, ''
   printf, Slun, ';; Run MOMFBD outside IDL.'
