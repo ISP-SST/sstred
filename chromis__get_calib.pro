@@ -88,6 +88,7 @@
 ;    2018-07-11 : MGL. New keywords, individual status for the
 ;                 different kinds of data.
 ; 
+;    2018-07-25 : Sum darks and flats, and make gains as needed.
 ; 
 ;-
 pro chromis::get_calib, states $
