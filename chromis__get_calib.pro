@@ -139,12 +139,15 @@ pro chromis::get_calib, states $
     ;; Darks
     if arg_present(darkdata) then begin
 
-      if n_elements(darkname) ne 0 && file_test(darkname[istate]) then begin
-        if arg_present(darkdata) then begin
-          darkdata[0, 0, istate] = red_readdata(darkname[istate] $
-                                                , status = darkstatus, /silent)
-          if status eq 0 then status = darkstatus
-        endif
+      if n_elements(darkname) ne 0  then begin
+        if ~file_test(darkname[istate]) then begin
+          ;; Try summing darks for this camera
+          self -> sumdark, /check, /sum_in_rdx $
+                           , cams = states[istate].camera          
+        end
+        darkdata[0, 0, istate] = red_readdata(darkname[istate] $
+                                              , status = darkstatus, /silent)
+        if status eq 0 then status = darkstatus
       endif else status = -1
       
     endif                       ; Darks
@@ -152,12 +155,16 @@ pro chromis::get_calib, states $
     ;; Flats
     if arg_present(flatdata) then begin
       
-      if n_elements(flatname) ne 0 && file_test(flatname[istate]) then begin
-        if arg_present(flatdata) then begin
-          flatdata[0, 0, istate] = red_readdata(flatname[istate] $
-                                                , status = flatstatus, /silent)
-          if status eq 0 then status = flatstatus
-        endif
+      if n_elements(flatname) ne 0 then begin
+        if ~file_test(flatname[istate]) then begin
+          ;; Try summing flats for this state
+          self -> sumflat, /check, /sum_in_rdx $
+                           , cams = states[istate].camera $
+                           , ustat = states[istate].fullstate
+        endif 
+        flatdata[0, 0, istate] = red_readdata(flatname[istate] $
+                                              , status = flatstatus, /silent)
+        if status eq 0 then status = flatstatus
       endif else  status = -1
       
     endif                       ; Flats
@@ -166,11 +173,9 @@ pro chromis::get_calib, states $
     if arg_present(sflatdata) then begin
 
       if  n_elements(sflatname) ne 0 && file_test(sflatname[istate]) then begin
-        if arg_present(sflatdata) then begin
-          sflatdata[0, 0, istate] = red_readdata(sflatname[istate] $
-                                                 , status = sflatstatus, /silent)
-          if status eq 0 then status = sflatstatus
-        endif
+        sflatdata[0, 0, istate] = red_readdata(sflatname[istate] $
+                                               , status = sflatstatus, /silent)
+        if status eq 0 then status = sflatstatus
       endif else  status = -1
       
     endif                       ; Summed flats
@@ -178,12 +183,17 @@ pro chromis::get_calib, states $
     ;; Gains
     if arg_present(gaindata) then begin
 
-      if  n_elements(gainname) ne 0 && file_test(gainname[istate]) then begin
-        if arg_present(gaindata) then begin
-          gaindata[0, 0, istate] = red_readdata(gainname[istate] $
-                                                , status = gainstatus, /silent)
-          if status eq 0 then status = gainstatus
+      if  n_elements(gainname) ne 0 then begin
+        if ~file_test(gainname[istate]) then begin
+          ;; Try summing flats for this state and then making gains
+          self -> sumflat, /check, /sum_in_rdx $
+                           , cams = states[istate].camera $
+                           , ustat = states[istate].fullstate
+          self -> makegains     ;, cam = states[istate].camera ; May want to implement ustat keyword for makegains
         endif 
+        gaindata[0, 0, istate] = red_readdata(gainname[istate] $
+                                              , status = gainstatus, /silent)
+        if status eq 0 then status = gainstatus
       endif else status = -1
       
     endif                       ; Gains
@@ -193,11 +203,9 @@ pro chromis::get_calib, states $
     if arg_present(pinhdata) then begin
 
       if  n_elements(pinhname) ne 0 && file_test(pinhname[istate]) then begin
-        if arg_present(pinhdata) then begin
-          pinhdata[0, 0, istate] = red_readdata(pinhname[istate] $
-                                                , status = pinhstatus, /silent)
-          if status eq 0 then status = pinhstatus
-        endif 
+        pinhdata[0, 0, istate] = red_readdata(pinhname[istate] $
+                                              , status = pinhstatus, /silent)
+        if status eq 0 then status = pinhstatus
       endif else status = -1
       
     endif                       ; Pinholes
