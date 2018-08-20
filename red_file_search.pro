@@ -26,13 +26,14 @@
 ;
 ; :Params:
 ; 
-;    dir : in, type=string
+;    dir : in, optional, type=string
 ; 
 ;      The (local) directory in which to do the search.
 ;
 ;    pattern : in, type=string
 ;
-;      The pattern "find" should use to filter the file names.
+;      The pattern "find" should use to filter the file names. If this
+;      includes the directory, the dir parameter is not needed.
 ;
 ; :Keywords:
 ; 
@@ -53,32 +54,53 @@
 ;  
 ;    2018-07-10 : MGL. First version, based on code from
 ;                 red__quicklook movie.pro.
+;  
+;    2018-07-26 : MGL. Possible to optionally separate directory from
+;                 the pattern.
 ; 
 ;-
-function red_file_search, searchstring $
+function red_file_search, searchstring, dir $
                           , count = count $
                           , remote_dir = remote_dir $
                           , remote_login = remote_login $
                           , verbose = verbose
 
-  dir = file_dirname(searchstring)
-  pattern = "'" + file_basename(searchstring) + "'"
+  inam = red_subprogram(/low, calling = inam1)
 
+  if n_elements(dir) eq 0 then begin
+    dir = file_dirname(searchstring)
+    pattern = file_basename(searchstring)
+  endif else begin
+    pattern = searchstring
+  end
+
+  case n_elements(pattern) of
+    0    : name_expression = "-name '*'"
+    1    : name_expression = "-name '"+pattern+"'"
+    else : name_expression = "\( " $
+                             + strjoin("-name '"+pattern+"'", ' -o ') $
+                             + " \)"
+  endcase
+
+  print, inam + ' : ' + name_expression
+  
   if keyword_set(remote_login) then begin
     
     if size(remote_login, /tname) ne 'STRING' then remote_login = 'root@transport1'
     if n_elements(remote_dir) eq 0 then remote_dir = dir
     
-    cmd = 'ssh '+remote_login+' "find '+remote_dir+'/ -type f -name '+pattern+'"'
+    cmd = 'ssh ' + remote_login $
+          + ' "find ' + remote_dir + '/ -type f ' $
+          + name_expression+'"'
     
     if keyword_set(verbose) then print, cmd
     spawn, cmd, files
 
-    if remote_dir ne dir then files = dir+'/'+file_basename(files)
+    if remote_dir ne dir then files = dir + '/' + file_basename(files)
     
   endif else begin
 
-    spawn, 'find ' + dir + '/ -type f -name ' + pattern, files
+    spawn, 'find ' + dir + '/ -type f ' + name_expression, files
 
   endelse
 
