@@ -110,17 +110,18 @@ pro crisp::get_calib, states $
     return
   endif
   
-  if arg_present(darkname)  or arg_present(darkdata)  then $
+  if arg_present(darkname)  or arg_present(darkdata) then $
      darkname = self -> filenames('dark'   , states, no_fits = no_fits)
-  if arg_present(flatname)  or arg_present(flatdata)  then $
-     flatname = self -> filenames('flat'   , states, no_fits = no_fits)
-  if arg_present(gainname)  or arg_present(gaindata)  then $
+  if arg_present(flatname)  or arg_present(flatdata) or $
+     arg_present(gainname)  or arg_present(gaindata) then $
+        flatname = self -> filenames('flat'   , states, no_fits = no_fits)
+  if arg_present(gainname)  or arg_present(gaindata) then $
      gainname = self -> filenames('gain'   , states, no_fits = no_fits)
-  if arg_present(pinhname)  or arg_present(pinhdata)  then $
+  if arg_present(pinhname)  or arg_present(pinhdata) then $
      pinhname = self -> filenames('pinh'   , states, no_fits = no_fits)
-  if arg_present(polsname)  or arg_present(polsdata)  then $
+  if arg_present(polsname)  or arg_present(polsdata) then $
      polsname = self -> filenames('pols'   , states, no_fits = no_fits)
-  if arg_present(polcname)  or arg_present(polcdata)  then $
+  if arg_present(polcname)  or arg_present(polcdata) then $
      polcname = self -> filenames('polc'   , states, no_fits = no_fits)
   if arg_present(sflatname) or arg_present(sflatdata) then $
      sflatname = self -> filenames('sumflat', states, no_fits = no_fits)
@@ -197,7 +198,7 @@ pro crisp::get_calib, states $
           self -> sumflat, /check, /sum_in_rdx $
                            , cams = states[istate].camera $
                            , ustat = states[istate].fullstate
-          self -> makegains     ;, cam = states[istate].camera ; May want to implement ustat keyword for makegains
+          self -> makegains, smooth=3.0, files = flatname[istate]
         endif 
         gaindata[0, 0, istate] = red_readdata(gainname[istate] $
                                               , status = gainstatus, /silent)
