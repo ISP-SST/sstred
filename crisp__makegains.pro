@@ -15,6 +15,10 @@
 ; 
 ; :Keywords:
 ; 
+;    files : in, optional, type=strarr
+;
+;       Flat files to make gains out of.
+;
 ;    no_descatter  : 
 ;   
 ;   
@@ -68,10 +72,13 @@
 ;   2018-02-02 : MGL. Rename red::makegains --> crisp::makegains.
 ;                Adapt to new codebase.
 ; 
+;   2018-08-21 : MGL. New keyword files.
+; 
 ;-
 pro crisp::makegains, bad=bad $
                       , cam = cam $
                       ;;, cavityfree=cavityfree
+                      , files = files $
                       , max = max $
                       , min = min $
                       , nthreads = nthreads $
@@ -92,15 +99,15 @@ pro crisp::makegains, bad=bad $
   red_make_prpara, prpara, smoothsize
   red_make_prpara, prpara, no_descatter 
   
-  ;;if(keyword_set(cavityfree)) then tosearch = self.out_dir+'/flats/*cavityfree.flat.fits' $
-  tosearch = self.out_dir+'/flats/*.flat.fits'
-  
-  files = file_search(tosearch, count = Nfiles)
-
-  if Nfiles eq 0 then begin
-    print, inam+' : No flats found in: ' + tosearch
+  if n_elements(files) eq 0 then begin
+    ;;if(keyword_set(cavityfree)) then tosearch = self.out_dir+'/flats/*cavityfree.flat.fits' $
+    tosearch = self.out_dir+'/flats/*.flat.fits'
+    files = file_search(tosearch, count = Nfiles)
+    if Nfiles eq 0 then begin
+      print, inam+' : No flats found in: ' + tosearch
+    endif
   endif
-
+  
   for ifile = 0L, Nfiles -1 do begin
     
     tmp = strsplit(file_basename(files[ifile]), '._', /extract)
