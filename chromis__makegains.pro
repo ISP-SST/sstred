@@ -14,7 +14,11 @@
 ; 
 ; 
 ; :Keywords:
-; 
+;
+;    files : in, optional, type=strarr
+;
+;       Flat files to make gains out of.
+;
 ;    nthreads  : 
 ;   
 ;   
@@ -63,10 +67,13 @@
 ;   2018-04-19 : MGL. Rewrote using filenames() method, separate
 ;                ordinary flats and cavity-free flats.
 ; 
+;   2018-08-21 : MGL. New keyword files.
+; 
 ; 
 ;-
 pro chromis::makegains, bad=bad $
                         , cam = cam $
+                        , files = files $
                         , max = max $
                         , min = min $
                         , nthreads = nthreads $
@@ -82,24 +89,24 @@ pro chromis::makegains, bad=bad $
   red_make_prpara, prpara, min 
   red_make_prpara, prpara, pref 
   red_make_prpara, prpara, smoothsize
-  
-  tosearch = self.out_dir+'/flats/*flat.fits'
-  
-  files = file_search(tosearch, count = Nfiles)
 
-  
-  if Nfiles eq 0 then begin
-    print, inam+' : No flats found : ' + tosearch
+  if n_elements(files) eq 0 then begin
+    tosearch = self.out_dir+'/flats/*flat.fits'
+    files = file_search(tosearch, count = Nfiles)
+    if Nfiles eq 0 then begin
+      print, inam+' : No flats found : ' + tosearch
+    endif
   endif
 
   ;; We want to run separately for regular and cavity-free flats 
-  cindx = where(strmatch(files, '*cavity*'), complement = findx)
-  
+  cindx = where(strmatch(files, '*cavity*'), complement = findx, Ncav, ncomplement = Nnocav)
   for iscav = 0, 1 do begin
 
     if iscav then begin
+      if Ncav eq 0 then continue
       flatname = files[cindx]
     endif else begin
+      if Nnocav eq 0 then continue
       flatname = files[findx]
     endelse
     Nfiles = n_elements(flatname)
@@ -109,10 +116,8 @@ pro chromis::makegains, bad=bad $
 
     if iscav then begin
       gainname = self -> filenames('cavityfree_gain', states)
-      ;; self -> get_calib, states, gainname = gainname
     endif else begin
       gainname = self -> filenames('gain', states)
-      ;; self -> get_calib, states, gainname = gainname
     endelse
     
     for ifile = 0L, Nfiles -1 do begin
