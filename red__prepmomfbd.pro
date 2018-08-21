@@ -72,7 +72,7 @@
 ; 
 ;    dirs : in, optional, type=strarr
 ;   
-;       The data directories to process.
+;       The data directories to process. Or just the timestamps.
 ;   
 ;    escan :  in, optional, type=integer
 ;   
@@ -248,8 +248,14 @@ pro red::prepmomfbd, wb_states = wb_states $
 
   if n_elements(margin) eq 0 then margin = 5
 
-  if n_elements(dirs) gt 0 then begin
-    dirs = [dirs] 
+  Ndirs = n_elements(dirs)    
+  if Ndirs gt 0 then begin
+    if Ndirs eq 1 then dirs = [dirs] 
+    for idir = 0, Ndirs-1 do begin
+      if ~file_test(dirs[idir]) then begin
+        if file_test(self.out_dir+'data/'+dirs[idir]) then dirs[idir] = self.out_dir+'data/'+dirs[idir]
+      endif
+    endfor                      ; idir
   endif else begin
     if ~ptr_valid(self.data_dirs) then begin
       print, inam+' : ERROR : undefined data_dir'
@@ -257,9 +263,9 @@ pro red::prepmomfbd, wb_states = wb_states $
     endif
     dirs = file_search(self.out_dir+'data/*')
 ;    dirs = *self.data_dirs
+    Ndirs = n_elements(dirs)
   endelse
 
-  Ndirs = n_elements(dirs)
   if Ndirs eq 0 then begin
     print, inam+' : ERROR : no directories defined'
     return
