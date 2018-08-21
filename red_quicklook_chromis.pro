@@ -287,7 +287,7 @@ pro red_quicklook_chromis, root, dark=dark, flat=flat, cam=cam, $
      tv, cub[*,*,ii]
      
      ;loadct,3,/silent
-     xyouts, [0.01], [0.97], 'scan='+string(ii,format='(I5)'), /normal, charsize=3., color=255, font=1
+     xyouts, [0.01], [0.95], 'scan :'+string(ii,format='(I5)'), /normal, charsize=3., color=255, font=1
 
      snap = tvrd()
      tvlct,rr,gg,bb,/get
