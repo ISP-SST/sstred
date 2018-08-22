@@ -27,9 +27,11 @@
 ;   
 ;      Make quicklook for this camera only. 
 ;   
-;    clip  : 
+;    clip : in, optional, type="integer or intarr(4)", default="[50,50,10,10]"
 ;   
-;   
+;      A margin (in pixels) to apply to the FOV edges . The order is
+;      [left, right, top, bottom]. If not array, clip this many pixels
+;      from all edges.
 ;   
 ;    datasets : in, optional, type=strarr
 ;
@@ -88,6 +90,8 @@
 ; 
 ;   2018-07-26 : MGL. Various improvements.
 ; 
+; 
+;   2018-08-22 : MGL. Redefine the clip keyword.
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -323,23 +327,31 @@ pro red::quicklook, align = align $
       print, inam + ' : saving to folder -> '+outdir 
 
       dim = size(dd, /dim)
-      if keyword_set(clip) then begin
-        x0 = clip[0]
-        x1 = clip[1]
-        y0 = clip[2]
-        y1 = clip[3]
-      endif else begin
-        ;; Dimensions
-        x0 = 0
-        x1 = dim[0] - 1
-        y0 = 0
-        y1 = dim[1] - 1
-        ;; Margin
-        x0 += 50
-        x1 -= 50
-        y0 += 10
-        y1 -= 10
-      endelse
+      x0 = 0
+      x1 = dim[0] - 1
+      y0 = 0
+      y1 = dim[1] - 1
+      case n_elements(clip) of
+        0 : begin
+          x0 += 50
+          x1 -= 50
+          y0 += 10
+          y1 -= 10
+        end
+        1 : begin
+          x0 += clip
+          x1 -= clip
+          y0 += clip
+          y1 -= clip
+        end
+        4 : begin
+          x0 += clip[0]
+          x1 -= clip[1]
+          y0 += clip[2]
+          y1 -= clip[3]
+        end
+        else : stop
+      endcase
 
       ;; RGB cube
       cube = fltarr(dim[0], dim[1], Nscans)
@@ -569,11 +581,14 @@ pro red::quicklook, align = align $
 
       ;; Make a jpeg image of the best frame. 
       mx = max(best_contrasts, ml)
-                   jname = outdir+red_strreplace(namout, '.mp4', '_scan='+strtrim(uscan[ml], 2)+'.jpg')
-                   print, jname
+      jname = outdir+red_strreplace(namout, '.mp4', '_scan='+strtrim(uscan[ml], 2)+'.jpg')
 
-                   write_jpeg, jname, rgbcube[*, *, *, ml], q = 100, /true
+      write_jpeg, jname, rgbcube[*, *, *, ml], q = 100, /true
 
+      print, outdir+namout
+      print, jname
+      print, strjoin(strtrim(size(cube, /dim), 2), ' x ')
+      
     endfor                      ; istate
   endfor                        ; iset
   
