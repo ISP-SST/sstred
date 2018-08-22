@@ -74,6 +74,8 @@
 ; 
 ;   2018-08-21 : MGL. New keyword files.
 ; 
+;   2018-08-22 : MGL. Write output as fits.
+; 
 ;-
 pro crisp::makegains, bad=bad $
                       , cam = cam $
@@ -105,9 +107,14 @@ pro crisp::makegains, bad=bad $
     files = file_search(tosearch, count = Nfiles)
     if Nfiles eq 0 then begin
       print, inam+' : No flats found in: ' + tosearch
+      return
     endif
   endif
-  
+  Nfiles = n_elements(files)
+
+  self -> extractstates, files, states
+  gainname = self -> filenames('gain', states)
+
   for ifile = 0L, Nfiles -1 do begin
     
     tmp = strsplit(file_basename(files[ifile]), '._', /extract)
@@ -137,21 +144,34 @@ pro crisp::makegains, bad=bad $
     endif
 
     gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
-    
-    namout = file_basename(files[ifile], '.flat.fits')+'.gain'
-    outdir = self.out_dir+'/gaintables/'
 
     ;; Edit the header
-    red_fitsaddkeyword, hdr, 'FILENAME', outdir+namout
+    red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
     self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
                                 , prproc = inam, prpara = prpara
     
     ;; Output gaintable
-    file_mkdir, outdir
-    print, inam+' : saving '+outdir+namout
-    ;;fzwrite, float(gain), outdir+namout, h
+    file_mkdir, file_dirname(gainname[ifile])
+    print, inam+' : Saving '+gainname[ifile]
+    ;;fzwrite, float(gain), outdir+namout, ' '
     overwrite = 1
-    red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
+    red_writedata, gainname[ifile], float(gain), header = hdr,$
+                   filetype='fits', overwrite = overwrite
+    
+;    namout = file_basename(files[ifile], '.flat.fits')+'.gain'
+;    outdir = self.out_dir+'/gaintables/'
+;
+;    ;; Edit the header
+;    red_fitsaddkeyword, hdr, 'FILENAME', outdir+namout
+;    self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
+;                                , prproc = inam, prpara = prpara
+;    
+;    ;; Output gaintable
+;    file_mkdir, outdir
+;    print, inam+' : saving '+outdir+namout
+;    ;;fzwrite, float(gain), outdir+namout, h
+;    overwrite = 1
+;    red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
 
   endfor                        ; ifile
                                 
