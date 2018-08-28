@@ -98,12 +98,14 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   red_fitsaddkeyword, hsp, 'FILENAME', file_basename(flipfile)
   ;; No variable-keywords
   red_fitsdelkeyword, hsp, 'VAR_KEYS'
+  
   ;; Change keywords that are affected by the axis reordering.
   ;; Keywords for one axis should be renamed so they are for the
   ;; reordered axis. Because axis numbers start at 1, while IDL
   ;; indices start at 0, the operation will be written as rename from
   ;; i+1 --> reorder[i]+1, where i is the IDL index.
-  keywords = strmid(him, 0, 8)
+  keywords = strmid(hsp, 0, 8)  ; keywords ordered before flipping
+
   for iax = 0, Naxis-1 do begin
     ;; Reorder NAXISi
     red_fitsaddkeyword, hsp, 'NAXIS'+strtrim(iax+1, 2), dimensions[reorder[iax]]
@@ -113,7 +115,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
     ckeywords = keywords[where(strmatch(keywords.trim(),'C*'+strtrim(reorder[iax]+1, 2)), Nc)]
     pkeywords = keywords[where(strmatch(keywords.trim(),'P[SV]*'+strtrim(reorder[iax]+1, 2)+'_*'), Np)]
     for ikey = 0, Nc-1 do begin
-      iline = where(ckeywords[ikey] eq keywords)
+      iline = where(ckeywords[ikey] eq keywords) ; pos in im header
       theline = hsp[iline]
 ;     cvalue = red_fitsgetkeyword(him, ckeywords[ikey], comment = ccomment)
 ;      ckeyword = red_strreplace(ckeywords[ikey], strtrim(iax+1, 2), strtrim(reorder[iax]+1, 2))
