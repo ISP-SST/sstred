@@ -75,7 +75,6 @@ pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
   endif else begin
     flipfile = red_strreplace(filename, '.fits', '_sp.fits')
   endelse
-  flipfile = red_strreplace(flipfile, '_sp.fits', '_sp_test.fits') ; While testing! <-----------
 
   if file_test(flipfile) then begin
     if keyword_set(overwrite) then begin
