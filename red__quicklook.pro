@@ -46,6 +46,10 @@
 ;
 ;      When aligning, filter out isolated shifts larger than this.
 ;
+;    no_calib : in, optional, type=boolean
+;
+;      Do not use dark and flat calibration.
+;
 ;    no_normalize : in, optional, type=boolean
 ;
 ;      Do not normalize intensty levels to median.
@@ -90,8 +94,9 @@
 ; 
 ;   2018-07-26 : MGL. Various improvements.
 ; 
-; 
 ;   2018-08-22 : MGL. Redefine the clip keyword.
+; 
+;   2018-09-03 : MGL. New keywords no_calib. 
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -104,11 +109,11 @@ pro red::quicklook, align = align $
                     , fps = fps $
                     , gain =  gain $
                     , maxshift = maxshift $
+                    , no_calib = no_calib $
                     , no_histo_opt = no_histo_opt $
+                    , no_plot_r0 = no_plot_r0 $
                     , nthreads = nthreads $
                     , overwrite = overwrite $
-;                    , pattern = pattern $
-                    , no_plot_r0 = no_plot_r0 $
                     , remote_dir = remote_dir $
                     , remote_login = remote_login $
                     , ssh_find = ssh_find $
@@ -119,7 +124,10 @@ pro red::quicklook, align = align $
                     , y_flip = y_flip 
   
   inam = red_subprogram(/low, calling = inam1)
-
+  
+  ;; The r0 log file is not available until the day after today 
+  if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
+  
   if ~keyword_set(cam) then begin
     cindx = where(~strmatch(*self.cameras,'*-[WD]'), Ncam)
     if Ncam eq 0 then begin
@@ -182,7 +190,7 @@ pro red::quicklook, align = align $
     ;; to 4 digits, while the states returned by extractstates (used
     ;; below) are not zero padded. We want this to work whether the
     ;; use_states are given zero padded or not. The pattern used for
-    ;; file seaching needs the padding but any padding has to be gone
+    ;; file searching needs the padding but any padding has to be gone
     ;; when we get to the state comparison later. To make it even more
     ;; complicated, we don't know if this tuning is even part
     ;; of the use_states! 
@@ -274,7 +282,6 @@ pro red::quicklook, align = align $
     endif else begin    
       if n_elements(ustat) gt 1 then begin
         ;; Select states.
-;        tmp = red_select_subset(ustat $
         tmp = red_select_subset(states[indx].prefilter+'_'+states[indx].tuning $
                                 , qstring = inam + ' : Select states' $
                                 , count = Nstates, indx = ichoice)
@@ -295,13 +302,18 @@ pro red::quicklook, align = align $
 
       sel = sel[sort(states[sel].scannumber)] ; Make sure scans are in order!
 
-      ;; Load dark and flat
-      self -> get_calib, states[sel[0]] $
-                         , darkdata = dd, darkstatus = darkstatus $
-                         , gaindata = gg, gainstatus = gainstatus
-      if darkstatus ne 0 then dd = 0.
-      if gainstatus ne 0 then gg = 1.
-    
+      if keyword_set(no_calib) then begin
+        dd = 0.
+        gg = 1.
+      endif else begin
+        ;; Load dark and flat
+        self -> get_calib, states[sel[0]] $
+                           , darkdata = dd, darkstatus = darkstatus $
+                           , gaindata = gg, gainstatus = gainstatus
+        if darkstatus ne 0 then dd = 0.
+        if gainstatus ne 0 then gg = 1.
+      endelse
+      
       print, inam + ' : found scans -> '+red_stri(Nscans)
 
       pref = states[sel[0]].prefilter
@@ -325,8 +337,8 @@ pro red::quicklook, align = align $
       if ~keyword_set(overwrite) && file_test(outdir+namout) then continue
 
       print, inam + ' : saving to folder -> '+outdir 
-
-      dim = size(dd, /dim)
+      
+      dim = (fxpar(headfits(files[0]),'NAXIS*'))[0:1]
       x0 = 0
       x1 = dim[0] - 1
       y0 = 0
@@ -357,7 +369,8 @@ pro red::quicklook, align = align $
       cube = fltarr(dim[0], dim[1], Nscans)
       med = fltarr(Nscans)
       best_contrasts = fltarr(Nscans)
-      if gainstatus eq 0 then mask = red_cleanmask(gg ne 0)
+      if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
+         mask = red_cleanmask(gg ne 0)
       
       for iscan = 0L, Nscans -1 do begin
 
@@ -433,7 +446,8 @@ pro red::quicklook, align = align $
         endelse
 
         ;; This should be done before calculating the contrast!
-        if gainstatus eq 0 then im = red_fillpix(im, mask=mask, nthreads=nthreads)
+        if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
+           im = red_fillpix(im, mask=mask, nthreads=nthreads)
         
         idx1 = where(im eq 0.0, Nwhere, complement = idx, Ncomplement = Nnowhere)
         if Nwhere gt 0 && Nnowhere gt 0 then im[idx1] = median(im[idx])
