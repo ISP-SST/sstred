@@ -83,7 +83,7 @@
 ;    2016-12-09 : JdlCR. Fixed double bug in the computation of
 ;                 "conversion_si". 
 ;
-;   2017-04-18 : MGL. Remove the "conversion" keywords.
+;    2017-04-18 : MGL. Remove the "conversion" keywords.
 ; 
 ;
 ;-
@@ -121,7 +121,7 @@ pro red_satlas, xstart, xend, outx, outy $
     cm_to_m = 1d-2     
     m_to_cm = 1d2
 
-    ;; To Watt/(s m2 Hz ster)
+    ;; To Watt/(m2 Hz ster)
     conversion_si = (outx*aa_to_m)^2 / (clight * cm_to_m^2 * aa_to_m )
 
     outy *= conversion_si
