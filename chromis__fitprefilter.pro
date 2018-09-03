@@ -87,6 +87,9 @@
 ;
 ;   2017-12-04 : MGL. New keyword noabsunits.
 ; 
+;   2018-08-30 : MGL. Change units from 'W s^-1 m^-2 Hz^-1 sr^-1' to
+;                'W m^-2 Hz^-1 sr^-1' 
+; 
 ; 
 ;-
 pro chromis::fitprefilter, dir = dir $
@@ -109,8 +112,8 @@ pro chromis::fitprefilter, dir = dir $
     units = 'dn'                ; "Digital number"
     unitscalib = 0
   endif else begin
-    ;; units = 'Watt/(s m2 Hz ster)' ; SI units
-    units = 'W s^-1 m^-2 Hz^-1 sr^-1' ; SI units
+    ;; units = 'Watt/(m2 Hz ster)' ; SI units
+    units = 'W m^-2 Hz^-1 sr^-1' ; SI units
     unitscalib = 1
   endelse
   
