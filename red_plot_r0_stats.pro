@@ -38,7 +38,7 @@
 ; 
 ; 
 ;-
-pro red_plot_r0_stats,  states, pname = pname
+pro red_plot_r0_stats, states, pname = pname
 
   r0max = 0.3
 
