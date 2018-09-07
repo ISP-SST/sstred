@@ -33,12 +33,15 @@
 ;   
 ;      The name of the flipped file is returned in the keyword.
 ; 
+;    openclose : in, optional, type=boolean
+;
+;      Open and close the files repeatedly to avoid having two open
+;      units at the same time. 
+;
 ;    overwrite : in, optional, type=boolean
 ;
 ;      Don't care if cube is already on disk, overwrite it with a new
 ;      version.
-;   
-;   
 ; 
 ; 
 ; :History:
@@ -46,11 +49,15 @@
 ;   2018-08-28 : MGL. First version based on code from
 ;                red::fitscube_finish. 
 ; 
-; 
+;   2018-08-30 : MGL. New keyword openclose, prevents input and output
+;                files from being open at the same time.
 ; 
 ; 
 ;-
-pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
+pro red::fitscube_flip, filename $
+                        , flipfile = flipfile $
+                        , openclose = openclose $
+                        , overwrite = overwrite
 
   inam = red_subprogram(/low, calling = inam1)
   
@@ -110,17 +117,12 @@ pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
     ;; Reorder NAXISi
     red_fitsaddkeyword, hsp, 'NAXIS'+strtrim(iax+1, 2), dimensions[reorder[iax]]
     ;; Reorder WCS keywords
-;    ckeywords = keywords[where(strmatch(keywords.trim(),'C*'+strtrim(iax+1, 2)), Nc)]
-;    pkeywords = keywords[where(strmatch(keywords.trim(),'P[SV]*'+strtrim(iax+1, 2)+'_*'), Np)]
     ckeywords = keywords[where(strmatch(keywords.trim(),'C*'+strtrim(reorder[iax]+1, 2)), Nc)]
     pkeywords = keywords[where(strmatch(keywords.trim(),'P[SV]*'+strtrim(reorder[iax]+1, 2)+'_*'), Np)]
     for ikey = 0, Nc-1 do begin
       iline = where(ckeywords[ikey] eq keywords) ; pos in im header
       theline = hsp[iline]
-;     cvalue = red_fitsgetkeyword(him, ckeywords[ikey], comment = ccomment)
-;      ckeyword = red_strreplace(ckeywords[ikey], strtrim(iax+1, 2), strtrim(reorder[iax]+1, 2))
       ckeyword = red_strreplace(ckeywords[ikey], strtrim(reorder[iax]+1, 2), strtrim(iax+1, 2))
-;      red_fitsaddkeyword, hsp, ckeyword, cvalue, ccomment
       strput, theline, ckeyword
       hsp[iline] = theline
       print, 'Changed keyword '+ckeywords[ikey]+' to '+ckeyword
@@ -128,9 +130,7 @@ pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
     for ikey = 0, Np-1 do begin
       iline = where(pkeywords[ikey] eq keywords)
       theline = hsp[iline]
-;      pvalue = red_fitsgetkeyword(him, pkeywords[ikey], comment = pcomment)
       pkeyword = red_strreplace(pkeywords[ikey], strtrim(reorder[iax]+1, 2)+'_', strtrim(iax+1, 2)+'_')
-;      red_fitsaddkeyword, hsp, pkeyword, pvalue, pcomment
       strput, theline, pkeyword
       hsp[iline] = theline
       print, 'Changed keyword '+pkeywords[ikey]+' to '+pkeyword
@@ -139,17 +139,15 @@ pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
 
   ;; Transfer data to flipped file
   
-  ;; Open files (Might be OK to skip /swap_if_little_endian on both?)
-  openr, ilun, filename, /get_lun, /swap_if_little_endian ; Input file
+  ;; Create flipped file and write header.
   openw, flun, flipfile, /get_lun, /swap_if_little_endian ; Output file
 
   ;; Write the header of the flipped cube
   hsp = hsp[0:where(strmid(hsp,0,3) eq 'END')] ; Strip trailing empty lines
   Nlines = n_elements(hsp)     
-  bhdr=reform(byte(hsp),80L*Nlines) ; Byte version of header
-;  bhdr = replicate(32B, 80L*Nlines)
-;  for n = 0L, Nlines-1 do bhdr[80*n] = byte(hsp[n])
+  bhdr = reform(byte(hsp),80L*Nlines) ; Byte version of header
   writeu, flun, bhdr
+  free_lun, flun
   
   ;; Make assoc variables
   Nlines = n_elements(him)     
@@ -163,16 +161,8 @@ pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
   print, 'offset_out=', offset_out
   
   case bitpix of
-    16 : begin
-      cube_in  = assoc(ilun, intarr(Nx, Ny, /nozero), offset_in)
-      cube_out = assoc(flun, intarr(Ntuning, /nozero), offset_out)
-      subcube  = intarr(Nx, Ny, Ntuning)
-    end
-    -32 : begin
-      cube_in  = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)
-      cube_out = assoc(flun, fltarr(Ntuning, /nozero), offset_out)
-      subcube  = fltarr(Nx, Ny, Ntuning)
-    end
+    16  : subcube = intarr(Nx, Ny, Ntuning)
+    -32 : subcube = fltarr(Nx, Ny, Ntuning)
     else : stop
   endcase
   
@@ -181,46 +171,69 @@ pro red::fitscube_flip, filename, flipfile = flipfile, overwrite = overwrite
   for istokes = 0L, Nstokes-1 do begin
     for iscan = 0L, Nscans-1 do begin
 
-      ;; Read a subcube frame by frame
+      ;; Input
+      
+      if keyword_set(openclose) || (iprogress eq 0) then begin
+        openr, ilun, filename, /get_lun, /swap_if_little_endian 
+        case bitpix of
+          16  : cube_in  = assoc(ilun, intarr(Nx, Ny, /nozero), offset_in) 
+          -32 : cube_in  = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)
+          else : stop
+        endcase
+      endif
+      
       red_progressbar, iprogress, Nstokes*Nscans, /predict $
-                       , 'Flip the cube, istokes,iscan='+strtrim(istokes, 2)+','+strtrim(iscan, 2)+' - read'
+                       , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) + $
+                       ',' + strtrim(iscan, 2) + ' - read'
       for ituning = 0, Ntuning-1 do begin
+        ;; Read a subcube frame by frame
         iframe = ituning + Ntuning*(istokes + Nstokes*iscan)
         subcube[0, 0, ituning] = cube_in[iframe]
       endfor                    ; ituning
 
-      ;; Write the subcube spectrum by spectrum
+      if keyword_set(openclose) then free_lun, ilun
+
+      ;; Output
+      
+      if keyword_set(openclose) || (iprogress eq 0) then begin
+        openu, flun, flipfile, /get_lun, /swap_if_little_endian 
+        case bitpix of
+          16  : cube_out = assoc(flun, intarr(Ntuning, /nozero), offset_out)
+          -32 : cube_out = assoc(flun, fltarr(Ntuning, /nozero), offset_out)
+          else : stop
+        endcase
+      endif
+
       red_progressbar, iprogress, Nstokes*Nscans, /predict $
-                       , 'Flip the cube, istokes,iscan='+strtrim(istokes, 2)+','+strtrim(iscan, 2)+' - write'
+                       , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) $
+                       + ',' + strtrim(iscan, 2) + ' - write'
       for ix = 0L, Nx-1 do begin
         for iy = 0L, Ny-1 do begin
+          ;; Write the subcube spectrum by spectrum
           ispectrum = iscan + Nscans*(istokes + Nstokes*(ix + Nx*iy))
           cube_out[ispectrum] = reform(subcube[ix, iy, *])
         endfor                  ; iy
       endfor                    ; ix
 
+      if keyword_set(openclose) then free_lun, flun
+      
       iprogress++
       
     endfor                      ; iscan
   endfor                        ; istokes
 
   ;; Close the files
-  free_lun, ilun, flun              
-  
-  if n_elements(wcs) gt 0 then begin
-    ;; Copy WCS extension to flipped file
-    red_fits_copybinext, filename, flipfile, 'WCS-TAB'
-  endif
-  stop
-  ;; Copy some variable-keywords from the ordinary nb cube to the
-  ;; flipped version.
-  self -> fitscube_addvarkeyword, flipfile, 'SCANNUM',  old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'ATMOS_R0', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'XPOSURE',  old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'TEXPOSUR', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'NSUMEXP',  old_filename = filename, /flipped
+  if ~keyword_set(openclose) then free_lun, ilun, flun      
 
+  ;; Copy WCS extension
+  red_fits_copybinext, filename, flipfile, 'WCS-TAB'
+
+  ;; Copy the variable-keywords from the regular nb cube to the
+  ;; flipped version.
+  var_keys = red_fits_var_keys(him)
+  for ikey = 0, n_elements(var_keys)-1 do begin
+    self -> fitscube_addvarkeyword, flipfile, var_keys[ikey] $
+                                    ,  old_filename = filename, /flipped
+  endfor                        ; ikey ;
+  
 end
