@@ -182,9 +182,9 @@ pro red::fitscube_flip, filename $
         endcase
       endif
       
-      red_progressbar, iprogress, Nstokes*Nscans, /predict $
-                       , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) + $
-                       ',' + strtrim(iscan, 2) + ' - read'
+;      red_progressbar, iprogress, Nstokes*Nscans, /predict $
+;      , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) + $
+;      ',' + strtrim(iscan, 2) + ' - read'
       for ituning = 0, Ntuning-1 do begin
         ;; Read a subcube frame by frame
         iframe = ituning + Ntuning*(istokes + Nstokes*iscan)
@@ -204,20 +204,26 @@ pro red::fitscube_flip, filename $
         endcase
       endif
 
-      red_progressbar, iprogress, Nstokes*Nscans, /predict $
-                       , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) $
-                       + ',' + strtrim(iscan, 2) + ' - write'
+;      red_progressbar, iprogress, Nstokes*Nscans, /predict $
+;      , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) $
+;      + ',' + strtrim(iscan, 2) + ' - write'
       for ix = 0L, Nx-1 do begin
+
+        red_progressbar, iprogress, Nstokes*Nscans*Nx, /predict $
+                         , 'Write the flipped cube, istokes,iscan,ix=' + strtrim(istokes, 2) $
+                         + ',' + strtrim(iscan, 2) + ',' + strtrim(ix, 2) 
+
         for iy = 0L, Ny-1 do begin
           ;; Write the subcube spectrum by spectrum
           ispectrum = iscan + Nscans*(istokes + Nstokes*(ix + Nx*iy))
           cube_out[ispectrum] = reform(subcube[ix, iy, *])
         endfor                  ; iy
+
+        iprogress++
+        
       endfor                    ; ix
 
       if keyword_set(openclose) then free_lun, flun
-      
-      iprogress++
       
     endfor                      ; iscan
   endfor                        ; istokes
