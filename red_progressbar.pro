@@ -69,7 +69,6 @@
 ;     2018-01-22 : MGL. Allow not calling red_progressbar for every
 ;                  iteration. 
 ; 
-; 
 ;-
 pro red_progressbar, i, N, message $
                      , barlength = barlength $
@@ -101,11 +100,17 @@ pro red_progressbar, i, N, message $
   if i eq N-1 then percentdone = 100. else percentdone = norm * i
   prediction = '' 
 
+  times[i] = toc(clock)
+  iterations[i] = i
+
+  outlength = (TERMINAL_SIZE( ))[0] ; Base output length on terminal width
+  outline = string(replicate(32B, outlength))
+
+  if n_elements(barlength) eq 0 then barlength = 20
+  prediction = ''
+
   if keyword_set(predict) and i gt 1 then begin
 
-    times[i] = toc(clock)
-    iterations[i] = i
-    
     indx = where(times ne 0.0, Ntimed)
     if Ntimed gt 1 then begin
       
@@ -117,34 +122,31 @@ pro red_progressbar, i, N, message $
       prediction = ' ('+red_timestring(round(time_remaining), Nsecdec = 0, /interval)+' remaining)'
     endif
     
-    time = 'in ' + red_timestring(round(toc(clock)), Nsecdec = 0, /interval) + prediction
+  endif
 
-    outlength = (TERMINAL_SIZE( ))[0] ; Base output length on terminal width
-    outline = string(replicate(32B, outlength))
+  time = 'in ' + red_timestring(round(toc(clock)), Nsecdec = 0, /interval) + prediction
+
+  if keyword_set(nobar) then begin
     
-    if n_elements(barlength) eq 0 then barlength = 20
-    if keyword_set(nobar) then begin
-      
-      strput, outline, string( message + ' -> ' $
-                               , percentdone, '% ' + time + '   ', FORMAT = '(A,F5.1,A,$)')
-      
-    endif else begin
-      
-      time += ': '
-      
-      elength = floor(percentdone/100*barlength)
-      mlength = barlength-elength
-      bar = ''
-      if elength gt 0 then bar += string(replicate(61B, elength)) ; Replicated '='
-      if mlength gt 0 then bar += string(replicate(45B, mlength)) ; Replicated '-'
-      strput, outline, string('[' + bar + '] ' $
-                              , percentdone, '% ' + time + message + '   ', FORMAT = '(A,F5.1,A,$)')
-      
-    endelse
+    strput, outline, string( message + ' -> ' $
+                             , percentdone, '% ' + time + '   ', FORMAT = '(A,F5.1,A,$)')
     
-    print, bb, outline, FORMAT = '(A,A,$)'
+  endif else begin
     
-  endif  
+    time += ': '
+    
+    elength = floor(percentdone/100*barlength)
+    mlength = barlength-elength
+    bar = ''
+    if elength gt 0 then bar += string(replicate(61B, elength)) ; Replicated '='
+    if mlength gt 0 then bar += string(replicate(45B, mlength)) ; Replicated '-'
+    strput, outline, string('[' + bar + '] ' $
+                            , percentdone, '% ' + time + message + '   ', FORMAT = '(A,F5.1,A,$)')
+    
+  endelse
+
+  
+  print, bb, outline, FORMAT = '(A,A,$)'
   
   if i eq N-1 then begin
     undefine, clock
