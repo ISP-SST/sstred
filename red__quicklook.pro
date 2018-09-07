@@ -338,7 +338,7 @@ pro red::quicklook, align = align $
 
       print, inam + ' : saving to folder -> '+outdir 
       
-      dim = (fxpar(headfits(files[0]),'NAXIS*'))[0:1]
+      dim = (fxpar(red_readhead(files[0]),'NAXIS*'))[0:1]
       x0 = 0
       x1 = dim[0] - 1
       y0 = 0
