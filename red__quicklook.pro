@@ -369,6 +369,8 @@ pro red::quicklook, align = align $
       cube = fltarr(dim[0], dim[1], Nscans)
       med = fltarr(Nscans)
       best_contrasts = fltarr(Nscans)
+      time_avg = strarr(Nscans)
+      
       if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
          mask = red_cleanmask(gg ne 0)
       
@@ -397,6 +399,7 @@ pro red::quicklook, align = align $
             ;; Just a single file
             ims = float(red_readdata(states[sel[iscan]].filename))
             Nframes = 1
+            red_fitspar_getdates, red_readhead(states[sel[iscan]].filename), date_avg = date_avg
           end
           else : begin
             ;; Multiple files, e.g. CHROMIS WB. Or any CRISP camera.
@@ -404,6 +407,7 @@ pro red::quicklook, align = align $
             ;; multiple file names and if would do the right thing.
             ;; Needs to produce a combined header, too!)
             Nframes = 0L
+            red_fitspar_getdates, red_readhead(states[sel2[0]].filename), date_avg = date_avg
             for ifile = 0, n_elements(sel2)-1 do begin
               Nframes += (fxpar(red_readhead(files[sel2[ifile]]),'NAXIS3') >1)
             endfor              ; ifile
@@ -416,6 +420,10 @@ pro red::quicklook, align = align $
           end
         endcase
         if docontinue then continue ; Not allowed in the case statement
+
+        time_avg[iscan] = (strsplit((strsplit(date_avg, 'T', /extract))[1], '.', /extract))[0]
+
+
         
         ;; Do dark and gain (and possibly backscatter) correction.
         for iframe = 0, Nframes-1 do begin
@@ -457,7 +465,7 @@ pro red::quicklook, align = align $
         
         cube[*, *, iscan] = im
         med[iscan] = median(cube[*, *, iscan])
-        
+
       endfor                    ; iscan
 
       ;; Normalize intensities
@@ -539,14 +547,17 @@ pro red::quicklook, align = align $
         tv, cube[*,*,iscan]
 
         ;; Annotation
-        red_fitspar_getdates, red_readhead(states[sel[iscan]].filename), date_avg = date_avg
-        time_avg = (strsplit((strsplit(date_avg, 'T', /extract))[1], '.', /extract))[0]
-        annstring = self.isodate + ' ' + time_avg $
+        annstring = self.isodate + ' ' + time_avg[iscan] $
                     + '   ' + ustat[istate] $
                     + '   scan :' + string(uscan[iscan],format='(I5)') 
         cgtext, [0.01], [0.95], annstring $
                 , /normal, charsize=3., color=textcolor, font=1
 
+;        print, date_avg
+;        print, time_avg[iscan]
+;        print, annstring
+;        stop
+        
         ;; tvrd(/true) reads an RGB image [3,Nx,Ny]
         snap2 = tvrd(/true)
 
