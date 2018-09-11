@@ -50,6 +50,10 @@
 ;
 ;      Do not use dark and flat calibration.
 ;
+;    no_descatter : in, optional, type=boolean
+;
+;      Do not perform descattering for 7777 and 8542 data.
+;
 ;    no_normalize : in, optional, type=boolean
 ;
 ;      Do not normalize intensty levels to median.
@@ -98,6 +102,8 @@
 ; 
 ;   2018-09-03 : MGL. New keywords no_calib. 
 ; 
+;   2018-09-11 : MGL. New keywords no_descatter. 
+; 
 ;-
 pro red::quicklook, align = align $
                     , bitrate = bitrate $
@@ -110,6 +116,7 @@ pro red::quicklook, align = align $
                     , gain =  gain $
                     , maxshift = maxshift $
                     , no_calib = no_calib $
+                    , no_descatter = no_descatter $
                     , no_histo_opt = no_histo_opt $
                     , no_plot_r0 = no_plot_r0 $
                     , nthreads = nthreads $
