@@ -19,9 +19,9 @@
 ;
 ;      Set this to align the cube.
 ;
-;    bitrate : inm optional, type=integer, default=40000 
+;    bit_rate : inm optional, type=integer, default=40000 
 ;
-;      Target bitrate used when making movies. 
+;      Target bit_rate used when making movies. 
 ;
 ;    cam : in, optional, type=string, default="A narrowband camera"
 ;   
@@ -37,10 +37,6 @@
 ;
 ;      Timestamp strings that identify datasets to process. Selection
 ;      menu for data sets buypassed if given.
-;   
-;    fps : in, optional, type=integer, default=8
-;   
-;      Frames per second in the movie. 
 ;   
 ;    maxshift : in, optional, type=integer, default=6
 ;
@@ -83,6 +79,10 @@
 ;   
 ;      Print more screen output.
 ;   
+;    video_fps : in, optional, type=integer, default=8
+;   
+;      Frames per second in the movie. 
+;   
 ;    x_flip  : in, optional, type=boolean 
 ;   
 ;      Flip the images in the X direction.
@@ -102,17 +102,18 @@
 ; 
 ;   2018-09-03 : MGL. New keywords no_calib. 
 ; 
-;   2018-09-11 : MGL. New keywords no_descatter. 
+;   2018-09-11 : MGL. New keywords no_descatter, video_codec, format.
+;                Change keyword fps to video_fps, bitrate to bit_rate.
 ; 
 ;-
 pro red::quicklook, align = align $
-                    , bitrate = bitrate $
+                    , bit_rate = bit_rate $
                     , cam = cam $
                     , clip = clip $
                     , dark = dark $
                     , datasets = datasets $
                     , destretch = destretch $
-                    , fps = fps $
+                    , format = format $
                     , gain =  gain $
                     , maxshift = maxshift $
                     , no_calib = no_calib $
@@ -127,10 +128,14 @@ pro red::quicklook, align = align $
                     , textcolor = textcolor $
                     , use_states = use_states $
                     , verbose = verbose $
+                    , video_codec = video_codec $
+                    , video_fps = video_fps $
                     , x_flip = x_flip $
                     , y_flip = y_flip 
   
   inam = red_subprogram(/low, calling = inam1)
+
+  if n_elements(format) eq 0 then format = 'mp4'
   
   ;; The r0 log file is not available until the day after today 
   if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
@@ -155,8 +160,8 @@ pro red::quicklook, align = align $
   if n_elements(textcolor) eq 0 then textcolor = 'yellow'
   if n_elements(maxshift) eq 0 then maxshift = 6
   if n_elements(nthreads) eq 0 then nthreads = 6
-  if n_elements(bitrate) eq 0 then bitrate = 40000
-  if n_elements(fps) eq 0 then fps = 8
+  if n_elements(bit_rate) eq 0 then bit_rate = 40000
+  if n_elements(video_fps) eq 0 then video_fps = 8
 
   if n_elements(datasets) eq 0 then begin
     ;; Select data sets in a menu.
@@ -339,7 +344,7 @@ pro red::quicklook, align = align $
       namout += '_' + timestamp
       namout += '_' + pref $
                 + '_' + states[sel[0]].tuning
-      namout += '.mp4'
+      namout += '.'+format
 
       if ~keyword_set(overwrite) && file_test(outdir+namout) then continue
 
@@ -607,13 +612,14 @@ pro red::quicklook, align = align $
                        ]
 
       write_video, outdir+namout, rgbcube $
-                   ;; , bit_rate=bitrate $
+                   , bit_rate = bit_rate $
                    , metadata = metadata $
-                   , video_fps = fps 
+                   , video_fps = video_fps $
+                   , video_codec = video_codec 
 
       ;; Make a jpeg image of the best frame. 
       mx = max(best_contrasts, ml)
-      jname = outdir+red_strreplace(namout, '.mp4', '_scan='+strtrim(uscan[ml], 2)+'.jpg')
+      jname = outdir+red_strreplace(namout, '.'+format, '_scan='+strtrim(uscan[ml], 2)+'.jpg')
 
       write_jpeg, jname, rgbcube[*, *, *, ml], q = 100, /true
 
