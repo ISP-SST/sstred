@@ -228,8 +228,12 @@ pro red_extractstates, strings $
   ;; followed by an underscore, a sign (+ or -), and at least one
   ;; digit for the finetuning (in mÅ).
   if arg_present(wav) or arg_present(dwav) or arg_present(fullstate) or $
-     arg_present(states) or arg_present(pstates) then $
-        wav = reform((stregex(strlist,'(_|\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(_|\.|$)', /extr, /subexp))[2,*])
+     arg_present(states) or arg_present(pstates) then begin
+    wav = reform((stregex(strlist,'(_|\.|^)([0-9][0-9][0-9][0-9]_[+-][0-9]+)(_|\.|$)', /extr, /subexp))[2,*])
+    pos = strpos(wav[0],'+')
+    if pos eq -1 then pos = strpos(wav[0],'-')
+    wav = strmid(wav,0,pos+1) + strtrim(long(strmid(wav,pos+1)),2) ; Remove zero-padding on tuning
+  end
 
   ;; The LC state is the string 'LC' followed by a single digit
   if arg_present(lc) or arg_present(fullstate) or arg_present(states) or $
