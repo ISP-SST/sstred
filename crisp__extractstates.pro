@@ -143,10 +143,6 @@ pro crisp::extractstates, strings, states $
                          , wav       = wav        
     endelse
 
-    ;; Rewrite wav without zero-padding in the finetuning part
-    wav = pref+'_'+strmid(wav,5,1)+strtrim(abs(round((dwav-pref)*1000)),2)
-
-    
     states[ncindx].detector         = detector ; "camXIX" 
     states[ncindx].filename         = strings  ; File names in input strings
     states[ncindx].framenumber      = nums     ; Frame numbers
