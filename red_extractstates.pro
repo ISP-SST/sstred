@@ -223,7 +223,7 @@ pro red_extractstates, strings $
       is_pd[iwhere] =  strmatch(camera, '*-D')
     endfor                      ; iwhere
   endif
-    
+  
   ;; The tuning information consists of a four digit wavelength (in Å)
   ;; followed by an underscore, a sign (+ or -), and at least one
   ;; digit for the finetuning (in mÅ).
