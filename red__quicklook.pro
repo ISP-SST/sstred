@@ -21,7 +21,7 @@
 ;
 ;    bit_rate : inm optional, type=integer, default=40000 
 ;
-;      Target bit_rate used when making movies. 
+;      Target bit_rate used when calling write_video.
 ;
 ;    cam : in, optional, type=string, default="A narrowband camera"
 ;   
@@ -37,6 +37,13 @@
 ;
 ;      Timestamp strings that identify datasets to process. Selection
 ;      menu for data sets buypassed if given.
+;   
+;    format : in, optional, string, default='mp4'
+;   
+;      The container format of the movies. If 'mp4' or 'avi',
+;      write_video will make such a file. If 'mov' (Mac-friendly), a
+;      spawned ffmpeg command will convert write_video's mp4 output to
+;      the desired format.
 ;   
 ;    maxshift : in, optional, type=integer, default=6
 ;
@@ -79,9 +86,14 @@
 ;   
 ;      Print more screen output.
 ;   
+;    video_codec : in, optional, type=string
+;   
+;      The codec to use when making the video. Used when calling
+;      write_video.
+;   
 ;    video_fps : in, optional, type=integer, default=8
 ;   
-;      Frames per second in the movie. 
+;      Frames per second in the movie. Used when calling write_video.
 ;   
 ;    x_flip  : in, optional, type=boolean 
 ;   
@@ -136,6 +148,11 @@ pro red::quicklook, align = align $
   inam = red_subprogram(/low, calling = inam1)
 
   if n_elements(format) eq 0 then format = 'mp4'
+  case format of
+    'avi' : extension = format
+    'mp4' : extension = format
+    else  : extension = 'mp4'
+  end
   
   ;; The r0 log file is not available until the day after today 
   if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
@@ -344,7 +361,7 @@ pro red::quicklook, align = align $
       namout += '_' + timestamp
       namout += '_' + pref $
                 + '_' + states[sel[0]].tuning
-      namout += '.'+format
+      namout += '.' + extension
 
       if ~keyword_set(overwrite) && file_test(outdir+namout) then continue
 
@@ -619,13 +636,23 @@ pro red::quicklook, align = align $
 
       ;; Make a jpeg image of the best frame. 
       mx = max(best_contrasts, ml)
-      jname = outdir+red_strreplace(namout, '.'+format, '_scan='+strtrim(uscan[ml], 2)+'.jpg')
+      jname = outdir+red_strreplace(namout, '.'+extension, '_scan='+strtrim(uscan[ml], 2)+'.jpg')
 
       write_jpeg, jname, rgbcube[*, *, *, ml], q = 100, /true
 
       print, outdir+namout
       print, jname
       print, strjoin(strtrim(size(cube, /dim), 2), ' x ')
+
+      if format eq 'mov' then begin
+        ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
+        mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
+        spawn, 'ffmpeg -n -i "' + outdir + namout $
+               + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
+               + mname + '"'
+        spawn, 'rm "' + outdir + namout + '"'
+;        find . -name '*mp4' -exec sh -c 'ffmpeg -n -i "$1" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "${1%.mp4}.mov"' sh {} \ ;
+      endif
       
     endfor                      ; istate
   endfor                        ; iset
