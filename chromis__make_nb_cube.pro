@@ -574,9 +574,18 @@ pro chromis::make_nb_cube, wcfile $
     endif
     
     ;; Read the shifts for the continuum images
-    align_scannumbers = f0(nname)
-    align_shifts = f0(sname)
+    fzread, align_scannumbers, nname
+    fzread, align_shifts, sname, align_header
 
+    ;; Get the wavelengths used for the intra-scan alignment from the
+    ;; file header.
+    if n_elements(align_header) gt 0 then align_wavelengths = double(strsplit(align_header,/extract))
+    if n_elements(align_wavelengths) ne 2 then begin
+      ;; Default to WB and NB continuum as used by the align_continuum
+      ;; method.
+      align_wavelengths = [3.950e-07, 4.000e-07]
+    endif
+    
     ;; Check that we have alignment for all scan numbers
     match2, uscans, align_scannumbers, suba, subb
     missing_indx = where(suba eq -1, Nmissing)
@@ -705,12 +714,10 @@ pro chromis::make_nb_cube, wcfile $
       ;; this scan.
       icont = where(scan_nbstates.prefilter eq '3999')
       xshifts = interpol([0., nb_shifts[0, iscan]] $
-                         , [scan_wbstates[icont].tun_wavelength $
-                            , scan_nbstates[icont].tun_wavelength]*1e7 $
+                         , align_wavelengths*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
       yshifts = interpol([0., nb_shifts[1, iscan]] $
-                         , [scan_wbstates[icont].tun_wavelength $
-                            , scan_nbstates[icont].tun_wavelength]*1e7 $
+                         , align_wavelengths*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
