@@ -41,7 +41,8 @@
 ;
 ;     integer : in, optional, type=boolean
 ;
-;       Store as integers instead of floats.
+;       Store as integers instead of floats. Uses the BZERO and BSCALE
+;       keywords to preserve the intensity scaling.
 ;
 ;     noaligncont : in, optional, type=boolean
 ;
@@ -50,6 +51,11 @@
 ;     nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
+;
+;     nostatistics : in, optional, type=boolean
+;  
+;       Do not calculate statistics metadata to put in header keywords
+;       DATA*. 
 ;
 ;     notimecor : in, optional, type=boolean
 ;
@@ -108,6 +114,8 @@ pro chromis::make_nb_cube, wcfile $
                            , integer = integer $
                            , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
+                           , noflipping = noflipping $
+                           , nostatistics = nostatistics $
                            , notimecor = notimecor $
                            , overwrite = overwrite $
                            , tiles = tiles $
@@ -460,6 +468,11 @@ pro chromis::make_nb_cube, wcfile $
                               , prstep = 'Prepare NB science data cube' $
                               , prpara = prpara $
                               , prproc = inam
+
+  anchor = 'DATE'
+
+  ;; Add some keywords
+  red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1
   
   ;; Add info to headers
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
@@ -472,11 +485,11 @@ pro chromis::make_nb_cube, wcfile $
   ;; differently with CRISP because each Stokes image is a mix of two
   ;; detectors. 
   mhd = red_readhead(nbfiles[0]) ; Header of momfbd output file
-  red_fitsaddkeyword, hdr, 'DETECTOR', red_fitsgetkeyword(mhd, 'DETECTOR', comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETGAIN',  red_fitsgetkeyword(mhd, 'DETGAIN',  comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETOFFS',  red_fitsgetkeyword(mhd, 'DETOFFS',  comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETMODEL', red_fitsgetkeyword(mhd, 'DETMODEL', comment = dcomment), dcomment
-  red_fitsaddkeyword, hdr, 'DETFIRM',  red_fitsgetkeyword(mhd, 'DETFIRM',  comment = dcomment), dcomment
+  red_fitscopykeyword, hdr, 'DETECTOR', mhd
+  red_fitscopykeyword, hdr, 'DETGAIN',  mhd
+  red_fitscopykeyword, hdr, 'DETOFFS',  mhd
+  red_fitscopykeyword, hdr, 'DETMODEL', mhd
+  red_fitscopykeyword, hdr, 'DETFIRM',  mhd
 
   ;; Initialize fits file, set up for writing the data part.
   dims = [Nx, Ny, Nwav, 1, Nscans] 
@@ -487,7 +500,8 @@ pro chromis::make_nb_cube, wcfile $
     self -> fitscube_initialize, wbfilename, hdr, wblun, wbfileassoc, dims 
   endif
   
-  ;; Set up for collecting time and wavelength data
+
+  ;; Observations metadata varaibles
   tbeg_array     = dblarr(Nwav, Nscans) ; Time beginning for state
   tend_array     = dblarr(Nwav, Nscans) ; Time end for state
   tavg_array     = dblarr(Nwav, Nscans) ; Time average for state
@@ -504,6 +518,27 @@ pro chromis::make_nb_cube, wcfile $
                    , time:dblarr(2,2) $
                   }, Nwav, Nscans)
 
+  if ~keyword_set(nostatistics) then begin
+    ;; Variables for statistics metadata.
+    DATAMIN  = dblarr(Nwav, Nscans) ; The minimum data value
+    DATAMAX  = dblarr(Nwav, Nscans) ; The maximum data value
+    DATAMEAN = dblarr(Nwav, Nscans) ; The average data value
+    DATARMS  = dblarr(Nwav, Nscans) ; The RMS deviation from the mean
+    DATAKURT = dblarr(Nwav, Nscans) ; The kurtosis
+    DATASKEW = dblarr(Nwav, Nscans) ; The skewness
+    DATAP01  = dblarr(Nwav, Nscans) ; The 01 percentile
+    DATAP10  = dblarr(Nwav, Nscans) ; The 10 percentile
+    DATAP25  = dblarr(Nwav, Nscans) ; The 25 percentile
+    DATAMEDN = dblarr(Nwav, Nscans) ; The median data value
+    DATAP75  = dblarr(Nwav, Nscans) ; The 75 percentile
+    DATAP90  = dblarr(Nwav, Nscans) ; The 90 percentile
+    DATAP95  = dblarr(Nwav, Nscans) ; The 95 percentile
+    DATAP98  = dblarr(Nwav, Nscans) ; The 98 percentile
+    DATAP99  = dblarr(Nwav, Nscans) ; The 99 percentile
+    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
+  end
+
+    
   ;; The narrowband cube is aligned to the wideband cube and all
   ;; narrowband scan positions are aligned to each other. So get hpln
   ;; and hplt from the wideband cube wcs coordinates, this should
@@ -572,7 +607,71 @@ pro chromis::make_nb_cube, wcfile $
     if cccc gt 0 then nb_shifts[pos] = 0
   endif
 
+  
+  if ~keyword_set(nostatistics) then begin
+    ;; Read all images once in order to get statistics. Min and max need
+    ;; to be calculated here so we can build the histogram in the next
+    ;; loop.
+    iprogress = 0
+    Nprogress = Nscans*Nwav
+    for iscan = 0L, Nscans - 1 do begin
+      for iwav = 0L, Nwav - 1 do begin 
 
+        red_progressbar, iprogress, Nprogress $
+                         , /predict $
+                         , 'Calculate statistics'
+
+
+        ;; The NB files in this scan, sorted in tuning wavelength order.
+        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                             , cam = nbcamera, scan = uscans[iscan] $
+                             , sel = scan_nbindx, count = count
+        scan_nbfiles = pertuningfiles[scan_nbindx]
+        scan_nbstates = pertuningstates[scan_nbindx]
+
+        if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
+        
+        ;; Read image, apply prefilter curve and temporal scaling
+        nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
+
+        ;; Calculate statistics metadata before alignment and rotation
+        ;; so we avoid padding.
+        momnt = moment(nbim)    ; mean, variance, skewness, kurtosis
+        perc = cgpercentiles(nbim, percentiles = percentiles)
+        
+        DATAMIN[iwav, iscan]  = min(nbim)
+        DATAMAX[iwav, iscan]  = max(nbim)
+
+        DATAMEAN[iwav, iscan] = momnt[0]         
+        DATARMS[iwav, iscan]  = sqrt(momnt[1])   
+        DATASKEW[iwav, iscan] = momnt[2]         
+        DATAKURT[iwav, iscan] = momnt[3]         
+
+        DATAP01[iwav, iscan]  = perc[0]          
+        DATAP10[iwav, iscan]  = perc[1]          
+        DATAP25[iwav, iscan]  = perc[2]          
+        DATAMEDN[iwav, iscan] = perc[3]          
+        DATAP75[iwav, iscan]  = perc[4]          
+        DATAP90[iwav, iscan]  = perc[5]          
+        DATAP95[iwav, iscan]  = perc[6]          
+        DATAP98[iwav, iscan]  = perc[7]          
+        DATAP99[iwav, iscan]  = perc[8]          
+
+        iprogress++
+        
+      endfor                    ; iwav
+    endfor                      ; iscan
+    CUBEMIN  = min(DATAMIN)
+    CUBEMAX  = max(DATAMAX)
+
+    ;; Accumulate a histogram for the entire cube, use to calculate
+    ;; percentiles. Setup here, add contributions in the double loop
+    ;; below. 
+    Nbins = 2L^16               ; Use many bins!
+    binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
+    hist = lonarr(Nbins)
+  endif
+  
   iprogress = 0
   Nprogress = Nscans*Nwav
   for iscan = 0L, Nscans-1 do begin
@@ -659,6 +758,11 @@ pro chromis::make_nb_cube, wcfile $
 
       ;; Read image, apply prefilter curve and temporal scaling
       nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
+
+      if ~keyword_set(nostatistics) then begin
+        ;; Add to the histogram
+        hist += histogram(nbim, min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+      endif
       
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
@@ -750,78 +854,209 @@ pro chromis::make_nb_cube, wcfile $
     
   endfor                        ; iscan
 
-  ;; Close fits file and make a flipped version.
-  self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs
-  if keyword_set(wbsave) then self -> fitscube_finish, wblun, flipfile = wbflipfile, wcs = wcs
+  if ~keyword_set(nostatistics) then begin
+    ;; Calculate the statistics metadata for the entire cube based on
+    ;; the histogram and statistics calculated for the individual
+    ;; frames. 
+    Npixels = Nx*Ny
+    Nframes = Nscans*Nwav
+    
+    CUBEMEAN = mean(DATAMEAN)
+    CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
+                    * ( total( (Npixels-1d)* DATARMS^2 + Npixels* DATAMEAN^2 ) $
+                        - Nframes*Npixels * CUBEMEAN^2 ))
+    CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
+               * total( Npixels*DATARMS^3*DATASKEW + Npixels*DATAMEAN^3 + 3*(Npixels-1)*DATAMEAN*DATARMS^2) $
+               - CUBEMEAN^3/CUBERMS^3 - 3*(Npixels*Nframes-1d)*CUBEMEAN/(Npixels*Nframes*CUBERMS) 
+    CUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
+               * total( Npixels*DATARMS^4*(DATAKURT+3) $
+                        + 4*Npixels*DATAMEAN*DATARMS^3*DATASKEW $
+                        + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAmean^4 ) $
+               - 4*CUBEMEAN*CUBESKEW/CUBERMS $
+               - 6*(Npixels*Nframes-1d)*CUBEMEAN^2/(Npixels*Nframes*CUBERMS^2) $
+               - CUBEMEAN^4/CUBERMS^4 - 3 
+    
+    hist_sum = total(hist, /cum) / total(hist)
+    
+    CUBEP01  = cubemin + ( (where(hist_sum gt 0.01))[0]+0.5 ) * binsize
+    CUBEP10  = cubemin + ( (where(hist_sum gt 0.10))[0]+0.5 ) * binsize 
+    CUBEP25  = cubemin + ( (where(hist_sum gt 0.25))[0]+0.5 ) * binsize 
+    CUBEMEDN = cubemin + ( (where(hist_sum gt 0.50))[0]+0.5 ) * binsize 
+    CUBEP75  = cubemin + ( (where(hist_sum gt 0.75))[0]+0.5 ) * binsize 
+    CUBEP90  = cubemin + ( (where(hist_sum gt 0.90))[0]+0.5 ) * binsize 
+    CUBEP95  = cubemin + ( (where(hist_sum gt 0.95))[0]+0.5 ) * binsize 
+    CUBEP98  = cubemin + ( (where(hist_sum gt 0.98))[0]+0.5 ) * binsize 
+    CUBEP99  = cubemin + ( (where(hist_sum gt 0.99))[0]+0.5 ) * binsize
+  endif
 
-  
+  ;; Close fits file.
+  self -> fitscube_finish, lun, wcs = wcs
+  if keyword_set(wbsave) then self -> fitscube_finish, wblun, wcs = wcs
+
   ;; Add cavity maps as WAVE distortions 
   if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cavitymaps
 
   ;; Add some variable keywords
   self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
-                                  , comment = 'Beginning of observation' $
-                                  , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
+                                  , anchor = anchor $
+                                  , comment = 'Beginning time of observation' $
+                                  , keyword_method = 'first' $
+;                                  , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
                                   , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, filename, 'DATE-END', date_end_array $
+                                  , anchor = anchor $
                                   , comment = 'End time of observation' $
-                                  , keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
+                                  , keyword_method = 'last' $
+;                                  , keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
                                   , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, filename, 'DATE-AVG', date_avg_array $
+                                  , anchor = anchor $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
  
   ;; Copy variable-keywords from wb cube file.
-  self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile
-  self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile
+  self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $
+                                  , anchor = anchor 
+  self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile $
+                                  , anchor = anchor 
+  self -> fitscube_addvarkeyword, filename, 'AO_LOCK', old_filename = wcfile $
+                                  , anchor = anchor 
+  self -> fitscube_addvarkeyword, filename, 'ELEV_ANG', old_filename = wcfile $
+                                  , anchor = anchor 
 
-  self -> fitscube_addvarkeyword, filename $
-                                  , 'XPOSURE', comment = 'Summed exposure times' $
+  self -> fitscube_addvarkeyword, filename, 'XPOSURE', exp_array $
+                                  , comment = 'Summed exposure times' $
+                                  , anchor = anchor $
                                   , tunit = 's' $
-                                  , exp_array, keyword_value = mean(exp_array) $
+                                  , keyword_method = 'median' $
+;                                  , keyword_value = mean(exp_array) $
                                   , axis_numbers = [3, 5] 
 
-  self -> fitscube_addvarkeyword, filename $
-                                  , 'TEXPOSUR', comment = '[s] Single-exposure time' $
+  self -> fitscube_addvarkeyword, filename, 'TEXPOSUR', sexp_array $
+                                  , comment = '[s] Single-exposure time' $
+                                  , anchor = anchor $
                                   , tunit = 's' $
-                                  , sexp_array, keyword_value = mean(sexp_array) $
+                                  , keyword_method = 'median' $
+;                                  , keyword_value = mean(sexp_array) $
                                   , axis_numbers = [3, 5] 
 
-  self -> fitscube_addvarkeyword, filename $
-                                  , 'NSUMEXP', comment = 'Number of summed exposures' $
-                                  , nsum_array, keyword_value = mean(nsum_array) $
+  self -> fitscube_addvarkeyword, filename, 'NSUMEXP', nsum_array $
+                                  , comment = 'Number of summed exposures' $
+                                  , anchor = anchor $
+                                  , keyword_method = 'median' $
+;                                  , keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5]
 
-  
-  ;; Copy some variable-keywords from the ordinary nb cube to the
-  ;; flipped version.
-  self -> fitscube_addvarkeyword, flipfile, 'SCANNUM',  old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'ATMOS_R0', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'XPOSURE',  old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'TEXPOSUR', old_filename = filename, /flipped
-  self -> fitscube_addvarkeyword, flipfile, 'NSUMEXP',  old_filename = filename, /flipped
+  
+  if ~keyword_set(nostatistics) then begin
+    ;; Statistics
+
+    self -> fitscube_addvarkeyword, filename, 'DATAMIN', DATAMIN $
+                                    , comment = 'The minimum data value' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEMIN $
+                                    , axis_numbers = [3, 5]
+
+
+    self -> fitscube_addvarkeyword, filename, 'DATAMAX', DATAMAX $
+                                    , comment = 'The maximum data value' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEMAX $
+                                    , axis_numbers = [3, 5]
+
+
+    self -> fitscube_addvarkeyword, filename, 'DATAMEAN', DATAMEAN $
+                                    , comment = 'The average data value' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEMEAN $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATARMS', DATARMS $
+                                    , comment = 'The RMS deviation from the mean' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBERMS $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAKURT', DATAKURT $
+                                    , comment = 'The kurtosis' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEKURT $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATASKEW', DATASKEW $
+                                    , comment = 'The skewness' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBESKEW $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP01', DATAP01 $
+                                    , comment = 'The 01 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP01 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP10', DATAP10 $
+                                    , comment = 'The 10 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP10 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP25', DATAP25 $
+                                    , comment = 'The 25 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP25 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAMEDN', DATAMEDN $
+                                    , comment = 'The median data value' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEMEDN $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP75', DATAP75 $
+                                    , comment = 'The 75 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP75 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP90', DATAP90 $
+                                    , comment = 'The 90 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP90 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP95', DATAP95 $
+                                    , comment = 'The 95 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP95 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP98', DATAP98 $
+                                    , comment = 'The 98 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP98 $
+                                    , axis_numbers = [3, 5]
+
+    self -> fitscube_addvarkeyword, filename, 'DATAP99', DATAP99 $
+                                    , comment = 'The 99 percentile' $
+                                    , anchor = anchor $
+                                    , keyword_value = CUBEP99 $
+                                    , axis_numbers = [3, 5]
+  endif
+    
+
+  if ~keyword_set(noflipping) then self -> fitscube_flip, filename, flipfile = flipfile
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
-
+  if ~keyword_set(noflipping) then print, flipfile
+  
   if keyword_set(wbsave) then begin
-    ;; Add some of the variable keywords
-    self -> fitscube_addvarkeyword, wbfilename, 'SCANNUM',  old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'ATMOS_R0', old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'DATE-BEG', old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'DATE-AVG', old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'DATE-END', old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'XPOSURE',  old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'TEXPOSUR', old_filename = filename
-    self -> fitscube_addvarkeyword, wbfilename, 'NSUMEXP',  old_filename = filename
-
+    if ~keyword_set(noflipping) then self -> fitscube_flip, wbfilename, flipfile = wbflipfile
     print, inam + ' : Wideband align cube stored in:'
     print, wbfilename
+    if ~keyword_set(noflipping) then print, wbflipfile
   endif
-
   
 end
