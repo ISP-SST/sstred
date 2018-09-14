@@ -181,9 +181,6 @@ pro chromis::link_data, all_data = all_data $
       openw, lun, linkername, /get_lun
       printf, lun, '#!/bin/bash'
       
-      outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '/'
-      outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
-
       ;; Create folders
       outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '/'
       file_mkdir, outdir
