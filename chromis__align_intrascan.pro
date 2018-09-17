@@ -191,6 +191,7 @@ pro chromis::align_intrascan, choose_states = choose_states $
           tmp = red_select_subset(ustats_list $
                                   , qstring = inam + ' : Select state 1 for alignment:' $
                                   , default = where(ustats eq ustat1_default) $
+                                  , maxcount = 1 $
                                   , count = Nselect, indx = sindx)
           if Nselect eq 0 then begin
             print, inam + ' : No state selected.'
@@ -207,6 +208,7 @@ pro chromis::align_intrascan, choose_states = choose_states $
           tmp = red_select_subset(ustats_list $
                                   , qstring = inam + ' : Select state 2 for alignment:' $
                                   , default = where(ustats eq ustat2_default) $
+                                  , maxcount = 1 $
                                   , count = Nselect, indx = sindx)
           if Nselect eq 0 then begin
             print, inam + ' : No state selected.'
