@@ -66,36 +66,44 @@
 ;
 ;
 ;-
-pro red::make_intdif_gains3, timeaver = timeaver, sumlc = sumlc, pref = pref, debug = debug $
-                             , cam = cam, min=min, max=max, bad=bad, smooth=smooth, psfw = psfw $
-                             , preserve = preserve, scan = scan, smallscale = smallscale $
-                             , all = all
+pro red::make_intdif_gains3, all = all $
+                             , bad=bad $
+                             , cam = cam $
+                             , debug = debug $
+                             , max=max $
+                             , min=min $
+                             , pref = pref $
+                             , preserve = preserve $
+                             , psfw = psfw $
+                             , scan = scan $
+                             , smallscale = smallscale $
+                             , smooth=smooth $
+                             , sumlc = sumlc $
+                             , timeaver = timeaver 
 
-  inam = 'red::make_intdif_gains3 : '
-  if(n_elements(timeaver) eq 0) then timeaver = 1L
-  if(n_elements(min) eq 0) then min = 0.1
-  if(n_elements(max) eq 0) then max = 4.0
-  if(n_elements(smooth) eq 0) then smooth = 3.0
-  if(n_elements(bad) eq 0) then bad = 1.0
-  if(n_elements(smallscale) EQ 0) THEN smallscale = 1
+  inam = red_subprogram(/low, calling = inam1)
 
-  ;;
-  ;; Search directories
-  ;;
+  if n_elements(timeaver) eq 0 then timeaver = 1L
+  if n_elements(min) eq 0 then min = 0.1
+  if n_elements(max) eq 0 then max = 4.0
+  if n_elements(smooth) eq 0 then smooth = 3.0
+  if n_elements(bad) eq 0 then bad = 1.0
+  if n_elements(smallscale) EQ 0 THEN smallscale = 1
+
+  ;; Search and select directories
   dirs = file_search(self.out_dir+'/cmap_intdif/*', /test_dir, count = count)
   if(count eq 0) then begin
-    print, inam + 'You should run red::sum_data_intdif first! -> returning'
+    print, inam + ' : You should run red::sum_data_intdif first! -> returning'
     return
   endif
   if(count gt 1) and ~keyword_set(all) then begin
-    for ii = 0L, count -1 do print, red_stri(ii)+' -> '+dirs[ii]
-    idx = ''
-    read, idx, prom = inam+'Select folder (* for all of them): '
-    if idx ne '*' then begin
-      dirs = dirs[long(idx)]
-      
-      print, inam + 'Using -> '+dirs
-    endif
+    sindx = red_select_subset(dirs)
+;    for ii = 0L, count -1 do print, red_stri(ii)+' -> '+dirs[ii]
+;    idx = ''
+;    read, idx, prom = inam+'Select folder (* for all of them): '
+;    if idx ne '*' then begin
+    dirs = dirs[sindx]
+    print, inam + 'Using -> '+dirs
   endif
 
   for idir = 0, n_elements(dirs)-1 do begin
