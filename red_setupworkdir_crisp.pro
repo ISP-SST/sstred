@@ -483,7 +483,11 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
   printf, Slun, '; whether npar=3 or npar=4 is needed.'
-  printf, Slun, 'a -> fitgains, npar = 2, res=res' 
+  for ipref = 0, Nprefilters-1 do begin
+    printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
+            + prefilters[ipref] + "' ; /fit_reflectivity "
+  endfor                        ; ipref
+;  printf, Slun, 'a -> fitgains, npar = 2, res=res' 
   printf, Slun, '; If you need per-pixel reflectivities for your analysis'
   printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
   printf, Slun, '; keyword:'
@@ -500,7 +504,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
             + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
-    printf, Slun, "a -> make_intdif_gains3, pref = '" + prefilters[ipref] $
+    printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     if strmid(prefilters[ipref], 0, 2) eq '63' then begin
       printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
