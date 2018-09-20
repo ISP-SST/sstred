@@ -47,7 +47,7 @@
 ;
 ;      2016-12-05 : MGL. Added documentation header.
 ;
-;      2018-09-20 : MGL. Renamed..
+;      2018-09-20 : MGL. Renamed.
 ; 
 ;-
 function red_prefilter, par, lambda, cwl
