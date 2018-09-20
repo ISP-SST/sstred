@@ -25,16 +25,20 @@
 ;
 ;       If set, bypass selection and process all data.
 ;
+;    densegrid  : 
+;   
+;   
+;   
 ;    extra_nodes : in, optional, type=array
 ;
 ;       Make extra spline nodes at the specified wavelengths, given in
 ;       Ångström from the core point.
 ;
-;    pref : in, optional, type=string
-;
-;       Select prefilter to process.
-;
-;    npar  : 
+;    initcmap  : 
+;   
+;   
+;   
+;    myg  : 
 ;   
 ;   
 ;   
@@ -42,19 +46,19 @@
 ;   
 ;   
 ;   
+;    npar  : 
+;   
+;   
+;   
+;    nosave  : 
+;   
+;   
+;   
+;    pref : in, optional, type=string
+;
+;       Select prefilter to process.
+;
 ;    rebin  : 
-;   
-;   
-;   
-;    xl  : 
-;   
-;   
-;   
-;    yl  : 
-;   
-;   
-;   
-;    densegrid  : 
 ;   
 ;   
 ;   
@@ -62,11 +66,11 @@
 ;   
 ;   
 ;   
+;    state  : 
+;   
+;   
+;   
 ;    thres  : 
-;   
-;   
-;   
-;    initcmap  : 
 ;   
 ;   
 ;   
@@ -78,15 +82,11 @@
 ;   
 ;   
 ;   
-;    state  : 
+;    xl  : 
 ;   
 ;   
 ;   
-;    nosave  : 
-;   
-;   
-;   
-;    myg  : 
+;    yl  : 
 ;   
 ;   
 ;   
@@ -133,7 +133,7 @@
 ;
 ;-
 pro red::fitgains, all = all $
-                   , densegrid = densegrid $
+                   , densegrid = densegrid $                   
                    , extra_nodes = extra_nodes $
                    , fit_reflectivity = fit_reflectivity $
                    , ifit = ifit $
@@ -151,7 +151,7 @@ pro red::fitgains, all = all $
                    , w0 = w0, w1 = w1 $
                    , x0 = x0, x1 = x1 $
                    , xl = xl, yl = yl 
-  
+
 
   ;; Defaults
   if n_elements(niter) eq 0 then niter = 3L
