@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Fit prefilter model to CHROMIS data.
 ; 
 ; :Categories:
 ;
