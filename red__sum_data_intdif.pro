@@ -268,8 +268,8 @@ pro red::sum_data_intdif, all = all $
       cfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.icube'
       dfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.save'
 
-;; We could change the icube + save files to fitscubes with the save
-;; info in the header/extensions.
+      ;; We could change the icube + save files to fitscubes with the save
+      ;; info in the header/extensions.
       
       if file_test(dfile) and ~keyword_set(overwrite) then begin
         print, inam + ' : WARNING! Data files already exist:'
@@ -299,12 +299,6 @@ pro red::sum_data_intdif, all = all $
       dat = assoc(lun, intarr(Nx, Ny, /nozer), 512)
 
       ;; Load dark file
-;      df = self.out_dir+'/darks/'+detectors[icam]+'.dark'
-;      if(file_test(df)) then dd = f0(df) else begin
-;        print, inam + ' : ERROR, dark-file not found -> '+df
-;        stop
-;      endelse
-;      
       self -> get_calib, selstates[0], darkdata = dd
 
       ;; Load fitgains results
@@ -334,7 +328,7 @@ pro red::sum_data_intdif, all = all $
             
             
             ;; Load flat
-            self -> get_calib, selstates[0], flatdata = g
+            self -> get_calib, selstates[0], gaindata = gg
 ;            gf = self.out_dir+'/flats/'+strjoin([detectors[icam], pref, uwav[ituning], 'unpol.flat'], '.')
 ;            if(file_test(gf)) then begin
 ;              g = f0(gf)
@@ -347,7 +341,8 @@ pro red::sum_data_intdif, all = all $
 ;            endelse
             
             if keyword_set(verbose) then print, file_basename(mmfiles[idx]),format='(a0)'
-            tmp = red_sumfiles(mmfiles[idx], /check) - dd
+            ;;tmp = red_sumfiles(mmfiles[idx], /check) - dd
+            tmp = rdx_sumfiles(mmfiles[idx], /check, nthreads = 2) - dd
 
             if ~keyword_set(no_descatter) $
                && self.dodescatter $
@@ -355,8 +350,7 @@ pro red::sum_data_intdif, all = all $
               tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
             endif
             
-            tmp = red_fillpix((temporary(tmp)*g), $
-                              nthreads=nthreads)
+            tmp = red_fillpix(temporary(tmp)*gg, nthreads=nthreads)
 
             ele = iscan*Nlc*Ntunings + ilc*Ntunings + ituning
             dat[ele] = fix(round(7.0 * tmp))
