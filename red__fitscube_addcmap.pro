@@ -96,6 +96,7 @@ pro red::fitscube_addcmap, filename, cmaps
   names = 'DW'+j+' ' + names
   ;; Write to the header
   oldanchor = anchor
+  
   red_fitsaddkeyword, anchor = anchor, hdr, names, values, comments
   
   ;; Do it again with the HIERARCH convention. Avoid dots in the
@@ -115,8 +116,9 @@ pro red::fitscube_addcmap, filename, cmaps
   red_append, hierarch_fields, list('APPLY'       ,6              ,'Application stage (world coordinates)'      )
   red_append, hierarch_fields, list('CWERR'       ,max(abs(cmaps)),'[nm] Max distortion (this correction step)' )
   red_append, hierarch_fields, list('CWDIS LOOKUP',1              ,'Distortions in lookup table'                )
-  red_fitsaddkeyword_hierarch, anchor = oldanchor, hdr, 'DW'+j, hierarch_fields
 
+  red_fitsaddkeyword_hierarch, anchor = oldanchor, hdr, 'DW'+j, hierarch_fields
+  
   ;; Construct a header for the image extension with the lookup table. ---------------------------
   
   mkhdr, chdr, cmaps, /image
