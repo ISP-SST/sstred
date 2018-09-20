@@ -5,7 +5,7 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -32,24 +32,29 @@
 ;       par[6] = 
 ;
 ;
-;    iwav : in, type=fltarr
+;    lambda : in, type=fltarr
 ;
-;       Wavelengths for which the profile is to be returned.
+;       Wavelengths in Ångström, for which the profile is to be
+;       returned.
 ;
-;    pref : in, type=float
+;    cwl : in, type=float
 ;
-;       Prefilter wavelength.
+;       Prefilter central wavelength in Ångström.
 ;   
 ; 
 ; 
 ; :History:
 ;
 ;      2016-12-05 : MGL. Added documentation header.
-; 
+;
+;      2018-09-20 : MGL. Renamed..
 ; 
 ;-
-function chromis_prefilter, par, iwav, pref
-    iwav1 = iwav - pref
-    res = par[0] / (1.d0+((2.d0*(iwav1 - par[2]) / par[3])^2)^par[4]) * (1.0d0 + par[5]*iwav1 + par[6]*iwav1^3)
+function red_prefilter, par, lambda, cwl
+
+  lambda1 = lambda - cwl
+  res = par[0] / (1.d0+((2.d0*(lambda1 - par[2]) / par[3])^2)^par[4]) * (1.0d0 + par[5]*lambda1 + par[6]*lambda1^3)
+
   return, res
+
 end
