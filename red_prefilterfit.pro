@@ -42,7 +42,7 @@ function red_prefilterfit, par, xl = xl, yl = yl, spectrum = spectrum, lambda = 
   xl1 = xl - pref
   
   y1 = interpol(yl, xl1+par[1], lambda1) 
-  prefc = chromis_prefilter(par, lambda, pref)
+  prefc = red_prefilter(par, lambda, pref)
   
   return, (spectrum - (y1 * prefc)) * w
 
