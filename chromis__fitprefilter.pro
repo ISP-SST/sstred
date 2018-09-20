@@ -350,12 +350,6 @@ pro chromis::fitprefilter, dir = dir $
       endif
     endif
 
-;    darkfile = file_search(self.out_dir +'/darks/'+detector+'_'+statesNB[istate].cam_settings+'.dark.fits', count=ct)
-;    darkfilewb = file_search(self.out_dir +'/darks/'+detectorwb+'_'+statesWB[istate].cam_settings+'.dark.fits', count=ct)
-
-;    darkN = red_readdata(darkfile, /silent)
-;    darkW = red_readdata(darkfilewb, /silent)
-
     ;; Let's not assume that all images for one state must be in the
     ;; same file... just in case.
     
@@ -427,12 +421,13 @@ pro chromis::fitprefilter, dir = dir $
     ;; copy spectra for each prefilter
     
     idx = where(pref eq upref[ipref], nwav)
-    iwav = wav[idx]
-    ispec = spec[idx]
+    lambda = wav[idx]
+    spectrum = spec[idx]
     if keyword_set(unitscalib) then wbint = mean(specwb[idx]) else wbint = 1.
     
     ;; Load satlas
-    red_satlas, iwav[0]-5.1, iwav[-1]+5.1, xl, yl, /si, cont = cont 
+    red_satlas, lambda[0]-5.1, lambda[-1]+5.1, xl, yl, /si, cont = cont 
+
     dw = xl[1] - xl[0]
     np = round((0.080 * 8) / dw)
     if np/2*2 eq np then np -=1
@@ -445,8 +440,8 @@ pro chromis::fitprefilter, dir = dir $
     
     if Nwav gt 1 then begin
 
-      if keyword_set(mask) then w = red_maskprefilter(iwav, ispec) else w = dblarr(n_elements(iwav)) + 1.0d0
-      dat = {xl:xl, yl:yl1, ispec:ispec, iwav:iwav, pref:double(upref[ipref]), w:w}
+      if keyword_set(mask) then w = red_maskprefilter(lambda, spectrum) else w = dblarr(n_elements(lambda)) + 1.0d0
+      dat = {xl:xl, yl:yl1, spectrum:spectrum, lambda:lambda, pref:double(upref[ipref]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
       fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 7)
@@ -476,32 +471,37 @@ pro chromis::fitprefilter, dir = dir $
       
       ;; Now call mpfit
       
-      par = [max(ispec) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
-      par = mpfit('chromis_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
-      prefilter = chromis_prefilter(par, dat.iwav, dat.pref)
+      par = [max(spectrum) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
+      par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
+      prefilter = red_prefilter(par, dat.lambda, dat.pref)
       
       ;; save curve
       
-      prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
-             fitpars:par, fts_model:interpol(yl1, xl+par[1], iwav)*prefilter, units:units}
+      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref], $
+             fitpars:par, fts_model:interpol(yl1, xl+par[1], lambda)*prefilter, units:units}
       
       cgwindow
-      mx = max([ispec, interpol(yl1, xl+par[1], iwav)*prefilter, prefilter/par[0] * max(ispec)]) * 1.05
+      mx = max([spectrum, interpol(yl1, xl+par[1], lambda)*prefilter, prefilter/par[0] * max(spectrum)]) * 1.05
       
       colors = ['blue', 'red', 'black']
       lines = [0, 2, 0]
       psyms = [16, -3, -3]
-      cgplot, /add, iwav/10., ispec, line = lines[0], color = colors[0] $
+      prefilter_plot = red_prefilter(par, xl, dat.pref) ; <------
+      cgplot, /add, lambda/10., spectrum, line = lines[0], color = colors[0] $
               , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx]
-      cgplot, /add, /over, iwav/10., interpol(yl1, xl+par[1], iwav)*prefilter $
-              , color = colors[1], line = lines[1], psym = psyms[1]
-      cgplot, /add, /over, iwav/10., prefilter/par[0] * max(ispec), color = colors[2], line = lines[2], psym = psyms[2]
+      cgplot,/add,/over,(xl+par[1])/10,yl1*prefilter_plot   $
+             , color = colors[1], line = lines[1], psym = psyms[1]
+      cgplot, /add, /over,(xl+par[1])/10, prefilter_plot/par[0] * max(spectrum) $
+              , color = colors[2], line = lines[2], psym = psyms[2]
+;      cgplot, /add, /over, lambda/10., interpol(yl1, xl+par[1], lambda)*prefilter $
+;              , color = colors[1], line = lines[1], psym = psyms[1]
+;      cgplot, /add, /over, lambda/10., prefilter/par[0] * max(spectrum), color = colors[2], line = lines[2], psym = psyms[2]
       
       cglegend, /add, align = 3, /data $
                 , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
                 , title = ['obs scan'], color = colors[0], psym = psyms[0], length = 0.0
       cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
-                , title = ['model scan'], line = lines[1], color = colors[1], length = 0.05
+                , title = ['solar spectrum'], line = lines[1], color = colors[1], length = 0.05
       cglegend, /add, align = 2, /data $
                 , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
@@ -510,10 +510,10 @@ pro chromis::fitprefilter, dir = dir $
       
     endif else begin
 
-      y1 = interpol(yl, xl, iwav)
-      prefilter = [ispec/yl1]
-      prf = {wav:iwav, pref:prefilter, spec:ispec, wbint:wbint, reg:upref[ipref], $
-            fitpars:prefilter, fts_model:y1, units:units}
+      y1 = interpol(yl, xl, lambda)
+      prefilter = [spectrum/yl1]
+      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref], $
+             fitpars:prefilter, fts_model:y1, units:units}
       
     endelse
     
