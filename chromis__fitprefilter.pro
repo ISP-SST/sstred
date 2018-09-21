@@ -105,6 +105,18 @@ pro chromis::fitprefilter, dir = dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  instrument = ((typename(self)).tolower())
+  case instrument of
+    'crisp' : begin
+      camWB = 'Crisp-W'
+      camNB = 'Crisp-T'
+    end
+    'chromis' : begin
+      camWB = 'Chromis-W'
+      camNB = 'Chromis-N'
+    end
+  endcase
+  
   ;; For now! We may be able to work around this later!
   noabsunits = keyword_set(useflats)
   
@@ -291,17 +303,15 @@ pro chromis::fitprefilter, dir = dir $
   endelse
   
   ;; Get files and states
-  
-  cams = *self.cameras
 
-  detector = self->getdetector( cams[-1] )
-  filesNB = file_search(dirs+'/'+cams[-1]+'/*.fits', count=nfilesNB)
+  detector = self->getdetector( camNB )
+  filesNB = file_search(dirs+'/'+camNB+'/*.fits', count=nfilesNB)
   filesNB = red_sortfiles(filesNB)
   self->extractstates, filesNB, statesNB
 
   if keyword_set(unitscalib) then begin
-    filesWB = file_search(dirs+'/'+cams[0]+'/*.fits', count=nfilesWB)
-    detectorwb = self->getdetector( cams[0] )
+    filesWB = file_search(dirs+'/'+camWB+'/*.fits', count=nfilesWB)
+    detectorwb = self->getdetector( camWB )
     filesWB = red_sortfiles(filesWB)
     self -> extractstates, filesWB, statesWB
   endif
@@ -325,7 +335,7 @@ pro chromis::fitprefilter, dir = dir $
   ustate = statesNB[uniq(statesNB[*].tun_wavelength, sort(statesNB[*].tun_wavelength))].fullstate  
   Nstates = n_elements(ustate)
   
-  ;; load data and compute mean spectrum
+  ;; Load data and compute mean spectrum
 
   spec   = dblarr(Nstates)
   wav    = dblarr(Nstates)
@@ -493,9 +503,6 @@ pro chromis::fitprefilter, dir = dir $
              , color = colors[1], line = lines[1], psym = psyms[1]
       cgplot, /add, /over,(xl+par[1])/10, prefilter_plot/par[0] * max(spectrum) $
               , color = colors[2], line = lines[2], psym = psyms[2]
-;      cgplot, /add, /over, lambda/10., interpol(yl1, xl+par[1], lambda)*prefilter $
-;              , color = colors[1], line = lines[1], psym = psyms[1]
-;      cgplot, /add, /over, lambda/10., prefilter/par[0] * max(spectrum), color = colors[2], line = lines[2], psym = psyms[2]
       
       cglegend, /add, align = 3, /data $
                 , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
