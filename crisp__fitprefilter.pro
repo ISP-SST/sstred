@@ -406,9 +406,7 @@ pro crisp::fitprefilter, dir = dir $
       ;; Let's not assume that all images for one state must be in the
       ;; same file... just in case.
       
-;    pos = where(statesNB.fullstate eq ustate[istate], count)
       pos = where(statesNB.fpi_state eq ustates[istate].fpi_state, count)
-;    print, inam+'loading files for state -> '+ustate[istate]
 
       ;; Get darks for this camera
       self -> get_calib, statesNB[pos[0]], darkdata=darkN, status = status
@@ -601,7 +599,7 @@ pro crisp::fitprefilter, dir = dir $
               , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
               , title = ['obs scan'], color = colors[0], psym = psyms[0], length = 0.0
     cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
-              , title = ['solar spectrum'], line = lines[1], color = colors[1], length = 0.05
+              , title = ['filtered spectrum'], line = lines[1], color = colors[1], length = 0.05
     cglegend, /add, align = 2, /data $
               , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
               , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05

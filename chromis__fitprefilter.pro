@@ -508,7 +508,7 @@ pro chromis::fitprefilter, dir = dir $
                 , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
                 , title = ['obs scan'], color = colors[0], psym = psyms[0], length = 0.0
       cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
-                , title = ['solar spectrum'], line = lines[1], color = colors[1], length = 0.05
+                , title = ['filtered spectrum'], line = lines[1], color = colors[1], length = 0.05
       cglegend, /add, align = 2, /data $
                 , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
