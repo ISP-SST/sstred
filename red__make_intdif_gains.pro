@@ -186,8 +186,8 @@ pro red::make_intdif_gains, all = all $
       endif
       print, inam + ' : loading -> '+file_basename(fff)
       restore, fff
-      cmap = reform((temporary(fit)).pars[1,*,*])
-      udwav = double(udwav)
+      cmap = reform((temporary(fit)).pars[1,*,*]) ; Cavity map in [Å]
+      udwav = double(udwav)*1d10                  ; Wavelength coordinates in [Å]
 
       ;; The real cavity-map has quite large shifts, but only the
       ;; local fine structure affects momfbd. With this option, we
@@ -301,7 +301,7 @@ pro red::make_intdif_gains, all = all $
               endfor            ; iwav
               print, 'done'
             endif
-
+            
             ;; Shift spectra
             print, inam+' : shifting cube ... ', format='(A,$)'
             for iy = 0, Ny-1 do for ix=0, Nx-1 do begin
@@ -338,7 +338,7 @@ pro red::make_intdif_gains, all = all $
               file_link, outdir+ofile_0, outdir+ofile
 
             endif else begin 
-
+              
               rat = flats[*, *, iwav] * reform(cub2[iwav, *, *]/cub1[iwav, *, *])
 
               g = float(self -> flat2gain(temporary(rat), min = min, max = max, bad = bad, $
