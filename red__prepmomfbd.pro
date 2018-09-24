@@ -211,10 +211,13 @@ pro red::prepmomfbd, wb_states = wb_states $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  red_writelog, selfinfo = selfinfo
+  ;; Cameras
+  cams = *self.cameras
+  iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
+  ispd = strmatch(cams,'*-D')
 
+  if total(ispd) eq 0 then no_pd = 1 ; If no PD camera, run in no_pd mode
+  
   offset_dir = self.out_dir + '/calib/'
 
   if(n_elements(maxshift) eq 0) then maxshift='30'
@@ -281,11 +284,6 @@ pro red::prepmomfbd, wb_states = wb_states $
     print, inam + '   Did you run link_data?'
     return
   ENDIF
-
-  ;; Cameras
-  cams = *self.cameras
-  iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
-  ispd = strmatch(cams,'*-D')
 
   if keyword_set(no_pd) then begin
     ;; Remove PD camera if any
