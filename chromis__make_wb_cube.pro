@@ -412,7 +412,7 @@ pro chromis::make_wb_cube, dir $
   endfor                        ; iscan
 
   momnt = moment(cub1)          ; mean, variance, skewness, kurtosis
-  perc = round(cgpercentiles(cub1, percentiles = percentiles
+  perc = round(cgpercentiles(cub1, percentiles = percentiles))
 
   CUBEMEAN =  momnt[0]
   CUBERMS  =  sqrt(momnt[1])
