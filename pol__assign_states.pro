@@ -8,7 +8,7 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :author:
+; :Author:
 ; 
 ; 
 ; 
@@ -41,27 +41,32 @@
 ; 
 ; :Keywords:
 ; 
-;   camt  : 
+;    camt : 
 ;   
 ;   
 ;   
-;    camr  : 
+;    camr : 
 ;   
 ;   
 ;   
-;    camwb  : 
+;    camwb : 
 ;   
 ;   
-;   
+;    newflats : 
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ; 
 ;-
-pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = camr, camwb = camwb, newflats = newflats
+pro pol::assign_states, state, tfiles, rfiles, pref, fdir $
+                        , camt = camt $
+                        , camr = camr $
+                        , camwb = camwb $
+                        , newflats = newflats
+
   self.tfiles[*] = tfiles
   self.rfiles[*] = rfiles
   self.state = state
@@ -74,23 +79,23 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
   ;; Wb images?
 
   for ii = 0L, n_elements(self.tfiles) - 1 do begin
-     dir = file_dirname(self.tfiles[ii])
-     tmp = dir+'/'+camwb+'.'+strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[1:*], '.')
-     
-     if(file_test(tmp)) then begin 
-        self.wbfiles[ii] = tmp
-        self.destretch = 2B
-     endif
+    dir = file_dirname(self.tfiles[ii])
+    tmp = dir+'/'+camwb+'.'+strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[1:*], '.')
+    
+    if(file_test(tmp)) then begin 
+      self.wbfiles[ii] = tmp
+      self.destretch = 2B
+    endif
   endfor
 
   ;; Total WB image
-   
+  
   ;;state = '0'+strmid(state,1,80)
   tmp = dir+'/'+camwb+'.'+strjoin((strsplit(state,'.',/extract))[0:1], '.')+'.momfbd'
   if(file_test(tmp)) then begin
-     self.wb = tmp
-     
-     if(self.destretch eq 2) then self.destretch = 1B 
+    self.wb = tmp
+    
+    if(self.destretch eq 2) then self.destretch = 1B 
   endif else self.destretch = 0B
 
   ;; Flats
@@ -103,9 +108,9 @@ pro pol::assign_states, state, tfiles, rfiles, pref, fdir,camt = camt, camr = ca
   dum = 1
   if(~keyword_set(newflats)) then dum=2
   for ii = 0L, n_elements(self.tfiles) - 1 do begin
-     self.ftfiles[ii] = fdir + '/gaintables/' + camt + '.' + strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[dum:4], '.')+'.gain'
-     self.frfiles[ii] = fdir + '/gaintables/' + camr + '.' + strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[dum:4], '.')+'.gain'
-        
+    self.ftfiles[ii] = fdir + '/gaintables/' + camt + '.' + strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[dum:4], '.')+'.gain'
+    self.frfiles[ii] = fdir + '/gaintables/' + camr + '.' + strjoin((strsplit(file_basename(self.tfiles[ii]), '.',/extract))[dum:4], '.')+'.gain'
+    
   endfor
 
   return
