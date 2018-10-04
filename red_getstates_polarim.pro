@@ -59,13 +59,12 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
   inam = 'red_getstates_polarim : '
   nt = n_elements(tfiles)
   nr = n_elements(rfiles)
-                                ;
-                                ; Create arrays
-                                ;
+
+  ;; Create arrays
   statt = strarr(nt)
   statr = strarr(nr)
   stattnlc = strarr(nt)
-                                ;
+
   pref = strarr(nt)
   scant = strarr(nt)
   scanr = strarr(nr)
@@ -76,8 +75,7 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
   p = '.'
   
 
-                                ;
-                                ; T-cam
+  ;; T-cam
   for ii = 0L, nt -1 do begin
     tmp = strsplit(file_basename(tfiles[ii]), '._', /extract)
     statt[ii] = tmp[1] + p + tmp[2] + p +tmp[3] + p +tmp[4]
@@ -87,8 +85,8 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
     pref[ii] = tmp[2]
     stattnlc[ii] = tmp[1] + p + tmp[2] + p +tmp[3]
   endfor 
-                                ;
-                                ; R-cam
+
+  ;; R-cam
   for ii = 0L, nr -1 do begin
     tmp = strsplit(file_basename(rfiles[ii]), '.', /extract)
     statr[ii] = tmp[1] + p + tmp[2] + p +tmp[3] + p +tmp[4]
@@ -96,9 +94,8 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
     wavr[ii] = tmp[3]
     lcr[ii] = tmp[4]
   endfor
-                                ;
-                                ; Get unique states and compare
-                                ;
+
+  ;; Get unique states and compare
   ustatt = statt[uniq(statt, sort(statt))]
   ustatr = statr[uniq(statr, sort(statr))]
   ulct = lct[uniq(lct, sort(lct))]
@@ -106,23 +103,20 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
   nn = n_elements(ustatt)
   star = bytarr(nn)
   ord = lonarr(nn) - 1L
-                                ;
-                                ; Use T-cam as reference (frames have to exist on both)
-                                ;
+
+  ;; Use T-cam as reference (frames have to exist on both)
   for ii = 0L, nn - 1 do begin
     idx = where(ustatr eq ustatt[ii], count)
     if count ne 1 then star[ii] = 1B else ord[ii] = idx
   endfor
   posr = where(ord ne -1, npr)
   post = where(star eq 0B, npt)
-                                ;
-                                ; keep only those states
-                                ;
+
+  ;; keep only those states
   ustatt = ustatt[post]
   ustatr = ustatr[posr]
-                                ;
-                                ; Create array of structures with all the states to demodulate
-                                ; 
+
+  ;; Create array of structures with all the states to demodulate
   nlc = n_elements(ulct)
   nstat = npt / nlc
   ustattnlc = strarr(n_elements(ustatt))
@@ -132,18 +126,18 @@ function red_getstates_polarim, tfiles, rfiles, fdir,camt = camt, camr = camr, c
     ustattnlc[jj] = strjoin(tmp[0:n], '.')
   endfor
   ustattnlc = ustattnlc(uniq(ustattnlc, sort(ustattnlc)))
-                                ;
+
   pol = objarr(nstat)
   for ii = 0L, nstat - 1 do pol[ii] = obj_new('pol')
-                                ;pol = replicate(obj_new('pol'), nstat)
-                                ;
+  ;;pol = replicate(obj_new('pol'), nstat)
+
   for ii = 0L, nstat - 1 do begin
     
-
     idx = where(stattnlc eq ustattnlc[ii], count)
     pol[ii] -> assign_states, ustattnlc[ii], tfiles[idx], rfiles[idx], $
        (pref[idx])[0], fdir,camt = camt, camr = camr, camwb = camwb, newflats=newflats
   endfor
-                                ;
+
   return, pol
+
 end
