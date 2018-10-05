@@ -21,6 +21,10 @@
 ;
 ;       Threshold for identifying a strong enough pinhole.
 ;
+;    margin : in, optional, type=integer, default=30
+;
+;       A margin (in pixels) to remove from the detector FOV.
+;
 ;    max_shift : in, optional, type=int, default=200
 ;
 ;       Only consider mappings with a linear shift < max_shift pixels.
@@ -95,9 +99,12 @@
 ;                proceed, if the pinhole calibration fails for some
 ;                state(s).
 ;
+;   2018-10-05 : MGL. New keyword margin.
+;
 ;-
 pro red::pinholecalib, cams = cams $
                        , dir = dir $
+                       , margin = margin $
                        , max_shift = max_shift $
                        , nref = nref $
                        , pref = pref $
@@ -125,6 +132,7 @@ pro red::pinholecalib, cams = cams $
   if(n_elements(refcam) eq 0) THEN refcam = self.refcam
   if(n_elements(verbose) eq 0) THEN verbose = 0
   if(n_elements(max_shift) eq 0) then max_shift = 200
+  if n_elements(margin) eq 0 then margin = 30
   
   Ncams = n_elements(cams)
 
@@ -218,8 +226,15 @@ pro red::pinholecalib, cams = cams $
         continue
       endif
       
-      this_map = rdx_img_align( ref_img, cam_img, nref=nref, h_init=this_init, threshold=threshold, $
-        smooth=smooth, verbose=verbose, max_shift=max_shift )
+      this_map = rdx_img_align( ref_img $
+                                , cam_img $
+                                , nref=nref $
+                                , h_init=this_init $
+                                , threshold=threshold $
+                                , smooth=smooth $
+                                , verbose=verbose $
+                                , max_shift=max_shift $
+                                , margin = margin )
       
       if (last_prefilter ne this_prefilter) then begin
         if keyword_set(verify) then begin
@@ -245,10 +260,15 @@ pro red::pinholecalib, cams = cams $
         this_init = avg_map
         ref_img = red_readdata( alignments[failedmaps[ifailed]].state1.filename, /silent )
         img2 = red_readdata( alignments[failedmaps[ifailed]].state2.filename, /silent )
-        alignments[failedmaps[ifailed]].map = rdx_img_align( ref_img, img2 $
-                                                             , nref=nref, h_init=this_init $
-                                                             , threshold=threshold, smooth=smooth $
-                                                             , verbose=verbose, max_shift=max_shift )
+        alignments[failedmaps[ifailed]].map = rdx_img_align( ref_img $
+                                                             , img2 $
+                                                             , nref=nref $
+                                                             , h_init=this_init $
+                                                             , threshold=threshold $
+                                                             , smooth=smooth $
+                                                             , verbose=verbose $
+                                                             , max_shift=max_shift $
+                                                             , margin = margin )
       endfor                    ; ifailed
     endif
 
@@ -279,7 +299,7 @@ pro red::pinholecalib, cams = cams $
       print, '   ~0     ~\pm{1}   y-origin' 
       print, '   ~0        ~0        1' + LF
       print, 'Try to make a better fit by tweaking the parameters in the call (shown here with the default values):' + LF
-      print, 'map = rdx_img_align( ph1, ph2, nref=4, threshold=0.0, smooth=0, max_shift=200, verbose=0)' + LF
+      print, 'map = rdx_img_align( ph1, ph2, nref=4, threshold=0.0, smooth=0, max_shift=200, verbose=0, margin=30)' + LF
       print, 'Use verbose=2 to get more info from the calibration.'
       print, 'There should be ~100 keypoints (=pinholes) found in each image.'
       print, 'Once you find parameters that gives sane matrices for the previous failures, re-run a->pinholecalib with those parameters.'
