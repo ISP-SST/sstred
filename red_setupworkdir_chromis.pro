@@ -476,7 +476,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
-  printf, Slun, "a -> fitprefilter, /mask
+  printf, Slun, "a -> fitprefilter, /mask"
 
   printf, Slun, ''
   for ipref = 0, Nprefilters-1 do begin
