@@ -87,46 +87,6 @@ function red_matrix2momfbd, lc, imodmat
         endfor                  ; istokes
 
       endfor                    ; ilc
-      
-;      clip = red_getclips(lc1, ix,iy )
-;      tpmm=imodmat[*,(clip[0]>0)<mnx:(clip[1]<mnx),(clip[2]>0):(clip[3]<mny)]
-;
-;      for istokes=0,Nstokes-1 do begin
-;        pmm[*,*]=median(tpmm[4+istokes,*,*])                       ; fill extra bits with the mean...
-;        pmm[(-clip[0])>0,(-clip[2])>0]=reform(tpmm[4+istokes,*,*]) ; copy what we do have
-;
-;        dip = size(pmm, /dim)
-;        res = fltarr(dip)
-;        imm[istokes,1].patch[ix,iy].img = red_convolve(red_fillnan(pmm) $
-;                                                       , reform(lc1.patch[ix,iy].psf[*,*,0]))
-;      endfor                    ; istokes
-;
-;      clip = red_getclips(lc2, ix, iy)
-;      tpmm=imodmat[*,(clip[0]>0<mnx):(clip[1]<mnx),(clip[2]>0):(clip[3]<mny)]
-;
-;      for istokes=0,Nstokes-1 do begin
-;        pmm[*,*]=median(tpmm[8+istokes,*,*])                       ; fill extra bits with the mean...
-;        pmm[(-clip[0])>0,(-clip[2])>0]=reform(tpmm[8+istokes,*,*]) ; copy what we do have
-;
-;        dip = size(pmm, /dim)
-;        res = fltarr(dip)
-;        imm[istokes,2].patch[ix,iy].img = red_convolve(red_fillnan(pmm) $
-;                                                       , reform(lc2.patch[ix,iy].psf[*,*,0]))
-;      endfor                    ; istokes
-;
-;      clip = red_getclips(lc3, ix, iy)
-;      if not[clip[1]-clip[0]+1 eq pnx] or not[clip[3]-clip[2]+1 eq pny] then stop
-;      tpmm=imodmat[*,(clip[0]>0<mnx):(clip[1]<mnx),(clip[2]>0):(clip[3]<mny)]
-;
-;      for istokes=0,Nstokes-1 do begin
-;        pmm[*,*]=median(tpmm[12+istokes,*,*])                       ; fill extra bits with the mean...
-;        pmm[(-clip[0])>0,(-clip[2])>0]=reform(tpmm[12+istokes,*,*]) ; copy what we do have
-;
-;        dip = size(pmm, /dim)
-;        res = fltarr(dip)
-;        imm[istokes,3].patch[ix,iy].img = red_convolve(red_fillnan(pmm) $
-;                                                       , reform(lc3.patch[ix,iy].psf[*,*,0]))
-;      endfor                    ; istokes
 
     endfor                      ; iy
   endfor                        ; ix
