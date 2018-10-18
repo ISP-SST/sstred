@@ -38,6 +38,9 @@
 ; 
 ;   2014-01-10 : PS. Cleanup (remove unused code).
 ;
+;   2018-10-18 : MGL. Cleanup and change input to array of LC state
+;                structs. 
+;
 ;-
 function red_matrix2momfbd, lc, imodmat
 
