@@ -88,9 +88,14 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
     
     ;; base output location
     cfg_base_dir = self.out_dir + PATH_SEP() + momfbddir + PATH_SEP() + folder_tag + PATH_SEP()
-    
-    prefs = file_basename(file_search(cfg_base_dir+'*', count = Nprefs))
 
+    if n_elements(pref) gt 0 then begin
+      prefs = pref
+      Nprefs = n_elements(prefs)
+    endif else begin
+      prefs = file_basename(file_search(cfg_base_dir+'*', count = Nprefs))
+    endelse
+    
     for ipref = 0, Nprefs-1 do begin
       
       cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
