@@ -80,30 +80,37 @@ pro crisp::extractstates, strings, states $
 ;  if (strsplit(strings[0], '.', /extract, count = Nsplit))[Nsplit-1]
 ;  ne 'fits' then begin
 
+  ;; Create array of structs to hold the state information
+  if keyword_set(polcal) then begin
+    states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
+  endif else begin
+    states = replicate( {CRISP_STATE}, Nstrings )
+  endelse
+  states.nframes = 1            ; single frame by default
+
+
+
+  print, inam + ' : Try to extract state info from cache'
+  for ifile = 0, Nstrings-1 do begin
+
+    if keyword_set(force) then $
+       cnt = 0 $
+    else $
+       this_cache = rdx_cacheget(strings[ifile], count = cnt)
+    
+    if cnt gt 0 then states[ifile] = this_cache.state
+
+  endfor                        ; ifile
+
+  ;; Anything not already cached?
+  ncindx = where(states.filename ne strings, Nnotcached)
+
+  if Nnotcached eq 0 then return
+
+
+  
   if strmatch(strmid(strings[0],strlen(strings[0])-1,1),'[0-9]') then begin
 
-    if keyword_set(polcal) then begin
-      states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
-    endif else begin
-      states = replicate( {CRISP_STATE}, Nstrings )
-    endelse
-
-    print, inam + ' : Try to extract state info from cache'
-    for ifile = 0, Nstrings-1 do begin
-
-      if keyword_set(force) then $
-         cnt = 0 $
-      else $
-         this_cache = rdx_cacheget(strings[ifile], count = cnt)
-  
-      if cnt gt 0 then states[ifile] = this_cache.state
-
-    endfor                      ; ifile
-
-    ;; Anything not already cached?
-    ncindx = where(states.filename ne strings, Nnotcached)
-
-    if Nnotcached eq 0 then return
 
     print, inam + ' : Get un-cached state info from file names'
     ;; Most of the info is in the file names
@@ -141,6 +148,9 @@ pro crisp::extractstates, strings, states $
 ;                         , rscan     = rscan      $
                          , scan      = scan       $
                          , wav       = wav        
+
+;      print, strings[ncindx]
+;      print, wav, dwav, lambda
     endelse
 
     states[ncindx].detector         = detector ; "camXIX" 
@@ -216,28 +226,12 @@ pro crisp::extractstates, strings, states $
     states[ncindx].cam_settings = string(states[ncindx].exposure*1e3 $
                                          , format = '(f05.2)')+'ms' 
 
-    ;; Store in cache
-    for ifile = 0L, Nnotcached-1 do $
-       rdx_cache, strings[ncindx[ifile]], { state:states[ncindx[ifile]] }
-    
-
-    return
-
   endif
 
   ;; If we get to this point, the strings are FITS files. So the
   ;; following code should be revised once CRISP is run with the new
   ;; camera system.
   
-
-  ;; Create array of structs to hold the state information
-  if keyword_set(polcal) then begin
-    states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
-  endif else begin
-    states = replicate( {CRISP_STATE}, Nstrings )
-  endelse
-  states.nframes = 1            ; single frame by default
-
   ;; Some info from file names
   if keyword_set(polcal) then begin
     red_extractstates,strings, lc=lc $
@@ -360,13 +354,18 @@ pro crisp::extractstates, strings, states $
     ;; The CRISP tuning information consists of a four digit
     ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
     ;; and at least one digit for the finetuning (in mÅ).
-    tuninfo = stregex(fxpar(head, 'STATE') $
+    state = fxpar(head, 'STATE')
+;    if strtrim(state,2) eq '' then begin
+;      
+;    endif else begin
+    tuninfo = stregex(state $
                       , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                       , /extract, /subexpr) 
     
     ;; Make tuning without zero-padding in the finetuning part
     split_tuning = strsplit(tuninfo[0], '_', /extract)
     states[ifile].tuning = split_tuning[0] + '_' + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
+;    endelse
     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
     ;; The fullstate string
@@ -394,24 +393,43 @@ pro crisp::extractstates, strings, states $
     
     red_progressbar, ifile, Nstrings, 'Extract state info from file headers', /predict
 
+    ;; Some things differ between NB and WB
+    if states[ifile].is_wb then begin
+      states[ifile].tun_wavelength = states[ifile].pf_wavelength
+    endif else begin
+      tuninfo = stregex(wav[ifile] $
+                        , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
+                        , /extract, /subexpr) 
+      states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d-10, 1d-13])
+    endelse
+    
   endfor                        ; ifile
 
-  ;; Some things differ between NB and WB
-  wbindx = where(states.is_wb, Nwb, comp=nbindx, Ncomp = Nnb)
-  if Nwb gt 0 then begin
+;     ;; Some things differ between NB and WB
+;     wbindx = where(states.is_wb, Nwb, comp=nbindx, Ncomp = Nnb)
+;     if Nwb gt 0 then begin
+;   
+;       ;; Keywords LC and FPI_STATE should specify the NB state also for
+;       ;; WB data! Fix this!!
+;   
+;   ;    states[wbindx].lc = ''
+;   ;    states[wbindx].fpi_state = pref[wbindx]+'_'+pref[wbindx]+'+0'
+;       states[wbindx].tun_wavelength = states[wbindx].pf_wavelength
+;     endif
+;     if Nnb gt 0 then begin
+;   
+;       stop
+;   ;    states[nbindx].lc = lc[nbindx]
+;   ;    states[nbindx].fpi_state = pref[nbindx]+'_'+wav[nbindx]
+;       states[nbindx].tun_wavelength = double(pref[nbindx])*1d-10 + double(wav[nbindx])*1d-13
+;     endif
 
-    ;; Keywords LC and FPI_STATE should specify the NB state also for
-    ;; WB data! Fix this!!
+  ;; Store in cache
+  for ifile = 0L, Nnotcached-1 do $
+     rdx_cache, strings[ncindx[ifile]], { state:states[ncindx[ifile]] }
+  
 
-;    states[wbindx].lc = ''
-;    states[wbindx].fpi_state = pref[wbindx]+'_'+pref[wbindx]+'+0'
-    states[wbindx].tun_wavelength = states[wbindx].pf_wavelength
-  endif
-  if Nnb gt 0 then begin
-;    states[nbindx].lc = lc[nbindx]
-;    states[nbindx].fpi_state = pref[nbindx]+'_'+wav[nbindx]
-    states[nbindx].tun_wavelength = double(pref[nbindx])*1d-10 + double(wav[nbindx])*1d-13
-  endif
+  return
 
 
 end
