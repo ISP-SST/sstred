@@ -5,7 +5,7 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -211,6 +211,8 @@ pro red::prepmomfbd, wb_states = wb_states $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  instrument = ((typename(self)).tolower())
+  
   ;; Cameras
   cams = *self.cameras
   iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
@@ -398,7 +400,7 @@ pro red::prepmomfbd, wb_states = wb_states $
     
     print, inam + ' : Search for reference files in ' + dir
     self->selectfiles, cam=refcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                       files=ref_files, states=ref_states, nremove=remove, /force ;, /strip_wb
+                       files=ref_files, states=ref_states, /force ;, nremove=remove ;, /strip_wb
 
     if n_elements(ref_states) eq 0 then begin
       print, inam, ' : Failed to find files/states for the reference channel in ', dir
@@ -424,7 +426,7 @@ pro red::prepmomfbd, wb_states = wb_states $
       print, inam + ' : Search for PD files in ' + dir
       if file_test(dir + pdcam_name + '_nostate/',/directory) then subdir = pdcam_name + '_nostate/'
       self->selectfiles, cam=pdcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                         files=pd_files, states=pd_states, nremove=remove, /force ;, /strip_wb
+                         files=pd_files, states=pd_states, /force ; , nremove=remove ;, /strip_wb
 
       if n_elements(pd_states) eq 0 then begin
         print, inam, ' : Failed to find files/states for the pd channel in ', dir
@@ -635,7 +637,7 @@ pro red::prepmomfbd, wb_states = wb_states $
         
         ;; Get a list of all states for this camera
         self->selectfiles, cam=cams[icam], dirs=dir, files=files, $
-                           states=states, nremove=remove, /force
+                           states=states, /force ; , nremove=remove
 
         for iscan=0L, Nscans-1 do begin
           
@@ -650,7 +652,7 @@ pro red::prepmomfbd, wb_states = wb_states $
             
             ;; select a subset of the states which matches prefilter & scan number.
             self->selectfiles, cam=cams[icam], dirs=dir, prefilter=upref[ipref], scan=scannumber, $
-                               files=files, states=states, nremove=remove, selected=sel
+                               files=files, states=states, selected=sel ; , nremove=remove
 
             if( max(sel) lt 0 ) then continue
             
@@ -666,9 +668,16 @@ pro red::prepmomfbd, wb_states = wb_states $
             
             ;; Loop over states and add object to cfg_list
             for istate=0L, Nstates-1 do begin
-              
-              thisstate = ustates[istate].fpi_state
-              state_idx = where(state_list.fpi_state eq thisstate)
+
+              if instrument eq 'chromis' then begin
+                thisstate = ustates[istate].fpi_state
+                state_idx = where(state_list.fpi_state eq thisstate)
+              endif else begin
+                ;; Or does this work for chromis as well? (Se also
+                ;; align further down!)
+                thisstate = ustates[istate].fullstate
+                state_idx = where(state_list.fullstate eq thisstate)
+              endelse
               if max(state_idx) lt 0 then continue
               
 ;              self -> get_calib, state_list[state_idx[0]] $
@@ -683,7 +692,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                   stop
                   ;; Not implemented in chromis::filenames yet.
 ;                  gainname = a -> filenames('oldgain', state_list[state_idx[0]], /no_fits)
-                  gainname = a -> filenames('oldgain', state_list[state_idx[0]])
+                  gainname = self -> filenames('oldgain', state_list[state_idx[0]])
                 endif else begin
                   ;;search =
                   ;;self.out_dir+'/gaintables/'+folder_tag+'/'+self.camttag
@@ -702,8 +711,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 ;                          '.' + strmid(ustat1[ii], idx[0], $
 ;                                       idx[nidx-1])+ '*unpol.gain'
               endelse
- 
-
+  
               if state_list[state_idx[0]].nframes eq 1 then begin
                 if nremove ge n_elements(state_idx) then continue
                 if nremove ne 0 then begin
@@ -719,8 +727,14 @@ pro red::prepmomfbd, wb_states = wb_states $
               pos = STREGEX(filename, '[0-9]{7}', length=len)
               fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
 
-              align_idx = where( align.state2.camera eq cams[icam] and $
-                                 align.state2.fpi_state eq thisstate)
+              if instrument eq 'chromis' then begin
+                align_idx = where( align.state2.camera eq cams[icam] and $
+                                   align.state2.fpi_state eq thisstate)
+              endif else begin
+                align_idx = where( align.state2.camera eq cams[icam] and $
+                                   align.state2.fullstate eq thisstate)
+              endelse
+              
               if max(align_idx) lt 0 then begin ; no match for state, try only prefilter
                 align_idx = where( align.state2.camera eq cams[icam] and $
                                    align.state2.prefilter eq ustates[istate].prefilter)
@@ -744,8 +758,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                  cfg_list[cfg_idx].objects += '    WEIGHT=' + strtrim(weight[1],2) + LF
               cfg_list[cfg_idx].objects += '    channel{' + LF
               cfg_list[cfg_idx].objects += '        IMAGE_DATA_DIR=' + img_dir + LF
-              cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + LF
-              cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF
+              cfg_list[cfg_idx].objects += '        FILENAME_TEMPLATE=' + fn_template + LF ; ******
+              cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF            ; ******
               cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LF
               cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
 
@@ -888,7 +902,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 
 
   ;; Make header-only fits files to be read post-momfbd.
-  self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir
+  self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
 
   return
   
