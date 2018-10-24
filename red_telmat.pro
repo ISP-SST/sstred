@@ -83,6 +83,9 @@
 ;                Pit's telcal fits. These are preliminary values!
 ; 
 ;   2016-01-18 : Pit. Final values after finetuning fits
+; 
+;   2018-10-24 : MGL. Added cases for 5173 (use 5250) and 6300 (use
+;                6302). 
 ;
 ;-
 function red_telmat, lam, telpos, time $
@@ -116,13 +119,19 @@ function red_telmat, lam, telpos, time $
   lam_s = strtrim(lam, 2)
   if(year lt 2015) then begin
     case lam_s of
+      '5173': begin
+        ;; Until we have measurements for this line, we'll use
+        ;; the parameters for 5250.
+        par = [0.96833,  0.00393, -0.06554,  0.98679,  0.00903,  $
+               0.93720, 19.95967,  0.99967, -1.61346,  0.99923,  1.36401, $
+               45.00000,  0.00000, -37.10000, 10.70000]
+      end
       '5250': begin
-        ;; combined telcal of 2011.06.21 and 2011.10.13
+        ;; Combined telcal of 2011.06.21 and 2011.10.13
         ;; 2011.05.16 data not used (bad calibration polarizer)
         par = [0.96833,  0.00393, -0.06554,  0.98679,  0.00903,  $
                0.93720, 19.95967,  0.99967, -1.61346,  0.99923,  1.36401, $
                45.00000,  0.00000, -37.10000, 10.70000]
-        
       end
       '5380': begin
         ;; 2011.05.16 data not used (bad calibration polarizer)
@@ -132,15 +141,21 @@ function red_telmat, lam, telpos, time $
                45.00000,  0.00000, -37.10000, 10.70000]
       end
       '6173': begin
-        ;; data of 2011.10.13;  Used full day = bad fit, but only morning
+        ;; Data of 2011.10.13;  Used full day = bad fit, but only morning
         ;; is equally bad...
         par = [0.98267,  0.00512, -0.07116,  0.99895, -0.02139,  $
                0.93017, 17.30311,  0.99657, -0.90633,  0.99882, -0.00390, $
                45.00000,  0.00000, -37.10000, 10.70000]
         
       end
+      '6300': begin
+        ;; Use parameters for 6302.
+        par = [0.97584,  0.00279, -0.03748,  0.99020, -0.00982,  $
+               0.93092, 17.60193,  1.00000,  0.11770,  1.00000,  0.12265, $
+               45.00000,  0.00000, -37.10000, 10.70000]
+      end
       '6302': begin
-        ;; combined telcal of 2011.05.16, 2011.06.21 and 2011.10.13
+        ;; Combined telcal of 2011.05.16, 2011.06.21 and 2011.10.13
         par = [0.97584,  0.00279, -0.03748,  0.99020, -0.00982,  $
                0.93092, 17.60193,  1.00000,  0.11770,  1.00000,  0.12265, $
                45.00000,  0.00000, -37.10000, 10.70000]
@@ -151,7 +166,7 @@ function red_telmat, lam, telpos, time $
                45.00000,  0.00000, -37.10000, 10.70000]
       end
       '8542': begin
-        ;; combined telcal of 2011.05.16, 2011.06.21 and 2011.10.13
+        ;; Combined telcal of 2011.05.16, 2011.06.21 and 2011.10.13
         ;;par = [0.80000,  0.00199, -0.01863,  0.80652, -0.01026,  $
         ;;       0.89742, 14.94485,  1.00000,  1.32428,  1.00000, -1.35152, $
         ;;       45.00000,  0.66346, -37.1, 10.7]
@@ -166,12 +181,18 @@ function red_telmat, lam, telpos, time $
     endcase
   endif else begin
     print, "red_telmat: Using new telescope parameters, year -> ", year
-    case lam_s OF
+    case lam_s of
+      '5173': begin
+        ;; Until we have measurements for this line, we'll use
+        ;; the parameters for 5250.
+        par = [0.98895,  0.00284, -0.06396,  1.00000,  0.01845,  $
+               0.93627, 20.64541,  1.00000, -0.16907,  1.00000,  0.00000, $
+               45.00000,  0.01453, -36.12000, 50.60000]
+      end
       '5250': begin
         par = [0.98895,  0.00284, -0.06396,  1.00000,  0.01845,  $
                0.93627, 20.64541,  1.00000, -0.16907,  1.00000,  0.00000, $
                45.00000,  0.01453, -36.12000, 50.60000]
-        
       end
       '5876': begin
         par = [0.97778,  0.00286, -0.03027,  0.98550, -0.00204,  $
@@ -187,6 +208,12 @@ function red_telmat, lam, telpos, time $
         par = [0.97600,  0.00249, -0.04436,  0.98248,  0.00870,  $
                0.93174, 17.97889,  1.00000,  0.15227,  1.00000,  0.00000, $
                45.00000,  0.00010, -36.12000, 50.60000]
+      end
+      '6300': begin
+        ;; Use parameters for 6302.
+        par = [0.99030,  0.00083, -0.02227,  0.99619, -0.00603,  $
+               0.93090, 18.80404,  1.00000,  0.50345,  1.00000,  0.00000, $
+               45.00000,  0.00576, -36.12000, 50.60000]
       end
       '6302': begin
         par = [0.99030,  0.00083, -0.02227,  0.99619, -0.00603,  $
