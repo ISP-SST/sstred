@@ -186,8 +186,8 @@ pro red::make_intdif_gains, all = all $
       endif
       print, inam + ' : loading -> '+file_basename(fff)
       restore, fff
-      cmap = reform((temporary(fit)).pars[1,*,*]) ; Cavity map in [Å]
-      udwav = double(udwav)*1d10                  ; Wavelength coordinates in [Å]
+      cmap = reform((fit).pars[1,*,*]) ; Cavity map in [Å]
+      udwav = double(udwav)*1d10       ; Wavelength coordinates in [Å]
 
       ;; The real cavity-map has quite large shifts, but only the
       ;; local fine structure affects momfbd. With this option, we
@@ -211,7 +211,9 @@ pro red::make_intdif_gains, all = all $
 
         ;; Get this through get_calib method ---------------------------------
 ;        ffile = self.out_dir + '/flats/'+strjoin([cams[icam],pref,uwav[iwav]],'.')+'.unpol.flat'
-        ffile = self.out_dir + '/flats/'+strjoin([detectors[icam], pref, uwav[iwav], 'lc0', 'cavityfree'],'_')+'.flat.fits'
+        ;;ffile = self.out_dir + '/flats/'+strjoin([detectors[icam], pref, uwav[iwav], 'lc0', 'cavityfree'],'_')+'.flat.fits'
+        ffile = fit.oname[iwav]
+
         if ~file_test(ffile) then begin
           print, inam + ' : ERROR, cannot find flat file '+ffile
           return
@@ -219,7 +221,7 @@ pro red::make_intdif_gains, all = all $
         print, inam + ' : loading -> '+file_basename(ffile)
         flats[*,*,iwav] = red_readdata(ffile, header = fhdr)
         fhdrs.add, fhdr
-      endfor
+      endfor                    ; iwav
 
       ;; Existing scans?
       idx = where(done ne 0, count)
