@@ -88,17 +88,18 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   endif
   
   indx0 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 0, N0)
+  indx2 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 2, N2)
   indx3 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 3, N3)
   indx4 = where([Nxdims, Nydims, Nwdims, Ntdims] eq 4, N4)
   
   ;; At least one of the arrays have to be non-scalar. Any non-scalars
   ;; must have the same dimensions: (2 x 2 x Ntunes x Nscans).
-  if N0+N4 ne 4 || N4 eq 0 then begin
-    print, inam + ' : At least one of the arrays has the wrong dimensions.'
-    help, wcs
-    stop
-    retall
-  endif
+;  if N0+N4 ne 4 || N4 eq 0 then begin
+;    print, inam + ' : At least one of the arrays has the wrong dimensions.'
+;    help, wcs
+;    stop
+;    retall
+;  endif
 
   ;; Get the dimensions from a non-scalar
   case (where(indx4))[0] of
@@ -116,8 +117,8 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
   ;; array.
   Sx = dims[0]
   Sy = dims[1]
-  Sw = dims[2]
-  St = dims[3]
+  if n_elements(dims) ge 3 then Sw = dims[2] else Sw = 1
+  if n_elements(dims) ge 4 then St = dims[3] else St = 1
 
   ;; Get the dimensions of the data cube. This kind of FITS cube is
   ;; always five-dimensional, but dimensions can be degenerate.
