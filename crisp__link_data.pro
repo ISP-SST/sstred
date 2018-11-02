@@ -91,7 +91,7 @@ pro crisp::link_data, all_data = all_data $
 
   cams = *self.cameras
   Ncams = n_elements(cams)
-    
+
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin
     data_dir = dirs[idir]
@@ -146,7 +146,7 @@ pro crisp::link_data, all_data = all_data $
       endif
 
       ;; Sort files by image number
-      files = red_sortfiles(files)
+;      files = red_sortfiles(files)
       
       ;; Get states
       self->extractstates, files, states
@@ -217,14 +217,13 @@ pro crisp::link_data, all_data = all_data $
       linkername = linkerdir + cam + '_science_linker_'+folder_tag+'.sh'
       openw, lun, linkername, /get_lun
       printf, lun, '#!/bin/bash'
-
       
 ;      nt = n_elements(files)
 ;      camtag = (strsplit(file_basename(files[0]), '.', /extract))[0]
       
-      linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
-      openw, lun, linkername, /get_lun
-      printf, lun, '#!/bin/bash'
+;      linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
+;      openw, lun, linkername, /get_lun
+;      printf, lun, '#!/bin/bash'
       
 ;     ;; Print links
 ;      Ntot = 100. / (Nt - 1.0)
@@ -283,7 +282,7 @@ pro crisp::link_data, all_data = all_data $
 ;      endfor
       free_lun, lun
       
-      ;; Link data
+      ;; Link data 
       print, inam + ' : executing '+  linkername
       spawn, 'chmod a+x ' + linkername
       spawn, '/bin/bash ' + linkername
