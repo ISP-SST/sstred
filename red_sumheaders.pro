@@ -89,8 +89,8 @@ function red_sumheaders, files, sum $
     
   Nfiles = n_elements(files)
   if Nfiles eq 0 then begin
-      print, 'red_sumheaders: no files provided.'
-      return,''
+    print, 'red_sumheaders: no files provided.'
+    return,''
   endif
     
   get_framenumbers = 0
@@ -107,6 +107,7 @@ function red_sumheaders, files, sum $
       head = red_readhead(files[ifile],date_beg=date_beg_thisfile,framenumbers=frame_numbers_thisfile)
       ;; The number of frames in the file
       Nframes = n_elements(frame_numbers_thisfile)
+
       if Nframes eq 0 then begin
         Nframes = 1
         if n_elements(discard) ne 0 then if total(float(discard)) gt 0.0 then continue
@@ -128,13 +129,16 @@ function red_sumheaders, files, sum $
         endif
       endelse
 
-      ; only get framenumbers if necessary
+      ;; Only get framenumbers if necessary
       if get_framenumbers && (n_elements(frame_numbers_thisfile) gt max(indx)) then begin
         frame_numbers_thisfile = frame_numbers_thisfile[indx]
         red_append, framenumbers, frame_numbers_thisfile[indx]
-      endif
 
-      ; only get timestamps if necessary
+;        print, framenumbers
+        
+      endif else stop
+
+      ;; Only get timestamps if necessary
       if get_times then begin
         if (n_elements(date_beg_thisfile) gt max(indx)) then begin
           date_beg_thisfile = date_beg_thisfile[indx]
@@ -148,6 +152,7 @@ function red_sumheaders, files, sum $
     head = red_readhead(files[0]) ; read a single header to use as template
   endelse
 
+  
   ;; Remove duplicate framenumbers
   framenumbers = framenumbers[uniq(framenumbers, sort(framenumbers))]
   
@@ -226,7 +231,7 @@ function red_sumheaders, files, sum $
                      , 'End time of summed observation'
 
   ;; Add "global" metadata
-  red_metadata_restore, head
+  red_metadata_restore, anchor = anchor, head
 
   return, head
 
