@@ -195,8 +195,6 @@ pro red::fitscube_cmapcorr, fname $
 
   for ikey = 0, Nkeys-1 do begin
 
-    print, ikey, var_keys[ikey]
-    
     self -> fitscube_addvarkeyword, outname $
                                     , var_keys[ikey] $
                                     ,  old_filename = fname
@@ -215,5 +213,8 @@ pro red::fitscube_cmapcorr, fname $
   print, inam + ' : Integer cube stored in:'
   print, outname
   if keyword_set(flip) then print, flipfile
-
+  
 end
+
+; Should make new statistics? In principle it's needed but then
+; we have no way of avoiding the padding areas outside the FOV.
