@@ -27,7 +27,11 @@
 ; 
 ; 
 ; :Keywords:
-; 
+;
+;    count : out, optional, type=integer
+;
+;       The number of variable keywords (including any added keyword). 
+;
 ;    extensions : out, optional, type=strarr   
 ;   
 ;       The extension names in which the returned keywords can be
@@ -52,9 +56,11 @@
 ; 
 ;   2017-09-08 : MGL. New keywords new_keyword and new_extension. 
 ; 
+;   2018-11-02 : MGL. New keyword count.
 ; 
 ;-
 function red_fits_var_keys, hdr $
+                            , count = count $
                             , extensions = extensions $
                             , new_keyword = new_keyword $
                             , new_extension = new_extension $
@@ -74,11 +80,13 @@ function red_fits_var_keys, hdr $
       extensions = [ new_extension ]
       var_keys = new_extension + ';' + new_keyword
       fxaddpar, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', after = 'DATE'
+      count = 1
       return, keywords
     endif else begin
       ;; Just return 0
       undefine, extensions
       var_keys = ''
+      count = 0
       return, 0
     end
   endif
@@ -151,6 +159,8 @@ function red_fits_var_keys, hdr $
     fxaddpar, hdr, 'VAR_KEYS', var_keys, var_keys_comment
 
   endif
+
+  count = n_elements(keywords)
   
   return, keywords
 
