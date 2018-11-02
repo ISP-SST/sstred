@@ -76,9 +76,15 @@ pro red::headerinfo_addstep, header $
   
   if n_elements(header) eq 0 then mkhdr, header, 0
 
-
-  prevkey = 'OBS_HDU';'SOLARNET'
-
+  ;; Existing steps
+  prsteps_existing = fxpar(header,'PRSTEP*')
+  Nexisting = n_elements(prsteps_existing)
+  if Nexisting gt 0 then begin
+    anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
+  endif else begin
+    anchor = 'OBS_HDU'          ;'SOLARNET'
+  endelse
+  
   ;; Look for existing processing steps, set stepnumber to one higher.
   stepnumber = 0
   repeat begin
@@ -88,14 +94,12 @@ pro red::headerinfo_addstep, header $
   endrep until count eq 0
 
   if n_elements(prstep) eq 0 then prstep = 'Unknown'
-  fxaddpar, header, 'PRSTEP'+stp, prstep, 'Processing step name', after = prevkey
-  prevkey = 'PRSTEP'+stp
+  red_fitsaddkeyword, header, 'PRSTEP'+stp, prstep, 'Processing step name', anchor = anchor
 
   ;; Procedure name
   if n_elements(prproc) ne 0 then begin
     key = 'PRPROC'+stp
-    fxaddpar, header, key, prproc, 'Name of procedure used', after = prevkey
-    prevkey = key
+    red_fitsaddkeyword, header, key, prproc, 'Name of procedure used', anchor = anchor
   endif
 
   ;; Add headers with library names and versions. (Bug: Should be
@@ -113,8 +117,7 @@ pro red::headerinfo_addstep, header $
     prm = strjoin(prmode, ',')
     key = 'PRMODE'+stp
     if prm ne '' then begin
-      fxaddpar,header, key, prm, 'Processing mode', after = prevkey
-      prevkey = key
+      red_fitsaddkeyword,header, key, prm, 'Processing mode', anchor = anchor
     end
   endif
 
@@ -126,14 +129,13 @@ pro red::headerinfo_addstep, header $
       'DICTIONARY' : prp = json_serialize(prpara)
       else : stop
     endcase
-    fxaddpar, header, key, prp, after = prevkey $
-              , 'List of parameters/options for PRPROC'+stp
-    prevkey = key
+    red_fitsaddkeyword, header, key, prp, anchor = anchor $
+                        , 'List of parameters/options for PRPROC'+stp
   endif
 
   ;; Add headers with other step info.
-;  fxaddpar, header, 'VERSION', 0, 'FITS file processing generation/version'
-;  fxaddpar, header, 'LEVEL',   0, 'Data level of fits file'
+;  red_fitsaddkeyword, header, 'VERSION', 0, 'FITS file processing generation/version'
+;  red_fitsaddkeyword, header, 'LEVEL',   0, 'Data level of fits file'
   
   ;; Remove trailing blank lines
   Nlines = where(strmatch(header, 'END *'), Nmatch)
