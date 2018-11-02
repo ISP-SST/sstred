@@ -39,7 +39,7 @@
 ;    cams : in, optional, type=strarr
 ;
 ;      Indicate the cameras to calculate the clips/offsets for.
-;      Default is to do it for all prefilters.
+;      Default is to do it for all cameras.
 ;
 ;    refcam : in, optional, type=integer, default=0
 ;
@@ -61,7 +61,6 @@
 ;
 ;   2017-04-10 : MGL. New keyword makeoffsets.
 ;
-;
 ;-
 pro red::getalignment, align = align, $
                        prefilters = prefilters, $
@@ -75,10 +74,6 @@ pro red::getalignment, align = align, $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
-  ;; Logging
-  help, /obj, self, output = selfinfo 
-  ;; FIXME logging of array(struct) kewords fails for more than 10 elements, see line 167 in red_writelog
-  ;;red_writelog, selfinfo = selfinfo, logfile = logfile
 
   if( n_elements(cams) gt 0 ) then cams = [cams] $
   else if ptr_valid(self.cameras) then cams = [*self.cameras]
@@ -102,7 +97,6 @@ pro red::getalignment, align = align, $
     print, inam, ' : Need at least 2 cameras.'
     print, inam, ' : cams: ',cams
     print, inam, ' : self.cameras: ',*self.cameras
-    red_writelog, /add, logfile = logfile, top_info_strings = ' : Need at least 2 cameras.'
     return
   endif
   
