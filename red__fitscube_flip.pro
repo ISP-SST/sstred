@@ -236,8 +236,8 @@ pro red::fitscube_flip, filename $
 
   ;; Copy the variable-keywords from the regular nb cube to the
   ;; flipped version.
-  var_keys = red_fits_var_keys(him)
-  for ikey = 0, n_elements(var_keys)-1 do begin
+  var_keys = red_fits_var_keys(him, count = count)
+  for ikey = 0, Nkeys-1 do begin
     self -> fitscube_addvarkeyword, flipfile, var_keys[ikey] $
                                     ,  old_filename = filename, /flipped
   endfor                        ; ikey ;
