@@ -369,10 +369,10 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
     if ~keyword_set(calibrations_only) then begin  
       for ipref = 0, Npol-1 do begin
-        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "' " $
+        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads" $
                 + maybe_nodescatter[ipref] 
-        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "' " $
+        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
       endfor                    ; ipref
     endif
@@ -521,14 +521,21 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ';; Run MOMFBD outside IDL.'
   printf, Slun, ''
 
-  printf, Slun, ';; Post-MOMFBD stuff:' 
-  printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
+  printf, Slun, ';; Post-MOMFBD stuff:'
+;  printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
   if Npol gt 0 then begin
     printf, Slun, 'pol = a->polarim(/new)' 
     printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate,/noflat' 
-    printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
+;    printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
   endif
-  printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
+;  printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop"
+  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
+  printf, Slun, "; or "
+  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
+  printf, Slun, ""
+
+  
   
   free_lun, Clun
   free_lun, Slun
