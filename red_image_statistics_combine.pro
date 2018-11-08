@@ -54,13 +54,15 @@ function red_image_statistics_combine, statsarr $
   Nframes = n_elements(statsarr)
   Npixels = statsarr[0].Npixels ; Assume same for all frames
 
+  
+  
   CUBEMIN  = min(statsarr.datamin)
   CUBEMAX  = max(statsarr.datamax)
   CUBEMEAN = mean(statsarr.datamean)
 
   CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-                  * ( total( (Npixels-1d)* statsarr.DATARMS^2 $
-                             + Npixels* statsarr.DATAMEAN^2 ) $
+                  * ( total( (Npixels-1d) * statsarr.DATARMS^2 $
+                             + Npixels * statsarr.DATAMEAN^2 ) $
                       - Nframes*Npixels * CUBEMEAN^2 ))
   
   CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
@@ -130,3 +132,19 @@ function red_image_statistics_combine, statsarr $
   return, output
 
 end
+
+
+Nims = 10
+ims = randomn(seed, 100, 100, Nims, /double)
+
+cubestats = red_image_statistics_calculate(ims)
+
+imstats = replicate(cubestats, Nims)
+for i = 0, Nims-1 do imstats[i] = red_image_statistics_calculate(ims[*, *, i])
+
+combstats = red_image_statistics_combine(imstats)
+
+
+
+end
+
