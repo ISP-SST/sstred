@@ -95,6 +95,10 @@
 ;
 ;       Stonyhurst coordinates.
 ;
+;   tilt : out, optional, type=array
+;
+;       Solar local tilt from the turret log file.
+;
 ;   zenithangle : out, optional, type=float
 ;
 ;       Pointing angular distance from zenith (= 1-elevation) in
@@ -151,6 +155,7 @@
 ;
 ;     2018-06-15 : MGL. New keyword ao_lock.
 ;
+;     2018-10-29 : MGL. New keyword tilt.
 ;
 ;-
 pro red_logdata, date, time $
@@ -164,6 +169,7 @@ pro red_logdata, date, time $
                  , Rsun = Rsun $
                  , stonyhurst = stonyhurst $
                  , Sundist = Sundist $
+                 , tilt = tilt $
                  , turret = turret $
                  , zenithangle = zenithangle $
                  , use_pig_time = use_pig_time $
@@ -323,6 +329,7 @@ pro red_logdata, date, time $
                     || arg_present(turret) $
                     || arg_present(mu) $
                     || arg_present(azel) $
+                    || arg_present(tilt) $
                     || arg_present(stonyhurst) $
                     || arg_present(diskpos) $
                     || arg_present(pointing) $
@@ -461,6 +468,11 @@ pro red_logdata, date, time $
   ;; Azimuth and elevation
   if (arg_present(azel) || arg_present(zenithangle)) $
      && n_elements(turret) gt 0 then azel = turret
+
+
+  if arg_present(tilt) && n_elements(turret) gt 0 then begin
+    tilt = red_interpol_nogaps(turretdata.solar_local_tilt, turretdata.time, T)
+  endif
   
   ;; Disk coordinates (Helioprojective-Cartesian coordinates)
   if arg_present(diskpos) || arg_present(mu) then begin
