@@ -46,6 +46,14 @@
 ; 
 ;        The data in the summed flat file(s) appropriate to the state(s).
 ; 
+;    cflatname : out, optional, type=strarr 
+; 
+;       The name(c) of the cavityfree flat file(s) appropriate to the state(s).
+; 
+;    cflatdata : out, optional, type=array 
+; 
+;        The data in the cavityfree flat file(s) appropriate to the state(s).
+; 
 ;    gainname : out, optional, type=strarr 
 ; 
 ;       The name(s) of the gain file(s) appropriate to the state(s).
@@ -91,6 +99,8 @@
 ; 
 ;    2018-07-25 : Sum darks and flats, and make gains as needed.
 ; 
+;    2018-11-12 : New keywords cflatname, cflatstatus, cflatdata.
+; 
 ;-
 pro crisp::get_calib, states $
                       , no_fits = no_fits $
@@ -101,7 +111,8 @@ pro crisp::get_calib, states $
                       , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata   $
                       , polcname = polcname,   polcdata  = polcdata   $
                       , polsname = polsname,   polsdata  = polsdata   $
-                      , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata 
+                      , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
+                      , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata 
 
   Nstates = n_elements(states)
 
@@ -125,6 +136,8 @@ pro crisp::get_calib, states $
      polcname = self -> filenames('polc'   , states, no_fits = no_fits)
   if arg_present(sflatname) or arg_present(sflatdata) then $
      sflatname = self -> filenames('sumflat', states, no_fits = no_fits)
+  if arg_present(cflatname) or arg_present(cflatdata) then $
+     cflatname = self -> filenames('cavityflat', states, no_fits = no_fits)
 
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
@@ -139,6 +152,7 @@ pro crisp::get_calib, states $
   if arg_present(polcdata)  then polcdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   if arg_present(polsdata)  then polsdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  if arg_present(cflatdata) then cflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   
 
   status = 0
@@ -181,11 +195,22 @@ pro crisp::get_calib, states $
     ;; Summed flats
     if arg_present(sflatdata) then begin
 
-      if  n_elements(sflatname) ne 0 && file_test(sflatname[istate]) then begin
+      if n_elements(sflatname) ne 0 && file_test(sflatname[istate]) then begin
         sflatdata[0, 0, istate] = red_readdata(sflatname[istate] $
                                                , status = sflatstatus, /silent)
         if status eq 0 then status = sflatstatus
-      endif else  status = -1
+      endif else status = -1
+      
+    endif                       ; Summed flats
+
+    ;; Cavityfree flats
+    if arg_present(cflatdata) then begin
+
+      if n_elements(cflatname) ne 0 && file_test(cflatname[istate]) then begin
+        cflatdata[0, 0, istate] = red_readdata(cflatname[istate] $
+                                               , status = cflatstatus, /silent)
+        if status eq 0 then status = cflatstatus
+      endif else status = -1
       
     endif                       ; Summed flats
 
