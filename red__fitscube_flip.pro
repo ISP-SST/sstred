@@ -66,8 +66,8 @@
 ;   2018-08-30 : MGL. New keyword openclose, prevents input and output
 ;                files from being open at the same time.
 ; 
-;   2018-11-05 : MGL. Implemented two faster flipping methods, new
-;                keywords method and maxmemory.
+;   2018-11-05 : MGL. Two faster flipping methods, new keywords method
+;                and maxmemory.
 ; 
 ;-
 pro red::fitscube_flip, filename $
