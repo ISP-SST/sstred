@@ -286,12 +286,28 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT5', 's' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL5', wcs.time[0], 'Just a single time'  
   endelse
-  
-  modfits, filename, 0, hdr
 
+  ;; If the new header needs another block of 80 lines to fit, this
+  ;; operation may take a long time because the whole data part of the
+  ;; file needs to be moved on disk. Can we change the way the wcs
+  ;; info is handled, so the header is complete before the data part
+  ;; is written? Can the extension below be added to the file before
+  ;; the data part?
+
+  print
+  print, inam+' : Writing a new file header with WCS information.'
+  print
+  print, inam+' : If this header needs another 2880-byte block, the data'
+  print, inam+' : parts of the file have to be moved on the disk. This may'
+  print, inam+' : take a long time, depending on the size of the file.'
+  print
+  modfits, filename, 0, hdr
+  print, inam+' : Done writing the new header!'
+  print
+  
   ;; Make the binary extension. ------------------------------------------------------------
 
-  ;; Make the header
+  ;; Make the extension header
   fxbhmake, bdr, 1, 'WCS-TAB', 'For storing tabulated WCS coordinates'
   colno = 1
   fxbaddcol, colno++, bdr, wcs_coords, ttype, 'Coordinate array'
