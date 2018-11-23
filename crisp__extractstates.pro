@@ -153,14 +153,14 @@ pro crisp::extractstates, strings, states $
 ;      print, wav, dwav, lambda
     endelse
 
-    states[ncindx].detector         = detector ; "camXIX" 
-    states[ncindx].filename         = strings  ; File names in input strings
-    states[ncindx].framenumber      = nums     ; Frame numbers
-    states[ncindx].lc               = lc       ; Liquid crystal state
-    states[ncindx].nframes          = 1        ; Single frame in old CRISP files
-    states[ncindx].pf_wavelength    = lambda   ; [nm] Prefilter wavelength
-    states[ncindx].prefilter        = pref     ; "6302"
-    states[ncindx].scannumber       = scan     ; Scan number
+    states[ncindx].filename         = strings[ncindx] ; File names in input strings
+    states[ncindx].detector         = detector        ; "camXIX" 
+    states[ncindx].framenumber      = nums            ; Frame numbers
+    states[ncindx].lc               = lc              ; Liquid crystal state
+    states[ncindx].nframes          = 1               ; Single frame in old CRISP files
+    states[ncindx].pf_wavelength    = lambda          ; [nm] Prefilter wavelength
+    states[ncindx].prefilter        = pref            ; "6302"
+    states[ncindx].scannumber       = scan            ; Scan number
 
     
     ;; Some info is in the ANA headers
