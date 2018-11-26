@@ -63,15 +63,18 @@
 ;   2017-12-06 : MGL. Remove trailing blank lines.
 ;
 ;   2017-12-20 : MGL. Write prpara dictionaries in json format.
+;
+;   2018-11-21 : MGL. New keyword anchor.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
-                             , prstep = prstep $
-                             , prproc = prproc $
+                             , addlib = addlib $
+                             , anchor = anchor $
+                             , level = level $
                              , prmode = prmode $
                              , prpara = prpara $
-                             , addlib = addlib $
-                             , level = level $
+                             , prproc = prproc $
+                             , prstep = prstep $
                              , version = version
   
   if n_elements(header) eq 0 then mkhdr, header, 0
@@ -79,11 +82,13 @@ pro red::headerinfo_addstep, header $
   ;; Existing steps
   prsteps_existing = fxpar(header,'PRSTEP*')
   Nexisting = n_elements(prsteps_existing)
-  if Nexisting gt 0 then begin
-    anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
-  endif else begin
-    anchor = 'OBS_HDU'          ;'SOLARNET'
-  endelse
+  if n_elements(anchor) eq 0 then begin
+    if Nexisting gt 0 then begin
+      anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
+    endif else begin
+      anchor = 'OBS_HDU'        ;'SOLARNET'
+    endelse
+  endif
   
   ;; Look for existing processing steps, set stepnumber to one higher.
   stepnumber = 0
