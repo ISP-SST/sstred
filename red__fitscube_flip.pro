@@ -544,9 +544,12 @@ pro red::fitscube_flip, filename $
 
   ;; Copy cavity maps
   cmaps = mrdfits(filename, 'WCSDVARR', chdr, status = status, /silent)
-  writefits, flipfile, cmaps, chdr, /append
-  ;; The CWERRj, CWDISj, and DWj keywords should already be in the
-  ;; header. We just need to copy the WCSDVARR (image) extension.
-
+  if status eq 0 then begin
+    writefits, flipfile, cmaps, chdr, /append
+    ;; The CWERRj, CWDISj, and DWj keywords should already be in the
+    ;; header. We just need to copy the WCSDVARR (image) extension.
+  endif else begin
+    print, inam+' : This file does not seem to have cavity maps.'
+  endelse
 
 end
