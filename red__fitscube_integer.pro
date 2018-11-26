@@ -167,10 +167,6 @@ pro red::fitscube_integer, fname $
 
 
 
-  ;; Any other extensions to copy?
-
-
-
 
   if keyword_set(flip) then begin
     ;; Make a flipped version
