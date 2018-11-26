@@ -3,6 +3,15 @@
 ;+
 ; Demodulate restored images for a particular scan and tuning state.
 ; 
+; This method does (or at least is meant to do) the same as
+; pol__demodulate.pro in the master (old CRISP) branch, except that it
+; reads the inverse modulation matrices from disk rather than having
+; pointers to them from within the pol class object. (We don't use a
+; pol class in the new code base.) We rely on red_mozaik to handle
+; both the inverse mod matrices and the image data the same way when
+; it comes to clipping.
+; 
+; 
 ; :Categories:
 ;
 ;    SST pipeline
@@ -64,8 +73,7 @@
 ; 
 ; :History:
 ; 
-;   2018-10-09 : MGL. First version, based on Jaime's
-;                red::polarim and pol::demodulate.
+;   2018-10-09 : MGL. First version, based on Jaime's pol::demodulate.
 ; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
@@ -84,14 +92,6 @@ pro crisp::demodulate, outname, immr, immt $
                        , wbg = wbg $
                        , wcs = wcs $
                        , wbstates = wbstates
-
-  ;; Feature requested by Vasco: Support polarimetry with 5173.
-  ;; Problem: there is no telmat for 5173 but it seems to work well
-  ;; with 5250 telmat. Possible solution: add an optional keyword in
-  ;; red_telmat allowing selection of the filter for which telmat is
-  ;; to be used (default the actual filter of the data). This keyword
-  ;; would have to be propagated from make_nb_cube, through
-  ;; demodulate, to red_telmat.
 
   ;; What to do with the newflats keyword? The polarim method uses it
   ;; in call to red_getstates_polarim.
@@ -149,8 +149,6 @@ pro crisp::demodulate, outname, immr, immt $
   Ny = y1 - y0 + 1
   
   prefilter = wbstates[0].prefilter
-;  nbtdetector = nbtstates[0].detector
-;  nbrdetector = nbrstates[0].detector
   camw = wbstates[0].camera
   camt = nbtstates[0].camera
   camr = nbrstates[0].camera
@@ -160,16 +158,19 @@ pro crisp::demodulate, outname, immr, immt $
   indx = where(align.state2.camera eq camt, Nalign)
   case Nalign of
     0    : stop                 ; Should not happen!
-    1    : amapt = invert(      align[indx].map           )
-    else : amapt = invert( mean(align[indx].map, dim = 3) )
+    1    : amapt =      align[indx].map
+    else : amapt = mean(align[indx].map, dim = 3)
   endcase
+  amapt /= amapt[2, 2]          ; Normalize
   indx = where(align.state2.camera eq camr, Nalign)
   case Nalign of
     0    : stop                 ; Should not happen!
-    1    : amapr = invert(      align[indx].map           )
-    else : amapr = invert( mean(align[indx].map, dim = 3) )
+    1    : amapr =      align[indx].map
+    else : amapr = mean(align[indx].map, dim = 3)
   endcase
+  amapr /= amapr[2, 2]          ; Normalize
 
+  
   ;; Get some header info
   
   for ilc = 0, Nlc-1 do begin
@@ -181,7 +182,7 @@ pro crisp::demodulate, outname, immr, immt $
     red_append, tbegs, red_time2double((strsplit(date_beg,'T',/extract))[1])
     red_append, tavgs, red_time2double((strsplit(date_avg,'T',/extract))[1])
     red_append, tends, red_time2double((strsplit(date_end,'T',/extract))[1])
-    red_append, xps, fxpar(wbhead, 'XPOSURE')
+    red_append, xps,   fxpar(wbhead, 'XPOSURE')
     red_append, texps, fxpar(wbhead, 'TEXPOSUR')
     red_append, nsums, fxpar(wbhead, 'NSUMEXP')
   endfor                        ; ilc
@@ -191,38 +192,68 @@ pro crisp::demodulate, outname, immr, immt $
   
   if n_elements(wcs) gt 0 then wcs.time = tavg
 
-;  ;;tmp = red_mozaic(*self.timg[0])
-;  ;;dim = red_getborder(tmp, x0, x1, y0, y1)
-;  ;;dim = size(tmp, /dim)
-;  x0 = self.x0
-;  x1 = self.x1
-;  y0 = self.y0
-;  y1 = self.y1
-;  if keyword_set(noclip) then begin
-;    tmp = size(red_mozaic((*self.timg[1])), /dim)
-;    x0 = 0L
-;    x1 = tmp[0] - 1
-;    y0 = 0L
-;    y1 = tmp[1] - 1
-;  endif
-;  
-;  dim = [x1 - x0 + 1, y1 - y0 + 1]
                                 ;
-;; Create arrays for the image mozaics
+  ;; Create arrays for the image mozaics
   img_t = fltarr(Nx, Ny, 4)
   img_r = fltarr(Nx, Ny, 4)
 
+  ;; load files
+  if ~keyword_set(noflat) then begin
+
+    ;; Adapt this block to new code base!
+
+    dims = size(immt, /dim)
+    Nxx = dims[1]               ; Detector size
+    Nyy = dims[2]
+    utflat = fltarr(Nxx, Nyy)
+    urflat = fltarr(Nxx, Nyy)
+    tgain = fltarr([Nxx,Nyy,Nlc])
+    rgain = fltarr([Nxx,Nyy,Nlc])
+    
+    ;; utflat and urflat are the "unpolarized" ("cavityfree") flats
+    ;; for the current state (ingoring the LC state)
+    self -> get_calib, nbtstates[0], cflatdata = utflat
+    self -> get_calib, nbrstates[0], cflatdata = urflat
+    
+    for ilc = 0, Nlc-1 do begin
+
+      ;; tgain and rgain are the gaintables for the current state,
+      ;; including the LC states.
+
+      self -> get_calib, nbtstates[ilc], gaindata = gaindata ; Read the gain
+      tgain[0, 0, ilc] = gaindata
+      
+      self -> get_calib, nbrstates[ilc], gaindata = gaindata ; Read the gain
+      rgain[0, 0, ilc] = gaindata
+
+    endfor                      ; ilc
+    
+    print, inam + ' : Applying flat ratios to the inverse modulation matrix.'
+    immt_dm = red_demat(tgain, utflat, immt)
+    immr_dm = red_demat(rgain, urflat, immr)
+    print, 'done'
+
+  endif else begin
+    immt_dm = immt
+    immr_dm = immr
+  endelse
+
+  
   if keyword_set(smooth_by_subfield) then begin
 
-    ;; Divide modulation matrices into momfbd-subfields, smooth with
-    ;; PSF from each subfield, make mosaics of the result.
+    ;; Divide geometrically distortion-corrected modulation matrices
+    ;; into momfbd-subfields, smooth with PSF from each subfield, make
+    ;; mosaics of the result.
     
-    immts = red_matrix2momfbd(timg, immt)
-    immrs = red_matrix2momfbd(rimg, immr)
+    immts = red_matrix2momfbd(timg, immt_dm, amap = amapt)
+    immrs = red_matrix2momfbd(rimg, immr_dm, amap = amapr)
 
     mymt = fltarr(Nlc, Nstokes, Nx, Ny)
     mymr = fltarr(Nlc, Nstokes, Nx, Ny)
-  
+
+    ;; The red_mozaic calls below return matrices in the cropped size.
+    ;; Do we need to correct their geometry as well at this point?
+
     ;; Mozaic images and demodulation matrix
     for ilc = 0L, Nlc-1 do begin
       img_r[*,*,ilc] = red_mozaic(rimg[ilc], /crop) * nbrfac
@@ -231,11 +262,14 @@ pro crisp::demodulate, outname, immr, immt $
       for istokes = 0L, Nstokes-1 do mymt[ilc,istokes,*,*] = red_mozaic(immts[ilc,istokes], /crop) 
     endfor
 
-;    if keyword_set(cmap) then cmap = (red_mozaic(red_conv_cmap(cmap,*self.timg[1])))[x0:x1,y0:y1]
+    ;; if keyword_set(cmap) then cmap = (red_mozaic(red_conv_cmap(cmap,*self.timg[1])))[x0:x1,y0:y1]
 
   endif else begin
 
+    stop
+
     ;; Smooth the modulation matrices with average PSF.
+
 
   endelse
 
@@ -245,7 +279,7 @@ pro crisp::demodulate, outname, immr, immt $
   img_wb = fltarr(Nx, Ny, Nlc)
   for ilc = 0L, Nlc-1 do img_wb[*,*,ilc] = red_readdata(wfiles[ilc]) 
 
-;  if keyword_set(cmap) then cmap = red_stretch(temporary(cmap), grid1)
+  ;; if keyword_set(cmap) then cmap = red_stretch(temporary(cmap), grid1)
 
   rest = fltarr(Nx, Ny, 4)
   resr = fltarr(Nx, Ny, 4)
@@ -254,62 +288,29 @@ pro crisp::demodulate, outname, immr, immt $
   if n_elements(wbg) gt 0 then begin
 
     ;; Demodulate with destretching
-;    stop
-;    grid = fltarr(2, 2, Nlc)
-;    for ilc = 0, Nlc-1 do begin
-;      grid[0, 0, ilc] = 
-;    end
-;    grid0 = red_dsgridnest(wbg, img_wb[*,*,0], tiles, clip)
-;    grid1 = red_dsgridnest(wbg, img_wb[*,*,1], tiles, clip)
-;    grid2 = red_dsgridnest(wbg, img_wb[*,*,2], tiles, clip)
-;    grid3 = red_dsgridnest(wbg, img_wb[*,*,3], tiles, clip)
-    
     for ilc = 0L, Nlc-1 do begin
       grid = red_dsgridnest(wbg, img_wb[*,*,ilc], tiles, clips)
       for istokes = 0L, 3 do begin
-        
-        rest[*,*,istokes] += red_stretch(reform(mymt[ilc,istokes,*,*]) * img_t[*,*,ilc], grid)
-        resr[*,*,istokes] += red_stretch(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc], grid)
-
-;        rest[*,*,istokes] = red_stretch(reform(mymt[0,istokes,*,*]) * img_t[*,*,0], grid0) + $
-;                            red_stretch(reform(mymt[1,istokes,*,*]) * img_t[*,*,1], grid1) + $
-;                            red_stretch(reform(mymt[2,istokes,*,*]) * img_t[*,*,2], grid2) + $
-;                            red_stretch(reform(mymt[3,istokes,*,*]) * img_t[*,*,3], grid3)
-;        
-;        resr[*,*,istokes] = red_stretch(reform(mymr[0,istokes,*,*]) * img_r[*,*,0], grid0) + $
-;                            red_stretch(reform(mymr[1,istokes,*,*]) * img_r[*,*,1], grid1) + $
-;                            red_stretch(reform(mymr[2,istokes,*,*]) * img_r[*,*,2], grid2) + $
-;                            red_stretch(reform(mymr[3,istokes,*,*]) * img_r[*,*,3], grid3) 
-
+        rest[*,*,istokes] += red_stretch(reform(mymt[ilc,istokes,*,*]) $
+                                         * img_t[*,*,ilc], grid)
+        resr[*,*,istokes] += red_stretch(reform(mymr[ilc,istokes,*,*]) $
+                                         * img_r[*,*,ilc], grid)
       endfor                    ; istokes
     endfor                      ; ilc
-    
+
   endif else begin
 
-    ;; No WBG image given, demodulate without destretching.
-
+    ;; No global WB image, demodulate without destretching.
     for ilc = 0L, Nlc-1 do begin
       for istokes = 0L, 3 do begin
-
         rest[*,*,istokes] += reform(mymt[ilc,istokes,*,*]) * img_t[*,*,ilc]
         resr[*,*,istokes] += reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc]
-
-;        rest[*,*,istokes] = reform(mymt[0,istokes,*,*]) * img_t[*,*,0] + $
-;                            reform(mymt[1,istokes,*,*]) * img_t[*,*,1] + $
-;                            reform(mymt[2,istokes,*,*]) * img_t[*,*,2] + $
-;                            reform(mymt[3,istokes,*,*]) * img_t[*,*,3]
-;      
-;        resr[*,*,istokes] = reform(mymr[0,istokes,*,*]) * img_r[*,*,0] + $
-;                            reform(mymr[1,istokes,*,*]) * img_r[*,*,1] + $
-;                            reform(mymr[2,istokes,*,*]) * img_r[*,*,2] + $
-;                            reform(mymr[3,istokes,*,*]) * img_r[*,*,3] 
-
       endfor                    ; istokes
     endfor                      ; ilc
 
   endelse
-  
 
+  
   ;; These are now Stokes cubes!
   img_t = temporary(rest)
   img_r = temporary(resr)
@@ -318,118 +319,94 @@ pro crisp::demodulate, outname, immr, immt $
 
   dum = size(img_t,/dim)
   drm = dum / 8.0 
-  xx0 = drm[0] - 1
-  xx1 = dum[0] - drm[0] - 1
-  yy0 = drm[1] - 1
-  yy1 = dum[1] - drm[1] - 1
+  xx0 = round(drm[0] - 1)
+  xx1 = round(dum[0] - drm[0] - 1)
+  yy0 = round(drm[1] - 1)
+  yy1 = round(dum[1] - drm[1] - 1)
   
-  aver = (mean(img_t[xx0:xx1,yy0:yy1,0]) + mean(img_r[xx0:xx1,yy0:yy1,0])) / 2.
-  sct = aver / mean(img_t[xx0:xx1,yy0:yy1,0])
-  scr = aver / mean(img_r[xx0:xx1,yy0:yy1,0])
+  mediant = median(img_t[xx0:xx1,yy0:yy1,0])
+  medianr = median(img_r[xx0:xx1,yy0:yy1,0])
+  aver = (mediant + medianr) / 2.
+  sct = aver / mediant
+  scr = aver / medianr
   
   res = (sct * (img_t) + scr * (img_r)) / 2.
   
   print, inam + ' : Combining data from transmitted and reflected camera'
   print, '   -> Average Intensity = '  + red_stri(aver)
-  print, '   -> Tcam scale factor -> ' + red_stri(sct)
-  print, '   -> Rcam scale factor -> ' + red_stri(scr)
+  print, '   -> Tcam scale factor -> ' + red_stri(sct) + ' (after '+red_stri(nbtfac)+')'
+  print, '   -> Rcam scale factor -> ' + red_stri(scr) + ' (after '+red_stri(nbrfac)+')'
+
+
+  if 0 then begin
+
+    meant=mean(img_t[xx0:xx1,yy0:yy1,0])
+    meanr=mean(img_r[xx0:xx1,yy0:yy1,0])
+    mediant=median(img_t[xx0:xx1,yy0:yy1,0])
+    medianr=median(img_r[xx0:xx1,yy0:yy1,0])
+
+    cghistoplot,img_r[xx0:xx1,yy0:yy1,0],xrange=[2.6,4.3]*1e-8
+    cghistoplot,img_t[xx0:xx1,yy0:yy1,0],/oplot,color='blue' 
+    cgoplot,[1,1]*medianr,[0,20000],color='red',/over,line=2
+    cgoplot,[1,1]*mediant,[0,20000],color='blue',/over,line=2
+    cgoplot,[1,1]*meanr,[0,20000],color='red',/over          
+    cgoplot,[1,1]*meant,[0,20000],color='blue',/over         
+    
+    aver = (meant + meanr) / 2.
+    sct = aver / meant
+    scr = aver / meanr
+    
+    print, inam + ' : Combining data from transmitted and reflected camera'
+    print, '   -> Average Intensity = '  + red_stri(aver)
+    print, '   -> Tcam scale factor -> ' + red_stri(sct) + ' (after '+red_stri(nbtfac)+')'
+    print, '   -> Rcam scale factor -> ' + red_stri(scr) + ' (after '+red_stri(nbrfac)+')'
+
+    aver2 = (mediant + medianr) / 2.
+    sct2 = aver2 / mediant
+    scr2 = aver2 / medianr
+    
+    print, inam + ' : Combining data from transmitted and reflected camera'
+    print, '   -> Average Intensity = '  + red_stri(aver2)
+    print, '   -> Tcam scale factor -> ' + red_stri(sct2) + ' (after '+red_stri(nbtfac)+')'
+    print, '   -> Rcam scale factor -> ' + red_stri(scr2) + ' (after '+red_stri(nbrfac)+')'
   
-  ;; Average obs. time (used for demodulation) 
-  time_obs = 0.d0
-  for ii = 0L, 3 do time_obs += red_time2double((timg[ii]).time)
-  time_obs = red_time2double(time_obs * 0.25d0, /dir)
+  endif
   
-;  if n_elements(ext_time) gt 0 then begin
-;    iscan = long(self.scan)
-;    if n_elements(ext_time) gt iscan + 1 then time_obs = ext_time[iscan]
-;  endif
-  
-  ;; telescope model
-  
+  ;; Telescope model 
   line = (strsplit(wbstates[0].fpi_state,'_',/extract))[0]
   print, inam+' : Detected spectral line -> '+line
 
 
 
-  ;; self.telog is the name of the turret log file? Replace accessing
-  ;; this with a call to red_logdata?
-  if file_test(self.telog) then begin
+  red_logdata, self.isodate, tavg, azel = azel,  tilt = tilt
+  year = (strsplit(self.isodate, '-', /extract))[0]
+  mtel = red_telmat(line, {TIME:tavg, AZ:azel[0], ELEV:azel[1], TILT:tilt} $
+                    , /no_zero, year=year)
+  imtel = invert(mtel) 
+  imtel /= imtel[0]
 
-    red_logdata, self.isodate, tavg, azel = azel,  tilt = tilt
-    year = (strsplit(self.isodate, '-', /extract))[0]
-    mtel = red_telmat(line, {TIME:tavg, AZ:azel[0], ELEV:azel[1], TILT:tilt} $
-                      , /no_zero, year=year)
-
-;    ;; mtel =
-;    ;; sst_mueller_all((*self.timg[0]).date, time_obs, self.telog, line)
-;    if n_elements(mdate) eq 0 then mdate = strjoin(strsplit((timg[0]).date,'-/.',/extra),'/')
-;    year = long((strsplit(mdate,'/',/extract))[0])
-;    
-;    telpos = red_read_azel( self.telog,mdate)
-;    print, inam + ' : time_obs = '+time_obs
-;    mtel = red_telmat(line, telpos, time_obs, /no_zero, year=year)
+  ;; Apply the telescope Muller matrix
+  res1 = fltarr(Nx, Ny, Nstokes)
+  for j=0, Nstokes-1 do for i=0, Nstokes-1 do $
+     res1[*, *, j] += res[*, *, i] * imtel[i, j]
+  res = temporary(res1)
   
-    imtel = invert(mtel) 
-    imtel /= imtel[0]
-
-    ;; Apply the matrix
-
-    res1 = fltarr(Nx, Ny, Nstokes)
-    for j=0, Nstokes-1 do begin
-      for i=0, Nstokes-1 do begin
-        res1[*, *, j] += res[*, *, i] * imtel[i, j]
-      endfor                    ; i
-    endfor                      ; j
-    res = temporary(res1)
-  endif else print, inam + ' : WARNING, SST position LOG not found -> telescope polarization not corrected!!!!'
-
   
-
   
-  ;; Save result
-  
-;  if keyword_set(savecams) then begin
-;    odir = file_dirname(self.tfiles[0]) + '/demodulated_cameras/'
-;    file_mkdir, odir
-;    
-;    tcam = (strsplit(file_basename(self.tfiles[0]), '.',/extract))[0]
-;    rcam = (strsplit(file_basename(self.rfiles[0]), '.',/extract))[0]
-;
-;    ofil = tcam + '.'+self.state + '.f0'
-;    res1 = fltarr(dim[0], dim[1],4)
-;    for j=0, 3 do for i=0, 3 do res1[*, *, j] += img_t[*, *, i] * imtel[i, j]
-;    fzwrite,  temporary(res1) * sct, odir + ofil,' '
-;    
-;    ofil = rcam + '.'+self.state + '.f0'
-;    res1 = fltarr(dim[0], dim[1],4)
-;    for j=0, 3 do for i=0, 3 do res1[*, *, j] += img_r[*, *, i] * imtel[i, j]
-;    fzwrite,  temporary(res1) * scr, odir + ofil,' '
-;
-;    return
-;    
-;  endif
-
-
   if keyword_set(nosave) then return
   
+  ;; Save result as a fitscube with all the usual metadata.
+  
   file_mkdir, outdir
-  
-  ;; Save as a fitscube with all the usual metadata. Could be read
-  ;; into crispex?
-  
-;  print, inam + ' : saving file -> '+ outdir + outname
-;  head = 'TIME_OBS='+time_obs+' DATE_OBS='+timg[0].date
-;  fzwrite, res, outdir + outname, head+''
 
   dims = [Nx, Ny, 1, Nstokes, 1] 
   res = reform(res, dims)
 
   ;; Make header
   hdr = red_readhead(nbrstates[0].filename)
-  check_fits, res, hdr, /UPDATE, /SILENT
+  check_fits, res, hdr, /update, /silent
   red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', file_basename(outname)
   red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1
-
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -445,8 +422,7 @@ pro crisp::demodulate, outname, immr, immt $
   ;; Remove some irrelevant keywords
   red_fitsdelkeyword, hdr, 'TAB_HDUS' ; No tabulated headers in summed file
   red_fitsdelkeyword, hdr, 'FRAMENUM' ; No particular frame number
-  red_fitsdelkeyword, hdr, 'SCANNUM'  ; No particular scan number
-  red_fitsdelkeyword, hdr, 'CADENCE'  ; Makes no sense to keep?
+  red_fitsdelkeyword, hdr, 'CADENCE' ; Makes no sense to keep?
   
   
   ;; Set various keywords in hdr. DATE* and statistics are useful.
@@ -480,8 +456,6 @@ pro crisp::demodulate, outname, immr, immt $
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'DETECTOR', nbrstates[0].detector+','+nbtstates[0].detector
 
-
-
   ;; Add "global" metadata
   red_metadata_restore, anchor = anchor, hdr
   
@@ -506,14 +480,14 @@ pro crisp::demodulate, outname, immr, immt $
   self -> fitscube_initialize, outname, hdr, lun, fileassoc, dims 
   for istokes = 0, Nstokes-1 do begin
     self -> fitscube_addframe, fileassoc, res[*, *, 0, istokes, 0] $
-                               , istokes = istokes
-    
+                               , istokes = istokes    
   endfor                        ; istokes
   
 
   ;; Close the file
   self -> fitscube_finish, lun, wcs = wcs
-  
+
+  ;; Add statistics metadata
   anchor = 'DATE-END'
   for itag = n_tags(statistics[0])-1, 0, -1 do begin
     itagc = where((tag_names(statistics[0]))[itag] eq tag_names(cubestats), Nmatch)
