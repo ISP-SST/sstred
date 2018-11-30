@@ -236,7 +236,7 @@ pro crisp::make_nb_cube, wcfile $
   ;; are much larger than the ones corresponding to the individual
   ;; NB states.
   wbindx = where(states.exposure gt mean(states.exposure)*1.5 $
-                  , Nscans, complement = complement, Ncomplement = Ncomplement)
+                 , Nscans, complement = complement, Ncomplement = Ncomplement)
   
   ;; All the per-tuning files and states
   pertuningfiles = files[complement]
@@ -299,6 +299,8 @@ pro crisp::make_nb_cube, wcfile $
   Nlc = n_elements(ulc)
   makestokes = (Nlc gt 1) and ~keyword_set(nopolarimetry)
 
+  if makestokes then Nstokes = 4 else Nstokes = 1
+  
   if Nnbt ne Nnbr then stop
 
   ;; Prepare for making output file names
@@ -404,11 +406,11 @@ pro crisp::make_nb_cube, wcfile $
       print, inam + ' : Error, calibration file not found -> '+cfile
       stop
     endif
-    restore, cfile                 ; The cavity map is in a struct called "fit". 
+    restore, cfile                  ; The cavity map is in a struct called "fit". 
     cmapt = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
     cmapt /= 10.                    ; Make it [nm]
-    cmapt = -cmapt                 ; Change sign so lambda_correct = lambda + cmap
-    fit = 0B                       ; Don't need the fit struct anymore.
+    cmapt = -cmapt                  ; Change sign so lambda_correct = lambda + cmap
+    fit = 0B                        ; Don't need the fit struct anymore.
     
     cfile = self.out_dir + 'flats/spectral_flats/' $
             + strjoin([nbrstates[0].detector $
@@ -420,7 +422,7 @@ pro crisp::make_nb_cube, wcfile $
       print, inam + ' : Error, calibration file not found -> '+cfile
       stop
     endif
-    restore, cfile                 ; The cavity map is in a struct called "fit". 
+    restore, cfile                  ; The cavity map is in a struct called "fit". 
     cmapr = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
     cmapr /= 10.                    ; Make it [nm]
     cmapr = -cmapr                  ; Change sign so lambda_correct = lambda + cmap
@@ -492,8 +494,6 @@ pro crisp::make_nb_cube, wcfile $
 
     ;; Make Stokes cube
 
-    Nstokes = 4
-
     stokesdir = datadir + '/stokes/'
     file_mkdir, stokesdir
 
@@ -536,7 +536,6 @@ pro crisp::make_nb_cube, wcfile $
       ;; them if needed. They are returned in the (size and)
       ;; orientation of the momfbd output.
       self -> inverse_modmatrices, prefilter, stokesdir $
-;                                   , x01y01 = mrX01Y01 $
                                    , camr = nbrcamera, immr = immr $
                                    , camt = nbtcamera, immt = immt $
                                    , no_ccdtabs = no_ccdtabs $
@@ -608,7 +607,7 @@ pro crisp::make_nb_cube, wcfile $
         endfor                  ; iwav
       endfor                    ; iscan
       
-          
+      
     endif
 
     ;; Need to copy some info from the stokes cube headers to hdr.
@@ -762,12 +761,14 @@ pro crisp::make_nb_cube, wcfile $
 ;  red_fitsaddkeyword, hdr, 'DETFIRM',  fxpar(mhdr,'DETFIRM') + ',' + fxpar(mhdt,'DETFIRM')
 
   ;; Initialize fits file, set up for writing the data part.
-  dims = [Nx, Ny, Nwav, 1, Nscans] 
+  dims = [Nx, Ny, Nwav, Nstokes, Nscans] 
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
   if keyword_set(wbsave) then begin
     wbfilename = strreplace(filename, 'nb_', 'wbalign_')
-    self -> fitscube_initialize, wbfilename, hdr, wblun, wbfileassoc, dims 
+    wbdims = [Nx, Ny, Nwav, 1, Nscans] 
+    wbhdr = hdr
+    self -> fitscube_initialize, wbfilename, wbhdr, wblun, wbfileassoc, wbdims 
   endif
   
 
@@ -781,34 +782,34 @@ pro crisp::make_nb_cube, wcfile $
   exp_array      = fltarr(Nwav, Nscans) ; Total exposure time
   sexp_array     = fltarr(Nwav, Nscans) ; Single exposure time
   nsum_array     = lonarr(Nwav, Nscans) ; Number of summed exposures
- 
+  
   wcs = replicate({  wave:dblarr(2,2) $
-                   , hplt:dblarr(2,2) $
-                   , hpln:dblarr(2,2) $
-                   , time:dblarr(2,2) $
+                     , hplt:dblarr(2,2) $
+                     , hpln:dblarr(2,2) $
+                     , time:dblarr(2,2) $
                   }, Nwav, Nscans)
 
   if ~keyword_set(nostatistics) then begin
-    ;; Variables for statistics metadata.
-    DATAMIN  = dblarr(Nwav, Nscans) ; The minimum data value
-    DATAMAX  = dblarr(Nwav, Nscans) ; The maximum data value
-    DATAMEAN = dblarr(Nwav, Nscans) ; The average data value
-    DATARMS  = dblarr(Nwav, Nscans) ; The RMS deviation from the mean
-    DATAKURT = dblarr(Nwav, Nscans) ; The kurtosis
-    DATASKEW = dblarr(Nwav, Nscans) ; The skewness
-    DATAP01  = dblarr(Nwav, Nscans) ; The 01 percentile
-    DATAP10  = dblarr(Nwav, Nscans) ; The 10 percentile
-    DATAP25  = dblarr(Nwav, Nscans) ; The 25 percentile
-    DATAMEDN = dblarr(Nwav, Nscans) ; The median data value
-    DATAP75  = dblarr(Nwav, Nscans) ; The 75 percentile
-    DATAP90  = dblarr(Nwav, Nscans) ; The 90 percentile
-    DATAP95  = dblarr(Nwav, Nscans) ; The 95 percentile
-    DATAP98  = dblarr(Nwav, Nscans) ; The 98 percentile
-    DATAP99  = dblarr(Nwav, Nscans) ; The 99 percentile
+;    ;; Variables for statistics metadata.
+;    DATAMIN  = dblarr(Nwav, Nscans) ; The minimum data value
+;    DATAMAX  = dblarr(Nwav, Nscans) ; The maximum data value
+;    DATAMEAN = dblarr(Nwav, Nscans) ; The average data value
+;    DATARMS  = dblarr(Nwav, Nscans) ; The RMS deviation from the mean
+;    DATAKURT = dblarr(Nwav, Nscans) ; The kurtosis
+;    DATASKEW = dblarr(Nwav, Nscans) ; The skewness
+;    DATAP01  = dblarr(Nwav, Nscans) ; The 01 percentile
+;    DATAP10  = dblarr(Nwav, Nscans) ; The 10 percentile
+;    DATAP25  = dblarr(Nwav, Nscans) ; The 25 percentile
+;    DATAMEDN = dblarr(Nwav, Nscans) ; The median data value
+;    DATAP75  = dblarr(Nwav, Nscans) ; The 75 percentile
+;    DATAP90  = dblarr(Nwav, Nscans) ; The 90 percentile
+;    DATAP95  = dblarr(Nwav, Nscans) ; The 95 percentile
+;    DATAP98  = dblarr(Nwav, Nscans) ; The 98 percentile
+;    DATAP99  = dblarr(Nwav, Nscans) ; The 99 percentile
     percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
   end
 
-    
+  
   ;; The narrowband cube is aligned to the wideband cube and all
   ;; narrowband scan positions are aligned to each other. So get hpln
   ;; and hplt from the wideband cube wcs coordinates, this should
@@ -837,40 +838,61 @@ pro crisp::make_nb_cube, wcfile $
                          , /predict $
                          , 'Calculate statistics'
 
-        ;; The NB files in this scan, sorted in tuning wavelength order.
-        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[iwav] $
-                             , cam = nbtcamera, scan = uscans[iscan] $
-                             , sel = scan_nbtindx, count = count
-        scan_nbtfiles = pertuningfiles[scan_nbtindx]
-        scan_nbtstates = pertuningstates[scan_nbtindx]
-        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[iwav] $
-                             , cam = nbrcamera, scan = uscans[iscan] $
-                             , sel = scan_nbrindx, count = count
-        scan_nbrfiles = pertuningfiles[scan_nbrindx]
-        scan_nbrstates = pertuningstates[scan_nbrindx]
-         
-        ;; Read images, apply prefilter curve and temporal scaling.
-        ;; Average the two cameras.
-        nbim = 0.
-        Nim = n_elements(scan_nbrindx) + n_elements(scan_nbtindx)
-        for iim = 0, n_elements(scan_nbrindx)-1 do $
-           nbim += (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[iwav]
-        for iim = 0, n_elements(scan_nbtindx)-1 do $
-           nbim += (red_readdata(scan_nbtfiles[iim]))[x0:x1, y0:y1] * nbt_rpref[iwav]
-        nbim *= tscl[iscan] / Nim
+        if makestokes then begin
 
+          ;; Read the pre-made Stokes cube
+          
+          nbim = red_readdata(snames[iscan, iwav])
+          nbim = nbim[x0:x1, y0:y1, 0, *] * tscl[iscan]
 
-        ;; Calculate statistics metadata before alignment and rotation
-        ;; so we avoid padding.
-        if iscan eq 0 and iwav eq 0 then begin
-          statistics = red_image_statistics_calculate(Nbim)
-          statistics = replicate(temporary(statistics), Nwav, Nscans)
+          ;; Calculate statistics metadata before alignment and rotation
+          ;; so we avoid padding.
+          for istokes = 0, Nstokes-1 do begin
+            if iscan eq 0 and iwav eq 0 and istokes eq 0 then begin
+              statistics = red_image_statistics_calculate(nbim[*, *, 0, istokes])
+              statistics = replicate(temporary(statistics), Nwav, Nstokes, Nscans)
+            endif else begin
+              statistics[iwav, istokes, iscan] = red_image_statistics_calculate(nbim[*, *, 0, istokes])
+            endelse 
+          endfor                ; istokes
+          
         endif else begin
-          statistics[iwav, iscan] = red_image_statistics_calculate(Nbim)
-        endelse 
-        
+
+          ;; The NB files in this scan, sorted in tuning wavelength order.
+          self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                               , fpi_states = utuning[iwav] $
+                               , cam = nbtcamera, scan = uscans[iscan] $
+                               , sel = scan_nbtindx, count = count
+          scan_nbtfiles = pertuningfiles[scan_nbtindx]
+          scan_nbtstates = pertuningstates[scan_nbtindx]
+          self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                               , fpi_states = utuning[iwav] $
+                               , cam = nbrcamera, scan = uscans[iscan] $
+                               , sel = scan_nbrindx, count = count
+          scan_nbrfiles = pertuningfiles[scan_nbrindx]
+          scan_nbrstates = pertuningstates[scan_nbrindx]
+          
+          ;; Read images, apply prefilter curve and temporal scaling.
+          ;; Average the two cameras.
+          nbim = 0.
+          Nim = n_elements(scan_nbrindx) + n_elements(scan_nbtindx)
+          for iim = 0, n_elements(scan_nbrindx)-1 do $
+             nbim += (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[iwav]
+          for iim = 0, n_elements(scan_nbtindx)-1 do $
+             nbim += (red_readdata(scan_nbtfiles[iim]))[x0:x1, y0:y1] * nbt_rpref[iwav]
+          nbim *= tscl[iscan] / Nim
+
+
+          ;; Calculate statistics metadata before alignment and rotation
+          ;; so we avoid padding.
+          if iscan eq 0 and iwav eq 0 then begin
+            statistics = red_image_statistics_calculate(Nbim)
+            statistics = replicate(temporary(statistics), Nwav, Nscans)
+          endif else begin
+            statistics[iwav, iscan] = red_image_statistics_calculate(Nbim)
+          endelse 
+          
+        endelse
         
 ;        momnt = moment(nbim)    ; mean, variance, skewness, kurtosis
 ;        perc = cgpercentiles(nbim, percentiles = percentiles)
@@ -897,8 +919,9 @@ pro crisp::make_nb_cube, wcfile $
         
       endfor                    ; iwav
     endfor                      ; iscan
-    CUBEMIN  = min(DATAMIN)
-    CUBEMAX  = max(DATAMAX)
+
+    CUBEMIN  = min(statistics.datamin)
+    CUBEMAX  = max(statistics.datamax)
 
     ;; Accumulate a histogram for the entire cube, use to calculate
     ;; percentiles. Setup here, add contributions in the double loop
@@ -906,12 +929,13 @@ pro crisp::make_nb_cube, wcfile $
     Nbins = 2L^16               ; Use many bins!
     binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
     hist = lonarr(Nbins)
+
   endif
+  
   
   iprogress = 0
   Nprogress = Nscans*Nwav
   for iscan = 0L, Nscans-1 do begin
-
 
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
@@ -924,73 +948,110 @@ pro crisp::make_nb_cube, wcfile $
                        , 'Processing scan=' $
                        + strtrim(uscans[iscan], 2) + ' tuning=' + utuning[iwav] 
 
-      ;; The NB files in this scan, sorted in tuning wavelength order.
-      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                           , fpi_states = utuning[iwav] $
-                           , cam = nbtcamera, scan = uscans[iscan] $
-                           , sel = scan_nbtindx, count = count
-      scan_nbtfiles = pertuningfiles[scan_nbtindx]
-      scan_nbtstates = pertuningstates[scan_nbtindx]
-      sortindx = sort(scan_nbtstates.tun_wavelength)
-      scan_nbtfiles = scan_nbtfiles[sortindx]
-      scan_nbtstates = scan_nbtstates[sortindx]
-      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                           , fpi_states = utuning[iwav] $
-                           , cam = nbrcamera, scan = uscans[iscan] $
-                           , sel = scan_nbrindx, count = count
-      scan_nbrfiles = pertuningfiles[scan_nbrindx]
-      scan_nbrstates = pertuningstates[scan_nbrindx]
-      sortindx = sort(scan_nbrstates.tun_wavelength)
-      scan_nbrfiles = scan_nbrfiles[sortindx]
-      scan_nbrstates = scan_nbrstates[sortindx]
+
+      if makestokes then begin
+
+        ;; Read the pre-made Stokes cube
+        
+        nbim = red_readdata(snames[iscan, iwav], head = stokhdr)
+        nbim = reform(nbim[x0:x1, y0:y1, 0, *]) * tscl[iscan]
+
+        ;; The Stokes cube is already wbcorrected so we should not
+        ;; repeat that here.
+
+        ;; Get some metadata from the Stoeks cube header.
+        red_fitspar_getdates, stokhdr $
+                              , date_beg = date_beg $
+                              , date_avg = date_avg $
+                              , date_end = date_end 
+        
+        tbeg_array[iwav, iscan] = red_time2double((strsplit(date_beg,'T',/extract))[1])
+        tavg_array[iwav, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+        tend_array[iwav, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
+
+        date_beg_array[iwav, iscan] = date_beg
+        date_avg_array[iwav, iscan] = date_avg
+        date_end_array[iwav, iscan] = date_end
+
+        ;; Wavelength and time
+        wcs[iwav, iscan].wave = red_fitsgetkeyword(stokhdr, 'CRVAL3')
+        wcs[iwav, iscan].time = red_fitsgetkeyword(stokhdr, 'CRVAL5')
+        ;; The preceding lines should perhaps be replaced with
+        ;; properly reading the WCS info?
+        
+        ;; Exposure time
+        exp_array[iwav, iscan]  = red_fitsgetkeyword(stokhdr, 'XPOSURE')
+        sexp_array[iwav, iscan] = red_fitsgetkeyword(stokhdr, 'TEXPOSUR')
+        nsum_array[iwav, iscan] = red_fitsgetkeyword(stokhdr, 'NSUMEXP')
+
+      endif else begin
+        ;; The NB files in this scan, sorted in tuning wavelength order.
+        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                             , fpi_states = utuning[iwav] $
+                             , cam = nbtcamera, scan = uscans[iscan] $
+                             , sel = scan_nbtindx, count = count
+        scan_nbtfiles = pertuningfiles[scan_nbtindx]
+        scan_nbtstates = pertuningstates[scan_nbtindx]
+        sortindx = sort(scan_nbtstates.tun_wavelength)
+        scan_nbtfiles = scan_nbtfiles[sortindx]
+        scan_nbtstates = scan_nbtstates[sortindx]
+        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                             , fpi_states = utuning[iwav] $
+                             , cam = nbrcamera, scan = uscans[iscan] $
+                             , sel = scan_nbrindx, count = count
+        scan_nbrfiles = pertuningfiles[scan_nbrindx]
+        scan_nbrstates = pertuningstates[scan_nbrindx]
+        sortindx = sort(scan_nbrstates.tun_wavelength)
+        scan_nbrfiles = scan_nbrfiles[sortindx]
+        scan_nbrstates = scan_nbrstates[sortindx]
 ;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
 ;                         , cam = nbcamera, scan = uscans[iscan] $
 ;                         , sel = scan_nbindx, count = count
 ;    scan_nbfiles = pertuningfiles[scan_nbindx]
 ;    scan_nbstates = pertuningstates[scan_nbindx]
 
-      ;; The WB files in this scan, sorted as the NB files
-      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                           , fpi_states = utuning[iwav] $
-                           , cam = wbcamera, scan = uscans[iscan] $
-                           , sel = scan_wbindx, count = count
-      scan_wbfiles = pertuningfiles[scan_wbindx]
-      scan_wbstates = pertuningstates[scan_wbindx]
-      ;;match2, scan_nbrstates.fpi_state, scan_wbstates.fpi_state, sortindx
-      match2, scan_nbrstates.lc, scan_wbstates.lc, sortindx
-      scan_wbfiles = scan_wbfiles[sortindx]
-      scan_wbstates = scan_wbstates[sortindx]
+        ;; The WB files in this scan, sorted as the NB files
+        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                             , fpi_states = utuning[iwav] $
+                             , cam = wbcamera, scan = uscans[iscan] $
+                             , sel = scan_wbindx, count = count
+        scan_wbfiles = pertuningfiles[scan_wbindx]
+        scan_wbstates = pertuningstates[scan_wbindx]
+        ;;match2, scan_nbrstates.fpi_state, scan_wbstates.fpi_state, sortindx
+        match2, scan_nbrstates.lc, scan_wbstates.lc, sortindx
+        scan_wbfiles = scan_wbfiles[sortindx]
+        scan_wbstates = scan_wbstates[sortindx]
 
-      ;; Collect info about this frame here.
-      for iim = 0, n_elements(scan_wbindx)-1 do begin
-        wbhead = red_readhead(scan_wbfiles[iim])
-        red_fitspar_getdates, wbhead $
-                              , date_beg = date_beg $
-                              , date_avg = date_avg $
-                              , date_end = date_end 
-        red_append, tbegs, red_time2double((strsplit(date_beg,'T',/extract))[1])
-        red_append, tavgs, red_time2double((strsplit(date_avg,'T',/extract))[1])
-        red_append, tends, red_time2double((strsplit(date_end,'T',/extract))[1])
-        red_append, xps, fxpar(wbhead, 'XPOSURE')
-        red_append, texps, fxpar(wbhead, 'TEXPOSUR')
-        red_append, nsums, fxpar(wbhead, 'NSUMEXP')
-      endfor
-      tbeg_array[iwav, iscan] = min(tbegs)
-      tavg_array[iwav, iscan] = mean(tavgs)
-      tend_array[iwav, iscan] = max(tends)
+        ;; Collect info about this frame here.
+        for iim = 0, n_elements(scan_wbindx)-1 do begin
+          wbhead = red_readhead(scan_wbfiles[iim])
+          red_fitspar_getdates, wbhead $
+                                , date_beg = date_beg $
+                                , date_avg = date_avg $
+                                , date_end = date_end 
+          red_append, tbegs, red_time2double((strsplit(date_beg,'T',/extract))[1])
+          red_append, tavgs, red_time2double((strsplit(date_avg,'T',/extract))[1])
+          red_append, tends, red_time2double((strsplit(date_end,'T',/extract))[1])
+          red_append, xps, fxpar(wbhead, 'XPOSURE')
+          red_append, texps, fxpar(wbhead, 'TEXPOSUR')
+          red_append, nsums, fxpar(wbhead, 'NSUMEXP')
+        endfor
+        tbeg_array[iwav, iscan] = min(tbegs)
+        tavg_array[iwav, iscan] = mean(tavgs)
+        tend_array[iwav, iscan] = max(tends)
 
-      date_beg_array[iwav, iscan] = self.isodate + 'T' + red_timestring(tbeg_array[iwav, iscan])
-      date_avg_array[iwav, iscan] = self.isodate + 'T' + red_timestring(tavg_array[iwav, iscan])
-      date_end_array[iwav, iscan] = self.isodate + 'T' + red_timestring(tend_array[iwav, iscan])
+        date_beg_array[iwav, iscan] = self.isodate + 'T' + red_timestring(tbeg_array[iwav, iscan])
+        date_avg_array[iwav, iscan] = self.isodate + 'T' + red_timestring(tavg_array[iwav, iscan])
+        date_end_array[iwav, iscan] = self.isodate + 'T' + red_timestring(tend_array[iwav, iscan])
 
-      ;; Wavelength and time
-      wcs[iwav, iscan].wave = scan_nbtstates[0].tun_wavelength*1d9
-      wcs[iwav, iscan].time = tavg_array[iwav, iscan]
+        ;; Wavelength and time
+        wcs[iwav, iscan].wave = scan_nbtstates[0].tun_wavelength*1d9
+        wcs[iwav, iscan].time = tavg_array[iwav, iscan]
 
-      ;; Exposure time
-      exp_array[iwav, iscan]  = total(xps)
-      sexp_array[iwav, iscan] = mean(texps)
-      nsum_array[iwav, iscan] = round(total(nsums))
+        ;; Exposure time
+        exp_array[iwav, iscan]  = total(xps)
+        sexp_array[iwav, iscan] = mean(texps)
+        nsum_array[iwav, iscan] = round(total(nsums))
 
 
 ;      ;; The NB files in this scan, sorted in tuning wavelength order.
@@ -1006,59 +1067,78 @@ pro crisp::make_nb_cube, wcfile $
 ;                           , sel = scan_nbrindx, count = count
 ;      scan_nbrfiles = pertuningfiles[scan_nbrindx]
 ;      scan_nbrstates = pertuningstates[scan_nbrindx]
+        
+        
+        ;; Read images, apply prefilter curve and temporal scaling.
+        ;; Average all LC states for the two cameras.
+        nbim = 0.
+        Nim = n_elements(scan_nbrindx) + n_elements(scan_nbtindx)
+        for iim = 0, n_elements(scan_nbtindx)-1 do begin
+
+          this_im = (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[iwav]
+          if wbcor then begin
+            ;; Get destretch to anchor camera (residual seeing)
+            wwi = (red_readdata(scan_wbfiles[iim]))[x0:x1, y0:y1]
+            grid1 = red_dsgridnest(wb, wwi, tiles, clips)
+            ;; Apply destretch to anchor camera and prefilter correction
+            this_im = red_stretch(temporary(this_im), grid1)
+          endif
+          nbim += this_im
+
+          this_im = (red_readdata(scan_nbtfiles[iim]))[x0:x1, y0:y1] * nbt_rpref[iwav]
+          if wbcor then begin
+            ;; Apply destretch to anchor camera and prefilter correction
+            this_im = red_stretch(temporary(this_im), grid1)
+          endif
+          nbim += this_im
+
+        endfor
+        nbim *= tscl[iscan] / Nim
+
+      endelse
       
-
-      ;; Read images, apply prefilter curve and temporal scaling.
-      ;; Average all LC states for the two cameras.
-      nbim = 0.
-      Nim = n_elements(scan_nbrindx) + n_elements(scan_nbtindx)
-      for iim = 0, n_elements(scan_nbtindx)-1 do begin
-        this_im = (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[iwav]
-        if wbcor then begin
-          ;; Get destretch to anchor camera (residual seeing)
-          wwi = (red_readdata(scan_wbfiles[iim]))[x0:x1, y0:y1]
-          grid1 = red_dsgridnest(wb, wwi, tiles, clips)
-          ;; Apply destretch to anchor camera and prefilter correction
-          this_im = red_stretch(temporary(this_im), grid1)
-        endif
-        nbim += this_im
-;      end
-;        for iim = 0, n_elements(scan_nbtindx)-1 do begin
-        this_im = (red_readdata(scan_nbtfiles[iim]))[x0:x1, y0:y1] * nbt_rpref[iwav]
-        if wbcor then begin
-          ;; Apply destretch to anchor camera and prefilter correction
-          this_im = red_stretch(temporary(this_im), grid1)
-        endif
-        nbim += this_im
-      endfor
-      nbim *= tscl[iscan] / Nim
-
       if ~keyword_set(nostatistics) then begin
         ;; Add to the histogram
         hist += histogram(nbim, min = cubemin, max = cubemax, Nbins = Nbins, /nan)
       endif
-  
-      ;; Apply derot, align, dewarp based on the output from
-      ;; make_wb_cube
-      nbim = red_rotation(temporary(nbim), ang[iscan], $
-                          wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-      nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
 
-      if keyword_set(integer) then begin
-        self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
-                                   , iscan = iscan, ituning = iwav
+      if makestokes then begin
+        nbcube = fltarr(Nx, Ny, Nstokes)
+        for istokes = 0, Nstokes-1 do begin
+          ;; Apply derot, align, dewarp based on the output from
+          ;; make_wb_cube
+          nbcube[0, 0, istokes] = red_rotation(nbim[*, *, istokes], ang[iscan], $
+                                               wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+          nbcube[0, 0, istokes] = red_stretch(nbcube[*, *, istokes] $
+                                              , reform(wcGRID[iscan,*,*,*]))
+          if keyword_set(integer) then begin
+            self -> fitscube_addframe, fileassoc, fix(round((nbcube[*, *, istokes]-bzero)/bscale)) $
+                                       , iscan = iscan, ituning = iwav, istokes = istokes
+          endif else begin
+            self -> fitscube_addframe, fileassoc, nbcube[*, *, istokes] $
+                                       , iscan = iscan, ituning = iwav, istokes = istokes
+          endelse
+        endfor                  ; istokes
       endif else begin
-        self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                   , iscan = iscan, ituning = iwav
+        nbim = red_rotation(nbim, ang[iscan] $
+                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+        nbim = red_stretch(nbim, reform(wcGRID[iscan,*,*,*]))
+        if keyword_set(integer) then begin
+          self -> fitscube_addframe, fileassoc, fix(round((nbim-bzero)/bscale)) $
+                                     , iscan = iscan, ituning = iwav
+        endif else begin
+          self -> fitscube_addframe, fileassoc, nbim $
+                                     , iscan = iscan, ituning = iwav
+        endelse
       endelse
-
+      
       if keyword_set(wbsave) then begin
         ;; Same operations as on narrowband image, except for
         ;; "aligncont".
         wbim = wwi * tscl[iscan]
         wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
-                          wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
         wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
                                    , iscan = iscan, ituning = iwav
@@ -1153,13 +1233,12 @@ pro crisp::make_nb_cube, wcfile $
 ;    CUBEP98  = cubemin + ( (where(hist_sum gt 0.98))[0]+0.5 ) * binsize 
 ;    CUBEP99  = cubemin + ( (where(hist_sum gt 0.99))[0]+0.5 ) * binsize
 
-
     cubestats = red_image_statistics_combine(statistics $
                                              , hist = hist $
                                              , comments = cubecomments $
                                              , binsize = binsize)
     
-
+    
     
     
   endif
@@ -1170,6 +1249,8 @@ pro crisp::make_nb_cube, wcfile $
 
   ;; Add cavity maps as WAVE distortions 
   if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cavitymaps
+
+  print, inam + ' : Add some variable keywords.'
 
   ;; Add some variable keywords
   self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
@@ -1189,7 +1270,7 @@ pro crisp::make_nb_cube, wcfile $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
- 
+  
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $
                                   , anchor = anchor 
@@ -1222,15 +1303,22 @@ pro crisp::make_nb_cube, wcfile $
                                   , keyword_method = 'median' $
 ;                                  , keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5]
-
+  
   
   if ~keyword_set(nostatistics) then begin
 
+    print, inam + ' : Write statistics'
+
     ;; Write statistics
-    
+    if makestokes then begin
+      axis_numbers = [3, 4, 5]  ; (Nwav, Nstokes, Nscans)
+    endif else begin
+      axis_numbers = [3, 5]     ; (Nwav, Nscans)
+    endelse
     for itag = n_tags(statistics[0])-1, 0, -1 do begin
       itags = where((tag_names(statistics[0]))[itag] eq tag_names(cubestats), Nmatch)
       itagc = where((tag_names(statistics[0]))[itag] eq tag_names(cubecomments), Nmatch)
+      
       if Nmatch eq 1 then $
          self -> fitscube_addvarkeyword, filename $
                                          , (tag_names(statistics[0]))[itag] $
@@ -1238,7 +1326,7 @@ pro crisp::make_nb_cube, wcfile $
                                          , anchor = anchor $
                                          , keyword_value = cubestats.(itags) $
                                          , comment = cubecomments.(itagc) $
-                                         , axis_numbers = [3, 5]
+                                         , axis_numbers = axis_numbers
     end
     
 ;    self -> fitscube_addvarkeyword, filename, 'DATAMIN', DATAMIN $
@@ -1338,14 +1426,16 @@ pro crisp::make_nb_cube, wcfile $
   ;; Remove FRAMENUM keyword. It somehow gets the filter info. Also
   ;; STATE keyword.
 
-  if ~keyword_set(noflipping) then self -> fitscube_flip, filename, flipfile = flipfile
+  if ~keyword_set(noflipping) then self -> fitscube_flip, filename, flipfile = flipfile $
+     , overwrite = overwrite
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
   if ~keyword_set(noflipping) then print, flipfile
   
   if keyword_set(wbsave) then begin
-    if ~keyword_set(noflipping) then self -> fitscube_flip, wbfilename, flipfile = wbflipfile
+    if ~keyword_set(noflipping) then self -> fitscube_flip, wbfilename, flipfile = wbflipfile $
+       , overwrite = overwrite
     print, inam + ' : Wideband align cube stored in:'
     print, wbfilename
     if ~keyword_set(noflipping) then print, wbflipfile
