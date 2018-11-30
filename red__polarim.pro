@@ -57,11 +57,11 @@
 ;                so the names match those of the corresponding SolarNet
 ;                keywords.
 ; 
+;   2018-11--29 : MGL. Adapt to new code base.
 ; 
 ;-
 function red::polarim, dir $
                        , destretch = destretch $
-                       , dir = dir $
                        , filter = filter $
                        , mmr = mmr $
                        , newflats = newflats $
@@ -125,32 +125,62 @@ function red::polarim, dir $
   ;; Get files (right now, only momfbd is supported)
   filetype = 'momfbd'
   if self.filetype eq 'ANA' then stop ;filetype = 'f0'
-  tfiles = file_search(dir+'/'+nbtdetector+'.*.'+filetype, count = Nimt)
-  rfiles = file_search(dir+'/'+nbrdetector+'.*.'+filetype, count = Nimr)
+  tfiles = file_search(dir+'/'+nbtdetector+'_*.'+filetype, count = Nimt)
+  rfiles = file_search(dir+'/'+nbrdetector+'_*.'+filetype, count = Nimr)
 
   if Nimt ne Nimr then begin
 
     print, inam + ' : WARNING, different number of images found for each camera:'
     print, nbtcamera+' '+nbtdetector+' -> '+red_stri(Nimt)
     print, nbrcamera+' '+nbrdetector+' -> '+red_stri(Nimr)
-
+    stop
+    
   endif
 
+  if Nimt eq 0 then begin
+
+    print, inam + ' : WARNING, no restored images found in directory'
+    print, '   '+dir
+    retall
+    
+  endif
+  
+  self -> extractstates, tfiles, tstates
+  self -> extractstates, rfiles, rstates
+
   ;; Get states that are common to both cameras (object)
-  pol = red_getstates_polarim(tfiles, rfiles, self.out_dir $
+  pol = red_getstates_polarim(tstates, rstates, self.out_dir $
                               , camt = nbtdetector $
                               , camr = nbrdetector $
                               , camwb = wbdetector $
-                              , newflats = newflats)
+                              , newflats = newflats )
   Nstates = n_elements(pol)
-  
-  pref = pol[0]->getvar(7)
-  clipfile = self.out_dir+'/calib/align_clips.'+pref+'.sav'
-  if file_test(clipfile) then begin
-    restore, clipfile
-    tclip = cl[*,1]
-    rclip = cl[*,2]
-  endif
+
+  ;; Read the output of the pinhole calibrations so we can do the same
+  ;; to the cavity maps as was done to the raw data in the momfbd
+  ;; step. This output is in a struct "alignments" in the save file
+  ;; 'calib/alignments.sav'
+  restore,self.out_dir+'calib/alignments.sav'
+  indxt = where(alignments.state2.camera eq 'Crisp-T', Nalignt)
+  case Nalignt of
+    0    : stop                 ; Should not happen!
+    1    : amapt = invert(      alignments[indxt].map           )
+    else : amapt = invert( mean(alignments[indxt].map, dim = 3) )
+  endcase
+  indxr = where(alignments.state2.camera eq 'Crisp-R', Nalignr)
+  case Nalignr of
+    0    : stop                 ; Should not happen!
+    1    : amapr = invert(      alignments[indxr].map           )
+    else : amapr = invert( mean(alignments[indxr].map, dim = 3) )
+  endcase
+
+;  pref = pol[0]->getvar(7)
+;  clipfile = self.out_dir+'/calib/align_clips.'+pref+'.sav'
+;  if file_test(clipfile) then begin
+;    restore, clipfile
+;    tclip = cl[*,1]
+;    rclip = cl[*,2]
+;  endif
   
   ;; Modulations matrices
 
@@ -159,7 +189,8 @@ function red::polarim, dir $
     
     search = self.out_dir+'/polcal/'+nbtdetector+'_'+pol[0]->getvar(7)+'_polcal.fits'
     if file_test(search) then begin
-      immt = (f0(search))[0:Nelements-1,*,*]
+;      immt = (f0(search))[0:Nelements-1,*,*]
+      immt = red_readdata(search)
 
       ;; interpolate CCD tabs?
       if ~keyword_set(no_ccdtabs) then begin
@@ -169,7 +200,7 @@ function red::polarim, dir $
 
       ;; Check NaNs
       for ii = 0, Nelements-1 do begin
-        mask = 1B -( ~finite(reform(immt[ii,*,*])))
+        mask = 1B -( ~finite(reform(immt[ii,*,*]))) ; why not simply finite(reform(immt[ii,*,*]))?
         idx = where(mask, count)
         if count gt 0 then immt[ii,*,*] = red_fillpix(reform(immt[ii,*,*]), mask=mask)
       endfor                    ; ii
@@ -183,18 +214,24 @@ function red::polarim, dir $
         for ii=0,Nelements-1 do immt[ii,*,*] = red_convolve(reform(immt[ii,*,*]), psf)
       endif
 
-      if n_elements(tclip) eq 4 then begin
-        Nx = abs(tclip[1] - tclip[0]) + 1
-        Ny = abs(tclip[3] - tclip[2]) + 1
-        
-        print,'Clipping transmitted modulation matrix to '+red_stri(Nx)+' x '+red_stri(Ny)
-        
-        tmp = make_array( Nelements, Nx, Ny, type=size(immt, /type) )
-        for ii=0,Nelements-1 do begin
-          tmp[ii,*,*] = red_clipim( reform(immt[ii,*,*]), tclip )
-        endfor
-        immt = temporary(tmp)
-      endif
+      ;; We need wcND + x0:x1,y0:y1 from the WB cube! --------------------------------------------
+      
+      
+;      if n_elements(tclip) eq 4 then begin
+;        Nx = abs(tclip[1] - tclip[0]) + 1
+;        Ny = abs(tclip[3] - tclip[2]) + 1
+      Nx = wcND[0]
+      Ny = wcND[1]
+
+      print,'Transforming and clipping transmitted modulation matrix to '+red_stri(Nx)+' x '+red_stri(Ny)
+
+      tmp = make_array( Nelements, Nx, Ny, type=size(immt, /type) )
+      for ii=0,Nelements-1 do begin
+        ;;  tmp[ii,*,*] = red_clipim( reform(immt[ii,*,*]), tclip )
+        tmpp = rdx_img_project(amapt, reform(immt[ii,*,*])) ; Apply the geometrical mapping
+        tmp[ii,*,*] = tmpp[x0:x1,y0:y1]                     ; Clip to the selected FOV
+      endfor
+      immt = temporary(tmp)
 
       immt = ptr_new(red_invert_mmatrix(temporary(immt)))
       
