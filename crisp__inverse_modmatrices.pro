@@ -4,6 +4,13 @@
 ; Read inverse modulation matrix maps from disk, make and store them
 ; if necessary.
 ; 
+; This method does (or at least is meant to do) the same as
+; red__polarim.pro in the master (old CRISP) branch, except that it
+; stores the inverse modulation matrices to disk rather than pointing
+; to them from within the pol class object. (We don't use a pol class
+; in the new code base.)
+;
+;
 ; :Categories:
 ;
 ;    SST pipeline
@@ -13,8 +20,6 @@
 ; 
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
-; 
-; :Returns:
 ; 
 ; 
 ; :Params:
@@ -31,17 +36,11 @@
 ;       Width in pixels of smoothing kernel applied to modulation
 ;       matrix maps.
 ; 
-;   x01y01 : in, optional, type=intarr[4]
-;   
-;      Define clip area [x0,x1,y0,y1] -> [x0:x1,y0:y1].
-; 
 ; 
 ; :History:
 ; 
 ; 
-; 
-; 
-; 
+;   2018-10-09 : MGL. First version, based on Jaime's red::polarim.
 ; 
 ;-
 pro crisp::inverse_modmatrices, prefilter, dir $
@@ -51,8 +50,7 @@ pro crisp::inverse_modmatrices, prefilter, dir $
                                 , immt = immt $
                                 , no_ccdtabs = no_ccdtabs $
                                 , overwrite = overwrite $
-                                , smooth = smooth $
-                                , x01y01 = x01y01
+                                , smooth = smooth
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -85,15 +83,6 @@ pro crisp::inverse_modmatrices, prefilter, dir $
       
     endif else begin
 
-      ;; Geometrical distortion map
-      self -> getalignment, align=align, prefilters=prefilter
-      indx = where(align.state2.camera eq cams[icam], Nalign)
-      case Nalign of
-        0    : stop             ; Should not happen!
-        1    : amap = invert(      align[indx].map           )
-        else : amap = invert( mean(align[indx].map, dim = 3) )
-      endcase
-
       ;; Polcal output
       pname = self.out_dir+'/polcal/'+detector+'_'+prefilter+'_polcal.fits'
       
@@ -102,14 +91,8 @@ pro crisp::inverse_modmatrices, prefilter, dir $
         mm = red_readdata(pname) ; Modulation matrix
         dims = size(mm, /dim)
         Nelements = dims[0]
-        if n_elements(x01y01) eq 4 then begin
-          ;; The size of the momfbd-restored images
-          Nx = x01y01[1]-x01y01[0]+1
-          Ny = x01y01[3]-x01y01[2]+1
-        endif else begin
-          Nx = dims[1]
-          Ny = dims[2]
-        endelse
+        Nx = dims[1]
+        Ny = dims[2]
         
         ;; Interpolate Sarnoff CCD tabs?
         if strmatch((red_camerainfo(detector)).model,'Sarnoff*') then begin
@@ -136,25 +119,6 @@ pro crisp::inverse_modmatrices, prefilter, dir $
           for ii=0,Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
         endif
 
-        print,'Transforming and clipping transmitted modulation matrix to ' $
-              + red_stri(Nx) + 'x' + red_stri(Ny)
-
-        tmp = make_array( Nelements, Nx, Ny, type=size(mm, /type) )
-        for ii=0,Nelements-1 do begin
-          tmpp = rdx_img_project(amap, reform(mm[ii,*,*])) ; Apply the geometrical mapping
-          if n_elements(x01y01) eq 4 then begin
-            tmp[ii,*,*] = tmpp[x01y01[0]:x01y01[1],x01y01[2]:x01y01[3]] ; Clip to the selected FOV
-          endif else begin
-            dims = size(tmpp, /dim)
-            case 1 of           ; Adjust array size after rdx_img_project. (But does this position it correctly?)
-              dims[0] ge Nx and dims[1] ge Ny : tmp[ii, *, *] = tmpp[0:Nx-1, 0:Ny-1]
-              dims[0] ge Nx : tmp[ii, *, 0:dims[1]-1] = tmpp[0:Nx-1, *]
-              dims[1] ge Ny : tmp[ii, 0:dims[0]-1, *] = tmpp[*, 0:Ny-1]
-              else : tmp[ii, 0:dims[0]-1, 0:dims[1]-1] = tmpp
-            endcase
-          endelse
-        endfor                  ; ii
-        mm = temporary(tmp)
         imm = red_invert_mmatrix(temporary(mm)) ; Inverse modulation matrix
         
       endif else begin
