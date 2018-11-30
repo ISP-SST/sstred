@@ -18,20 +18,20 @@
 ; 
 ; :Params:
 ; 
-;   hdr : in, type=strarr
+;    hdr : in, type=strarr
 ; 
 ;       The header in which to add the WCS keywords.
 ;
-;  wcs : in, type=struct
+;    wcs : in, type=struct
 ;
 ;       The WCS coordinates hpln, hplt, wave, time as fltarr(2, 2,
 ;       Ntunes, Nscans) arrays.
 ; 
 ; :Keywords:
 ; 
-;     
+;    dimensions : in, type=array
 ;   
-;   
+;       The dimensions of the fitscube.
 ; 
 ; 
 ; :History:
