@@ -535,21 +535,30 @@ pro red::fitscube_flip, filename $
   ;; flipped version.
   var_keys = red_fits_var_keys(him, count = Nkeys)
   for ikey = 0, Nkeys-1 do begin
+    red_progressbar, ikey, Nkeys, /predict $
+                     , 'Add variable keywords'
     self -> fitscube_addvarkeyword, flipfile, var_keys[ikey] $
                                     ,  old_filename = filename, /flipped
   endfor                        ; ikey ;
   
   ;; Copy WCS extension
+  print, inam+' : Copy the WCS extension...'
+  tic
   red_fits_copybinext, filename, flipfile, 'WCS-TAB'
+  toc
+  print, inam+' : Copy the WCS extension... Done!'
 
   ;; Copy cavity maps
-  cmaps = mrdfits(filename, 'WCSDVARR', chdr, status = status, /silent)
-  if status eq 0 then begin
+  fits_open, filename, fcb
+  free_lun, fcb.unit
+  if total(fcb.extname eq 'WCSDVARR') eq 1 then begin
+    cmaps = mrdfits(filename, 'WCSDVARR', chdr, status = status, /silent)
+    if status ne 0 then stop
     writefits, flipfile, cmaps, chdr, /append
     ;; The CWERRj, CWDISj, and DWj keywords should already be in the
     ;; header. We just need to copy the WCSDVARR (image) extension.
   endif else begin
-    print, inam+' : This file does not seem to have cavity maps.'
+    print, inam + ' : No cavity maps to copy.'
   endelse
 
 end
