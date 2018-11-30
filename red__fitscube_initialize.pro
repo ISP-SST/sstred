@@ -56,7 +56,7 @@
 ;                 to fitscube_addwcs method.
 ; 
 ;-
-pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
+pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions, wcs = wcs
   
   ;; This kind of FITS cube is always five-dimensional, but dimensions
   ;; can be degenerate.
@@ -82,6 +82,18 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   ;; are added or copied.
   red_fitsdelkeyword, hdr, 'VAR_KEYS' 
 
+  ;; TIME reference value, all times are seconds since midnight. One
+  ;; should really check for the existence of MJDREF and JDREF but
+  ;; within the pipeline we can be sure we don't use them.
+  dateref = self.isodate+'T00:00:00.000000' ; Midnight
+  ;; DATEREF is added to the WCS time coordinate
+  red_fitsaddkeyword, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601', after = 'DATE'
+
+  if n_elements(wcs) gt 0 then begin
+    ;; Add (dummy) WCS headers to make the header closer to its final length
+    red_fitscube_addwcsheader, hdr, wcs, dimensions = dimensions
+  endif
+  
   ;; Open the new fits file
   openw, lun, filename, /get_lun, /swap_if_little_endian
 
@@ -91,8 +103,6 @@ pro red::fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
   ;; Make byte-version of header and write it to the file.
   Nlines = n_elements(hdr)     
   bhdr=reform(byte(hdr),80L*Nlines)
-  ;bhdr = replicate(32B, 80L*Nlines)
-  ;for n = 0L, Nlines-1 do bhdr[80*n] = byte(hdr[n])
   writeu, lun, bhdr
 
   ;; Pad to mod 2880 bytes
