@@ -98,25 +98,25 @@ pro red_lpcube_getframe, filename_or_fileassoc, frame $
                    dims=dims, nx=Nx, ny=Ny, nt=Nt, endian=endian_file
   endelse
 
-  ;; Calculate Nstokes, Nwav, and Nscans
-  if strmatch(header,'stokes=\[I,Q,U,V]*') then Nstokes = 4 else Nstokes = 1
-  if n_elements(Nscans) eq 0 then begin
-    ;; Can we get it from the file name?
-    scans = (stregex(filename,'scans=([0-9]+-[0-9]+)',/extract,/subexpr))[1]
-    if scans eq '' then stop
-    s_array = red_expandrange(scans)
-    Nscans = n_elements(s_array)
-  end
-  Ntuning = Nt/(Nstokes*Nscans)
-
   if n_elements(iframe) eq 0 then begin
+
+    ;; Calculate Nstokes, Nwav, and Nscans
+    if strmatch(header,'stokes=\[I,Q,U,V]*') then Nstokes = 4 else Nstokes = 1
+    if n_elements(Nscans) eq 0 then begin
+      ;; Can we get it from the file name?
+      scans = (stregex(filename,'scans=([0-9]+-[0-9]+)',/extract,/subexpr))[1]
+      if scans eq '' then stop
+      s_array = red_expandrange(scans)
+      Nscans = n_elements(s_array)
+    end
+    Ntuning = Nt/(Nstokes*Nscans)
 
     if n_elements(ituning) eq 0 then ituning = 0L
     if n_elements(istokes) eq 0 then istokes = 0L
     if n_elements(iscan)   eq 0 then iscan   = 0L
     
     dimensions = [Nx, Ny, Ntuning, Nstokes, Nscans]
-  
+    
     ;; Calculate the frame number
     iframe = long(ituning) + long(istokes)*Ntuning $
              + long(iscan)*Ntuning*Nstokes
