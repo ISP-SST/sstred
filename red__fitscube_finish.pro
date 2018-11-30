@@ -77,7 +77,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
 
   ;; Update header after WCS was added
   him = headfits(filename)
-  
+
   ;; Construct the name of the flipped file.
   if strmatch(filename, '*_im.fits') then begin
     flipfile = red_strreplace(filename, '_im.fits', '_sp.fits')
@@ -98,7 +98,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   red_fitsaddkeyword, hsp, 'FILENAME', file_basename(flipfile)
   ;; No variable-keywords
   red_fitsdelkeyword, hsp, 'VAR_KEYS'
-  
+
   ;; Change keywords that are affected by the axis reordering.
   ;; Keywords for one axis should be renamed so they are for the
   ;; reordered axis. Because axis numbers start at 1, while IDL
@@ -137,6 +137,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
     endfor                      ; ikey
   endfor                        ; iax
 
+  
   ;; Transfer data to flipped file
   
   ;; Open files (Might be OK to skip /swap_if_little_endian on both?)
