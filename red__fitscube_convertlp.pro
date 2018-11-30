@@ -34,6 +34,11 @@
 ;
 ;      The name of a file where headerdata can be found.
 ;
+;     nostatistics : in, optional, type=boolean
+;  
+;       Do not calculate statistics metadata to put in header keywords
+;       DATA*. 
+;
 ;    outname : in, optional, type=string, default = inname+'.fits'
 ;
 ;      Where to write the output. A spectral cube might also be
@@ -50,17 +55,23 @@
 ;-
 pro red::fitscube_convertlp, inname $
                              , cavitymaps = cavitymaps $
-                             , headerdata = headerdata $
+                             , flip = flip $
+;                             , headerdata = headerdata $
                              , headerfile = headerfile $
+                             , nostatistics = nostatistics $
                              , outdir = outdir $
                              , outname = outname $
-                             , overwrite = overwrite 
+                             , overwrite = overwrite $
+                             , pref = pref $
+                             , scannumbers = scannumbers $
+                             , timestamp = timestamp 
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
   ;; Make prpara
-  red_make_prpara, prpara, headerdata         
+  red_make_prpara, prpara, inname
+;  red_make_prpara, prpara, headerdata         
   red_make_prpara, prpara, headerfile       
   red_make_prpara, prpara, outdir      
   red_make_prpara, prpara, outname      
@@ -114,35 +125,49 @@ pro red::fitscube_convertlp, inname $
 
   if strmatch(header,'stokes=\[I,Q,U,V]*') then Nstokes = 4 else Nstokes = 1
   
+  ;; Split the input file name into parts that ,ay be used to identify
+  ;; some parameters
   iname_parts = strsplit(iname, '._', /extract)
-  pref = iname_parts[1]
-  date_obs = iname_parts[2]
-  timestamp = (strsplit(date_obs, 'T', /extract))[1]
-  scans = (strsplit(iname_parts[3], '=', /extract))[1]
-  
-  ;; Scan numbers
-  s_array = red_expandrange(scans)
-  Nscans = n_elements(s_array)
 
+  ;; Wideband or not?
+  case iname_parts[0] of
+    'crispex' : is_wb = 0
+    'wb'      : is_wb = 1
+  endcase
+
+  if n_elements(pref) eq 0 then begin
+    pref = iname_parts[1]
+    if strlen(pref) ne 4 then stop
+  endif
+
+  if n_elements(timestamp) eq 0 then begin
+    timestamp = stregex(iname,'[0-2][0-9]:[0-9][0-9]:[0-9][0-9]',/extr)
+    if timestamp eq '' then stop
+  endif
+
+  ;; Scan numbers
+  if n_elements(scannumbers) eq 0 then begin
+    ;;scans = (strsplit(iname_parts[3], '=', /extract))[1]
+    scans = (stregex(iname,'scans=([0-9]+-[0-9]+)',/extract,/subexpr))[1]
+    if scans eq '' then stop
+    s_array = red_expandrange(scans)
+  endif else begin
+    if size(scannumbers, /tname) eq 'STRING' then begin
+      s_array = red_expandrange(scannumbers)
+    endif else begin
+      s_array = scannumbers
+    endelse
+  endelse 
+  Nscans = n_elements(s_array)
+  
   nbdir = (*self.data_dirs)[(where(strmatch(*self.data_dirs,'*'+timestamp), Nmatch))[0]] $
           + '/' + nbcamera + '/'
   wbdir = (*self.data_dirs)[(where(strmatch(*self.data_dirs,'*'+timestamp), Nmatch))[0]] $
           + '/' + wbcamera + '/' 
   
-  ;; Get tuning info from the spectfile
-  spectfile = dir+'spectfile.'+pref+'.idlsave'
-  if file_test(spectfile) then begin
-    restore, spectfile
-    ;; This reads three quantities: SPECT_POS, NORM_FACTOR, NORM_SPECT
-    Nwav = n_elements(SPECT_POS)
-    is_wb = 0
-    rawdir = nbdir
-  endif else begin
-    Nwav = 1                    ; Or set Nwav to Nt/(Nstokes * Nscans)?
-    is_wb = 1
-    rawdir = wbdir
-  endelse
- 
+  Nwav = Nt/(Nstokes*Nscans)
+
+  if is_wb then rawdir = wbdir else rawdir = nbdir
   
   ;; Dimensions check!
   if Nt ne Nstokes * Nscans * Nwav then stop
@@ -181,8 +206,6 @@ pro red::fitscube_convertlp, inname $
     ;; Find unique tunings based on the fpi_state in the WB states.
     uindx = uniq(wbstates.fpi_state, sort(wbstates.fpi_state))
   endelse
-
-  
   
   ;; Now get the actual wavelengths from the corresponding rawfile (WB
   ;; or NB, depending on the type of cube) states. Don't trust that
@@ -205,6 +228,7 @@ pro red::fitscube_convertlp, inname $
   if ~is_wb then fpi_states = rawstates[uindx].fpi_state
 
 
+  if n_elements(ulambda) ne Nwav then stop
   
 ;  range = [min([ulambda*1e9, spect_pos/10d]), max([ulambda*1e9, spect_pos/10d])] + [-1, 1]*0.02
 ;  cgplot, ulambda*1e9, spect_pos/10d, psym=-16, color = 'red', /yno $
@@ -213,7 +237,7 @@ pro red::fitscube_convertlp, inname $
 
 
   
-  ;; Get times from NB file headers.
+  ;; Get times and some other metadata from file headers.
   t_array = dblarr(Nscans)              ; WB time
   tbeg_array     = dblarr(Nwav, Nscans) ; Time beginning for state
   tavg_array     = dblarr(Nwav, Nscans) ; Time average for state
@@ -299,7 +323,7 @@ pro red::fitscube_convertlp, inname $
 
   ;; Make header
   red_mkhdr, hdr, datatype, dims
-  
+
   ;; Copy some keywords from the last raw data frame.
   anchor = 'DATE'
   red_fitscopykeyword, anchor = anchor, hdr, 'EXTNAME' , thishdr
@@ -311,18 +335,12 @@ pro red::fitscube_convertlp, inname $
   red_fitscopykeyword, anchor = anchor, hdr, 'CAMERA'  , thishdr
   red_fitscopykeyword, anchor = anchor, hdr, 'DETECTOR', thishdr
   red_fitscopykeyword, anchor = anchor, hdr, 'DATE-OBS', thishdr
-;  red_fitscopykeyword, anchor = anchor, hdr, 'WAVEUNIT', thishdr
   red_fitscopykeyword, anchor = anchor, hdr, 'OBSERVER', thishdr
   red_fitscopykeyword, anchor = anchor, hdr, 'OBJECT'  , thishdr
   red_fitscopykeyword, anchor = anchor, hdr, 'CADENCE' , thishdr
   
   red_fitsaddkeyword, anchor = anchor, hdr, 'WAVELNTH', wavelnth, 'Characteristic wavelength'
   red_fitsaddkeyword, anchor = anchor, hdr, 'WAVEUNIT', waveunit, 'Unit for WAVELNTH'
-;  red_fitsaddkeyword, anchor = anchor, hdr, ''
-;  red_fitsaddkeyword, anchor = anchor, hdr, ''
-;  red_fitsaddkeyword, anchor = anchor, hdr, ''
-;  red_fitsaddkeyword, anchor = anchor, hdr, ''
-;  red_fitsaddkeyword, anchor = anchor, hdr, ''
 
   dateref = self.isodate+'T00:00:00.000000' ; Midnight
   red_fitsaddkeyword, anchor = anchor, hdr, 'DATEREF', dateref, 'Reference time in ISO-8601'
@@ -335,18 +353,102 @@ pro red::fitscube_convertlp, inname $
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
+                              , anchor = 'OBS_HDU' $
                               , prstep = 'Convert science data cube from LP format' $
                               , prpara = prpara $
                               , prproc = inam
+  
+  ;; Add provided header data
+  if n_elements(headerfile) gt 0 then red_metadata_restore, hdr, fname = headerfile, anchor = 'DATE'
 
-  self -> fitscube_initialize, oname, hdr, olun, fileassoc, dims 
 
+  if ~keyword_set(nostatistics) then begin
+    ;; Read all images once in order to get statistics. Min and max need
+    ;; to be calculated here so we can build the histogram in the next
+    ;; loop.
+    iprogress = 0
+    Nprogress = Nscans * Nwav * Nstokes
+    for iscan = 0L, Nscans - 1 do begin
+      for iwav = 0L, Nwav - 1 do begin 
+        for istokes = 0, Nstokes-1 do begin
+          
+          red_progressbar, iprogress, Nprogress $
+                           , /predict $
+                           , 'Calculate statistics'
+          
+          red_lpcube_getframe, inname, frame, Nscans = Nscans $
+                               , iscan = iscan, ituning = iwav, istokes = istokes
+          
+        
+          if Nstokes gt 1 then begin
+
+            ;; Polarimetric cube
+            
+            if iscan eq 0 and iwav eq 0 and istokes eq 0 then begin
+              statistics = red_image_statistics_calculate(frame)
+              statistics = replicate(temporary(statistics), Nwav, Nstokes, Nscans)
+            endif else begin
+              statistics[iwav, istokes, iscan] = red_image_statistics_calculate(frame)
+            endelse 
+
+          endif else begin
+
+            ;; Non-polarimetric cube
+            
+            if iscan eq 0 and iwav eq 0 then begin
+              statistics = red_image_statistics_calculate(frame)
+              statistics = replicate(temporary(statistics), Nwav, Nscans)
+            endif else begin
+              statistics[iwav, iscan] = red_image_statistics_calculate(frame)
+            endelse 
+
+          endelse
+          
+          iprogress++
+
+        endfor                  ; istokes
+      endfor                    ; iwav
+    endfor                      ; iscan
+
+    CUBEMIN = min(statistics.datamin)
+    CUBEMAX = max(statistics.datamax)
+
+    ;; Accumulate a histogram for the entire cube, use to calculate
+    ;; percentiles.
+    Nbins = 2L^16               ; Use many bins!
+    binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
+    hist = lonarr(Nbins)
+
+
+    Nframes = round(product(dims[2:*]))
+    for iframe = 0, Nframes-1 do begin
+      red_progressbar, iframe, Nframes, /predict, 'Make histograms'
+      red_lpcube_getframe, inname, frame, iframe = iframe
+      hist += histogram(frame, min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+    endfor                      ; iframe
+    
+    cubestats = red_image_statistics_combine(statistics $
+                                             , hist = hist $
+                                             , comments = cubecomments $
+                                             , binsize = binsize)
+
+    ;; Write statistics keywords without the variable part, just as
+    ;; place holders. The variable parts are added later.
+    for itag = n_tags(statistics[0])-1, 0, -1 do begin
+      red_fitsaddkeyword, anchor = anchor, hdr, (tag_names(statistics[0]))[itag], statistics.(itag)
+    endfor
+    
+  endif 
+  
+  
   wcs = replicate({  wave:dblarr(2,2) $
-                   , hplt:dblarr(2,2) $
-                   , hpln:dblarr(2,2) $
-                   , time:dblarr(2,2) $
+                     , hplt:dblarr(2,2) $
+                     , hpln:dblarr(2,2) $
+                     , time:dblarr(2,2) $
                   }, Nwav, Nscans)
 
+  self -> fitscube_initialize, oname, hdr, olun, fileassoc, dims, wcs = wcs
+  
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0
   red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
@@ -387,35 +489,20 @@ pro red::fitscube_convertlp, inname $
   endfor                        ; iscan
 
   ;; Copy data frames
-  if ((byte(1L, 0, 1))[0] eq 1) then endian = 'l' else endian='b'
-  swap_endian = (datatype gt 1) and (endian ne endian_file)
-  openr, ilun, inname, /get_lun, swap_endian=swap_endian
-  case datatype of              ; Header is 512 bytes
-    2 : dat = assoc(ilun, intarr(Nx,Ny,/nozer), 512)
-    4 : dat = assoc(ilun, fltarr(Nx,Ny,/nozer), 512)
-    else : stop
-  end
-  
   Nframes = round(product(dims[2:*]))
   for iframe = 0, Nframes-1 do begin
     red_progressbar, iframe, Nframes, /predict, 'Copying frames'
-    self -> fitscube_addframe, fileassoc, dat[iframe], iframe = iframe
+    red_lpcube_getframe, inname, frame, Nscans = Nscans, iframe = iframe
+    self -> fitscube_addframe, fileassoc, frame, iframe = iframe
   endfor                        ; iframe
-  free_lun, ilun                ; Close input file
 
-  if is_wb then begin
-    ;; WB: close output file. 
-    self -> fitscube_finish, olun, wcs = wcs
-  endif else begin
-    ;; NB: close output file and make a flipped version.
-    self -> fitscube_finish, olun, flipfile = flipfile, wcs = wcs
-  endelse
+  self -> fitscube_finish, olun, wcs = wcs
   
   if n_elements(cavitymaps) gt 0 then begin
     ;; Add cavity maps as WAVE distortions 
     self -> fitscube_addcmap, oname, cavitymaps
   endif
-  
+
   ;; Add some variable keywords
   self -> fitscube_addvarkeyword, oname, 'DATE-BEG', date_beg_array $
                                   , comment = 'Beginning of observation' $
@@ -453,22 +540,43 @@ pro red::fitscube_convertlp, inname $
                                   , nsum_array, keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5] 
 
-  if ~is_wb then begin
-    ;; Copy some variable-keywords from the ordinary nb cube to the
-    ;; flipped version.
-    self -> fitscube_addvarkeyword, flipfile, 'SCANNUM',  old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'ATMOS_R0', old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'DATE-BEG', old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'DATE-AVG', old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'DATE-END', old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'XPOSURE',  old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'TEXPOSUR', old_filename = oname, /flipped
-    self -> fitscube_addvarkeyword, flipfile, 'NSUMEXP',  old_filename = oname, /flipped
+  if ~keyword_set(nostatistics) then begin
+
+    print, inam + ' : Write statistics'
+
+    ;; Write statistics
+    if Nstokes gt 1 then begin
+      axis_numbers = [3, 4, 5]  ; (Nwav, Nstokes, Nscans)
+    endif else begin
+      axis_numbers = [3, 5]     ; (Nwav, Nscans)
+    endelse
+    for itag = n_tags(statistics[0])-1, 0, -1 do begin
+      itags = where((tag_names(statistics[0]))[itag] eq tag_names(cubestats), Nmatch)
+      itagc = where((tag_names(statistics[0]))[itag] eq tag_names(cubecomments), Nmatch)
+      
+      if Nmatch eq 1 then $
+         self -> fitscube_addvarkeyword, oname $
+                                         , (tag_names(statistics[0]))[itag] $
+                                         , statistics.(itag) $
+                                         , anchor = anchor $
+                                         , keyword_value = cubestats.(itags) $
+                                         , comment = cubecomments.(itagc) $
+                                         , axis_numbers = axis_numbers
+    endfor                      ; itag
+  endif
+  
+  
+  if keyword_set(flip) then begin
+    ;; Make a flipped version
+    print, 'Flip it!'
+    self -> fitscube_flip, oname $
+                           , flipfile = flipfile $
+                           , overwrite = overwrite
   endif
 
   print
   print, inam + ' :  Input: ' + inname
   print, inam + ' : Output: ' + oname
-  if ~is_wb then print, inam + ' :    and  ' + flipfile
+  if keyword_set(flip) then print, inam + ' :    and  ' + flipfile
   
 end
