@@ -2,6 +2,9 @@
 
 ;+
 ; Make a video file from data in a fitscube.
+;
+; Default is to make a temporal movie but it is also possible to make
+; a spectral movie.
 ; 
 ; :Categories:
 ;
@@ -37,14 +40,17 @@
 ;    crop : in, optional, type=boolean
 ;
 ;      Crop by use of a GUI.
+;   
+;    format : in, optional, string, default='mp4'
+;   
+;      The container format of the movies. If 'mp4' or 'avi',
+;      write_video will make such a file. If 'mov' (Mac-friendly), a
+;      spawned ffmpeg command will convert write_video's mp4 output to
+;      the desired format.
 ;
-;    fps : in, optional, type=integer, default=5
+;    gamma : in, optional, type=float, default=1
 ;
-;      Frames per second.
-;
-;    gamma : in, optional, type=float
-;
-;      Log scale gamma.
+;      Non-linear intensity scale gamma.
 ;
 ;    golden : in, optional, type=boolean
 ;
@@ -52,20 +58,28 @@
 ;
 ;    iwave : in, optional, type=integer, default=0
 ;
-;      The index of the wavelength to be shown in the movie. 
+;      The index of the wavelength to be shown in the movie. The
+;      string "last" is also allowed.
 ;
 ;    istokes : in, optional, type=integer, default=0
 ;
-;      The index of the Stokes component to be shown in the movie.
+;      The index of the Stokes component to be shown in the movie,
+;      [I,Q,U,V] correspond to indices [0,1,2,3].
+;
+;    outdir : in, optional, type=string, default=file_dirname(infile)
+;
+;      The directory in which to write the movie file.
 ;
 ;    outfile : in, optional, type=string, default='same as infile but with mp4 extension'
 ;
-;      The path to the output file.       
+;      The name of the output file. Note that periods in this file
+;      name are not allowed. 
 ;                    
 ;    rgbgamma : in, optional, type=fltarr(3), default="[1,1,1]"
 ;
 ;      Gamma values for the RGB channels. The total gamma correction
-;      is of the form data(channel)^(gamma*rgbgamma(channel)).    
+;      is of the form data[channel]^(gamma*rgbgamma[channel]). See
+;      also keyword golden.
 ;                    
 ;    rgbfac : in, optional, type=fltarr(3), default="[1,1,1]"
 ;
@@ -78,6 +92,15 @@
 ;    tickmarks : in, optional, type=boolean
 ;   
 ;      Set this to draw arcsec tickmarks.
+;   
+;    video_codec : in, optional, type=string, default='mjpeg'
+;   
+;      The codec to use when making the video. Used when calling
+;      write_video.
+;   
+;    video_fps : in, optional, type=integer, default=8
+;   
+;      Frames per second in the movie. Used when calling write_video.
 ; 
 ; :History:
 ; 
@@ -91,16 +114,22 @@ pro red::fitscube_video, infile $
                          , bit_rate = bit_rate $
                          , clip = clip $
                          , crop = crop $
-                         , fps = fps $
+                         , format = format $
                          , gamma = gamma $
                          , golden = golden $
-                         , iwave = iwave $
                          , istokes = istokes $
+                         , iscan = iscan $
+                         , iwave = iwave $
+                         , outdir = outdir $
                          , outfile = outfile $
                          , rgbfac = rgbfac $
                          , rgbgamma = rgbgamma $
+                         , scannumber = scannumber $
+                         , spectral = spectral $
                          , tickcolor = tickcolor $
-                         , tickmarks = tickmarks
+                         , tickmarks = tickmarks $
+                         , video_codec = video_codec $
+                         , video_fps = video_fps
   
   inam = red_subprogram(/low, calling = inam1)
 
@@ -109,9 +138,39 @@ pro red::fitscube_video, infile $
     print, inam + ' : Input file does not exist: '+infile
     retall
   endif
-  
-  if n_elements(outfile) eq 0 then outfile = file_dirname(infile) + file_basename(infile, '.fits') + '.mp4'
 
+  if n_elements(format) eq 0 then format = 'mp4'
+  case format of
+    'avi' : extension = format
+    'mp4' : extension = format
+    else  : extension = 'mp4'
+  end
+  if n_elements(video_fps) eq 0 then video_fps = 5
+  if n_elements(video_codec) eq 0 then video_codec = 'mjpeg'
+
+  ;; Gamma and color settings
+  if n_elements(outdir) eq 0 then outdir = file_dirname(infile)
+  if n_elements(rgbfac) eq 0 then rgbfac = [1., 1., 1.]
+  if keyword_set(golden) then rgbgamma = [0.6, 1.0, 6.0]  
+  if n_elements(gamma) eq 0 then gamma = 1.0
+  if n_elements(rgbgamma) eq 0 then rgbgamma = [1., 1., 1.]
+  totalgamma = gamma*rgbgamma
+
+  if n_elements(clip) eq 0 then clip = 2
+  if n_elements(tickcolor) eq 0 then tickcolor = 0B else tickcolor = byte(tickcolor)
+  if n_elements(istokes) eq 0 then begin
+    istokes = 0
+  endif else begin
+    if size(istokes, /tname) eq 'STRING' then begin
+      case strupcase(istokes) of
+        'I' : istokes = 0
+        'Q' : istokes = 1
+        'U' : istokes = 2
+        'V' : istokes = 3 
+      endcase
+    endif 
+  endelse
+  
   hdr = headfits(infile)
   dims = fxpar(hdr, 'NAXIS*')
   Ndims = n_elements(dims)
@@ -120,65 +179,127 @@ pro red::fitscube_video, infile $
 
   Nx = dims[0]
   Ny = dims[1]
-  Nframes = dims[4]
-  
-  if n_elements(iwave) eq 0 then iwave = 0
-  if n_elements(istokes) eq 0 then istokes = 0
-  if n_elements(fps) eq 0 then fps = 5
-  if n_elements(clip) eq 0 then clip = 2
-  if n_elements(tickcolor) eq 0 then tickcolor = 0B else tickcolor = byte(tickcolor)
 
-  ;; Gamma and color settings
-  if n_elements(rgbfac) eq 0 then rgbfac = [1., 1., 1.]
-  if keyword_set(golden) then rgbgamma = [0.6, 1.0, 6.0]  
-  if n_elements(gamma) eq 0 then gamma = 1.0
-  if n_elements(rgbgamma) eq 0 then rgbgamma = [1., 1., 1.]
-  totalgamma = gamma*rgbgamma
+  if keyword_set(spectral) then begin
+    
+    Nframes = dims[2]
+    vidcube = dblarr([Nx, Ny, Nframes])
 
-  ;; Read the data
-  vidcube = dblarr([Nx, Ny, Nframes])
-  for iframe = 0, Nframes-1 do begin
-    red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iframe
-    vidcube[*, *, iframe] = frame
-  endfor                        ; iframe
+    if n_elements(iscan) eq 0 then iscan = 0
 
+    ;; Read the data
+    for iwave = 0, Nframes-1 do begin
+      red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iscan
+      vidcube[*, *, iwave] = frame
+    endfor                      ; iwave
+
+    ;; Default is to scale frames individually
+    if n_elements(scale_frames) eq 0 then scale_frames = 1
+    
+  endif else begin
+
+    Nframes = dims[4]
+    vidcube = dblarr([Nx, Ny, Nframes])
+    
+    if n_elements(iwave) eq 0 then begin
+      iwave = 0
+    endif else begin
+      if size(iwave, /tname) eq 'STRING' then begin
+        case strlowcase(iwave) of
+          'last' : iwave = dims[2]-1
+          else   : iwave = 0
+        endcase
+      endif  
+    endelse 
+
+    ;; Read the data
+    for iscan = 0, Nframes-1 do begin
+      red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iscan
+      vidcube[*, *, iscan] = frame
+    endfor                      ; iscan
+
+    ;; Default is to scale the cube as a whole.
+    if n_elements(scale_frames) eq 0 then scale_frames = 0
+    
+  endelse
+
+  ;; Crop before scaling in case the structure within the FOV would
+  ;; change the scaling.
   if keyword_set(crop) then vidcube = red_crop(vidcube)
   newdims = size(vidcube, /dim)
   Nx = newdims[0]
   Ny = newdims[1]  
-  
-  if clip ne 0 then begin
-    ;; Code to do histogram clip, stolen from cgclipscl.pro
-    maxr = Max(vidcube, MIN=minr, /NAN)
-    range = maxr - minr
-    binsize = range / 1000.
-    h = Histogram(vidcube, BINSIZE=binsize, OMIN=omin, OMAX=omax, /NAN)
-    n = N_Elements(vidcube)
-    cumTotal = Total(h, /CUMULATIVE)
-    minIndex = Value_Locate(cumTotal, n * (clip/100.))
-    if minIndex eq -1 then minIndex = 0
-    while cumTotal[minIndex] eq cumTotal[minIndex + 1] do minIndex = minIndex + 1
-    minThresh = minIndex * binsize + omin
-    ;; Not all files can be clipped appropriately.
-    maxIndex  = Value_Locate(cumTotal, n * ((100-clip)/100.))
-    if (maxIndex eq -1) || (maxIndex eq N_Elements(cumTotal)) || (maxIndex eq minIndex) then stop
-    ;; If you are still here, try to clip the histogram.
-    while cumTotal[maxIndex] eq cumTotal[maxIndex - 1] do maxIndex = maxIndex - 1
-    maxThresh = maxIndex * binsize + omin
 
-    ;; Do the clipping
-    vidcube = vidcube > minThresh < maxThresh
-  endif
+  if keyword_set(scale_frames) then begin
+
+    n = Nx*Ny
+
+    for iwave = 0, Nframes-1 do begin
+      
+      if clip ne 0 then begin
+        ;; Code to do histogram clip, stolen from cgclipscl.pro
+        maxr = max(vidcube[*, *, iwave], MIN=minr, /NAN)
+        range = maxr - minr
+        binsize = range / 1000.
+        h = histogram(vidcube[*, *, iwave], BINSIZE=binsize, OMIN=omin, OMAX=omax, /NAN)
+        cumTotal = total(h, /CUMULATIVE)
+        minIndex = value_locate(cumTotal, n * (clip/100.))
+        if minIndex eq -1 then minIndex = 0
+        while cumTotal[minIndex] eq cumTotal[minIndex + 1] do minIndex = minIndex + 1
+        minThresh = minIndex * binsize + omin
+        ;; Not all files can be clipped appropriately.
+        maxIndex  = value_locate(cumTotal, n * ((100-clip)/100.))
+        if (maxIndex eq -1) || (maxIndex eq N_Elements(cumTotal)) || (maxIndex eq minIndex) then stop
+        ;; If you are still here, try to clip the histogram.
+        while cumTotal[maxIndex] eq cumTotal[maxIndex - 1] do maxIndex = maxIndex - 1
+        maxThresh = maxIndex * binsize + omin
+
+        ;; Do the clipping
+        vidcube[*, *, iwave] = vidcube[*, *, iwave] > minThresh < maxThresh
+      endif 
+
+      ;; Scale to [0,1] range
+      vidcube[*, *, iwave] -= min(vidcube[*, *, iwave])
+      vidcube[*, *, iwave] /= max(vidcube[*, *, iwave])
+
+    endfor                      ; iwave
+    
+  end else begin
+
+    if clip ne 0 then begin
+      ;; Code to do histogram clip, stolen from cgclipscl.pro
+      maxr = max(vidcube, MIN=minr, /NAN)
+      range = maxr - minr
+      binsize = range / 1000.
+      h = histogram(vidcube, BINSIZE=binsize, OMIN=omin, OMAX=omax, /NAN)
+      n = n_elements(vidcube)
+      cumTotal = Total(h, /CUMULATIVE)
+      minIndex = Value_Locate(cumTotal, n * (clip/100.))
+      if minIndex eq -1 then minIndex = 0
+      while cumTotal[minIndex] eq cumTotal[minIndex + 1] do minIndex = minIndex + 1
+      minThresh = minIndex * binsize + omin
+      ;; Not all files can be clipped appropriately.
+      maxIndex  = value_locate(cumTotal, n * ((100-clip)/100.))
+      if (maxIndex eq -1) || (maxIndex eq N_Elements(cumTotal)) || (maxIndex eq minIndex) then stop
+      ;; If you are still here, try to clip the histogram.
+      while cumTotal[maxIndex] eq cumTotal[maxIndex - 1] do maxIndex = maxIndex - 1
+      maxThresh = maxIndex * binsize + omin
+
+      ;; Do the clipping
+      vidcube = vidcube > minThresh < maxThresh
+    endif
   
-  vidcube -= min(vidcube)
-  vidcube /= max(vidcube)
+    vidcube -= min(vidcube)
+    vidcube /= max(vidcube)
+
+  endelse
 
   ;; Do the RGB stuff
   rgbcube = fltarr(3, Nx, Ny, Nframes)
   rgbcube[0, *, *, *] = rgbfac[0]*vidcube^totalgamma[0]
   rgbcube[1, *, *, *] = rgbfac[1]*vidcube^totalgamma[1]
   rgbcube[2, *, *, *] = rgbfac[2]*vidcube^totalgamma[2]
-   
+
   ;; Should be byte scaled
   rgbcube *= 255d
   rgbcube = byte(round(rgbcube >0 <255))
@@ -214,8 +335,52 @@ pro red::fitscube_video, infile $
     endfor                      ; j
   endif
 
+
+  
+  ;; Construct the output file name
+  if n_elements(outfile) eq 0 then begin
+    
+    tag = '_'+(['I', 'Q', 'U', 'V'])[istokes]
+
+    if keyword_set(spectral) then begin
+      dum = red_fitsgetkeyword(infile, 'SCANNUM',variable_values=scannum)
+      scannumbers = reform(scannum.values)
+      if n_elements(scannumber) ne 0 then begin
+        iscan = (where(scannumbers eq scannumber))[0]
+      endif
+      tag += '_scan'+strtrim(scannumbers[iscan], 2)
+    endif else begin
+      wcs = mrdfits(infile,'WCS-TAB',whdr)
+      coords = wcs.hpln_hplt_wave_time
+      tag += '_' + string(wcs.hpln_hplt_wave_time[2,0,0,iwave,0], format = '(f7.3)')+'nm'
+      
+    endelse
+    
+    outfile = file_basename(infile, '.fits') + tag 
+
+    ;; Note that periods (.) are not allowed in the file name of the movie.
+    outfile = red_strreplace(outfile, '.', '_', n = 100)
+
+    outfile += '.' + extension
+    
+  endif
+
   ;; Write the video
-  write_video, outfile, rgbcube, video_fps = fps, bit_rate = bit_rate 
+  write_video, outdir + '/' + outfile $
+               , rgbcube $
+               , video_fps = video_fps $
+               , video_codec = video_codec $
+               , bit_rate = bit_rate 
+
+  if format eq 'mov' then begin
+    stop
+    ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
+    mname = outdir + '/' + red_strreplace(outfile, '.'+extension,'.'+format)
+    spawn, 'ffmpeg -n -i "' + outdir + '/' + outfile $
+           + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
+           + mname + '"'
+    spawn, 'rm "' + outdir  + '/' + outfile + '"'
+  endif
   
 end
 
