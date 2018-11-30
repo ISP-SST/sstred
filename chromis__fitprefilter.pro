@@ -105,21 +105,13 @@ pro chromis::fitprefilter, dir = dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  instrument = ((typename(self)).tolower())
-  case instrument of
-    'crisp' : begin
-      camWB = 'Crisp-W'
-      camNB = 'Crisp-T'
-    end
-    'chromis' : begin
-      camWB = 'Chromis-W'
-      camNB = 'Chromis-N'
-    end
-  endcase
+  camWB = 'Chromis-W'
+  camNB = 'Chromis-N'
   
+
   ;; For now! We may be able to work around this later!
   noabsunits = keyword_set(useflats)
-  
+
   if keyword_set(noabsunits) then begin
     units = 'dn'                ; "Digital number"
     unitscalib = 0
