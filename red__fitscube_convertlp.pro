@@ -95,7 +95,9 @@ pro red::fitscube_convertlp, inname $
     oname = iname + '_fromlp_im.fits'
     oname = outdir + oname
     
-  endif
+  endif else begin
+    oname = outname
+  endelse
 
   ;; Already done?
   if file_test(oname) then begin
