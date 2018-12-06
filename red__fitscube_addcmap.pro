@@ -55,6 +55,7 @@ pro red::fitscube_addcmap, filename, cmaps
   ;; Check that dimensions match
   naxis = fxpar(hdr, 'NAXIS*')
   cdims = size(cmaps, /dim)
+  if n_elements(cdims) eq 2 then red_append, cdims, 1
   if naxis[0] ne cdims[0] || naxis[1] ne cdims[1] || naxis[4] ne cdims[2] then begin
     print, inam + ' : Dimensions do not match'
     print, 'Cube: ', naxis
