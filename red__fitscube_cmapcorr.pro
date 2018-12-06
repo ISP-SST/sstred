@@ -51,6 +51,8 @@
 ; 
 ;   2018-11-02 : MGL. First version.
 ; 
+;   2018-12-06 : MGL. Additional interpolation methods.
+; 
 ;-
 pro red::fitscube_cmapcorr, fname $
                             , flip = flip $
@@ -58,14 +60,16 @@ pro red::fitscube_cmapcorr, fname $
                             , outname = outname $
                             , overwrite = overwrite $
                             , _extra = extra 
-
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   dir_in = file_dirname(fname)
 
-  if n_elements(interpolmethod) eq 0 then interpolmethod = 'interpol'
+  if n_elements(interpolmethod) eq 0 then begin
+    interpolmethod = 'interpol'
+    if n_elements(extra) eq 0 then extra = {quadratic:1}
+  endif
   
   ;; Make prpara
   red_make_prpara, prpara, interpolmethod
@@ -157,22 +161,45 @@ pro red::fitscube_cmapcorr, fname $
         cube_in[0, 0, iwav] = im
       endfor                    ; iwav
 
-
-      for ix = 0, Nx-1 do for iy = 0, Ny-1 do begin
-        ;; Interpolate
-        case interpolmethod of
-          'interpol' : begin
-            cube_out[ix, iy, *] = interpol(cube_in[ix, iy, *] $
-                                           , lambda + dlambda[ix,iy,iscan] $
+      if interpolmethod eq 'interpolate' then begin
+        stop
+        ;; Interpolate the entitre cube in one call
+;        cube_out[0, 0, 0] = interpolate(cube_in $
+        ;;              , lambda + dlambda[ix,iy,iscan] $
+        ;;              , lambda $
+;                                        , _strict_extra = extra)
+;        
+      endif else begin
+        for ix = 0, Nx-1 do for iy = 0, Ny-1 do begin
+          ;; Interpolate
+          case interpolmethod of
+            'interpol' : begin
+              cube_out[ix, iy, *] = interpol(cube_in[ix, iy, *] $
+                                             , lambda + dlambda[ix,iy,iscan] $
+                                             , lambda $
+                                             , _strict_extra = extra)
+            end
+            'spline' : begin
+              cube_out[ix, iy, *] = spline(lambda + dlambda[ix,iy,iscan] $
+                                           , cube_in[ix, iy, *] $
                                            , lambda $
                                            , _strict_extra = extra)
-          end
-          else: begin
-            print, inam + ' : Method not implemented: '+interpolmethod
-            stop
-          end
-        endcase
-      endfor                    ; ix,iy
+            end
+            'quadterp' : begin
+              quadterp, lambda + dlambda[ix,iy,iscan] $
+                        , reform(cube_in[ix, iy, *]) $
+                        , lambda $
+                        , yint $
+                        ,_strict_extra = extra
+              cube_out[ix, iy, *] = yint
+            end
+            else: begin
+              print, inam + ' : Method not implemented: '+interpolmethod
+              stop
+            end
+          endcase
+        endfor                  ; ix,iy
+      endelse
       
       for iwav = 0, Nwav-1 do begin
         ;; Write
@@ -210,11 +237,12 @@ pro red::fitscube_cmapcorr, fname $
                            , overwrite = overwrite
   endif
 
-  print, inam + ' : Integer cube stored in:'
+  print, inam + ' : Cavity-corrected cube stored in:'
   print, outname
   if keyword_set(flip) then print, flipfile
   
 end
 
-; Should make new statistics? In principle it's needed but then
-; we have no way of avoiding the padding areas outside the FOV.
+; Should make new statistics? In principle it's needed but then we
+; have no way of avoiding the padding areas outside the FOV. Note that
+; the output is not meant for archiving, so probably not needed.
