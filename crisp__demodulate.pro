@@ -31,9 +31,14 @@
 ; 
 ; :Keywords:
 ; 
-;     clips : in, optional, type=array
+;    clips : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
+;
+;    cmap : in, optional, type=array
+;
+;       The cavity map, to be distorted like the image data and stored
+;       in the stokes cube.
 ;
 ;    nthreads : in, optional, type=integer
 ;
@@ -75,9 +80,12 @@
 ; 
 ;   2018-10-09 : MGL. First version, based on Jaime's pol::demodulate.
 ; 
+;   2018-12-05 : MGL. New keyword cmap.
+; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
                        , clips = clips $
+                       , cmap = cmap $
                        , nbrfac = nbrfac $
                        , nbrstates = nbrstates $
                        , nbtfac = nbtfac $
@@ -279,25 +287,24 @@ pro crisp::demodulate, outname, immr, immt $
   img_wb = fltarr(Nx, Ny, Nlc)
   for ilc = 0L, Nlc-1 do img_wb[*,*,ilc] = red_readdata(wfiles[ilc]) 
 
-  ;; if keyword_set(cmap) then cmap = red_stretch(temporary(cmap), grid1)
-
   rest = fltarr(Nx, Ny, 4)
-  resr = fltarr(Nx, Ny, 4)
-  
+  resr = fltarr(Nx, Ny, 4)  
   
   if n_elements(wbg) gt 0 then begin
 
     ;; Demodulate with destretching
+    if n_elements(cmap) ne 0 then cmapp = 0.
     for ilc = 0L, Nlc-1 do begin
       grid = red_dsgridnest(wbg, img_wb[*,*,ilc], tiles, clips)
-      for istokes = 0L, 3 do begin
+      for istokes = 0L, Nstokes-1 do begin
         rest[*,*,istokes] += red_stretch(reform(mymt[ilc,istokes,*,*]) $
                                          * img_t[*,*,ilc], grid)
         resr[*,*,istokes] += red_stretch(reform(mymr[ilc,istokes,*,*]) $
                                          * img_r[*,*,ilc], grid)
       endfor                    ; istokes
+      if n_elements(cmap) ne 0 then cmapp += red_stretch(cmap, grid)
     endfor                      ; ilc
-
+    if n_elements(cmap) ne 0 then cmapp /= Nlc
   endif else begin
 
     ;; No global WB image, demodulate without destretching.
@@ -307,7 +314,7 @@ pro crisp::demodulate, outname, immr, immt $
         resr[*,*,istokes] += reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc]
       endfor                    ; istokes
     endfor                      ; ilc
-
+    if n_elements(cmap) ne 0 then cmapp = cmap
   endelse
 
   
@@ -486,6 +493,8 @@ pro crisp::demodulate, outname, immr, immt $
 
   ;; Close the file
   self -> fitscube_finish, lun, wcs = wcs
+  
+  if n_elements(cmap) ne 0 then self -> fitscube_addcmap, outname, cmapp
 
   ;; Add statistics metadata
   anchor = 'DATE-END'
