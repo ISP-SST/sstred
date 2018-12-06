@@ -248,6 +248,8 @@
 ;
 ;   2018-06-15 : MGL. Add fits keyword AO_NMODE.
 ;
+;   2018-12-06 : MGL. Add CRISP to default instruments.
+;
 ;-
 pro red_setupworkdir, search_dirs = search_dirs $
                       , out_dir = out_dir $
@@ -258,7 +260,7 @@ pro red_setupworkdir, search_dirs = search_dirs $
                       , date = date $
                       , calibrations_only = calibrations_only
 
-  if n_elements(instruments) eq 0 then instruments = ['CHROMIS']
+  if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')
   if ~strmatch(out_dir,'*/') then out_dir += '/'
