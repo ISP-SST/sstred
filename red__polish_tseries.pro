@@ -94,7 +94,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
                          tile = tile, tstep = tstep, scale = scale, $
                          ang = ang, shift = shift, square=square, $
                          negang = negang, crop=crop, ext_time = ext_time, $
-                         fullframe = fullframe, ext_date = ext_date
+                         fullframe = fullframe, ext_date = ext_date, offset_angle = offset_angle
   
 
   ;; Name of this method
@@ -214,6 +214,7 @@ pro red::polish_tseries, xbd = xbd, ybd = ybd, np = np, clip = clip, $
      ang = red_lp_angles(time, date)
      mang = median(ang)
      ang -= mang
+     if(n_elements(offset_angle)) then ang += offset_angle
      if(keyword_set(negang)) then ang = -ang
   endif else begin
 
