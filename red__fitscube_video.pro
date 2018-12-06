@@ -109,6 +109,8 @@
 ;    2018-01-12 : MGL. Use subroutine red_fitscube_getframe rather
 ;                 than method fitscube_getframe. New keyword: crop.
 ; 
+;    2018-11-29 : MGL. Make also spectral movies.
+; 
 ;-
 pro red::fitscube_video, infile $
                          , bit_rate = bit_rate $
