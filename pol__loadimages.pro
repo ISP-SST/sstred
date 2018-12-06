@@ -19,7 +19,7 @@
 ; 
 ; 
 ;-
-pro pol::loadimages 
+pro pol::loadimages, tile=tile
    
   nt = n_elements(self.tfiles)
    
@@ -35,8 +35,13 @@ pro pol::loadimages
    
   ;; Load momfbd files
   if(self.ftype  eq 'momfbd') then begin
-     for ii = 0L, nt - 1 do *self.timg[ii] = momfbd_read(self.tfiles[ii])
-     for ii = 0L, nt - 1 do *self.rimg[ii] = momfbd_read(self.rfiles[ii])
+     if(~keyword_set(tile)) then begin
+        for ii = 0L, nt - 1 do *self.timg[ii] = momfbd_read(self.tfiles[ii])
+        for ii = 0L, nt - 1 do *self.rimg[ii] = momfbd_read(self.rfiles[ii])
+     endif else begin
+        for ii = 0L, nt - 1 do *self.timg[ii] = red_fillborder(red_mozaic(momfbd_read(self.tfiles[ii])))
+        for ii = 0L, nt - 1 do *self.rimg[ii] = red_fillborder(red_mozaic(momfbd_read(self.rfiles[ii])))
+     endelse
   endif else begin
      for ii = 0L, nt - 1 do *self.timg[ii] = f0(self.tfiles[ii])
      for ii = 0L, nt - 1 do *self.rimg[ii] = f0(self.rfiles[ii])

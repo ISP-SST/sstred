@@ -107,7 +107,7 @@ pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destre
 
   if(~keyword_set(tiles) OR (~keyword_set(clip))) then begin
      tiles = [8,16,32,64]
-     clip = [8,4,4,2]
+     clip = [12,8,3,2]
   endif
 
   ;; Check output file
@@ -128,7 +128,7 @@ pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destre
    
   ;; load images into the object
    
-  self -> loadimages
+  self -> loadimages, /tile
      
   immt = *(*self.immt)
   immr = *(*self.immr)
@@ -172,13 +172,16 @@ pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destre
   ;; Destretch ?
    
   if(destretch) then begin
-   
-     ;; Load WB images
-   
      img_wb = fltarr(dim1[0], dim1[1], 4)
-     for jj = 0L, 3 do img_wb[*,*,jj] = (f0(self.wbfiles[jj]))
-     wb = (f0(self.wb))
-      
+
+     ;; Load WB images
+     if(self.ftype  eq 'momfbd') then begin
+        for jj = 0L, 3 do img_wb[*,*,jj] = red_fillborder(red_mozaic(momfbd_read(self.wbfiles[jj])))
+        wb = red_fillborder(red_mozaic(momfbd_read(self.wb)))
+     endif else begin
+        for jj = 0L, 3 do img_wb[*,*,jj] = (f0(self.wbfiles[jj]))
+        wb = (f0(self.wb))
+     endelse
      ;; measure offsets and apply
       
      grid0 = red_dsgridnest(wb, img_wb[*,*,0], tiles, clip)
@@ -253,8 +256,15 @@ pro pol::demodulate_simple, state = state, tiles = tiles, clip = clip, no_destre
   ;; Average obs. time
    
   time_obs = 0.d0
-  head = fzhead(self.tfiles[0])
-  dum = strsplit(head, ' =', /extract)
+  if(self.ftype  eq 'momfbd') then begin
+     tmp = momfbd_read(self.tfiles[0])
+     dum=strarr(4)
+     dum[1] = tmp.time
+     dum[3] = tmp.date
+  endif else begin
+     head = fzhead(self.tfiles[0])
+     dum = strsplit(head, ' =', /extract)
+  endelse
   
   if(n_elements(ext_time) gt 0) then begin
      iscan = long(self.scan)
