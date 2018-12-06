@@ -32,7 +32,7 @@
 ;      WAVE, TIME }, as 2 by 2 arrays representing the spatial corners
 ;      of the FOV.
 ; 
-;    distortions : in, optional
+;    distortions : out, optional
 ;
 ;      
 ; 
@@ -154,18 +154,23 @@ pro red_fitscube_getwcs, filename $
     fits_open, filename, fcb
     if total(fcb.extname eq 'WCSDVARR') eq 1 then begin
 
-      distortions = mrdfits( filename, 'WCSDVARR', chdr, status = status, /silent)
+      wcsdvarr = mrdfits( filename, 'WCSDVARR', chdr, status = status, /silent)
 
       ;; So far we have only implemented distortions in the wavelength
       ;; coordinate, so we'll assume this is all there could be. But
       ;; returning a struct makes it possible to change this later.
 
+      
       if status eq 0 then begin
-        distortions = reform(distortions $
-                             , fxpar(hdr, 'NAXIS1'), fxpar(hdr, 'NAXIS2') $
-                             , 1, 1, fxpar(hdr, 'NAXIS5'), /overwrite)
+
+        dist_dims = size(wcsdvarr, /dim)
+        if n_elements(dist_dims) eq 2 then red_append, dist_dims, 1
+        distortions = replicate({wave:fltarr(dist_dims[0:1])}, dist_dims[2])
         
-        distortions = { WAVE:distortions }
+        for iscan = 0, dist_dims[2]-1 do begin
+          distortions[iscan].wave = wcsdvarr[*, *, iscan]
+        endfor                  ; iscan
+
       endif else begin
         print, inam + ' : There was some error reading the WCSDVARR extension.'
         print, inam + ' : No distortions returned.'
