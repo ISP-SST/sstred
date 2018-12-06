@@ -456,7 +456,7 @@ pro crisp::make_nb_cube, wcfile $
     ;; to the cavity maps as was done to the raw data in the momfbd
     ;; step. This output is in a struct "alignments" in the save file
     ;; 'calib/alignments.sav'
-    restore,'calib/alignments.sav'
+    restore, 'calib/alignments.sav'
     ;; Should be based on state1 or state2 in the struct? make_cmaps
     ;; says "just pick one close to continuum (last state?)".
 ;    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
@@ -586,14 +586,15 @@ pro crisp::make_nb_cube, wcfile $
             ;; and outputs a demodulated Stokes file.
 
             self -> demodulate, snames[iscan, iwav], immr, immt $
-                                , overwrite = redemodulate $
                                 , /smooth_by_subfield $ 
-                                , nbtstates = nbtstates[these_nbtindx] $
-                                , nbtfac = nbt_rpref[iwav] $
-                                , nbrstates = nbrstates[these_nbrindx] $
-                                , nbrfac = nbr_rpref[iwav] $
-                                , tiles = tiles $
                                 , clips = clips $
+                                , cmap = cmap1 $
+                                , nbrfac = nbr_rpref[iwav] $
+                                , nbrstates = nbrstates[these_nbrindx] $
+                                , nbtfac = nbt_rpref[iwav] $
+                                , nbtstates = nbtstates[these_nbtindx] $
+                                , overwrite = redemodulate $
+                                , tiles = tiles $
                                 , units = units $
                                 , wbg = wbg $
                                 , wcs = swcs $
@@ -1165,6 +1166,12 @@ pro crisp::make_nb_cube, wcfile $
       ;; momfbd psfs. It should probably have a boolean keyword that
       ;; activates it. (This code will have to be updated to the
       ;; current pipeline style before it can be used.)
+      ;;
+      ;; Note that in this case, for polarimetric data, we might also
+      ;; want to read the cavity maps from the single Stokes cubes,
+      ;; which are averages of the original cmap, stretched as the
+      ;; individual LC state images before combining to form the
+      ;; Stokes components.
       if 0 then begin
         wb = (red_readdata(wbf[ss]))[x0:x1,y0:y1]
         for ww = 0L, nw - 1 do begin
