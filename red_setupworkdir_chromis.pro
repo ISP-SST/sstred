@@ -123,12 +123,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
 
   
-  if Nflatdirs gt 0 then begin
-    ;; This step requires flats. And the hrz --> tuning conversion is
-    ;; not needed if we don't have them.
-    printf, Slun
-    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
-  endif
+;  if Nflatdirs gt 0 then begin
+;    ;; This step requires flats. And the hrz --> tuning conversion is
+;    ;; not needed if we don't have them.
+;    printf, Slun
+;    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
+;  endif
   
   ;; Analyze directories and produce r0 plots (optional)
   if ~keyword_set(calibrations_only) then begin
@@ -493,7 +493,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + ", /redux" $
               + ", /unpol" $
               + ", extraclip = [75,125,15,15]" $
-              + ", pref='" + prefilters[ipref] + "'" 
+              + ", pref='" + prefilters[ipref] + "'" $
+              + ";, dirs=['09:03:24','09:24:21']" 
     endif
   endfor                        ; ipref ;
 
