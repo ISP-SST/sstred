@@ -231,7 +231,7 @@ pro red::fitscube_crop, infile $
   ;; Adapt header to new FOV.
   hdr = in_hdr
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Crop data cube' $
+                              , prstep = 'Cropping' $
                               , prpara = prpara $
                               , prproc = inam
 
@@ -265,14 +265,14 @@ pro red::fitscube_crop, infile $
   
   ;; Use fitscube_finish to close the cube and possibly make a flipped
   ;; version.
-  if keyword_set(nospectral) then begin
-    self -> fitscube_finish, lun, wcs = wcs_coord
-  endif else begin
-    self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs_coord
-  endelse
+;  if keyword_set(nospectral) then begin
+  self -> fitscube_finish, lun, wcs = wcs_coord
+;  endif else begin
+;    self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs_coord
+;  endelse
   
   if size(wcs_dist,/n_dim) gt 0 then begin
-    cmap = red_crop(wcs_dist.wave, roi = roi)
+    cmap = reform(red_crop(wcs_dist.wave, roi = roi))
     self -> fitscube_addcmap, outfile, cmap
   endif
 
@@ -285,8 +285,8 @@ pro red::fitscube_crop, infile $
   var_keys = red_fits_var_keys(in_hdr)
   for ikey = 0, n_elements(var_keys)-1 do begin
     self -> fitscube_addvarkeyword, outfile, var_keys[ikey], old_file = infile
-    if n_elements(flipfile) ne 0 then $
-       self -> fitscube_addvarkeyword, flipfile, var_keys[ikey], old_file = infile, /flip
+;    if n_elements(flipfile) ne 0 then $
+;       self -> fitscube_addvarkeyword, flipfile, var_keys[ikey], old_file = infile, /flip
   endfor
   
   fits_open, infile, fcb
@@ -331,8 +331,8 @@ pro red::fitscube_crop, infile $
       'BINTABLE' : begin
         print, inam + ' : Copying extension '+ fcb.extname[iext]
         red_fits_copybinext, infile, outfile, fcb.extname[iext]
-        if n_elements(flipfile) ne 0 then $
-           red_fits_copybinext, infile, flipfile, fcb.extname[iext]
+;        if n_elements(flipfile) ne 0 then $
+;           red_fits_copybinext, infile, flipfile, fcb.extname[iext]
       end
       'IMAGE' : begin
         if fcb.extname[iext] eq 'WBIMAGE' then begin
@@ -355,6 +355,14 @@ pro red::fitscube_crop, infile $
     endcase
     
   endfor                        ; iext
+
+  if ~keyword_set(noflip) then begin
+    ;; Make a flipped version
+    print, 'Flip it!'
+    self -> fitscube_flip, outfile $
+                           , flipfile = flipfile $
+                           , overwrite = overwrite
+  endif
 
   print, 'Cropped cube written to '+outfile
   if n_elements(flipfile) ne 0 then $
