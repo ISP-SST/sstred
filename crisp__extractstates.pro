@@ -259,7 +259,7 @@ pro crisp::extractstates, strings, states $
 
     if file_test(strings[ifile]) then begin
       head = red_readhead(strings[ifile], /silent)
-      states.filename = strings
+      states[ifile].filename = strings[ifile]
     endif else begin
       mkhdr, head, ''           ; create a dummy header
       head = red_meta2head(head, metadata = {filename:strings[ifile]})
@@ -355,17 +355,17 @@ pro crisp::extractstates, strings, states $
     ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
     ;; and at least one digit for the finetuning (in mÅ).
     state = fxpar(head, 'STATE')
-;    if strtrim(state,2) eq '' then begin
-;      
-;    endif else begin
-    tuninfo = stregex(state $
-                      , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
-                      , /extract, /subexpr) 
-    
-    ;; Make tuning without zero-padding in the finetuning part
-    split_tuning = strsplit(tuninfo[0], '_', /extract)
-    states[ifile].tuning = split_tuning[0] + '_' + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
-;    endelse
+    if strtrim(state,2) eq '' then begin
+      
+    endif else begin
+      tuninfo = stregex(state $
+                        , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
+                        , /extract, /subexpr) 
+      
+      ;; Make tuning without zero-padding in the finetuning part
+      split_tuning = strsplit(tuninfo[0], '_', /extract)
+      states[ifile].tuning = split_tuning[0] + '_' + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
+    endelse
     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
     ;; The fullstate string
