@@ -355,8 +355,8 @@ pro crisp::extractstates, strings, states $
     ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
     ;; and at least one digit for the finetuning (in mÅ).
     state = fxpar(head, 'STATE')
-    if strtrim(state,2) eq '' then begin
-      
+    if strtrim(state,2) eq '' || strmid(state, 0, 1) eq '_' then begin
+      ;; Probably a dark frame, no tuning
     endif else begin
       tuninfo = stregex(state $
                         , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
