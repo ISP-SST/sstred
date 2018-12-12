@@ -426,7 +426,7 @@ pro red::fitscube_convertlp, inname $
     for iframe = 0, Nframes-1 do begin
       red_progressbar, iframe, Nframes, /predict, 'Make histograms'
       red_lpcube_getframe, inname, frame, iframe = iframe
-      hist += histogram(frame, min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+      hist += histogram(float(frame), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
     endfor                      ; iframe
     
     cubestats = red_image_statistics_combine(statistics $
