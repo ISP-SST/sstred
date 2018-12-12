@@ -352,10 +352,8 @@ pro red::fitscube_video, infile $
       endif
       tag += '_scan'+strtrim(scannumbers[iscan], 2)
     endif else begin
-      wcs = mrdfits(infile,'WCS-TAB',whdr)
-      coords = wcs.hpln_hplt_wave_time
-      tag += '_' + string(wcs.hpln_hplt_wave_time[2,0,0,iwave,0], format = '(f7.3)')+'nm'
-      
+      red_fitscube_getwcs, infile, coordinates = coordinates
+      tag += '_' + string(coordinates[iwave,0].wave[0,0], format = '(f7.3)')+'nm'
     endelse
     
     outfile = file_basename(infile, '.fits') + tag 
