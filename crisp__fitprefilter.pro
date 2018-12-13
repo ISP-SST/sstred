@@ -348,11 +348,14 @@ pro crisp::fitprefilter, dir = dir $
       
       print, inam + ' : Process prefilter ' + upref[ipref]
 
-      ;; Some prefilters require a wavelength shift
+      ;; Some prefilters require a wavelength shift (in Ångström)
       case upref[ipref] of
-        '6302' : cwl = 6302.6   ; [Å]
-        '7772' : cwl = 7772.5
-        '8542' : cwl = 8542.2
+        '5173' : cwl = 5172.70   
+        '6173' : cwl = 6173.34
+        '6302' : cwl = 6302.50
+        '6563' : cwl = 6562.82
+        '7772' : cwl = 7772.00
+        '8542' : cwl = 8542.13
         else : cwl = double(upref[ipref])
       endcase
       
