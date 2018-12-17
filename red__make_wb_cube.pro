@@ -211,20 +211,29 @@ pro red::make_wb_cube, dir $
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
   endcase
+
   files = file_search(dir + '*' + extension, count = Nfiles)
+
   if Nfiles eq 0 then begin
-    print, inam + ' : No files matching regexp: ' + dir + '*' + extension
+    print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
     retall
   endif
+
+  ;; The file names we want should have no tuning info.
+  indx = where(~strmatch(files,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nscans)
+  if Nscans eq 0 then stop
+  wfiles = files[indx]
+  self -> extractstates, wfiles, wstates
+
   ;; We have no special state (or absence of state) to identify
   ;; the global WB images but we do know that their exposure times
   ;; are much larger than the ones corresponding to the individual
   ;; NB states.
-  self -> extractstates, files, states
-  windx = where(states.EXPOSURE gt mean(states.EXPOSURE)*1.5)
-  wstates = states[windx]
-  wfiles = files[windx]
-  Nscans = n_elements(windx)
+;  self -> extractstates, files, states
+;  windx = where(states.EXPOSURE gt mean(states.EXPOSURE)*1.5)
+;  wstates = states[windx]
+;  wfiles = files[windx]
+;  Nscans = n_elements(windx)
 
   prefilter = wstates[0].prefilter
   datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
