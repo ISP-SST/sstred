@@ -523,11 +523,11 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   printf, Slun, ';; Post-MOMFBD stuff:'
 ;  printf, Slun, 'a -> make_unpol_crispex, /noflat [, /scans_only,/wbwrite]        ; For unpolarized data'
-  if Npol gt 0 then begin
-    printf, Slun, 'pol = a->polarim(/new)' 
-    printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate,/noflat' 
-;    printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
-  endif
+;  if Npol gt 0 then begin
+;    printf, Slun, 'pol = a->polarim(/new)' 
+;    printf, Slun, 'for i = 0, n_elements(pol)-1, 1 do pol[i]->demodulate,/noflat' 
+;;    printf, Slun, 'a -> make_pol_crispex [, /scans_only,/wbwrite]          ; For polarized data'
+;  endif
 ;  printf, Slun, 'a -> polish_tseries, np = 3 [, /negangle, xbd =, ybd =, tstep = ...]'
   printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
