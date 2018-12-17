@@ -21,6 +21,11 @@
 ; 
 ; :Keywords:
 ;
+;    cwl : in, optional, type=float, default="Varies depending on prefilter"
+;
+;        The central wavelength of the line in Ångström. SHould be
+;        used only if keyword pref is also used.
+;
 ;    dir : in, optional, type=string
 ;
 ;        Set this to the time-stamp directory to use and bypass the
@@ -42,6 +47,10 @@
 ;
 ;        If set, skip calibrations to establish absolute intensity
 ;        units. 
+;
+;    pref : in, optional, type=string
+;
+;        Select prefilter to fit.
 ;
 ;    scan : in, optional, type=integer, default=0
 ;
@@ -88,23 +97,27 @@
 ;   2017-12-04 : MGL. New keyword noabsunits.
 ;
 ;   2018-11-30 : MGL. New version based on chromis::fitprefilter.
+;
+;   2018-12-17 : MGL. New keywords pref and cwl.
 ; 
 ;-
-pro crisp::fitprefilter, dir = dir $
-                         , useflats = useflats $
-                         , noabsunits = noabsunits $
+pro crisp::fitprefilter, cwl = cwl $
+                         , dir = dir $
                          , hints = hints $
                          , mask = mask $
-;                         , pref = pref $
-                         , scan = scan ;$
+                         , noabsunits = noabsunits $
+                         , pref = pref_keyword $
+                         , scan = scan $
+                         , useflats = useflats 
 ;                           , time = time 
   
-
+  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
   
   camWB = 'Crisp-W'
   camsNB = ['Crisp-T', 'Crisp-R']
+  camNB = camsNB[0]
   
   ;; For now! We may be able to work around this later!
   noabsunits = keyword_set(useflats)
@@ -192,16 +205,8 @@ pro crisp::fitprefilter, dir = dir $
           xs = red_fitsgetkeyword(hdr, 'NAXIS1')
           ys = red_fitsgetkeyword(hdr, 'NAXIS2')
           ims = fltarr(xs, ys, Ndirs)
-          case instrument of
-            'crisp' : begin
-              xds = xs/4
-              yds = ys/4
-            end
-            'chromis' : begin
-              xds = xs/5
-              yds = ys/5
-            end
-          endcase
+          xds = xs/4
+          yds = ys/4
           mos = fltarr(xds*Ndirs, yds)
         endif
 
@@ -338,26 +343,42 @@ pro crisp::fitprefilter, dir = dir $
       if min(statesWBall.framenumber eq statesNBall.framenumber) eq 0 then stop ; Will this happen?
       
     endif
-    
+
     upref = statesNBall[uniq(statesNBall.prefilter,sort(statesNBall.prefilter))].prefilter
+
+    ;; Did we specify prefilter(s)?
+    if n_elements(pref_keyword) ne 0 then begin
+      if max(upref eq pref_keyword) ne 1 then begin
+        print, inam + ' : Keyword pref does not match prefilters of available data.'
+        help, pref_keyword, upref
+        retall
+      endif
+      upref = pref_keyword
+    endif
     Npref = n_elements(upref)
-
+    
     ;; Loop prefilters
-
     for ipref = 0L, Npref-1 do begin
-      
+
       print, inam + ' : Process prefilter ' + upref[ipref]
 
-      ;; Some prefilters require a wavelength shift (in Ångström)
-      case upref[ipref] of
-        '5173' : cwl = 5172.70   
-        '6173' : cwl = 6173.34
-        '6302' : cwl = 6302.50
-        '6563' : cwl = 6562.82
-        '7772' : cwl = 7772.00
-        '8542' : cwl = 8542.13
-        else : cwl = double(upref[ipref])
-      endcase
+      if n_elements(cwl) eq 0 then begin
+        ;; Default line wavelengths (in Ångström) for different
+        ;; prefilters. (Maybe we should base this on the "line" part
+        ;; of the state, rather than the "prefilter" part?
+        ;; (state=prefilter_line_[+-]tuning))
+        case upref[ipref] of
+          '5173' : cwl = 5172.70   
+          '5876' : cwl = 5876.28   
+          '5896' : cwl = 5895.93
+          '6173' : cwl = 6173.34
+          '6302' : cwl = 6302.50
+          '6563' : cwl = 6562.82
+          '7772' : cwl = 7772.00
+          '8542' : cwl = 8542.13
+          else : cwl = double(upref[ipref])
+        endcase
+      endif
       
       self -> selectfiles, files = filesNBall, states = statesNBall $
                            , prefilter = upref[ipref] $
