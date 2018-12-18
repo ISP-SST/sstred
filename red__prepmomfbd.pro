@@ -181,6 +181,9 @@
 ;   2018-03-29 : MGL. New keyword old_wb_states. With /wb_states,
 ;                generate extra WB objects by use of TRACE keyword.
 ;
+;   2018-12-18 : MGL. Make the redux keyword obsolete by
+;                non-optionally setting it to 1.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -212,6 +215,10 @@ pro red::prepmomfbd, wb_states = wb_states $
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   instrument = ((typename(self)).tolower())
+
+  ;; Assume momfbd processing is done with redux. Other steps depend
+  ;; on this now.
+  redux = 1
   
   ;; Cameras
   cams = *self.cameras
