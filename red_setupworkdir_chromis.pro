@@ -490,7 +490,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + ", global_keywords=['FIT_PLANE']" $
               + ", maxshift=45" $
               + ", /wb_states" $
-              + ", /redux" $
+;              + ", /redux" $
               + ", /unpol" $
               + ", extraclip = [75,125,15,15]" $
               + ", pref='" + prefilters[ipref] + "'" $
