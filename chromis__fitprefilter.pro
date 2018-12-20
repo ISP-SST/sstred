@@ -446,7 +446,7 @@ pro chromis::fitprefilter, dir = dir $
       dat = {xl:xl, yl:yl1, spectrum:spectrum, lambda:lambda, pref:double(upref[ipref]), w:w}
 
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
-      fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 7)
+      fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
       
       fitpars[0].limited[*] = [1,0]
       fitpars[0].limits[*] = [0.d0, 0.0d0]
@@ -470,10 +470,13 @@ pro chromis::fitprefilter, dir = dir $
       fitpars[6].limited[*] = [1,1]
       fitpars[6].limits[*] = [-1.d0, 1.d0]
       
+      ;; Wavelength stretch
+      if ~keyword_set(stretch) then begin
+        fitpars[7].fixed = 1
+      end
       
       ;; Now call mpfit
-      
-      par = [max(spectrum) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
+      par = [max(spectrum) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0, 1d]
       par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
       prefilter = red_prefilter(par, dat.lambda, dat.pref)
       
