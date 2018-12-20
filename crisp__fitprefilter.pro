@@ -21,6 +21,18 @@
 ; 
 ; :Keywords:
 ;
+;    shift : in, optional, type=float
+;
+;        Initial value for the line vs. atlas shift.
+;
+;    init : in, optional, type=array
+;
+;        Initialize the parameter array to this.
+;
+;    fixcav : in, optional, type=float, default='Not fixed'
+;
+;        Fix the number of cavities to this number.
+;
 ;    cwl : in, optional, type=float, default="Varies depending on prefilter"
 ;
 ;        The central wavelength of the line in Ångström. SHould be
@@ -43,6 +55,10 @@
 ;        If set, will allow the user to mask out spectral positions
 ;        from the fit.
 ;
+;    nasym : in, optional, type=integer, default=0
+;
+;        The number of asymmetry terms to fit (0, 1, or 2).
+;
 ;    noabsunits : in, optional, type=boolean
 ;
 ;        If set, skip calibrations to establish absolute intensity
@@ -55,6 +71,10 @@
 ;    scan : in, optional, type=integer, default=0
 ;
 ;        Use data from this single scan only.
+;
+;    stretch : in, optional, type=boolean
+;
+;        Allow the wavelength scale to stretch.
 ;
 ;    useflats : in, optional, type=boolean
 ;
@@ -99,15 +119,23 @@
 ;   2018-11-30 : MGL. New version based on chromis::fitprefilter.
 ;
 ;   2018-12-17 : MGL. New keywords pref and cwl.
+;
+;   2018-12-17 : MGL. New keywords shift, init, fixcav, nasym,
+;                stretch. 
 ; 
 ;-
 pro crisp::fitprefilter, cwl = cwl $
                          , dir = dir $
                          , hints = hints $
+                         , fixcav = fixcav $
+                         , init = init $
                          , mask = mask $
+                         , nasym = nasym $
                          , noabsunits = noabsunits $
                          , pref = pref_keyword $
                          , scan = scan $
+                         , shift = shift $
+                         , stretch = stretch $
                          , useflats = useflats 
 ;                           , time = time 
   
@@ -489,38 +517,102 @@ pro crisp::fitprefilter, cwl = cwl $
       if keyword_set(mask) then w = red_maskprefilter(wav, spec) else w = dblarr(n_elements(wav)) + 1.0d0
       
       dat = {xl:xl, yl:yl1, spectrum:spectrum, lambda:lambda, pref:cwl, w:w}
-      
+
+      ;; Init guess model
+      par = dblarr(8)
+      ;; par = [max(spectrum) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0, 1d]
+      if n_elements(init) gt 0 then par[0] = init else begin
+        par[0] =  max(spectrum) * 2d0 / cont[0] ; Scale factor
+        par[1] = -0.001d0                       ; Line shift (satlas-obs)
+        par[2] = 0d                             ; Pref. shift (-0.5d in master?)
+        par[3] = 6d                             ; Pref. FWHM
+        par[4] = 2d                             ; Prefilter number of cavities)
+        par[5] = 0d                             ; asymmetry term 1
+        par[6] = 0d                             ; asymmetry term 2
+        par[7] = 1d                             ; Wavelength stretch
+      endelse
+
       ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
-      fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 7)
-      
+      fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
+
+      ;; Scale factor
       fitpars[0].limited[*] = [1,0]
       fitpars[0].limits[*] = [0.d0, 0.0d0]
+
+      ;; Line shift (satlas-obs)
+      if n_elements(shift) gt 0 then begin
+        par[1] = shift
+      endif else begin
+        fitpars[1].limited[*] = [1,1]
+        fitpars[1].limits[*] = [-1.0,1.0]
+      endelse
       
-      fitpars[1].limited[*] = [1,1]
-      fitpars[1].limits[*] = [-1.0,1.0]
-      
+      ;; Pref. shift
       fitpars[2].limited[*] = [1,1]
       fitpars[2].limits[*] = [-3.0d0,+3.0d0]
-      
+
+      ;; Pref. FWHM
       fitpars[3].limited[*] = [1,1]
-      fitpars[3].limits[*] = [2.0d0, 7.5d0]
+      case upref[ipref] of
+        '8542' : begin
+          ;; 8542 is much wider than the other CRISP prefilters
+          par[3] = 8.5d
+          fitpars[3].limits[*] = [8d, 9d]          
+        end
+        else : begin
+          par[3] = 4.d
+          fitpars[3].limits[*] = [2d, 6d]
+        end
+      endcase
       
-      fitpars[4].limited[*] = [1,1]
-      fitpars[4].limits[*] = [2.5d0, 3.5d0]
-      fitpars[4].fixed = 1
-      
-      fitpars[5].limited[*] = [1,1]
-      fitpars[5].limits[*] = [-1.d0, 1.d0]
-      
-      fitpars[6].limited[*] = [1,1]
-      fitpars[6].limits[*] = [-1.d0, 1.d0]
-      
+      ;; Prefilter number of cavities)
+      if n_elements(fixcav) ne 0 then begin
+        par[4] = fixcav
+        fitpars[4].fixed = 1
+      endif else begin
+        fitpars[4].limited[*] = [1,1]
+        fitpars[4].limits[*] = [1.4d0, 2.4d0]
+        fitpars[4].fixed = 1
+      endelse
+
+      ;; Asymmetry term 1
+      if nasym gt 0 then begin
+        fitpars[5].limited[*] = [1,1]
+        fitpars[5].limits[*] = [-1.d0, 1.d0]
+        par[5] = 0.0001d0       ; asymmetry term 1
+      endif else begin
+        fitpars[5].fixed = 1
+      endelse
+
+      ;; Asymmetry term 2
+      if nasym gt 1 then begin
+        fitpars[6].limited[*] = [1,1]
+        fitpars[6].limits[*] = [-1.d0, 1.d0]
+        par[6] = 0.0001d0       ; asymmetry term 2
+      endif else begin
+        fitpars[6].fixed = 1
+      endelse
+
+      ;; Wavelength stretch
+      if ~keyword_set(stretch) then begin
+        fitpars[7].fixed = 1
+      end
       
       ;; Now call mpfit
-      
-      par = [max(spectrum) * 2d0 / cont[0], 0.01d0, 0.01d0, 3.3d0, 3.0d0, -0.01d0, -0.01d0]
       par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg) ; <------
       prefilter = red_prefilter(par, dat.lambda, dat.pref)                                          ; <------
+
+      print, inam + ' : p[0] -> ', par[0], ' (scale factor)'
+      print, inam + ' : p[1] -> ', par[1], ' (solar atlas shift)'
+      print, inam + ' : p[2] -> ', par[2], ' (prefilter shift)'
+      print, inam + ' : p[3] -> ', par[3], ' (prefilter FWHM)'
+      print, inam + ' : p[4] -> ', par[4], ' (prefilter number of cavities)'
+      print, inam + ' : p[5] -> ', par[5], ' (asymmetry term 1)'            
+      print, inam + ' : p[6] -> ', par[6], ' (asymmetry term 2)'            
+      print, inam + ' : p[7] -> ', par[7], ' (Wavelength stretch)'          
+
+
+
       
       ;; save curve
       
