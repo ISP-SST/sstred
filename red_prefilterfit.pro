@@ -39,7 +39,7 @@
 function red_prefilterfit, par, xl = xl, yl = yl, spectrum = spectrum, lambda = lambda, pref=pref, w=w
   
   lambda1 = lambda - pref
-  xl1 = xl - pref
+  xl1 = (xl - pref)*par[7]
   
   y1 = interpol(yl, xl1+par[1], lambda1) 
   prefc = red_prefilter(par, lambda, pref)
