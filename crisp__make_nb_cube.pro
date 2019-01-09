@@ -83,6 +83,13 @@
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
+;     smooth : in, optional, type=varies, default=5
+;
+;       How to smooth the modulation matrices? Set to the string
+;       'momfbd' to smooth subfield by subfield using the PSFs
+;       estimated by momfbd. Set to a number to smooth by a Gaussian
+;       kernel of that width. 
+;
 ;     verbose : in, optional, type=boolean
 ;
 ;       Some extra screen output.
@@ -122,6 +129,8 @@
 ; 
 ;    2018-10-08 : MGL. New keyword redemodulate.
 ; 
+;    2018-12-21 : MGL. New keyword smooth.
+; 
 ;-
 pro crisp::make_nb_cube, wcfile $
                          , clips = clips $
@@ -135,6 +144,7 @@ pro crisp::make_nb_cube, wcfile $
                          , notimecor = notimecor $
                          , overwrite = overwrite $
                          , redemodulate = redemodulate $
+                         , smooth = smooth $
                          , tiles = tiles $
                          , verbose = verbose $
                          , wbsave = wbsave
@@ -152,10 +162,38 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, smooth
   red_make_prpara, prpara, redemodulate
   red_make_prpara, prpara, tiles        
   red_make_prpara, prpara, wcfile
 
+  ;; How to smooth the modulation matrices.
+  if n_elements(smooth) eq 0 then begin
+    ;; Smooth with Gaussian kernel by default
+    smooth_by_kernel = 5        ; Default width
+    smooth_by_subfield = 0
+  endif else begin
+    ;; The smooth keyword can either be a number, in which case that
+    ;; is the kernel width, or the string "momfbd", in which case we
+    ;; do smoothing by subfield using the MOMFBD-estimated PSFs.
+    if size(smooth, /tname) eq 'STRING' then begin
+      if strlowcase(smooth) eq 'momfbd' then begin
+        ;; If the string "momfbd" (or "MOMFBD"), we will smooth by
+        ;; subfield. 
+        smooth_by_subfield = 1
+      endif else begin
+        ;; Any string except "momfbd" will result in no smoothing. 
+        smooth_by_subfield = 0
+        smooth_by_kernel = 0
+      endelse
+    endif else begin
+      ;; Not a string, then hopefully a number
+      smooth_by_subfield = 0
+      smooth_by_kernel = smooth
+    endelse
+  endelse
+  
+  
   ;; Default keywords
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
   if n_elements(tiles) eq 0 or n_elements(clips) eq 0 then begin
@@ -225,6 +263,18 @@ pro crisp::make_nb_cube, wcfile $
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
 
   files = file_search(datadir + '*.'+extension, count = Nfiles)      
+
+  ;; If we don't want to make a cube with all scans, this could be
+  ;; unnecessarily many files. Takes a long time to do extracstates on
+  ;; them.
+  undefine,selectfiles 
+  Nscans = n_elements(wbgstates.scannumber)
+  for iscan = 0, Nscans-1 do begin
+    indx = where(strmatch(files, '*_'+string(wbgstates[iscan].scannumber, format = '(i05)')+'_*'), Nmatch)
+    if Nmatch ne 0 then red_append, selectfiles, files[indx]
+  endfor                        ; iscan
+  files = selectfiles
+  Nfiles = n_elements(files)
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
@@ -489,12 +539,19 @@ pro crisp::make_nb_cube, wcfile $
   ;; Make FITS header for the NB cube
   hdr = wchead                  ; Start with the WB cube header
 
+  
   
   if makestokes then begin
 
     ;; Make Stokes cube
+    
+    ;;  stokesdir = datadir + '/stokes/'
 
-    stokesdir = datadir + '/stokes/'
+    ;; Store intermediate Stokes cubes in separate directories for
+    ;; different smooth options: 
+    stokesdir = datadir + '/stokes_sbs'+strtrim(smooth_by_subfield,2) $
+                + '_sbk'+strtrim(smooth_by_kernel,2)+'/'
+
     file_mkdir, stokesdir
 
     if keyword_set(redemodulate) then begin
@@ -538,8 +595,7 @@ pro crisp::make_nb_cube, wcfile $
       self -> inverse_modmatrices, prefilter, stokesdir $
                                    , camr = nbrcamera, immr = immr $
                                    , camt = nbtcamera, immt = immt $
-                                   , no_ccdtabs = no_ccdtabs $
-                                   , smooth = smooth 
+                                   , no_ccdtabs = no_ccdtabs
 
       swcs = {wave:dblarr(2,2)   $ ; WCS for this Stokes cube.
               , hplt:dblarr(2,2) $
@@ -586,7 +642,8 @@ pro crisp::make_nb_cube, wcfile $
             ;; and outputs a demodulated Stokes file.
 
             self -> demodulate, snames[iscan, iwav], immr, immt $
-                                , /smooth_by_subfield $ 
+                                , smooth_by_subfield = smooth_by_subfield $ 
+                                , smooth_by_kernel = smooth_by_kernel $ 
                                 , clips = clips $
                                 , cmap = cmap1 $
                                 , nbrfac = nbr_rpref[iwav] $
