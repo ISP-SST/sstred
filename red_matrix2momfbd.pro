@@ -92,37 +92,42 @@ function red_matrix2momfbd, lc, imodmat $
           clip = [clip[0:1] + dc[0], clip[2:3] + dc[1]] ; Projected corner coordinates
         endif
 
-        tpmm=imodmat[*,(clip[0]>0)<mnx:(clip[1]<mnx),(clip[2]>0):(clip[3]<mny)]
+        clp = [(clip[0]>0)<mnx, (clip[1]<mnx), (clip[2]>0)<mny, (clip[3]<mny)]
+        if clp[0] ne clp[1] and clp[2] ne clp[3] then begin
+          tpmm=imodmat[*,clp[0]:clp[1], clp[2]:clp[3]]
+;        tpmm=imodmat[*,(clip[0]>0)<mnx:(clip[1]<mnx),(clip[2]>0)<mny:(clip[3]<mny)]
 
-        for istokes=0,Nstokes-1 do begin
-          pmm[*,*]=median(tpmm[ilc*4 + istokes,*,*])                       ; Fill extra bits with the median
-          pmm[(-clip[0])>0,(-clip[2])>0]=reform(tpmm[istokes + ilc*4,*,*]) ; Copy what we do have
-          if n_elements(amap) gt 0 then begin
-            ;; The projective transform might require a mirroring of
-            ;; the patch, in addition to a transpose that the momfbd
-            ;; program does (for no good reason).
-            case 1 of
-              amap[0, 0] lt 0 && amap[1, 1] lt 0 : pmm = rotate(pmm, 6) ; Transpose after mirroring in X and Y
-              amap[0, 0] lt 0                    : pmm = rotate(pmm, 3) ; Transpose after mirroring in X
-              amap[1, 1] lt 0                    : pmm = rotate(pmm, 1) ; Transpose after mirroring in Y
-              else                               : pmm = rotate(pmm, 4) ; Transpose after no mirroring
-            endcase 
-          endif
-          ;; This psf should be the single psf you get when running
-          ;; with GET_PSF_AVG (or whatever the keyword is called), or
-          ;; the average PSF over the ones corresponding to the
-          ;; multiple raw images.
-          ;;
-          ;; Or, in the case we want SIMPLE, the spatial average of
-          ;; PSFs (potentially as well as over raw images). Unless we
-          ;; want to do that operation without making.
-          case Npsfs of
-            1    : psf =       lc[ilc].patch[ix,iy].psf             ; The average PSF delivered by momfbd
-            else : psf = total(lc[ilc].patch[ix,iy].psf, 3) / Npsfs ; The average PSF calculated here
-          endcase
-          imm[istokes,ilc].patch[ix,iy].img = red_convolve(red_fillnan(pmm), psf)
-        endfor                  ; istokes
+          for istokes=0,Nstokes-1 do begin
+            pmm[*,*]=median(tpmm[ilc*4 + istokes,*,*]) ; Fill extra bits with the median
+            pmm[(-clip[0])>0,(-clip[2])>0]=reform(tpmm[istokes + ilc*4,*,*]) ; Copy what we do have
+            if n_elements(amap) gt 0 then begin
+              ;; The projective transform might require a mirroring of
+              ;; the patch, in addition to a transpose that the momfbd
+              ;; program does (for no good reason).
+              case 1 of
+                amap[0, 0] lt 0 && amap[1, 1] lt 0 : pmm = rotate(pmm, 6) ; Transpose after mirroring in X and Y
+                amap[0, 0] lt 0                    : pmm = rotate(pmm, 3) ; Transpose after mirroring in X
+                amap[1, 1] lt 0                    : pmm = rotate(pmm, 1) ; Transpose after mirroring in Y
+                else                               : pmm = rotate(pmm, 4) ; Transpose after no mirroring
+              endcase 
+            endif
+            ;; This psf should be the single psf you get when running
+            ;; with GET_PSF_AVG (or whatever the keyword is called), or
+            ;; the average PSF over the ones corresponding to the
+            ;; multiple raw images.
+            ;;
+            ;; Or, in the case we want SIMPLE, the spatial average of
+            ;; PSFs (potentially as well as over raw images). Unless we
+            ;; want to do that operation without making.
+            case Npsfs of
+              1    : psf =       lc[ilc].patch[ix,iy].psf             ; The average PSF delivered by momfbd
+              else : psf = total(lc[ilc].patch[ix,iy].psf, 3) / Npsfs ; The average PSF calculated here
+            endcase
+            imm[istokes,ilc].patch[ix,iy].img = red_convolve(red_fillnan(pmm), psf)
+          endfor                ; istokes
 
+        endif else stop
+        
       endfor                    ; ilc
 
     endfor                      ; iy
