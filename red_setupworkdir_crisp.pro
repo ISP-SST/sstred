@@ -506,15 +506,12 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
     printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
-    if strmid(prefilters[ipref], 0, 2) eq '63' then begin
-      printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"', shift=-0.5"
-    endif else begin
-      printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'"
-    endelse
+    printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'" $
+            + "; Nasym=1, fixcav=2, /hints, dir='10:02:45'"
     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
             + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
-            + maybe_nodescatter[ipref]
-  endfor
+            + maybe_nodescatter[ipref] + ", dirs=['08:43:21','09:02:16']"
+  endfor                        ; ipref
 
 
   printf, Slun, ''
