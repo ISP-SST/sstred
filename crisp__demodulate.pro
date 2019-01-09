@@ -27,8 +27,20 @@
 ; 
 ; :Params:
 ; 
-;    outname
+;    outname : in, type=string
 ; 
+;        The file name in which to write the demodulated Stokes cube.
+;
+;    immr : in, type=array
+; 
+;        The inverse demodulation matrix for the Crisp-R camera.
+;
+;    immt : in, type=array
+;
+;        The inverse demodulation matrix for the Crisp-T camera.
+;
+;
+;
 ; :Keywords:
 ; 
 ;    clips : in, optional, type=array
@@ -82,6 +94,9 @@
 ; 
 ;   2018-12-05 : MGL. New keyword cmap.
 ; 
+;   2018-12-21 : MGL. New keywords smooth_by_kernel and
+;                smooth_by_subfield.
+; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
                        , clips = clips $
@@ -94,6 +109,7 @@ pro crisp::demodulate, outname, immr, immt $
                        , no_ccdtabs = no_ccdtabs $
                        , nthreads = nthreads $
                        , overwrite = overwrite $
+                       , smooth_by_kernel = smooth_by_kernel $
                        , smooth_by_subfield = smooth_by_subfield $
                        , tiles = tiles $
                        , units = units $
@@ -117,6 +133,7 @@ pro crisp::demodulate, outname, immr, immt $
   red_make_prpara, prpara, nbtfac
   red_make_prpara, prpara, newflats
   red_make_prpara, prpara, no_ccdtabs 
+  red_make_prpara, prpara, smooth_by_kernel
   red_make_prpara, prpara, smooth_by_subfield
   red_make_prpara, prpara, tiles 
   
@@ -246,41 +263,86 @@ pro crisp::demodulate, outname, immr, immt $
     immr_dm = immr
   endelse
 
+  ;; Mozaic images 
+  for ilc = 0L, Nlc-1 do begin
+    img_r[*,*,ilc] = red_mozaic(rimg[ilc], /crop) * nbrfac
+    img_t[*,*,ilc] = red_mozaic(timg[ilc], /crop) * nbtfac
+  endfor
+
+  
+  mymt = fltarr(Nlc, Nstokes, Nx, Ny)
+  mymr = fltarr(Nlc, Nstokes, Nx, Ny)
+
   
   if keyword_set(smooth_by_subfield) then begin
 
-    ;; Divide geometrically distortion-corrected modulation matrices
-    ;; into momfbd-subfields, smooth with PSF from each subfield, make
+    ;; Divide modulation matrices into momfbd-subfields, correct for
+    ;; image projection, smooth with PSF from each subfield, make
     ;; mosaics of the result.
     
     immts = red_matrix2momfbd(timg, immt_dm, amap = amapt)
     immrs = red_matrix2momfbd(rimg, immr_dm, amap = amapr)
 
-    mymt = fltarr(Nlc, Nstokes, Nx, Ny)
-    mymr = fltarr(Nlc, Nstokes, Nx, Ny)
-
-    ;; The red_mozaic calls below return matrices in the cropped size.
-    ;; Do we need to correct their geometry as well at this point?
-
-    ;; Mozaic images and demodulation matrix
+    ;; Mozaic inverse modulation matrix
     for ilc = 0L, Nlc-1 do begin
-      img_r[*,*,ilc] = red_mozaic(rimg[ilc], /crop) * nbrfac
-      img_t[*,*,ilc] = red_mozaic(timg[ilc], /crop) * nbtfac
-      for istokes = 0L, Nstokes-1 do mymr[ilc,istokes,*,*] = red_mozaic(immrs[ilc,istokes], /crop) 
-      for istokes = 0L, Nstokes-1 do mymt[ilc,istokes,*,*] = red_mozaic(immts[ilc,istokes], /crop) 
-    endfor
+      for istokes = 0L, Nstokes-1 do begin
+        mymr[ilc,istokes,*,*] = red_mozaic(immrs[ilc,istokes], /crop) 
+        mymt[ilc,istokes,*,*] = red_mozaic(immts[ilc,istokes], /crop)
+      endfor                    ; istokes
+    endfor                      ; ilc
 
     ;; if keyword_set(cmap) then cmap = (red_mozaic(red_conv_cmap(cmap,*self.timg[1])))[x0:x1,y0:y1]
 
   endif else begin
 
-    stop
 
-    ;; Smooth the modulation matrices with average PSF.
+    ;; Do we need to reform the inverse modulation matrices? At least
+    ;; we need to do the projection matrix thing.
+    
+    immr_dm = reform(immr_dm, [Nlc, Nstokes, Nxx, Nyy])
+    immt_dm = reform(immt_dm, [Nlc, Nstokes, Nxx, Nyy])
 
+    amapr_inv = invert(amapr)
+    amapt_inv = invert(amapt)
+    
+    for ilc = 0L, Nlc-1 do begin
+      for istokes = 0L, Nstokes-1 do begin
+        ;; Apply the geometrical mapping and clip to the FOV of the
+        ;; momfbd output.
+        tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc,istokes,*,*]), /preserve_size)
+        mymr[ilc,istokes,*,*] = tmp[rimg[ilc].roi[0]+rimg[ilc].margin:rimg[ilc].roi[1]-rimg[ilc].margin $
+                                    , rimg[ilc].roi[2]+rimg[ilc].margin:rimg[ilc].roi[3]-rimg[ilc].margin]
+        tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
+        mymt[ilc,istokes,*,*] = tmp[timg[ilc].roi[0]+timg[ilc].margin:timg[ilc].roi[1]-timg[ilc].margin $
+                                    , timg[ilc].roi[2]+timg[ilc].margin:timg[ilc].roi[3]-timg[ilc].margin]
+      endfor                    ; istokes
+    endfor                      ; ilc
 
-  endelse
+  end
 
+  if n_elements(smooth_by_kernel) gt 0 && smooth_by_kernel gt 0 then begin
+
+    ;; Smooth the inverse modulation matrices by a Gaussian kernel
+
+    dpix = round(smooth_by_kernel)*3
+    if (dpix/2)*2 eq dpix then dpix -= 1
+    dpsf = double(smooth_by_kernel)
+    psf = red_get_psf(dpix, dpix, dpsf, dpsf)
+    psf /= total(psf, /double)
+
+    ;;for ii=0, Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
+
+    ;; Smooth the inverse modulation matrix
+    for ilc = 0L, Nlc-1 do begin
+      for istokes = 0L, Nstokes-1 do begin
+        ;;mymr[ilc,istokes,*,*] = red_convolve(reform(immr_dm[ilc, istokes, *, *]), psf)
+        ;;mymt[ilc,istokes,*,*] = red_convolve(reform(immt_dm[ilc, istokes, *, *]), psf)
+        mymr[ilc,istokes,*,*] = red_convolve(reform(mymr[ilc, istokes, *, *]), psf)
+        mymt[ilc,istokes,*,*] = red_convolve(reform(mymt[ilc, istokes, *, *]), psf)
+      endfor                    ; istokes
+    endfor                      ; ilc
+
+  endif
 
   ;; Load the simultaneous WB images.  
   ;;img_wb = fltarr(dim[0], dim[1], Nlc)
@@ -289,10 +351,11 @@ pro crisp::demodulate, outname, immr, immt $
 
   rest = fltarr(Nx, Ny, 4)
   resr = fltarr(Nx, Ny, 4)  
-  
+
   if n_elements(wbg) gt 0 then begin
 
     ;; Demodulate with destretching
+    
     if n_elements(cmap) ne 0 then cmapp = 0.
     for ilc = 0L, Nlc-1 do begin
       grid = red_dsgridnest(wbg, img_wb[*,*,ilc], tiles, clips)
@@ -305,9 +368,11 @@ pro crisp::demodulate, outname, immr, immt $
       if n_elements(cmap) ne 0 then cmapp += red_stretch(cmap, grid)
     endfor                      ; ilc
     if n_elements(cmap) ne 0 then cmapp /= Nlc
+    
   endif else begin
 
     ;; No global WB image, demodulate without destretching.
+    
     for ilc = 0L, Nlc-1 do begin
       for istokes = 0L, 3 do begin
         rest[*,*,istokes] += reform(mymt[ilc,istokes,*,*]) * img_t[*,*,ilc]
@@ -315,14 +380,13 @@ pro crisp::demodulate, outname, immr, immt $
       endfor                    ; istokes
     endfor                      ; ilc
     if n_elements(cmap) ne 0 then cmapp = cmap
+    
   endelse
 
   
   ;; These are now Stokes cubes!
   img_t = temporary(rest)
   img_r = temporary(resr)
-
-
 
   dum = size(img_t,/dim)
   drm = dum / 8.0 
