@@ -327,21 +327,13 @@ pro red::sum_data_intdif, all = all $
             endelse
             
             
-            ;; Load flat
-            self -> get_calib, selstates[0], gaindata = gg
-;            gf = self.out_dir+'/flats/'+strjoin([detectors[icam], pref, uwav[ituning], 'unpol.flat'], '.')
-;            if(file_test(gf)) then begin
-;              g = f0(gf)
-;              g = median(g) / g
-;              badpixels = where(~finite(g), count)
-;              if(count gt 0) then g[badpixels] = 0.0
-;            endif else begin
-;              print, inam + ' : ERROR, gain file not found -> ', gf
-;              stop
-;            endelse
+            ;; Make gain from cavity-free flat
+            self -> get_calib, selstates[0], cflatdata = cf, cflatname = cnam
+            gg = median(cf) / cf
+            badpixels = where(~finite(gg), count)
+            if count gt 0 then gg[badpixels] = 0.0
             
             if keyword_set(verbose) then print, file_basename(mmfiles[idx]),format='(a0)'
-            ;;tmp = red_sumfiles(mmfiles[idx], /check) - dd
             tmp = rdx_sumfiles(mmfiles[idx], /check, nthreads = 2) - dd
 
             if ~keyword_set(no_descatter) $
