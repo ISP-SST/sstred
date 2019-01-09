@@ -31,16 +31,12 @@
 ; 
 ; :Keywords:
 ; 
-;    smooth : in, optional, type=integer, default=9
-; 
-;       Width in pixels of smoothing kernel applied to modulation
-;       matrix maps.
-; 
-; 
 ; :History:
 ; 
 ; 
 ;   2018-10-09 : MGL. First version, based on Jaime's red::polarim.
+; 
+;   2018-12-21 : MGL. Removed keyword smooth.
 ; 
 ;-
 pro crisp::inverse_modmatrices, prefilter, dir $
@@ -49,13 +45,10 @@ pro crisp::inverse_modmatrices, prefilter, dir $
                                 , immr = immr $
                                 , immt = immt $
                                 , no_ccdtabs = no_ccdtabs $
-                                , overwrite = overwrite $
-                                , smooth = smooth
+                                , overwrite = overwrite
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-  if n_elements(smooth) eq 0 then smooth = 9
 
   if n_elements(camr) gt 0 then begin
     red_append, cams, camr
@@ -108,16 +101,6 @@ pro crisp::inverse_modmatrices, prefilter, dir $
           if count gt 0 and count lt Nx*Ny then $
              mm[ii,*,*] = red_fillpix(reform(mm[ii,*,*]), mask=mask)
         endfor                  ; ii
-
-        ;; Smooth?
-        if smooth gt 0 then begin
-          dpix = round(smooth)*3
-          if (dpix/2)*2 eq dpix then dpix -= 1
-          dpsf = double(smooth)
-          psf = red_get_psf(dpix, dpix, dpsf, dpsf)
-          psf /= total(psf, /double)
-          for ii=0,Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
-        endif
 
         imm = red_invert_mmatrix(temporary(mm)) ; Inverse modulation matrix
         
