@@ -461,9 +461,9 @@ function red_sumfiles, files_list $
 
             ;; We also need to do any descattering correction of each frame.
             if DoDescatter then begin
-              thisframe = red_cdescatter(thisframe $
-                                         , backscatter_gain, backscatter_psf $
-                                         , /verbose, nthreads = nthreads)
+              thisframe = rdx_descatter(thisframe $
+                                        , backscatter_gain, backscatter_psf $
+                                        , /verbose, nthreads = nthreads)
             endif
 
             ;; And fill the bad pixels 
@@ -566,8 +566,8 @@ function red_sumfiles, files_list $
 
         if DoDescatter then begin
           ;; Backscatter correction (done already for pinholes)
-          average = red_cdescatter(average, backscatter_gain, backscatter_psf $
-                                   , /verbose, nthreads = nthreads)
+          average = rdx_descatter(average, backscatter_gain, backscatter_psf $
+                                  , /verbose, nthreads = nthreads)
         endif
 
         ;; Fill the bad pixels 

@@ -187,10 +187,10 @@ pro red::prepflatcubes, flatdir = flatdir, no_descatter = no_descatter, nthreads
            ;; Descatter ?
            if(~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772')) then begin
 
-              lc0 = red_cdescatter(temporary(lc0), bg, psf, /verbose, nthreads = nthreads)
-              lc1 = red_cdescatter(temporary(lc1), bg, psf, /verbose, nthreads = nthreads)
-              lc2 = red_cdescatter(temporary(lc2), bg, psf, /verbose, nthreads = nthreads)
-              lc3 = red_cdescatter(temporary(lc3), bg, psf, /verbose, nthreads = nthreads)
+             lc0 = rdx_descatter(temporary(lc0), bg, psf, /verbose, nthreads = nthreads)
+             lc1 = rdx_descatter(temporary(lc1), bg, psf, /verbose, nthreads = nthreads)
+             lc2 = rdx_descatter(temporary(lc2), bg, psf, /verbose, nthreads = nthreads)
+             lc3 = rdx_descatter(temporary(lc3), bg, psf, /verbose, nthreads = nthreads)
 
            endif
 

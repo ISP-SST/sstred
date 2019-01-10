@@ -221,7 +221,7 @@ pro red::sumpinh, nthreads = nthreads $
         DoBackscatter = 1
       endif
       if DoBackscatter gt 0 then begin
-        ff = red_cdescatter(ff, bgt, Psft, /verbose, nthreads = nthread)
+        ff = rdx_descatter(ff, bgt, Psft, /verbose, nthreads = nthread)
       endif
       gain = self->flat2gain(ff)
 

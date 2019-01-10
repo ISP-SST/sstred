@@ -152,8 +152,8 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             red_progressbar, iloop, Nloop, /predict, cams[icam]+' : '+file_basename(selfiles[indx])
             d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx], /silent) - dd
             if dodescatter then $
-               d[ilc,iqw,ilp,*,*] = red_cdescatter(reform(d[ilc,iqw,ilp,*,*]) $
-                                                   , bg, psf, nthreads = nthreads)
+               d[ilc,iqw,ilp,*,*] = rdx_descatter(reform(d[ilc,iqw,ilp,*,*]) $
+                                                  , bg, psf, nthreads = nthreads)
             d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
 
             iloop++

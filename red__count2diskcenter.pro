@@ -69,12 +69,10 @@ function red::count2diskcenter, pref, cam = cam
   fzread,ff, self.out_dir+'/flats/'+cam+'.'+pref+'.flat', h
 
   if((pref EQ '8542') AND (self.descatter_dir NE '')) then begin
-     self -> loadbackscatter, cam, pref, bg, psf
-;     bg = f0(self.descatter_dir+'/'+cam+'.backgain.f0')
-;     psf = f0(self.descatter_dir+'/'+cam+'.psf.f0')
-     ff = red_cdescatter(ff, bg, psf)
+    self -> loadbackscatter, cam, pref, bg, psf
+    ff = rdx_descatter(ff, bg, psf)
   endif
-
+  
   ;; Now, we know the variation of the WB images on time and the ratio
   ;; between WB and NW at the time of the flats: We can use ratios to
   ;; obtain the correction factor for the NB.

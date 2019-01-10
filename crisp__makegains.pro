@@ -138,7 +138,8 @@ pro crisp::makegains, bad=bad $
 ;           if(file_test(psff) AND file_test(bgf)) then begin
 ;              psf = f0(psff)
 ;              bg = f0(bgf)
-        flat = red_cdescatter(flat, bg, psf, nthreads = nthreads, verbose = 1)
+;        flat = red_cdescatter(flat, bg, psf, nthreads = nthreads, verbose = 1)
+        flat = rdx_descatter(flat, bg, psf, nthreads = nthreads, /verbose)
 ;           endif
       endif
     endif

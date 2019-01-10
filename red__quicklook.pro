@@ -458,10 +458,10 @@ pro red::quicklook, align = align $
         for iframe = 0, Nframes-1 do begin
           ims[*, *, iframe] -= dd
           if DoBackscatter then begin ; Backscatter if needed
-            ims[*, *, iframe] = red_cdescatter(ims[*, *, iframe] $
-                                               , bgt, Psft $
-                                               , verbose = verbose $
-                                               , nthreads = nthreads)
+            ims[*, *, iframe] = rdx_descatter(ims[*, *, iframe] $
+                                              , bgt, Psft $
+                                              , verbose = verbose $
+                                              , nthreads = nthreads)
           endif
           ims[*, *, iframe] *= gg
         endfor                  ; iframe
