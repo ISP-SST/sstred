@@ -146,7 +146,8 @@ pro red::sum_data_intdif, all = all $
     outdir = self.out_dir + '/cmap_intdif/' + file_basename(dir) + '/'
     file_mkdir, outdir
     
-    files = file_search(dir+ '/' + cams[0] + '/cam*', count = Nfiles)
+;    files = file_search(dir+ '/' + cams[0] + '/cam*', count = Nfiles)
+    files = file_search(dir+ '/' + cams + '/cam*', count = Nfiles)
 
     if Nfiles eq 0 then begin
       print, inam + ' : ERROR, data folder is empty'
@@ -181,7 +182,7 @@ pro red::sum_data_intdif, all = all $
         pref = upref[0]
       endif else begin
         while Npref ne 1 do begin
-          tmp = red_select_subset(file_basename(dirs)$
+          tmp = red_select_subset(upref $
                                   , qstring = inam + ' : Select a single prefilter:' $
                                   , count = Npref, indx = sindx)
         endwhile
@@ -211,12 +212,6 @@ pro red::sum_data_intdif, all = all $
 ;    mfiles = state.files[idx]
 ;    mstar = state.star[idx]
 
-    mwav   = selstates.tuning
-    mlc    = selstates.lc
-    mscan  = selstates.scannumber
-    mfiles = selstates.filename
-    mstar  = lonarr(Nselect)    ; all zeros
- 
 ;    uscan = mscan[uniq(mscan, sort(mscan))]
 ;    ulc = mlc[uniq(mlc, sort(mlc))]
 ;    uwav = mwav[uniq(mwav, sort(mdwav))]
@@ -253,6 +248,12 @@ pro red::sum_data_intdif, all = all $
           continue
         endif
       endif
+
+      self -> selectfiles, files = selstates.filename, states = selstates $
+                           , cam = cams[icam] $
+                           , sel = sell, count = Nselect
+      if Nselect eq 0 then stop
+
       
       ;; Descatter?
       if ~keyword_set(no_descatter) $
@@ -261,10 +262,19 @@ pro red::sum_data_intdif, all = all $
         self -> loadbackscatter, detectors[icam], pref, bff, pff
       endif
 
+      
 ;      tempdir = dir + '/' + cams[icam]+'/'
 ;      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
 ;      mmfiles = tempdir + detectors[icam]+strmid(mfiles,longi,200)
-      mmfiles = mfiles
+      mstates = selstates[sell]
+;      mmfiles = selstates[sell]
+
+      mwav   = mstates.tuning
+      mlc    = mstates.lc
+      mscan  = mstates.scannumber
+      mfiles = mstates.filename
+      mstar  = lonarr(Nselect)  ; all zeros
+
       cfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.icube'
       dfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.save'
 
@@ -289,7 +299,7 @@ pro red::sum_data_intdif, all = all $
         tt0 = 0L
       endelse
 ;      dim = size(f0(mmfiles[0]),/dim)
-      hdr = red_readhead(mmfiles[0])
+      hdr = red_readhead(mstates[0].filename)
       dim = fxpar(hdr, 'NAXIS*')
       Nx = dim[0]
       Ny = dim[1]
@@ -299,7 +309,8 @@ pro red::sum_data_intdif, all = all $
       dat = assoc(lun, intarr(Nx, Ny, /nozer), 512)
 
       ;; Load dark file
-      self -> get_calib, selstates[0], darkdata = dd
+;      self -> get_calib, selstates[0], darkdata = dd
+      self -> get_calib, mstates[0], darkdata = dd
 
       ;; Load fitgains results
       cmf = self.out_dir + '/flats/spectral_flats/' + detectors[icam] + '.' + $
@@ -319,27 +330,29 @@ pro red::sum_data_intdif, all = all $
             
             idx = where((mwav EQ uwav[ituning]) AND (mlc EQ ulc[ilc]) AND $
                         (mscan EQ uscan[iscan]) AND mstar eq 0, count)
-            
+
             if(count eq 0) then begin
               print, inam + ' : No files found for state -> ' + istate
             endif else begin
               print, inam + ' : Found ' + red_stri(count) + ' images -> '+istate 
             endelse
             
-            
             ;; Make gain from cavity-free flat
-            self -> get_calib, selstates[0], cflatdata = cf, cflatname = cnam
-            gg = median(cf) / cf
-            badpixels = where(~finite(gg), count)
-            if count gt 0 then gg[badpixels] = 0.0
+;            self -> get_calib, selstates[0], cflatdata = cf, cflatname = cnam
+            self -> get_calib, mstates[0], cflatdata = cf, cflatname = cnam
+            gg = self -> flat2gain(cf, /preserve)
+;            gg = median(cf) / cf
+;            badpixels = where(~finite(gg) or gg gt 5 or gg lt 0, count)
+;            if count gt 0 then gg[badpixels] = 0.0
             
-            if keyword_set(verbose) then print, file_basename(mmfiles[idx]),format='(a0)'
-            tmp = rdx_sumfiles(mmfiles[idx], /check, nthreads = 2) - dd
+            if keyword_set(verbose) then print, file_basename(mstates[idx].filename),format='(a0)'
+            tmp = rdx_sumfiles(mstates[idx].filename, /check, nthreads = 2) - dd
 
             if ~keyword_set(no_descatter) $
                && self.dodescatter $
                && (pref eq '8542' || pref eq '7772') then begin
-              tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
+              ;;tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
+              tmp = rdx_descatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
             endif
             
             tmp = red_fillpix(temporary(tmp)*gg, nthreads=nthreads)
