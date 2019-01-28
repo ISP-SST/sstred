@@ -45,21 +45,24 @@ pro red::rawdir2db, timestamp, cams = cams
     cams = *self.cameras
   endif
   Ncams = n_elements(cams)
-
+  
   for icam = 0, Ncams-1 do begin
-
+    
     dir = self.root_dir + '/' + 'CHROMIS-data/' + timestamp + '/' + cams[icam] + '/'
-
+    
     files = file_search(dir+'*', count = Nfiles)
     
     if Nfiles eq 0 then continue
 
 
-    files = files[0:10]         ; testing...
+    ;files = files[0:10]         ; testing...
     Nfiles = n_elements(files)        
 
     self -> extractstates, files, states
 
+
+
+    
     ;; Array with NB prefilters to be indexed with the "wheel" number
     ;; minus 1. Same index to use for lambda_ref, du_ref, convfac.
     nbprefs = ['3925', '3934', '3969', '3978', '3999', '4862']
@@ -216,16 +219,17 @@ pro red::rawdir2db, timestamp, cams = cams
     
     ;; Send the array of structs as input to a command that knows what
     ;; info should go into what table, and writes it there.
-    red_rawfile2db, dbinfo
+    ;;red_rawfile2db, dbinfo
     
   endfor                        ; icam
 
+  stop
 end
 
-end
 
-a = chromisred(/dev)
 
-a -> rawdir2db, '09:28:36'
+;; a = chromisred(/dev)
 
-end
+;; a -> rawdir2db, '09:28:36'
+
+;end                             
