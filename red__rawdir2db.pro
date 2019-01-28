@@ -84,50 +84,51 @@ pro red::rawdir2db, timestamp, cams = cams
 
     strct  = { $
              ;; From the states struct
-             FILENAME       : '', $
-             DETECTOR       : '', $
-             CAMERA         : '', $
-             FULLSTATE      : '', $
-             FPI_STATE      : '', $
-             NFRAMES        : 0L, $
-             SKIP           : 0B, $
-             SCANNUMBER     : 0L, $
-             FRAMENUMBERS    : lonarr(100), $
-             TUNING         : '', $
-             PREFILTER      : '', $
-             PF_WAVELENGTH  : 0d, $
-             TUN_WAVELENGTH : 0d, $
-             EXPOSURE       : 0d, $
-             GAIN           : 0., $
-             CAM_SETTINGS   : '', $
-             IS_WB          : 0B, $
+             CAMERA         : '' $ 
+             , CAM_SETTINGS   : '' $
+             , DETECTOR       : '' $
+             , EXPOSURE       : 0d $
+             , FPI_STATE      : '' $
+             , FRAMENUMBERS    : lonarr(100) $
+             , FULLSTATE      : '' $
+             , GAIN           : 0. $
+             , NFRAMES        : 0L $
+             , PF_WAVELENGTH  : 0d $
+             , PREFILTER      : '' $
+             , SCANNUMBER     : 0L $
+             , SKIP           : 0B $
+             , TUNING         : '' $
+             , TUN_WAVELENGTH : 0d $
+             , FILENAME       : '' $
+             , IS_WB          : 0B $
              ;; From the header
-             BITPIX   : 0B, $
-             NAXIS    : 0B, $
-             NAXIS1   : 0L, $          
-             NAXIS2   : 0L, $
-             NAXIS3   : 0L, $
-             ORIGIN   : '', $
-             TELESCOP : '', $
-             INSTRUME : '', $
-             DATE_OBS : '', $
-             DATE     : '', $
-             WAVELNTH : 0., $
-             WAVEMIN  : 0., $
-             WAVEMAX  : 0., $
-             WAVEBAND : '', $
-             WAVEUNIT : 0,  $
-             DATE_BEGS : strarr(100), $
-             OBSERVER : '', $
-             OBJECT   : '', $
-             XPOSURE  : 0., $
-             CADAVG   : 0., $
-             DETGAIN  : 0., $
-             DETOFFS  : 0L, $
-             DETFIRM  : '', $
-             SCANNUM  : 0L, $
-             FRAMENUM : 0L, $
-             FILTER1  : ''  }
+             , BITPIX   : 0B $  
+             , CADAVG   : 0. $
+             , DATE     : '' $
+             , DATE_BEGS : strarr(100) $
+             , DATE_OBS : '' $
+             , DETFIRM  : '' $
+             , DETGAIN  : 0. $
+             , DETOFFS  : 0L $
+             , FILTER1  : '' $
+             , FRAMENUM : 0L $
+             , INSTRUME : '' $
+             , NAXIS    : 0B $
+             , NAXIS1   : 0L $          
+             , NAXIS2   : 0L $
+             , NAXIS3   : 0L $
+             , OBJECT   : '' $
+             , OBSERVER : '' $
+             , ORIGIN   : '' $
+             , SCANNUM  : 0L $
+             , TELESCOP : '' $
+             , WAVEBAND : '' $
+             , WAVELNTH : 0. $
+             , WAVEMAX  : 0. $
+             , WAVEMIN  : 0. $
+             , WAVEUNIT : 0  $
+             , XPOSURE  : 0. $
+             }
 
     ;; Make array of such structs
     dbinfo = replicate(strct, Nfiles)
