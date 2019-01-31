@@ -104,7 +104,7 @@ pro red_currentsite, date = date $
         ;; Incoming/Checked.  For example:
         ;;   /storage/sand04n/2017.04.05
         ;;   /storage/sand05/Incoming/2017.04.05
-        search_dirs = '/storage/sand*/' + ['', 'Incoming/', 'Incoming/Checked/', 'data/']
+        search_dirs = '/storage/sand*/data/'
       endif else begin
         ;; New directory structure since February 2018, decoupled from
         ;; names of sandboxes where data is actually stored. Also
