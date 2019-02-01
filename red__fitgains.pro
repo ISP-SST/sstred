@@ -247,8 +247,8 @@ pro red::fitgains, all = all $
     ffile = red_strreplace(files[ifile], '_filenames.txt', '_flats_data.fits') ; Input flat intensities
     wfile = red_strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')  ; Input flat wavelengths
     sfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.sav') ; Output save file
-    pfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.png') ; Plot file
-    pfile0 = red_strreplace(files[ifile], '_filenames.txt', '_fit_results0.png') ; Plot file
+    pfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.pdf') ; Plot file
+    pfile0 = red_strreplace(files[ifile], '_filenames.txt', '_fit_results0.pdf') ; Plot file
 
     self -> extractstates, namelist, states
     outnames = self -> filenames('cavityflat', states)
