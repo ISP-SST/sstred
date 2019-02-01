@@ -112,10 +112,10 @@ pro red_mysql_query, lun, query $
     endfor
   endif
 
-  ;; lun and query string are manditory, as are at least one output
+  ;; lun and query string are mandatory, as are at least one output
   ;; variable
   if n_params() lt 3 then begin
-    print,'Usage: n = mysqlquery(lun,query,v1,[v2,v3,v4,...])'
+    print,'Usage: red_mysql_query,lun,query,v1,[v2,v3,v4,...]'
     return
   endif
 
