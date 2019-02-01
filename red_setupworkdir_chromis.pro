@@ -294,29 +294,30 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   if ~keyword_set(calibrations_only) then begin  
     printf, Slun, ''
     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-    printf, Slun, '; whether npar=3 or npar=4 is needed.'
+    printf, Slun, '; whether you need to use different keyword settings.'
+    printf, Slun, '; Then, if you have already run makegains, rerun it.'
     for ipref = 0, Nprefilters-1 do begin
       if ~is_wb[ipref] then begin
-        printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=12L, Npar=5L, res=res, pref='" $
+        printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
                 + prefilters[ipref] + "'"
       end
     endfor                      ; ipref
-    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-    printf, Slun, '; keyword:'
-    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-    printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
-    printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
-    printf, Slun, '; also in blends if they are not propely sampled.'
-    printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
-    printf, Slun, '; the following:'
-    printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
-    printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
-    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
-    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
-    printf, Slun, '; Then, if you have already run makegains, rerun it.'
+;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+;    printf, Slun, '; keyword:'
+;    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+;    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+;    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+;    printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
+;    printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
+;    printf, Slun, '; also in blends if they are not propely sampled.'
+;    printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
+;    printf, Slun, '; the following:'
+;    printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
+;    printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
+;    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
+;    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
+;    printf, Slun, '; Then, if you have already run makegains, rerun it.'
 
     printf, Slun, ''
 

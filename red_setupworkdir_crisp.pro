@@ -482,18 +482,18 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-  printf, Slun, '; whether npar=3 or npar=4 is needed.'
+  printf, Slun, '; whether you need to use different keyword settings.'
   for ipref = 0, Nprefilters-1 do begin
     printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
             + prefilters[ipref] + "' ; /fit_reflectivity "
   endfor                        ; ipref
 ;  printf, Slun, 'a -> fitgains, npar = 2, res=res' 
-  printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-  printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-  printf, Slun, '; keyword:'
-  printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+;  printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+;  printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+;  printf, Slun, '; keyword:'
+;  printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+;  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+;  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
   printf, Slun, ''
   printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
   printf, Slun, ''
