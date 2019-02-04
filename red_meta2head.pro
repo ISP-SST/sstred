@@ -91,8 +91,8 @@ function red_meta2head, head, metadata=metaStruct
     directory = file_dirname(metaStruct.filename)
     ;; ...and extension if needed
     barefile = filename
-    barefile = file_basename(barefile, '.fits')
-    barefile = file_basename(barefile, '.momfbd')
+;    barefile = file_basename(barefile, '.fits')
+;    barefile = file_basename(barefile, '.momfbd')
 
     anchor = 'DATE'
     
