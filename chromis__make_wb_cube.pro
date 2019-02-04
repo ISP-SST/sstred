@@ -628,6 +628,13 @@ pro chromis::make_wb_cube, dir $
 ;  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
 ;                      , AFTER = 'SIMPLE' $
 ;                      , 'Creation UTC date of FITS header' ;
+
+  ;; Delete some keywords that do not make sense for WB cubes.
+  red_fitsdelkeyword, hdr, 'FNUMSUM'  ; May add this later
+  red_fitsdelkeyword, hdr, 'FRAMENUM' ; Not applicable here
+  red_fitsdelkeyword, hdr, 'STATE'    ; State info is in WCS and FILTER1 keywords
+;  red_fitsdelkeyword, hdr, '' 
+
   anchor = 'DATE'
 
   ;; Add some keywords
