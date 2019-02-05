@@ -220,7 +220,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 ;              print, msz, min(size(msk, /dim)),  min(msk), round(total(msk)), long(msz)*long(msz)
             endrep until min(size(msk, /dim)) eq msz && min(msk) eq 1
 
-            if odd(msz) then msz--
+            if red_odd(msz) then msz--
 
             xyc[*, iscan] = cm
             ssz[iscan] = msz

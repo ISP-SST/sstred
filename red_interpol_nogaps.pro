@@ -80,7 +80,7 @@ function red_interpol_nogaps, y, x, xp, tol = tol, test = test, _ref_extra = ext
 ;  dindx = where(deriv(indx) ne 1., Nd)
 ;  intervals = indx[dindx]
 ;
-;  if odd(n_elements(intervals)) then stop
+;  if red_odd(n_elements(intervals)) then stop
   
   for iinterval = 0, Nintervals-1 do begin
 ;    print, iinterval

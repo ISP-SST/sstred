@@ -74,8 +74,8 @@ function red_pic_at_coord, pic, x, y, xSize, ySize, mode = mode
   ury = ury < (dims[1]-1)
   
   if keyword_set(mode) then begin
-    if odd(urx-llx+1) then urx--
-    if odd(ury-lly+1) then ury--
+    if red_odd(urx-llx+1) then urx--
+    if red_odd(ury-lly+1) then ury--
   end
   
   ppic = pic(llx:urx,lly:ury)
