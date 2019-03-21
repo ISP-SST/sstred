@@ -77,12 +77,13 @@
 ; 
 ;-
 pro red::fitprefilter, fixcav = fixcav $
-                       , w0 = w0, w1 = w1 $
+                       , w0 = w0 $
+                       , w1 = w1 $
                        , pref = pref $
                        , noasy = noasy $
                        , shift = shift $
-                       , init=init $
-                       , stretch=stretch $
+                       , init = init $
+                       , stretch = stretch $
                        , weight = weight $
                        , mask = mask
 
