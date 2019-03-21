@@ -168,6 +168,7 @@ pro red::make_wb_cube, dir $
 
   if n_elements(dir) eq 0 then begin
     print, inam + ' : Please specify the directory with momfbd output.'
+    retall
   endif
  
   ;; Make prpara
