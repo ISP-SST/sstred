@@ -146,6 +146,7 @@ function red_rotation, img, angle, sdx, sdy $
     
   endelse
 
+  
   ;; Interpolation onto new grid
   if keyword_set(linear) then begin
     return, interpolate(ima, dx, dy, missing = background)

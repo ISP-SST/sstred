@@ -213,7 +213,7 @@ pro crisp::prepflatcubes, flatdir = flatdir $
             
             ;; Demodulate flats
             tmp = reform((red_demodulate_simple(immt, lc0, lc1, lc2, lc3))[*,*,0]) 
-              
+            
           endif else begin
                           
             ;; Load non-polarized flats 

@@ -43,7 +43,7 @@
 pro red_download_linedefs, isodate, all_dirs, workdir
 
   dir = workdir+'/downloads/'  
-  
+
   dotdate = red_strreplace(isodate, '-', '.', n = 2)
   ldpath = 'http://www.royac.iac.es/Logfiles/CHROMIS/linedef/'
   downloadOK = red_geturl(ldpath , contents=ldfiles )
