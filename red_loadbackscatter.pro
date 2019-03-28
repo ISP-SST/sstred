@@ -63,9 +63,9 @@
 ;
 ;-
 pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
-                          , bgfile = bgfile $
-                          , bpfile = bpfile $
-                          , write = write
+                         , bgfile = bgfile $
+                         , bpfile = bpfile $
+                         , write = write
 
   year = (strsplit(date, '.-', /extract))[0]
   
@@ -74,66 +74,67 @@ pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
   
   if keyword_set(write) then begin
 
-     ;; Only write the files if possible.
+    ;; Only write the files if possible.
 
-     if size(bgain, /n_dim) lt 1 then begin
-        print, 'red_loadbackscatter : Cannot write the provided bgain.'
-        help, bgain
-        stop
-     endif else begin
-        fzwrite, bgain, bgfile, ' '
-     endelse
+    if size(bgain, /n_dim) lt 1 then begin
+      print, 'red_loadbackscatter : Cannot write the provided bgain.'
+      help, bgain
+      stop
+    endif else begin
+      fzwrite, bgain, bgfile, ' '
+    endelse
 
-     if size(bpsf, /n_dim) lt 1 then begin
-        print, 'red_loadbackscatter : Cannot write the provided bpsf.'
-        help, bpsf
-        stop
-     endif else begin
-        fzwrite, bpsf, bpfile, ' '
-     endelse
-
+    if size(bpsf, /n_dim) lt 1 then begin
+      print, 'red_loadbackscatter : Cannot write the provided bpsf.'
+      help, bpsf
+      stop
+    endif else begin
+      fzwrite, bpsf, bpfile, ' '
+    endelse
+    
   endif else begin
-     
-     ;; Construct file names
+    
+    ;; Construct file names
 
-     if ~file_test(bgfile) or ~file_test(bpfile) then red_download, date=date, backscatter = pref
-     
-     if arg_present(bgain) then begin
+    
+    if ~file_test(bgfile) or ~file_test(bpfile) then red_download, date=date, backscatter = pref
+    
+    if arg_present(bgain) then begin
 
-        ;; Read the gain if wanted
+      ;; Read the gain if wanted
 
-        if file_test(bgfile) then begin
-           
-           print, 'red_loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
-           bgain = f0(bgfile)
-           
-        endif else begin
-           
-           print, 'red_loadbackscatter : Backscatter gain not available for ' + cam + ', ' + pref
-           print, bgfile
-           stop
-           
-        endelse                 ; exists
-     endif                      ; wants gain
+      if file_test(bgfile) then begin
+        
+        print, 'red_loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
+        bgain = f0(bgfile)
+        
+      endif else begin
+        
+        print, 'red_loadbackscatter : Backscatter gain not available for ' + cam + ', ' + pref
+        print, bgfile
+        stop
+        
+      endelse                   ; exists
+    endif                       ; wants gain
 
-   
-     if arg_present(bpsf) then begin
+    
+    if arg_present(bpsf) then begin
 
-        ;; Read the psf if wanted
+      ;; Read the psf if wanted
 
-        if file_test(bpfile) then begin
-           
-           print, 'red_loadbackscatter : Loading backscatter psf for ' + cam + ', ' + pref
-           bpsf  = f0(bpfile)
-           
-        endif else begin
-           
-           print, 'red_loadbackscatter : Backscatter psf not available for ' + cam + ', ' + pref
-           print, bpfile
-           stop
-           
-        endelse                 ; exists
-     endif                      ; wants psf
+      if file_test(bpfile) then begin
+        
+        print, 'red_loadbackscatter : Loading backscatter psf for ' + cam + ', ' + pref
+        bpsf  = f0(bpfile)
+        
+      endif else begin
+        
+        print, 'red_loadbackscatter : Backscatter psf not available for ' + cam + ', ' + pref
+        print, bpfile
+        stop
+        
+      endelse                   ; exists
+    endif                       ; wants psf
 
   endelse                  
 
