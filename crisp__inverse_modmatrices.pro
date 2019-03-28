@@ -79,36 +79,48 @@ pro crisp::inverse_modmatrices, prefilter, dir $
       ;; Polcal output
       pname = self.out_dir+'/polcal/'+detector+'_'+prefilter+'_polcal.fits'
       
-      if file_test(pname) then begin
-
-        mm = red_readdata(pname) ; Modulation matrix
-        dims = size(mm, /dim)
-        Nelements = dims[0]
-        Nx = dims[1]
-        Ny = dims[2]
-        
-        ;; Interpolate Sarnoff CCD tabs?
-        if strmatch((red_camerainfo(detector)).model,'Sarnoff*') then begin
-          if ~keyword_set(no_ccdtabs) then begin
-            for ii = 0, Nelements-1 do mm[ii,*,*] = red_mask_ccd_tabs(reform(mm[ii,*,*]))
-          endif
-        endif
-
-        ;; Check NaNs
-        for ii = 0, Nelements-1 do begin
-          mask = finite(reform(mm[ii,*,*]))
-          idx = where(mask, count)
-          if count gt 0 and count lt Nx*Ny then $
-             mm[ii,*,*] = red_fillpix(reform(mm[ii,*,*]), mask=mask)
-        endfor                  ; ii
-
-        imm = red_invert_mmatrix(temporary(mm)) ; Inverse modulation matrix
-        
-      endif else begin
+      if ~file_test(pname) then begin
         print, inam + ' : ERROR, polcal data not found in ' + self.out_dir + '/polcal/'
         return
-      endelse
+      endif
+      
+      mm = red_readdata(pname)  ; Modulation matrix
+      dims = size(mm, /dim)
+      Nelements = dims[0]
+      Nx = dims[1]
+      Ny = dims[2]
+      
+      ;; Interpolate Sarnoff CCD tabs?
+      if strmatch((red_camerainfo(detector)).model,'Sarnoff*') then begin
+        if ~keyword_set(no_ccdtabs) then begin
+          for ii = 0, Nelements-1 do mm[ii,*,*] = red_mask_ccd_tabs(reform(mm[ii,*,*]))
+        endif
+      endif
+      
+      ;; Mask NaNs
+      mask = bytarr(Nx, Ny) + 1B
+      for ii = 0, Nelements-1 do mask and= finite(reform(mm[ii,*,*])) 
+      if min(mask) lt 1 then for ii = 0, Nelements-1 do mm[ii,*,*] = mask * reform(mm[ii,*,*])
 
+;       ;; Check NaNs
+;      for ii = 0, Nelements-1 do begin
+;        mask = finite(reform(mm[ii,*,*]))
+;        idx = where(mask, count)
+;        if count gt 0 and count lt Nx*Ny then $
+;           mm[ii,*,*] = red_fillpix(reform(mm[ii,*,*]), mask=mask)
+;      endfor                    ; ii
+
+      imm = red_invert_mmatrix(temporary(mm)) ; Inverse modulation matrix
+      
+      ;; Mask outlier pixels (but keep any NaN-masking)
+      mask and= max(abs(imm),dim=1) le 1
+      if min(mask) lt 1 then begin
+        ;; Zero before pixe-filling. Should not be needed but
+        ;; apparently is.
+        for ii = 0, Nelements-1 do imm[ii,*,*] = mask * reform(imm[ii,*,*])
+        for ii = 0, Nelements-1 do imm[ii,*,*] = red_fillpix(reform(imm[ii,*,*]), mask=mask)
+      endif
+      
       ;; Store some prpara info in the header? 
       red_writedata, fname, imm
       
