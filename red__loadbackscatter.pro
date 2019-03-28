@@ -61,14 +61,21 @@
 ;
 ;     2016-02-19 : MGL. Allow to write both gain and psf.
 ;
+;     2019-03-28 : MGL. Use the no_load keyword when calling
+;                  red_loadbackscatter. 
+;
 ;-
 pro red::loadbackscatter, cam, pref, bgain, bpsf $
                           , bgfile = bgfile $
                           , bpfile = bpfile $
                           , write = write
 
-  red_loadbackscatter, cam, self.isodate, self.descatter_dir, pref, bgain, bpsf, $
-                       bgfile = bgfile , bpfile = bpfile, write = write
-                       
+  if arg_present(bgain) or arg_present(bpsf) then begin
+    red_loadbackscatter, cam, self.isodate, self.descatter_dir, pref, bgain, bpsf, $
+                         bgfile = bgfile , bpfile = bpfile, write = write
+  endif else begin
+    red_loadbackscatter, cam, self.isodate, self.descatter_dir, pref, /no_load, $
+                         bgfile = bgfile , bpfile = bpfile
+  endelse 
 
 end
