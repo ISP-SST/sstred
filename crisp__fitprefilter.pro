@@ -158,6 +158,8 @@ pro crisp::fitprefilter, cwl = cwl $
     units = 'W m^-2 Hz^-1 sr^-1' ; SI units
     unitscalib = 1
   endelse
+
+  if n_elements(nasym) eq 0 then nasym = 0
   
   if n_elements(dir) eq 0 then begin
 
