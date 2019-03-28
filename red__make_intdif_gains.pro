@@ -65,6 +65,9 @@
 ;   2017-04-26 : MGL. Use rdx_cbezier3.
 ; 
 ;   2018-09-19 : MGL. Adapt to new codebase.
+; 
+;   2019-03-28 : MGL. Make gains with /preserve for prefilters with
+;                backscatter correction, i.e., 8542 and 7772.
 ;
 ;-
 pro red::make_intdif_gains, all = all $
@@ -343,8 +346,10 @@ pro red::make_intdif_gains, all = all $
               
               rat = flats[*, *, iwav] * reform(cub2[iwav, *, *]/cub1[iwav, *, *])
 
-              g = float(self -> flat2gain(temporary(rat), min = min, max = max, bad = bad, $
-                                          smooth = smooth, preserve = preserve))
+              g = float(self -> flat2gain(temporary(rat), min = min, max = max, bad = bad $
+                                          , smooth = smooth $
+                                          , preserve = keyword_set(preserve) $
+                                          or pref eq '8542' or pref eq '7772'))
 
               ;; Save gains
               print, 'saving '+ outdir+ofile
