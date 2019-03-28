@@ -103,7 +103,16 @@ function red_meta2head, head, metadata=metaStruct
 ;      metaStruct.filename = filename
       red_fitsaddkeyword, anchor = anchor, newhead, 'FILENAME', filename, 'Name of original file.'
     endif
+    
+    dummy = fxpar(newhead, 'LCSTATE', count = count)
+    if count eq 0 then begin
 
+      lcstate = ((stregex(barefile, '(\.)lc(.?)(\.)', /extr, /subexp))[2,*])[0]
+      if lcstate ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
+                                                , 'LCSTATE', long(lcstate) $
+                                                , 'Inferred from filename.'
+    endif 
+    
     ;; Detector ID (check that this is the correct keyword...)
     dummy = fxpar(newhead, red_keytab('detector'), count=count)
     if count eq 0 then begin
