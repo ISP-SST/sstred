@@ -134,7 +134,7 @@ pro red::sum_data_intdif, all = all $
   detectors = detectors[where(~is_wb, Nnb)]
   if Nnb eq 0 then stop
   Ncams = n_elements(cams)
-  
+
   for idir = 0, Ndirs-1 do begin
 
     dir = dirs[idir]
@@ -325,21 +325,22 @@ pro red::sum_data_intdif, all = all $
 
           for ituning = 0L, Ntunings - 1 do begin
 
-            istate = strjoin([uscan[iscan], pref,uwav[ituning], ulc[ilc]],'.')
+;            istate = strjoin([uscan[iscan], pref,uwav[ituning], ulc[ilc]],'.')
 ;            scstate[ituning] = istate
             
             idx = where((mwav EQ uwav[ituning]) AND (mlc EQ ulc[ilc]) AND $
                         (mscan EQ uscan[iscan]) AND mstar eq 0, count)
 
             if(count eq 0) then begin
-              print, inam + ' : No files found for state -> ' + istate
+              print, inam + ' : No files found for state ' + mstates[idx[0]].fullstate
             endif else begin
-              print, inam + ' : Found ' + red_stri(count) + ' images -> '+istate 
+              print, inam + ' : Found ' + red_stri(count) + ' images for state ' + mstates[idx[0]].fullstate
             endelse
+
             
             ;; Make gain from cavity-free flat
 ;            self -> get_calib, selstates[0], cflatdata = cf, cflatname = cnam
-            self -> get_calib, mstates[0], cflatdata = cf, cflatname = cnam
+            self -> get_calib, mstates[idx[0]], cflatdata = cf, cflatname = cnam
             gg = self -> flat2gain(cf, /preserve)
 ;            gg = median(cf) / cf
 ;            badpixels = where(~finite(gg) or gg gt 5 or gg lt 0, count)
