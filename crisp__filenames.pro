@@ -355,7 +355,7 @@ function crisp::filenames, datatype, states $
         'cavityflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
           red_append, tag_list, 'cavityfree'
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
