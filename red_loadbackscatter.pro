@@ -44,6 +44,10 @@
 ;
 ;       The name of the backscatter psf file, if existing.
 ;
+;    no_load : in, optional, type=boolean
+;
+;       Do not load the backscatter data.
+;
 ;    write : in, optional, type=boolean
 ;
 ;       Normally, loadbackscatter reads the files. With /write, it
@@ -61,10 +65,13 @@
 ;
 ;     2016-02-19 : MGL. Allow to write both gain and psf.
 ;
+;     2019-03-28 : MGL. New keyword no_load.
+;
 ;-
 pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
                          , bgfile = bgfile $
                          , bpfile = bpfile $
+                         , no_load = no_load $
                          , write = write
 
   year = (strsplit(date, '.-', /extract))[0]
@@ -96,13 +103,14 @@ pro red_loadbackscatter, cam, date, dir, pref, bgain, bpsf $
     
     ;; Construct file names
 
-    
-    if ~file_test(bgfile) or ~file_test(bpfile) then red_download, date=date, backscatter = pref
+    if arg_present(bgain) or arg_present(bpsf) then begin
+      if ~file_test(bgfile) or ~file_test(bpfile) then red_download, date=date, backscatter = pref
+    endif
     
     if arg_present(bgain) then begin
-
+      
       ;; Read the gain if wanted
-
+      
       if file_test(bgfile) then begin
         
         print, 'red_loadbackscatter : Loading backscatter gain for ' + cam + ', ' + pref
