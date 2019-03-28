@@ -105,8 +105,8 @@ pro crisp::demodulate, outname, immr, immt $
                        , nbrstates = nbrstates $
                        , nbtfac = nbtfac $
                        , nbtstates = nbtstates $
-                       , newflats = newflats $
-                       , no_ccdtabs = no_ccdtabs $
+;                       , newflats = newflats $
+;                       , no_ccdtabs = no_ccdtabs $
                        , nthreads = nthreads $
                        , overwrite = overwrite $
                        , smooth_by_kernel = smooth_by_kernel $
@@ -116,6 +116,8 @@ pro crisp::demodulate, outname, immr, immt $
                        , wbg = wbg $
                        , wcs = wcs $
                        , wbstates = wbstates
+
+;  testing = 1
 
   ;; What to do with the newflats keyword? The polarim method uses it
   ;; in call to red_getstates_polarim.
@@ -131,8 +133,8 @@ pro crisp::demodulate, outname, immr, immt $
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, nbrfac 
   red_make_prpara, prpara, nbtfac
-  red_make_prpara, prpara, newflats
-  red_make_prpara, prpara, no_ccdtabs 
+;  red_make_prpara, prpara, newflats
+;  red_make_prpara, prpara, no_ccdtabs 
   red_make_prpara, prpara, smooth_by_kernel
   red_make_prpara, prpara, smooth_by_subfield
   red_make_prpara, prpara, tiles 
@@ -222,21 +224,42 @@ pro crisp::demodulate, outname, immr, immt $
   img_t = fltarr(Nx, Ny, 4)
   img_r = fltarr(Nx, Ny, 4)
 
-  ;; load files
-  if ~keyword_set(noflat) then begin
+
+  if keyword_set(testing) then begin
+    
+    testsz = 900
+
+    window, 8, xs = testsz, ys = testsz
+    for ilc = 0L, Nlc-1 do $
+       for istokes = 0L, Nstokes-1 do $
+          tvscl, rebin(centerpic(reform(immr[ilc+istokes*3,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+    
+    window, 9, xs = testsz, ys = testsz
+    for ilc = 0L, Nlc-1 do $
+       for istokes = 0L, Nstokes-1 do $
+          tvscl, rebin(centerpic(reform(immt[ilc+istokes*3,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+
+    stop
+    
+  endif
+
+  
+  dims = size(immt, /dim)
+  Nxx = dims[1]                 ; Detector size
+  Nyy = dims[2]
+
+
+  if 0 then begin
 
     ;; Adapt this block to new code base!
 
-    dims = size(immt, /dim)
-    Nxx = dims[1]               ; Detector size
-    Nyy = dims[2]
     utflat = fltarr(Nxx, Nyy)
     urflat = fltarr(Nxx, Nyy)
     tgain = fltarr([Nxx,Nyy,Nlc])
     rgain = fltarr([Nxx,Nyy,Nlc])
     
     ;; utflat and urflat are the "unpolarized" ("cavityfree") flats
-    ;; for the current state (ingoring the LC state)
+    ;; for the current state (ignoring the LC state).
     self -> get_calib, nbtstates[0], cflatdata = utflat
     self -> get_calib, nbrstates[0], cflatdata = urflat
     
@@ -245,6 +268,10 @@ pro crisp::demodulate, outname, immr, immt $
       ;; tgain and rgain are the gaintables for the current state,
       ;; including the LC states.
 
+      ;; Should be the same gains that were used when momfbding. That
+      ;; is, the scan-specific flats. Make sure to switch to that if
+      ;; this part of the code is to be activated!
+      
       self -> get_calib, nbtstates[ilc], gaindata = gaindata ; Read the gain
       tgain[0, 0, ilc] = gaindata
       
@@ -318,9 +345,45 @@ pro crisp::demodulate, outname, immr, immt $
       endfor                    ; istokes
     endfor                      ; ilc
 
-  end
+  endelse
+  
+  if keyword_set(testing) then begin
+    
+    testsz = 900
 
-  if n_elements(smooth_by_kernel) gt 0 && smooth_by_kernel gt 0 then begin
+    window, 8, xs = testsz, ys = testsz
+    for ilc = 0L, Nlc-1 do $
+       for istokes = 0L, Nstokes-1 do $
+          tvscl, rebin(centerpic(reform(immr_dm[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+    
+    window, 9, xs = testsz, ys = testsz
+    for ilc = 0L, Nlc-1 do $
+       for istokes = 0L, Nstokes-1 do $
+          tvscl, rebin(centerpic(reform(immt_dm[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+
+    stop
+    
+  endif
+  
+  if keyword_set(testing) then begin
+    
+    testsz = 900
+
+    window, 8, xs = testsz, ys = testsz
+    for ilc = 0L, Nlc-1 do $
+       for istokes = 0L, Nstokes-1 do $
+          tvscl, rebin(centerpic(reform(mymr[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+      
+    window, 9, xs = testsz, ys = testsz
+    for ilc = 0L, Nlc-1 do $
+       for istokes = 0L, Nstokes-1 do $
+          tvscl, rebin(centerpic(reform(mymt[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+
+    stop
+    
+  endif
+  
+  if keyword_set(smooth_by_kernel) then begin
 
     ;; Smooth the inverse modulation matrices by a Gaussian kernel
 
@@ -408,6 +471,22 @@ pro crisp::demodulate, outname, immr, immt $
   print, '   -> Tcam scale factor -> ' + red_stri(sct) + ' (after '+red_stri(nbtfac)+')'
   print, '   -> Rcam scale factor -> ' + red_stri(scr) + ' (after '+red_stri(nbrfac)+')'
 
+  if keyword_set(testing) then begin
+
+    for istokes = 0, 3 do begin
+      window, xs = 3*(xx1-xx0+1), ys = yy1-yy0+1, 15+istokes
+      tvscl, sct * img_t[xx0:xx1,yy0:yy1,istokes], 0
+      tvscl, sct * img_r[xx0:xx1,yy0:yy1,istokes], 1
+      tvscl, res[xx0:xx1,yy0:yy1,istokes], 2
+    endfor
+    
+    window, 11, xs = 700, ys = 500
+    cghistoplot, sct * img_t[xx0:xx1,yy0:yy1,0], xrange = [1.2, 1.9]*1e-8
+    cghistoplot, scr * img_r[xx0:xx1,yy0:yy1,0], /oplot, color = 'blue'
+    
+    stop
+  endif
+  
 
   if 0 then begin
 
@@ -460,10 +539,17 @@ pro crisp::demodulate, outname, immr, immt $
   res1 = fltarr(Nx, Ny, Nstokes)
   for j=0, Nstokes-1 do for i=0, Nstokes-1 do $
      res1[*, *, j] += res[*, *, i] * imtel[i, j]
+  if keyword_set(testing) then begin
+    window, xs = 4*(xx1-xx0+1), ys = yy1-yy0+1, 12
+    for iiii = 0, 3 do tvscl, res[xx0:xx1,yy0:yy1,iiii], iiii
+    window, xs = 4*(xx1-xx0+1), ys = yy1-yy0+1, 13
+    for iiii = 0, 3 do tvscl, res1[xx0:xx1,yy0:yy1,iiii], iiii
+    stop
+  endif
   res = temporary(res1)
-  
-  
-  
+    
+    
+    
   if keyword_set(nosave) then return
   
   ;; Save result as a fitscube with all the usual metadata.
