@@ -495,7 +495,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + ", /unpol" $
               + ", extraclip = [75,125,15,15]" $
               + ", pref='" + prefilters[ipref] + "'" $
-              + ";, dirs=['09:03:24','09:24:21']" 
+              + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
     endif
   endfor                        ; ipref ;
 

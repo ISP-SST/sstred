@@ -317,7 +317,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  Npol = 0
   polcaldirs = file_search(root_dir+'/polc*/*', count = Npol, /fold)
   if Npol gt 0 then begin
-    polprefs = file_basename(polcaldirs)
+    polprefs = strarr(Npol)
+;    polprefs = file_basename(polcaldirs)
     for i = 0, Npol-1 do begin
       polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
                                   , count = Nsubdirs, /fold)
@@ -339,6 +340,13 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + red_strreplace(polcaldirs[i], root_dir, '')+'"' $
                 + ', nthreads=nthreads' $
                 + outdirkey 
+        ;; The prefilter is not part of the path. Try to get it from
+        ;; the first data file in the directory.
+        files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
+        if Npolfiles gt 0 then begin
+          hh = red_readhead(files[0])
+          polprefs[i] = fxpar(hh, 'FILTER1')
+        endif
       endif else begin
         polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
         for j = 0, Nsubdirs-1 do begin
@@ -361,7 +369,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
             printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                     + red_strreplace(polcalsubdirs[j], root_dir, '')+'"' $
                     + ', nthreads=nthreads' $
-                    + outdirkey 
+                    + outdirkey
+            ;; Set the prefilter of this directory
+            polprefs[i] = file_basename(polcaldirs[i])
           endif
         endfor                  ; j
       endelse
@@ -501,16 +511,21 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-            + "', cam = 'Crisp-T', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
+            + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
+            + ', nthreads=nthreads' $
+            + maybe_nodescatter[ipref] + " ; /all"
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-            + "', cam = 'Crisp-R', /verbose, /show, /overwrite " + maybe_nodescatter[ipref] + " ; /all"
+            + "', cam = 'Crisp-R', /verbose, /show, /overwrite " $
+            + ', nthreads=nthreads' $
+            + maybe_nodescatter[ipref] + " ; /all"
     printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'" $
             + "; Nasym=1, fixcav=2, /hints, dir='10:02:45'"
     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
-            + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5 " $
-            + maybe_nodescatter[ipref] + ", dirs=['08:43:21','09:02:16']"
+            + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5" $
+            + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] " $
+            + maybe_nodescatter[ipref] 
   endfor                        ; ipref
 
 
