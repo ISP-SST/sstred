@@ -79,7 +79,7 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
       -32 : array_structure = fltarr(Nx, Ny)
       else : stop
     endcase
-    Nlines = where(strmatch(hdr, 'END *'), Nmatch)
+    Nlines = where(strmatch(hdr, 'END *'), Nmatch)+1
     Npad = 2880 - (80L*Nlines mod 2880)
     Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
     offset = Nblock*2880          ; Offset to start of data
@@ -113,9 +113,25 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
              + long(iscan)*Ntuning*Nstokes
   endif
 
-  frame = fileassoc[iframe]
-
+  if bitpix eq 16 then begin
+    ;; Transform integer data to float
+    bzero  = fxpar(hdr, 'BZERO',  count=nzero )
+    bscale = fxpar(hdr, 'BSCALE', count=nscale)
+    stop
+    if nzero eq 1 and nscale eq 1 then begin
+      ;; Get the frame and rescale
+      frame = float(fileassoc[iframe]*bscale + bzero)
+    endif else begin
+      ;; This should not happen but just get the integer frame if it
+      ;; does.
+      frame = fileassoc[iframe]
+    endelse
+  endif else begin
+    ;; Get the frame
+    frame = fileassoc[iframe]
+  endelse
+  
   ;; Close if we opened.
   if open_and_close then free_lun, lun
-  
+
 end
