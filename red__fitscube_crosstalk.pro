@@ -26,25 +26,44 @@
 ;   
 ;       Produce a flipped version if this keyword is set. 
 ; 
-;    force : in, optional, tyope=boolean
+;     force : in, optional, tyope=boolean
 ;   
 ;       Do not care if the correction is done already.
 ; 
+;     nostatistics : in, optional, type=boolean
+;  
+;       Do not calculate statistics metadata to put in header keywords
+;       DATA*. If statistics keywords already exist, then remove them.
+;
+;     tuning_selection : in, optional, type="integer or array"
+;
+;       The index or indices in the tuning dimension to use for
+;       calculating the correction. Should correspond to continuum (or
+;       as close to continuum as possible), where the polarimetric
+;       signal is minimal. Negative indices are allowed.
+;
 ; :History:
 ; 
 ;   2019-04-01 : MGL. First version.
 ; 
+;   2019-04-04 : MGL. New keywords nostatistics and tuning_selection. 
+; 
 ;-
-
 pro red::fitscube_crosstalk, filename  $
                              , flip = flip $
                              , force = force $
+                             , nostatistics = nostatistics $
                              , tuning_selection = tuning_selection
 
   inam = red_subprogram(/low, calling = inam1)
 
-  hdr = headfits(filename)
+;  hdr = headfits(filename)
 
+  red_fitscube_open, filename $
+                     , fileassoc = fileassoc $
+                     , header = hdr $
+                     , lun = lun
+  
   ;; Information about processing steps in the formation of the input
   ;; file. 
   prprocs = fxpar(hdr, 'PRPROC*')
@@ -60,8 +79,10 @@ pro red::fitscube_crosstalk, filename  $
 
   ;; Check that it is in fact a polarimetric cube
   if Nstokes eq 1 then begin
+    print
     print, inam + ' : This is not a polarimetric cube:'
     print, filename
+    free_lun, lun
     return
   endif
 
@@ -69,9 +90,11 @@ pro red::fitscube_crosstalk, filename  $
     ;; Check that it is not already corrected for crosstalk.
     pos = where(strmatch(prprocs, inam), Nmatch)
     if Nmatch gt 0 then begin
+      print
       print, inam + ' : This file is already corrected for crosstalk:'
       print, filename
-      print, inam + " : Don't do it again."
+      print, inam + " : Use /force to do it again."
+      free_lun, lun
       return
     endif
   endif
@@ -200,16 +223,42 @@ pro red::fitscube_crosstalk, filename  $
     endfor                      ; ituning
   endfor                        ; iscan
 
-  
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
                               , prstep = 'Crosstalk correction' $
                               , prpara = prpara $
                               , prproc = inam
 
+  free_lun, lun
   ;; Write the updated header (may be time consuming!)
   modfits, filename, 0, hdr
 
+  if keyword_set(nostatistics) then begin
+
+    ;; Remove any existing statistics keywords from the file. 
+
+    ;; Search for DATA* keywords
+    dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)
+    ;; Loop through the keywords backwards so we don't move
+    ;; them before they are deleted.
+    for idata = Ndata-1, 0, -1 do begin
+      keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
+      red_fitsdelkeyword, hdr, keyword
+    endfor                      ; idata
+    
+  endif else begin
+
+    red_fitscube_statistics, filename, /write $
+                             , angles = angles $
+                             , cube_comments = cube_comments $
+                             , full = wcFF $
+                             , grid = wcGRID $
+                             , origNx = Nxx $
+                             , origNy = Nyy $
+                             , shifts = wcSHIFTS 
+
+  endelse
+  
   if keyword_set(flip) then begin
     self -> fitscube_flip, filename, flipfile = flipfile
   endif
