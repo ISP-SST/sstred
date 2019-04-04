@@ -38,14 +38,12 @@
 ;      The amount of memory in bytes that the cube/chunk is compared
 ;      to in order to select the transposing method.
 ; 
-;    method : in, optional, type=string, default='whole'
+;    method : in, optional, type=string, default='chunks'
 ; 
-;      The wanted method for transposing. One of 'whole' (fastest),
-;      'chunks' (also fairly fast if the number of FOV rows is not a
-;      prime), or "slow". If the selected method is not possible due
-;      to lack of available memory, a slower method is selected. The
-;      fallback is the "slow" method of transposing each
-;      [Nx,Ny,Ntuning] subcube separately.
+;      The wanted method for transposing. One of 'chunks' (fastest) or
+;      "slow". If the 'chunks' is not possible due to lack of
+;      available memory, the "slow" method of transposing each
+;      [Nx,Ny,Ntuning] subcube separately is used.
 ; 
 ;    openclose : in, optional, type=boolean
 ;
@@ -68,6 +66,10 @@
 ; 
 ;   2018-11-05 : MGL. Two faster flipping methods, new keywords method
 ;                and maxmemory.
+;
+;   2019-04-04 : MGL. Removed the "whole" method because it caused
+;                problems with integer cubes. And "chunks" with a
+;                single chunk should be equivalent.
 ; 
 ;-
 pro red::fitscube_flip, filename $
@@ -79,8 +81,8 @@ pro red::fitscube_flip, filename $
 
   inam = red_subprogram(/low, calling = inam1)
 
-  ;; Use the fastest, whole-cube method by default. 
-  if n_elements(method) eq 0 then method = 'whole' 
+  ;; Use the fastest, method by default. 
+  if n_elements(method) eq 0 then method = 'chunks' 
   
   ;; Original file header
   him = headfits(filename)
@@ -239,45 +241,23 @@ pro red::fitscube_flip, filename $
   altchunk = 0
   
   ;; Select method
-  if method eq 'whole' and cubsize le maxmemory then begin
-    usemethod = 'whole' 
-  endif else if method eq 'chunks' and chunksize le maxmemory then begin
+  if method eq 'chunks' and chunksize le maxmemory then begin
     usemethod = 'chunks'
   endif else if method eq 'slow' then begin
     usemethod = 'slow'
   endif else begin
     ;; OK, we hadn't specified the method keyword, so just try
     ;; them in order.
-    if cubsize le maxmemory then begin
-      usemethod = 'whole' 
-    endif else if chunksize le maxmemory then begin
+    if chunksize le maxmemory then begin
       usemethod = 'chunks'
     endif else begin
       usemethod = 'slow'
     endelse
   endelse
   
-  ;; Should we do it the slow and secure way?
-  if usemethod eq 'whole' then begin
-
-    print, inam + ' : Transpose the whole cube in one go.'
-
-    ;; We can fit the whole cube in memory (and then some) so read it
-    ;; all in, transpose it, and write it in a single operation. This
-    ;; should be the fastest method.
-
-    cube = red_readdata(filename)
-    cube = transpose(cube, permutation)
-
-    openu, flun, flipfile, /get_lun, /swap_if_little_endian 
-    cube_out = assoc(flun, cube, offset_out)
-  
-    cube_out[0] = cube
-
-    red_progressbar, 0, 1, 'Transpose the whole cube'
-
-  endif else if usemethod eq 'chunks' then begin
-
+  ;; Should we do it in chunks or the slow and secure way?
+  if usemethod eq 'chunks' then begin
+    
     if altchunk then begin
 
       print, inam + ' : Transpose the cube in '+strtrim(Nchunks, 2) + ' chunks, ' $
