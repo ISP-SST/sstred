@@ -119,7 +119,7 @@ function red_fits_var_keys, hdr $
     match = new_keyword eq keywords
     if max(match) eq 1 then begin
       ;; Already there
-      new_extension = extensions[where(match)]
+      new_extension = extensions[(where(match))[0]]
     endif else begin
       ;; Add it
       new_extension = 'VAR-EXT-'+new_keyword ; Variable keyword extension for keyword <keyword_name>.
