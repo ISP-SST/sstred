@@ -69,6 +69,8 @@
 ; 
 ;   2019-03-28 : MGL. First version.
 ; 
+;   2019-04-05 : MGL. Use red_fitscube_open and red_fitscube_close. 
+; 
 ;-
 pro red_fitscube_statistics, filename $
                              , frame_statistics, cube_statistics $
@@ -89,31 +91,15 @@ pro red_fitscube_statistics, filename $
   ;; grid as well? Maybe use magnitude of grid shifts to calculate a
   ;; margin around the area?
 
-  
   ;; Open the file and set up an assoc variable.
-  hdr = headfits(filename)
-
-  naxis = fxpar(hdr, 'NAXIS*')
-  Nx      = naxis[0]
-  Ny      = naxis[1]
-  Ntuning = naxis[2]
-  Nstokes = naxis[3]
-  Nscans  = naxis[4]
-
-  bitpix = fxpar(hdr, 'BITPIX')
-  case bitpix of
-    16 : array_structure = intarr(Nx, Ny)
-    -32 : array_structure = fltarr(Nx, Ny)
-    else : stop
-  endcase
-
-  Nlines = where(strmatch(hdr, 'END *'), Nmatch)
-  Npad = 2880 - (80L*Nlines mod 2880)
-  Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-  offset = Nblock*2880          ; Offset to start of data
-
-  openr, lun, filename, /get_lun, /swap_if_little_endian
-  fileassoc = assoc(lun, array_structure, offset)
+  red_fitscube_open, filename, fileassoc, fitscube_info ;$
+;                     , lun = lun
+  
+  Nx      = fitscube_info.dimensions[0]
+  Ny      = fitscube_info.dimensions[1]
+  Ntuning = fitscube_info.dimensions[2]
+  Nstokes = fitscube_info.dimensions[3]
+  Nscans  = fitscube_info.dimensions[4]
 
   if n_elements(angles) eq Nscans then begin
     if n_elements(origNx) gt 0 then Nxx = origNx else Nxx = Nx
@@ -123,7 +109,6 @@ pro red_fitscube_statistics, filename $
     mindx = lindgen(Nx, Ny)
   endelse
 
-  
   ;; Calculate statistics for the individual frames
   iprogress = 0
   Nprogress = Nscans * Ntuning * Nstokes
@@ -232,7 +217,7 @@ pro red_fitscube_statistics, filename $
                                                    , binsize = binsize)
   endif
 
-  free_lun, lun
+  red_fitscube_close, fileassoc, fitscube_info
   
   if keyword_set(write) then begin
 

@@ -48,6 +48,8 @@
 ; 
 ;   2019-04-04 : MGL. New keywords nostatistics and tuning_selection. 
 ; 
+;   2019-04-05 : MGL. Use red_fitscube_open and red_fitscube_close. 
+; 
 ;-
 pro red::fitscube_crosstalk, filename  $
                              , flip = flip $
@@ -57,12 +59,9 @@ pro red::fitscube_crosstalk, filename  $
 
   inam = red_subprogram(/low, calling = inam1)
 
-;  hdr = headfits(filename)
+  red_fitscube_open, filename, fileassoc, fitscube_info
 
-  red_fitscube_open, filename $
-                     , fileassoc = fileassoc $
-                     , header = hdr $
-                     , lun = lun
+  hdr = fitscube_info.header
   
   ;; Information about processing steps in the formation of the input
   ;; file. 
@@ -70,19 +69,19 @@ pro red::fitscube_crosstalk, filename  $
   prparas = fxpar(hdr, 'PRPARA*')
 
   ;; Cube dimensions
-  naxis = fxpar(hdr, 'NAXIS*')
-  Nx      = naxis[0]
-  Ny      = naxis[1]
-  Ntuning = naxis[2]
-  Nstokes = naxis[3]
-  Nscans  = naxis[4]
+  Nx      = fitscube_info.dimensions[0]
+  Ny      = fitscube_info.dimensions[1]
+  Ntuning = fitscube_info.dimensions[2]
+  Nstokes = fitscube_info.dimensions[3]
+  Nscans  = fitscube_info.dimensions[4]
 
   ;; Check that it is in fact a polarimetric cube
   if Nstokes eq 1 then begin
     print
     print, inam + ' : This is not a polarimetric cube:'
     print, filename
-    free_lun, lun
+    red_fitscube_close, fileassoc, fitscube_info
+                                ;free_lun, lun
     return
   endif
 
@@ -94,7 +93,8 @@ pro red::fitscube_crosstalk, filename  $
       print, inam + ' : This file is already corrected for crosstalk:'
       print, filename
       print, inam + " : Use /force to do it again."
-      free_lun, lun
+      red_fitscube_close, fileassoc, fitscube_info
+                                ;free_lun, lun
       return
     endif
   endif
@@ -229,9 +229,8 @@ pro red::fitscube_crosstalk, filename  $
                               , prpara = prpara $
                               , prproc = inam
 
-  free_lun, lun
-  ;; Write the updated header (may be time consuming!)
-  modfits, filename, 0, hdr
+  ;; Close the file and write the updated header
+  red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
 
   if keyword_set(nostatistics) then begin
 
