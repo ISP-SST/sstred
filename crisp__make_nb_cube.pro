@@ -56,6 +56,11 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
+;     nocrosstalk : in, optional, type=boolean
+;
+;       Do not correct the (polarimetric) data cube Stokes components
+;       for crosstalk from I to Q, U, V.
+;
 ;     nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
@@ -136,6 +141,9 @@
 ;    2018-12-21 : MGL. New keyword smooth.
 ; 
 ;    2019-03-28 : MGL. New keyword demodulate_only.
+; 
+;    2019-04-02 : MGL. New keyword nocrosstalk and use the
+;                 fitscube_crosstalk method.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -145,6 +153,7 @@ pro crisp::make_nb_cube, wcfile $
                          , integer = integer $
                          , noaligncont = noaligncont $
                          , nocavitymap = nocavitymap $
+                         , nocrosstalk = nocrosstalk $
                          , noflipping = noflipping $
                          , nopolarimetry = nopolarimetry $
                          , nostatistics = nostatistics $
@@ -159,8 +168,8 @@ pro crisp::make_nb_cube, wcfile $
                          , wbsave = wbsave
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)
+
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
@@ -1105,82 +1114,6 @@ pro crisp::make_nb_cube, wcfile $
     
   endfor                        ; iscan
 
-  if makestokes then begin
-    print
-    print, inam + ' : Correct polarimetric cube for cross-talk I --> Q,U,V'
-
-    ;; Get medians of the I component of the first scan
-    med = fltarr(Ntuning)
-    for ituning = 0, Ntuning-1 do begin
-      red_fitscube_getframe, fileassoc, frame, istokes = 0, iscan = 0, ituning = ituning
-      med[ituning] = median(frame)
-    endfor                      ; ituning
-
-    ;; Choose spectral points to use. We want as little signal as
-    ;; possible so continuum points are good. For wide lines we
-    ;; might not have them so pick end points if similar intensity,
-    ;; or just one endpoint if one has significantly higher
-    ;; intensity than the other.
-    print, 'Select spectral points to calculate cross-talk from. Select with left mouse, end with right mouse.'
-    ppc = red_select_spoints(wcs[*, 0].wave[0,0], med)
-
-    if n_elements(ppc) gt 1 then begin
-      im = 0.
-      for i = 0, n_elements(ppc)-1 do begin
-        red_fitscube_getframe, fileassoc, frame, istokes = 3, iscan = 0, ituning = ppc[i]
-        im += abs(frame)
-      endfor
-    endif else begin
-      red_fitscube_getframe, fileassoc, im, istokes = 3, iscan = 0, ituning = ppc[0]
-    endelse
-
-    print, 'Deselect areas with magnetic structures. End with File-->Quit.'
-    mask = red_select_area(red_histo_opt(im,2.e-3), /noedge, /xroi)
-
-    Nxx = fxpar(mhdr, 'NAXIS1')
-    Nyy = fxpar(mhdr, 'NAXIS2')
-
-    for iscan = 0, Nscans-1 do begin
-
-      ;; Construct a mask for the padding
-      pad_mask = make_array(Nxx, Nyy, /float, value = 1.) 
-      pad_mask = red_rotation(pad_mask, ang[iscan], wcshift[0,iscan], wcshift[1,iscan], background = 0, full = wcFF)
-      pindx = where(pad_mask le 0.99) ; Pixels that are padding
-
-      ;;crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
-      crt = dblarr(Nstokes)
-      numerator   = dblarr(Nstokes)
-      denominator = 0d
-      for i = 0, n_elements(ppc)-1 do begin
-        red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ppc[i] ; Stokes I
-        ;;denominator += total(im0 * im0 * mask, /double)
-        denominator += median(im0[where(mask)] * im0[where(mask)], /double)
-        for istokes=1, Nstokes-1 do begin
-          red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ppc[i]
-          ;;numerator[istokes] += total(im0 * im  * mask, /double)
-          numerator[istokes] += median(im0[where(mask)] * im[where(mask)], /double)
-        endfor                  ; istokes
-      endfor
-      crt = numerator/denominator 
-      
-      print, 'Scan '+strtrim(iscan)+' : crosstalk from I -> Q,U,V =' $
-             , crt[1], ', ', crt[2], ', ', crt[3], format='(A,F8.5,A,F8.5,A,F8.5)'
-
-      for ituning = 0, Ntuning-1 do begin
-        red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = 0, ituning = ituning ; Stokes I
-        im0[pindx] = median(im0[pindx])                                                  ; Set the padding to median
-        red_fitscube_addframe, fileassoc, im0, istokes = 0, iscan = 0, ituning = ituning ; Write with updated padding
-        for istokes=1, Nstokes-1 do begin
-          ;;d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
-          red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning
-          im -= float(crt[istokes] * im0)
-          im[pindx] = median(im[pindx]) 
-          red_fitscube_addframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning
-        endfor                  ; istokes
-      endfor                    ; ituning
-    endfor                      ; iscan
-
-  endif                         ; makestokes
   
   ;; Close fits file.
   self -> fitscube_finish, lun, wcs = wcs
@@ -1243,10 +1176,16 @@ pro crisp::make_nb_cube, wcfile $
 ;                                  , keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5]
   
-  
-  if ~keyword_set(nostatistics) then begin
+  if makestokes && ~keyword_set(nocrosstalk) then begin
 
-    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
+    ;; Correct the cube for cross-talk, I --> Q,U,V.
+    self -> fitscube_crosstalk, filename, nostatistics = nostatistics 
+
+  endif else if ~keyword_set(nostatistics) then begin
+
+    ;; Calculate statistics if not done already
+    
+;    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
     
     red_fitscube_statistics, filename, /write $
                              , angles = ang $
@@ -1254,17 +1193,15 @@ pro crisp::make_nb_cube, wcfile $
                              , grid = wcGRID $
                              , origNx = Nxx $
                              , origNy = Nyy $
-                             , percentiles = percentiles $
+;                             , percentiles = percentiles $
                              , shifts = wcSHIFT 
     
   endif
-  
-    
-
+  
   if keyword_set(integer) then begin
     self -> fitscube_integer, filename $
                               , /delete $
-                              , flip = ~keyword_set(noflipping) $
+;                              , flip = ~keyword_set(noflipping) $
                               , outname = outname $
                               , overwrite = overwrite
     filename = outname
