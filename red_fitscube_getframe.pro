@@ -70,21 +70,13 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     ;; We have the file name, open the file and set up an assoc
     ;; variable.
     filename = filename_or_fileassoc
-    hdr = headfits(filename)
-    bitpix = fxpar(hdr, 'BITPIX')
-    Nx = fxpar(hdr, 'NAXIS1')
-    Ny = fxpar(hdr, 'NAXIS2')
-    case bitpix of
-      16 : array_structure = intarr(Nx, Ny)
-      -32 : array_structure = fltarr(Nx, Ny)
-      else : stop
-    endcase
-    Nlines = where(strmatch(hdr, 'END *'), Nmatch)+1
-    Npad = 2880 - (80L*Nlines mod 2880)
-    Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-    offset = Nblock*2880          ; Offset to start of data
-    openr, lun, filename, /get_lun, /swap_if_little_endian
-    fileassoc = assoc(lun, array_structure, offset)
+    red_fitscube_open, filename, fileassoc, fitscube_info
+    Nx      = fitscube_info.dimensions[0]
+    Ny      = fitscube_info.dimensions[1]
+    Ntuning = fitscube_info.dimensions[2]
+    Nstokes = fitscube_info.dimensions[3]
+    Nscans  = fitscube_info.dimensions[4]
+    hdr = fitscube_info.header
   endif else begin
     ;; We have an assoc variable, get array dimensions from the file.
     fileassoc = filename_or_fileassoc
@@ -92,6 +84,12 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     fs = fstat(lun)
     filename = fs.name
     hdr = headfits(filename)
+    dimensions = long(fxpar(hdr, 'NAXIS*'))
+    Nx      = dimensions[0]
+    Ny      = dimensions[1]
+    Ntuning = dimensions[2]
+    Nstokes = dimensions[3]
+    Nscans  = dimensions[4]
   endelse
 
   if n_elements(iframe) eq 0 then begin
@@ -99,21 +97,16 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     if n_elements(ituning) eq 0 then ituning = 0L
     if n_elements(istokes) eq 0 then istokes = 0L
     if n_elements(iscan)   eq 0 then iscan   = 0L
-    
-    dimensions = long(fxpar(hdr, 'NAXIS*'))
-    
-    Nx      = dimensions[0]
-    Ny      = dimensions[1]
-    Ntuning = dimensions[2]
-    Nstokes = dimensions[3]
-    Nscans  = dimensions[4]
   
     ;; Calculate the frame number
     iframe = long(ituning) + long(istokes)*Ntuning $
              + long(iscan)*Ntuning*Nstokes
   endif
 
-  if bitpix eq 16 then begin
+  if (size(fileassoc,/struc)).type_name eq 'FLOAT' then begin
+    ;; Get the frame
+    frame = fileassoc[iframe]
+  endif else begin
     ;; Transform integer data to float
     bzero  = fxpar(hdr, 'BZERO',  count=nzero )
     bscale = fxpar(hdr, 'BSCALE', count=nscale)
@@ -126,12 +119,9 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
       ;; does.
       frame = fileassoc[iframe]
     endelse
-  endif else begin
-    ;; Get the frame
-    frame = fileassoc[iframe]
   endelse
   
   ;; Close if we opened.
-  if open_and_close then free_lun, lun
+  if open_and_close then red_fitscube_close, fileassoc, fitscube_info
 
 end
