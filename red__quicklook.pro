@@ -19,7 +19,7 @@
 ;
 ;      Set this to align the cube.
 ;
-;    bit_rate : inm optional, type=integer, default=40000 
+;    bit_rate : in, optional, type=integer, default=40000 
 ;
 ;      Target bit_rate used when calling write_video.
 ;
@@ -32,7 +32,13 @@
 ;      A margin (in pixels) to apply to the FOV edges . The order is
 ;      [left, right, top, bottom]. If not array, clip this many pixels
 ;      from all edges.
-;   
+;
+;    core_and_wings : in, optional, type=boolean
+;
+;      Automatically select states for which to make quicklook movies.
+;      The selection includes the core and extreme wing tunings of
+;      each prefilter. If this keyword is set, use_states is ignored.
+;
 ;    datasets : in, optional, type=strarr
 ;
 ;      Timestamp strings that identify datasets to process. Selection
@@ -117,11 +123,14 @@
 ;   2018-09-11 : MGL. New keywords no_descatter, video_codec, format.
 ;                Change keyword fps to video_fps, bitrate to bit_rate.
 ; 
+;   2019-04-09 : MGL. New keyword core_and_wings.
+; 
 ;-
 pro red::quicklook, align = align $
                     , bit_rate = bit_rate $
                     , cam = cam $
                     , clip = clip $
+                    , core_and_wings = core_and_wings $
                     , dark = dark $
                     , datasets = datasets $
                     , destretch = destretch $
@@ -295,7 +304,31 @@ pro red::quicklook, align = align $
       
     endif
 
-    if n_elements(use_states) gt 0 then begin
+    if keyword_set(core_and_wings) then begin
+      ;; Make an automatic selection of states
+;      use_states = ['+0']       ; Include the nominal core of all lines
+      undefine, ustat2
+      for ipref = 0, Npref-1 do begin
+        sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
+        if Nmatch eq 1 then begin
+          ;; E.g., Chromis Ca II core should be included
+          red_append, ustat2, ustat[sindx[0]]
+        endif else begin
+          ;; Select red and blue wing points. The states are sorted in
+          ;; wavelength order so we just have to pick the first and
+          ;; last states for each prefilter.
+          red_append, ustat2, ustat[sindx[ 0]]
+          red_append, ustat2, ustat[sindx[-1]]
+          ;; Find and select the core.
+          imatch = where(strmatch(ustat, '*+0*'), Nmatch)
+          if Nmatch gt 0 then red_append, ustat2, ustat[imatch]
+        endelse
+      endfor                    ; ipref
+      Nstates = n_elements(ustat2)
+      if Nstates eq 0 then continue ; Next dataset
+      ustat = ustat2 
+    endif else if n_elements(use_states) gt 0 then begin
+      undefine, ustat2
       for istate = 0, n_elements(use_states)-1 do begin
         ;; Might want to change this into something involving strmatch
         ;; or stregex!
@@ -318,7 +351,7 @@ pro red::quicklook, align = align $
       endif else begin
         Nstates = 1
       endelse
-    endelse
+    endelse 
 
     for istate = 0, Nstates-1 do begin
       
