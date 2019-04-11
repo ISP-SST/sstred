@@ -30,16 +30,10 @@
 ;
 ;   2017-06-28 : MGL. Removed cam{wb,r,t}-based states.
 ;
+;   2010-04-11 : MGL. Develop mode not needed for crispred anymore.
+;
 ;-
 pro crisp::initialize, filename, develop = develop
-
-  if ~keyword_set(develop) then begin
-    ;; Allow to run CRISP data only in developer mode until branches
-    ;; have been merged properly.
-    print
-    print, 'crisp::initialize : CRISP data not supported in the chromis branch of the pipeline.'
-    exit
-  endif
 
   ;; Call initialize of the base-class first to load common parameters
   self->RED::initialize, filename, develop = develop
