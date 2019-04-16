@@ -407,7 +407,8 @@ function crisp::filenames, datatype, states $
         'pols' :  begin
           dir = self.out_dir+'/polcal_sums/'+camera+'/'
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
+;          red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, prefilter
           ext = '.pols'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
