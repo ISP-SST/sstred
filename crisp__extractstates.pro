@@ -351,21 +351,24 @@ pro crisp::extractstates, strings, states $
                      , /extr, /subexp, /fold_case))[2,*]
     ;; states.focus = focus   TODO: add field to states struct (in an SST class?)
 
-    ;; The CRISP tuning information consists of a four digit
-    ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
-    ;; and at least one digit for the finetuning (in mÅ).
-    state = fxpar(head, 'STATE')
-    if strtrim(state,2) eq '' || strmid(state, 0, 1) eq '_' then begin
-      ;; Probably a dark frame, no tuning
-    endif else begin
-      tuninfo = stregex(state $
-                        , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
-                        , /extract, /subexpr) 
-      
-      ;; Make tuning without zero-padding in the finetuning part
-      split_tuning = strsplit(tuninfo[0], '_', /extract)
-      states[ifile].tuning = split_tuning[0] + '_' + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
-    endelse
+    if ~keyword_set(polcal) then begin
+      ;; The CRISP tuning information consists of a four digit
+      ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
+      ;; and at least one digit for the finetuning (in mÅ).
+      state = fxpar(head, 'STATE')
+      if strtrim(state,2) eq '' || strmid(state, 0, 1) eq '_' then begin
+        ;; Probably a dark frame, no tuning
+      endif else begin
+        tuninfo = stregex(state $
+                          , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
+                          , /extract, /subexpr) 
+        
+        ;; Make tuning without zero-padding in the finetuning part
+        split_tuning = strsplit(tuninfo[0], '_', /extract)
+        states[ifile].tuning = split_tuning[0] + '_' + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
+      endelse
+    endif
+
     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
     ;; The fullstate string
