@@ -140,7 +140,6 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             red_append, fullstate_list, 'lp'+string(round(ulp[ilp]), format = '(i03)')
             red_append, fullstate_list, 'qw'+string(round(uqw[iqw]), format = '(i03)')
             red_append, fullstate_list, upref[ipref]
-            red_append, fullstate_list, '*_*'
             red_append, fullstate_list, 'lc'+strtrim(long(ulc[ilc]), 2)
             statestring = strjoin(fullstate_list, '_')
             
