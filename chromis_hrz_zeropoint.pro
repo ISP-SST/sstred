@@ -24,6 +24,10 @@
 ;
 ;    2018-06-11 : MGL. First version.
 ;
+;    2019-04-18 : THI. Make the requirements for identifying linedef lines
+;                 stricter, also add a safeguard for future modifications to
+;                 linedef.py
+;
 ;-
 function range, first, last, step
   ;; this is just a dummy function to prevent errors since some linedef.py uses range()
@@ -52,6 +56,7 @@ pro chromis_hrz_zeropoint, workdir
     while ~eof(lun) do begin
       line = ''
       readf, lun, line
+      if strmatch( line, "end_of_lines", /fold_case ) then break    ;;  to prevent future conflicts with additions to the linedef.py file
       if strmid(line,0,1) ne '#' then begin
         line = red_strreplace( line, '[:]', '', n=100 )
         line = strsplit( line, ';', /extract, count=nlines )
@@ -60,9 +65,13 @@ pro chromis_hrz_zeropoint, workdir
           if assign_pos gt 0 then begin
             ok = execute( line[i] )
             varname = strtrim(strmid(line[i], 0, assign_pos), 2)
-            if strpos(varname,'[') eq -1 then begin
-              red_append, varnames, varname
-            endif
+            ok = execute( 'vardata = ' + varname )
+            n_el = n_elements(vardata)
+            if strmatch(varname,'[') then continue                  ;; array accessor, not interesting for us
+            if n_el lt 8 then continue                              ;; too short to be a linedef
+            if min(vardata[0:5]) lt 10000 then continue             ;; too low etalon values
+            if (n_el gt 8) && (vardata[8] ge 0) then continue       ;; disp is negative for CHROMIS
+            red_append, varnames, varname
           endif
         endfor
       endif
