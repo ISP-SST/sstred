@@ -617,7 +617,7 @@ pro crisp::fitprefilter, cwl = cwl $
 
       
       ;; save curve
-      
+      file_mkdir, self.out_dir+'/prefilter_fits/'
       prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref], $
              fitpars:par, fts_model:interpol(yl1, xl+par[1], wav)*prefilter, units:units}
 
@@ -656,7 +656,7 @@ pro crisp::fitprefilter, cwl = cwl $
                 , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
       
-      file_mkdir, self.out_dir+'/prefilter_fits/'
+;      file_mkdir, self.out_dir+'/prefilter_fits/'
       
       cgcontrol, output = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
       

@@ -70,11 +70,13 @@ pro crisp::link_data, all_data = all_data $
     ;; No dirs given in keyword, use default
     dirs = *self.data_dirs
   endif else begin
-    if ~file_test(dirs, /dir) then begin
-      ;; The keyword doesn't point to an existing directory.
-      ;; Try to interpret as a selection from the default dirs.
-      dirs = file_dirname((*self.data_dirs)[0])+'/'+dirs
-    endif
+    for idir = 0, Ndirs-1 do begin
+      if ~file_test(dirs, /dir) then begin
+        ;; The keyword doesn't point to an existing directory.
+        ;; Try to interpret as a selection from the default dirs.
+        dirs[idir] = file_dirname((*self.data_dirs)[0])+'/'+dirs[idir]
+      endif
+   endfor     ;idir
   endelse
 
   Ndirs = n_elements(dirs)
