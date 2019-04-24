@@ -343,6 +343,11 @@ function red_meta2head, head, metadata=metaStruct
             fwhm = 0.38e-9
             waveband = 'Na D ' + strtrim(prefilter,2)
           end
+          '6173' : begin        ; CRISP - Alluxa filter
+            wavelnth = 617.38e-9
+            fwhm = 0.45e-9
+            waveband = 'Fe I ' + strtrim(prefilter,2)
+          end
           '6174' : begin        ; CRISP
             wavelnth = 617.4e-9
             fwhm = 0.43e-9
