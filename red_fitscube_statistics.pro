@@ -223,17 +223,21 @@ pro red_fitscube_statistics, filename $
 
     ;; Write the statistics to the fitscube file
 
-    if Nstokes gt 1 then begin
-      axis_numbers = [3, 4, 5]  ; (Ntuning, Nstokes, Nscans)
-    endif else begin
-      axis_numbers = [3, 5]     ; (Ntuning, Nscans)
-    endelse
+    if Ntuning gt 1 then red_append, axis_numbers, 3
+    if Nstokes gt 1 then red_append, axis_numbers, 4
+    if Nscans gt 1 then red_append, axis_numbers, 5
+    
+;    if Nstokes gt 1 then begin
+;      axis_numbers = [3, 4, 5]  ; (Ntuning, Nstokes, Nscans)
+;    endif else begin
+;      axis_numbers = [3, 5]     ; (Ntuning, Nscans)
+;    endelse
 
     for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
 
       itags = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_statistics), Nmatch)
       itagc = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_comments), Nmatch)
-      
+
       if Nmatch eq 1 then $
          red_fitscube_addvarkeyword, filename $
                                      , (tag_names(frame_statistics[0]))[itag] $
