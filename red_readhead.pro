@@ -118,7 +118,8 @@
 ;                keyword framenumber to select_frame.
 ; 
 ;   2017-12-01 : MGL. Use status from red_readhead_fits.
-;
+; 
+;   2019-04-23 : MGL. Treat different file types more independently. 
 ;
 ;-
 function red_readhead, fname, $
@@ -134,15 +135,15 @@ function red_readhead, fname, $
 
   compile_opt idl2
   
-  if( file_test(fname) eq 0 ) then begin
+  if file_test(fname) eq 0 then begin
     message, 'File does not exist: '+fname, /info
     status = -1
     return, 0B
   endif
   
-  if( n_elements(filetype) eq 0 ) then begin
+  if n_elements(filetype) eq 0 then begin
     filetype = rdx_filetype(fname)
-    if( filetype eq '' ) then begin
+    if filetype eq '' then begin
       message, 'Cannot detect filetype. Pass it manually as, e.g.,', /info
       message, "head = red_readhead('"+fname+"',filetype='fits')", /info
       status = -1
@@ -156,13 +157,17 @@ function red_readhead, fname, $
   ;; Read the header based on filetype and construct the name of an
   ;; external header file.
   case strupcase(filetype) of
+    
     'ANA' : begin
       header = red_readhead_ana(fname, $
                                 date_beg = date_beg, $
                                 framenumbers = framenumbers)
-      hname = file_basename(fname, '.fz')
-      hname = hdir+'/'+file_basename(hname, '.f0') + '.fitsheader'
+;      hname = file_basename(fname, '.fz')
+;      hname = hdir+'/'+file_basename(hname, '.f0') + '.fitsheader'
+;      if n_elements(extension) eq 0 then $
+;      header = red_meta2head(header, meta={filename:fname})
     end
+
     'FITS' : begin
       header = red_readhead_fits(fname, $
                                  date_beg = date_beg, $
@@ -172,74 +177,89 @@ function red_readhead, fname, $
                                  status = status, $
                                  extension = extension)
       if status ne 0 then return, 0B
-      hname = hdir+'/'+file_basename(fname, '.fits')   + '.fitsheader'
+;      hname = hdir+'/'+file_basename(fname, '.fits')   + '.fitsheader'
+      ;; Keyword FRAME1 changed to FRAMNUM. Rewrite old headers
+      ;; to match the new standard.
+      frnm = sxpar(header, 'FRAMENUM', count = Npar)
+      if Npar eq 0 then begin
+        fr1 = sxpar(header, 'FRAME1', count = Npar)
+        if Npar eq 1 then sxaddpar, header, 'FRAMENUM', fr1
+      endif
+      if n_elements(extension) eq 0 then $
+         header = red_meta2head(header, meta={filename:fname})
     end
+
     'MOMFBD' : begin
       header = red_readhead_momfbd(fname, version = momfbd_version)
+      hdir = file_dirname(fname)
       hname = hdir+'/'+file_basename(fname, '.momfbd') + '.fitsheader'
+      if n_elements(extension) eq 0 then $
+         header = red_meta2head(header, meta={filename:fname})
+      ;; Read the external fitsheader if it exists.
+      if ~keyword_set(noexternal) && file_test(hname) then begin
+        xhead = headfits(hname)
+        ;; Add or replace all keywords from the external header except
+        ;; DATE, BITPIX, NAXIS*, COMMENT, etc.
+        Nlines = n_elements(xhead)
+        keys = strtrim(strmid(xhead, 0, 8), 2)
+        skipkeys = ['SIMPLE', 'BITPIX', 'NAXIS', 'DATE', 'LONGSTRN', 'CONTINUE', 'COMMENT', 'END']
+        naxis = fxpar(xhead, 'NAXIS')
+        for i = 1, naxis do red_append, skipkeys, 'NAXIS'+strtrim(i, 2)
+        for iline = 0, Nlines-1 do begin
+          if ~max(strmatch(skipkeys, keys[iline])) then begin
+            value = fxpar(xhead, keys[iline], comment = comment)
+            fxaddpar, header, keys[iline], value, comment
+            if strmatch(keys[iline], 'PRLIB*') $
+               && (strmatch(value, 'momfbd/redux*')) then begin
+              if n_elements(momfbd_version) ne 0 then begin
+                libindx = red_strreplace(keys[iline], 'PRLIB', '')
+                fxaddpar, header, 'PRVER'+libindx, momfbd_version, after = keys[iline] $
+                          , 'Library version/MJD of last update (From .momfbd file)'
+              endif
+            endif
+          endif
+        endfor                  ; iline
+      endif
     end
+
     else     : begin
       message, 'Cannot detect filetype. Pass it manually as e.g.', /info
       message, "head = red_readhead('"+fname+"',filetype='fits')", /info
       status = -1
       return, 0B
     end
+
   endcase
 
-  ;; Keyword FRAME1 changed to FRAMNUM. Rewrite old headers
-  ;; to match the new standard.
-  frnm = sxpar(header, 'FRAMENUM', count = Npar)
-  if Npar eq 0 then begin
-    fr1 = sxpar(header, 'FRAME1', count = Npar)
-    if Npar eq 1 then sxaddpar, header, 'FRAMENUM', fr1
-  endif
-
-  if n_elements(extension) eq 0 then $
-     header = red_meta2head(header, meta={filename:fname})
-  
   if keyword_set(structheader) then begin
     header = red_paramstostruct(header)
   endif
 
-  ;; Read the external fitsheader if it exists.
-  if ~keyword_set(noexternal) && file_test(hname) then begin
-    xhead = headfits(hname)
-    ;; Add or replace all keywords from the external header except
-    ;; DATE, BITPIX, NAXIS*, COMMENT, etc.
-    Nlines = n_elements(xhead)
-    keys = strtrim(strmid(xhead, 0, 8), 2)
-    skipkeys = ['SIMPLE', 'BITPIX', 'NAXIS', 'DATE', 'LONGSTRN', 'CONTINUE', 'COMMENT', 'END']
-    naxis = fxpar(xhead, 'NAXIS')
-    for i = 1, naxis do red_append, skipkeys, 'NAXIS'+strtrim(i, 2)
-    for iline = 0, Nlines-1 do begin
-      if ~max(strmatch(skipkeys, keys[iline])) then begin
-        value = fxpar(xhead, keys[iline], comment = comment)
-        fxaddpar, header, keys[iline], value, comment
-        if strmatch(keys[iline], 'PRLIB*') $
-           && (strmatch(value, 'momfbd/redux*')) then begin
-          if n_elements(momfbd_version) ne 0 then begin
-            libindx = red_strreplace(keys[iline], 'PRLIB', '')
-            fxaddpar, header, 'PRVER'+libindx, momfbd_version, after = keys[iline] $
-                      , 'Library version/MJD of last update (From .momfbd file)'
-          endif
-        endif
-      endif
-    endfor                      ; iline
-  endif
-  
   status = 0
 
-  ;; Remove blank lines
-  header = header[where(header ne string(replicate(32B,80)))] 
+  ;; Remove blank lines (should only do this after END!)
+;  header = header[where(header ne string(replicate(32B,80)))] 
 
   return, header
 
 end
 
 
+;; Test CRISP file
+
+fname = '/data/2014/2014.05/2014.05.19/SCI-7772/14:50:38/Crisp-T/camXXV.00002.im.ex.f+026.7772.7772_+0240.lc4.im.0001084'
+h = red_readhead(fname)
+
+fnames = file_search('/data/2014/2014.05/2014.05.19/SCI-7772/14:50:38/Crisp-T/*', count = Nfiles)
+print, 'Read headers of '+strtrim(Nfiles, 2)+' files.'
+tic & for i = 0, Nfiles-1 do h = red_readhead(fnames[i]) & toc
+
+
+stop
+
 ;; Test broken file
 
-dir='/storage/sand05n/Incoming/2017.04.20/CHROMIS-flats/18:34:10/Chromis-N/'
+dir='/data/2017/2017.04/2017.04.20/CHROMIS-flats/18:34:10/Chromis-N/'
 fname='sst_camXXX_00004_0036400_wheel00006_hrz34410.fits'
 
 header = red_readhead(dir+fname,date_beg=date_beg,framenumbers=framenumbers, status = status)
@@ -247,7 +267,7 @@ print, status
 
 stop
 
-cd,'/storage/sand02/Incoming/2016.09.19/CHROMIS-flats/11:21:22/Chromis-N',current=curdir
+cd,'/data/2016/2016.09/2016.09.19/CHROMIS-flats/11:21:22/Chromis-N',current=curdir
 fname = 'sst_camXXX_00000_0000000_wheel00005_hrz32061.fits'
 
 head = red_readhead(fname)
@@ -256,7 +276,7 @@ ehead = red_readhead(fname,/extension)
 
 stop
 
-cd,'/polar-scratch/mats/2016.09.19/CHROMIS/calib_tseries'
+cd,'/scratch/mats/2016.09.19/CHROMIS/calib_tseries'
 fname = 'wb_3950_2016-09-19T09:28:36_scans=68-72_corrected_im.fits'
 
 head = red_readhead(fname)
