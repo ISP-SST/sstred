@@ -104,8 +104,12 @@ pro red::fitscube_crosstalk, filename  $
   wav = coordinates[*,0].wave[0,0]
 
   ;; Get scan numbers
-  tmp = red_fitsgetkeyword(filename, 'SCANNUM', variable_values = variable_values)
-  scannumbers = reform(variable_values.values)
+  scannum = red_fitsgetkeyword(filename, 'SCANNUM', variable_values = variable_values)
+  if n_elements(variable_values) gt 0 then begin
+    scannumbers = reform(variable_values.values)
+  endif else begin
+    scannumbers = [scannum]
+  endelse
   
   ;; Get medians of the I component of the first scan, to be used for
   ;; selecting the wavelength points.
@@ -148,41 +152,49 @@ pro red::fitscube_crosstalk, filename  $
   mask = red_select_area(red_histo_opt(im,2.e-3), /xroi)
 
   
-  ;; Get name of WB cube from the NB cube-making parameters
+  ;; Get name of WB cube from the NB cube-making parameters, used to
+  ;; make a mask that removes rotational padding.
   pos = where(strmatch(prprocs, '*make_nb_cube'), Nmatch)
-  if Nmatch eq 0 then stop
-  make_nb_cube_paras = prparas[pos]
-  wcfile = (json_parse(make_nb_cube_paras, /tostruct)).wcfile
+  makemask = Nmatch ne 0
+  
+  if makemask then begin
+    make_nb_cube_paras = prparas[pos]
+    wcfile = (json_parse(make_nb_cube_paras, /tostruct)).wcfile
 
-  ;; Get the rotation and alignment parameters from the wideband cube
-  if ~file_test(wcfile) then stop
-  fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
-  fxbreadm, bunit, row = 1 $
-            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
-  ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
-  ;; wbgfiles (WideBand Global).
-  fxbread, bunit, wbgfiles, 'WFILES', 1
-  fxbclose, bunit
+    ;; Get the rotation and alignment parameters from the wideband cube
+    if ~file_test(wcfile) then stop
+    fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
+    fxbreadm, bunit, row = 1 $
+              , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
+              ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+    ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
+    ;; wbgfiles (WideBand Global).
+    fxbread, bunit, wbgfiles, 'WFILES', 1
+    fxbclose, bunit
 
-  ;; Get dimensions of non-rotated images from the momfbd-restored WB
-  ;; images.
-  whdr = red_readhead(wbgfiles[0])
-  Nxx = fxpar(whdr, 'NAXIS1')
-  Nyy = fxpar(whdr, 'NAXIS2')
-
+    ;; Get dimensions of non-rotated images from the momfbd-restored WB
+    ;; images.
+    whdr = red_readhead(wbgfiles[0])
+    Nxx = fxpar(whdr, 'NAXIS1')
+    Nyy = fxpar(whdr, 'NAXIS2')
+  endif
+  
   for iscan = 0, Nscans-1 do begin
 
-    ;; Construct a mask for the padding
-    pad_mask = make_array(Nxx, Nyy, /float, value = 1.) 
-    pad_mask = red_rotation(pad_mask, ang[iscan], wcshift[0,iscan], wcshift[1,iscan], background = 0, full = wcFF)
-    pindx = where(pad_mask le 0.99) ; Pixels that are padding
-
-    ;; Include the padding mask just in case it rotates into the
-    ;; selected mask.
-    this_mask = mask * pad_mask
-    mindx = where(this_mask)
-        
+    if makemask then begin
+      ;; Construct a mask for the padding
+      pad_mask = make_array(Nxx, Nyy, /float, value = 1.) 
+      pad_mask = red_rotation(pad_mask, ang[iscan], wcshift[0,iscan], wcshift[1,iscan], background = 0, full = wcFF)
+      pindx = where(pad_mask le 0.99) ; Pixels that are padding
+    
+      ;; Include the padding mask just in case it rotates into the
+      ;; selected mask.
+      this_mask = mask * pad_mask
+      mindx = where(this_mask)
+    endif else begin
+      mindx = lindgen(Nx, Ny)
+    endelse 
+      
     ;;crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
     crt = dblarr(Nstokes)
     numerator   = dblarr(Nstokes)
@@ -211,13 +223,13 @@ pro red::fitscube_crosstalk, filename  $
     
     for ituning = 0, Ntuning-1 do begin
       red_fitscube_getframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning ; Stokes I
-      im0[pindx] = median(im0[pindx])                                                 ; Set the padding to median
-      red_fitscube_addframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning    ; Write with updated padding
+      if makemask then im0[pindx] = median(im0[pindx]) ; Set the padding to median
+      red_fitscube_addframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning ; Write with updated padding
       for istokes=1, Nstokes-1 do begin
         ;;d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
         red_fitscube_getframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
         im -= float(crt[istokes] * im0)
-        im[pindx] = median(im[pindx]) 
+        if makemask then im[pindx] = median(im[pindx]) 
         red_fitscube_addframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
       endfor                    ; istokes
     endfor                      ; ituning
