@@ -22,6 +22,13 @@
 ; 
 ; 
 ; :Keywords:
+;
+;     autocrop : in, optional, type=booean
+;
+;      Try to determine the largest FOV that avoids any bad momfbd
+;      subfields along the edges. If this keyword is set, the input
+;      value of the crop keyword is ignored and is set to the
+;      auto-detected crop parameters.
 ; 
 ;     clips : in, optional, type=array
 ;
@@ -31,47 +38,80 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
+;     crop : in, out, optional, type=array, default="[0,0,0,0]"
+;
+;       The array given here will be used to limit the FOV to
+;       [xl+crop[0],xh-crop[1],yl+[crop[3],yh-crop[3]]. If /autocrop,
+;       then the auto detected crop is returned in this keyword
+;       instead.
+;
 ;     integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats.
+;
+;     interactive : in, optional, type=boolean
+;
+;       Set this keyword to define the data cube FOV by use of the
+;       XROI GUI. If autocrop is set, then use the so defined FOV as
+;       an initialization of the FOV in the GUI. Otherwise use the
+;       crop keyword (or its default).
 ;
 ;     limb_data : in, optional, type=boolean
 ;
 ;       Set for data where the limb is in the FOV. Disables autocrop.
 ;
-;     noaligncont : in, optional, type=boolean
-;
-;       Do not do the align continuum to wideband step.
-;
 ;     nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
+;
+;     nocrosstalk : in, optional, type=boolean
+;
+;       Do not correct the (polarimetric) data cube Stokes components
+;       for crosstalk from I to Q, U, V.
+; 
+;     nostatistics : in, optional, type=boolean
+;  
+;       Do not calculate statistics metadata to put in header keywords
+;       DATA*. If statistics keywords already exist, then remove them.
 ;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
+;     redemodulate : in, optional, type=boolean
+;
+;       Delete any old (per scan-and-tuning) stokes cubes so they will
+;       have to be demodulated from scratch.
+;
+;     scannos : in, optional, type=string, default="ask"
+;
+;       Choose scan numbers to include in the sequence by entering a
+;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
+;       string '*' to include all.
+;
+;     smooth : in, optional, type=varies, default=5
+;
+;       How to smooth the modulation matrices? Set to the string
+;       'momfbd' to smooth subfield by subfield using the PSFs
+;       estimated by momfbd. Set to a number to smooth by a Gaussian
+;       kernel of that width. 
+;
 ;     tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
+;     tuning_selection : in, optional, type="integer or array"
+;
+;       The index or indices in the tuning dimension to use for
+;       calculating the correction. Should correspond to continuum (or
+;       as close to continuum as possible), where the polarimetric
+;       signal is minimal. Negative indices are allowed.
+;
 ; 
 ; :History:
 ; 
-;    2018-01-19 : MGL. First version, based on code from
-;                 chromis::make_wb_cube and chromis::make_nb_cube.
-; 
-;    2018-01-30 : MGL. Add the corresponding wideband image in an
-;                 image extension.
-; 
-;    2018-02-08 : MGL. Get logged diskpos (pig or turret) rather than
-;                 just pig data.
-; 
-;    2018-05-08 : MGL. New keyword limb_data. 
-; 
-;    2019-03-21 : MGL. First crisp version, based on the chromis one
-;                 and code from crisp::make_nb_cube.
+;    2018-04-26 : MGL. First version.
 ; 
 ;-
 pro crisp::make_scan_cube, dir $
@@ -82,14 +122,14 @@ pro crisp::make_scan_cube, dir $
                            , integer = integer $
                            , interactive = interactive $
                            , limb_data = limb_data $
-                           , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , nopolarimetry = nopolarimetry $
                            , overwrite = overwrite $
                            , redemodulate = redemodulate $
                            , scannos = scannos $
                            , smooth = smooth $
-                           , tiles = tiles 
+                           , tiles = tiles  $
+                           , tuning_selection = tuning_selection
                
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -111,6 +151,7 @@ pro crisp::make_scan_cube, dir $
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, smooth
   red_make_prpara, prpara, tiles
+  red_make_prpara, prpara, tuning_selection
 
   ;; It doesn't make sense to make new stokes cubes unless we are also
   ;; prepared to overwrite the scan cube.
@@ -823,7 +864,15 @@ if ~keyword_set(nocavitymap) then begin
     if makestokes && ~keyword_set(nocrosstalk) then begin
 
       ;; Correct the cube for cross-talk, I --> Q,U,V.
-      self -> fitscube_crosstalk, filename, nostatistics = nostatistics 
+      ;; Include tuning_selection in keywords to allow it to be
+      ;; specified when calling make_scan_cube and also, if not
+      ;; specified, to use the same tuning_selection for multiple
+      ;; cubes. Also, including mag_mask will reuse the same
+      ;; magnetic-features mask.
+      self -> fitscube_crosstalk, filename $
+                                  , mag_mask = mag_mask $
+                                  , nostatistics = nostatistics $
+                                  , tuning_selection = tuning_selection
 
     endif else if ~keyword_set(nostatistics) then begin
 
