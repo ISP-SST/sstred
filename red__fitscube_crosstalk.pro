@@ -29,18 +29,27 @@
 ;     force : in, optional, tyope=boolean
 ;   
 ;       Do not care if the correction is done already.
+;
+;     mag_mask : in, out,  optional, type=array
+;
+;       A mask that deselects magnetic signal. Should have the same
+;       dimensions as a frame. Use keyword primarily to preserve a
+;       mask from one call to the next so user only has to to use the
+;       GUI once.
 ; 
 ;     nostatistics : in, optional, type=boolean
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
 ;       DATA*. If statistics keywords already exist, then remove them.
 ;
-;     tuning_selection : in, optional, type="integer or array"
+;     tuning_selection : in, out, optional, type="integer or array"
 ;
 ;       The index or indices in the tuning dimension to use for
 ;       calculating the correction. Should correspond to continuum (or
 ;       as close to continuum as possible), where the polarimetric
-;       signal is minimal. Negative indices are allowed.
+;       signal is minimal. Negative indices are allowed. Keyword can
+;       be used to preserve a mask from one call to the next so user
+;       only has to to use the GUI once.
 ;
 ; :History:
 ; 
@@ -54,6 +63,7 @@
 pro red::fitscube_crosstalk, filename  $
                              , flip = flip $
                              , force = force $
+                             , mag_mask = mag_mask $
                              , nostatistics = nostatistics $
                              , tuning_selection = tuning_selection
 
@@ -119,7 +129,7 @@ pro red::fitscube_crosstalk, filename  $
     medi[ituning] = median(frame)
   endfor                        ; ituning
 
-  if keyword_set(tuning_selection) then begin
+  if n_elements(tuning_selection) gt 0 then begin
     ppc = tuning_selection
     ;; Translate negative indices to positive ones
     negindx = where(ppc lt 0, Nwhere)
@@ -134,6 +144,7 @@ pro red::fitscube_crosstalk, filename  $
     ;; intensity than the other.
     print, 'Select spectral points to calculate cross-talk from. Select with left mouse, end with right mouse.'
     ppc = red_select_spoints(wav, medi)
+    tuning_selection = ppc
   endelse
 
   
@@ -147,11 +158,12 @@ pro red::fitscube_crosstalk, filename  $
     red_fitscube_getframe, filename, im, istokes = 3, iscan = 0, ituning = ppc[0]
   endelse
 
-  print, 'Deselect areas with magnetic structures and/or artifacts. End with File-->Quit.'
-  ;;mask = red_select_area(red_histo_opt(im,2.e-3), /noedge, /xroi)
-  mask = red_select_area(red_histo_opt(im,2.e-3), /xroi)
-
-  
+  if n_elements(mag_mask) eq 0 then begin
+    print, 'Deselect areas with magnetic structures and/or artifacts. End with File-->Quit.'
+    ;;mag_mask = red_select_area(red_histo_opt(im,2.e-3), /noedge, /xroi)
+    mag_mask = red_select_area(red_histo_opt(im,2.e-3), /xroi)
+  end
+    
   ;; Get name of WB cube from the NB cube-making parameters, used to
   ;; make a mask that removes rotational padding.
   pos = where(strmatch(prprocs, '*make_nb_cube'), Nmatch)
@@ -189,10 +201,11 @@ pro red::fitscube_crosstalk, filename  $
     
       ;; Include the padding mask just in case it rotates into the
       ;; selected mask.
-      this_mask = mask * pad_mask
+      this_mask = mag_mask * pad_mask
       mindx = where(this_mask)
     endif else begin
-      mindx = lindgen(Nx, Ny)
+      mindx = where(mag_mask)
+;      mindx = lindgen(Nx, Ny)
     endelse 
       
     ;;crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
