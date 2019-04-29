@@ -276,11 +276,11 @@ pro crisp::extractstates, strings, states $
     states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
     texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
 
-    red_fitspar_getwavelnth, head, wavelnth = wavelnth, haswav = haswav
-    if haswav ne 0 then begin
+;    red_fitspar_getwavelnth, head, wavelnth = wavelnth, haswav = haswav
+;    if haswav ne 0 then begin
 ;      if wavelnth ne '        ' then $
-      states[ifile].pf_wavelength = float(wavelnth)
-    endif
+;      states[ifile].pf_wavelength = float(wavelnth)
+;    endif
 
     states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
     states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
@@ -356,6 +356,7 @@ pro crisp::extractstates, strings, states $
       ;; wavelength (in Å) followed by an underscore, a sign (+ or -),
       ;; and at least one digit for the finetuning (in mÅ).
       state = fxpar(head, 'STATE')
+      if strtrim(string(state),2) eq '0' then state='' ; fxpar returs 0 (integer) when it doesn't find a keyword
       if strtrim(state,2) eq '' || strmid(state, 0, 1) eq '_' then begin
         ;; Probably a dark frame, no tuning
       endif else begin

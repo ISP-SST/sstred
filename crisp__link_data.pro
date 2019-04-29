@@ -66,12 +66,13 @@ pro crisp::link_data, all_data = all_data $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(dirs) eq 0 then begin
+  Ndirs=n_elements(dirs)
+  if Ndirs eq 0 then begin
     ;; No dirs given in keyword, use default
     dirs = *self.data_dirs
   endif else begin
     for idir = 0, Ndirs-1 do begin
-      if ~file_test(dirs, /dir) then begin
+      if ~file_test(dirs[idir], /dir) then begin
         ;; The keyword doesn't point to an existing directory.
         ;; Try to interpret as a selection from the default dirs.
         dirs[idir] = file_dirname((*self.data_dirs)[0])+'/'+dirs[idir]
