@@ -202,7 +202,7 @@ function red_readhead, fname, $
         ;; DATE, BITPIX, NAXIS*, COMMENT, etc.
         Nlines = n_elements(xhead)
         keys = strtrim(strmid(xhead, 0, 8), 2)
-        skipkeys = ['SIMPLE', 'BITPIX', 'NAXIS', 'DATE', 'LONGSTRN', 'CONTINUE', 'COMMENT', 'END']
+        skipkeys = ['SIMPLE', 'BITPIX', 'NAXIS', 'DATE', 'LONGSTRN', 'CONTINUE', 'COMMENT', 'END','']
         naxis = fxpar(xhead, 'NAXIS')
         for i = 1, naxis do red_append, skipkeys, 'NAXIS'+strtrim(i, 2)
         for iline = 0, Nlines-1 do begin
@@ -223,6 +223,7 @@ function red_readhead, fname, $
     end
 
     else     : begin
+       
       message, 'Cannot detect filetype. Pass it manually as e.g.', /info
       message, "head = red_readhead('"+fname+"',filetype='fits')", /info
       status = -1
