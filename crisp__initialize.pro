@@ -30,7 +30,7 @@
 ;
 ;   2017-06-28 : MGL. Removed cam{wb,r,t}-based states.
 ;
-;   2010-04-11 : MGL. Develop mode not needed for crispred anymore.
+;   2019-04-11 : MGL. Develop mode not needed for crispred anymore.
 ;
 ;   2019-05-07 : MGL. Detect directory set up for old pipeline.
 ;
