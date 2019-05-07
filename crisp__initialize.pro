@@ -32,12 +32,29 @@
 ;
 ;   2010-04-11 : MGL. Develop mode not needed for crispred anymore.
 ;
+;   2019-05-07 : MGL. Detect directory set up for old pipeline.
+;
 ;-
 pro crisp::initialize, filename, develop = develop
 
   ;; Call initialize of the base-class first to load common parameters
   self->RED::initialize, filename, develop = develop
 
+  spawn, 'grep "camera.*=" '+filename, grepresult1
+  if n_elements(grepresult1) eq 1 && grepresult1 eq '' then begin
+    spawn, 'grep "cam_wb.*=" '+filename, grepresult2
+    print
+    if n_elements(grepresult2) eq 1 && grepresult2 eq '' then begin
+      print, 'No cameras defined in '+filename
+    endif else begin
+      print, 'This directory seems to be set up for running CRISP data with the old pipeline.'
+      print, 'Please see https://dubshen.astro.su.se/wiki/index.php/Old_CRISPRED for instructions.'
+    endelse
+    print, 'Returning'
+    print
+    retall
+  endif
+  
   return
   
   ;; Then load CRISP specific stuff
