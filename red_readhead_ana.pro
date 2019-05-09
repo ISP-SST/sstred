@@ -349,6 +349,7 @@ function red_readhead_ana, fname, $
         strmatch(anaheader,'*CRISP-R*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-R' 
         strmatch(anaheader,'*CRISP-T*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-T' 
         strmatch(anaheader,'*CRISP-D*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-D'
+        else:
       endcase
       
       ;; Observations date
