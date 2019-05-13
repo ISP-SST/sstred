@@ -188,7 +188,12 @@ pro crisp::copy_oldsums, olddir $
         for iwb = 0, Nwb-1 do begin
           splitname = strsplit(file_basename(oldfiles[indx[iwb]]), '.', /extract)
           oldstates[indx[iwb]].prefilter = splitname[1]
-          oldstates[indx[iwb]].fullstate = oldstates[indx[iwb]].prefilter
+          ;; For the fullstate, fake the "line" info the make the
+          ;; tuing part complete.
+          oldstates[indx[iwb]].fullstate = strjoin([oldstates[indx[iwb]].prefilter $
+                                                    , oldstates[indx[iwb]].prefilter $
+                                                    , '+0000' $
+                                                   ], '_')
         endfor                  ; iwb
 
         newnames = self -> filenames('flat', oldstates)
