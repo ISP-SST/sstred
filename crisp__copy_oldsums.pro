@@ -189,7 +189,7 @@ pro crisp::copy_oldsums, olddir $
           splitname = strsplit(file_basename(oldfiles[indx[iwb]]), '.', /extract)
           oldstates[indx[iwb]].prefilter = splitname[1]
           ;; For the fullstate, fake the "line" info the make the
-          ;; tuing part complete.
+          ;; tuning part complete.
           oldstates[indx[iwb]].fullstate = strjoin([oldstates[indx[iwb]].prefilter $
                                                     , oldstates[indx[iwb]].prefilter $
                                                     , '+0000' $
@@ -219,10 +219,6 @@ pro crisp::copy_oldsums, olddir $
               anchor = 'DETECTOR'
               red_fitsaddkeyword, anchor = anchor, hdr, 'FILTER1', oldstates[ifile].prefilter
               red_fitsaddkeyword, anchor = anchor, hdr, 'STATE', oldstates[ifile].fullstate
-;              red_fitsaddkeyword, anchor = anchor, hdr, 'WAVELNTH',  630.260 , '[nm] Prefilter peak wavelength'                 
-;              red_fitsaddkeyword, anchor = anchor, hdr, 'WAVEMIN',   630.035 , '[nm] Prefilter min wavelength (0.5 peak)'       
-;              red_fitsaddkeyword, anchor = anchor, hdr, 'WAVEMAX',   630.485 , '[nm] Prefilter max wavelength (0.5 peak)'       
-;              red_fitsaddkeyword, anchor = anchor, hdr, 'WAVEBAND', 'Fe I 6301+6302' 
               red_fitsaddkeyword, anchor = anchor, hdr, 'WAVEUNIT',  -9, 'WAVELNTH in units 10^WAVEUNIT m = nm'
             endif
             red_fitsaddkeyword, hdr, 'FILENAME', file_basename(newnames[ifile]), anchor = 'SOLARNET'
