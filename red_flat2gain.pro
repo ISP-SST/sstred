@@ -59,6 +59,8 @@
 ;   2016-05-31 : THI. Remove instrument specific keyword /preserve and
 ;                use class-methods instead.
 ; 
+;   2019-05-14 : MGL. Protect agains small values in flat.
+; 
 ;-
 function red_flat2gain, flat, $
                         badthreshold = bad, $
@@ -72,7 +74,8 @@ function red_flat2gain, flat, $
   if(n_elements(max) eq 0) then max = 4.0
   if(n_elements(smoothparameter) eq 0) then smoothparameter = 7.0d0
 
-  g = median(flat) / flat
+  med = median(flat)
+  g = med / (flat > (med*1e-5))
   mask1 = ~finite(g)
   pos = where(mask1, count, complement=pos1)
   gain_nozero = red_fillnan(g)
