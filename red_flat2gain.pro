@@ -59,7 +59,7 @@
 ;   2016-05-31 : THI. Remove instrument specific keyword /preserve and
 ;                use class-methods instead.
 ; 
-;   2019-05-14 : MGL. Protect agains small values in flat.
+;   2019-05-14 : MGL. Protect against small values in flat.
 ; 
 ;-
 function red_flat2gain, flat, $
