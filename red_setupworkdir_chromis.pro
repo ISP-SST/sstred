@@ -383,7 +383,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   if ~keyword_set(calibrations_only) then begin  
     printf, Slun, ''
-    printf, Slun, 'a -> pinholecalib, nref=10'
+    printf, Slun, 'a -> pinholecalib, /verify, nref=10'
 ;    printf, Slun, 'a -> diversitycalib'
   endif
   
