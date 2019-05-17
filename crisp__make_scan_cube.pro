@@ -229,7 +229,7 @@ pro crisp::make_scan_cube, dir $
       Nscans = n_elements(scanindx)
     endif else begin
       ;; Selection dialogue
-      selectionlist = strtrim(wstates[uniq(wbgstates.scannumber, sort(wbgstates.scannumber))].scannumber, 2)
+      selectionlist = strtrim(wbgstates[uniq(wbgstates.scannumber, sort(wbgstates.scannumber))].scannumber, 2)
       tmp = red_select_subset(selectionlist $
                               , qstring = inam + ' : Select scans:' $
                               , count = Nscans, indx = scanindx)
