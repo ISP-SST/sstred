@@ -1,0 +1,40 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, Institute for Solar Physics
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; 
+; 
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+; 
+; 
+; 
+; 
+; 
+;-
