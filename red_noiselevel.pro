@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Measure noise standard deviation of an image.
+; Measure the standard deviation of white noise in an image.
 ;
 ; Measures the level of the power spectrum of pic, in the area where
 ; there should be no signal and no `dreadful cross`.
