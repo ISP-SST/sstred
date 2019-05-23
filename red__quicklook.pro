@@ -611,7 +611,7 @@ pro red::quicklook, align = align $
           1 : begin
             ;; Just a single file
             ims = float(red_readdata(states[sel2[0]].filename))
-            Nframes = 1
+            Nframes = (fxpar(red_readhead(files[sel2[0]]),'NAXIS3') >1)
             red_fitspar_getdates, red_readhead(states[sel2[0]].filename), date_avg = date_avg
           end
           else : begin
@@ -695,7 +695,7 @@ pro red::quicklook, align = align $
 
       if keyword_set(neuralnet) then begin
 
-        if ~file_test(~reduc/mfbdNN/encdec_sst.py) then begin
+        if ~file_test('~reduc/mfbdNN/encdec_sst.py') then begin
           print, inam + ' : You do not seem to have the neural net software installed.'
           return          
         endif
