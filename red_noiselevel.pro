@@ -98,7 +98,7 @@ function red_noiselevel, Pic $
 
     p = float(f[*, *, i]*conj(f[*, *, i]))
 
-    noise_power = total(mask * shiftfft(p)) / total(mask)
+    noise_power = total(mask * shift(p, xDimen/2, xDimen/2)) / total(mask)
     
     NoiseLevels[i] = sqrt(noise_power) * xDimen
     
