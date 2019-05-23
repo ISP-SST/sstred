@@ -801,7 +801,7 @@ pro red::quicklook, align = align $
           
           ;; Make a low-pass noise filter
           nl = red_noiselevel(fim, limfreq = limfreq, /Fourier) / sz
-          filt = smooth(abs(shiftfft(fim))^2,15) / (smooth(abs(shiftfft(fim))^2,15) + nl^2*4)
+          filt = smooth(abs(shift(fim, sz/2, sz/2))^2,15) / (smooth(abs(shift(fim, sz/2, sz/2))^2,15) + nl^2*4)
           nl_filt = median(filt(where(~ap))) ; Level outside diffraction limit
           mask = filt gt nl_filt*2
           ;; Clean the filter from high-frequency noise contributions
@@ -811,7 +811,7 @@ pro red::quicklook, align = align $
           mindx = region_grow(mask,roipixels,threshold=[0.9,1.1])
           mask[mindx] = 255
           mask = mask gt 200
-          filt = shiftfft(smooth(filt*mask, 15))
+          filt = shift(smooth(filt*mask, 15), sz/2, sz/2)
           
           im = float(fft(filt*(fim/(mtf >1e-3)), /inv)) ; Deconvolved image
           im /= (w >3e-4)                               ; Undo the windowing

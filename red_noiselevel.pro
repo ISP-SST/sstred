@@ -53,10 +53,11 @@ function red_noiselevel, Pic $
                          , OversamplingRate = OversamplingRate $
                          , LimFreq = LimFreq $
                          , Fourier = Fourier 
-  
-  xDimen = Dimen(Pic,0)
+
+  dims = size(Pic, /dim)
+  xDimen = dims[0]
   Ndim = size(Pic, /n_dim)      ; Number of dimensions
-  if Ndim le 2 then Nim = 1 else Nim = (size(Pic, /dim))[2]
+  if Ndim le 2 then Nim = 1 else Niim = dims[2]
 
   if keyword_set(OversamplingRate) and keyword_set(LimFreq) then begin
     print, 'NoiseLevel: Please set only one of LimFreq and OversamplingRate.'
