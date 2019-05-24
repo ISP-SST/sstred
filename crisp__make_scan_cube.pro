@@ -111,7 +111,8 @@
 ; 
 ; :History:
 ; 
-;    2018-04-26 : MGL. First version.
+;    2019-03-21 : MGL. First crisp version, based on the chromis one
+;                 and code from crisp::make_nb_cube.
 ; 
 ;-
 pro crisp::make_scan_cube, dir $
