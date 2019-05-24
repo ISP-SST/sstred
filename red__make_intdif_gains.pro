@@ -55,7 +55,7 @@
 ;
 ;   2013-07-01 : JdlCR. Created!
 ;
-;   2013-12-17 : PS. make smallscale default. If SUMLC is given, don't
+;   2013-12-17 : PS. Make smallscale default. If SUMLC is given, don't
 ;                recompute the gain and use links
 ;
 ;   2015-05-07 : MGL. With a *, run all directories.
