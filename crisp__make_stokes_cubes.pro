@@ -18,9 +18,9 @@
 ; 
 ; :Params:
 ; 
-;     wcfile : in, type=string
+;     dir : in, type=string
 ; 
-;       The name of the corrected WB cube file.
+;       The path to the momfbd-restored data.
 ; 
 ; 
 ; :Keywords:
@@ -75,47 +75,11 @@
 ;       estimated by momfbd. Set to a number to smooth by a Gaussian
 ;       kernel of that width. 
 ;
-;     verbose : in, optional, type=boolean
-;
-;       Some extra screen output.
-;
-;     wbsave : in, optional, type=boolean
-;
-;       Save a cube with the wideband per-tuning align-images. For
-;       debugging of alignment with extra wideband objects.
-;
 ; 
 ; :History:
 ; 
-;    2017-08-17 : MGL. First version, based on code from
-;                 chromis::make_crispex. 
-;
-;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
-; 
-;    2017-09-08 : MGL. Copy variable-keywords from the WB cube. 
-; 
-;    2017-09-28 : MGL. Add more variable-keywords. Make a flipped cube
-;                 and copy variable keywords to it. 
-; 
-;    2017-10-20 : MGL. Add a WCS extension.
-; 
-;    2017-10-27 : MGL. New keyword noaligncont.
-; 
-;    2017-10-30 : MGL. Incorporate code from red::make_cmaps to add
-;                 cavity maps as wavelength distortions to the WCS
-;                 metadata. New keyword nocavitymap. Documentation and
-;                 cleanup. 
-; 
-;    2017-11-16 : MGL. New keyword integer. 
-; 
-;    2018-02-01 : MGL. New keyword wbsave. 
-; 
-;    2018-03-27 : MGL. Change sign on cmap.  
-; 
-;    2018-10-08 : MGL. New keyword redemodulate.
-; 
-;    2018-12-21 : MGL. New keyword smooth.
-; 
+;    2019-03-21 : MGL. First version.
+;                                
 ;-
 pro crisp::make_stokes_cubes, dir, scanno $
                               , clips = clips $
@@ -126,8 +90,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
                               , smooth = smooth $
                               , snames = snames $
                               , stokesdir = stokesdir $
-                              , tiles = tiles $
-                              , verbose = verbose
+                              , tiles = tiles 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
