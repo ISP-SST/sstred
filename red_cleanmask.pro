@@ -52,7 +52,7 @@ function red_cleanmask, dirtymask
   for i = 0, 100 do begin 
     aa = where(labels eq i, cnt) 
     if cnt eq 0 then break 
-    print, i
+;    print, i
   endfor                        ; i
   mg = fltarr(i)
   for ii = 0, i-1 do mg[ii] = mean(dirtymask(where(labels eq ii)))
