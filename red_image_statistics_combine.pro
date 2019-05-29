@@ -43,6 +43,9 @@
 ; 
 ;   2018-10-26: MGL. First version.
 ; 
+;   2019-05-29: MGL. Improve percentiles by interpolating in the
+;               cumulative histogram.
+; 
 ;-
 function red_image_statistics_combine, statsarr $
                                        , binsize = binsize $
@@ -99,36 +102,40 @@ function red_image_statistics_combine, statsarr $
                               , 'DATASKEW', 'The skewness of the data' $         
                               , 'DATAKURT', 'The excess kurtosis of the data' )
   
-  ;; Percentilesfrom the histogram but for the P values of the
-  ;; percentiles in statsarr.
-
+  ;; Percentiles from the cumulative histogram but for the P values of
+  ;; the percentiles in statsarr.
+  
   if n_elements(hist) eq 0 or n_elements(binsize) eq 0 then return, output
   
-  hist_sum = total(hist, /cum) / total(hist)
   indx = where(strmatch(tags,'DATAP*') or strmatch(tags,'DATAMEDN'), Nindx)
   perc = fltarr(Nindx)
   for i = 0, Nindx-1 do begin
     
-    tag = tags[indx[i]]
-
-    if tag eq 'DATAMEDN' then begin
-      p = 0.5
+;    tag = tags[indx[i]]
+    
+    if tags[indx[i]] eq 'DATAMEDN' then begin
+      perc[i] = 0.5
     endif else begin
-      p = strmid(tags[indx[i]], 5)/100.
+      perc[i] = strmid(tags[indx[i]], 5)/100.
     endelse
-    p_value = cubemin + ( (where(hist_sum gt p))[0]+0.5 ) * binsize
+  endfor
 
-    output = create_struct(tag $
-                           , p_value $
+  hist_cum = total(hist, /cum) / total(hist)
+  binloc = cubemin + ( findgen(n_elements(hist_cum))+1. )*binsize
+  p_values = INTERPOL( binloc, hist_cum, perc, /quad )
+
+  for i = 0, Nindx-1 do begin
+    output = create_struct(tags[indx[i]] $
+                           , p_values[i] $
                            , output )
     if arg_present(comments) then $
-       comments = create_struct(tag $
-                                , 'The '+string(round(p*100), format = '(I02)') $
+       comments = create_struct(tags[indx[i]] $
+                                , 'The '+string(round(perc[i]*100), format = '(I02)') $
                                 + ' percentile of the data' $
                                 , comments)
     
   endfor                        ; i
-  
+
   return, output
 
 end
@@ -143,8 +150,6 @@ imstats = replicate(cubestats, Nims)
 for i = 0, Nims-1 do imstats[i] = red_image_statistics_calculate(ims[*, *, i])
 
 combstats = red_image_statistics_combine(imstats)
-
-
 
 end
 
