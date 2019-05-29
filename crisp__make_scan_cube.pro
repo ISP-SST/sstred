@@ -449,8 +449,7 @@ if ~keyword_set(nocavitymap) then begin
                                  , smooth = smooth $
                                  , snames = snames $
                                  , stokesdir = stokesdir $
-                                 , tiles = tiles $
-                                 , verbose = verbose
+                                 , tiles = tiles 
 
       ;; The names of the Stokes cubes for this scan are returned in
       ;; snames. 
