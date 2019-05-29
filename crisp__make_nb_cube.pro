@@ -39,10 +39,6 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
-;     demodulate_only : in, optional, boolean
-;
-;       Quit after demodulating, i.e., make no cube.
-;
 ;     integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
@@ -144,12 +140,14 @@
 ; 
 ;    2019-04-02 : MGL. New keyword nocrosstalk and use the
 ;                 fitscube_crosstalk method.
+; 
+;    2019-05-24 : MGL. Do demodulation by use of the make_stokes_cubes
+;                 method. Remove keyword demodulate_only.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
                          , clips = clips $
                          , cmap_fwhm = cmap_fwhm $
-                         , demodulate_only = demodulate_only $
                          , integer = integer $
                          , noaligncont = noaligncont $
                          , nocavitymap = nocavitymap $
@@ -179,7 +177,6 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
-  red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, smooth
   red_make_prpara, prpara, redemodulate
   red_make_prpara, prpara, tiles        
@@ -187,31 +184,31 @@ pro crisp::make_nb_cube, wcfile $
 
   if n_elements(nthreads) eq 0 then nthreads = 1 ; Default single thread
   
-  ;; How to smooth the modulation matrices.
-  if n_elements(smooth) eq 0 then begin
-    ;; Smooth with Gaussian kernel by default
-    smooth_by_kernel = 5        ; Default width
-    smooth_by_subfield = 0
-  endif else begin
-    ;; The smooth keyword can either be a number, in which case that
-    ;; is the kernel width, or the string "momfbd", in which case we
-    ;; do smoothing by subfield using the MOMFBD-estimated PSFs.
-    if size(smooth, /tname) eq 'STRING' then begin
-      if strlowcase(smooth) eq 'momfbd' then begin
-        ;; If the string "momfbd" (or "MOMFBD"), we will smooth by
-        ;; subfield. 
-        smooth_by_subfield = 1
-      endif else begin
-        ;; Any string except "momfbd" will result in no smoothing. 
-        smooth_by_subfield = 0
-        smooth_by_kernel = 0
-      endelse
-    endif else begin
-      ;; Not a string, then hopefully a number
-      smooth_by_subfield = 0
-      smooth_by_kernel = smooth
-    endelse
-  endelse
+;  ;; How to smooth the modulation matrices.
+;  if n_elements(smooth) eq 0 then begin
+;    ;; Smooth with Gaussian kernel by default
+;    smooth_by_kernel = 5        ; Default width
+;    smooth_by_subfield = 0
+;  endif else begin
+;    ;; The smooth keyword can either be a number, in which case that
+;    ;; is the kernel width, or the string "momfbd", in which case we
+;    ;; do smoothing by subfield using the MOMFBD-estimated PSFs.
+;    if size(smooth, /tname) eq 'STRING' then begin
+;      if strlowcase(smooth) eq 'momfbd' then begin
+;        ;; If the string "momfbd" (or "MOMFBD"), we will smooth by
+;        ;; subfield. 
+;        smooth_by_subfield = 1
+;      endif else begin
+;        ;; Any string except "momfbd" will result in no smoothing. 
+;        smooth_by_subfield = 0
+;        smooth_by_kernel = 0
+;      endelse
+;    endif else begin
+;      ;; Not a string, then hopefully a number
+;      smooth_by_subfield = 0
+;      smooth_by_kernel = smooth
+;    endelse
+;  endelse
   
   
   ;; Default keywords
@@ -221,12 +218,13 @@ pro crisp::make_nb_cube, wcfile $
     clips = [8, 4,  2,  1,  1  ]
   endif
 
+  if keyword_set(redemodulate) then overwrite = 1
 
   ;; Camera/detector identification
   self->getdetectors
-  wbindx     = where(strmatch(*self.cameras,'Crisp-W'))
-  wbcamera   = (*self.cameras)[wbindx[0]]
-  wbdetector = (*self.detectors)[wbindx[0]]
+  wbindx      = where(strmatch(*self.cameras,'Crisp-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
   nbtindx     = where(strmatch(*self.cameras,'Crisp-T')) 
   nbtcamera   = (*self.cameras)[nbtindx[0]]
   nbtdetector = (*self.detectors)[nbtindx[0]]
@@ -563,206 +561,224 @@ pro crisp::make_nb_cube, wcfile $
   
   if makestokes then begin
 
-    ;; Make Stokes cube
-    
-    ;;  stokesdir = datadir + '/stokes/'
-
-    ;; Store intermediate Stokes cubes in separate directories for
-    ;; different smooth options: 
-    stokesdir = datadir + '/stokes_sbs'+strtrim(smooth_by_subfield,2) $
-                + '_sbk'+strtrim(smooth_by_kernel,2)+'/'
-
-    file_mkdir, stokesdir
-
-    if keyword_set(redemodulate) then begin
-      ;; We will delete all existing stokesIQUV*.fits files. An
-      ;; alternative would be to delete only the ones involved in the
-      ;; cube to be made.
-
-      dfiles = file_search(stokesdir+'stokesIQUV*.fits', count = Ndelete)
-      if Ndelete gt 0 then begin
-        print, inam + ' : Will delete the following Stokes files:'
-        print, dfiles, format = '(a0)'
-        file_delete, dfiles
-      endif
-    endif
-
+    ;; Make Stokes cubes
     ;; Define the Stokes file names needed for this nb cube
     snames = strarr(Nscans, Ntuning)    
     for iscan = 0, Nscans-1 do begin
-      for ituning = 0, Ntuning-1 do begin
-        snames[iscan, ituning] = stokesdir $
-                                 + strjoin(['stokesIQUV' $
-                                            , string(uscans[iscan], format = '(i05)') $
-                                            , prefilter $
-                                            , utuning[ituning] $
-                                           ], '_') + '.fits' 
-      endfor                    ; ituning
+      
+      self -> make_stokes_cubes, datadir, uscans[iscan] $
+                                 , clips = clips $
+                                 , cmap_fwhm = cmap_fwhm $
+                                 , nocavitymap = nocavitymap $
+                                 , redemodulate = redemodulate $
+                                 , smooth = smooth $
+                                 , snames = these_snames $
+                                 , stokesdir = stokesdir $
+                                 , tiles = tiles
+
+      snames[iscan, *] = these_snames
+      
     endfor                      ; iscan
 
-    ;; Make Stokes cubes for each scan and state (if not done already) 
-    todoindx = where(~file_test(snames), Ntodo)
-    if Ntodo gt 0 then begin
-      print, inam + ' : Will have to make '+strtrim(Ntodo, 2) + ' Stokes cubes.'
-
-;      ;; Get the FOV in the momfbd files.
-;      mr = momfbd_read(wbgfiles[0], /names) ; Use /names to avoid reading the data parts
-;      mrX01Y01 = mr.roi + mr.margin * [1, -1, 1, -1]
-      
-      ;; First get the inverse modulation matrices, make them if
-      ;; needed. They are returned in the (size and) orientation of
-      ;; the momfbd output.
-      self -> inverse_modmatrices, prefilter, stokesdir $
-                                   , camr = nbrcamera, immr = immr $
-                                   , camt = nbtcamera, immt = immt $
-                                   , no_ccdtabs = no_ccdtabs
-
-      swcs = {wave:dblarr(2,2)   $ ; WCS for this Stokes cube.
-              , hplt:dblarr(2,2) $
-              , hpln:dblarr(2,2) $
-              , time:dblarr(2,2) $
-             }
-
-      if Nthreads gt 1 then begin
-
-        ;; Make Nthreads bridges
-        bridges = build_bridges(Nthreads)
-        stop
-        
-        ;; Initialize the bridges
-        for ithread = 0, Nthreads-1 do begin
-
-          red_progressbar, ithread, Nthreads, 'Set up '+strtrim(Nthreads, 2)+' IDL bridges'
-          
-          bridges[ithread] -> execute, 'a=crispred(dev='+strtrim(long(self.developer_mode), 2)+')' ; Set dev!
-
-          ;; Set constant variables
-          bridges[ithread] -> setvar, 'immr', immr
-          bridges[ithread] -> setvar, 'immt', immt  
-          bridges[ithread] -> setvar, 'smooth_by_subfield', smooth_by_subfield
-          bridges[ithread] -> setvar, 'smooth_by_kernel', smooth_by_kernel      
-          bridges[ithread] -> setvar, 'clips', clips
-          bridges[ithread] -> setvar, 'cmap', cmap1
-          bridges[ithread] -> setvar, 'overwrite', keyword_set(redemodulate)
-          bridges[ithread] -> setvar, 'tiles', tiles
-          bridges[ithread] -> setvar, 'units', units
-
-        endfor                  ; ithread
-      endif
-      
-      
-      itodo = 0
-      for iscan = 0, Nscans-1 do begin
-
-        undefine, wbg 
-        
-        for ituning = 0, Ntuning-1 do begin
-
-          if ~file_test(snames[iscan, ituning]) then begin
-
-            ;; Read the global WB file for this scan.
-            if n_elements(wbg) eq 0 then wbg = red_readdata(wbgfiles[iscan])
-            
-            red_progressbar, itodo, Ntodo, /predict  $
-                             , 'Making '+snames[iscan, ituning] 
-
-            self -> selectfiles, files = wbfiles, states = wbstates $
-                                 , sel = these_wbindx, count = Nthesewb $
-                                 , scan = uscans[iscan] $
-                                 , fpi_states = utuning[ituning]
-
-            self -> selectfiles, files = nbtfiles, states = nbtstates $
-                                 , sel = these_nbtindx, count = Nthesenbt $
-                                 , scan = uscans[iscan] $
-                                 , fpi_states = utuning[ituning]
-
-            self -> selectfiles, files = nbrfiles, states = nbrstates $
-                                 , sel = these_nbrindx, count = Nthesenbr $
-                                 , scan = uscans[iscan] $
-                                 , fpi_states = utuning[ituning]
-
-            swcs.hpln = reform(wwcs[0,*,*,iscan])
-            swcs.hplt = reform(wwcs[0,*,*,iscan])
-            swcs.wave = nbtstates[these_nbrindx[0]].tun_wavelength*1d9
-            ;; swcs.time = ; Set by demodulate
-            
-            ;; The demodulate method reads the momfbd output wb, nbt,
-            ;; and wbr images for a particular scan and tuning state
-            ;; and outputs a demodulated Stokes file.
-            if Nthreads gt 1 then begin
-              stop
-              bridge = get_idle_bridge(bridges)
-
-              ;; Needed only for callback:
-;              ud = {i:i,j:j,pout:pout} 
-;              bridge -> setproperty, userdata=ud
-
-
-              ;; Set varying variables
-;              bridge -> setvar, 'in', in[i,j]
-              bridge -> setvar, 'nbrfac', nbr_rpref[ituning]
-              bridge -> setvar, 'nbrstates', nbrstates[these_nbrindx] ; IDL_IDLBRIDGE Error: Unsupported parameter type: IDL_TYP_STRUCT
-
-              bridge -> setvar, 'nbtfac', nbt_rpref[ituning]
-              bridge -> setvar, 'nbtstates', nbtstates[these_nbtindx]
-              bridge -> setvar, 'snames', snames[iscan, ituning]
-              bridge -> setvar, 'wbg', wbg
-              bridge -> setvar, 'wbstates', wbstates[these_wbindx]
-              bridge -> setvar, 'wcs', swcs
-
-
-              ;; Send the demodulation task to the bridge
-;              bridge -> execute, /nowait, 'worker, in, out'
-              bridge -> execute, /nowait $
-                                 , 'self -> demodulate, snames, immr, immt' $
-                                 + ', clips = clips' $                                  
-                                 + ', cmap = cmap' $                                   
-                                 + ', nbrfac = nbrfac' $                       
-                                 + ', nbrstates = nbrstates' $           
-                                 + ', nbtfac = nbtfac' $                       
-                                 + ', nbtstates = nbtstates' $           
-                                 + ', overwrite = overwrite' $                       
-                                 + ', smooth_by_kernel = smooth_by_kernel' $            
-                                 + ', smooth_by_subfield = smooth_by_subfield' $        
-                                 + ', tiles = tiles' $                                  
-                                 + ', units = units' $                                  
-                                 + ', wbg = wbg' $                                      
-                                 + ', wbstates = wbstates' $                
-                                 + ', wcs = wcs'                            
-              
-            endif else begin
-              self -> demodulate, snames[iscan, ituning], immr, immt $
-                                  , smooth_by_subfield = smooth_by_subfield $ 
-                                  , smooth_by_kernel = smooth_by_kernel $ 
-                                  , clips = clips $
-                                  , cmap = cmap1 $
-                                  , nbrfac = nbr_rpref[ituning] $
-                                  , nbrstates = nbrstates[these_nbrindx] $
-                                  , nbtfac = nbt_rpref[ituning] $
-                                  , nbtstates = nbtstates[these_nbtindx] $
-                                  , overwrite = redemodulate $
-                                  , tiles = tiles $
-                                  , units = units $
-                                  , wbg = wbg $
-                                  , wcs = swcs $
-                                  , wbstates = wbstates[these_wbindx]
-              
-            endelse
-            
-            itodo++
-            
-          endif
-          
-        endfor                  ; ituning 
-      endfor                    ; iscan 
-
-      ;; Wait for bridges to finish, then destroy them
-      if Nthreads gt 1 then begin
-        barrier_bridges, bridges
-        burn_bridges, bridges
-      endif
-      
-    endif
+    
+;    ;;  stokesdir = datadir + '/stokes/'
+;
+;    ;; Store intermediate Stokes cubes in separate directories for
+;    ;; different smooth options: 
+;    stokesdir = datadir + '/stokes_sbs'+strtrim(smooth_by_subfield,2) $
+;                + '_sbk'+strtrim(smooth_by_kernel,2)+'/'
+;
+;    file_mkdir, stokesdir
+;
+;    if keyword_set(redemodulate) then begin
+;      ;; We will delete all existing stokesIQUV*.fits files. An
+;      ;; alternative would be to delete only the ones involved in the
+;      ;; cube to be made.
+;
+;      dfiles = file_search(stokesdir+'stokesIQUV*.fits', count = Ndelete)
+;      if Ndelete gt 0 then begin
+;        print, inam + ' : Will delete the following Stokes files:'
+;        print, dfiles, format = '(a0)'
+;        file_delete, dfiles
+;      endif
+;    endif
+;
+;    ;; Define the Stokes file names needed for this nb cube
+;    snames = strarr(Nscans, Ntuning)    
+;    for iscan = 0, Nscans-1 do begin
+;      for ituning = 0, Ntuning-1 do begin
+;        snames[iscan, ituning] = stokesdir $
+;                                 + strjoin(['stokesIQUV' $
+;                                            , string(uscans[iscan], format = '(i05)') $
+;                                            , prefilter $
+;                                            , utuning[ituning] $
+;                                           ], '_') + '.fits' 
+;      endfor                    ; ituning
+;    endfor                      ; iscan
+;
+;    ;; Make Stokes cubes for each scan and state (if not done already) 
+;    todoindx = where(~file_test(snames), Ntodo)
+;    if Ntodo gt 0 then begin
+;      print, inam + ' : Will have to make '+strtrim(Ntodo, 2) + ' Stokes cubes.'
+;
+;;      ;; Get the FOV in the momfbd files.
+;;      mr = momfbd_read(wbgfiles[0], /names) ; Use /names to avoid reading the data parts
+;;      mrX01Y01 = mr.roi + mr.margin * [1, -1, 1, -1]
+;      
+;      ;; First get the inverse modulation matrices, make them if
+;      ;; needed. They are returned in the (size and) orientation of
+;      ;; the momfbd output.
+;      self -> inverse_modmatrices, prefilter, stokesdir $
+;                                   , camr = nbrcamera, immr = immr $
+;                                   , camt = nbtcamera, immt = immt $
+;                                   , no_ccdtabs = no_ccdtabs
+;
+;      swcs = {wave:dblarr(2,2)   $ ; WCS for this Stokes cube.
+;              , hplt:dblarr(2,2) $
+;              , hpln:dblarr(2,2) $
+;              , time:dblarr(2,2) $
+;             }
+;
+;      if Nthreads gt 1 then begin
+;
+;        ;; Make Nthreads bridges
+;        bridges = build_bridges(Nthreads)
+;        stop
+;        
+;        ;; Initialize the bridges
+;        for ithread = 0, Nthreads-1 do begin
+;
+;          red_progressbar, ithread, Nthreads, 'Set up '+strtrim(Nthreads, 2)+' IDL bridges'
+;          
+;          bridges[ithread] -> execute, 'a=crispred(dev='+strtrim(long(self.developer_mode), 2)+')' ; Set dev!
+;
+;          ;; Set constant variables
+;          bridges[ithread] -> setvar, 'immr', immr
+;          bridges[ithread] -> setvar, 'immt', immt  
+;          bridges[ithread] -> setvar, 'smooth_by_subfield', smooth_by_subfield
+;          bridges[ithread] -> setvar, 'smooth_by_kernel', smooth_by_kernel      
+;          bridges[ithread] -> setvar, 'clips', clips
+;          bridges[ithread] -> setvar, 'cmap', cmap1
+;          bridges[ithread] -> setvar, 'overwrite', keyword_set(redemodulate)
+;          bridges[ithread] -> setvar, 'tiles', tiles
+;          bridges[ithread] -> setvar, 'units', units
+;
+;        endfor                  ; ithread
+;      endif
+;      
+;      
+;      itodo = 0
+;      for iscan = 0, Nscans-1 do begin
+;
+;        undefine, wbg 
+;        
+;        for ituning = 0, Ntuning-1 do begin
+;
+;          if ~file_test(snames[iscan, ituning]) then begin
+;
+;            ;; Read the global WB file for this scan.
+;            if n_elements(wbg) eq 0 then wbg = red_readdata(wbgfiles[iscan])
+;            
+;            red_progressbar, itodo, Ntodo, /predict  $
+;                             , 'Making '+snames[iscan, ituning] 
+;
+;            self -> selectfiles, files = wbfiles, states = wbstates $
+;                                 , sel = these_wbindx, count = Nthesewb $
+;                                 , scan = uscans[iscan] $
+;                                 , fpi_states = utuning[ituning]
+;
+;            self -> selectfiles, files = nbtfiles, states = nbtstates $
+;                                 , sel = these_nbtindx, count = Nthesenbt $
+;                                 , scan = uscans[iscan] $
+;                                 , fpi_states = utuning[ituning]
+;
+;            self -> selectfiles, files = nbrfiles, states = nbrstates $
+;                                 , sel = these_nbrindx, count = Nthesenbr $
+;                                 , scan = uscans[iscan] $
+;                                 , fpi_states = utuning[ituning]
+;
+;            swcs.hpln = reform(wwcs[0,*,*,iscan])
+;            swcs.hplt = reform(wwcs[0,*,*,iscan])
+;            swcs.wave = nbtstates[these_nbrindx[0]].tun_wavelength*1d9
+;            ;; swcs.time = ; Set by demodulate
+;            
+;            ;; The demodulate method reads the momfbd output wb, nbt,
+;            ;; and wbr images for a particular scan and tuning state
+;            ;; and outputs a demodulated Stokes file.
+;            if Nthreads gt 1 then begin
+;              stop
+;              bridge = get_idle_bridge(bridges)
+;
+;              ;; Needed only for callback:
+;;              ud = {i:i,j:j,pout:pout} 
+;;              bridge -> setproperty, userdata=ud
+;
+;
+;              ;; Set varying variables
+;;              bridge -> setvar, 'in', in[i,j]
+;              bridge -> setvar, 'nbrfac', nbr_rpref[ituning]
+;              bridge -> setvar, 'nbrstates', nbrstates[these_nbrindx] ; IDL_IDLBRIDGE Error: Unsupported parameter type: IDL_TYP_STRUCT
+;
+;              bridge -> setvar, 'nbtfac', nbt_rpref[ituning]
+;              bridge -> setvar, 'nbtstates', nbtstates[these_nbtindx]
+;              bridge -> setvar, 'snames', snames[iscan, ituning]
+;              bridge -> setvar, 'wbg', wbg
+;              bridge -> setvar, 'wbstates', wbstates[these_wbindx]
+;              bridge -> setvar, 'wcs', swcs
+;
+;
+;              ;; Send the demodulation task to the bridge
+;;              bridge -> execute, /nowait, 'worker, in, out'
+;              bridge -> execute, /nowait $
+;                                 , 'self -> demodulate, snames, immr, immt' $
+;                                 + ', clips = clips' $                                  
+;                                 + ', cmap = cmap' $                                   
+;                                 + ', nbrfac = nbrfac' $                       
+;                                 + ', nbrstates = nbrstates' $           
+;                                 + ', nbtfac = nbtfac' $                       
+;                                 + ', nbtstates = nbtstates' $           
+;                                 + ', overwrite = overwrite' $                       
+;                                 + ', smooth_by_kernel = smooth_by_kernel' $            
+;                                 + ', smooth_by_subfield = smooth_by_subfield' $        
+;                                 + ', tiles = tiles' $                                  
+;                                 + ', units = units' $                                  
+;                                 + ', wbg = wbg' $                                      
+;                                 + ', wbstates = wbstates' $                
+;                                 + ', wcs = wcs'                            
+;              
+;            endif else begin
+;              self -> demodulate, snames[iscan, ituning], immr, immt $
+;                                  , smooth_by_subfield = smooth_by_subfield $ 
+;                                  , smooth_by_kernel = smooth_by_kernel $ 
+;                                  , clips = clips $
+;                                  , cmap = cmap1 $
+;                                  , nbrfac = nbr_rpref[ituning] $
+;                                  , nbrstates = nbrstates[these_nbrindx] $
+;                                  , nbtfac = nbt_rpref[ituning] $
+;                                  , nbtstates = nbtstates[these_nbtindx] $
+;                                  , overwrite = redemodulate $
+;                                  , tiles = tiles $
+;                                  , units = units $
+;                                  , wbg = wbg $
+;                                  , wcs = swcs $
+;                                  , wbstates = wbstates[these_wbindx]
+;              
+;            endelse
+;            
+;            itodo++
+;            
+;          endif
+;          
+;        endfor                  ; ituning 
+;      endfor                    ; iscan 
+;
+;      ;; Wait for bridges to finish, then destroy them
+;      if Nthreads gt 1 then begin
+;        barrier_bridges, bridges
+;        burn_bridges, bridges
+;      endif
+;      
+;    endif
 
     ;; Need to copy some info from the stokes cube headers to hdr.
     ;; E.g. the prpara info.
@@ -778,7 +794,6 @@ pro crisp::make_nb_cube, wcfile $
     
   endif
 
-  if keyword_set(demodulate_only) then return
   
   
   red_fitsaddkeyword, hdr, 'BITPIX', -32
