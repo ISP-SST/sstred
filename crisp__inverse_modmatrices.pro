@@ -38,6 +38,9 @@
 ; 
 ;   2018-12-21 : MGL. Removed keyword smooth.
 ; 
+;   2019-05-29: MGL. Use the cache to avoid reading the inverse
+;               modulation matrices over and over.
+; 
 ;-
 pro crisp::inverse_modmatrices, prefilter, dir $
                                 , camr = camr $
@@ -70,9 +73,19 @@ pro crisp::inverse_modmatrices, prefilter, dir $
 
     if file_test(fname) and ~keyword_set(overwrite) then begin
 
-      imm = red_readdata(fname, head = hdr)
-      ;; Get prpara info from hdr and check if they match current
-      ;; parameters?
+      ;; OK, we should use data from this file. But do we need to read
+      ;; it or have we read it already and put it in the cache?
+
+      this_cache = rdx_cacheget(fname, count = cnt)
+      if cnt eq 0 then begin
+        ;; Get prpara info from hdr and check if they match current
+        ;; parameters?
+        imm = red_readdata(fname, head = hdr)
+        ;; Put imm in the cache so we don't have to read it again.
+        rdx_cache, fname, { data:imm }
+      endif else begin
+        imm = this_cache.data
+      endelse
       
     endif else begin
 
