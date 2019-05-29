@@ -323,42 +323,33 @@ pro red::quicklook, align = align $
           files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
           self -> extractstates, files0, states0
           indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
-          ustat = states0[uniq(states0.tun_wavelength, sort(states0.tun_wavelength))].fullstate
+          ustat = states0[indx].fullstate
+          ustat_pat = reform((stregex(file_basename(states0[indx].filename) $
+                                      , '\.([0-9][0-9][0-9][0-9]\.[0-9][0-9][0-9][0-9]_[+-][0-9]*\.lc[0-4])\.' $
+                                      , /subex, /extract))[0,*])
           upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
           Npref = n_elements(upref)
-          
-          undefine, ustat2
+
+          undefine, pat
           for ipref = 0, Npref-1 do begin
             sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
             if Nmatch eq 1 then begin
               ;; If just one state for this prefilter, then use it!
-              red_append, ustat2, ustat[sindx[0]]
+              red_append, pat, ustat_pat[sindx[0]]
             endif else begin
               ;; Select red and blue wing points. The states are sorted in
               ;; wavelength order so we just have to pick the first and
               ;; last states for each prefilter.
-              red_append, ustat2, ustat[sindx[ 0]]
-              red_append, ustat2, ustat[sindx[-1]]
+              red_append, pat, ustat_pat[sindx[0]]
+              red_append, pat, ustat_pat[sindx[-1]]
               ;; Find and select the core.
               imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
-              if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
+              if Nmatch gt 0 then red_append, pat, ustat_pat[sindx[imatch]]
             endelse
-            ustat2 = red_strreplace(ustat2,upref[ipref]+'_',upref[ipref]+'.')
           endfor                ; ipref
-          ustat2 = red_strreplace(ustat2,'_lc','.lc')
 
-          ;; Pad the tuning
-          for i = 0, n_elements(ustat2)-1 do begin
-            part1 = strmid(ustat2[i],0,11)
-            part2 = strmid(ustat2[i],11)
-            tun = long(part2)
-            pos = strpos(part2, '.')
-            if pos ne -1 then part3 = strmid(part2, pos) else part3 = ''
-            ustat2[i] = part1 + string(tun, format = '(i04)') + part3
-          endfor
+          pat = '*'+pat+'*'
           
-          ;; We need to pad the tuning here!
-          pat = '*.'+ustat2+'.*'
           files = red_file_search(pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
 
         endif else begin        
@@ -506,6 +497,9 @@ pro red::quicklook, align = align $
       self -> selectfiles, files = files, states = states $
                            , ustat = ustat[istate] $
                            , selected = sel, count = Nsel
+
+      if Nsel eq 0 then continue
+      
       uscan = states[sel[uniq(states[sel].scannumber,sort(states[sel].scannumber))]].scannumber
       Nscans = n_elements(uscan)
       Nexp_available = Nsel/Nscans
