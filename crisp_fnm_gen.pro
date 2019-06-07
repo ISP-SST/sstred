@@ -112,7 +112,7 @@ pro crisp_fnm_gen, filename $
     ;dirname_format += 'C(CHI2.2, ":", CMI2.2, ":", CSI2.2), A1, A, A1)"'
     ;dirname_vars += '"time, "/", camera, "/"'
     dirname_format += '3(I02,A1), A, A1, '
-    dirname_vars += 'H, ":", M, ":", S, "/", camera, "/", '
+    dirname_vars += 'hr, ":", min, ":", sec, "/", camera, "/", '
         
     ll = strlen(dirname_format)
     dirname_format = strmid(dirname_format, 0, ll-2) + ')"'
