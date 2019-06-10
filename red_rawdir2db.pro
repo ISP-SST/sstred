@@ -44,6 +44,8 @@
 ;   2019-01-31 : MGL. First version.
 ;
 ;   2019-05-28 : OA. Second version
+;
+;   2019-06-06 : OA. Add check for incomplete scans (to be rejected)
 ; 
 ;-
 pro red_rawdir2db, all = all $
@@ -56,8 +58,6 @@ pro red_rawdir2db, all = all $
     print, inam+' : Please provide at least one of the dir or date keywords.'
     retall
   endif
-  
-  tic
   
   if n_elements(date) eq 1 then begin
     ;; If the date keyword is given, then make a top search directory
@@ -306,8 +306,7 @@ pro red_rawdir2db, all = all $
 
       ;; We need to take some extra care with the STATE keyword for
       ;; CHROMIS data.
-      state = strtrim(fxpar(h, 'STATE'))
-      if state eq '__+0000' then state='' ; for some reason for Crisp-W darks state is '__+0000'
+      state = strtrim(fxpar(h, 'STATE'))      
       
       if instrume eq 'CHROMIS' then begin
         
@@ -357,6 +356,16 @@ pro red_rawdir2db, all = all $
             ;; State is in the "prefilter_line_[+-]tuning" format.
             ;; Don't change it!
           end
+          strmatch(state,'wheel[0-9]*') : begin
+            if ~strmatch(state,'hrz[0-9]*') then begin
+              ; WB flats
+              pos=stregex(state,'wheel([0-9]*)')
+              wheel =  long(strmid(state,pos+5,5))
+              dbinfo[ifile].WHEEL = wheel
+              nbpref = nbprefs[wheel-1]              
+              state = nbpref + '_' + nbpref + '_+000' ;fake state
+            endif
+          end
           else : begin
             ;; No state specified, could be darks. Or WB flats for
             ;; which no simultaneous NB data were collected. 
@@ -365,11 +374,12 @@ pro red_rawdir2db, all = all $
         endcase
 
       endif else begin ; only two instruments at the moment     
-        ;; CRISP has one frame per file at the present        
+        ;; CRISP has one frame per file at the present
+        if state eq '__+0000' then state='' ; for some reason for Crisp-W darks state is '__+0000'
         if state ne '' then begin
-          ;for Crisp WB flats red_readhead construct state without tuning
+          ; for Crisp WB flats red_readhead construct state without tuning
           ; information and we need it for correct database, 
-          ; so let' get it from a filename
+          ; so let's get it from a filename
           st = stregex(files[ifile], '([0-9][0-9][0-9][0-9])_([+-][0-9]*)', /extract,/subexpr)
           state = st[0]
           dbinfo[ifile].WHEEL = fix(st[1]) ; in fact reference line
@@ -419,13 +429,28 @@ pro red_rawdir2db, all = all $
       value = fxpar(h, 'DETTEMP' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETTEMP  = value 
 
     endfor                      ; ifile
+
+    ;; Check for complete scans only
+    scans = dbinfo[uniq(dbinfo.scannum, sort(dbinfo.scannum))].scannum
+    Nscans = n_elements(scans)
+    f_scan = lonarr(Nscans)
+    for iscan = 0L, Nscans-1 do $
+       f_scan[iscan] = n_elements(where(dbinfo.scannum eq scans[iscan]))
+    mask = replicate(1B, Nfiles)
+    for iscan = 1L, Nscans-1 do begin
+      if f_scan[iscan]-f_scan[0] lt 0 then begin
+        print, inam + ' : WARNING : ' + dbinfo[0].camera + ': Incomplete scan nr ' + strtrim(scans[iscan], 2)
+        print, inam + '             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
+               + strtrim(f_scan(0), 2) + ' files.  Skipping it'
+        mask[where(dbinfo.scannum EQ scans[iscan])] = 0
+      endif
+    endfor                  ; iscan
+    idx = where(mask)
+    dbinfo = dbinfo[idx]
  
     ;; Send the array of structs as input to a command that knows what
-    ;; info should go into what table, and writes it there.
-    toc
-    tic
+    ;; info should go into what table, and writes it there.   
     red_rawfile2db, dbinfo
-    toc
     
   endfor                        ; icam
 

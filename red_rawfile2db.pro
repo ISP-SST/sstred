@@ -43,7 +43,7 @@ pro red_rawfile2db, dbinfo, debug=debug
 
   Nfiles =  n_elements(dbinfo)
   if Nfiles eq 0 then begin
-    print, inam, 'The is nothing to put in the database. The array of structures is empty.' 
+    print, inam, 'There is nothing to put in the database. The array of structures is empty.' 
     return
   endif
   

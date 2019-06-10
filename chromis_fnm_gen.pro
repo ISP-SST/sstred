@@ -98,13 +98,13 @@ pro chromis_fnm_gen, filename $
     ;; unidentified type should be stored as "science data" in the
     ;; data base.
     dirname_format += 'A, A, A1, '
-    dirname_vars += '"CHROMIS", datatype, "/", '
+    dirname_vars += '"CHROMIS-", datatype, "/", '
 
     ;; Followed by the timestamp and the camera
     ;dirname_format += 'C(CHI2.2, ":", CMI2.2, ":", CSI2.2), A1, A, A1)"'
     ;dirname_vars += '"time, "/", camera, "/"'
     dirname_format += '3(I02,A1), A, A1, '
-    dirname_vars += 'H, ":", M, ":", S, "/", camera, "/", '
+    dirname_vars += 'hr, ":", min, ":", sec, "/", camera, "/", '
        
     ll = strlen(dirname_format)
     dirname_format = strmid(dirname_format, 0, ll-2) + ')"'
@@ -124,14 +124,21 @@ pro chromis_fnm_gen, filename $
   if basename ne '' and arg_present(fnm_gen) then begin
 
     basename_parts = strsplit(basename, '_', /extract)
-    ; Find out datatype
-    if n_elements(basename_parts) eq 4 then begin ; darks or WB flats for which no simultaneous NB data were collected. 
-      filename_format += '3A, I05, A1, I07, A)"'
-      filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, ".fits", '
-    endif else begin ; science(data), flats, pinholes
-      filename_format += '3A, I05, A, I07, A, I05, A, I05, A)"'
-      filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_wheel", wheel, "_hrz", hrz, ".fits", '  
-    endelse
+                                ; Find out datatype
+    case n_elements(basename_parts) of
+      4: begin ; darks 
+           filename_format += '3A, I05, A1, I07, A)"'
+           filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, ".fits", '
+         end
+      5: begin                  ; WB flats
+        filename_format += '3A, I05, A, I07, A, I05, A)"'
+        filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_wheel", wheel, ".fits",'
+      end
+      else : begin ; science(data), NB flats, pinholes
+        filename_format += '3A, I05, A, I07, A, I05, A, I05, A)"'
+        filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_wheel", wheel, "_hrz", hrz, ".fits", '  
+      end
+    endcase
  
     fnm_gen = 'fnm = string(' + filename_vars + filename_format + ')'       
 
@@ -148,6 +155,7 @@ end
 
 paths = '/data/2018/2018-05/2018-05-26/' $
         + [$
+        'CHROMIS-flats/11:32:24/Chromis-W/sst_camXXVIII_00002_0000200_wheel00005.fits', $
         'CHROMIS-darks/15:24:35/Chromis-D/sst_camXXVII_00000_0000000.fits', $
         'CHROMIS-pinholes/15:20:04/Chromis-D/sst_camXXVII_00000_0000000_wheel00005_hrz32122.fits'  $                
           ]
@@ -157,8 +165,8 @@ camera='Chromis-N'
 datatype='Darks'
 scannum=12
 first_frame=200
-wheel='wheel00005'
-hrz='hrz32122'
+wheel=5
+hrz=32122
 Y=2018
 M=7
 D=3
