@@ -308,6 +308,16 @@ pro red::quicklook, align = align $
     if strmid(cam, 0, 5) eq 'Crisp' then begin
 
       ;; CRISP data
+
+      ;; Search file names for scan 0, use them to find out what states
+      ;; are available.
+      files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+      self -> extractstates, files0, states0
+      indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
+      ustat = states0[indx].fullstate
+      upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
+      Npref = n_elements(upref)
+
       
       if n_elements(use_pat) gt 0 then begin
 
@@ -318,17 +328,9 @@ pro red::quicklook, align = align $
 
         if keyword_set(core_and_wings) then begin
 
-          ;; Search file names for scan 0, use them to find out what states
-          ;; are available.
-          files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-          self -> extractstates, files0, states0
-          indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
-          ustat = states0[indx].fullstate
           ustat_pat = reform((stregex(file_basename(states0[indx].filename) $
                                       , '\.([0-9][0-9][0-9][0-9]\.[0-9][0-9][0-9][0-9]_[+-][0-9]*\.lc[0-4])\.' $
                                       , /subex, /extract))[0,*])
-          upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
-          Npref = n_elements(upref)
 
           undefine, pat
           for ipref = 0, Npref-1 do begin
