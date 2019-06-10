@@ -306,6 +306,12 @@ pro red::quicklook, align = align $
     ;; Try to limit the number of files we need to extract states for.
 
     if strmid(cam, 0, 5) eq 'Crisp' then begin
+      instrument = 'CRISP'
+    endif else begin
+      instrument = 'CHROMIS'
+    endelse
+
+    if instrument eq 'CRISP' then begin
 
       ;; CRISP data
 
@@ -713,8 +719,12 @@ pro red::quicklook, align = align $
                             , 'Wavelength based on prefilter'
         red_fitsaddkeyword, anchor = anchor, hhh, 'WAVEUNIT', -9 $
                             , 'Wavelength unit 10^WAVEUNIT m = nm'
+        red_fitsaddkeyword, anchor = anchor, hhh, 'INSTRUME', instrument $
+                            , 'CRISP or CHROMIS data?'
         writefits, tmpoutfile, cube, hhh
 
+
+        
         ;; Spawn the NN command and wait for it to terminate
         print, 'Do neural net deconvolution of '+strtrim(Nscans, 2)+' scans:'
         tic
