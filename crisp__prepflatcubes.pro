@@ -218,6 +218,9 @@ pro crisp::prepflatcubes, flatdir = flatdir $
                           
             ;; Load non-polarized flats 
             tmp = red_readdata(sstates[istate].filename, /silent)
+            if ~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772') then begin
+              tmp = rdx_descatter(temporary(tmp), bg, psf, /verbose, nthreads = nthreads)
+            endif
             
           endelse
           
