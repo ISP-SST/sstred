@@ -36,12 +36,19 @@
 ;
 ;      Set this to overwrite an existing file.
 ;
+;    release_date : in, optional, type=string
+;
+;      The value of the RELEASE keyword, a date after which the data
+;      are not proprietary.
+;
+;    release_comment : in, optional, type=string
+;
+;      The value of the RELEASEC keyword, a comment with details about
+;      the proprietary state of the data, and whom to contact.
+;
 ; :History:
 ; 
 ;   2019-06-12 : MGL. First version.
-; 
-; 
-; 
 ; 
 ;-
 pro red::fitscube_export, filename $
