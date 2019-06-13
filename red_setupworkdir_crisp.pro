@@ -534,7 +534,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   printf, Slun, ';; Post-MOMFBD stuff:'
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /negang, /interactive, /autocrop"
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /negang, /interactive, /autocrop, /align_interactive"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
   printf, Slun, "; or "
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
