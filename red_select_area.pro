@@ -54,7 +54,10 @@ function red_select_area, im, noedge=noedge, xroi = xroi
     if(keyword_set(noedge)) then $
        print, 'The outermost '+strtrim(margin, 2)+' pixels are automatically deselected (as indicated).'
 
-    XROI, bytscl(imshow), Regions_Out=ROIs, /Block, title = 'Deselect areas.'
+    
+    mn = median(im)-2.5*robust_sigma(im)
+    mx = median(im)+2.5*robust_sigma(im)
+    XROI, bytscl(imshow, mn, 1.5*mx), Regions_Out=ROIs, /Block, title = 'Deselect areas.'
 
     if ROIs ne !null then $
        for iroi = 0, n_elements(ROIs)-1 do $
@@ -63,7 +66,7 @@ function red_select_area, im, noedge=noedge, xroi = xroi
     Obj_Destroy, ROIs
 
     scrollwindow, xs = dims[0], ys = dims[1]
-    tvscl, mask*im
+    tv, bytscl(mask*im, mn, mx)
 
     return, mask
 
