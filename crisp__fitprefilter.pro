@@ -122,6 +122,10 @@
 ;
 ;   2018-12-17 : MGL. New keywords shift, init, fixcav, nasym,
 ;                stretch. 
+;
+;   2019-06-14 : MGL. Do backscatter correction for 8542 and 7772
+;                (this actually changes the measured intensity) and
+;                gain correction of images.
 ; 
 ;-
 pro crisp::fitprefilter, cwl = cwl $
@@ -434,6 +438,14 @@ pro crisp::fitprefilter, cwl = cwl $
       wav    = dblarr(Nwav)
       pref   = strarr(Nwav)
       specwb = dblarr(Nwav)
+
+      if self.dodescatter and (statesNB[0].prefilter eq '8542' $
+                               or statesNB[0].prefilter eq '7772') then begin
+        self -> loadbackscatter, statesNB[0].detector $
+                                 , statesNB[0].prefilter, bgainn, bpsfn
+        self -> loadbackscatter, statesWB[0].detector $
+                                 , statesWB[0].prefilter, bgainw, bpsfw
+      end
       
       for istate = 0L, Nwav-1 do begin
 
@@ -445,7 +457,7 @@ pro crisp::fitprefilter, cwl = cwl $
         pos = where(statesNB.fpi_state eq ustates[istate].fpi_state, count)
         
         ;; Get darks for this camera
-        self -> get_calib, statesNB[pos[0]], darkdata=darkN, status = status
+        self -> get_calib, statesNB[pos[0]], darkdata=darkN, gaindata=gainN, status = status
         if status ne 0 then begin
           print, inam+' : ERROR, cannot find dark file for NB'
           stop
@@ -453,7 +465,7 @@ pro crisp::fitprefilter, cwl = cwl $
         dim = size(darkN, /dim)
         
         if keyword_set(unitscalib) then begin
-          self -> get_calib, statesWB[pos[0]], darkdata=darkW, status = status
+          self -> get_calib, statesWB[pos[0]], darkdata=darkW, gaindata=gainW, status = status
           if status ne 0 then begin
             print, inam+' : ERROR, cannot find dark file for WB'
             stop
@@ -464,13 +476,25 @@ pro crisp::fitprefilter, cwl = cwl $
         ;; "sum" is the average of the summed frames, so still in counts
         ;; for a single frame. Also correct for dark.
         imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4) - darkN
-        if keyword_set(unitscalib) then $
-           imW = rdx_sumfiles(statesWB[pos].filename, /check, nthreads = 4) - darkW
+        if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
+                                 or statesNB[pos[0]].prefilter eq '7772') then begin
+          imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
+        endif
+        imN *= rdx_fillpix(gainN)
+
+        if keyword_set(unitscalib) then begin
+          imW = rdx_sumfiles(statesWB[pos].filename, /check, nthreads = 4) - darkW
+          if self.dodescatter and (statesWB[pos[0]].prefilter eq '8542' $
+                                   or statesWB[pos[0]].prefilter eq '7772') then begin
+            imW = rdx_descatter(temporary(imW), bgainw, bpsfw, nthreads = nthread)
+          endif
+          imW *= rdx_fillpix(gainW)
+        endif
         
         ;; Get the spectrum point in counts
         if keyword_set(mask) then begin
           if istate eq 0 then begin
-            mmask = red_select_area(imN[*,*,0], /noedge, /xroi)
+            mmask = red_select_area(imN, /noedge, /xroi)
             ind = where(mmask gt 0)
           endif 
           spec[istate] = median(double(imN[ind]))
