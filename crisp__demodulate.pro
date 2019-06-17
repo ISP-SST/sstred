@@ -232,12 +232,12 @@ pro crisp::demodulate, outname, immr, immt $
     window, 8, xs = testsz, ys = testsz
     for ilc = 0L, Nlc-1 do $
        for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(centerpic(reform(immr[ilc+istokes*3,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+          tvscl, rebin(red_centerpic(reform(immr[ilc+istokes*3,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
     
     window, 9, xs = testsz, ys = testsz
     for ilc = 0L, Nlc-1 do $
        for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(centerpic(reform(immt[ilc+istokes*3,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+          tvscl, rebin(red_centerpic(reform(immt[ilc+istokes*3,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
 
     stop
     
@@ -354,12 +354,12 @@ pro crisp::demodulate, outname, immr, immt $
     window, 8, xs = testsz, ys = testsz
     for ilc = 0L, Nlc-1 do $
        for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(centerpic(reform(immr_dm[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+          tvscl, rebin(red_centerpic(reform(immr_dm[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
     
     window, 9, xs = testsz, ys = testsz
     for ilc = 0L, Nlc-1 do $
        for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(centerpic(reform(immt_dm[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+          tvscl, rebin(red_centerpic(reform(immt_dm[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
 
     stop
     
@@ -372,12 +372,12 @@ pro crisp::demodulate, outname, immr, immt $
     window, 8, xs = testsz, ys = testsz
     for ilc = 0L, Nlc-1 do $
        for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(centerpic(reform(mymr[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+          tvscl, rebin(red_centerpic(reform(mymr[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
       
     window, 9, xs = testsz, ys = testsz
     for ilc = 0L, Nlc-1 do $
        for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(centerpic(reform(mymt[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+          tvscl, rebin(red_centerpic(reform(mymt[ilc, istokes,*,*]), sz = testsz), testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
 
     stop
     
