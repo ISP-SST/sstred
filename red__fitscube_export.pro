@@ -28,11 +28,12 @@
 ;    keywords: in, optional, type=struct
 ;
 ;      Keywords and values to be added to the header. Keywords are
-;      checked agains a list of SOLARNET-approved keywords.
+;      upcased and checked agains a list of SOLARNET-approved
+;      keywords.
 ;
 ;    no_spectral_file: in, optional, type=boolean
 ;
-;      Do not copy the sp version of the input file.
+;      Do not copy the sp version of the input file, if there is one.
 ;
 ;    outdir: in, optional, type=string, default='/storage_new/science_data/YYYY-MM-DD/'
 ;   
@@ -56,8 +57,11 @@
 ; 
 ;   2019-06-12 : MGL. First version.
 ; 
+;   2019-06-17 : MGL. New keyword help.
+; 
 ;-
 pro red::fitscube_export, filename $
+                          , help = help $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
                           , outdir = outdir $
@@ -66,23 +70,39 @@ pro red::fitscube_export, filename $
                           , release_comment = RELEASEC 
   
   inam = red_subprogram(/low, calling = inam1)
+  ;; The keywords keyword will be checked against this list.
+  approved_keywords = strarr(10)
+  help_keywords     = strarr(10)
+  approved_keywords[0] = ['AUTHOR']   & help_keywords[0] = 'Who designed the observation'
+  approved_keywords[1] = ['DATATAGS'] & help_keywords[1] = 'Any additional search terms that do not fit in other keywords'
+  approved_keywords[2] = ['CAMPAIGN'] & help_keywords[2] = 'Coordinated campaign name/number, including instance number'
+  approved_keywords[3] = ['OBSERVER'] & help_keywords[3] = 'Who acquired the data'
+  approved_keywords[4] = ['OBS_MODE'] & help_keywords[4] = 'A string uniquely identifying the mode of operation'
+  approved_keywords[5] = ['PLANNER']  & help_keywords[5] = 'Observation planner(s)'
+  approved_keywords[6] = ['PROJECT']  & help_keywords[6] = 'Name(s) of the project(s) affiliated with the data'
+  approved_keywords[7] = ['REQUESTR'] & help_keywords[7] = 'Who requested this particular observation'
+  approved_keywords[8] = ['SETTINGS'] & help_keywords[8] = 'Other settings - numerical values "parameter1=n, parameter2=m"'
+  approved_keywords[9] = ['TELCONFG'] & help_keywords[9] = 'Telescope configuration'
 
+
+  if keyword_set(help) then begin
+    print
+    print, inam + ' : These are the approved keywords:'
+    print
+    for i = 0, n_elements(approved_keywords)-1 do begin
+      st = '         : ' + help_keywords[i]
+      strput, st, approved_keywords[i], 0
+      print, st
+    endfor
+    print
+    return
+  endif
+
+  
+  
   ;; This will be used for a new DATE header and also to indicate the
   ;; version of the cube as part of the file name.
   new_DATE = red_timestamp(/utc,/iso)
-
-  ;; The keywords keyword will be checked against this list.
-  approved_keywords = ['AUTHOR'      $ ; Who designed the observation
-                       , 'DATATAGS'  $ ; Any additional search terms that do not fit in other keywords.
-                       , 'CAMPAIGN'  $ ; Coordinated campaign name/number, including instance number
-                       , 'OBSERVER'  $ ; Who acquired the data.
-                       , 'OBS_MODE'  $ ; A string uniquely identifying the mode of operation.
-                       , 'PLANNER'   $ ; Observation planner(s).
-                       , 'PROJECT'   $ ; Name(s) of the project(s) affiliated with the data
-                       , 'REQUESTR'  $ ; Who requested this particular observation.
-                       , 'SETTINGS'  $ ; Other settings - numerical values “parameter1=n, parameter2=m”.
-                       , 'TELCONFG'  $ ; Telescope configuration.
-                      ]
 
   indir  = file_dirname(filename)+'/'
   infile = file_basename(filename)
@@ -141,7 +161,7 @@ pro red::fitscube_export, filename $
 
   for itag = 0, n_tags(keywords)-1 do begin
     ;; Add FITS header keywords as requested
-    if max(strmatch(approved_keywords, (tag_names(keywords))[itag])) then begin
+    if max(strmatch(approved_keywords, strupcase((tag_names(keywords))[itag]))) then begin
       red_fitsaddkeyword, anchor = anchor, hdr $
                           , strupcase((tag_names(keywords))[itag]), keywords.(itag)
     endif else begin
