@@ -101,12 +101,16 @@
 ;
 ;   2018-10-05 : MGL. New keyword margin.
 ;
+;   2019-06-18 : THI. Don't overwrite existing results when processing a
+;                different prefilter. New keyword overwrite. 
+;
 ;-
 pro red::pinholecalib, cams = cams $
                        , dir = dir $
                        , margin = margin $
                        , max_shift = max_shift $
                        , nref = nref $
+                       , overwrite = overwrite $
                        , pref = pref $
                        , refcam = refcam $
                        , smooth = smooth $
@@ -171,6 +175,12 @@ pro red::pinholecalib, cams = cams $
     print, inam, ' : index of reference camera out of range: ', refcam, ' >= ', Ncams
     return
   endif
+  
+  if( file_test(output_file) ) then begin
+    print, inam, ' : loading existing alignments: ', output_file
+    restore, output_file
+  endif
+
 
   all_files = file_search( ph_dir + '*.pinh.fits' )
   nf = n_elements( all_files )
@@ -201,9 +211,32 @@ pro red::pinholecalib, cams = cams $
         print, inam, ' : No (unique) pair of pinhole images.'
         continue
       endif
+      
       if self->match_prefilters( ref_states_unique[iref].prefilter $
                                  , cam_states[cam_idx].prefilter ) eq 0 then continue
 
+      if n_elements( processed_pairs ) gt 0 then begin
+        found = where( processed_pairs eq  ref_states_unique[iref].fullstate+cam_states[cam_idx].fullstate )
+        if max(found) ge 0 then begin
+          ;; pair is already processed during this run of pinholecalib
+          continue
+        endif
+      endif
+      
+      align_idx = -1
+      if n_elements( alignments ) gt 0 then begin
+        align_idx = where( (alignments.state1.fullstate eq ref_states_unique[iref].fullstate) and $
+                           (alignments.state2.fullstate eq cam_states[cam_idx].fullstate) )
+      endif
+      if max(align_idx) lt 0 then begin
+        ;; Pair does not exist in alignments, append it.
+        align_idx = n_elements( alignments )
+        red_append, alignments, { state1:ref_states_unique[iref], state2:cam_states[cam_idx], map:fltarr(3,3) }
+      endif else begin
+        ;; pair already exists: Run again if requested, or if the existing map is invalid
+        if( ~keyword_set(overwrite) and alignments[align_idx].map[2,2] eq 1 ) then continue
+      endelse
+      
       this_prefilter = cam_states[cam_idx].prefilter
       if this_prefilter ne last_prefilter then undefine, this_init
       
@@ -236,7 +269,7 @@ pro red::pinholecalib, cams = cams $
                                 , max_shift=max_shift $
                                 , margin = margin )
       
-      if (last_prefilter ne this_prefilter) then begin
+      if (last_prefilter ne this_prefilter) or (this_map[2,2] ne 1) then begin
         if keyword_set(verify) then begin
           this_map = red_phverify( ref_img, cam_img, this_map )
           this_init = this_map
@@ -245,10 +278,9 @@ pro red::pinholecalib, cams = cams $
         ; TODO: sanity check for maps within the same prefilter.
         ; e.g. check how different this_map is from this_init ??
       endelse
-      red_append, alignments, { state1:ref_states_unique[iref] $
-                                , state2:cam_states[cam_idx] $
-                                , map:this_map }
+      alignments[align_idx].map = this_map
       last_prefilter = this_prefilter
+      red_append, processed_pairs, alignments[align_idx].state1.fullstate+alignments[align_idx].state2.fullstate
     endfor                      ; iref
     
     okmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] eq 1) )
@@ -294,16 +326,12 @@ pro red::pinholecalib, cams = cams $
       print, 'window, 1, xs=sz[0], ys=sz[1]'
       print, 'tvscl, rdx_img_project( alignments[ind].map, ph1 )'
       print, 'blink, [0,1]'
-      print, LF + 'If the images look fine, but the matrix does not look like:'
+      print, LF + 'If the images look fine, verify that the mapping-matrix looks approximately like:'
       print, ' ~\pm{1}     ~0     x-origin' 
       print, '   ~0     ~\pm{1}   y-origin' 
       print, '   ~0        ~0        1' + LF
-      print, 'Try to make a better fit by tweaking the parameters in the call (shown here with the default values):' + LF
-      print, 'map = rdx_img_align( ph1, ph2, nref=4, threshold=0.0, smooth=0, max_shift=200, verbose=0, margin=30)' + LF
-      print, 'Use verbose=2 to get more info from the calibration.'
-      print, 'There should be ~100 keypoints (=pinholes) found in each image.'
-      print, 'Once you find parameters that gives sane matrices for the previous failures, re-run a->pinholecalib with those parameters.'
-      stop
+      print, 'If not, re-run pinholecalib with the /verify keyword.'
+      print, 'This will open a simple GUI that can be used to tweak the parameters until the calibration looks ok (i.e. pinholes overlap).'
     endif
   endfor                        ; icam
 
