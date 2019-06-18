@@ -51,7 +51,7 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
 
     n_elements(prefilters) gt 0 and n_elements(timestamps) gt 0 : begin
       
-      print, inam + ' : Specifying both prefilters and timestamps not yet implemented.'
+      print, inam + ' : Specifying both prefilters and timestamps not implemented (yet).'
       return
       
     end
@@ -66,7 +66,7 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
                          , 'gaintables/cam*_'+pref+'_????_[+-]*' $
                          , 'gaintables/??:??:??/cam*_?????_'+pref+'_????_[+-]*' $
                          , 'cmap_intdif/*/cam*.'+pref+'.intdif.*' $
-                         , '*mfbd*/??:??:??/'+pref $
+                         , '*mfbd*/??:??:??/'+pref+'/cfg/results' $
                        ] 
 
         file_list = file_search(searchstring, count = Nfiles)
@@ -76,7 +76,12 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
           print, inam + ' : Will delete files associated with prefilter ' + pref + ':'
           print, file_list, format = '(a0)'
           print
-          ;;file_delete, file_list, /allow_nonexistent, /quiet, /recursive
+          s = ''
+          read, 'Do it [N]?', s
+          if s eq '' then s = 'N'
+          if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
+            file_delete, file_list, /allow_nonexistent, /quiet, /recursive
+          endif
         endif else begin
           print, inam + ' : There are no files associated with prefilter ' + pref 
         endelse
@@ -90,7 +95,10 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
       for itime = 0, n_elements(timestamps)-1 do begin
 
         timestamp = timestamps[itime]
-        searchstring = ['gaintables/', 'cmap_intdif/', '*mfbd*/'] + timestamp
+        searchstring = ['gaintables/'+ timestamp $
+                        , 'cmap_intdif/'+ timestamp $
+                        , '*mfbd*/'+timestamp+'/????/cfg/results' $
+                       ] 
 
         dir_list = file_search(searchstring, count = Nfiles)
 
@@ -99,7 +107,12 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
           print, inam + ' : Will delete files associated with timestamp ' + timestamp + ':'
           print, dir_list, format = '(a0)'
           print
-          ;;file_delete, dir_list, /allow_nonexistent, /quiet, /recursive
+          s = ''
+          read, 'Do it [N]?', s
+          if s eq '' then s = 'N'
+          if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
+            file_delete, dir_list, /allow_nonexistent, /quiet, /recursive
+          endif
         endif else begin
           print, inam + ' : There are no files associated with timestamp ' + timestamp 
         endelse
@@ -110,14 +123,14 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
     ;; --------------------
     
     else : begin
-      dir_list = self.out_dir + ['darks' $
-                                 , 'flats' $
-                                 , 'data' $
-                                 , 'gaintables' $
-                                 , 'pinhs' $
-                                 , 'polcal_sums' $
-                                 , 'polcal_cubes' $
-                                ]
+      dir_list = ['darks' $
+                  , 'flats' $
+                  , 'data' $
+                  , 'gaintables' $
+                  , 'pinhs' $
+                  , 'polcal_sums' $
+                  , 'polcal_cubes' $
+                 ]
 
       momfbd_output = file_search('*mfbd*/??:??:??/????/cfg/results', count = Nmomfbd)
       if Nmomfbd gt 0 then red_append, dir_list, momfbd_output
@@ -126,8 +139,11 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
       print, inam + ' : Will delete the following directories' 
       print, dir_list, format = '(a0)'
       print
-      ;;file_delete, dir_list, /allow_nonexistent, /quiet, /recursive
-    end
+      if s eq '' then s = 'N'
+      if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
+        file_delete, dir_list, /allow_nonexistent, /quiet, /recursive
+      endif
+    endcase
     
   endcase
   
