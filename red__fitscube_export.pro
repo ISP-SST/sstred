@@ -42,9 +42,14 @@
 ;
 ;      Do not copy the sp version of the input file, if there is one.
 ;
-;    outdir: in, optional, type=string, default='/storage_new/science_data/YYYY-MM-DD/'
+;    outdir: in, out, optional, type=string, default='/storage_new/science_data/YYYY-MM-DD/'
 ;   
-;      The directory in which to store the new file.
+;      The directory in which to store the new file/to which the file
+;      was exported.
+;
+;    outfile: out, optional, type=string
+;   
+;      The name of the file to which the data were exported.
 ;
 ;    overwrite: in, optional, type=boolean
 ;
@@ -66,8 +71,8 @@
 ; 
 ;   2019-06-17 : MGL. New keyword help.
 ; 
-;   2019-06-18 : MGL. New keyword smooth_width. Add prstep header
-;                info.
+;   2019-06-18 : MGL. New keywords smooth_width and outfile. Add
+;                prstep header info.
 ; 
 ;-
 pro red::fitscube_export, filename $
@@ -75,6 +80,7 @@ pro red::fitscube_export, filename $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
                           , outdir = outdir $
+                          , outfile = outfile $
                           , overwrite = overwrite $
                           , release_date = RELEASE $
                           , release_comment = RELEASEC  $
@@ -147,8 +153,7 @@ pro red::fitscube_export, filename $
     s = ''
     print, inam + ' : There are '+strtrim(Noldfiles, 2)+' older versions of this file in '+outdir+':'
     print, oldfiles, format = '(a0)'
-    print, inam + ' : Delete them [N]? '
-    read, s
+    read, '    Delete them [N]? ', s
     if s eq '' then s = 'N'
     if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
       file_delete, oldfiles
@@ -312,16 +317,64 @@ pro red::fitscube_export, filename $
 
 end
 
-a = crispred(/dev)
+;; Code for testing
 
-filename = '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb/nb_6302_2016-09-19T09:30:20_scans=12-16_stokes_corrected_im.fits'
+if 0 then begin
+  cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'
+  filename = 'cubes_nb/nb_6302_2016-09-19T09:30:20_scans=12-16_stokes_corrected_im.fits'
+  a = crispred(/dev)
+endif else begin
+  cd, '/scratch/mats/2016.09.19/CHROMIS-jan19/'
+  filename = 'cubes_nb/nb_3950_2016-09-19T09:28:36_scans=69-75_corrected_im.fits'
+  a = chromisred(/dev)
+endelse
 
-a -> fitscube_export, filename $
+
+
+a -> fitscube_export, filename, outdir = outdir, outfile = outfile $
                       , /smooth $
                       , keywords = { observer:'Some person' $
                                      ,  requestr:'Boss person' $
                                    } $
                       , release_comment = 'These are test data, never to be released' $
                       , release_date = '2999-09-19'
+
+
+search_keywords = [ 'STARTOBS' $ 
+                    , 'DATE' $
+                    , 'DATE-BEG' $
+                    , 'DATE-AVG' $
+                    , 'DATE-END' $
+                    , 'RELEASE' $
+                    , 'RELEASEC' $
+                    , 'INSTRUME' $
+                    , 'TELESCOP' $
+                    , 'WCSNAMEA' $
+                    , 'CRVAL1A' $
+                    , 'CRVAL2A' $
+                    , 'NAXIS1' $
+                    , 'NAXIS2' $
+                    , 'NAXIS3' $
+                    , 'NAXIS4' $
+                    , 'NAXIS5' $
+                    , 'CTYPE1' $
+                    , 'CTYPE2' $
+                    , 'CTYPE3' $
+                    , 'CTYPE4' $
+                    , 'CTYPE5' $
+                    , 'WAVEMIN' $
+                    , 'WAVEMAX' $
+                    , 'WAVEUNIT' $
+                  ]
+
+h = headfits(outdir+'/'+outfile)
+for i = 0, n_elements(search_keywords)-1 do begin
+  keyval = fxpar(h, search_keywords[i], count = n)
+  if n gt 0 then begin
+    print,search_keywords[i], ' : ', keyval
+  endif else begin
+    print,search_keywords[i], ' : -- '
+  endelse
+endfor
 
 end
