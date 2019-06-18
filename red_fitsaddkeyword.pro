@@ -147,7 +147,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
       force = 1
       case 1 of
         ;; If keyword anchor is given and non-nil, interpret
-        ;; before/after as logical and place the new keyword
+        ;; before/after as boolean and place the new keyword
         ;; before/after the previous keyword. (As in fxaddpar, keyword
         ;; after takes precedence.)
         keyword_set(after)  : aft = anchor
