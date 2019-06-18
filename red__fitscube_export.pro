@@ -24,7 +24,14 @@
 ; 
 ; 
 ; :Keywords:
-; 
+;
+;    smooth_width: in, optional, type=integer
+;  
+;      If present, blur all images in the exported cube with
+;      smooth(frame, blur). This is to facilitate making sample cubes
+;      without actually releasing data. If unity, interpreted as a
+;      boolean and set to a default width of 11 pixels.
+;
 ;    keywords: in, optional, type=struct
 ;
 ;      Keywords and values to be added to the header. Keywords are
@@ -59,6 +66,9 @@
 ; 
 ;   2019-06-17 : MGL. New keyword help.
 ; 
+;   2019-06-18 : MGL. New keyword smooth_width. Add prstep header
+;                info.
+; 
 ;-
 pro red::fitscube_export, filename $
                           , help = help $
@@ -67,9 +77,18 @@ pro red::fitscube_export, filename $
                           , outdir = outdir $
                           , overwrite = overwrite $
                           , release_date = RELEASE $
-                          , release_comment = RELEASEC 
+                          , release_comment = RELEASEC  $
+                          , smooth_width = smooth_width
   
+  ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
+  ;; Make prpara
+  red_make_prpara, prpara, keywords     
+  red_make_prpara, prpara, no_spectral_file      
+  red_make_prpara, prpara, release_date      
+  red_make_prpara, prpara, release_comment      
+  red_make_prpara, prpara, smooth_width
+  
   ;; The keywords keyword will be checked against this list.
   approved_keywords = strarr(10)
   help_keywords     = strarr(10)
@@ -84,6 +103,15 @@ pro red::fitscube_export, filename $
   approved_keywords[8] = ['SETTINGS'] & help_keywords[8] = 'Other settings - numerical values "parameter1=n, parameter2=m"'
   approved_keywords[9] = ['TELCONFG'] & help_keywords[9] = 'Telescope configuration'
 
+  if n_elements(smooth_width) gt 0 then begin
+    ;; We need to implement reading/writing frames from/to spectral
+    ;; fitscubes for this to work easily for spectral cubes.
+    no_spectral_file = 1
+    ;; If smooth_width is set to the inconsequential value of unity,
+    ;; interpret it as a boolean and set to a default width of 11.
+    if smooth_width eq 1 then smooth_width = 11
+  endif
+  
 
   if keyword_set(help) then begin
     print
@@ -126,8 +154,12 @@ pro red::fitscube_export, filename $
       file_delete, oldfiles
     endif
   endif
-  
-  outfile = red_strreplace(infile, '_im.fits', '_export'+new_DATE+'_im.fits')
+
+  if n_elements(smooth_width) gt 0 then begin
+    outfile = red_strreplace(infile, '_im.fits', '_blurred_export'+new_DATE+'_im.fits')
+  endif else begin
+    outfile = red_strreplace(infile, '_im.fits', '_export'+new_DATE+'_im.fits')
+  endelse
 
   if file_same(filename, outdir+outfile) then begin
     print, inam + ' : This operation would overwrite the input file.'
@@ -219,6 +251,15 @@ pro red::fitscube_export, filename $
                       , 'CDELT1A', 0.0, 'Zero FOV extent'
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'CDELT2A', 0.0, 'Zero FOV extent'
+
+  ;; Add header info about this step
+  prstep = 'COPYING'
+  if n_elements(smooth_width) then prstep += ', SMOOTHING'
+  self -> headerinfo_addstep, hdr $
+                              , prstep = prstep $
+                              , prpara = prpara $
+                              , prproc = inam
+
   
   ;; Copy the file and write the new header
   print, inam + ' : Copying the fitscube...'
@@ -242,10 +283,33 @@ pro red::fitscube_export, filename $
     red_fitsaddkeyword, anchor = anchor, sphdr, 'DATE', new_DATE
     red_fitsaddkeyword, anchor = anchor, sphdr, 'FILENAME', spoutfile
     fxhmodify, outdir+spoutfile, new_header = sphdr
+    print, inam + ' : Wrote '+outdir+spoutfile
   endif
-  print, inam + ' : Wrote '+outdir+spoutfile
-  stop
-  
+
+
+  if n_elements(smooth_width) gt 0 then begin
+    ;; Blur the frames in the fitscube(s)
+    naxis = fxpar(hdr, 'NAXIS*')
+    Nframes = round(product(naxis[2:*]))
+
+    ;; The statistics will not be right after this!
+    
+    for iframe = 0, Nframes-1 do begin
+
+      red_progressbar, iframe, Nframes, /predict, 'Blurring frames'
+
+      red_fitscube_getframe, outdir+outfile, frame, iframe = iframe
+      red_fitscube_addframe, outdir+outfile, smooth(frame, smooth_width), iframe = iframe
+
+;      if copy_spectral then begin
+;        red_fitscube_getframe, outdir+spoutfile, frame, iframe = iframe
+;        red_fitscube_addframe, outdir+spoutfile, smooth(frame, smooth_width), iframe = iframe       
+;      endif
+
+    endfor                      ; iframe
+    
+  endif
+
 end
 
 a = crispred(/dev)
@@ -253,9 +317,11 @@ a = crispred(/dev)
 filename = '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb/nb_6302_2016-09-19T09:30:20_scans=12-16_stokes_corrected_im.fits'
 
 a -> fitscube_export, filename $
+                      , /smooth $
                       , keywords = { observer:'Some person' $
                                      ,  requestr:'Boss person' $
                                    } $
-                      , release_date = '2012-09-19'
+                      , release_comment = 'These are test data, never to be released' $
+                      , release_date = '2999-09-19'
 
 end
