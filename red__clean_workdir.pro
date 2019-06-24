@@ -17,16 +17,6 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
-; :Returns:
-; 
-; 
-; :Params:
-; 
-; 
-; 
-; 
-; 
-; 
 ; :Keywords:
 ; 
 ;   prefilters : in, optional, type=strarr
@@ -63,6 +53,8 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
 
         pref = prefilters[ipref]
         searchstring = [ 'flats/cam*_'+pref+'_????_[+-]*' $
+                         , 'pinhs/cam*_'+pref+'_????_[+-]*.pinh.fits' $
+                         , 'polcal_cubes/cam*_'+pref+'_polcalcube.fits' $
                          , 'gaintables/cam*_'+pref+'_????_[+-]*' $
                          , 'gaintables/??:??:??/cam*_?????_'+pref+'_????_[+-]*' $
                          , 'cmap_intdif/*/cam*.'+pref+'.intdif.*' $
@@ -72,18 +64,16 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
         file_list = file_search(searchstring, count = Nfiles)
 
         if Nfiles gt 0 then begin
-          print
-          print, inam + ' : Will delete files associated with prefilter ' + pref + ':'
-          print, file_list, format = '(a0)'
-          print
-          s = ''
-          read, 'Do it [N]?', s
-          if s eq '' then s = 'N'
-          if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
-            file_delete, file_list, /allow_nonexistent, /quiet, /recursive
-          endif
+
+          openw, /get_lun, lun, 'clean_workdir.sh'
+          printf, lun, '#!/bin/bash'
+          for ii = 0, Nfiles-1 do printf, lun, 'rm '+file_list[ii]
+          free_lun, lun
+          spawn, 'chmod o+x clean_workdir.sh'
+          
         endif else begin
-          print, inam + ' : There are no files associated with prefilter ' + pref 
+          print, inam + ' : There are no files associated with prefilter ' + pref
+          return
         endelse
 
       endfor                    ; ipref
@@ -103,23 +93,21 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
         dir_list = file_search(searchstring, count = Nfiles)
 
         if Nfiles gt 0 then begin
-          print
-          print, inam + ' : Will delete files associated with timestamp ' + timestamp + ':'
-          print, dir_list, format = '(a0)'
-          print
-          s = ''
-          read, 'Do it [N]?', s
-          if s eq '' then s = 'N'
-          if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
-            file_delete, dir_list, /allow_nonexistent, /quiet, /recursive
-          endif
+          
+          openw, /get_lun, lun, 'clean_workdir.sh'
+          printf, lun, '#!/bin/bash'
+          for ii = 0, Nfiles-1 do printf, lun, 'rm '+dir_list[ii]
+          free_lun, lun
+          spawn, 'chmod o+x clean_workdir.sh'
+          
         endif else begin
           print, inam + ' : There are no files associated with timestamp ' + timestamp 
+          return
         endelse
-
+        
       endfor                    ; itime
     end
-
+    
     ;; --------------------
     
     else : begin
@@ -135,17 +123,27 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
       momfbd_output = file_search('*mfbd*/??:??:??/????/cfg/results', count = Nmomfbd)
       if Nmomfbd gt 0 then red_append, dir_list, momfbd_output
 
-      print
-      print, inam + ' : Will delete the following directories' 
-      print, dir_list, format = '(a0)'
-      print
-      if s eq '' then s = 'N'
-      if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
-        file_delete, dir_list, /allow_nonexistent, /quiet, /recursive
-      endif
+      Nfiles = n_elements(dir_list)
+      
+      if Nfiles gt 0 then begin
+
+        openw, /get_lun, lun, 'clean_workdir.sh'
+        printf, lun, '#!/bin/bash'
+        for ii = 0, Nfiles-1 do printf, lun, 'rm '+dir_list[ii]
+        free_lun, lun
+        spawn, 'chmod o+x clean_workdir.sh'
+        
+      endif else return
     endcase
     
   endcase
+
+  print
+  print, inam + ' : Please inspect the new file "clean_workdir.sh"'
+  print, inam + ' : Edit as needed and then execute it at your own risk.'
+  print
+  print, inam + ' : Take extra care not to delete your only copies of summed calibration data!'
+  print
   
 end
 
