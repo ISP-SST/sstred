@@ -49,63 +49,51 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
     ;; --------------------
     
     n_elements(prefilters) gt 0 : begin
-      for ipref = 0, n_elements(prefilters)-1 do begin
+      searchstring = [ 'flats/cam*_'+prefilters+'_????_[+-]*' $
+                       , 'pinhs/cam*_'+prefilters+'_????_[+-]*.pinh.fits' $
+                       , 'polcal_cubes/cam*_'+prefilters+'_polcalcube.fits' $
+                       , 'gaintables/cam*_'+prefilters+'_????_[+-]*' $
+                       , 'gaintables/??:??:??/cam*_?????_'+prefilters+'_????_[+-]*' $
+                       , 'cmap_intdif/*/cam*.'+prefilters+'.intdif.*' $
+                     ] 
+      file_list = file_search(searchstring, count = Nfiles)
 
-        pref = prefilters[ipref]
-        searchstring = [ 'flats/cam*_'+pref+'_????_[+-]*' $
-                         , 'pinhs/cam*_'+pref+'_????_[+-]*.pinh.fits' $
-                         , 'polcal_cubes/cam*_'+pref+'_polcalcube.fits' $
-                         , 'gaintables/cam*_'+pref+'_????_[+-]*' $
-                         , 'gaintables/??:??:??/cam*_?????_'+pref+'_????_[+-]*' $
-                         , 'cmap_intdif/*/cam*.'+pref+'.intdif.*' $
-                         , '*mfbd*/??:??:??/'+pref+'/cfg/results' $
-                       ] 
+      searchstring = ['*mfbd*/??:??:??/'+prefilters+'/cfg/results'] 
+      dir_list = file_search(searchstring, count = Ndirs)
 
-        file_list = file_search(searchstring, count = Nfiles)
+      
+      if Nfiles+Ndirs gt 0 then begin
+        openw, /get_lun, lun, 'clean_workdir.sh'
+        printf, lun, '#!/bin/bash'
+        for ii = 0, Nfiles-1 do printf, lun, 'rm '+file_list[ii]
+        for ii = 0, Ndirs-1 do printf, lun, 'rm -r '+dir_list[ii]
+        free_lun, lun
+      endif else begin
+        print, inam + ' : There are no files or directories associated with prefilter(s) ' + prefilters
+        return
+      endelse
 
-        if Nfiles gt 0 then begin
-
-          openw, /get_lun, lun, 'clean_workdir.sh'
-          printf, lun, '#!/bin/bash'
-          for ii = 0, Nfiles-1 do printf, lun, 'rm '+file_list[ii]
-          free_lun, lun
-          spawn, 'chmod o+x clean_workdir.sh'
-          
-        endif else begin
-          print, inam + ' : There are no files associated with prefilter ' + pref
-          return
-        endelse
-
-      endfor                    ; ipref
     end
     
     ;; --------------------
     
     n_elements(timestamps) gt 0 : begin
-      for itime = 0, n_elements(timestamps)-1 do begin
+      searchstring = ['gaintables/'+ timestamps $
+                      , 'cmap_intdif/'+ timestamps $
+                      , '*mfbd*/'+timestamps+'/????/cfg/results' $
+                     ] 
 
-        timestamp = timestamps[itime]
-        searchstring = ['gaintables/'+ timestamp $
-                        , 'cmap_intdif/'+ timestamp $
-                        , '*mfbd*/'+timestamp+'/????/cfg/results' $
-                       ] 
+      dir_list = file_search(searchstring, count = Nfiles)
 
-        dir_list = file_search(searchstring, count = Nfiles)
-
-        if Nfiles gt 0 then begin
-          
-          openw, /get_lun, lun, 'clean_workdir.sh'
-          printf, lun, '#!/bin/bash'
-          for ii = 0, Nfiles-1 do printf, lun, 'rm '+dir_list[ii]
-          free_lun, lun
-          spawn, 'chmod o+x clean_workdir.sh'
-          
-        endif else begin
-          print, inam + ' : There are no files associated with timestamp ' + timestamp 
-          return
-        endelse
-        
-      endfor                    ; itime
+      if Nfiles gt 0 then begin
+        openw, /get_lun, lun, 'clean_workdir.sh'
+        printf, lun, '#!/bin/bash'
+        for ii = 0, Nfiles-1 do printf, lun, 'rm -r '+dir_list[ii]
+        free_lun, lun
+      endif else begin
+        print, inam + ' : There are no directories associated with timestamp(s) ' + timestamps
+        return
+      endelse
     end
     
     ;; --------------------
@@ -129,20 +117,23 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
 
         openw, /get_lun, lun, 'clean_workdir.sh'
         printf, lun, '#!/bin/bash'
-        for ii = 0, Nfiles-1 do printf, lun, 'rm '+dir_list[ii]
+        for ii = 0, Nfiles-1 do printf, lun, 'rm -r '+dir_list[ii]
         free_lun, lun
-        spawn, 'chmod o+x clean_workdir.sh'
         
       endif else return
     endcase
     
   endcase
 
+  ;; Make it executable
+  spawn, 'chmod a+x clean_workdir.sh'
+
   print
   print, inam + ' : Please inspect the new file "clean_workdir.sh"'
   print, inam + ' : Edit as needed and then execute it at your own risk.'
   print
   print, inam + ' : Take extra care not to delete your only copies of summed calibration data!'
+  print, inam + ' : If you have soft links to directories in another workdir, and not just to their contents, then you do not want to rm -r the links!'
   print
   
 end
@@ -150,6 +141,7 @@ end
 a = crispred(/dev)
 
 a -> clean_workdir, prefilters = '8542'
+a -> clean_workdir, prefilters = ['6302', '8542']
 
 stop
 
