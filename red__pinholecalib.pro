@@ -226,7 +226,9 @@ pro red::pinholecalib, cams = cams $
       align_idx = -1
       if n_elements( alignments ) gt 0 then begin
         align_idx = where( (alignments.state1.fullstate eq ref_states_unique[iref].fullstate) and $
-                           (alignments.state2.fullstate eq cam_states[cam_idx].fullstate) )
+                           (alignments.state2.fullstate eq cam_states[cam_idx].fullstate) and $
+                           (alignments.state1.camera eq ref_states_unique[iref].camera) and $
+                           (alignments.state2.camera eq cam_states[cam_idx].camera) )
       endif
       if max(align_idx) lt 0 then begin
         ;; Pair does not exist in alignments, append it.
