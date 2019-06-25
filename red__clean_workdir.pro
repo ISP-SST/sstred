@@ -52,6 +52,7 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
       searchstring = [ 'flats/cam*_'+prefilters+'_????_[+-]*' $
                        , 'pinhs/cam*_'+prefilters+'_????_[+-]*.pinh.fits' $
                        , 'polcal_cubes/cam*_'+prefilters+'_polcalcube.fits' $
+                       , 'polcal_sums/Crisp-?/cam*_lp*_qw*_'+prefilters+'_lc?.pols.*' $
                        , 'gaintables/cam*_'+prefilters+'_????_[+-]*' $
                        , 'gaintables/??:??:??/cam*_?????_'+prefilters+'_????_[+-]*' $
                        , 'cmap_intdif/*/cam*.'+prefilters+'.intdif.*' $
@@ -137,6 +138,10 @@ pro red::clean_workdir, timestamps = timestamps, prefilters = prefilters
   print
   
 end
+
+; Todo: Examine all found files with file_info() and use this info to
+; warn about files without the needed permissions and to do the right
+; thing with symbolic links. And maybe other things.
 
 a = crispred(/dev)
 
