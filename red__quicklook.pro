@@ -302,7 +302,6 @@ pro red::quicklook, align = align $
     outdir = self.out_dir +'/quicklook/'+timestamp+'/'
     file_mkdir, outdir
     
-
     ;; Try to limit the number of files we need to extract states for.
 
     if strmid(cam, 0, 5) eq 'Crisp' then begin
@@ -383,7 +382,7 @@ pro red::quicklook, align = align $
       files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
       self -> extractstates, files0, states0
       indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
-      ustat = states0[uniq(states0.tun_wavelength, sort(states0.tun_wavelength))].fullstate
+      ustat = states0[indx].fullstate
       upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
       Npref = n_elements(upref)
 
@@ -491,7 +490,8 @@ pro red::quicklook, align = align $
     endif else begin    
       if n_elements(ustat) gt 1 then begin
         ;; Select states.
-        tmp = red_select_subset(states[indx].prefilter+'_'+states[indx].tuning $
+        stop
+        tmp = red_select_subset(states0[indx].prefilter+'_'+states0[indx].tuning $
                                 , qstring = inam + ' : Select states' $
                                 , count = Nstates, indx = ichoice)
         ustat = ustat[ichoice]
@@ -499,6 +499,8 @@ pro red::quicklook, align = align $
         Nstates = 1
       endelse
     endelse 
+
+    stop
     
     for istate = 0, Nstates-1 do begin
       
