@@ -490,17 +490,16 @@ pro red::quicklook, align = align $
     endif else begin    
       if n_elements(ustat) gt 1 then begin
         ;; Select states.
-        stop
+
         tmp = red_select_subset(states0[indx].prefilter+'_'+states0[indx].tuning $
                                 , qstring = inam + ' : Select states' $
                                 , count = Nstates, indx = ichoice)
         ustat = ustat[ichoice]
-      endif else begin
+     endif else begin
         Nstates = 1
       endelse
     endelse 
 
-    stop
     
     for istate = 0, Nstates-1 do begin
       
