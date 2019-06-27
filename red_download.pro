@@ -293,14 +293,14 @@ pro red_download, date = date $
     tempfile = 'templog-'+strjoin(datearr, '')
 
     if ~file_test(logdir+tempfile) or keyword_set(overwrite) then begin
-      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/temperature/' + tempfile $
+      downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/temperature/' + tempfile $
                               , file = tempfile $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathtemp)
       
       if ~downloadOK then begin ; also try in subfolder /{year}/
-        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/temperature/' + datearr[0] $
+        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/temperature/' + datearr[0] $
                                 + '/' + tempfile $
                                 , file = tempfile $
                                 , dir = logdir $
@@ -322,14 +322,14 @@ pro red_download, date = date $
     weatherfile = 'weather.log-' + strjoin(datearr, '')
 
     if ~file_test(logdir+weatherfile) or keyword_set(overwrite) then begin
-      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/weather/' + weatherfile + '.xz' $
+      downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/weather/' + weatherfile + '.xz' $
                               , file = weatherfile + '.xz' $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathweather)
       
       if ~downloadOK then begin ; also try in subfolder /{year}/
-        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/weather/' + datearr[0] $
+        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/weather/' + datearr[0] $
                                 + '/' + weatherfile + '.xz' $
                                 , file = weatherfile + '.xz' $
                                 , dir = logdir $
@@ -356,14 +356,14 @@ pro red_download, date = date $
     shabarfile = 'shabar.data-'+strjoin(datearr, '')
 
     if ~file_test(logdir+shabarfile) or keyword_set(overwrite) then begin
-      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + shabarfile + '.xz' $
+      downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + shabarfile + '.xz' $
                               , file = shabarfile + '.xz' $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathshabar)
       
       if ~downloadOK then begin ; also try in subfolder /{year}/
-        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0] $
+        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + datearr[0] $
                                 + '/' + shabarfile + '.xz' $
                                 , file = shabarfile + '.xz' $
                                 , dir = logdir $
@@ -390,14 +390,14 @@ pro red_download, date = date $
     r0file = 'r0.data.full-'+strjoin(datearr, '')
 
     if ~file_test(logdir+r0file) or keyword_set(overwrite) then begin
-      downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file + '.xz' $
+      downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + r0file + '.xz' $
                               , file = r0file + '.xz' $
                               , dir = logdir $
                               , overwrite = overwrite $
                               , path = pathr0)
       
       if ~downloadOK then begin ; also try in subfolder /{year}/
-        downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0] $
+        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + datearr[0] $
                                 + '/' + r0file + '.xz' $
                                 , file = r0file + '.xz' $
                                 , dir = logdir $
@@ -422,7 +422,7 @@ pro red_download, date = date $
   if keyword_set(pig) then begin
     pigfile = 'rmslog_guidercams'
 
-    DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + isodate $
+    DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + isodate $
                             + '/' + pigfile $
                             , file = pigfile+'_'+isodate $
                             , dir = logdir $
@@ -431,7 +431,7 @@ pro red_download, date = date $
 
     if ~DownloadOK then begin
       dotdate = strjoin(datearr, '.')
-      DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate $
+      DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate $
                               + '/' + pigfile $
                               , file = pigfile+'_'+isodate $
                               , dir = logdir $
@@ -481,7 +481,7 @@ pro red_download, date = date $
       ;; First try the particular date:
       
       pathturret1 = 'positionLog_'+red_strreplace(isodate, '-', '.', n = 2)
-      OK1 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
+      OK1 = red_geturl('http://www.sst.iac.es/Logfiles/turret/' $
                        + datearr[0]+'/'+pathturret1 $
                        , contents = contents1 $
 ;                         , dir = logdir $
@@ -511,7 +511,7 @@ pro red_download, date = date $
         ;; Try to download
         pathturret2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
         print, 'Try '+pathturret2
-        OK2 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
+        OK2 = red_geturl('http://www.sst.iac.es/Logfiles/turret/' $
                          + predatearr[0]+'/'+pathturret2 $
                          , contents = contents2 $
 ;                            , dir = logdir $

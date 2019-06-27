@@ -267,7 +267,7 @@ pro red::download, overwrite = overwrite $
   ;; linedefs
   if keyword_set(linedefs) AND (min(where(*self.cameras eq 'Chromis-N')) ne -1) then begin
     dotdate = strjoin(datearr, '.')
-    ldpath = 'http://www.royac.iac.es/Logfiles/CHROMIS/linedef/'
+    ldpath = 'http://www.sst.iac.es/Logfiles/CHROMIS/linedef/'
     downloadOK = red_geturl(ldpath , contents=ldfiles )
     if downloadOK then begin
       todays_linedefs = ldfiles[where(strmatch(ldfiles, 'linedef.py-'+dotdate+'*', /FOLD_CASE) EQ 1)]
@@ -312,18 +312,18 @@ pro red::download, overwrite = overwrite $
   if keyword_set(r0) then begin
      r0file = 'r0.data.full-'+strjoin(datearr, '')+'.xz'
 
-     downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + r0file $
+     downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + r0file $
                              , file = r0file $
                              , dir = self.log_dir $
                              , overwrite = overwrite $
                              , path = pathr0)
      
      if ~downloadOK then begin  ; also try in subfolder /{year}/
-         downloadOK = red_geturl('http://www.royac.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file $
-                                 , file = r0file $
-                                 , dir = self.log_dir $
-                                 , overwrite = overwrite $
-                                 , path = pathr0) 
+       downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file $
+                               , file = r0file $
+                               , dir = self.log_dir $
+                               , overwrite = overwrite $
+                               , path = pathr0) 
      endif
 
      if downloadOK then begin
@@ -336,7 +336,7 @@ pro red::download, overwrite = overwrite $
   ;; PIG log file
   if keyword_set(pig) then begin
      pigfile = 'rmslog_guidercams'
-     DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + self.isodate + '/' + pigfile $
+     DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + self.isodate + '/' + pigfile $
                              , file = pigfile $
                              , dir = self.log_dir $
                              , overwrite = overwrite $
@@ -344,7 +344,7 @@ pro red::download, overwrite = overwrite $
 
      if ~DownloadOK then begin
        dotdate = strjoin(datearr, '.')
-       DownloadOK = red_geturl('http://www.royac.iac.es/Logfiles/PIG/' + dotdate + '/' + pigfile $
+       DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate + '/' + pigfile $
                                , file = pigfile $
                                , dir = self.log_dir $
                                , overwrite = overwrite $
@@ -397,7 +397,7 @@ pro red::download, overwrite = overwrite $
         ;; First try the particular date:
         
         turretfile1 = 'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)
-        OK1 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
+        OK1 = red_geturl('http://www.sst.iac.es/Logfiles/turret/' $
                          + datearr[0]+'/'+turretfile1 $
                          , contents = contents1 $
 ;                         , dir = self.log_dir $
@@ -423,7 +423,7 @@ pro red::download, overwrite = overwrite $
            ;; Try to download
            turretfile2 = 'positionLog_'+red_strreplace(preisodate, '-', '.', n = 2)
            print, 'Try '+turretfile2
-           OK2 = red_geturl('http://www.royac.iac.es/Logfiles/turret/' $
+           OK2 = red_geturl('http://www.sst.iac.es/Logfiles/turret/' $
                             + datearr[0]+'/'+turretfile2 $
                             , contents = contents2 $
 ;                            , dir = self.log_dir $

@@ -45,7 +45,7 @@ pro red_download_linedefs, isodate, all_dirs, workdir
   dir = workdir+'/downloads/'  
 
   dotdate = red_strreplace(isodate, '-', '.', n = 2)
-  ldpath = 'http://www.royac.iac.es/Logfiles/CHROMIS/linedef/'
+  ldpath = 'http://www.sst.iac.es/Logfiles/CHROMIS/linedef/'
   downloadOK = red_geturl(ldpath , contents=ldfiles )
   if downloadOK then begin
     todays_linedefs = ldfiles[where(strmatch(ldfiles, 'linedef.py-'+dotdate+'*', /FOLD_CASE) EQ 1)]
