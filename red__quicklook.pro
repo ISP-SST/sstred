@@ -378,16 +378,16 @@ pro red::quicklook, align = align $
 
       ;; CHROMIS data
 
-      if keyword_set(core_and_wings) then begin
+      ;; Search file names for scan 0, use them to find out what states
+      ;; are available.
+      files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+      self -> extractstates, files0, states0
+      indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
+      ustat = states0[uniq(states0.tun_wavelength, sort(states0.tun_wavelength))].fullstate
+      upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
+      Npref = n_elements(upref)
 
-        ;; Search file names for scan 0, use them to find out what states
-        ;; are available.
-        files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-        self -> extractstates, files0, states0
-        indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
-        ustat = states0[uniq(states0.tun_wavelength, sort(states0.tun_wavelength))].fullstate
-        upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
-        Npref = n_elements(upref)
+      if keyword_set(core_and_wings) then begin
 
         undefine, ustat2
         for ipref = 0, Npref-1 do begin
