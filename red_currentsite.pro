@@ -79,7 +79,7 @@ pro red_currentsite, date = date $
   ;; Check if any of the addresses match the local range of
   ;; IPv4-addresses.
   case 1 of
-    strmatch( dnsdomainname, '*royac.iac.es' ) $
+    strmatch( dnsdomainname, '*sst.iac.es' ) $
        || max( strmatch( ipv4addresses, '*161.72.15.*'  ) ) : begin
       ;; SST network address range on La Palma.
       site = "La Palma"
