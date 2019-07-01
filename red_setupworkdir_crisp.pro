@@ -25,6 +25,12 @@
 ; 
 ; :Keywords:
 ;
+;    old_dir : in, optional, type = string
+;
+;      Copy files from this directory, in particular summed
+;      calibration data. Useful if you summed the calibration data in
+;      La Palma.
+;
 ;    calibrations_only : in, optional, type=boolean
 ;
 ;      Set up to process calibration data only.
@@ -46,12 +52,15 @@
 ;                 to ordinary outdir for darks and flats.
 ;
 ;    2017-08-16 : MGL. Stop early if there are no darks and/or flats.
-; 
-; 
+;
+;    2019-07-01 : MGL. New keyword old_dir.
 ; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
-                            , calibrations_only = calibrations_only
+                            , calibrations_only = calibrations_only $
+                            , old_dir = old_dir 
+
+  inam = red_subprogram(/low, calling = inam1)
 
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                       , [{keyword:'INSTRUME', value:'CRISP' $
@@ -545,5 +554,70 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   free_lun, Clun
   free_lun, Slun
 
+
+  if size(old_dir, /tname) ne 'STRING' then return
+
+  
+  ;; Is this an old-crispred work directory?
+  spawn, 'grep "^ *cam_t" '+old_dir+'/config*.txt', spawn_output
+  if spawn_output[0] ne '' then begin
+    print, inam+' : You want to copy calibration data from an old-crispred workdir.'
+    print, inam+' : Will now run the following method in the new workdir:'
+    print, '  IDL> a -> copy_oldsums, /overwrite, /all, "../'+ old_dir +'"'
+    cd, work_dir
+    a = crispred()
+    a -> copy_oldsums, /overwrite, /all, '../'+ old_dir
+    cd, '../'
+
+    return
+  endif 
+    
+  ;; We will attempt to copy existing sums of calibration data.
+  
+  ;; Darks
+  if file_test(old_dir+'/darks', /directory) then begin
+    dfiles = file_search(old_dir+'/darks/cam*.dark.fits', count = Nfiles)
+    if Nfiles gt 0 then begin
+      file_mkdir, work_dir+'/darks'
+      file_copy, dfiles, work_dir+'/darks/', /overwrite
+      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/darks/'
+    endif
+  endif
+
+  ;; Flats
+  if file_test(old_dir+'/flats', /directory) then begin
+    ffiles = file_search(old_dir+'/flats/cam*[0-9].flat.fits', count = Nfiles)
+    if Nfiles gt 0 then begin
+      file_mkdir, work_dir+'/flats'
+      file_copy, ffiles, work_dir+'/flats/', /overwrite
+      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/flats/'
+    endif
+  endif
+
+  ;; Pinholes
+  if file_test(old_dir+'/pinhs', /directory) then begin
+    pfiles = file_search(old_dir+'/pinhs/cam*.pinh.fits', count = Nfiles)
+    if Nfiles gt 0 then begin
+      file_mkdir, work_dir+'/pinhs'
+      file_copy, pfiles, work_dir+'/pinhs/', /overwrite
+      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/pinhs/'
+    endif
+  endif
+
+  ;; Polcal
+  if file_test(old_dir+'/polcal_sums', /directory) then begin
+    tfiles = file_search(old_dir+'/polcal_sums/Crisp-T/cam*.pols.fits', count = Nfilest)
+    rfiles = file_search(old_dir+'/polcal_sums/Crisp-R/cam*.pols.fits', count = Nfilesr)
+    if Nfilest gt 0 then begin
+      file_mkdir, work_dir+'/polcal_sums/Crisp-T'
+      file_copy, pfiles, work_dir+'/polcal_sums/Crisp-T/', /overwrite
+      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/polcal_sums/Crisp-T/'
+    endif
+    if Nfilesr gt 0 then begin
+      file_mkdir, work_dir+'/polcal_sums/Crisp-R'
+      file_copy, pfiles, work_dir+'/polcal_sums/Crisp-R/', /overwrite
+      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/polcal_sums/Crisp-R/'
+    endif
+  endif
 
 end

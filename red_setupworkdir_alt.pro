@@ -18,6 +18,12 @@
 ;
 ; :Keywords:
 ;
+;    old_dir : in, optional, type = string
+;
+;      Copy files from this directory, in particular summed
+;      calibration data. Useful if you summed the calibration data in
+;      La Palma.
+;
 ;    search_dirs : in, optional, type = array of strings
 ;
 ;      The top directory of your saved data, with or wthout a date. Or
@@ -250,15 +256,19 @@
 ;
 ;   2018-12-06 : MGL. Add CRISP to default instruments.
 ;
+;   2019-07-01 : MGL. New keyword old_dir.
+;
 ;-
-pro red_setupworkdir_alt, search_dirs = search_dirs $
-                          , out_dir = out_dir $
+pro red_setupworkdir_alt, calibrations_only = calibrations_only $
                           , cfgfile = cfgfile $
-                          , instruments = instruments $
-                          , scriptfile = scriptfile $
-                          , download_all = download_all $
+                          , old_dir = old_dir $
+                          , link_old = link_old $
                           , date = date $
-                          , calibrations_only = calibrations_only
+                          , download_all = download_all $
+                          , instruments = instruments $
+                          , out_dir = out_dir $
+                          , scriptfile = scriptfile $
+                          , search_dirs = search_dirs                    
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
 
@@ -453,9 +463,10 @@ pro red_setupworkdir_alt, search_dirs = search_dirs $
 
       
       ;; Setup the different instruments.
-      call_procedure, 'red_setupworkdir_' + instrument,       $
-                      workdir, root_dir, config_file, script_file, isodate, $
-                      calibrations_only = calibrations_only ;
+      call_procedure, 'red_setupworkdir_' + instrument $
+                      , workdir, root_dir, config_file, script_file, isodate $
+                      , calibrations_only = calibrations_only  $
+                      , old_dir = old_dir
 
       
     endfor                      ; irootdir

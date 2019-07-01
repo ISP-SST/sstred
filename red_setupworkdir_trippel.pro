@@ -33,22 +33,29 @@
 ;
 ; :Keywords:
 ;
+;    old_dir : in, optional, type = string
+;
+;      Copy files from this directory, in particular summed
+;      calibration data. Useful if you summed the calibration data in
+;      La Palma.
+;
 ;   calibrations_only : in, optional, type = boolean,
 ;                       Set up to process calibration data only.
 ;                       Currently, a dummy keyword that does nothing.
 ;
 ; :History:
 ;
-;   2017-08-21 : AVS. A calibrations_only keyword is added.  An rst format
-;                 header is added as well.
+;   2017-08-21 : AVS. A calibrations_only keyword is added. An rst
+;                format header is added as well.
+;
+;   2019-07-01 : MGL. New keyword old_dir.
+;
 ;-
-pro red_setupworkdir_trippel,           $
-  work_dir,                             $
-  root_dir,                             $
-  cfgfile,                              $
-  scriptfile,                           $
-  isodate,                              $
-  calibrations_only = calibrations_only ;
+pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate $
+                              , calibrations_only = calibrations_only  $
+                              , old_dir = old_dir 
+
+  inam = red_subprogram(/low, calling = inam1)
 
   file_mkdir, work_dir
 
