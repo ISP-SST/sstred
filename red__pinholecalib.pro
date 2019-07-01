@@ -215,8 +215,10 @@ pro red::pinholecalib, cams = cams $
       if self->match_prefilters( ref_states_unique[iref].prefilter $
                                  , cam_states[cam_idx].prefilter ) eq 0 then continue
 
+      this_pair = ref_states_unique[iref].fullstate+cam_states[cam_idx].fullstate
+      this_pair += ref_states_unique[iref].camera+cam_states[cam_idx].camera
       if n_elements( processed_pairs ) gt 0 then begin
-        found = where( processed_pairs eq  ref_states_unique[iref].fullstate+cam_states[cam_idx].fullstate )
+        found = where( processed_pairs eq this_pair )
         if max(found) ge 0 then begin
           ;; pair is already processed during this run of pinholecalib
           continue
@@ -282,7 +284,7 @@ pro red::pinholecalib, cams = cams $
       endelse
       alignments[align_idx].map = this_map
       last_prefilter = this_prefilter
-      red_append, processed_pairs, alignments[align_idx].state1.fullstate+alignments[align_idx].state2.fullstate
+      red_append, processed_pairs, this_pair
     endfor                      ; iref
     
     okmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] eq 1) )
