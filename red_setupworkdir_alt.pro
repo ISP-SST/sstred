@@ -406,6 +406,60 @@ pro red_setupworkdir_alt, calibrations_only = calibrations_only $
     endelse
     file_mkdir, workdir
 
+    if keyword_set(calibrations_only) then begin
+      ;; Write a warning message in 0README about the limitations of
+      ;; these data.
+      openw, rlun, /get_lun, workdir+'/0README'
+      printf, rlun, 'This work directory was created to be used for the automatic collection and'
+      printf, rlun, 'co-adding of calibration data, like darks, flats, etc., using the initial'
+      printf, rlun, 'few commands in the data ordinary processing pipeline.'
+      printf, rlun, ''
+      printf, rlun, 'The summed data could be used, with certain limitations, when processing'
+      printf, rlun, 'science data with the same pipeline. In fact, we hope that after some'
+      printf, rlun, 'testing and evaluation, we can stop transferring and storing some of the'
+      printf, rlun, 'raw calibration data, particularly the flats. But, because it is automatic,'
+      printf, rlun, 'the summed data are not necessarily exactly the same as they would be after'
+      printf, rlun, 'running the pipeline manually.'
+      printf, rlun, ''
+      printf, rlun, 'The main limitation comes from the fact that observers often collect'
+      printf, rlun, 'several sets of the same kind of calibration data. Sometimes because'
+      printf, rlun, 'science data are collected both in the morning and in the late afternoon,'
+      printf, rlun, 'each set requiring their own calibrations. But also because of a failed'
+      printf, rlun, 'attempt to collect calibration data, leaving a faulty and/or incomplete'
+      printf, rlun, 'calibration data set on disk.'
+      printf, rlun, ''
+      printf, rlun, 'When running manually, operators can consult the observer logs and the'
+      printf, rlun, 'correct calibration data can be selected for summing. In the automatic'
+      printf, rlun, 'mode we instead sum data from all sets separately, storing the results'
+      printf, rlun, 'in timestamp subdirectories below the ordinary directory for the'
+      printf, rlun, 'particular kind of calibration data. This means a selection often has'
+      printf, rlun, 'to be made, between different versions of the summed data, just like'
+      printf, rlun, 'you would otherwise have to do for the raw calibration data before'
+      printf, rlun, 'summing.'
+      printf, rlun, ''
+      printf, rlun, 'Because the summed and averaged flats are stored after dark subtraction,'
+      printf, rlun, 'and there could be several versions of the darks, the summed and NOT'
+      printf, rlun, 'averaged versions of the flats should be copied over to the ordinary work'
+      printf, rlun, 'directory, and dark corrected with the selected dark version.'
+      printf, rlun, ''
+      printf, rlun, 'The summed pinholes are corrected for both dark and flat and no'
+      printf, rlun, 'un-corrected version is stored here. This means you may end up with'
+      printf, rlun, 'pinhole data that are dark and flat corrected with non-optimal or even'
+      printf, rlun, 'faulty darks and/or flats. The raw pinhole data should therefore always be'
+      printf, rlun, 'copied to the home institute, so the summing could be done again using'
+      printf, rlun, 'the correct darks and flats. However, it is likely that merely using'
+      printf, rlun, 'afternoon darks and flats for morning pinholes will work just fine.'
+      printf, rlun, ''
+      printf, rlun, 'The darks used here for the flats, as well as the darks and flats used'
+      printf, rlun, 'for the pinholes, are always the version that is collected last. This way'
+      printf, rlun, 'we at least avoid the common case with faulty data followed by correct data.'
+      printf, rlun, ''
+      printf, rlun, ''
+      printf, rlun, ''
+      printf, rlun, ''
+      free_lun, rlun
+    endif
+
     ;; Write string metadata.
     red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
                         [ { keyword : 'OBSRVTRY',                                       $
