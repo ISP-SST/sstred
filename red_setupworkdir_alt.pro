@@ -13,23 +13,7 @@
 ;    Mats Löfdahl, 2013-07-08
 ;
 ;
-; :Params:
-;
-;
 ; :Keywords:
-;
-;    old_dir : in, optional, type = string
-;
-;      Copy files from this directory, in particular summed
-;      calibration data. Useful if you summed the calibration data in
-;      La Palma.
-;
-;    search_dirs : in, optional, type = array of strings
-;
-;      The top directory of your saved data, with or wthout a date. Or
-;      a regular expression that matches the top directory. Or an
-;      array of directories and regular expressions. If not given,
-;      setupdir will look for the root_dir based on the site.
 ;
 ;    calibrations_only : in, optional, type=boolean
 ;
@@ -39,11 +23,26 @@
 ;
 ;      The name of the generated config file.
 ;
+;    date : in, optional, type=string, default='From out_dir if possible'
+;
+;      The date (in iso format) the data was collected.
+;
 ;    download_all : in, optional, type=boolean
 ;
 ;      Set this to download auxiliary data, like SDO/HMI images and AR
 ;      maps. Otherwise download SST log file only.
 ;      AVS: obsolete keyword, not in use anymore.
+;
+;    old_dir : in, optional, type = string
+;
+;      Copy files from this directory, in particular summed
+;      calibration data. Useful if you summed the calibration data in
+;      La Palma.
+;
+;    out_dir : in, optional, type=string, default='Current directory'
+;
+;      The output directory, under which instrument-specific
+;      directories are created.
 ;
 ;    scriptfile : in, optional, type=string, default='doit.pro'
 ;
@@ -53,14 +52,12 @@
 ;      darks, flats, etc. Later commands, that involve human
 ;      interaction are present in the file but commented out.
 ;
-;    date : in, optional, type=string, default='From out_dir if possible'
+;    search_dirs : in, optional, type = array of strings
 ;
-;      The date (in iso format) the data was collected.
-;
-;    out_dir : in, optional, type=string, default='Current directory'
-;
-;      The output directory, under which instrument-specific
-;      directories are created.
+;      The top directory of your saved data, with or wthout a date. Or
+;      a regular expression that matches the top directory. Or an
+;      array of directories and regular expressions. If not given,
+;      setupdir will look for the root_dir based on the site.
 ;
 ;
 ; :History:
@@ -261,11 +258,10 @@
 ;-
 pro red_setupworkdir_alt, calibrations_only = calibrations_only $
                           , cfgfile = cfgfile $
-                          , old_dir = old_dir $
-                          , link_old = link_old $
                           , date = date $
                           , download_all = download_all $
                           , instruments = instruments $
+                          , old_dir = old_dir $
                           , out_dir = out_dir $
                           , scriptfile = scriptfile $
                           , search_dirs = search_dirs                    
