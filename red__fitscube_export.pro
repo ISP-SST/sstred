@@ -35,7 +35,7 @@
 ;    keywords: in, optional, type=struct
 ;
 ;      Keywords and values to be added to the header. Keywords are
-;      upcased and checked agains a list of SOLARNET-approved
+;      upcased and checked against a list of SOLARNET-approved
 ;      keywords.
 ;
 ;    no_spectral_file: in, optional, type=boolean
@@ -132,8 +132,6 @@ pro red::fitscube_export, filename $
     return
   endif
 
-  
-  
   ;; This will be used for a new DATE header and also to indicate the
   ;; version of the cube as part of the file name.
   new_DATE = red_timestamp(/utc,/iso)
@@ -142,9 +140,10 @@ pro red::fitscube_export, filename $
   infile = file_basename(filename)
 
   hdr = red_readhead(filename)
-
+  
+  date_beg = fxpar(hdr,'DATE-BEG')
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
-                                           + (strsplit(new_date,'T',/extract))[0] + '/' $
+                                           + (strsplit(date_beg,'T',/extract))[0] + '/' $
                                            + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
   ;; Any old versions of this file?
@@ -334,7 +333,7 @@ endelse
 a -> fitscube_export, filename, outdir = outdir, outfile = outfile $
                       , /smooth $
                       , keywords = { observer:'Some person' $
-                                     ,  requestr:'Boss person' $
+                                     , requestr:'Boss person' $
                                    } $
                       , release_comment = 'These are test data, never to be released' $
                       , release_date = '2999-09-19'
