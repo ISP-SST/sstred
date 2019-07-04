@@ -74,11 +74,14 @@
 ;   2019-06-18 : MGL. New keywords smooth_width and outfile. Add
 ;                prstep header info.
 ; 
+;   2019-07-04 : MGL. Optionally (opt-out) add checksum and datasum. 
+; 
 ;-
 pro red::fitscube_export, filename $
                           , help = help $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
+                          , no_checksum = no_checksum $
                           , outdir = outdir $
                           , outfile = outfile $
                           , overwrite = overwrite $
@@ -151,7 +154,7 @@ pro red::fitscube_export, filename $
   if Noldfiles gt 0 then begin
     s = ''
     print, inam + ' : There are '+strtrim(Noldfiles, 2)+' older versions of this file in '+outdir+':'
-    print, oldfiles, format = '(a0)'
+    print, file_basename(oldfiles), format = '(a0)'
     read, '    Delete them [N]? ', s
     if s eq '' then s = 'N'
     if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
@@ -283,9 +286,9 @@ pro red::fitscube_export, filename $
     ;; Delete header keywords that should not be there
     red_fitsdelkeyword, sphdr, 'STATE'
     ;; Add keywords after this one:
-    anchor = 'TIMESYS'
-    red_fitsaddkeyword, anchor = anchor, sphdr, 'DATE', new_DATE
-    red_fitsaddkeyword, anchor = anchor, sphdr, 'FILENAME', spoutfile
+    spanchor = 'TIMESYS'
+    red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATE', new_DATE
+    red_fitsaddkeyword, anchor = spanchor, sphdr, 'FILENAME', spoutfile
     fxhmodify, outdir+spoutfile, new_header = sphdr
     print, inam + ' : Wrote '+outdir+spoutfile
   endif
@@ -314,9 +317,25 @@ pro red::fitscube_export, filename $
     
   endif
 
+  if ~keyword_set(no_checksum) then begin
+    ;; Checksums
+    datasum = red_fitscube_datasum(outdir+outfile)
+
+    red_fitsaddkeyword, anchor = anchor, hdr, 'DATASUM', datasum
+    fits_add_checksum, hdr
+    fxhmodify, outdir+outfile, new_header = hdr
+
+    if copy_spectral then begin
+      red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATASUM', datasum
+      fits_add_checksum, sphdr
+      fxhmodify, outdir+spoutfile, new_header = sphdr
+    endif
+  endif
+  
 end
 
-;; Code for testing
+;; Code for testing. Test only with smaller cubes because we have to
+;; read the entire cube before calling fits_test_checksum below.
 
 if 0 then begin
   cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'
@@ -376,4 +395,11 @@ for i = 0, n_elements(search_keywords)-1 do begin
   endelse
 endfor
 
+print, 'DATASUM:  ',fxpar(h, 'DATASUM')
+print, 'CHECKSUM: ',fxpar(h, 'CHECKSUM')
+
+d = red_readdata(outdir+'/'+outfile)
+test = fits_test_checksum(h, d, ERRMSG = errmsg)
+print, 'Test checksums: ', test
+if test eq -1 then print, errmsg
 end
