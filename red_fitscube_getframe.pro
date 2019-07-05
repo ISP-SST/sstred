@@ -110,7 +110,6 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     ;; Transform integer data to float
     bzero  = fxpar(hdr, 'BZERO',  count=nzero )
     bscale = fxpar(hdr, 'BSCALE', count=nscale)
-    stop
     if nzero eq 1 and nscale eq 1 then begin
       ;; Get the frame and rescale
       frame = float(fileassoc[iframe]*bscale + bzero)
