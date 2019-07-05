@@ -82,7 +82,7 @@ function red_file_search, searchstring, dir $
                              + " \)"
   endcase
 
-  print, inam + ' : ' + name_expression
+  if keyword_set(verbose) then print, inam + ' : ' + name_expression
   
   if keyword_set(remote_login) then begin
     
