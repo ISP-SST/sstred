@@ -384,10 +384,10 @@ pro crisp::make_nb_cube, wcfile $
   ;; Already done?
   if file_test(filename) then begin
     if keyword_set(overwrite) then begin
-      print, 'Overwriting existing data cube:'
+      print, inam + ' : Overwriting existing data cube:'
       print, filename
     endif else begin
-      print, 'This data cube exists already:'
+      print, inam + ' : This data cube exists already:'
       print, filename
       return
     endelse
