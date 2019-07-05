@@ -39,11 +39,22 @@
 ;      The selection includes the core and extreme wing tunings of
 ;      each prefilter. If this keyword is set, use_states is ignored.
 ;
+;    cube : out, optional, type=fltarr
+;
+;      If present, return without writing movies, after constructing
+;      the first cube. (So use this together with other keywords to
+;      specify a single movie.)
+;
 ;    datasets : in, optional, type=strarr
 ;
 ;      Timestamp strings that identify datasets to process. Selection
 ;      menu for data sets buypassed if given.
 ;   
+;    derotate : in, optional, type=boolean
+;
+;      Set this to derotate the cube to compensate for the field
+;      rotation of the telescope.
+;
 ;    destretch : in, optional, type=boolean
 ;
 ;      Set this to destretch the cube to compensate for geometrical
@@ -98,10 +109,11 @@
 ;
 ;      Overwrite existing movies.
 ;   
-;    derotate : in, optional, type=boolean
+;    scannos : in, optional, type=string
 ;
-;      Set this to derotate the cube to compensate for the field
-;      rotation of the telescope.
+;      Choose scan numbers to include in the movies with an array of
+;      scan numbers or a comma-and-dash delimited string, like
+;      '2-5,7-20,22-30'.
 ;
 ;    textcolor : in, optional, type=string, default='yellow'
 ;   
@@ -161,8 +173,10 @@ pro red::quicklook, align = align $
                     , cam = cam $
                     , clip = clip $
                     , core_and_wings = core_and_wings $
+                    , cube = cube $
                     , dark = dark $
                     , datasets = datasets $
+                    , derotate = derotate $
                     , destretch = destretch $
                     , format = format $
                     , gain =  gain $
@@ -178,7 +192,7 @@ pro red::quicklook, align = align $
                     , overwrite = overwrite $
                     , remote_dir = remote_dir $
                     , remote_login = remote_login $
-                    , derotate = derotate $
+                    , scannos = scannos $
                     , ssh_find = ssh_find $
                     , textcolor = textcolor $
                     , use_states = use_states $
@@ -203,8 +217,10 @@ pro red::quicklook, align = align $
   endif
   
   if n_elements(Nexp) eq 0 or ~keyword_set(neuralnet) then Nexp = 1
+  if n_elements(scannos) eq 1 && size(scannos, /tname) eq 'STRING' then scannos = rdx_str2ints(scannos)
   
-  ;; The r0 log file is not available until the day after today 
+
+;; The r0 log file is not available until the day after today 
   if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
   
   if ~keyword_set(cam) then begin
@@ -216,8 +232,8 @@ pro red::quicklook, align = align $
     endif
     ;; If more than one, pick the first
     cam = (*self.cameras)[cindx[0]]
-    detector = self -> getdetector(cam)
   endif
+  detector = self -> getdetector(cam)
   
   if ~ptr_valid(self.data_dirs) then begin
     print, inam+' : ERROR : undefined data_dir'
@@ -316,7 +332,9 @@ pro red::quicklook, align = align $
 
       ;; Search file names for scan 0, use them to find out what states
       ;; are available.
-      files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+      ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+      files = red_raw_search(dirs[iset] + '/' + cam, instrument = 'CRISP', scanno = 0, count = Nfiles)
+
       self -> extractstates, files0, states0
       indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
       ustat = states0[indx].fullstate
@@ -328,7 +346,7 @@ pro red::quicklook, align = align $
 
         ;; use_pat constructed from use_states above
         files = red_file_search(use_pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
-        
+
       endif else begin
 
         if keyword_set(core_and_wings) then begin
@@ -361,7 +379,8 @@ pro red::quicklook, align = align $
 
         endif else begin        
 
-          files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+;          files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+          files = red_raw_search(dirs[iset] + '/' + cam, scannos = scannos, count = Nfiles)
 
         end
       end
@@ -379,7 +398,8 @@ pro red::quicklook, align = align $
 
       ;; Search file names for scan 0, use them to find out what states
       ;; are available.
-      files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+      ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+      files0 = red_raw_search(dirs[iset] + '/' + cam, instrument = 'CHROMIS', scanno = 0, count = Nfiles)
       self -> extractstates, files0, states0
       indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
       ustat = states0[indx].fullstate
@@ -419,9 +439,8 @@ pro red::quicklook, align = align $
         files = red_file_search(pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
 
       endif else begin
-
-        files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-
+;        files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+        files = red_raw_search(dirs[iset] + '/' + cam, scannos = scannos, count = Nfiles)
       endelse
       
     endelse
@@ -510,6 +529,15 @@ pro red::quicklook, align = align $
       if Nsel eq 0 then continue
       
       uscan = states[sel[uniq(states[sel].scannumber,sort(states[sel].scannumber))]].scannumber
+
+;      ;; Limit uscan based on scannos keyword
+;      if n_elements(scannos) gt 0 then begin
+;        match2, scannos, uscan, scanindx
+;        scanindx = scanindx[where(scanindx ne -1, Nmatch)]
+;        if Nmatch eq 0 then stop
+;        uscan = uscan[scanindx]
+;      endif
+
       Nscans = n_elements(uscan)
       Nexp_available = Nsel/Nscans
       
@@ -907,6 +935,8 @@ pro red::quicklook, align = align $
         endfor                  ; iscan
       endif
 
+      if arg_present(cube) then return
+      
       if ~keyword_set(no_histo_opt) then cube = red_histo_opt(temporary(cube))
 
       cube = bytscl(cube[x0:x1, y0:y1, *])
@@ -1022,3 +1052,12 @@ pro red::quicklook, align = align $
   endfor                        ; iset
   
 end
+
+;; Todo: Change again the structure of the program. First find all
+;; states from scan 0. Then use that to determine what states to
+;; produce movies for, whether decided with use_states or
+;; core_and_wings or the selection dialogue. Then loop over those
+;; states, and in that loop search for files that match that state and
+;; the list of scan numbers (if given). This should make it much
+;; quicker to make movies with selected scans, and also to return the
+;; cube for such movies as needed by make_raw_cube.
