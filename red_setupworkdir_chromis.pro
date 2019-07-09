@@ -535,7 +535,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   free_lun, Clun
   free_lun, Slun
 
-  if size(old_dir, /tname) eq 'STRING' then return
+  if size(old_dir, /tname) ne 'STRING' then return
   
   ;; We will now attempt to copy existing sums of calibration data.
 
