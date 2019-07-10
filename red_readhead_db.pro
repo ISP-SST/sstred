@@ -213,7 +213,7 @@ function red_readhead_db, files, date_beg=date_beg, framenumbers=framenumbers, s
               print, inam, ': Repeated filenames in the list?.'
               stop
             endif
-            file_burst = files_cam[inn] ; must be one file
+            ;file_burst = files_cam[inn] ; must be one file
           
             red_fitsaddkeyword, hdr, 'EXTEND','T'
             red_fitsaddkeyword, hdr, 'OBS-HDU', 1
@@ -336,15 +336,11 @@ function red_readhead_db, files, date_beg=date_beg, framenumbers=framenumbers, s
             date_beg.add, date_bgs
             headers.add,hdr
 
-          endif else begin      ; CRISP
-
-            egex = string('(',scannum,').*(',first_frame,')', format='(A,I05,A,I07,A)')
-            inn = where(stregex(files_cam,egex) ne -1)
-            if n_elements(inn) eq 1 then if inn eq -1 then continue
-            files_burst = files_cam[inn]
+          endif else begin      ; CRISP           
             
             line = fix(burst[7])  ; required for filename generation
             tuning = long(burst[2]) ; required for filename generation
+            filter1 = fix(burst[9])  ; required for filename generation
             burst_id = burst[0]            
 
             if line ne 0 then begin ; otherwise darks or WB flats
@@ -355,13 +351,9 @@ function red_readhead_db, files, date_beg=date_beg, framenumbers=framenumbers, s
               query = 'SELECT * FROM filters WHERE prefilter = ' + burst[9] + ';'
               red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
               if nl eq 1 then begin
-                st.msg += 'There is no entry in filters table for prefilter = ' +  burst[9] + '.\r'
-                st.code = -1
-                status.add, st
-                framenumbers.add, [0]
-                date_beg.add, ['0']
-                headers.add,hdr
-                continue
+                print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
+                print, 'Check the database integrity.'
+                return,0B
               endif
               filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
               red_fitsaddkeyword, hdr, 'WAVEMAX', float(filt[2]), ' [nm] Prefilter max wavelength (0.5 peak)'
@@ -445,15 +437,25 @@ function red_readhead_db, files, date_beg=date_beg, framenumbers=framenumbers, s
                 qw_state = frame[9]
                 lp_state = frame[10]
               endif
-                                ; generate filename
-              filter1 = fix(burst[9])
+
+              egex = string('(',scannum,').*(',framenum,')', format='(A,I05,A,I07,A)')
+              inn = where(stregex(files_cam,egex) ne -1)
+              if n_elements(inn) eq 1 then if inn eq -1 then continue
+              if n_elements(inn) gt 1 then begin
+                print, inam, ': Repeated filenames in the list?.'
+                stop
+              endif
+              ;file_frame = files_cam[inn] ; must be one file
+              
+                    ; generate filename              
               v=execute(fnm_gen)
               if ~v then begin
                 print, inam, ': Failed to generate filename \r'
                  print, 'Check the database integrity.'
                  return,0B
-              endif               
-              if ~strmatch(files_burst, '*'+fnm) then continue
+              endif
+              ;following check is rather redundant
+              ;; if ~strmatch(file_frame, '*'+fnm) then continue
               red_fitsaddkeyword, hdr, 'FILENAME', fnm
               status.add,st               
               headers.add,hdr
