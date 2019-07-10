@@ -443,9 +443,11 @@ pro crisp::fitprefilter, cwl = cwl $
                                or statesNB[0].prefilter eq '7772') then begin
         self -> loadbackscatter, statesNB[0].detector $
                                  , statesNB[0].prefilter, bgainn, bpsfn
-        self -> loadbackscatter, statesWB[0].detector $
+        if keyword_set(unitscalib) then begin
+          self -> loadbackscatter, statesWB[0].detector $
                                  , statesWB[0].prefilter, bgainw, bpsfw
-      end
+        endif
+      endif 
       
       for istate = 0L, Nwav-1 do begin
 
