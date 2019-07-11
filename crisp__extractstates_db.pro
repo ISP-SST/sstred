@@ -13,30 +13,46 @@
 ; 
 ;     Oleksii Andriienko, Institute for Solar Physics
 ; 
-; 
-; :Returns:
-;
-; 
 ; :Params:
 ; 
-;    datasets : in, type=strarr
+;    strings : in, type=strarr
 ;   
-;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to extract the states information.
+;      A list of strings from which to extract the states information. 
 ;   
 ;    states : out, type=array(struct)
 ;
-;        An array of structs, containing (partially filled) state information.
+;      An array of structs, containing (partially filled) state
+;      information. 
+; 
+; 
+; :Keywords:
+; 
+;    datasets : in, type=strarr
+;   
+;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to
+;      extract the states information. 
 ; 
 ; :History:
 ; 
-;   2019-07-10 : OA. Created. (Derived from crisp__extractstates and red_readhead_db)
+;   2019-07-10 : OA. Created. (Derived from crisp__extractstates and
+;                red_readhead_db) 
+; 
+;   2019-07-11 : MGL. Call like extractstates.
 ;
 ;-
-pro crisp::extractstates_db, datasets, states 
+pro crisp::extractstates_db, strings, states, datasets = datasets
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  use_strings = n_elements(datasets) eq 0
+  
+  if use_strings then begin
+    timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
+    timestamp = timestamps[uniq(timestamps,sort(timestamps))]
+    datasets = self.isodate + ' ' + timestamp
+  endif
+  
   instrument = 'CRISP'
 
   red_mysql_check, handle
@@ -53,7 +69,7 @@ pro crisp::extractstates_db, datasets, states
     split_set = strsplit(datasets[iset], ' ', /extract)
     date_time = datasets[iset]
     
-    ; we need Y,...,sec to generate the directory name
+    ;; We need Y,...,sec to generate the directory name
     split_date = strsplit(split_set[0],'-',/extract)
     Y = fix(split_date[0])
     M = fix(split_date[1])
@@ -71,8 +87,8 @@ pro crisp::extractstates_db, datasets, states
       print, "Let's run red_rawdir2db first."
       flat_dirs = *self.flat_dir
       dark_dirs = *self.dark_dir
-      pinh_dirs = *self.pinh_dir
-      polcal_dirs = *self.polcal_dir     
+      pinh_dirs = *self.pinh_dirs
+      polcal_dirs = self.polcal_dir ; Should be array pointer but is just single dir
       data_dirs = *self.data_dirs
       dirs = [flat_dirs, dark_dirs, pinh_dirs, polcal_dirs, data_dirs]
       in = where(strmatch(dirs,'*'+split_set[1]+'*'))
@@ -80,7 +96,7 @@ pro crisp::extractstates_db, datasets, states
       red_rawdir2db,dir=dir,/all
       red_mysql_cmd,handle,query,ans,nl
     endif
-    ;parse a result of the query
+    ;; Parse a result of the query
     tab = string(9B)
     set = strsplit(ans[1],tab,/extract,/preserve_null)
     set_id = set[0]
@@ -99,11 +115,12 @@ pro crisp::extractstates_db, datasets, states
     query = 'SELECT * FROM configs WHERE sets_id = ' + set_id + ';'
     red_mysql_cmd,handle,query,conf_ans,nl,debug=debug
     if nl eq 1 then begin
-      print, inam, ': There is no entry in configs table for ' + instrument + ' ' + date_time[iset] + ' ' + cameras[icam] + ' dataset.\r'
+      print, inam, ': There is no entry in configs table for ' + instrument $
+             + ' ' + date_time[iset] + ' ' + cameras[icam] + ' dataset.\r'
       print,'Check the database integrity.'
       return
     endif
-    Ncams = nl-1 ; number of cameras (configs) in the dataset
+    Ncams = nl-1                ; number of cameras (configs) in the dataset
 
     for icam=1,Ncams do begin
       conf = strsplit(conf_ans[icam],tab,/extract,/preserve_null)
@@ -116,7 +133,7 @@ pro crisp::extractstates_db, datasets, states
       state.cam_settings = strtrim(string(state.exposure*1000, format = '(f9.2)'), 2) + 'ms'      
 
       det_id = conf[11]
-      ; get detector information
+      ;; Get detector information
       query = 'SELECT manufacturer, model, serial_number, name, detfirm FROM detectors WHERE id = ' + det_id + ';'
       red_mysql_cmd,handle,query,det_ans,nl,debug=debug
       if nl eq 1 then begin
@@ -128,7 +145,7 @@ pro crisp::extractstates_db, datasets, states
       detector = dets[3]        ; need this exact variable name to generate filename
       state.detector = detector
 
-      ; get dirname generating string
+      ;; Get dirname generating string
       tmplt_id = conf[12]
       query = 'SELECT template FROM dirname_templates WHERE id = ' + tmplt_id + ';'
       red_mysql_cmd,handle,query,tmplt_ans,nl,debug=debug
@@ -139,7 +156,7 @@ pro crisp::extractstates_db, datasets, states
       endif
       dir_gen = tmplt_ans[1]
 
-      ; get filename generating string
+      ;; Get filename generating string
       tmplt_id = conf[13]
       query = 'SELECT template FROM filename_templates WHERE id = ' + tmplt_id + ';'
       red_mysql_cmd,handle,query,tmplt_ans,nl,debug=debug
@@ -150,7 +167,7 @@ pro crisp::extractstates_db, datasets, states
       endif
       fnm_gen = tmplt_ans[1]
 
-      ; get infromation from burst table                       
+      ;; Get infromation from burst table                       
       query = 'SELECT * FROM bursts WHERE config_id = ' + config_id + ';' 
       red_mysql_cmd,handle,query,burst_ans,nl,debug=debug
       if nl eq 1 then begin
@@ -166,20 +183,20 @@ pro crisp::extractstates_db, datasets, states
 
       for ifile = 0, Nbursts-1 do begin
         burst = strsplit(burst_ans[ifile+1],tab,/extract,/preserve_null)         
-        scannum = burst[3] ; need this exact variable name to generate filename
+        scannum = burst[3]      ; need this exact variable name to generate filename
         first_frame = burst[6]
         state.scannumber = scannum
 
         red_progressbar, ifile, Nbursts, /predict, brst_msg
 
-        line = long(burst[7])      ; required for filename generation
-        tuning = long(burst[2])   ; required for filename generation
-        filter1 = fix(burst[9])   ; required for filename generation
+        line = long(burst[7])   ; required for filename generation
+        tuning = long(burst[2]) ; required for filename generation
+        filter1 = fix(burst[9]) ; required for filename generation
         burst_id = burst[0]        
         
         state.prefilter = burst[9]
 
-           ; get information about prefilter
+        ;; Get information about prefilter
         query = 'SELECT * FROM filters WHERE prefilter = ' + burst[9] + ';'
         red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
         if nl eq 1 then begin
@@ -256,7 +273,7 @@ pro crisp::extractstates_db, datasets, states
             state.lp = lp_state
           endif          
           
-             ; generate filename              
+          ;; Generate filename              
           v=execute(fnm_gen)
           if ~v then begin
             print, inam, ': Failed to generate filename \r'
@@ -265,13 +282,19 @@ pro crisp::extractstates_db, datasets, states
           state.filename = dir_root + dir + fnm
 
           st[iframe] = state
-        endfor
-                                ; iframe
+        endfor                  ; iframe
+
         red_append, states, st
 
       endfor                    ; ifile (burst)
-    endfor  ; cams (configs)
-  endfor  ;datasets
+    endfor                      ; cams (configs)
+  endfor                        ; datasets
+
+  if use_strings then begin
+    ;; Filter the found states with respect to the file names in strings
+    match2, strings, states.filename, suba ;, subb 
+    states = states[suba]
+  endif
   
 end
 
