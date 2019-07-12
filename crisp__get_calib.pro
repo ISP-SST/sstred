@@ -220,9 +220,11 @@ pro crisp::get_calib, states $
       if  n_elements(gainname) ne 0 then begin
         if ~file_test(gainname[istate]) then begin
           ;; Try summing flats for this state and then making gains
-          self -> sumflat, /check, /sum_in_rdx $
+          if ~file_test(flatname[istate]) then begin
+            self -> sumflat, /check, /sum_in_rdx $
                            , cams = states[istate].camera $
                            , ustat = states[istate].fullstate
+          endif 
           self -> makegains, smooth=3.0, files = flatname[istate]
         endif 
         gaindata[0, 0, istate] = red_readdata(gainname[istate] $
