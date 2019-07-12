@@ -226,7 +226,7 @@ pro red_rawdir2db, all = all $
               , DETOFFS        : 0L          $
  ;             , FILENAME       : ''          $
               , FILTER1        : '0'          $
-              , FIRST_FRAME    : 0           $
+              , FIRST_FRAME    : 0L           $
               , INSTRUME       : instrume    $
  ;             , IS_WB          : is_wb       $
  ;             , NAXIS          : 0L          $
@@ -241,7 +241,7 @@ pro red_rawdir2db, all = all $
               , SOLARNET       : 0.          $
               , STATE          : ''          $
               , WHEEL          : 0           $
-              , HRZ            : 0           $
+              , HRZ            : 0L           $
  ;             , TELESCOP       : ''          $
               , WAVEBAND       : ''          $
               , WAVELNTH       : 0.          $
@@ -342,7 +342,7 @@ pro red_rawdir2db, all = all $
             wheel = long(fpi_info[1])
             nbpref = nbprefs[wheel-1]
             ;; Tuning in digital units
-            du = fpi_info[2]
+            du = long(fpi_info[2])
             dbinfo[ifile].WHEEL = wheel
             dbinfo[ifile].HRZ = du
             ;; Tuning in [m]

@@ -104,8 +104,12 @@ pro crisp_fnm_gen, filename $
 
     ;; For polcal data we have to add the prefilter
     if strmatch(dirname_parts[1], 'Polcal') then begin
-      dirname_format += 'A, I04, A1, '
-      dirname_vars += '"Polcal/", filter1, "/", '
+      ; sometimes (it seems that only for 5173 prefilter)
+      ; timestamp is after Polcal and prefilter part should be omitted
+      if ~strmatch(dirname_parts[2], timeregex) then begin 
+        dirname_format += 'I04, A1, '
+        dirname_vars += 'filter1, "/", '
+      endif
     endif
 
     ;; Followed by the timestamp and the camera
