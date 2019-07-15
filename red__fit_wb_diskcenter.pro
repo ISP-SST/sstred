@@ -1,0 +1,222 @@
+; docformat = 'rst'
+
+;+
+; Measure median disk center wideband intensities and fit to function
+; of time.
+;
+; The use of the median means it is OK to include data with pores or
+; even a small spot in the FOV.
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, ISP
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; :Keywords:
+;
+;    dirs : in, optional, type=string
+;
+;        Set this to the time-stamp directories to use to limit the
+;        automatic selection.
+;
+; 
+;
+; 
+; :History:
+; 
+;    2019-07-15 : MGL. First version.
+; 
+;-
+pro red::fit_wb_diskcenter, dirs = dirs, mu_limit = mu_limit
+
+  ;; Name of this method
+  inam = red_subprogram(/low, calling = inam1)
+
+  if n_elements(mu_limit) eq 0 then mu_limit = 0.97
+  
+  cams = *self.cameras
+  camWB = (cams[where(strmatch(cams,'*-W'))])[0]
+  camNB = (cams[where(strmatch(cams,'*-[NT]'))])[0]
+
+  if n_elements(dirs) eq 0 then begin
+
+    ;; Directories not provided, consider all.
+
+    if ptr_valid(self.flat_dir)  then red_append, dirs, *self.flat_dir
+    if ptr_valid(self.data_dirs) then red_append, dirs, *self.data_dirs
+
+  endif
+  
+  Ndirs = n_elements(dirs)
+  if Ndirs eq 0 then stop
+
+  ;; First get mu and zenith angle
+  timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
+  times = dblarr(Ndirs)
+  for idir = 0, Ndirs-1 do begin
+    times[idir] = red_time2double(stregex(dirs[idir], timeregex, /extract))
+  endfor                        ; idir
+  red_logdata, self.isodate, times, mu = mu, zenithangle = za
+
+  ;; Idea: for flats directories, mu might vary during the data
+  ;; collection. So find the data where mu peaks!
+  
+  
+  indx = where(mu gt mu_limit, Ndirs)
+  if Ndirs eq 0 then stop
+  dirs = dirs[indx]
+  times = times[indx]
+  mu = mu[indx]
+  za = za[indx]
+
+  wbindx = where(file_test(dirs+'/'+camwb), Nwb)
+  nbindx = where(file_test(dirs+'/'+camnb), Nnb)
+  if Nwb eq 0 then noabsunits = 1
+
+  
+  if Nwb gt 0 then begin
+
+    ;; Measure DC WB intensities
+
+    wbdir = self.out_dir+'/prefilter_fits/wb/'
+    file_mkdir, wbdir
+    wbdirs = dirs[wbindx]
+    for iwb = 0, Nwb-1 do begin
+      print, wbdirs[iwb]
+      ;;fnamesW = file_search(wbdirs[iwb]+'/Chromis-W/*_00000_*fits', count = NfilesW)      
+      fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]00000[._]*', count = NfilesW)      
+      self -> extractstates, fnamesw, states
+
+      pindx = uniq(states.prefilter, sort(states.prefilter))
+      upref = states[pindx].prefilter
+      Npref = n_elements(upref)
+
+      for ipref = 0, Npref-1 do begin
+
+        self -> get_calib, states[pindx[ipref]], darkdata = dark
+        ims = red_readdata(fnamesW[pindx[ipref]], head = hdr, /silent) - dark
+
+        if self.dodescatter and (states[pindx[ipref]].prefilter eq '8542' $
+                                 or states[pindx[ipref]].prefilter eq '7772') then begin
+          self -> loadbackscatter, states[pindx[ipref]].detector $
+                                   , states[pindx[ipref]].prefilter, bgain, bpsf
+          ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
+        endif
+        
+        
+        
+
+        red_fitspar_getdates, hdr, date_beg = date_beg
+        
+        red_append, wbintensity, median(ims)
+        red_append, wbprefs, upref[ipref]
+        red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])
+        red_append, wbexpt, fxpar(hdr, 'XPOSURE')
+        red_append, wbmu, mu[wbindx[iwb]]
+        red_append, wbza, za[wbindx[iwb]]
+      endfor                    ; ipref
+    endfor                      ; iwb
+
+    ;; Sort
+    indx = sort(wbtimes)
+    wbintensity = wbintensity[indx]
+    wbprefs = wbprefs[indx]
+    wbtimes = wbtimes[indx]
+    wbexpt = wbexpt[indx]
+    wbmu = wbmu[indx]
+    wbza = wbza[indx]
+    
+    upref = wbprefs[uniq(wbprefs, sort(wbprefs))]
+    Nprefs = n_elements(upref)
+
+   
+    
+    ;; Prepare for plotting the results
+    colors = distinct_colors(n_colors = Nprefs, /num)
+    cgwindow
+    cgplot, /add, [0], /nodata $
+            , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/s]' $
+            , xrange = [min(wbtimes), max(wbtimes)]/3600. + [-0.1, 0.1] $
+            , yrange = [0, max(wbintensity/wbexpt)*1.05]
+
+    ;; Loop over prefilters
+    for ipref = 0, Nprefs-1 do begin
+      indx = where(wbprefs eq upref[ipref])
+
+      ;; Set up the plot
+      cgplot, /add, /over, psym = 16, color = colors[ipref] $
+              , wbtimes[indx] / 3600. $
+              , wbintensity[indx] / wbexpt[indx] 
+
+      ;; Set up for fitting
+      case n_elements(indx) of
+        1    : myfunc = ''
+        2    : myfunc = 'P[0] + X*P[1]'
+        else : myfunc = 'P[0] + X*P[1] + X*X*P[2]'
+      endcase
+      
+      if myfunc ne '' then begin
+
+        ;; Do the fit
+        err = 1. / wbmu[indx]   ; Large mu is better!
+        pp = mpfitexpr(myfunc $
+                       , wbtimes[indx]/3600. $
+                       , wbintensity[indx] / wbexpt[indx] $
+                       , err $
+                      )
+
+        ;; Plot it
+        tt = (findgen(1000)/1000 * (max(wbtimes[indx])-min(wbtimes[indx])) + min(wbtimes[indx])) / 3600
+        wbint = red_evalexpr(myfunc, tt, pp)
+        cgplot, /add, /over, color = colors[ipref], tt, wbint
+
+        ;; Save it
+        red_mkhdr, phdr, pp
+        fxaddpar, phdr, 'MYFUNC', myfunc, 'mpfitexpr fitting function'
+        writefits, wbdir+'wb_fit_'+upref[ipref]+'.fits', pp, phdr
+        
+      endif
+
+      ;; Store the data
+      openw, lun, /get_lun, wbdir+'wb_calibration_'+upref[ipref]+'.txt'
+      printf, lun, '# time, intensity, exp time, mu, zenith angle'
+      for i = 0, n_elements(indx)-1 do $
+         printf, lun, wbtimes[indx[i]], wbintensity[indx[i]], wbexpt[indx[i]], wbmu[indx[i]], wbza[indx[i]]
+      free_lun, lun
+
+      
+    endfor                      ; ipref
+
+    ;; Finish the plot
+    cglegend, /add, titles = upref $
+              , location = [0.9, 0.12], align = 2 $
+              , colors = colors, psym = 16, length = 0
+    cgcontrol, output = wbdir+'wb_intensities.pdf'
+
+  endif
+
+  
+end
+
+
+;a = chromisred(/dev)
+a = crispred(/dev)
+
+a -> fit_wb_diskcenter
+
+pp=readfits('prefilter_fits/wb/wb_fit_6563.fits',h)
+
+print, h, format = '(a0)'
+
+END
