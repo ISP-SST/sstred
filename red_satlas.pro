@@ -46,9 +46,10 @@
 ;     
 ;   
 ;   
-;    nocont : in
-;     
-;   
+;    nocont : in, optional, type=boolean 
+;
+;      Set this to get output in the FTS atlas units. If not set then
+;      output is normalized to continuum.
 ;   
 ;    cgs : in, optional, type=boolean
 ;     
@@ -83,8 +84,9 @@
 ;    2016-12-09 : JdlCR. Fixed double bug in the computation of
 ;                 "conversion_si". 
 ;
-;    2017-04-18 : MGL. Remove the "conversion" keywords.
-; 
+;    2017-04-18 : MGL. Remove the "conversion" keywords. 
+;
+;    2019-07-15 : MGL. Corrections by Julius Koza.
 ;
 ;-
 pro red_satlas, xstart, xend, outx, outy $
@@ -100,8 +102,8 @@ pro red_satlas, xstart, xend, outx, outy $
   restore, this_dir+'ftsatlas.idlsave'
 
   if keyword_set(nm) then begin
-     xstart=xstart/10.d0
-     xend=xend/10.d0
+    xstart *= 10.d0 
+    xend   *= 10.d0
   endif
 
   c=299792458.d0                ; light speed in m/s
@@ -121,7 +123,7 @@ pro red_satlas, xstart, xend, outx, outy $
     cm_to_m = 1d-2     
     m_to_cm = 1d2
 
-    ;; To Watt/(m2 Hz ster)
+    ;;  From Watt/(cm2 ster AA) to Watt/(m2 Hz ster)
     conversion_si = (outx*aa_to_m)^2 / (clight * cm_to_m^2 * aa_to_m )
 
     outy *= conversion_si
@@ -137,7 +139,7 @@ pro red_satlas, xstart, xend, outx, outy $
     joule_2_erg = 1d7
     aa_to_cm = 1d-8
 
-    ;; From Watt /(cm2 ster AA) to erg/(s cm2 ster cm)
+    ;; From Watt/(cm2 ster AA) to erg/(s cm2 ster cm)
     conversion_cgs = joule_2_erg / aa_to_cm      
     ;; To erg/
     conversion_cgs *= (outx*aa_to_cm)^2 / clight 
