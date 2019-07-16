@@ -327,11 +327,11 @@ pro chromis::fitprefilter, dir = dir $
   Nstates = n_elements(ustate)
   
   ;; Load data and compute mean spectrum
-
-  spec   = dblarr(Nstates)
-  wav    = dblarr(Nstates)
-  pref   = strarr(Nstates)
-  specwb = dblarr(Nstates)
+  time_avgs = dblarr(Nstates)
+  spec      = dblarr(Nstates)
+  wav       = dblarr(Nstates)
+  pref      = strarr(Nstates)
+  specwb    = dblarr(Nstates)
 
   for istate =0L, Nstates-1 do begin
 
@@ -357,9 +357,10 @@ pro chromis::fitprefilter, dir = dir $
     pos = where(statesNB[*].fullstate eq ustate[istate], count)
 ;    print, inam+'loading files for state -> '+ustate[istate]
 
+    time_avg = dblarr(count)
     for kk=0L, count-1 do begin
-      
-      imsN = float(rdx_readdata(statesNB[pos[kk]].filename))
+      imsN = float(rdx_readdata(statesNB[pos[kk]].filename, header = hdrN))
+      time_avg[kk] = red_time2double((strsplit(fxpar(hdrN, 'DATE-AVG'), 'T', /extract))[1])
       dim = size(imsN, /dim)
       if n_elements(dim) gt 2 then nsli = double(dim[2]) else nsli = 1d
       imsN = total(imsN, 3, /double) / nsli
@@ -403,8 +404,9 @@ pro chromis::fitprefilter, dir = dir $
     spec[istate] /= count
     if keyword_set(unitscalib) then specwb[istate] /= count
     
-    wav[istate]  = statesNB[pos[0]].tun_wavelength*1.d10
-    pref[istate] = statesNB[pos[0]].prefilter
+    time_avgs[istate] = time_avg
+    wav[istate]       = statesNB[pos[0]].tun_wavelength*1.d10
+    pref[istate]      = statesNB[pos[0]].prefilter
     
   endfor                        ; istate
 
@@ -481,9 +483,10 @@ pro chromis::fitprefilter, dir = dir $
       
       ;; save curve
       
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref], $
-             fitpars:par, fts_model:interpol(yl1, xl+par[1], lambda)*prefilter, units:units}
-      
+      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref] $
+             , fitpars:par, fts_model:interpol(yl1, xl+par[1], lambda)*prefilter, units:units $
+             , time_avg:mean(time_avgs)}
+
       cgwindow
       mx = max([spectrum, interpol(yl1, xl+par[1], lambda)*prefilter, prefilter/par[0] * max(spectrum)]) * 1.05
       
@@ -513,9 +516,10 @@ pro chromis::fitprefilter, dir = dir $
 
       y1 = interpol(yl, xl, lambda)
       prefilter = [spectrum/yl1]
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref], $
-             fitpars:prefilter, fts_model:y1, units:units}
-      
+      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref] $
+             , fitpars:prefilter, fts_model:y1, units:units $
+             , time_avg:mean(time_avgs)}
+
     endelse
     
     save, file=self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave', prf

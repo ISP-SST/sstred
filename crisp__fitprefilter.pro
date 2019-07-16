@@ -433,11 +433,11 @@ pro crisp::fitprefilter, cwl = cwl $
       Nwav = n_elements(ustates)
 
       ;; Load data and compute mean spectrum
-      
-      spec   = dblarr(Nwav)
-      wav    = dblarr(Nwav)
-      pref   = strarr(Nwav)
-      specwb = dblarr(Nwav)
+      time_avgs = dblarr(Nwav)
+      spec      = dblarr(Nwav)
+      wav       = dblarr(Nwav)
+      pref      = strarr(Nwav)
+      specwb    = dblarr(Nwav)
 
       if self.dodescatter and (statesNB[0].prefilter eq '8542' $
                                or statesNB[0].prefilter eq '7772') then begin
@@ -477,7 +477,7 @@ pro crisp::fitprefilter, cwl = cwl $
         ;; Sum files with same tuning, checking for outliers. The returned
         ;; "sum" is the average of the summed frames, so still in counts
         ;; for a single frame. Also correct for dark.
-        imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4) - darkN
+        imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4, time_avg = time_avg) - darkN
         if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
                                  or statesNB[pos[0]].prefilter eq '7772') then begin
           imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
@@ -509,11 +509,12 @@ pro crisp::fitprefilter, cwl = cwl $
           if keyword_set(unitscalib) then $
              specWB[istate] = median(double(imW[dx:dim[0]-dx-1,dy:dim[1]-dy-1]))
         endelse
+
+        time_avgs[istate] = red_time2double(time_avg)
+        wav[istate]       = statesNB[pos[0]].tun_wavelength*1.d10 ; [Å] Tuning wavelength
+        pref[istate]      = statesNB[pos[0]].prefilter
         
-        wav[istate] = statesNB[pos[0]].tun_wavelength*1.d10 ; [Å] Tuning wavelength
-        pref[istate] = statesNB[pos[0]].prefilter
-        
-        wav[istate] += cwl - pref[istate] ; Adjust wavelength scale
+        wav[istate]       += cwl - pref[istate] ; Adjust wavelength scale
         
       endfor                    ; istate
       
@@ -644,8 +645,9 @@ pro crisp::fitprefilter, cwl = cwl $
       
       ;; save curve
       file_mkdir, self.out_dir+'/prefilter_fits/'
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref], $
-             fitpars:par, fts_model:interpol(yl1, xl+par[1], wav)*prefilter, units:units}
+      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref]$
+             , fitpars:par, fts_model:interpol(yl1, xl+par[1], wav)*prefilter, units:units $
+             , time_avg:mean(time_avgs)}
 
       ;; Save the fit
       save, prf $
