@@ -81,6 +81,7 @@ pro chromis::make_scan_cube, dir $
                              , limb_data = limb_data $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
+                             , nowbintensitycorr = nowbintensitycorr $
                              , overwrite = overwrite $
                              , tile = tile $
                              , scannos = scannos 
@@ -162,6 +163,9 @@ pro chromis::make_scan_cube, dir $
   prefilter = wstates[0].prefilter
   datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
+
+  wbfitfile = 'prefilter_fits/wb/wb_fit_'+prefilter+'.fits'
+  if ~file_test(wbfitfile) then nowbintensitycorr = 1B
 
   
   ;; Get a subset of the available scans, either through the scannos
@@ -452,6 +456,12 @@ pro chromis::make_scan_cube, dir $
 
     rpref = 1.d0/prefilter_curve
 
+    if ~keyword_set(nowbintensitycorr) then begin
+      ;; Take WB disk center intensities into account
+      wbpp = readfits(wbfitfile, pphdr)
+      wbfunc = fxpar(pphdr, 'MYFUNC') ; Read the mpfitexpr fit function
+    endif
+
     ;; Set up for collecting time and wavelength data
     tbeg_array     = dblarr(Nwav)   ; Time beginning for state
     tend_array     = dblarr(Nwav)   ; Time end for state
@@ -646,6 +656,16 @@ pro chromis::make_scan_cube, dir $
       ;; Apply destretch to anchor camera and prefilter correction
       if wbcor then nbim = red_stretch(temporary(nbim), grid1)
 
+      if ~keyword_set(nowbintensitycorr) then begin
+        ;; Change intensity to compensate for time difference
+        ;; between prefilterfit and data collection. 
+        wbtt = [prf.time_avg, tavg_array[iwav]]
+        wbints = red_evalexpr(wbfunc, wbtt, wbpp) 
+        wbratio = wbints[0] / wbints[1]
+        nbim *= wbratio
+      endif
+
+      
       if keyword_set(integer) then begin
         self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
                                    , ituning = iwav

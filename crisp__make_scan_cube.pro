@@ -125,6 +125,7 @@ pro crisp::make_scan_cube, dir $
                            , limb_data = limb_data $
                            , nocavitymap = nocavitymap $
                            , nopolarimetry = nopolarimetry $
+                           , nowbcorr = nowbcorr $
                            , overwrite = overwrite $
                            , redemodulate = redemodulate $
                            , scannos = scannos $
@@ -210,7 +211,11 @@ pro crisp::make_scan_cube, dir $
   prefilter = wbgstates[0].prefilter
   datestamp = fxpar(red_readhead(wbgfiles[0]), 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
-  
+
+  wbfitfile = 'prefilter_fits/wb/wb_fit_'+prefilter+'.fits'
+  if ~file_test(wbfitfile) then nowbcorr = 1B
+
+    
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -572,8 +577,6 @@ if ~keyword_set(nocavitymap) then begin
     
     nbr_rpref = 1.d0/nbr_prefilter_curve
 
-
-    
     if nbr_units ne nbt_units then begin
       print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
       print, inam + ' : Please rerun the prefilterfit step for these data.'
@@ -581,14 +584,25 @@ if ~keyword_set(nocavitymap) then begin
     endif
     units = nbr_units
 
+    if ~keyword_set(nowbcorr) then begin
+      ;; Take WB disk center intensities into account
+      wbpp = readfits(wbfitfile, pphdr)
+      wbfunc = fxpar(pphdr, 'MYFUNC') ; Read the mpfitexpr fit function
+    endif
+    
 
     ;; Make FITS header for the output cube
     hdr = nbhdr
     red_fitsdelkeyword, hdr, 'STATE' ; Not a single state for cube 
     red_fitsaddkeyword, hdr, 'BITPIX', -32
     ;; Add info about this step
+    if ~keyword_set(nowbcorr) then begin
+      prstep = 'Prepare NB science data cube, WBCORR'
+    endif else begin
+      prstep = 'Prepare NB science data cube'
+    endelse
     self -> headerinfo_addstep, hdr $
-                                , prstep = 'Prepare NB science data cube' $
+                                , prstep = prstep $
                                 , prpara = prpara $
                                 , prproc = inam
 
@@ -646,11 +660,6 @@ if ~keyword_set(nocavitymap) then begin
         
         nbims = red_readdata(snames[ituning], head = nbhead)
 
-        for istokes = 0, Nstokes-1 do begin
-          self -> fitscube_addframe, fileassoc, nbims[*, *, 0, istokes] $
-                                     , ituning = ituning, istokes = istokes
-        endfor                  ; istokes
-
         ;; Wavelength 
         wcs[ituning].wave = sstates[ituning].tun_wavelength*1d9
 
@@ -670,6 +679,20 @@ if ~keyword_set(nocavitymap) then begin
         tbeg_array[ituning] = red_time2double((strsplit(date_beg,'T',/extract))[1])
         tend_array[ituning] = red_time2double((strsplit(date_end,'T',/extract))[1])
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+
+        if ~keyword_set(nowbcorr) then begin
+          ;; Change intensity to compensate for time difference
+          ;; between prefilterfit and data collection. 
+          wbtt = [prf.time_avg, tavg_array[ituning, 0]]
+          wbints = red_evalexpr(wbfunc, wbtt, wbpp) 
+          wbratio = wbints[0] / wbints[1]
+          nbims *= wbratio
+        endif
+
+        for istokes = 0, Nstokes-1 do begin
+          self -> fitscube_addframe, fileassoc, nbims[*, *, 0, istokes] $
+                                     , ituning = ituning, istokes = istokes
+        endfor                  ; istokes
 
 
       endif else begin
@@ -748,9 +771,6 @@ if ~keyword_set(nocavitymap) then begin
         endfor                  ; ifile
         nbim /= Nexposures
         
-        self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                   , ituning = ituning
-
         tbeg_array[ituning] = min(tbegs)
         tavg_array[ituning] = mean(tavgs)
         tend_array[ituning] = max(tends)
@@ -772,13 +792,24 @@ if ~keyword_set(nocavitymap) then begin
         sexp_array[ituning] = mean(texps)
         nsum_array[ituning] = round(total(nsums))
 
+        if ~keyword_set(nowbcorr) then begin
+          ;; Change intensity to compensate for time difference
+          ;; between prefilterfit and data collection. 
+          wbtt = [prf.time_avg, tavg_array[ituning, 0]]
+          wbints = red_evalexpr(wbfunc, wbtt, wbpp) 
+          wbratio = wbints[0] / wbints[1]
+          nbim *= wbratio
+        endif
+
+        self -> fitscube_addframe, fileassoc, temporary(nbim) $
+                                   , ituning = ituning
+
       endelse 
       
 
       ;; Time
       wcs[ituning].time = tavg_array[ituning, 0]
-  
-      
+
     endfor                      ; ituning
 
     
