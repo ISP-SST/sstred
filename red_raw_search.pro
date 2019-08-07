@@ -110,7 +110,7 @@ function red_raw_search, dir $
   case n_elements(fpi_states) of
     0 : case strupcase(instrument) of
       'CHROMIS': fpi_states = 'wheel0000[0-9]_hrz[0-9][0-9][0-9][0-9][0-9]'
-      'CRISP' : fpi_states = prefilters+'.'+tunings
+      'CRISP' : fpi_states = prefilters+'.'+tunings+'.lc?'
       else: stop
     endcase
     else : fpi_states = strtrim(fpi_states, 2)
@@ -130,7 +130,7 @@ function red_raw_search, dir $
         for istate = 0, Nstates-1 do begin
           searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
                                    + fpi_states[istate] $
-                                   + '.lc?.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+                                   + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
           istring++
         endfor
       endfor 
