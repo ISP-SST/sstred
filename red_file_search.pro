@@ -57,6 +57,8 @@
 ;  
 ;    2018-07-26 : MGL. Possible to optionally separate directory from
 ;                 the pattern.
+;  
+;    2019-08-07 : MGL. Sort files by modification time.
 ; 
 ;-
 function red_file_search, searchstring, dir $
@@ -83,6 +85,9 @@ function red_file_search, searchstring, dir $
   endcase
 
   if keyword_set(verbose) then print, inam + ' : ' + name_expression
+
+  ;; Attach this to the find command to get time-sorted output.
+  sorting = " -printf '%T@\t%p\n' | sort -n | cut -f 2-"
   
   if keyword_set(remote_login) then begin
     
@@ -90,8 +95,11 @@ function red_file_search, searchstring, dir $
     if n_elements(remote_dir) eq 0 then remote_dir = dir
     
     cmd = 'ssh ' + remote_login $
-          + ' "find ' + remote_dir + '/ -type f ' $
-          + name_expression+'"'
+          + ' "' $
+          + 'find ' + remote_dir + '/ -type f ' $
+          + name_expression $
+          + sorting $
+          + '"'
     
     if keyword_set(verbose) then print, cmd
     spawn, cmd, files
@@ -100,7 +108,10 @@ function red_file_search, searchstring, dir $
     
   endif else begin
 
-    spawn, 'find ' + dir + '/ -type f ' + name_expression, files
+    spawn, 'find ' + dir + '/ -type f ' $
+           + name_expression $
+           + sorting $
+           , files
 
   endelse
 
