@@ -610,12 +610,12 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     rfiles = file_search(old_dir+'/polcal_sums/Crisp-R/cam*.pols.fits', count = Nfilesr)
     if Nfilest gt 0 then begin
       file_mkdir, work_dir+'/polcal_sums/Crisp-T'
-      file_copy, pfiles, work_dir+'/polcal_sums/Crisp-T/', /overwrite
+      file_copy, tfiles, work_dir+'/polcal_sums/Crisp-T/', /overwrite
       print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/polcal_sums/Crisp-T/'
     endif
     if Nfilesr gt 0 then begin
       file_mkdir, work_dir+'/polcal_sums/Crisp-R'
-      file_copy, pfiles, work_dir+'/polcal_sums/Crisp-R/', /overwrite
+      file_copy, rfiles, work_dir+'/polcal_sums/Crisp-R/', /overwrite
       print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/polcal_sums/Crisp-R/'
     endif
   endif
