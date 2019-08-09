@@ -53,6 +53,8 @@
 ; 
 ;   2019-05-10 : MGL. First version.
 ; 
+;   2019-08-09 : MGL. Allow variations in the flats directory names.
+; 
 ;-
 pro crisp::copy_oldsums, olddir $
                          , all = all $
@@ -86,8 +88,9 @@ pro crisp::copy_oldsums, olddir $
   
   ;; Darks
   if keyword_set(darks) then begin
-    if file_test(olddir+'/darks') then begin
 
+    if file_test(olddir+'/darks') then begin
+      
       print
       print, 'Copy dark sums '
 
@@ -156,21 +159,25 @@ pro crisp::copy_oldsums, olddir $
       print, olddir
     endelse
   endif
-  
-    
 
+  
   ;; Flats
   if keyword_set(flats) then begin
-    if file_test(olddir+'/flats') then begin
+    
+    ;; Flats subdirectories are allowed to be the standard name plus
+    ;; some extension. Copy all such subdirs.
+    fdirs = file_search(olddir+'/flats*', count = Nfdirs)
+    for idir = 0, Nfdirs-1 do begin
+;   if file_test(olddir+'/flats') then begin
 
       print
-      print, 'Copy flat sums '
+      print, 'Copy flat sums from '+fdirs[idir]
 
-      oldfiles = file_search(olddir+'/flats/cam*.flat', count = Nfiles)
+      oldfiles = file_search(fdirs[idir]+'/cam*.flat', count = Nfiles)
 
       if Nfiles gt 0 then begin
 
-        ;; Remove unpol flats
+        ;; Don't copy unpol flats, make them with the new pipeline
         indx = where(~strmatch(oldfiles, '*unpol*'), Nfiles)
         if Nfiles gt 0 then oldfiles = oldfiles[indx]
         
@@ -178,7 +185,7 @@ pro crisp::copy_oldsums, olddir $
         
       if Nfiles gt 0 then begin
 
-        newdir = self.out_dir+'/flats/'
+        newdir = self.out_dir+'/'+file_basename(fdirs[idir])+'/'
         file_mkdir, newdir
         
         self -> extractstates, oldfiles, oldstates
@@ -197,6 +204,8 @@ pro crisp::copy_oldsums, olddir $
         endfor                  ; iwb
 
         newnames = self -> filenames('flat', oldstates)
+        ;; In case we are dealing with multiple flats dirs:
+        newnames = red_strreplace(newnames,'/flats/','/'+file_basename(fdirs[idir])+'/')
 
         for ifile = 0, Nfiles-1 do begin
 
@@ -259,11 +268,13 @@ pro crisp::copy_oldsums, olddir $
       endelse
 
       
-    endif else begin
+    endfor                      ; idir
+
+    if Nfdirs eq 0 then begin
       print
       print, inam + ' : No "flats" subdirectory in'
       print, olddir
-    endelse
+    endif
   endif
     
 
