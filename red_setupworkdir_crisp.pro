@@ -75,8 +75,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   flatsubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'flat' $
                                         , count = Nflatdirs)
   
-  if Ndarkdirs eq 0 then begin
+  if Ndarkdirs eq 0 and n_elements(old_dir) eq 0 then begin
     print, 'No CRISP darks were found. No setup generated.'
+    print, 'If you have already summed them, please specify the path to the workdir where the sums can be found with the old_dir keyword.'
     return
   endif
 
@@ -175,85 +176,91 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       
     endfor                      ; idir
   endif                         ; Nsubdirs
-  
 
-  if Nflatdirs eq 0 then begin
+  
+  if Nflatdirs eq 0 and n_elements(old_dir) eq 0 then begin
     print, 'No CRISP flats were found. Stop after summing darks.'
+    print, 'If you have already summed them, please specify the path to the workdir where the sums can be found with the old_dir keyword.'
     free_lun, Clun
     free_lun, Slun
     return
   endif
- 
-  
-  print, 'Flats'
-  printf, Clun, '#'
-  printf, Clun, '# --- Flats'
-  printf, Clun, '#'
 
-  if Nflatdirs gt 0 then begin
-    ;; There are CRISP flats!
+  if Nflatdirs eq 0 then begin
 
-    ;; Directories with camera dirs below:
-    flatdirs = file_dirname(flatsubdirs)
-    flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
-    Nflatdirs = n_elements(flatdirs)
-
-    ;; Loop over the flatdirs, write each to the config file and
-    ;; to the script file
-    for idir = 0, Nflatdirs-1 do begin
-
-      ;; Config file
-
-      printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[idir] $
-                                                 , root_dir, '')
-
-      ;; Script file
-      
-      ;; Look for wavelengths in those flatsubdirs that match
-      ;; flatdirs[idir]! Also collect prefilters.
-      indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
-      fnames = file_search(flatsubdirs[indx]+'/cam*', count = Nfiles)
-      if Nfiles gt 0 then begin
-        
-        camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
-
-        red_extractstates, fnames, /basename, pref = wls
-        wls = wls[uniq(wls, sort(wls))]
-        wls = wls[WHERE(wls ne '')]
-        wavelengths = strjoin(wls, ' ')
-
-        
-        if keyword_set(calibrations_only) then begin
-          ;; For /calibrations_only we want to output the summed data
-          ;; in timestamp directories so we can handle multiple sets.
-          outdir = 'flats/' + file_basename(flatdirs[idir])
-          outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
-        endif else outdirkey = ''
-
-        ;; Print to script file
-        printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
-                + red_strreplace(flatdirs[idir], root_dir, '')+ '"' $
-                + ', nthreads=nthreads' $
-                + outdirkey $
-                + '  ; ' + camdirs+' ('+wavelengths+')'
-
-        red_append, prefilters, wls
-
-      endif                     ; Nfiles
-    endfor                      ; idir
-  endif                         ; Nsubdirs
-
-  
-  if n_elements(prefilters) gt 0 then $
-     prefilters = prefilters[uniq(prefilters, sort(prefilters))]
-  Nprefilters = n_elements(prefilters)
-
-  if Nprefilters eq 0 then begin
-    ;; This can happen if flats were already summed in La Palma. Look
-    ;; for prefilters in the summed flats directory instead.
-    spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
+    ;; Look for prefilters in the old flats directory instead.
+    spawn, 'ls '+old_dir+'/flats*/cam*.flat | cut -d. -f2|sort|uniq', ffiles
+    spawn, 'ls '+old_dir+'/flats*/cam*.flat', ffiles
+    prefilters = reform((stregex(file_basename(ffiles),'[.]([0-9][0-9][0-9][0-9])[.]',/extract,/sub))[1,*])
+    prefilters = prefilters[uniq(prefilters, sort(prefilters))]
     Nprefilters = n_elements(prefilters)
-  endif
+
+  endif else begin
+    
+    print, 'Flats'
+    printf, Clun, '#'
+    printf, Clun, '# --- Flats'
+    printf, Clun, '#'
+
+    if Nflatdirs gt 0 then begin
+      ;; There are CRISP flats!
+
+      ;; Directories with camera dirs below:
+      flatdirs = file_dirname(flatsubdirs)
+      flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
+      Nflatdirs = n_elements(flatdirs)
+
+      ;; Loop over the flatdirs, write each to the config file and
+      ;; to the script file
+      for idir = 0, Nflatdirs-1 do begin
+
+        ;; Config file
+
+        printf, Clun, 'flat_dir = '+red_strreplace(flatdirs[idir] $
+                                                   , root_dir, '')
+
+        ;; Script file
+        
+        ;; Look for wavelengths in those flatsubdirs that match
+        ;; flatdirs[idir]! Also collect prefilters.
+        indx = where(strmatch(flatsubdirs, flatdirs[idir]+'*'))
+        fnames = file_search(flatsubdirs[indx]+'/cam*', count = Nfiles)
+        if Nfiles gt 0 then begin
+          
+          camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
+
+          red_extractstates, fnames, /basename, pref = wls
+          wls = wls[uniq(wls, sort(wls))]
+          wls = wls[WHERE(wls ne '')]
+          wavelengths = strjoin(wls, ' ')
+
+          
+          if keyword_set(calibrations_only) then begin
+            ;; For /calibrations_only we want to output the summed data
+            ;; in timestamp directories so we can handle multiple sets.
+            outdir = 'flats/' + file_basename(flatdirs[idir])
+            outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
+          endif else outdirkey = ''
+
+          ;; Print to script file
+          printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
+                  + red_strreplace(flatdirs[idir], root_dir, '')+ '"' $
+                  + ', nthreads=nthreads' $
+                  + outdirkey $
+                  + '  ; ' + camdirs+' ('+wavelengths+')'
+
+          red_append, prefilters, wls
+
+        endif                   ; Nfiles
+      endfor                    ; idir
+    endif                       ; Nsubdirs
+
+    if n_elements(prefilters) gt 0 then $
+       prefilters = prefilters[uniq(prefilters, sort(prefilters))]
+    Nprefilters = n_elements(prefilters)
+
+  endelse
+
   
   ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
   ;; some of the method calls, so add it commented out. (This if
@@ -558,21 +565,27 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   if size(old_dir, /tname) ne 'STRING' then return
 
   
-  ;; Is this an old-crispred work directory?
-  spawn, 'grep "^ *cam_t" '+old_dir+'/config*.txt', spawn_output
-  if spawn_output[0] ne '' then begin
+  ;; Is this an old or new-type crispred work directory? Find out by
+  ;; looking for fits files in the darks subdirectory.
+  tmp = file_search(old_dir+'/darks/*.fits', count = Nfits)
+  old_type = Nfits eq 0
+  ;;spawn, 'grep "^ *cam_t" '+old_dir+'/config*.txt', spawn_output
+  ;;if spawn_output[0] ne '' then begin
+  if old_type then begin
     print, inam+' : You want to copy calibration data from an old-crispred workdir.'
     print, inam+' : Will now run the following method in the new workdir:'
-    print, '  IDL> a -> copy_oldsums, /overwrite, /all, "../'+ old_dir +'"'
+    print, '  IDL> a -> copy_oldsums, /overwrite, /all, "'+ old_dir +'"'
     cd, work_dir
     a = crispred()
-    a -> copy_oldsums, /overwrite, /all, '../'+ old_dir
+    a -> copy_oldsums, /overwrite, /all, old_dir
     cd, '../'
 
     return
   endif 
     
-  ;; We will attempt to copy existing sums of calibration data.
+  ;; We will attempt to copy existing sums of calibration data. Flats
+  ;; subdirectories are allowed to be the standard name plus some
+  ;; extension. Copy all such subdirs.
   
   ;; Darks
   if file_test(old_dir+'/darks', /directory) then begin
@@ -585,14 +598,16 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
 
   ;; Flats
-  if file_test(old_dir+'/flats', /directory) then begin
-    ffiles = file_search(old_dir+'/flats/cam*[0-9].flat.fits', count = Nfiles)
+  fdirs = file_search(old_dir+'/flats*', count = Nfdirs)
+  for idir = 0, Nfdirs-1 do begin
+;     if file_test(old_dir+'/flats', /directory) then begin
+    ffiles = file_search(old_dir+'/'+fdirs[idir]+'/cam*[0-9].flat.fits', count = Nfiles)
     if Nfiles gt 0 then begin
-      file_mkdir, work_dir+'/flats'
-      file_copy, ffiles, work_dir+'/flats/', /overwrite
-      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/flats/'
+      file_mkdir, work_dir+'/'+fdirs[idir]
+      file_copy, ffiles, work_dir+'/'+fdirs[idir]+'/', /overwrite
+      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/'+fdirs[idir]+'/'
     endif
-  endif
+  endfor                        ; idir
 
   ;; Pinholes
   if file_test(old_dir+'/pinhs', /directory) then begin
