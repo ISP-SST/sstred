@@ -29,12 +29,11 @@
 ; 
 ;      2017-06-08 : MGL. First version.
 ; 
-; 
-; 
+;      2019-08-20 : MGL. Bugfix, first value.
 ; 
 ;-
 function red_differential, x
-
-  return, x - [0, x]
+  
+  return, x - [x[0], x]            
   
 end
