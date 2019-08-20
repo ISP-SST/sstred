@@ -65,40 +65,40 @@ function red_raw_search, dir $
                          , fpi_states = fpi_states $
                          , instrument = instrument $
                          , prefilters = prefilters $
-                         , scannos = scannos $
+                         , scannos = scannos_in $
                          , tunings = tunings
 
   ;; Name of this subprogram
   inam = red_subprogram(/low, calling = inam1)
 
-   if n_elements(instrument) eq 0 then begin
-     ;; Find out from dir
+  if n_elements(instrument) eq 0 then begin
+    ;; Find out from dir
     instrument = strupcase((strsplit(file_basename(dir), '-', /extract))[0])
   endif
 
   ;; Massage the scannos
-  case n_elements(scannos) of
+  case n_elements(scannos_in) of
 
-    0 : scannos = '[0-9][0-9][0-9][0-9][0-9]'       ; Proper wildcard
+    0 : scannos = '[0-9][0-9][0-9][0-9][0-9]' ; Proper wildcard
 
-    1 : if size(scannos, /tname) eq 'STRING' then begin
-      scannos = string(rdx_str2ints(scannos), format = '(I05)') ; Possibly a comma and dash separated string
+    1 : if size(scannos_in, /tname) eq 'STRING' then begin
+      scannos = string(rdx_str2ints(scannos_in), format = '(I05)') ; Possibly a comma and dash separated string
     endif else begin
-      scannos = string(round(scannos), format = '(I05)') ; A number
+      scannos = string(round(scannos_in), format = '(I05)') ; A number
     endelse
 
-    else : scannos = string(round(scannos), format = '(I05)') ; An array, assume of numbers.
+    else : scannos = string(round(scannos_in), format = '(I05)') ; An array, assume of numbers.
     
   endcase
   Nscans = n_elements(scannos)
-
+  
   ;; Prefilter
   case n_elements(prefilters) of
     0 : prefilters = '[0-9][0-9][0-9][0-9]'
     else : prefilters = strtrim(prefilters, 2)
   endcase
   Npref = n_elements(prefilters)
-
+  
   ;; Tuning
   case n_elements(tunings) of
     0 : tunings = '[0-9][0-9][0-9][0-9]_[+-][0-9]*'
