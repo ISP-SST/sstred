@@ -65,7 +65,7 @@ function red_interpol_nogaps, y, x, xp, tol = tol, test = test, _ref_extra = ext
   ;; stretches of data where the distances are small enough.
   mask_smalldist = dx lt median(dx)*(1.+tol)
   onoff = red_differential(float(dx lt median(dx)*(1.+tol)))
-  on = where(onoff gt 0)
+  on = [0, where(onoff gt 0)]
   off = where(onoff lt 0)
   if n_elements(off) lt n_elements(on) then off = [off, n_elements(x)-1]
 
