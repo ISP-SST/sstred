@@ -333,7 +333,7 @@ pro red::quicklook, align = align $
       ;; Search file names for scan 0, use them to find out what states
       ;; are available.
       ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-      files = red_raw_search(dirs[iset] + '/' + cam, instrument = 'CRISP', scanno = 0, count = Nfiles)
+      files0 = red_raw_search(dirs[iset] + '/' + cam, instrument = 'CRISP', scanno = 0, count = Nfiles)
 
       self -> extractstates, files0, states0
       indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
