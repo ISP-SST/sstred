@@ -58,6 +58,9 @@
 ;
 ;      Provide more output
 ;
+;    verify : in, optional, type=boolean
+;
+;      Turn on tool for visually confirming the calibration results. 
 ; 
 ; :History:
 ;
