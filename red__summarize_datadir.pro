@@ -268,8 +268,6 @@ pro red::summarize_datadir, dirs
 
       red_append, output, 'Nframes/scan: '+strtrim(Nframes, 2)
 
-
-      
     endelse
     
     ;; Write the file
@@ -280,6 +278,8 @@ pro red::summarize_datadir, dirs
   endfor                        ; idir
   
 end
+
+;; Testing:
 
 pwd = getenv('PWD')
 case 1 of
@@ -293,14 +293,6 @@ case 1 of
     a -> summarize_datadir, ['09:28:36', '11:18:58']
   end
   else : stop
-  end
-
+endcase
 
 end
-
-; Luc: I am thinking this is something you would want to do already at
-; La Palma just after acquiring the data. Getting an overview of the
-; prefilters, line positions, lc states, number of frames per state,
-; acquisition time per prefilter and set of prefilters, start time,
-; end time, number of time steps etc is a neat way to confirm that the
-; program is doing what the observer thinks it is doing.
