@@ -290,23 +290,32 @@ pro red::quicklook, align = align $
       ;; file searching needs the padding but any padding has to be gone
       ;; when we get to the state comparison later. To make it even more
       ;; complicated, we don't know if this tuning is even part
-      ;; of the use_states! 
+      ;; of the use_states!
+
       use_pat = strarr(n_elements(use_states))
       for istate = 0, n_elements(use_states)-1 do begin
-        st = stregex(use_states[istate], '(_|\.|^)([+-][0-9]*)(_|\.|$)' $
-                     , /extract,/sub)
-        if st[2] ne '' then begin
-          ;; We had a match for the tuning part of the state
-          tun = st[2]
-          tun_padded    = strmid(tun, 0, 1) + string(long(strmid(tun, 1)), format='(i04)')
-          tun_nonpadded = strmid(tun, 0, 1) + string(long(strmid(tun, 1)), format='(i0)')
-          use_pat[istate] = '*' + red_strreplace(use_states[istate], tun, tun_padded) + '*'
-          use_states[istate] = red_strreplace(use_states[istate], tun, tun_nonpadded)
-        endif
+
+        case use_states[istate] of
+          '+0' : use_pat[istate] = '*+000*' ; Should match also +0000!
+          else : begin
+            st = stregex(use_states[istate], '(_|\.|^)([+-][0-9]*)(_|\.|$)' $
+                         , /extract,/sub)
+            if st[2] ne '' then begin
+              ;; We had a match for the tuning part of the state
+              tun = st[2]
+              tun_padded    = strmid(tun, 0, 1) + string(long(strmid(tun, 1)), format='(i04)')
+              tun_nonpadded = strmid(tun, 0, 1) + string(long(strmid(tun, 1)), format='(i0)')
+              use_pat[istate] = '*' + red_strreplace(use_states[istate], tun, tun_padded) + '*'
+              use_states[istate] = red_strreplace(use_states[istate], tun, tun_nonpadded)
+            endif
+          end
+        endcase
+
       endfor                    ; istate
+
     endif
   endif   
-
+  
   ;; Now loop over datasets (timestamps)
   for iset = 0, Nsets-1 do begin
 
