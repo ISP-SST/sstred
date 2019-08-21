@@ -48,7 +48,7 @@
 ;    datasets : in, optional, type=strarr
 ;
 ;      Timestamp strings that identify datasets to process. Selection
-;      menu for data sets buypassed if given.
+;      menu for data sets bypassed if given.
 ;   
 ;    derotate : in, optional, type=boolean
 ;
@@ -78,8 +78,7 @@
 ;
 ;    neuralnet : in, optional, type=boolean
 ;
-;      Do neural net MFBD deconvolution. (So far only in Stockholm and
-;      for CRISP data.)
+;      Do neural net MFBD deconvolution. (So far only in Stockholm.)
 ;
 ;    nexp : in, optional, type=integer, default=1
 ;
@@ -220,7 +219,7 @@ pro red::quicklook, align = align $
   if n_elements(scannos) eq 1 && size(scannos, /tname) eq 'STRING' then scannos = rdx_str2ints(scannos)
   
 
-;; The r0 log file is not available until the day after today 
+  ;; The r0 log file is not available until the day after today 
   if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
   
   if ~keyword_set(cam) then begin
@@ -1041,10 +1040,12 @@ pro red::quicklook, align = align $
       if format eq 'mov' then begin
         ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
         mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
+        file_delete, mname, /allow_nonexist
         spawn, 'ffmpeg -n -i "' + outdir + namout $
                + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
                + mname + '"'
-        spawn, 'rm "' + outdir + namout + '"'
+        file_delete, outdir + namout
+;        spawn, 'rm "' + outdir + namout + '"'
 ;        find . -name '*mp4' -exec sh -c 'ffmpeg -n -i "$1" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "${1%.mp4}.mov"' sh {} \ ;
       endif
       
