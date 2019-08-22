@@ -220,7 +220,7 @@ pro red::quicklook, align = align $
   
 
   ;; The r0 log file is not available until the day after today 
-  if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
+;  if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
   
   if ~keyword_set(cam) then begin
     cindx = where(~strmatch(*self.cameras,'*-[WD]'), Ncam)
