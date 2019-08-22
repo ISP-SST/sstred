@@ -40,6 +40,8 @@
 ;-
 pro red_plot_r0_stats, states, pname = pname
 
+  inam = red_subprogram(/low, calling = inam1)
+
   r0max = 0.3
 
   ;; Find first and last files
@@ -61,6 +63,12 @@ pro red_plot_r0_stats, states, pname = pname
   
   ;; Download the r0 log file 
   red_logdata, isodate, r0time, r0 = r0data, /use_r0_time
+
+  if n_elements(r0data) eq 0 then begin
+    ;; Log file probably does not exist on web server (yet)
+    print, inam+' : No r0 log data available, no r0 plot will be generated.'
+    return                    
+  endif
   
   title = instrument + ' ' + strjoin(upref, ',') + ' ' + isodate + ' ' + timestamp
 
@@ -77,7 +85,7 @@ pro red_plot_r0_stats, states, pname = pname
   r0_24x24_max    = fltarr(Nscans)
 
   for iscan = 0L, Nscans-1 do begin
-     
+    
     ;; Time
     indx = where(states.scannumber eq uscan[iscan])
     tmp = max(states[indx].framenumber, mxl, subscript_min=mnl)
