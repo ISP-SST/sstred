@@ -37,19 +37,30 @@
 ;   lun : out, optional, type=integer
 ;
 ;      The logical unit of the opened file.
+;
+;   update : in, optional, type=boolean
+;
+;      Open with openu rather than openr.
 ; 
 ; :History:
 ; 
 ;      2019-04-03 : MGL. First version.
+; 
+;      2019-08-23 : MGL. New keyword update.
 ;
 ;-
 pro red_fitscube_open, filename, fileassoc, fitscube_info $
                        , header = header $
-                       , lun = lun
+                       , lun = lun $
+                       , update = update
 
   ;; Open the file
-  openr, lun, filename, /get_lun, /swap_if_little_endian
-
+  if keyword_set(update) then begin
+    openu, lun, filename, /get_lun, /swap_if_little_endian
+  endif else begin
+    openr, lun, filename, /get_lun, /swap_if_little_endian
+  endelse
+  
   ;; Was opening all we wanted?
   if ~arg_present(header) $
      and ~arg_present(fileassoc) $
