@@ -97,7 +97,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
     ;; Measure DC WB intensities
 
-    wbdir = self.out_dir+'/prefilter_fits/wb/'
+    ;;wbdir = self.out_dir+'/prefilter_fits/wb/'
+    wbdir = self.out_dir+'/wb_intensities/'
     file_mkdir, wbdir
     wbdirs = dirs[wbindx]
     for iwb = 0, Nwb-1 do begin
