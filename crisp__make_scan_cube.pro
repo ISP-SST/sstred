@@ -114,6 +114,9 @@
 ;    2019-03-21 : MGL. First crisp version, based on the chromis one
 ;                 and code from crisp::make_nb_cube.
 ; 
+;    2019-08-26 : MGL. Do integerization, statistics calculations, and
+;                 WB intensity correction by calling subprograms.
+; 
 ;-
 pro crisp::make_scan_cube, dir $
                            , autocrop = autocrop $
@@ -125,7 +128,7 @@ pro crisp::make_scan_cube, dir $
                            , limb_data = limb_data $
                            , nocavitymap = nocavitymap $
                            , nopolarimetry = nopolarimetry $
-                           , nowbcorr = nowbcorr $
+                           , nowbintensitycorr = nowbintensitycorr $
                            , overwrite = overwrite $
                            , redemodulate = redemodulate $
                            , scannos = scannos $
@@ -212,10 +215,6 @@ pro crisp::make_scan_cube, dir $
   datestamp = fxpar(red_readhead(wbgfiles[0]), 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
 
-  wbfitfile = 'prefilter_fits/wb/wb_fit_'+prefilter+'.fits'
-  if ~file_test(wbfitfile) then nowbcorr = 1B
-
-    
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -295,9 +294,9 @@ pro crisp::make_scan_cube, dir $
 ;; pertuningfiles & pertuningstates -> existing files of selected
 ;; scans in directory, excluding the global WB images.
 
-if ~keyword_set(nocavitymap) then begin
+  if ~keyword_set(nocavitymap) then begin
 
-  ;; Read the original cavity map
+    ;; Read the original cavity map
     cfile = self.out_dir + 'flats/spectral_flats/' $
             + strjoin([nbtdetector $
                        , prefilter $
@@ -464,7 +463,7 @@ if ~keyword_set(nocavitymap) then begin
       snames = snames[indx]
       sstates = sstates[indx]
 
-      ;; No wbcor is needed for Stokes data, done already when
+      ;; No wbstretchcorr is needed for Stokes data, done already when
       ;; demodulating.
 
       ;; Read a header to use as a starting point.
@@ -490,7 +489,7 @@ if ~keyword_set(nocavitymap) then begin
       if Nnbt eq Nnbr then Nnb = Nnbt else stop 
       
       ;; Do WB correction?
-      if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
+      if Nwb eq Nnb then wbstretchcorr = 1B else wbstretchcorr = 0B
 
       ;; Unique tuning states, sorted by wavelength
       utunindx = uniq(nbtstates.fpi_state, sort(nbtstates.fpi_state))
@@ -584,23 +583,13 @@ if ~keyword_set(nocavitymap) then begin
     endif
     units = nbr_units
 
-    if ~keyword_set(nowbcorr) then begin
-      ;; Take WB disk center intensities into account
-      wbpp = readfits(wbfitfile, pphdr)
-      wbfunc = fxpar(pphdr, 'MYFUNC') ; Read the mpfitexpr fit function
-    endif
-    
-
     ;; Make FITS header for the output cube
     hdr = nbhdr
     red_fitsdelkeyword, hdr, 'STATE' ; Not a single state for cube 
     red_fitsaddkeyword, hdr, 'BITPIX', -32
     ;; Add info about this step
-    if ~keyword_set(nowbcorr) then begin
-      prstep = 'Prepare NB science data cube, WBCORR'
-    endif else begin
-      prstep = 'Prepare NB science data cube'
-    endelse
+    prstep = 'Prepare NB science data cube'
+
     self -> headerinfo_addstep, hdr $
                                 , prstep = prstep $
                                 , prpara = prpara $
@@ -680,15 +669,6 @@ if ~keyword_set(nocavitymap) then begin
         tend_array[ituning] = red_time2double((strsplit(date_end,'T',/extract))[1])
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
-        if ~keyword_set(nowbcorr) then begin
-          ;; Change intensity to compensate for time difference
-          ;; between prefilterfit and data collection. 
-          wbtt = [prf.time_avg, tavg_array[ituning, 0]]
-          wbints = red_evalexpr(wbfunc, wbtt, wbpp) 
-          wbratio = wbints[0] / wbints[1]
-          nbims *= wbratio
-        endif
-
         for istokes = 0, Nstokes-1 do begin
           self -> fitscube_addframe, fileassoc, nbims[*, *, 0, istokes] $
                                      , ituning = ituning, istokes = istokes
@@ -744,7 +724,7 @@ if ~keyword_set(nocavitymap) then begin
           nbtim *= nbt_rpref[ituning]
           nbrim *= nbr_rpref[ituning]
           
-          if wbcor then begin
+          if wbstretchcorr then begin
             wim = (red_readdata(tun_wfiles[iexposure], head = whdr))[x0:x1, y0:y1]
             grid1 = red_dsgridnest(wbim, wim, tiles, clips)
             nbtim = red_stretch(temporary(nbtim), grid1)
@@ -791,15 +771,6 @@ if ~keyword_set(nocavitymap) then begin
         exp_array[ituning]  = total(xps)
         sexp_array[ituning] = mean(texps)
         nsum_array[ituning] = round(total(nsums))
-
-        if ~keyword_set(nowbcorr) then begin
-          ;; Change intensity to compensate for time difference
-          ;; between prefilterfit and data collection. 
-          wbtt = [prf.time_avg, tavg_array[ituning, 0]]
-          wbints = red_evalexpr(wbfunc, wbtt, wbpp) 
-          wbratio = wbints[0] / wbints[1]
-          nbim *= wbratio
-        endif
 
         self -> fitscube_addframe, fileassoc, temporary(nbim) $
                                    , ituning = ituning
@@ -902,13 +873,8 @@ if ~keyword_set(nocavitymap) then begin
       ;; magnetic-features mask.
       self -> fitscube_crosstalk, filename $
                                   , mag_mask = mag_mask $
-                                  , nostatistics = nostatistics $
+                                  , /nostatistics $
                                   , tuning_selection = tuning_selection
-
-    endif else if ~keyword_set(nostatistics) then begin
-
-      ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write       
 
     endif
 
@@ -924,13 +890,24 @@ if ~keyword_set(nocavitymap) then begin
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
     writefits, filename, wbim, ehdr, /append
 
+    if ~keyword_set(nowbintensitycorr) then begin
+      ;; Correct intensity with respect to solar elevation and
+      ;; exposure time.
+      self -> fitscube_intensitycorr, filename
+    endif
+
     if keyword_set(integer) then begin
+      ;; Convert to integers
       self -> fitscube_integer, filename $
                                 , /delete $
-                                , flip = ~keyword_set(noflipping) $
                                 , outname = outname $
                                 , overwrite = overwrite
       filename = outname
+    endif
+    
+    if ~keyword_set(nostatistics) then begin
+      ;; Calculate statistics if not done already
+      red_fitscube_statistics, filename, /write
     endif
     
     ;; Done with this scan.
