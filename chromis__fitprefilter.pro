@@ -401,6 +401,11 @@ pro chromis::fitprefilter, dir = dir $
 
     endfor                      ; kk
 
+    ;; We use in spec[] the median of all frames (or average thereof,
+    ;; if more than a single file), so the effective exposure time is
+    ;; just 1 x XPOSURE.
+    xposure = fxpar(hdrN, 'XPOSURE')
+    
     spec[istate] /= count
     if keyword_set(unitscalib) then specwb[istate] /= count
     
@@ -483,9 +488,17 @@ pro chromis::fitprefilter, dir = dir $
       
       ;; save curve
       
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref] $
-             , fitpars:par, fts_model:interpol(yl1, xl+par[1], lambda)*prefilter, units:units $
-             , time_avg:mean(time_avgs)}
+      prf = {wav:lambda $
+             , pref:prefilter $
+             , spec:spectrum $
+             , wbint:wbint $
+             , reg:upref[ipref] $
+             , fitpars:par $
+             , fts_model:interpol(yl1, xl+par[1], lambda)*prefilter $
+             , units:units $
+             , time_avg:mean(time_avgs) $
+             , xposure:xposure $
+            }
 
       cgwindow
       mx = max([spectrum, interpol(yl1, xl+par[1], lambda)*prefilter, prefilter/par[0] * max(spectrum)]) * 1.05
@@ -516,9 +529,17 @@ pro chromis::fitprefilter, dir = dir $
 
       y1 = interpol(yl, xl, lambda)
       prefilter = [spectrum/yl1]
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref] $
-             , fitpars:prefilter, fts_model:y1, units:units $
-             , time_avg:mean(time_avgs)}
+      prf = {wav:lambda $
+             , pref:prefilter $
+             , spec:spectrum $
+             , wbint:wbint $
+             , reg:upref[ipref] $
+             , fitpars:prefilter $
+             , fts_model:y1 $
+             , units:units $
+             , time_avg:mean(time_avgs) $
+             , xposure:xposure $
+            }
 
     endelse
     
