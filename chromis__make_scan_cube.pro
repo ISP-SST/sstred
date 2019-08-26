@@ -722,8 +722,8 @@ pro chromis::make_scan_cube, dir $
       self -> fitscube_intensitycorr, filename
     endif
 
-    ;; Integer ?
     if keyword_set(integer) then begin
+      ;; Convert to integers
       self -> fitscube_integer, filename $
                                 , /delete $
                                 , outname = outname $
@@ -734,13 +734,7 @@ pro chromis::make_scan_cube, dir $
 
     if ~keyword_set(nostatistics) then begin
       ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write $
-                               , angles = ang $
-                               , full = wcFF $
-                               , grid = wcGRID $
-                               , origNx = Nxx $
-                               , origNy = Nyy $
-                               , shifts = wcSHIFT 
+      red_fitscube_statistics, filename, /write 
     endif
     
     ;; Done with this scan.
