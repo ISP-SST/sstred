@@ -46,6 +46,12 @@
 ;     nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
+;       no effect.)
+;
+;     nostatistics : in, optional, type=boolean
+;  
+;       Do not calculate statistics metadata to put in header keywords
+;       DATA*. 
 ;
 ;     overwrite : in, optional, type=boolean
 ;
@@ -70,6 +76,9 @@
 ; 
 ;    2018-05-08 : MGL. New keyword limb_data. 
 ; 
+;    2019-08-26 : MGL. Do integerization, statistics calculations, and
+;                 WB intensity correction by calling subprograms.
+; 
 ;-
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
@@ -81,6 +90,7 @@ pro chromis::make_scan_cube, dir $
                              , limb_data = limb_data $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
+                             , nostatistics = nostatistics $
                              , nowbintensitycorr = nowbintensitycorr $
                              , overwrite = overwrite $
                              , tile = tile $
@@ -143,7 +153,22 @@ pro chromis::make_scan_cube, dir $
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
   endcase
-  files = file_search(dir + '*'+extension, count = Nfiles)      
+  if n_elements(scannos) gt 0 then begin
+    files = file_search(dir + '*_'+string(scannos, format = '(i05)')+'_*'+extension, count = Nfiles)      
+    if Nfiles eq 0 then begin
+      print
+      print, inam+' : No momfbd output for scan(s) '+strjoin(scannos, ',')+' found in '+dir
+      return
+    endif
+  endif else begin
+    files = file_search(dir + '*'+extension, count = Nfiles)      
+    if Nfiles eq 0 then begin
+      print
+      print, inam+' : No momfbd output found in '+dir
+      return
+    endif
+  endelse
+  
   self -> extractstates, files, states
   ;; files & states -> all files in directory
 
@@ -164,10 +189,6 @@ pro chromis::make_scan_cube, dir $
   datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
 
-  wbfitfile = 'prefilter_fits/wb/wb_fit_'+prefilter+'.fits'
-  if ~file_test(wbfitfile) then nowbintensitycorr = 1B
-
-  
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -372,11 +393,7 @@ pro chromis::make_scan_cube, dir $
     ;; Make output file name
     midpart = prefilter + '_' + datestamp + '_scan=' $ 
               + strtrim(uscans[iscan], 2)
-    if keyword_set(integer) then begin
-      ofile = 'nb_'+midpart+'_corrected_int.fits'
-    endif else begin
-      ofile = 'nb_'+midpart+'_corrected.fits'
-    endelse
+    ofile = 'nb_'+midpart+'_corrected.fits'
     filename = odir+ofile
 
     ;; Already done?
@@ -456,12 +473,6 @@ pro chromis::make_scan_cube, dir $
 
     rpref = 1.d0/prefilter_curve
 
-    if ~keyword_set(nowbintensitycorr) then begin
-      ;; Take WB disk center intensities into account
-      wbpp = readfits(wbfitfile, pphdr)
-      wbfunc = fxpar(pphdr, 'MYFUNC') ; Read the mpfitexpr fit function
-    endif
-
     ;; Set up for collecting time and wavelength data
     tbeg_array     = dblarr(Nwav)   ; Time beginning for state
     tend_array     = dblarr(Nwav)   ; Time end for state
@@ -514,65 +525,19 @@ pro chromis::make_scan_cube, dir $
     scan_wbstates = scan_wbstates[sortindx]
 
     
-    ;; Do WB correction?
-    if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
+    ;; Do WB stretch correction?
+    if Nwb eq Nnb then wbstretchcorr = 1B else wbstretchcorr = 0B
 
     nbhdr = red_readhead(scan_nbfiles[0]) ; Use for main header
     
     ;; Make FITS header for the NB cube
     hdr = nbhdr                 ; Start with the NB cube header
-    if keyword_set(integer) then begin
+    red_fitsaddkeyword, hdr, 'BITPIX', -32
 
-      ;; We need to find out BZERO and BSCALE. For now we have to read
-      ;; through all data in the cube. If the momfbd output files could
-      ;; store min and max values in the future, this would be quicker.
-
-      for iwav = 0L, Nwav - 1 do begin
-
-;        nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] 
-;          red_progressbar, iprogress, Nprogress $
-;                           , /predict $
-;                           , 'Calculating BZERO and BSCALE' 
-        
-        mr = momfbd_read(scan_nbfiles[iwav], /img)
-        ;; Min and max after scaling to units in file
-        datamax_thisfile = max(mr.patch.img * rpref[iwav], min = datamin_thisfile)
-
-        ;; Global min and max
-        if iwav eq 0 then begin
-          datamin = datamin_thisfile
-          datamax = datamax_thisfile
-        endif else begin
-          datamin <= datamin_thisfile
-          datamax >= datamax_thisfile
-        endelse
-
-      endfor                    ; iwav
-        
-      ;; Approximate min and max values after scaling to 2-byte
-      ;; integers. Don't use -32768 and 32767, want to leave some margin
-      ;; for altered physical values due to resampling (most likely to
-      ;; lower abs values, but still...).
-      arraymin = -32000.
-      arraymax =  32000.
-
-      ;; BZERO and BSCALE
-      bscale = (datamax-datamin)/(arraymax-arraymin)
-      bzero = datamin - arraymin*bscale
-      
-      ;; Set keywords for rescaled integers
-      red_fitsaddkeyword, hdr, 'BITPIX', 16
-      red_fitsaddkeyword, hdr, 'BZERO', bzero
-      red_fitsaddkeyword, hdr, 'BSCALE', bscale
-      
-    endif else begin
-      ;; If not rescaled integers, we just need to set BITPIX for floats
-      red_fitsaddkeyword, hdr, 'BITPIX', -32
-    endelse
-    
     ;; Add info about this step
+    prstep = 'Prepare NB science data cube'
     self -> headerinfo_addstep, hdr $
-                                , prstep = 'Prepare NB science data cube' $
+                                , prstep = prstep $
                                 , prpara = prpara $
                                 , prproc = inam
     
@@ -588,7 +553,7 @@ pro chromis::make_scan_cube, dir $
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wbim = (red_readdata(wfiles[iscan], head = wbhdr))[x0:x1, y0:y1]
-    
+      
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
@@ -613,7 +578,7 @@ pro chromis::make_scan_cube, dir $
                        , /predict $
                        , 'Processing scan=' + strtrim(uscans[iscan], 2) 
         
-              ;; Collect info about this frame here.
+      ;; Collect info about this frame here.
       
       nbhead = red_readhead(scan_nbfiles[iwav])
 
@@ -639,7 +604,7 @@ pro chromis::make_scan_cube, dir $
       nsum_array[iwav] = fxpar(nbhead, 'NSUMEXP')
       
       ;; Get destretch to anchor camera (residual seeing)
-      if wbcor then begin
+      if wbstretchcorr then begin
         wwi = (red_readdata(scan_wbfiles[iwav]))[x0:x1, y0:y1]
         grid1 = red_dsgridnest(wbim, wwi, tile, clip)
       endif
@@ -654,26 +619,11 @@ pro chromis::make_scan_cube, dir $
       endif
 
       ;; Apply destretch to anchor camera and prefilter correction
-      if wbcor then nbim = red_stretch(temporary(nbim), grid1)
+      if wbstretchcorr then nbim = red_stretch(temporary(nbim), grid1)
 
-      if ~keyword_set(nowbintensitycorr) then begin
-        ;; Change intensity to compensate for time difference
-        ;; between prefilterfit and data collection. 
-        wbtt = [prf.time_avg, tavg_array[iwav]]
-        wbints = red_evalexpr(wbfunc, wbtt, wbpp) 
-        wbratio = wbints[0] / wbints[1]
-        nbim *= wbratio
-      endif
-
+      self -> fitscube_addframe, fileassoc, temporary(nbim) $
+                                 , ituning = iwav
       
-      if keyword_set(integer) then begin
-        self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
-                                   , ituning = iwav
-      endif else begin
-        self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                   , ituning = iwav
-      endelse
-
     endfor                      ; iwav
 
     
@@ -765,11 +715,38 @@ pro chromis::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
     writefits, filename, wbim, ehdr, /append
+    
+    if ~keyword_set(nowbintensitycorr) then begin
+      ;; Correct intensity with respect to solar elevation and
+      ;; exposure time.
+      self -> fitscube_intensitycorr, filename
+    endif
 
+    ;; Integer ?
+    if keyword_set(integer) then begin
+      self -> fitscube_integer, filename $
+                                , /delete $
+                                , outname = outname $
+                                , overwrite = overwrite
+      filename = outname
+    endif
+    
+
+    if ~keyword_set(nostatistics) then begin
+      ;; Calculate statistics if not done already
+      red_fitscube_statistics, filename, /write $
+                               , angles = ang $
+                               , full = wcFF $
+                               , grid = wcGRID $
+                               , origNx = Nxx $
+                               , origNy = Nyy $
+                               , shifts = wcSHIFT 
+    endif
+    
     ;; Done with this scan.
     print, inam + ' : Narrowband cube stored in:'
     print, filename
-    
+
   endfor                        ; iscan
 
   
