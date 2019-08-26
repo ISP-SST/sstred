@@ -517,7 +517,12 @@ pro crisp::fitprefilter, cwl = cwl $
         wav[istate]       += cwl - pref[istate] ; Adjust wavelength scale
         
       endfor                    ; istate
-      
+
+      ;; We use in spec[] rdx_sumfiles() of the data files, so the
+      ;; effective exposure time is just 1 x XPOSURE.
+      hdrN = red_readhead(statesNB[pos[0]].filename)
+      xposure = fxpar(hdrN, 'XPOSURE')
+
       ;; copy spectra for each prefilter
       
       idx = where(pref eq upref[ipref], nwav)
@@ -534,7 +539,7 @@ pro crisp::fitprefilter, cwl = cwl $
       np = round((0.080 * 8) / dw)
       np = long((max(xl) - min(xl)) / dw) - 2
       if np/2*2 eq np then np -=1
-      tw = (dindgen(np)-np/2)*dw                                                 ;+ double(upref[ipref])
+      tw = (dindgen(np)-np/2)*dw                                               ;+ double(upref[ipref])
       tr = self -> fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction) ;
       tr /= total(tr)
       
@@ -645,9 +650,17 @@ pro crisp::fitprefilter, cwl = cwl $
       
       ;; save curve
       file_mkdir, self.out_dir+'/prefilter_fits/'
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref]$
-             , fitpars:par, fts_model:interpol(yl1, xl+par[1], wav)*prefilter, units:units $
-             , time_avg:mean(time_avgs)}
+      prf = {wav:lambda $
+             , pref:prefilter $
+             , spec:spectrum $
+             , wbint:wbint $
+             , reg:upref[ipref]$
+             , fitpars:par $
+             , fts_model:interpol(yl1, xl+par[1], wav)*prefilter $
+             , units:units $
+             , time_avg:mean(time_avgs) $
+             , xposure:xposure $
+            }
 
       ;; Save the fit
       save, prf $
