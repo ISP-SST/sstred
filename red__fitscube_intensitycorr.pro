@@ -20,26 +20,13 @@
 ; 
 ;       The name of the file containing the fitscube.
 ; 
-; 
-; :Keywords:
-; 
-;     flip : in, optional, type=boolean
-;   
-;       Produce a flipped version if this keyword is set. 
-; 
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. If statistics keywords already exist, then remove them.
 ;
 ; :History:
 ; 
 ;   2019-08-26 : MGL. First version.
 ; 
 ;-
-pro red::fitscube_intensitycorr, filename  $
-                                 , flip = flip $
-                                 , nostatistics = nostatistics
+pro red::fitscube_intensitycorr, filename  
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -47,8 +34,6 @@ pro red::fitscube_intensitycorr, filename  $
   
   ;; Make prpara
   red_make_prpara, prpara, filename
-  
-
   
   red_fitscube_open, filename, fileassoc, fitscube_info, /update
 
@@ -77,58 +62,6 @@ pro red::fitscube_intensitycorr, filename  $
     red_fitscube_close, fileassoc, fitscube_info
     return
   endif
-  
-;  ;; Get scan numbers
-;  scannum = red_fitsgetkeyword(filename, 'SCANNUM', variable_values = variable_values)
-;  if n_elements(variable_values) gt 0 then begin
-;    scannumbers = reform(variable_values.values)
-;  endif else begin
-;    scannumbers = [scannum]
-;  endelse
-;  
-;  ;; Get medians of the I component of the first scan, to be used for
-;  ;; selecting the wavelength points.
-;  medi = fltarr(Ntuning)
-;  for ituning = 0, Ntuning-1 do begin
-;    red_fitscube_getframe, filename, frame, istokes = 0, iscan = 0, ituning = ituning
-;    medi[ituning] = median(frame)
-;  endfor                        ; ituning
-;
-;  if n_elements(tuning_selection) gt 0 then begin
-;    ppc = tuning_selection
-;    ;; Translate negative indices to positive ones
-;    negindx = where(ppc lt 0, Nwhere)
-;    if Nwhere gt 0 then begin
-;      ppc[negindx] = Ntuning + ppc[negindx]
-;    endif
-;  endif else begin
-;    ;; Choose spectral points to use. We want as little signal as
-;    ;; possible so continuum points are good. For wide lines we
-;    ;; might not have them so pick end points if similar intensity,
-;    ;; or just one endpoint if one has significantly higher
-;    ;; intensity than the other.
-;    print, 'Select spectral points to calculate cross-talk from. Select with left mouse, end with right mouse.'
-;    ppc = red_select_spoints(wav, medi)
-;    tuning_selection = ppc
-;  endelse
-;
-;  
-;  if n_elements(ppc) gt 1 then begin
-;    im = 0.
-;    for i = 0, n_elements(ppc)-1 do begin
-;      red_fitscube_getframe, filename, frame, istokes = 3, iscan = 0, ituning = ppc[i]
-;      im += abs(frame)
-;    endfor
-;  endif else begin
-;    red_fitscube_getframe, filename, im, istokes = 3, iscan = 0, ituning = ppc[0]
-;  endelse
-;
-;  if n_elements(mag_mask) eq 0 then begin
-;    print, 'Deselect areas with magnetic structures and/or artifacts. End with File-->Quit.'
-;    ;;mag_mask = red_select_area(red_histo_opt(im,2.e-3), /noedge, /xroi)
-;    mag_mask = red_select_area(red_histo_opt(im,2.e-3), /xroi)
-;  end
-
 
   ;; Get WB prefilter
   pos = where(strmatch(prprocs, '*make_*_cube'), Nmatch)
@@ -136,34 +69,8 @@ pro red::fitscube_intensitycorr, filename  $
   cube_paras = prparas[pos]
   wbpref = (stregex((json_parse(cube_paras, /tostruct)).dir $
                     , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
-  
-  
-;  ;; Get name of WB cube from the cube-making parameters.
-;  pos = where(strmatch(prprocs, '*make_*_cube'), Nmatch)
-;  if Nmatch eq 0 then stop
-;
-;  make_nb_cube_paras = prparas[pos]
-;  wcfile = (json_parse(make_nb_cube_paras, /tostruct)).wcfile
-;  whdr = headfits(wcfile)
-;
-;  ;; Get parameters from the wideband cube
-;  if ~file_test(wcfile) then begin
-;    print, inam + ' : Cannot find WB cube: '+wcfile
-;    return
-;  endif
-;  
-;  fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
-;  fxbreadm, bunit, row = 1 $
-;              , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-;            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
-;  ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
-;  ;; wbgfiles (WideBand Global).
-;  fxbread, bunit, wbgfiles, 'WFILES', 1
-;  fxbclose, bunit
-;
-;  
-;  prefilter = fxpar(whdr, 'FILTER1') 
-  wbfitfile = 'prefilter_fits/wb/wb_fit_'+wbpref+'.fits'
+
+  wbfitfile = 'wb_intensities/wb_fit_'+wbpref+'.fits'
   if ~file_test(wbfitfile) then begin
     s = ''
     print, inam + ' : No WB fit file : '+wbfitfile
@@ -230,7 +137,7 @@ pro red::fitscube_intensitycorr, filename  $
   
   ;; We need the WCS time coordinates 
   red_fitscube_getwcs, filename, coordinates = coordinates
-  t = reform(coordinates.time[0, 0], Ntuning, Nstokes, Nscans)
+  t = reform(coordinates.time[0, 0], Ntuning, Nscans)
 
   ;; Check that we are not extrapolating (too far).
   if ~file_test(wbfitfile) then begin
@@ -294,9 +201,8 @@ pro red::fitscube_intensitycorr, filename  $
                                , iscan = iscan, istokes = istokes, ituning = ituning
         
         ;; Write the corrected frame back to the fitscube file
-        red_fitscube_addframe, fileassoc, frame $
-                               * wbratio[ituning, istokes, iscan] $
-                               * xpratio $
+        red_fitscube_addframe, fileassoc $
+                               , frame * wbratio[ituning, iscan] * xpratio $
                                , iscan = iscan, istokes = istokes, ituning = ituning
 
         iframe++
@@ -308,105 +214,17 @@ pro red::fitscube_intensitycorr, filename  $
 
   ;; Possibly do it also for WB data of scan cubes!
 
-
-  
-  
-;  for iscan = 0, Nscans-1 do begin
-;
-;    if makemask then begin
-;      ;; Construct a mask for the padding
-;      pad_mask = make_array(Nxx, Nyy, /float, value = 1.) 
-;      pad_mask = red_rotation(pad_mask, ang[iscan], wcshift[0,iscan], wcshift[1,iscan], background = 0, full = wcFF)
-;      pindx = where(pad_mask le 0.99) ; Pixels that are padding
-;    
-;      ;; Include the padding mask just in case it rotates into the
-;      ;; selected mask.
-;      this_mask = mag_mask * pad_mask
-;      mindx = where(this_mask)
-;    endif else begin
-;      mindx = where(mag_mask)
-;;      mindx = lindgen(Nx, Ny)
-;    endelse 
-;      
-;    ;;crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
-;    crt = dblarr(Nstokes)
-;    numerator   = dblarr(Nstokes)
-;    denominator = 0d
-;    for i = 0, n_elements(ppc)-1 do begin
-;      red_fitscube_getframe, filename, im0, istokes = 0, iscan = iscan, ituning = ppc[i] ; Stokes I
-;
-;      ;;denominator += median(im0[where(this_mask)] *
-;      ;;im0[where(this_mask)], /double)
-;      
-;      ;; Find the centroid by fitting a Gaussian
-;      a = red_histo_gaussfit(im0[mindx] * im0[mindx], FWlevel = 0.25)
-;      denominator += a[1]
-;      
-;      for istokes=1, Nstokes-1 do begin
-;        red_fitscube_getframe, filename, im, istokes = istokes, iscan = iscan, ituning = ppc[i]
-;        ;;numerator[istokes] += median(im0[where(this_mask)] * im[where(this_mask)], /double)
-;        a = red_histo_gaussfit(im0[mindx] * im[mindx], FWlevel = 0.25)
-;        numerator[istokes] += a[1]
-;      endfor                    ; istokes
-;    endfor
-;    crt = numerator/denominator 
-;    
-;    print, 'Scan '+strtrim(scannumbers[iscan], 2)+' : crosstalk from I -> Q,U,V =' $
-;           , crt[1], ', ', crt[2], ', ', crt[3], format='(A,F8.5,A,F8.5,A,F8.5)'
-;    
-;    for ituning = 0, Ntuning-1 do begin
-;      red_fitscube_getframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning ; Stokes I
-;      if makemask then im0[pindx] = median(im0[pindx]) ; Set the padding to median
-;      red_fitscube_addframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning ; Write with updated padding
-;      for istokes=1, Nstokes-1 do begin
-;        ;;d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
-;        red_fitscube_getframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
-;        im -= float(crt[istokes] * im0)
-;        if makemask then im[pindx] = median(im[pindx]) 
-;        red_fitscube_addframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
-;      endfor                    ; istokes
-;    endfor                      ; ituning
-;  endfor                        ; iscan
-
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Intensity correction' $
+                              , prstep = 'INTENSITY-CALIBRATION' $
                               , prpara = prpara $
                               , prproc = inam
 
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
 
-;  if keyword_set(nostatistics) then begin
-;
-;    ;; Remove any existing statistics keywords from the file. 
-;
-;    ;; Search for DATA* keywords
-;    dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)
-;    ;; Loop through the keywords backwards so we don't move
-;    ;; them before they are deleted.
-;    for idata = Ndata-1, 0, -1 do begin
-;      keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
-;      red_fitsdelkeyword, hdr, keyword
-;    endfor                      ; idata
-;    
-;  endif else begin
-;
-;    red_fitscube_statistics, filename, /write $
-;                             , angles = angles $
-;                             , cube_comments = cube_comments $
-;                             , full = wcFF $
-;                             , grid = wcGRID $
-;                             , origNx = Nxx $
-;                             , origNy = Nyy $
-;                             , shifts = wcSHIFTS 
-;
-;  endelse
-;  
-;  if keyword_set(flip) then begin
-;    self -> fitscube_flip, filename, flipfile = flipfile
-;  endif
-
+  ;; Remove any old statistics info. 
+  red_fitscube_statistics, filename, /remove_only
   
   ;; For scan cubes, do it also for the WB image.
   fits_info, filename, /SILENT , N_ext = n_ext, EXTNAME=extnames
