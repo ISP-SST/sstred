@@ -437,10 +437,14 @@ pro red::fitgains, all = all $
       cgcontrol, output = pfile
 
     endif
+    
+    scrollwindow, /free, xs = dims[1], ys = dims[2] $
+                  , title = 'Cavity map for '+selectionlist[ifile] + ' npar='+strtrim(nparr, 2)
+    tvscl, reform(res[1,*,*])
 
   endfor                        ; iselect
 
   print, inam + ' : Done!'
-  print, inam + ' : Please check flats/spectral_flats/*fit_results.png.'
+  print, inam + ' : Please check flats/spectral_flats/*fit_results.png and the displayed cavity map(s).'
 
 end
