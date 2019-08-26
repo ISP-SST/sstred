@@ -738,7 +738,7 @@ pro chromis::make_scan_cube, dir $
     endif
     
     ;; Done with this scan.
-    print, inam + ' : Narrowband cube stored in:'
+    print, inam + ' : Narrowband scan cube stored in:'
     print, filename
 
   endfor                        ; iscan
