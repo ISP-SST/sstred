@@ -184,28 +184,34 @@ pro red::fitscube_crosstalk, filename  $
     fxbread, bunit, wbgfiles, 'WFILES', 1
     fxbclose, bunit
 
-    ;; Get dimensions of non-rotated images from the momfbd-restored WB
-    ;; images.
-    whdr = red_readhead(wbgfiles[0])
-    Nxx = fxpar(whdr, 'NAXIS1')
-    Nyy = fxpar(whdr, 'NAXIS2')
+;    ;; Get dimensions of non-rotated images from the momfbd-restored WB
+;    ;; images.
+;    whdr = red_readhead(wbgfiles[0])
+;    Nxx = fxpar(whdr, 'NAXIS1')
+;    Nyy = fxpar(whdr, 'NAXIS2')
+
+    ;; Dimensions of non-rotated images .
+    Nxx = wcX01Y01[1] - wcX01Y01[0] + 1 ;+ wcCROP[0] + wcCROP[1]
+    Nyy = wcX01Y01[3] - wcX01Y01[2] + 1 ;+ wcCROP[2] + wcCROP[3]
+    
   endif
   
   for iscan = 0, Nscans-1 do begin
 
     if makemask then begin
       ;; Construct a mask for the padding
+
       pad_mask = make_array(Nxx, Nyy, /float, value = 1.) 
-      pad_mask = red_rotation(pad_mask, ang[iscan], wcshift[0,iscan], wcshift[1,iscan], background = 0, full = wcFF)
+      pad_mask = red_rotation(pad_mask, ang[iscan], wcshift[0,iscan], wcshift[1,iscan] $
+                              , background = 0, full = wcFF)
       pindx = where(pad_mask le 0.99) ; Pixels that are padding
-    
+      
       ;; Include the padding mask just in case it rotates into the
       ;; selected mask.
       this_mask = mag_mask * pad_mask
       mindx = where(this_mask)
     endif else begin
       mindx = where(mag_mask)
-;      mindx = lindgen(Nx, Ny)
     endelse 
       
     ;;crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
