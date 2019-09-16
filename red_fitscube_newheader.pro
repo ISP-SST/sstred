@@ -140,6 +140,7 @@ pro red_fitscube_newheader, filename, newheader, Nframes_max = Nframes_max
   tic
   file_move, tmpfilename, oldfilename, /overwrite
   toc
+  fxhmodify, oldfilename, 'filename', file_basename(oldfilename)
   print, inam+' : Move temporary file to the original file name...Done!'
   
 end
