@@ -170,8 +170,8 @@ pro red::sum_data_intdif, all = all $
 
     sel_pref = 1B
     if n_elements(pref) gt 0 then begin
-      pos = where(upref eq pref, count)
-      if count eq 0 then begin
+      pos = where(strmatch(upref,pref))
+      if n_elements(pos) eq 1 and pos eq -1 then begin
         print, inam + ' : User supplied prefilter '+pref+' not found in '+dir
         continue
       endif else sel_pref = 0B

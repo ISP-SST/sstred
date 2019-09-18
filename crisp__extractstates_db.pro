@@ -13,31 +13,23 @@
 ; 
 ;     Oleksii Andriienko, Institute for Solar Physics
 ; 
-; :Params:
 ; 
-;    strings : in, type=strarr
-;   
-;      A list of strings from which to extract the states information. 
-;   
-;    states : out, type=array(struct)
+; :Returns:
 ;
-;      An array of structs, containing (partially filled) state
-;      information. 
 ; 
-; 
-; :Keywords:
+; :Params:
 ; 
 ;    datasets : in, type=strarr
 ;   
-;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to
-;      extract the states information. 
+;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to extract the states information.
+;   
+;    states : out, type=array(struct)
+;
+;        An array of structs, containing (partially filled) state information.
 ; 
 ; :History:
 ; 
-;   2019-07-10 : OA. Created. (Derived from crisp__extractstates and
-;                red_readhead_db) 
-; 
-;   2019-07-11 : MGL. Call like extractstates.
+;   2019-07-10 : OA. Created. (Derived from crisp__extractstates and red_readhead_db)
 ;
 ;-
 pro crisp::extractstates_db, strings, states, datasets = datasets
@@ -51,8 +43,8 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
     timestamp = timestamps[uniq(timestamps,sort(timestamps))]
     datasets = self.isodate + ' ' + timestamp
-  endif
-  
+  ENDIF
+
   instrument = 'CRISP'
 
   red_mysql_check, handle
@@ -69,7 +61,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
     split_set = strsplit(datasets[iset], ' ', /extract)
     date_time = datasets[iset]
     
-    ;; We need Y,...,sec to generate the directory name
+    ; we need Y,...,sec to generate the directory name
     split_date = strsplit(split_set[0],'-',/extract)
     Y = fix(split_date[0])
     M = fix(split_date[1])
@@ -88,7 +80,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       flat_dirs = *self.flat_dir
       dark_dirs = *self.dark_dir
       pinh_dirs = *self.pinh_dirs
-      polcal_dirs = self.polcal_dir ; Should be array pointer but is just single dir
+      polcal_dirs = self.polcal_dir     
       data_dirs = *self.data_dirs
       dirs = [flat_dirs, dark_dirs, pinh_dirs, polcal_dirs, data_dirs]
       in = where(strmatch(dirs,'*'+split_set[1]+'*'))
@@ -96,7 +88,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       red_rawdir2db,dir=dir,/all
       red_mysql_cmd,handle,query,ans,nl
     endif
-    ;; Parse a result of the query
+    ;parse a result of the query
     tab = string(9B)
     set = strsplit(ans[1],tab,/extract,/preserve_null)
     set_id = set[0]
@@ -115,12 +107,12 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
     query = 'SELECT * FROM configs WHERE sets_id = ' + set_id + ';'
     red_mysql_cmd,handle,query,conf_ans,nl,debug=debug
     if nl eq 1 then begin
-      print, inam, ': There is no entry in configs table for ' + instrument $
-             + ' ' + date_time[iset] + ' ' + cameras[icam] + ' dataset.\r'
+      print, inam, ': There is no entry in configs table for ' + instrument + ' ' + date_time[iset] + ' dataset.\r'
       print,'Check the database integrity.'
       return
     endif
     Ncams = nl-1                ; number of cameras (configs) in the dataset
+    cams=strarr(Ncams)
 
     for icam=1,Ncams do begin
       conf = strsplit(conf_ans[icam],tab,/extract,/preserve_null)
@@ -129,11 +121,12 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       state.exposure = float(conf[4])
       camera = conf[2] ; need this exact variable name to generate dirname
       state.camera = camera
+      cams[icam-1]=camera
       state.is_wb = strmatch(camera,'*-[DW]')
       state.cam_settings = strtrim(string(state.exposure*1000, format = '(f9.2)'), 2) + 'ms'      
 
       det_id = conf[11]
-      ;; Get detector information
+      ; get detector information
       query = 'SELECT manufacturer, model, serial_number, name, detfirm FROM detectors WHERE id = ' + det_id + ';'
       red_mysql_cmd,handle,query,det_ans,nl,debug=debug
       if nl eq 1 then begin
@@ -145,7 +138,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       detector = dets[3]        ; need this exact variable name to generate filename
       state.detector = detector
 
-      ;; Get dirname generating string
+      ; get dirname generating string
       tmplt_id = conf[12]
       query = 'SELECT template FROM dirname_templates WHERE id = ' + tmplt_id + ';'
       red_mysql_cmd,handle,query,tmplt_ans,nl,debug=debug
@@ -156,7 +149,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       endif
       dir_gen = tmplt_ans[1]
 
-      ;; Get filename generating string
+      ; get filename generating string
       tmplt_id = conf[13]
       query = 'SELECT template FROM filename_templates WHERE id = ' + tmplt_id + ';'
       red_mysql_cmd,handle,query,tmplt_ans,nl,debug=debug
@@ -167,7 +160,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       endif
       fnm_gen = tmplt_ans[1]
 
-      ;; Get infromation from burst table                       
+      ; get infromation from burst table                       
       query = 'SELECT * FROM bursts WHERE config_id = ' + config_id + ';' 
       red_mysql_cmd,handle,query,burst_ans,nl,debug=debug
       if nl eq 1 then begin
@@ -183,37 +176,46 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
 
       for ifile = 0, Nbursts-1 do begin
         burst = strsplit(burst_ans[ifile+1],tab,/extract,/preserve_null)         
-        scannum = burst[3]      ; need this exact variable name to generate filename
+        scannum = burst[3] ; need this exact variable name to generate filename
         first_frame = burst[6]
         state.scannumber = scannum
 
         red_progressbar, ifile, Nbursts, /predict, brst_msg
 
-        line = long(burst[7])   ; required for filename generation
-        tuning = long(burst[2]) ; required for filename generation
-        filter1 = fix(burst[9]) ; required for filename generation
+        line = long(burst[7])      ; required for filename generation
+        tuning = long(burst[2])   ; required for filename generation
+        filter1 = fix(burst[9])   ; required for filename generation
         burst_id = burst[0]        
         
         state.prefilter = burst[9]
 
-        ;; Get information about prefilter
+           ; get information about prefilter
         query = 'SELECT * FROM filters WHERE prefilter = ' + burst[9] + ';'
         red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
+        skip_pref = 0B
         if nl eq 1 then begin
-          print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
-          print, 'Check the database integrity.'
-          return
+          if state.is_wb then begin
+            print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
+            print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
+            skip_pref = 1B
+          endif else begin
+            print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
+            print, 'Check the database integrity.'
+            return
+          endelse
         endif
-        filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
-        waveunit = fix(filt[5])
-        state.pf_wavelength = float(filt[4])*10.^waveunit ; nm
+        if ~skip_pref then begin
+          filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
+          waveunit = fix(filt[5])
+          state.pf_wavelength = float(filt[4])*10.^waveunit ; nm
+        endif else  state.pf_wavelength = 0.
 
         if state.is_wb then begin
-          state.fpi_state =  burst[7] + '_' + string(tuning, format='(I+05)')
-          state.tuning = burst[7] + '_+0000'
+          state.fpi_state =  burst[7] + '_' + strtrim(string(tuning, format='(I+)'),2)
+          state.tuning = burst[7] + '_+0'
           state.tun_wavelength = state.pf_wavelength
         endif else begin
-          state.tuning = burst[7] + '_' + string(tuning, format='(I+05)')
+          state.tuning = burst[7] + '_' + strtrim(string(tuning, format='(I+)'),2)
           state.fpi_state = state.tuning
           state.tun_wavelength = float(line + tuning/1000.)*1e-10 ; Å
         endelse
@@ -257,9 +259,9 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
           lc_state = fix(frame[8])
           state.framenumber = long(framenum)
           if state.is_wb then begin
-            state.fullstate = burst[9] + '_' + burst[7] + '_+0000'
+            state.fullstate = burst[9] + '_' + burst[7] + '_+0'
           endif else begin
-            state.fullstate = burst[9] + '_' + burst[7] + '_' + string(tuning, format='(I+05)')
+            state.fullstate = burst[9] + '_' + burst[7] + '_' + strtrim(string(tuning, format='(I+)'),2)
           endelse
           if lc_state ne -1 then state.lc = lc_state ; 
           if ~state.is_wb and datatype ne 'Darks' then state.fullstate += '_lc' + frame[8]
@@ -273,7 +275,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
             state.lp = lp_state
           endif          
           
-          ;; Generate filename              
+             ; generate filename              
           v=execute(fnm_gen)
           if ~v then begin
             print, inam, ': Failed to generate filename \r'
@@ -282,19 +284,51 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
           state.filename = dir_root + dir + fnm
 
           st[iframe] = state
-        endfor                  ; iframe
-
+        endfor
+                                ; iframe
         red_append, states, st
 
       endfor                    ; ifile (burst)
-    endfor                      ; cams (configs)
-  endfor                        ; datasets
+    endfor  ; cams (configs)
+  endfor  ;datasets
 
   if use_strings then begin
-    ;; Filter the found states with respect to the file names in strings
-    match2, strings, states.filename, suba ;, subb 
-    states = states[suba]
+    if strmatch(strings[0],'*data*') then begin
+      ;;We have to generate filenames as link_data routine does.
+      Nst = n_elements(states)
+      files=strarr(Nst)
+      if strmatch(strings[0],'*nostate*') then begin        
+        for ifile=0,Nst-1 do $
+          files[ifile] =  states[ifile].camera + '/' + states[ifile].detector $
+                   + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                   + '_' + strtrim(states[ifile].prefilter, 2) $
+                   + '_' + string(states[ifile].framenumber, format = '(i07)')      
+      endif else begin
+        for ifile=0,Nst-1 do $
+          files[ifile] = states[ifile].camera + '/' + states[ifile].detector $
+                 + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                 + '_' + strtrim(states[ifile].fullstate, 2) $
+                 + '_' + string(states[ifile].framenumber, format = '(i07)') 
+      endelse
+      ;; Filter the found states with respect to the file names in
+      ;; strings
+      for icam=0,Ncams-1 do begin
+        ss = where(strmatch(strings,'*'+cams[icam]+'*'))
+        if n_elements(ss) eq 1 then if ss eq -1 then continue
+        fs = cams[icam] + '/' + file_basename(strings[ss])
+        match2, fs, files, suba ;, subb 
+        stt = states[suba]
+        stt.filename = strings[ss]
+        red_append, sts,stt
+      endfor
+      states = sts
+    endif else begin      
+      ;; Filter the found states with respect to the file names in strings
+      match2, strings, states.filename, suba ;, subb 
+      states = states[suba]
+    endelse
   endif
-  
+
+  free_lun,handle  
 end
 

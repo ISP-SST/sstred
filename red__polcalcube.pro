@@ -85,7 +85,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
 
     detector = selstates[0].detector
 
-    upref = (states[uniq(selstates.prefilter, sort(states.prefilter))]).prefilter
+    upref = (states[uniq(selstates.prefilter, sort(selstates.prefilter))]).prefilter
     uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
     ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
     ulc = (selstates[uniq(selstates.lc, sort(selstates.lc))]).lc

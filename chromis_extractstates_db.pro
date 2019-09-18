@@ -1,8 +1,11 @@
 ; docformat = 'rst'
 
 ;+
-; Extract states information from the database
+; Extract states information from an array of strings (typically file
+; names). 
 ;
+; Replaces the various versions of red_getstates. Based on regular
+; expressions and vectorization.
 ; 
 ; :Categories:
 ;
@@ -11,97 +14,105 @@
 ; 
 ; :Author:
 ; 
-;     Oleksii Andriienko, Institute for Solar Physics
+;     Mats Löfdahl, ISP
 ; 
 ; 
 ; :Returns:
-;
+; 
 ; 
 ; :Params:
 ; 
-;    datasets : in, type=strarr
+;    strings : in, type=strarr
 ;   
-;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to extract the states information.
+;      A list of strings from which to extract the states information.
 ;   
-;    states : out, type=array(struct)
+;    states : out, optional, type=array(struct)
 ;
 ;        An array of structs, containing (partially filled) state information.
 ; 
+; 
+; :Keywords:
+;
+;     force : in, optional, type=boolean
+;
+;        Do not use cached states.
+;
+;     strip_wb : in, optional, type=boolean
+;
+;        Exclude tuning information from the fullstate entries for WB
+;        cameras
+; 
+;     strip_settings : in, optional, type=boolean
+;
+;        Exclude exposure/gain information from the fullstate entries.
+; 
+; 
 ; :History:
 ; 
-;   2019-07-10 : OA. Created. (Derived from chromis__extractstates and
-;   red_readhead_db)
+;   2014-01-22 : First version.
+; 
 ;
-;   2019-07-11 : MGL. Call like extractstates.
 ;
+; 
 ;-
-pro chromis::extractstates_db, strings, states, datasets = datasets, force = force
+pro chromis_extractstates_db, files, states $ ; data_dir, timestamps
+                            , strip_wb = strip_wb $
+                            , strip_settings = strip_settings
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  use_strings = n_elements(datasets) eq 0
-  
-  if use_strings then begin
-    if ~keyword_set(force) then begin      
-      Nstr = n_elements(strings)
-      for ifile=0,Nstr-1 do begin
-        this_cache = rdx_cacheget(strings[ifile], count = cnt)   
-        if cnt gt 0 then begin
-          red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
-          red_append,states,this_cache.state
-        endif
-      endfor
-      if n_elements(states) eq Nstr then return else undefine,states
-    endif
-    timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
-    timestamp = timestamps[uniq(timestamps,sort(timestamps))]
-    datapsets = self.isodate + ' ' + timestamp
-  endif
+  ;check for blank strings in 'files' array
+  files = strtrim(files,2)
+  idx = where( files ne '' )
+  if min(idx) ge 0 then files = files[ idx ] $
+  else return
+  Nfiles = n_elements(files)
+  if( Nfiles eq 0 ) then return
 
   instrument = 'CHROMIS'
 
   red_mysql_check, handle
+;  file_names = strarr(Nfiles)
+;  dir_names = strarr(Nfiles)
+  sets = strarr(Nfiles)
 
-  Nsets = n_elements(datasets)
+  for ifile=0, Nfiles-1 do begin
+    dir = file_dirname(files[ifile])
+;    dir_names[ifile] = dir
+    splitdir = strsplit(dir,'/',/extract)
+    sets[ifile] = splitdir[3] +' '+ splitdir[-2] + ' ' + splitdir[-1]
+  endfor
+
+  set_indx = uniq(sets, sort(sets))
+  datasets = sets[set_indx]
+  Nsets = n_elements(set_indx)
   set_msg = string('Get DB values for ', strtrim(string(Nsets),2), ' datasets.')
-
-  split_dir = strsplit(self.root_dir,'/',/extract)
-  dir_root = '/' + strjoin(split_dir[0:-2],'/') + '/'
 
   for iset = 0, Nsets-1 do begin
     state = {CHROMIS_STATE}
     red_progressbar, iset, Nsets, /predict, set_msg     
     split_set = strsplit(datasets[iset], ' ', /extract)
-    date_time = datasets[iset];split_set[0] + ' ' + split_set[1]
+    date_time = split_set[0] + ' ' + split_set[1]
     
-    ;; we need Y,...,sec to generate the directory name
+    ; we need Y,...,sec to generate the directory name
     split_date = strsplit(split_set[0],'-',/extract)
     Y = fix(split_date[0])
     M = fix(split_date[1])
     D = fix(split_date[2])
-
     split_time = strsplit(split_set[1],':',/extract)
     hr = fix(split_time[0])
     min = fix(split_time[1])
     sec = fix(split_time[2])
     
     query='SELECT * FROM datasets WHERE date_obs = "' + date_time + '" AND instrument = "' + instrument + '";'
-    red_mysql_cmd,handle,query,ans,nl
+    red_mysql_cmd,handle,query,ans,nl,debug=debub
     if nl eq 1 then begin
       print, inam, ': There is no entry for ', date_time, ' dataset in the database.'
-      print, "Let's run red_rawdir2db first."
-      flat_dirs = *self.flat_dir
-      dark_dirs = *self.dark_dir
-      data_dirs = *self.data_dirs
-      pinh_dirs = *self.pinh_dirs
-      dirs = [flat_dirs, dark_dirs, pinh_dirs, data_dirs]
-      in = where(strmatch(dirs,'*'+split_set[1]+'*'))
-      dir = dirs[in]
-      red_rawdir2db,dir=dir,/all
-      red_mysql_cmd,handle,query,ans,nl
+      print, 'Run red_rawdir2db first.'
+      return
     endif
-    ;;parse a result of the query
+    ;parse a result of the query
     tab = string(9B)
     set = strsplit(ans[1],tab,/extract,/preserve_null)
     set_id = set[0]
@@ -114,8 +125,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
       print,'Check the database integrity.'
       return
     endif
-    Ncams = nl-1                ; number of cameras (configs) in the dataset
-    cams=strarr(Ncams)
+    Ncams = nl-1 ; number of cameras (configs) in the dataset
 
     for icam=1,Ncams do begin
       conf = strsplit(conf_ans[icam],tab,/extract,/preserve_null)
@@ -126,7 +136,6 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
       state.nframes = fix(conf[7]) ; NAXIS3 
       camera = conf[2] ; need this exact variable name to generate dirname
       state.camera = camera
-      cams[icam-1]=camera
       state.is_wb = strmatch(camera,'*-[DW]')
       state.cam_settings = strtrim(string(state.exposure*1000, format = '(f9.2)'), 2) + 'ms'$
               + '_G' + string(state.gain, format = '(f05.2)')                                      
@@ -144,7 +153,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
       detector = dets[3]        ; need this exact variable name to generate filename
       state.detector = detector
 
-      ;; get dirname generating string
+      ; get dirname generating string
       tmplt_id = conf[12]
       query = 'SELECT template FROM dirname_templates WHERE id = ' + tmplt_id + ';'
       red_mysql_cmd,handle,query,tmplt_ans,nl,debug=debug
@@ -155,7 +164,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
       endif
       dir_gen = tmplt_ans[1]
 
-      ;; get filename generating string
+      ; get filename generating string
       tmplt_id = conf[13]
       query = 'SELECT template FROM filename_templates WHERE id = ' + tmplt_id + ';'
       red_mysql_cmd,handle,query,tmplt_ans,nl,debug=debug
@@ -166,7 +175,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
       endif
       fnm_gen = tmplt_ans[1]
 
-      ;; get infromation from burst table                       
+      ; get infromation from burst table                       
       query = 'SELECT * FROM bursts WHERE config_id = ' + config_id + ';' 
       red_mysql_cmd,handle,query,burst_ans,nl,debug=debug
       if nl eq 1 then begin
@@ -188,10 +197,9 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
         state.scannumber = long(scannum)
         state.framenumber = long(first_frame)
         cal_id = burst[8]
-        state.prefilter = burst[9]
 
         if cal_id ne 0 then begin ;  otherwise it can be darks ...               
-          ;; get calibration data for CHROMIS to convert wheel*_hrz* into line+tuning
+               ; get calibration data for CHROMIS to convert wheel*_hrz* into line+tuning
           query = 'SELECT prefilter, convfac, du_ref, lambda_ref FROM calibrations WHERE id = ' + cal_id + ';'
           red_mysql_cmd,handle,query,calib_ans,nl,debug=debug
           if nl eq 1 then begin
@@ -208,35 +216,25 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
           wheel = fix(burst[7])  ; required for filename generation
           hrz = long(burst[2])   ; required for filename generation
 
-          ;; get information about prefilter
-          query = 'SELECT * FROM filters WHERE prefilter = ' + state.prefilter + ';'
+          ; get information about prefilter
+            query = 'SELECT * FROM filters WHERE prefilter = ' + nbpref + ';'
           red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
-          skip_pref = 0B
           if nl eq 1 then begin
-            if state.is_wb then begin
-              print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
-              print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
-              skip_pref = 1B
-            endif else begin
-              print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
-              print, 'Check the database integrity.'
-              return
-            endelse
+            print,inam,': There is no entry in filters table for prefilter = ' + nbpref
+            print,'Check the database integrity.'
+            return
           endif
-          if ~skip_pref then begin
-            filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
-            waveunit = fix(filt[5])
-            state.pf_wavelength = float(filt[4])*10.^waveunit
-          endif else state.pf_wavelength = 0.
+          filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
+          state.pf_wavelength = float(filt[4])
           
-          if set[2] eq 'flats' and state.is_wb then begin
-            ;; WB flats 
-            state.fpi_state = state.prefilter + '_' + nbpref + '_+000' ;fake state
-            state.tun_wavelength = state.pf_wavelength
-            state.tuning = string(round(state.tun_wavelength*1d10) $
+          if set[2] eq 'flats' and strmatch(camera, '*-[WD]') then begin
+                ; WB flats 
+            state.fpi_state = nbpref + '_' + nbpref + '_+000' ;fake state
+            state.tun_wavelength = states[ifile].pf_wavelength
+            states.tuning = string(round(states[ifile].tun_wavelength*1d10) $
                    , format = '(i04)')  + '_+0'
           endif else begin
-            ;; convert 'wheel_hrz' to 'line_+tuning'
+                 ;convert 'wheel_hrz' to 'line_+tuning'
             dlambda = convfac * (hrz-du_ref)
             lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
             tuning_string = strtrim(round(dlambda*1d13), 2)
@@ -257,24 +255,21 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
         ; do we need this?
         ;;if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
-        ;; generate dirname (required Y...s, datatype, camera)
-        if datatype eq 'science' then datatype='data'
+        ; generate dirname (required Y...s, datatype, camera)
         v=execute(dir_gen)
         if ~v then begin
           print,inam,': Failed to generate dirname'
           return
-        endif        
+        endif
         
-        ;; generate filename (required detector, scannum, first_frame, wheel, hrz variables)
+        ; generate filename (required detector, scannum, first_frame, wheel, hrz variables)
         v=execute(fnm_gen)
         if ~v then begin
           print,inam,': Failed to generate filename'
           return
         endif
-        zz=strpos(fnm,'hrz')
-        if strmid(fnm,zz+3,3) eq '***' then stop
 
-        state.filename = dir_root + dir + fnm        
+        state.filename = dir + fnm        
 
         ;; The fullstate string
         undefine, fullstate_list
@@ -291,56 +286,77 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
         state.fullstate = strjoin(fullstate_list, '_')
 
         st[ifile] = state
+
+      ;; Store in cache
+      ;rdx_cache, strings[ifile], { state:states[ifile] }
+
       endfor                    ; bursts
 
-      ;; append states for different cams (configs)
+      ; append states for different cams (configs)
       red_append, states, st 
       
     endfor ; cams (configs)
-  endfor   ;states
+  endfor  ;states
+  
+end
 
-  if use_strings then begin
-    if strmatch(strings[0],'*/data/*') then begin
-      ;;We have to generate filenames as link_data routine does.
-      Nst = n_elements(states)
-      files=strarr(Nst)       
-      for ifile=0,Nst-1 do begin
-        if states[ifile].is_wb then begin
-          files[ifile] =  states[ifile].camera + '/' +  states[ifile].detector $
-                          + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                          + '_' + strtrim(states[ifile].prefilter, 2) $
-                          + '_' + string(states[ifile].framenumber, format = '(i07)') $
-                          + '.fits'      
-        endif else begin 
-          files[ifile] = states[ifile].camera + '/' + states[ifile].detector $
-                         + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                         + '_' + strtrim(states[ifile].fullstate, 2) $
-                         + '_' + string(states[ifile].framenumber, format = '(i07)')  $
-                         + '.fits'
-        endelse
-      endfor
-      ;; Filter the found states with respect to the file names in
-      ;; strings
-      for icam=0,Ncams-1 do begin
-        ss = where(strmatch(strings,'*'+cams[icam]+'*'))
-        if n_elements(ss) eq 1 then if ss eq -1 then continue
-        fs = cams[icam] + '/' + file_basename(strings[ss])
-        match2, fs, files, suba ;, subb 
-        stt = states[suba]
-        stt.filename = strings[ss]
-        red_append, sts,stt
-      endfor
-      states = sts
-    endif else begin      
-      ;; Filter the found states with respect to the file names in strings
-      match2, strings, states.filename, suba ;, subb 
-      states = states[suba]
-    endelse
-    ;; Store in cache
-    Nstr = n_elements(strings)
-    for ifile=0,Nstr-1 do $
-      rdx_cache, strings[ifile], { state:states[ifile] }
-  endif
 
-  free_lun,handle  
+a = chromisred('config.txt', /dev)
+
+
+;; Test caching
+
+dirN = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-N/'
+dirW = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-W/'
+fnamesW = file_search(dirW+'*fits', count = NfilesW)
+fnamesN = file_search(dirN+'*fits', count = NfilesN)
+
+tic
+a -> extractstates, fnamesN, statesN1
+toc
+
+tic
+a -> extractstates, fnamesW, statesW
+toc
+
+tic
+a -> extractstates, fnamesN, statesN1
+toc
+
+tic
+a -> extractstates, fnamesN, statesN2, /force
+toc
+
+
+tic
+a -> extractstates, fnamesW, statesW
+toc
+
+stop
+
+;; Test darks
+files = file_search('darks/cam*.dark', count = Nfiles)
+a -> extractstates, files, states
+
+stop
+
+;; Test flats
+files = file_search('flats/camXXX_*.flat', count = Nfiles)
+a -> extractstates, files, states
+
+
+stop
+
+;; Test narrowband
+dirN = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-N/'
+fnamesN = file_search(dirN+'*fits', count = NfilesN)
+if NfilesN gt 0 then a -> extractstates, fnamesN, statesN
+
+stop
+
+;; Test wideband
+dirW = '/storage/sand02/Incoming/2016.09.11/CHROMIS-flats/*/Chromis-W/'
+fnamesW = file_search(dirW+'*fits', count = NfilesW)
+if NfilesW gt 0 then a -> extractstates, fnamesW, statesW
+
 end

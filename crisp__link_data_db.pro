@@ -37,6 +37,8 @@
 ; :History:
 ; 
 ;   2019-07-10 : OA. Derived from crisp__link_data
+;
+;   2019-07-25 :  OA. Added check for sst_db.
 ;  
 ;-
 pro crisp::link_data_db, dirs = dirs $
@@ -50,6 +52,7 @@ pro crisp::link_data_db, dirs = dirs $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  dataset = 0B
   Ndirs=n_elements(dirs)
   if Ndirs eq 0 then begin
     ;; No dirs given in keyword, use default
@@ -61,7 +64,7 @@ pro crisp::link_data_db, dirs = dirs $
         ;; Try to interpret as a selection from the default dirs.
         dirs[idir] = file_dirname((*self.data_dirs)[0])+'/'+dirs[idir]
       endif
-   endfor     ;idir
+    endfor                                 ;idir
   endelse
 
   Ndirs = n_elements(dirs)
@@ -84,13 +87,15 @@ pro crisp::link_data_db, dirs = dirs $
     nn = n_elements(folder_tag) - 1
     folder_tag = folder_tag[nn]
 
-    dat = stregex(data_dir, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
-    Ndots   = n_elements(strsplit(dat, '.', /extract))
-    Ndashes = n_elements(strsplit(dat, '-', /extract))
-    if Ndots gt Ndashes then dat = red_strreplace(dat, '.', '-', n = 2)    
-    timestamp = stregex(data_dir, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
-    dataset = dat + ' '  + timestamp
-    self->extractstates_db,dataset,sts
+    if self.db_present then begin
+      dat = stregex(data_dir, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
+      Ndots   = n_elements(strsplit(dat, '.', /extract))
+      Ndashes = n_elements(strsplit(dat, '-', /extract))
+      if Ndots gt Ndashes then dat = red_strreplace(dat, '.', '-', n = 2)    
+      timestamp = stregex(data_dir, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
+      dataset = dat + ' '  + timestamp
+      self->extractstates_db,dataset,sts
+    endif
 
     for icam = 0L, Ncams-1 do begin
 
@@ -104,17 +109,62 @@ pro crisp::link_data_db, dirs = dirs $
 
       files = states.filename      
 
-      ;; only one prefilter?
-      if keyword_set(pref) then begin
-        idx = where(states.prefilter eq pref, Np)
-        if Np eq 0 then begin
-          print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
+      if self.db_present then begin
+        inn = where(sts.camera eq cam)
+        if n_elements(inn) eq 1 then if inn eq -1 then continue ; skipping the camera
+        states = sts(inn)
+        files = states.filename 
+      endif else begin
+        files = file_search(data_dir + '/' + cam + '/*cam*', count = Nfiles)
+        files = files(where(strpos(files, '.lcd.') LT 0, nf))
+        if(files[0] eq '') then begin
+          print, inam+' : ERROR : '+cam+': no files found in: '+$
+                 data_dir +' : skipping camera!'
           continue
+          ;; Only one prefilter?
+          if keyword_set(pref) then begin
+            idx = where(states.prefilter eq pref, Np)
+            if Np eq 0 then begin
+              print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
+              continue
+            endif
+            files = files[idx]
+            states = states[idx]
+          endif 
         endif
-        Nfiles = Np
-        files = files[idx]
-        states = states[idx]
-      endif
+        self->extractstates_nondb, files, states
+        ;; Only one prefilter?
+        if keyword_set(pref) then begin
+          idx = where(states.prefilter eq pref, Np)
+          if Np eq 0 then begin
+            print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
+            continue
+          endif
+          files = files[idx]
+          states = states[idx]
+        endif 
+        ;; Check for complete scans only
+        if ~keyword_set(all_data) then begin
+          scans = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
+          Nscans = n_elements(scans)
+          f_scan = lonarr(Nscans)
+          for iscan = 0L, Nscans-1 do $
+             f_scan[iscan] = n_elements(where(states.scannumber eq scans[iscan]))
+          mask = replicate(1B, Nfiles)
+          for iscan = 1L, Nscans-1 do begin
+            if f_scan[iscan]-f_scan[0] lt 0 then begin
+              print, inam + ' : WARNING : ' + cam + ': Incomplete scan nr ' + strtrim(scans[iscan], 2)
+              print, inam + '             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
+                     + strtrim(f_scan(0), 2) + ' files.  Skipping it'
+              mask[where(states.scannumber EQ scans[iscan])] = 0
+            endif
+          endfor
+          idx = where(mask)
+          files = (temporary(files))[idx]
+          Nfiles = n_elements(files)
+          states = states[idx]
+        endif
+      endelse 
       
       ;; Create linker script
       Nfiles = n_elements(files)

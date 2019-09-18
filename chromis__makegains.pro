@@ -124,7 +124,7 @@ pro chromis::makegains, bad=bad $
       
       tmp = strsplit(file_basename(flatname[ifile]), '._', /extract)
       if(keyword_set(pref)) then begin
-        if(tmp[1] ne pref) then begin
+        if(tmp[5] ne pref) then begin
           print, inam+' : skipping prefilter -> '+tmp[1]
           continue
         endif

@@ -219,7 +219,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   ;; Assume momfbd processing is done with redux. Other steps depend
   ;; on this now.
   redux = 1
-  
+
   ;; Cameras
   cams = *self.cameras
   iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
@@ -655,8 +655,7 @@ pro red::prepmomfbd, wb_states = wb_states $
           scannumber = uscan[iscan]
           scanstring = string(scannumber,format='(I05)')
 
-          for ipref=0L, Nprefs-1 do begin
-            
+          for ipref=0L, Nprefs-1 do begin        
             ;; select a subset of the states which matches prefilter & scan number.
             self->selectfiles, cam=cams[icam], dirs=dir, prefilter=upref[ipref], scan=scannumber, $
                                files=files, states=states, selected=sel ; , nremove=remove

@@ -57,7 +57,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  
   if n_elements(dirs) gt 0 then begin
     dirs = [dirs] 
   endif else begin

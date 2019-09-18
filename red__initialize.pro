@@ -82,6 +82,20 @@ pro red::initialize, filename, develop = develop
   endif
   self.filename = filename
   self.filetype = 'MOMFBD'
+
+  ;; Test for sst_db presence
+  if file_test('~/.my.cnf') then begin
+    spawn,'cat ~/.my.cnf | grep sst_db',res
+    if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
+  endif else begin
+    if file_test('/etc/.my.cnf') then begin
+      spawn,'cat /etc/my.cnf | grep sst_db',res
+      if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
+    endif
+  endelse
+  if ~self.db_present then $
+    print,'There is no sst_db database on your system. Consider to install it.'
+    
   
   ;; Init vars
   self.polcal_dir = ''

@@ -52,7 +52,10 @@ pro red_rawfile2db, dbinfo, debug=debug
 
   ; In rawdir2db this procedure is called in cameras loop, so there is only one unique instrument in the 'dbinfo'
   ; as well as only one 'DATE_OBS' and one 'CAMERA'
-  instrument = dbinfo[0].INSTRUME 
+  instrument = dbinfo[0].INSTRUME
+  camera =  dbinfo[0].CAMERA
+  is_wb = strmatch(camera, '*-[WD]')
+  datatype = dbinfo[0].DATATYPE
 
   d = strsplit(dbinfo[0].DATE_OBS,' ',/extract)
   if instrument eq 'CHROMIS' then begin      
@@ -68,7 +71,7 @@ pro red_rawfile2db, dbinfo, debug=debug
       query = 'INSERT INTO calibrations (prefilter, convfac, du_ref, date, lambda_ref) VALUES '
       for jj=0,nel-1  do $
         query += '("' + nbprefs[jj] + '", "' + strtrim(string(convfac[jj]),2) + '", "' + $
-        strtrim(string(du_ref[jj]),2) + '", "' + d[0] + '", "' + strtrim(string(convfac[jj]),2) + '"),'
+        strtrim(string(du_ref[jj]),2) + '", "' + d[0] + '", "' + strtrim(string(lambda_ref[jj]),2) + '"),'
       ll = strlen(query)
       query = strmid(query, 0, ll-1) + ';'
       red_mysql_cmd, handle, query, ans, nl, debug=debug
@@ -90,8 +93,7 @@ pro red_rawfile2db, dbinfo, debug=debug
 ;      print, 'Enter description for ', instrument, '  ', dbinfo[0].DATE_OBS, ' dataset.'
 ;      read, desc
 ;    endif
-
-    datatype = dbinfo[0].DATATYPE
+   
     query = 'INSERT INTO datasets (date_obs, instrument, data_type, solarnet) VALUES ("'+ $  ;observer, description,
       dbinfo[0].DATE_OBS + '", "'+ instrument + '", "' + $  ;observer + '", "' + desc + '", "' + 
       datatype + '", "' + strtrim(string(dbinfo[0].solarnet),2) + '")' + $
@@ -284,10 +286,9 @@ pro red_rawfile2db, dbinfo, debug=debug
 
     for iscan=0, Nscans-1 do begin
       scannum = dbinfo[scans[iscan]].SCANNUM
-
-      for istate=0, Nstates-1 do begin        
-        red_progressbar, iscan*Nscans + istate, Nscans*Nstates, /predict, strtrim(string(Nscans*Nstates),2) + ' bursts.'
-           
+      red_progressbar, iscan, Nscans, /predict, strtrim(string(Nscans),2) + ' scans.'
+      
+      for istate=0, Nstates-1 do begin           
         state = dbinfo[states[istate]].state
         pref = dbinfo[states[istate]].filter1
         if state eq '' then $
@@ -302,7 +303,7 @@ pro red_rawfile2db, dbinfo, debug=debug
 
         line = '0'
         tuning = '0'
-        if state ne '' then begin
+        if state ne '' and iscan eq 0 then begin
           ;Insert information for prefilter if it's not there.
           st = strsplit(state,'_',/extract)                
           line = st[0]
@@ -315,7 +316,8 @@ pro red_rawfile2db, dbinfo, debug=debug
               strtrim(string(dbinfo[fst_frm_indx].WAVELNTH),2) + ', ' + strtrim(string(dbinfo[fst_frm_indx].WAVEUNIT),2) + ');'
             red_mysql_cmd, handle, query, ans, nl, debug=debug
           endif                
-        endif  
+        endif
+        if datatype eq 'flats' and is_wb then line = pref
 
         burst_id = '0'
         ; change date format to be comlient with mariaDB
@@ -402,6 +404,7 @@ pro red_rawfile2db, dbinfo, debug=debug
       endfor ; istate
 
     endfor   ; iscan         
-  endelse    ; CHROMIS / CRISP        
-
+  endelse    ; CHROMIS / CRISP
+  
+  free_lun,handle
 end

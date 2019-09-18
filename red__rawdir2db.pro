@@ -57,7 +57,7 @@ pro red::rawdir2db, timestamp, cams = cams
     ;;files = files[0:10]         ; testing...
     Nfiles = n_elements(files)        
 
-    self -> extractstates, files, states
+    self -> extractstates_nondb, files, states
 
     
     ;; We should get the DATATYPE from the "/CHROMIS-*/" part of the

@@ -104,7 +104,6 @@ pro crisp::link_data, all_data = all_data $
     folder_tag = folder_tag[nn]
 
     for icam = 0L, Ncams-1 do begin
-
       cam = cams[icam]
       detector = self->getdetector( cam )
       iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
@@ -226,7 +225,7 @@ pro crisp::link_data, all_data = all_data $
       
 ;      linkername = self.out_dir + '/' + cam + '_science_linker_'+folder_tag+'.sh'
 ;      openw, lun, linkername, /get_lun
-;      printf, lun, '#!/bin/bash'
+      printf, lun, '#!/bin/bash'
       
 ;     ;; Print links
 ;      Ntot = 100. / (Nt - 1.0)
@@ -243,7 +242,6 @@ pro crisp::link_data, all_data = all_data $
       for ifile = 0L, Nfiles - 1 do begin
 ;           if(stat.star[ifile]) then continue
         if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
-
         namout = outdir + detector $
                  + '_' + string(states[ifile].scannumber, format = '(i05)') $
                  + '_' + strtrim(states[ifile].fullstate, 2) $
