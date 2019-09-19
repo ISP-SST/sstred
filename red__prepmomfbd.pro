@@ -734,26 +734,23 @@ pro red::prepmomfbd, wb_states = wb_states $
               pos = STREGEX(filename, '[0-9]{7}', length=len)
               fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
 
-              if instrument eq 'chromis' then begin
-                align_idx = where( align.state2.camera eq cams[icam] and $
-                                   align.state2.fpi_state eq thisstate)
+              ;; Use median of align info for camera+prefilter combo.
+              ;; (There does not seem to be any consistency in
+              ;; parameters that motivate wavelength interpolation.)
+              align_idx = where( align.state2.camera eq cams[icam] and $
+                                 align.state2.prefilter eq ustates[istate].prefilter)
+              if max(align_idx) lt 0 then begin
+                 print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
+                 stop
+                 continue
+              endif
+              if keyword_set(redux) then begin
+                 align_map = median(align[align_idx].map,dim=3)
               endif else begin
-                align_idx = where( align.state2.camera eq cams[icam] and $
-                                   align.state2.fullstate eq thisstate)
+                 print, inam + ' : Not implemented for non-redux cfg files.'
+                 stop
               endelse
               
-              if max(align_idx) lt 0 then begin ; no match for state, try only prefilter
-                align_idx = where( align.state2.camera eq cams[icam] and $
-                                   align.state2.prefilter eq ustates[istate].prefilter)
-                if max(align_idx) lt 0 then begin
-                  ;;print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
-                  ;;stop
-                  continue
-                endif
-              endif
-
-              if n_elements(align_idx) gt 1 then align_idx = align_idx[0] ; just pick the first one for now
-              state_align = align[align_idx]
               
               ;; Create cfg object
               cfg_list[cfg_idx].objects += 'object{' + LF
@@ -771,11 +768,11 @@ pro red::prepmomfbd, wb_states = wb_states $
               cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
 
               if keyword_set(redux) then begin
-                cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(state_align.map, 9), 2), ',') + LF
+                 cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align_map, 9), 2), ',') + LF
               endif else begin
-                cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' $
-                                             + strjoin(strtrim(state_align.clip,2),',') + LF
-                if( state_align.xoffs_file ne '' && file_test(state_align.xoffs_file)) then $
+                 cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' $
+                                              + strjoin(strtrim(state_align.clip,2),',') + LF
+                 if( state_align.xoffs_file ne '' && file_test(state_align.xoffs_file)) then $
                    cfg_list[cfg_idx].objects += '        XOFFSET='+state_align.xoffs_file + LF
                 if( state_align.yoffs_file ne '' && file_test(state_align.yoffs_file)) then $
                    cfg_list[cfg_idx].objects += '        YOFFSET='+state_align.yoffs_file + LF
