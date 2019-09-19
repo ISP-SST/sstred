@@ -16,12 +16,12 @@
 ; particular for tuning states that there are pinhole array data for,
 ;
 ; The solution to the problem is to do a red_update to get a version
-; of prepmomfbd where this is fixed (not available yet, still being
-; tested). And then, for the data sets where you find that the
-; artifacts matter, delete the momfbd*/??:??:??/????/cfg/results/
-; directories (including any stokes*/ subdirectories therein), rerun
-; prepmomfbd, rerun momfbd restoration, and rerun whatever steps you
-; do after that like cube making.
+; of prepmomfbd where this is fixed. And then, for the data sets where
+; you find that the artifacts matter, delete the
+; momfbd*/??:??:??/????/cfg/results/ directories (including any
+; stokes*/ subdirectories therein), rerun prepmomfbd, rerun momfbd
+; restoration, and rerun whatever steps you do after that like cube
+; making.
 ;
 ;
 ; Below please find sample output for a config file where the problem
