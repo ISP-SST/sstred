@@ -184,6 +184,9 @@
 ;   2018-12-18 : MGL. Make the redux keyword obsolete by
 ;                non-optionally setting it to 1.
 ;
+;   2019-09-20 : MGL. Remove all code for ~keyword_set(redux). Keep
+;                the keyword itself for backward compatibility.
+;
 ;-
 pro red::prepmomfbd, wb_states = wb_states $
                      , numpoints = numpoints $
@@ -216,10 +219,6 @@ pro red::prepmomfbd, wb_states = wb_states $
 
   instrument = ((typename(self)).tolower())
 
-  ;; Assume momfbd processing is done with redux. Other steps depend
-  ;; on this now.
-  redux = 1
-  
   ;; Cameras
   cams = *self.cameras
   iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
@@ -344,7 +343,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   self -> getalignment, align=align, cams=cams, refcam=refcam, prefilters=pref $
                         , output_dir = offset_dir $
                         , extraclip=extraclip, /overwrite $
-                        , makeoffsets = ~keyword_set(redux)
+                        , makeoffsets = 0
 
   ref_idx = where( align.state1.camera eq refcam_name, Nref)
   if Nref eq 0 then begin
@@ -391,10 +390,6 @@ pro red::prepmomfbd, wb_states = wb_states $
   endif
   sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
   sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
-  if ~keyword_set(redux) then begin ; for the old code, the patch coordinates are relative to the align-clip area
-    sim_x -= sim_roi[0]
-    sim_y -= sim_roi[2]
-  endif
   sim_x_string = strjoin(strtrim(sim_x,2), ',')
   sim_y_string = strjoin(strtrim(sim_y,2), ',')
   
@@ -549,17 +544,8 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.objects += '        GAIN_FILE=' + ref_gainname + LF
         cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LF
         cfg.objects += '        DARK_NUM=0000001' + LF
+        cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
 
-        if keyword_set(redux) then begin
-          cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
-        endif else begin
-          cfg.objects += '        ALIGN_CLIP=' $
-                         + strjoin(strtrim(ref_clip,2),',') + LF
-          if( align[0].xoffs_file ne '' && file_test(align[0].xoffs_file)) then $
-             cfg.objects += '        XOFFSET='+align[0].xoffs_file + LF
-          if( align[0].yoffs_file ne '' && file_test(align[0].yoffs_file)) then $
-             cfg.objects += '        YOFFSET='+align[0].yoffs_file + LF
-        endelse
         if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
            ~keyword_set(no_descatter) then begin
           self -> loadbackscatter, detectors[refcam], upref[ipref] $
@@ -585,13 +571,12 @@ pro red::prepmomfbd, wb_states = wb_states $
             continue
           endif
           
-          if keyword_set(redux) then begin
-            if count gt 1 then begin
-              pd_map = median(align[align_idx].map, dim = 3)
-            endif else begin
-              pd_map = align[align_idx].map
-            endelse
-          endif 
+          if count gt 1 then begin
+            pd_map = median(align[align_idx].map, dim = 3)
+          endif else begin
+            pd_map = align[align_idx].map
+          endelse
+
           if n_elements(align_idx) gt 1 then align_idx = align_idx[0] ; just pick the first one for now
           state_align = align[align_idx]
 
@@ -601,17 +586,7 @@ pro red::prepmomfbd, wb_states = wb_states $
           cfg.objects += '        GAIN_FILE=' + pd_gainname + LF
           cfg.objects += '        DARK_TEMPLATE=' + pd_darkname + LF
           cfg.objects += '        DARK_NUM=0000001' + LF
-
-          if keyword_set(redux) then begin
-            cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(pd_map, 9), 2), ',') + LF
-          endif else begin
-            cfg.objects += '        ALIGN_CLIP=' $
-                           + strjoin(strtrim(state_align.clip,2),',') + LF
-            if file_test(state_align.xoffs_file) then $
-               cfg.objects += '        XOFFSET='+state_align.xoffs_file + LF
-            if file_test(state_align.yoffs_file) then $
-             cfg.objects += '        YOFFSET='+state_align.yoffs_file + LF
-          endelse
+          cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(pd_map, 9), 2), ',') + LF
           if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
              ~keyword_set(no_descatter) then begin
             self -> loadbackscatter, detectors[refcam], upref[ipref] $
@@ -733,25 +708,22 @@ pro red::prepmomfbd, wb_states = wb_states $
               filename = file_basename(state_list[state_idx[0]].filename)
               pos = STREGEX(filename, '[0-9]{7}', length=len)
               fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
-
+              
               ;; Use median of align info for camera+prefilter combo.
               ;; (There does not seem to be any consistency in
               ;; parameters that motivate wavelength interpolation.)
               align_idx = where( align.state2.camera eq cams[icam] and $
-                                 align.state2.prefilter eq ustates[istate].prefilter)
-              if max(align_idx) lt 0 then begin
-                 print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
-                 stop
-                 continue
-              endif
-              if keyword_set(redux) then begin
-                 align_map = median(align[align_idx].map,dim=3)
-              endif else begin
-                 print, inam + ' : Not implemented for non-redux cfg files.'
-                 stop
-              endelse
-              
-              
+                                 align.state2.prefilter eq ustates[istate].prefilter, Nalign)
+              case Nalign of
+                 0 : begin
+                    print, inam, ' : Failed to get ANY alignment for camera/state ' $
+                           , cams[icam] + ':' + thisstate
+                    stop
+                 end
+                 1    : align_map =        align[align_idx].map
+                 else : align_map = median(align[align_idx].map,dim=3)
+              endcase
+               
               ;; Create cfg object
               cfg_list[cfg_idx].objects += 'object{' + LF
               cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[istate].pf_wavelength,2) + LF
@@ -766,17 +738,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF            ; ******
               cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LF
               cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
-
-              if keyword_set(redux) then begin
-                 cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align_map, 9), 2), ',') + LF
-              endif else begin
-                 cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' $
-                                              + strjoin(strtrim(state_align.clip,2),',') + LF
-                 if( state_align.xoffs_file ne '' && file_test(state_align.xoffs_file)) then $
-                   cfg_list[cfg_idx].objects += '        XOFFSET='+state_align.xoffs_file + LF
-                if( state_align.yoffs_file ne '' && file_test(state_align.yoffs_file)) then $
-                   cfg_list[cfg_idx].objects += '        YOFFSET='+state_align.yoffs_file + LF
-              endelse
+              cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align_map, 9), 2), ',') + LF
               if( ustates[istate].prefilter EQ '8542' OR ustates[istate].prefilter EQ '7772' ) AND $
                  ~keyword_set(no_descatter) then begin
                 self -> loadbackscatter, detectors[icam], ustates[istate].prefilter, bgfile = bgf, bpfile = psff
@@ -790,7 +752,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               endif
               if(n_elements(nfac) gt 1) then $
                  cfg_list[cfg_idx].objects += '        NF=' + red_stri(nfac[1]) + LF
-              if keyword_set(redux) && max(nremove) gt 0 then $
+              if max(nremove) gt 0 then $
                  cfg_list[cfg_idx].objects += '        DISCARD=' $
                                               + strjoin(strtrim(nremove,2),',') + LF
               cfg_list[cfg_idx].objects += '        INCOMPLETE' + LF
@@ -836,12 +798,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                 cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF
                 cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LF
                 cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
-
-                if keyword_set(redux) then begin
-                  cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
-                endif else begin
-                  cfg_list[cfg_idx].objects += '        ALIGN_CLIP=' + strjoin(strtrim(ref_clip,2),',') + LF
-                endelse
+                cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
                 if( ustates[istate].prefilter EQ '8542' OR $
                     ustates[istate].prefilter EQ '7772' ) AND ~keyword_set(no_descatter) then begin
                   self -> loadbackscatter, detectors[refcam], ustates[istate].prefilter $
@@ -856,7 +813,7 @@ pro red::prepmomfbd, wb_states = wb_states $
                 endif
                 if(n_elements(nfac) gt 2) then cfg_list[cfg_idx].objects $
                    += '        NF=' + red_stri(nfac[2]) + LF
-                if keyword_set(redux) && max(nremove) gt 0 then $
+                if max(nremove) gt 0 then $
                    cfg_list[cfg_idx].objects += '        DISCARD=' $
                                                 + strjoin(strtrim(nremove,2),',') + LF
                 cfg_list[cfg_idx].objects += '        INCOMPLETE' + LF

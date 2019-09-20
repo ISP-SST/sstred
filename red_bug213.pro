@@ -13,7 +13,7 @@
 ;
 ; For such directories, look in the corresponding NB cube for
 ; alignment artifacts in the differential Stokes components. In
-; particular for tuning states that there are pinhole array data for,
+; particular for tuning states for which there are pinhole array data.
 ;
 ; The solution to the problem is to do a red_update to get a version
 ; of prepmomfbd where this is fixed. And then, for the data sets where
