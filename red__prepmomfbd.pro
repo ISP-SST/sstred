@@ -733,25 +733,22 @@ pro red::prepmomfbd, wb_states = wb_states $
               filename = file_basename(state_list[state_idx[0]].filename)
               pos = STREGEX(filename, '[0-9]{7}', length=len)
               fn_template = strmid(filename, 0, pos) + '%07d' + strmid(filename, pos+len)
-
+              
               ;; Use median of align info for camera+prefilter combo.
               ;; (There does not seem to be any consistency in
               ;; parameters that motivate wavelength interpolation.)
               align_idx = where( align.state2.camera eq cams[icam] and $
-                                 align.state2.prefilter eq ustates[istate].prefilter)
-              if max(align_idx) lt 0 then begin
-                 print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
-                 stop
-                 continue
-              endif
-              if keyword_set(redux) then begin
-                 align_map = median(align[align_idx].map,dim=3)
-              endif else begin
-                 print, inam + ' : Not implemented for non-redux cfg files.'
-                 stop
-              endelse
-              
-              
+                                 align.state2.prefilter eq ustates[istate].prefilter, Nalign)
+              case Nalign of
+                 0 : begin
+                    print, inam, ' : Failed to get ANY alignment for camera/state ' $
+                           , cams[icam] + ':' + thisstate
+                    stop
+                 end
+                 1    : align_map =        align[align_idx].map
+                 else : align_map = median(align[align_idx].map,dim=3)
+              endcase
+               
               ;; Create cfg object
               cfg_list[cfg_idx].objects += 'object{' + LF
               cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[istate].pf_wavelength,2) + LF
