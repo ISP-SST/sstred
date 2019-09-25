@@ -250,7 +250,7 @@ pro red::fitscube_crop, infile $
   endfor                        ; iframe
 
   ;; Read WCS extension, adapt roi coordinates to new FOV.
-  self -> fitscube_getwcs, infile, coordinates = old_wcs_coord, distortions = wcs_dist
+  red_fitscube_getwcs, infile, coordinates = old_wcs_coord, distortions = wcs_dist
   wcs_coord = old_wcs_coord
   hpl_dims = size(wcs_coord.hplt, /dim)
   xx = roi[[[0,1],[0,1]]]/float(Naxis[0]-1)
