@@ -52,8 +52,6 @@
 ;        an array.  
 ; 
 ; 
-; 
-; 
 ; :Keywords:
 ; 
 ;     anchor : in, out, optional, type=string
@@ -67,6 +65,13 @@
 ; 
 ;        Set this to force positioning for existing keywords. Implied
 ;        by anchor keyword.
+; 
+;     nodelete : in, optional, type=boolean
+; 
+;        The default behavior is to delete existing instances of the
+;        same HIERARCH keyword. With /nodelete this is not done.
+; 
+; 
 ; 
 ; :History:
 ; 
@@ -91,12 +96,15 @@
 ;    2018-03-27 : MGL. Record-valued keywords, values with zero
 ;                 decimals are printed as integers.
 ;
+;    2019-09-30 : MGL. New keyword nodelete.
+;
 ;-
 pro red_fitsaddkeyword, header, name, value, comment $
                         , anchor = anchor $
                         , after = after $
                         , before = before $
                         , force = force $
+                        , nodelete = nodelete $
                         , _ref_extra = extra
 
   ;; Protect input and set defaults
@@ -238,7 +246,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
         endelse
         
         ;; Remove any existing occurrences of rec_name in the header
-        red_fitsdelkeyword, header, rec_name
+        if ~keyword_set(nodelete) then red_fitsdelkeyword, header, rec_name
         
         ;; Add the record_valued keyword in a protected form, so as to
         ;; not have it removed if it is added more than once in this
@@ -333,6 +341,32 @@ pro red_fitsaddkeyword, header, name, value, comment $
  
 end
 
+
+; Test implementation of record-valued keywords and /nodelete
+mkhdr, hdr, 0
+hprint, hdr
+print
+
+
+names = ['TEST1', 'TEST2 field.1', 'TEST2 field.2']
+values = [14, 3.1, 4]
+comments = ['Normal keyword', 'Record valued', 'Record valued again']
+red_fitsaddkeyword, hdr, names, values, comments
+hprint, hdr
+print
+
+
+
+names = ['TEST1', 'TEST2 field.1', 'TEST2 field.2']
+values = [18, 6.4, 42]
+comments = ['Normal keyword', 'Record valued', 'Record valued again']
+red_fitsaddkeyword, hdr, names, values, comments, /nodelete
+hprint, hdr
+print
+
+
+end
+
 ;; Ideas:
 ;;
 ;; * Allow BEFORE and AFTER to be arrays of parameter names, to be
@@ -352,7 +386,7 @@ stop
 
 ;; Test implementation of record-valued keywords
 mkhdr, hdr, 0
-print, hdr
+hprint, hdr
 print
 
 names = ['TEST1', 'TEST2 field.1', 'TEST2 field.2']
@@ -367,7 +401,7 @@ values =  [17, 30.1, 40.5]
 comments = ['Normal keyword', 'Record valued', 'Record valued again'] + ': new value'
 red_fitsaddkeyword, hdr, names, values, comments
 
-print, hdr
+hprint, hdr
 print
 
 end

@@ -56,9 +56,18 @@
 ;        Set this to force positioning for existing keywords. Implied
 ;        by anchor keyword.
 ; 
+;     nodelete : in, optional, type=boolean
+; 
+;        The default behavior is to delete existing instances of the
+;        same HIERARCH keyword. With /nodelete this is not done.
+; 
+; 
+; 
 ; :History:
 ; 
 ;   2018-04-06 : MGL. First version.
+; 
+;   2019-09-30 : MGL. New keyword nodelete.
 ;
 ;-
 pro red_fitsaddkeyword_hierarch, hdr, name, fields $
@@ -66,6 +75,7 @@ pro red_fitsaddkeyword_hierarch, hdr, name, fields $
                                  , after = after $
                                  , before = before $
                                  , force = force $
+                                 , nodelete = nodelete $
                                  , _ref_extra = extra
 
   
@@ -78,7 +88,7 @@ pro red_fitsaddkeyword_hierarch, hdr, name, fields $
   hdr = hdr[0:Nlines]
 
   ;; Remove any existing occurrences of rec_name in the header
-  red_fitsdelkeyword, hdr, name, /hierarch_only
+  if ~keyword_set(nodelete) then red_fitsdelkeyword, hdr, name, /hierarch_only
   
   pchar = '+'
 
@@ -189,7 +199,8 @@ end
 
 
 mkhdr, hdr, 0
-print, hdr, format = '(a0)'
+hprint, hdr
+print
 
 undefine, hierarch_dw3
 red_append, hierarch_dw3, list('EXTVER',      1,      'Extension version number')
@@ -198,6 +209,17 @@ red_append, hierarch_dw3, list('AXIS ONE TWO THREE FOUR',    'aaa',  'Spatial X'
 
 anchor = 'DATE'
 red_fitsaddkeyword_hierarch, anchor = anchor, hdr, 'DW3', hierarch_dw3
-print, hdr, format = '(a0)'
+
+undefine, hierarch_dw3
+red_append, hierarch_dw3, list('EXTVER',      2,      'Extension version number')
+red_append, hierarch_dw3, list('NAXES',       3.3,    '3 axes in the lookup table')
+red_append, hierarch_dw3, list('AXIS TWO THREE FOUR ONE',    'bbb',  'Spatial X')
+
+;anchor = 'DATE'
+red_fitsaddkeyword_hierarch, anchor = anchor, hdr, 'DW3', hierarch_dw3, /nodelete
+
+
+
+hprint, hdr
 
 end
