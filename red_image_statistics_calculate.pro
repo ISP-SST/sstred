@@ -43,7 +43,7 @@ function red_image_statistics_calculate, im, percentile_p = percentile_p
      percentile_p = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
   
   momnt = moment(im, /double)   ; mean, variance, skewness, kurtosis
-  perc = cgpercentiles(im, percentiles = percentile_p)
+  perc = double(cgpercentiles(im, percentiles = percentile_p))
 
   output = create_struct('NPIXELS',  long64(n_elements(im)) $
                          , 'DATAMIN',  min(im) $
