@@ -268,68 +268,7 @@ pro chromis::make_scan_cube, dir $
   ;; scans in directory, excluding the global WB images.
 
   
-  if ~keyword_set(nocavitymap) then begin
-
-    cavitymap = fltarr(Nx, Ny, 1)
-
-    ;; Read the original cavity map
-    pindx = where(nbstates.prefilter ne '3999')
-    istate = pindx[0]           ; Just pick one that is not Ca continuum
-    cfile = self.out_dir + 'flats/spectral_flats/' $
-            + strjoin([nbstates[istate].detector $
-                       ,nbstates[istate].cam_settings $
-                       ,nbstates[istate].prefilter $
-                       , 'fit_results.sav'] $
-                      , '_')
-
-    if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
-      stop
-    endif
-    restore, cfile                 ; The cavity map is in a struct called "fit". 
-    cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmap /= 10.                    ; Make it [nm]
-    fit = 0B                       ; Don't need the fit struct anymore.
     
-    if keyword_set(remove_smallscale) then begin
-      ;; If the small scale is already corrected, then include only the
-      ;; low-resolution component in the metadata. The blurring kernel
-      ;; should match how the low resolution component was removed when
-      ;; making flats.
-      npix = 30                 ; Can we get this parameter from earlier headers?
-      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
-      cpsf /= total(cpsf, /double)
-      cmap = red_convolve(temporary(cmap), cpsf)
-      cmap1 = cmap
-    endif else begin
-      ;; If the small scale is not already corrected, then we still want
-      ;; to blur the cavity map slightly.
-      npsf = round(fwhm * 7.)
-      if((npsf/2)*2 eq npsf) then npsf += 1L
-      psf = red_get_psf(npsf, npsf, fwhm, fwhm)
-      psf /= total(psf, /double)
-      ;; Leave the orignal cmap alone, we might need it later.
-      cmap1 = red_convolve(cmap, psf)
-    endelse
-    
-    ;; Read the output of the pinhole calibrations so we can do the same
-    ;; to the cavity maps as was done to the raw data in the momfbd
-    ;; step. This output is in a struct "alignments" in the save file
-    ;; 'calib/alignments.sav'
-    restore,'calib/alignments.sav'
-    ;; Should be based on state1 or state2 in the struct? make_cmaps
-    ;; says "just pick one close to continuum (last state?)".
-    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-    case Nalign of
-      0    : stop               ; Should not happen!
-      1    : amap = invert(      alignments[indx].map           )
-      else : amap = invert( mean(alignments[indx].map, dim = 3) )
-    endcase
-    cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
-    cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
-   
-  endif
-  
     
   ;; Continuum alignment only done for Ca II scans (so far). H beta is
   ;; not as wide so should be OK.
@@ -655,13 +594,86 @@ pro chromis::make_scan_cube, dir $
     self -> fitscube_finish, lun, wcs = wcs
 
     ;; Add cavity maps as WAVE distortions 
-    if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cmap1
+    if ~keyword_set(nocavitymap) then begin
+
+      pindx = where(scan_nbstates.prefilter ne '3999') ; No cavity map for the Ca II H continuum
+      pindx = pindx[uniq(scan_nbstates[pindx].prefilter, sort(scan_nbstates[pindx].prefilter))]
+      cprefs = scan_nbstates[pindx].prefilter
+      Ncprefs = n_elements(cprefs)
+      
+      for icprefs = 0, Ncprefs-1 do begin
+
+        cfile = self.out_dir + 'flats/spectral_flats/' $
+                + strjoin([scan_nbstates[pindx[icprefs]].detector $
+                           , scan_nbstates[pindx[icprefs]].cam_settings $
+                           , cprefs[icprefs] $
+                           , 'fit_results.sav'] $
+                          , '_')
+
+        if ~file_test(cfile) then begin
+          print, inam + ' : Error, calibration file not found -> '+cfile
+          print, 'Please run the fitprefilter for '+cprefs[icprefs]+' or continue without'
+          print, 'cavity map for '+cprefs[icprefs]
+          stop
+        endif
+        restore, cfile               ; The cavity map is in a struct called "fit". 
+        cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
+        cmap /= 10.                    ; Make it [nm]
+        fit = 0B                       ; Don't need the fit struct anymore.
+        
+        if keyword_set(remove_smallscale) then begin
+          ;; If the small scale is already corrected, then include only the
+          ;; low-resolution component in the metadata. The blurring kernel
+          ;; should match how the low resolution component was removed when
+          ;; making flats.
+          npix = 30             ; Can we get this parameter from earlier headers?
+          cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+          cpsf /= total(cpsf, /double)
+          cmap = red_convolve(temporary(cmap), cpsf)
+          cmap1 = cmap
+        endif else begin
+          ;; If the small scale is not already corrected, then we still want
+          ;; to blur the cavity map slightly.
+          npsf = round(fwhm * 7.)
+          if((npsf/2)*2 eq npsf) then npsf += 1L
+          psf = red_get_psf(npsf, npsf, fwhm, fwhm)
+          psf /= total(psf, /double)
+          ;; Leave the orignal cmap alone, we might need it later.
+          cmap1 = red_convolve(cmap, psf)
+        endelse
+        
+        ;; Read the output of the pinhole calibrations so we can do the same
+        ;; to the cavity maps as was done to the raw data in the momfbd
+        ;; step. This output is in a struct "alignments" in the save file
+        ;; 'calib/alignments.sav'
+        restore,'calib/alignments.sav'
+        ;; Should be based on state1 or state2 in the struct? make_cmaps
+        ;; says "just pick one close to continuum (last state?)".
+        indx = where(scan_nbstates[pindx[icprefs]].prefilter eq alignments.state2.prefilter, Nalign)
+        case Nalign of
+          0    : stop           ; Should not happen!
+          1    : amap = invert(      alignments[indx].map           )
+          else : amap = invert( mean(alignments[indx].map, dim = 3) )
+        endcase
+        cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
+        cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
+
+        ;; Write cmap(s) to the cube
+        red_fitscube_addcmap, filename, reform(cmap1, Nx, Ny, 1, 1, 1) $
+                              , cmap_number = icprefs+1 $
+                              , prefilter = cprefs[icprefs] $
+                              , indx = where(scan_nbstates.prefilter eq cprefs[icprefs])
+
+      endfor                    ; icprefs
+      
+    endif
 
     ;; Add some variable keywords
     self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
                                     , comment = 'Beginning of observation' $
                                     , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
                                     , axis_numbers = [3] 
+
     self -> fitscube_addvarkeyword, filename, 'DATE-END', date_end_array $
                                     , comment = 'End time of observation' $
                                     , keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
@@ -703,7 +715,7 @@ pro chromis::make_scan_cube, dir $
                                     , nsum_array, keyword_value = mean(nsum_array) $
                                     , axis_numbers = [3]
 
-
+    
     ;; Include the global WB image as an image extension
     ehdr=wbhdr
     fxaddpar, ehdr, 'XTENSION', 'IMAGE'
@@ -715,13 +727,13 @@ pro chromis::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
     writefits, filename, wbim, ehdr, /append
-    
+
     if ~keyword_set(nowbintensitycorr) then begin
       ;; Correct intensity with respect to solar elevation and
       ;; exposure time.
       self -> fitscube_intensitycorr, filename
     endif
-
+    
     if keyword_set(integer) then begin
       ;; Convert to integers
       self -> fitscube_integer, filename $
@@ -731,7 +743,6 @@ pro chromis::make_scan_cube, dir $
       filename = outname
     endif
     
-
     if ~keyword_set(nostatistics) then begin
       ;; Calculate statistics if not done already
       red_fitscube_statistics, filename, /write 
