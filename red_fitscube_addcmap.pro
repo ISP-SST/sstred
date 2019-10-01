@@ -100,16 +100,17 @@ pro red_fitscube_addcmap, filename, cmaps $
   anchor = 'CDELT'+j
   red_fitsaddkeyword, anchor = anchor, hdr, 'CWERR'+j, max(abs(cmaps)), '[nm] Max total distortion'
   red_fitsaddkeyword, anchor = anchor, hdr, 'CWDIS'+j, 'Lookup', 'WAVE distortions in lookup table'
-  
-  ;; Calculate SCALE and OFFSET for the tuning coordinates. Should map
-  ;; data cube tuning indices to the range ].5,1.5[, so that rounding
-  ;; gives the index 1, the index of the only cmap in this WCSDVARR
-  ;; extension.
-  eps = 1e-3
-  scale = (1. - 2.*eps) / (indx[-1] - indx[0])
-  offset = ( indx[-1]*(.5+eps) - (1.5-eps)*indx[0] ) / (1. - 2.*eps)
-  print, 'Adding cmap for tun_indx='+red_collapserange(indx)
-;  print, (indx+offset)*scale
+
+  if n_elements(indx) ne 0 then begin
+    ;; Calculate SCALE and OFFSET for the tuning coordinates. Should map
+    ;; data cube tuning indices to the range ].5,1.5[, so that rounding
+    ;; gives the index 1, the index of the only cmap in this WCSDVARR
+    ;; extension.
+    eps = 1e-3
+    scale = (1. - 2.*eps) / (indx[-1] - indx[0])
+    offset = ( indx[-1]*(.5+eps) - (1.5-eps)*indx[0] ) / (1. - 2.*eps)
+    print, 'Adding cmap for tun_indx='+red_collapserange(indx)
+  endif
   
   ;; Make and write the record-valued DWj keyword. Avoid dots in the
   ;; names, please!
@@ -131,8 +132,10 @@ pro red_fitscube_addcmap, filename, cmaps $
   red_append, hierarch_fields, list('AXIS3'       , 3              , 'Tuning'                                     )
   red_append, hierarch_fields, list('AXIS4'       , 4              , 'Stokes'                                     )
   red_append, hierarch_fields, list('AXIS5'       , 5              , 'Scan number'                                )
-  red_append, hierarch_fields, list('OFFSET3'     , offset         , 'Tuning coordinates offset'                  )
-  red_append, hierarch_fields, list('SCALE3'      , scale          , 'Tuning coordinates scale'                   )
+  if n_elements(indx) ne 0 then begin
+    red_append, hierarch_fields, list('OFFSET3'     , offset         , 'Tuning coordinates offset'                  )
+    red_append, hierarch_fields, list('SCALE3'      , scale          , 'Tuning coordinates scale'                   )
+  endif
   red_append, hierarch_fields, list('CWERR'       , max(abs(cmaps)), '[nm] Max distortion (this correction step)' )
   red_append, hierarch_fields, list('CWDIS LOOKUP', 1              , 'Distortions in lookup table'                )
   red_append, hierarch_fields, list('ASSOCIATE'   , 1              , 'Association stage (pixel coordinates)'      )

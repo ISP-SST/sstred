@@ -178,10 +178,16 @@ pro red_fitscube_getwcs, filename $
       offset_pos = where(dw3_sub_keywords eq 'OFFSET3', Noffset)
       if Nscale eq 0 or Noffset eq 0 then begin
         ;; Old WCSDVARR format without SCALE3 and OFFSET3
-        dx = 1. - 1e-3
         indx = indgen( fxpar(hdr, 'NAXIS3') )
-        scales[i]  = dx / (indx[-1]-indx[0]) 
-        offsets[i] = indx[0]-(1.-dx/2.)/scale  
+        if n_elements(indx) eq 1 then begin
+          ;; A single-tuningpoint cube, probably a Stokes cube.
+          scales[i]  = 1.
+          offsets[i] = 1.
+        endif else begin
+          dx = 1. - 1e-3
+          scales[i]  = dx / (indx[-1]-indx[0]) 
+          offsets[i] = indx[0]-(1.-dx/2.)/scales[i]
+        endelse
       endif else begin
         scales[extver-1] = (dw3_sub[scale_pos[0]])(1)
         offsets[extver-1] = (dw3_sub[offset_pos[0]])(1)
