@@ -813,7 +813,7 @@ pro crisp::make_scan_cube, dir $
     self -> fitscube_finish, lun, wcs = wcs
 
     ;; Add cavity maps as WAVE distortions 
-    if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cmap1
+    if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename, reform(cmap1, Nx, Ny, 1, 1, 1)
 
     ;; Add some variable keywords
     self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $

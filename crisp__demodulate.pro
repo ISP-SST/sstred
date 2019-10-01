@@ -644,7 +644,7 @@ pro crisp::demodulate, outname, immr, immt $
   ;; Close the file
   self -> fitscube_finish, lun, wcs = wcs
   
-  if n_elements(cmap) ne 0 then self -> fitscube_addcmap, outname, cmapp
+  if n_elements(cmap) ne 0 then red_fitscube_addcmap, outname, reform(cmapp, Nx, Ny, 1, 1, 1)
 
   ;; Add statistics metadata
   anchor = 'DATE-END'

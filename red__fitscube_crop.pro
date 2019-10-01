@@ -273,7 +273,7 @@ pro red::fitscube_crop, infile $
   
   if size(wcs_dist,/n_dim) gt 0 then begin
     cmap = reform(red_crop(wcs_dist.wave, roi = roi))
-    self -> fitscube_addcmap, outfile, cmap
+    red_fitscube_addcmap, outfile, reform(cmap, Naxis[0], Naxis[1], 1, 1, Nscans)
   endif
 
   

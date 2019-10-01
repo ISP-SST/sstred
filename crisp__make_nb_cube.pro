@@ -459,7 +459,7 @@ pro crisp::make_nb_cube, wcfile $
   Ny = wcND[1]
 
   ;; Create cubes for science data and scan-adapted cavity maps.
-  cavitymaps = fltarr(Nx, Ny, Nscans)
+  cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
 
   if ~keyword_set(nocavitymap) then begin
 
@@ -1079,7 +1079,7 @@ pro crisp::make_nb_cube, wcfile $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
       cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
       
-      cavitymaps[0, 0, iscan] = cmap11
+      cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
       ;; The following block of code is inactive but we want to keep
       ;; it around in case it is needed later. It does further
@@ -1135,7 +1135,7 @@ pro crisp::make_nb_cube, wcfile $
   if keyword_set(wbsave) then self -> fitscube_finish, wblun, wcs = wcs
 
   ;; Add cavity maps as WAVE distortions 
-  if ~keyword_set(nocavitymap) then self -> fitscube_addcmap, filename, cavitymaps
+  if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename, cavitymaps
 
   print, inam + ' : Add some variable keywords.'
 
