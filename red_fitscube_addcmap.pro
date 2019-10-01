@@ -29,6 +29,24 @@
 ;       in the fitscube file. Unit is nm.
 ; 
 ; 
+; :Keywords:
+; 
+;    cmap_number : in, optional, type=integer, default=1
+; 
+;       Used to distinguish between cavity maps for multiple (CHROMIS)
+;       prefilters. The value of the EXTVER keyword in the extensions
+;       header, as well as DW3.EXTVER in the main header.
+; 
+;    prefilter : in, optional, type=integer
+; 
+;       The prefilter tag.
+; 
+;    indx : in, optional, type=array, default="all tunings"
+; 
+;       The tuning pixel coordinate indices for which this cavity map
+;       applies. 
+; 
+; 
 ; :History:
 ; 
 ;    2017-10-31 : MGL. First version.
@@ -38,13 +56,25 @@
 ;    2018-04-06 : MGL. The Calabretta mechanism is not enough, instead
 ;                 use new extension of this mechanism with keywords
 ;                 stored both with the Calabretta record-valued
-;                 mechansim and the HIERARCH convention.
+;                 mechansim and the HIERARCH convention. 
+; 
+;    2019-09-25 : MGL. Implement writing multiple wavelength
+;                 distortions (cavity maps).
+; 
+;    2019-09-30 : MGL. Make it a regular subroutine, not a class
+;                 method. 
 ; 
 ;-
-pro red::fitscube_addcmap, filename, cmaps
+pro red_fitscube_addcmap, filename, cmaps $
+                          , cmap_number = cmap_number $
+                          , prefilter = prefilter $
+                          , indx = indx
 
   inam = red_subprogram(/low, calling = inam1)
 
+  if n_elements(cmap_number) eq 0 then cmap_number = 1
+  if n_elements(prefilter) eq 0 then prefilter = ''
+  
   ;; Keywords numbered with j=3 because WAVE is coordinate 3
   j = '3'
 
@@ -56,10 +86,11 @@ pro red::fitscube_addcmap, filename, cmaps
   naxis = fxpar(hdr, 'NAXIS*')
   cdims = size(cmaps, /dim)
   if n_elements(cdims) eq 2 then red_append, cdims, 1
-  if naxis[0] ne cdims[0] || naxis[1] ne cdims[1] || naxis[4] ne cdims[2] then begin
+  if naxis[0] ne cdims[0] || naxis[1] ne cdims[1] || naxis[4] ne cdims[4] then begin
+    ;;  if max(naxis ne cdims) eq 1 then begin
     print, inam + ' : Dimensions do not match'
-    print, 'Cube: ', naxis
-    print, 'Cmap: ', cdims
+    print, '   Cube: ', naxis
+    print, '   Cmap: ', cdims
     stop
   endif
   
@@ -69,63 +100,74 @@ pro red::fitscube_addcmap, filename, cmaps
   anchor = 'CDELT'+j
   red_fitsaddkeyword, anchor = anchor, hdr, 'CWERR'+j, max(abs(cmaps)), '[nm] Max total distortion'
   red_fitsaddkeyword, anchor = anchor, hdr, 'CWDIS'+j, 'Lookup', 'WAVE distortions in lookup table'
-
-  ;; Make and write the record-valued DWj keyword, Start with EXTVER,
-  ;; which should match the corresponding keyword in the extension
-  ;; header.
-  names = 'EXTVER'
-  values = 1                    ; Default but specify anyway
-  comments = 'Extension version number'
-  ;; Record-valued keyword DPj NAXIS 1-3 because the cavity map cube
-  ;; has 3 axes (dimensions): 1, 2, and 5 in the main HDU.
-  red_append, names, ['NAXES', 'AXIS.1', 'AXIS.2', 'AXIS.3']
-  red_append, values, [3, 1, 2, 5]
-  red_append, comments, ['3 axes in the lookup table' $
-                         , 'Spatial X', 'Spatial Y', 'Scan number']
-  ;; In the extended distortions notation, the distortions are
-  ;; associated to "stage 1" and should be applied at "stage 6".
-  red_append, names, ['ASSOCIATE', 'APPLY']
-  red_append, values, [1, 6]
-  red_append, comments, ['Association stage (pixel coordinates)' $
-                         , 'Application stage (world coordinates)']
-  ;; Error and distortion mechanism
-  red_append, names, ['CWERR', 'CWDIS.LOOKUP']
-  red_append, values, [max(abs(cmaps)), 1]
-  red_append, comments, ['[nm] Max distortion (this correction step)' $
-                         , 'Distortions in lookup table']
-  ;; Add the DWj keyword name
-  names = 'DW'+j+' ' + names
-  ;; Write to the header
-  oldanchor = anchor
   
-  red_fitsaddkeyword, anchor = anchor, hdr, names, values, comments
+  ;; Calculate SCALE and OFFSET for the tuning coordinates. Should map
+  ;; data cube tuning indices to the range ].5,1.5[, so that rounding
+  ;; gives the index 1, the index of the only cmap in this WCSDVARR
+  ;; extension.
+  eps = 1e-3
+  scale = (1. - 2.*eps) / (indx[-1] - indx[0])
+  offset = ( indx[-1]*(.5+eps) - (1.5-eps)*indx[0] ) / (1. - 2.*eps)
+  print, 'Adding cmap for tun_indx='+red_collapserange(indx)
+;  print, (indx+offset)*scale
   
-  ;; Do it again with the HIERARCH convention. Avoid dots in the
+  ;; Make and write the record-valued DWj keyword. Avoid dots in the
   ;; names, please!
-  undefine, hierarch_fields
+
   ;; The HIERARCH representation of the records is an array of lists.
   ;; The lists consist of: The keyword names, the field names, the
   ;; value, the comment. The only list element that can be omitted is
   ;; the comment.
-  red_append, hierarch_fields, list('NAME'        ,'Cavity error' ,'Type of correction'                         )
-  red_append, hierarch_fields, list('EXTVER'      ,1              ,'Extension version number'                   )
-  red_append, hierarch_fields, list('NAXES'       ,3              ,'3 axes in the lookup table'                 )
-  red_append, hierarch_fields, list('AXIS1'       ,1              ,'Spatial X'                                  )
-  red_append, hierarch_fields, list('AXIS2'       ,2              ,'Spatial Y'                                  )
-  red_append, hierarch_fields, list('AXIS3'       ,5              ,'Scan number'                                )
-  red_append, hierarch_fields, list('ASSOCIATE'   ,1              ,'Association stage (pixel coordinates)'      )
-  red_append, hierarch_fields, list('APPLY'       ,6              ,'Application stage (world coordinates)'      )
-  red_append, hierarch_fields, list('CWERR'       ,max(abs(cmaps)),'[nm] Max distortion (this correction step)' )
-  red_append, hierarch_fields, list('CWDIS LOOKUP',1              ,'Distortions in lookup table'                )
+  undefine, hierarch_fields
+  if prefilter eq '' then begin
+    red_append, hierarch_fields, list('NAME'      , 'Cavity error' ,                'Type of correction'          )
+  endif else begin
+    red_append, hierarch_fields, list('NAME'      , 'Cavity error for '+prefilter , 'Type of correction'          )
+  endelse
+  red_append, hierarch_fields, list('EXTVER'      , cmap_number    , 'Extension version number'                   )
+  red_append, hierarch_fields, list('NAXES'       , 5              , '3 axes in the lookup table'                 )
+  red_append, hierarch_fields, list('AXIS1'       , 1              , 'Spatial X'                                  )
+  red_append, hierarch_fields, list('AXIS2'       , 2              , 'Spatial Y'                                  )
+  red_append, hierarch_fields, list('AXIS3'       , 3              , 'Tuning'                                     )
+  red_append, hierarch_fields, list('AXIS4'       , 4              , 'Stokes'                                     )
+  red_append, hierarch_fields, list('AXIS5'       , 5              , 'Scan number'                                )
+  red_append, hierarch_fields, list('OFFSET3'     , offset         , 'Tuning coordinates offset'                  )
+  red_append, hierarch_fields, list('SCALE3'      , scale          , 'Tuning coordinates scale'                   )
+  red_append, hierarch_fields, list('CWERR'       , max(abs(cmaps)), '[nm] Max distortion (this correction step)' )
+  red_append, hierarch_fields, list('CWDIS LOOKUP', 1              , 'Distortions in lookup table'                )
+  red_append, hierarch_fields, list('ASSOCIATE'   , 1              , 'Association stage (pixel coordinates)'      )
+  red_append, hierarch_fields, list('APPLY'       , 6              , 'Application stage (world coordinates)'      )
+  ;; APPLY should be the last keyword
 
-  red_fitsaddkeyword_hierarch, anchor = oldanchor, hdr, 'DW'+j, hierarch_fields
+  ;; Translate the hierarch_fields to the kind of record-valued
+  ;; keywords defined in the distortions paper.
+  for ifield = 1, n_elements(hierarch_fields)-1 do begin ; Skip NAME, strings not allowed
+    red_append, names,    (hierarch_fields[ifield])[0]
+    red_append, values,   (hierarch_fields[ifield])[1]
+    red_append, comments, (hierarch_fields[ifield])[2]
+  endfor                        ; ifield
+  ;; Add the DWj keyword name
+  names = 'DW'+j+' ' + names
+
+  oldanchor = anchor
+
+  ;; Make sure to add multiple cmaps in order: the first one will
+  ;; remove existing DW3 keywords.
+  print, 'nodelete = ', cmap_number NE 1
+  
+  ;; Write the extended keywords to the header
+  red_fitsaddkeyword, anchor = anchor, hdr, names, values, comments, nodelete = cmap_number NE 1
+  
+  ;; Write the HIERARCH DW3 keywords to the header, delete earlier
+  ;; instances if this is the first cmap.
+  red_fitsaddkeyword_hierarch, anchor = oldanchor, hdr, 'DW'+j, hierarch_fields, nodelete = cmap_number NE 1
   
   ;; Construct a header for the image extension with the lookup table. ---------------------------
   
   mkhdr, chdr, cmaps, /image
   anchor = 'DATE'
   red_fitsaddkeyword, anchor = anchor, chdr, 'EXTNAME', 'WCSDVARR', 'WCS distortion array'
-  red_fitsaddkeyword, anchor = anchor, chdr, 'EXTVER', 1, 'Distortion array version number'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'EXTVER', cmap_number, 'Distortion array version number'
   red_fitsaddkeyword, anchor = anchor, chdr, 'PCOUNT', 0, 'Special data area of size zero' 
   red_fitsaddkeyword, anchor = anchor, chdr, 'GCOUNT', 1, 'One data group'
   red_fitsaddkeyword, anchor = anchor, chdr, 'CRPIX1', 1, 'Distortion array reference pixel' 
@@ -137,16 +179,32 @@ pro red::fitscube_addcmap, filename, cmaps
   red_fitsaddkeyword, anchor = anchor, chdr, 'CRPIX3', 1, 'Distortion array reference pixel' 
   red_fitsaddkeyword, anchor = anchor, chdr, 'CDELT3', 1, 'Grid step size in 3rd coordinate'
   red_fitsaddkeyword, anchor = anchor, chdr, 'CRVAL3', 1, 'Image array pixel coordinate'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CRPIX4', 1, 'Distortion array reference pixel' 
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CDELT4', 1, 'Grid step size in 4th coordinate'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CRVAL5', 1, 'Image array pixel coordinate'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CRPIX5', 1, 'Distortion array reference pixel' 
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CDELT5', 1, 'Grid step size in 5th coordinate'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'CRVAL5', 1, 'Image array pixel coordinate'
 
+  if prefilter eq '' then begin
+    history = 'These wavelength coordinate distortions were generated from' $
+              + ' the cavity map, shifted, rotated, and cropped as the science data.'
+  endif else begin
+    history = 'These wavelength coordinate distortions were generated from' $
+              + ' the cavity map for the ' + prefilter $
+              + ' prefilter, shifted, rotated, and cropped as the science data.'
+  endelse 
+  
   red_fitsaddkeyword, anchor = anchor, chdr $
                       , ['', 'HISTORY'] $
-                      , ['', 'These wavelength coordinate distortions were generated from ' $
-                         + 'the cavity map, shifted, rotated, and cropped as the science data.']
+                      , ['', history  ]
 
   ;; Write the image extension and the updated header. -----------------------------------------
-  modfits, filename, 0, hdr
+  ;; modfits, filename, 0, hdr
+  red_fitscube_newheader, filename, hdr
 
-;  writefits, filename, cmaps, chdr, heap, /append
+  ;;  writefits, filename, cmaps, chdr, heap, /append
   writefits, filename, cmaps, chdr, /append
 
+  
 end
