@@ -135,7 +135,7 @@ pro red::fitscube_cmapcorr, fname $
   for idist = 0, Ndist-1 do red_append, dist_indx, red_expandrange(distortions[idist].tun_index)
   nodist_index = cgSetDifference(indgen(Nwav),dist_indx, count = Nnodist)
 
-  stop
+
   
   ;; Initialize the output file
   self -> fitscube_initialize, outname, outhdr, lun, fileassoc, dims 
