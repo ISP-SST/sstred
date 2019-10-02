@@ -119,7 +119,7 @@ function red_image_statistics_combine, statsarr $
       perc[i] = strmid(tags[indx[i]], 5)/100.
     endelse
   endfor
-  stop
+
   hist_cum = total(hist, /cum, /double) / total(hist, /double)
   binloc = cubemin + ( findgen(n_elements(hist_cum))+1. )*binsize
   p_values = INTERPOL( binloc, hist_cum, perc, /quad )
