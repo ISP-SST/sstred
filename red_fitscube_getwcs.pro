@@ -184,9 +184,9 @@ pro red_fitscube_getwcs, filename $
           scales[i]  = 1.
           offsets[i] = 1.
         endif else begin
-          dx = 1. - 1e-3
-          scales[i]  = dx / (indx[-1]-indx[0]) 
-          offsets[i] = indx[0]-(1.-dx/2.)/scales[i]
+          eps = 1e-3
+          scales[i] = (1. - 2.*eps) / (indx[-1] - indx[0])
+          offsets[i] = ( indx[-1]*(.5+eps) - (1.5-eps)*indx[0] ) / (1. - 2.*eps)
         endelse
       endif else begin
         scales[extver-1] = (dw3_sub[scale_pos[0]])(1)
@@ -217,16 +217,6 @@ pro red_fitscube_getwcs, filename $
         undefine, distortions
         return
       endif
-;      stop
-      
-;      wcsdvarr = reform(wcsdvarr, /overwrite $
-;                        , fxpar(hdr, 'NAXIS1') $ ; X
-;                        , fxpar(hdr, 'NAXIS2') $ ; Y
-;                        , 1 $                    ; Tunings
-;                        , 1 $                    ; Stokes
-;                        , fxpar(hdr, 'NAXIS5') $ ; Scans
-;                       )
-      
       
       if n_elements(distortions) eq 0 then begin
         ;; So far we have only implemented distortions in the
