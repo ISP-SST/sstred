@@ -163,9 +163,7 @@ function red_raw_search, dir $
     
   endcase 
 
-;  files = file_search(dir+'/'+searchstrings, count = count)
   files = red_file_search(searchstrings, dir, count = count)
-;  stop
 
   return, files
 
