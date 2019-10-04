@@ -123,7 +123,6 @@
 ; 
 ;   2018-04-18 : MGL. Write only in FITS format.
 ;
-;
 ;-
 pro red::sumflat, overwrite = overwrite, $
                   ustat = ustat, $
@@ -180,11 +179,17 @@ pro red::sumflat, overwrite = overwrite, $
     if Ndirs gt 1 then dirstr = '['+ strjoin(dirs,';') + ']' $
     else dirstr = dirs[0]
   endelse
-
+  
   ;; cameras
   for icam = 0L, Ncams-1 do begin
 
     cam = cams[icam]
+    
+    ;; Search files before doing selectfiles so we can limit to the
+    ;; wanted prefilter (if used).
+    if n_elements(prefilter) ne 0 and strmatch(cam,'Crisp-?') then begin
+      files = file_search(dirs + '/' + cam + '/' + '*.'+prefilter+'.*', count = Nfiles)
+    endif else undefine, files
 
     self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
                        files=files, states=states, nremove=remove, /force
@@ -310,11 +315,6 @@ pro red::sumflat, overwrite = overwrite, $
          self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
                                      , prproc = inam, prpara = prpara
       
-;      ;; Write ANA format averaged flat
-;      print, inam+' : saving ', flatname
-;      fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
-;      red_writedata, flatname, flat, header=head, filetype='ANA', overwrite = overwrite
-
       ;; Write FITS format averaged flat
       print, inam+' : saving ', flatname
       fxaddpar, head, 'FILENAME', file_basename(flatname), after = 'DATE'
@@ -334,13 +334,9 @@ pro red::sumflat, overwrite = overwrite, $
       if keyword_set(softlink) and n_elements(outdir) ne 0 then begin
         file_delete, origname, /allow_nonexistent
         file_link, sourcename, origname
-;        file_delete, origname+'.fits', /allow_nonexistent
-;        file_link, sourcename+'.fits', origname+'.fits'
         if keyword_set(store_rawsum) then begin
           file_delete, sorigname, /allow_nonexistent
           file_link, ssourcename, sorigname
-;          file_delete, sorigname+'.fits', /allow_nonexistent
-;          file_link, ssourcename+'.fits', sorigname+'.fits'
         endif
       endif
 
