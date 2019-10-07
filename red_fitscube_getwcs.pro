@@ -185,8 +185,8 @@ pro red_fitscube_getwcs, filename $
           offsets[i] = 1.
         endif else begin
           eps = 1e-3
-          scales[i] = (1. - 2.*eps) / (indx[-1] - indx[0])
-          offsets[i] = ( indx[-1]*(.5+eps) - (1.5-eps)*indx[0] ) / (1. - 2.*eps)
+          scales[i] = (1. - 2.*eps) / ((indx[-1]+0.5) - (indx[0]-0.5))
+          offsets[i] = ( (indx[-1]+0.5)*(.5+eps) - (1.5-eps)*(indx[0]-0.5) ) / (1. - 2.*eps)
         endelse
       endif else begin
         scales[extver-1] = (dw3_sub[scale_pos[0]])(1)
