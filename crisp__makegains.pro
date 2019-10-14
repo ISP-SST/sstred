@@ -136,7 +136,7 @@ pro crisp::makegains, bad=bad $
 
     for ifile = 0L, Nfiles -1 do begin
       
-      tmp = strsplit(file_basename(files[ifile]), '._', /extract)
+      tmp = strsplit(file_basename(flatname[ifile]), '._', /extract)
       if(keyword_set(pref)) then begin
         if(tmp[1] ne pref) then begin
           print, inam+' : skipping prefilter -> '+tmp[1]
@@ -144,7 +144,7 @@ pro crisp::makegains, bad=bad $
         endif
       endif
 
-      flat = red_readdata(files[ifile], head = hdr)
+      flat = red_readdata(flatname[ifile], head = hdr)
 
       ;; Only one camera?
       if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
