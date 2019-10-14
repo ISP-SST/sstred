@@ -78,9 +78,11 @@
 ;  2018-06-28 : MGL. Renamed from original "openmysql" to
 ;               "red_mysql_open" for inclusion in SST data pipelines.
 ;               Adaptions to SST style. New keyword pw.
+;
+;  2019-10-08 : OA. Renamed version that should run on La Palma.
 ; 
 ;-
-pro red_mysql_open, lun, dbname, error $
+pro red_mysql_open_remote, lun, dbname, error $
                     , host=host $
                     , user=user $
                     , pw = pw $
@@ -98,6 +100,11 @@ pro red_mysql_open, lun, dbname, error $
                 default='') then return
   if (red_badpar(socket,[0,7],0,caller=inam+' : (socket)', $
                  default='')) then return
+
+  spawn, 'ssh reduc@polar.astro.su.se', unit=lun ;have to add error check
+  line = ''
+  REPEAT readf, lun, line, format='(a)' UNTIL line EQ 'Use idl_crispred_old to start IDL for running the old crispred pipeline_chromis.'    
+  readf, lun, line, format='(a)'  
   
   cmd = 'mysql '
   if host ne '' then cmd += '-h '+host+' '
@@ -107,10 +114,10 @@ pro red_mysql_open, lun, dbname, error $
   if socket ne '' then cmd += '--socket='+socket+' '
   cmd += '-B -q -n '
   cmd += dbname
-  spawn,cmd,unit=lun
+  printf, lun, cmd
 
   catch,error
-
+;; !!!!!!!!!!!!!!!!!! will it work with ssh?
   if error ne 0 then begin
     print,inam+' : ', !error_state.msg
     print,inam+' : Unable to open database '+dbname+', closing pipe and quitting.'

@@ -15,7 +15,7 @@
 ; 
 ; :Author:
 ; 
-;     Mats Löfdahl, ISP
+;     Oleksii Andriienko, ISP
 ; 
 ; 
 ; :Returns:

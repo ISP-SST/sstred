@@ -113,7 +113,7 @@ pro red_rawdir2db, all = all $
   endif
   
   if ~keyword_set(all) then begin
-    tmp = red_select_subset(found_dirs $
+    tmp = red_select_subset_nonrdx(found_dirs $
                             , default = '*' $
                             , qstring = 'Select directories' $
                             , indx = sindx $
@@ -180,7 +180,13 @@ pro red_rawdir2db, all = all $
       convfac    = dblarr(Nnbprefs)
       for wheel = 1, Nnbprefs do begin
         zfile = './info/hrz_zeropoint_' + nbprefs[wheel-1] + '.fz'
-        refinfo = f0(zfile)
+                                ;refinfo = f0(zfile)
+        refinfo = dblarr(3)
+        hh = bytarr(512)
+        openr,11,zfile
+        readu,11,hh
+        readu,11,refinfo
+        close,11
         lambda_ref[wheel-1] = refinfo[0]
         du_ref[wheel-1]     = refinfo[1]
         convfac[wheel-1]    = refinfo[2]
@@ -188,9 +194,9 @@ pro red_rawdir2db, all = all $
       
 
       ;; Get the hrz conversion info
-      a = stregex(camdirs[idir], '/([12][0-9][0-9][0-9][-.][01][0-9][-.][0-3][0-9])/', /extract, /sub)
+      ;a = stregex(camdirs[idir], '/([12][0-9][0-9][0-9][-.][01][0-9][-.][0-3][0-9])/', /extract, /sub)
 ;      red_download_linedefs, isodate, strjoin(splitdir[0:-2],'/'), './'
-      chromis_hrz_zeropoint, './'
+      ;chromis_hrz_zeropoint, './'
       
     endif else begin
       ;; CRISP directory structure is not strict

@@ -73,6 +73,7 @@ pro chromis::extractstates, strings, states $
   endif
   Nstrings = n_elements(strings)
   if Nstrings eq 0 then return
+  ;; Check for raw data directories in 'strings'.
   raw_data_dirs = ['*CHROMIS-darks*','*CHROMIS-flats*','*CHROMIS-pinholes*','*CHROMIS-data*','*/data/*']
   is_raw = 0B
   for i=0,4 do begin

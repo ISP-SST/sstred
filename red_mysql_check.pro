@@ -31,6 +31,9 @@
 ;   2018-06-28 : MGL. Adapted to SST style and renamed
 ;                red_mysql_check. Set default database.
 ;
+;   2019-10-08 : OA. Added site check to run mysql client on polar
+;                remotely from La Palma (it's much faster to populate 
+;                the database this way).
 ;-
 pro red_mysql_check, handle, reopen=reopen, database=database
   
@@ -44,7 +47,12 @@ pro red_mysql_check, handle, reopen=reopen, database=database
   endif
   
   if n_elements(handle) gt 0 then return
-  
-  red_mysql_open, handle, database ;, HOST=host, USER=user, PW = pw
+
+  red_currentsite,site=site
+  case site of
+    ;'AlbaNova': red_mysql_open, handle, database
+    'La Palma': red_mysql_open_remote, handle, database
+    else: red_mysql_open, handle, database
+  endcase
   
 end
