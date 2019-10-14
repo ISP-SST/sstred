@@ -101,6 +101,8 @@
 ; 
 ;    2018-11-12 : New keywords cflatname, cflatstatus, cflatdata.
 ; 
+;    2019-10-10 : New keywords cgainname, cgainstatus, cgaindata.
+; 
 ;-
 pro crisp::get_calib, states $
                       , no_fits = no_fits $
@@ -112,7 +114,8 @@ pro crisp::get_calib, states $
                       , polcname = polcname,   polcdata  = polcdata   $
                       , polsname = polsname,   polsdata  = polsdata   $
                       , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
-                      , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata 
+                      , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
+                      , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata   
 
   Nstates = n_elements(states)
 
@@ -138,6 +141,8 @@ pro crisp::get_calib, states $
      sflatname = self -> filenames('sumflat', states, no_fits = no_fits)
   if arg_present(cflatname) or arg_present(cflatdata) then $
      cflatname = self -> filenames('cavityflat', states, no_fits = no_fits)
+  if arg_present(cgainname) or arg_present(cgaindata) then $
+     cgainname = self -> filenames('cavityfree_gain', states, no_fits = no_fits)
 
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
@@ -153,6 +158,7 @@ pro crisp::get_calib, states $
   if arg_present(polsdata)  then polsdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   if arg_present(cflatdata) then cflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+  if arg_present(cgaindata) then cgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   
 
   status = 0
@@ -233,6 +239,17 @@ pro crisp::get_calib, states $
       endif else status = -1
       
     endif                       ; Gains
+
+    ;; Cavityfree gains
+    if arg_present(cgaindata) then begin
+
+      if n_elements(cgainname) ne 0 && file_test(cgainname[istate]) then begin
+        cgaindata[0, 0, istate] = red_readdata(cgainname[istate] $
+                                               , status = cgainstatus, /silent)
+        if status eq 0 then status = cgainstatus
+      endif else status = -1
+      
+    endif                    
 
     
     ;; Pinholes
