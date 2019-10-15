@@ -337,36 +337,30 @@ pro red::sum_data_intdif, all = all $
               print, inam + ' : Found ' + red_stri(count) + ' images for state ' + mstates[idx[0]].fullstate
             endelse
 
-            
-            ;; Make gain from cavity-free flat
-;            self -> get_calib, selstates[0], cflatdata = cf, cflatname = cnam
-            self -> get_calib, mstates[idx[0]], cflatdata = cf, cflatname = cnam
-            gg = self -> flat2gain(cf, /preserve)
-;            gg = median(cf) / cf
-;            badpixels = where(~finite(gg) or gg gt 5 or gg lt 0, count)
-;            if count gt 0 then gg[badpixels] = 0.0
+
+            ;; Read cavity free gains
+            self -> get_calib, mstates[idx[0]], cgaindata = gg
             
             if keyword_set(verbose) then print, file_basename(mstates[idx].filename),format='(a0)'
-            tmp = rdx_sumfiles(mstates[idx].filename, /check, nthreads = 2) - dd
+            imsum = rdx_sumfiles(mstates[idx].filename, /check, nthreads = 2) - dd
 
             if ~keyword_set(no_descatter) $
                && self.dodescatter $
                && (pref eq '8542' || pref eq '7772') then begin
-              ;;tmp = red_cdescatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
-              tmp = rdx_descatter(temporary(tmp), bff, pff, /verbose, nthreads = nthreads)
+              imsum = rdx_descatter(temporary(imsum), bff, pff, /verbose, nthreads = nthreads)
             endif
             
-            tmp = red_fillpix(temporary(tmp)*gg, nthreads=nthreads)
+            imsum = red_fillpix(temporary(imsum)*gg, nthreads=nthreads)
 
             ele = iscan*Nlc*Ntunings + ilc*Ntunings + ituning
-            dat[ele] = fix(round(7.0 * tmp))
+            dat[ele] = fix(round(7.0 * imsum))
 
             if keyword_set(show) then begin
               if n_elements(mydum) eq 0 then begin
                 mydum = 1
-                red_show, red_histo_opt(tmp)
+                red_show, red_histo_opt(imsum)
               endif
-              red_show, red_histo_opt(tmp), /nowin
+              red_show, red_histo_opt(imsum), /nowin
             endif
 
           endfor                ; ituning

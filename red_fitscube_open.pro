@@ -82,7 +82,7 @@ pro red_fitscube_open, filename, fileassoc, fitscube_info $
   bitpix = fxpar(header, 'BITPIX')
 
   ;; Find starting point of data
-  Nlines = where(strmatch(header, 'END *'), Nmatch)
+  Nlines = where(strmatch(header, 'END *'), Nmatch) + 1 ; Starts at 0, so add one
 ;  Npad = 2880 - (80L*Nlines mod 2880)
   Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
   offset = Nblock*2880          ; Offset to start of data

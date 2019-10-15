@@ -87,6 +87,13 @@ pro red::make_intdif_gains, all = all $
 
   inam = red_subprogram(/low, calling = inam1)
 
+  if n_elements(timeaver) eq 0 then timeaver = 1L
+  if n_elements(min) eq 0 then min = 0.1
+  if n_elements(max) eq 0 then max = 4.0
+  if n_elements(smooth) eq 0 then smooth = 3.0
+  if n_elements(bad) eq 0 then bad = 1.0
+  if n_elements(smallscale) EQ 0 THEN smallscale = 1
+
   red_make_prpara, prpara, bad
   red_make_prpara, prpara, max
   red_make_prpara, prpara, min
@@ -96,14 +103,6 @@ pro red::make_intdif_gains, all = all $
   red_make_prpara, prpara, smooth
   red_make_prpara, prpara, sumlc
   red_make_prpara, prpara, timeaver
-
-  
-  if n_elements(timeaver) eq 0 then timeaver = 1L
-  if n_elements(min) eq 0 then min = 0.1
-  if n_elements(max) eq 0 then max = 4.0
-  if n_elements(smooth) eq 0 then smooth = 3.0
-  if n_elements(bad) eq 0 then bad = 1.0
-  if n_elements(smallscale) EQ 0 THEN smallscale = 1
 
   ;; Search and select output from sum_data_intdif
   dirs = file_search(self.out_dir+'/cmap_intdif/*', /test_dir, count = count)
@@ -191,6 +190,7 @@ pro red::make_intdif_gains, all = all $
       restore, fff
       cmap = reform((fit).pars[1,*,*]) ; Cavity map in [Å]
       udwav = double(udwav)*1d10       ; Wavelength coordinates in [Å]
+      udwavd = udwav-mean(udwav)
 
       ;; The real cavity-map has quite large shifts, but only the
       ;; local fine structure affects momfbd. With this option, we
@@ -212,18 +212,22 @@ pro red::make_intdif_gains, all = all $
       fhdrs = list()
       for iwav=0, Ntunings-1 do begin
 
-        ;; Get this through get_calib method ---------------------------------
-;        ffile = self.out_dir + '/flats/'+strjoin([cams[icam],pref,uwav[iwav]],'.')+'.unpol.flat'
-        ;;ffile = self.out_dir + '/flats/'+strjoin([detectors[icam], pref, uwav[iwav], 'lc0', 'cavityfree'],'_')+'.flat.fits'
-        ffile = fit.oname[iwav]
+        self -> get_calib, { camera:cams[icam] $
+                             , detector:detectors[icam] $
+                             , scannumber:uscan[0] $
+                             , framenumber: 0 $
+                             , prefilter: pref $
+                             , fpi_state: uwav[iwav] $
+                             , tuning: uwav[iwav]  $
+                           } $
+                           , cflatdata = cflatdata $
+                           , cflatname = cflatname 
 
-        if ~file_test(ffile) then begin
-          print, inam + ' : ERROR, cannot find flat file '+ffile
-          return
-        endif
-        print, inam + ' : loading -> '+file_basename(ffile)
-        flats[*,*,iwav] = red_readdata(ffile, header = fhdr)
-        fhdrs.add, fhdr
+        print, inam + ' : loading -> '+file_basename(cflatname)
+
+        flats[*,*,iwav] = cflatdata
+        fhdrs.add, red_readhead(cflatname)
+
       endfor                    ; iwav
 
       ;; Existing scans?
@@ -263,7 +267,7 @@ pro red::make_intdif_gains, all = all $
         if (ss eq t0) or (n_elements(cub) eq 0) then begin
           for ii = x0, x1 do begin
             print, string(13B),inam +' : adding t = '+red_stri(ii)+' / '+red_stri(x1), format='(A,A,I0,A,I0,$)' 
-            if ii eq x0 then cub = float(dat[ii]) else cub += dat[ii]
+            if ii eq x0 then cub = double(dat[ii]) else cub += dat[ii]
           endfor                ; ii
           print, ' '
         endif else begin
@@ -281,7 +285,6 @@ pro red::make_intdif_gains, all = all $
         ox0 = x0
         ox1 = x1
 
-        cub1 = dblarr(Ntunings, Nx, Ny)
         for ilc = 0, Nlc-1 do begin
           
           if keyword_set(sumlc) and (ilc gt 0) then begin
@@ -291,58 +294,77 @@ pro red::make_intdif_gains, all = all $
           endif else begin
 
             if ~keyword_set(sumlc) then begin
-              cub2 = float(transpose(cub[*,*,*,ilc], [2,0,1])) 
+              cub2 = transpose(cub[*,*,*,ilc], [2,0,1])
             endif else begin
-              cub2 = float(transpose(total(cub,4,/double), [2,0,1]))
+              cub2 = transpose(total(cub,4,/double), [2,0,1])
             endelse
-            cub1 = double(cub2)
 
             if keyword_set(psfw) then begin
               ;; Convolve data
               print, inam + ' : convolving data ... ', format='(A,$)'
               for iwav = 0, nw-1 do begin
-                cub1[iwav,*,*] = red_convolve(reform(cub1[iwav,*,*]), psf) 
                 cub2[iwav,*,*] = red_convolve(reform(cub2[iwav,*,*]), psf)
               endfor            ; iwav
               print, 'done'
             endif
-            
-            ;; Shift spectra
+
+            ;; Shift spectra, one pixel at a time
+            cub1 = cub2
             print, inam+' : shifting cube ... ', format='(A,$)'
-            for iy = 0, Ny-1 do for ix=0, Nx-1 do begin
-              cub1[*,ix,iy] = rdx_cbezier3(udwav, cub1[*,ix,iy], udwav+cmap[ix,iy])
-            endfor              ; ix,iy
+            for iy = 0, Ny-1 do begin
+              for ix = 0, Nx-1 do begin
+                cub1[*,ix,iy] = rdx_cbezier3(udwavd, cub1[*,ix,iy], udwavd+cmap[ix,iy])
+              endfor            ; ix
+            endfor              ; iy
             print, 'done'
 
           endelse
           
           ;; Compute new gains
           for iwav = 0, Ntunings-1 do begin
-
-            ;; Move creation of filename to crisp::filenames? ------------------------------------
-            ;; Should include timestamp of data directory!
             
-            ofile = strjoin([detectors[icam] $
-                             , string(uscan[ss], format = '(I05)') $
-                             , pref $
-                             , uwav[iwav] $
-                             , 'lc'+strtrim(long(ulc[ilc]), 2) $
-                            ], '_') + '.gain.fits'
-
+            ofile = self -> filenames('scangain' $
+                                      , {camera:cams[icam] $
+                                         , detector:detectors[icam] $
+                                         , fullstate:strjoin([pref $
+                                                              , uwav[iwav] $
+                                                              , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
+                                         , scannumber:uscan[ss] $
+                                        } $
+                                      , timestamp = imdir $
+                                      , /wild_framenumber $
+                                      , /wild_prefilter $
+                                      , /wild_tuning $
+                                      )
+            
+            
             if keyword_set(sumlc) and ilc gt 0 then begin
 
-              print, 'creating link '+outdir+ofile
-              file_delete, outdir+ofile, /allow_nonexistent
-              ;; Move creation of filename to crisp::filenames?  ------------------------------------
-              ofile_0 = strjoin([detectors[icam] $
-                                 , string(uscan[ss], format = '(I05)') $
-                                 , pref $
-                                 , uwav[iwav] $
-                                 , 'lc'+strtrim(long(ulc[0]), 2) $
-                                ], '_')+'.gain.fits'
-              file_link, outdir+ofile_0, outdir+ofile
+              print, 'creating link '+ofile
+              file_delete, ofile, /allow_nonexistent
+
+              ofile_0 = self -> filenames('scangain' $
+                                          , {camera:cams[icam] $
+                                             , detector:detectors[icam] $
+                                             , fullstate:strjoin([pref $
+                                                                  , uwav[iwav] $
+                                                                  , 'lc'+strtrim(long(ulc[0]), 2)], '_') $
+                                             , scannumber:uscan[ss] $
+                                            } $
+                                          , timestamp = imdir $
+                                          , /wild_framenumber $
+                                          , /wild_prefilter $
+                                          , /wild_tuning $
+                                       )
+              file_link, ofile_0, ofile
 
             endif else begin 
+
+;;;;;; What if we didn't make new gains from flats here but instead
+;;;;;; just modified (multiply with cub1/cub2)) the cavityfree gains
+;;;;;; we already have on disk? We don't have states to use with
+;;;;;; get_calib but we could get states from the flat names. Or use a
+;;;;;; makeshift state like when we generate ofile above.
               
               rat = flats[*, *, iwav] * reform(cub2[iwav, *, *]/cub1[iwav, *, *])
 
@@ -352,8 +374,7 @@ pro red::make_intdif_gains, all = all $
                                           or pref eq '8542' or pref eq '7772'))
 
               ;; Save gains
-              print, 'saving '+ outdir+ofile
-              ;; fzwrite, float(g), outdir+ofile, ' '
+              print, 'saving '+ ofile
               overwrite = 1     ; make keyword?-----------------------------------------------------------
 
               ;; Make header
@@ -365,8 +386,7 @@ pro red::make_intdif_gains, all = all $
               self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
                                           , prproc = inam, prpara = prpara
               
-              
-              red_writedata, outdir+ofile, g, header = hdr,$
+              red_writedata, ofile, g, header = hdr,$
                              filetype='fits', overwrite = overwrite
               
             endelse
