@@ -32,7 +32,7 @@
 ;   2019-07-10 : OA. Created. (Derived from crisp__extractstates and red_readhead_db)
 ;
 ;-
-pro crisp::extractstates_db, strings, states, datasets = datasets
+pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -40,6 +40,17 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
   use_strings = n_elements(datasets) eq 0
   
   if use_strings then begin
+    if ~keyword_set(force) then begin      
+      Nstr = n_elements(strings)
+      for ifile=0,Nstr-1 do begin
+        this_cache = rdx_cacheget(strings[ifile], count = cnt)   
+        if cnt gt 0 then begin
+          red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
+          red_append,states,this_cache.state
+        endif
+      endfor
+      if n_elements(states) eq Nstr then return else undefine,states
+    endif
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
     timestamp = timestamps[uniq(timestamps,sort(timestamps))]
     datasets = self.isodate + ' ' + timestamp
@@ -327,6 +338,10 @@ pro crisp::extractstates_db, strings, states, datasets = datasets
       match2, strings, states.filename, suba ;, subb 
       states = states[suba]
     endelse
+    ;; Store in cache
+    Nstr = n_elements(strings)
+    for ifile=0,Nstr-1 do $
+      rdx_cache, strings[ifile], { state:states[ifile] }
   endif
 
   free_lun,handle  
