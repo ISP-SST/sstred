@@ -390,7 +390,7 @@ pro chromis::make_nb_cube, wcfile $
     case Nalign of
       0    : stop               ; Should not happen!
       1    : amap = invert(      alignments[indx].map           )
-      else : amap = invert( mean(alignments[indx].map, dim = 3) )
+      else : amap = invert( median(alignments[indx].map, dim = 3) )
     endcase
     cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
     cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
