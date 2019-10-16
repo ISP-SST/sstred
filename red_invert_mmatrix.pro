@@ -43,7 +43,7 @@ function red_invert_mmatrix, mm
                                 ;
   for jj = 0L, dim[2] - 1 do begin
      for ii = 0L, dim[1] - 1 do begin
-        imm[*,ii,jj] = reform(invert(reform(mm[0:15,ii,jj], [4,4])),16)
+       imm[*,ii,jj] = reform(invert(double(reform(mm[0:15,ii,jj], [4,4]))),16)
      endfor
      print, bb, inam + 'inverting modulation matrix over the FOV -> ', $
             ntot * jj,'%', format = '(A, A, F5.1, A, $)'
