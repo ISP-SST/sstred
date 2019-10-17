@@ -70,14 +70,17 @@
 ;   2019-04-04 : MGL. Removed the "whole" method because it caused
 ;                problems with integer cubes. And "chunks" with a
 ;                single chunk should be equivalent.
+;
+;   2019-10-17 : MGL. Make it a regular subroutine rather than a
+;                method. 
 ; 
 ;-
-pro red::fitscube_flip, filename $
-                        , flipfile = flipfile $
-                        , maxmemory = maxmemory $
-                        , method = method $
-                        , openclose = openclose $
-                        , overwrite = overwrite
+pro red_fitscube_flip, filename $
+                       , flipfile = flipfile $
+                       , maxmemory = maxmemory $
+                       , method = method $
+                       , openclose = openclose $
+                       , overwrite = overwrite
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -517,8 +520,8 @@ pro red::fitscube_flip, filename $
   for ikey = 0, Nkeys-1 do begin
     red_progressbar, ikey, Nkeys, /predict $
                      , 'Add variable keywords'
-    self -> fitscube_addvarkeyword, flipfile, var_keys[ikey] $
-                                    ,  old_filename = filename, /flipped
+    red_fitscube_addvarkeyword, flipfile, var_keys[ikey] $
+                                ,  old_filename = filename, /flipped
   endfor                        ; ikey ;
   
   ;; Copy WCS extension
