@@ -571,9 +571,9 @@ pro red::fitscube_convertlp, inname $
   if keyword_set(flip) then begin
     ;; Make a flipped version
     print, 'Flip it!'
-    self -> fitscube_flip, oname $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, oname $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   print
