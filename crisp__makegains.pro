@@ -149,15 +149,24 @@ pro crisp::makegains, bad=bad $
       ;; Only one camera?
       if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
 
-      if ~keyword_set(no_descatter) then begin
+      if ~keyword_set(no_descatter) and ~iscav then begin
+        ;; Cavity free flats are already backscatter corrected
         if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
           self -> loadbackscatter, tmp[0], tmp[1], bg, psf
           flat = rdx_descatter(flat, bg, psf, nthreads = nthreads, /verbose)
         endif
       endif
 
+      if iscav then begin
+        this_preserve = keyword_set(preserve) $
+                        or tmp[1] eq '8542' $
+                        or tmp[1] eq '7772'
+      endif else begin
+        this_preserve = keyword_set(preserve)
+      endelse
+
       gain = self->flat2gain(flat, ma=max, mi=min, bad=bad $
-                             , preserve=preserve, smoothsize=smoothsize)
+                             , preserve=this_preserve, smoothsize=smoothsize)
 
       ;; Edit the header
       red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
