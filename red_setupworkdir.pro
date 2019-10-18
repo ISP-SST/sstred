@@ -318,7 +318,7 @@ pro red_setupworkdir, search_dirs = search_dirs $
     if ~strmatch( search_dirs[ i ], '*/' ) then search_dirs[ i ] += '/'
 
     ;; Add the date directory at the end if it is not added yet.
-    if ( file_basename( search_dirs[ i ] ) ne date ) then begin
+    if ( file_basename( search_dirs[ i ] ) ne date and file_basename( search_dirs[ i ] ) ne isodate ) then begin
       search_dirs[ i ] += date
     endif
 
