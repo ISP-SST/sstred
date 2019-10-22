@@ -238,9 +238,9 @@ pro red::fitscube_cmapcorr, fname $
 
   if keyword_set(flip) then begin
     ;; Make a flipped version
-    self -> fitscube_flip, outname $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, outname $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   print, inam + ' : Cavity-corrected cube stored in:'

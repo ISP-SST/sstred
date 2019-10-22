@@ -290,7 +290,7 @@ pro red::fitscube_crosstalk, filename  $
   endelse
   
   if keyword_set(flip) then begin
-    self -> fitscube_flip, filename, flipfile = flipfile
+    red_fitscube_flip, filename, flipfile = flipfile, /overwrite
   endif
   
 end

@@ -111,7 +111,6 @@ pro crisp::extractstates, strings, states $
   
   if strmatch(strmid(strings[0],strlen(strings[0])-1,1),'[0-9]') then begin
 
-
     print, inam + ' : Get un-cached state info from file names'
     ;; Most of the info is in the file names
     if keyword_set(polcal) then begin
@@ -228,9 +227,9 @@ pro crisp::extractstates, strings, states $
 
   endif
 
-  ;; If we get to this point, the strings are FITS files. So the
-  ;; following code should be revised once CRISP is run with the new
-  ;; camera system.
+  ;; If we get to this point, the strings are FITS files or momfbd
+  ;; files. So the following code should be revised once CRISP is run
+  ;; with the new camera system.
   
   ;; Some info from file names
   if keyword_set(polcal) then begin

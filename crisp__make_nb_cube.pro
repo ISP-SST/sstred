@@ -528,17 +528,18 @@ pro crisp::make_nb_cube, wcfile $
     ;; Should be based on state1 or state2 in the struct? make_cmaps
     ;; says "just pick one close to continuum (last state?)".
 ;    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-    indxt = where(alignments.state2.camera eq 'Crisp-T', Nalignt)
+    pref=strmid(file_basename(wcfile),3,4)
+    indxt = where(alignments.state2.camera eq 'Crisp-T' and alignments.state2.prefilter eq pref, Nalignt)
     case Nalignt of
       0    : stop               ; Should not happen!
       1    : amapt = invert(      alignments[indxt].map           )
-      else : amapt = invert( mean(alignments[indxt].map, dim = 3) )
+      else : amapt = invert( median(alignments[indxt].map, dim = 3) )
     endcase
-    indxr = where(alignments.state2.camera eq 'Crisp-R', Nalignr)
+    indxr = where(alignments.state2.camera eq 'Crisp-R' and alignments.state2.prefilter eq pref, Nalignr)
     case Nalignr of
       0    : stop               ; Should not happen!
       1    : amapr = invert(      alignments[indxr].map           )
-      else : amapr = invert( mean(alignments[indxr].map, dim = 3) )
+      else : amapr = invert( median(alignments[indxr].map, dim = 3) )
     endcase
 
     cmap1r = rdx_img_project(amapr, cmap1r) ; Apply the geometrical mapping
@@ -1224,15 +1225,15 @@ pro crisp::make_nb_cube, wcfile $
   
   
   if ~keyword_set(noflipping) then $
-     self -> fitscube_flip, filename, flipfile = flipfile $
-                            , overwrite = overwrite
+     red_fitscube_flip, filename, flipfile = flipfile $
+                        , overwrite = overwrite
   
   print, inam + ' : Narrowband cube stored in:'
   print, filename
   if ~keyword_set(noflipping) then print, flipfile
   
   if keyword_set(wbsave) then begin
-    if ~keyword_set(noflipping) then self -> fitscube_flip, wbfilename, flipfile = wbflipfile $
+    if ~keyword_set(noflipping) then red_fitscube_flip, wbfilename, flipfile = wbflipfile $
        , overwrite = overwrite
     print, inam + ' : Wideband align cube stored in:'
     print, wbfilename

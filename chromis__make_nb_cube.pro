@@ -1086,16 +1086,15 @@ pro chromis::make_nb_cube, wcfile $
     ;; Calculate statistics 
     red_fitscube_statistics, filename, /write 
   endif
-  
-  
-  if ~keyword_set(noflipping) then self -> fitscube_flip, filename, flipfile = flipfile
+
+  if ~keyword_set(noflipping) then red_fitscube_flip, filename, flipfile = flipfile
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
   if ~keyword_set(noflipping) then print, flipfile
   
   if keyword_set(wbsave) then begin
-    if ~keyword_set(noflipping) then self -> fitscube_flip, wbfilename, flipfile = wbflipfile
+    if ~keyword_set(noflipping) then red_fitscube_flip, wbfilename, flipfile = wbflipfile
     print, inam + ' : Wideband align cube stored in:'
     print, wbfilename
     if ~keyword_set(noflipping) then print, wbflipfile

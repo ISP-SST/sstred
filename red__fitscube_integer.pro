@@ -175,9 +175,9 @@ pro red::fitscube_integer, fname $
 
   if keyword_set(flip) then begin
     ;; Make a flipped version
-    self -> fitscube_flip, outname $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, outname $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   if keyword_set(delete) then begin

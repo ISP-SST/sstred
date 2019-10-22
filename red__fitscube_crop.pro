@@ -359,9 +359,9 @@ pro red::fitscube_crop, infile $
   if ~keyword_set(noflip) then begin
     ;; Make a flipped version
     print, 'Flip it!'
-    self -> fitscube_flip, outfile $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, outfile $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   print, 'Cropped cube written to '+outfile
