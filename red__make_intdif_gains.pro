@@ -156,6 +156,9 @@ pro red::make_intdif_gains, all = all $
          search = dir + '/' + detectors[icam]+'.*.intdif.icube'
 
       cfile = file_search(search, count = count)
+      if count eq 0 then begin
+        print, inam + ' : No files match search string "'+search+'"'
+      endif
       if count eq 0 then continue
       
       dfile = dir+'/'+file_basename(cfile,'icube')+'save'
