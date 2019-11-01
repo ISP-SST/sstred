@@ -4,6 +4,7 @@
 ; Correct a fitscube for intensity variation between observation time
 ; and prefilter calibration time. 
 ; 
+; 
 ; :Categories:
 ;
 ;    SST pipeline
@@ -20,17 +21,33 @@
 ; 
 ;       The name of the file containing the fitscube.
 ; 
+; :Keywords:
+; 
+;     nodiskcenter : in, optional, type=boolean
+; 
+;       Set this to base the intensity correction on the WB data from
+;       the current data set instead of from the disk center WB
+;       intensity fit.
 ;
 ; :History:
 ; 
 ;   2019-08-26 : MGL. First version.
 ; 
+;   2019-10-10 : MGL. New keyword nodiskcenter.
+; 
 ;-
-pro red::fitscube_intensitycorr, filename  
+pro red::fitscube_intensitycorr, filename $
+                                 , nodiskcenter = nodiskcenter
 
   inam = red_subprogram(/low, calling = inam1)
 
   if ~file_test(filename) then stop
+
+  if keyword_set(nodiskcenter) then begin
+    PRMODE = 'LOCAL'
+  endif else begin
+    PRMODE = 'DISK-CENTER'
+  endelse
   
   ;; Make prpara
   red_make_prpara, prpara, filename
@@ -63,78 +80,141 @@ pro red::fitscube_intensitycorr, filename
     return
   endif
 
-  ;; Get WB prefilter
-  pos = where(strmatch(prprocs, '*make_*_cube'), Nmatch)
-  if Nmatch eq 0 then stop
-  cube_paras = prparas[pos]
-  wbpref = (stregex((json_parse(cube_paras, /tostruct)).dir $
-                    , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
-
-  wbfitfile = 'wb_intensities/wb_fit_'+wbpref+'.fits'
-  if ~file_test(wbfitfile) then begin
-    s = ''
-    print, inam + ' : No WB fit file : '+wbfitfile
-    print
-    print, "It looks like you haven't run the a->fit_wb_diskcenter step."
-    print, "If you have the calibration data, you can choose to delete the"
-    print, "cube now and come back after running that calibration or to"
-    print, "continue without intensity correction."
-    print
-    read, 'Delete [Y/n]', s
-    if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
-      print
-      print, inam+' : Deleting '+filename
-      print
-      file_delete, filename
-      retall
-    endif else begin
-      print
-      print, inam+' : No correction!'
-      print
-      return
-    endelse
-  endif
+  ;; Prefilter fit data - WB intensity 
+  case fxpar(hdr,'INSTRUME') of
+    'CRISP' : begin
+      pfiles = file_search(self.out_dir + '/prefilter_fits/Crisp-?_'+strtrim(fxpar(hdr,'FILTER1'), 2)+'_prefilter.idlsave' $
+                           , count = Npfiles)
+      ;; R and T simultaneous with the same WB data
+      restore, pfiles[0]
+      time_avg_sum = n_elements(prf.wav) * prf.time_avg
+      time_avg_n   = n_elements(prf.wav)
+      t_calib = time_avg_sum / time_avg_n
+      prefilter_wb = prf.wbint
+    end
+    'CHROMIS' : begin
+      stop                      ; Figure out what NB prefilters are involved
+      pfiles = file_search(self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+'_prefilter.idlsave' $
+                           , count = Npfiles)
+      ;; Average of WB intensities collected with multiple NB
+      ;; prefilters for Ca II.
+      time_avg_sum = 0D
+      time_avg_n = 0L
+      for ipfile = 0, Npfiles-1 do begin
+        restore, pfiles[ipfile] ; Restores variable prf which is a struct
+        time_avg_sum += n_elements(prf.wav) * prf.time_avg
+        time_avg_n   += n_elements(prf.wav)
+        red_append, prefilter_wb, prf.wbint
+      endfor                    ; ipfile
+      t_calib = time_avg_sum / time_avg_n
+      prefilter_wb = mean(prefilter_wb)
+    end
+    else : stop
+  endcase 
+  xposure = prf.xposure
   
-  wbpp = readfits(wbfitfile, pphdr)
-  wbfitexpr = fxpar(pphdr, 'FITEXPR') ; Read the mpfitexpr fit function
-  wb_time_beg = red_time2double(fxpar(pphdr, 'TIME-BEG'))
-  wb_time_end = red_time2double(fxpar(pphdr, 'TIME-END'))
-  case wbfitexpr of
-    'P[0] + X*P[1]'            : begin ; Allow 10 min extrapolation
-      wb_time_beg -= 10 * 60 
-      wb_time_end += 10 * 60        
+;  ;; Load prefilter fit results to get the time of the prefilter fit
+;  ;; calibration data.
+;  prffiles = file_search('prefilter_fits/*_prefilter.idlsave', count = Nprf)
+;  time_avg_sum = 0D
+;  time_avg_n = 0L
+;  for iprf = 0L, Nprf-1 do begin
+;
+;    nbpref = (strsplit(file_basename(prffiles[iprf]), '_', /extract))[1]
+;    if ~(self -> match_prefilters(nbpref, wbpref)) then continue
+;    
+;    restore, prffiles[iprf]     ; Restores variable prf which is a struct
+;
+;    time_avg_sum += n_elements(prf.wav) * prf.time_avg
+;    time_avg_n   += n_elements(prf.wav)
+;
+;    xposure = prf.xposure
+;    
+;  endfor                        ; iprf
+;  t_calib = time_avg_sum / time_avg_n
+
+  
+  
+  ;; Get info from the cube making step
+  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'), Nmakenb)
+  pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
+  case 1 of
+    Nmakenb : begin             ; This is a NB cube
+      cube_paras = prparas[pos_makenb]
+      cube_paras_struct = json_parse(cube_paras, /tostruct)
+      wbhdr = headfits(cube_paras_struct.wcfile)
+      wbpref = fxpar(wbhdr, 'FILTER1')
+      fxbopen, bunit, cube_paras_struct.wcfile, 'MWCINFO', bbhdr
+      fxbreadm, bunit, row = 1 $
+                , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
+                ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+;      ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
+;      ;; wbgfiles (WideBand Global).
+;      fxbread, bunit, wbgfiles, 'WFILES', 1
+      fxbclose, bunit
     end
-    'P[0] + X*P[1] + X*X*P[2]' : begin ; Allow 30 min extrapolation
-      wb_time_beg -= 30 * 60 
-      wb_time_end += 30 * 60        
+    Nmakescan : begin           ; This is a SCAN cube
+      cube_paras = prparas[pos_makescan]
+      cube_paras_struct = json_parse(cube_paras, /tostruct)
+      wbpref = (stregex(cube_paras_struct.dir $
+                        , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
+      wcTMEAN = [1.]            ; Should calculate this from WB data in extension.
+      stop
     end
-    else :                      ; No extrapolation
+    else : stop                 ; Don't know what kind of file this is!
   endcase
+
+  ;; Old correction, includes rapid variations from scan to scan
+  tscl = prefilter_wb / wcTMEAN
+
+  stop
+
+  if keyword_set(nodiskcenter) then begin
+  endif else begin
   
-
-
-  ;; Load prefilter fit results to get the time of the prefilter fit
-  ;; calibration data.
-  prffiles = file_search('prefilter_fits/*_prefilter.idlsave', count = Nprf)
-  time_avg_sum = 0D
-  time_avg_n = 0L
-  for iprf = 0L, Nprf-1 do begin
-
-    nbpref = (strsplit(file_basename(prffiles[iprf]), '_', /extract))[1]
-    if ~(self -> match_prefilters(nbpref, wbpref)) then continue
+    wbfitfile = 'wb_intensities/wb_fit_'+wbpref+'.fits'
+    if ~file_test(wbfitfile) then begin
+      s = ''
+      print, inam + ' : No WB fit file : '+wbfitfile
+      print
+      print, "It looks like you haven't run the a->fit_wb_diskcenter step."
+      print, "If you have the calibration data, you can choose to delete the"
+      print, "cube now and come back after running that calibration or to"
+      print, "continue without intensity correction. Or try with /nodiskcenter."
+      print
+      read, 'Delete [Y/n]', s
+      if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
+        print
+        print, inam+' : Deleting '+filename
+        print
+        file_delete, filename
+        retall
+      endif else begin
+        print
+        print, inam+' : No correction!'
+        print
+        return
+      endelse
+    endif
     
-    restore, prffiles[iprf]     ; Restores variable prf which is a struct
-
-    time_avg_sum += n_elements(prf.wav) * prf.time_avg
-    time_avg_n   += n_elements(prf.wav)
-
-    xposure = prf.xposure
-    
-  endfor                        ; iprf
-  t_calib = time_avg_sum / time_avg_n
-
+    wbpp = readfits(wbfitfile, pphdr)
+    wbfitexpr = fxpar(pphdr, 'FITEXPR') ; Read the mpfitexpr fit function
+    wb_time_beg = red_time2double(fxpar(pphdr, 'TIME-BEG'))
+    wb_time_end = red_time2double(fxpar(pphdr, 'TIME-END'))
+    case wbfitexpr of
+      'P[0] + X*P[1]'            : begin ; Allow 10 min extrapolation
+        wb_time_beg -= 10 * 60 
+        wb_time_end += 10 * 60        
+      end
+      'P[0] + X*P[1] + X*X*P[2]' : begin ; Allow 30 min extrapolation
+        wb_time_beg -= 30 * 60 
+        wb_time_end += 30 * 60        
+      end
+      else :                    ; No extrapolation
+    endcase
   
-  
+  endelse
+
   ;; We need the WCS time coordinates 
   red_fitscube_getwcs, filename, coordinates = coordinates
   t = reform(coordinates.time[0, 0], Ntuning, Nscans)
@@ -218,7 +298,8 @@ pro red::fitscube_intensitycorr, filename
   self -> headerinfo_addstep, hdr $
                               , prstep = 'INTENSITY-CALIBRATION' $
                               , prpara = prpara $
-                              , prproc = inam
+                              , prproc = inam $
+                              , prmode = prmode
 
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
@@ -239,3 +320,35 @@ pro red::fitscube_intensitycorr, filename
   endif
   
 end
+
+
+a = crispred(/dev)
+
+a -> fitscube_intensitycorr, 'cubes_nb/nb_6302_2016-09-19T09:30:20_scans=12-16_stokes_corrected_im.fits'
+
+
+end
+
+; Todo:
+;
+;  1. Integrate wcTMEAN intensity correction based on the current
+;  dataset (see make_nb_cube). Mark in the step info "PRMODEn" keyword
+;  which kind of WB intensity correction was done: DISK-CENTER or
+;  LOCAL, where the former is the new method and LOCAL is the old
+;  method that removes center-to-limb variations. Make DISK-CENTER
+;  correction the default and LOCAL available with an optional
+;  IDL keyword. 
+; 
+;  2. Remove the wcTMEAN correction from make_nb_cube and instead call
+;  fitecube_intensitycorr. 
+; 
+;  3. Testing: For a day with data data sets at similar mu angles,
+;  separated by hours, run make_scan_cube for scans separated in time
+;  with both DISK-CENTER and LOCAL. Verify that both corrections give
+;  intensities that are consistent over time but that the DISK-CENTER
+;  cubes have lower intensities - because the limb darkening is not
+;  removed. For DC data, both methods should give similar intensities.
+; 
+;  4. If possible, test also chromis data with different exposure
+;  times.
+; 
