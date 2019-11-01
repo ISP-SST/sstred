@@ -99,6 +99,9 @@ pro chromis::make_scan_cube, dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+
+  if n_elements(nowbintensitycorr) eq 0 nowbintensitycorr = 1 ; Temporary default!
+
   ;; Temporarily disable cavity maps by default, can still be be
   ;; written (experimentally) with explicit nocavitymap=0.
   if n_elements(nocavitymap) eq 0 then nocavitymap = 1

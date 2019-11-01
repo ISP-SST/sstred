@@ -139,9 +139,7 @@ pro crisp::make_scan_cube, dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  ;; Temporarily disable cavity maps by default, can still be be
-  ;; written (experimentally) with explicit nocavitymap=0.
-;  if n_elements(nocavitymap) eq 0 then nocavitymap = 1
+  if n_elements(nowbintensitycorr) eq 0 nowbintensitycorr = 1 ; Temporary default!
   
   ;; Make prpara
   red_make_prpara, prpara, dir
