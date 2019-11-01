@@ -399,7 +399,7 @@ pro crisp::make_scan_cube, dir $
     red_extractstates, files, lc = lc
     ulc = lc[uniq(lc, sort(lc))]
     Nlc = n_elements(ulc)
-    makestokes = (Nlc gt 1) and ~keyword_set(nopolarimetry)
+    makestokes = (Nlc eq 4) and ~keyword_set(nopolarimetry)
 
     if makestokes then Nstokes = 4 else Nstokes = 1
 

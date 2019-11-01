@@ -156,6 +156,11 @@ pro red::make_intdif_gains, all = all $
          search = dir + '/' + detectors[icam]+'.*.intdif.icube'
 
       cfile = file_search(search, count = count)
+      if count eq 0 then begin
+        print, inam + ' : No files match search string "'+search+'"'
+      endif
+      if count eq 0 then continue
+      
       dfile = dir+'/'+file_basename(cfile,'icube')+'save'
       
       idx = intarr(count)
@@ -207,8 +212,34 @@ pro red::make_intdif_gains, all = all $
         print, 'done'
       endif
 
-      ;; Load cavity-error free flats
-      flats = fltarr(Nx, Ny, Ntunings)
+      testflats = 0
+      if testflats then begin
+        ;; Load cavity-error free flats
+        flats = fltarr(Nx, Ny, Ntunings)
+        fhdrs2 = list()
+        for iwav=0, Ntunings-1 do begin
+
+          self -> get_calib, { camera:cams[icam] $
+                               , detector:detectors[icam] $
+                               , scannumber:uscan[0] $
+                               , framenumber: 0 $
+                               , prefilter: pref $
+                               , fpi_state: uwav[iwav] $
+                               , tuning: uwav[iwav]  $
+                             } $
+                             , cflatdata = cflatdata $
+                             , cflatname = cflatname 
+
+          print, inam + ' : loading -> '+file_basename(cflatname)
+
+          flats[*,*,iwav] = cflatdata
+          fhdrs2.add, red_readhead(cflatname)
+
+        endfor                  ; iwav
+      endif
+      
+      ;; Load cavity-error free gains
+      gains = fltarr(Nx, Ny, Ntunings)
       fhdrs = list()
       for iwav=0, Ntunings-1 do begin
 
@@ -220,13 +251,13 @@ pro red::make_intdif_gains, all = all $
                              , fpi_state: uwav[iwav] $
                              , tuning: uwav[iwav]  $
                            } $
-                           , cflatdata = cflatdata $
-                           , cflatname = cflatname 
+                           , cgaindata = cgaindata $
+                           , cgainname = cgainname 
 
-        print, inam + ' : loading -> '+file_basename(cflatname)
+        print, inam + ' : loading -> '+file_basename(cgainname)
 
-        flats[*,*,iwav] = cflatdata
-        fhdrs.add, red_readhead(cflatname)
+        gains[*,*,iwav] = cgaindata
+        fhdrs.add, red_readhead(cgainname)
 
       endfor                    ; iwav
 
@@ -360,19 +391,29 @@ pro red::make_intdif_gains, all = all $
 
             endif else begin 
 
+              g = gains[*, *, iwav] * reform(cub1[iwav, *, *]/cub2[iwav, *, *])
+              
 ;;;;;; What if we didn't make new gains from flats here but instead
 ;;;;;; just modified (multiply with cub1/cub2)) the cavityfree gains
 ;;;;;; we already have on disk? We don't have states to use with
 ;;;;;; get_calib but we could get states from the flat names. Or use a
 ;;;;;; makeshift state like when we generate ofile above.
               
-              rat = flats[*, *, iwav] * reform(cub2[iwav, *, *]/cub1[iwav, *, *])
 
-              g = float(self -> flat2gain(temporary(rat), min = min, max = max, bad = bad $
-                                          , smooth = smooth $
-                                          , preserve = keyword_set(preserve) $
-                                          or pref eq '8542' or pref eq '7772'))
+              if testflats then begin
+                rat = flats[*, *, iwav] * reform(cub2[iwav, *, *]/cub1[iwav, *, *])
 
+                g2 = float(self -> flat2gain(temporary(rat), min = min, max = max, bad = bad $
+                                             , smooth = smooth $
+                                             , preserve = keyword_set(preserve) $
+                                             or pref eq '8542' or pref eq '7772'))
+
+                cgplot, g, g2, psym = 3
+
+                stop
+              endif
+              
+              
               ;; Save gains
               print, 'saving '+ ofile
               overwrite = 1     ; make keyword?-----------------------------------------------------------
