@@ -65,6 +65,16 @@
 ;      The value of the RELEASEC keyword, a comment with details about
 ;      the proprietary state of the data, and whom to contact.
 ;
+;    svo_api_key : in, optional, type=string
+;
+;      Ingest the metadata of the cube into the prototype SVO using
+;      this API_KEY.
+;
+;    svo_username : in, optional, type=string
+;
+;      Ingest the metadata of the cube into the prototype SVO using
+;      this USERNAME.
+;
 ; :History:
 ; 
 ;   2019-06-12 : MGL. First version.
@@ -74,7 +84,9 @@
 ;   2019-06-18 : MGL. New keywords smooth_width and outfile. Add
 ;                prstep header info.
 ; 
-;   2019-07-04 : MGL. Optionally (opt-out) add checksum and datasum. 
+;   2019-07-04 : MGL. Optionally (opt-out) add checksum and datasum.
+; 
+;   2019-10-18 : MGL. New keywords svo_api_key and svo_username.
 ; 
 ;-
 pro red::fitscube_export, filename $
@@ -86,8 +98,10 @@ pro red::fitscube_export, filename $
                           , outfile = outfile $
                           , overwrite = overwrite $
                           , release_date = RELEASE $
-                          , release_comment = RELEASEC  $
-                          , smooth_width = smooth_width
+                          , release_comment = RELEASEC $
+                          , smooth_width = smooth_width $
+                          , svo_api_key = svo_api_key $
+                          , svo_username = svo_username
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -159,6 +173,8 @@ pro red::fitscube_export, filename $
     if s eq '' then s = 'N'
     if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
       file_delete, oldfiles
+      ;; Should perhaps also add code that removes the deleted files'
+      ;; metadata from the SVO?
     endif
   endif
 
@@ -272,7 +288,8 @@ pro red::fitscube_export, filename $
   print, inam + ' : Copying the fitscube...'
   file_mkdir, outdir
   file_copy, filename, outdir+outfile
-  fxhmodify, outdir+outfile, new_header = hdr
+;  fxhmodify, outdir+outfile, new_header = hdr
+  red_fitscube_newheader, outdir+outfile, hdr
 
   print, inam + ' : Wrote '+outdir+outfile
 
@@ -289,7 +306,8 @@ pro red::fitscube_export, filename $
     spanchor = 'TIMESYS'
     red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATE', new_DATE
     red_fitsaddkeyword, anchor = spanchor, sphdr, 'FILENAME', spoutfile
-    fxhmodify, outdir+spoutfile, new_header = sphdr
+    ;;fxhmodify, outdir+spoutfile, new_header = sphdr
+    red_fitscube_newheader, outdir+spoutfile, sphdr
     print, inam + ' : Wrote '+outdir+spoutfile
   endif
 
@@ -308,29 +326,79 @@ pro red::fitscube_export, filename $
       red_fitscube_getframe, outdir+outfile, frame, iframe = iframe
       red_fitscube_addframe, outdir+outfile, smooth(frame, smooth_width), iframe = iframe
 
-;      if copy_spectral then begin
-;        red_fitscube_getframe, outdir+spoutfile, frame, iframe = iframe
-;        red_fitscube_addframe, outdir+spoutfile, smooth(frame, smooth_width), iframe = iframe       
-;      endif
-
     endfor                      ; iframe
     
   endif
 
   if ~keyword_set(no_checksum) then begin
+
+    ;; Don't modify the file(s) after adding datasum and checksum!
+    
     ;; Checksums
     datasum = red_fitscube_datasum(outdir+outfile)
 
     red_fitsaddkeyword, anchor = anchor, hdr, 'DATASUM', datasum
     fits_add_checksum, hdr
-    fxhmodify, outdir+outfile, new_header = hdr
+    red_fitscube_newheader, outdir+outfile, hdr
 
     if copy_spectral then begin
       red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATASUM', datasum
       fits_add_checksum, sphdr
-      fxhmodify, outdir+spoutfile, new_header = sphdr
+      red_fitscube_newheader, outdir+spoutfile, sphdr
     endif
   endif
+  
+  if n_elements(svo_username) gt 0 and n_elements(svo_api_key) gt 0 then begin
+
+    ;; Ingest metadata into the SVO database.
+    
+    ;; Look for the python script
+    cmd = file_search(strsplit(!path,':',/extract)+'/submit_record.py', count=cnt)
+    if cnt eq 0 then begin
+
+      print, inam + " : Didn't find submit_record.py in !path"
+      stop
+      
+    endif else begin
+
+      ;; Keywords to the SVO ingestion script
+      file_url = 'https://dubshen.isf.astro.su.se/'
+      file_path = (strsplit(date_beg,'T',/extract))[0] + '/' $
+                + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
+
+      ;; Get thumbnail from keyword or generate one from the cube?
+      ;; Sharpest from brightest tuning?
+      
+      ;; Generate OID = unique observation ID of the metadata?
+      ;; oid=
+      ;; Is date + timestamp enough or should this be a hash-like
+      ;; string that changes with versioning etc?
+
+      ;; Build the command string
+      cmd = cmd[0]
+      cmd += ' ' + strlowcase(strtrim(fxpar(hdr,'INSTRUME'),2)) ; The dataset ID in the SOLARNET Data Archive/SVO
+      cmd += ' ' + outdir+outfile                               ; The FITS file to submit to the SVO
+      cmd += ' --file-url ' + file_url                          ; The URL of the file
+      cmd += ' --file-path ' + file_path                        ; The relative path of the file
+      if n_elements(thumbnail_url) gt 0 then $                  ;
+         cmd += ' --thumbnail-url ' + thumbnail_url             ; The URL of the thumbnail
+      cmd += ' --username ' + svo_username ; The SVO username of the user owning the data
+      cmd += ' --api-key ' + svo_api_key   ; The SVO API key of the user owning the data
+;      if n_elements(oid) gt 0 then $                ;
+;      cmd += ' --oid ' +        ; The unique observation ID of the metadata
+      
+      ;; Spawn running the script
+      spawn, cmd, status
+      print, cmd
+      
+    endelse
+  endif else begin
+
+    print, inam + " : Keywords svo_username or svo_api_key not provided."
+    print, inam + " : Will not ingest metadata into the SVO database."
+
+  endelse
+
   
 end
 
