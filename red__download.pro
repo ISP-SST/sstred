@@ -279,12 +279,12 @@ pro red::download, overwrite = overwrite $
       endfor
       ntlt = n_elements( todays_linedef_times )
       if ntlt gt 0 then begin 
-        red_append,all_dirs,*self.dark_dir      ; list all data directories of the day
-        red_append,all_dirs,*self.flat_dir
-        red_append,all_dirs,*self.pinh_dirs
-        red_append,all_dirs,*self.data_dirs
+        if ptr_valid(self.dark_dir)  then red_append,all_dirs,*self.dark_dir ; list all data directories of the day
+        if ptr_valid(self.flat_dir)  then red_append,all_dirs,*self.flat_dir 
+        if ptr_valid(self.pinh_dirs) then red_append,all_dirs,*self.pinh_dirs
+        if ptr_valid(self.data_dirs) then red_append,all_dirs,*self.data_dirs
         idx = where(strmatch(all_dirs, '*CHROMIS-calib*', /FOLD_CASE) EQ 1, compl=cidx)
-        all_dirs = all_dirs[cidx]               ; skip calib-directories (often saved/copied by accident)
+        all_dirs = all_dirs[cidx] ; skip calib-directories (often saved/copied by accident)
         for i=0,n_elements(all_dirs)-1 do begin
           red_append, all_times, red_Time_conv( strmid(all_dirs[i],strlen(all_dirs[i])-8,8) )
         endfor
