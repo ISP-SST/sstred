@@ -139,7 +139,7 @@ pro crisp::make_scan_cube, dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-  if n_elements(nowbintensitycorr) eq 0 nowbintensitycorr = 1 ; Temporary default!
+  if n_elements(nowbintensitycorr) eq 0 then nowbintensitycorr = 1 ; Temporary default!
   
   ;; Make prpara
   red_make_prpara, prpara, dir
