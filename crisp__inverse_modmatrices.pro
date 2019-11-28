@@ -125,7 +125,9 @@ pro crisp::inverse_modmatrices, prefilter, dir $
 
       imm = red_invert_mmatrix(temporary(mm)) ; Inverse modulation matrix
 
-      ;; Mask outlier pixels (but keep any NaN-masking)
+      ;; Mask outlier pixels (but keep any NaN-masking). The purpose
+      ;; of this is to avoid huge intensity artifacts in the Stokes
+      ;; images. 
       mask and= max(abs(imm),dim=1) le 2
 
       if min(mask) lt 1 then begin
