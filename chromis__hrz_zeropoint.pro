@@ -39,3 +39,5 @@
 pro chromis::hrz_zeropoint
 
   chromis_hrz_zeropoint, self.out_dir
+
+end
