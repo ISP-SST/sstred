@@ -58,12 +58,12 @@ pro crisp::make_periodic_filter, prefilter
 
   pp = rdx_fillpix(pp*(1-mask), mask = mask)
 
-;  w=makewindow([1024,40,50])
-;  w = fltarr(1024, 1024)+1.
+  ;; Inspect the sum image and decide whether to continue
+  red_show, pp
+  s = ''
+  read, 'Do you want to continue? [y/N]', s
+  if strupcase(strmid(s, 0, 1)) ne 'Y' then return
 
-;med = median(pp)
-
-;  ff = shiftfft(fft((pp-med)*w))
   ff = shiftfft(fft(pp-med))
 
   ;; Display the power spectrum and let the user click on peak.
