@@ -65,6 +65,11 @@
 ;       data set without polarimetry. (For a nonpolarlimetric dataset,
 ;       no effect.)
 ;
+;    noremove_periodic : in, optional, type=boolean
+;
+;       Do not attempt to use Fourier filtering to remove polcal
+;       periodic artifacts. (See crisp::demodulate method.)
+;
 ;     nostatistics : in, optional, type=boolean
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
@@ -154,6 +159,7 @@ pro crisp::make_nb_cube, wcfile $
                          , nocrosstalk = nocrosstalk $
                          , noflipping = noflipping $
                          , nopolarimetry = nopolarimetry $
+                         , noremove_periodic = noremove_periodic $
                          , nostatistics = nostatistics $
                          , notimecor = notimecor $
 ;                         , nthreads = nthreads $
@@ -571,6 +577,7 @@ pro crisp::make_nb_cube, wcfile $
                                  , clips = clips $
                                  , cmap_fwhm = cmap_fwhm $
                                  , nocavitymap = nocavitymap $
+                                 , noremove_periodic = noremove_periodic $
                                  , redemodulate = redemodulate $
                                  , smooth = smooth $
                                  , snames = these_snames $
