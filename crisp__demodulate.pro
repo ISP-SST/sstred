@@ -566,9 +566,9 @@ pro crisp::demodulate, outname, immr, immt $
   res = reform(res, dims)
 
   if ~keyword_set(noremove_periodic) $
-     and file_test('polcal/camXIX_'+prefilter+'_fringefilter.fits') then begin
+     and file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
     ;; Fourier-filter images to get rid of periodic fringes
-    filt = shiftfft(readfits('polcal/camXIX_'+prefilter+'_fringefilter.fits'))
+    filt = shiftfft(readfits('polcal/periodic_filter_'+prefilter+'.fits'))
     ;; This reversing should actually depend on the align_map of the
     ;; cameras, i.e., the signs of the diagonal elements [0,0] and
     ;; [1,1]. 
