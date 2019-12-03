@@ -50,18 +50,29 @@ pro crisp::make_periodic_filter, prefilter
   polcal2 = readfits(pfiles[1], h = h2) 
   pp = total(polcal2,1) + total(polcal1,1)
 
+  Nx = 1024L
+  Ny = 1024L
+  
   ;; Make a mask for pixel filling
   ccc = red_histo_gaussfit(pp)
   sigma = ccc[2]
   med = ccc[1]
   mask = ~(pp gt med-sigma*5 and pp lt med+sigma*5)
 
-  pp = rdx_fillpix(pp*(1-mask), mask = mask)
+  ;; Clean the mask
+  x = Nx/2 + [-3, -2, -1, 0, 1, 2, 3]
+  y = Ny/2
+  roiPixels = x + y * Nx
+  newroi = region_grow(mask,roipixels,threshold=[0,0]) 
+  newmask = bytarr(Nx, Ny) + 1
+  newmask[newroi] = 0
+  
+  pp = rdx_fillpix(pp*(1-newmask), mask = newmask)
 
   ;; Inspect the sum image and decide whether to continue
   red_show, pp
   s = ''
-  read, 'Do you want to continue? [y/N]', s
+  read, 'Do you want to continue [y/N]? ', s
   if strupcase(strmid(s, 0, 1)) ne 'Y' then return
 
   ff = shiftfft(fft(pp-med))
@@ -75,9 +86,13 @@ pro crisp::make_periodic_filter, prefilter
   fac = 10.
   sz = 100
   ffc = centerpic(alog(abs(ff)^2), sz = sz)
-  tvscl, rebin(ffc, sz*fac, sz*fac, /samp)
+  red_show, rebin(ffc, sz*fac, sz*fac, /samp)
 
-  print, inam+ ' : Click on a significant peak (but not the peak at the origin):'
+  ;; Draw axes
+  cgarrow, 0, Ny/2-fac*0.75, Nx, Ny/2-fac*0.75, hsize = 0, /solid, color = 'yellow'
+  cgarrow, Nx/2-fac*0.75, 0, Nx/2-fac*0.75, Ny, hsize = 0, /solid, color = 'yellow'
+
+  print, inam+ ' : Click on a significant peak (but not at the origin):'
   cursor, xx, yy, /dev
 
   xx /= fac
@@ -95,15 +110,14 @@ pro crisp::make_periodic_filter, prefilter
   ;; Define the the Fourier domain filter by placing the kernels at
   ;; the clicked position, as well as the position on the other side
   ;; of the origin. 
-  filt = fltarr(1024, 1024)+1.
-  for i = 0, ksz-1 do for j = 0, ksz-1 do filt[512+round(xx) + i-ksz/2, 512+round(yy) +j-ksz/2] = kernel[i, j]
-  for i = 0, ksz-1 do for j = 0, ksz-1 do filt[512-round(xx) + i-ksz/2, 512-round(yy) +j-ksz/2] = kernel[i, j]
+  filt = fltarr(Nx, Ny)+1.
+  for i = 0, ksz-1 do for j = 0, ksz-1 do filt[Nx/2+round(xx) + i-ksz/2, Ny/2+round(yy) +j-ksz/2] = kernel[i, j]
+  for i = 0, ksz-1 do for j = 0, ksz-1 do filt[Nx/2-round(xx) + i-ksz/2, Ny/2-round(yy) +j-ksz/2] = kernel[i, j]
 
   ;; Apply the filter
 
   ff2 = ff * filt
   ffc2 = centerpic(alog(abs(ff2)^2 >1e-10), sz = sz)
-;  tvscl, rebin(ffc2, sz*fac, sz*fac, /samp)
 
   ;; Display the polcal sum before and after filtering
   pp2 = float(fft(shiftfft(ff2), /inv)) + med
@@ -113,7 +127,7 @@ pro crisp::make_periodic_filter, prefilter
   red_show, filt, w = 2
 
   ;; Write the filter to the polcal/ directory
-  writefits, red_strreplace(pfiles[0], '_polcal', '_fringefilter'), filt
+  writefits, 'polcal/periodic_filter_'+prefilter+'.fits', filt
 
 end 
 
