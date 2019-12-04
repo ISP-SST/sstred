@@ -75,7 +75,7 @@ pro crisp::make_periodic_filter, prefilter
   read, 'Do you want to continue [y/N]? ', s
   if strupcase(strmid(s, 0, 1)) ne 'Y' then return
 
-  ff = shiftfft(fft(pp-med))
+  ff = shift(fft(pp-med), Nx/2, Ny/2)
 
   ;; Display the power spectrum and let the user click on peak.
 
@@ -85,7 +85,7 @@ pro crisp::make_periodic_filter, prefilter
   tvscl, alog(abs(ff)^2)
   fac = 10.
   sz = 100
-  ffc = centerpic(alog(abs(ff)^2), sz = sz)
+  ffc = red_centerpic(alog(abs(ff)^2), sz = sz)
   red_show, rebin(ffc, sz*fac, sz*fac, /samp)
 
   ;; Draw axes
@@ -117,10 +117,10 @@ pro crisp::make_periodic_filter, prefilter
   ;; Apply the filter
 
   ff2 = ff * filt
-  ffc2 = centerpic(alog(abs(ff2)^2 >1e-10), sz = sz)
+  ffc2 = red_centerpic(alog(abs(ff2)^2 >1e-10), sz = sz)
 
   ;; Display the polcal sum before and after filtering
-  pp2 = float(fft(shiftfft(ff2), /inv)) + med
+  pp2 = float(fft(shift(ff2, Nx/2, Ny/2), /inv)) + med
   red_show, [pp, pp2]
 
   ;; Display the filter
