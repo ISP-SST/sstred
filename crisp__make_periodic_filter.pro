@@ -23,9 +23,10 @@
 ; 
 ; :Keywords:
 ; 
+;   taper_width : in, optional, type=integer, default=15
 ;   
-;   
-;   
+;      The width of the tapered hole around the spatial frequency
+;      to be blocked.
 ; 
 ; 
 ; :History:
@@ -33,10 +34,18 @@
 ;    2019-12-02 : MGL. First version.
 ; 
 ;-
-pro crisp::make_periodic_filter, prefilter
+pro crisp::make_periodic_filter, prefilter $
+                                 , taper_width = taper_width
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
+
+  if n_elements(taper_width) eq 0 then taper_width = 15
+
+  ;; Define kernel for suppressing the chosen spatial frequencies. 
+  kernel = fltarr(taper_width, taper_width)
+  for i = 0, taper_width-1 do for j = 0, taper_width-1 do kernel[i, j] = sqrt((i-taper_width/2)^2+(j-taper_width/2)^2)
+  kernel /= max(kernel*1.2)
 
   pfiles = file_search('polcal/cam*_'+prefilter+'_polcal.fits', count = Nfiles)
   if Nfiles ne 2 then begin
@@ -101,18 +110,12 @@ pro crisp::make_periodic_filter, prefilter
   yy -= sz/2
   print, xx, yy
 
-  ;; Define kernel for suppressing the chosen spatial frequencies. 
-  ksz = 15
-  kernel = fltarr(ksz, ksz)
-  for i = 0, ksz-1 do for j = 0, ksz-1 do kernel[i, j] = sqrt((i-ksz/2)^2+(j-ksz/2)^2)
-  kernel /= max(kernel*1.2)
-
   ;; Define the the Fourier domain filter by placing the kernels at
   ;; the clicked position, as well as the position on the other side
   ;; of the origin. 
   filt = fltarr(Nx, Ny)+1.
-  for i = 0, ksz-1 do for j = 0, ksz-1 do filt[Nx/2+round(xx) + i-ksz/2, Ny/2+round(yy) +j-ksz/2] = kernel[i, j]
-  for i = 0, ksz-1 do for j = 0, ksz-1 do filt[Nx/2-round(xx) + i-ksz/2, Ny/2-round(yy) +j-ksz/2] = kernel[i, j]
+  for i = 0, taper_width-1 do for j = 0, taper_width-1 do filt[Nx/2+round(xx) + i-taper_width/2, Ny/2+round(yy) +j-taper_width/2] = kernel[i, j]
+  for i = 0, taper_width-1 do for j = 0, taper_width-1 do filt[Nx/2-round(xx) + i-taper_width/2, Ny/2-round(yy) +j-taper_width/2] = kernel[i, j]
 
   ;; Apply the filter
 
