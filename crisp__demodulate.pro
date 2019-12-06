@@ -102,6 +102,11 @@
 ;   2018-12-21 : MGL. New keywords smooth_by_kernel and
 ;                smooth_by_subfield.
 ; 
+;   2019-12-06 : MGL. New keyword noremove_periodic. Do optional
+;                Fourier filtering to remove periodic artifacts from
+;                polcal. Read header info from filter file and include
+;                filtering in prstep.
+; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
                        , clips = clips $
@@ -565,23 +570,7 @@ pro crisp::demodulate, outname, immr, immt $
   dims = [Nx, Ny, 1, Nstokes, 1] 
   res = reform(res, dims)
 
-  if ~keyword_set(noremove_periodic) $
-     and file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
-    ;; Fourier-filter images to get rid of periodic fringes
-    filt = shift(readfits('polcal/periodic_filter_'+prefilter+'.fits'), Nxx/2, Nyy/2)
-    ;; This reversing should actually depend on the align_map of the
-    ;; cameras, i.e., the signs of the diagonal elements [0,0] and
-    ;; [1,1]. 
-    filt[1:*, 1:*] = reverse(filt[1:*, 1:*], 1)
-    for istokes = 0L, Nstokes-1 do begin
-      frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx $
-                            , z = median(res[*,*,0, istokes, 0]))
-      filtframe = float(fft(fft(frame)*filt, /inv))
-      res[*,*,0, istokes, 0] = red_centerpic(filtframe, xs = Nx, ys = Ny)
-    endfor                      ; ilc
-  endif
-  
-  
+ 
   ;; Make header
   hdr = red_readhead(nbrstates[0].filename)
   check_fits, res, hdr, /update, /silent
@@ -594,6 +583,33 @@ pro crisp::demodulate, outname, immr, immt $
                               , prpara = prpara $
                               , prproc = inam
 
+  if ~keyword_set(noremove_periodic) $
+     and file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
+    ;; Fourier-filter images to get rid of periodic fringes
+    filt = shift(readfits('polcal/periodic_filter_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
+    ;; This reversing should actually depend on the align_map of the
+    ;; cameras, i.e., the signs of the diagonal elements [0,0] and
+    ;; [1,1]. 
+    filt[1:*, 1:*] = reverse(filt[1:*, 1:*], 1)
+    for istokes = 0L, Nstokes-1 do begin
+      frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx $
+                            , z = median(res[*,*,0, istokes, 0]))
+      filtframe = float(fft(fft(frame)*filt, /inv))
+      res[*,*,0, istokes, 0] = red_centerpic(filtframe, xs = Nx, ys = Ny)
+    endfor                      ; ilc
+
+    ;; Add info about this step
+    taper_width = fxpar(fhdr, 'HOLEWDTH', count = Nkey)
+    if Nkey gt 0 then red_make_prpara, filt_prpara, taper_width        
+    hole_x = fxpar(fhdr, 'HOLE_X', count = Nkey)
+    if Nkey gt 0 then red_make_prpara, filt_prpara, hole_x
+    hole_y = fxpar(fhdr, 'HOLE_Y', count = Nkey)
+    if Nkey gt 0 then red_make_prpara, filt_prpara, hole_y
+    self -> headerinfo_addstep, hdr $
+                                , prstep = 'Fourier-filtering' $
+                                , prpara = filt_prpara $
+                                , prproc = inam
+  endif
   
   ;; New date, at better position
   red_fitsaddkeyword, anchor = anchor, after = 'SOLARNET', /force, hdr $
