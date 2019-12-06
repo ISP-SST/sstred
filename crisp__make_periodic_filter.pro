@@ -23,7 +23,7 @@
 ; 
 ; :Keywords:
 ; 
-;   taper_width : in, optional, type=integer, default=15
+;   hole_width : in, optional, type=integer, default=15
 ;   
 ;      The width of the tapered hole around the spatial frequency
 ;      to be blocked.
@@ -33,18 +33,21 @@
 ; 
 ;    2019-12-02 : MGL. First version.
 ; 
+;    2019-12-06 : MGL. New keyword hole_width. Write some header info
+;                 to the filter file.
+; 
 ;-
 pro crisp::make_periodic_filter, prefilter $
-                                 , taper_width = taper_width
+                                 , hole_width = hole_width
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(taper_width) eq 0 then taper_width = 15
+  if n_elements(hole_width) eq 0 then hole_width = 15
 
   ;; Define kernel for suppressing the chosen spatial frequencies. 
-  kernel = fltarr(taper_width, taper_width)
-  for i = 0, taper_width-1 do for j = 0, taper_width-1 do kernel[i, j] = sqrt((i-taper_width/2)^2+(j-taper_width/2)^2)
+  kernel = fltarr(hole_width, hole_width)
+  for i = 0, hole_width-1 do for j = 0, hole_width-1 do kernel[i, j] = sqrt((i-hole_width/2)^2+(j-hole_width/2)^2)
   kernel /= max(kernel*1.2)
 
   pfiles = file_search('polcal/cam*_'+prefilter+'_polcal.fits', count = Nfiles)
@@ -114,8 +117,8 @@ pro crisp::make_periodic_filter, prefilter $
   ;; the clicked position, as well as the position on the other side
   ;; of the origin. 
   filt = fltarr(Nx, Ny)+1.
-  for i = 0, taper_width-1 do for j = 0, taper_width-1 do filt[Nx/2+round(xx) + i-taper_width/2, Ny/2+round(yy) +j-taper_width/2] = kernel[i, j]
-  for i = 0, taper_width-1 do for j = 0, taper_width-1 do filt[Nx/2-round(xx) + i-taper_width/2, Ny/2-round(yy) +j-taper_width/2] = kernel[i, j]
+  for i = 0, hole_width-1 do for j = 0, hole_width-1 do filt[Nx/2+round(xx) + i-hole_width/2, Ny/2+round(yy) +j-hole_width/2] = kernel[i, j]
+  for i = 0, hole_width-1 do for j = 0, hole_width-1 do filt[Nx/2-round(xx) + i-hole_width/2, Ny/2-round(yy) +j-hole_width/2] = kernel[i, j]
 
   ;; Apply the filter
 
@@ -130,6 +133,10 @@ pro crisp::make_periodic_filter, prefilter $
   red_show, filt, w = 2
 
   ;; Write the filter to the polcal/ directory
+  red_mkhdr, hdr, filt
+  fxaddpar, hdr, 'HOLEWDTH', hole_width, 'Width of "hole" around filtered frequency component'
+  fxaddpar, hdr, 'HOLE_X', round(xx), 'Center x frequency coordinate of filtered component'
+  fxaddpar, hdr, 'HOLE_Y', round(xx), 'Center y frequency coordinate of filtered component'
   writefits, 'polcal/periodic_filter_'+prefilter+'.fits', filt
 
 end 
