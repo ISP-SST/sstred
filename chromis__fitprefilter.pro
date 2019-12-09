@@ -90,6 +90,8 @@
 ;   2018-08-30 : MGL. Change units from 'W s^-1 m^-2 Hz^-1 sr^-1' to
 ;                'W m^-2 Hz^-1 sr^-1' 
 ; 
+;   2019-12-09 : MGL. Changed correction of HRE reflectivity from
+;                -0.07 to -0.09.
 ; 
 ;-
 pro chromis::fitprefilter, dir = dir $
@@ -440,7 +442,7 @@ pro chromis::fitprefilter, dir = dir $
     np = round((0.080 * 8) / dw)
     if np/2*2 eq np then np -=1
     tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
-    tr = chromis_profile(tw, erh=-0.07d0)
+    tr = chromis_profile(tw, erh=-0.09d0)
     tr /= total(tr)
     yl1 = fftconvol(yl, tr)
 
