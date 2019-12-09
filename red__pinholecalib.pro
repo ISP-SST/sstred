@@ -290,7 +290,7 @@ pro red::pinholecalib, cams = cams $
       red_append, processed_pairs, this_pair
     endfor                      ; iref
     
-    okmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] eq 1) )
+    okmaps     = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] eq 1) )
     failedmaps = where( (alignments.state2.camera eq cams[icam]) and (alignments.map[2,2] ne 1) )
     if (max(failedmaps) ge 0) and (max(okmaps) ge 0) then begin
       avg_map = alignments[okmaps].map
