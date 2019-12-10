@@ -25,9 +25,9 @@
 ; 
 ;     nodiskcenter : in, optional, type=boolean
 ; 
-;       Set this to base the intensity correction on the WB data from
-;       the current data set instead of from the disk center WB
-;       intensity fit.
+;       Set this to base the intensity correction on local intensities
+;       of the WB data from the current data set instead of from the
+;       disk center WB intensity fit.
 ;
 ; :History:
 ; 
@@ -83,7 +83,10 @@ pro red::fitscube_intensitycorr, filename $
   ;; Prefilter fit data - WB intensity 
   case fxpar(hdr,'INSTRUME') of
     'CRISP' : begin
-      pfiles = file_search(self.out_dir + '/prefilter_fits/Crisp-?_'+strtrim(fxpar(hdr,'FILTER1'), 2)+'_prefilter.idlsave' $
+      pfiles = file_search(self.out_dir $
+                           + '/prefilter_fits/Crisp-?_' $
+                           + strtrim(fxpar(hdr,'FILTER1'), 2) $
+                           + '_prefilter.idlsave' $
                            , count = Npfiles)
       ;; R and T simultaneous with the same WB data
       restore, pfiles[0]
@@ -94,7 +97,11 @@ pro red::fitscube_intensitycorr, filename $
     end
     'CHROMIS' : begin
       stop                      ; Figure out what NB prefilters are involved
-      pfiles = file_search(self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+'_prefilter.idlsave' $
+      pfiles = file_search(self.out_dir $
+                           + '/prefilter_fits/chromis_' $
+                           + strtrim(fxpar(hdr,'FILTER1'), 2) $
+                           ;; + unbprefs[inbpref] $
+                           + '_prefilter.idlsave' $
                            , count = Npfiles)
       ;; Average of WB intensities collected with multiple NB
       ;; prefilters for Ca II.
@@ -136,7 +143,7 @@ pro red::fitscube_intensitycorr, filename $
   
   
   ;; Get info from the cube making step
-  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'), Nmakenb)
+  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
   pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
   case 1 of
     Nmakenb : begin             ; This is a NB cube
@@ -158,7 +165,11 @@ pro red::fitscube_intensitycorr, filename $
       cube_paras_struct = json_parse(cube_paras, /tostruct)
       wbpref = (stregex(cube_paras_struct.dir $
                         , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
-      wcTMEAN = [1.]            ; Should calculate this from WB data in extension.
+
+;      wcTMEAN = [1.]            ; Should calculate this from WB data in extension.
+      wbimage = mrdfits(filename, 'WBIMAGE', ehdr, STATUS=status, /silent)
+      wcTMEAN = median(wbimage)
+      
       stop
     end
     else : stop                 ; Don't know what kind of file this is!
@@ -167,11 +178,19 @@ pro red::fitscube_intensitycorr, filename $
   ;; Old correction, includes rapid variations from scan to scan
   tscl = prefilter_wb / wcTMEAN
 
-  stop
+  if PRMODE ne 'DISK-CENTER' then begin
 
-  if keyword_set(nodiskcenter) then begin
+    ;; Do LOCAL, the old kind of correction 
+
+    correction = fltarr(Ntuning, Nscans)
+    for iscan = 0, Nscans-1 do correction[*, iscan] = tscl[iscan]
+    
+    stop
+
   endif else begin
-  
+    
+    ;; Do DISK-CENTER based correction
+    
     wbfitfile = 'wb_intensities/wb_fit_'+wbpref+'.fits'
     if ~file_test(wbfitfile) then begin
       s = ''
@@ -212,63 +231,68 @@ pro red::fitscube_intensitycorr, filename $
       end
       else :                    ; No extrapolation
     endcase
-  
+    
+
+    ;; We need the WCS time coordinates 
+    red_fitscube_getwcs, filename, coordinates = coordinates
+    t = reform(coordinates.time[0, 0], Ntuning, Nscans)
+
+    ;; Check that we are not extrapolating (too far).
+    if ~file_test(wbfitfile) then begin
+      s = ''
+      print, inam + ' : No WB fit file : '+wbfitfile
+      print
+      print, inam + "It looks like your a->fit_wb_diskcenter step didn't find WB data"
+      print, "for a long enough time range. Either your prefilter fit calibration data"
+      print, "or your data cube have time stamps outside the range:"
+      print, 'WB data range (plus margin) : ['+red_timestring(wb_time_beg)+','+red_timestring(wb_time_end)+'].'
+      print, 'Cube time range : ['+red_timestring(min(t))+','+red_timestring(max(t))+'].'
+      print
+      print, "If you have more calibration data, you can choose to delete the"
+      print, "cube now and come back after running that calibration again or to"
+      print, "continue without intensity correction."
+      print
+      read, 'Delete [Y/n]', s
+      if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
+        print
+        print, inam+' : Deleting '+filename
+        print
+        file_delete, filename
+        retall
+      endif else begin
+        print
+        print, inam+' : No correction!'
+        print
+        return
+      endelse
+    endif
+
+
+    
+    ;; Interpolate to get the WB intensities
+    wbints = red_evalexpr(wbfitexpr, t, wbpp) 
+    wbintcalib = red_evalexpr(wbfitexpr, t_calib, wbpp) 
+
+
+    ;; Change intensity to compensate for time difference
+    ;; between prefilterfit and data collection. Use the ratio
+    ;; of (WB intensity)/(exposure time) for interpolated times
+    ;; of calibration data and cube data.
+    wbratio = wbintcalib / wbints
+
+    ;; Need also ratio of exposure times to compensate the NB
+    ;; data for different exposure time in calibration data and
+    ;; in cube data! MOMFBD processing divides output with the
+    ;; number of frames, so the single-frame exposure time is
+    ;; the appropriate one.
+    xpratio = xposure / fxpar(hdr,'TEXPOSUR')
+
+    correction = wbratio * xpratio
+    
   endelse
 
-  ;; We need the WCS time coordinates 
-  red_fitscube_getwcs, filename, coordinates = coordinates
-  t = reform(coordinates.time[0, 0], Ntuning, Nscans)
+  ;; Apply the corrections
 
-  ;; Check that we are not extrapolating (too far).
-  if ~file_test(wbfitfile) then begin
-    s = ''
-    print, inam + ' : No WB fit file : '+wbfitfile
-    print
-    print, inam + "It looks like your a->fit_wb_diskcenter step didn't find WB data"
-    print, "for a long enough time range. Either your prefilter fit calibration data"
-    print, "or your data cube have time stamps outside the range:"
-    print, 'WB data range (plus margin) : ['+red_timestring(wb_time_beg)+','+red_timestring(wb_time_end)+'].'
-    print, 'Cube time range : ['+red_timestring(min(t))+','+red_timestring(max(t))+'].'
-    print
-    print, "If you have more calibration data, you can choose to delete the"
-    print, "cube now and come back after running that calibration again or to"
-    print, "continue without intensity correction."
-    print
-    read, 'Delete [Y/n]', s
-    if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
-      print
-      print, inam+' : Deleting '+filename
-      print
-      file_delete, filename
-      retall
-    endif else begin
-      print
-      print, inam+' : No correction!'
-      print
-      return
-    endelse
-  endif
-
-
-  
-  ;; Interpolate to get the WB intensities
-  wbints = red_evalexpr(wbfitexpr, t, wbpp) 
-  wbintcalib = red_evalexpr(wbfitexpr, t_calib, wbpp) 
-
-
-  ;; Change intensity to compensate for time difference
-  ;; between prefilterfit and data collection. Use the ratio
-  ;; of (WB intensity)/(exposure time) for interpolated times
-  ;; of calibration data and cube data.
-  wbratio = wbintcalib / wbints
-
-  ;; Need also ratio of exposure times to compensate the NB
-  ;; data for different exposure time in calibration data and
-  ;; in cube data! MOMFBD processing divides output with the
-  ;; number of frames, so the single-frame exposure time is
-  ;; the appropriate one.
-  xpratio = xposure / fxpar(hdr,'TEXPOSUR')
-  
   iframe = 0L
   for iscan = 0, Nscans-1 do begin
     for istokes=0, Nstokes-1 do begin
@@ -281,8 +305,7 @@ pro red::fitscube_intensitycorr, filename $
                                , iscan = iscan, istokes = istokes, ituning = ituning
         
         ;; Write the corrected frame back to the fitscube file
-        red_fitscube_addframe, fileassoc $
-                               , frame * wbratio[ituning, iscan] * xpratio $
+        red_fitscube_addframe, fileassoc, frame * correction[ituning, iscan] $
                                , iscan = iscan, istokes = istokes, ituning = ituning
 
         iframe++
@@ -290,9 +313,6 @@ pro red::fitscube_intensitycorr, filename $
       endfor                    ; ituning
     endfor                      ; istokes
   endfor                        ; iscan
-
-
-  ;; Possibly do it also for WB data of scan cubes!
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -310,12 +330,12 @@ pro red::fitscube_intensitycorr, filename $
   ;; For scan cubes, do it also for the WB image.
   fits_info, filename, /SILENT , N_ext = n_ext, EXTNAME=extnames
   if n_ext gt 0 && round(total(strmatch(strtrim(extnames,2),'WBIMAGE'))) eq 1 then begin
-    ;; After this, WB data will not turn SI units (like the NB data).
-    ;; But it should unify the WB intensity scaling during the day,
-    ;; providing a way to check that the scaling is correct by
-    ;; comparing WB data from different times.
+    ;; After this, WB intensities will not be in SI units (like the NB
+    ;; data). But it should (for DISK-CENTER) unify the WB intensity
+    ;; scaling during the day, providing a way to check that the
+    ;; scaling is correct by comparing WB data from different times.
     wbimage = mrdfits(filename, 'WBIMAGE', ehdr, STATUS=status, /silent)
-    wbimage *= mean(wbratio) * xpratio
+    wbimage *= mean(correction)
     modfits, filename, float(wbimage), ehdr, errmsg = errmsg, extname = 'WBIMAGE'
   endif
   
