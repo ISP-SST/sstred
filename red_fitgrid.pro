@@ -14,11 +14,13 @@
 ;    Mats Löfdahl
 ; 
 ; 
-; 
-; 
 ; :Returns:
 ;
-;    The grid parameters as a structure, { x0:x0, y0:y0, dx:dx, dy:dy, theta:theta, Nx:Nx, Ny:Ny}.
+;    The grid parameters as a structure, { x0:x0, y0:y0, dx:dx, dy:dy,
+;    theta:theta, Nx:Nx, Ny:Ny}, where (X0,y0) are the pixel
+;    coordinates of one point in the grid, dx and dy are the grid
+;    spacings in X and Y resp., theta is a rotation angle in radians,
+;    and Nx and Ny are the number of grid columns/rows detected.
 ; 
 ; :Params:
 ; 
