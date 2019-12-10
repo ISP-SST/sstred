@@ -905,7 +905,7 @@ pro crisp::make_nb_cube, wcfile $
         ;; The Stokes cube is already wbcorrected so we should not
         ;; repeat that here.
 
-        ;; Get some metadata from the Stoeks cube header.
+        ;; Get some metadata from the Stokes cube header.
         red_fitspar_getdates, stokhdr $
                               , date_beg = date_beg $
                               , date_avg = date_avg $
@@ -967,8 +967,9 @@ pro crisp::make_nb_cube, wcfile $
         match2, scan_nbrstates.lc, scan_wbstates.lc, sortindx
         scan_wbfiles = scan_wbfiles[sortindx]
         scan_wbstates = scan_wbstates[sortindx]
-
+        
         ;; Collect info about this frame here.
+        undefine, tbegs, tavgs, tends, xps, texps, nsums ; Start fresh
         for iim = 0, n_elements(scan_wbindx)-1 do begin
           wbhead = red_readhead(scan_wbfiles[iim])
           red_fitspar_getdates, wbhead $
@@ -1021,16 +1022,21 @@ pro crisp::make_nb_cube, wcfile $
         Nim = n_elements(scan_nbrindx) + n_elements(scan_nbtindx)
         for iim = 0, n_elements(scan_nbtindx)-1 do begin
 
-          this_im = (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Get destretch to anchor camera (residual seeing)
             wwi = (red_readdata(scan_wbfiles[iim]))[x0:x1, y0:y1]
             grid1 = red_dsgridnest(wb, wwi, tiles, clips)
+          endif
+
+          ;; Reflected
+          this_im = (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[ituning]
+          if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = red_stretch(temporary(this_im), grid1)
           endif
           nbim += this_im
 
+          ;; Transmitted
           this_im = (red_readdata(scan_nbtfiles[iim]))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
@@ -1044,11 +1050,11 @@ pro crisp::make_nb_cube, wcfile $
       endelse
       
 
+      ;; Apply derot, align, dewarp based on the output from
+      ;; make_wb_cube
       if makestokes then begin
         nbcube = fltarr(Nx, Ny, Nstokes)
         for istokes = 0, Nstokes-1 do begin
-          ;; Apply derot, align, dewarp based on the output from
-          ;; make_wb_cube
           nbcube[0, 0, istokes] = red_rotation(nbim[*, *, istokes], ang[iscan], $
                                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
           nbcube[0, 0, istokes] = red_stretch(nbcube[*, *, istokes] $
@@ -1065,8 +1071,7 @@ pro crisp::make_nb_cube, wcfile $
       endelse
       
       if keyword_set(wbsave) then begin
-        ;; Same operations as on narrowband image, except for
-        ;; "aligncont".
+        ;; Same operations as on narrowband image.
         wbim = wwi * tscl[iscan]
         wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
