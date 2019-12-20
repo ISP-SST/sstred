@@ -148,8 +148,8 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
     red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'
 
     ;; Write the modified header 
-;    modfits, filename, 0, hdr
-    red_fitscube_newheader, filename, hdr
+    modfits, filename, 0, hdr
+;    red_fitscube_newheader, filename, hdr
     
     ;; Open the old binary extension and transfer header and data to
     ;; an extension in the new file.
@@ -250,8 +250,8 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
   red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'  
 
   ;; Write the modified header 
-;  modfits, filename, 0, hdr
-  red_fitscube_newheader, filename, hdr
+  modfits, filename, 0, hdr
+;  red_fitscube_newheader, filename, hdr
   
 
   
