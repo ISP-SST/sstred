@@ -75,10 +75,11 @@ pro red_fitscube_newheader, filename, newheader, Nframes_max = Nframes_max
 
   if Nlines_old/36 eq Nlines_new/36 or Nframes lt Nframes_max then begin
     ;; It's OK to just write the new header in the existing file.
-    print, inam+' : Write new header with modfits...'
+    print, inam+' : Write new header with modfits...(This may take a while)'
     tic
     modfits, oldfilename, 0, newheader
-    print, inam+' : Write new header with modfits...Done in '+red_timestring(toc(),/int)+'!'
+    toc
+    print, inam+' : Write new header with modfits...Done!'
     return
   endif 
 
