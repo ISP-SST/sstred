@@ -148,7 +148,8 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
     red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'
 
     ;; Write the modified header 
-    modfits, filename, 0, hdr
+;    modfits, filename, 0, hdr
+    red_fitscube_newheader, filename, hdr
     
     ;; Open the old binary extension and transfer header and data to
     ;; an extension in the new file.
@@ -172,7 +173,6 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
 
   
   ;; We are making a new variable-keyword extension from scratch
-;  extension_name = 'VAR-EXT-'+keyword_name ; Variable keyword extension for keyword <keyword_name>.
 
   if n_elements(comment) ne 0 then keyword_comment = comment
   
@@ -247,94 +247,14 @@ pro red::fitscube_addvarkeyword, filename, keyword_name, values $
   fxbhmake, bdr, 1, extension_name $
             , 'Variable keyword, '+association+' assoc.'
 
-  
-;  ;; Set the var_keys FITS header keyword. 
-;  var_keys = fxpar(hdr, 'VAR_KEYS', count = Nmatch, comment = comment)
-;
-;  ;;  Nmatch = 1
-;
-;  ;; Find old VAR_KEYS keyword in main header and add to it or make
-;  ;; new one with added name.
-;
-;  if Nmatch eq 0 then begin
-;
-;    new_var_keys = extension_name + ';' + keyword_name
-;    print, inam + ' : No existing VAR_KEYS, make a new one: ', new_var_keys
-;
-;  endif else begin
-;
-;    print, inam + ' : Existing VAR_KEYS: ', var_keys
-;
-;    ;; Parse existing VAR_KEYS, add to it
-;
-;    ;; Split into keywords (some of which have extension names in
-;    ;; front).
-;    existing_keyword_names = strsplit(var_keys, ',', /extract)
-;    Nexisting = n_elements(existing_keyword_names)
-;    existing_extension_names = strarr(Nexisting)
-;
-;    for iexisting = 0, Nexisting-1 do begin
-;      ;; Identify extension name for this keyword, either before a
-;      ;; semi-colon or the same extension as the pervious keyword.
-;      splt = strsplit(existing_keyword_names[iexisting], ';', /extract)
-;      case n_elements(splt) of
-;        1 :                     ; Leave the keyword alone
-;        2 : begin               ; Remove the extension name from the keyword string 
-;          latest_extension_name = splt[0]
-;          existing_keyword_names[iexisting] = splt[1]
-;        end
-;        else : print, 'Should not happen!'
-;      endcase
-;      existing_extension_names[iexisting] = latest_extension_name
-;    endfor                      ; iexisting
-;    
-;    ;; Build up a new var_keys string, adding the new keyword in its
-;    ;; own extension.
-;    new_var_keys = existing_extension_names[0] + ';' + existing_keyword_names[0]
-;    latest_extension_name = existing_extension_names[0]
-;    added_new = 0
-;    for iexisting = 1, Nexisting-1 do begin
-;      if existing_extension_names[iexisting] eq existing_extension_names[iexisting-1] then begin
-;        ;; Same extension as previous keyword
-;        new_var_keys += ',' + existing_keyword_names[iexisting]
-;      endif else begin
-;        ;; New extension
-;        if ~added_new then begin
-;          ;; If the extension we want to add is the same as the
-;          ;; previous one, this is where we can add the new keyword.
-;          if extension_name eq existing_extension_names[iexisting-1] then begin
-;            new_var_keys += ',' + keyword_name
-;            added_new = 1
-;          endif
-;        endif
-;        ;; First keyword with this extension name, add both the
-;        ;; extension name and the keyword namr.
-;        new_var_keys += ',' + existing_extension_names[iexisting] + ';' + existing_keyword_names[iexisting]
-;      endelse
-;    endfor                      ; iexisting
-;    if ~added_new then begin
-;      ;; If we haven't already added the new keyword, do it now.
-;      if extension_name eq existing_extension_names[Nexisting-1] then begin
-;        ;; Same as the last existing extension, add just the keyword name.
-;        new_var_keys += ',' + keyword_name
-;        added_new = 1
-;      endif else begin
-;        ;; The new extension does not already exist, add it together
-;        ;; with the keyword name.
-;        new_var_keys +=',' +  extension_name+';'+keyword_name
-;      endelse
-;    endif
-;
-;  endelse
-
   red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'  
 
   ;; Write the modified header 
-  modfits, filename, 0, hdr
+;  modfits, filename, 0, hdr
+  red_fitscube_newheader, filename, hdr
   
 
   
-  ;;
   case association of
     
     'coordinate-tabulated' : begin
