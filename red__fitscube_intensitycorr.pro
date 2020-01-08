@@ -80,44 +80,61 @@ pro red::fitscube_intensitycorr, filename $
     return
   endif
 
-  ;; Prefilter fit data - WB intensity 
-  case fxpar(hdr,'INSTRUME') of
-    'CRISP' : begin
-      pfiles = file_search(self.out_dir $
-                           + '/prefilter_fits/Crisp-?_' $
-                           + strtrim(fxpar(hdr,'FILTER1'), 2) $
-                           + '_prefilter.idlsave' $
-                           , count = Npfiles)
-      ;; R and T simultaneous with the same WB data
-      restore, pfiles[0]
-      time_avg_sum = n_elements(prf.wav) * prf.time_avg
-      time_avg_n   = n_elements(prf.wav)
-      t_calib = time_avg_sum / time_avg_n
-      prefilter_wb = prf.wbint
+  
+  ;; Get info from the cube making step
+  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
+  pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
+  case 1 of
+    Nmakenb : begin             ; This is a NB cube
+      cube_paras = prparas[pos_makenb]
+      cube_paras_struct = json_parse(cube_paras, /tostruct)
+      wbhdr = headfits(cube_paras_struct.wcfile)
+      wbpref = fxpar(wbhdr, 'FILTER1')
+      fxbopen, bunit, cube_paras_struct.wcfile, 'MWCINFO', bbhdr
+      fxbreadm, bunit, row = 1 $
+                , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
+                ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+      fxbclose, bunit
     end
-    'CHROMIS' : begin
-      stop                      ; Figure out what NB prefilters are involved
-      pfiles = file_search(self.out_dir $
-                           + '/prefilter_fits/chromis_' $
-                           + strtrim(fxpar(hdr,'FILTER1'), 2) $
-                           ;; + unbprefs[inbpref] $
-                           + '_prefilter.idlsave' $
-                           , count = Npfiles)
-      ;; Average of WB intensities collected with multiple NB
-      ;; prefilters for Ca II.
-      time_avg_sum = 0D
-      time_avg_n = 0L
-      for ipfile = 0, Npfiles-1 do begin
-        restore, pfiles[ipfile] ; Restores variable prf which is a struct
-        time_avg_sum += n_elements(prf.wav) * prf.time_avg
-        time_avg_n   += n_elements(prf.wav)
-        red_append, prefilter_wb, prf.wbint
-      endfor                    ; ipfile
-      t_calib = time_avg_sum / time_avg_n
-      prefilter_wb = mean(prefilter_wb)
+    Nmakescan : begin           ; This is a SCAN cube
+      cube_paras = prparas[pos_makescan]
+      cube_paras_struct = json_parse(cube_paras, /tostruct)
+      wbpref = (stregex(cube_paras_struct.dir $
+                        , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
+      wbimage = mrdfits(filename, 'WBIMAGE', ehdr, STATUS=status, /silent)
+      wcTMEAN = median(wbimage)
     end
-    else : stop
+    else : begin
+      print, inam+' : This type of cube is not implemented yet.'
+      stop
+    end
+  endcase
+
+    
+  ;; Prefilter fit data - WB intensity and time. 
+  case strtrim(fxpar(hdr,'INSTRUME'), 2)of
+
+        'CRISP' : pfiles = file_search(self.out_dir $
+                                       + '/prefilter_fits/Crisp-?_' $
+                                       + strtrim(fxpar(hdr,'FILTER1'), 2) $
+                                       + '_prefilter.idlsave' $
+                                       , count = Npfiles)
+        ;; R and T simultaneous with the same WB data
+        'CHROMIS' : pfiles = file_search(self.out_dir $
+                                         + '/prefilter_fits/chromis_' $
+                                         + strtrim(fxpar(hdr,'FILTER1'), 2) $
+                                         + '_prefilter.idlsave' $
+                                         , count = Npfiles)
+        else : stop
   endcase 
+  ;; For CRISP, R and T simultaneous with the same WB data. For
+  ;; CHROMIS, scans are fast so one prefilter is enough also for Ca
+  ;; II.
+  restore, pfiles[0]            ; Restores variable prf which is a struct
+  time_avg_sum = n_elements(prf.wav) * prf.time_avg
+  time_avg_n   = n_elements(prf.wav)
+  t_calib = time_avg_sum / time_avg_n
+  prefilter_wb = prf.wbint
   xposure = prf.xposure
   
 ;  ;; Load prefilter fit results to get the time of the prefilter fit
@@ -141,51 +158,16 @@ pro red::fitscube_intensitycorr, filename $
 ;  t_calib = time_avg_sum / time_avg_n
 
   
-  
-  ;; Get info from the cube making step
-  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
-  pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
-  case 1 of
-    Nmakenb : begin             ; This is a NB cube
-      cube_paras = prparas[pos_makenb]
-      cube_paras_struct = json_parse(cube_paras, /tostruct)
-      wbhdr = headfits(cube_paras_struct.wcfile)
-      wbpref = fxpar(wbhdr, 'FILTER1')
-      fxbopen, bunit, cube_paras_struct.wcfile, 'MWCINFO', bbhdr
-      fxbreadm, bunit, row = 1 $
-                , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-                ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
-;      ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
-;      ;; wbgfiles (WideBand Global).
-;      fxbread, bunit, wbgfiles, 'WFILES', 1
-      fxbclose, bunit
-    end
-    Nmakescan : begin           ; This is a SCAN cube
-      cube_paras = prparas[pos_makescan]
-      cube_paras_struct = json_parse(cube_paras, /tostruct)
-      wbpref = (stregex(cube_paras_struct.dir $
-                        , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
-
-;      wcTMEAN = [1.]            ; Should calculate this from WB data in extension.
-      wbimage = mrdfits(filename, 'WBIMAGE', ehdr, STATUS=status, /silent)
-      wcTMEAN = median(wbimage)
-      
-      stop
-    end
-    else : stop                 ; Don't know what kind of file this is!
-  endcase
-
-  ;; Old correction, includes rapid variations from scan to scan
-  tscl = prefilter_wb / wcTMEAN
 
   if PRMODE ne 'DISK-CENTER' then begin
 
     ;; Do LOCAL, the old kind of correction 
 
+    ;; Old correction, includes rapid variations from scan to scan
+    tscl = prefilter_wb / wcTMEAN
+
     correction = fltarr(Ntuning, Nscans)
     for iscan = 0, Nscans-1 do correction[*, iscan] = tscl[iscan]
-    
-    stop
 
   endif else begin
     
