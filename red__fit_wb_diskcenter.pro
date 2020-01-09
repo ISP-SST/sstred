@@ -76,7 +76,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     times[idir] = red_time2double(stregex(dirs[idir], timeregex, /extract))
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
-  stop
+
   ;; Idea: for flats directories, mu might vary during the data
   ;; collection. So find the data where mu peaks!
   
