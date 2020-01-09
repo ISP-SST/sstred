@@ -76,7 +76,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     times[idir] = red_time2double(stregex(dirs[idir], timeregex, /extract))
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
-
+  stop
   ;; Idea: for flats directories, mu might vary during the data
   ;; collection. So find the data where mu peaks!
   
@@ -153,7 +153,16 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     coeffs_str = strarr(Nprefs)
     
     ;; Prepare for plotting the results
-    colors = distinct_colors(n_colors = Nprefs, /num)
+    if Nprefs le n_elements(colors) then begin
+      colors = ['blue', 'red', 'green', 'plum', 'cyan', 'darkkhaki']
+      ;; Colors from cgPickColorName()
+      colors = ['RED', 'BLU', 'GRN', 'ORG', 'PUR', 'YGB', 'PBG', 'BLK'] + '5'
+      colors = colors[0:Nprefs-1]
+    endif else begin
+      ;; Not likely to be needed:
+      colors = red_wavelengthtorgb(float(upref)/10., /num)
+      ;;colors = distinct_colors(n_colors = Nprefs, /num)
+    endelse
     cgwindow
     cgplot, /add, [0], /nodata $
             , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/ms]' $
