@@ -103,6 +103,10 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
              + long(iscan)*Ntuning*Nstokes
   endif
 
+  Nframes = Ntuning * Nstokes * Nscans
+  for iii = 0, n_elements(iframe)-1 do if iframe[iii] lt 0 then iframe[iii] += Nframes 
+
+
   if (size(fileassoc,/struc)).type_name eq 'FLOAT' then begin
     ;; Get the frame
     frame = fileassoc[iframe]
