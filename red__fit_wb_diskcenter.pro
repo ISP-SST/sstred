@@ -92,7 +92,6 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   nbindx = where(file_test(dirs+'/'+camnb), Nnb)
   if Nwb eq 0 then noabsunits = 1
 
-  
   if Nwb gt 0 then begin
 
     ;; Measure DC WB intensities
@@ -164,10 +163,6 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       ;;colors = distinct_colors(n_colors = Nprefs, /num)
     endelse
     cgwindow
-    cgplot, /add, [0], /nodata $
-            , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/ms]' $
-            , xrange = [min(wbtimes), max(wbtimes)]/3600. + [-0.1, 0.1] $
-            , yrange = [0, max(wbintensity/wbexpt)*1.05]/1000.
 
     ;; Loop over prefilters
     for ipref = 0, Nprefs-1 do begin
@@ -180,12 +175,21 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         if Nmatch eq 0 then continue
       endif 
 
-
-      ;; Set up the plot
-      cgplot, /add, /over, psym = 16, color = colors[ipref] $
-              , wbtimes[indx] / 3600. $
-              , wbintensity[indx] / wbexpt[indx] / 1000.
-
+      if ipref eq 0 then begin
+        ;; Set up the plot
+        red_timeplot, /add $
+                      , psym = 16, color = colors[ipref] $
+                      , wbtimes[indx] $
+                      , wbintensity[indx] / wbexpt[indx] / 1000. $
+                      , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/ms]' $
+                      , xrange = [min(wbtimes), max(wbtimes)] + [-0.1, 0.1] $
+                      , yrange = [0, max(wbintensity/wbexpt)*1.05]/1000.
+      endif else begin
+        cgplot, /add, /over, psym = 16, color = colors[ipref] $
+                , wbtimes[indx] $
+                , wbintensity[indx] / wbexpt[indx] / 1000.
+      endelse
+      
       ;; Set up for fitting
       if n_elements(fitexpr_in) eq 0 then begin
         case n_elements(indx) of
@@ -208,8 +212,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                       )
 
         ;; Plot it
-        tt = (findgen(1000)/1000 * (max(wbtimes[indx])-min(wbtimes[indx])) + min(wbtimes[indx])) / 3600
-        wbint = red_evalexpr(fitexpr, tt, pp)
+        tt = (findgen(1000)/1000 * (max(wbtimes[indx])-min(wbtimes[indx])) + min(wbtimes[indx])) 
+        wbint = red_evalexpr(fitexpr, tt/3600, pp)
         cgplot, /add, /over, color = colors[ipref], tt, wbint / 1000.
 
         ;; Save it
