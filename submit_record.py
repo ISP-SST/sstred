@@ -13,7 +13,7 @@ from requests.auth import AuthBase
 BASE_FILE_DIRECTORY = '/ABSOLUTE/PATH/TO/DATA/DIRECTORY'
 
 # Set with proper base URL of data
-BASE_FILE_URL = 'https://www.isf.astro.su.se/data/'
+BASE_FILE_URL = 'https://dubshen.astro.su.se/data/'
 
 # Default username and API key of the user in the SOLARNET Data Archive owning the data
 DEFAULT_USERNAME = ''
