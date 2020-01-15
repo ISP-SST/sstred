@@ -37,21 +37,38 @@
 ;    pref : in, optional, type=string
 ;
 ;        Process data only for this prefilter.
+;
+;    tmin : in, optional, type=string
+;
+;        Do not use datasets started before this time, specified using
+;        the format "HH[[:MM]:SS]".
+; 
+;    tmax : in, optional, type=string
+;
+;        Do not use datasets started after this time, specified using
+;        the format "HH[[:MM]:SS]".
 ; 
 ; :History:
 ; 
 ;    2019-07-15 : MGL. First version.
 ; 
+;    2020-01-15 : MGL. New keywords tmin and tmax. If mu unavailable
+;                 in logs, assume flats are at large enough mu.
+; 
 ;-
 pro red::fit_wb_diskcenter, dirs = dirs $
                             , fitexpr = fitexpr_in $
                             , mu_limit = mu_limit $
-                            , pref = pref
+                            , pref = pref $
+                            , tmin = tmin $
+                            , tmax = tmax
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(mu_limit) eq 0 then mu_limit = 0.97
+  if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
+  if n_elements(tmin)     eq 0 then tmin = '00:00:00'
+  if n_elements(tmax)     eq 0 then tmax = '24:00:00'
   
   cams = *self.cameras
   camWB = (cams[where(strmatch(cams,'*-W'))])[0]
@@ -76,18 +93,42 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     times[idir] = red_time2double(stregex(dirs[idir], timeregex, /extract))
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
+  ;; If mu isn't available in logs, assume flats are at large enough mu
+  indx = where(~finite(mu)  and strmatch(dirs,'*flat*'), Ndirs)
+  if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
 
+  
   ;; Idea: for flats directories, mu might vary during the data
   ;; collection. So find the data where mu peaks!
   
-  
-  indx = where(mu gt mu_limit, Ndirs)
-  if Ndirs eq 0 then stop
-  dirs = dirs[indx]
-  times = times[indx]
-  mu = mu[indx]
-  za = za[indx]
 
+  ;; Is mu large enough? 
+  indx = where(mu gt mu_limit), Ndirs)
+  if Ndirs eq 0 then begin
+    print, inam + ' : No WB data with mu > ' + strtrim(mu_limit, 2)
+    return
+  endif else begin
+    dirs = dirs[indx]
+    times = times[indx]
+    mu = mu[indx]
+    za = za[indx]
+  endelse
+  
+  
+  ;; In specified time range?
+  indx = where(times gt red_time2double(tmin) and times lt red_time2double(tmax), Ntime)
+  if Ntime eq 0 then begin
+    print, inam + ' : No WB data in time range ['+tmin+','+tmax+']'
+    return
+  endif else begin
+    dirs = dirs[indx]
+    times = times[indx]
+    mu = mu[indx]
+    za = za[indx]
+  endelse 
+
+  
+  
   wbindx = where(file_test(dirs+'/'+camwb), Nwb)
   nbindx = where(file_test(dirs+'/'+camnb), Nnb)
   if Nwb eq 0 then noabsunits = 1
