@@ -102,12 +102,12 @@ pro chromis::make_scan_cube, dir $
                              , cmap_fwhm = cmap_fwhm $
                              , crop = crop $
                              , integer = integer $
+                             , intensitycorr = intensitycorr $
                              , interactive = interactive $
                              , limb_data = limb_data $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
                              , nostatistics = nostatistics $
-                             , intensitycorr = intensitycorr $
                              , odir = odir $
                              , overwrite = overwrite $
                              , tile = tile $
@@ -116,12 +116,6 @@ pro chromis::make_scan_cube, dir $
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
-
-;;  if n_elements(nowbintensitycorr) eq 0 then nowbintensitycorr = 1 ; Temporary default!
-
-
-
-  ;; Implement booleans as descibed in header!
   case 1 of
     
     ;; Temporary default! Should be 'fit' when that works:
@@ -135,11 +129,7 @@ pro chromis::make_scan_cube, dir $
     else : if intensitycorr then intensitycorr = 'fit' else intensitycorr = 'none'
     
   endcase
-  
   if n_elements(intensitycorr) eq 0 then intensitycorr = 'none' 
-
-
-
 
   ;; Temporarily disable cavity maps by default, can still be be
   ;; written (experimentally) with explicit nocavitymap=0.
@@ -151,6 +141,7 @@ pro chromis::make_scan_cube, dir $
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop     
   red_make_prpara, prpara, integer  
+  red_make_prpara, prpara, intensitycorr  
   red_make_prpara, prpara, interactive
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap    
