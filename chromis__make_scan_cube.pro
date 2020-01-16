@@ -31,6 +31,10 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
+;     integer : in, optional, type=boolean
+;
+;       Store as integers instead of floats.
+;
 ;     intensitycorr : in, optional, type="string or boolean", default=FALSE/none
 ;
 ;       Indicate whether to do intensity correction based on WB data.
@@ -40,10 +44,6 @@
 ;       fit_wb_diskcenter, evaluated at the current time and at the
 ;       time of the prefilter calibration). Boolean value TRUE is
 ;       equivalent to 'fit'. FALSE results in no correction.
-;
-;     integer : in, optional, type=boolean
-;
-;       Store as integers instead of floats.
 ;
 ;     limb_data : in, optional, type=boolean
 ;
@@ -61,7 +61,7 @@
 ;     nostatistics : in, optional, type=boolean
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
-;       DATA*.
+;       DATA*. If statistics keywords already exist, then remove them.
 ;
 ;     odir : in, optional, type=string, detault='cubes_scan/'
 ;
@@ -114,7 +114,7 @@ pro chromis::make_scan_cube, dir $
                              , scannos = scannos 
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   case 1 of
     
