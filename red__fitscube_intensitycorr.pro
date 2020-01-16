@@ -128,8 +128,8 @@ pro red::fitscube_intensitycorr, filename $
         else : stop
   endcase 
   ;; For CRISP, R and T simultaneous with the same WB data. For
-  ;; CHROMIS, scans are fast so one prefilter is enough also for Ca
-  ;; II.
+  ;; CHROMIS, scans are fast so one prefilter should be enough also
+  ;; for Ca II.
   restore, pfiles[0]            ; Restores variable prf which is a struct
   time_avg_sum = n_elements(prf.wav) * prf.time_avg
   time_avg_n   = n_elements(prf.wav)
@@ -227,8 +227,10 @@ pro red::fitscube_intensitycorr, filename $
       print, inam + "It looks like your a->fit_wb_diskcenter step didn't find WB data"
       print, "for a long enough time range. Either your prefilter fit calibration data"
       print, "or your data cube have time stamps outside the range:"
-      print, 'WB data range (plus margin) : ['+red_timestring(wb_time_beg)+','+red_timestring(wb_time_end)+'].'
-      print, 'Cube time range : ['+red_timestring(min(t))+','+red_timestring(max(t))+'].'
+      print, 'WB data range (plus margin) : [' + red_timestring(wb_time_beg) $
+             + ',' + red_timestring(wb_time_end) + '].'
+      print, 'Cube time range : [' + red_timestring(min(t)) $
+             + ',' + red_timestring(max(t)) + '].'
       print
       print, "If you have more calibration data, you can choose to delete the"
       print, "cube now and come back after running that calibration again or to"
@@ -251,10 +253,9 @@ pro red::fitscube_intensitycorr, filename $
 
 
     
-    ;; Interpolate to get the WB intensities
-    wbints = red_evalexpr(wbfitexpr, t, wbpp) 
-    wbintcalib = red_evalexpr(wbfitexpr, t_calib, wbpp) 
-
+    ;; Use the fit to get the WB intensities
+    wbints = red_evalexpr(wbfitexpr, t/3600, wbpp) 
+    wbintcalib = red_evalexpr(wbfitexpr, t_calib/3600, wbpp) 
 
     ;; Change intensity to compensate for time difference
     ;; between prefilterfit and data collection. Use the ratio
