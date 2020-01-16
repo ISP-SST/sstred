@@ -28,24 +28,31 @@
 ;    dirs : in, optional, type=string
 ;
 ;        Set this to the time-stamp directories to use to limit the
-;        automatic selection.
+;        automatic selection. Useful for excluding, e.g., data with a
+;        large sunspot in the field of view.
 ;
 ;    fitexpr : in, optional, type=string, default="depends on number of data points"
 ;
 ;        The function fit to the intensities by use of mpfitexpr.
 ;
+;    mu_limit : in, optional, type=float, default=0.97
+;
+;        WB data collected farther from disk center than this are
+;        excluded automatically.
+;
 ;    pref : in, optional, type=string
 ;
 ;        Process data only for this prefilter.
 ;
-;    tmin : in, optional, type=string
-;
-;        Do not use datasets started before this time, specified using
-;        the format "HH[[:MM]:SS]".
-; 
 ;    tmax : in, optional, type=string
 ;
 ;        Do not use datasets started after this time, specified using
+;        the format "HH[[:MM]:SS]". Useful if, e.g., there are both AM
+;        and PM data, and the fit is not good if both are included.
+; 
+;    tmin : in, optional, type=string
+;
+;        Do not use datasets started before this time, specified using
 ;        the format "HH[[:MM]:SS]".
 ; 
 ; :History:
