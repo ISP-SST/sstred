@@ -27,9 +27,19 @@
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
 ;
-;     cmap_fwhm : in, type=float, default=7
+;     cmap_fwhm : in, optional, type=float, default=7
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
+;
+;     intensitycorr : in, optional, type="string or boolean", default=FALSE/none
+;
+;       Indicate whether to do intensity correction based on WB data.
+;       One of 'old' (for correction based on comparing the current
+;       scan with the prefilter calibration data, or 'fit' (for
+;       correction based on comparing intensity from
+;       fit_wb_diskcenter, evaluated at the current time and at the
+;       time of the prefilter calibration). Boolean value TRUE is
+;       equivalent to 'fit'. FALSE results in no correction.
 ;
 ;     integer : in, optional, type=boolean
 ;
@@ -51,7 +61,11 @@
 ;     nostatistics : in, optional, type=boolean
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. 
+;       DATA*.
+;
+;     odir : in, optional, type=string, detault='cubes_scan/'
+;
+;       The output directory.
 ;
 ;     overwrite : in, optional, type=boolean
 ;
@@ -77,7 +91,9 @@
 ;    2018-05-08 : MGL. New keyword limb_data. 
 ; 
 ;    2019-08-26 : MGL. Do integerization, statistics calculations, and
-;                 WB intensity correction by calling subprograms.
+;                 WB intensity correction by calling subprograms. 
+; 
+;    2020-01-15 : MGL. New keywords intensitycorr and odir.
 ; 
 ;-
 pro chromis::make_scan_cube, dir $
@@ -91,16 +107,39 @@ pro chromis::make_scan_cube, dir $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
                              , nostatistics = nostatistics $
-                             , nowbintensitycorr = nowbintensitycorr $
+                             , intensitycorr = intensitycorr $
+                             , odir = odir $
                              , overwrite = overwrite $
                              , tile = tile $
                              , scannos = scannos 
-                            
+  
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
 
-  if n_elements(nowbintensitycorr) eq 0 then nowbintensitycorr = 1 ; Temporary default!
+;;  if n_elements(nowbintensitycorr) eq 0 then nowbintensitycorr = 1 ; Temporary default!
+
+
+
+  ;; Implement booleans as descibed in header!
+  case 1 of
+    
+    ;; Temporary default! Should be 'fit' when that works:
+    n_elements(intensitycorr) eq 0 : intensitycorr = 'none'
+    
+    size(intensitycorr, /tname) eq 'STRING' : begin
+      if intensitycorr ne 'fit' and intensitycorr ne 'old' then intensitycorr = 'none'
+    end
+
+    ;; Other types interpreted as boolean
+    else : if intensitycorr then intensitycorr = 'fit' else intensitycorr = 'none'
+    
+  endcase
+  
+  if n_elements(intensitycorr) eq 0 then intensitycorr = 'none' 
+
+
+
 
   ;; Temporarily disable cavity maps by default, can still be be
   ;; written (experimentally) with explicit nocavitymap=0.
@@ -731,11 +770,13 @@ pro chromis::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
     writefits, filename, wbim, ehdr, /append
 
-;    if ~keyword_set(nowbintensitycorr) then begin
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    self -> fitscube_intensitycorr, filename, nodiskcenter = nowbintensitycorr
-;    endif
+    case intensitycorr of
+      'fit' : self -> fitscube_intensitycorr, filename, nodiskcenter = 0
+      'old' : self -> fitscube_intensitycorr, filename, nodiskcenter = 1
+      else  : print, inam + ' : No intensity correction!'
+    endcase
     
     if keyword_set(integer) then begin
       ;; Convert to integers
