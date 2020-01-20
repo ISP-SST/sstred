@@ -17,12 +17,6 @@
 ;    Mats Löfdahl, ISP
 ; 
 ; 
-; :Returns:
-; 
-; 
-; :Params:
-; 
-; 
 ; :Keywords:
 ;
 ;    dirs : in, optional, type=string
@@ -144,13 +138,11 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
     ;; Measure DC WB intensities
 
-    ;;wbdir = self.out_dir+'/prefilter_fits/wb/'
     wbdir = self.out_dir+'/wb_intensities/'
     file_mkdir, wbdir
     wbdirs = dirs[wbindx]
     for iwb = 0, Nwb-1 do begin
       print, wbdirs[iwb]
-      ;;fnamesW = file_search(wbdirs[iwb]+'/Chromis-W/*_00000_*fits', count = NfilesW)      
       fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]00000[._]*', count = NfilesW)      
       self -> extractstates, fnamesw, states
 
@@ -170,9 +162,6 @@ pro red::fit_wb_diskcenter, dirs = dirs $
           ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
         endif
         
-        
-        
-
         red_fitspar_getdates, hdr, date_beg = date_beg
         
         red_append, wbintensity, median(ims)
@@ -200,10 +189,10 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     coeffs_str = strarr(Nprefs)
     
     ;; Prepare for plotting the results
+    ;;colors = ['blue', 'red', 'green', 'plum', 'cyan', 'darkkhaki']
+    ;; Colors from cgPickColorName()
+    colors = ['RED', 'BLU', 'GRN', 'ORG', 'PUR', 'YGB', 'PBG', 'BLK'] + '5'
     if Nprefs le n_elements(colors) then begin
-      colors = ['blue', 'red', 'green', 'plum', 'cyan', 'darkkhaki']
-      ;; Colors from cgPickColorName()
-      colors = ['RED', 'BLU', 'GRN', 'ORG', 'PUR', 'YGB', 'PBG', 'BLK'] + '5'
       colors = colors[0:Nprefs-1]
     endif else begin
       ;; Not likely to be needed:
@@ -229,7 +218,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                       , psym = 16, color = colors[ipref] $
                       , wbtimes[indx] $
                       , wbintensity[indx] / wbexpt[indx] / 1000. $
-                      , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/ms]' $
+                      , xtitle = 'time [UT]' $
+                      , ytitle = 'WB median intensity/exp time [counts/ms]' $
                       , xrange = [min(wbtimes), max(wbtimes)] + [-0.1, 0.1] $
                       , yrange = [0, max(wbintensity/wbexpt)*1.05]/1000.
       endif else begin
@@ -288,7 +278,6 @@ pro red::fit_wb_diskcenter, dirs = dirs $
          printf, lun, wbtimes[indx[i]], wbintensity[indx[i]], wbexpt[indx[i]], wbmu[indx[i]], wbza[indx[i]]
       free_lun, lun
 
-      
     endfor                      ; ipref
 
     ;; Finish the plot
