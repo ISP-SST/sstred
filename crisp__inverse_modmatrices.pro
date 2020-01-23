@@ -109,7 +109,7 @@ pro crisp::inverse_modmatrices, prefilter, dir $
           for ii = 0, Nelements-1 do mm[ii,*,*] = red_mask_ccd_tabs(reform(mm[ii,*,*]))
         endif
       endif
-      
+
       ;; Mask NaNs
       mask = bytarr(Nx, Ny) + 1B
       for ii = 0, Nelements-1 do mask and= finite(reform(mm[ii,*,*])) 
@@ -124,9 +124,12 @@ pro crisp::inverse_modmatrices, prefilter, dir $
 ;      endfor                    ; ii
 
       imm = red_invert_mmatrix(temporary(mm)) ; Inverse modulation matrix
-      
-      ;; Mask outlier pixels (but keep any NaN-masking)
-      mask and= max(abs(imm),dim=1) le 1
+
+      ;; Mask outlier pixels (but keep any NaN-masking). The purpose
+      ;; of this is to avoid huge intensity artifacts in the Stokes
+      ;; images. 
+      mask and= max(abs(imm),dim=1) le 2
+
       if min(mask) lt 1 then begin
         ;; Zero before pixe-filling. Should not be needed but
         ;; apparently is.

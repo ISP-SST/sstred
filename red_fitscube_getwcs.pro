@@ -43,6 +43,8 @@
 ;   2018-12-05 : MGL. Change it from a class method to a regular
 ;                procedure. 
 ; 
+;   2019-09-25 : MGL. Implement reading multiple wavelength
+;                distortions (cavity maps).
 ; 
 ;-
 pro red_fitscube_getwcs, filename $
@@ -149,38 +151,95 @@ pro red_fitscube_getwcs, filename $
 
   if arg_present(distortions) then begin
 
-    ;; Are there distortions in the file? They should be in an
+    ;; Read hierarch keyword dw3
+    dw3 = red_fitsgetkeyword(hdr, 'DW3')
+    Ndw3 = n_elements(dw3)
+    if Ndw3 eq 0 then begin
+      print, inam + ' : There is no DW3 keyword.'
+      print, inam + ' : No distortions returned.'
+      return
+    endif
+    dw3_keywords = strarr(Ndw3)
+    for idw3 = 0, Ndw3-1 do dw3_keywords[idw3] = (dw3[idw3])[0]
+    ;; APPLY should be the last DW3 keyword for each distortion, and
+    ;; we usually put NAME first.
+    name_pos = where(strmatch(dw3_keywords, 'NAME'), Nname) 
+    apply_pos = where(strmatch(dw3_keywords, 'APPLY'), Napply)
+
+    ;; Get the scales and offsets for the tuning coordinate
+    offsets = fltarr(Napply)
+    scales = fltarr(Napply) 
+    for i = 0, Napply-1 do begin
+      dw3_sub_keywords = dw3_keywords[name_pos[i]:apply_pos[i]]
+      dw3_sub = dw3[name_pos[i]:apply_pos[i]]
+      pos = where(dw3_sub_keywords eq 'EXTVER')
+      extver = (dw3_sub[pos[0]])(1)
+      scale_pos = where(dw3_sub_keywords eq 'SCALE3', Nscale)
+      offset_pos = where(dw3_sub_keywords eq 'OFFSET3', Noffset)
+      if Nscale eq 0 or Noffset eq 0 then begin
+        ;; Old WCSDVARR format without SCALE3 and OFFSET3
+        indx = indgen( fxpar(hdr, 'NAXIS3') )
+        if n_elements(indx) eq 1 then begin
+          ;; A single-tuningpoint cube, probably a Stokes cube.
+          scales[i]  = 1.
+          offsets[i] = 1.
+        endif else begin
+          eps = 1e-3
+          scales[i] = (1. - 2.*eps) / ((indx[-1]+0.5) - (indx[0]-0.5))
+          offsets[i] = ( (indx[-1]+0.5)*(.5+eps) - (1.5-eps)*(indx[0]-0.5) ) / (1. - 2.*eps)
+        endelse
+      endif else begin
+        scales[extver-1] = (dw3_sub[scale_pos[0]])(1)
+        offsets[extver-1] = (dw3_sub[offset_pos[0]])(1)
+      endelse
+    endfor                      ; i
+    
+    ;; Are there distortions extensions? They should be in an
     ;; WCSDVARR extension.
     fits_open, filename, fcb
-    if total(fcb.extname eq 'WCSDVARR') eq 1 then begin
-
-      wcsdvarr = mrdfits( filename, 'WCSDVARR', chdr, status = status, /silent)
-
-      ;; So far we have only implemented distortions in the wavelength
-      ;; coordinate, so we'll assume this is all there could be. But
-      ;; returning a struct makes it possible to change this later.
-
-      
-      if status eq 0 then begin
-
-        dist_dims = size(wcsdvarr, /dim)
-        if n_elements(dist_dims) eq 2 then red_append, dist_dims, 1
-        distortions = replicate({wave:fltarr(dist_dims[0:1])}, dist_dims[2])
-        
-        for iscan = 0, dist_dims[2]-1 do begin
-          distortions[iscan].wave = wcsdvarr[*, *, iscan]
-        endfor                  ; iscan
-
-      endif else begin
-        print, inam + ' : There was some error reading the WCSDVARR extension.'
-        print, inam + ' : No distortions returned.'
-      endelse
-    endif else begin
+    free_lun, fcb.unit
+    dindx = where(fcb.extname eq 'WCSDVARR', Ndist)
+    if Ndist eq 0 then begin
       print, inam + ' : There is no WCSDVARR extension.'
       print, inam + ' : No distortions returned.'
-    endelse
+      return
+    endif
+
+    if Ndist ne Napply then stop ; Should match!
     
-  endif
+    for idist = 0, Ndist-1 do begin
+
+      wcsdvarr = mrdfits( filename, dindx[idist], chdr, status = status, /silent)
+
+      if status ne 0 then  begin
+        print, inam + ' : There was an error reading WCSDVARR extension #'+strtrim(idist, 2)
+        print, inam + ' : No distortions returned.'
+        undefine, distortions
+        return
+      endif
+      
+      if n_elements(distortions) eq 0 then begin
+        ;; So far we have only implemented distortions in the
+        ;; wavelength coordinate, so we'll assume this is all there
+        ;; could be. But returning a struct makes it possible to
+        ;; change this later.
+        distortions = replicate({ wave:wcsdvarr $
+                                  , tun_index:'' $
+                                }, Ndist)
+      endif
+
+      ;; index=1 for tunings that are affected by this distortion
+      dist_index = round((indgen( fxpar(hdr, 'NAXIS3') ) + offsets[idist])*scales[idist] )
+      ;; The indices of the tunings that are affected
+      tun_index = red_collapserange(where(dist_index eq 1), ld='', rd='')
+
+      ;; Populate the struct.
+      distortions[idist].wave      = wcsdvarr
+      distortions[idist].tun_index = tun_index
+
+    endfor                      ; idist 
+    
+  endif 
 
 
 end

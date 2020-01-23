@@ -87,7 +87,10 @@ function red_readhead_fits, fname, $
       if count eq 0 then begin
         ;; Try to read from file name
         fname_split = strsplit(file_basename(fname,'.fits'),'_',/extr)
-        if n_elements(fname_split) gt 4 then begin
+        if fname_split[-1] eq 'cavityfree.flat' then begin
+          prefilter = (fname_split)[1]
+          fxaddpar, header, red_keytab('pref'), prefilter, 'Extracted from file name'
+        endif else if n_elements(fname_split) gt 4 then begin
           ;; Shorter and it might be a dark
           prefilter = (fname_split)[-1]
           ;; Translate to previously used filter names

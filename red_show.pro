@@ -21,19 +21,23 @@
 ; 
 ; :Keywords:
 ; 
-;     wnum : in
+;     wnum : in, optional, type=integer
 ;
 ;        integer window index
 ;
-;     nowin : in, type=boolean
+;     nowin : in, optional, type=boolean
 ;
 ;         Set this to not recreate the window
 ;
-;     offs : in, type=integet, default=57
+;     offs : in, type=integer, default=57
 ;
 ;        integer removes pixel from the Y-dimension of
 ;        the screen so compensates for the menubar and so on.
 ;
+;     reuse : in, optional, type=boolean
+;
+;        Re-use existing window, if there is one with the appropriate
+;        wnum. 
 ;
 ;     title : in, optional, type=string
 ;
@@ -46,16 +50,28 @@
 ;
 ;    2013-09-20 : MGL. Added title keyword.
 ;
+;    2019-10-17 : MGL. New keyword reuse.
+;
 ;-
-pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale, title = title
+pro red_show,vari,wnum=wnum,nowin=nowin,offs=offs,opt=opt,noscale=noscale, title = title, reuse = reuse
 
-                                ;Initializes some variables
+  ;; Initializes some variables
   if ~keyword_set(wnum) then wnum=0
   if ~keyword_set(offs) then offs=24
   var=reform(vari)
   dim=size(var)
   sdim=get_screen_size()
   sdim[1]-=offs
+
+  if keyword_set(reuse) then begin
+    device, window_state=thesewindows
+    window_exists = thesewindows[wnum]
+    if window_exists then begin
+      wset, wnum
+      nowin = 1
+    endif
+  endif
+  
                                 ;Checks for the right image dimensions
   if dim[0] lt 2 OR dim[0] gt 3 then begin
     print,'Wrong dimensions: '+stri(dim[0])+'.Image must be a 2D or 3D array'

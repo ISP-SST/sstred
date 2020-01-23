@@ -41,7 +41,8 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   use_strings = n_elements(datasets) eq 0
-  
+  ;; clear states and try to get them from the cache
+  undefine,states 
   if use_strings then begin
     if ~keyword_set(force) then begin      
       Nstr = n_elements(strings)
@@ -56,7 +57,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
     endif
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
     timestamp = timestamps[uniq(timestamps,sort(timestamps))]
-    datapsets = self.isodate + ' ' + timestamp
+    datasets = self.isodate + ' ' + timestamp
   endif
 
   instrument = 'CHROMIS'
@@ -300,7 +301,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
   endfor   ;states
 
   if use_strings then begin
-    if strmatch(strings[0],'*/data/*') then begin
+    if strmatch(strings[0],'*CHROMIS/data/*') then begin
       ;;We have to generate filenames as link_data routine does.
       Nst = n_elements(states)
       files=strarr(Nst)       

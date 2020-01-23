@@ -250,7 +250,7 @@ pro red::fitscube_crop, infile $
   endfor                        ; iframe
 
   ;; Read WCS extension, adapt roi coordinates to new FOV.
-  self -> fitscube_getwcs, infile, coordinates = old_wcs_coord, distortions = wcs_dist
+  red_fitscube_getwcs, infile, coordinates = old_wcs_coord, distortions = wcs_dist
   wcs_coord = old_wcs_coord
   hpl_dims = size(wcs_coord.hplt, /dim)
   xx = roi[[[0,1],[0,1]]]/float(Naxis[0]-1)
@@ -273,7 +273,7 @@ pro red::fitscube_crop, infile $
   
   if size(wcs_dist,/n_dim) gt 0 then begin
     cmap = reform(red_crop(wcs_dist.wave, roi = roi))
-    self -> fitscube_addcmap, outfile, cmap
+    red_fitscube_addcmap, outfile, reform(cmap, Naxis[0], Naxis[1], 1, 1, Nscans)
   endif
 
   
@@ -359,9 +359,9 @@ pro red::fitscube_crop, infile $
   if ~keyword_set(noflip) then begin
     ;; Make a flipped version
     print, 'Flip it!'
-    self -> fitscube_flip, outfile $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, outfile $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   print, 'Cropped cube written to '+outfile

@@ -60,6 +60,10 @@
 ;   
 ;     Write the statistics to the fitscube. 
 ;   
+;   remove_only : in, optional, type=boolean
+;
+;     Only remove existing statistics keywords.   
+;   
 ;   shifts : in, optional, type=array
 ;   
 ;     Shift vectors.
@@ -71,18 +75,20 @@
 ; 
 ;   2019-04-05 : MGL. Use red_fitscube_open and red_fitscube_close. 
 ; 
+;   2019-08-26 : MGL. New keyword remove_only.
+; 
 ;-
-pro red_fitscube_statistics, filename $
-                             , frame_statistics, cube_statistics $
+pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
                              , angles = angles $
-                             , cube_comments = cube_comments $
                              , full = full $
                              , grid = grid $
                              , origNx = origNx $
                              , origNy = origNy $
                              , percentiles = percentiles $
+                             , remove_only = remove_only $
+                             , shifts = shifts $
                              , write = write $
-                             , shifts = shifts 
+                             , cube_comments = cube_comments 
 
   if n_elements(percentiles) eq 0 then percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
   
@@ -94,6 +100,25 @@ pro red_fitscube_statistics, filename $
   ;; Open the file and set up an assoc variable.
   red_fitscube_open, filename, fileassoc, fitscube_info ;$
 ;                     , lun = lun
+
+  if keyword_set(remove_only) or keyword_set(write) then begin
+    ;; Remove any existing statistics keywords from the file header. 
+    hdr = fitscube_info.header
+    ;; Search for DATA* keywords
+    dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)
+    ;; Loop through the keywords backwards so we don't move them before
+    ;; they are deleted.
+    for idata = Ndata-1, 0, -1 do begin
+      keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
+      red_fitsdelkeyword, hdr, keyword
+    endfor                      ; idata
+    removed_stuff = Ndata gt 0 
+  endif
+  
+  if keyword_set(remove_only) then begin
+    if removed_stuff then red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
+    return
+  endif
   
   Nx      = fitscube_info.dimensions[0]
   Ny      = fitscube_info.dimensions[1]
@@ -217,38 +242,43 @@ pro red_fitscube_statistics, filename $
                                                    , binsize = binsize)
   endif
 
-  red_fitscube_close, fileassoc, fitscube_info
+  if ~keyword_set(write) then begin
+    red_fitscube_close, fileassoc, fitscube_info
+    return
+  endif 
+
+  if removed_stuff then begin
+    red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
+  endif else begin
+    red_fitscube_close, fileassoc, fitscube_info
+  endelse
   
-  if keyword_set(write) then begin
+  ;; Write the statistics to the fitscube file
 
-    ;; Write the statistics to the fitscube file
-
-    if Ntuning gt 1 then red_append, axis_numbers, 3
-    if Nstokes gt 1 then red_append, axis_numbers, 4
-    if Nscans gt 1 then red_append, axis_numbers, 5
-    
+  if Ntuning gt 1 then red_append, axis_numbers, 3
+  if Nstokes gt 1 then red_append, axis_numbers, 4
+  if Nscans gt 1 then red_append, axis_numbers, 5
+  
 ;    if Nstokes gt 1 then begin
 ;      axis_numbers = [3, 4, 5]  ; (Ntuning, Nstokes, Nscans)
 ;    endif else begin
 ;      axis_numbers = [3, 5]     ; (Ntuning, Nscans)
 ;    endelse
 
-    for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
+  for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
 
-      itags = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_statistics), Nmatch)
-      itagc = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_comments), Nmatch)
+    itags = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_statistics), Nmatch)
+    itagc = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_comments), Nmatch)
 
-      if Nmatch eq 1 then $
-         red_fitscube_addvarkeyword, filename $
-                                     , (tag_names(frame_statistics[0]))[itag] $
-                                     , frame_statistics.(itag) $
-                                     , anchor = anchor $
-                                     , keyword_value = cube_statistics.(itags) $
-                                     , comment = cube_comments.(itagc) $
-                                     , axis_numbers = axis_numbers
+    if Nmatch eq 1 then $
+       red_fitscube_addvarkeyword, filename $
+                                   , (tag_names(frame_statistics[0]))[itag] $
+                                   , frame_statistics.(itag) $
+                                   , anchor = anchor $
+                                   , keyword_value = cube_statistics.(itags) $
+                                   , comment = cube_comments.(itagc) $
+                                   , axis_numbers = axis_numbers
 
-    endfor                      ; itag
-    
-  endif
-  
+  endfor                        ; itag
+
 end

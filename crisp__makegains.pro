@@ -110,70 +110,78 @@ pro crisp::makegains, bad=bad $
       return
     endif
   endif
-  Nfiles = n_elements(files)
 
-  self -> extractstates, files, states
-  gainname = self -> filenames('gain', states)
+  ;; We want to run separately for regular and cavity-free flats 
+  cindx = where(strmatch(files, '*cavity*'), complement = findx, Ncav, ncomplement = Nnocav)
+  for iscav = 0, 1 do begin
 
-  for ifile = 0L, Nfiles -1 do begin
+    if iscav then begin
+      if Ncav eq 0 then continue
+      flatname = files[cindx]
+    endif else begin
+      if Nnocav eq 0 then continue
+      flatname = files[findx]
+    endelse
+    Nfiles = n_elements(flatname)
+    if Nfiles eq 0 then continue
     
-    tmp = strsplit(file_basename(files[ifile]), '._', /extract)
-    if(keyword_set(pref)) then begin
-      if(tmp[1] ne pref) then begin
-        print, inam+' : skipping prefilter -> '+tmp[1]
-        continue
+    self -> extractstates, flatname, states
+
+    if iscav then begin
+      gainname = self -> filenames('cavityfree_gain', states)
+    endif else begin
+      gainname = self -> filenames('gain', states)
+    endelse
+    
+
+    for ifile = 0L, Nfiles -1 do begin
+      
+      tmp = strsplit(file_basename(flatname[ifile]), '._', /extract)
+      if(keyword_set(pref)) then begin
+        if(tmp[1] ne pref) then begin
+          print, inam+' : skipping prefilter -> '+tmp[1]
+          continue
+        endif
       endif
-    endif
 
-    flat = red_readdata(files[ifile], head = hdr)
+      flat = red_readdata(flatname[ifile], head = hdr)
 
-    ;; Only one camera?
-    if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
+      ;; Only one camera?
+      if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
 
-    if ~keyword_set(no_descatter) then begin
-      if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
-        self -> loadbackscatter, tmp[0], tmp[1], bg, psf
-;           psff = self.descatter_dir+'/'+tmp[0]+'.psf.f0'
-;           bgf = self.descatter_dir+'/'+tmp[0]+'.backgain.f0'
-;           if(file_test(psff) AND file_test(bgf)) then begin
-;              psf = f0(psff)
-;              bg = f0(bgf)
-;        flat = red_cdescatter(flat, bg, psf, nthreads = nthreads, verbose = 1)
-        flat = rdx_descatter(flat, bg, psf, nthreads = nthreads, /verbose)
-;           endif
+      if ~keyword_set(no_descatter) and ~iscav then begin
+        ;; Cavity free flats are already backscatter corrected
+        if((tmp[1] eq '8542' OR tmp[1] eq '7772') AND self.dodescatter) then begin
+          self -> loadbackscatter, tmp[0], tmp[1], bg, psf
+          flat = rdx_descatter(flat, bg, psf, nthreads = nthreads, /verbose)
+        endif
       endif
-    endif
 
-    gain = self->flat2gain(flat, ma=max, mi=min, bad=bad, preserve=preserve, smoothsize=smoothsize)
+      if iscav then begin
+        this_preserve = keyword_set(preserve) $
+                        or tmp[1] eq '8542' $
+                        or tmp[1] eq '7772'
+      endif else begin
+        this_preserve = keyword_set(preserve)
+      endelse
 
-    ;; Edit the header
-    red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
-    self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
+      gain = self->flat2gain(flat, ma=max, mi=min, bad=bad $
+                             , preserve=this_preserve, smoothsize=smoothsize)
+
+      ;; Edit the header
+      red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
+      self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
                                 , prproc = inam, prpara = prpara
     
-    ;; Output gaintable
-    file_mkdir, file_dirname(gainname[ifile])
-    print, inam+' : Saving '+gainname[ifile]
-    ;;fzwrite, float(gain), outdir+namout, ' '
-    overwrite = 1
-    red_writedata, gainname[ifile], float(gain), header = hdr,$
-                   filetype='fits', overwrite = overwrite
+      ;; Output gaintable
+      file_mkdir, file_dirname(gainname[ifile])
+      print, inam+' : Saving '+gainname[ifile]
+      ;;fzwrite, float(gain), outdir+namout, ' '
+      overwrite = 1
+      red_writedata, gainname[ifile], float(gain), header = hdr,$
+                     filetype='fits', overwrite = overwrite
+      
+    endfor                      ; ifile
+  endfor                        ; iscav
     
-;    namout = file_basename(files[ifile], '.flat.fits')+'.gain'
-;    outdir = self.out_dir+'/gaintables/'
-;
-;    ;; Edit the header
-;    red_fitsaddkeyword, hdr, 'FILENAME', outdir+namout
-;    self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
-;                                , prproc = inam, prpara = prpara
-;    
-;    ;; Output gaintable
-;    file_mkdir, outdir
-;    print, inam+' : saving '+outdir+namout
-;    ;;fzwrite, float(gain), outdir+namout, h
-;    overwrite = 1
-;    red_writedata, outdir+namout, float(gain), header = hdr, filetype='ANA', overwrite = overwrite
-
-  endfor                        ; ifile
-                                
 end

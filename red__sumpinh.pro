@@ -162,9 +162,18 @@ pro red::sumpinh, nthreads = nthreads $
     cam = cams[icam]
     detector = self->getdetector( cam )
 
-    self->selectfiles, cam=cam, dirs=dirs, prefilter=prefilter, ustat=ustat, $
-                       files=files, states=states, /force
-
+    if 0 then begin
+      ;; Needed for old data? E.g., 2012?
+      if n_elements(prefilter) gt 0 then prefin = prefilter else undefine, prefin
+      files = red_raw_search(dirs[0], count = nf) ;, prefilters = prefin)
+      self -> extractstates, files, states
+      self->selectfiles, cam=cam, dirs=dirs, prefilter=prefin, ustat=ustat, $
+                         files=files, states=states ;, /force
+    endif else begin
+      self->selectfiles, cam=cam, dirs=dirs, prefilter=prefin, ustat=ustat, $
+                         files=files, states=states, /force
+    endelse
+    
     nf = n_elements(files)
     if( nf eq 0 || files[0] eq '') then begin
       print, inam+' : '+cam+': no files found in: '+dirstr

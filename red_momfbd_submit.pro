@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; Submit a momfbd job
+; Submit jobs to the (redux) momfbd queue.
 ;
 ; :Categories:
 ;
@@ -13,41 +13,46 @@
 ;
 ; :Params:
 ;
-;   IMNO : in, type=string
+;    cfgdir : in, type=string
 ;
-;     A string with an image number or image number range that momfbd
-;     understands. The job will be submitted with
-;     momfbd_submit.IMNO.cfg as the config file.
-;
-;     It is the responsibility of the calling program to make sure
-;     IMNO does not clash with running jobs or jobs whose output
-;     should not be overwritten.
+;      The path to a directory. The momfbd cfg files in this directory
+;      (or a subset thereof) will be submitted to the redux momfbd
+;      queue (see the shell command rdx_sub).
 ;
 ; :Keywords:
 ;
-;    port : in, type=integer
-;
-;      Submit job to manager running with -p PORT
-;
-;    cfgfile : in, optional, type=string
-;
-;      A file name, this file will be copied to
-;      momfbd_submit.IMNO.cfg. One of CFGFILE and CFGLINES must be
-;      given. 
-;
-;    cfglines : in, optional, type=strarr
-;
-;      Lines to append to momfbd_submit.IMNO.cfg. (Or create a new
-;      file if needed.) One of CFGFILE and CFGLINES must be given.
-;
-;    dir : in, optional, type=string
-;
-;      Working dir is DIR.
-;
 ;    force : in, optional, type=boolean
 ;
-;      If force is set, then submit with -f flag to overwrite existing
-;      output.
+;       Overwrite existing output.
+;
+;    options : in, optional, type=string
+;
+;       Options to rdx_sub, added to the command line.
+;
+;    no_check : in, optional, type=boolean
+;
+;       Submit without checking.
+;
+;    port : in, optional, type=integer
+;
+;       Specify the port of the redux manager.
+;
+;    priority : in, optional, type=integer, default=10
+;
+;       Specify the priority of the job. (Use with good judgement!)
+;
+;    scannos : in, optional, type="intarr or string"
+;
+;       An array of scan numbers or a comma/dash-separated string of
+;       scan numbers.
+;
+;    user : in, optional, type=string
+;
+;       User name to be shown by rdx_stat.
+;
+;    verbose  : in, optional, type=boolean
+;
+;       Make the rdx_sub command verbose.
 ;
 ; :History:
 ;
@@ -64,73 +69,93 @@
 ;
 ;   2014-08-12 : MGL. Don't use last().
 ;
-;
+;   2019-10-23 : MGL. Rewrite from scratch, now for running with the
+;                redux momfbd code.
+; 
 ;-
-pro red_momfbd_submit, imno $
-                       , port=port $
-                       , cfgfile=cfgfile $
-                       , cfglines=cfglines $
-                       , dir=dir $
-                       , force=force
+pro red_momfbd_submit, cfgdir $
+                       , force = force $
+                       , options = options $
+                       , no_check = no_check $
+                       , port = port $
+                       , priority = priority $
+                       , scannos = scannos $
+                       , user = user $
+                       , verbose = verbose 
 
-  thiscfgfile='momfbd_submit.'+strtrim(string(imno),2)+'.cfg'
-  jobname='momfbd_submit.'+strtrim(string(imno),2)
+  inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(port) ne 0 then begin
-     red_momfbd_check, PORT = port, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning
-     portstring=' -p '+strtrim(string(port),2)+' '
-  end else begin
-     red_momfbd_check, NMANAGERS=nmanagersrunning, NSLAVES = nslavesrunning
-     portstring=' '
-  end
+  if n_elements(cfgdir) eq 0 then begin
+    print, inam + ' : No cfg directory given.'
+    retall
+  endif
+  pwd = getenv('PWD')+'/'
+  cfgdir = red_strreplace(cfgdir, pwd, '') ; Want relative path
+  dir_parts = strsplit(cfgdir, path_sep(), /extract, count = Nparts)
 
-  if nmanagersrunning eq 0 then begin
-     print, 'ERROR in momfbd_submit: No "manager '+portstring+'" running.'
-     retall
-  end
-
-  if nslavesrunning eq 0 then begin
-     print, 'WARNING in momfbd_submit: No slaves running for "manager '+portstring+'".'
-  end
-
-  if n_elements(dir) eq 0 then begin
-     dir = './'
-  end else begin
-     if strmid(dir,strlen(dir)-1,1) ne '/' then dir += '/'
-  end
-
-  if n_elements(cfgfile) ne 0 then begin
-     ;; Copy indicated config file
-     spawn,'cp '+cfgfile+' '+dir+thiscfgfile
-     append = 1
+  if n_elements(scannos) eq 0 then begin
+    cfgfiles = file_search(cfgdir+'/*.cfg', count = Nfiles)
+    if Nfiles eq 0 then begin
+      print, inam + ' : No cfg files in directory '+cfgdir
+      retall
+    endif
   endif else begin
-     append = 0
+    if size(scannos, /tname) eq 'STRING' then scannos = rdx_str2ints(scannos)
+    cfgfiles = file_search(cfgdir+'/*_'+string(scannos, format = '(I05)')+'.cfg', count = Nfiles)
+    if Nfiles eq 0 then begin
+      print, inam + ' : No cfg files with the given scan numbers in directory '+cfgdir
+      retall
+    endif
   endelse
 
-  if n_elements(cfglines) ne 0 then begin
-     ;; Append to config file
-     openw, flun, dir+thiscfgfile, append = append, /get_lun
-     for i=0,(size(cfglines,/dim))[0]-1 do begin
-        ;; Kludge to get output where momfbd_results.pro expects it.
-        ;; Must be fixed to deal properly with multi-object jobs.
-        printf,flun,cfglines[i]
-        if strmatch(cfglines[i], 'object*') then printf,flun,'  OUTPUT_FILE=momfbd_submit.'+string(imno, format = '(i0)')
-     endfor
-     free_lun,flun
-  end
-
-  if ~file_test(dir+thiscfgfile) then begin
-     print, 'ERROR in momfbd_submit: No config info given.'
-     retall
-  end
   
-  logfile = red_strreplace(thiscfgfile, '.cfg', '.log')
+  cmd_start = 'rdx_sub'
+  
+  if keyword_set(force)        then cmd_start += ' -f'
+  if keyword_set(verbose)      then cmd_start += ' -v'
+  if keyword_set(no_check)     then cmd_start += ' --no-check'
+  if n_elements(user) gt 0     then cmd_start += ' --user '+ strtrim(user, 2)
+  if n_elements(port) gt 0     then cmd_start += ' --port '+ strtrim(port, 2)
+  if n_elements(priority) gt 0 then cmd_start += ' --priority '+ strtrim(priority, 2)
+  if n_elements(options) gt 0  then cmd_start += ' ' + strtrim(options, 2)
 
-  spawnstring='cd '+dir+'; jsub '+portstring+' -cfg '+thiscfgfile+' -name '+jobname+' -n '+strtrim(string(imno), 2)+' -lg '+logfile
-  if keyword_set(force) then spawnstring += ' -f '
+  tstamp = (stregex(cfgdir, '([0-9][0-9]:[0-9][0-9]:[0-9][0-9])', /sub, /extract))[1]
+  date = (stregex(pwd, '([0-9][0-9][0-9][0-9][-.][0-9][0-9][-.][0-9][0-9])', /sub, /extract))[1]
 
-  print, spawnstring
-  spawn, spawnstring
+  print
+  if Nfiles gt 0 then print, inam + ' : Submitting cfg files in '+cfgdir
+  
+  for ifile = 0, Nfiles-1 do begin
+
+    cmd = cmd_start
+
+    cfgfile = file_basename(cfgfiles[ifile])
+    cfgfile = cfgfiles[ifile]
+    cmd += ' --config '+cfgfile
+
+    logfile = red_strreplace(cfgfile, '.cfg', '.log')
+    cmd += ' --log-file '+logfile
+    
+    undefine, name_parts 
+    pref = (stregex(cfgfile, '_([0-9][0-9][0-9][0-9])_', /sub, /extract))[1]
+    scanno = (stregex(cfgfile, '_([0-9][0-9][0-9][0-9][0-9]).cfg', /sub, /extract))[1]
+    if date   ne '' then red_append, name_parts, date
+    if tstamp ne '' then red_append, name_parts, tstamp
+    if pref   ne '' then red_append, name_parts, pref
+    if scanno ne '' then red_append, name_parts, scanno
+    if n_elements(name_parts) gt 0 then begin
+      name = strjoin(name_parts, '_')
+      cmd += ' --name '+name
+    endif
+    
+    print, cmd
+
+    stop
+    
+    spawn, 'cd '+cfgdir+ ' & ' + cmd 
+    
+  endfor                        ; ifile
+    
 
 end
  

@@ -28,22 +28,54 @@
 ;    dirs : in, optional, type=string
 ;
 ;        Set this to the time-stamp directories to use to limit the
-;        automatic selection.
+;        automatic selection. Useful for excluding, e.g., data with a
+;        large sunspot in the field of view.
 ;
+;    fitexpr : in, optional, type=string, default="depends on number of data points"
+;
+;        The function fit to the intensities by use of mpfitexpr.
+;
+;    mu_limit : in, optional, type=float, default=0.97
+;
+;        WB data collected farther from disk center than this are
+;        excluded automatically.
+;
+;    pref : in, optional, type=string
+;
+;        Process data only for this prefilter.
+;
+;    tmax : in, optional, type=string
+;
+;        Do not use datasets started after this time, specified using
+;        the format "HH[[:MM]:SS]". Useful if, e.g., there are both AM
+;        and PM data, and the fit is not good if both are included.
 ; 
+;    tmin : in, optional, type=string
 ;
+;        Do not use datasets started before this time, specified using
+;        the format "HH[[:MM]:SS]".
 ; 
 ; :History:
 ; 
 ;    2019-07-15 : MGL. First version.
 ; 
+;    2020-01-15 : MGL. New keywords tmin and tmax. If mu unavailable
+;                 in logs, assume flats are at large enough mu.
+; 
 ;-
-pro red::fit_wb_diskcenter, dirs = dirs, mu_limit = mu_limit
+pro red::fit_wb_diskcenter, dirs = dirs $
+                            , fitexpr = fitexpr_in $
+                            , mu_limit = mu_limit $
+                            , pref = pref $
+                            , tmin = tmin $
+                            , tmax = tmax
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(mu_limit) eq 0 then mu_limit = 0.97
+  if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
+  if n_elements(tmin)     eq 0 then tmin = '00:00:00'
+  if n_elements(tmax)     eq 0 then tmax = '24:00:00'
   
   cams = *self.cameras
   camWB = (cams[where(strmatch(cams,'*-W'))])[0]
@@ -68,28 +100,52 @@ pro red::fit_wb_diskcenter, dirs = dirs, mu_limit = mu_limit
     times[idir] = red_time2double(stregex(dirs[idir], timeregex, /extract))
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
+  ;; If mu isn't available in logs, assume flats are at large enough mu
+  indx = where(~finite(mu)  and strmatch(dirs,'*flat*'), Ndirs)
+  if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
 
+  
   ;; Idea: for flats directories, mu might vary during the data
   ;; collection. So find the data where mu peaks!
   
-  
-  indx = where(mu gt mu_limit, Ndirs)
-  if Ndirs eq 0 then stop
-  dirs = dirs[indx]
-  times = times[indx]
-  mu = mu[indx]
-  za = za[indx]
 
+  ;; Is mu large enough? 
+  indx = where(mu gt mu_limit), Ndirs)
+  if Ndirs eq 0 then begin
+    print, inam + ' : No WB data with mu > ' + strtrim(mu_limit, 2)
+    return
+  endif else begin
+    dirs = dirs[indx]
+    times = times[indx]
+    mu = mu[indx]
+    za = za[indx]
+  endelse
+  
+  
+  ;; In specified time range?
+  indx = where(times gt red_time2double(tmin) and times lt red_time2double(tmax), Ntime)
+  if Ntime eq 0 then begin
+    print, inam + ' : No WB data in time range ['+tmin+','+tmax+']'
+    return
+  endif else begin
+    dirs = dirs[indx]
+    times = times[indx]
+    mu = mu[indx]
+    za = za[indx]
+  endelse 
+
+  
+  
   wbindx = where(file_test(dirs+'/'+camwb), Nwb)
   nbindx = where(file_test(dirs+'/'+camnb), Nnb)
   if Nwb eq 0 then noabsunits = 1
 
-  
   if Nwb gt 0 then begin
 
     ;; Measure DC WB intensities
 
-    wbdir = self.out_dir+'/prefilter_fits/wb/'
+    ;;wbdir = self.out_dir+'/prefilter_fits/wb/'
+    wbdir = self.out_dir+'/wb_intensities/'
     file_mkdir, wbdir
     wbdirs = dirs[wbindx]
     for iwb = 0, Nwb-1 do begin
@@ -139,52 +195,89 @@ pro red::fit_wb_diskcenter, dirs = dirs, mu_limit = mu_limit
     
     upref = wbprefs[uniq(wbprefs, sort(wbprefs))]
     Nprefs = n_elements(upref)
-
-   
+    
+    fitexpr_used = strarr(Nprefs)
+    coeffs_str = strarr(Nprefs)
     
     ;; Prepare for plotting the results
-    colors = distinct_colors(n_colors = Nprefs, /num)
+    if Nprefs le n_elements(colors) then begin
+      colors = ['blue', 'red', 'green', 'plum', 'cyan', 'darkkhaki']
+      ;; Colors from cgPickColorName()
+      colors = ['RED', 'BLU', 'GRN', 'ORG', 'PUR', 'YGB', 'PBG', 'BLK'] + '5'
+      colors = colors[0:Nprefs-1]
+    endif else begin
+      ;; Not likely to be needed:
+      colors = red_wavelengthtorgb(float(upref)/10., /num)
+      ;;colors = distinct_colors(n_colors = Nprefs, /num)
+    endelse
     cgwindow
-    cgplot, /add, [0], /nodata $
-            , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/s]' $
-            , xrange = [min(wbtimes), max(wbtimes)]/3600. + [-0.1, 0.1] $
-            , yrange = [0, max(wbintensity/wbexpt)*1.05]
 
     ;; Loop over prefilters
     for ipref = 0, Nprefs-1 do begin
       indx = where(wbprefs eq upref[ipref])
 
-      ;; Set up the plot
-      cgplot, /add, /over, psym = 16, color = colors[ipref] $
-              , wbtimes[indx] / 3600. $
-              , wbintensity[indx] / wbexpt[indx] 
+      if n_elements(pref) ne 0 then begin
+        ;; Limit to specified prefilters 
+        match2, upref[ipref], pref, suba
+        mindx = where(suba ne -1, Nmatch)
+        if Nmatch eq 0 then continue
+      endif 
 
-      ;; Set up for fitting
-      case n_elements(indx) of
-        1    : myfunc = ''
-        2    : myfunc = 'P[0] + X*P[1]'
-        else : myfunc = 'P[0] + X*P[1] + X*X*P[2]'
-      endcase
+      if ipref eq 0 then begin
+        ;; Set up the plot
+        red_timeplot, /add $
+                      , psym = 16, color = colors[ipref] $
+                      , wbtimes[indx] $
+                      , wbintensity[indx] / wbexpt[indx] / 1000. $
+                      , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/ms]' $
+                      , xrange = [min(wbtimes), max(wbtimes)] + [-0.1, 0.1] $
+                      , yrange = [0, max(wbintensity/wbexpt)*1.05]/1000.
+      endif else begin
+        cgplot, /add, /over, psym = 16, color = colors[ipref] $
+                , wbtimes[indx] $
+                , wbintensity[indx] / wbexpt[indx] / 1000.
+      endelse
       
-      if myfunc ne '' then begin
+      ;; Set up for fitting
+      if n_elements(fitexpr_in) eq 0 then begin
+        case n_elements(indx) of
+          1    : fitexpr = ''
+          2    : fitexpr = 'P[0] + X*P[1]'
+          else : fitexpr = 'P[0] + X*P[1] + X*X*P[2]'
+        endcase
+      endif else fitexpr = fitexpr_in
+
+      fitexpr_used[ipref] = fitexpr
+      
+      if fitexpr ne '' then begin
 
         ;; Do the fit
         err = 1. / wbmu[indx]   ; Large mu is better!
-        pp = mpfitexpr(myfunc $
+        pp = mpfitexpr(fitexpr $
                        , wbtimes[indx]/3600. $
                        , wbintensity[indx] / wbexpt[indx] $
                        , err $
                       )
 
         ;; Plot it
-        tt = (findgen(1000)/1000 * (max(wbtimes[indx])-min(wbtimes[indx])) + min(wbtimes[indx])) / 3600
-        wbint = red_evalexpr(myfunc, tt, pp)
-        cgplot, /add, /over, color = colors[ipref], tt, wbint
+        tt = (findgen(1000)/1000 * (max(wbtimes[indx])-min(wbtimes[indx])) + min(wbtimes[indx])) 
+        wbint = red_evalexpr(fitexpr, tt/3600, pp)
+        cgplot, /add, /over, color = colors[ipref], tt, wbint / 1000.
 
         ;; Save it
         red_mkhdr, phdr, pp
-        fxaddpar, phdr, 'MYFUNC', myfunc, 'mpfitexpr fitting function'
+        anchor = 'DATE'
+        red_fitsaddkeyword, anchor = anchor, phdr $
+                            , 'FITEXPR', fitexpr, 'mpfitexpr fitting function'
+        red_fitsaddkeyword, anchor = anchor, phdr $
+                            , 'TIME-BEG', red_timestring(min(wbtimes[indx])) $
+                            , 'Begin fit data time interval'
+        red_fitsaddkeyword, anchor = anchor, phdr $
+                            , 'TIME-END', red_timestring(max(wbtimes[indx])) $
+                            , 'End fit data time interval'
         writefits, wbdir+'wb_fit_'+upref[ipref]+'.fits', pp, phdr
+
+        coeffs_str[ipref] = strjoin(strtrim(pp, 2), ',')
         
       endif
 
@@ -199,9 +292,11 @@ pro red::fit_wb_diskcenter, dirs = dirs, mu_limit = mu_limit
     endfor                      ; ipref
 
     ;; Finish the plot
-    cglegend, /add, titles = upref $
+    cglegend, /add $
+              , titles = upref + ' : ' + fitexpr_used $
+              ;;, titles = upref + ' : ' + coeffs_str $
               , location = [0.9, 0.12], align = 2 $
-              , colors = colors, psym = 16, length = 0
+              , colors = colors, psym = 16, length = 0, vspace = 2
     cgcontrol, output = wbdir+'wb_intensities.pdf'
 
   endif
@@ -214,6 +309,7 @@ end
 a = crispred(/dev)
 
 a -> fit_wb_diskcenter
+a -> fit_wb_diskcenter, pref = '4846'
 
 pp=readfits('prefilter_fits/wb/wb_fit_6563.fits',h)
 

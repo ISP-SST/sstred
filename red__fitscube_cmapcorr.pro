@@ -53,6 +53,9 @@
 ; 
 ;   2018-12-06 : MGL. Additional interpolation methods.
 ; 
+;   2019-09-27 : MGL. Implement correction of individual cavity maps
+;                for multiple prefilters.
+; 
 ;-
 pro red::fitscube_cmapcorr, fname $
                             , flip = flip $
@@ -113,33 +116,32 @@ pro red::fitscube_cmapcorr, fname $
   bitpix = fxpar(hdr, 'BITPIX')
   if bitpix gt 0 then stop    ; We have to change the header if we want to handle integer input.
   
-  ;; Change what needs to be changed in the header
   ;; Add info about this step
   self -> headerinfo_addstep, outhdr $
                               , prstep = 'Interpolate' $
                               , prpara = prpara $
                               , prproc = inam
+  
+  ;; Read WCS coordinates and distortions (the latter of which are the
+  ;; cavity map wavelength distortions).
+  red_fitscube_getwcs, fname $
+                       , coordinates = coordinates $
+                       , distortions = distortions
+
+  Ndist = n_elements(distortions)
+  lambda = reform(coordinates[*,0].wave[0,0,*])
+
+  ;; Are there any tunings for which we don't have distortions?
+  for idist = 0, Ndist-1 do red_append, dist_indx, red_expandrange(distortions[idist].tun_index)
+  nodist_index = cgSetDifference(indgen(Nwav),dist_indx, count = Nnodist)
 
 
   
-  wcs = mrdfits(fname,'WCS-TAB',whdr)
-  coords = wcs.hpln_hplt_wave_time
-;  hpln   = reform(coords[0,*,*,0,0,*])
-;  hplt   = reform(coords[1,*,*,0,0,*])
-  lambda = reform(coords[2,0,0,*,0,0])
-;  pol    = reform(coords[3,0,0,0,*,0])
-;  time   = reform(coords[4,0,0,*,0,*])
-
-  
-  dlambda = mrdfits(fname, 'WCSDVARR', chdr, status = status, /silent)
-  
-;  lambda_corr[ix,iy,itun,ipol,iscan] = lambda[itun] + dlambda[ix,iy,iscan]
-
   ;; Initialize the output file
   self -> fitscube_initialize, outname, outhdr, lun, fileassoc, dims 
 
 
-  
+  ;; Do one scan at a time
   cube_in  = fltarr(Nx, Ny, Nwav)
   cube_out = fltarr(Nx, Ny, Nwav)
 
@@ -161,36 +163,50 @@ pro red::fitscube_cmapcorr, fname $
         cube_in[0, 0, iwav] = im
       endfor                    ; iwav
 
-      for ix = 0, Nx-1 do for iy = 0, Ny-1 do begin
-        ;; Interpolate
-        case interpolmethod of
-          'interpol' : begin
-            cube_out[ix, iy, *] = interpol(cube_in[ix, iy, *] $
-                                           , lambda + dlambda[ix,iy,iscan] $
+      for idist = 0, Ndist-1 do begin
+        ;; Loop over multiple distortions, interpolate subcubes.
+
+        dlambda = distortions[idist].wave
+        tun_index = red_expandrange(distortions[idist].tun_index)
+        
+        for ix = 0, Nx-1 do for iy = 0, Ny-1 do begin
+          ;; Interpolate
+          case interpolmethod of
+            'interpol' : begin
+              cube_out[ix, iy, tun_index] = interpol(cube_in[ix, iy, tun_index] $
+                                                     , lambda[tun_index] + dlambda[ix, iy, 0, 0, iscan] $
+                                                     , lambda[tun_index] $
+                                                     , _strict_extra = extra)
+            end
+            'spline' : begin
+              cube_out[ix, iy, *] = spline(lambda + dlambda[ix,iy,iscan] $
+                                           , cube_in[ix, iy, *] $
                                            , lambda $
                                            , _strict_extra = extra)
-          end
-          'spline' : begin
-            cube_out[ix, iy, *] = spline(lambda + dlambda[ix,iy,iscan] $
-                                         , cube_in[ix, iy, *] $
-                                         , lambda $
-                                         , _strict_extra = extra)
-          end
-          'quadterp' : begin
-            quadterp, lambda + dlambda[ix,iy,iscan] $
-                      , reform(cube_in[ix, iy, *]) $
-                      , lambda $
-                      , yint $
-                      ,_strict_extra = extra
-            cube_out[ix, iy, *] = yint
-          end
-          else: begin
-            print, inam + ' : Method not implemented: '+interpolmethod
-            stop
-          end
-        endcase
-      endfor                    ; ix,iy
-    
+            end
+            'quadterp' : begin
+              quadterp, lambda + dlambda[ix,iy,iscan] $
+                        , reform(cube_in[ix, iy, *]) $
+                        , lambda $
+                        , yint $
+                        , _strict_extra = extra
+              cube_out[ix, iy, *] = yint
+            end
+            else: begin
+              print, inam + ' : Method not implemented: '+interpolmethod
+              stop
+            end
+          endcase
+        endfor                  ; ix,iy
+        
+      endfor                    ; idist
+
+      ;; Just copy frames for tunings for which there are no
+      ;; distortions (if any).
+      for inodist = 0, Nnodist-1 do begin
+        cube_out[0, 0, nodist_index[inodist]] = cube_in[*, *, nodist_index[inodist]] 
+      endfor                    ; iwav
+      
       for iwav = 0, Nwav-1 do begin
         ;; Write
         self -> fitscube_addframe, fileassoc $
@@ -222,9 +238,9 @@ pro red::fitscube_cmapcorr, fname $
 
   if keyword_set(flip) then begin
     ;; Make a flipped version
-    self -> fitscube_flip, outname $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, outname $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   print, inam + ' : Cavity-corrected cube stored in:'
@@ -236,3 +252,16 @@ end
 ; Should make new statistics? In principle it's needed but then we
 ; have no way of avoiding the padding areas outside the FOV. Note that
 ; the output is not meant for archiving, so probably not needed.
+
+a = chromisred(/dev)
+
+fname = 'cubes_nb/nb_3950_2016-09-19T10:42:01_scans=0-4_corrected_im.fits'
+
+a -> fitscube_cmapcorr, fname, /over
+;, flip = flip $
+;         , interpolmethod = interpolmethod $
+;         , outname = outname $
+;         , overwrite = overwrite $
+;         , _extra = extra 
+
+end

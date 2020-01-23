@@ -120,9 +120,19 @@ function red_image_statistics_combine, statsarr $
     endelse
   endfor
 
-  hist_cum = total(hist, /cum) / total(hist)
+  hist_cum = total(hist, /cum, /double) / total(hist, /double)
   binloc = cubemin + ( findgen(n_elements(hist_cum))+1. )*binsize
   p_values = INTERPOL( binloc, hist_cum, perc, /quad )
+
+  ;; p_values will have non-finite values where there are multiple
+  ;; data points that are exactly equal to one of the elements of
+  ;; perc.
+  findx = where(~finite(p_values), Nnonfinite)
+  for inonfinite = 0, Nnonfinite-1 do begin
+    pindx = where(hist_cum eq perc[findx[inonfinite]])
+    ;; Pick the first value
+    p_values[findx[inonfinite]] = binloc[pindx[0]]
+  endfor                        ; inonfinite
 
   for i = 0, Nindx-1 do begin
     output = create_struct(tags[indx[i]] $

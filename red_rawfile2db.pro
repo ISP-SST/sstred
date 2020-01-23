@@ -184,7 +184,7 @@ pro red_rawfile2db, dbinfo, debug=debug
       red_progressbar, ifile, Nfiles, /predict, strtrim(string(Nfiles),2) + ' bursts.'        
 
     ;Insert information for prefilter if it's not there.
-      if dbinfo[ifile].STATE ne '' and dbinfo[ifile].SCANNUM eq 0 then begin
+      if dbinfo[ifile].STATE ne '' then begin ;and dbinfo[ifile].SCANNUM eq 0 then begin
         query = 'SELECT id FROM filters WHERE prefilter = ' + dbinfo[ifile].FILTER1 + ';'
         red_mysql_cmd, handle, query, ans, nl, debug=debug
         if nl eq 1 then begin
@@ -204,7 +204,7 @@ pro red_rawfile2db, dbinfo, debug=debug
             print, inam, ': Calibrations table is corrupted.'
             return
           endelse
-      endif else calibration_id='0'
+      endif ;else calibration_id='0'
 
       burst_id = '0'
       ;; change date format to be complient with mariaDB

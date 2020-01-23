@@ -21,7 +21,7 @@
 ; 
 ; :Keywords:
 ;
-;    cavitymaps  : in, optional, type="fltarr(Nx,Ny,Nscans)"
+;    cavitymaps  : in, optional, type="fltarr(Nx,Ny,1,1,Nscans)"
 ; 
 ;      A 3D cube with cavity maps, each adapted to the corresponding
 ;      scan in the fitscube file. Unit is nm.
@@ -502,7 +502,7 @@ pro red::fitscube_convertlp, inname $
   
   if n_elements(cavitymaps) gt 0 then begin
     ;; Add cavity maps as WAVE distortions 
-    self -> fitscube_addcmap, oname, cavitymaps
+    red_fitscube_addcmap, oname, reform(cavitymaps, Nx, Ny, 1, 1, Nscans)
   endif
 
   ;; Add some variable keywords
@@ -571,9 +571,9 @@ pro red::fitscube_convertlp, inname $
   if keyword_set(flip) then begin
     ;; Make a flipped version
     print, 'Flip it!'
-    self -> fitscube_flip, oname $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, oname $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   print

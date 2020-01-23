@@ -53,8 +53,8 @@ pro red::fitscube_integer, fname $
                            , overwrite = overwrite
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)
+ 
   dir_in = file_dirname(fname)
   
   if ~file_test(fname) then begin
@@ -166,13 +166,18 @@ pro red::fitscube_integer, fname $
   ;; header. We just need to copy the WCSDVARR (image) extension.
 
 
+  ;; Add info about this step
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'INTEGERIZATION' $
+;                              , prpara = prpara $
+                              , prproc = inam
 
 
   if keyword_set(flip) then begin
     ;; Make a flipped version
-    self -> fitscube_flip, outname $
-                           , flipfile = flipfile $
-                           , overwrite = overwrite
+    red_fitscube_flip, outname $
+                       , flipfile = flipfile $
+                       , overwrite = overwrite
   endif
 
   if keyword_set(delete) then begin

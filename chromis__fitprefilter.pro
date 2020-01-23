@@ -90,6 +90,8 @@
 ;   2018-08-30 : MGL. Change units from 'W s^-1 m^-2 Hz^-1 sr^-1' to
 ;                'W m^-2 Hz^-1 sr^-1' 
 ; 
+;   2019-12-09 : MGL. Changed correction of HRE reflectivity from
+;                -0.07 to -0.09.
 ; 
 ;-
 pro chromis::fitprefilter, dir = dir $
@@ -401,6 +403,11 @@ pro chromis::fitprefilter, dir = dir $
 
     endfor                      ; kk
 
+    ;; We use in spec[] the median of all frames (or average thereof,
+    ;; if more than a single file), so the effective exposure time is
+    ;; just 1 x XPOSURE.
+    xposure = fxpar(hdrN, 'XPOSURE')
+    
     spec[istate] /= count
     if keyword_set(unitscalib) then specwb[istate] /= count
     
@@ -435,7 +442,7 @@ pro chromis::fitprefilter, dir = dir $
     np = round((0.080 * 8) / dw)
     if np/2*2 eq np then np -=1
     tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
-    tr = chromis_profile(tw, erh=-0.07d0)
+    tr = chromis_profile(tw, erh=-0.09d0)
     tr /= total(tr)
     yl1 = fftconvol(yl, tr)
 
@@ -483,9 +490,17 @@ pro chromis::fitprefilter, dir = dir $
       
       ;; save curve
       
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref] $
-             , fitpars:par, fts_model:interpol(yl1, xl+par[1], lambda)*prefilter, units:units $
-             , time_avg:mean(time_avgs)}
+      prf = {wav:lambda $
+             , pref:prefilter $
+             , spec:spectrum $
+             , wbint:wbint $
+             , reg:upref[ipref] $
+             , fitpars:par $
+             , fts_model:interpol(yl1, xl+par[1], lambda)*prefilter $
+             , units:units $
+             , time_avg:mean(time_avgs) $
+             , xposure:xposure $
+            }
 
       cgwindow
       mx = max([spectrum, interpol(yl1, xl+par[1], lambda)*prefilter, prefilter/par[0] * max(spectrum)]) * 1.05
@@ -516,9 +531,17 @@ pro chromis::fitprefilter, dir = dir $
 
       y1 = interpol(yl, xl, lambda)
       prefilter = [spectrum/yl1]
-      prf = {wav:lambda, pref:prefilter, spec:spectrum, wbint:wbint, reg:upref[ipref] $
-             , fitpars:prefilter, fts_model:y1, units:units $
-             , time_avg:mean(time_avgs)}
+      prf = {wav:lambda $
+             , pref:prefilter $
+             , spec:spectrum $
+             , wbint:wbint $
+             , reg:upref[ipref] $
+             , fitpars:prefilter $
+             , fts_model:y1 $
+             , units:units $
+             , time_avg:mean(time_avgs) $
+             , xposure:xposure $
+            }
 
     endelse
     

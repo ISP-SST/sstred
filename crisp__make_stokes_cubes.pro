@@ -37,6 +37,11 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
+;    noremove_periodic : in, optional, type=boolean
+;
+;       Do not attempt to use Fourier filtering to remove polcal
+;       periodic artifacts. (See crisp::demodulate method.)
+;
 ;     nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
@@ -86,6 +91,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
                               , cmap_fwhm = cmap_fwhm $
                               , nocavitymap = nocavitymap $
                               , overwrite = overwrite $
+                              , noremove_periodic = noremove_periodic $
                               , redemodulate = redemodulate $
                               , smooth = smooth $
                               , snames = snames $
@@ -549,6 +555,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
                           , nbrstates = nbrstates[these_nbrindx] $
                           , nbtfac = nbt_rpref[ituning] $
                           , nbtstates = nbtstates[these_nbtindx] $
+                          , noremove_periodic = noremove_periodic $
                           , overwrite = redemodulate $
                           , tiles = tiles $
                           , units = units $

@@ -391,8 +391,9 @@ function crisp::filenames, datatype, states $
         'cavityfree_gain' : begin
           dir = self.out_dir + '/gaintables/' 
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
-          ext = '_cavityfree.gain'
+          red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
+          red_append, tag_list, 'cavityfree'
+          ext = '.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
         

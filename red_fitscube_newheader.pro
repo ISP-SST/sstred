@@ -125,15 +125,16 @@ pro red_fitscube_newheader, filename, newheader, Nframes_max = Nframes_max
   ;; Copy cavity maps (WCS distortions) if any
   fits_open, oldfilename, fcb
   free_lun, fcb.unit
-  if total(fcb.extname eq 'WCSDVARR') eq 1 then begin
-    cmaps = mrdfits(oldfilename, 'WCSDVARR', chdr, status = status, /silent)
+  windx = where(fcb.extname eq 'WCSDVARR', Nwcsdvarr)
+  ;; The CWERRj, CWDISj, and DWj keywords should already be in the
+  ;; header. We just need to copy the WCSDVARR (image) extension(s).
+  for iwcsdvarr = 0, Nwcsdvarr-1 do begin
+    
+    wcsdvarr = mrdfits( oldfilename, windx[iwcsdvarr], chdr, status = status, /silent)
+;    cmaps = mrdfits(oldfilename, 'WCSDVARR', chdr, status = status, /silent)
     if status ne 0 then stop
-    writefits, tmpfilename, cmaps, chdr, /append
-    ;; The CWERRj, CWDISj, and DWj keywords should already be in the
-    ;; header. We just need to copy the WCSDVARR (image) extension.
-  endif else begin
-    print, inam + ' : No cavity maps to copy.'
-  endelse
+    writefits, tmpfilename, wcsdvarr, chdr, /append
+  endfor                        ; iwcsdvarr
  
   ;; Overwrite the old file
   print, inam+' : Move temporary file to the original file name...'

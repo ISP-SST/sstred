@@ -241,9 +241,9 @@ pro red::fitscube_crosstalk, filename  $
            , crt[1], ', ', crt[2], ', ', crt[3], format='(A,F8.5,A,F8.5,A,F8.5)'
     
     for ituning = 0, Ntuning-1 do begin
-      red_fitscube_getframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning ; Stokes I
-      if makemask then im0[pindx] = median(im0[pindx]) ; Set the padding to median
-      red_fitscube_addframe, filename, im0, istokes = 0, iscan = 0, ituning = ituning ; Write with updated padding
+      red_fitscube_getframe, filename, im0, istokes = 0, iscan = iscan, ituning = ituning ; Stokes I
+      if makemask then im0[pindx] = median(im0[pindx])                                    ; Set the padding to median
+      red_fitscube_addframe, filename, im0, istokes = 0, iscan = iscan, ituning = ituning ; Write with updated padding
       for istokes=1, Nstokes-1 do begin
         ;;d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
         red_fitscube_getframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
@@ -290,7 +290,7 @@ pro red::fitscube_crosstalk, filename  $
   endelse
   
   if keyword_set(flip) then begin
-    self -> fitscube_flip, filename, flipfile = flipfile
+    red_fitscube_flip, filename, flipfile = flipfile, /overwrite
   endif
   
 end

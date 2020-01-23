@@ -113,7 +113,7 @@ pro red_rawdir2db, all = all $
   endif
   
   if ~keyword_set(all) then begin
-    tmp = red_select_subset_nonrdx(found_dirs $
+    tmp = red_select_subset(found_dirs $
                             , default = '*' $
                             , qstring = 'Select directories' $
                             , indx = sindx $
@@ -453,11 +453,11 @@ pro red_rawdir2db, all = all $
     endfor                  ; iscan
     idx = where(mask)
     dbinfo = dbinfo[idx]
- 
+
     ;; Send the array of structs as input to a command that knows what
     ;; info should go into what table, and writes it there.   
     red_rawfile2db, dbinfo
-    
+
   endfor                        ; icam
 
 end
