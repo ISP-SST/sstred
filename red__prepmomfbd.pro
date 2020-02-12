@@ -264,7 +264,13 @@ pro red::prepmomfbd, wb_states = wb_states $
     if Ndirs eq 1 then dirs = [dirs] 
     for idir = 0, Ndirs-1 do begin
       if ~file_test(dirs[idir]) then begin
-        if file_test(self.out_dir+'data/'+dirs[idir]) then dirs[idir] = self.out_dir+'data/'+dirs[idir]
+        if file_test(self.out_dir+'data/'+dirs[idir]) then begin
+           dirs[idir] = self.out_dir+'data/'+dirs[idir]
+        endif else begin
+          print,'The directory ',self.out_dir+'data/'+dirs[idir], " doesn't exist."
+          print,"Run a->link_data, dir=['",dirs[idir],"'] first."
+          return
+        endelse
       endif
     endfor                      ; idir
   endif else begin

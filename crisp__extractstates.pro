@@ -80,7 +80,7 @@ pro crisp::extractstates, strings, states $
   if Nstrings eq 0 then return
   ;; Check for raw data directories in 'strings'. We presume that we will not populate
   ;; the database with old CRISP data with different directory names
-  raw_data_dirs = ['*Darks*','*Flats*','*Pinholes*','*Polcal*','*Science*','*/data/*']
+  raw_data_dirs = ['*Darks*','*Flats*','*Pinholes*','*Polcal*','*Science*','*CRISP/data/*']
   is_raw = 0B
   for i=0,5 do begin
     bb = strmatch(strings,raw_data_dirs[i])

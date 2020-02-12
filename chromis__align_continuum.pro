@@ -308,12 +308,12 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
 
-            if rit gt 1000 then continue
+            if rit gt 1000 then break
             
             shifts[0, iscan] = shifts_total
 
             ;; Diverging?
-            if sqrt(total(shifts_total^2)) gt maxshifts then continue
+            if sqrt(total(shifts_total^2)) gt maxshifts then break
 
           endrep until max(abs(shifts_new)) lt 0.001
 

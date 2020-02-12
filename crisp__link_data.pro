@@ -115,7 +115,7 @@ pro crisp::link_data, dirs = dirs $
       if Ndots gt Ndashes then dat = red_strreplace(dat, '.', '-', n = 2)    
       timestamp = stregex(data_dir, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
       dataset = dat + ' '  + timestamp
-      self->extractstates_db,dataset,sts
+      self->extractstates_db,'',datasets=dataset,sts
     endif
 
     for icam = 0L, Ncams-1 do begin

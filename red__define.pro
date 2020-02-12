@@ -29,6 +29,8 @@
 ;
 ;   2017-03-10 : MGL. New member "developer_mode".
 ;
+;   2020-02-12 : OA. Changed polcal_dir:'' to polcal_dir:ptr_new()
+;
 ;-
 PRO red__define
 
@@ -53,7 +55,7 @@ PRO red__define
             current_data_dir:0B,$  ; Index of data directory to process (default is 0)
             pinh_dirs:ptr_new(),$  ; The directories where raw pinhole array data is stored
             prefilter_dir:'',$     ;
-            polcal_dir:'',$        ; The directory where raw polcal data is stored
+            polcal_dir:ptr_new(),$ ; The directories where raw polcal data are stored
             detectors:ptr_new(),$  ; List of detector identifiers (e.g. camXX)
             cameras:ptr_new(),$    ; List of camera locations/channels (e.g. Crisp-R)
             refcam:0B, $           ; Selected reference channel

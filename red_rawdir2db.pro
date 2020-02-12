@@ -45,13 +45,16 @@
 ;
 ;   2019-05-28 : OA. Second version
 ;
-;   2019-06-06 : OA. Add check for incomplete scans (to be rejected)
-; 
+;   2019-06-06 : OA. Added check for incomplete scans (to be rejected)
+;
+;   2020-02-04 : OA. Added calls to different procedures for different
+;                instruments.
 ;-
 pro red_rawdir2db, all = all $
                    , date = date $
                    , dir = dir $
-                   , instrument = instrument
+                   , instrument = instrument $
+                   , debug = debug
 
   inam = red_subprogram(/low, calling = inam1)
   if n_elements(date) eq 0 and n_elements(dir) eq 0 then begin
@@ -417,7 +420,7 @@ pro red_rawdir2db, all = all $
       value = fxpar(h, 'BITPIX'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].BITPIX   = value
       value = fxpar(h, 'CADENCE' , count=cnt) & if cnt eq 1 then dbinfo[ifile].CADAVG   = value ; Use the SOLARNET CADAVG keyword
       value = fxpar(h, 'DATE'    , count=cnt) & if cnt eq 1 then dbinfo[ifile].DATE     = value 
-      value = fxpar(h, 'DETGAIN' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETGAIN  = value 
+      gain = float(fxpar(h, 'DETGAIN' , count=cnt)) & if cnt eq 1 then dbinfo[ifile].DETGAIN  = gain 
       value = fxpar(h, 'DETOFFS' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETOFFS  = value 
       value = fxpar(h, 'FILTER1' , count=cnt) & if cnt eq 1 then dbinfo[ifile].FILTER1  = value        
 ;      value = fxpar(h, 'NAXIS'   , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS    = value 
@@ -431,8 +434,30 @@ pro red_rawdir2db, all = all $
       value = fxpar(h, 'WAVEMAX' , count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEMAX  = value 
       value = fxpar(h, 'WAVEMIN' , count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEMIN  = value 
       value = fxpar(h, 'WAVEUNIT', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEUNIT = value 
-      value = fxpar(h, 'XPOSURE' , count=cnt) & if cnt eq 1 then dbinfo[ifile].XPOSURE  = value
-      value = fxpar(h, 'DETTEMP' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETTEMP  = value 
+      xpos = float(fxpar(h, 'XPOSURE' , count=cnt)) & if cnt eq 1 then dbinfo[ifile].XPOSURE  = xpos
+      value = fxpar(h, 'DETTEMP' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETTEMP  = value
+
+      ;; We need to find unique exposure/gain pairs for CHROMIS
+      ;; (For CHROMIS they can change during a scan)
+      if instrume eq 'CHROMIS' then begin
+        if ifile eq 0 then begin
+          cf = fltarr(1,2)
+          cf[0,0] = xpos
+          cf[0,1] = gain
+          red_append,config,cf
+        endif else begin
+          sz = size(config)
+          cnt = 0
+          for ll=0, sz[1]-1 do begin
+            if config[ll,0] eq xpos and config[ll,1] eq gain then cnt += 1
+          endfor
+          if cnt eq 0 then begin
+            cf[0,0] = xpos
+            cf[0,1] = gain
+            red_append, config,cf
+          endif
+        endelse
+      endif
 
     endfor                      ; ifile
 
@@ -456,7 +481,11 @@ pro red_rawdir2db, all = all $
 
     ;; Send the array of structs as input to a command that knows what
     ;; info should go into what table, and writes it there.   
-    red_rawfile2db, dbinfo
+    if keyword_set(debug) then save, dbinfo, filename = date + '_' + timestamp + '_' + camera + '.sav'
+    if instrume eq 'CHROMIS' then $
+       chromis_rawfile2db, dbinfo, config=config, debug=debug $
+    else $
+       crisp_rawfile2db, dbinfo, debug=debug    
 
   endfor                        ; icam
 

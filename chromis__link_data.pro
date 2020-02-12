@@ -71,8 +71,7 @@ pro chromis::link_data, all_data = all_data $
                         , dirs = dirs $
                         , pref = pref $
                         , uscan = uscan $
-                        , link_dir = link_dir $
-                        , all_data = all_data
+                        , link_dir = link_dir
 
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
@@ -121,7 +120,7 @@ pro chromis::link_data, all_data = all_data $
       if Ndots gt Ndashes then dat = red_strreplace(dat, '.', '-', n = 2)    
       timestamp = stregex(data_dir, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
       dataset = dat + ' '  + timestamp
-      self->extractstates_db,dataset,sts
+      self->extractstates_db,'',datasets=dataset,sts
     endif
       
 

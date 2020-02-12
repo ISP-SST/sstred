@@ -38,7 +38,9 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   use_strings = n_elements(datasets) eq 0
-  
+
+  ;; Clear states and try to get them from cache.
+  undefine,states
   if use_strings then begin
     if ~keyword_set(force) then begin      
       Nstr = n_elements(strings)
@@ -52,16 +54,16 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
       if n_elements(states) eq Nstr then return else undefine,states
     endif
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
-    timestamp = timestamps[uniq(timestamps,sort(timestamps))]
-    datasets = self.isodate + ' ' + timestamp
-  ENDIF
+    utimestamps = timestamps[uniq(timestamps,sort(timestamps))]
+    datasets = self.isodate + ' ' + utimestamps
+  endif
 
   instrument = 'CRISP'
 
   red_mysql_check, handle
 
   Nsets = n_elements(datasets)
-  set_msg = string('Get DB values for ', strtrim(string(Nsets),2), ' datasets.')
+  set_msg = string('Get metadata from the database for ', strtrim(string(Nsets),2), ' datasets.')
 
   split_dir = strsplit(self.root_dir,'/',/extract)
   dir_root = '/' + strjoin(split_dir[0:-2],'/') + '/'
@@ -70,6 +72,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
 
     red_progressbar, iset, Nsets, /predict, set_msg     
     split_set = strsplit(datasets[iset], ' ', /extract)
+    timestamp = split_set[1]
     date_time = datasets[iset]
     
     ; we need Y,...,sec to generate the directory name
@@ -78,10 +81,10 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
     M = fix(split_date[1])
     D = fix(split_date[2])
 
-    split_time = strsplit(split_set[1],':',/extract)
+    split_time = strsplit(timestamp,':',/extract)
     hr = fix(split_time[0])
     min = fix(split_time[1])
-    sec = fix(split_time[2])
+    sec = fix(split_time[2])    
 
     query='SELECT * FROM datasets WHERE date_obs = "' + date_time + '" AND instrument = "' + instrument + '";'
     red_mysql_cmd,handle,query,ans,nl
@@ -91,10 +94,16 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
       flat_dirs = *self.flat_dir
       dark_dirs = *self.dark_dir
       pinh_dirs = *self.pinh_dirs
-      polcal_dirs = self.polcal_dir     
+      polcal_dirs = *self.polcal_dir     
       data_dirs = *self.data_dirs
       dirs = [flat_dirs, dark_dirs, pinh_dirs, polcal_dirs, data_dirs]
       in = where(strmatch(dirs,'*'+split_set[1]+'*'))
+      if n_elements(in) eq 1 then $
+        if in eq -1 then begin
+          print, inam, ': There are no directories for ', +split_set[1], ' timestamp.'
+          free_lun,handle
+          return
+        endif
       dir = dirs[in]
       red_rawdir2db,dir=dir,/all
       red_mysql_cmd,handle,query,ans,nl
@@ -104,11 +113,13 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
     set = strsplit(ans[1],tab,/extract,/preserve_null)
     set_id = set[0]
     datatype = set[2]
-    if datatype eq 'darks' then datatype='Darks'
-    if datatype eq 'flats' then datatype='Flats'
-    if datatype eq 'pinholes' then datatype='Pinholes'
-    if datatype eq 'polcal' then datatype='Polcal'
-    if datatype eq 'science' then datatype='Science'  
+    case datatype of
+      'darks': datatype='Darks'
+      'flats': datatype='Flats'
+      'pinholes': datatype='Pinholes'
+      'polcal': datatype='Polcal'
+      'science': datatype='Science'
+    endcase
     if datatype eq 'Polcal' then begin
       state = {CRISP_POLCAL_STATE}
     endif else begin
@@ -181,7 +192,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
       endif
 
       Nbursts = nl-1
-      brst_msg = string('Get DB values for ', strtrim(string(Nbursts),2), ' bursts.') 
+      brst_msg = string('Get metadata from the database for ', strtrim(string(Nbursts),2), ' bursts.') 
 
       state.nframes = 1         ; Single frame in CRISP files      
 
@@ -200,21 +211,23 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
         
         state.prefilter = burst[9]
 
-           ; get information about prefilter
-        query = 'SELECT * FROM filters WHERE prefilter = ' + burst[9] + ';'
-        red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
-        skip_pref = 0B
-        if nl eq 1 then begin
-          if state.is_wb then begin
-            print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
-            print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
-            skip_pref = 1B
-          endif else begin
-            print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
-            print, 'Check the database integrity.'
-            return
-          endelse
-        endif
+         ;; get information about prefilter if data are not darks
+        if burst[9] ne '0' then begin
+          query = 'SELECT * FROM filters WHERE filter1 = ' + burst[9] + ';'
+          red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
+          skip_pref = 0B
+          if nl eq 1 then begin
+            if state.is_wb then begin
+              print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
+              print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
+              skip_pref = 1B
+            endif else begin
+              print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
+              print, 'Check the database integrity.'
+              return
+            endelse
+          endif
+        endif else skip_pref = 1B
         if ~skip_pref then begin
           filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
           waveunit = fix(filt[5])
@@ -295,16 +308,15 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
           state.filename = dir_root + dir + fnm
 
           st[iframe] = state
-        endfor
-                                ; iframe
-        red_append, states, st
-
+        endfor     ; iframe
+                               
+        red_append, states, st        
       endfor                    ; ifile (burst)
     endfor  ; cams (configs)
   endfor  ;datasets
 
   if use_strings then begin
-    if strmatch(strings[0],'*data*') then begin
+    if strmatch(strings[0],'*CRISP/data*') then begin
       ;;We have to generate filenames as link_data routine does.
       Nst = n_elements(states)
       files=strarr(Nst)
@@ -343,7 +355,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
     for ifile=0,Nstr-1 do $
       rdx_cache, strings[ifile], { state:states[ifile] }
   endif
-
+  
   free_lun,handle  
 end
 

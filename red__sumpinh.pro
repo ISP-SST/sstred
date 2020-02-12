@@ -86,7 +86,6 @@
 ; 
 ;   2016-08-10 : MGL. New keyword outdir.
 ;
-;
 ;-
 pro red::sumpinh, nthreads = nthreads $
                   , no_descatter = no_descatter $

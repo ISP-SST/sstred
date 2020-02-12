@@ -193,7 +193,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
 
         if cal_id ne 0 then begin ;  otherwise it can be darks ...               
           ;; get calibration data for CHROMIS to convert wheel*_hrz* into line+tuning
-          query = 'SELECT prefilter, convfac, du_ref, lambda_ref FROM calibrations WHERE id = ' + cal_id + ';'
+          query = 'SELECT filter1, convfac, du_ref, lambda_ref FROM calibrations WHERE id = ' + cal_id + ';'
           red_mysql_cmd,handle,query,calib_ans,nl,debug=debug
           if nl eq 1 then begin
             print,inam, ': There is no entry in calibrations table for id ' + cal_id
@@ -203,27 +203,29 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
 
           calib = strsplit(calib_ans[1],tab,/extract,/preserve_null)
           nbpref = calib[0]
-          convfac = float(calib[1])
-          du_ref = float(calib[2])
-          lambda_ref = float(calib[3])
+          convfac = double(calib[1])
+          du_ref = double(calib[2])
+          lambda_ref = double(calib[3])
           wheel = fix(burst[7])  ; required for filename generation
           hrz = long(burst[2])   ; required for filename generation
 
-          ;; get information about prefilter
-          query = 'SELECT * FROM filters WHERE prefilter = ' + state.prefilter + ';'
-          red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
-          skip_pref = 0B
-          if nl eq 1 then begin
-            if state.is_wb then begin
-              print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
-              print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
-              skip_pref = 1B
-            endif else begin
-              print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
-              print, 'Check the database integrity.'
-              return
-            endelse
-          endif
+          ;; get information about prefilter if data are not darks
+          if burst[9] ne '0' then begin
+            query = 'SELECT * FROM filters WHERE filter1 = ' + state.prefilter + ';'
+            red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
+            skip_pref = 0B
+            if nl eq 1 then begin
+              if state.is_wb then begin
+                print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
+                print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
+                skip_pref = 1B
+              endif else begin
+                print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
+                print, 'Check the database integrity.'
+                return
+              endelse
+            endif
+          endif else skip_pref = 1B
           if ~skip_pref then begin
             filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
             waveunit = fix(filt[5])
@@ -341,7 +343,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, force = for
     Nstr = n_elements(strings)
     for ifile=0,Nstr-1 do $
       rdx_cache, strings[ifile], { state:states[ifile] }
-  endif
+  endif 
 
   free_lun,handle  
 end

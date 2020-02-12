@@ -54,6 +54,9 @@
 ;    2017-08-16 : MGL. Stop early if there are no darks and/or flats.
 ;
 ;    2019-07-01 : MGL. New keyword old_dir.
+;
+;    2019-02-11 : OA. New line "a -> make_periodic_filter". Change
+;                 nref=30 for pinholecalib.
 ; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
@@ -400,6 +403,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + maybe_nodescatter[ipref] 
         printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
+        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
       endfor                    ; ipref
     endif
       
@@ -499,7 +503,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  printf, Slun, 'a -> getoffsets' 
   
   printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib, /verify, nref=10, margin=100'
+  printf, Slun, 'a -> pinholecalib, /verify, nref=30, margin=100'
   
   printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
