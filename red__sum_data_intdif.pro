@@ -138,17 +138,12 @@ pro red::sum_data_intdif, all = all $
   for idir = 0, Ndirs-1 do begin
 
     dir = dirs[idir]
-
-;    ;; Get camera tags
-;    self -> getdetectors, dir = dir
-;    ctag = [self.camrtag, self.camttag]
+    files = file_search(dir+ '/' + cams + '/cam*', count = Nfiles)
+    self -> extractstates, files, states
 
     outdir = self.out_dir + '/cmap_intdif/' + file_basename(dir) + '/'
     file_mkdir, outdir
     
-    ;; Remove frames
-    ;;red_flagtuning, state, remove
-
     ;; Build my states
     mpref = states.prefilter
     upref = reform([mpref[uniq(mpref, sort(mpref))]])
@@ -173,10 +168,6 @@ pro red::sum_data_intdif, all = all $
                                   , count = Npref, indx = sindx)
         endwhile
         pref = pref[sindx[0]]
-;        print, inam + ' : Found prefilters:'
-;        for ii = 0, Npref - 1 do print, string(ii, format='(I3)') + ' -> ' + upref[ii]
-;        ip = 0L
-;        read, ip, prompt = 'Select state id: '
       endelse
     endif
     print, inam + ' : Selected prefilter -> ' + pref
@@ -188,20 +179,6 @@ pro red::sum_data_intdif, all = all $
     
     selstates = states[sel]
     selfiles = files[sel]
-
-;    idx = where(mpref eq pref, count)
-;    mwav = state.wav[idx]
-;    mdwav = state.dwav[idx]
-;    mlc = state.lc[idx]
-;    mscan = state.scan[idx]
-;    mnum = state.nums[idx]
-;    mfiles = state.files[idx]
-;    mstar = state.star[idx]
-
-;    uscan = mscan[uniq(mscan, sort(mscan))]
-;    ulc = mlc[uniq(mlc, sort(mlc))]
-;    uwav = mwav[uniq(mwav, sort(mdwav))]
-;    udwav = float(mdwav[uniq(mdwav, sort(mdwav))] - double(pref))
 
     uscan = selstates[uniq(selstates.scannumber, sort(selstates.scannumber))].scannumber
     Nscans = n_elements(uscan)
@@ -247,14 +224,8 @@ pro red::sum_data_intdif, all = all $
          and (pref eq '8542' or pref eq '7772') then begin
         self -> loadbackscatter, detectors[icam], pref, bff, pff
       endif
-
       
-;      tempdir = dir + '/' + cams[icam]+'/'
-;      longi = strlen(file_dirname(mfiles[0])+'/'+self.camrtag)
-;      mmfiles = tempdir + detectors[icam]+strmid(mfiles,longi,200)
       mstates = selstates[sell]
-;      mmfiles = selstates[sell]
-
       mwav   = mstates.tuning
       mlc    = mstates.lc
       mscan  = mstates.scannumber
@@ -284,7 +255,6 @@ pro red::sum_data_intdif, all = all $
         openw, lun, cfile, /get_lun
         tt0 = 0L
       endelse
-;      dim = size(f0(mmfiles[0]),/dim)
       hdr = red_readhead(mstates[0].filename)
       dim = fxpar(hdr, 'NAXIS*')
       Nx = dim[0]
@@ -306,14 +276,8 @@ pro red::sum_data_intdif, all = all $
       for iscan = tt0[0], tt1[0] do begin
         
         for ilc = 0L, Nlc - 1 do begin
-
-;          scstate = strarr(Ntunings)
-
           for ituning = 0L, Ntunings - 1 do begin
 
-;            istate = strjoin([uscan[iscan], pref,uwav[ituning], ulc[ilc]],'.')
-;            scstate[ituning] = istate
-            
             idx = where((mwav EQ uwav[ituning]) AND (mlc EQ ulc[ilc]) AND $
                         (mscan EQ uscan[iscan]) AND mstar eq 0, count)
 
