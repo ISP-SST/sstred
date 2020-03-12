@@ -23,7 +23,7 @@
 ; 
 ; :Keywords:
 ; 
-;     corrmethod : in, optional, type="string or boolean", default=FALSE/none
+;     corrmethod : in, optional, type="string or boolean", default=FALSE
 ;
 ;       One of 'old' (for correction based on comparing the current
 ;       scan with the prefilter calibration data, or 'fit' (for
