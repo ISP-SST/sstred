@@ -39,6 +39,11 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
+;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE/none
+;
+;       Indicate whether to do intensity correction based on WB data
+;       and with what method. See documentation for red::fitscube_intensitycorr.
+;
 ;     integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
@@ -107,16 +112,20 @@
 ; 
 ;    2018-03-27 : MGL. Change sign on cmap. 
 ; 
+;    2020-01-17 : MGL. New keywords intensitycorrmethod and odir.
+; 
 ;-
 pro chromis::make_nb_cube, wcfile $
                            , clips = clips $
                            , cmap_fwhm = cmap_fwhm $
                            , integer = integer $
+                           , intensitycorrmethod = intensitycorrmethod $
                            , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , noflipping = noflipping $
                            , nostatistics = nostatistics $
                            , notimecor = notimecor $
+                           , odir = odir $
                            , overwrite = overwrite $
                            , tiles = tiles $
                            , verbose = verbose $
@@ -124,11 +133,12 @@ pro chromis::make_nb_cube, wcfile $
 
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)
+
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
+  red_make_prpara, prpara, intensitycorrmethod
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
@@ -976,102 +986,9 @@ pro chromis::make_nb_cube, wcfile $
                                   , axis_numbers = [3, 5]
 
   
-;  if ~keyword_set(nostatistics) then begin
-;    ;; Statistics
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAMIN', DATAMIN $
-;                                    , comment = 'The minimum data value' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEMIN $
-;                                    , axis_numbers = [3, 5]
-;
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAMAX', DATAMAX $
-;                                    , comment = 'The maximum data value' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEMAX $
-;                                    , axis_numbers = [3, 5]
-;
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAMEAN', DATAMEAN $
-;                                    , comment = 'The average data value' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEMEAN $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATARMS', DATARMS $
-;                                    , comment = 'The RMS deviation from the mean' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBERMS $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAKURT', DATAKURT $
-;                                    , comment = 'The kurtosis' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEKURT $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATASKEW', DATASKEW $
-;                                    , comment = 'The skewness' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBESKEW $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP01', DATAP01 $
-;                                    , comment = 'The 01 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP01 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP10', DATAP10 $
-;                                    , comment = 'The 10 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP10 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP25', DATAP25 $
-;                                    , comment = 'The 25 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP25 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAMEDN', DATAMEDN $
-;                                    , comment = 'The median data value' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEMEDN $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP75', DATAP75 $
-;                                    , comment = 'The 75 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP75 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP90', DATAP90 $
-;                                    , comment = 'The 90 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP90 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP95', DATAP95 $
-;                                    , comment = 'The 95 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP95 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP98', DATAP98 $
-;                                    , comment = 'The 98 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP98 $
-;                                    , axis_numbers = [3, 5]
-;
-;    self -> fitscube_addvarkeyword, filename, 'DATAP99', DATAP99 $
-;                                    , comment = 'The 99 percentile' $
-;                                    , anchor = anchor $
-;                                    , keyword_value = CUBEP99 $
-;                                    , axis_numbers = [3, 5]
-;  endif
-;    
+  ;; Correct intensity with respect to solar elevation and exposure
+  ;; time.
+  self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
 
   if keyword_set(integer) then begin
     ;; Convert to integers
