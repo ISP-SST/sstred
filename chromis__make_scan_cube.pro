@@ -35,15 +35,10 @@
 ;
 ;       Store as integers instead of floats.
 ;
-;     intensitycorr : in, optional, type="string or boolean", default=FALSE/none
+;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE/none
 ;
-;       Indicate whether to do intensity correction based on WB data.
-;       One of 'old' (for correction based on comparing the current
-;       scan with the prefilter calibration data, or 'fit' (for
-;       correction based on comparing intensity from
-;       fit_wb_diskcenter, evaluated at the current time and at the
-;       time of the prefilter calibration). Boolean value TRUE is
-;       equivalent to 'fit'. FALSE results in no correction.
+;       Indicate whether to do intensity correction based on WB data
+;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
 ;     limb_data : in, optional, type=boolean
 ;
@@ -93,7 +88,10 @@
 ;    2019-08-26 : MGL. Do integerization, statistics calculations, and
 ;                 WB intensity correction by calling subprograms. 
 ; 
-;    2020-01-15 : MGL. New keywords intensitycorr and odir.
+;    2020-01-15 : MGL. New keywords intensitycorr and odir. 
+; 
+;    2020-01-19 : MGL. Rename keyword intensitycorr to
+;                 intensitycorrmethod. 
 ; 
 ;-
 pro chromis::make_scan_cube, dir $
@@ -102,7 +100,7 @@ pro chromis::make_scan_cube, dir $
                              , cmap_fwhm = cmap_fwhm $
                              , crop = crop $
                              , integer = integer $
-                             , intensitycorr = intensitycorr $
+                             , intensitycorrmethod = intensitycorrmethod $
                              , interactive = interactive $
                              , limb_data = limb_data $
                              , noaligncont = noaligncont $
@@ -116,21 +114,6 @@ pro chromis::make_scan_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  case 1 of
-    
-    ;; Temporary default! Should be 'fit' when that works:
-    n_elements(intensitycorr) eq 0 : intensitycorr = 'none'
-    
-    size(intensitycorr, /tname) eq 'STRING' : begin
-      if intensitycorr ne 'fit' and intensitycorr ne 'old' then intensitycorr = 'none'
-    end
-
-    ;; Other types interpreted as boolean
-    else : if intensitycorr then intensitycorr = 'fit' else intensitycorr = 'none'
-    
-  endcase
-  if n_elements(intensitycorr) eq 0 then intensitycorr = 'none' 
-
   ;; Temporarily disable cavity maps by default, can still be be
   ;; written (experimentally) with explicit nocavitymap=0.
   if n_elements(nocavitymap) eq 0 then nocavitymap = 1
@@ -141,7 +124,7 @@ pro chromis::make_scan_cube, dir $
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop     
   red_make_prpara, prpara, integer  
-  red_make_prpara, prpara, intensitycorr  
+  red_make_prpara, prpara, intensitycorrmethod  
   red_make_prpara, prpara, interactive
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap    
@@ -763,11 +746,12 @@ pro chromis::make_scan_cube, dir $
 
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    case intensitycorr of
-      'fit' : self -> fitscube_intensitycorr, filename, nodiskcenter = 0
-      'old' : self -> fitscube_intensitycorr, filename, nodiskcenter = 1
-      else  : print, inam + ' : No intensity correction!'
-    endcase
+;    case intensitycorr of
+;      'fit' : self -> fitscube_intensitycorr, filename, nodiskcenter = 0
+;      'old' : self -> fitscube_intensitycorr, filename, nodiskcenter = 1
+;      else  : print, inam + ' : No intensity correction!'
+;    endcase
+    self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
     
     if keyword_set(integer) then begin
       ;; Convert to integers
