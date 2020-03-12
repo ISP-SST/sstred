@@ -23,11 +23,15 @@
 ; 
 ; :Keywords:
 ; 
-;     nodiskcenter : in, optional, type=boolean
-; 
-;       Set this to base the intensity correction on local intensities
-;       of the WB data from the current data set instead of from the
-;       disk center WB intensity fit.
+;     corrmethod : in, optional, type="string or boolean", default=FALSE/none
+;
+;       One of 'old' (for correction based on comparing the current
+;       scan with the prefilter calibration data, or 'fit' (for
+;       correction based on comparing intensity from
+;       fit_wb_diskcenter, evaluated at the current time and at the
+;       time of the prefilter calibration). Boolean value TRUE is
+;       equivalent to 'fit'. FALSE and "none" results in no
+;       correction.
 ;
 ; :History:
 ; 
@@ -35,20 +39,43 @@
 ; 
 ;   2019-10-10 : MGL. New keyword nodiskcenter.
 ; 
+;   2020-01-22 : MGL. Remove keyword nodiskcenter, new keyword
+;                corrmethod. 
+; 
 ;-
 pro red::fitscube_intensitycorr, filename $
-                                 , nodiskcenter = nodiskcenter
+                                 , corrmethod = corrmethod
+  
 
   inam = red_subprogram(/low, calling = inam1)
 
   if ~file_test(filename) then stop
 
-  if keyword_set(nodiskcenter) then begin
+  case 1 of
+    
+    ;; Temporary default! Should be 'fit' when that works:
+    n_elements(corrmethod) eq 0 : corrmethod = 'none'
+    
+    size(corrmethod, /tname) eq 'STRING' : begin
+      if corrmethod ne 'fit' and corrmethod ne 'old' then corrmethod = 'none'
+    end
+
+    ;; Other types interpreted as boolean
+    else : if corrmethod then corrmethod = 'fit' else corrmethod = 'none'
+    
+  endcase
+
+  if corrmethod eq 'none' then begin
+    print, inam + ': No correction'
+    return
+  endif 
+  
+  if corrmethod eq 'old' then begin
     PRMODE = 'LOCAL'
   endif else begin
     PRMODE = 'DISK-CENTER'
   endelse
-  
+
   ;; Make prpara
   red_make_prpara, prpara, filename
   
@@ -89,7 +116,7 @@ pro red::fitscube_intensitycorr, filename $
       cube_paras = prparas[pos_makenb]
       cube_paras_struct = json_parse(cube_paras, /tostruct)
       wbhdr = headfits(cube_paras_struct.wcfile)
-      wbpref = fxpar(wbhdr, 'FILTER1')
+      wbpref = strtrim(fxpar(wbhdr, 'FILTER1'), 2)
       fxbopen, bunit, cube_paras_struct.wcfile, 'MWCINFO', bbhdr
       fxbreadm, bunit, row = 1 $
                 , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
@@ -110,67 +137,71 @@ pro red::fitscube_intensitycorr, filename $
     end
   endcase
 
-    
-  ;; Prefilter fit data - WB intensity and time. 
-  case strtrim(fxpar(hdr,'INSTRUME'), 2)of
 
-        'CRISP' : pfiles = file_search(self.out_dir $
-                                       + '/prefilter_fits/Crisp-?_' $
-                                       + strtrim(fxpar(hdr,'FILTER1'), 2) $
-                                       + '_prefilter.idlsave' $
-                                       , count = Npfiles)
-        ;; R and T simultaneous with the same WB data
-        'CHROMIS' : pfiles = file_search(self.out_dir $
-                                         + '/prefilter_fits/chromis_' $
-                                         + strtrim(fxpar(hdr,'FILTER1'), 2) $
-                                         + '_prefilter.idlsave' $
-                                         , count = Npfiles)
-        else : stop
-  endcase 
-  ;; For CRISP, R and T simultaneous with the same WB data. For
-  ;; CHROMIS, scans are fast so one prefilter should be enough also
-  ;; for Ca II.
-  restore, pfiles[0]            ; Restores variable prf which is a struct
-  time_avg_sum = n_elements(prf.wav) * prf.time_avg
-  time_avg_n   = n_elements(prf.wav)
-  t_calib = time_avg_sum / time_avg_n
-  prefilter_wb = prf.wbint
-  xposure = prf.xposure
+  pfiles = file_search(self.out_dir $
+                       + '/prefilter_fits/*_prefilter.idlsave' $
+                       , count = Npfiles)
+  prefilters = strarr(Npfiles)
+  for ipref = 0, Npfiles-1 do begin
+    splt = strsplit(file_basename(pfiles[ipref]), '_', /extract)
+    prefilters[ipref] = splt[1]
+  endfor
+  pindx = where(self -> match_prefilters(prefilters, strtrim(fxpar(hdr,'FILTER1'), 2)), Npref)
+  if Npref eq 0 then stop
+  prefilters = prefilters[pindx]
+  ppfiles = pfiles[pindx]
+  
+;  ;; Prefilter fit data - WB intensity and time. 
+;  case strtrim(fxpar(hdr,'INSTRUME'), 2) of
+;
+;    ;; For CRISP, R and T are simultaneous with the same WB data.
+;    'CRISP'   : pfiles = file_search(self.out_dir $
+;                                     + '/prefilter_fits/Crisp-?_' $
+;                                     + strtrim(fxpar(hdr,'FILTER1'), 2) $
+;                                     + '_prefilter.idlsave' $
+;                                     , count = Npfiles)
+;
+;    ;; For CHROMIS, scans are fast so one prefilter should be enough
+;    ;; also for Ca II.
+;    'CHROMIS' : pfiles = file_search(self.out_dir $
+;                                     + '/prefilter_fits/chromis_' $
+;                                     + strtrim(fxpar(hdr,'FILTER1'), 2) $
+;                                     + '_prefilter.idlsave' $
+;                                     , count = Npfiles)
+;    else : stop
+;  endcase 
+;  restore, pfiles[0]            ; Restores variable prf which is a struct
+;  time_avg_sum = n_elements(prf.wav) * prf.time_avg
+;  time_avg_n   = n_elements(prf.wav)
+;  t_calib = time_avg_sum / time_avg_n
+;  prefilter_wb = prf.wbint
+;  xposure = prf.xposure
   
 ;  ;; Load prefilter fit results to get the time of the prefilter fit
 ;  ;; calibration data.
 ;  prffiles = file_search('prefilter_fits/*_prefilter.idlsave', count = Nprf)
-;  time_avg_sum = 0D
-;  time_avg_n = 0L
-;  for iprf = 0L, Nprf-1 do begin
-;
+  time_avg_sum = 0D
+  time_avg_n = 0L
+  for ipref = 0L, Npref-1 do begin
+
 ;    nbpref = (strsplit(file_basename(prffiles[iprf]), '_', /extract))[1]
 ;    if ~(self -> match_prefilters(nbpref, wbpref)) then continue
-;    
-;    restore, prffiles[iprf]     ; Restores variable prf which is a struct
-;
-;    time_avg_sum += n_elements(prf.wav) * prf.time_avg
-;    time_avg_n   += n_elements(prf.wav)
-;
-;    xposure = prf.xposure
-;    
-;  endfor                        ; iprf
-;  t_calib = time_avg_sum / time_avg_n
+    
+    restore, pfiles[ipref]      ; Restores variable prf which is a struct
 
+    time_avg_sum += n_elements(prf.wav) * prf.time_avg
+    time_avg_n   += n_elements(prf.wav)
+    
+  endfor                        ; iprf
+  t_calib = time_avg_sum / time_avg_n
+  xposure = prf.xposure
+  prefilter_wb = prf.wbint
+
+;  stop
   
 
-  if PRMODE ne 'DISK-CENTER' then begin
+  if PRMODE eq 'DISK-CENTER' then begin
 
-    ;; Do LOCAL, the old kind of correction 
-
-    ;; Old correction, includes rapid variations from scan to scan
-    tscl = prefilter_wb / wcTMEAN
-
-    correction = fltarr(Ntuning, Nscans)
-    for iscan = 0, Nscans-1 do correction[*, iscan] = tscl[iscan]
-
-  endif else begin
-    
     ;; Do DISK-CENTER based correction
     
     wbfitfile = 'wb_intensities/wb_fit_'+wbpref+'.fits'
@@ -178,10 +209,10 @@ pro red::fitscube_intensitycorr, filename $
       s = ''
       print, inam + ' : No WB fit file : '+wbfitfile
       print
-      print, "It looks like you haven't run the a->fit_wb_diskcenter step."
-      print, "If you have the calibration data, you can choose to delete the"
-      print, "cube now and come back after running that calibration or to"
-      print, "continue without intensity correction. Or try with /nodiskcenter."
+      print, "It looks like you haven't run the a->fit_wb_diskcenter step. If"
+      print, "you have the calibration data, you can choose to delete the cube"
+      print, "now and come back after running that calibration or to continue"
+      print, "without intensity correction. Or try with corrmethod = 'old'."
       print
       read, 'Delete [Y/n]', s
       if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
@@ -270,25 +301,43 @@ pro red::fitscube_intensitycorr, filename $
     ;; the appropriate one.
     xpratio = xposure / fxpar(hdr,'TEXPOSUR')
 
-    correction = wbratio * xpratio
+;    oldcorrection = 1d / wcTMEAN
+;    fitcorrection = wbratio * xpratio
+;    stop
     
-  endelse
+    ;; We want the scan-to-scan variations of the "LOCAL" old kind of
+    ;; correction. But scaled to the WB intensity calibration.
+    correction = mean(wbratio * xpratio) * mean(wcTMEAN) / wcTMEAN
+
+  endif else begin
+    
+    ;; LOCAL, the old kind of correction, includes rapid variations
+    ;; from scan to scan
+    correction = 1d / wcTMEAN
+
+  endelse 
 
   ;; Apply the corrections
 
+
+;  ;; Does correction have the correct dimensions?
+;  help, correction
+;  stop
+  
   iframe = 0L
   for iscan = 0, Nscans-1 do begin
     for istokes=0, Nstokes-1 do begin
       for ituning = 0, Ntuning-1 do begin
 
-        red_progressbar, iframe, Nframes, 'Correcting intensity of NB data'
+        red_progressbar, iframe, Nframes, /predict $
+                         , 'Correcting intensity of NB data'
         
         ;; Read a frame from the fitscube file
         red_fitscube_getframe, fileassoc, frame $
                                , iscan = iscan, istokes = istokes, ituning = ituning
         
         ;; Write the corrected frame back to the fitscube file
-        red_fitscube_addframe, fileassoc, frame * correction[ituning, iscan] $
+        red_fitscube_addframe, fileassoc, frame * correction[iscan] $
                                , iscan = iscan, istokes = istokes, ituning = ituning
 
         iframe++
