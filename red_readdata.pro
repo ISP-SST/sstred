@@ -25,6 +25,11 @@
 ;
 ; :Keywords:
 ;
+;    dark : in, optional, type=array
+;
+;       The dark frame associated with the momfbd file to be read.
+;       Needed if the keyword rawstatistics is used. 
+;
 ;    header : out, type=string array/struct
 ;
 ;  	Output the header. 
@@ -36,6 +41,11 @@
 ;		ana
 ;               momfbd
 ;	If not set auto-detection will be attempted.
+;
+;    rawstatistics : in, optional, type=boolean
+;
+;       Calculate statistics for the raw data that went into the
+;       restored image in the momfbd file to be read.
 ;
 ;    structheader : in, type=flag
 ;
@@ -113,12 +123,16 @@
 ;   2018-06-04 : MGL. Renamed keyword framenumber to nslice. Support
 ;                compressed fits files.
 ;
+;   2020-01-31 : MGL. New keywords rawstatistics and dark.
+;
 ;-
 function red_readdata, fname $
+                       , dark = dark $
                        , extension = extension $
                        , filetype = filetype $
                        , header = header $
                        , nslice = nslice $
+                       , rawstatistics = rawstatistics $
                        , silent = silent $
                        , status = status $
                        , structheader = structheader $
@@ -279,7 +293,29 @@ function red_readdata, fname $
     end
 
     'MOMFBD' : begin
-      mr = momfbd_read(fname, /img)
+      if arg_present(rawstatistics) then begin
+        mr = momfbd_read(fname)
+        if max(strmatch(tag_names(mr),'NAME')) eq 1 then begin
+          ;; There is raw file info in the momfbd file!
+          Nfiles = n_elements(mr.name)
+          if min(file_test(mr.name)) eq 1 then begin
+
+            ;; The raw files all exist!
+            if n_elements(dark) eq 0 then dark = 0.
+            undefine, rawmedians
+            for ifile = 0, Nfiles-1 do begin
+              rawims = red_readdata(mr.name[ifile], h = rawhdr)
+              rawdims = size(rawims, /dim)
+              rawframenos = fxpar(rawhdr, 'FRAMENUM')+indgen(rawdims[2])
+              for iframe = 0, rawdims[2]-1 do red_append, rawmedians, median(rawims[*, *, iframe]-dark)
+            endfor              ; ifile
+            ;; Return only medians for now!
+            rawstatistics = {medians:rawmedians, framenumbers:rawframenos}
+          endif
+        endif
+      endif else begin
+        mr = momfbd_read(fname, /img)
+      endelse
       data = red_mozaic(mr, /crop)
     end
 
