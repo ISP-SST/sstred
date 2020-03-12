@@ -29,6 +29,8 @@
 ;
 ;   2017-03-10 : MGL. New member "developer_mode".
 ;
+;   2020-03-11 : MGL. New member "direction".
+;
 ;-
 PRO red__define
 
@@ -56,6 +58,7 @@ PRO red__define
             detectors:ptr_new(),$  ; List of detector identifiers (e.g. camXX)
             cameras:ptr_new(),$    ; List of camera locations/channels (e.g. Crisp-R)
             refcam:0B, $           ; Selected reference channel
+            direction:0B, $        ; Orientation of reference camera, se IDL's rotate().
             out_dir:'',$           ; The directory where all output is stored
             filename:'',$          ;
             filetype:'', $         ;
@@ -83,6 +86,6 @@ PRO red__define
             version_coyote:'', $   ; Version info for the Coyote library
             version_idlastro:'', $ ; Version info for IDLAstro
             version_reduxdlm:'', $ ; Version info for the redux dlm 
-            version_problems:'' $   ; Problem(s) with versions
+            version_problems:'' $  ; Problem(s) with versions
            }
 END

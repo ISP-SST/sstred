@@ -69,6 +69,8 @@
 ;
 ;   2018-05-31 : MGL. Set self.refcam to camera ending in '-W'. 
 ;
+;   2020-03-11 : MGL. Default for self.direction.
+;
 ;-
 pro red::initialize, filename, develop = develop
 
@@ -117,6 +119,7 @@ pro red::initialize, filename, develop = develop
       end
       'camsz'           : self.camsz = value
       'diversity'       : self.diversity = value
+      'direction'       : self.direction = value
       'filetype'        : self.filetype = value
       'image_scale'     : self.image_scale = value
       'isodate'         : self.isodate = value
