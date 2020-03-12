@@ -27,6 +27,11 @@
 ; 
 ; :Keywords:
 ;
+;    align_interactive : in, optional, type=boolean
+;
+;      Set this keyword to define the alignment FOV by use of the XROI
+;      GUI.
+;
 ;    autocrop : in, optional, type=booean
 ;
 ;      Try to determine the largest FOV that avoids any bad momfbd
@@ -46,10 +51,10 @@
 ;      then the auto detected crop is returned in this keyword
 ;      instead.
 ;
-;    align_interactive : in, optional, type=boolean
+;    direction : in, optional, type=integer, default=0
 ;
-;      Set this keyword to define the alignment FOV by use of the XROI
-;      GUI.
+;      The relative orientation of reference cameras of different
+;      instruments. 
 ;
 ;    interactive : in, optional, type=boolean
 ;
@@ -63,6 +68,11 @@
 ;      Set for data where the limb is in the FOV. Makes sure to
 ;      measure the median intensity for normalization on disk. Also
 ;      disables autocrop.
+;
+;    nametag : in, optional, type=string
+;
+;      This string is incorporated into the automatically generated
+;      output file name.
 ;
 ;    negang : in, optional, type=boolean 
 ;
@@ -140,17 +150,21 @@
 ; 
 ;    2018-06-20 : MGL. Variable-keywords DATA???.
 ; 
+;    2020-03-11 : MGL. New keywords direction and nametag. 
+; 
 ;-
 pro red::make_wb_cube, dir $
                        , align_interactive = align_interactive $
                        , autocrop = autocrop $
                        , clip = clip $
                        , crop = crop $
+                       , direction = direction $
                        , interactive = interactive $
                        , limb_data = limb_data $
                        , negang = negang $
                        , np = np $
                        , offset_angle = offset_angle $
+                       , nametag = nametag $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
@@ -175,6 +189,7 @@ pro red::make_wb_cube, dir $
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
+  red_make_prpara, prpara, direction
   red_make_prpara, prpara, negang
   red_make_prpara, prpara, np
   red_make_prpara, prpara, offset_angle
@@ -186,6 +201,7 @@ pro red::make_wb_cube, dir $
 
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
+  if n_elements(direction) eq 0 then direction = self.direction
 
   if keyword_set(limb_data) then autocrop = 0
   
@@ -276,10 +292,18 @@ pro red::make_wb_cube, dir $
   
   hdr = red_readhead(wfiles[0])
   im_dim = fxpar(hdr, 'NAXIS*')
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+  if max(direction eq [1, 3, 4, 7]) eq 1 then begin
+    ;; X and Y switched
+    y0 = crop[0]
+    y1 = im_dim[0]-1 - crop[1]
+    x0 = crop[2]
+    x1 = im_dim[1]-1 - crop[3]
+  endif else begin
+    x0 = crop[0]
+    x1 = im_dim[0]-1 - crop[1]
+    y0 = crop[2]
+    y1 = im_dim[1]-1 - crop[3]
+  endelse
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
 
@@ -301,7 +325,8 @@ pro red::make_wb_cube, dir $
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
-
+    im = rotate(im, direction)
+    
     red_fitspar_getdates, hdr $
                           , date_beg = date_beg $
                           , date_end = date_end $
@@ -622,9 +647,13 @@ pro red::make_wb_cube, dir $
             + red_collapserange(uscans, ld = '', rd = '')
 
   ;; Save WB results as a fits file
-  ofil = 'wb_'+midpart+'_corrected_im.fits'
+  if n_elements(nametag) eq 0 then begin
+    ofil = 'wb_'+midpart+'_corrected_im.fits'
+  endif else begin
+    ofil = 'wb_'+midpart+'_'+nametag+'_corrected_im.fits'
+  endelse
   print, inam + ' : saving WB corrected cube -> ' + odir + ofil
-
+  
   ;; Add the wavelength and Stokes dimensions
   dims = [nx, ny, 1, 1, Nscans]
   cub = reform(cub, dims, /overwrite)
@@ -634,7 +663,7 @@ pro red::make_wb_cube, dir $
 
   ;; Make header. Start with header from last input file, it has
   ;; info about MOMFBD processing.
-  check_fits, cub, hdr, /update                              ; Get dimensions right
+  check_fits, cub, hdr, /update ; Get dimensions right
 ;  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
 ;                      , AFTER = 'SIMPLE' $
 ;                      , 'Creation UTC date of FITS header' ;
@@ -732,22 +761,23 @@ pro red::make_wb_cube, dir $
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
   x01y01 = [X0, X1, Y0, Y1]
-  fxbaddcol, col, bhdr, ANG,    'ANG'
-  fxbaddcol, col, bhdr, CROP,   'CROP'
-  fxbaddcol, col, bhdr, FF,     'FF'
-  fxbaddcol, col, bhdr, GRID,   'GRID'
-  fxbaddcol, col, bhdr, ND,     'ND'
-  fxbaddcol, col, bhdr, SHIFT,  'SHIFT'
-  fxbaddcol, col, bhdr, TMEAN,  'TMEAN'
-  fxbaddcol, col, bhdr, x01y01, 'X01Y01'
+  fxbaddcol, col, bhdr, ANG,       'ANG'
+  fxbaddcol, col, bhdr, CROP,      'CROP'
+  fxbaddcol, col, bhdr, FF,        'FF'
+  fxbaddcol, col, bhdr, GRID,      'GRID'
+  fxbaddcol, col, bhdr, ND,        'ND'
+  fxbaddcol, col, bhdr, SHIFT,     'SHIFT'
+  fxbaddcol, col, bhdr, TMEAN,     'TMEAN'
+  fxbaddcol, col, bhdr, x01y01,    'X01Y01'
+  fxbaddcol, col, bhdr, DIRECTION, 'DIRECTION'
 
   fxbaddcol, wfiles_col, bhdr, WFILES, 'WFILES'
 
   fxbcreate, bunit, odir + ofil, bhdr
 
   fxbwritm, bunit $
-            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-            ,   ANG,   CROP,   FF,   GRID,   ND,   SHIFT,   TMEAN,   x01y01
+            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
+            ,   ANG,   CROP,   FF,   GRID,   ND,   SHIFT,   TMEAN,   x01y01,   direction
   fxbwrite, bunit, wfiles, wfiles_col, 1
   
   fxbfinish, bunit
