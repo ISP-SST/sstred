@@ -49,6 +49,11 @@
 ;
 ;       Store as integers instead of floats.
 ;
+;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE
+;
+;       Indicate whether to do intensity correction based on WB data
+;       and with what method. See documentation for red::fitscube_intensitycorr.
+;
 ;     interactive : in, optional, type=boolean
 ;
 ;       Set this keyword to define the data cube FOV by use of the
@@ -73,6 +78,10 @@
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
 ;       DATA*. If statistics keywords already exist, then remove them.
+;
+;     odir : in, optional, type=string, detault='cubes_scan/'
+;
+;       The output directory.
 ;
 ;     overwrite : in, optional, type=boolean
 ;
@@ -117,6 +126,8 @@
 ;    2019-08-26 : MGL. Do integerization, statistics calculations, and
 ;                 WB intensity correction by calling subprograms.
 ; 
+;    2020-01-16 : MGL. New keywords intensitycorrmethod and odir.
+;
 ;-
 pro crisp::make_scan_cube, dir $
                            , autocrop = autocrop $
@@ -124,11 +135,12 @@ pro crisp::make_scan_cube, dir $
                            , cmap_fwhm = cmap_fwhm $
                            , crop = crop $
                            , integer = integer $
+                           , intensitycorrmethod = intensitycorrmethod $
                            , interactive = interactive $
                            , limb_data = limb_data $
                            , nocavitymap = nocavitymap $
                            , nopolarimetry = nopolarimetry $
-                           , nowbintensitycorr = nowbintensitycorr $
+                           , odir = odir $
                            , overwrite = overwrite $
                            , redemodulate = redemodulate $
                            , scannos = scannos $
@@ -137,16 +149,15 @@ pro crisp::make_scan_cube, dir $
                            , tuning_selection = tuning_selection
                
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(nowbintensitycorr) eq 0 then nowbintensitycorr = 1 ; Temporary default!
-  
   ;; Make prpara
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, autocrop
   red_make_prpara, prpara, clips
   red_make_prpara, prpara, crop     
   red_make_prpara, prpara, integer  
+  red_make_prpara, prpara, intensitycorrmethod
   red_make_prpara, prpara, interactive
   red_make_prpara, prpara, limb_data 
   red_make_prpara, prpara, noaligncont 
@@ -888,12 +899,10 @@ pro crisp::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
     writefits, filename, wbim, ehdr, /append
 
-;    if ~keyword_set(nowbintensitycorr) then begin
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    self -> fitscube_intensitycorr, filename, nodiskcenter = nowbintensitycorr
-;    endif
-
+    self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+    
     if keyword_set(integer) then begin
       ;; Convert to integers
       self -> fitscube_integer, filename $
