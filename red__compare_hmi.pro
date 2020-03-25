@@ -47,18 +47,30 @@
 ; 
 ;   2020-03-23 : MGL. First version.
 ; 
+;   2020-03-25 : MGL. New keyword log.
+; 
 ;-
 pro red::compare_hmi, filename $
                       , iframe = iframe $
                       , iscan = iscan $
                       , istokes = istokes $
-                      , ituning = ituning 
+                      , ituning = ituning $
+                      , log = log
 
+
+  ;; Name of this method
+  inam = red_subprogram(/low, calling = inam1)
+
+  ;; Download HMI images
   self -> download, /hmi
 
   ;; Read the SST data
   h = headfits(filename)
-  red_fitscube_getframe, filename, im_sst, iframe = iframe
+  red_fitscube_getframe, filename, im_sst $
+                         , iframe = iframe $
+                         , iscan = iscan $
+                         , istokes = istokes $
+                         , ituning = ituning
   dims_sst = size(im_sst, /dim)
   date_beg = fxpar(h, 'DATE-BEG')
   time_beg = red_time2double((strsplit(date_beg, 'T', /extract))[1])
@@ -86,6 +98,7 @@ pro red::compare_hmi, filename $
   ;; Display the HMI image
   scrollwindow, xs = dims_hmi[0], ys = dims_hmi[1], wid = wid_hmi, /free, sizefraction = 0.75
   tvscl, im_hmi
+  stop
   ;; Draw axes
   cgPolygon, [0, dims_hmi[0], dims_hmi[0]/2, dims_hmi[0]/2, dims_hmi[0]/2] $
              , [dims_hmi[1]/2, dims_hmi[1]/2, dims_hmi[1]/2, 0, dims_hmi[1]] $
@@ -252,8 +265,19 @@ pro red::compare_hmi, filename $
   ;; anyway if we want to be able to get the spatial coordinates right
   ;; in un-rotated scan cubes and wb/nb cubes where an offset angle is
   ;; used, or where the average rotation angle is subtracted to save
-  ;; space.) 
+  ;; space.)
+  
+  ;; Or we skip measuring (small) rotation misalignments in this step,
+  ;; leaving that for software that align data from multiple
+  ;; instruments.
 
+
+  if keyword_set(log) then begin
+    lfile = 'compare_hmi.log'
+    if file_test(lfile) then openu, llun, lfile, /get_lun else openw, llun, lfile, /get_lun
+    printf, llun, date_beg+' '+strtrim(x_shift, 2)+' '+strtrim(y_shift, 2)
+    free_lun, llun
+  endif
   
   read, 'Do you want to update the WCS info in the cube file [yN]? ', s
 
