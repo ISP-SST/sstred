@@ -26,7 +26,7 @@
 ;    direction : in, type=integer, default=0
 ; 
 ;       Defines the operation to be performed, see documentation for
-;       rotate().
+;       rotate(). If negative, the inverse operation is performed.
 ; 
 ; 
 ; :Keywords:
@@ -38,24 +38,50 @@
 ; 
 ;    inverse : in, optional, type=boolean
 ;
-;       Do the inverse operation.
+;       Do the inverse operation. Note: if direction is negative and
+;       the inverse keyword is set, this is equivalent to calling with
+;       abs(direction) and not setting inverse.
 ; 
 ; :History:
 ; 
 ;   2019-12-09 : MGL. First version. 
+; 
+;   2020-03-16 : MGL. Accept negative direction.
 ;
 ;-
 function red_rotate, array, direction, inverse = inverse, dir = dir
 
   if n_elements(direction) eq 0 then direction = 0
-  
-  if keyword_set(inverse) then begin
+
+  if keyword_set(inverse) xor direction lt 0 then begin
     inv_directions = [0, 3, 2, 1, 4, 5, 6, 7]
-    dir = inv_directions[direction mod 8]
+    dir = inv_directions[abs( direction)]
   endif else begin
+    ;; No inverse, just do it normally
     dir = direction
   endelse
 
   return, rotate(array, dir)
 
 end
+
+;; Testing
+
+a = indgen(3, 5)+10
+
+if n_elements(direction) eq 0 then direction = 5
+
+print, a
+print
+print, rotate(a, direction)
+print
+print, red_rotate(a, direction)
+print
+print, red_rotate(red_rotate(a, direction), -direction)
+print
+
+print, red_rotate(red_rotate(a, direction), direction, /inverse)
+
+
+end
+
