@@ -129,7 +129,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, 'camera = Crisp-R'
   printf, Clun, 'camera = Crisp-W'
   printf, Clun, '#'
-  printf, Clun, 'direction = 4' ; Orientation of WB camera, see IDL's rotate().
+  printf, Clun, 'direction = 5' ; Orientation of WB camera, see IDL's rotate().
   printf, Clun, '#'
   printf, Clun, 'root_dir = ' + root_dir
   printf, Clun, '#'
