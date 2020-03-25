@@ -838,7 +838,7 @@ pro chromis::make_wb_cube, dir $
 
 
   ;; Add the WCS coordinates
-  self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
+  red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims
   
   ;; Add variable keywords.
   self -> fitscube_addvarkeyword, odir + ofil, 'DATE-BEG', date_beg_array $

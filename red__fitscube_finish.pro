@@ -67,7 +67,7 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   Nscans  = long(dimensions[4])
 
   if n_elements(wcs) gt 0 then begin
-    self -> fitscube_addwcs, filename, wcs, dimensions = dimensions
+    red_fitscube_addwcs, filename, wcs, dimensions = dimensions
   endif
   
   if ~arg_present(flipfile) then begin
