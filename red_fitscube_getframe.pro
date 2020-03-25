@@ -35,19 +35,17 @@
 ;
 ;       The frame index in the data cube seen as a 3D cube. 
 ;
-;    ituning  : in, optional, type=integer, default=0
-;
-;       The tuning index, used to calculate iframe.
-;
-;    istokes  : in, optional, type=integer, default=0
-;
-;       The stokes index, used to calculate iframe.
-;
 ;    iscan : in, optional, type=integer, default=0
 ;
 ;       The scan index, used to calculate iframe.   
 ;   
-; 
+;    istokes  : in, optional, type=integer, default=0
+;
+;       The stokes index, used to calculate iframe.
+;
+;    ituning  : in, optional, type=integer, default=0
+;
+;       The tuning index, used to calculate iframe.
 ; 
 ; :History:
 ; 
@@ -56,13 +54,12 @@
 ;     2018-01-12 : MGL. Doesn't need to be a method, rename
 ;                  red::fitscube_getframe to red_fitscube_getframe. 
 ; 
-; 
 ;-
 pro red_fitscube_getframe, filename_or_fileassoc, frame $
                            , iframe = iframe $
-                           , ituning = ituning $
+                           , iscan = iscan $
                            , istokes = istokes $
-                           , iscan = iscan
+                           , ituning = ituning 
   
   if size(filename_or_fileassoc, /tname) eq 'STRING' then open_and_close = 1 else open_and_close = 0
   
