@@ -79,6 +79,11 @@
 ;      Set this to apply the field rotation angles with the opposite
 ;      sign. 
 ;
+;    no_subtract_meanang : in, optional, type=boolean
+;
+;      The mean is subtracted from the derotation angle by default.
+;      Set this keyword to suppress this.
+;
 ;    np : in, optional, type=integer, default=3
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
@@ -152,6 +157,8 @@
 ; 
 ;    2020-03-11 : MGL. New keywords direction and nametag. 
 ; 
+;    2020-03-12 : MGL. New keyword no_subtract_meanang.
+;
 ;-
 pro red::make_wb_cube, dir $
                        , align_interactive = align_interactive $
@@ -161,10 +168,11 @@ pro red::make_wb_cube, dir $
                        , direction = direction $
                        , interactive = interactive $
                        , limb_data = limb_data $
+                       , nametag = nametag $
                        , negang = negang $
+                       , no_subtract_meanang = no_subtract_meanang $
                        , np = np $
                        , offset_angle = offset_angle $
-                       , nametag = nametag $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
@@ -184,13 +192,16 @@ pro red::make_wb_cube, dir $
     print, inam + ' : Please specify the directory with momfbd output.'
     retall
   endif
- 
+
+  if n_elements(direction) eq 0 then direction = self.direction
+
   ;; Make prpara
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
   red_make_prpara, prpara, direction
   red_make_prpara, prpara, negang
+  red_make_prpara, prpara, no_subtract_meanang
   red_make_prpara, prpara, np
   red_make_prpara, prpara, offset_angle
   red_make_prpara, prpara, tile
@@ -201,7 +212,6 @@ pro red::make_wb_cube, dir $
 
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
-  if n_elements(direction) eq 0 then direction = self.direction
 
   if keyword_set(limb_data) then autocrop = 0
   
@@ -292,7 +302,7 @@ pro red::make_wb_cube, dir $
   
   hdr = red_readhead(wfiles[0])
   im_dim = fxpar(hdr, 'NAXIS*')
-  if max(direction eq [1, 3, 4, 7]) eq 1 then begin
+  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
     ;; X and Y switched
     y0 = crop[0]
     y1 = im_dim[0]-1 - crop[1]
@@ -325,7 +335,7 @@ pro red::make_wb_cube, dir $
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
-    im = rotate(im, direction)
+    im = rotate(temporary(im), direction)
     
     red_fitspar_getdates, hdr $
                           , date_beg = date_beg $
@@ -533,10 +543,10 @@ pro red::make_wb_cube, dir $
   
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
-  
-  ang = red_lp_angles(time, date)
+
+  ang = red_lp_angles(time, date[0], /from_log)
   mang = median(ang)
-  ang -= mang
+  if ~keyword_set(no_subtract_meanang) then ang -= mang
   if keyword_set(negang) then ang = -ang
   if n_elements(offset_angle) then ang += offset_angle
   
@@ -825,7 +835,8 @@ pro red::make_wb_cube, dir $
 
 
   ;; Add the WCS coordinates
-  self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
+;  self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
+  red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims
   
   ;; Add variable keywords.
   self -> fitscube_addvarkeyword, odir + ofil, 'DATE-BEG', date_beg_array $
@@ -969,13 +980,14 @@ pro red::make_wb_cube, dir $
   
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin
-
+    r0dims = size(metadata_r0, /dim) ; We have not always had two r0 values.
+    if r0dims[0] eq 1 then extra_coordinate1 = [24] else extra_coordinate1 = [24, 8]
     self -> fitscube_addvarkeyword, odir + ofil, 'ATMOS_R0' $
                                     , metadata_r0[*, tindx_r0] $
                                     , anchor = anchor $
                                     , comment = 'Atmospheric coherence length' $
                                     , tunit = 'm' $
-                                    , extra_coordinate1 = [24, 8] $               ; WFS subfield sizes 
+                                    , extra_coordinate1 = extra_coordinate1 $     ; WFS subfield sizes 
                                     , extra_labels      = ['WFSZ'] $              ; Axis labels for metadata_r0
                                     , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
                                     , extra_units       = ['pix'] $               ; Axis units for metadata_r0
