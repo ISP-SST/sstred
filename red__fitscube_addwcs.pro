@@ -61,8 +61,8 @@
 pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions, no_extension = no_extension
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  inam = red_subprogram(/low, calling = inam1)
+  
   ;; The code leading up to the definition of WriteTimeIndex,
   ;; WriteWaveIndex, TabulateWave, TabulateTime has to match the code
   ;; in red_fitscube_addwcsheader. 

@@ -72,7 +72,7 @@ pro red_fitscube_addwcs, filename, wcs $
                          , update = update
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   ;; The code leading up to the definition of WriteTimeIndex,
   ;; WriteWaveIndex, TabulateWave, TabulateTime has to match the code
@@ -115,12 +115,6 @@ pro red_fitscube_addwcs, filename, wcs $
   
   ;; At least one of the arrays have to be non-scalar. Any non-scalars
   ;; must have the same dimensions: (2 x 2 x Ntunes x Nscans).
-;  if N0+N4 ne 4 || N4 eq 0 then begin
-;    print, inam + ' : At least one of the arrays has the wrong dimensions.'
-;    help, wcs
-;    stop
-;    retall
-;  endif
 
   ;; Get the dimensions from a non-scalar
   case (where(indx4))[0] of
@@ -159,11 +153,6 @@ pro red_fitscube_addwcs, filename, wcs $
   ;; works.
   WriteWaveIndex = TabulateWave && (Sw ne Ntuning)
   WriteTimeIndex = TabulateTime && (St ne Nscans || Sw ne Ntuning)
-
-;  print, inam+' : WriteWaveIndex, WriteTimeIndex', WriteWaveIndex, WriteTimeIndex
-;  print, dimensions
-;  print, dims
-;  help, Sx, Sy, Sw, St, Nx, Ny, Ntuning, Nstokes, Nscans
   
   ;; An array to store the coordinates: wcs_coordinates. First
   ;; dimension is the number of tabulated coordinates, then follow the
@@ -360,7 +349,7 @@ pro red_fitscube_addwcs, filename, wcs $
 
     
   endelse
-  stop
+
   ;; Write the extension
   colno = 1
   rowno = 1

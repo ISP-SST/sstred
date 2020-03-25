@@ -186,7 +186,7 @@ pro red::make_wb_cube, dir $
 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   if n_elements(dir) eq 0 then begin
     print, inam + ' : Please specify the directory with momfbd output.'
@@ -833,9 +833,7 @@ pro red::make_wb_cube, dir $
   ;; Can make_crispex calculate x0,x1,y0,y1 from naxis1 and naxis2 and
   ;; any of the other parameters?
 
-
   ;; Add the WCS coordinates
-;  self -> fitscube_addwcs, odir + ofil, wcs, dimensions = dims
   red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims
   
   ;; Add variable keywords.
