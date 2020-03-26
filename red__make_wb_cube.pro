@@ -158,6 +158,8 @@
 ;    2020-03-11 : MGL. New keywords direction and nametag. 
 ; 
 ;    2020-03-12 : MGL. New keyword no_subtract_meanang.
+; 
+;    2020-03-25 : MGL. Support chromis data.
 ;
 ;-
 pro red::make_wb_cube, dir $
@@ -188,6 +190,9 @@ pro red::make_wb_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  ;; Name of the instrument
+  instrument = ((typename(self)).tolower())
+
   if n_elements(dir) eq 0 then begin
     print, inam + ' : Please specify the directory with momfbd output.'
     retall
@@ -217,15 +222,9 @@ pro red::make_wb_cube, dir $
   
   ;; Camera/detector identification
   self->getdetectors
-  wbindx = where(strmatch(*self.cameras,'Crisp-W'))
+  wbindx = where(strmatch(*self.cameras, instrument+'-W', /fold_case))
   wbcamera = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
-;  nbindx = where(strmatch(*self.cameras,'Chromis-N')) 
-;  nbcamera = (*self.cameras)[nbindx[0]]
-;  nbdetector = (*self.detectors)[nbindx[0]]
-  ;; Should be generalized to multiple NB cameras if CHROMIS gets
-  ;; polarimetry. We don't need to identify any PD cameras for
-  ;; restored data.
 
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
@@ -677,6 +676,13 @@ pro red::make_wb_cube, dir $
 ;  red_fitsaddkeyword, hdr, 'DATE', red_timestamp(/iso) $     ; DATE with time
 ;                      , AFTER = 'SIMPLE' $
 ;                      , 'Creation UTC date of FITS header' ;
+
+  ;; Delete some keywords that do not make sense for WB cubes.
+  red_fitsdelkeyword, hdr, 'FNUMSUM'  ; May add this later
+  red_fitsdelkeyword, hdr, 'FRAMENUM' ; Not applicable here
+  red_fitsdelkeyword, hdr, 'STATE'    ; State info is in WCS and FILTER1 keywords
+;  red_fitsdelkeyword, hdr, '' 
+
   anchor = 'DATE'
 
   ;; Add some keywords
