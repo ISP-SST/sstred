@@ -37,6 +37,17 @@
 ;
 ;       Only add the header keywords, not the extension.
 ;
+;    csyer_spatial_value : in, optional, type=float, default=60.
+;
+;       Upper limit of systematic error in the spatial cordinates (in
+;       arcsec), used to set the value of FITS header keywords CSYER1
+;       and CSYER2. The default 60 arcsec is for when the rotation is
+;       unspecified.
+;
+;    csyer_spatial_comment : in, optional, type=string
+;
+;       The comment for FITS header keywords CSYER1 and CSYER2.
+;
 ;    update : in, optional, type=boolean
 ;
 ;       Update an existing WCS extension.
@@ -64,9 +75,14 @@
 ;    2019-09-13 : MGL. A version that is not a class method.
 ;
 ;    2020-03-23 : MGL. New keyword update.
-; 
+;
+;    2020-03-27 : MGL. New keywords csyer_spatial_value and
+;                 csyer_spatial_comment.
+;
 ;-
 pro red_fitscube_addwcs, filename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
                          , dimensions = dimensions $
                          , no_extension = no_extension $
                          , update = update
@@ -74,6 +90,11 @@ pro red_fitscube_addwcs, filename, wcs $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  if n_elements(csyer_spatial_value) eq 0 then begin
+    csyer_spatial_value = 60.
+    csyer_spatial_comment = 'Orientation unknown'
+  endif 
+  
   ;; The code leading up to the definition of WriteTimeIndex,
   ;; WriteWaveIndex, TabulateWave, TabulateTime has to match the code
   ;; in red_fitscube_addwcsheader. 
@@ -185,7 +206,14 @@ pro red_fitscube_addwcs, filename, wcs $
     end
   endcase
 
+  hdr = headfits(filename)
+  
   if keyword_set(update) then begin
+
+    ;; Change the header keywords for systematic errors.
+    red_fitsaddkeyword, hdr, 'CSYER1', csyer_spatial_value, csyer_spatial_comment
+    red_fitsaddkeyword, hdr, 'CSYER2', csyer_spatial_value, csyer_spatial_comment
+    modfits, filename, 0, hdr
 
     ;; Open an existing WCS-TAB extension for updating.
     
@@ -201,9 +229,7 @@ pro red_fitscube_addwcs, filename, wcs $
 
 
     ;; Modify the main header. ---------------------------------------------------------------
-    
-    hdr = headfits(filename)
-    
+
     if 1 then begin
 
       red_fitscube_addwcsheader, hdr, wcs, dimensions = dimensions
@@ -247,7 +273,7 @@ pro red_fitscube_addwcs, filename, wcs $
       red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX1', 0, 'Unity transform' 
       red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL1', 0, 'Unity transform' 
       red_fitsaddkeyword, anchor = anchor, hdr, 'CDELT1', 1, 'Unity transform' 
-      red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER1', 60, 'Orientation unknown' 
+      red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER1', csyer_spatial_value, csyer_spatial_comment
 
       ;; Second spatial dimension, corner coordinates always tabulated 
       red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE2', 'HPLT-TAB', 'SOLAR Y' 
@@ -260,7 +286,7 @@ pro red_fitscube_addwcs, filename, wcs $
       red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX2', 0, 'Unity transform' 
       red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL2', 0, 'Unity transform' 
       red_fitsaddkeyword, anchor = anchor, hdr, 'CDELT2', 1, 'Unity transform' 
-      red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER2', 60, 'Orientation unknown' 
+      red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER2', csyer_spatial_value, csyer_spatial_comment
 
       ;; Tuning, tabulated wavelength, tabulated for actual scans but not
       ;; for, e.g., wideband cubes.
