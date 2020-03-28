@@ -52,13 +52,15 @@
 ;   2020-03-28 : MGL. Align with respect to two HMI images and
 ;                interpolate to get shifts at the right time.
 ; 
+;   2020-03-28 : MGL. Rename method.
+; 
 ;-
-pro red::compare_hmi, filename $
-                      , iframe = iframe $
-                      , iscan = iscan $
-                      , istokes = istokes $
-                      , ituning = ituning $
-                      , log = log
+pro red::fitscube_wcs_improve_spatial, filename $
+                                       , iframe = iframe $
+                                       , iscan = iscan $
+                                       , istokes = istokes $
+                                       , ituning = ituning $
+                                       , log = log
 
 
   ;; Name of this method
