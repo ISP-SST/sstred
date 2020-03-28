@@ -77,10 +77,18 @@
 ;
 ;      Set this to download without checking if the file already exists
 ;
-;    backscatter  : in, optional, type="integer array"
+;    backscatter : in, optional, type="integer array"
 ;
 ;      Set this to ["8542", "7772"] (or a subset thereof) to download
 ;      backscatter gain and psf for the corresponding prefilter(s).
+;
+;    timestamps_hmi: in, optional, type=strarr
+;
+;      Timestamps for HMI Ic and M images to download. The format is
+;      HHMMSS but HMI images are available only for every 15 min, so
+;      in practice this is HHXX00, where XX is 00, 15, 30, or 45. Use
+;      this rather than the boolean hmi keyword to download data for
+;      specific times and without downloading movies.
 ;
 ; :History:
 ; 
@@ -132,6 +140,8 @@
 ;
 ;    2017-05-08 : MGL. Extended backscatter to 2017.
 ;
+;    2020-03-26 : MGL. New keyword timestamps_hmi.
+;
 ;
 ;-
 pro red_download, date = date $
@@ -152,12 +162,14 @@ pro red_download, date = date $
                   , pathturret = pathturret  $
                   , armap = armap $
                   , hmi = hmi $
+                  , timestamps_hmi = timestamps_hmi $
                   , backscatter = backscatter
 
   any = n_elements(backscatter) gt 0 $
         or keyword_set(pig) $
         or keyword_set(armap)  $
         or keyword_set(hmi)  $
+        or keyword_set(timestamps_hmi)  $
         or keyword_set(logs) $
         or keyword_set(r0)  $
         or keyword_set(shabar)  $
@@ -560,18 +572,20 @@ pro red_download, date = date $
   endif
 
   ;; HMI images and movies
-  if keyword_set(hmi) then begin
+  if keyword_set(hmi) or n_elements(timestamps_hmi) gt 0 then begin
     hmidir = '/data/hmi/images/'+strjoin(datearr, '/')+'/'
     hmisite = 'http://jsoc.stanford.edu'
-    hmitimestamps = ['08', '10', '12', '14', '16', '18']+'0000'
+    if n_elements(timestamps_hmi) eq 0 then timestamps_hmi = ['08', '10', '12', '14', '16', '18']+'0000'
     hmitypes = ['Ic_flat_4k', 'M_color_4k']
-    for i = 0, n_elements(hmitimestamps)-1 do begin
+    for i = 0, n_elements(timestamps_hmi)-1 do begin
       for j = 0, n_elements(hmitypes)-1 do begin
-        hmifile = strjoin(datearr, '')+'_'+hmitimestamps[i]+'_'+hmitypes[j]+'.jpg'
+        hmifile = strjoin(datearr, '')+'_'+timestamps_hmi[i]+'_'+hmitypes[j]+'.jpg'
         tmp = red_geturl(hmisite+hmidir+hmifile $ 
                          , file = hmifile, dir = dir+'/HMI/', overwrite = overwrite) 
       endfor
     endfor                      ; i
+  endif
+  if keyword_set(hmi) then begin
     hmimovies = ['Ic_flat_2d', 'M_2d', 'M_color_2d']+'.mpg'
     for i = 0, n_elements(hmimovies)-1 do begin
       hmifile = hmimovies[i]
