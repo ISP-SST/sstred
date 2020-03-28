@@ -49,6 +49,9 @@
 ; 
 ;   2020-03-25 : MGL. New keyword log.
 ; 
+;   2020-03-28 : MGL. Align with respect to two HMI images and
+;                interpolate to get shifts at the right time.
+; 
 ;-
 pro red::compare_hmi, filename $
                       , iframe = iframe $
@@ -60,9 +63,6 @@ pro red::compare_hmi, filename $
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
-
-  ;; Download HMI images
-  self -> download, /hmi
 
   ;; Read the SST data
   h = headfits(filename)
@@ -82,23 +82,44 @@ pro red::compare_hmi, filename $
   xc_sst = mean(wcs[iframe].hpln) 
   yc_sst = mean(wcs[iframe].hplt)
 
-  red_show, im_sst, w = 0 
+  time_sst = wcs[iframe].time[0]
+  red_show, im_sst, w = 0, title = 'SST @ '+red_timestring(time_sst, n = 0)
   
-  ;; Find the HMI image closest in time
-  hnames=file_search('downloads/HMI/*Ic_flat_4k.jpg')
-  htimes = float(strmid(file_basename(hnames), 9, 2)) * 3600.
-  mn = min(abs(time_beg - htimes),ml)
-  hname = hnames[ml]
-  read_jpeg, hname, im_hmi
-  im_hmi = reform(im_hmi[1, *, *])          ; use green channel
-  hmi_image_scale = 0.5                     ; arc sec / pixel
-  dims_hmi = size(im_hmi, /dim)
 
- 
+  ;; Due to solar rotation, the features we are aligning with can move
+  ;; significantly between HMI exposures. Read the two HMI images
+  ;; collected before and after the SST image, resp. Align with both
+  ;; and interpolate to get the shifts at the right time.
+
+  ;; Download HMI images - one available every 15 min.
+  timestamps_hmi = red_timestring([floor(time_sst/(60*60/4)) $
+                                   , ceil(time_sst/(60*60/4))] * (60*60/4) $
+                                  , Nsecdecimals=0)
+  htimes = red_time2double(timestamps_hmi)
+  timestamps_hmi = [red_strreplace(timestamps_hmi, ':', '', n = 2)]
+  red_download, timestamps_hmi = timestamps_hmi
+
+  ;; The HMI images closest in time
+  hnames = 'downloads/HMI/' $
+           + red_strreplace(self.isodate, '-', '', n = 2) $
+           + '_' + timestamps_hmi + '_Ic_flat_4k.jpg'
+
+  ;; Read the HMI image before the SST image was collected
+  read_jpeg, hnames[0], im_hmi_before
+  im_hmi_before = reform(im_hmi_before[1, *, *]) ; use green channel
+  ;; Read the HMI image after the SST image was collected
+  read_jpeg, hnames[1], im_hmi_after
+  im_hmi_after = reform(im_hmi_after[1, *, *]) ; use green channel
+
+  dims_hmi = size(im_hmi_before, /dim)
+  hmi_image_scale = 0.5         ; arc sec / pixel
+  
   ;; Display the HMI image
-  scrollwindow, xs = dims_hmi[0], ys = dims_hmi[1], wid = wid_hmi, /free, sizefraction = 0.75
-  tvscl, im_hmi
-  stop
+  scrollwindow, xs = dims_hmi[0], ys = dims_hmi[1] $
+                , wid = wid_hmi_before, /free, sizefraction = 0.75 $
+                , title = 'HMI @ '+red_timestring(htimes[0], n = 0)
+  tvscl, im_hmi_before
+
   ;; Draw axes
   cgPolygon, [0, dims_hmi[0], dims_hmi[0]/2, dims_hmi[0]/2, dims_hmi[0]/2] $
              , [dims_hmi[1]/2, dims_hmi[1]/2, dims_hmi[1]/2, 0, dims_hmi[1]] $
@@ -108,9 +129,9 @@ pro red::compare_hmi, filename $
              , round(wcs[iframe].hplt[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[1]/2) $
              , color='yellow', /DEVICE
   
-  print, 'Please use scroll bars to center the HMI image on the SST FOV.'
-  print, 'It should be close to the drawn rectangle.'
-  print, 'We will worry about the alignment later but first:'
+  print, inam + ' : Please use scroll bars to center the HMI image on the SST FOV.'
+  print, inam + '   It should be close to the drawn rectangle.'
+  print, inam + '   We will worry about the alignment later but first:'
   s = ''
   read, 'Do the orientations (90 deg rotations and mirroring) match in the two images [yN]? ', s
   if strupcase(strmid(s, 0, 1)) ne 'Y' then begin
@@ -147,22 +168,22 @@ pro red::compare_hmi, filename $
       cgtext, i*maxdim_small+10, 10, strtrim(i, 2), /dev, color = 'yellow'
     endfor                      ; i
 
-    ;; Change this to click in window.
+    ;; Change this to click in window!
     repeat read, 'Which panel is oriented like the HMI image [0-7]? ', s $
     until long(s) ge 0 and long(s) le 7
     
     if long(s) eq direction then begin
-      print, 'This is the orientation of the cube, no change.'
+      print, inam + ' : This is the orientation of the cube, no change.'
     endif else begin
-      print, 'Please edit config.txt, change or add the following line:'
-      print, 'direction='+s
-      print, 'Then make a new WB cube and continue from that.'
+      print, inam + ' : Please edit config.txt, change or add the following line:'
+      print, inam + '   direction='+s
+      print, inam + '   Then make a new WB cube and continue from that.'
       retall
     endelse
     
   endif 
 
-  print, 'Will now try to measure the misalignment with cross correclation.'
+  print, inam + ' : Will now try to measure the misalignment with cross correclation.'
 
   ;; SST FOV in the HMI image
   xc_hmi_pix = dims_hmi[0]/2. + xc_sst/hmi_image_scale
@@ -171,19 +192,21 @@ pro red::compare_hmi, filename $
   xsz_hmi_pix = round(dims_sst[0] * float(self.image_scale)/hmi_image_scale)
   ysz_hmi_pix = round(dims_sst[1] * float(self.image_scale)/hmi_image_scale)
 
-  subim_hmi = congrid(red_pic_at_coord(im_hmi $
-                                       , round(xc_hmi_pix), round(yc_hmi_pix) $
-                                       , xsz_hmi_pix, ysz_hmi_pix) $
+  ;; Before
+  subim_hmi_before = congrid(red_pic_at_coord(im_hmi_before $
+                                              , round(xc_hmi_pix), round(yc_hmi_pix) $
+                                              , xsz_hmi_pix, ysz_hmi_pix) $
                       , dims_sst[0], dims_sst[1], cub=-0.5)
-  red_show, subim_hmi, w = 1
+  red_show, subim_hmi_before, w = 1
 
-  shifts = red_alignoffset(red_centerpic(im_sst,sz=1024) $
-                           , red_centerpic(subim_hmi,sz=1024),/win)
+  shifts_before = red_alignoffset(red_centerpic(im_sst,sz=1024) $
+                                  , red_centerpic(subim_hmi_before,sz=1024),/win)
 
-  xc_hmi_pix -= shifts[0] * float(self.image_scale)/hmi_image_scale
-  yc_hmi_pix -= shifts[1] * float(self.image_scale)/hmi_image_scale
-  subim_hmi = congrid(red_pic_at_coord(im_hmi $
-                                       , round(xc_hmi_pix), round(yc_hmi_pix) $
+  xc_hmi_pix_before = xc_hmi_pix - shifts_before[0] * float(self.image_scale)/hmi_image_scale
+  yc_hmi_pix_before = yc_hmi_pix - shifts_before[1] * float(self.image_scale)/hmi_image_scale
+
+  subim_hmi = congrid(red_pic_at_coord(im_hmi_before $
+                                       , round(xc_hmi_pix_before), round(yc_hmi_pix_before) $
                                        , xsz_hmi_pix, ysz_hmi_pix) $
                       , dims_sst[0], dims_sst[1], cub=-0.5)
   red_show, subim_hmi, w = 1
@@ -194,39 +217,40 @@ pro red::compare_hmi, filename $
 
   if strupcase(strmid(s, 0, 1)) ne 'Y' then begin
 
-    print, 'Please click on a recognicable structure in the SST image.'
+    print, inam + ' : Please click on a recognicable structure in the SST image.'
     wshow, 0
     wset, 0
     cursor, xp_sst_pix, yp_sst_pix, /device
 
-    print, 'Click on the same structure in the HMI image.'
-    wshow, wid_hmi
-    wset, wid_hmi
+    print, inam + ' : Click on the same structure in the HMI image.'
+    wshow, wid_hmi_before
+    wset, wid_hmi_before
     cursor, xp_hmi_pix, yp_hmi_pix, /device
 
-    ;; Now read out a subim from im_hmi that matches the sst image.
+    ;; Now read out a subim from im_hmi_before that matches the sst image.
     xl = round(xp_hmi_pix - xp_sst_pix*float(self.image_scale)/hmi_image_scale)
     xh = round(xp_hmi_pix + (dims_sst[0]-xp_sst_pix)*float(self.image_scale)/hmi_image_scale)
     yl = round(yp_hmi_pix - yp_sst_pix*float(self.image_scale)/hmi_image_scale)
     yh = round(yp_hmi_pix + (dims_sst[1]-yp_sst_pix)*float(self.image_scale)/hmi_image_scale)
     xc_hmi_pix = (xl+xh)/2
     yc_hmi_pix = (yl+yh)/2
-    subim_hmi = congrid(red_pic_at_coord(im_hmi $
-                                         , round(xc_hmi_pix), round(yc_hmi_pix) $
-                                         , xsz_hmi_pix, ysz_hmi_pix) $
+    ;; Before
+    subim_hmi_before = congrid(red_pic_at_coord(im_hmi_before $
+                                                , round(xc_hmi_pix), round(yc_hmi_pix) $
+                                                , xsz_hmi_pix, ysz_hmi_pix) $
                         , dims_sst[0], dims_sst[1], cub=-0.5)
-    red_show, subim_hmi, w = 1
+    red_show, subim_hmi_before, w = 1
 
-    shifts = red_alignoffset(red_centerpic(im_sst,sz=1024) $
-                             , red_centerpic(subim_hmi,sz=1024),/win)
+    shifts_before = red_alignoffset(red_centerpic(im_sst,sz=1024) $
+                                    , red_centerpic(subim_hmi_before,sz=1024),/win)
 
-    xc_hmi_pix -= shifts[0] * float(self.image_scale)/hmi_image_scale
-    yc_hmi_pix -= shifts[1] * float(self.image_scale)/hmi_image_scale
-    subim_hmi = congrid(red_pic_at_coord(im_hmi $
-                                         , round(xc_hmi_pix), round(yc_hmi_pix) $
-                                         , xsz_hmi_pix, ysz_hmi_pix) $
+    xc_hmi_pix_before = xc_hmi_pix - shifts_before[0] * float(self.image_scale)/hmi_image_scale
+    yc_hmi_pix_before = yc_hmi_pix - shifts_before[1] * float(self.image_scale)/hmi_image_scale
+    subim_hmi_before = congrid(red_pic_at_coord(im_hmi_before $
+                                                , round(xc_hmi_pix_before), round(yc_hmi_pix_before) $
+                                                , xsz_hmi_pix, ysz_hmi_pix) $
                         , dims_sst[0], dims_sst[1], cub=-0.5)
-    red_show, subim_hmi, w = 1
+    red_show, subim_hmi_before, w = 1
     blink, [0, 1]
     
     read, 'Did the alignment work this time [yN]? ', s
@@ -236,22 +260,60 @@ pro red::compare_hmi, filename $
    
   endif
 
+  ;; After
+  scrollwindow, xs = dims_hmi[0], ys = dims_hmi[1] $
+                , wid = wid_hmi_after, /free, sizefraction = 0.75 $
+                , title = 'HMI @ '+red_timestring(htimes[1], n = 0)
+  tvscl, im_hmi_after
+
+
+  ;; Draw axes
+  cgPolygon, [0, dims_hmi[0], dims_hmi[0]/2, dims_hmi[0]/2, dims_hmi[0]/2] $
+             , [dims_hmi[1]/2, dims_hmi[1]/2, dims_hmi[1]/2, 0, dims_hmi[1]] $
+             , color='yellow', /DEVICE
+  ;; Draw FOV box
+  cgPolygon, round(wcs[iframe].hpln[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[0]/2) $
+             , round(wcs[iframe].hplt[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[1]/2) $
+             , color='yellow', /DEVICE
+
+  subim_hmi_after = congrid(red_pic_at_coord(im_hmi_after $
+                                             , round(xc_hmi_pix), round(yc_hmi_pix) $
+                                             , xsz_hmi_pix, ysz_hmi_pix) $
+                      , dims_sst[0], dims_sst[1], cub=-0.5)
+  
+  red_show, subim_hmi_after, w = 1
+
+  shifts_after = red_alignoffset(red_centerpic(im_sst,sz=1024) $
+                                 , red_centerpic(subim_hmi_after,sz=1024),/win)
+
+  
+  ;; Interpolate
+  shifts = ( shifts_before*(htimes[1]-time_sst) + shifts_after*(time_sst-htimes[0]) ) / (htimes[1]-htimes[0])
+  xc_hmi_pix -= shifts[0] * float(self.image_scale)/hmi_image_scale
+  yc_hmi_pix -= shifts[1] * float(self.image_scale)/hmi_image_scale
+  
   ;; Calculate total shifts in arc sec
   xc_hmi = (xc_hmi_pix - dims_hmi[0]/2.) * hmi_image_scale 
   yc_hmi = (yc_hmi_pix - dims_hmi[1]/2.) * hmi_image_scale
   x_shift = xc_hmi - xc_sst
   y_shift = yc_hmi - yc_sst
   
-  print, 'Detected X displacement: ' + strtrim(x_shift, 2) + ' arc sec.'
-  print, 'Detected Y displacement: ' + strtrim(y_shift, 2) + ' arc sec.'
+  print, inam + ' : Detected X displacement: ' + strtrim(x_shift, 2) + ' arc sec.'
+  print, inam + ' : Detected Y displacement: ' + strtrim(y_shift, 2) + ' arc sec.'
 
   ;; Modify the WCS info (for all frames)
   wcs.hpln += x_shift
   wcs.hplt += y_shift
 
   ;; Confirm that the new coordinates are good.
-  wshow, wid_hmi
-  wset, wid_hmi
+  wshow, wid_hmi_before
+  wset, wid_hmi_before
+  ;; Draw new FOV box
+  cgPolygon, round(wcs[iframe].hpln[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[0]/2) $
+             , round(wcs[iframe].hplt[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[1]/2) $
+             , color='green', /DEVICE
+  wshow, wid_hmi_after
+  wset, wid_hmi_after
   ;; Draw new FOV box
   cgPolygon, round(wcs[iframe].hpln[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[0]/2) $
              , round(wcs[iframe].hplt[[0, 1, 3, 2, 0]]/hmi_image_scale+dims_hmi[1]/2) $
@@ -284,8 +346,16 @@ pro red::compare_hmi, filename $
   if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
     
     ;; Write the updated WCS info back into the file. 
-    red_fitscube_addwcs, filename, wcs, dimensions = fxpar(h, 'NAXIS*'), /update
+    red_fitscube_addwcs, filename, wcs $
+                         , csyer_spatial_value = 5. $ ; 5 arcsec, minor rotation error may remain
+                         , csyer_spatial_comment = 'Aligned with HMI images' $
+                         , dimensions = fxpar(h, 'NAXIS*') $
+                         , /update
 
+    ;; There is a FITS keyword that should be set, specifying that we
+    ;; used the HMI images for alignment.
+    ;; strjoin(file_basename(hnames),' & ')
+    
   endif
 
 end
