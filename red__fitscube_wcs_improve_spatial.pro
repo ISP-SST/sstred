@@ -337,10 +337,14 @@ pro red::fitscube_wcs_improve_spatial, filename $
 
 
   if keyword_set(log) then begin
-    lfile = 'compare_hmi.log'
-    if file_test(lfile) then openu, llun, lfile, /get_lun else openw, llun, lfile, /get_lun
-    printf, llun, date_beg+' '+strtrim(x_shift, 2)+' '+strtrim(y_shift, 2)
-    free_lun, llun
+    lfile = 'wcs_improve_spatial.log'
+    ;; For some reason the log file kept getting overwritten in spite
+    ;; of being opened with openu. So we'll do it differently for now.
+    spawn, 'echo '+ date_beg+' '+strtrim(x_shift, 2)+' '+strtrim(y_shift, 2) + ' >> ' + lfile
+;    stop
+;    if file_test(lfile) then openu, llun, lfile, /get_lun else openw, llun, lfile, /get_lun
+;    printf, llun, date_beg+' '+strtrim(x_shift, 2)+' '+strtrim(y_shift, 2)
+;    free_lun, llun
   endif
   
   read, 'Do you want to update the WCS info in the cube file [yN]? ', s
