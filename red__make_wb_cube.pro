@@ -79,10 +79,9 @@
 ;      Set this to apply the field rotation angles with the opposite
 ;      sign. 
 ;
-;    no_subtract_meanang : in, optional, type=boolean
+;    subtract_meanang : in, optional, type=boolean
 ;
-;      The mean is subtracted from the derotation angle by default.
-;      Set this keyword to suppress this.
+;      Subtract the mean from the derotation angle. 
 ;
 ;    np : in, optional, type=integer, default=3
 ;
@@ -160,6 +159,9 @@
 ;    2020-03-12 : MGL. New keyword no_subtract_meanang.
 ; 
 ;    2020-03-25 : MGL. Support chromis data.
+; 
+;    2020-03-31 : MGL. New keyword subtract_meanang, remove keyword
+;                 no_subtract_meanang. 
 ;
 ;-
 pro red::make_wb_cube, dir $
@@ -172,14 +174,14 @@ pro red::make_wb_cube, dir $
                        , limb_data = limb_data $
                        , nametag = nametag $
                        , negang = negang $
-                       , no_subtract_meanang = no_subtract_meanang $
                        , np = np $
                        , offset_angle = offset_angle $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
                        , ybd = ybd $
-                       , scannos = scannos 
+                       , scannos = scannos $
+                       , subtract_meanang = subtract_meanang 
 ;                      , ang = ang $
 ;                      , ext_date = ext_date $
 ;                      , ext_time = ext_time $
@@ -206,7 +208,7 @@ pro red::make_wb_cube, dir $
   red_make_prpara, prpara, crop
   red_make_prpara, prpara, direction
   red_make_prpara, prpara, negang
-  red_make_prpara, prpara, no_subtract_meanang
+  red_make_prpara, prpara, subtract_meanang
   red_make_prpara, prpara, np
   red_make_prpara, prpara, offset_angle
   red_make_prpara, prpara, tile
@@ -545,7 +547,7 @@ pro red::make_wb_cube, dir $
 
   ang = red_lp_angles(time, date[0], /from_log)
   mang = median(ang)
-  if ~keyword_set(no_subtract_meanang) then ang -= mang
+  if keyword_set(subtract_meanang) then ang -= mang
   if keyword_set(negang) then ang = -ang
   if n_elements(offset_angle) then ang += offset_angle
   
