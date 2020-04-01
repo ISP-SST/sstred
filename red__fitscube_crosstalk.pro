@@ -69,7 +69,7 @@ pro red::fitscube_crosstalk, filename  $
 
   inam = red_subprogram(/low, calling = inam1)
 
-  red_fitscube_open, filename, fileassoc, fitscube_info
+  red_fitscube_open, filename, fileassoc, fitscube_info, /update
 
   hdr = fitscube_info.header
   
@@ -91,7 +91,6 @@ pro red::fitscube_crosstalk, filename  $
     print, inam + ' : This is not a polarimetric cube:'
     print, filename
     red_fitscube_close, fileassoc, fitscube_info
-                                ;free_lun, lun
     return
   endif
 
@@ -104,7 +103,6 @@ pro red::fitscube_crosstalk, filename  $
       print, filename
       print, inam + " : Use /force to do it again."
       red_fitscube_close, fileassoc, fitscube_info
-                                ;free_lun, lun
       return
     endif
   endif
@@ -195,7 +193,7 @@ pro red::fitscube_crosstalk, filename  $
     Nyy = wcX01Y01[3] - wcX01Y01[2] + 1 ;+ wcCROP[2] + wcCROP[3]
     
   endif
-  
+
   for iscan = 0, Nscans-1 do begin
 
     if makemask then begin
@@ -219,7 +217,7 @@ pro red::fitscube_crosstalk, filename  $
     numerator   = dblarr(Nstokes)
     denominator = 0d
     for i = 0, n_elements(ppc)-1 do begin
-      red_fitscube_getframe, filename, im0, istokes = 0, iscan = iscan, ituning = ppc[i] ; Stokes I
+      red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ppc[i] ; Stokes I
 
       ;;denominator += median(im0[where(this_mask)] *
       ;;im0[where(this_mask)], /double)
@@ -229,7 +227,7 @@ pro red::fitscube_crosstalk, filename  $
       denominator += a[1]
       
       for istokes=1, Nstokes-1 do begin
-        red_fitscube_getframe, filename, im, istokes = istokes, iscan = iscan, ituning = ppc[i]
+        red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ppc[i]
         ;;numerator[istokes] += median(im0[where(this_mask)] * im[where(this_mask)], /double)
         a = red_histo_gaussfit(im0[mindx] * im[mindx], FWlevel = 0.25)
         numerator[istokes] += a[1]
@@ -239,17 +237,17 @@ pro red::fitscube_crosstalk, filename  $
     
     print, 'Scan '+strtrim(scannumbers[iscan], 2)+' : crosstalk from I -> Q,U,V =' $
            , crt[1], ', ', crt[2], ', ', crt[3], format='(A,F8.5,A,F8.5,A,F8.5)'
-    
+
     for ituning = 0, Ntuning-1 do begin
-      red_fitscube_getframe, filename, im0, istokes = 0, iscan = iscan, ituning = ituning ; Stokes I
-      if makemask then im0[pindx] = median(im0[pindx])                                    ; Set the padding to median
-      red_fitscube_addframe, filename, im0, istokes = 0, iscan = iscan, ituning = ituning ; Write with updated padding
+      red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ituning ; Stokes I
+      if makemask then im0[pindx] = median(im0[pindx])                                     ; Set the padding to median
+      red_fitscube_addframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ituning ; Write with updated padding
       for istokes=1, Nstokes-1 do begin
         ;;d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
-        red_fitscube_getframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
+        red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning
         im -= float(crt[istokes] * im0)
         if makemask then im[pindx] = median(im[pindx]) 
-        red_fitscube_addframe, filename, im, istokes = istokes, iscan = iscan, ituning = ituning
+        red_fitscube_addframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning
       endfor                    ; istokes
     endfor                      ; ituning
   endfor                        ; iscan
