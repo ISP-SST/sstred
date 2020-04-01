@@ -51,7 +51,7 @@
 ;      then the auto detected crop is returned in this keyword
 ;      instead.
 ;
-;    direction : in, optional, type=integer, default=0
+;    direction : in, optional, type=integer, default="from class object"
 ;
 ;      The relative orientation of reference cameras of different
 ;      instruments. 
