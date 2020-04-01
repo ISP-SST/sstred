@@ -45,6 +45,11 @@
 ;       then the auto detected crop is returned in this keyword
 ;       instead.
 ;
+;     direction : in, optional, type=integer, default="from class object"
+;
+;       The relative orientation of reference cameras of different
+;       instruments.
+;
 ;     integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats.
@@ -74,6 +79,10 @@
 ;       Do not correct the (polarimetric) data cube Stokes components
 ;       for crosstalk from I to Q, U, V.
 ; 
+;     norotate : in, optional, type=boolean
+;
+;       Do not apply the direction parameter.
+;
 ;     nostatistics : in, optional, type=boolean
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
@@ -127,6 +136,8 @@
 ;                 WB intensity correction by calling subprograms.
 ; 
 ;    2020-01-16 : MGL. New keywords intensitycorrmethod and odir.
+; 
+;    2020-04-01 : MGL. New keywords direction and norotation.
 ;
 ;-
 pro crisp::make_scan_cube, dir $
@@ -134,12 +145,14 @@ pro crisp::make_scan_cube, dir $
                            , clips = clips $
                            , cmap_fwhm = cmap_fwhm $
                            , crop = crop $
+                           , direction = direction $
                            , integer = integer $
                            , intensitycorrmethod = intensitycorrmethod $
                            , interactive = interactive $
                            , limb_data = limb_data $
                            , nocavitymap = nocavitymap $
                            , nopolarimetry = nopolarimetry $
+                           , norotation = norotation $
                            , odir = odir $
                            , overwrite = overwrite $
                            , redemodulate = redemodulate $
@@ -151,17 +164,22 @@ pro crisp::make_scan_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  
+  if n_elements(direction) eq 0 then direction = self.direction
+
   ;; Make prpara
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, autocrop
   red_make_prpara, prpara, clips
-  red_make_prpara, prpara, crop     
+  red_make_prpara, prpara, crop    
+  red_make_prpara, prpara, direction 
   red_make_prpara, prpara, integer  
   red_make_prpara, prpara, intensitycorrmethod
   red_make_prpara, prpara, interactive
   red_make_prpara, prpara, limb_data 
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap    
+  red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, smooth
   red_make_prpara, prpara, tiles
@@ -221,9 +239,27 @@ pro crisp::make_scan_cube, dir $
   
   ;; Some info common to all scans
   prefilter = wbgstates[0].prefilter
-  datestamp = fxpar(red_readhead(wbgfiles[0]), 'STARTOBS')
+  wbghdr = red_readhead(wbgfiles[0])
+  datestamp = fxpar(wbghdr, 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
 
+  red_fitspar_getdates, wbghdr $
+                        , date_beg = date_beg $
+                        , date_end = date_end $
+                        , date_avg = date_avg $
+                        , count_avg = hasdateavg $
+                        , comment_avg = comment_avg
+  
+  if hasdateavg then begin
+    date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
+    ddate = date_avg_split[0]
+    if Nsplit gt 1 then time = date_avg_split[1] else undefine, time
+  endif else undefine, ddate, time
+
+  ;; Derotation angle
+  ang = (red_lp_angles(time, ddate[0], /from_log))[0]
+
+  
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -262,17 +298,22 @@ pro crisp::make_scan_cube, dir $
   ;; Do we need this?
   ;; Establish the FOV, perhaps based on the selected wb files.
   red_bad_subfield_crop, wbgfiles, crop, autocrop = autocrop,  interactive = interactive
-  hdr = red_readhead(wbgfiles[0])
-  im_dim = fxpar(hdr, 'NAXIS*')
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+  im_dim = fxpar(wbghdr, 'NAXIS*')
+  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
+    ;; X and Y switched
+    y0 = crop[0]
+    y1 = im_dim[0]-1 - crop[1]
+    x0 = crop[2]
+    x1 = im_dim[1]-1 - crop[3]
+  endif else begin
+    x0 = crop[0]
+    x1 = im_dim[0]-1 - crop[1]
+    y0 = crop[2]
+    y1 = im_dim[1]-1 - crop[3]
+  endelse
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
-  
 
-  
 ;  ;; Now let's limit the files & states arrays to only the
 ;  ;; scans to process.
 ;  self -> selectfiles, files = files, states = states $
@@ -444,7 +485,10 @@ pro crisp::make_scan_cube, dir $
 
     ;; Read global WB file to add it as an extension to the cube. And
     ;; possibly use for WB correctionb.
-    wbim = (red_readdata(wfiles[indx], head = wbhdr))[x0:x1, y0:y1]
+    wbim = (red_readdata(wfiles[indx], head = wbhdr, direction = direction))[x0:x1, y0:y1]
+
+    ff = [abs(ang),0,0,0,0]
+    wbim_rot = red_rotation(wbim, ang, full = ff)
 
     ;; The non-global WB files
     wfiles  = wfiles[complement]
@@ -618,9 +662,9 @@ pro crisp::make_scan_cube, dir $
     ;; Add info to headers
     red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
     red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
-
+    
     ;; Initialize fits file, set up for writing the data part.
-    dims = [Nx, Ny, Ntuning, Nstokes, 1] 
+    dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
 
@@ -656,7 +700,7 @@ pro crisp::make_scan_cube, dir $
 
       if keyword_set(makestokes) then begin
         
-        nbims = red_readdata(snames[ituning], head = nbhead)
+        nbims = red_readdata(snames[ituning], head = nbhead, direction = direction)
 
         ;; Wavelength 
         wcs[ituning].wave = sstates[ituning].tun_wavelength*1d9
@@ -679,7 +723,8 @@ pro crisp::make_scan_cube, dir $
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
         for istokes = 0, Nstokes-1 do begin
-          self -> fitscube_addframe, fileassoc, nbims[*, *, 0, istokes] $
+          self -> fitscube_addframe, fileassoc $
+                                     , red_rotation(nbims[*, *, 0, istokes], ang, full = ff) $
                                      , ituning = ituning, istokes = istokes
         endfor                  ; istokes
 
@@ -726,15 +771,15 @@ pro crisp::make_scan_cube, dir $
         for iexposure = 0, Nexposures-1 do begin
 
           ;; Read images
-          nbtim = (red_readdata(tun_nbtfiles[iexposure], head = nbthdr))[x0:x1, y0:y1]
-          nbrim = (red_readdata(tun_nbrfiles[iexposure], head = nbrhdr))[x0:x1, y0:y1]
+          nbtim = (red_readdata(tun_nbtfiles[iexposure], head = nbthdr, direction = direction))[x0:x1, y0:y1]
+          nbrim = (red_readdata(tun_nbrfiles[iexposure], head = nbrhdr, direction = direction))[x0:x1, y0:y1]
 
           ;; Apply prefilter curve
           nbtim *= nbt_rpref[ituning]
           nbrim *= nbr_rpref[ituning]
           
           if wbstretchcorr then begin
-            wim = (red_readdata(tun_wfiles[iexposure], head = whdr))[x0:x1, y0:y1]
+            wim = (red_readdata(tun_wfiles[iexposure], head = whdr, direction = direction))[x0:x1, y0:y1]
             grid1 = red_dsgridnest(wbim, wim, tiles, clips)
             nbtim = red_stretch(temporary(nbtim), grid1)
             nbrim = red_stretch(temporary(nbrim), grid1)
@@ -781,7 +826,8 @@ pro crisp::make_scan_cube, dir $
         sexp_array[ituning] = mean(texps)
         nsum_array[ituning] = round(total(nsums))
 
-        self -> fitscube_addframe, fileassoc, temporary(nbim) $
+        self -> fitscube_addframe, fileassoc $
+                                   , red_rotation(temporary(nbim), ang, full = ff) $
                                    , ituning = ituning
 
       endelse 
@@ -822,7 +868,9 @@ pro crisp::make_scan_cube, dir $
     self -> fitscube_finish, lun, wcs = wcs
 
     ;; Add cavity maps as WAVE distortions 
-    if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename, reform(cmap1, Nx, Ny, 1, 1, 1)
+    if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename $
+       , reform(red_rotation(cmap1,ang,full=ff),[dims[0:1],1,1,1])
+;    , red_rotation(reform(cmap1, Nx, Ny, 1, 1, 1), ang, full = ff)
 
     ;; Add some variable keywords
     self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
@@ -891,13 +939,13 @@ pro crisp::make_scan_cube, dir $
     ehdr=wbhdr
     fxaddpar, ehdr, 'XTENSION', 'IMAGE'
     sxdelpar, ehdr, 'SIMPLE'
-    check_fits, wbim, ehdr, /update
+    check_fits, wbim_rot, ehdr, /update
     fxaddpar, ehdr, 'DATE', red_timestamp(/utc, /iso)
     anchor = 'DATE'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'WBIMAGE', 'Wideband image'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
-    writefits, filename, wbim, ehdr, /append
+    writefits, filename, wbim_rot, ehdr, /append
 
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
@@ -914,7 +962,14 @@ pro crisp::make_scan_cube, dir $
     
     if ~keyword_set(nostatistics) then begin
       ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write
+      if keyword_set(norotation) then begin
+        red_fitscube_statistics, filename, /write
+      endif else begin
+        red_fitscube_statistics, filename, /write, full = ff $
+                                 , origNx = Nxx $
+                                 , origNy = Nyy $
+                                 , angles = [ang]
+      endelse
     endif
     
     ;; Done with this scan.
