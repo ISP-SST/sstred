@@ -70,6 +70,8 @@
 ; 
 ;    2020-03-11 : MGL. Set direction in config file.
 ; 
+;    2020-04-06 : MGL. Set rotation in config file.
+; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                               , calibrations_only = calibrations_only $
@@ -160,7 +162,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, 'camera = Chromis-D'
   printf, Clun, 'camera = Chromis-N'
   printf, Clun, '#'
-  printf, Clun, 'direction = 1' ; Orientation of WB camera, see IDL's rotate().
+  printf, Clun, 'direction = 1'    ; Orientation of WB camera, see IDL's rotate().
+  printf, Clun, 'rotation = -42.0' ; Rotation of reference camera, se offset_angle of red_lp_angles().
   printf, Clun, '#'
   printf, Clun, 'root_dir = ' + root_dir
   printf, Clun, '#'
