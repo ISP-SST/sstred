@@ -40,7 +40,7 @@
 ;       Angle offset in degrees to make the output equal to "the angle
 ;       between N/S of the sun and the horizontal, on the optical
 ;       table, pointing right looking at the sun." Aka "table
-;       constant".(Used only together with /from_log.)
+;       constant". (Used only together with /from_log.)
 ;
 ; :History:
 ; 
