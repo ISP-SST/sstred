@@ -21,7 +21,7 @@
 ; 
 ; :Keywords:
 ; 
-;     wnum : in, optional, type=integer
+;     wnum : in, out, optional, type=integer
 ;
 ;        integer window index
 ;
@@ -39,6 +39,11 @@
 ;        Re-use existing window, if there is one with the appropriate
 ;        wnum. 
 ;
+;     scroll : in, optional, type=boolean
+;
+;        Make window with scrollbars for large images instead of
+;        shrinking.
+;
 ;     title : in, optional, type=string
 ;
 ;        If a window is created, it will have this title.
@@ -52,6 +57,8 @@
 ;
 ;    2019-10-17 : MGL. New keyword reuse.
 ;
+;    2020-04-07 : MGL. New keyword scroll.
+;
 ;-
 pro red_show, vari $
               , noscale = noscale $
@@ -59,18 +66,19 @@ pro red_show, vari $
               , offs = offs $
               , opt = opt $
               , reuse = reuse $
+              , scroll = scroll $
               , title = title $
               , wnum = wnum 
 
   ;; Initializes some variables
   if ~keyword_set(wnum) then wnum=0
-              if ~keyword_set(offs) then offs=24
+  if ~keyword_set(offs) then offs=24
 
-              ;; Image
-              var=reform(vari)
-              dim=size(var)
-              ;;Checks for the right image dimensions
-              if dim[0] lt 2 or dim[0] gt 3 then begin
+  ;; Image
+  var=reform(vari)
+  dim=size(var)
+  ;;Checks for the right image dimensions
+  if dim[0] lt 2 or dim[0] gt 3 then begin
     print,'Wrong dimensions: '+stri(dim[0])+'.Image must be a 2D or 3D array'
     return
   endif
@@ -104,25 +112,37 @@ pro red_show, vari $
     tvscl, var, true = iscolor
   endif else begin
     ;; Image does not fit on screen
-    asp=float(xdim)/float(ydim)
-    sasp=sdim[0]/sdim[1]
-    
-    if asp ge sasp then begin   ;x-dimension bigger than y-dimension
-      xsiz=sdim[0]
-      ysiz=sdim[0]/asp
-    endif else begin            ;y-dimension bigger than x-dimension
-      xsiz=sdim[1]*asp
-      ysiz=sdim[1]
-    endelse
-    if not keyword_set(nowin) then $
-       window, wnum, xsize=xsiz, ysize=ysiz, title = title
-    if iscolor then begin
-      tvscl,congrid(var,3,xsiz,ysiz),/true
+    if keyword_set(scroll) then begin
+      scrollwindow, wid = wnum, xs=xdim, ys=ydim $
+                    , title = title, sizefraction = 0.75 $
+                    , free = ~keyword_set(nowin)
+      if iscolor then begin
+        tvscl, var, /true
+      endif else begin
+        if keyword_set(opt) then var = red_histo_opt(var)
+        if not keyword_set(noscale) then var = bytscl(var)
+        tv,var
+      end
     endif else begin
-      var = congrid(var,xsiz,ysiz)        
-      if keyword_set(opt) then var = red_histo_opt(var)
-      if not keyword_set(noscale) then var = bytscl(var)
-      tv,var
+      asp=float(xdim)/float(ydim)
+      sasp=sdim[0]/sdim[1]
+      if asp ge sasp then begin ;x-dimension bigger than y-dimension
+        xsiz=sdim[0]
+        ysiz=sdim[0]/asp
+      endif else begin          ;y-dimension bigger than x-dimension
+        xsiz=sdim[1]*asp
+        ysiz=sdim[1]
+      endelse
+      if not keyword_set(nowin) then $
+         window, wnum, xsize=xsiz, ysize=ysiz, title = title
+      if iscolor then begin
+        tvscl,congrid(var,3,xsiz,ysiz),/true
+      endif else begin
+        var = congrid(var,xsiz,ysiz)        
+        if keyword_set(opt) then var = red_histo_opt(var)
+        if not keyword_set(noscale) then var = bytscl(var)
+        tv,var
+      endelse
     endelse
   endelse
   
