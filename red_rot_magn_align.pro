@@ -1,6 +1,102 @@
 ; docformat = 'rst'
 
 ;+
+; Apply a parameter array to an image.
+; 
+; Helper function to red_rot_magn_align.
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, Institute for Solar Physics
+; 
+; 
+; :Returns:
+; 
+;    The resulting image.
+; 
+; :Params:
+; 
+;   im_in : in
+; 
+;     The image.
+; 
+;   p : in, type="dblarr(4)"
+; 
+;     The parameter array.
+; 
+; :History:
+; 
+;   2020-04-14 : MGL. First version.
+; 
+;-
+function red_rot_magn_align_apply_p, im_in, p
+
+  im = rot(im_in, p[0], p[1], cubic=-0.5) ; Rotate and magnify
+  im = red_shift_sub(im, p[2], p[3])      ; Shift
+  return, im
+end
+
+;+
+; Calculate model vs data deviation.
+; 
+; Helper function to red_rot_magn_align.
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, Institute for Solar Physics
+; 
+; 
+; :Returns:
+;
+;   The deviations.
+; 
+; :Params:
+; 
+;   p : in, type="dblarr(4)"
+; 
+;     The parameter array.
+; 
+; :Keywords:
+; 
+;   im_ref : in, type=image
+;
+;      The reference image.   
+;   
+;   im_other : in, type=image
+; 
+;      The image to be aligned to the reference image.
+; 
+; :History:
+; 
+;   2020-04-14 : MGL. First version.
+; 
+;-
+function red_rot_magn_align_deviation, p, im_ref = im_ref, im_other = im_other
+
+  im_ret = red_rot_magn_align_apply_p(im_other, p)
+  diff = im_ret - im_ref
+
+  ;; Don't evaluate outermost rows and columns
+  margin = 10
+  dims = long(size(diff, /dim))
+  diff = red_centerpic(diff, sz = dims[0]-2*margin)
+  dims = long(size(diff, /dim))
+
+  return, reform(diff, dims[0]*dims[1]) ; return 1D array
+
+end
+
+;+
 ; Find rotation, magnification, and alignment parameters that align
 ; one image to another.
 ;
@@ -48,28 +144,6 @@
 ;   2020-04-14 : MGL. First version.
 ; 
 ;-
-function red_rot_magn_align_apply_p, im_in, p
-
-  im = rot(im_in, p[0], p[1], cubic=-0.5) ; Rotate and magnify
-  im = red_shift_sub(im, p[2], p[3])      ; Shift
-  return, im
-end
-
-function red_rot_magn_align_deviation, p, im_ref = im_ref, im_other = im_other
-
-  im_ret = red_rot_magn_align_apply_p(im_other, p)
-  diff = im_ret - im_ref
-
-  ;; Don't evaluate outermost rows and columns
-  margin = 10
-  dims = long(size(diff, /dim))
-  diff = red_centerpic(diff, sz = dims[0]-2*margin)
-  dims = long(size(diff, /dim))
-
-  return, reform(diff, dims[0]*dims[1]) ; return 1D array
-
-end
-
 function red_rot_magn_align, im_ref_in, im_in, display = display
 
   dims = size(im_in, /dim)
