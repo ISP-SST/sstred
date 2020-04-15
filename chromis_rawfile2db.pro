@@ -39,10 +39,12 @@
 ;   2019-10-07 : OA. Optimized sql queries.
 ;
 ;   2020-02-04 : OA. Split red_rawfile2db to crisp_rawfile2d & chromis_rawfile2d.                
-;                Add loop for different exposure/gain settings during a scan.
+;                Added loop for different exposure/gain settings during a scan
+;                which are transfered in config array.
+;
 ;                               
 ;-
-pro chromis_rawfile2db, dbinfo, config=config, debug=debug
+pro chromis_rawfile2db, dbinfo, config, debug=debug
   
   inam = red_subprogram(/low, calling = inam1)
 

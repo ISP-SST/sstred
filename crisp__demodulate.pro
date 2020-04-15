@@ -106,6 +106,9 @@
 ;                Fourier filtering to remove periodic artifacts from
 ;                polcal. Read header info from filter file and include
 ;                filtering in prstep.
+;
+;   2019-04-09 : OA. Added check for NaN values in momfbd files they
+;                are filled with zeroes (it happens out of the limb).
 ; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
@@ -303,8 +306,20 @@ pro crisp::demodulate, outname, immr, immt $
 
   ;; Mozaic images 
   for ilc = 0L, Nlc-1 do begin
-    img_r[*,*,ilc] = red_mozaic(rimg[ilc], /crop) * nbrfac
-    img_t[*,*,ilc] = red_mozaic(timg[ilc], /crop) * nbtfac
+    im = red_mozaic(rimg[ilc], /crop) * nbrfac
+    nan = where(~finite(im),cc)
+    if cc gt 0 then begin
+      im(nan) = 0.
+      print, 'file ', rfiles[ilc], ' has ', cc, ' NaN values.'
+    endif
+    img_r[*,*,ilc] = im
+    im = red_mozaic(timg[ilc], /crop) * nbrfac
+    nan = where(~finite(im),cc)
+    if cc gt 0 then begin
+      im(nan) = 0.
+      print, 'file ', tfiles[ilc], ' has ', cc, ' NaN values.'
+    endif
+    img_t[*,*,ilc] = im
   endfor
 
   

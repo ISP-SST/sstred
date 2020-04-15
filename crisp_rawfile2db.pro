@@ -39,9 +39,11 @@
 ;   2019-10-07 : OA. Optimized sql queries
 ;
 ;   2020-02-04 : OA. Split red_rawfile2db to crisp_rawfile2d & chromis_rawfile2d
-; 
+;
+;   2020-02-17 : OA. Added loop for different prefilter/filename
+;                template pairs which are transfered in config array
 ;-
-pro crisp_rawfile2db, dbinfo, config=config, debug=debug
+pro crisp_rawfile2db, dbinfo, config, debug=debug
   
   inam = red_subprogram(/low, calling = inam1)
 
@@ -62,32 +64,6 @@ pro crisp_rawfile2db, dbinfo, config=config, debug=debug
   datatype = dbinfo[0].DATATYPE
   tab = string(9B)  
 
-  d = strsplit(dbinfo[0].DATE_OBS,' ',/extract)
-  if instrument eq 'CHROMIS' then begin      
-    query = 'SELECT id, filter1 FROM calibrations WHERE date = "' + d[0] + '";'
-    red_mysql_cmd, handle, query, ans, nl, debug=debug
-    if nl eq 1 then begin
-      ;; insert data in calibrations table for the date
-      nbprefs = json_parse(dbinfo[0].NB_PREFS,/TOARRAY)
-      lambda_ref = json_parse(dbinfo[0].LAMBDA_REF,/TOARRAY)
-      convfac = json_parse(dbinfo[0].CONVFAC,/TOARRAY)
-      du_ref = json_parse(dbinfo[0].DU_REF,/TOARRAY)
-      nel = n_elements(nbprefs)
-      query = 'INSERT INTO calibrations (filter1, convfac, du_ref, date, lambda_ref) VALUES '
-      for jj=0,nel-1  do $
-        query += '(' + nbprefs[jj] + ', ' + strtrim(string(convfac[jj]),2) + ', ' + $
-        strtrim(string(du_ref[jj]),2) + ', "' + d[0] + '", ' + strtrim(string(lambda_ref[jj]),2) + '),'
-      ll = strlen(query)
-      query = strmid(query, 0, ll-1) + ';'
-      red_mysql_cmd, handle, query, ans, nl, debug=debug ;insert
-      query = 'SELECT id, filter1 FROM calibrations WHERE date = "' + d[0] + '";'
-      red_mysql_cmd, handle, query, ans, nl, debug=debug ; get id, filter1
-    endif
-    calib = strarr(nl-1,2)
-    for jj = 1, nl -1 do $
-      calib[jj-1,*] = strsplit(ans[jj],tab,/extract,/preserve_null) ; we need calibration_id for bursts table
-  endif
-
   print,'---------------------------------------------------------------------------------'
   print, inam+' : Write DB info for ' + dbinfo[0].DATE_OBS + '  ' + dbinfo[0].CAMERA
 
@@ -104,21 +80,16 @@ pro crisp_rawfile2db, dbinfo, config=config, debug=debug
 ;      read, desc
 ;    endif
 
-  
-  query = 'INSERT INTO datasets (date_obs, instrument, data_type, solarnet) VALUES ("'+ $ ;observer, description,
-          dbinfo[0].DATE_OBS + '", "'+ instrument + '", "' + $                            ;observer + '", "' + desc + '", "' + 
-          datatype + '", ' + strtrim(string(dbinfo[0].solarnet),2) + ')' + $
-          'ON DUPLICATE KEY UPDATE ' + $ ;observer = ' +  VALUES(observer), description = VALUES(description), 
-          'data_type = VALUES(data_type), solarnet = VALUES(solarnet);'
-  query += 'SELECT LAST_INSERT_ID();'
+  query='SELECT id FROM datasets WHERE date_obs = "' + dbinfo[0].DATE_OBS + '" AND instrument = "' + instrument + '";'
   red_mysql_cmd, handle, query, ans, nl, debug=debug
-  set_id=ans[1]
-  if set_id eq 0 then begin
-    query='SELECT id FROM datasets WHERE date_obs = "' + dbinfo[0].DATE_OBS + '" AND instrument = "' + instrument + '";'
+  if nl eq 1 then begin
+    query = 'INSERT INTO datasets (date_obs, instrument, data_type, solarnet) VALUES ("'+ $ ;observer, description,
+            dbinfo[0].DATE_OBS + '", "'+ instrument + '", "' + $                            ;observer + '", "' + desc + '", "' + 
+            datatype + '", ' + strtrim(string(dbinfo[0].solarnet),2) + ');'
+    query += 'SELECT LAST_INSERT_ID();'
     red_mysql_cmd, handle, query, ans, nl, debug=debug
-    set_id=ans[1]
   endif
-            
+  set_id=ans[1]            
 
   ;; collect IDs for data from different tables to be put in configs table
   query = "SELECT id from  dirname_templates WHERE template = '" + dbinfo[0].DIR_TEMPLATE + "';"
@@ -126,18 +97,9 @@ pro crisp_rawfile2db, dbinfo, config=config, debug=debug
   if nl eq 1 then begin
     query = "INSERT INTO dirname_templates (template) VALUES('" + dbinfo[0].DIR_TEMPLATE + "');"
     query += 'SELECT LAST_INSERT_ID();'
-    red_mysql_cmd, handle, query, ans, nl, debug=debug
-    dir_templt_id=ans[1]
-  endif else dir_templt_id=ans[1]
-
-  query = "SELECT id from  filename_templates WHERE template = '" + dbinfo[0].FNM_TEMPLATE + "';"
-  red_mysql_cmd, handle, query, ans, nl, debug=debug
-  if nl eq 1 then begin
-    query = "INSERT INTO filename_templates (template) VALUES('" + dbinfo[0].FNM_TEMPLATE + "');"
-    query += 'SELECT LAST_INSERT_ID();'
-    red_mysql_cmd, handle, query, ans, nl, debug=debug
-    fnm_templt_id=ans[1]
-  endif else fnm_templt_id=ans[1]        
+    red_mysql_cmd, handle, query, ans, nl, debug=debug    
+  endif
+  dir_templt_id=ans[1]
 
   query = 'SELECT id, detfirm FROM detectors WHERE name = "' + dbinfo[0].DETECTOR + '";'
   detectors_id = '0'
@@ -182,145 +144,154 @@ pro crisp_rawfile2db, dbinfo, config=config, debug=debug
   
   calibration_id='0'            ; no calibration data for CRISP
 
-  ;; Insert or update information in configs table 
-  config_id = '0'
-  query = 'INSERT INTO configs (sets_id, camera, detgain, xposure, naxis1, naxis2, naxis3, bitpix, cadavg, ' + $
-          'detoffs, detectors_id, dir_templt_id, fnm_templt_id) VALUES (' + set_id + ', "' + $
-          dbinfo[0].CAMERA + '", ' + strtrim(string(dbinfo[0].DETGAIN),2) + ', ' + $
-          strtrim(string(dbinfo[0].XPOSURE),2)+ ', ' + $ 
-          strtrim(string(dbinfo[0].NAXIS1),2) + ', ' + strtrim(string(dbinfo[0].NAXIS2),2) + ', ' + $
-          strtrim(string(dbinfo[0].NAXIS3),2) + ', ' + strtrim(string(dbinfo[0].BITPIX),2) + ', ' + $
-          strtrim(string(dbinfo[0].CADAVG),2) + ', ' + strtrim(string(dbinfo[0].DETOFFS),2) + ', ' + $
-          strtrim(string(detectors_id),2) + ', ' + strtrim(string(dir_templt_id),2) + ', ' + strtrim(string(fnm_templt_id),2) + $
-          ') ON DUPLICATE KEY UPDATE detgain = VALUES(detgain), xposure = VALUES(xposure), ' + $
-          'naxis1 = VALUES(naxis1), naxis2 = VALUES(naxis2), naxis3 = VALUES(naxis3), bitpix = VALUES(bitpix), ' + $ 
-          'cadavg = VALUES(cadavg), detoffs = VALUES(detoffs), detectors_id = VALUES(detectors_id), ' + $
-          'dir_templt_id = VALUES(dir_templt_id), fnm_templt_id = VALUES(fnm_templt_id);'
-  query += 'SELECT LAST_INSERT_ID();'
-  red_mysql_cmd, handle, query, ans, nl, debug=debug
-  config_id=ans[1]
-  if config_id eq '0' then begin
+  Nconf = size(config)
+  for iconf = 0, Nconf[1]-1 do begin
+
+    pref = config[iconf,0]
+    fnm_template = config[iconf,1]
+    ;; Insert or update information in configs table
+    query = "SELECT id from  filename_templates WHERE template = '" + fnm_template + "';"
+    red_mysql_cmd, handle, query, ans, nl, debug=debug
+    if nl eq 1 then begin
+      query = "INSERT INTO filename_templates (template) VALUES('" + fnm_template + "');"
+      query += 'SELECT LAST_INSERT_ID();'
+      red_mysql_cmd, handle, query, ans, nl, debug=debug
+    endif
+    fnm_templt_id=ans[1] 
+                                
     query = 'SELECT id FROM configs WHERE camera = "' + dbinfo[0].CAMERA + $
-            '" AND sets_id = ' + set_id + ';'
+              '" AND sets_id = ' + set_id + ' AND fnm_templt_id = ' + fnm_templt_id + ';'
     red_mysql_cmd, handle, query, ans, nl, debug=debug
+    if nl eq 1 then begin
+      query = 'INSERT INTO configs (sets_id, camera, detgain, xposure, naxis1, naxis2, naxis3, bitpix, cadavg, ' + $
+              'detoffs, detectors_id, dir_templt_id, fnm_templt_id) VALUES (' + set_id + ', "' + $
+              dbinfo[0].CAMERA + '", ' + strtrim(string(dbinfo[0].DETGAIN),2) + ', ' + $
+              strtrim(string(dbinfo[0].XPOSURE),2)+ ', ' + $ 
+              strtrim(string(dbinfo[0].NAXIS1),2) + ', ' + strtrim(string(dbinfo[0].NAXIS2),2) + ', ' + $
+              strtrim(string(dbinfo[0].NAXIS3),2) + ', ' + strtrim(string(dbinfo[0].BITPIX),2) + ', ' + $
+              strtrim(string(dbinfo[0].CADAVG),2) + ', ' + strtrim(string(dbinfo[0].DETOFFS),2) + ', ' + $
+              strtrim(string(detectors_id),2) + ', ' + strtrim(string(dir_templt_id),2) + ', ' + strtrim(string(fnm_templt_id),2) + ');'
+      query += 'SELECT LAST_INSERT_ID();'        
+      red_mysql_cmd, handle, query, ans, nl, debug=debug
+    endif    
     config_id=ans[1]
-  endif
-  
-                                ;find number of scans
-  scans = uniq(dbinfo.scannum, sort(dbinfo.scannum))
-  Nscans= n_elements(scans)
-                                ;find number of states (wavelength positions in a scan)
-  states = uniq(dbinfo.state, sort(dbinfo.state))
-  Nstates = n_elements(states)
-                                ; for darks we have to use prefilters instead of tuning states
-  if Nstates eq 1 then if dbinfo[states].state eq '' then begin
-    states = uniq(dbinfo.filter1, sort(dbinfo.filter1))
+
+    indx = where(dbinfo.filter1 eq pref)
+    ;;find number of scans
+    scs = uniq(dbinfo[indx].scannum, sort(dbinfo[indx].scannum))
+    scans = indx[scs]
+    Nscans= n_elements(scans)
+    ;;find number of states (wavelength positions in a scan)
+    sts = uniq(dbinfo[indx].state, sort(dbinfo[indx].state))
+    states = indx[sts]
     Nstates = n_elements(states)
-  endif
 
-  for iscan=0, Nscans-1 do begin      
-    scannum = dbinfo[scans[iscan]].SCANNUM
-    red_progressbar, iscan, Nscans, /predict, strtrim(string(Nscans),2) + ' scans.'
+    for iscan=0, Nscans-1 do begin      
+      scannum = dbinfo[scans[iscan]].SCANNUM
+      red_progressbar, iscan, Nscans, /predict, strtrim(string(Nscans),2) + ' scans.'
 
-    query = 'BEGIN;'
-    for istate=0, Nstates-1 do begin           
-      state = dbinfo[states[istate]].state
-      pref = dbinfo[states[istate]].filter1
-      if state eq '' then $
-                                ; for darks we have to use prefilters instead of tuning states
-         frms_indx = where(dbinfo.scannum eq scannum and dbinfo.filter1 eq pref) $
-      else $          
-         frms_indx = where(dbinfo.scannum eq scannum and dbinfo.STATE eq state)
-                                ;for CRISP we treat files with the same tuning state as frames in burst
-      Nframes = n_elements(frms_indx)
-      fst_frm_num = min(dbinfo[frms_indx].first_frame, inn)
-      fst_frm_indx = frms_indx[inn]
+      query = 'BEGIN;'
+      for istate=0, Nstates-1 do begin           
+        state = dbinfo[states[istate]].state
+        if state eq '' then $
+           ;; for darks we have to use prefilters instead of tuning states
+           frms = where(dbinfo[indx].scannum eq scannum and dbinfo[indx].filter1 eq pref) $
+        else $          
+           frms = where(dbinfo[indx].scannum eq scannum and dbinfo[indx].STATE eq state)
 
-      line = '0'
-      tuning = '0'        
-      if state ne '' then begin         
-        st = strsplit(state,'_',/extract)                
-        line = st[0]
-        tuning = st[1]
-      endif
-      if datatype eq 'flats' and is_wb then line = pref
+        frms_indx = indx[frms]
+        ;;for CRISP we treat files with the same tuning state as frames in burst
+        Nframes = n_elements(frms_indx)
+        fst_frm_num = min(dbinfo[frms_indx].first_frame, inn)
+        fst_frm_indx = frms_indx[inn]
 
-                                ; change date format to be complient with mariaDB
-      ss = strsplit(dbinfo[fst_frm_indx].DATE, 'T',/extract)
-      dt = ss[0]
-      if n_elements(ss) gt 1 then begin
-        zz = strsplit(ss[1],'.',/extract)
-        dt += ' ' + zz[0]
-      endif
-      query += 'INSERT INTO bursts(config_id, line, tuning, scannum, first_frame, dettemp, date, calibration_id, filter1) ' + $
-               'VALUES(' + config_id + ', ' + line + ', ' + tuning + ', ' + strtrim(string(scannum), 2) + ', ' + $
-               strtrim(string(dbinfo[fst_frm_indx].FIRST_FRAME),2) + ', ' + strtrim(string(dbinfo[fst_frm_indx].DETTEMP),2) + $
-               ', "' + dt + '", ' + calibration_id + ', ' + pref + ') ON DUPLICATE KEY UPDATE ' + $
-               'line = VALUES(line), tuning = VALUES(tuning), scannum = VALUES(scannum), first_frame = VALUES(first_frame), ' + $
-               'dettemp = VALUES(dettemp), date = VALUES(date), filter1 = VALUES(filter1);'
-      query += 'SELECT id FROM bursts WHERE first_frame = ' + strtrim(string(dbinfo[fst_frm_indx].FIRST_FRAME),2) + $
-               ' AND config_id = ' + config_id + ' INTO @burst_id;'
+        line = '0'
+        tuning = '0'        
+        if state ne '' then begin         
+          st = strsplit(state,'_',/extract)                
+          line = st[0]
+          tuning = st[1]
+        endif
+        if datatype eq 'flats' and is_wb then line = pref
 
-      if datatype ne 'polcal' then begin
-
-        query += 'INSERT INTO crisp_frames (burst_id, framenum, date_begs, beg_frac, max, min, median, stddev, lc_state) VALUES '
-        for ifrm=0, Nframes -1 do begin
-          frm_indx = frms_indx[ifrm]
-          ss = strsplit(dbinfo[frm_indx].DATE_BEGS,'T',/extract)
+        ;; change date format to be complient with mariaDB
+        ss = strsplit(dbinfo[fst_frm_indx].DATE, 'T',/extract)
+        dt = ss[0]
+        if n_elements(ss) gt 1 then begin
           zz = strsplit(ss[1],'.',/extract)
-          if n_elements(zz) eq 1 then begin ; a rare ocasion of datastamp without fraction of second
-            beg_time = zz
-            beg_frac = '0.'
-          endif else begin
-            beg_time = zz[0]
-            beg_frac = '.'+zz[1]
-          endelse
-          ;;here first frame is a number of crisp file in the scan sequence              
-          query += '( @burst_id, ' + strtrim(string(dbinfo[frm_indx].FIRST_FRAME),2) + ', "' + beg_time + '", ' + beg_frac +  $
-                   ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MAX),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MIN),2) + ', ' + $
-                   strtrim(string(dbinfo[frm_indx].FRAME_MEDIAN),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_STDDEV),2) + ', ' + $
-                   dbinfo[frm_indx].LC_STATE + '),'
-        endfor                  ;ifrm
-        ll = strlen(query)
-        query = strmid(query, 0, ll-1)
-        query += ' ON DUPLICATE KEY UPDATE framenum = VALUES(framenum), date_begs = VALUES(date_begs), ' + $
-                 'beg_frac = VALUES(beg_frac), max = VALUES(max), min = VALUES(min), median = VALUES(median), ' + $
-                 'stddev = VALUES(stddev), lc_state = VALUES(lc_state);'          
-      endif else begin
+          dt += ' ' + zz[0]
+        endif
+        query += 'INSERT INTO bursts(config_id, line, tuning, scannum, first_frame, dettemp, date, calibration_id, filter1) ' + $
+                 'VALUES(' + config_id + ', ' + line + ', ' + tuning + ', ' + strtrim(string(scannum), 2) + ', ' + $
+                 strtrim(string(dbinfo[fst_frm_indx].FIRST_FRAME),2) + ', ' + strtrim(string(dbinfo[fst_frm_indx].DETTEMP),2) + $
+                 ', "' + dt + '", ' + calibration_id + ', ' + pref + ') ON DUPLICATE KEY UPDATE ' + $
+                 'line = VALUES(line), tuning = VALUES(tuning), scannum = VALUES(scannum), first_frame = VALUES(first_frame), ' + $
+                 'dettemp = VALUES(dettemp), date = VALUES(date), filter1 = VALUES(filter1);'
+        query += 'SELECT id FROM bursts WHERE first_frame = ' + strtrim(string(dbinfo[fst_frm_indx].FIRST_FRAME),2) + $
+                 ' AND config_id = ' + config_id + ' INTO @burst_id;'
 
-        ;; THIS IS FOR CRISP POLCAL DATA
-        query += 'INSERT INTO crisp_polcal_frames (burst_id, framenum, date_begs, beg_frac, max, min, median, stddev, ' + $
-                 'lc_state, qw_state, lp_state) VALUES '
-        for ifrm=0, Nframes -1 do begin
-          frm_indx = frms_indx[ifrm]
-          ss = strsplit(dbinfo[frm_indx].DATE_BEGS,'T',/extract)
-          zz = strsplit(ss[1],'.',/extract)
-          if n_elements(zz) eq 1 then begin ; a rare ocasion of datastamp without fraction of second
-            beg_time = zz
-            beg_frac = '0.'
-          endif else begin
-            beg_time = zz[0]
-            beg_frac = '.'+zz[1]
-          endelse
-          ;;here first frame is a number of crisp file in the scan sequence
-          query += '(@burst_id, ' + strtrim(string(dbinfo[frm_indx].FIRST_FRAME),2) + ', "' + beg_time + '", ' + beg_frac + $
-                   ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MAX),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MIN),2) + ', ' + $
-                   strtrim(string(dbinfo[frm_indx].FRAME_MEDIAN),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_STDDEV),2) + ', ' + $
-                   dbinfo[frm_indx].LC_STATE + ', ' + dbinfo[frm_indx].QW_STATE + ', ' + dbinfo[frm_indx].LP_STATE + '),'
-        endfor                  ;ifrm
-        ll = strlen(query)
-        query = strmid(query, 0, ll-1)
-        query += ' ON DUPLICATE KEY UPDATE framenum = VALUES(framenum), date_begs = VALUES(date_begs), ' + $
-                 'beg_frac = VALUES(beg_frac), max = VALUES(max), min = VALUES(min), median = VALUES(median), ' + $
-                 'stddev = VALUES(stddev), lc_state = VALUES(lc_state), qw_state = VALUES(qw_state), lp_state = VALUES(lp_state); '
-      endelse                   ;polcal
+        if datatype ne 'polcal' then begin
 
-    endfor                      ; istate
+          query += 'INSERT INTO crisp_frames (burst_id, framenum, date_begs, beg_frac, max, min, median, stddev, lc_state) VALUES '
+          for ifrm=0, Nframes -1 do begin
+            frm_indx = frms_indx[ifrm]
+            ss = strsplit(dbinfo[frm_indx].DATE_BEGS,'T',/extract)
+            zz = strsplit(ss[1],'.',/extract)
+            if n_elements(zz) eq 1 then begin ; a rare ocasion of datastamp without fraction of second
+              beg_time = zz
+              beg_frac = '0.'
+            endif else begin
+              beg_time = zz[0]
+              beg_frac = '.'+zz[1]
+            endelse
+            ;;here first frame is a number of crisp file in the scan sequence              
+            query += '( @burst_id, ' + strtrim(string(dbinfo[frm_indx].FIRST_FRAME),2) + ', "' + beg_time + '", ' + beg_frac +  $
+                     ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MAX),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MIN),2) + ', ' + $
+                     strtrim(string(dbinfo[frm_indx].FRAME_MEDIAN),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_STDDEV),2) + ', ' + $
+                     dbinfo[frm_indx].LC_STATE + '),'
+          endfor                ;ifrm
+          ll = strlen(query)
+          query = strmid(query, 0, ll-1)
+          query += ' ON DUPLICATE KEY UPDATE framenum = VALUES(framenum), date_begs = VALUES(date_begs), ' + $
+                   'beg_frac = VALUES(beg_frac), max = VALUES(max), min = VALUES(min), median = VALUES(median), ' + $
+                   'stddev = VALUES(stddev), lc_state = VALUES(lc_state);'          
+        endif else begin
 
-    ;; 'BEGIN; ... COMMIT;' -- this is to make bulk query safer
-    query += 'COMMIT;'      
-    red_mysql_cmd, handle, query, ans, nl, debug=debug
-  endfor                        ; iscan   
+          ;; THIS IS FOR CRISP POLCAL DATA
+          query += 'INSERT INTO crisp_polcal_frames (burst_id, framenum, date_begs, beg_frac, max, min, median, stddev, ' + $
+                   'lc_state, qw_state, lp_state) VALUES '
+          for ifrm=0, Nframes -1 do begin
+            frm_indx = frms_indx[ifrm]
+            ss = strsplit(dbinfo[frm_indx].DATE_BEGS,'T',/extract)
+            zz = strsplit(ss[1],'.',/extract)
+            if n_elements(zz) eq 1 then begin ; a rare ocasion of datastamp without fraction of second
+              beg_time = zz
+              beg_frac = '0.'
+            endif else begin
+              beg_time = zz[0]
+              beg_frac = '.'+zz[1]
+            endelse
+            ;;here first frame is a number of crisp file in the scan sequence
+            query += '(@burst_id, ' + strtrim(string(dbinfo[frm_indx].FIRST_FRAME),2) + ', "' + beg_time + '", ' + beg_frac + $
+                     ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MAX),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_MIN),2) + ', ' + $
+                     strtrim(string(dbinfo[frm_indx].FRAME_MEDIAN),2) + ', ' + strtrim(string(dbinfo[frm_indx].FRAME_STDDEV),2) + ', ' + $
+                     dbinfo[frm_indx].LC_STATE + ', ' + dbinfo[frm_indx].QW_STATE + ', ' + dbinfo[frm_indx].LP_STATE + '),'
+          endfor                ;ifrm
+          ll = strlen(query)
+          query = strmid(query, 0, ll-1)
+          query += ' ON DUPLICATE KEY UPDATE framenum = VALUES(framenum), date_begs = VALUES(date_begs), ' + $
+                   'beg_frac = VALUES(beg_frac), max = VALUES(max), min = VALUES(min), median = VALUES(median), ' + $
+                   'stddev = VALUES(stddev), lc_state = VALUES(lc_state), qw_state = VALUES(qw_state), lp_state = VALUES(lp_state); '
+        endelse                 ;polcal
+
+      endfor                    ; istate
+
+      ;; 'BEGIN; ... COMMIT;' -- this is to make bulk query safer
+      query += 'COMMIT;'      
+      red_mysql_cmd, handle, query, ans, nl, debug=debug
+    endfor                      ; iscan
+
+  endfor ; iconf
 
   print,'-----------------------------------------------------------------'
   free_lun,handle

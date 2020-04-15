@@ -69,7 +69,8 @@ pro crisp::extractstates, strings, states $
                           , strip_wb = strip_wb $
                           , strip_settings = strip_settings $
                           , polcal = polcal $
-                          , datasets = datasets
+                          , datasets = datasets $
+                          , cam = cam
   
   if keyword_set(datasets) then begin ; if we use datasets then we should use the database
     if n_elements(datasets) eq 0 then return
@@ -94,7 +95,7 @@ pro crisp::extractstates, strings, states $
     endif
   endfor
   if is_raw and self.db_present then begin ; we can use sst_db only with raw data
-    self->extractstates_db, strings, states
+    self->extractstates_db, strings, states, cam = cam
   endif else begin
     self->extractstates_nondb, strings, states $
                                , force = force $

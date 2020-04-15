@@ -48,7 +48,12 @@
 ;   2019-06-06 : OA. Added check for incomplete scans (to be rejected)
 ;
 ;   2020-02-04 : OA. Added calls to different procedures for different
-;                instruments.
+;                instruments. Added search for unique gain/exposure
+;                pairs for CHROMIS.
+;
+;   2020-02-17 : OA. Added search for unique prefilter/filename_template
+;                pairs for CRISP.
+;
 ;-
 pro red_rawdir2db, all = all $
                    , date = date $
@@ -287,11 +292,34 @@ pro red_rawdir2db, all = all $
       
       h = red_readhead(files[ifile], date_beg=date_beg, framenumbers=framenumbers)
 
+      ;; From the header
+      value = fxpar(h, 'BITPIX'  , count=cnt) ;&
+      if cnt eq 1 then dbinfo[ifile].BITPIX   = value
+      value = fxpar(h, 'CADENCE' , count=cnt) & if cnt eq 1 then dbinfo[ifile].CADAVG   = value ; Use the SOLARNET CADAVG keyword
+      value = fxpar(h, 'DATE'    , count=cnt) & if cnt eq 1 then dbinfo[ifile].DATE     = strtrim(value,2)
+      gain = float(fxpar(h, 'DETGAIN' , count=cnt)) & if cnt eq 1 then dbinfo[ifile].DETGAIN  = gain 
+      value = fxpar(h, 'DETOFFS' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETOFFS  = value 
+      filt1 = fxpar(h, 'FILTER1' , count=cnt) & if cnt eq 1 then dbinfo[ifile].FILTER1  = strtrim(filt1,2)
+;      value = fxpar(h, 'NAXIS'   , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS    = value 
+      value = fxpar(h, 'NAXIS1'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS1   = value           
+      value = fxpar(h, 'NAXIS2'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS2   = value 
+      value = fxpar(h, 'NAXIS3'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS3   = value 
+      value = fxpar(h, 'SCANNUM' , count=cnt) & if cnt eq 1 then dbinfo[ifile].SCANNUM  = value 
+      value = fxpar(h, 'SOLARNET', count=cnt) & if cnt eq 1 then dbinfo[ifile].SOLARNET = value 
+      value = fxpar(h, 'WAVEBAND', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEBAND = strtrim(value ,2)
+      value = fxpar(h, 'WAVELNTH', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVELNTH = value 
+      value = fxpar(h, 'WAVEMAX' , count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEMAX  = value 
+      value = fxpar(h, 'WAVEMIN' , count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEMIN  = value 
+      value = fxpar(h, 'WAVEUNIT', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEUNIT = value 
+      xpos = float(fxpar(h, 'XPOSURE' , count=cnt)) & if cnt eq 1 then dbinfo[ifile].XPOSURE  = xpos
+      value = fxpar(h, 'DETTEMP' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETTEMP  = value
+      filt1 = strtrim(filt1,2)
+
       if ifile eq 0 then begin
         ;; Set the keywords that absolutely do not change from file to
         ;; file within the directory.
-        value = fxpar(h, 'DETECTOR', count=cnt) & if cnt eq 1 then dbinfo.DETECTOR = value 
-        value = fxpar(h, 'DETFIRM' , count=cnt) & if cnt eq 1 then dbinfo.DETFIRM  = value 
+        value = fxpar(h, 'DETECTOR', count=cnt) & if cnt eq 1 then dbinfo.DETECTOR = strtrim(value,2)
+        value = fxpar(h, 'DETFIRM' , count=cnt) & if cnt eq 1 then dbinfo.DETFIRM  = strtrim(value,2)
 ;        value = fxpar(h, 'DETMODEL', count=cnt) & if cnt eq 1 then dbinfo.DETMODEL = value 
 ;        value = fxpar(h, 'OBJECT'  , count=cnt) & if cnt eq 1 then dbinfo.OBJECT   = value 
 ;        value = fxpar(h, 'OBSERVER', count=cnt) & if cnt eq 1 then dbinfo.OBSERVER = value 
@@ -302,7 +330,16 @@ pro red_rawdir2db, all = all $
           crisp_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen
           dbinfo.DIR_TEMPLATE = dir_gen
           dbinfo.FNM_TEMPLATE = fnm_gen
-        endif else begin ; CHROMIS
+          ;; For CRISP filename templates can be different for different prefilters.
+          cf = strarr(1,2)
+          cf[0,0] = filt1
+          cf[0,1] = fnm_gen
+          red_append,config,cf
+        endif else begin        ; CHROMIS
+          cf = fltarr(1,2)
+          cf[0,0] = xpos
+          cf[0,1] = gain
+          red_append,config,cf
           chromis_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen
           dbinfo.DIR_TEMPLATE = dir_gen
           dbinfo.FNM_TEMPLATE = fnm_gen
@@ -311,6 +348,36 @@ pro red_rawdir2db, all = all $
           dbinfo.CONVFAC = json_serialize(convfac)
           dbinfo.DU_REF = json_serialize(du_ref)
         endelse        
+      endif
+
+      ;; We need to find unique exposure/gain pairs for CHROMIS
+      ;; (For CHROMIS they can change during a scan)
+      if instrume eq 'CHROMIS' then begin
+          sz = size(config)
+          cnt = 0
+          for ll=0, sz[1]-1 do begin
+            if config[ll,0] eq xpos and config[ll,1] eq gain then cnt += 1
+          endfor
+          if cnt eq 0 then begin
+            cf[0,0] = xpos
+            cf[0,1] = gain
+            red_append, config,cf
+          endif
+      endif
+      ;; For CRISP filenames template can be different for different
+      ;; prefilters.     
+      if instrume eq 'CRISP' then begin
+        sz = size(config)
+        cnt = 0
+        for ll=0, sz[1]-1 do begin
+          if config[ll,0] eq filt1 then cnt += 1
+        endfor
+        if cnt eq 0 then begin
+          crisp_fnm_gen, files[ifile], fnm_gen = fnm_gen
+          cf[0,0] = filt1
+          cf[0,1] = fnm_gen
+          red_append,config,cf
+        endif
       endif
 
       ;; We need to take some extra care with the STATE keyword for
@@ -382,7 +449,8 @@ pro red_rawdir2db, all = all $
           end
         endcase
 
-      endif else begin ; only two instruments at the moment     
+      endif else begin          ; only two instruments at the moment
+        
         ;; CRISP has one frame per file at the present
         if state eq '__+0000' then state='' ; for some reason for Crisp-W darks state is '__+0000'
         if state ne '' then begin
@@ -414,50 +482,7 @@ pro red_rawdir2db, all = all $
         
       endelse
 
-      dbinfo[ifile].STATE = state
-
-      ;; From the header
-      value = fxpar(h, 'BITPIX'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].BITPIX   = value
-      value = fxpar(h, 'CADENCE' , count=cnt) & if cnt eq 1 then dbinfo[ifile].CADAVG   = value ; Use the SOLARNET CADAVG keyword
-      value = fxpar(h, 'DATE'    , count=cnt) & if cnt eq 1 then dbinfo[ifile].DATE     = value 
-      gain = float(fxpar(h, 'DETGAIN' , count=cnt)) & if cnt eq 1 then dbinfo[ifile].DETGAIN  = gain 
-      value = fxpar(h, 'DETOFFS' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETOFFS  = value 
-      value = fxpar(h, 'FILTER1' , count=cnt) & if cnt eq 1 then dbinfo[ifile].FILTER1  = value        
-;      value = fxpar(h, 'NAXIS'   , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS    = value 
-      value = fxpar(h, 'NAXIS1'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS1   = value           
-      value = fxpar(h, 'NAXIS2'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS2   = value 
-      value = fxpar(h, 'NAXIS3'  , count=cnt) & if cnt eq 1 then dbinfo[ifile].NAXIS3   = value 
-      value = fxpar(h, 'SCANNUM' , count=cnt) & if cnt eq 1 then dbinfo[ifile].SCANNUM  = value 
-      value = fxpar(h, 'SOLARNET', count=cnt) & if cnt eq 1 then dbinfo[ifile].SOLARNET = value 
-      value = fxpar(h, 'WAVEBAND', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEBAND = value 
-      value = fxpar(h, 'WAVELNTH', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVELNTH = value 
-      value = fxpar(h, 'WAVEMAX' , count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEMAX  = value 
-      value = fxpar(h, 'WAVEMIN' , count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEMIN  = value 
-      value = fxpar(h, 'WAVEUNIT', count=cnt) & if cnt eq 1 then dbinfo[ifile].WAVEUNIT = value 
-      xpos = float(fxpar(h, 'XPOSURE' , count=cnt)) & if cnt eq 1 then dbinfo[ifile].XPOSURE  = xpos
-      value = fxpar(h, 'DETTEMP' , count=cnt) & if cnt eq 1 then dbinfo[ifile].DETTEMP  = value
-
-      ;; We need to find unique exposure/gain pairs for CHROMIS
-      ;; (For CHROMIS they can change during a scan)
-      if instrume eq 'CHROMIS' then begin
-        if ifile eq 0 then begin
-          cf = fltarr(1,2)
-          cf[0,0] = xpos
-          cf[0,1] = gain
-          red_append,config,cf
-        endif else begin
-          sz = size(config)
-          cnt = 0
-          for ll=0, sz[1]-1 do begin
-            if config[ll,0] eq xpos and config[ll,1] eq gain then cnt += 1
-          endfor
-          if cnt eq 0 then begin
-            cf[0,0] = xpos
-            cf[0,1] = gain
-            red_append, config,cf
-          endif
-        endelse
-      endif
+      dbinfo[ifile].STATE = state          
 
     endfor                      ; ifile
 
@@ -483,10 +508,11 @@ pro red_rawdir2db, all = all $
     ;; info should go into what table, and writes it there.   
     if keyword_set(debug) then save, dbinfo, filename = date + '_' + timestamp + '_' + camera + '.sav'
     if instrume eq 'CHROMIS' then $
-       chromis_rawfile2db, dbinfo, config=config, debug=debug $
+       chromis_rawfile2db, dbinfo, config, debug=debug $
     else $
-       crisp_rawfile2db, dbinfo, debug=debug    
+       crisp_rawfile2db, dbinfo, config, debug=debug    
 
+    undefine,config
   endfor                        ; icam
 
 end

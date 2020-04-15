@@ -30,34 +30,53 @@
 ; :History:
 ; 
 ;   2019-07-10 : OA. Created. (Derived from crisp__extractstates and red_readhead_db)
+;   
+;   2019-07-11 : MGL. Call like extractstates.
+;
+;   2020-03-11 : OA. Added check for unique cameras when in the procedure call
+;                filenames(strings) are used instead of datasets. Added
+;                keyword 'cam'.
 ;
 ;-
-pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
+pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   use_strings = n_elements(datasets) eq 0
 
-  ;; Clear states and try to get them from cache.
+  ;; cache is slow comparing to the database at least when BeeGFS is fatigue
+  ;; let's always set /force till further examination
+  ;force = 1B
+  
+  ;;Clear states and try to get them from cache.
   undefine,states
   if use_strings then begin
-    if ~keyword_set(force) then begin      
-      Nstr = n_elements(strings)
-      for ifile=0,Nstr-1 do begin
-        this_cache = rdx_cacheget(strings[ifile], count = cnt)   
-        if cnt gt 0 then begin
-          red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
-          red_append,states,this_cache.state
-        endif
-      endfor
-      if n_elements(states) eq Nstr then return else undefine,states
-    endif
+    Nstr = n_elements(strings)
+    ;; if ~keyword_set(force) then begin
+    ;;   for ifile=0,Nstr-1 do begin
+    ;;     this_cache = rdx_cacheget(strings[ifile], count = cnt)   
+    ;;     if cnt gt 0 then begin
+    ;;       red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
+    ;;       red_append,states,this_cache.state
+    ;;     endif
+    ;;   endfor
+    ;;   if n_elements(states) eq Nstr then return else undefine,states
+    ;; endif
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
     utimestamps = timestamps[uniq(timestamps,sort(timestamps))]
     datasets = self.isodate + ' ' + utimestamps
+    
+    if keyword_set(cam) then ucams = [cam] else begin
+      cms = strarr(Nstr)
+      for ii = 0, Nstr-1 do begin
+        dr = file_dirname(strings[ii])
+        cms[ii] = (strsplit(dr,'/',/extract))[-1]
+      endfor
+      ucams = cms[uniq(cms,sort(cms))]
+    endelse
   endif
-
+  
   instrument = 'CRISP'
 
   red_mysql_check, handle
@@ -98,13 +117,22 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
       data_dirs = *self.data_dirs
       dirs = [flat_dirs, dark_dirs, pinh_dirs, polcal_dirs, data_dirs]
       in = where(strmatch(dirs,'*'+split_set[1]+'*'))
-      if n_elements(in) eq 1 then $
+      if n_elements(in) eq 1 then begin
         if in eq -1 then begin
           print, inam, ': There are no directories for ', +split_set[1], ' timestamp.'
           free_lun,handle
           return
         endif
-      dir = dirs[in]
+        dir = dirs[in]
+      endif else begin          ; a rather accident case of several directories with same timestamp
+        print,'For some reason there are several directories with same timestamp. Please, choose one or exit.'
+        for ll = 0, n_elements(in)-1 do $
+          print,'[',strtrim(ll,2),']   ',dirs[in[ll]]
+        print,'[',strtrim(ll,2),']   exit'
+        read,choice
+        if choice eq ll then exit
+        dir = dirs[in[choice]]
+      endelse      
       red_rawdir2db,dir=dir,/all
       red_mysql_cmd,handle,query,ans,nl
     endif
@@ -134,16 +162,20 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
       return
     endif
     Ncams = nl-1                ; number of cameras (configs) in the dataset
-    cams=strarr(Ncams)
+    ;cams=strarr(Ncams)
 
     for icam=1,Ncams do begin
       conf = strsplit(conf_ans[icam],tab,/extract,/preserve_null)
       config_id = conf[0]
 
+      camera = conf[2]          ; need this exact variable name to generate dirname
+      ;; skip database query if we don't need an information
+      if use_strings then $
+        if where(strmatch(ucams,'*'+camera+'*') eq 1) eq -1 then continue
+      
       state.exposure = float(conf[4])
-      camera = conf[2] ; need this exact variable name to generate dirname
       state.camera = camera
-      cams[icam-1]=camera
+      ;cams[icam-1]=camera
       state.is_wb = strmatch(camera,'*-[DW]')
       state.cam_settings = strtrim(string(state.exposure*1000, format = '(f9.2)'), 2) + 'ms'      
 
@@ -335,10 +367,11 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, force = force
       endelse
       ;; Filter the found states with respect to the file names in
       ;; strings
+      Ncams = n_elements(ucams)
       for icam=0,Ncams-1 do begin
-        ss = where(strmatch(strings,'*'+cams[icam]+'*'))
+        ss = where(strmatch(strings,'*'+ucams[icam]+'*'))
         if n_elements(ss) eq 1 then if ss eq -1 then continue
-        fs = cams[icam] + '/' + file_basename(strings[ss])
+        fs = ucams[icam] + '/' + file_basename(strings[ss])
         match2, fs, files, suba ;, subb 
         stt = states[suba]
         stt.filename = strings[ss]

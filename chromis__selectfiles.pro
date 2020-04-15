@@ -183,7 +183,7 @@ pro chromis::selectfiles, cam = cam $
   if keyword_set(force) $                             ; If we choose to
      || n_elements(files) ne n_elements(states) $     ; If numbers don't agree
      || ~min(file_same(files,states.filename)) then $ ; If the actual files are not the same
-        self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
+        self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings, cam = cam,/force
 
   if( n_elements(states) eq 1 ) then states = [states]
   

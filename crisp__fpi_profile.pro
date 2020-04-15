@@ -127,6 +127,10 @@ function crisp::fpi_profile, w, prefilter $
       rhr  = 0.9430d0
       rlr  = 0.8565d0
     end
+    '5876': begin ;just a copy from '5896'
+      rhr  = 0.9270d0
+      rlr  = 0.8545d0
+    end
     '5896': begin
       rhr  = 0.9270d0
       rlr  = 0.8545d0

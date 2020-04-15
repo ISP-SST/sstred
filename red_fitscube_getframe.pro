@@ -55,14 +55,16 @@
 ; 
 ;     2018-01-12 : MGL. Doesn't need to be a method, rename
 ;                  red::fitscube_getframe to red_fitscube_getframe. 
-; 
+;
+;     2020-03-23 : OA. Added 'fitscube_info' keyword.
 ; 
 ;-
 pro red_fitscube_getframe, filename_or_fileassoc, frame $
                            , iframe = iframe $
                            , ituning = ituning $
                            , istokes = istokes $
-                           , iscan = iscan
+                           , iscan = iscan $
+                           , fitscube_info = fitscube_info
   
   if size(filename_or_fileassoc, /tname) eq 'STRING' then open_and_close = 1 else open_and_close = 0
   
@@ -76,20 +78,28 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     Ntuning = fitscube_info.dimensions[2]
     Nstokes = fitscube_info.dimensions[3]
     Nscans  = fitscube_info.dimensions[4]
-    hdr = fitscube_info.header
   endif else begin
     ;; We have an assoc variable, get array dimensions from the file.
-    fileassoc = filename_or_fileassoc
-    lun = (size(fileassoc,/struc)).file_lun
-    fs = fstat(lun)
-    filename = fs.name
-    hdr = headfits(filename)
-    dimensions = long(fxpar(hdr, 'NAXIS*'))
-    Nx      = dimensions[0]
-    Ny      = dimensions[1]
-    Ntuning = dimensions[2]
-    Nstokes = dimensions[3]
-    Nscans  = dimensions[4]
+    if ~keyword_set(fitscube_info) then begin
+      fileassoc = filename_or_fileassoc
+      lun = (size(fileassoc,/struc)).file_lun
+      fs = fstat(lun)
+      filename = fs.name
+      hdr = headfits(filename)
+      dimensions = long(fxpar(hdr, 'NAXIS*'))
+      Nx      = dimensions[0]
+      Ny      = dimensions[1]
+      Ntuning = dimensions[2]
+      Nstokes = dimensions[3]
+      Nscans  = dimensions[4]
+   endif else begin
+      Nx      = fitscube_info.dimensions[0]
+      Ny      = fitscube_info.dimensions[1]
+      Ntuning = fitscube_info.dimensions[2]
+      Nstokes = fitscube_info.dimensions[3]
+      Nscans  = fitscube_info.dimensions[4]
+      fileassoc = filename_or_fileassoc
+   endelse
   endelse
 
   if n_elements(iframe) eq 0 then begin
@@ -112,6 +122,17 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     frame = fileassoc[iframe]
   endif else begin
     ;; Transform integer data to float
+    if open_and_close then begin
+      filename = filename_or_fileassoc
+      hdr = headfits(filename)
+    endif else begin
+       if ~keyword_set(fitscube_info) then begin
+          fs = fstat(lun)
+          filename = fs.name
+          hdr = headfits(filename)
+       endif else $
+         hdr = fitscube_info.header
+    endelse
     bzero  = fxpar(hdr, 'BZERO',  count=nzero )
     bscale = fxpar(hdr, 'BSCALE', count=nscale)
     if nzero eq 1 and nscale eq 1 then begin
