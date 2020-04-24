@@ -1,6 +1,11 @@
 ; docformat = 'rst'
 
 ;+
+; Find rotation, magnification, and alignment parameters that align
+; one image to another.
+;-
+
+;+
 ; Apply a parameter array to an image.
 ; 
 ; Helper function to red_rot_magn_align.
@@ -87,9 +92,9 @@ function red_rot_magn_align_deviation, p, im_ref = im_ref, im_other = im_other
   diff = im_ret - im_ref
 
   ;; Don't evaluate outermost rows and columns
-  margin = 10
+  margin = 20
   dims = long(size(diff, /dim))
-  diff = red_centerpic(diff, sz = dims[0]-2*margin)
+  diff = red_centerpic(diff, xs = dims[0]-2*margin, ys = dims[1]-2*margin)
   dims = long(size(diff, /dim))
 
   return, reform(diff, dims[0]*dims[1]) ; return 1D array
@@ -146,15 +151,16 @@ end
 ;-
 function red_rot_magn_align, im_ref_in, im_in, display = display
 
-  dims = size(im_in, /dim)
+;  dims = size(im_in, /dim)
 
   ;; Normalize intensities and remove bias
   im_ref = im_ref_in/median(im_ref_in) - 1
   im     = im_in/median(im_in)         - 1
 
   ;; Window function
-  sz = dims[0]
-  w = makewindow(sz,softmargin=sz/16.) ; window
+;  sz = dims[0]
+;  w = makewindow(sz,softmargin=sz/16.) ; window
+  w = 1.
   
   ;; Fourier transform
   fim_ref = fft(im_ref * w)
@@ -162,11 +168,11 @@ function red_rot_magn_align, im_ref_in, im_in, display = display
 
   ;; Fourier spectrum
   spec_ref = abs(fim_ref)
-  spec     = abs(fim)
+;  spec     = abs(fim)
 
   ;; Back to image space w/ common Fourier spectrum
-  im = float(fft(fim * spec_ref / (spec + 1e-5), /inv))
-
+  im = float(fft(spec_ref * exp(complex(0, 1)*atan(fim, /phase)), /inv))
+  
   if keyword_set(display) then begin
     red_show, im,     w = 0
     red_show, im_ref, w = 1
@@ -189,7 +195,7 @@ function red_rot_magn_align, im_ref_in, im_in, display = display
             , parinfo=parinfo $
             , maxiter=500 $
            )
-
+  
   if keyword_set(display) then begin
     ;; Compare reference HMI image to SST image with optimum
     ;; parameters applied.
@@ -209,7 +215,5 @@ p = red_rot_magn_align(red_pic_at_coord(subim_hmi_before,1030,820,512,512) $
                        , red_pic_at_coord(im_sst,1030,820,512,512), /displ)
 
 
-stop
-p = red_rot_magn_align(subim_hmi_before, im_sst)
 
 end
