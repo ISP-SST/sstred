@@ -54,7 +54,7 @@ function red_lp_angles, time, date, from_log = from_log, offset_angle = TC
 
   if keyword_set(from_log) then begin
 
-    ;; Get az, el, and tilt angle (in radians) from the turret log 
+    ;; Get az, el, and tilt angle (in degrees) from the turret log 
     red_logdata, date, time, tilt = TL, azel = azel
      
     if n_elements(TC) eq 0 then TC = 48.d0 ; table constant in degrees
