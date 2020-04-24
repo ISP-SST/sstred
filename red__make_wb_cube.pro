@@ -162,6 +162,9 @@
 ; 
 ;    2020-03-31 : MGL. New keyword subtract_meanang, remove keyword
 ;                 no_subtract_meanang. 
+; 
+;    2020-04-07 : MGL. New keyword rotation, remove keyword
+;                 offset_angle. 
 ;
 ;-
 pro red::make_wb_cube, dir $
@@ -175,14 +178,15 @@ pro red::make_wb_cube, dir $
                        , nametag = nametag $
                        , negang = negang $
                        , np = np $
-                       , offset_angle = offset_angle $
+                       , rotation = rotation $
+                       , scannos = scannos $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
                        , ybd = ybd $
-                       , scannos = scannos $
                        , subtract_meanang = subtract_meanang 
 ;                      , ang = ang $
+;                       , offset_angle = offset_angle $
 ;                      , ext_date = ext_date $
 ;                      , ext_time = ext_time $
 ;                      , shift = shift $
@@ -201,16 +205,18 @@ pro red::make_wb_cube, dir $
   endif
 
   if n_elements(direction) eq 0 then direction = self.direction
-
+  if n_elements(rotation)  eq 0 then rotation  = self.rotation
+  
   ;; Make prpara
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
   red_make_prpara, prpara, direction
+  red_make_prpara, prpara, rotation
   red_make_prpara, prpara, negang
   red_make_prpara, prpara, subtract_meanang
   red_make_prpara, prpara, np
-  red_make_prpara, prpara, offset_angle
+;  red_make_prpara, prpara, offset_angle
   red_make_prpara, prpara, tile
   red_make_prpara, prpara, tstep
   red_make_prpara, prpara, ybd
@@ -541,15 +547,14 @@ pro red::make_wb_cube, dir $
 ;                                            + 4*Npixels*DATAMEAN*DATASKEW*DATARMS^3 $
 ;                                            + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAMEAN^4)
   endif
-  
+  stop  
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
-
-  ang = red_lp_angles(time, date[0], /from_log)
+  ang = red_lp_angles(time, date[0], /from_log, offset_angle = rotation)
   mang = median(ang)
   if keyword_set(subtract_meanang) then ang -= mang
   if keyword_set(negang) then ang = -ang
-  if n_elements(offset_angle) then ang += offset_angle
+;  if n_elements(offset_angle) then ang += offset_angle
   
   ;; De-rotate images in the cube, has to be done before we can
   ;; calculate the alignment
