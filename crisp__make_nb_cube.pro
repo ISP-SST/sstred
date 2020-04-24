@@ -562,17 +562,19 @@ pro crisp::make_nb_cube, wcfile $
       else : amapr = invert( median(alignments[indxr].map, dim = 3) )
     endcase
 
-    cmap1r = rdx_img_project(amapr, cmap1r) ; Apply the geometrical mapping
-    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
-    cmap1t = rdx_img_project(amapt, cmap1t) ; Apply the geometrical mapping
-    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
+    cmap1r = rdx_img_project(amapr, cmap1r, /preserve) ; Apply the geometrical mapping
+;    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
+    cmap1t = rdx_img_project(amapt, cmap1t, /preserve) ; Apply the geometrical mapping
+;    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
 
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
-    
+    cmap1 = red_rotate(cmap1, direction)
+    cmap1 = cmap1[x0:x1,y0:y1]  ; Clip to the selected FOV
+
   endif
   
   ;; Make FITS header for the NB cube
