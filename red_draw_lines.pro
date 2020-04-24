@@ -50,10 +50,7 @@
 ; 
 ; :History:
 ; 
-; 
-; 
-; 
-; 
+;   2020-04-24 : MGL. First version.
 ; 
 ;-
 pro red_draw_lines, x, y $
