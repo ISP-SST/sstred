@@ -87,7 +87,7 @@
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
 ;
-;    offset_angle : in, optional, type=float
+;    rotation : in, optional, type=float
 ;
 ;      Offset angle to be added to the field rotation angles.
 ;
@@ -547,7 +547,7 @@ pro red::make_wb_cube, dir $
 ;                                            + 4*Npixels*DATAMEAN*DATASKEW*DATARMS^3 $
 ;                                            + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAMEAN^4)
   endif
-  stop  
+
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
   ang = red_lp_angles(time, date[0], /from_log, offset_angle = rotation)
