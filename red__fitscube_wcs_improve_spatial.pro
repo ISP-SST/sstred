@@ -5,7 +5,8 @@
 ; comparison with an SDO/HMI intensity image collected close in time.
 ; 
 ; Use the iframe, ituning, istokes, and/or iscan keywords to select
-; the fitscube frame to compare.
+; the fitscube frame to compare. For scan cubes, if the frame is not
+; specified, will use the WB image in the extension.
 ; 
 ; 
 ; :Categories:
@@ -22,7 +23,7 @@
 ; 
 ;    filename : in, type=string
 ; 
-;       The name of a WB or NB fitscube file.
+;       The name of a WB, NB, or scan fitscube file.
 ; 
 ; 
 ; :Keywords:
@@ -54,6 +55,10 @@
 ; 
 ;   2020-03-28 : MGL. Rename method.
 ; 
+;   2020-04-24 : MGL. Rewrite.
+; 
+;   2020-04-27 : MGL. Use WBIMAGE extension in scan cubes.
+; 
 ;-
 pro red::fitscube_wcs_improve_spatial, filename $
                                        , iframe = iframe $
@@ -68,25 +73,19 @@ pro red::fitscube_wcs_improve_spatial, filename $
 
   show_offset = 100
 
+  framespecified = max([n_elements(iframe)  gt 0 $
+                        , n_elements(iscan)   gt 0 $
+                        , n_elements(istokes) gt 0 $
+                        , n_elements(ituning) gt 0 ])
   
   ;; Read the SST data
-  h = headfits(filename)
-  red_fitscube_getframe, filename, im_sst $
-                         , iframe = iframe $
-                         , iscan = iscan $
-                         , istokes = istokes $
-                         , ituning = ituning
-  im_sst = im_sst/median(im_sst)
-  dims_sst = size(im_sst, /dim)
-  date_beg = fxpar(h, 'DATE-BEG')
-  time_beg = red_time2double((strsplit(date_beg, 'T', /extract))[1])
-
-  sst_image_scale = float(self.image_scale)
   
+  h = headfits(filename)
   ;; The "direction" and "rotation" parameters are available in the
   ;; class object but you can override it when making the WB cube, so
   ;; better get them from the file header if possible.
-  pos = where(strmatch(fxpar(h,'PRPROC*'),'*make_*_cube*'), Nmatch)
+  prprocs = fxpar(h,'PRPROC*')
+  pos = where(strmatch(prprocs,'*make_*_cube*'), Nmatch)
   if Nmatch eq 0 then stop
   prpara = json_parse((fxpar(h,'PRPARA*'))[pos])
   if prpara.haskey('DIRECTION') then begin
@@ -105,11 +104,32 @@ pro red::fitscube_wcs_improve_spatial, filename $
     rotation = self.rotation
     ;; Or maybe this should be 48?
   endelse
-  ;; What does it mean if there aren't any ROTATION and
+  ;; What would it mean if there aren't any ROTATION and
   ;; DIRECTION parameters in the PRPARA keyword? This should only
   ;; happen for old cubes, from before the parameters were introduced.
   ;; So we should stop and say that new cubes have to be made for this
   ;; method to work. 
+
+  ;; Read the data frame. For scan cubes, use the WB image in the
+  ;; extension unless a frame is specified.
+  if ~framespecified && max(strmatch(prprocs,'*make_scan_cube')) then begin ; Scan cube. 
+    im_sst = MRDFITS(filename, 'WBIMAGE', STATUS=status)
+    iframe = 0
+  endif
+  if status lt 0 then $         ; Read the specified frame
+     red_fitscube_getframe, filename, im_sst $ 
+                            , iframe = iframe $
+                            , iscan = iscan $
+                            , istokes = istokes $
+                            , ituning = ituning
+  
+  im_sst = im_sst/median(im_sst)
+  dims_sst = size(im_sst, /dim)
+  date_beg = fxpar(h, 'DATE-BEG')
+  time_beg = red_time2double((strsplit(date_beg, 'T', /extract))[1])
+
+  sst_image_scale = float(self.image_scale)
+  
   
   ;; SST FOV WCS info, array coordinates in arc sec
   red_fitscube_getwcs, filename, coordinates=wcs
@@ -365,12 +385,12 @@ pro red::fitscube_wcs_improve_spatial, filename $
   subim_hmi_after  = interpolate(im_hmi_after,  xx_hmipix, yy_hmipix, cub=-0.5, /grid)
 
   print
-  print, 'I will now blink two images: 0) the SST subimage downgraded to the resolution'
-  print, 'of the HMI image and 1) the corresponding subimage of the HMI image magnified'
-  print, 'to the image scale of the SST image. Their alignment will be estimated by use'
-  print, 'of a model fit and the result will also be blinked. Then this will be repeated'
-  print, 'for one more HMI image (collected after the SST image).'
-  print, 'Please strike RETURN when asked to.'
+  print, 'I will now blink two images: 0) the SST subimage and 1) the corresponding'
+  print, 'subimage of the HMI image magnified to the image scale of the SST image.'
+  print, 'Their alignment will be estimated by use of a model fit and the result will'
+  print, 'also be blinked (at that point with the SST image downgraded to the resolution'
+  print, 'of the HMI image). Then this will be repeated for one more HMI image'
+  print, '(collected after the SST image). Please strike RETURN when asked to.'
   print
   
   red_show, subim_hmi_before, w = 1
@@ -381,8 +401,6 @@ pro red::fitscube_wcs_improve_spatial, filename $
   p_after = red_rot_magn_align(subim_hmi_after, subim_sst, /displ)
 
 ;  p_between = red_rot_magn_align(subim_hmi_before, subim_hmi_after, /displ)
-
-  
   
   print
   print, 'Config file rotation [deg]:   ', self.rotation
@@ -390,7 +408,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   print, 'Measured rotational misalignment [deg]: ', p_before[0]
   print, 'New measured rotation parameter [deg]:  ', rotation - p_before[0]
   print
-  read, 'Do you want to take the measured rotation into account [yN]? ', s
+  read, 'Do you want to use the measured rotation and make a new cube [yN]? ', s
   if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
     print
     print, 'Change the rotation parameter in config.txt to the measured value.'
