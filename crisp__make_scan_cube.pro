@@ -138,6 +138,8 @@
 ;    2020-01-16 : MGL. New keywords intensitycorrmethod and odir.
 ; 
 ;    2020-04-01 : MGL. New keywords direction and norotation.
+; 
+;    2020-04-27 : MGL. New keyword rotation.
 ;
 ;-
 pro crisp::make_scan_cube, dir $
@@ -156,6 +158,7 @@ pro crisp::make_scan_cube, dir $
                            , odir = odir $
                            , overwrite = overwrite $
                            , redemodulate = redemodulate $
+                           , rotation = rotation $
                            , scannos = scannos $
                            , smooth = smooth $
                            , tiles = tiles  $
@@ -166,6 +169,7 @@ pro crisp::make_scan_cube, dir $
 
   
   if n_elements(direction) eq 0 then direction = self.direction
+  if n_elements(rotation)  eq 0 then rotation  = self.rotation
 
   ;; Make prpara
   red_make_prpara, prpara, dir
@@ -181,6 +185,7 @@ pro crisp::make_scan_cube, dir $
   red_make_prpara, prpara, nocavitymap    
   red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, rotation    
   red_make_prpara, prpara, smooth
   red_make_prpara, prpara, tiles
   red_make_prpara, prpara, tuning_selection
@@ -257,9 +262,8 @@ pro crisp::make_scan_cube, dir $
   endif else undefine, ddate, time
 
   ;; Derotation angle
-  ang = (red_lp_angles(time, ddate[0], /from_log))[0]
+  ang = (red_lp_angles(time, ddate[0], /from_log, offset_angle = rotation))[0]
 
-  
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -423,18 +427,20 @@ pro crisp::make_scan_cube, dir $
       1    : amapr = invert(      alignments[indxr].map           )
       else : amapr = invert( mean(alignments[indxr].map, dim = 3) )
     endcase
-
-    cmap1r = rdx_img_project(amapr, cmap1r) ; Apply the geometrical mapping
-    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
-    cmap1t = rdx_img_project(amapt, cmap1t) ; Apply the geometrical mapping
-    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
-
+    
+    cmap1r = rdx_img_project(amapr, cmap1r, /preserve) ; Apply the geometrical mapping
+;    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
+    cmap1t = rdx_img_project(amapt, cmap1t, /preserve) ; Apply the geometrical mapping
+;    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
+    
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
-    
+    cmap1 = red_rotate(cmap1, direction)
+    cmap1 = cmap1[x0:x1,y0:y1]  ; Clip to the selected FOV
+
   endif
 
   
@@ -487,9 +493,6 @@ pro crisp::make_scan_cube, dir $
     ;; possibly use for WB correctionb.
     wbim = (red_readdata(wfiles[indx], head = wbhdr, direction = direction))[x0:x1, y0:y1]
 
-    ff = [abs(ang),0,0,0,0]
-    wbim_rot = red_rotation(wbim, ang, full = ff)
-
     ;; The non-global WB files
     wfiles  = wfiles[complement]
     wstates = wstates[complement]
@@ -522,7 +525,6 @@ pro crisp::make_scan_cube, dir $
       ;; Read a header to use as a starting point.
       nbhdr = red_readhead(snames[0])
 
-      
     endif else begin
 
       ;; Select files from the two NB cameras
@@ -551,7 +553,7 @@ pro crisp::make_scan_cube, dir $
       ufpi_states = nbtstates[utunindx[sortindx]].fpi_state
       utunwavelength = nbtstates[utunindx[sortindx]].tun_wavelength
 
-
+      
 ;      ;; Per-tuning files, wb and nb, only for selected scans
 ;      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
 ;                           , scan = uscans $
@@ -591,9 +593,15 @@ pro crisp::make_scan_cube, dir $
       ;; per-tuning wb files and then the corresponding nb files. Plus
       ;; add it as an extension to the cube.
 ;      wbim = (red_readdata(wfiles[iscan], head = wbhdr))[x0:x1, y0:y1]
-      
+
     endelse
     
+    if ~keyword_set(norotation) then begin
+      ff = [abs(ang),0,0,0,0]
+      wbim_rot = red_rotation(wbim, ang, full = ff)
+      dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
+    endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
+
 
     ;; Load prefilters
     
@@ -664,7 +672,6 @@ pro crisp::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
     
     ;; Initialize fits file, set up for writing the data part.
-    dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
 
@@ -868,10 +875,12 @@ pro crisp::make_scan_cube, dir $
     self -> fitscube_finish, lun, wcs = wcs
 
     ;; Add cavity maps as WAVE distortions 
-    if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename $
-       , reform(red_rotation(cmap1,ang,full=ff),[dims[0:1],1,1,1])
+    if ~keyword_set(nocavitymap) then begin
+      cmap1 = red_rotate(cmap1, direction)
+      red_fitscube_addcmap, filename $
+                            , reform(red_rotation(cmap1,ang,full=ff),[dims[0:1],1,1,1])
 ;    , red_rotation(reform(cmap1, Nx, Ny, 1, 1, 1), ang, full = ff)
-
+    endif 
     ;; Add some variable keywords
     self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
                                     , comment = 'Beginning of observation' $
@@ -939,14 +948,22 @@ pro crisp::make_scan_cube, dir $
     ehdr=wbhdr
     fxaddpar, ehdr, 'XTENSION', 'IMAGE'
     sxdelpar, ehdr, 'SIMPLE'
-    check_fits, wbim_rot, ehdr, /update
+    if keyword_set(norotation) then begin
+      check_fits, wbim, ehdr, /update
+    endif else begin
+      check_fits, wbim_rot, ehdr, /update
+    endelse
     fxaddpar, ehdr, 'DATE', red_timestamp(/utc, /iso)
     anchor = 'DATE'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'WBIMAGE', 'Wideband image'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
-    writefits, filename, wbim_rot, ehdr, /append
-
+    if keyword_set(norotation) then begin
+      writefits, filename, wbim, ehdr, /append
+    endif else begin
+      writefits, filename, wbim_rot, ehdr, /append
+    endelse
+    
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
     self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
