@@ -162,7 +162,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, 'camera = Chromis-D'
   printf, Clun, 'camera = Chromis-N'
   printf, Clun, '#'
-  printf, Clun, 'direction = 1'    ; Orientation of WB camera, see IDL's rotate().
+  printf, Clun, 'direction = 2'    ; Orientation of WB camera, see IDL's rotate().
   printf, Clun, 'rotation = -42.0' ; Rotation of reference camera, se offset_angle of red_lp_angles().
   printf, Clun, '#'
   printf, Clun, 'root_dir = ' + root_dir
