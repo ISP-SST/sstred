@@ -115,7 +115,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   if ~framespecified && max(strmatch(prprocs,'*make_scan_cube')) then begin ; Scan cube. 
     im_sst = MRDFITS(filename, 'WBIMAGE', STATUS=status)
     iframe = 0
-  endif
+  endif else status = -100
   if status lt 0 then $         ; Read the specified frame
      red_fitscube_getframe, filename, im_sst $ 
                             , iframe = iframe $
@@ -190,7 +190,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   print, inam + '   We will worry about the alignment later but first:'
   print
   s = ''
-  read, 'Do the orientations (approximate) 90 deg rotations and mirroring) match in the two images [yN]? ', s
+  read, 'Do the orientations (approximate 90 deg rotations and mirroring) match in the two images [yN]? ', s
   if strupcase(strmid(s, 0, 1)) ne 'Y' then begin
 
     ;; First invert the current "direction" of the SST data, then
