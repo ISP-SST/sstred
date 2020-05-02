@@ -219,7 +219,7 @@ pro red::download, overwrite = overwrite $
            if datearr[0] ne '2012' then begin
               backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
               backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15' $
-                                        , '16', '17', '18', '19']
+                                        , '16', '17', '18', '19', '20']
               backscatter_orientations = bytarr(n_elements(backscatter_years) $
                                                 , n_elements(backscatter_cameras))
               ;; Change orientations here if needed. Let's hope the
@@ -237,11 +237,12 @@ pro red::download, overwrite = overwrite $
               backscatter_orientations[ 9, *] = [0, 7, 7, 0] ; 2017 - same as 2015?
               backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2018 - same as 2015?
               backscatter_orientations[11, *] = [0, 7, 7, 0] ; 2019 - same as 2015
+              backscatter_orientations[12, *] = [0, 7, 7, 0] ; 2020 - same as 2015
               for ifile = 0, Nfiles-1 do begin
-                 icam = where(backscatter_cameras $
-                              eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
-                 iyear = where(backscatter_years eq datearr[0], Nyear)
-                 if Ncam eq 0 or Nyear eq 0 then begin
+                icam = where(backscatter_cameras $
+                             eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
+                iyear = where(backscatter_years eq datearr[0], Nyear)
+                if Ncam eq 0 or Nyear eq 0 then begin
                     print, 'red::download : Backgain orientations unknown for ' + backscatter_cameras[icam] $
                            + ' in year'+datearr[0]+'.'
                     print, '               Please do "git pull" in your crispred directory and try again.'
