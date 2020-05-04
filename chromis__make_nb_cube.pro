@@ -1001,7 +1001,15 @@ pro chromis::make_nb_cube, wcfile $
 
   if ~keyword_set(nostatistics) then begin
     ;; Calculate statistics 
-    red_fitscube_statistics, filename, /write 
+;    red_fitscube_statistics, filename, /write 
+    red_fitscube_statistics, filename, /write $
+                             , angles = ang $
+                             , full = wcFF $
+                             , grid = wcGRID $
+                             , origNx = Nxx $
+                             , origNy = Nyy $
+;                             , percentiles = percentiles $
+                             , shifts = wcSHIFT 
   endif
 
   if ~keyword_set(noflipping) then red_fitscube_flip, filename, flipfile = flipfile
