@@ -109,10 +109,7 @@ function red_image_statistics_combine, statsarr $
   
   indx = where(strmatch(tags,'DATAP*') or strmatch(tags,'DATAMEDN'), Nindx)
   perc = fltarr(Nindx)
-  for i = 0, Nindx-1 do begin
-    
-;    tag = tags[indx[i]]
-    
+  for i = 0, Nindx-1 do begin    
     if tags[indx[i]] eq 'DATAMEDN' then begin
       perc[i] = 0.5
     endif else begin
@@ -129,11 +126,16 @@ function red_image_statistics_combine, statsarr $
   ;; perc.
   findx = where(~finite(p_values), Nnonfinite)
   for inonfinite = 0, Nnonfinite-1 do begin
-    pindx = where(hist_cum eq perc[findx[inonfinite]])
+    pindx = where(hist_cum eq perc[findx[inonfinite]], Nmatch)
     ;; Pick the first value
-    p_values[findx[inonfinite]] = binloc[pindx[0]]
+    if Nmatch gt 0 then p_values[findx[inonfinite]] = binloc[pindx[0]]
   endfor                        ; inonfinite
 
+  ;; Apparently some non-finite values are not fixed by the above
+  ;; procedure. Linear interpolation seems to fix it.
+  findx = where(~finite(p_values), Nnonfinite)
+  p_values[findx] = INTERPOL( binloc, hist_cum, perc[findx] )
+  
   for i = 0, Nindx-1 do begin
     output = create_struct(tags[indx[i]] $
                            , p_values[i] $
