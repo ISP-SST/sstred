@@ -60,7 +60,7 @@ PRO red__define
             detectors:ptr_new(),$         ; List of detector identifiers (e.g. camXX)
             cameras:ptr_new(),$           ; List of camera locations/channels (e.g. Crisp-R)
             refcam:0B, $                  ; Selected reference channel
-            direction:0B, $               ; Orientation of reference camera, se IDL's rotate().
+            direction:10B, $              ; Orientation of reference camera, se IDL's rotate().
             rotation:0D, $                ; Rotation of reference camera, se offset_angle of red_lp_angles().
             out_dir:'',$                  ; The directory where all output is stored
             filename:'',$                 ;
