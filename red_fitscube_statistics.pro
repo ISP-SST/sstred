@@ -239,8 +239,11 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 
           red_fitscube_getframe, fileassoc, frame $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
-          
-          hist += histogram(frame[mindx], min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+
+          ;; Size mismatch?
+          if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop
+
+          hist += histogram(float(frame[mindx]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
 
           iprogress++
           
@@ -279,6 +282,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 ;      axis_numbers = [3, 5]     ; (Ntuning, Nscans)
 ;    endelse
 
+  
   for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
 
     itags = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_statistics), Nmatch)
