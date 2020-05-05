@@ -131,9 +131,37 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, 'camera = Crisp-R'
   printf, Clun, 'camera = Crisp-W'
   printf, Clun, '#'
-  printf, Clun, 'direction = 6'    ; Orientation of WB camera, see IDL's rotate().
-  printf, Clun, 'rotation = -41.0' ; Rotation of reference camera, se offset_angle of red_lp_angles().
+
+  ;; Orientation and rotation of WB camera, see IDL's rotate()
+  ;; and  offset_angle of red_lp_angles(). 
+  
+  case strmid(isodate,0,4) of
+    '2012' : begin
+      ;; Confirmed by comparison with HMI data. Probably ok for a few
+      ;; years before that but we don't know if it goes back all the
+      ;; way to 2008 when CRISP was installed.
+      direction = 5
+      rotation = -42.0 
+    end
+    '2018' :  begin
+      ;; Confirmed by comparison with HMI data. Probably ok for a few
+      ;; years before this but there may be a change some time between
+      ;; 2013 and 2017, say.
+      direction = 6
+      rotation = -41.0
+    end
+    '2019' :  begin
+      ;; Confirmed by comparison with HMI data.
+      direction = 6
+      rotation = -41.0
+    end
+    else :
+  endcase
+  if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
+  if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
   printf, Clun, '#'
+
+
   printf, Clun, 'root_dir = ' + root_dir
   printf, Clun, '#'
 
