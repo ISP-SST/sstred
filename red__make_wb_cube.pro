@@ -51,10 +51,12 @@
 ;      then the auto detected crop is returned in this keyword
 ;      instead.
 ;
-;    direction : in, optional, type=integer, default="from class object"
+;    direction : in, optional, type=integer, default="from config file"
 ;
 ;      The relative orientation of reference cameras of different
-;      instruments. 
+;      instruments. Note that only if direction is set in the config
+;      file will it be assumed to be correct when setting the CSYERR
+;      FITS header keyword.
 ;
 ;    interactive : in, optional, type=boolean
 ;
@@ -79,10 +81,6 @@
 ;      Set this to apply the field rotation angles with the opposite
 ;      sign. 
 ;
-;    subtract_meanang : in, optional, type=boolean
-;
-;      Subtract the mean from the derotation angle. 
-;
 ;    np : in, optional, type=integer, default=3
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
@@ -96,6 +94,10 @@
 ;       Choose scan numbers to include in the sequence by entering a
 ;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
 ;       string '*' to include all.
+;
+;    subtract_meanang : in, optional, type=boolean
+;
+;      Subtract the mean from the derotation angle. 
 ;
 ;    tile : in, optional, type=array
 ;
@@ -321,8 +323,8 @@ pro red::make_wb_cube, dir $
     y0 = crop[2]
     y1 = im_dim[1]-1 - crop[3]
   endelse
-  Nx = x1 - x0 + 1
-  Ny = y1 - y0 + 1
+  origNx = x1 - x0 + 1
+  origNy = y1 - y0 + 1
 
   ;; Observations metadata varaibles
   tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
@@ -336,7 +338,7 @@ pro red::make_wb_cube, dir $
   nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
 
   ;; Read headers to get obs_time and load the images into a cube
-  cub = fltarr(Nx, Ny, Nscans)
+  cub = fltarr(origNx, origNy, Nscans)
   for iscan = 0L, Nscans -1 do begin
     
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
@@ -404,149 +406,149 @@ pro red::make_wb_cube, dir $
   tmean = tmean/mean(tmean)
   for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
 
-  ;; Calculate statistics metadata before alignment and rotation so we
-  ;; avoid padding.
-  DATAMIN  = dblarr(1, Nscans)  ; The minimum data value
-  DATAMAX  = dblarr(1, Nscans)  ; The maximum data value
-  DATAMEAN = dblarr(1, Nscans)  ; The average data value
-  DATARMS  = dblarr(1, Nscans)  ; The RMS deviation from the mean
-  DATAKURT = dblarr(1, Nscans)  ; The kurtosis
-  DATASKEW = dblarr(1, Nscans)  ; The skewness
-  DATAP01  = dblarr(1, Nscans)  ; The 01 percentile
-  DATAP10  = dblarr(1, Nscans)  ; The 10 percentile
-  DATAP25  = dblarr(1, Nscans)  ; The 25 percentile
-  DATAMEDN = dblarr(1, Nscans)  ; The median data value
-  DATAP75  = dblarr(1, Nscans)  ; The 75 percentile
-  DATAP90  = dblarr(1, Nscans)  ; The 90 percentile
-  DATAP95  = dblarr(1, Nscans)  ; The 95 percentile
-  DATAP98  = dblarr(1, Nscans)  ; The 98 percentile
-  DATAP99  = dblarr(1, Nscans)  ; The 99 percentile
-  percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
-  ;; Note that final cube is rescaled as cub =
-  ;; fix(round(cub*30000./max(cub))) so we need to do that here as
-  ;; well.
-  cub1 = double(fix(round(cub*30000./max(cub))))
-  for iscan = 0L, Nscans - 1 do begin
-
-    momnt = moment(cub1[*,*,iscan]) ; mean, variance, skewness, kurtosis
-    perc = cgpercentiles(cub1[*,*,iscan], percentiles = percentiles)
-    
-    DATAMIN[0, iscan]  = min(cub1[*,*,iscan])
-    DATAMAX[0, iscan]  = max(cub1[*,*,iscan])
-
-    DATAMEAN[0, iscan] = momnt[0]         
-    DATARMS[0, iscan]  = sqrt(momnt[1])   
-    DATASKEW[0, iscan] = momnt[2]         
-    DATAKURT[0, iscan] = momnt[3]         
-    
-    DATAP01[0, iscan]  = perc[0]          
-    DATAP10[0, iscan]  = perc[1]          
-    DATAP25[0, iscan]  = perc[2]          
-    DATAMEDN[0, iscan] = perc[3]          
-    DATAP75[0, iscan]  = perc[4]          
-    DATAP90[0, iscan]  = perc[5]          
-    DATAP95[0, iscan]  = perc[6]          
-    DATAP98[0, iscan]  = perc[7]          
-    DATAP99[0, iscan]  = perc[8]          
-
-  endfor                        ; iscan
-  
-  CUBEMIN  = min(DATAMIN)
-  CUBEMAX  = max(DATAMAX)
-  
-  ;; Accumulate a histogram for the entire cube, use to calculate
-  ;; percentiles.
-  Nbins = 2L^16                 ; Use many bins!
-  binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
-  hist = lonarr(Nbins)
-  for iscan = 0L, Nscans - 1 do begin
-    hist += histogram(cub1[*, *, iscan], min = cubemin, max = cubemax, Nbins = Nbins, /nan)
-  endfor                        ; iscan
-
-  momnt = moment(cub1)          ; mean, variance, skewness, kurtosis
-  perc = round(cgpercentiles(cub1, percentiles = percentiles))
-
-  CUBEMEAN =  momnt[0]
-  CUBERMS  =  sqrt(momnt[1])
-  CUBESKEW =  momnt[2]
-  CUBEKURT =  momnt[3]
-
-  CUBEP01  =  perc[0]
-  CUBEP10  =  perc[1]
-  CUBEP25  =  perc[2]
-  CUBEMEDN =  perc[3]
-  CUBEP75  =  perc[4]
-  CUBEP90  =  perc[5]
-  CUBEP95  =  perc[6]
-  CUBEP98  =  perc[7]
-  CUBEP99  =  perc[8]
-
-  if 0 then begin
-    ;; Alt computations. These are tested here and needed for the
-    ;; narrowband cube where we don't have it all in memory
-    ;; simultaneously.
-    Npixels = Nx*Ny
-    Nframes = Nscans
-    altCUBEMEAN = mean(DATAMEAN)
-    altCUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-                       * ( total( (Npixels-1d)* DATARMS^2 + Npixels* DATAMEAN^2 ) $
-                           - Nframes*Npixels * CUBEMEAN^2 ))
-    altCUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
-                  * total( Npixels*DATARMS^3*DATASKEW + Npixels*DATAMEAN^3 + 3*(Npixels-1)*DATAMEAN*DATARMS^2) $
-                  - CUBEMEAN^3/CUBERMS^3 - 3*(Npixels*Nframes-1d)*CUBEMEAN/(Npixels*Nframes*CUBERMS) 
-    altCUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
-                  * total( Npixels*DATARMS^4*(DATAKURT+3) $
-                           + 4*Npixels*DATAMEAN*DATARMS^3*DATASKEW $
-                           + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAmean^4 ) $
-                  - 4*CUBEMEAN*CUBESKEW/CUBERMS $
-                  - 6*(Npixels*Nframes-1d)*CUBEMEAN^2/(Npixels*Nframes*CUBERMS^2) $
-                  - CUBEMEAN^4/CUBERMS^4 - 3 
-
-    ;; Base the percentiles on a histogram
-    cghistoplot, cub1
-    cgplot, /over, [1, 1]*CUBEP01,  !y.crange, color = 'yellow'
-    cgplot, /over, [1, 1]*CUBEP10,  !y.crange, color = 'red'
-    cgplot, /over, [1, 1]*CUBEP25,  !y.crange, color = 'blue'
-    cgplot, /over, [1, 1]*CUBEMEDN, !y.crange, color = 'orange'
-    cgplot, /over, [1, 1]*CUBEP75,  !y.crange, color = 'cyan'
-    cgplot, /over, [1, 1]*CUBEP90,  !y.crange, color = 'purple'
-    cgplot, /over, [1, 1]*CUBEP95,  !y.crange, color = 'green'
-    cgplot, /over, [1, 1]*CUBEP98,  !y.crange, color = 'blue'
-    cgplot, /over, [1, 1]*CUBEP99,  !y.crange, color = 'red'
-
-    hist_sum = total(hist, /cum) / total(hist)
-    
-    ALTCUBEP01  = round(cubemin + ((where(hist_sum gt 0.01))[0]+0.5)*binsize)
-    ALTCUBEP10  = round(cubemin + ((where(hist_sum gt 0.10))[0]+0.5)*binsize) 
-    ALTCUBEP25  = round(cubemin + ((where(hist_sum gt 0.25))[0]+0.5)*binsize) 
-    ALTCUBEMEDN = round(cubemin + ((where(hist_sum gt 0.50))[0]+0.5)*binsize) 
-    ALTCUBEP75  = round(cubemin + ((where(hist_sum gt 0.75))[0]+0.5)*binsize) 
-    ALTCUBEP90  = round(cubemin + ((where(hist_sum gt 0.90))[0]+0.5)*binsize) 
-    ALTCUBEP95  = round(cubemin + ((where(hist_sum gt 0.95))[0]+0.5)*binsize) 
-    ALTCUBEP98  = round(cubemin + ((where(hist_sum gt 0.98))[0]+0.5)*binsize) 
-    ALTCUBEP99  = round(cubemin + ((where(hist_sum gt 0.99))[0]+0.5)*binsize)
-
-    
-    print, 'CUBEMEAN',    CUBEMEAN, altCUBEMEAN
-    print, 'CUBERMS',     CUBERMS,  altCUBERMS
-    print, 'CUBESKEW',    CUBESKEW, altCUBESKEW
-    print, 'CUBEKURT',    CUBEKURT, altCUBEKURT
-    print, 'ALTCUBEP01',  CUBEP01,  altCUBEP01 
-    print, 'ALTCUBEP10',  CUBEP10,  altCUBEP10 
-    print, 'ALTCUBEP25',  CUBEP25,  altCUBEP25 
-    print, 'ALTCUBEMEDN', CUBEMEDN, altCUBEMEDN 
-    print, 'ALTCUBEP75',  CUBEP75,  altCUBEP75 
-    print, 'ALTCUBEP90',  CUBEP90,  altCUBEP90 
-    print, 'ALTCUBEP95',  CUBEP95,  altCUBEP95 
-    print, 'ALTCUBEP98',  CUBEP98,  altCUBEP98 
-    print, 'ALTCUBEP99',  CUBEP99,  altCUBEP99
-
-;  print, 'SUM 4th power by frame'
-;  rawdatakurt = DATAKURT+3d
-;  print, total(total(cub1^4, 1), 1), reform(Npixels*DATARMS^4*rawdatakurt $
-;                                            + 4*Npixels*DATAMEAN*DATASKEW*DATARMS^3 $
-;                                            + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAMEAN^4)
-  endif
+;     ;; Calculate statistics metadata before alignment and rotation so we
+;     ;; avoid padding.
+;     DATAMIN  = dblarr(1, Nscans)  ; The minimum data value
+;     DATAMAX  = dblarr(1, Nscans)  ; The maximum data value
+;     DATAMEAN = dblarr(1, Nscans)  ; The average data value
+;     DATARMS  = dblarr(1, Nscans)  ; The RMS deviation from the mean
+;     DATAKURT = dblarr(1, Nscans)  ; The kurtosis
+;     DATASKEW = dblarr(1, Nscans)  ; The skewness
+;     DATAP01  = dblarr(1, Nscans)  ; The 01 percentile
+;     DATAP10  = dblarr(1, Nscans)  ; The 10 percentile
+;     DATAP25  = dblarr(1, Nscans)  ; The 25 percentile
+;     DATAMEDN = dblarr(1, Nscans)  ; The median data value
+;     DATAP75  = dblarr(1, Nscans)  ; The 75 percentile
+;     DATAP90  = dblarr(1, Nscans)  ; The 90 percentile
+;     DATAP95  = dblarr(1, Nscans)  ; The 95 percentile
+;     DATAP98  = dblarr(1, Nscans)  ; The 98 percentile
+;     DATAP99  = dblarr(1, Nscans)  ; The 99 percentile
+;     percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
+;     ;; Note that final cube is rescaled as cub =
+;     ;; fix(round(cub*30000./max(cub))) so we need to do that here as
+;     ;; well.
+;     cub1 = double(fix(round(cub*30000./max(cub))))
+;     for iscan = 0L, Nscans - 1 do begin
+;   
+;       momnt = moment(cub1[*,*,iscan]) ; mean, variance, skewness, kurtosis
+;       perc = cgpercentiles(cub1[*,*,iscan], percentiles = percentiles)
+;       
+;       DATAMIN[0, iscan]  = min(cub1[*,*,iscan])
+;       DATAMAX[0, iscan]  = max(cub1[*,*,iscan])
+;   
+;       DATAMEAN[0, iscan] = momnt[0]         
+;       DATARMS[0, iscan]  = sqrt(momnt[1])   
+;       DATASKEW[0, iscan] = momnt[2]         
+;       DATAKURT[0, iscan] = momnt[3]         
+;       
+;       DATAP01[0, iscan]  = perc[0]          
+;       DATAP10[0, iscan]  = perc[1]          
+;       DATAP25[0, iscan]  = perc[2]          
+;       DATAMEDN[0, iscan] = perc[3]          
+;       DATAP75[0, iscan]  = perc[4]          
+;       DATAP90[0, iscan]  = perc[5]          
+;       DATAP95[0, iscan]  = perc[6]          
+;       DATAP98[0, iscan]  = perc[7]          
+;       DATAP99[0, iscan]  = perc[8]          
+;   
+;     endfor                        ; iscan
+;     
+;     CUBEMIN  = min(DATAMIN)
+;     CUBEMAX  = max(DATAMAX)
+;     
+;     ;; Accumulate a histogram for the entire cube, use to calculate
+;     ;; percentiles.
+;     Nbins = 2L^16                 ; Use many bins!
+;     binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
+;     hist = lonarr(Nbins)
+;     for iscan = 0L, Nscans - 1 do begin
+;       hist += histogram(cub1[*, *, iscan], min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+;     endfor                        ; iscan
+;   
+;     momnt = moment(cub1)          ; mean, variance, skewness, kurtosis
+;     perc = round(cgpercentiles(cub1, percentiles = percentiles))
+;   
+;     CUBEMEAN =  momnt[0]
+;     CUBERMS  =  sqrt(momnt[1])
+;     CUBESKEW =  momnt[2]
+;     CUBEKURT =  momnt[3]
+;   
+;     CUBEP01  =  perc[0]
+;     CUBEP10  =  perc[1]
+;     CUBEP25  =  perc[2]
+;     CUBEMEDN =  perc[3]
+;     CUBEP75  =  perc[4]
+;     CUBEP90  =  perc[5]
+;     CUBEP95  =  perc[6]
+;     CUBEP98  =  perc[7]
+;     CUBEP99  =  perc[8]
+;   
+;     if 0 then begin
+;       ;; Alt computations. These are tested here and needed for the
+;       ;; narrowband cube where we don't have it all in memory
+;       ;; simultaneously.
+;       Npixels = origNx*origNy
+;       Nframes = Nscans
+;       altCUBEMEAN = mean(DATAMEAN)
+;       altCUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
+;                          * ( total( (Npixels-1d)* DATARMS^2 + Npixels* DATAMEAN^2 ) $
+;                              - Nframes*Npixels * CUBEMEAN^2 ))
+;       altCUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
+;                     * total( Npixels*DATARMS^3*DATASKEW + Npixels*DATAMEAN^3 + 3*(Npixels-1)*DATAMEAN*DATARMS^2) $
+;                     - CUBEMEAN^3/CUBERMS^3 - 3*(Npixels*Nframes-1d)*CUBEMEAN/(Npixels*Nframes*CUBERMS) 
+;       altCUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
+;                     * total( Npixels*DATARMS^4*(DATAKURT+3) $
+;                              + 4*Npixels*DATAMEAN*DATARMS^3*DATASKEW $
+;                              + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAmean^4 ) $
+;                     - 4*CUBEMEAN*CUBESKEW/CUBERMS $
+;                     - 6*(Npixels*Nframes-1d)*CUBEMEAN^2/(Npixels*Nframes*CUBERMS^2) $
+;                     - CUBEMEAN^4/CUBERMS^4 - 3 
+;   
+;       ;; Base the percentiles on a histogram
+;       cghistoplot, cub1
+;       cgplot, /over, [1, 1]*CUBEP01,  !y.crange, color = 'yellow'
+;       cgplot, /over, [1, 1]*CUBEP10,  !y.crange, color = 'red'
+;       cgplot, /over, [1, 1]*CUBEP25,  !y.crange, color = 'blue'
+;       cgplot, /over, [1, 1]*CUBEMEDN, !y.crange, color = 'orange'
+;       cgplot, /over, [1, 1]*CUBEP75,  !y.crange, color = 'cyan'
+;       cgplot, /over, [1, 1]*CUBEP90,  !y.crange, color = 'purple'
+;       cgplot, /over, [1, 1]*CUBEP95,  !y.crange, color = 'green'
+;       cgplot, /over, [1, 1]*CUBEP98,  !y.crange, color = 'blue'
+;       cgplot, /over, [1, 1]*CUBEP99,  !y.crange, color = 'red'
+;   
+;       hist_sum = total(hist, /cum) / total(hist)
+;       
+;       ALTCUBEP01  = round(cubemin + ((where(hist_sum gt 0.01))[0]+0.5)*binsize)
+;       ALTCUBEP10  = round(cubemin + ((where(hist_sum gt 0.10))[0]+0.5)*binsize) 
+;       ALTCUBEP25  = round(cubemin + ((where(hist_sum gt 0.25))[0]+0.5)*binsize) 
+;       ALTCUBEMEDN = round(cubemin + ((where(hist_sum gt 0.50))[0]+0.5)*binsize) 
+;       ALTCUBEP75  = round(cubemin + ((where(hist_sum gt 0.75))[0]+0.5)*binsize) 
+;       ALTCUBEP90  = round(cubemin + ((where(hist_sum gt 0.90))[0]+0.5)*binsize) 
+;       ALTCUBEP95  = round(cubemin + ((where(hist_sum gt 0.95))[0]+0.5)*binsize) 
+;       ALTCUBEP98  = round(cubemin + ((where(hist_sum gt 0.98))[0]+0.5)*binsize) 
+;       ALTCUBEP99  = round(cubemin + ((where(hist_sum gt 0.99))[0]+0.5)*binsize)
+;   
+;       
+;       print, 'CUBEMEAN',    CUBEMEAN, altCUBEMEAN
+;       print, 'CUBERMS',     CUBERMS,  altCUBERMS
+;       print, 'CUBESKEW',    CUBESKEW, altCUBESKEW
+;       print, 'CUBEKURT',    CUBEKURT, altCUBEKURT
+;       print, 'ALTCUBEP01',  CUBEP01,  altCUBEP01 
+;       print, 'ALTCUBEP10',  CUBEP10,  altCUBEP10 
+;       print, 'ALTCUBEP25',  CUBEP25,  altCUBEP25 
+;       print, 'ALTCUBEMEDN', CUBEMEDN, altCUBEMEDN 
+;       print, 'ALTCUBEP75',  CUBEP75,  altCUBEP75 
+;       print, 'ALTCUBEP90',  CUBEP90,  altCUBEP90 
+;       print, 'ALTCUBEP95',  CUBEP95,  altCUBEP95 
+;       print, 'ALTCUBEP98',  CUBEP98,  altCUBEP98 
+;       print, 'ALTCUBEP99',  CUBEP99,  altCUBEP99
+;   
+;   ;  print, 'SUM 4th power by frame'
+;   ;  rawdatakurt = DATAKURT+3d
+;   ;  print, total(total(cub1^4, 1), 1), reform(Npixels*DATARMS^4*rawdatakurt $
+;   ;                                            + 4*Npixels*DATAMEAN*DATASKEW*DATARMS^3 $
+;   ;                                            + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAMEAN^4)
+;     endif
 
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
@@ -571,12 +573,12 @@ pro red::make_wb_cube, dir $
 ;    read, np, prompt = prompt
 ;  endif
 
-  if n_elements(xbd) eq 0 then xbd = round(Nx*0.9)
-  if n_elements(ybd) eq 0 then ybd = round(Ny*0.9)
+  if n_elements(xbd) eq 0 then xbd = round(origNx*0.9)
+  if n_elements(ybd) eq 0 then ybd = round(origNy*0.9)
 
   ;; Define (default) alignment FOV
-  xc = Nx/2
-  yc = Ny/2
+  xc = origNx/2
+  yc = origNy/2
   align_size = [xbd, ybd]
 
   if keyword_set(align_interactive) then begin
@@ -778,9 +780,19 @@ pro red::make_wb_cube, dir $
                                , iscan = iscan
     wcs[0, iscan].time = t_array[iscan]
   endfor                        ; iscan
-  free_lun, lun
-  print, inam + ' : Wrote file '+odir + ofil
+;  free_lun, lun
+;  print, inam + ' : Wrote file '+odir + ofil
+  ;; Close fits file 
+  self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
+  ;; Calculate statistics
+  red_fitscube_statistics, odir + ofil, /write, full = ff $
+                           , origNx = origNx $
+                           , origNy = origNy $
+                           , angles = ang
+
+  
+  
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
   x01y01 = [X0, X1, Y0, Y1]
@@ -847,8 +859,20 @@ pro red::make_wb_cube, dir $
   ;; any of the other parameters?
 
   ;; Add the WCS coordinates
-  red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims
-  
+  if self.direction gt 7 || self.direction ne direction then begin
+    ;; Direction not set in the config file, assume unknown
+    red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+                         , csyer_spatial_value = 120. $ ; 2 arc minutes
+                         , csyer_spatial_comment = '[arcsec] Orientation unknown'
+  endif else begin
+    ;; Direction set in the config file, so orientation should be
+    ;; good. But there may still be small rotation arrors and
+    ;; substantial translations.
+    red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+                         , csyer_spatial_value = 60. $ ; 1 arc minute
+                         , csyer_spatial_comment = '[arcsec] Orientation known'
+  endelse 
+
   ;; Add variable keywords.
   self -> fitscube_addvarkeyword, odir + ofil, 'DATE-BEG', date_beg_array $
                                   , anchor = anchor $
@@ -893,101 +917,101 @@ pro red::make_wb_cube, dir $
                                   , anchor = anchor $
                                   , keyword_method = 'median' $
                                   , axis_numbers = [3, 5]
-  
-  ;; Statistics
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAMIN', DATAMIN $
-                                  , comment = 'The minimum data value' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEMIN $
-                                  , axis_numbers = [3, 5]
-
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAMAX', DATAMAX $
-                                  , comment = 'The maximum data value' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEMAX $
-                                  , axis_numbers = [3, 5]
-
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEAN', DATAMEAN $
-                                  , comment = 'The average data value' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEMEAN $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATARMS', DATARMS $
-                                  , comment = 'The RMS deviation from the mean' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBERMS $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAKURT', DATAKURT $
-                                  , comment = 'The kurtosis' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEKURT $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATASKEW', DATASKEW $
-                                  , comment = 'The skewness' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBESKEW $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP01', DATAP01 $
-                                  , comment = 'The 01 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP01 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP10', DATAP10 $
-                                  , comment = 'The 10 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP10 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP25', DATAP25 $
-                                  , comment = 'The 25 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP25 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEDN', DATAMEDN $
-                                  , comment = 'The median data value' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEMEDN $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP75', DATAP75 $
-                                  , comment = 'The 75 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP75 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP90', DATAP90 $
-                                  , comment = 'The 90 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP90 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP95', DATAP95 $
-                                  , comment = 'The 95 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP95 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP98', DATAP98 $
-                                  , comment = 'The 98 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP98 $
-                                  , axis_numbers = [3, 5]
-
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATAP99', DATAP99 $
-                                  , comment = 'The 99 percentile' $
-                                  , anchor = anchor $
-                                  , keyword_value = CUBEP99 $
-                                  , axis_numbers = [3, 5]
-
+;     
+;     ;; Statistics
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMIN', DATAMIN $
+;                                     , comment = 'The minimum data value' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEMIN $
+;                                     , axis_numbers = [3, 5]
+;   
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMAX', DATAMAX $
+;                                     , comment = 'The maximum data value' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEMAX $
+;                                     , axis_numbers = [3, 5]
+;   
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEAN', DATAMEAN $
+;                                     , comment = 'The average data value' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEMEAN $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATARMS', DATARMS $
+;                                     , comment = 'The RMS deviation from the mean' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBERMS $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAKURT', DATAKURT $
+;                                     , comment = 'The kurtosis' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEKURT $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATASKEW', DATASKEW $
+;                                     , comment = 'The skewness' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBESKEW $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP01', DATAP01 $
+;                                     , comment = 'The 01 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP01 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP10', DATAP10 $
+;                                     , comment = 'The 10 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP10 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP25', DATAP25 $
+;                                     , comment = 'The 25 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP25 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEDN', DATAMEDN $
+;                                     , comment = 'The median data value' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEMEDN $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP75', DATAP75 $
+;                                     , comment = 'The 75 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP75 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP90', DATAP90 $
+;                                     , comment = 'The 90 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP90 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP95', DATAP95 $
+;                                     , comment = 'The 95 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP95 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP98', DATAP98 $
+;                                     , comment = 'The 98 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP98 $
+;                                     , axis_numbers = [3, 5]
+;   
+;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP99', DATAP99 $
+;                                     , comment = 'The 99 percentile' $
+;                                     , anchor = anchor $
+;                                     , keyword_value = CUBEP99 $
+;                                     , axis_numbers = [3, 5]
+;   
   
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin
