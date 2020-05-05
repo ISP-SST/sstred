@@ -31,6 +31,13 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
+;    direction : in, optional, type=integer, default="from config file"
+;
+;      The relative orientation of reference cameras of different
+;      instruments. Note that only if direction is set in the config
+;      file will it be assumed to be correct when setting the CSYERR
+;      FITS header keyword.
+;
 ;     integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats.
@@ -653,7 +660,7 @@ pro chromis::make_scan_cube, dir $
     wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
 
     ;; Close fits file 
-    self -> fitscube_finish, lun, wcs = wcs
+    self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
     ;; Add cavity maps as WAVE distortions 
     if ~keyword_set(nocavitymap) then begin
@@ -821,8 +828,8 @@ pro chromis::make_scan_cube, dir $
         red_fitscube_statistics, filename, /write
       endif else begin
         red_fitscube_statistics, filename, /write, full = ff $
-                                 , origNx = Nxx $
-                                 , origNy = Nyy $
+                                 , origNx = Nx $
+                                 , origNy = Ny $
                                  , angles = [ang]
       endelse
     endif

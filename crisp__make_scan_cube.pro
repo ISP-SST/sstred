@@ -872,7 +872,7 @@ pro crisp::make_scan_cube, dir $
     wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
 
     ;; Close fits file 
-    self -> fitscube_finish, lun, wcs = wcs
+    self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
     ;; Add cavity maps as WAVE distortions 
     if ~keyword_set(nocavitymap) then begin
@@ -983,8 +983,8 @@ pro crisp::make_scan_cube, dir $
         red_fitscube_statistics, filename, /write
       endif else begin
         red_fitscube_statistics, filename, /write, full = ff $
-                                 , origNx = Nxx $
-                                 , origNy = Nyy $
+                                 , origNx = Nx $
+                                 , origNy = Ny $
                                  , angles = [ang]
       endelse
     endif
