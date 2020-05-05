@@ -490,15 +490,12 @@ pro red::fitscube_wcs_improve_spatial, filename $
     
     ;; Write the updated WCS info back into the file. 
     red_fitscube_addwcs, filename, wcs $
+                         , coordref = strjoin(file_basename(hnames),' & ')+','+inam $
                          , csyer_spatial_value = 5. $ ; 5 arcsec, minor rotation error may remain
                          , csyer_spatial_comment = 'Aligned with HMI images' $
                          , dimensions = fxpar(h, 'NAXIS*') $
                          , /update
 
-    ;; There is a FITS keyword that should be set, specifying that we
-    ;; used the HMI images for alignment.
-    ;; strjoin(file_basename(hnames),' & ')
-    
   endif
 
 end
