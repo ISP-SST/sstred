@@ -285,6 +285,8 @@ pro crisp::make_nb_cube, wcfile $
   x1 = wcX01Y01[1]
   y0 = wcX01Y01[2]
   y1 = wcX01Y01[3]
+  origNx = x1 - x0 + 1
+  origNy = y1 - y0 + 1
 
   self -> extractstates, wbgfiles, wbgstates
   prefilter = wbgstates[0].prefilter
@@ -494,7 +496,7 @@ pro crisp::make_nb_cube, wcfile $
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
     cmapt = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmapt = rotate(temporary(cmapt), direction)
+;    cmapt = rotate(temporary(cmapt), direction)
     cmapt /= 10.                ; Make it [nm]
     cmapt = -cmapt              ; Change sign so lambda_correct = lambda + cmap
     fit = 0B                    ; Don't need the fit struct anymore.
@@ -511,7 +513,7 @@ pro crisp::make_nb_cube, wcfile $
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
     cmapr = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmapr = rotate(temporary(cmapr), direction)
+;    cmapr = rotate(temporary(cmapr), direction)
     cmapr /= 10.                ; Make it [nm]
     cmapr = -cmapr              ; Change sign so lambda_correct = lambda + cmap
     fit = 0B                    ; Don't need the fit struct anymore.
@@ -901,8 +903,7 @@ pro crisp::make_nb_cube, wcfile $
 
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
-    wb = red_readdata(wbgfiles[iscan])
-    wb = (rotate(temporary(wb), direction))[x0:x1, y0:y1]
+    wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
  
     if keyword_set(unsharp) then wb -= smooth(wb, 5)
     
@@ -920,7 +921,7 @@ pro crisp::make_nb_cube, wcfile $
         
         tmp = red_readdata(snames[iscan, ituning], head = stokhdr)
         nbdims = size(tmp, /dim)
-        if max(direction eq [1, 3, 4, 7]) eq 1 then begin
+        if max(direction eq [1, 3, 4, 6]) eq 1 then begin
           nbdims = nbdims[[1, 0, 3]] ; X and Y switched
         endif else begin
           nbdims = nbdims[[0, 1, 3]] 
@@ -1054,15 +1055,15 @@ pro crisp::make_nb_cube, wcfile $
           
           if wbcor then begin
             ;; Get destretch to anchor camera (residual seeing)
-            wwi = red_readdata(scan_wbfiles[iim])
-            wwi = (rotate(temporary(wwi), direction))[x0:x1, y0:y1]
+            wwi = (red_readdata(scan_wbfiles[iim], direction = direction))[x0:x1, y0:y1]
+;            wwi = (rotate(temporary(wwi), direction))[x0:x1, y0:y1]
             if keyword_set(unsharp) then wwi = wwi - smooth(wwi, 5)
             grid1 = red_dsgridnest(wb, wwi, tiles, clips)
           endif
           
           ;; Reflected
-          this_im = red_readdata(scan_nbrfiles[iim])
-          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
+          this_im = (red_readdata(scan_nbrfiles[iim], direction = direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
+;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = red_stretch(temporary(this_im), grid1)
@@ -1070,8 +1071,8 @@ pro crisp::make_nb_cube, wcfile $
           nbim += this_im
 
           ;; Transmitted
-          this_im = red_readdata(scan_nbtfiles[iim])
-          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
+          this_im = (red_readdata(scan_nbtfiles[iim], direction = direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
+;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = red_stretch(temporary(this_im), grid1)
@@ -1261,23 +1262,23 @@ pro crisp::make_nb_cube, wcfile $
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
     ;; Correct the cube for cross-talk, I --> Q,U,V.
-    self -> fitscube_crosstalk, filename, nostatistics = nostatistics 
+    self -> fitscube_crosstalk, filename, /nostatistics ;, nostatistics = nostatistics 
 
-  endif else if ~keyword_set(nostatistics) then begin
+  endif                         ;else
+  if ~keyword_set(nostatistics) then begin
 
     ;; Calculate statistics if not done already
     
 ;    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
-    
     red_fitscube_statistics, filename, /write $
                              , angles = ang $
                              , full = wcFF $
                              , grid = wcGRID $
-                             , origNx = Nxx $
-                             , origNy = Nyy $
+                             , origNx = origNx $
+                             , origNy = origNy $
 ;                             , percentiles = percentiles $
                              , shifts = wcSHIFT 
-    
+
   endif
   
   if keyword_set(integer) then begin

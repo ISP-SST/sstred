@@ -183,12 +183,15 @@ pro chromis::make_nb_cube, wcfile $
   ;; Read parameters from the WB cube
   fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
   fxbreadm, bunit, row = 1 $
-            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
+            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01,   direction
   ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
   ;; wbgfiles (WideBand Global).
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
+
+  ;; Default for wb cubes without direction parameter
+  if n_elements(direction) eq 0 then direction = 0
 
   ;; Read wcs extension of wb file to get pointing info
   fxbopen, wlun, wcfile, 'WCS-TAB', wbdr
@@ -200,7 +203,9 @@ pro chromis::make_nb_cube, wcfile $
   x1 = wcX01Y01[1]
   y0 = wcX01Y01[2]
   y1 = wcX01Y01[3]
-  
+  origNx = x1 - x0 + 1
+  origNy = y1 - y0 + 1
+
   self -> extractstates, wbgfiles, wbgstates
   prefilter = wbgstates[0].prefilter
   
@@ -333,7 +338,7 @@ pro chromis::make_nb_cube, wcfile $
   if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
 
   ;; Load WB image and define the image border
-  tmp = red_readdata(wbgfiles[0])
+;  tmp = red_readdata(wbgfiles[0])
 
   ;; Spatial dimensions that match the WB cube
   Nx = wcND[0]
@@ -649,7 +654,7 @@ pro chromis::make_nb_cube, wcfile $
     
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
-    wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
+    wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
     
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
@@ -701,12 +706,12 @@ pro chromis::make_nb_cube, wcfile $
 
       ;; Get destretch to anchor camera (residual seeing)
       if wbcor then begin
-        wwi = (red_readdata(scan_wbfiles[iwav]))[x0:x1, y0:y1]
+        wwi = (red_readdata(scan_wbfiles[iwav], direction = direction))[x0:x1, y0:y1]
         grid1 = red_dsgridnest(wb, wwi, tiles, clips)
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
-      nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
+      nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] * tscl
 
 ;      if ~keyword_set(nostatistics) then begin
 ;        ;; Add to the histogram
@@ -826,7 +831,8 @@ pro chromis::make_nb_cube, wcfile $
       endif
       restore, cfile                 ; The cavity map is in a struct called "fit". 
       cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-      cmap /= 10.                    ; Make it [nm]
+      cmap = rotate(temporary(cmap), direction)
+      cmap /= 10.               ; Make it [nm]
       cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
       fit = 0B                       ; Don't need the fit struct anymore.
       
@@ -1006,13 +1012,15 @@ pro chromis::make_nb_cube, wcfile $
                              , angles = ang $
                              , full = wcFF $
                              , grid = wcGRID $
-                             , origNx = Nxx $
-                             , origNy = Nyy $
+                             , origNx = origNx $
+                             , origNy = origNy $
 ;                             , percentiles = percentiles $
                              , shifts = wcSHIFT 
   endif
 
-  if ~keyword_set(noflipping) then red_fitscube_flip, filename, flipfile = flipfile
+  if ~keyword_set(noflipping) then $
+     red_fitscube_flip, filename, flipfile = flipfile $
+                        , overwrite = overwrite
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename
