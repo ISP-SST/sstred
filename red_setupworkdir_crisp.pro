@@ -137,25 +137,40 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   case strmid(isodate,0,4) of
     '2012' : begin
-      ;; Confirmed by comparison with HMI data. Probably ok for a few
-      ;; years before that but we don't know if it goes back all the
-      ;; way to 2008 when CRISP was installed.
-      direction = 5
+      ;; Probably ok for a few years before that but we don't know if
+      ;; it goes back all the way to 2008 when CRISP was installed.
+      direction = 5             ; Confirmed by comparison with HMI data.
       rotation = -42.0 
     end
-    '2018' :  begin
-      ;; Confirmed by comparison with HMI data. Probably ok for a few
-      ;; years before this but there may be a change some time between
-      ;; 2013 and 2017, say.
+    '2013' :  begin
+      direction = 6             ; Confirmed by comparison with HMI data.
+      rotation = -41.0          ; Confirmed by comparison with HMI data.
+    end
+    '2014' :  begin
       direction = 6
+      rotation = -41.0
+    end
+    '2015' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2016' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2017' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2018' :  begin
+      direction = 6             ; Confirmed by comparison with HMI data.
       rotation = -41.0
     end
     '2019' :  begin
-      ;; Confirmed by comparison with HMI data.
-      direction = 6
-      rotation = -41.0
+      direction = 6             ; Confirmed by comparison with HMI data.
+      rotation = -41.0          ; Confirmed by comparison with HMI data.
     end
-    else :
+    else :                      ; No direction and rotation settings for unknown years
   endcase
   if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
   if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
