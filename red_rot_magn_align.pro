@@ -151,17 +151,15 @@ end
 ;-
 function red_rot_magn_align, im_ref_in, im_in, display = display
 
-;  dims = size(im_in, /dim)
+  dims = size(im_in, /dim)
 
   ;; Normalize intensities and remove bias
   im_ref = im_ref_in/median(im_ref_in) - 1
   im     = im_in/median(im_in)         - 1
 
   ;; Window function
-;  sz = dims[0]
-;  w = makewindow(sz,softmargin=sz/16.) ; window
-  w = 1.
-  
+  w = red_taper2(dims[0], dims[1], 1/16.)
+
   ;; Fourier transform
   fim_ref = fft(im_ref * w)
   fim     = fft(im     * w)
