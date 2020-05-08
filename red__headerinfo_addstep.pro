@@ -21,21 +21,25 @@
 ; 
 ; :Keywords:
 ; 
-;    prstep : in, optional, type=string
+;    prmode : in, optional, type=string
 ;
-;       The processing step name.
+;       The processing mode.
+;
+;    prpara : in, optional, type=string
+;
+;       List of parameters/options for the procedure.
 ;
 ;    prproc : in, optional, type=string
 ;
 ;       The name of the procedure used.
 ;
-;    prmode : in, optional, type=string
+;    prref : in, optional, type=strarr
 ;
-;       The processing mode .
+;       Reference sources (images, people, data, etc.).
 ;
-;    prpara : in, optional, type=string
+;    prstep : in, optional, type=string
 ;
-;       List of parameters/options for the procedure.
+;       The processing step name.
 ;
 ;    addlib : in, optional, type=string
 ;
@@ -65,6 +69,8 @@
 ;   2017-12-20 : MGL. Write prpara dictionaries in json format.
 ;
 ;   2018-11-21 : MGL. New keyword anchor.
+;
+;   2020-05-07 : MGL. New keyword prref.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
@@ -74,6 +80,7 @@ pro red::headerinfo_addstep, header $
                              , prmode = prmode $
                              , prpara = prpara $
                              , prproc = prproc $
+                             , prref = prref $
                              , prstep = prstep $
                              , version = version
   
@@ -132,12 +139,23 @@ pro red::headerinfo_addstep, header $
     case typename(prpara) of
       'STRING' : prp = strjoin(strtrim(prpara, 2), ',')
       'DICTIONARY' : prp = json_serialize(prpara)
+      'ORDEREDHASH' : prp = json_serialize(prpara)
       else : stop
     endcase
     red_fitsaddkeyword, header, key, prp, anchor = anchor $
                         , 'List of parameters/options for PRPROC'+stp
   endif
 
+  ;; References
+  if n_elements(prref) ne 0 then begin
+    key = 'PRREF'+stp
+    for iref = 0, n_elements(prref)-1 do begin
+      this_key = key
+      if iref gt 0 then this_key += string(byte(64+iref))
+      red_fitsaddkeyword,header, this_key, prref[iref], 'Reference', anchor = anchor
+    endfor
+  endif
+  
   ;; Add headers with other step info.
 ;  red_fitsaddkeyword, header, 'VERSION', 0, 'FITS file processing generation/version'
 ;  red_fitsaddkeyword, header, 'LEVEL',   0, 'Data level of fits file'

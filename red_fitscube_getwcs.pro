@@ -151,6 +151,8 @@ pro red_fitscube_getwcs, filename $
 
   if arg_present(distortions) then begin
 
+    undefine, distortions
+    
     ;; Read hierarch keyword dw3
     dw3 = red_fitsgetkeyword(hdr, 'DW3')
     Ndw3 = n_elements(dw3)

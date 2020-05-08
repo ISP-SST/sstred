@@ -35,19 +35,17 @@
 ;
 ;       The frame index in the data cube seen as a 3D cube. 
 ;
-;    ituning  : in, optional, type=integer, default=0
-;
-;       The tuning index, used to calculate iframe.
-;
-;    istokes  : in, optional, type=integer, default=0
-;
-;       The stokes index, used to calculate iframe.
-;
 ;    iscan : in, optional, type=integer, default=0
 ;
 ;       The scan index, used to calculate iframe.   
 ;   
-; 
+;    istokes  : in, optional, type=integer, default=0
+;
+;       The stokes index, used to calculate iframe.
+;
+;    ituning  : in, optional, type=integer, default=0
+;
+;       The tuning index, used to calculate iframe.
 ; 
 ; :History:
 ; 
@@ -61,9 +59,9 @@
 ;-
 pro red_fitscube_getframe, filename_or_fileassoc, frame $
                            , iframe = iframe $
-                           , ituning = ituning $
-                           , istokes = istokes $
                            , iscan = iscan $
+                           , istokes = istokes $
+                           , ituning = ituning $
                            , fitscube_info = fitscube_info
   
   if size(filename_or_fileassoc, /tname) eq 'STRING' then open_and_close = 1 else open_and_close = 0

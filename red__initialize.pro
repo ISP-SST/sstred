@@ -72,6 +72,10 @@
 ;   2020-02-12 : OA. Added changes driven by change of
 ;                polcal_dir:'' to polcal_dir:ptr_new() in red__define
 ;
+;   2020-03-11 : MGL. Default for self.direction.
+;
+;   2020-04-06 : MGL. Default for self.rotation.
+;
 ;-
 pro red::initialize, filename, develop = develop
 
@@ -132,6 +136,7 @@ pro red::initialize, filename, develop = develop
       end
       'camsz'           : self.camsz = value
       'diversity'       : self.diversity = value
+      'direction'       : self.direction = value
       'filetype'        : self.filetype = value
       'image_scale'     : self.image_scale = value
       'isodate'         : self.isodate = value
@@ -139,6 +144,7 @@ pro red::initialize, filename, develop = develop
       'pinhole_spacing' : self.pinhole_spacing = float(value)
       'pixel_size'      : self.pixel_size = value
       'prefilter_dir'   : self.prefilter_dir = value
+      'rotation'        : self.rotation = value
       'telescope_d'     : self.telescope_d = value
 ;        'descatter_dir' : self.descatter_dir = value
       'dark_dir': begin
@@ -218,6 +224,16 @@ pro red::initialize, filename, develop = develop
     self.pinhole_spacing = 5.12
   endif 
   print, 'red::initialize : pinhole_spacing = '+strtrim(self.pinhole_spacing, 2)
+
+  if self.rotation eq 0.0 then begin
+    ;; Default value 48 degrees, from red_lp_angles. This is what
+    ;; would be expected in old workdirs without rotation in the
+    ;; config file.
+    self.rotation = 48d
+  endif 
+  print, 'red::initialize : direction = '+strtrim(self.direction, 2)
+  print, 'red::initialize : rotation = '+strtrim(self.rotation, 2)
+
 
   ;; check available fields
 ;  if(self.descatter_dir eq '') then begin

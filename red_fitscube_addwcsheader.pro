@@ -28,6 +28,10 @@
 ;       Ntunes, Nscans) arrays.
 ; 
 ; :Keywords:
+;
+;    coordref : in, optional, type=string
+;
+;       Add FITS header keyword COORDREF with this value.
 ; 
 ;    dimensions : in, type=array
 ;   
@@ -37,13 +41,26 @@
 ; :History:
 ; 
 ;    2018-11-26 : MGL. First version.
+;
+;    2020-04-30 : MGL. New keywords coordref, csyer_spatial_value,
+;                 csyer_spatial_comment.
 ; 
 ;-
-pro red_fitscube_addwcsheader, hdr, wcs, dimensions = dimensions
+pro red_fitscube_addwcsheader, hdr, wcs $
+                               , coordref = coordref $
+                               , csyer_spatial_value = csyer_spatial_value $
+                               , csyer_spatial_comment = csyer_spatial_comment $
+                               , dimensions = dimensions
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
+  if n_elements(csyer_spatial_value) eq 0 then begin
+    csyer_spatial_value = 120.  ; 2 arc minutes
+    csyer_spatial_comment = '[arcsec] Orientation unknown'
+  endif 
+
+  
   ;; The code leading up to the definition of WriteTimeIndex,
   ;; WriteWaveIndex, TabulateWave, TabulateTime has to match the code
   ;; in red::fitsube_addwcs. 
@@ -185,6 +202,10 @@ pro red_fitscube_addwcsheader, hdr, wcs, dimensions = dimensions
   red_fitsaddkeyword, hdr, 'EXTEND', !true, 'The file has extension(s).'
 
   anchor = 'FILENAME'
+
+  if n_elements(coordref) ne 0 then begin
+    red_fitsaddkeyword, anchor = anchor, hdr, 'COORDREF', coordref, 'Coord system refs'
+  endif 
   
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC1_1', 1.0, 'No rotations' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC2_2', 1.0, 'No rotations' 
@@ -234,7 +255,7 @@ pro red_fitscube_addwcsheader, hdr, wcs, dimensions = dimensions
   red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX1', 0, 'Unity transform' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL1', 0, 'Unity transform' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'CDELT1', 1, 'Unity transform' 
-  red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER1', 60, 'Orientation unknown' 
+  red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER1', csyer_spatial_value, csyer_spatial_comment
 
   ;; Second spatial dimension, corner coordinates always tabulated 
   red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE2', 'HPLT-TAB', 'SOLAR Y' 
@@ -247,7 +268,7 @@ pro red_fitscube_addwcsheader, hdr, wcs, dimensions = dimensions
   red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX2', 0, 'Unity transform' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL2', 0, 'Unity transform' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'CDELT2', 1, 'Unity transform' 
-  red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER2', 60, 'Orientation unknown' 
+  red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER2', csyer_spatial_value, csyer_spatial_comment
 
   ;; Tuning, tabulated wavelength, tabulated for actual scans but not
   ;; for, e.g., wideband cubes.

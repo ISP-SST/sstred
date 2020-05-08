@@ -77,10 +77,18 @@
 ;
 ;      Set this to download without checking if the file already exists
 ;
-;    backscatter  : in, optional, type="integer array"
+;    backscatter : in, optional, type="integer array"
 ;
 ;      Set this to ["8542", "7772"] (or a subset thereof) to download
 ;      backscatter gain and psf for the corresponding prefilter(s).
+;
+;    timestamps_hmi: in, optional, type=strarr
+;
+;      Timestamps for HMI Ic and M images to download. The format is
+;      HHMMSS but HMI images are available only for every 15 min, so
+;      in practice this is HHXX00, where XX is 00, 15, 30, or 45. Use
+;      this rather than the boolean hmi keyword to download data for
+;      specific times and without downloading movies.
 ;
 ; :History:
 ; 
@@ -132,6 +140,8 @@
 ;
 ;    2017-05-08 : MGL. Extended backscatter to 2017.
 ;
+;    2020-03-26 : MGL. New keyword timestamps_hmi.
+;
 ;
 ;-
 pro red_download, date = date $
@@ -152,12 +162,14 @@ pro red_download, date = date $
                   , pathturret = pathturret  $
                   , armap = armap $
                   , hmi = hmi $
+                  , timestamps_hmi = timestamps_hmi $
                   , backscatter = backscatter
 
   any = n_elements(backscatter) gt 0 $
         or keyword_set(pig) $
         or keyword_set(armap)  $
         or keyword_set(hmi)  $
+        or keyword_set(timestamps_hmi)  $
         or keyword_set(logs) $
         or keyword_set(r0)  $
         or keyword_set(shabar)  $
@@ -237,24 +249,26 @@ pro red_download, date = date $
         ;; needed transformation for 2013 and later.
         if datearr[0] ne '2012' then begin
           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
-          backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19']
+          backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15' $
+                                    , '16', '17', '18', '19', '20']
           backscatter_orientations = bytarr(n_elements(backscatter_years) $
                                             , n_elements(backscatter_cameras))
           ;; Change orientations here if needed. Let's hope the
           ;; orientation never changed *during* an observation
           ;; season...
-          backscatter_orientations[0, *] = [0, 0, 0, 0]     ; 2008 - same as 2012?
-          backscatter_orientations[1, *] = [0, 0, 0, 0]     ; 2009 - same as 2012?
-          backscatter_orientations[2, *] = [0, 0, 0, 0]     ; 2010 - same as 2012?
-          backscatter_orientations[3, *] = [0, 0, 0, 0]     ; 2011 - same as 2012?
-          backscatter_orientations[4, *] = [0, 0, 0, 0]     ; 2012
-          backscatter_orientations[5, *] = [0, 0, 7, 0]     ; 2013
-          backscatter_orientations[6, *] = [0, 0, 7, 0]     ; 2014 - same as 2013
-          backscatter_orientations[7, *] = [0, 7, 7, 0]     ; 2015
-          backscatter_orientations[8, *] = [0, 7, 7, 0]     ; 2016 - same as 2015?
-          backscatter_orientations[9, *] = [0, 7, 7, 0]     ; 2017 - same as 2015?
-          backscatter_orientations[10, *] = [0, 7, 7, 0]     ; 2018 - same as 2015
-          backscatter_orientations[11, *] = [0, 7, 7, 0]     ; 2019 - same as 2015
+          backscatter_orientations[0, *] = [0, 0, 0, 0]  ; 2008 - same as 2012?
+          backscatter_orientations[1, *] = [0, 0, 0, 0]  ; 2009 - same as 2012?
+          backscatter_orientations[2, *] = [0, 0, 0, 0]  ; 2010 - same as 2012?
+          backscatter_orientations[3, *] = [0, 0, 0, 0]  ; 2011 - same as 2012?
+          backscatter_orientations[4, *] = [0, 0, 0, 0]  ; 2012
+          backscatter_orientations[5, *] = [0, 0, 7, 0]  ; 2013
+          backscatter_orientations[6, *] = [0, 0, 7, 0]  ; 2014 - same as 2013
+          backscatter_orientations[7, *] = [0, 7, 7, 0]  ; 2015
+          backscatter_orientations[8, *] = [0, 7, 7, 0]  ; 2016 - same as 2015?
+          backscatter_orientations[9, *] = [0, 7, 7, 0]  ; 2017 - same as 2015?
+          backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2018 - same as 2015
+          backscatter_orientations[11, *] = [0, 7, 7, 0] ; 2019 - same as 2015
+          backscatter_orientations[12, *] = [0, 7, 7, 0] ; 2020 - same as 2015
           for ifile = 0, Nfiles-1 do begin
             icam = where(backscatter_cameras $
                          eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
@@ -560,18 +574,20 @@ pro red_download, date = date $
   endif
 
   ;; HMI images and movies
-  if keyword_set(hmi) then begin
+  if keyword_set(hmi) or n_elements(timestamps_hmi) gt 0 then begin
     hmidir = '/data/hmi/images/'+strjoin(datearr, '/')+'/'
     hmisite = 'http://jsoc.stanford.edu'
-    hmitimestamps = ['08', '10', '12', '14', '16', '18']+'0000'
+    if n_elements(timestamps_hmi) eq 0 then timestamps_hmi = ['08', '10', '12', '14', '16', '18']+'0000'
     hmitypes = ['Ic_flat_4k', 'M_color_4k']
-    for i = 0, n_elements(hmitimestamps)-1 do begin
+    for i = 0, n_elements(timestamps_hmi)-1 do begin
       for j = 0, n_elements(hmitypes)-1 do begin
-        hmifile = strjoin(datearr, '')+'_'+hmitimestamps[i]+'_'+hmitypes[j]+'.jpg'
+        hmifile = strjoin(datearr, '')+'_'+timestamps_hmi[i]+'_'+hmitypes[j]+'.jpg'
         tmp = red_geturl(hmisite+hmidir+hmifile $ 
                          , file = hmifile, dir = dir+'/HMI/', overwrite = overwrite) 
       endfor
     endfor                      ; i
+  endif
+  if keyword_set(hmi) then begin
     hmimovies = ['Ic_flat_2d', 'M_2d', 'M_color_2d']+'.mpg'
     for i = 0, n_elements(hmimovies)-1 do begin
       hmifile = hmimovies[i]

@@ -17,12 +17,6 @@
 ;    Mats Löfdahl, ISP
 ; 
 ; 
-; :Returns:
-; 
-; 
-; :Params:
-; 
-; 
 ; :Keywords:
 ;
 ;    dirs : in, optional, type=string
@@ -61,6 +55,8 @@
 ; 
 ;    2020-01-15 : MGL. New keywords tmin and tmax. If mu unavailable
 ;                 in logs, assume flats are at large enough mu.
+; 
+;    2020-01-20 : MGL. Use data from every 20th scan. 
 ; 
 ;-
 pro red::fit_wb_diskcenter, dirs = dirs $
@@ -110,7 +106,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   
 
   ;; Is mu large enough? 
-  indx = where(mu gt mu_limit), Ndirs)
+  indx = where(mu gt mu_limit, Ndirs)
   if Ndirs eq 0 then begin
     print, inam + ' : No WB data with mu > ' + strtrim(mu_limit, 2)
     return
@@ -133,57 +129,60 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     mu = mu[indx]
     za = za[indx]
   endelse 
-
-  
   
   wbindx = where(file_test(dirs+'/'+camwb), Nwb)
   nbindx = where(file_test(dirs+'/'+camnb), Nnb)
   if Nwb eq 0 then noabsunits = 1
-
+  
   if Nwb gt 0 then begin
 
     ;; Measure DC WB intensities
 
-    ;;wbdir = self.out_dir+'/prefilter_fits/wb/'
     wbdir = self.out_dir+'/wb_intensities/'
     file_mkdir, wbdir
     wbdirs = dirs[wbindx]
     for iwb = 0, Nwb-1 do begin
       print, wbdirs[iwb]
-      ;;fnamesW = file_search(wbdirs[iwb]+'/Chromis-W/*_00000_*fits', count = NfilesW)      
-      fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]00000[._]*', count = NfilesW)      
-      self -> extractstates, fnamesw, states
 
-      pindx = uniq(states.prefilter, sort(states.prefilter))
-      upref = states[pindx].prefilter
-      Npref = n_elements(upref)
+      ;; Read every 20th scan
+      for iscan = 0L, 1000, 20 do begin
 
-      for ipref = 0, Npref-1 do begin
+        ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._][0-9][0-9][0-9][02468]0[._]*', count = NfilesW)      
+        fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]'+string(iscan, format = '(i05)')+'[._]*' $
+                              , count = NfilesW)      
+        if NfilesW eq 0 then break
 
-        self -> get_calib, states[pindx[ipref]], darkdata = dark
-        ims = red_readdata(fnamesW[pindx[ipref]], head = hdr, /silent) - dark
+        self -> extractstates, fnamesw, states
 
-        if self.dodescatter and (states[pindx[ipref]].prefilter eq '8542' $
-                                 or states[pindx[ipref]].prefilter eq '7772') then begin
-          self -> loadbackscatter, states[pindx[ipref]].detector $
-                                   , states[pindx[ipref]].prefilter, bgain, bpsf
-          ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
-        endif
-        
-        
-        
+        pindx = uniq(states.prefilter, sort(states.prefilter))
+        upref = states[pindx].prefilter
+        Npref = n_elements(upref)
 
-        red_fitspar_getdates, hdr, date_beg = date_beg
-        
-        red_append, wbintensity, median(ims)
-        red_append, wbprefs, upref[ipref]
-        red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])
-        red_append, wbexpt, fxpar(hdr, 'XPOSURE')
-        red_append, wbmu, mu[wbindx[iwb]]
-        red_append, wbza, za[wbindx[iwb]]
-      endfor                    ; ipref
+        for ipref = 0, Npref-1 do begin
+
+          self -> get_calib, states[pindx[ipref]], darkdata = dark
+          ims = red_readdata(fnamesW[pindx[ipref]], head = hdr, /silent) - dark
+          print, fnamesW[pindx[ipref]]
+
+          if self.dodescatter and (states[pindx[ipref]].prefilter eq '8542' $
+                                   or states[pindx[ipref]].prefilter eq '7772') then begin
+            self -> loadbackscatter, states[pindx[ipref]].detector $
+                                     , states[pindx[ipref]].prefilter, bgain, bpsf
+            ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
+          endif
+          
+          red_fitspar_getdates, hdr, date_beg = date_beg
+          
+          red_append, wbintensity, median(ims)
+          red_append, wbprefs, upref[ipref]
+          red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])
+          red_append, wbexpt, fxpar(hdr, 'XPOSURE')
+          red_append, wbmu, mu[wbindx[iwb]]
+          red_append, wbza, za[wbindx[iwb]]
+        endfor                  ; ipref
+      endfor                    ; iscan
     endfor                      ; iwb
-
+    
     ;; Sort
     indx = sort(wbtimes)
     wbintensity = wbintensity[indx]
@@ -200,10 +199,10 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     coeffs_str = strarr(Nprefs)
     
     ;; Prepare for plotting the results
+    ;;colors = ['blue', 'red', 'green', 'plum', 'cyan', 'darkkhaki']
+    ;; Colors from cgPickColorName()
+    colors = ['RED', 'BLU', 'GRN', 'ORG', 'PUR', 'YGB', 'PBG', 'BLK'] + '5'
     if Nprefs le n_elements(colors) then begin
-      colors = ['blue', 'red', 'green', 'plum', 'cyan', 'darkkhaki']
-      ;; Colors from cgPickColorName()
-      colors = ['RED', 'BLU', 'GRN', 'ORG', 'PUR', 'YGB', 'PBG', 'BLK'] + '5'
       colors = colors[0:Nprefs-1]
     endif else begin
       ;; Not likely to be needed:
@@ -229,7 +228,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                       , psym = 16, color = colors[ipref] $
                       , wbtimes[indx] $
                       , wbintensity[indx] / wbexpt[indx] / 1000. $
-                      , xtitle = 'time [UT]', ytitle = 'WB median intensity/exp time [counts/ms]' $
+                      , xtitle = 'time [UT]' $
+                      , ytitle = 'WB median intensity/exp time [counts/ms]' $
                       , xrange = [min(wbtimes), max(wbtimes)] + [-0.1, 0.1] $
                       , yrange = [0, max(wbintensity/wbexpt)*1.05]/1000.
       endif else begin
@@ -288,9 +288,20 @@ pro red::fit_wb_diskcenter, dirs = dirs $
          printf, lun, wbtimes[indx[i]], wbintensity[indx[i]], wbexpt[indx[i]], wbmu[indx[i]], wbza[indx[i]]
       free_lun, lun
 
-      
     endfor                      ; ipref
 
+
+    ;; Transform the fitted expression for printing
+    for ipref = 0, Nprefs-1 do begin
+      fitexpr_used = strlowcase(fitexpr_used)
+      fitexpr_used = red_strreplace(fitexpr_used,'x*x*x*x*','x$\exp4$')
+      fitexpr_used = red_strreplace(fitexpr_used,'x*x*x*','x$\exp3$')
+      fitexpr_used = red_strreplace(fitexpr_used,'x*x*','x$\exp2$')
+      fitexpr_used = red_strreplace(fitexpr_used,'x*','x')            
+      fitexpr_used = red_strreplace(fitexpr_used,'p[','p$\sub',n=10)  
+      fitexpr_used = red_strreplace(fitexpr_used,']','$',n=10)        
+    endfor                      ; ipref
+    
     ;; Finish the plot
     cglegend, /add $
               , titles = upref + ' : ' + fitexpr_used $

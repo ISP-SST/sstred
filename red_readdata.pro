@@ -25,6 +25,15 @@
 ;
 ; :Keywords:
 ;
+;    dark : in, optional, type=array
+;
+;       The dark frame associated with the momfbd file to be read.
+;       Needed if the keyword rawstatistics is used. 
+;
+;    direction : in, optional, type=integer, default=0
+;
+;       Apply red_rotate(...,direction) to the data.
+;
 ;    header : out, type=string array/struct
 ;
 ;  	Output the header. 
@@ -36,6 +45,11 @@
 ;		ana
 ;               momfbd
 ;	If not set auto-detection will be attempted.
+;
+;    rawstatistics : in, optional, type=boolean
+;
+;       Calculate statistics for the raw data that went into the
+;       restored image in the momfbd file to be read.
 ;
 ;    structheader : in, type=flag
 ;
@@ -113,12 +127,19 @@
 ;   2018-06-04 : MGL. Renamed keyword framenumber to nslice. Support
 ;                compressed fits files.
 ;
+;   2020-01-31 : MGL. New keywords rawstatistics and dark.
+;
+;   2020-03-31 : MGL. New keyword direction.
+;
 ;-
 function red_readdata, fname $
+                       , dark = dark $
                        , extension = extension $
+                       , direction = direction $
                        , filetype = filetype $
                        , header = header $
                        , nslice = nslice $
+                       , rawstatistics = rawstatistics $
                        , silent = silent $
                        , status = status $
                        , structheader = structheader $
@@ -203,83 +224,105 @@ function red_readdata, fname $
           status = 0
         endif
 
-        return, data
+;        return, data
 
-      endif                     ; End SOLARNET files
+      endif else begin          
 
-      ;; Now take care of non-SOLARNET data files.
-      
-      ;; Data stored in fits files, but what kind?
-      header = headfits(fname)
+        ;; Now take care of non-SOLARNET data files.
+        
+        ;; Data stored in fits files, but what kind?
+        header = headfits(fname)
 ;      red_rdfits, fname, header = header
-      bit_shift = 0
+        bit_shift = 0
 
-      caminfo = red_camerainfo( red_detectorname(fname,head=header) )
-      if strmatch(caminfo.model,'PointGrey*') then begin 
-        ;; This is the first version PointGrey data from
-        ;; spring 2016. Hack to load it:
-        uint = 1
-        swap = 0
-        bit_shift = -4
-      endif
+        caminfo = red_camerainfo( red_detectorname(fname,head=header) )
+        if strmatch(caminfo.model,'PointGrey*') then begin 
+          ;; This is the first version PointGrey data from
+          ;; spring 2016. Hack to load it:
+          uint = 1
+          swap = 0
+          bit_shift = -4
+        endif
 
-      ;; Now read the data
-      
-      ;; primary HDU
-      if n_elements(extension) eq 0 then begin
-        if keyword_set(uint) then begin
-          ;; readfits does not support uint data so use Pit's
-          ;; red_rdfits instead. 
-          red_rdfits, fname, image = data $
-                      , uint=uint, swap=swap, framenumber = nslice
-          ;; Compensate for initial weird format
-          if bit_shift ne 0 then data = ishft(data, bit_shift)
+        ;; Now read the data
+        
+        ;; primary HDU
+        if n_elements(extension) eq 0 then begin
+          if keyword_set(uint) then begin
+            ;; readfits does not support uint data so use Pit's
+            ;; red_rdfits instead. 
+            red_rdfits, fname, image = data $
+                        , uint=uint, swap=swap, framenumber = nslice
+            ;; Compensate for initial weird format
+            if bit_shift ne 0 then data = ishft(data, bit_shift)
+          endif else begin
+            ;; By default use readfits so we can read 4-dimensional
+            ;; cubes.
+            data = readfits(fname, Nslice = nslice, silent = silent)
+          endelse
+
+          ;; Does it need to be byteswapped?
+          doswap = 0
+          endian = sxpar(header,'ENDIAN', count = Nendian)
+          if Nendian eq 1 then if endian eq 'little' then doswap = 1
+          byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
+          if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
+
+          if doswap then begin
+            swap_endian_inplace, data
+            sxdelpar, header, 'ENDIAN'
+            sxdelpar, header, 'BYTEORDR'
+          endif 
         endif else begin
-          ;; By default use readfits so we can read 4-dimensional
-          ;; cubes.
-          data = readfits(fname, Nslice = nslice, silent = silent)
+          header = red_readhead(fname,extension=extension,silent=silent)
+          exttype = fxpar(header,'XTENSION')
+          case exttype of 
+            'IMAGE   ': begin
+              fxread,fname,data,extension=extension
+            end
+            'TABLE   ': begin
+              if size(extension,/type) ne 7 then extno = extension
+              fits_read,fname,tab,exten=extno,extname=extension,/no_pdu
+              if n_elements(tabkey) ne 0 then $
+                 data = ftget(header,tab,tabkey) $
+              else data = ftget(header,tab,1) ; default to first field.
+            end
+            'BINTABLE': begin
+              fxbopen,tlun,fname,extension
+              if n_elements(tabkey) ne 0 then $
+                 fxbread,tlun,data,tabkey $
+              else fxbread,tlun,data,1 ; default to the first column
+              fxbclose,tlun
+            end
+          endcase
         endelse
-
-        ;; Does it need to be byteswapped?
-        doswap = 0
-        endian = sxpar(header,'ENDIAN', count = Nendian)
-        if Nendian eq 1 then if endian eq 'little' then doswap = 1
-        byteordr = sxpar(header,'BYTEORDR', count = Nbyteordr)
-        if Nbyteordr eq 1 then if byteordr eq 'LITTLE_ENDIAN' then doswap = 1
-
-        if doswap then begin
-          swap_endian_inplace, data
-          sxdelpar, header, 'ENDIAN'
-          sxdelpar, header, 'BYTEORDR'
-        endif 
-      endif else begin
-        header = red_readhead(fname,extension=extension,silent=silent)
-        exttype = fxpar(header,'XTENSION')
-        case exttype of 
-          'IMAGE   ': begin
-            fxread,fname,data,extension=extension
-          end
-          'TABLE   ': begin
-            if size(extension,/type) ne 7 then extno = extension
-            fits_read,fname,tab,exten=extno,extname=extension,/no_pdu
-            if n_elements(tabkey) ne 0 then $
-               data = ftget(header,tab,tabkey) $
-            else data = ftget(header,tab,1) ; default to first field.
-          end
-          'BINTABLE': begin
-            fxbopen,tlun,fname,extension
-            if n_elements(tabkey) ne 0 then $
-               fxbread,tlun,data,tabkey $
-            else fxbread,tlun,data,1 ; default to the first column
-            fxbclose,tlun
-          end
-        endcase
-      endelse
-      
+      endelse       
     end
 
     'MOMFBD' : begin
-      mr = momfbd_read(fname, /img)
+      if arg_present(rawstatistics) then begin
+        mr = momfbd_read(fname)
+        if max(strmatch(tag_names(mr),'NAME')) eq 1 then begin
+          ;; There is raw file info in the momfbd file!
+          Nfiles = n_elements(mr.name)
+          if min(file_test(mr.name)) eq 1 then begin
+
+            ;; The raw files all exist!
+            if n_elements(dark) eq 0 then dark = 0.
+            undefine, rawmedians
+            for ifile = 0, Nfiles-1 do begin
+              rawims = red_readdata(mr.name[ifile], h = rawhdr)
+              rawdims = size(rawims, /dim)
+              rawframenos = fxpar(rawhdr, 'FRAMENUM')+indgen(rawdims[2])
+              for iframe = 0, rawdims[2]-1 do red_append, rawmedians, median(rawims[*, *, iframe]-dark)
+            endfor              ; ifile
+            ;; Return only medians for now!
+            rawstatistics = {medians:rawmedians, framenumbers:rawframenos}
+          endif
+        endif
+      endif else begin
+        mr = momfbd_read(fname, /img)
+      endelse
       data = red_mozaic(mr, /crop)
     end
 
@@ -291,10 +334,14 @@ function red_readdata, fname $
                            extension=extension)
 
   status = 0
-  
-  return, data
 
-end
+  if n_elements(direction) gt 0 then begin
+    return, red_rotate(data, direction)
+  endif else begin
+    return, data
+  endelse
+  
+end 
 
 
 ;; Test compressed file

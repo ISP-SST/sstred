@@ -173,7 +173,7 @@ pro red::make_raw_cube, oldname $
   print, inam + ' : Wrote file '+filename
 
   ;; Add WCS
-  self -> fitscube_addwcs, filename, wcs, dimensions = dimensions
+  red_fitscube_addwcs, filename, wcs, dimensions = dimensions
 
   ;; Copy variable-keywords from the oldcube file. Approximate
   ;; DATE-XXX but shouldn't matter for this?

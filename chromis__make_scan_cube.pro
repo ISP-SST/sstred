@@ -31,19 +31,21 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
+;    direction : in, optional, type=integer, default="from config file"
+;
+;      The relative orientation of reference cameras of different
+;      instruments. Note that only if direction is set in the config
+;      file will it be assumed to be correct when setting the CSYERR
+;      FITS header keyword.
+;
 ;     integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats.
 ;
-;     intensitycorr : in, optional, type="string or boolean", default=FALSE/none
+;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE/none
 ;
-;       Indicate whether to do intensity correction based on WB data.
-;       One of 'old' (for correction based on comparing the current
-;       scan with the prefilter calibration data, or 'fit' (for
-;       correction based on comparing intensity from
-;       fit_wb_diskcenter, evaluated at the current time and at the
-;       time of the prefilter calibration). Boolean value TRUE is
-;       equivalent to 'fit'. FALSE results in no correction.
+;       Indicate whether to do intensity correction based on WB data
+;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
 ;     limb_data : in, optional, type=boolean
 ;
@@ -93,7 +95,14 @@
 ;    2019-08-26 : MGL. Do integerization, statistics calculations, and
 ;                 WB intensity correction by calling subprograms. 
 ; 
-;    2020-01-15 : MGL. New keywords intensitycorr and odir.
+;    2020-01-15 : MGL. New keywords intensitycorr and odir. 
+; 
+;    2020-01-19 : MGL. Rename keyword intensitycorr to
+;                 intensitycorrmethod. 
+; 
+;    2020-04-03 : MGL. New keywords direction and norotation.
+; 
+;    2020-04-27 : MGL. New keyword rotation.
 ; 
 ;-
 pro chromis::make_scan_cube, dir $
@@ -101,36 +110,27 @@ pro chromis::make_scan_cube, dir $
                              , clip = clip $
                              , cmap_fwhm = cmap_fwhm $
                              , crop = crop $
+                             , direction = direction $
                              , integer = integer $
-                             , intensitycorr = intensitycorr $
+                             , intensitycorrmethod = intensitycorrmethod $
                              , interactive = interactive $
                              , limb_data = limb_data $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
+                             , norotation = norotation $
                              , nostatistics = nostatistics $
                              , odir = odir $
                              , overwrite = overwrite $
-                             , tile = tile $
-                             , scannos = scannos 
+                             , rotation = rotation $
+                             , scannos = scannos $
+                             , tile = tile 
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  case 1 of
-    
-    ;; Temporary default! Should be 'fit' when that works:
-    n_elements(intensitycorr) eq 0 : intensitycorr = 'none'
-    
-    size(intensitycorr, /tname) eq 'STRING' : begin
-      if intensitycorr ne 'fit' and intensitycorr ne 'old' then intensitycorr = 'none'
-    end
-
-    ;; Other types interpreted as boolean
-    else : if intensitycorr then intensitycorr = 'fit' else intensitycorr = 'none'
-    
-  endcase
-  if n_elements(intensitycorr) eq 0 then intensitycorr = 'none' 
-
+  if n_elements(direction) eq 0 then direction = self.direction
+  if n_elements(rotation)  eq 0 then rotation  = self.rotation
+                             
   ;; Temporarily disable cavity maps by default, can still be be
   ;; written (experimentally) with explicit nocavitymap=0.
   if n_elements(nocavitymap) eq 0 then nocavitymap = 1
@@ -140,12 +140,15 @@ pro chromis::make_scan_cube, dir $
   red_make_prpara, prpara, autocrop
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop     
+  red_make_prpara, prpara, direction
   red_make_prpara, prpara, integer  
-  red_make_prpara, prpara, intensitycorr  
+  red_make_prpara, prpara, intensitycorrmethod  
   red_make_prpara, prpara, interactive
   red_make_prpara, prpara, noaligncont 
-  red_make_prpara, prpara, nocavitymap    
+  red_make_prpara, prpara, nocavitymap  
+  red_make_prpara, prpara, norotation       
   red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, rotation       
   red_make_prpara, prpara, tile
 
   ;; Default keywords
@@ -219,8 +222,25 @@ pro chromis::make_scan_cube, dir $
 
   ;; Some info common to all scans
   prefilter = wstates[0].prefilter
-  datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
+  wbghdr = red_readhead(wfiles[0])
+  datestamp = fxpar(wbghdr, 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
+
+  red_fitspar_getdates, wbghdr $
+                        , date_beg = date_beg $
+                        , date_end = date_end $
+                        , date_avg = date_avg $
+                        , count_avg = hasdateavg $
+                        , comment_avg = comment_avg
+  
+  if hasdateavg then begin
+    date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
+    ddate = date_avg_split[0]
+    if Nsplit gt 1 then time = date_avg_split[1] else undefine, time
+  endif else undefine, ddate, time
+
+  ;; Derotation angle
+  ang = (red_lp_angles(time, ddate[0], /from_log, offset_angle = rotation))[0]
 
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
@@ -259,12 +279,20 @@ pro chromis::make_scan_cube, dir $
 
   ;; Establish the FOV, perhaps based on the selected wb files.
   red_bad_subfield_crop, wfiles, crop, autocrop = autocrop,  interactive = interactive
-  hdr = red_readhead(wfiles[0])
-  im_dim = fxpar(hdr, 'NAXIS*')
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+;  hdr = red_readhead(wfiles[0])
+  im_dim = fxpar(wbghdr, 'NAXIS*')
+  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
+    ;; X and Y switched
+    y0 = crop[0]
+    y1 = im_dim[0]-1 - crop[1]
+    x0 = crop[2]
+    x1 = im_dim[1]-1 - crop[3]
+  endif else begin
+    x0 = crop[0]
+    x1 = im_dim[0]-1 - crop[1]
+    y0 = crop[2]
+    y1 = im_dim[1]-1 - crop[3]
+  endelse
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
   
@@ -385,7 +413,7 @@ pro chromis::make_scan_cube, dir $
 
     ;; Unique tuning states, sorted by wavelength
     utunindx = uniq(pertuningstates.fpi_state, sort(pertuningstates.fpi_state))
-    Nwav = n_elements(utunindx)
+    Ntuning = n_elements(utunindx)
     sortindx = sort(pertuningstates[utunindx].tun_wavelength)
     ufpi_states = pertuningstates[utunindx[sortindx]].fpi_state
     utunwavelength = pertuningstates[utunindx[sortindx]].tun_wavelength
@@ -446,21 +474,21 @@ pro chromis::make_scan_cube, dir $
     rpref = 1.d0/prefilter_curve
 
     ;; Set up for collecting time and wavelength data
-    tbeg_array     = dblarr(Nwav)   ; Time beginning for state
-    tend_array     = dblarr(Nwav)   ; Time end for state
-    tavg_array     = dblarr(Nwav)   ; Time average for state
-    date_beg_array = strarr(Nwav)   ; DATE-BEG for state
-    date_end_array = strarr(Nwav)   ; DATE-END for state
-    date_avg_array = strarr(Nwav)   ; DATE-AVG for state
-    exp_array      = fltarr(Nwav)   ; Total exposure time
-    sexp_array     = fltarr(Nwav)   ; Single exposure time
-    nsum_array     = lonarr(Nwav)   ; Number of summed exposures
+    tbeg_array     = dblarr(Ntuning)   ; Time beginning for state
+    tend_array     = dblarr(Ntuning)   ; Time end for state
+    tavg_array     = dblarr(Ntuning)   ; Time average for state
+    date_beg_array = strarr(Ntuning)   ; DATE-BEG for state
+    date_end_array = strarr(Ntuning)   ; DATE-END for state
+    date_avg_array = strarr(Ntuning)   ; DATE-AVG for state
+    exp_array      = fltarr(Ntuning)   ; Total exposure time
+    sexp_array     = fltarr(Ntuning)   ; Single exposure time
+    nsum_array     = lonarr(Ntuning)   ; Number of summed exposures
 
     wcs = replicate({  wave:dblarr(2,2) $
                        , hplt:dblarr(2,2) $
                        , hpln:dblarr(2,2) $
                        , time:dblarr(2,2) $
-                    }, Nwav)
+                    }, Ntuning)
 
 ;    ;; Per-tuning files, wb and nb, only for selected scan
 ;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
@@ -513,19 +541,24 @@ pro chromis::make_scan_cube, dir $
                                 , prpara = prpara $
                                 , prproc = inam
     
+    ;; Read global WB file to use as reference when destretching
+    ;; per-tuning wb files and then the corresponding nb files.
+    wbim = (red_readdata(wfiles[iscan], head = wbhdr, direction = direction))[x0:x1, y0:y1]
+
+    Nstokes = 1
+    if ~keyword_set(norotation) then begin
+      ff = [abs(ang),0,0,0,0]
+      wbim_rot = red_rotation(wbim, ang, full = ff)
+      dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
+    endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
+    
     ;; Add info to headers
     red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
     red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
     ;; Initialize fits file, set up for writing the data part.
-    dims = [Nx, Ny, Nwav, 1, 1] 
     self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
-
     
-    ;; Read global WB file to use as reference when destretching
-    ;; per-tuning wb files and then the corresponding nb files.
-    wbim = (red_readdata(wfiles[iscan], head = wbhdr))[x0:x1, y0:y1]
-      
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
@@ -541,62 +574,65 @@ pro chromis::make_scan_cube, dir $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
-    for iwav = 0L, Nwav - 1 do begin 
+    for ituning = 0L, Ntuning - 1 do begin 
 
-;      state = ufpi_states[iwav]
+;      state = ufpi_states[ituning]
 
 
-      red_progressbar, iwav, Nwav $
+      red_progressbar, ituning, Ntuning $
                        , /predict $
                        , 'Processing scan=' + strtrim(uscans[iscan], 2) 
         
       ;; Collect info about this frame here.
       
-      nbhead = red_readhead(scan_nbfiles[iwav])
+      nbhead = red_readhead(scan_nbfiles[ituning])
 
       ;; DATE-??? keywords
       red_fitspar_getdates, nbhead $
                             , date_beg = date_beg $
                             , date_end = date_end $
                             , date_avg = date_avg
-      date_beg_array[iwav] = date_beg
-      date_end_array[iwav] = date_end
-      date_avg_array[iwav] = date_avg
-      tbeg_array[iwav] = red_time2double((strsplit(date_beg,'T',/extract))[1])
-      tend_array[iwav] = red_time2double((strsplit(date_end,'T',/extract))[1])
-      tavg_array[iwav] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+      date_beg_array[ituning] = date_beg
+      date_end_array[ituning] = date_end
+      date_avg_array[ituning] = date_avg
+      tbeg_array[ituning] = red_time2double((strsplit(date_beg,'T',/extract))[1])
+      tend_array[ituning] = red_time2double((strsplit(date_end,'T',/extract))[1])
+      tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
       ;; Wavelength and time
-      wcs[iwav, 0].wave = scan_nbstates[iwav].tun_wavelength*1d9
-      wcs[iwav, 0].time = tavg_array[iwav, 0]
+      wcs[ituning, 0].wave = scan_nbstates[ituning].tun_wavelength*1d9
+      wcs[ituning, 0].time = tavg_array[ituning, 0]
 
       ;; Exposure time
-      exp_array[iwav]  = fxpar(nbhead, 'XPOSURE')
-      sexp_array[iwav] = fxpar(nbhead, 'TEXPOSUR')
-      nsum_array[iwav] = fxpar(nbhead, 'NSUMEXP')
+      exp_array[ituning]  = fxpar(nbhead, 'XPOSURE')
+      sexp_array[ituning] = fxpar(nbhead, 'TEXPOSUR')
+      nsum_array[ituning] = fxpar(nbhead, 'NSUMEXP')
       
       ;; Get destretch to anchor camera (residual seeing)
       if wbstretchcorr then begin
-        wwi = (red_readdata(scan_wbfiles[iwav]))[x0:x1, y0:y1]
+        wwi = (red_readdata(scan_wbfiles[ituning] $
+                            , direction = direction))[x0:x1, y0:y1]
         grid1 = red_dsgridnest(wbim, wwi, tile, clip)
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
-      nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] 
+      nbim = (red_readdata(scan_nbfiles[ituning] $
+                           , direction = direction))[x0:x1, y0:y1] * rpref[ituning] 
 
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
         ;; aberrations.
-        nbim = red_shift_sub(nbim, -xshifts[iwav], -yshifts[iwav])
+        nbim = red_shift_sub(nbim, -xshifts[ituning], -yshifts[ituning])
       endif
 
       ;; Apply destretch to anchor camera and prefilter correction
       if wbstretchcorr then nbim = red_stretch(temporary(nbim), grid1)
 
-      self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                 , ituning = iwav
+      self -> fitscube_addframe, fileassoc $
+                                 , red_rotation(temporary(nbim), ang, full = ff) $
+                                 , ituning = ituning
       
-    endfor                      ; iwav
+    endfor                      ; ituning
 
     
     ;; Get pointing at center of FOV for the different tunings.
@@ -624,7 +660,7 @@ pro chromis::make_scan_cube, dir $
     wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
 
     ;; Close fits file 
-    self -> fitscube_finish, lun, wcs = wcs
+    self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
     ;; Add cavity maps as WAVE distortions 
     if ~keyword_set(nocavitymap) then begin
@@ -689,10 +725,14 @@ pro chromis::make_scan_cube, dir $
           else : amap = invert( mean(alignments[indx].map, dim = 3) )
         endcase
         cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
-        cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
+        cmap1 = red_rotate(cmap1, direction)
+        cmap1 = cmap1[x0:x1,y0:y1] ; Clip to the selected FOV
 
+        stop
         ;; Write cmap(s) to the cube
-        red_fitscube_addcmap, filename, reform(cmap1, Nx, Ny, 1, 1, 1) $
+        red_fitscube_addcmap, filename $
+                              , reform(red_rotation(cmap1,ang,full=ff),[dims[0:1],1,1,1]) $
+                              ;;, reform(cmap1, Nx, Ny, 1, 1, 1) $
                               , cmap_number = icprefs+1 $
                               , prefilter = cprefs[icprefs] $
                               , indx = where(scan_nbstates.prefilter eq cprefs[icprefs])
@@ -753,21 +793,25 @@ pro chromis::make_scan_cube, dir $
     ehdr=wbhdr
     fxaddpar, ehdr, 'XTENSION', 'IMAGE'
     sxdelpar, ehdr, 'SIMPLE'
-    check_fits, wbim, ehdr, /update
+    if keyword_set(norotation) then begin
+      check_fits, wbim, ehdr, /update
+    endif else begin
+      check_fits, wbim_rot, ehdr, /update
+    endelse
     fxaddpar, ehdr, 'DATE', red_timestamp(/utc, /iso)
     anchor = 'DATE'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'WBIMAGE', 'Wideband image'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
-    writefits, filename, wbim, ehdr, /append
-
+    if keyword_set(norotation) then begin
+      writefits, filename, wbim, ehdr, /append
+    endif else begin
+      writefits, filename, wbim_rot, ehdr, /append
+    endelse
+    
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    case intensitycorr of
-      'fit' : self -> fitscube_intensitycorr, filename, nodiskcenter = 0
-      'old' : self -> fitscube_intensitycorr, filename, nodiskcenter = 1
-      else  : print, inam + ' : No intensity correction!'
-    endcase
+    self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
     
     if keyword_set(integer) then begin
       ;; Convert to integers
@@ -780,7 +824,14 @@ pro chromis::make_scan_cube, dir $
     
     if ~keyword_set(nostatistics) then begin
       ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write 
+      if keyword_set(norotation) then begin
+        red_fitscube_statistics, filename, /write
+      endif else begin
+        red_fitscube_statistics, filename, /write, full = ff $
+                                 , origNx = Nx $
+                                 , origNy = Ny $
+                                 , angles = [ang]
+      endelse
     endif
     
     ;; Done with this scan.

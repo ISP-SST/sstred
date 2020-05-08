@@ -410,7 +410,7 @@ pro red_logdata, date, time $
 
     if keyword_set(use_r0_time) then begin
       ;; Return all values
-      if n_elements(r0data.r0_8x8) ne 0 then begin
+      if max(tag_names(r0data[0]) eq 'R0_8X8') then begin
         r0 = fltarr(2, Ntimes)
         r0[1, *] = median(r0data.r0_8x8, dim = 1)
       endif else begin
@@ -420,7 +420,7 @@ pro red_logdata, date, time $
       ao_lock = r0data.closedloop
     endif else begin
       ;; Get interpolated values
-      if n_elements(r0data.r0_8x8) ne 0 then begin
+      if max(tag_names(r0data[0]) eq 'R0_8X8') then begin
         r0 = fltarr(2, Ntimes)
         r0[1, *] = red_interpol_nogaps(median(r0data.r0_8x8, dim = 1), r0data.time, T)
       endif else begin

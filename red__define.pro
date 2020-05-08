@@ -31,6 +31,10 @@
 ;
 ;   2020-02-12 : OA. Changed polcal_dir:'' to polcal_dir:ptr_new()
 ;
+;   2020-03-11 : MGL. New member "direction".
+;
+;   2020-04-07 : MGL. New member "rotation".
+;
 ;-
 PRO red__define
 
@@ -82,10 +86,10 @@ PRO red__define
             pinhole_spacing:0.0, $ ; Pinhole array spacing in arcsec
             version_pipeline:'', $ ; Version info for the pipeline
             version_pipeline_branch:'', $ ; Pipeline reposotory branch
-            version_mpfit:'', $    ; Version info for mpfit
-            version_coyote:'', $   ; Version info for the Coyote library
-            version_idlastro:'', $ ; Version info for IDLAstro
-            version_reduxdlm:'', $ ; Version info for the redux dlm 
-            version_problems:'' $   ; Problem(s) with versions
+            version_mpfit:'', $           ; Version info for mpfit
+            version_coyote:'', $          ; Version info for the Coyote library
+            version_idlastro:'', $        ; Version info for IDLAstro
+            version_reduxdlm:'', $        ; Version info for the redux dlm 
+            version_problems:'' $         ; Problem(s) with versions
            }
 END

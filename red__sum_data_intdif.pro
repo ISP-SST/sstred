@@ -61,7 +61,7 @@
 ;-
 pro red::sum_data_intdif, all = all $
                           , cam = cam $
-                          , tdir = tdir $
+                          , tdirs = tdir $
                           , link_dir = link_dir $
                           , no_descatter = no_descatter $
                           , nthreads = nthreads $

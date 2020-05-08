@@ -24,6 +24,12 @@
 ; 
 ; 
 ; :Keywords:
+;
+;    direction : in, optional, type=integer
+;
+;      The direction parameter, that is normally equal to
+;      self.direction but can be set explicitly to a different value
+;      by the user of the calling method.
 ; 
 ;    flipfile : out, optional, type=string
 ;   
@@ -41,11 +47,18 @@
 ;   2017-09-11 : MGL. First version.
 ; 
 ;   2017-11-16 : MGL. Now works with integer cubes.
+;
+;   2020-05-04 : MGL. New keyword direction.
 ; 
 ;-
-pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
+pro red::fitscube_finish, lun $
+                          , direction = direction $
+                          , flipfile = flipfile $
+                          , wcs = wcs
 
   inam = red_subprogram(/low, calling = inam1)
+
+  if n_elements(direction) eq 0 then direction = self.direction
   
   filename = (fstat(lun)).name  ; Get the file name while the file is still open.
   print, inam + ' : Closing fitscube file ' + filename
@@ -66,10 +79,21 @@ pro red::fitscube_finish, lun, flipfile = flipfile, wcs = wcs
   Nstokes = long(dimensions[3])
   Nscans  = long(dimensions[4])
 
-  if n_elements(wcs) gt 0 then begin
-    self -> fitscube_addwcs, filename, wcs, dimensions = dimensions
-  endif
-  
+  ;; Add the WCS coordinates
+  if self.direction gt 7 || self.direction ne direction then begin
+    ;; Direction not (as) set in the config file, assume unknown
+    red_fitscube_addwcs, filename, wcs, dimensions = dimensions $
+                         , csyer_spatial_value = 120. $ ; 2 arc minutes
+                         , csyer_spatial_comment = '[arcsec] Orientation unknown'
+  endif else begin
+    ;; The direction parameter is the value in the config file, so
+    ;; orientation should be good. But there may still be small
+    ;; rotation arrors and substantial translations.
+    red_fitscube_addwcs, filename, wcs, dimensions = dimensions $
+                         , csyer_spatial_value = 60. $ ; 1 arc minute
+                         , csyer_spatial_comment = '[arcsec] Orientation known'
+  endelse 
+
   if ~arg_present(flipfile) then begin
     ;; If we don't want to flip, we are done now.
     return

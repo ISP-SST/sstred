@@ -44,9 +44,10 @@
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
 ;       keywords to preserve the intensity scaling.
 ;
-;     noaligncont : in, optional, type=boolean
+;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE
 ;
-;       Do not do the align continuum to wideband step.
+;       Indicate whether to do intensity correction based on WB data
+;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
 ;     nocavitymap : in, optional, type=boolean
 ;
@@ -148,13 +149,19 @@
 ; 
 ;    2019-05-24 : MGL. Do demodulation by use of the make_stokes_cubes
 ;                 method. Remove keyword demodulate_only.
+; 
+;    2020-01-16 : MGL. New keyword intensitycorrmethod.
+; 
+;    2020-02-18 : MGL. Remove CHROMIS keyword noaligncont.
+; 
+;    2020-03-11 : MGL. Apply rotate() with direction from WB cube. 
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
                          , clips = clips $
                          , cmap_fwhm = cmap_fwhm $
                          , integer = integer $
-                         , noaligncont = noaligncont $
+                         , intensitycorrmethod = intensitycorrmethod $
                          , nocavitymap = nocavitymap $
                          , nocrosstalk = nocrosstalk $
                          , noflipping = noflipping $
@@ -163,11 +170,13 @@ pro crisp::make_nb_cube, wcfile $
                          , nostatistics = nostatistics $
                          , notimecor = notimecor $
 ;                         , nthreads = nthreads $
+                         , odir = odir $
                          , overwrite = overwrite $
                          , redemodulate = redemodulate $
                          , scannos = scannos $
                          , smooth = smooth $
                          , tiles = tiles $
+                         , unsharp = unsharp $
                          , verbose = verbose $
                          , wbsave = wbsave
 
@@ -177,8 +186,8 @@ pro crisp::make_nb_cube, wcfile $
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
+  red_make_prpara, prpara, intensitycorrmethod  
   red_make_prpara, prpara, cmap_fwhm
-  red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, nopolarimetry 
@@ -253,13 +262,16 @@ pro crisp::make_nb_cube, wcfile $
   ;; Read parameters from the WB cube
   fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
   fxbreadm, bunit, row = 1 $
-            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
+            ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01,   direction
   ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
   ;; wbgfiles (WideBand Global).
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
 
+  ;; Default for wb cubes without direction parameter
+  if n_elements(direction) eq 0 then direction = 0
+  
   ;; CRISP has a common prefilter for WB and NB
   prefilter = fxpar(wchead,'FILTER1')
 
@@ -273,6 +285,8 @@ pro crisp::make_nb_cube, wcfile $
   x1 = wcX01Y01[1]
   y0 = wcX01Y01[2]
   y1 = wcX01Y01[3]
+  origNx = x1 - x0 + 1
+  origNy = y1 - y0 + 1
 
   self -> extractstates, wbgfiles, wbgstates
   prefilter = wbgstates[0].prefilter
@@ -482,9 +496,10 @@ pro crisp::make_nb_cube, wcfile $
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
     cmapt = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmapt /= 10.                    ; Make it [nm]
-    cmapt = -cmapt                  ; Change sign so lambda_correct = lambda + cmap
-    fit = 0B                        ; Don't need the fit struct anymore.
+;    cmapt = rotate(temporary(cmapt), direction)
+    cmapt /= 10.                ; Make it [nm]
+    cmapt = -cmapt              ; Change sign so lambda_correct = lambda + cmap
+    fit = 0B                    ; Don't need the fit struct anymore.
     
     cfile = self.out_dir + 'flats/spectral_flats/' $
             + strjoin([nbrstates[0].detector $
@@ -498,9 +513,10 @@ pro crisp::make_nb_cube, wcfile $
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
     cmapr = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmapr /= 10.                    ; Make it [nm]
-    cmapr = -cmapr                  ; Change sign so lambda_correct = lambda + cmap
-    fit = 0B                        ; Don't need the fit struct anymore.
+;    cmapr = rotate(temporary(cmapr), direction)
+    cmapr /= 10.                ; Make it [nm]
+    cmapr = -cmapr              ; Change sign so lambda_correct = lambda + cmap
+    fit = 0B                    ; Don't need the fit struct anymore.
     
     if keyword_set(remove_smallscale) then begin
       ;; If the small scale is already corrected, then include only the
@@ -548,17 +564,19 @@ pro crisp::make_nb_cube, wcfile $
       else : amapr = invert( median(alignments[indxr].map, dim = 3) )
     endcase
 
-    cmap1r = rdx_img_project(amapr, cmap1r) ; Apply the geometrical mapping
-    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
-    cmap1t = rdx_img_project(amapt, cmap1t) ; Apply the geometrical mapping
-    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
+    cmap1r = rdx_img_project(amapr, cmap1r, /preserve) ; Apply the geometrical mapping
+;    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
+    cmap1t = rdx_img_project(amapt, cmap1t, /preserve) ; Apply the geometrical mapping
+;    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
 
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
-    
+    cmap1 = red_rotate(cmap1, direction)
+    cmap1 = cmap1[x0:x1,y0:y1]  ; Clip to the selected FOV
+
   endif
   
   ;; Make FITS header for the NB cube
@@ -885,8 +903,10 @@ pro crisp::make_nb_cube, wcfile $
 
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
-    wb = (red_readdata(wbgfiles[iscan]))[x0:x1, y0:y1]
-
+    wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
+ 
+    if keyword_set(unsharp) then wb -= smooth(wb, 5)
+    
     for ituning = 0L, Ntuning - 1 do begin 
 
       red_progressbar, iprogress, Nprogress $
@@ -899,8 +919,18 @@ pro crisp::make_nb_cube, wcfile $
 
         ;; Read the pre-made Stokes cube
         
-        nbim = red_readdata(snames[iscan, ituning], head = stokhdr)
-        nbim = reform(nbim[x0:x1, y0:y1, 0, *]) * tscl[iscan]
+        tmp = red_readdata(snames[iscan, ituning], head = stokhdr)
+        nbdims = size(tmp, /dim)
+        if max(direction eq [1, 3, 4, 6]) eq 1 then begin
+          nbdims = nbdims[[1, 0, 3]] ; X and Y switched
+        endif else begin
+          nbdims = nbdims[[0, 1, 3]] 
+        endelse 
+        nbim = fltarr(nbdims)
+        for istokes = 0, Nstokes-1 do begin
+          nbim[0, 0, istokes] = rotate(tmp[*, *, 0, istokes], direction)
+        endfor                  ; istokes
+        nbim = reform(nbim[x0:x1, y0:y1, *]) * tscl[iscan]
 
         ;; The Stokes cube is already wbcorrected so we should not
         ;; repeat that here.
@@ -1019,17 +1049,21 @@ pro crisp::make_nb_cube, wcfile $
         ;; Read images, apply prefilter curve and temporal scaling.
         ;; Average all LC states for the two cameras.
         nbim = 0.
+        wbim = 0.
         Nim = n_elements(scan_nbrindx) + n_elements(scan_nbtindx)
         for iim = 0, n_elements(scan_nbtindx)-1 do begin
-
+          
           if wbcor then begin
             ;; Get destretch to anchor camera (residual seeing)
-            wwi = (red_readdata(scan_wbfiles[iim]))[x0:x1, y0:y1]
+            wwi = (red_readdata(scan_wbfiles[iim], direction = direction))[x0:x1, y0:y1]
+;            wwi = (rotate(temporary(wwi), direction))[x0:x1, y0:y1]
+            if keyword_set(unsharp) then wwi = wwi - smooth(wwi, 5)
             grid1 = red_dsgridnest(wb, wwi, tiles, clips)
           endif
-
+          
           ;; Reflected
-          this_im = (red_readdata(scan_nbrfiles[iim]))[x0:x1, y0:y1] * nbr_rpref[ituning]
+          this_im = (red_readdata(scan_nbrfiles[iim], direction = direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
+;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = red_stretch(temporary(this_im), grid1)
@@ -1037,19 +1071,34 @@ pro crisp::make_nb_cube, wcfile $
           nbim += this_im
 
           ;; Transmitted
-          this_im = (red_readdata(scan_nbtfiles[iim]))[x0:x1, y0:y1] * nbt_rpref[ituning]
+          this_im = (red_readdata(scan_nbtfiles[iim], direction = direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
+;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = red_stretch(temporary(this_im), grid1)
           endif
           nbim += this_im
 
+          if keyword_set(wbsave) then begin
+            ;; Same operations as on narrowband image.
+            this_im = wwi * tscl[iscan] 
+            if wbcor then begin
+              this_im = red_stretch(temporary(this_im), grid1)
+            endif
+            wbim += this_im
+          endif 
+            
         endfor
         nbim *= tscl[iscan] / Nim
 
       endelse
       
+;      red_show,wb,w=0
+;      red_show,wbim,w=1
+;      blink, [0, 1]
 
+
+      
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
       if makestokes then begin
@@ -1063,17 +1112,17 @@ pro crisp::make_nb_cube, wcfile $
                                      , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
       endif else begin
-        nbim = red_rotation(nbim, ang[iscan] $
+        nbim = red_rotation(temporary(nbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-        nbim = red_stretch(nbim, reform(wcGRID[iscan,*,*,*]))
+        nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
         self -> fitscube_addframe, fileassoc, nbim $
                                    , iscan = iscan, ituning = ituning
       endelse
       
       if keyword_set(wbsave) then begin
         ;; Same operations as on narrowband image.
-        wbim = wwi * tscl[iscan]
-        wbim = red_stretch(temporary(wbim), grid1)
+;        wbim = wwi * tscl[iscan]
+;        wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
                             wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
         wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
@@ -1109,14 +1158,16 @@ pro crisp::make_nb_cube, wcfile $
       ;; individual LC state images before combining to form the
       ;; Stokes components.
       if 0 then begin
-        wb = (red_readdata(wbf[ss]))[x0:x1,y0:y1]
+        wb = red_readdata(wbf[ss])
+        wb = (rotate(temporary(wb), direction))[x0:x1,y0:y1]
         for ww = 0L, nw - 1 do begin
           
           iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
           iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
           
           ;; Load images
-          iwb = (red_readdata(iwbf))[x0:x1,y0:y1]
+          iwb = red_readdata(iwbf)
+          iwb = (rotate(temporary(iwb), direction))[x0:x1,y0:y1]
           im = momfbd_read(st.ofiles[ww,ss])
           
           ;; get dewarp from WB
@@ -1203,27 +1254,31 @@ pro crisp::make_nb_cube, wcfile $
                                   , keyword_method = 'median' $
 ;                                  , keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5]
+  
+  ;; Correct intensity with respect to solar elevation and exposure
+  ;; time.
+  self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
   
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
     ;; Correct the cube for cross-talk, I --> Q,U,V.
-    self -> fitscube_crosstalk, filename, nostatistics = nostatistics 
+    self -> fitscube_crosstalk, filename, /nostatistics ;, nostatistics = nostatistics 
 
-  endif else if ~keyword_set(nostatistics) then begin
+  endif                         ;else
+  if ~keyword_set(nostatistics) then begin
 
     ;; Calculate statistics if not done already
     
 ;    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
-    
     red_fitscube_statistics, filename, /write $
                              , angles = ang $
                              , full = wcFF $
                              , grid = wcGRID $
-                             , origNx = Nxx $
-                             , origNy = Nyy $
+                             , origNx = origNx $
+                             , origNy = origNy $
 ;                             , percentiles = percentiles $
                              , shifts = wcSHIFT 
-    
+
   endif
   
   if keyword_set(integer) then begin

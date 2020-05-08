@@ -67,7 +67,11 @@
 ;   shifts : in, optional, type=array
 ;   
 ;     Shift vectors.
-; 
+;
+;   update : in, optional, type=boolean
+;
+;     Calculate (new) statistics only if there are statistics in the
+;     header already.
 ; 
 ; :History:
 ; 
@@ -75,7 +79,9 @@
 ; 
 ;   2019-04-05 : MGL. Use red_fitscube_open and red_fitscube_close. 
 ; 
-;   2019-08-26 : MGL. New keyword remove_only.
+;   2019-08-26 : MGL. New keyword remove_only. 
+; 
+;   2020-01-21 : MGL. New keyword update.
 ; 
 ;-
 pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
@@ -87,6 +93,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
                              , percentiles = percentiles $
                              , remove_only = remove_only $
                              , shifts = shifts $
+                             , update = update $
                              , write = write $
                              , cube_comments = cube_comments 
 
@@ -101,7 +108,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
   red_fitscube_open, filename, fileassoc, fitscube_info ;$
 ;                     , lun = lun
 
-  if keyword_set(remove_only) or keyword_set(write) then begin
+  if keyword_set(remove_only) or keyword_set(write) or keyword_set(update) then begin
     ;; Remove any existing statistics keywords from the file header. 
     hdr = fitscube_info.header
     ;; Search for DATA* keywords
@@ -114,11 +121,18 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
     endfor                      ; idata
     removed_stuff = Ndata gt 0 
   endif
-  
+
   if keyword_set(remove_only) then begin
+    ;; We are done. Close if needed and return.
     if removed_stuff then red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
     return
   endif
+
+  ;; If we only want to update existing statistics, then we want to
+  ;; return now if there weren't any in the file.
+  if keyword_set(update) and ~removed_stuff then return
+
+  ;; If we get this far, we do want to compute statistics!
   
   Nx      = fitscube_info.dimensions[0]
   Ny      = fitscube_info.dimensions[1]
@@ -185,7 +199,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
   
   if Nstokes eq 1 then frame_statistics = reform(frame_statistics)
   
-  if keyword_set(write) or arg_present(cube_statistics) then begin
+  if keyword_set(write) or keyword_set(update) or arg_present(cube_statistics) then begin
     
     ;; Accumulate a histogram for the entire cube, use to calculate
     ;; percentiles.
@@ -225,8 +239,11 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 
           red_fitscube_getframe, fileassoc, frame $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
-          
-          hist += histogram(frame[mindx], min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+
+          ;; Size mismatch?
+          if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop
+
+          hist += histogram(float(frame[mindx]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
 
           iprogress++
           
@@ -242,7 +259,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
                                                    , binsize = binsize)
   endif
 
-  if ~keyword_set(write) then begin
+  if ~keyword_set(write) and ~keyword_set(update) then begin
     red_fitscube_close, fileassoc, fitscube_info
     return
   endif 
@@ -265,6 +282,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 ;      axis_numbers = [3, 5]     ; (Ntuning, Nscans)
 ;    endelse
 
+  
   for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
 
     itags = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_statistics), Nmatch)

@@ -57,6 +57,10 @@
 ;
 ;    2019-02-11 : OA. New line "a -> make_periodic_filter". Change
 ;                 nref=30 for pinholecalib.
+;
+;    2020-03-11 : MGL. Set direction in config file.
+; 
+;    2020-04-06 : MGL. Set rotation in config file.
 ; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
@@ -130,6 +134,52 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, 'camera = Crisp-R'
   printf, Clun, 'camera = Crisp-W'
   printf, Clun, '#'
+
+  ;; Orientation and rotation of WB camera, see IDL's rotate()
+  ;; and  offset_angle of red_lp_angles(). 
+  
+  case strmid(isodate,0,4) of
+    '2012' : begin
+      ;; Probably ok for a few years before that but we don't know if
+      ;; it goes back all the way to 2008 when CRISP was installed.
+      direction = 5             ; Confirmed by comparison with HMI data.
+      rotation = -42.0 
+    end
+    '2013' :  begin
+      direction = 6             ; Confirmed by comparison with HMI data.
+      rotation = -41.0          ; Confirmed by comparison with HMI data.
+    end
+    '2014' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2015' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2016' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2017' :  begin
+      direction = 6
+      rotation = -41.0
+    end
+    '2018' :  begin
+      direction = 6             ; Confirmed by comparison with HMI data.
+      rotation = -41.0
+    end
+    '2019' :  begin
+      direction = 6             ; Confirmed by comparison with HMI data.
+      rotation = -41.0          ; Confirmed by comparison with HMI data.
+    end
+    else :                      ; No direction and rotation settings for unknown years
+  endcase
+  if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
+  if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
+  printf, Clun, '#'
+
+
   printf, Clun, 'root_dir = ' + root_dir
   printf, Clun, '#'
 
@@ -554,7 +604,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   printf, Slun, ';; Post-MOMFBD stuff:'
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /negang, /interactive, /autocrop, /align_interactive"
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
   printf, Slun, "; or "
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
