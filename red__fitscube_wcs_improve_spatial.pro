@@ -67,12 +67,22 @@ pro red::fitscube_wcs_improve_spatial, filename $
                                        , ituning = ituning $
                                        , log = log
 
-
+ 
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  red_make_prpara, prpara, iframe
+  red_make_prpara, prpara, iscan
+  red_make_prpara, prpara, istokes
+  red_make_prpara, prpara, ituning
+
+  
   show_offset = 100
 
+  wid_sst = 10
+  wid_subim_sst = 11
+  
   framespecified = max([n_elements(iframe)  gt 0 $
                         , n_elements(iscan)   gt 0 $
                         , n_elements(istokes) gt 0 $
@@ -87,18 +97,18 @@ pro red::fitscube_wcs_improve_spatial, filename $
   prprocs = fxpar(h,'PRPROC*')
   pos = where(strmatch(prprocs,'*make_*_cube*'), Nmatch)
   if Nmatch eq 0 then stop
-  prpara = json_parse((fxpar(h,'PRPARA*'))[pos])
-  if prpara.haskey('DIRECTION') then begin
+  prpara_old = json_parse((fxpar(h,'PRPARA*'))[pos])
+  if prpara_old.haskey('DIRECTION') then begin
     ;; Direction in the header
-    direction = prpara['DIRECTION']
+    direction = prpara_old['DIRECTION']
   endif else begin
     ;; Direction from the class object, i.e., from the config file.
     direction = self.direction
     ;; Or maybe this should be 0?
   endelse
-  if prpara.haskey('ROTATION') then begin
+  if prpara_old.haskey('ROTATION') then begin
     ;; Rotation in the header
-    rotation = prpara['ROTATION']
+    rotation = prpara_old['ROTATION']
   endif else begin
     ;; Rotation from the class object, i.e., from the config file.
     rotation = self.rotation
@@ -134,6 +144,9 @@ pro red::fitscube_wcs_improve_spatial, filename $
   ;; SST FOV WCS info, array coordinates in arc sec
   red_fitscube_getwcs, filename, coordinates=wcs
 
+  if finite(wcs[iframe].hpln[0]) and finite(wcs[iframe].hplt[0]) then $
+     sst_spatial_ok = 1 else sst_spatial_ok = 0
+  
   time_sst = wcs[iframe].time[0]
   red_show, im_sst, w = wid_sst, title = 'SST @ '+red_timestring(time_sst, n = 0) $
             , /scroll, offs = show_offset
@@ -179,14 +192,16 @@ pro red::fitscube_wcs_improve_spatial, filename $
   red_draw_lines, dims_hmi[0]/2, dims_hmi[1]/2, color='yellow', /device, /axes
 
   ;; Draw FOV box
-  red_draw_lines, color='yellow', /device, /minmax $
-                  , wcs[iframe].hpln/hmi_image_scale + dims_hmi[0]/2 $
-                  , wcs[iframe].hplt/hmi_image_scale + dims_hmi[1]/2
+  if sst_spatial_ok then $
+     red_draw_lines, color='yellow', /device, /minmax $
+                     , wcs[iframe].hpln/hmi_image_scale + dims_hmi[0]/2 $
+                     , wcs[iframe].hplt/hmi_image_scale + dims_hmi[1]/2
   
   print
   print, inam + ' : Please use scroll bars (if present) to'
   print, inam + '   1. center the SST window on a structure with recognicable orientation.'
-  print, inam + '   2. center the HMI window on the SST FOV. (It should be near the drawn rectangle.)'
+  print, inam + '   2. center the HMI window on the SST FOV. (If there is a yellow'
+  print, inam + '      rectangle, it should be near it.)'
   print, inam + '   We will worry about the alignment later but first:'
   print
   s = ''
@@ -272,7 +287,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   red_draw_lines, [x0,x1], [y0,y1], color='blue', /device, /minmax
 
   ;; Show the subimage in its own window
-  subim_sst = im_sst[x0:x1, y0:y1]
+  subim_sst = im_sst[x0:x1, y0:y1]  
   red_show,subim_sst, w = wid_subim_sst $
            , title = 'SST subimage @ '+red_timestring(time_sst, n = 0)
 
@@ -281,22 +296,24 @@ pro red::fitscube_wcs_improve_spatial, filename $
   ;; interface. The point we mouse-click on later is denoted as
   ;; (xp,yp). Various versions of these coordinates are distinguished
   ;; by tags following an underscore. 
+
+  if sst_spatial_ok then begin
+    ;; Nominal (defined by wcs info in file) SST FOV center
+    ;; coordinates in arc sec.
+    xc_nominal = mean(wcs[iframe].hpln)
+    yc_nominal = mean(wcs[iframe].hplt)
+
+    ;; Nominal subimage FOV center coordinates in arc sec. Center of
+    ;; original FOV plus offset from center of the XROI-selected
+    ;; subfield.
+    xs_nominal = xc_nominal + ((x1+x0)/2. - dims_sst[0]/2.) * sst_image_scale
+    ys_nominal = yc_nominal + ((y1+y0)/2. - dims_sst[1]/2.) * sst_image_scale
+
+    ;; Where is this in HMI image pixel cordinates?
+    xc_nominal_hmipix = xs_nominal / hmi_image_scale - dims_hmi[0]/2.
+    yc_nominal_hmipix = ys_nominal / hmi_image_scale - dims_hmi[1]/2.
+  endif
   
-  ;; Nominal (defined by wcs info in file) SST FOV center
-  ;; coordinates in arc sec.
-  xc_nominal = mean(wcs[iframe].hpln)
-  yc_nominal = mean(wcs[iframe].hplt)
-
-  ;; Nominal subimage FOV center coordinates in arc sec. Center of
-  ;; original FOV plus offset from center of the XROI-selected
-  ;; subfield.
-  xs_nominal = xc_nominal + ((x1+x0)/2. - dims_sst[0]/2.) * sst_image_scale
-  ys_nominal = yc_nominal + ((y1+y0)/2. - dims_sst[1]/2.) * sst_image_scale
-
-  ;; Where is this in HMI image pixel cordinates?
-  xc_nominal_hmipix = xs_nominal / hmi_image_scale - dims_hmi[0]/2.
-  yc_nominal_hmipix = ys_nominal / hmi_image_scale - dims_hmi[1]/2.
-
   ;; Now we identify a point that can berecognized in both images. The
   ;; mouse-click in the SST image represents the nominal position of
   ;; that point, while the mouse-click in the HMI image represents the
@@ -308,9 +325,11 @@ pro red::fitscube_wcs_improve_spatial, filename $
   wset, wid_subim_sst
   cursor, xp_click, yp_click, /device
 
-  xp_nominal = xs_nominal + (xp_click-Nx/2.) * sst_image_scale
-  yp_nominal = ys_nominal + (yp_click-Ny/2.) * sst_image_scale
-
+  if sst_spatial_ok then begin
+    xp_nominal = xs_nominal + (xp_click-Nx/2.) * sst_image_scale
+    yp_nominal = ys_nominal + (yp_click-Ny/2.) * sst_image_scale
+  endif
+  
   print
   print, inam + ' : Click on the same position in the HMI image.'
   wshow, wid_hmi_before
@@ -320,19 +339,20 @@ pro red::fitscube_wcs_improve_spatial, filename $
   xp = (xp_hmipix - dims_hmi[0]/2.) * hmi_image_scale
   yp = (yp_hmipix - dims_hmi[1]/2.) * hmi_image_scale
 
-  ;; Shift in arc sec defined by mouse clicks
-  xp_shift = xp_nominal - xp
-  yp_shift = yp_nominal - yp
+  if sst_spatial_ok then begin
+    ;; Shift in arc sec defined by mouse clicks
+    xp_shift = xp_nominal - xp
+    yp_shift = yp_nominal - yp
 
-  print
-  print, 'Clicked point is shifted by (' $
+    print
+    print, 'Clicked point is shifted by (' $
          + strtrim(round(xp_shift), 2) + ',' $
-         + strtrim(round(yp_shift), 2) + ') arcsec.' 
-  print, 'Dimensions of SST image are (' $
-         + strtrim(round(dims_sst[0]*sst_image_scale), 2) + ',' $
-         + strtrim(round(dims_sst[1]*sst_image_scale), 2) + ') arcsec.'
-  print
-  
+           + strtrim(round(yp_shift), 2) + ') arcsec.' 
+    print, 'Dimensions of SST image are (' $
+           + strtrim(round(dims_sst[0]*sst_image_scale), 2) + ',' $
+           + strtrim(round(dims_sst[1]*sst_image_scale), 2) + ') arcsec.'
+    print
+  endif
   
   ;; Now read out a subim from im_hmi_before that (approximately)
   ;; matches the sst image.
@@ -367,19 +387,21 @@ pro red::fitscube_wcs_improve_spatial, filename $
   ;; Draw alignment subimage, with and without shift
   wshow, wid_hmi_before
   wset, wid_hmi_before
-  red_draw_lines, /minmax, /device, color='yellow' $ ; Relative to nominal position
-                  , xx_hmipix + xp_shift/hmi_image_scale $
-                  , yy_hmipix + yp_shift/hmi_image_scale 
+  if sst_spatial_ok then begin
+    red_draw_lines, /minmax, /device, color='yellow' $ ; Relative to nominal position
+                    , xx_hmipix + xp_shift/hmi_image_scale $
+                    , yy_hmipix + yp_shift/hmi_image_scale 
+    print
+    print, 'The position of the SST subimage is marked in the HMI image window.'
+    print, 'In yellow based on the nominal pointing information and'
+    print, 'in green according to the HMI image mouse click.'
+    print
+  endif
   red_draw_lines, /minmax, /device, color='green' $ ; Relative to clicked position
                   , xx_hmipix $
                   , yy_hmipix
 
-  print
-  print, 'The position of the SST subimage is marked in the HMI image window.'
-  print, 'In yellow based on the nominal pointing information and'
-  print, 'in green according to the HMI image mouse click.'
-  print
-  
+   
   ;; Crop HMI images to that FOV
   subim_hmi_before = interpolate(im_hmi_before, xx_hmipix, yy_hmipix, cub=-0.5, /grid)
   subim_hmi_after  = interpolate(im_hmi_after,  xx_hmipix, yy_hmipix, cub=-0.5, /grid)
@@ -398,7 +420,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
 
   ;; Estimate rotation with mpfit
   p_before = red_rot_magn_align(subim_hmi_before, subim_sst, /displ)
-  p_after = red_rot_magn_align(subim_hmi_after, subim_sst, /displ)
+  p_after  = red_rot_magn_align(subim_hmi_after,  subim_sst, /displ)
 
 ;  p_between = red_rot_magn_align(subim_hmi_before, subim_hmi_after, /displ)
   
@@ -423,15 +445,13 @@ pro red::fitscube_wcs_improve_spatial, filename $
   ;; First calculate the "before" and "after shifts
   shifts_subim_before = -p_before[2:3] * sst_image_scale
   shifts_subim_after  = -p_after[2:3]  * sst_image_scale
-  shifts_before = [xp_shift, yp_shift] + shifts_subim_before
-  shifts_after  = [xp_shift, yp_shift] + shifts_subim_after
 
   ;; Draw "before" alignment subimage with final coordinates
   wshow, wid_hmi_before
   wset, wid_hmi_before
   red_draw_lines, /minmax, /device, color='darkgreen' $
                   , xx_hmipix - shifts_subim_before[0]/hmi_image_scale $
-                  , yy_hmipix - shifts_subim_before[1]/hmi_image_scale 
+                  , yy_hmipix - shifts_subim_before[1]/hmi_image_scale
 ;  red_draw_lines, /minmax, /device, color='orange' $
 ;                  , xx_hmipix - shifts_before[0]/hmi_image_scale $
 ;                  , yy_hmipix - shifts_before[1]/hmi_image_scale 
@@ -442,12 +462,48 @@ pro red::fitscube_wcs_improve_spatial, filename $
   print, 'alignment fitting. Compare to the blue box in the full size SST image.'
   print
   
-  ;; Draw shifted FOV box
-  wshow, wid_hmi_before
-  wset, wid_hmi_before
-  red_draw_lines, color='green', /device, /minmax $
+  if sst_spatial_ok then begin
+    shifts_before = [xp_shift, yp_shift] + shifts_subim_before
+    shifts_after  = [xp_shift, yp_shift] + shifts_subim_after
+
+    ;; Draw shifted FOV box
+    wshow, wid_hmi_before
+    wset, wid_hmi_before
+    red_draw_lines, color='green', /device, /minmax $
                   , (wcs[iframe].hpln - shifts_before[0])/hmi_image_scale + dims_hmi[0]/2 $
                   , (wcs[iframe].hplt - shifts_before[1])/hmi_image_scale + dims_hmi[1]/2
+  endif else begin
+
+    ;; Draw the box based on absolute numbers rather than shift!
+
+    ;; Center of the subfield in SST pixel coordinates:
+    xs_sstpix = (x0+x1)/2.
+    ys_sstpix = (y0+y1)/2.
+
+    ;; Center of the SST image in SST pixel coordinates:
+    xc_sstpix = dims_sst[0]/2.
+    yc_sstpix = dims_sst[1]/2.
+    
+    ;; Center of the SST image in HMI pixel coordinates:
+
+    xc_hmipix = xs_hmipix + (xc_sstpix-xs_sstpix) * sst_image_scale/hmi_image_scale
+    yc_hmipix = ys_hmipix + (yc_sstpix-ys_sstpix) * sst_image_scale/hmi_image_scale
+
+    xc = (xc_hmipix - dims_hmi[0]/2.) * hmi_image_scale
+    yc = (yc_hmipix - dims_hmi[1]/2.) * hmi_image_scale
+
+    hpln = xc + [[-1, 1], [-1, 1]] * dims_sst[0]/2. * sst_image_scale
+    hplt = yc + [[-1, -1], [1, 1]] * dims_sst[1]/2. * sst_image_scale
+
+    ;; Draw FOV box
+    wshow, wid_hmi_before
+    wset, wid_hmi_before
+    red_draw_lines, color='green', /device, /minmax $
+                    , hpln/hmi_image_scale + dims_hmi[0]/2 $
+                    , hplt/hmi_image_scale + dims_hmi[1]/2
+  
+  endelse
+  
 
 
   print
@@ -461,41 +517,58 @@ pro red::fitscube_wcs_improve_spatial, filename $
 ;                  , wcs[iframe].hpln/hmi_image_scale + dims_hmi[0]/2 $
 ;                  , wcs[iframe].hplt/hmi_image_scale + dims_hmi[1]/2
 
-  ;; Interpolate to get shifts at the time of the SST image
-  shifts_subim = ( shifts_subim_before*(htimes[1]-time_sst) $
-                   + shifts_subim_after*(time_sst-htimes[0]) ) / (htimes[1]-htimes[0])
-  shifts = [xp_shift, yp_shift] + shifts_subim
-  
-  print, inam + ' : Detected X displacement: ' + strtrim(shifts[0], 2) + ' arc sec.'
-  print, inam + ' : Detected Y displacement: ' + strtrim(shifts[1], 2) + ' arc sec.'
+  if sst_spatial_ok then begin
 
-  ;; Modify the WCS info (for all frames)
-  wcs.hpln -= shifts[0]
-  wcs.hplt -= shifts[1]
+    ;; Interpolate to get shifts at the time of the SST image
+    shifts_subim = ( shifts_subim_before*(htimes[1]-time_sst) $
+                     + shifts_subim_after*(time_sst-htimes[0]) ) / (htimes[1]-htimes[0])
+    shifts = [xp_shift, yp_shift] + shifts_subim
+    
+    print, inam + ' : Detected X displacement: ' + strtrim(shifts[0], 2) + ' arc sec.'
+    print, inam + ' : Detected Y displacement: ' + strtrim(shifts[1], 2) + ' arc sec.'
 
-  
-  if keyword_set(log) then begin
-    lfile = 'wcs_improve_spatial.log'
+    ;; Modify the WCS info (for all frames)
+    wcs.hpln -= shifts[0]
+    wcs.hplt -= shifts[1]
+
+    if keyword_set(log) then begin
+      lfile = 'wcs_improve_spatial.log'
 ;    if file_test(lfile) then openu, llun, lfile, /get_lun else openw, llun, lfile, /get_lun
 ;    printf, llun, date_beg+' '+strtrim(x_shift, 2)+' '+strtrim(y_shift, 2)
 ;    free_lun, llun
-    ;; For some reason the log file kept getting overwritten in spite
-    ;; of being opened with openu. So we'll do it differently for now.
-    spawn, 'echo '+ date_beg+' '+strtrim(shifts[0], 2)+' '+strtrim(shifts[1], 2) + ' >> ' + lfile
-  endif
+      ;; For some reason the log file kept getting overwritten in spite
+      ;; of being opened with openu. So we'll do it differently for now.
+      spawn, 'echo '+ date_beg+' '+strtrim(shifts[0], 2)+' '+strtrim(shifts[1], 2) + ' >> ' + lfile
+    endif
+  endif else begin
+
+    ;; Set the WCS info (for all frames)
+    for iwcs = 0, n_elements(wcs)-1 do begin
+      wcs[iwcs].hpln = hpln
+      wcs[iwcs].hplt = hplt
+    end
+  endelse
   
+
   read, 'Do you want to update the WCS info in the cube file [yN]? ', s
 
   if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
     
     ;; Write the updated WCS info back into the file. 
     red_fitscube_addwcs, filename, wcs $
-                         , coordref = strjoin(file_basename(hnames),' & ')+','+inam $
+;                         , coordref = strjoin(file_basename(hnames),' & ')+','+inam $
                          , csyer_spatial_value = 5. $ ; 5 arcsec, minor rotation error may remain
                          , csyer_spatial_comment = 'Aligned with HMI images' $
                          , dimensions = fxpar(h, 'NAXIS*') $
                          , /update
-
+  
+    hdr = headfits(filename)
+    self -> headerinfo_addstep, hdr $
+                                , prstep = 'ALIGNMENT-SPATIAL' $
+                                , prpara = prpara $
+                                , prproc = inam $
+                                , prref = file_basename(hnames)
+    red_fitscube_newheader, filename, hdr
   endif
 
 end
