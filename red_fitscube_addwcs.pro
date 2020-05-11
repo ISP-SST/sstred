@@ -29,10 +29,6 @@
 ; 
 ; :Keywords:
 ;
-;    coordref : in, optional, type=string
-;
-;       Add FITS header keyword COORDREF with this value.
-;
 ;    csyer_spatial_value : in, optional, type=float, default=60.
 ;
 ;       Upper limit of systematic error in the spatial cordinates (in
@@ -83,11 +79,8 @@
 ;    2020-03-27 : MGL. New keywords csyer_spatial_value and
 ;                 csyer_spatial_comment.
 ;
-;    2020-04-30 : MGL. New keyword coordref.
-;
 ;-
 pro red_fitscube_addwcs, filename, wcs $
-                         , coordref = coordref $
                          , csyer_spatial_value = csyer_spatial_value $
                          , csyer_spatial_comment = csyer_spatial_comment $
                          , dimensions = dimensions $
@@ -224,10 +217,6 @@ pro red_fitscube_addwcs, filename, wcs $
       red_fitsaddkeyword, hdr, anchor = 'CDELT2' $
                           , 'CSYER2', csyer_spatial_value, csyer_spatial_comment
     endif
-    if n_elements(coordref) then begin
-      red_fitsaddkeyword, hdr, anchor = 'FILENAME' $
-                          , 'COORDREF', coordref, 'Coord system refs'
-    endif
     modfits, filename, 0, hdr
 
     ;; Open an existing WCS-TAB extension for updating.
@@ -246,7 +235,6 @@ pro red_fitscube_addwcs, filename, wcs $
     ;; Modify the main header. ---------------------------------------------------------------
     red_fitscube_addwcsheader, hdr, wcs $
                                , dimensions = dimensions $
-                               , coordref = coordref $
                                , csyer_spatial_value = csyer_spatial_value $
                                , csyer_spatial_comment = csyer_spatial_comment 
 
