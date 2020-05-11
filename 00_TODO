@@ -31,6 +31,20 @@ Action items
   recommendations. Implement in the fitscube_export code for replacing
   current, non-conforming tags to the conforming ones.
 
+* Olexa: Finish the database handling of metadata and population of
+  the database in La Palma. Make sure things still work for users
+  without a database or for which the current data does not have
+  metadata in the database. Merge into master branch. Test locally for
+  a while. Write instructions so users at other sites can set up for
+  using a database.
+
+* Mats: Rework the FITS header code. Want final header with keywords
+  sorted into groups. Want placement of keywords to work better than
+  currently and with long comments working for string-valued keywords
+  that are not themselves long. Also want to implement using empty
+  lines before END as a buffer to avoid time-wasing changes in the
+  header length. So when first initializing the header, specify how
+  long you think the header is going to be, eventually.
 
 Implementation list for CHROMIS camera software 2016/06/07
 
