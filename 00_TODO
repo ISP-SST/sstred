@@ -1,33 +1,36 @@
 Action items
 
+* Mats: Pinhole calibration stuff
 
-* Make each step in the pipeline write to a log file with (at least)
-  the following information: 
-
-  - The moment it was last checked in (and/or it's own version number).
-  - How it was called, including keywords and relevant config file information
-  - Any useful parameters and numbers calculated from the config file
-    info and/or log info downloaded from the observatory web site or elsewhere.
-
-
-* Pinhole calibration stuff (Mats):
-
-  - Remove dependence on the python script. Do it all from within the
-    pipeline IDL session. 
   - Integrate image scale determination. Need new info from config
     file: pinhole spacing in arcsec. Need to output the image scale of
     the crisp cameras in a) the log file and b) the momfbd config files. 
-  - Run Alexander's code on some more data. We have 6302 data
+  - Run Alexander Norén's code on some more data? We have 6302 data
     (Alexander used 5576) of the same target, needs to be momfbded
-    first. Should look also for other data sets with suitable targets.
+    first. Should look also for other data sets with suitable targets.   
 
-* The new flat field procedure (Jaime)
-
-* Implement optional post-restoration low-pass filtering. (Mats) 
+* Mats: Implement optional post-restoration low-pass filtering. 
 
   - Two reasons to do this: 1) Remove some unwanted artifacts from
     mosaicking. 2) Reduce false signals in differential quantities. 
   - Base on procedure from tilt-filter paper.
+
+* Mats: Finish and announce the new intensity calibration mechanism.
+  Good observations practice is to, at the beginning of observations
+  and then at regular intervals during the day, collect a single scan
+  of quiet sun, disk center data with all prefilters used. Also update
+  wiki page about this and red_setupworkdir if needed.
+
+* Mats: Finish and announce the new direction-and-rotation mechanism
+  for getting the science cubes aliged to hpln/hplt coordinate axes.
+  Also the tool for checking the direction-and-rotation settings are
+  correct and also refine the pointing information. Also update wiki
+  page about this and red_setupworkdir if needed.
+
+* Mats: Change all PRSTEP tags to values conforming to the SOLARNET
+  recommendations. Implement in the fitscube_export code for replacing
+  current, non-conforming tags to the conforming ones.
+
 
 Implementation list for CHROMIS camera software 2016/06/07
 
