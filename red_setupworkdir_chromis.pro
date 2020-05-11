@@ -523,20 +523,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ';; Post-MOMFBD stuff:' 
   printf, Slun, "a -> align_continuum"
   printf, Slun
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive""
-  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
-  printf, Slun, "; or "
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
-
-;  
-;  printf, Slun, "a->polish_tseries" $
-;;            + ", /full" $
-;;            + ", /fitsoutput" $
-;          + ", xbd=1280, ybd=1024" $
-;          + ", np=5"
-;
-;  printf, Slun, "a->make_crispex, /float, /aligncont"
-;; a -> make_crispex, /noflat, /scans_only, /float, /aligncont, /wbwrite
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
+  printf, Slun, "; or "
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
+  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
 
   
   free_lun, Clun
