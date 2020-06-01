@@ -461,12 +461,12 @@ pro chromis::make_scan_cube, dir $
       if count eq 1 then begin
         red_append, prefilter_curve, prf.pref
         red_append, prefilter_wav, prf.wav
-;        red_append, prefilter_wb, prf.wbint
+        red_append, prefilter_wb, prf.wbint
       endif else begin
         me = median(prf.wav)
         red_append, prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)
         red_append, prefilter_wav, wav[idxpref]*1.d10
-;        red_append, prefilter_wb, replicate(prf.wbint, count)
+        red_append, prefilter_wb, replicate(prf.wbint, count)
       endelse
       
     endfor                      ; inbpref
@@ -574,6 +574,8 @@ pro chromis::make_scan_cube, dir $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
+    tscl = mean(prefilter_wb)   ;/ wcTMEAN[iscan]
+    
     for ituning = 0L, Ntuning - 1 do begin 
 
 ;      state = ufpi_states[ituning]
@@ -617,7 +619,7 @@ pro chromis::make_scan_cube, dir $
 
       ;; Read image, apply prefilter curve and temporal scaling
       nbim = (red_readdata(scan_nbfiles[ituning] $
-                           , direction = direction))[x0:x1, y0:y1] * rpref[ituning] 
+                           , direction = direction))[x0:x1, y0:y1] * rpref[ituning] * tscl
 
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
@@ -804,9 +806,9 @@ pro chromis::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
     if keyword_set(norotation) then begin
-      writefits, filename, wbim, ehdr, /append
+      writefits, filename, wbim * tscl, ehdr, /append
     endif else begin
-      writefits, filename, wbim_rot, ehdr, /append
+      writefits, filename, wbim_rot * tscl, ehdr, /append
     endelse
     
     ;; Correct intensity with respect to solar elevation and
