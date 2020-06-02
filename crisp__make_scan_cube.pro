@@ -655,6 +655,13 @@ pro crisp::make_scan_cube, dir $
                                 , prstep = prstep $
                                 , prpara = prpara $
                                 , prproc = inam
+    
+    self -> headerinfo_addstep, hdr $
+                                , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                                , prpara = prpara $
+                                , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                           , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                                , prproc = inam
 
     ;; WB and NB data come from different cameras.
     red_fitsaddkeyword, hdr, 'CAMERA', nbtcamera + ',' + nbrcamera

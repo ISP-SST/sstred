@@ -416,6 +416,13 @@ pro chromis::make_nb_cube, wcfile $
                               , prpara = prpara $
                               , prproc = inam
 
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                              , prpara = prpara $
+                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                              , prproc = inam
+
   anchor = 'DATE'
 
   ;; Add some keywords

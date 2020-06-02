@@ -541,6 +541,13 @@ pro chromis::make_scan_cube, dir $
                                 , prpara = prpara $
                                 , prproc = inam
     
+    self -> headerinfo_addstep, hdr $
+                                , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                                , prpara = prpara $
+                                , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                           , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                                , prproc = inam
+
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wbim = (red_readdata(wfiles[iscan], head = wbhdr, direction = direction))[x0:x1, y0:y1]
