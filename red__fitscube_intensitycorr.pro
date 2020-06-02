@@ -112,19 +112,19 @@ pro red::fitscube_intensitycorr, filename $
   pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
   pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
   case 1 of
-    Nmakenb : begin             ; This is a NB cube
-      cube_paras = prparas[pos_makenb]
+    Nmakenb gt 0 : begin        ; This is a NB cube
+      cube_paras = prparas[pos_makenb[0]]
       cube_paras_struct = json_parse(cube_paras, /tostruct)
       wbhdr = headfits(cube_paras_struct.wcfile)
       wbpref = strtrim(fxpar(wbhdr, 'FILTER1'), 2)
       fxbopen, bunit, cube_paras_struct.wcfile, 'MWCINFO', bbhdr
       fxbreadm, bunit, row = 1 $
-                , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-                ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01
+                , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
+                ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01,   direction
       fxbclose, bunit
     end
-    Nmakescan : begin           ; This is a SCAN cube
-      cube_paras = prparas[pos_makescan]
+    Nmakescan gt 0 : begin      ; This is a SCAN cube
+      cube_paras = prparas[pos_makescan[0]]
       cube_paras_struct = json_parse(cube_paras, /tostruct)
       wbpref = (stregex(cube_paras_struct.dir $
                         , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
@@ -137,6 +137,9 @@ pro red::fitscube_intensitycorr, filename $
     end
   endcase
 
+  print, wcTMEAN
+;  stop
+  
 
   pfiles = file_search(self.out_dir $
                        + '/prefilter_fits/*_prefilter.idlsave' $
@@ -182,12 +185,12 @@ pro red::fitscube_intensitycorr, filename $
 ;  prffiles = file_search('prefilter_fits/*_prefilter.idlsave', count = Nprf)
   time_avg_sum = 0D
   time_avg_n = 0L
-  for ipref = 0L, Npref-1 do begin
+  for ipref = 0L, n_elements(ppfiles)-1 do begin
 
 ;    nbpref = (strsplit(file_basename(prffiles[iprf]), '_', /extract))[1]
 ;    if ~(self -> match_prefilters(nbpref, wbpref)) then continue
     
-    restore, pfiles[ipref]      ; Restores variable prf which is a struct
+    restore, ppfiles[ipref]     ; Restores variable prf which is a struct
 
     time_avg_sum += n_elements(prf.wav) * prf.time_avg
     time_avg_n   += n_elements(prf.wav)
@@ -286,8 +289,12 @@ pro red::fitscube_intensitycorr, filename $
     
     ;; Use the fit to get the WB intensities
     wbints = red_evalexpr(wbfitexpr, t/3600, wbpp) 
-    wbintcalib = red_evalexpr(wbfitexpr, t_calib/3600, wbpp) 
+    wbintcalib = red_evalexpr(wbfitexpr, t_calib/3600, wbpp)
 
+    ;; Set prref to string representation of wbfitexpr with wbpp
+    ;; coefficients.
+    prref = 'Median DC WB intensity fit in counts as fcn of x=t/1h : ' + red_renderexpr(wbfitexpr,wbpp) 
+            
     ;; Change intensity to compensate for time difference
     ;; between prefilterfit and data collection. Use the ratio
     ;; of (WB intensity)/(exposure time) for interpolated times
@@ -308,13 +315,19 @@ pro red::fitscube_intensitycorr, filename $
     ;; We want the scan-to-scan variations of the "LOCAL" old kind of
     ;; correction. But scaled to the WB intensity calibration.
     correction = mean(wbratio * xpratio) * mean(wcTMEAN) / wcTMEAN
+    ;; Note mean(wcTMEAN) = 1.0
 
   endif else begin
     
     ;; LOCAL, the old kind of correction, includes rapid variations
     ;; from scan to scan
     correction = 1d / wcTMEAN
+    ;; Note mean(wcTMEAN) = 1.0
 
+    ;; Set prref to file name of reference WB image from the
+    ;; calibration data set.
+    prref = 'Median DC WB intensity in counts at time of prefilter fit : '  ; add file name?
+    
   endelse 
 
   ;; Apply the corrections
@@ -348,8 +361,9 @@ pro red::fitscube_intensitycorr, filename $
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'INTENSITY-CALIBRATION' $
+                              , prstep = 'CALIBRATION-INTENSITY-TEMPORAL' $
                               , prpara = prpara $
+                              , prref = prref $
                               , prproc = inam $
                               , prmode = prmode
 
@@ -370,6 +384,8 @@ pro red::fitscube_intensitycorr, filename $
     wbimage *= mean(correction)
     modfits, filename, float(wbimage), ehdr, errmsg = errmsg, extname = 'WBIMAGE'
   endif
+
+;  stop
   
 end
 
