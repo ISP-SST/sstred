@@ -72,6 +72,8 @@
 ; 
 ;    2020-04-06 : MGL. Set rotation in config file.
 ; 
+;    2020-06-11 : MGL. Add fit_wb_diskcenter step.
+; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                               , calibrations_only = calibrations_only $
@@ -495,6 +497,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
   printf, Slun, "a -> fitprefilter, /mask"
+  printf, Slun, ''
+  printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
   printf, Slun, ''
   for ipref = 0, Nprefilters-1 do begin

@@ -59,6 +59,8 @@
 ; 
 ;    2020-04-06 : MGL. Set rotation in config file.
 ; 
+;    2020-06-11 : MGL. Add fit_wb_diskcenter step.
+; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             , calibrations_only = calibrations_only $
@@ -572,6 +574,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
   printf, Slun, ''
   printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
+  printf, Slun, ''
+  printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
   printf, Slun, ''
 
   printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
