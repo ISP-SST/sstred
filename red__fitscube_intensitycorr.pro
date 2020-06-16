@@ -315,18 +315,52 @@ pro red::fitscube_intensitycorr, filename $
     ;; We want the scan-to-scan variations of the "LOCAL" old kind of
     ;; correction. But scaled to the WB intensity calibration.
     correction = mean(wbratio * xpratio) * mean(wcTMEAN) / wcTMEAN
-    ;; Note mean(wcTMEAN) = 1.0
 
-  endif else begin
+    if 0 then begin
+      alt_wbratio = prefilter_wb/wcTMEAN
+      alt_correction = replicate(wbratio, nscans)
+
+      print, correction
+      print, alt_correction
+      print, wbratio
+      print, alt_wbratio
+      stop
+    endif
     
-    ;; LOCAL, the old kind of correction, includes rapid variations
-    ;; from scan to scan
-    correction = 1d / wcTMEAN
-    ;; Note mean(wcTMEAN) = 1.0
+  endif else begin
 
+    ;; The "old" method. Use ratio of *average* WB intensities.
+
+    ;; Calculate wb ratio or get it from calling program? We need the
+    ;; median prefilter fit calibration WB intensity over the median
+    ;; intensities of the WB cube.
+    case 1 of
+      Nmakenb gt 0 : begin      ; This is a NB cube
+;        stop
+;        print, prf.wbint
+;        print, fxpar(hdr, 'PRSTEP*')
+        ;; Get DATAMEAN of the WB cube frames?
+        wbratio = mean(prefilter_wb/wcTMEAN)
+        correction = prefilter_wb/wcTMEAN
+      end
+      Nmakescan gt 0 : begin    ; This is a SCAN cube
+        ;; wcTMEAN is the median of the WB image of this scan.
+        wbratio = prefilter_wb/wcTMEAN
+        correction = prefilter_wb/wcTMEAN
+        ;; But we divide with wcTMEAN below!?
+      end
+    endcase
+    
+    ;; Correction for wcTMEAN is normalized to unit mean, so corrects
+    ;; for irregularities in the WB intensities. But we need the
+    ;; wbratio to get the correction for elevation over the whole day. 
+                                ;   correction = wbratio / wcTMEAN
+                                ;   stop
+;    correction=prefilter_wb/wcTMEAN
+;    correction = replicate(wbratio, nscans)
     ;; Set prref to file name of reference WB image from the
     ;; calibration data set.
-    prref = 'Median DC WB intensity in counts at time of prefilter fit : '  ; add file name?
+    prref = 'Mean DC WB median intensity in counts from prefilter fit data : '+strtrim(prefilter_wb, 2) 
     
   endelse 
 
