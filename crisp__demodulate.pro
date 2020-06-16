@@ -107,6 +107,9 @@
 ;                polcal. Read header info from filter file and include
 ;                filtering in prstep.
 ; 
+;   2020-06-16 : MGL. In FITS header, write SOLARNET recommended
+;                PRSTEP and POLCCONV.
+; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
                        , clips = clips $
@@ -579,7 +582,7 @@ pro crisp::demodulate, outname, immr, immt $
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Demodulate' $
+                              , prstep = 'DEMODULATION' $
                               , prpara = prpara $
                               , prproc = inam
 
@@ -625,6 +628,8 @@ pro crisp::demodulate, outname, immr, immt $
   ;; Also make sure we implement the Stokes dimension properly!
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
+  red_fitsaddkeyword, anchor = anchor, hdr $
+                      , 'POLCCONV', '(+HPLT,-HPLN)', '1st axis toward Solar N, 2nd E, 3rd observer'
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'DATE-BEG', self.isodate + 'T' + red_timestring(tbeg) $
                       , 'Start time of combined observation'
