@@ -254,7 +254,7 @@ pro red::fitscube_crosstalk, filename  $
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Crosstalk correction' $
+                              , prstep = 'STOKES-CROSSTALK-CORRECTION' $
                               , prpara = prpara $
                               , prproc = inam
 
