@@ -402,8 +402,8 @@ pro red::make_wb_cube, dir $
   ;; Plot the intensity variations
   cgplot, uscans, tmean/mean(tmean), xtitle = 'Scan number', ytitle = 'Intensity correction', psym=-1, /ynozero
 
-  ;; Normalize intensity
-  tmean = tmean/mean(tmean)
+;  ;; Normalize intensity
+;  tmean = tmean/mean(tmean)
   for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
 
 ;     ;; Calculate statistics metadata before alignment and rotation so we
