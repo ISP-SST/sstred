@@ -699,9 +699,9 @@ pro crisp::make_scan_cube, dir $
                        , time:dblarr(2,2) $
                     }, Ntuning)
 
-    nbt_tscl = mean(nbt_prefilter_wb)
-    nbr_tscl = mean(nbr_prefilter_wb)
-    tscl = (nbt_tscl+nbr_tscl)/2.
+;    nbt_tscl = mean(nbt_prefilter_wb)
+;    nbr_tscl = mean(nbr_prefilter_wb)
+;    tscl = (nbt_tscl+nbr_tscl)/2.
     
 
     for ituning = 0L, Ntuning - 1 do begin 
@@ -716,7 +716,7 @@ pro crisp::make_scan_cube, dir $
 
       if keyword_set(makestokes) then begin
         
-        nbims = red_readdata(snames[ituning], head = nbhead, direction = direction) * tscl
+        nbims = red_readdata(snames[ituning], head = nbhead, direction = direction) ;* tscl
 
         ;; Wavelength 
         wcs[ituning].wave = sstates[ituning].tun_wavelength*1d9
@@ -791,8 +791,8 @@ pro crisp::make_scan_cube, dir $
           nbrim = (red_readdata(tun_nbrfiles[iexposure], head = nbrhdr, direction = direction))[x0:x1, y0:y1]
 
           ;; Apply prefilter curve
-          nbtim *= nbt_rpref[ituning] * nbt_tscl
-          nbrim *= nbr_rpref[ituning] * nbr_tscl
+          nbtim *= nbt_rpref[ituning] ;* nbt_tscl
+          nbrim *= nbr_rpref[ituning] ;* nbr_tscl
           
           if wbstretchcorr then begin
             wim = (red_readdata(tun_wfiles[iexposure], head = whdr, direction = direction))[x0:x1, y0:y1]
@@ -972,11 +972,11 @@ pro crisp::make_scan_cube, dir $
     endif else begin
       writefits, filename, wbim_rot, ehdr, /append
     endelse
-    
+
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
     self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
-    
+
     if keyword_set(integer) then begin
       ;; Convert to integers
       self -> fitscube_integer, filename $
@@ -997,7 +997,7 @@ pro crisp::make_scan_cube, dir $
                                  , angles = [ang]
       endelse
     endif
-    
+
     ;; Done with this scan.
     print, inam + ' : Narrowband scan cube stored in:'
     print, filename
