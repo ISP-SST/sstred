@@ -62,10 +62,6 @@
 ;       Do not calculate statistics metadata to put in header keywords
 ;       DATA*. 
 ;
-;     notimecor : in, optional, type=boolean
-;
-;       Skip temporal correction of intensities.
-;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
@@ -112,7 +108,10 @@
 ; 
 ;    2018-03-27 : MGL. Change sign on cmap. 
 ; 
-;    2020-01-17 : MGL. New keywords intensitycorrmethod and odir.
+;    2020-01-17 : MGL. New keywords intensitycorrmethod and odir. 
+; 
+;    2020-06-16 : MGL. Remove temporal intensity scaling, deprecate
+;                 keyword notimecorr.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -135,6 +134,12 @@ pro chromis::make_nb_cube, wcfile $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  ;; Deprecated keyword:
+  if n_elements(notimecor) gt 0 then begin
+    print, inam + ' : Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
+    return
+  endif
+  
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
@@ -142,7 +147,7 @@ pro chromis::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
-  red_make_prpara, prpara, notimecor 
+;  red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, tiles        
@@ -157,7 +162,7 @@ pro chromis::make_nb_cube, wcfile $
 
 
   ;; Camera/detector identification
-  self->getdetectors
+  self -> getdetectors
   wbindx     = where(strmatch(*self.cameras,'Chromis-W'))
   wbcamera   = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
@@ -675,7 +680,10 @@ pro chromis::make_nb_cube, wcfile $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
-    if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
+    ;;stop
+    ;;if keyword_set(notimecor) then tscl = 1. else tscl = mean(wcTMEAN) / wcTMEAN[iscan]
+    ;;tscl *= mean(prefilter_wb)
+;    tscl = 1.
     
     for iwav = 0L, Nwav - 1 do begin 
 
@@ -718,7 +726,7 @@ pro chromis::make_nb_cube, wcfile $
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
-      nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] * tscl
+      nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] ;* tscl
 
 ;      if ~keyword_set(nostatistics) then begin
 ;        ;; Add to the histogram
@@ -751,7 +759,7 @@ pro chromis::make_nb_cube, wcfile $
       if keyword_set(wbsave) then begin
         ;; Same operations as on narrowband image, except for
         ;; "aligncont".
-        wbim = wwi * tscl
+        wbim = wwi              ;* tscl
         wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
                           wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
