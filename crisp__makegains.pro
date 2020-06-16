@@ -170,9 +170,9 @@ pro crisp::makegains, bad=bad $
 
       ;; Edit the header
       red_fitsaddkeyword, hdr, 'FILENAME', file_basename(gainname[ifile])
-      self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
-                                , prproc = inam, prpara = prpara
-    
+      self -> headerinfo_addstep, hdr, prstep = 'RECIPROCAL' $
+                                  , prproc = inam, prpara = prpara
+      
       ;; Output gaintable
       file_mkdir, file_dirname(gainname[ifile])
       print, inam+' : Saving '+gainname[ifile]
