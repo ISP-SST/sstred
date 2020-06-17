@@ -118,7 +118,7 @@ pro red::fitscube_cmapcorr, fname $
   
   ;; Add info about this step
   self -> headerinfo_addstep, outhdr $
-                              , prstep = 'Interpolate' $
+                              , prstep = 'SPECTRAL-DISTORTION-CORRECTION' $
                               , prpara = prpara $
                               , prproc = inam
   

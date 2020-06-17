@@ -831,7 +831,7 @@ pro crisp::make_nb_cube, wcfile $
     
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Prepare NB science data cube' $
+                              , prstep = 'CONCATENATE' $
                               , prpara = prpara $
                               , prproc = inam
 

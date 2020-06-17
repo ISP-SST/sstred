@@ -309,10 +309,10 @@ pro red::sumflat, overwrite = overwrite, $
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document. 
 
-      self -> headerinfo_addstep, head, prstep = 'Flat summing' $
+      self -> headerinfo_addstep, head, prstep = 'SUMMING' $
                                   , prproc = inam, prpara = prpara
       if keyword_set(store_rawsum) then $
-         self -> headerinfo_addstep, shead, prstep = 'Flat summing' $
+         self -> headerinfo_addstep, shead, prstep = 'SUMMING' $
                                      , prproc = inam, prpara = prpara
       
       ;; Write FITS format averaged flat

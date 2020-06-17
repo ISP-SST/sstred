@@ -356,7 +356,7 @@ pro red::fitscube_convertlp, inname $
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
                               , anchor = 'OBS_HDU' $
-                              , prstep = 'Convert science data cube from LP format' $
+                              , prstep = 'DATA-CURATION' $
                               , prpara = prpara $
                               , prproc = inam
   

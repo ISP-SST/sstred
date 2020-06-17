@@ -609,7 +609,7 @@ pro crisp::demodulate, outname, immr, immt $
     hole_y = fxpar(fhdr, 'HOLE_Y', count = Nkey)
     if Nkey gt 0 then red_make_prpara, filt_prpara, hole_y
     self -> headerinfo_addstep, hdr $
-                                , prstep = 'Fourier-filtering' $
+                                , prstep = 'FIXED-PATTERN-REMOVAL' $
                                 , prpara = filt_prpara $
                                 , prproc = inam
   endif

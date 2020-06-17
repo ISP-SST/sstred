@@ -649,7 +649,7 @@ pro crisp::make_scan_cube, dir $
     red_fitsdelkeyword, hdr, 'STATE' ; Not a single state for cube 
     red_fitsaddkeyword, hdr, 'BITPIX', -32
     ;; Add info about this step
-    prstep = 'Prepare NB science data cube'
+    prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING'
 
     self -> headerinfo_addstep, hdr $
                                 , prstep = prstep $

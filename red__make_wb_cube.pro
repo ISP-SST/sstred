@@ -715,7 +715,7 @@ pro red::make_wb_cube, dir $
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Prepare WB science data cube' $
+                              , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
                               , prpara = prpara $
                               , prproc = inam
 
