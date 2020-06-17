@@ -21,10 +21,11 @@
 ; 
 ; :Keywords:
 ;
-;    comment_prref : in, optional, type=string, default='Reference'
+;    comment_prref : in, optional, type=strarr, default='Reference'
 ;
 ;       A comment to the PRREFna FITS keyword, used only if prref
-;       present.
+;       present. Should be either a string or a string array the same
+;       length as prref.
 ;
 ;    prmode : in, optional, type=string
 ;
@@ -155,8 +156,12 @@ pro red::headerinfo_addstep, header $
     for iref = 0, n_elements(prref)-1 do begin
       this_key = key
       if iref gt 0 then this_key += string(byte(64+iref))
-      if n_elements(comment_prref) eq 0 then comment_prref = 'Reference'
-      red_fitsaddkeyword,header, this_key, prref[iref], comment_prref, anchor = anchor
+      case n_elements(comment_prref) of
+        0    : cmt_prref = 'Reference'
+        1    : cmt_prref = comment_prref
+        else : cmt_prref = comment_prref[iref]
+      endcase
+      red_fitsaddkeyword,header, this_key, prref[iref], cmt_prref, anchor = anchor
     endfor
   endif
   
