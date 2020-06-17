@@ -167,8 +167,9 @@ pro red::fitscube_integer, fname $
 
 
   ;; Add info about this step
+  ;; Put BZERO, BSCALE, and BITPIX in prpara or prref?
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'INTEGERIZATION' $
+                              , prstep = 'BZERO-BSCALE-TRUNCATION' $
 ;                              , prpara = prpara $
                               , prproc = inam
 
