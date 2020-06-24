@@ -167,6 +167,9 @@
 ; 
 ;    2020-04-07 : MGL. New keyword rotation, remove keyword
 ;                 offset_angle. 
+; 
+;    2020-06-22 : MGL. Append angles to the "full" keyword when
+;                 calling red_rotation.
 ;
 ;-
 pro red::make_wb_cube, dir $
@@ -406,150 +409,6 @@ pro red::make_wb_cube, dir $
 ;  tmean = tmean/mean(tmean)
   for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
 
-;     ;; Calculate statistics metadata before alignment and rotation so we
-;     ;; avoid padding.
-;     DATAMIN  = dblarr(1, Nscans)  ; The minimum data value
-;     DATAMAX  = dblarr(1, Nscans)  ; The maximum data value
-;     DATAMEAN = dblarr(1, Nscans)  ; The average data value
-;     DATARMS  = dblarr(1, Nscans)  ; The RMS deviation from the mean
-;     DATAKURT = dblarr(1, Nscans)  ; The kurtosis
-;     DATASKEW = dblarr(1, Nscans)  ; The skewness
-;     DATAP01  = dblarr(1, Nscans)  ; The 01 percentile
-;     DATAP10  = dblarr(1, Nscans)  ; The 10 percentile
-;     DATAP25  = dblarr(1, Nscans)  ; The 25 percentile
-;     DATAMEDN = dblarr(1, Nscans)  ; The median data value
-;     DATAP75  = dblarr(1, Nscans)  ; The 75 percentile
-;     DATAP90  = dblarr(1, Nscans)  ; The 90 percentile
-;     DATAP95  = dblarr(1, Nscans)  ; The 95 percentile
-;     DATAP98  = dblarr(1, Nscans)  ; The 98 percentile
-;     DATAP99  = dblarr(1, Nscans)  ; The 99 percentile
-;     percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
-;     ;; Note that final cube is rescaled as cub =
-;     ;; fix(round(cub*30000./max(cub))) so we need to do that here as
-;     ;; well.
-;     cub1 = double(fix(round(cub*30000./max(cub))))
-;     for iscan = 0L, Nscans - 1 do begin
-;   
-;       momnt = moment(cub1[*,*,iscan]) ; mean, variance, skewness, kurtosis
-;       perc = cgpercentiles(cub1[*,*,iscan], percentiles = percentiles)
-;       
-;       DATAMIN[0, iscan]  = min(cub1[*,*,iscan])
-;       DATAMAX[0, iscan]  = max(cub1[*,*,iscan])
-;   
-;       DATAMEAN[0, iscan] = momnt[0]         
-;       DATARMS[0, iscan]  = sqrt(momnt[1])   
-;       DATASKEW[0, iscan] = momnt[2]         
-;       DATAKURT[0, iscan] = momnt[3]         
-;       
-;       DATAP01[0, iscan]  = perc[0]          
-;       DATAP10[0, iscan]  = perc[1]          
-;       DATAP25[0, iscan]  = perc[2]          
-;       DATAMEDN[0, iscan] = perc[3]          
-;       DATAP75[0, iscan]  = perc[4]          
-;       DATAP90[0, iscan]  = perc[5]          
-;       DATAP95[0, iscan]  = perc[6]          
-;       DATAP98[0, iscan]  = perc[7]          
-;       DATAP99[0, iscan]  = perc[8]          
-;   
-;     endfor                        ; iscan
-;     
-;     CUBEMIN  = min(DATAMIN)
-;     CUBEMAX  = max(DATAMAX)
-;     
-;     ;; Accumulate a histogram for the entire cube, use to calculate
-;     ;; percentiles.
-;     Nbins = 2L^16                 ; Use many bins!
-;     binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
-;     hist = lonarr(Nbins)
-;     for iscan = 0L, Nscans - 1 do begin
-;       hist += histogram(cub1[*, *, iscan], min = cubemin, max = cubemax, Nbins = Nbins, /nan)
-;     endfor                        ; iscan
-;   
-;     momnt = moment(cub1)          ; mean, variance, skewness, kurtosis
-;     perc = round(cgpercentiles(cub1, percentiles = percentiles))
-;   
-;     CUBEMEAN =  momnt[0]
-;     CUBERMS  =  sqrt(momnt[1])
-;     CUBESKEW =  momnt[2]
-;     CUBEKURT =  momnt[3]
-;   
-;     CUBEP01  =  perc[0]
-;     CUBEP10  =  perc[1]
-;     CUBEP25  =  perc[2]
-;     CUBEMEDN =  perc[3]
-;     CUBEP75  =  perc[4]
-;     CUBEP90  =  perc[5]
-;     CUBEP95  =  perc[6]
-;     CUBEP98  =  perc[7]
-;     CUBEP99  =  perc[8]
-;   
-;     if 0 then begin
-;       ;; Alt computations. These are tested here and needed for the
-;       ;; narrowband cube where we don't have it all in memory
-;       ;; simultaneously.
-;       Npixels = origNx*origNy
-;       Nframes = Nscans
-;       altCUBEMEAN = mean(DATAMEAN)
-;       altCUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-;                          * ( total( (Npixels-1d)* DATARMS^2 + Npixels* DATAMEAN^2 ) $
-;                              - Nframes*Npixels * CUBEMEAN^2 ))
-;       altCUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
-;                     * total( Npixels*DATARMS^3*DATASKEW + Npixels*DATAMEAN^3 + 3*(Npixels-1)*DATAMEAN*DATARMS^2) $
-;                     - CUBEMEAN^3/CUBERMS^3 - 3*(Npixels*Nframes-1d)*CUBEMEAN/(Npixels*Nframes*CUBERMS) 
-;       altCUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
-;                     * total( Npixels*DATARMS^4*(DATAKURT+3) $
-;                              + 4*Npixels*DATAMEAN*DATARMS^3*DATASKEW $
-;                              + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAmean^4 ) $
-;                     - 4*CUBEMEAN*CUBESKEW/CUBERMS $
-;                     - 6*(Npixels*Nframes-1d)*CUBEMEAN^2/(Npixels*Nframes*CUBERMS^2) $
-;                     - CUBEMEAN^4/CUBERMS^4 - 3 
-;   
-;       ;; Base the percentiles on a histogram
-;       cghistoplot, cub1
-;       cgplot, /over, [1, 1]*CUBEP01,  !y.crange, color = 'yellow'
-;       cgplot, /over, [1, 1]*CUBEP10,  !y.crange, color = 'red'
-;       cgplot, /over, [1, 1]*CUBEP25,  !y.crange, color = 'blue'
-;       cgplot, /over, [1, 1]*CUBEMEDN, !y.crange, color = 'orange'
-;       cgplot, /over, [1, 1]*CUBEP75,  !y.crange, color = 'cyan'
-;       cgplot, /over, [1, 1]*CUBEP90,  !y.crange, color = 'purple'
-;       cgplot, /over, [1, 1]*CUBEP95,  !y.crange, color = 'green'
-;       cgplot, /over, [1, 1]*CUBEP98,  !y.crange, color = 'blue'
-;       cgplot, /over, [1, 1]*CUBEP99,  !y.crange, color = 'red'
-;   
-;       hist_sum = total(hist, /cum) / total(hist)
-;       
-;       ALTCUBEP01  = round(cubemin + ((where(hist_sum gt 0.01))[0]+0.5)*binsize)
-;       ALTCUBEP10  = round(cubemin + ((where(hist_sum gt 0.10))[0]+0.5)*binsize) 
-;       ALTCUBEP25  = round(cubemin + ((where(hist_sum gt 0.25))[0]+0.5)*binsize) 
-;       ALTCUBEMEDN = round(cubemin + ((where(hist_sum gt 0.50))[0]+0.5)*binsize) 
-;       ALTCUBEP75  = round(cubemin + ((where(hist_sum gt 0.75))[0]+0.5)*binsize) 
-;       ALTCUBEP90  = round(cubemin + ((where(hist_sum gt 0.90))[0]+0.5)*binsize) 
-;       ALTCUBEP95  = round(cubemin + ((where(hist_sum gt 0.95))[0]+0.5)*binsize) 
-;       ALTCUBEP98  = round(cubemin + ((where(hist_sum gt 0.98))[0]+0.5)*binsize) 
-;       ALTCUBEP99  = round(cubemin + ((where(hist_sum gt 0.99))[0]+0.5)*binsize)
-;   
-;       
-;       print, 'CUBEMEAN',    CUBEMEAN, altCUBEMEAN
-;       print, 'CUBERMS',     CUBERMS,  altCUBERMS
-;       print, 'CUBESKEW',    CUBESKEW, altCUBESKEW
-;       print, 'CUBEKURT',    CUBEKURT, altCUBEKURT
-;       print, 'ALTCUBEP01',  CUBEP01,  altCUBEP01 
-;       print, 'ALTCUBEP10',  CUBEP10,  altCUBEP10 
-;       print, 'ALTCUBEP25',  CUBEP25,  altCUBEP25 
-;       print, 'ALTCUBEMEDN', CUBEMEDN, altCUBEMEDN 
-;       print, 'ALTCUBEP75',  CUBEP75,  altCUBEP75 
-;       print, 'ALTCUBEP90',  CUBEP90,  altCUBEP90 
-;       print, 'ALTCUBEP95',  CUBEP95,  altCUBEP95 
-;       print, 'ALTCUBEP98',  CUBEP98,  altCUBEP98 
-;       print, 'ALTCUBEP99',  CUBEP99,  altCUBEP99
-;   
-;   ;  print, 'SUM 4th power by frame'
-;   ;  rawdatakurt = DATAKURT+3d
-;   ;  print, total(total(cub1^4, 1), 1), reform(Npixels*DATARMS^4*rawdatakurt $
-;   ;                                            + 4*Npixels*DATAMEAN*DATASKEW*DATARMS^3 $
-;   ;                                            + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAMEAN^4)
-;     endif
-
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
   ang = red_lp_angles(time, date[0], /from_log, offset_angle = rotation)
@@ -622,10 +481,11 @@ pro red::make_wb_cube, dir $
   mdx1 = reform(max(shift[0,*]))
   mdy0 = reform(min(shift[1,*]))
   mdy1 = reform(max(shift[1,*]))
-  ff = [maxangle, mdx0, mdx1, mdy0, mdy1]
-
+  ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
+  
   ;; De-rotate and shift cube
-  dum = red_rotation(cub1[*,*,0], ang[0], shift[0,0], shift[1,0], full=ff)
+  dum = red_rotation(cub1[*,*,0], full=ff $
+                     , ang[0], shift[0,0], shift[1,0])
   nd = size(dum,/dim)
   nx = nd[0]
   ny = nd[1]
