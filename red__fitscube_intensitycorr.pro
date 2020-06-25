@@ -23,7 +23,7 @@
 ; 
 ; :Keywords:
 ; 
-;     corrmethod : in, optional, type="string or boolean", default=FALSE
+;     corrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       One of 'old' (for correction based on comparing the current
 ;       scan with the prefilter calibration data, or 'fit' (for
@@ -52,9 +52,8 @@ pro red::fitscube_intensitycorr, filename $
   if ~file_test(filename) then stop
 
   case 1 of
-    
-    ;; Temporary default! Should be 'fit' when that works:
-    n_elements(corrmethod) eq 0 : corrmethod = 'none'
+
+    n_elements(corrmethod) eq 0 : corrmethod = 'fit'
     
     size(corrmethod, /tname) eq 'STRING' : begin
       if corrmethod ne 'fit' and corrmethod ne 'old' then corrmethod = 'none'
