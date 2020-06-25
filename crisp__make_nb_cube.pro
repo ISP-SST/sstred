@@ -97,10 +97,6 @@
 ;       estimated by momfbd. Set to a number to smooth by a Gaussian
 ;       kernel of that width. 
 ;
-;     verbose : in, optional, type=boolean
-;
-;       Some extra screen output.
-;
 ;     wbsave : in, optional, type=boolean
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
@@ -176,7 +172,6 @@ pro crisp::make_nb_cube, wcfile $
                          , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
-                         , verbose = verbose $
                          , wbsave = wbsave
 
   ;; Name of this method
@@ -1199,10 +1194,6 @@ pro crisp::make_nb_cube, wcfile $
         endfor                  ; ww
       endif
     endif 
-    
-    if(keyword_set(verbose)) then begin
-      print, inam +'scan=',iscan,', max=', max(d1)            
-    endif
     
   endfor                        ; iscan
 
