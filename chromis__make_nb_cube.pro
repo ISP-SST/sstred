@@ -39,7 +39,7 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE/none
+;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
