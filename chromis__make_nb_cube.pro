@@ -71,10 +71,6 @@
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
-;     verbose : in, optional, type=boolean
-;
-;       Some extra screen output.
-;
 ;     wbsave : in, optional, type=boolean
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
@@ -127,7 +123,6 @@ pro chromis::make_nb_cube, wcfile $
                            , odir = odir $
                            , overwrite = overwrite $
                            , tiles = tiles $
-                           , verbose = verbose $
                            , wbsave = wbsave
 
   
@@ -772,47 +767,7 @@ pro chromis::make_nb_cube, wcfile $
 
     endfor                      ; iwav
     
-    
-    if(keyword_set(verbose)) then begin
-      print, inam +'scan=',iscan,', max=', max(d1)            
-    endif
-    
   endfor                        ; iscan
-
-;  if ~keyword_set(nostatistics) then begin
-;    ;; Calculate the statistics metadata for the entire cube based on
-;    ;; the histogram and statistics calculated for the individual
-;    ;; frames. 
-;    Npixels = Nx*Ny
-;    Nframes = Nscans*Nwav
-;    
-;    CUBEMEAN = mean(DATAMEAN)
-;    CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-;                    * ( total( (Npixels-1d)* DATARMS^2 + Npixels* DATAMEAN^2 ) $
-;                        - Nframes*Npixels * CUBEMEAN^2 ))
-;    CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
-;               * total( Npixels*DATARMS^3*DATASKEW + Npixels*DATAMEAN^3 + 3*(Npixels-1)*DATAMEAN*DATARMS^2) $
-;               - CUBEMEAN^3/CUBERMS^3 - 3*(Npixels*Nframes-1d)*CUBEMEAN/(Npixels*Nframes*CUBERMS) 
-;    CUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
-;               * total( Npixels*DATARMS^4*(DATAKURT+3) $
-;                        + 4*Npixels*DATAMEAN*DATARMS^3*DATASKEW $
-;                        + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAmean^4 ) $
-;               - 4*CUBEMEAN*CUBESKEW/CUBERMS $
-;               - 6*(Npixels*Nframes-1d)*CUBEMEAN^2/(Npixels*Nframes*CUBERMS^2) $
-;               - CUBEMEAN^4/CUBERMS^4 - 3 
-;    
-;    hist_sum = total(hist, /cum) / total(hist)
-;    
-;    CUBEP01  = cubemin + ( (where(hist_sum gt 0.01))[0]+0.5 ) * binsize
-;    CUBEP10  = cubemin + ( (where(hist_sum gt 0.10))[0]+0.5 ) * binsize 
-;    CUBEP25  = cubemin + ( (where(hist_sum gt 0.25))[0]+0.5 ) * binsize 
-;    CUBEMEDN = cubemin + ( (where(hist_sum gt 0.50))[0]+0.5 ) * binsize 
-;    CUBEP75  = cubemin + ( (where(hist_sum gt 0.75))[0]+0.5 ) * binsize 
-;    CUBEP90  = cubemin + ( (where(hist_sum gt 0.90))[0]+0.5 ) * binsize 
-;    CUBEP95  = cubemin + ( (where(hist_sum gt 0.95))[0]+0.5 ) * binsize 
-;    CUBEP98  = cubemin + ( (where(hist_sum gt 0.98))[0]+0.5 ) * binsize 
-;    CUBEP99  = cubemin + ( (where(hist_sum gt 0.99))[0]+0.5 ) * binsize
-;  endif
 
   ;; Close fits file.
   self -> fitscube_finish, lun, wcs = wcs
