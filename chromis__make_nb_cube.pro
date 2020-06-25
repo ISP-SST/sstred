@@ -455,7 +455,7 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
   if keyword_set(wbsave) then begin
-    wbfilename = strreplace(filename, 'nb_', 'wbalign_')
+    wbfilename = red_strreplace(filename, 'nb_', 'wbalign_')
     self -> fitscube_initialize, wbfilename, hdr, wblun, wbfileassoc, dims 
   endif
   
