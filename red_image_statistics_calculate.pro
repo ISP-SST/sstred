@@ -21,7 +21,7 @@
 ; 
 ;    im : in, type=array
 ; 
-; 
+;      The data for which the statistics should be calculated.
 ; 
 ; 
 ; :Keywords:
@@ -36,14 +36,19 @@
 ; 
 ;   2018-10-26: MGL. First version.
 ; 
+;   2020-06-26: MGL. Take care of NaNs.
+; 
 ;-
 function red_image_statistics_calculate, im, percentile_p = percentile_p 
 
   if n_elements(percentile_p) eq 0 then $
      percentile_p = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
   
-  momnt = moment(im, /double)   ; mean, variance, skewness, kurtosis
-  perc = double(cgpercentiles(im, percentiles = percentile_p))
+  momnt = moment(im, /double, /nan) ; [mean, variance, skewness, kurtosis]
+
+  indx = where(finite(im), Nwhere)
+  if Nwhere gt 0 then perc = double(cgpercentiles(im, percentiles = percentile_p)) $
+  else perc = percentile_p + !Values.F_NaN
 
   output = create_struct('NPIXELS',  long64(n_elements(im)) $
                          , 'DATAMIN',  min(im) $
