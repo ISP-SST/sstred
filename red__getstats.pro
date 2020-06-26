@@ -75,7 +75,7 @@ pro red::getstats, pref = pref, files=files
   for ii = 0L, nf - 1 do begin
      a = f0(files[ii]) - dd
      me = mean(a)
-     st = stdev(a)
+     st = stddev(a)
      stats[*,ii] = [me, st, st/me]
      print, string(13B), ii*ntot, '%', format='(A,F5.1,A,$)'
   endfor

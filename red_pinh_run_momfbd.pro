@@ -200,7 +200,7 @@ pro red_pinh_run_momfbd, images, simx, simy, sz $
         ;; Calculate some statistics on the background
         sindx = where(pinhsubfields[*,*,ich] lt 0.01*max(pinhsubfields[*,*,ich]))
         mn = median((pinhsubfields[*,*,ich])[sindx])
-        st = stdev((pinhsubfields[*,*,ich])[sindx])
+        st = stddev((pinhsubfields[*,*,ich])[sindx])
         
         ;;mn = biweight_mean(pinhsubfields[*,*,ich])
         ;;st = robust_sigma(pinhsubfields[*,*,ich])
