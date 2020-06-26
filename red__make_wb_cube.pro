@@ -71,6 +71,11 @@
 ;      measure the median intensity for normalization on disk. Also
 ;      disables autocrop.
 ;
+;    missing : in, optional, type=float,default="median of frame"
+;
+;      Value to set in missing-data pixels. Don't use, intended
+;      for developer experimentation only.
+;
 ;    nametag : in, optional, type=string
 ;
 ;      This string is incorporated into the automatically generated
@@ -169,7 +174,9 @@
 ;                 offset_angle. 
 ; 
 ;    2020-06-22 : MGL. Append angles to the "full" keyword when
-;                 calling red_rotation.
+;                 calling red_rotation. 
+; 
+;    2020-06-26 : MGL. New keyword missing.
 ;
 ;-
 pro red::make_wb_cube, dir $
@@ -180,6 +187,7 @@ pro red::make_wb_cube, dir $
                        , direction = direction $
                        , interactive = interactive $
                        , limb_data = limb_data $
+                       , missing = missing $
                        , nametag = nametag $
                        , negang = negang $
                        , np = np $
@@ -421,7 +429,7 @@ pro red::make_wb_cube, dir $
   ;; calculate the alignment
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
+    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], background = missing)
   endfor                        ; iscan
 
   ;; Align cube
@@ -484,7 +492,7 @@ pro red::make_wb_cube, dir $
   ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
   
   ;; De-rotate and shift cube
-  dum = red_rotation(cub1[*,*,0], full=ff $
+  dum = red_rotation(cub1[*,*,0], full=ff, background = missing $
                      , ang[0], shift[0,0], shift[1,0])
   nd = size(dum,/dim)
   nx = nd[0]
@@ -494,7 +502,7 @@ pro red::make_wb_cube, dir $
   for iscan=1, Nscans-1 do begin
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
-    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
+    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff, background = missing $
                                   , ang[iscan], shift[0,iscan], shift[1,iscan])
   endfor                        ; iscan
 
