@@ -258,7 +258,8 @@ pro red_setupworkdir, search_dirs = search_dirs $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
                       , date = date $
-                      , calibrations_only = calibrations_only
+                      , calibrations_only = calibrations_only $
+                      , old_dir = old_dir
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
 
@@ -562,9 +563,14 @@ pro red_setupworkdir, search_dirs = search_dirs $
         script_file = red_add_suffix( scriptfile, suffix = suffix )
 
         ;; Setup the different instruments.
-        call_procedure, 'red_setupworkdir_' + instrument,       $
-          workdir, root_dir, config_file, script_file, isodate, $
-          calibrations_only = calibrations_only                 ;
+        if keyword_set(old_dir) then $
+           call_procedure, 'red_setupworkdir_' + instrument,       $
+                          workdir, root_dir, config_file, script_file, isodate, $
+                           calibrations_only = calibrations_only, old_dir = old_dir + '/' + instrument + '/' $
+        else $
+           call_procedure, 'red_setupworkdir_' + instrument,       $
+                           workdir, root_dir, config_file, script_file, isodate, $
+                           calibrations_only = calibrations_only
       endif
     endfor
 

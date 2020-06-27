@@ -292,7 +292,7 @@ pro red::fitscube_crosstalk, filename  $
   endif else begin
 
     red_fitscube_statistics, filename, /write $
-                             , angles = angles $
+                             , angles = ang $
                              , cube_comments = cube_comments $
                              , full = wcFF $
                              , grid = wcGRID $

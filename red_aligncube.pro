@@ -65,7 +65,8 @@ function red_aligncube, cub, np $
                         , xbd = xbd, ybd = ybd $
                         , cubic = cubic $
                         , aligncube = aligncube $
-                        , xc = xc, yc = yc, centered = centered
+                        , xc = xc, yc = yc, centered = centered $
+                        , no_display=no_display
   
   if n_elements(xbd) eq 0 then xbd = 256
   if n_elements(ybd) eq 0 then ybd = 256
@@ -108,15 +109,17 @@ function red_aligncube, cub, np $
     ;; Align
     if(noref) then begin
       refoffs=[0.0, 0.0]
-      if n_elements(sec) eq 0 then begin
-        window,0, xs = dim[0], ys = dim[1] $
-               , title = 'Select subfield:  LMB moves,  RMB accepts'
-        tvscl, red_histo_opt(cube[*,*,idx])
-        red_box_cursor, x0, y0, xbd, ybd, /FIXED
-        sec = [x0, x0+xbd-1, y0, y0+ybd-1]
+      if ~keyword_set(no_display) then begin
+        if n_elements(sec) eq 0 then begin
+          window,0, xs = dim[0], ys = dim[1] $
+                 , title = 'Select subfield:  LMB moves,  RMB accepts'
+          tvscl, red_histo_opt(cube[*,*,idx])
+          red_box_cursor, x0, y0, xbd, ybd, /FIXED
+          sec = [x0, x0+xbd-1, y0, y0+ybd-1]
+        endif
+        window,0, xs = xbd, ys = ybd, title = 'Reference for subset'
+        tvscl, red_histo_opt(cube[sec[0]:sec[1],sec[2]:sec[3], idx])
       endif
-      window,0, xs = xbd, ys = ybd, title = 'Reference for subset'
-      tvscl, red_histo_opt(cube[sec[0]:sec[1],sec[2]:sec[3], idx])
       tempoff = red_getcoords(cube[sec[0]:sec[1],sec[2]:sec[3], *], idx)
       shifts[0, 0] = tempoff
       last = maxj[i]
@@ -124,7 +127,8 @@ function red_aligncube, cub, np $
       noref = 0
     endif else begin
       nref = cube[sec[0]:sec[1], sec[2]:sec[3], idx]
-      tvscl, nref
+      if ~keyword_set(no_display) then $
+         tvscl, nref
       tempoff = red_getcoords(cube[sec[0]:sec[1],sec[2]:sec[3], *], idx)
       ;; Alignment between old reference and new reference
       refoffs += red_shc(oldref, nref, /filt, /int) 

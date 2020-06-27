@@ -92,7 +92,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
                                         , count = Nflatdirs)
 
-  if Ndarkdirs eq 0 then begin
+  if Ndarkdirs eq 0 and ~keyword_set(old_dir) then begin
     print, 'No CHROMIS darks were found. No setup generated.'
     return
   endif
@@ -211,7 +211,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif                         ; Nsubdirs
 
 
-  if Nflatdirs eq 0 then begin
+  if Nflatdirs eq 0 or ~keyword_set(old_dir) then begin
     print, 'No CHROMIS flats were found. Stop after summing darks.'
     free_lun, Clun
     free_lun, Slun
@@ -523,7 +523,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ';; Post-MOMFBD stuff:' 
   printf, Slun, "a -> align_continuum"
   printf, Slun
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive""
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
   printf, Slun, "; or "
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"

@@ -99,9 +99,9 @@ pro chromis::fitprefilter, dir = dir $
                            , mask = mask $
                            , noabsunits = noabsunits $
                            , scan = scan $
-                           , useflats = useflats 
-;                           , pref = pref $
-;                           , time = time 
+                           , useflats = useflats
+                           , pref = pref $
+                           , time = time 
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
