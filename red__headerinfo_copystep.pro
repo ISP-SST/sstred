@@ -123,6 +123,9 @@ pro red::headerinfo_copystep, hdr, oldhdr $
     value = red_fitsgetkeyword(oldhdr, 'PRVER'+strtrim(iold, 2), comment = comment, count = count)
     if count eq 1 then red_fitsaddkeyword, anchor = anchor, hdr, 'PRVER'+strtrim(inew, 2), value, comment
 
+    value = red_fitsgetkeyword(oldhdr, 'PRREF'+strtrim(iold, 2), comment = comment, count = count)
+    if count eq 1 then red_fitsaddkeyword, anchor = anchor, hdr, 'PRREF'+strtrim(inew, 2), value, comment
+
     foreach letter, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
 
       value = red_fitsgetkeyword(oldhdr, 'PRLIB'+strtrim(iold, 2)+letter, comment = comment, count = count)
@@ -131,6 +134,9 @@ pro red::headerinfo_copystep, hdr, oldhdr $
 
       value = red_fitsgetkeyword(oldhdr, 'PRVER'+strtrim(iold, 2)+letter, comment = comment, count = count)
       if count eq 1 then red_fitsaddkeyword, anchor = anchor, hdr, 'PRVER'+strtrim(inew, 2)+letter, value, comment
+
+      value = red_fitsgetkeyword(oldhdr, 'PRREF'+strtrim(iold, 2)+letter, comment = comment, count = count)
+      if count eq 1 then red_fitsaddkeyword, anchor = anchor, hdr, 'PRREF'+strtrim(inew, 2)+letter, value, comment
 
     end 
 
