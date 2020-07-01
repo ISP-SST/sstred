@@ -31,23 +31,19 @@
 ; 
 ;    all : in, optional, type=boolean
 ;   
-;       Copy info for all available steps.
-; 
-;    anchor  : in, optional, type=string
-;   
-;       Position the step info after the specified keyword.
+;       Delete info for all available steps.
 ; 
 ;    stepnum  : in, optional, type=integer
 ;   
-;       Copy info for the step with this (these) number(s). 
+;       Delete info for the step with this (these) number(s). 
 ; 
 ;    last  : in, optional, type=boolean
 ;   
-;       Copy info for the last available step.
+;       Delete info for the last available step.
 ; 
 ;    prstep  : in, optional, type=string
 ;   
-;       Copy info for steps matching this string.
+;       Delete info for steps matching this string.
 ; 
 ; 
 ; :History:
@@ -57,7 +53,6 @@
 ;-
 pro red_headerinfo_deletestep, hdr $
                                , all = all $
-                               , anchor = anchor $
                                , stepnum = stepnum $
                                , last = last $
                                , prstep = prstep 
@@ -68,27 +63,15 @@ pro red_headerinfo_deletestep, hdr $
 
   if Nexisting eq 0 then return
 
-  if keyword_set(last) then begin
-    print, 'Not implemented'
-    stop
-  endif
-  if keyword_set(stepnum) then begin
-    print, 'Not implemented'
-    stop
-  endif
-
   prkeys = ['PRSTEP', 'PRPROC', 'PRMODE', 'PRPARA', 'PRLIB', 'PRVER', 'PRREF', 'PRBRA']
 
-  if keyword_set(all) then stepnums = indgen(Nexisting)
-
-  if keyword_set(last) then red_append, stepnums, Nexisting-1
-
+  if keyword_set(all) then stepnums = indgen(Nexisting)+1
+  if keyword_set(last) then red_append, stepnums, Nexisting
   if n_elements(stepnum) gt 0 then red_append, stepnums, stepnum
 
-
   for istep = 0, n_elements(prstep)-1 do begin
-    ii = where(prsteps_existing eq prstep, Nmatch)
-    if Nmatch gt 0 then red_append, stepnums, ii
+    ii = where(prsteps_existing eq prstep[istep], Nmatch)
+    if Nmatch gt 0 then red_append, stepnums, ii+1
   endfor   
   
   ;; Some step could be indicated by multiple keywords
@@ -96,11 +79,11 @@ pro red_headerinfo_deletestep, hdr $
 
   print, stepnums
   
-  for istep = 1, n_elements(stepnums) do begin
+  for istep = 0, n_elements(stepnums)-1 do begin
     for ikey = 0, n_elements(prkeys)-1 do begin
       foreach letter, ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
 
-        name = prkeys[ikey]+strtrim(istep, 2)+letter
+        name = prkeys[ikey]+strtrim(stepnums[istep], 2)+letter
 
         print, name
         
@@ -118,7 +101,10 @@ end
 hdr = headfits('/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_wb/wb_6302_2016-09-19T09:30:20_scans=2-8_corrected_im.fits')
 
 hgrep, hdr, 'PR'
-red_headerinfo_deletestep, hdr, /all
+;red_headerinfo_deletestep, hdr, /all
+red_headerinfo_deletestep, hdr, prstep = 'PADDING-CONVERSION'
+;red_headerinfo_deletestep, hdr, stepnum = 2
+;red_headerinfo_deletestep, hdr, /last
 print
 hgrep, hdr, 'PR'
 
