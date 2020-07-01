@@ -71,11 +71,6 @@
 ;      measure the median intensity for normalization on disk. Also
 ;      disables autocrop.
 ;
-;    missing : in, optional, type=float,default="median of frame"
-;
-;      Value to set in missing-data pixels. Don't use, intended
-;      for developer experimentation only.
-;
 ;    nametag : in, optional, type=string
 ;
 ;      This string is incorporated into the automatically generated
@@ -84,7 +79,12 @@
 ;    negang : in, optional, type=boolean 
 ;
 ;      Set this to apply the field rotation angles with the opposite
-;      sign. 
+;      sign.
+;
+;    nomissing_nans : in, optional, type=boolean 
+;
+;      Do not set missing-data padding to NaN. (Set it to the median of
+;      each frame instead.)
 ;
 ;    np : in, optional, type=integer, default=3
 ;
@@ -176,8 +176,8 @@
 ;    2020-06-22 : MGL. Append angles to the "full" keyword when
 ;                 calling red_rotation. 
 ; 
-;    2020-06-26 : MGL. New keyword missing.
-;
+;    2020-06-29 : MGL. New keyword nomissing_nans.
+; 
 ;-
 pro red::make_wb_cube, dir $
                        , align_interactive = align_interactive $
@@ -187,24 +187,17 @@ pro red::make_wb_cube, dir $
                        , direction = direction $
                        , interactive = interactive $
                        , limb_data = limb_data $
-                       , missing = missing $
                        , nametag = nametag $
                        , negang = negang $
+                       , nomissing_nans = nomissing_nans $
                        , np = np $
                        , rotation = rotation $
                        , scannos = scannos $
+                       , subtract_meanang = subtract_meanang $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
-                       , ybd = ybd $
-                       , subtract_meanang = subtract_meanang 
-;                      , ang = ang $
-;                       , offset_angle = offset_angle $
-;                      , ext_date = ext_date $
-;                      , ext_time = ext_time $
-;                      , shift = shift $
-
-
+                       , ybd = ybd
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -221,26 +214,25 @@ pro red::make_wb_cube, dir $
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   
   ;; Make prpara
-  red_make_prpara, prpara, dir
+  red_make_prpara, prpara, align_interactive
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
   red_make_prpara, prpara, direction
-  red_make_prpara, prpara, rotation
   red_make_prpara, prpara, negang
-  red_make_prpara, prpara, subtract_meanang
+  red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, np
-;  red_make_prpara, prpara, offset_angle
+  red_make_prpara, prpara, rotation
+  red_make_prpara, prpara, subtract_meanang
   red_make_prpara, prpara, tile
   red_make_prpara, prpara, tstep
-  red_make_prpara, prpara, ybd
   red_make_prpara, prpara, xbd
-  red_make_prpara, prpara, align_interactive
+  red_make_prpara, prpara, ybd
 
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
 
   if keyword_set(limb_data) then autocrop = 0
-  
+
   ;; Camera/detector identification
   self->getdetectors
   wbindx = where(strmatch(*self.cameras, instrument+'-W', /fold_case))
@@ -251,21 +243,21 @@ pro red::make_wb_cube, dir $
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
   red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
   red_logdata, self.isodate, time_turret, azel = azel
-  
+
   ;; Search for restored WB images
   case self.filetype of
     'ANA': extension = '.f0'
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
   endcase
-
+  
   files = file_search(dir + '*' + extension, count = Nfiles)
 
   if Nfiles eq 0 then begin
     print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
     retall
   endif
-
+  
   ;; The file names we want should have no tuning info.
   indx = where(~strmatch(files,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nscans)
   if Nscans eq 0 then stop
@@ -429,7 +421,7 @@ pro red::make_wb_cube, dir $
   ;; calculate the alignment
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], background = missing)
+    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
   endfor                        ; iscan
 
   ;; Align cube
@@ -492,7 +484,7 @@ pro red::make_wb_cube, dir $
   ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
   
   ;; De-rotate and shift cube
-  dum = red_rotation(cub1[*,*,0], full=ff, background = missing $
+  dum = red_rotation(cub1[*,*,0], full=ff $
                      , ang[0], shift[0,0], shift[1,0])
   nd = size(dum,/dim)
   nx = nd[0]
@@ -502,7 +494,7 @@ pro red::make_wb_cube, dir $
   for iscan=1, Nscans-1 do begin
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
-    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff, background = missing $
+    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
                                   , ang[iscan], shift[0,iscan], shift[1,iscan])
   endfor                        ; iscan
 
@@ -653,13 +645,18 @@ pro red::make_wb_cube, dir $
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
-  ;; Calculate statistics
-  red_fitscube_statistics, odir + ofil, /write, full = ff $
-                           , origNx = origNx $
-                           , origNy = origNy $
-                           , angles = ang
+  if keyword_set(nomissing_nans) then begin
+    ;; Calculate statistics
+    red_fitscube_statistics, odir + ofil, /write, full = ff $
+                             , origNx = origNx $
+                             , origNy = origNy $
+                             , angles = ang
+  endif else begin
+    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
+    ;; calculated during this step.
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
+  endelse
 
-  
   
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
