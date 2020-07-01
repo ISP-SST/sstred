@@ -228,7 +228,10 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
         mask = make_array(Nxx, Nyy, /float, value = 1.) 
         mask = red_rotation(mask, angles[iscan], dx, dy, background = 0, full = full)
         mindx = where(mask gt 0.99)
-      endif 
+      endif else begin
+        mask = 0 * frame+1
+        mindx = indgen(n_elements(frame))
+      endelse
 
       for ituning = 0L, Ntuning - 1 do begin 
         for istokes = 0L, Nstokes-1 do begin
@@ -239,12 +242,14 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 
           red_fitscube_getframe, fileassoc, frame $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
-
-          ;; Size mismatch?
-          if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop
-
-          hist += histogram(float(frame[mindx]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
-
+          
+          if n_elements(mask) eq 0 then begin
+            hist += histogram(float(frame), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+          endif else begin
+            if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop ; Size mismatch?
+            hist += histogram(float(frame[mindx]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+          endelse
+          
           iprogress++
           
         endfor                  ; istokes
