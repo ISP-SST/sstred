@@ -58,8 +58,7 @@ pro red_headerinfo_deletestep, hdr $
                                , prstep = prstep 
 
   ;; Existing steps
-  prsteps_existing = fxpar(hdr,'PRSTEP*')
-  Nexisting = n_elements(prsteps_existing)
+  prsteps_existing = fxpar(hdr,'PRSTEP*', count = Nexisting)
 
   if Nexisting eq 0 then return
 
@@ -72,7 +71,7 @@ pro red_headerinfo_deletestep, hdr $
   for istep = 0, n_elements(prstep)-1 do begin
     ii = where(prsteps_existing eq prstep[istep], Nmatch)
     if Nmatch gt 0 then red_append, stepnums, ii+1
-  endfor   
+  endfor                        ; istep
   
   ;; Some step could be indicated by multiple keywords
   stepnums = stepnums(uniq(stepnums, sort(stepnums))) 
