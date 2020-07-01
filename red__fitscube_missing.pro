@@ -126,14 +126,14 @@ pro red::fitscube_missing, filename $
         if iprogress ne 0 then old_set_missing_to = set_missing_to
 
         red_progressbar, iprogress, Nprogress, /predict $
-                         , 'Missing data in frame '+strjoin(strtrim([Nscans, Nstokes, Ntuning],2),',')
+                         , 'Missing data in frame '+strjoin(strtrim([iscan, istokes, ituning],2),',')
 
         ;; Read a frame
         red_fitscube_getframe, fileassoc, frame $
                                , ituning = ituning $
                                , istokes = istokes $
                                , iscan = iscan
-
+        
         ;; Heuristics for identifying the missing-data pixels. They
         ;; would be connected to the outermost rows and columns and
         ;; they would all have the same value, usually the median of
@@ -141,32 +141,36 @@ pro red::fitscube_missing, filename $
         ;; this value are missing data as there *could* be interior
         ;; pixels with this exact value.
 
+        ;; What kind of padding do we have now?
+        
+        currently_constant = frame[ 0,  0] eq frame[ 0, -1] and $
+                             frame[ 0,  0] eq frame[-1,  0] and $
+                             frame[ 0,  0] eq frame[-1, -1]
+
+        currently_nans = ~( finite(frame[ 0,  0]) or $
+                            finite(frame[ 0, -1]) or $
+                            finite(frame[-1,  0]) or $
+                            finite(frame[-1, -1]) $
+                          )
+
+        
         if n_elements(missing_type) gt 0 then begin
+
+          ;; missing_type specified
           set_missing_to = missing_type
+          
         endif else begin
 
-          ;; What kind of padding do we have now?
-          
-          currently_constant = frame[ 0,  0] eq frame[ 0, -1] and $
-                               frame[ 0,  0] eq frame[-1,  0] and $
-                               frame[ 0,  0] eq frame[-1, -1]
-
-          currently_nans = ~( finite(frame[ 0,  0]) or $
-                              finite(frame[ 0, -1]) or $
-                              finite(frame[-1,  0]) or $
-                              finite(frame[-1, -1]) $
-                            )
-          
-          ;; Set it to the opposite of what we have
+          ;; missing_type not specified, change to the opposite of
+          ;; what we have
           case 1 of
 
             currently_nans     : set_missing_to = 'median'
-            
+          
             currently_constant : set_missing_to = 'nan'
           
             else : begin
-              print, inam + " : Could not identify missing data pixels for ituning,istokes,iscan = " $
-                     , ituning,istokes,iscan
+              print, inam + ' : Could not identify missing data pixels'
               print, 'Corner pixel intensities: ' $
                      , finite(frame[ 0,  0]) $
                      , finite(frame[ 0, -1]) $
@@ -179,14 +183,21 @@ pro red::fitscube_missing, filename $
         endelse
 
         if iprogress ne 0 && old_set_missing_to ne set_missing_to then begin
-          print, inam + ' : set_missing_to changed!'
+          print, inam + ' : set_missing_to changed! (Different padding in different frames.)'
           stop
         endif
         
         case strlowcase(set_missing_to) of
 
           'nan' : begin         ; Assume all corner pixels have the same value.
-
+            
+            if currently_nans then begin
+              print, inam+' : Padding seems to be NaN already.'
+              ;; Close the file and return
+              red_fitscube_close, fileassoc, fitscube_info
+              return
+            endif
+            
             ;; Find pixels with the same value as the corners
             mask = frame eq frame[ 0,  0] 
 
@@ -196,6 +207,13 @@ pro red::fitscube_missing, filename $
           end
 
           'median' : begin
+
+            if currently_constant then begin
+              print, inam+' : Padding seems to be medians (or at least constant values) already.'
+              ;; Close the file and return
+              red_fitscube_close, fileassoc, fitscube_info
+              return
+            endif
 
             ;; Find non-finite pixels
             mask = ~finite(frame)
@@ -268,6 +286,8 @@ filename = dir+'nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
 
 a = crispred(/dev)
 ;a -> fitscube_missing, filename, oname = dir+'test.fits', /nostatistics, /over, /force
-a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force
+;a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force
+a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force, missing_type = 'nan'
+;a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force, missing_type = 'median'
 
 end
