@@ -20,7 +20,13 @@
 ;      The FITS header to be modified.
 ; 
 ; :Keywords:
-; 
+;
+;    comment_prref : in, optional, type=strarr, default='Reference'
+;
+;       A comment to the PRREFna FITS keyword, used only if prref
+;       present. Should be either a string or a string array the same
+;       length as prref.
+;
 ;    prmode : in, optional, type=string
 ;
 ;       The processing mode.
@@ -35,7 +41,8 @@
 ;
 ;    prref : in, optional, type=strarr
 ;
-;       Reference sources (images, people, data, etc.).
+;       PRREFna keyword value: reference sources (images, people,
+;       data, etc.).
 ;
 ;    prstep : in, optional, type=string
 ;
@@ -52,12 +59,6 @@
 ;    version  : in, optional, type=string
 ;
 ;       
-;
-;   
-;   
-;   
-; 
-; 
 ; :History:
 ;
 ;   2017-03-16 : MGL. First version.
@@ -71,11 +72,14 @@
 ;   2018-11-21 : MGL. New keyword anchor.
 ;
 ;   2020-05-07 : MGL. New keyword prref.
+;
+;   2020-06-17 : MGL. New keyword comment_prref.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
                              , addlib = addlib $
                              , anchor = anchor $
+                             , comment_prref = comment_prref $ 
                              , level = level $
                              , prmode = prmode $
                              , prpara = prpara $
@@ -152,7 +156,12 @@ pro red::headerinfo_addstep, header $
     for iref = 0, n_elements(prref)-1 do begin
       this_key = key
       if iref gt 0 then this_key += string(byte(64+iref))
-      red_fitsaddkeyword,header, this_key, prref[iref], 'Reference', anchor = anchor
+      case n_elements(comment_prref) of
+        0    : cmt_prref = 'Reference'
+        1    : cmt_prref = comment_prref
+        else : cmt_prref = comment_prref[iref]
+      endcase
+      red_fitsaddkeyword,header, this_key, prref[iref], cmt_prref, anchor = anchor
     endfor
   endif
   

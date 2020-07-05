@@ -261,7 +261,7 @@ pro red::sumdark, overwrite = overwrite, $
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document.
 
-      self -> headerinfo_addstep, head, prstep = 'Dark summing' $
+      self -> headerinfo_addstep, head, prstep = 'SUMMING' $
                                   , prproc = inam, prpara = prpara
 
 ;      ;; Write ANA format dark

@@ -213,7 +213,7 @@ pro red::sumpolcal, check=check $
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document. 
       red_fitsaddkeyword, anchor = anchor, head, 'STATE', state_list[istate], 'Polcal state'
-      self -> headerinfo_addstep, head, prstep = 'Summing' $
+      self -> headerinfo_addstep, head, prstep = 'SUMMING' $
                                   , prproc = inam, prpara = prpara
 
 ;      ;; Write ANA format pcal

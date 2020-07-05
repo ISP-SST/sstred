@@ -129,13 +129,19 @@ pro red_fitscube_newheader, filename, newheader, Nframes_max = Nframes_max
   ;; The CWERRj, CWDISj, and DWj keywords should already be in the
   ;; header. We just need to copy the WCSDVARR (image) extension(s).
   for iwcsdvarr = 0, Nwcsdvarr-1 do begin
-    
     wcsdvarr = mrdfits( oldfilename, windx[iwcsdvarr], chdr, status = status, /silent)
-;    cmaps = mrdfits(oldfilename, 'WCSDVARR', chdr, status = status, /silent)
     if status ne 0 then stop
     writefits, tmpfilename, wcsdvarr, chdr, /append
   endfor                        ; iwcsdvarr
- 
+
+  ;; Copy the WBIMAGE extension of scan cubes.
+  windx = where(fcb.extname eq 'WBIMAGE', Nwbimage)
+  if Nwbimage gt 0 then begin
+    wbim = mrdfits(oldfilename, 'WBIMAGE', ehdr, status = status, /silent)
+    if status ne 0 then stop
+    writefits, tmpfilename, wbim, ehdr, /append
+  endif
+  
   ;; Overwrite the old file
   print, inam+' : Move temporary file to the original file name...'
   tic

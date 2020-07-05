@@ -62,6 +62,8 @@
 ; 
 ;    2020-04-06 : MGL. Set rotation in config file.
 ; 
+;    2020-06-11 : MGL. Add fit_wb_diskcenter step.
+; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             , calibrations_only = calibrations_only $
@@ -577,6 +579,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
   printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
   printf, Slun, ''
+  printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
+  printf, Slun, ''
 
   printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
@@ -604,10 +608,12 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   printf, Slun, ';; Post-MOMFBD stuff:'
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
-  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
-  printf, Slun, "; or "
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
+  printf, Slun, "; or "
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
+  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
   printf, Slun, ""
 
   

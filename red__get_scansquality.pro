@@ -67,7 +67,7 @@ pro red::get_scansquality
      aver = 0.0
      for jj = 0L, count - 1 do begin
         tmp = f0(wfiles[pos[jj]]) - dd
-        aver+= stdev(tmp) / mean(tmp)
+        aver+= stddev(tmp) / mean(tmp)
      endfor
      nim[ii] = count
    

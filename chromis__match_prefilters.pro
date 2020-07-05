@@ -6,7 +6,7 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -39,7 +39,7 @@
 ; 
 ;-
 function chromis::match_prefilters, pf1, pf2
-;                         NB      WB
+;                       NB      WB
   prefilter_table = [['3999', '3950'], $
                      ['3969', '3950'], $
                      ['3978', '3950'], $

@@ -276,7 +276,7 @@ pro red::fitscube_export, filename $
                       , 'CDELT2A', 0.0, 'Zero FOV extent'
 
   ;; Add header info about this step
-  prstep = 'COPYING'
+  prstep = 'HEADER-CORRECTION'
   if n_elements(smooth_width) then prstep += ', SMOOTHING'
   self -> headerinfo_addstep, hdr $
                               , prstep = prstep $

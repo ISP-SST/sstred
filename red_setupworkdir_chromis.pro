@@ -72,6 +72,8 @@
 ; 
 ;    2020-04-06 : MGL. Set rotation in config file.
 ; 
+;    2020-06-11 : MGL. Add fit_wb_diskcenter step.
+; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                               , calibrations_only = calibrations_only $
@@ -495,6 +497,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
   printf, Slun, "a -> fitprefilter, /mask"
+  printf, Slun, ''
+  printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
   printf, Slun, ''
   for ipref = 0, Nprefilters-1 do begin
@@ -523,20 +527,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ';; Post-MOMFBD stuff:' 
   printf, Slun, "a -> align_continuum"
   printf, Slun
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
-  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
-  printf, Slun, "; or "
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
-
-;  
-;  printf, Slun, "a->polish_tseries" $
-;;            + ", /full" $
-;;            + ", /fitsoutput" $
-;          + ", xbd=1280, ybd=1024" $
-;          + ", np=5"
-;
-;  printf, Slun, "a->make_crispex, /float, /aligncont"
-;; a -> make_crispex, /noflat, /scans_only, /float, /aligncont, /wbwrite
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
+  printf, Slun, "; or "
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
+  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
 
   
   free_lun, Clun

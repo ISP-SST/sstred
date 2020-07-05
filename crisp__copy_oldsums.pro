@@ -124,7 +124,7 @@ pro crisp::copy_oldsums, olddir $
             ;; Fake a step that says that the data were summed with
             ;; the old pipeline.
             anchor = 'STATE'
-            red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'Summing'      , 'Processing step name'                           
+            red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'SUMMING'      , 'Processing step name'                           
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRPROC1', 'red::sumdark' , 'Name of procedure used'                        
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1' , 'CRISPRED'     , 'Software library containing red::sumdark'
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1A', 'IDLAstro'     , 'Additional software library'                    
@@ -136,7 +136,7 @@ pro crisp::copy_oldsums, olddir $
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRBRA1' , ''             , 'Unknown version control branch and versions'
 
             ;; Then add the copying step
-            self -> headerinfo_addstep, hdr, prstep = 'Copying' $
+            self -> headerinfo_addstep, hdr, prstep = 'DATA-CURATION' $
                                         , prproc = inam, prpara = prpara
 
             ;; Write the data
@@ -237,7 +237,7 @@ pro crisp::copy_oldsums, olddir $
             ;; Subset of headerinfo_addstep keywords that say the data
             ;; were summed with the old pipeline.
             anchor = 'STATE'
-            red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'Summing'      , 'Processing step name'                           
+            red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'SUMMING'      , 'Processing step name'                           
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRPROC1', 'red::sumflat' , 'Name of procedure used'                        
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1' , 'CRISPRED'     , 'Software library containing red::sumflat'
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1A', 'IDLAstro'     , 'Additional software library'                    
@@ -249,7 +249,7 @@ pro crisp::copy_oldsums, olddir $
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRBRA1' , ''             , 'Unknown version control branch and versions'
 
             ;; Then add this copying step
-            self -> headerinfo_addstep, hdr, prstep = 'Copying' $
+            self -> headerinfo_addstep, hdr, prstep = 'DATA-CURATION' $
                                         , prproc = inam, prpara = prpara
 
             ;; Write the data
@@ -329,7 +329,7 @@ pro crisp::copy_oldsums, olddir $
             ;; Subset of headerinfo_addstep keywords that say the data
             ;; were summed with the old pipeline.
             anchor = 'STATE'
-            red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'Summing'      , 'Processing step name'                           
+            red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'SUMMING'      , 'Processing step name'                           
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRPROC1', 'red::sumflat' , 'Name of procedure used'                        
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1' , 'CRISPRED'     , 'Software library containing red::sumflat'
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1A', 'IDLAstro'     , 'Additional software library'                    
@@ -341,7 +341,7 @@ pro crisp::copy_oldsums, olddir $
             red_fitsaddkeyword, anchor = anchor, hdr, 'PRBRA1' , ''             , 'Unknown version control branch and versions'
 
             ;; Then add this copying step
-            self -> headerinfo_addstep, hdr, prstep = 'Copying' $
+            self -> headerinfo_addstep, hdr, prstep = 'DATA-CURATION' $
                                         , prproc = inam, prpara = prpara
 
             ;; Write the data
@@ -416,7 +416,7 @@ pro crisp::copy_oldsums, olddir $
               ;; Subset of headerinfo_addstep keywords that say the data
               ;; were summed with the old pipeline.
               anchor = 'STATE'
-              red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'Summing'      , 'Processing step name'                           
+              red_fitsaddkeyword, anchor = anchor, hdr, 'PRSTEP1', 'SUMMING'      , 'Processing step name'                           
               red_fitsaddkeyword, anchor = anchor, hdr, 'PRPROC1', 'red::sumflat' , 'Name of procedure used'                        
               red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1' , 'CRISPRED'     , 'Software library containing red::sumflat'
               red_fitsaddkeyword, anchor = anchor, hdr, 'PRLIB1A', 'IDLAstro'     , 'Additional software library'                    
@@ -428,7 +428,7 @@ pro crisp::copy_oldsums, olddir $
               red_fitsaddkeyword, anchor = anchor, hdr, 'PRBRA1' , ''             , 'Unknown version control branch and versions'
 
               ;; Then add this copying step
-              self -> headerinfo_addstep, hdr, prstep = 'Copying' $
+              self -> headerinfo_addstep, hdr, prstep = 'DATA-CURATION' $
                                           , prproc = inam, prpara = prpara
 
               ;; Write the data

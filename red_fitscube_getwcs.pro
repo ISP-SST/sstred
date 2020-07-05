@@ -176,10 +176,10 @@ pro red_fitscube_getwcs, filename $
       dw3_sub = dw3[name_pos[i]:apply_pos[i]]
       pos = where(dw3_sub_keywords eq 'EXTVER')
       extver = (dw3_sub[pos[0]])(1)
-      scale_pos = where(dw3_sub_keywords eq 'SCALE3', Nscale)
-      offset_pos = where(dw3_sub_keywords eq 'OFFSET3', Noffset)
+      scale_pos = where(dw3_sub_keywords eq 'SCALE3' or dw3_sub_keywords eq 'SCALE.3', Nscale)
+      offset_pos = where(dw3_sub_keywords eq 'OFFSET3' or dw3_sub_keywords eq 'OFFSET.3', Noffset)
       if Nscale eq 0 or Noffset eq 0 then begin
-        ;; Old WCSDVARR format without SCALE3 and OFFSET3
+        ;; Old WCSDVARR format without SCALE.3 and OFFSET.3
         indx = indgen( fxpar(hdr, 'NAXIS3') )
         if n_elements(indx) eq 1 then begin
           ;; A single-tuningpoint cube, probably a Stokes cube.

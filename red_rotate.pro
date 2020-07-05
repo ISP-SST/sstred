@@ -73,7 +73,8 @@ function red_rotate, array, direction, inverse = inverse, dir = dir
     3 : begin
       if max(direction eq [1, 3, 4, 6]) eq 1 then begin
         ;; X and Y switched
-        rotarray = translate(array, dims[[1, 0, 2]])
+        ;;rotarray = translate(array, dims[[1, 0, 2]])
+        rotarray = transpose(array, [1, 0, 2])
       endif else begin
         rotarray = array
       endelse
@@ -83,7 +84,8 @@ function red_rotate, array, direction, inverse = inverse, dir = dir
     4 : begin
       if max(direction eq [1, 3, 4, 6]) eq 1 then begin
         ;; X and Y switched
-        rotarray = translate(array, dims[[1, 0, 2, 3]])
+        ;;rotarray = translate(array, dims[[1, 0, 2, 3]])
+        rotarray = transpose(array, [1, 0, 2, 3])
       endif else begin
         rotarray = array
       endelse
@@ -94,7 +96,8 @@ function red_rotate, array, direction, inverse = inverse, dir = dir
     5 : begin
       if max(direction eq [1, 3, 4, 6]) eq 1 then begin
         ;; X and Y switched
-        rotarray = translate(array, dims[[1, 0, 2, 3, 4]])
+        ;;rotarray = translate(array, dims[[1, 0, 2, 3, 4]])
+        rotarray = transpose(array, [1, 0, 2, 3, 4])
       endif else begin
         rotarray = array
       endelse

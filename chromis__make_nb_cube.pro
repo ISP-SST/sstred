@@ -39,7 +39,7 @@
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE/none
+;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
@@ -62,10 +62,6 @@
 ;       Do not calculate statistics metadata to put in header keywords
 ;       DATA*. 
 ;
-;     notimecor : in, optional, type=boolean
-;
-;       Skip temporal correction of intensities.
-;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
@@ -74,10 +70,6 @@
 ;     tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
-;
-;     verbose : in, optional, type=boolean
-;
-;       Some extra screen output.
 ;
 ;     wbsave : in, optional, type=boolean
 ;
@@ -112,7 +104,10 @@
 ; 
 ;    2018-03-27 : MGL. Change sign on cmap. 
 ; 
-;    2020-01-17 : MGL. New keywords intensitycorrmethod and odir.
+;    2020-01-17 : MGL. New keywords intensitycorrmethod and odir. 
+; 
+;    2020-06-16 : MGL. Remove temporal intensity scaling, deprecate
+;                 keyword notimecorr.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -128,13 +123,18 @@ pro chromis::make_nb_cube, wcfile $
                            , odir = odir $
                            , overwrite = overwrite $
                            , tiles = tiles $
-                           , verbose = verbose $
                            , wbsave = wbsave
 
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  ;; Deprecated keyword:
+  if n_elements(notimecor) gt 0 then begin
+    print, inam + ' : Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
+    return
+  endif
+  
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
@@ -142,7 +142,7 @@ pro chromis::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
-  red_make_prpara, prpara, notimecor 
+;  red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, tiles        
@@ -157,7 +157,7 @@ pro chromis::make_nb_cube, wcfile $
 
 
   ;; Camera/detector identification
-  self->getdetectors
+  self -> getdetectors
   wbindx     = where(strmatch(*self.cameras,'Chromis-W'))
   wbcamera   = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
@@ -412,8 +412,15 @@ pro chromis::make_nb_cube, wcfile $
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Prepare NB science data cube' $
+                              , prstep = 'CONCATENATION' $
                               , prpara = prpara $
+                              , prproc = inam
+
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                              , prpara = prpara $
+                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
                               , prproc = inam
 
   anchor = 'DATE'
@@ -443,7 +450,7 @@ pro chromis::make_nb_cube, wcfile $
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
   if keyword_set(wbsave) then begin
-    wbfilename = strreplace(filename, 'nb_', 'wbalign_')
+    wbfilename = red_strreplace(filename, 'nb_', 'wbalign_')
     self -> fitscube_initialize, wbfilename, hdr, wblun, wbfileassoc, dims 
   endif
   
@@ -668,7 +675,10 @@ pro chromis::make_nb_cube, wcfile $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
-    if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
+    ;;stop
+    ;;if keyword_set(notimecor) then tscl = 1. else tscl = mean(wcTMEAN) / wcTMEAN[iscan]
+    ;;tscl *= mean(prefilter_wb)
+;    tscl = 1.
     
     for iwav = 0L, Nwav - 1 do begin 
 
@@ -711,7 +721,7 @@ pro chromis::make_nb_cube, wcfile $
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
-      nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] * tscl
+      nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] ;* tscl
 
 ;      if ~keyword_set(nostatistics) then begin
 ;        ;; Add to the histogram
@@ -744,7 +754,7 @@ pro chromis::make_nb_cube, wcfile $
       if keyword_set(wbsave) then begin
         ;; Same operations as on narrowband image, except for
         ;; "aligncont".
-        wbim = wwi * tscl
+        wbim = wwi              ;* tscl
         wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
                           wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
@@ -757,47 +767,7 @@ pro chromis::make_nb_cube, wcfile $
 
     endfor                      ; iwav
     
-    
-    if(keyword_set(verbose)) then begin
-      print, inam +'scan=',iscan,', max=', max(d1)            
-    endif
-    
   endfor                        ; iscan
-
-;  if ~keyword_set(nostatistics) then begin
-;    ;; Calculate the statistics metadata for the entire cube based on
-;    ;; the histogram and statistics calculated for the individual
-;    ;; frames. 
-;    Npixels = Nx*Ny
-;    Nframes = Nscans*Nwav
-;    
-;    CUBEMEAN = mean(DATAMEAN)
-;    CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-;                    * ( total( (Npixels-1d)* DATARMS^2 + Npixels* DATAMEAN^2 ) $
-;                        - Nframes*Npixels * CUBEMEAN^2 ))
-;    CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
-;               * total( Npixels*DATARMS^3*DATASKEW + Npixels*DATAMEAN^3 + 3*(Npixels-1)*DATAMEAN*DATARMS^2) $
-;               - CUBEMEAN^3/CUBERMS^3 - 3*(Npixels*Nframes-1d)*CUBEMEAN/(Npixels*Nframes*CUBERMS) 
-;    CUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
-;               * total( Npixels*DATARMS^4*(DATAKURT+3) $
-;                        + 4*Npixels*DATAMEAN*DATARMS^3*DATASKEW $
-;                        + 6*(Npixels-1)*DATAMEAN^2*DATARMS^2 + Npixels*DATAmean^4 ) $
-;               - 4*CUBEMEAN*CUBESKEW/CUBERMS $
-;               - 6*(Npixels*Nframes-1d)*CUBEMEAN^2/(Npixels*Nframes*CUBERMS^2) $
-;               - CUBEMEAN^4/CUBERMS^4 - 3 
-;    
-;    hist_sum = total(hist, /cum) / total(hist)
-;    
-;    CUBEP01  = cubemin + ( (where(hist_sum gt 0.01))[0]+0.5 ) * binsize
-;    CUBEP10  = cubemin + ( (where(hist_sum gt 0.10))[0]+0.5 ) * binsize 
-;    CUBEP25  = cubemin + ( (where(hist_sum gt 0.25))[0]+0.5 ) * binsize 
-;    CUBEMEDN = cubemin + ( (where(hist_sum gt 0.50))[0]+0.5 ) * binsize 
-;    CUBEP75  = cubemin + ( (where(hist_sum gt 0.75))[0]+0.5 ) * binsize 
-;    CUBEP90  = cubemin + ( (where(hist_sum gt 0.90))[0]+0.5 ) * binsize 
-;    CUBEP95  = cubemin + ( (where(hist_sum gt 0.95))[0]+0.5 ) * binsize 
-;    CUBEP98  = cubemin + ( (where(hist_sum gt 0.98))[0]+0.5 ) * binsize 
-;    CUBEP99  = cubemin + ( (where(hist_sum gt 0.99))[0]+0.5 ) * binsize
-;  endif
 
   ;; Close fits file.
   self -> fitscube_finish, lun, wcs = wcs

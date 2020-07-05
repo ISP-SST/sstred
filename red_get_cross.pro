@@ -45,7 +45,7 @@ function red_get_cross, cub
 
     tmp = red_fillnan(reform(cub[*,*,ii]) / cub[*,*,0])
     me = median(tmp)
-    mask = abs(tmp-me) LE (2.0 * stdev(tmp))
+    mask = abs(tmp-me) LE (2.0 * stddev(tmp))
     idx = where(mask, count)
 
     if(count ge 1) then begin

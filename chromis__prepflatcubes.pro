@@ -190,7 +190,7 @@ pro chromis::prepflatcubes, flatdir = flatdir $
         check_fits, cub, head, /UPDATE, /SILENT  
         fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
         fxaddpar, head, 'FILENAME', file_basename(doutname[0]), after = 'DATE'
-        self -> headerinfo_addstep, head, prstep = 'Flat cubes' $
+        self -> headerinfo_addstep, head, prstep = 'CONCATENATION' $
                                     , prproc = inam, prpara = prpara
 
         ;; More things need to be added...

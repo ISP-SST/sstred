@@ -424,7 +424,7 @@ pro red::make_intdif_gains, all = all $
               red_fitsaddkeyword, hdr, 'SCANNUM', uscan[ss]
               red_fitsaddkeyword, hdr, 'LC', long(ulc[ilc]) ; Or something like this ----------------------------
 
-              self -> headerinfo_addstep, hdr, prstep = 'Gain making' $
+              self -> headerinfo_addstep, hdr, prstep = 'RECIPROCAL' $
                                           , prproc = inam, prpara = prpara
               
               red_writedata, ofile, g, header = hdr,$

@@ -322,7 +322,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             ;; Make header corresponding to the sum.
             head = red_sumheaders(fnames, discard = discard)
             self -> headerinfo_addstep, head $
-                                        , prstep = 'MOMFBD image restoration' $
+                                        , prstep = 'MOMFBD' $
                                         , prpara = prpara $
                                         , prmode = prmode $
                                         , addlib = 'momfbd/redux' 

@@ -52,23 +52,23 @@ pro red_momfbd_renormalize, mr, verbose = verbose
   ;; Iterate!
   for ip = 0, Npass-1 do begin
 
-     if keyword_set(verbose) then print,'Pass '+strtrim(string(ip), 2)
+    if keyword_set(verbose) then print,'Pass '+strtrim(string(ip), 2)
 
-     ;; Loop over all modes
-     for ii=0, (size(mr.mode, /dim))[2]-1 do begin
-        
-        ;; Calculate the RMS for mode ii:
-        modestdev = stdev((mr.mode[*,*,ii])[pupindx])
-        
-        if keyword_set(verbose) then print, 'RMS of mode '+strtrim(string(ii), 2)+': '+strtrim(string(modestdev))
-        
-        ;; Normalize modes to unit stdev:
-        mr.mode[*,*,ii] = mr.mode[*,*,ii] / modestdev
-        
-        ;; And compensate the coefficients:
-        mr.patch.alpha[ii, *] = mr.patch.alpha[ii, *] * modestdev
-        
-     endfor
+    ;; Loop over all modes
+    for ii=0, (size(mr.mode, /dim))[2]-1 do begin
+      
+      ;; Calculate the RMS for mode ii:
+      modestdev = stddev((mr.mode[*,*,ii])[pupindx])
+      
+      if keyword_set(verbose) then print, 'RMS of mode '+strtrim(string(ii), 2)+': '+strtrim(string(modestdev))
+      
+      ;; Normalize modes to unit stdev:
+      mr.mode[*,*,ii] = mr.mode[*,*,ii] / modestdev
+      
+      ;; And compensate the coefficients:
+      mr.patch.alpha[ii, *] = mr.patch.alpha[ii, *] * modestdev
+      
+    endfor
 
   endfor
 

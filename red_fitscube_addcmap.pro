@@ -130,7 +130,7 @@ pro red_fitscube_addcmap, filename, cmaps $
     red_append, hierarch_fields, list('NAME'      , 'Cavity error for '+prefilter , 'Type of correction'          )
   endelse
   red_append, hierarch_fields, list('EXTVER'      , cmap_number    , 'Extension version number'                   )
-  red_append, hierarch_fields, list('NAXES'       , 5              , '3 axes in the lookup table'                 )
+  red_append, hierarch_fields, list('NAXES'       , 5              , 'Number of axes in the extension'            )
   red_append, hierarch_fields, list('AXIS1'       , 1              , 'Spatial X'                                  )
   red_append, hierarch_fields, list('AXIS2'       , 2              , 'Spatial Y'                                  )
   red_append, hierarch_fields, list('AXIS3'       , 3              , 'Tuning'                                     )
@@ -149,7 +149,12 @@ pro red_fitscube_addcmap, filename, cmaps $
   ;; Translate the hierarch_fields to the kind of record-valued
   ;; keywords defined in the distortions paper.
   for ifield = 1, n_elements(hierarch_fields)-1 do begin ; Skip NAME, strings not allowed
-    red_append, names,    red_strreplace((hierarch_fields[ifield])[0],' ','.',n=10)
+    hfield = red_strreplace((hierarch_fields[ifield])[0],' ','.',n=10)
+    ;; Need a dot in some of the record-valued keywords.
+    if strmid(hfield, 0, 4) eq 'AXIS'   then hfield = 'AXIS.'+strmid(hfield, 4)
+    if strmid(hfield, 0, 4) eq 'SCALE'  then hfield = 'SCALE.'+strmid(hfield, 5)
+    if strmid(hfield, 0, 4) eq 'OFFSET' then hfield = 'OFFSET.'+strmid(hfield, 6)
+    red_append, names,    hfield
     red_append, values,   (hierarch_fields[ifield])[1]
     red_append, comments, (hierarch_fields[ifield])[2]
   endfor                        ; ifield

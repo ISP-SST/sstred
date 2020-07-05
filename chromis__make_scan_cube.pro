@@ -42,7 +42,7 @@
 ;
 ;       Store as integers instead of floats.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE/none
+;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
@@ -461,12 +461,12 @@ pro chromis::make_scan_cube, dir $
       if count eq 1 then begin
         red_append, prefilter_curve, prf.pref
         red_append, prefilter_wav, prf.wav
-;        red_append, prefilter_wb, prf.wbint
+        red_append, prefilter_wb, prf.wbint
       endif else begin
         me = median(prf.wav)
         red_append, prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)
         red_append, prefilter_wav, wav[idxpref]*1.d10
-;        red_append, prefilter_wb, replicate(prf.wbint, count)
+        red_append, prefilter_wb, replicate(prf.wbint, count)
       endelse
       
     endfor                      ; inbpref
@@ -535,12 +535,19 @@ pro chromis::make_scan_cube, dir $
     red_fitsaddkeyword, hdr, 'BITPIX', -32
 
     ;; Add info about this step
-    prstep = 'Prepare NB science data cube'
+    prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING'
     self -> headerinfo_addstep, hdr $
                                 , prstep = prstep $
                                 , prpara = prpara $
                                 , prproc = inam
     
+    self -> headerinfo_addstep, hdr $
+                                , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                                , prpara = prpara $
+                                , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                           , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                                , prproc = inam
+
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wbim = (red_readdata(wfiles[iscan], head = wbhdr, direction = direction))[x0:x1, y0:y1]
@@ -574,6 +581,9 @@ pro chromis::make_scan_cube, dir $
                          , scan_nbstates.tun_wavelength*1e7)
     endif
 
+;    tscl = mean(prefilter_wb)   ;/ wcTMEAN[iscan]
+;    tscl = 1.
+    
     for ituning = 0L, Ntuning - 1 do begin 
 
 ;      state = ufpi_states[ituning]
@@ -617,7 +627,7 @@ pro chromis::make_scan_cube, dir $
 
       ;; Read image, apply prefilter curve and temporal scaling
       nbim = (red_readdata(scan_nbfiles[ituning] $
-                           , direction = direction))[x0:x1, y0:y1] * rpref[ituning] 
+                           , direction = direction))[x0:x1, y0:y1] * rpref[ituning] ;* tscl
 
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
@@ -803,6 +813,11 @@ pro chromis::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'WBIMAGE', 'Wideband image'
     red_fitsaddkeyword, anchor = anchor, ehdr, 'PCOUNT', 0
     red_fitsaddkeyword, anchor = anchor, ehdr, 'GCOUNT', 1
+;    if keyword_set(norotation) then begin
+;      writefits, filename, wbim * tscl, ehdr, /append
+;    endif else begin
+;      writefits, filename, wbim_rot * tscl, ehdr, /append
+;    endelse
     if keyword_set(norotation) then begin
       writefits, filename, wbim, ehdr, /append
     endif else begin

@@ -421,7 +421,7 @@ pro red::fitgains, all = all $
         check_fits, output, head, /UPDATE, /SILENT  
         fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
         fxaddpar, head, 'FILENAME', file_basename(outnames[iwav]), after = 'DATE'
-        self -> headerinfo_addstep, head, prstep = 'Make cavity free flats' $
+        self -> headerinfo_addstep, head, prstep = 'SPECTRAL-COORDINATE-DISTORTION-CORRECTION' $
                                     , prproc = inam, prpara = prpara
 
         print, inam + ' : Saving file -> '+outnames[iwav]

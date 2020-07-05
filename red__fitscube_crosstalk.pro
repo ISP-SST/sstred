@@ -182,7 +182,7 @@ pro red::fitscube_crosstalk, filename  $
   makemask = Nmatch ne 0
   
   if makemask then begin
-    make_nb_cube_paras = prparas[pos]
+    make_nb_cube_paras = prparas[pos[0]]
     wcfile = (json_parse(make_nb_cube_paras, /tostruct)).wcfile
 
     ;; Get the rotation and alignment parameters from the wideband cube
@@ -269,7 +269,7 @@ pro red::fitscube_crosstalk, filename  $
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Crosstalk correction' $
+                              , prstep = 'STOKES-CROSSTALK-CORRECTION' $
                               , prpara = prpara $
                               , prproc = inam
 

@@ -29,10 +29,6 @@
 ; 
 ; :Keywords:
 ;
-;    coordref : in, optional, type=string
-;
-;       Add FITS header keyword COORDREF with this value.
-; 
 ;    dimensions : in, type=array
 ;   
 ;       The dimensions of the fitscube.
@@ -42,12 +38,11 @@
 ; 
 ;    2018-11-26 : MGL. First version.
 ;
-;    2020-04-30 : MGL. New keywords coordref, csyer_spatial_value,
+;    2020-04-30 : MGL. New keywords csyer_spatial_value,
 ;                 csyer_spatial_comment.
 ; 
 ;-
 pro red_fitscube_addwcsheader, hdr, wcs $
-                               , coordref = coordref $
                                , csyer_spatial_value = csyer_spatial_value $
                                , csyer_spatial_comment = csyer_spatial_comment $
                                , dimensions = dimensions
@@ -203,10 +198,6 @@ pro red_fitscube_addwcsheader, hdr, wcs $
 
   anchor = 'FILENAME'
 
-  if n_elements(coordref) ne 0 then begin
-    red_fitsaddkeyword, anchor = anchor, hdr, 'COORDREF', coordref, 'Coord system refs'
-  endif 
-  
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC1_1', 1.0, 'No rotations' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC2_2', 1.0, 'No rotations' 
   red_fitsaddkeyword, anchor = anchor, hdr, 'PC3_3', 1.0, 'No rotations' 

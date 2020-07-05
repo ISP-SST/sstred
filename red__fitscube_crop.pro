@@ -231,7 +231,7 @@ pro red::fitscube_crop, infile $
   ;; Adapt header to new FOV.
   hdr = in_hdr
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Cropping' $
+                              , prstep = 'CROPPING' $
                               , prpara = prpara $
                               , prproc = inam
 

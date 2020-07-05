@@ -34,5 +34,5 @@
 ; 
 ;-
 function red_getrms,var
-  return,stdev(var)/mean(var)
+  return, stddev(var)/mean(var)
 end

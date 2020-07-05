@@ -257,7 +257,7 @@ pro red::sumpinh, nthreads = nthreads $
       ;; Add some more info here, see SOLARNET deliverable D20.4 or
       ;; later versions of that document.
 
-      self -> headerinfo_addstep, head, prstep = 'Pinhole summing' $
+      self -> headerinfo_addstep, head, prstep = 'SUMMING' $
                                   , prproc = inam, prpara = prpara
 
       file_mkdir, file_dirname(pinhname)

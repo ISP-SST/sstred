@@ -44,7 +44,7 @@
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
 ;       keywords to preserve the intensity scaling.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default=FALSE
+;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
@@ -76,10 +76,6 @@
 ;       Do not calculate statistics metadata to put in header keywords
 ;       DATA*. 
 ;
-;     notimecor : in, optional, type=boolean
-;
-;       Skip temporal correction of intensities.
-;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
@@ -100,10 +96,6 @@
 ;       'momfbd' to smooth subfield by subfield using the PSFs
 ;       estimated by momfbd. Set to a number to smooth by a Gaussian
 ;       kernel of that width. 
-;
-;     verbose : in, optional, type=boolean
-;
-;       Some extra screen output.
 ;
 ;     wbsave : in, optional, type=boolean
 ;
@@ -155,6 +147,9 @@
 ;    2020-02-18 : MGL. Remove CHROMIS keyword noaligncont.
 ; 
 ;    2020-03-11 : MGL. Apply rotate() with direction from WB cube. 
+; 
+;    2020-06-16 : MGL. Remove temporal intensity scaling, deprecate
+;                 keyword notimecorr.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -177,19 +172,24 @@ pro crisp::make_nb_cube, wcfile $
                          , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
-                         , verbose = verbose $
                          , wbsave = wbsave
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  ;; Deprecated keyword:
+  if n_elements(notimecor) gt 0 then begin
+    print, inam + ' : Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
+    return
+  endif
+  
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, intensitycorrmethod  
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, nocavitymap 
-  red_make_prpara, prpara, notimecor 
+;  red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, smooth
@@ -236,7 +236,7 @@ pro crisp::make_nb_cube, wcfile $
   if keyword_set(redemodulate) then overwrite = 1
 
   ;; Camera/detector identification
-  self->getdetectors
+  self -> getdetectors
   wbindx      = where(strmatch(*self.cameras,'Crisp-W'))
   wbcamera    = (*self.cameras)[wbindx[0]]
   wbdetector  = (*self.detectors)[wbindx[0]]
@@ -465,11 +465,11 @@ pro crisp::make_nb_cube, wcfile $
 
   ;; Scaling parameter with respect to mean wb intensity (mainly
   ;; varying elevation)
-  if keyword_set(notimecor) then begin
-    tscl = replicate(1., Nscans)
-  endif else begin
-    tscl = mean(nbt_prefilter_wb) / wcTMEAN
-  endelse
+;  if keyword_set(notimecor) then begin
+;    tscl = replicate(1., Nscans)
+;  endif else begin
+;    tscl = mean(nbt_prefilter_wb) * mean(wcTMEAN) / wcTMEAN
+;  endelse
 
   ;; Load WB image and define the image border
 ;  tmp = red_readdata(wbgfiles[0])
@@ -826,8 +826,15 @@ pro crisp::make_nb_cube, wcfile $
     
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'Prepare NB science data cube' $
+                              , prstep = 'CONCATENATE' $
                               , prpara = prpara $
+                              , prproc = inam
+
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                              , prpara = prpara $
+                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
                               , prproc = inam
 
   anchor = 'DATE'
@@ -930,7 +937,7 @@ pro crisp::make_nb_cube, wcfile $
         for istokes = 0, Nstokes-1 do begin
           nbim[0, 0, istokes] = rotate(tmp[*, *, 0, istokes], direction)
         endfor                  ; istokes
-        nbim = reform(nbim[x0:x1, y0:y1, *]) * tscl[iscan]
+        nbim = reform(nbim[x0:x1, y0:y1, *]) ;* tscl[iscan]
 
         ;; The Stokes cube is already wbcorrected so we should not
         ;; repeat that here.
@@ -1081,7 +1088,7 @@ pro crisp::make_nb_cube, wcfile $
 
           if keyword_set(wbsave) then begin
             ;; Same operations as on narrowband image.
-            this_im = wwi * tscl[iscan] 
+            this_im = wwi       ;* tscl[iscan] 
             if wbcor then begin
               this_im = red_stretch(temporary(this_im), grid1)
             endif
@@ -1089,8 +1096,9 @@ pro crisp::make_nb_cube, wcfile $
           endif 
             
         endfor
-        nbim *= tscl[iscan] / Nim
-
+        ;;nbim *= tscl[iscan] / Nim
+        nbim /= Nim
+        if keyword_set(wbsave) then wbim /= Nim
       endelse
       
 ;      red_show,wb,w=0
@@ -1186,10 +1194,6 @@ pro crisp::make_nb_cube, wcfile $
         endfor                  ; ww
       endif
     endif 
-    
-    if(keyword_set(verbose)) then begin
-      print, inam +'scan=',iscan,', max=', max(d1)            
-    endif
     
   endfor                        ; iscan
 

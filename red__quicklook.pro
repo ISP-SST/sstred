@@ -199,7 +199,9 @@ pro red::quicklook, align = align $
                     , video_codec = video_codec $
                     , video_fps = video_fps $
                     , x_flip = x_flip $
-                    , y_flip = y_flip 
+                    , y_flip = y_flip $
+                    , min_nscan = min_nscan $
+                    , cube_save = cube_save
   
   inam = red_subprogram(/low, calling = inam1)
 
@@ -353,7 +355,7 @@ pro red::quicklook, align = align $
       if n_elements(use_pat) gt 0 then begin
 
         ;; use_pat constructed from use_states above
-        files = red_file_search(use_pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
+        files = red_file_search(use_pat, dirs[iset] + '/' + cam, count = Nfiles)
 
       endif else begin
 
@@ -374,7 +376,7 @@ pro red::quicklook, align = align $
               ;; wavelength order so we just have to pick the first and
               ;; last states for each prefilter.
               red_append, pat, ustat_pat[sindx[0]]
-              red_append, pat, ustat_pat[sindx[-1]]
+;              red_append, pat, ustat_pat[sindx[-1]]
               ;; Find and select the core.
               imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
               if Nmatch gt 0 then red_append, pat, ustat_pat[sindx[imatch]]
@@ -383,7 +385,7 @@ pro red::quicklook, align = align $
 
           pat = '*'+pat+'*'
           
-          files = red_file_search(pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
+          files = red_file_search(pat, dirs[iset] + '/' + cam, count = Nfiles)
 
         endif else begin        
 
@@ -427,7 +429,7 @@ pro red::quicklook, align = align $
             ;; wavelength order so we just have to pick the first and
             ;; last states for each prefilter.
             red_append, ustat2, ustat[sindx[ 0]]
-            red_append, ustat2, ustat[sindx[-1]]
+            ;red_append, ustat2, ustat[sindx[-1]]
             ;; Find and select the core.
             imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
             if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
@@ -440,11 +442,15 @@ pro red::quicklook, align = align $
         ;; file name states are.
         for istate = 0, n_elements(ustat2)-1 do begin
           imatch = where(ustat2[istate] eq states0.fullstate, Nmatch)
-          if Nmatch ge 1 then ustat2[istate] = states0[imatch[0]].fpi_state
+          if Nmatch ge 1 then begin ;ustat2[istate] = states0[imatch[0]].fpi_state
+            fn = states0[imatch[0]].filename
+            prts = strsplit(fn,'_',/extract)
+            ustat2[istate] = prts[-2] + '_' + prts[-1]
+          endif
         endfor                  ; istate
         
-        pat = '*_'+ustat2+'.fits'
-        files = red_file_search(pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
+        pat = '*_'+ustat2 ;+'.fits'
+        files = red_file_search(pat, dirs[iset] + '/' + cam, count = Nfiles)
 
       endif else begin
 ;        files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
@@ -459,6 +465,15 @@ pro red::quicklook, align = align $
     endif
     
     self -> extractstates, files, states
+    nsc = max(states.scannumber)
+    if nsc lt min_nscan then begin
+      fn = states[0].filename
+      date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
+      timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
+      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' ; (less then 8 scans).'
+      print,"We do not want to bother with short datasets. Skipping it."
+      continue
+    endif
 
     if ~keyword_set(no_plot_r0) then begin
 
@@ -491,7 +506,7 @@ pro red::quicklook, align = align $
           ;; wavelength order so we just have to pick the first and
           ;; last states for each prefilter.
           red_append, ustat2, ustat[sindx[ 0]]
-          red_append, ustat2, ustat[sindx[-1]]
+          ;red_append, ustat2, ustat[sindx[-1]]
           ;; Find and select the core.
           imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
           if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
@@ -582,7 +597,11 @@ pro red::quicklook, align = align $
       namout += '_' + pref $
                 + '_' + states[sel[0]].tuning
       if keyword_set(neuralnet) then namout += '_NN' 
-      if keyword_set(mtf_deconvolve) then namout += '_MTF' 
+      if keyword_set(mtf_deconvolve) then namout += '_MTF'
+      if keyword_set(cube_save) then begin
+         cubnam = namout +  '.fits'
+         contrastnam = namout + '_contrast.fits'
+      endif
       namout += '.' + extension
 
       if ~keyword_set(overwrite) && file_test(outdir+namout) then continue
@@ -898,7 +917,8 @@ pro red::quicklook, align = align $
         ;; Measure image shifts
         shifts = red_aligncube(cube, 5, /center $ ;, cubic = -0.5 $
                                , xbd = round(dim[0]*.9) $
-                               , ybd = round(dim[1]*.9) )
+                               , ybd = round(dim[1]*.9) $
+                               , /no_display)
 
         if Nscans gt 3 then begin
           ;; Outliers?
@@ -985,6 +1005,10 @@ pro red::quicklook, align = align $
 
       endfor                    ; iscan
 
+      if keyword_set(cube_save) then begin
+        writefits,outdir+cubnam,cube
+        writefits, outdir+contrastnam, best_contrasts
+      endif
       set_plot,'X'
       
       ;; We could write metadata to the video file with the
