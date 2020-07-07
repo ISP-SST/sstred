@@ -58,6 +58,11 @@
 ;       Do not correct the (polarimetric) data cube Stokes components
 ;       for crosstalk from I to Q, U, V.
 ;
+;    nomissing_nans : in, optional, type=boolean 
+;
+;      Do not set missing-data padding to NaN. (Set it to the median of
+;      each frame instead.)
+;
 ;     nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
@@ -160,6 +165,7 @@ pro crisp::make_nb_cube, wcfile $
                          , nocavitymap = nocavitymap $
                          , nocrosstalk = nocrosstalk $
                          , noflipping = noflipping $
+                         , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , noremove_periodic = noremove_periodic $
                          , nostatistics = nostatistics $
@@ -189,6 +195,7 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, intensitycorrmethod  
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, nocavitymap 
+  red_make_prpara, prpara, nomissing_nans
 ;  red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
@@ -580,9 +587,12 @@ pro crisp::make_nb_cube, wcfile $
   endif
   
   ;; Make FITS header for the NB cube
-  hdr = wchead                      ; Start with the WB cube header
-  red_fitsdelkeyword, hdr, 'STATE' ; Not a single state for cube 
-  
+  hdr = wchead                                                ; Start with the WB cube header
+  red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
+  self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
+  red_fitsdelkeyword, hdr, 'STATE'                            ; Not a single state for cube 
+  red_fitsaddkeyword, hdr, 'BITPIX', -32                      ; Floats
+
   
   if makestokes then begin
 
@@ -811,7 +821,7 @@ pro crisp::make_nb_cube, wcfile $
 
     
     hh = red_readhead(snames[0, 0])
-    self -> headerinfo_copystep, hdr, hh, /last
+    self -> headerinfo_copystep, hdr, hh, prstep = 'DEMODULATION'
 
     ;; At some point we also need to examine all the stokes cubes and
     ;; make sure they are done using the same parameters. Or else
@@ -822,11 +832,9 @@ pro crisp::make_nb_cube, wcfile $
 
   
   
-  red_fitsaddkeyword, hdr, 'BITPIX', -32
-    
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'CONCATENATE' $
+                              , prstep = 'CONCATENATION' $
                               , prpara = prpara $
                               , prproc = inam
 
@@ -1269,21 +1277,27 @@ pro crisp::make_nb_cube, wcfile $
     self -> fitscube_crosstalk, filename, /nostatistics ;, nostatistics = nostatistics 
 
   endif                         ;else
-  if ~keyword_set(nostatistics) then begin
 
-    ;; Calculate statistics if not done already
-    
-;    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
-    red_fitscube_statistics, filename, /write $
-                             , angles = ang $
-                             , full = wcFF $
-                             , grid = wcGRID $
-                             , origNx = origNx $
-                             , origNy = origNy $
-;                             , percentiles = percentiles $
-                             , shifts = wcSHIFT 
-
-  endif
+  if keyword_set(nomissing_nans) then begin
+    ;; Calculate statistics if wanted
+    if ~keyword_set(nostatistics) then begin
+      ;; Calculate statistics if not done already
+      red_fitscube_statistics, filename, /write $
+                               , angles = ang $
+                               , full = wcFF $
+                               , grid = wcGRID $
+                               , origNx = origNx $
+                               , origNy = origNy $
+                               , shifts = wcSHIFT 
+    endif
+  endif else begin
+    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
+    ;; (optionally) calculated during this step.
+    self -> fitscube_missing, filename $
+                              , /noflip $
+                              , missing_type = 'nan' $
+                              , nostatistics = nostatistics
+  endelse
   
   if keyword_set(integer) then begin
     self -> fitscube_integer, filename $

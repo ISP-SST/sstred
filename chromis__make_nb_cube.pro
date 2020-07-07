@@ -57,6 +57,11 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
+;    nomissing_nans : in, optional, type=boolean 
+;
+;      Do not set missing-data padding to NaN. (Set it to the median of
+;      each frame instead.)
+;
 ;     nostatistics : in, optional, type=boolean
 ;  
 ;       Do not calculate statistics metadata to put in header keywords
@@ -118,6 +123,7 @@ pro chromis::make_nb_cube, wcfile $
                            , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , noflipping = noflipping $
+                           , nomissing_nans = nomissing_nans $
                            , nostatistics = nostatistics $
                            , notimecor = notimecor $
                            , odir = odir $
@@ -142,6 +148,7 @@ pro chromis::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
+  red_make_prpara, prpara, nomissing_nans
 ;  red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, overwrite
@@ -345,70 +352,12 @@ pro chromis::make_nb_cube, wcfile $
   Ny = wcND[1]
   
   ;; Make FITS header for the NB cube
-  hdr = wchead                  ; Start with the WB cube header
+  hdr = wchead                                                ; Start with the WB cube header
+  red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
+  self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
+  red_fitsdelkeyword, hdr, 'STATE'                            ; Not a single state for cube 
+  red_fitsaddkeyword, hdr, 'BITPIX', -32                      ; Floats
 
-;  if keyword_set(integer) then begin
-;
-;    ;; We need to find out BZERO and BSCALE. For now we have to read
-;    ;; through all data in the cube. If the momfbd output files could
-;    ;; store min and max values in the future, this would be quicker.
-;    iprogress = 0
-;    Nprogress = Nscans*Nwav
-;
-;    for iscan = 0L, Nscans-1 do begin
-;
-;      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-;                           , cam = nbcamera, scan = uscans[iscan] $
-;                           , sel = scan_nbindx, count = count
-;      scan_nbfiles = pertuningfiles[scan_nbindx]
-;
-;      if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
-;
-;      for iwav = 0L, Nwav - 1 do begin
-;
-;        red_progressbar, iprogress, Nprogress $
-;                         , /predict $
-;                         , 'Calculating BZERO and BSCALE' 
-;  
-;        mr = momfbd_read(scan_nbfiles[iwav], /img)
-;
-;        ;; Min and max after scaling to units in file
-;        datamax_thisfile = max(mr.patch.img * rpref[iwav] * tscl, min = datamin_thisfile)
-;
-;        ;; Global min and max
-;        if iscan eq 0 and iwav eq 0 then begin
-;          datamin = datamin_thisfile
-;          datamax = datamax_thisfile
-;        endif else begin
-;          datamin <= datamin_thisfile
-;          datamax >= datamax_thisfile
-;        endelse
-;
-;        iprogress++
-;        
-;      endfor                    ; iwav
-;    endfor                      ; iscan
-;
-;    ;; Approximate min and max values after scaling to 2-byte
-;    ;; integers. Don't use -32768 and 32767, want to leave some margin
-;    ;; for altered physical values due to resampling (most likely to
-;    ;; lower abs values, but still...).
-;    arraymin = -32000.
-;    arraymax =  32000.
-;
-;    ;; BZERO and BSCALE
-;    bscale = (datamax-datamin)/(arraymax-arraymin)
-;    bzero = datamin - arraymin*bscale
-;    
-;    ;; Set keywords for rescaled integers
-;    red_fitsaddkeyword, hdr, 'BITPIX', 16
-;    red_fitsaddkeyword, hdr, 'BZERO', bzero
-;    red_fitsaddkeyword, hdr, 'BSCALE', bscale
-;    
-;  endif else begin
-  ;; If not rescaled integers, we just need to set BITPIX for floats
-  red_fitsaddkeyword, hdr, 'BITPIX', -32
-;  endelse
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
@@ -975,18 +924,27 @@ pro chromis::make_nb_cube, wcfile $
     filename = outname
   endif
 
-  if ~keyword_set(nostatistics) then begin
-    ;; Calculate statistics 
-;    red_fitscube_statistics, filename, /write 
-    red_fitscube_statistics, filename, /write $
-                             , angles = ang $
-                             , full = wcFF $
-                             , grid = wcGRID $
-                             , origNx = origNx $
-                             , origNy = origNy $
-;                             , percentiles = percentiles $
-                             , shifts = wcSHIFT 
-  endif
+  if keyword_set(nomissing_nans) then begin
+    ;; Calculate statistics if wanted
+    if ~keyword_set(nostatistics) then begin
+      ;; Calculate statistics if not done already
+      red_fitscube_statistics, filename, /write $
+                               , angles = ang $
+                               , full = wcFF $
+                               , grid = wcGRID $
+                               , origNx = origNx $
+                               , origNy = origNy $
+                               , shifts = wcSHIFT 
+    endif
+  endif else begin
+    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
+    ;; (optionally) calculated during this step.
+    self -> fitscube_missing, filename $
+                              , /noflip $
+                              , missing_type = 'nan' $
+                              , nostatistics = nostatistics
+  endelse
+
 
   if ~keyword_set(noflipping) then $
      red_fitscube_flip, filename, flipfile = flipfile $
