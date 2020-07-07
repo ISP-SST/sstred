@@ -66,10 +66,10 @@ pro red::headerinfo_copystep, hdr, oldhdr $
                               , prstep = prstep 
 
   ;; Existing steps
-  prsteps_existing = fxpar(hdr,'PRSTEP*', count = Nexisting)
+  prsteps_existing = strtrim(fxpar(hdr,'PRSTEP*', count = Nexisting), 2)
   
   ;; Available steps
-  prsteps_available = fxpar(oldhdr,'PRSTEP*', count = Navailable)
+  prsteps_available = strtrim(fxpar(oldhdr,'PRSTEP*', count = Navailable), 2)
 
   ;; Any steps to copy?
   if Navailable eq 0 then return
@@ -96,24 +96,24 @@ pro red::headerinfo_copystep, hdr, oldhdr $
     keywrd = strmid(oldhdr, 0, 8)
     iend = n_elements(keywrd)
     for ikey = 0, n_elements(prkeys)-1 do begin
-      foreach letter, ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
-        name = prkeys[ikey]+strtrim(stepnums[istep], 2)+letter
-        thispos = fxparpos(keywrd, iend, before = name)
-        
-        if thispos eq iend then break
-        if thispos gt pos then begin
-          pos = thispos
-          anchor = name
-        endif
-      end
+      for istep = 0, n_elements(stepnums)-1 do begin
+        foreach letter, ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
+          name = prkeys[ikey]+strtrim(stepnums[istep], 2)+letter
+          thispos = fxparpos(keywrd, iend, before = name)
+          
+          if thispos eq iend then break
+          if thispos gt pos then begin
+            pos = thispos
+            anchor = name
+          endif
+        end
+      endfor                    ; istep
     endfor                      ; ikey
     
   endif else begin
     anchor = 'OBS_HDU'          ;'SOLARNET'
   endelse
 
-  stop
-  
   for istep = 0, n_elements(stepnums)-1 do begin
     inew++                      ; Step number to add to new header
     for ikey = 0, n_elements(prkeys)-1 do begin
