@@ -33,7 +33,7 @@
 ;   missing_type  : in, optional, type=string, default='opposite'
 ;
 ;     What value to set missing-data pixels to. One of 'nan' and
-;     'median' (of each frame). Byt default, set it to the opposite of
+;     'median' (of each frame). By default, set it to the opposite of
 ;     what it appears to be in the input cube.
 ;
 ;   noflip  : in, optional, type=boolean
