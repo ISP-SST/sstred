@@ -147,10 +147,11 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               end
               'IMAGE_NUMS'      : begin
                 ;; These are actually file numbers, several frames in each file.
-                file_nums = red_expandrange(cfgsplit[1]) 
-                red_make_prpara, Gprpara, paraname = cfgsplit[0], file_nums
+                file_nums = red_expandrange(cfgsplit[1]) ; Needed further down
+                red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
               end
-              'MODES' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+              ;;'MODES' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
+              'MODES' : red_make_prpara, Gprpara, paraname = cfgsplit[0], cfgsplit[1]
               'SIM_X' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
               'SIM_Y' : red_make_prpara, Gprpara, paraname = cfgsplit[0], red_expandrange(cfgsplit[1])
               ;; Ignored config lines:
@@ -215,7 +216,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
             
             ;; Channels
-            if Nchan gt 0 then prmode = 'Phase Diversity' else prmode = ''
+            if Nchan gt 1 and ~keyword_set(no_pd) then prmode = 'Phase Diversity' else undefine, prmode 
 
 ;;            for ichan = Nchan-1, 0, -1 do begin
             begin
