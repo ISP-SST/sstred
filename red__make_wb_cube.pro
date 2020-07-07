@@ -645,17 +645,19 @@ pro red::make_wb_cube, dir $
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
-  if keyword_set(nomissing_nans) then begin
-    ;; Calculate statistics
-    red_fitscube_statistics, odir + ofil, /write, full = ff $
-                             , origNx = origNx $
-                             , origNy = origNy $
-                             , angles = ang
-  endif else begin
-    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
-    ;; calculated during this step.
-    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
-  endelse
+  if ~keyword_set(nomissing_nans) then begin
+    ;; Set padding pixels to missing-data, i.e., NaN. Statistics not
+    ;; calculated during this step due to integers ==> NaN becomes 0,
+    ;; so we need the mask. (Should probably change the WB integer
+    ;; cube to BZERO/BSCALE integers.)
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan', /nostatistics
+  endif
+
+  ;; Calculate statistics
+  red_fitscube_statistics, odir + ofil, /write, full = ff $
+                           , origNx = origNx $
+                           , origNy = origNy $
+                           , angles = ang
 
   
   print, inam + ' : Add calibration data to file '+odir + ofil
