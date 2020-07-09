@@ -99,7 +99,7 @@ pro chromis::fitprefilter, dir = dir $
                            , mask = mask $
                            , noabsunits = noabsunits $
                            , scan = scan $
-                           , useflats = useflats
+                           , useflats = useflats $
                            , pref = pref $
                            , time = time 
 

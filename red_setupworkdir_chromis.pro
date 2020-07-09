@@ -213,7 +213,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif                         ; Nsubdirs
 
 
-  if Nflatdirs eq 0 or ~keyword_set(old_dir) then begin
+  if Nflatdirs eq 0 and ~keyword_set(old_dir) then begin
     print, 'No CHROMIS flats were found. Stop after summing darks.'
     free_lun, Clun
     free_lun, Slun
