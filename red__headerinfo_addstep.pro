@@ -79,17 +79,31 @@
 pro red::headerinfo_addstep, header $
                              , addlib = addlib $
                              , anchor = anchor $
-                             , comment_prref = comment_prref $ 
+                             , comment_prref = comment_prref_in $ 
                              , level = level $
                              , prmode = prmode $
                              , prpara = prpara $
                              , prproc = prproc $
                              , prref = prref $
-                             , prstep = prstep $
+                             , prstep = prstep_in $
                              , version = version
   
   if n_elements(header) eq 0 then mkhdr, header, 0
-
+  
+  if n_elements(prref_in) gt 0 then begin
+    prref = prref_in
+    if n_elements(comment_prref_in) eq n_elements(prref_in) then begin
+      ;; # of comments match --> use them
+      comment_prref = comment_prref_in
+    endif else begin
+      ;; # of comments does not match --> make empty comments
+      comment_prref = replicate('', n_elements(prref_in))
+    endelse
+  endif
+  ;; Add date to the PRREF list
+  red_append, prref, 'DATE: ' + red_timestamp(/iso)
+  red_append, comment_prref, 'When this step was performed'
+  
   ;; Existing steps
   prsteps_existing = fxpar(header,'PRSTEP*')
   Nexisting = n_elements(prsteps_existing)
