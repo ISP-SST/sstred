@@ -128,7 +128,7 @@ pro crisp_rawfile2db, dbinfo, config, debug=debug
   filt_in = uniq(dbinfo[scan0].FILTER1, sort(dbinfo[scan0].FILTER1))
   query = 'INSERT INTO filters (filter1, wavemax, wavemin, wavelnth, waveunit) VALUES ' ;
   ;; if it is darks then skip
-  if dbinfo[filt_in[0]].filter1 ne '0' then begin
+  if dbinfo[filt_in[0]].wavemax ne 0. then begin
     for ifilt = 0, n_elements(filt_in)-1 do begin
       fin = filt_in[ifilt]
       query += '(' + dbinfo[fin].FILTER1 + $

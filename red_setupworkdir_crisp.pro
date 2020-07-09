@@ -175,6 +175,10 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       direction = 6             ; Confirmed by comparison with HMI data.
       rotation = -41.0          ; Confirmed by comparison with HMI data.
     end
+    '2020' :  begin
+      direction = 6             ; Confirmed by comparison with HMI data.
+      rotation = -41.0          ; Confirmed by comparison with HMI data.
+    end
     else :                      ; No direction and rotation settings for unknown years
   endcase
   if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)

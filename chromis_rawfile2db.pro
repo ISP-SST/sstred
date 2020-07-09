@@ -168,7 +168,7 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
   ;; distinguish similar ones. May be it will change...
   filt_in = uniq(dbinfo[scan0].FILTER1, sort(dbinfo[scan0].FILTER1))
   ;; if it is darks then skip
-  if dbinfo[filt_in[0]].filter1 ne '0' then begin
+  if dbinfo[filt_in[0]].WAVEMAX ne 0. then begin
     query = 'INSERT INTO filters (filter1, wavemax, wavemin, wavelnth, waveunit) VALUES ' ;
     for ifilt = 0, n_elements(filt_in)-1 do begin
       fin = filt_in[ifilt]
@@ -192,7 +192,7 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
     gain = config[iconf,1]
     query = 'INSERT INTO configs (sets_id, camera, detgain, xposure, naxis1, naxis2, naxis3, bitpix, cadavg, ' + $
             'detoffs, detectors_id, dir_templt_id, fnm_templt_id) VALUES (' + set_id + ', "' + $
-            dbinfo[jj].CAMERA + '", ' + strtrim(string(gain),2) + ', ' + strtrim(string(xpos),2)+ ', ' + $
+            dbinfo[0].CAMERA + '", ' + strtrim(string(gain),2) + ', ' + strtrim(string(xpos),2)+ ', ' + $
             strtrim(string(dbinfo[0].NAXIS1),2) + ', ' + strtrim(string(dbinfo[0].NAXIS2),2) + ', ' + $
             strtrim(string(dbinfo[0].NAXIS3),2) + ', ' + strtrim(string(dbinfo[0].BITPIX),2) + ', ' + $
             strtrim(string(dbinfo[0].CADAVG),2) + ', ' + strtrim(string(dbinfo[0].DETOFFS),2) + ', ' + $
