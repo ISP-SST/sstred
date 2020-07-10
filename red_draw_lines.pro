@@ -112,8 +112,8 @@ pro red_draw_lines, x, y $
     end
 
     else : begin
-      x_draw = xx
-      y_draw = yy
+      x_draw = x
+      y_draw = y
     end
     
   endcase
