@@ -87,7 +87,7 @@ pro red::headerinfo_addstep, header $
                              , prref = prref $
                              , prstep = prstep_in $
                              , version = version
-  
+
   if n_elements(header) eq 0 then mkhdr, header, 0
   
   if n_elements(prref_in) gt 0 then begin
@@ -123,7 +123,7 @@ pro red::headerinfo_addstep, header $
     tmp = fxpar(header, 'PRSTEP'+stp, count = count)
   endrep until count eq 0
 
-  if n_elements(prstep) eq 0 then prstep = 'Unknown'
+  if n_elements(prstep_in) eq 0 then prstep = 'Unknown' else prstep = prstep_in
   red_fitsaddkeyword, header, 'PRSTEP'+stp, prstep, 'Processing step name', anchor = anchor
 
   ;; Procedure name
@@ -131,7 +131,7 @@ pro red::headerinfo_addstep, header $
     key = 'PRPROC'+stp
     red_fitsaddkeyword, header, key, prproc, 'Name of procedure used', anchor = anchor
   endif
-
+  
   ;; Add headers with library names and versions. (Bug: Should be
   ;; listed in the order they appear in the path!)
   red_headerinfo_addlib, header, 'SSTRED', self.version_pipeline, prbranch = self.version_pipeline_branch
