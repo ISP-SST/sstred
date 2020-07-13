@@ -152,10 +152,11 @@ pro red_fitscube_correct_prstep, filename $
             fxaddpar, header, 'PRMODE'+strtrim(istep+1, 2), prmodes[istep], strtrim(prmode_comments[istep], 2)
           endif
         endif
-        
-        else :
-        
-      end
+
+      end 
+
+      else :
+
     endcase
 
     if keyword_set(verbose) then begin
