@@ -32,6 +32,28 @@
 ;      upcased and checked against a list of SOLARNET-approved
 ;      keywords.
 ;
+;    no_write : in, optional, type=boolean
+;
+;      Don't write the new header(s). Combine with keywords header,
+;      old_header, spectral_header, and old_spectral_header to check
+;      what changes would be done.
+;    
+;    header : out, optional, type=strarr
+;
+;      The new header.    
+;    
+;    old_header : out, optional, type=strarr
+;    
+;      The old header.    
+;    
+;    spectral_header : out, optional, type=strarr
+;    
+;      The new header of the spectral file.    
+;    
+;    old_spectral_header : out, optional, type=strarr
+;
+;      The old header of the spectral file.    
+;
 ;    no_checksum : in, optional, type=boolean
 ;
 ;      Do not calculate DATASUM and CHECKSUM.
@@ -66,12 +88,20 @@
 ; 
 ;   2020-07-06 : MGL. Split from red::fitscube_export.
 ; 
+;   2020-07-13 : MGL. New keywords no_write, header, old_header,
+;                spectral_header, old_spectral_header.
+; 
 ;-
 pro red::fitscube_finalize, filename $
+                            , header = hdr $
+                            , old_header = oldhdr $
+                            , spectral_header = sphdr $
+                            , old_spectral_header = oldsphdr $
                             , help = help $
                             , keywords = keywords $
-                            , no_spectral_file = no_spectral_file $
                             , no_checksum = no_checksum $
+                            , no_spectral_file = no_spectral_file $
+                            , no_write = no_write $
                             , release_date = RELEASE $
                             , release_comment = RELEASEC
   
@@ -136,6 +166,9 @@ pro red::fitscube_finalize, filename $
       print, st
     endfor
     print
+    print, 'You can add/change them by specifying them with a struct like this:'
+    print, 'a -> fitscube_finalize, filename, keywords={REQUESTR:"Sonny Ray", PROJECT:"Spots at disk center"}'
+    print
     return
   endif
 
@@ -145,8 +178,9 @@ pro red::fitscube_finalize, filename $
   indir  = file_dirname(filename)+'/'
   infile = file_basename(filename)
 
-;  hdr = red_readhead(filename)
-
+  ;; To compare with new header later?
+  oldhdr = red_readhead(filename)
+  
   ;; Read header and fix PRSTEP info 
   red_fitscube_correct_prstep, filename, header = hdr, /nowrite
 
@@ -162,6 +196,7 @@ pro red::fitscube_finalize, filename $
   red_fitsdelkeyword, hdr, 'STATE'
 
   ;; Add keywords after this one:
+  red_fitsaddkeyword, anchor = 'EXTNAME', hdr, 'TIMESYS', "UTC"
   anchor = 'TIMESYS'
 
   ;; Update the DATE keyword
@@ -182,12 +217,13 @@ pro red::fitscube_finalize, filename $
   ;; Proprietary data?
   if n_elements(RELEASE) eq 0 then begin
     s = ''
-    print, inam + ' : No release date given. Continue without? [Y]'
+    print, inam + ' : No release date given. Mark as "Not proprietary"? [Yn]'
     read, s
     if s eq '' then s = 'Y'
-    if strupcase(strmid(s, 0, 1)) ne 'Y' then return
-    RELEASE = ''
-    RELEASEC = 'Data is not proprietary.'
+    if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
+      RELEASE = ''
+      RELEASEC = 'Data is not proprietary.'
+    endif
   endif else begin
     ;; Check that RELEASE is a proper date
     if ~(strmatch(RELEASE,'[12][90][0-9][0-9]-[012][0-9]-[0123][0-9]') $
@@ -195,15 +231,16 @@ pro red::fitscube_finalize, filename $
       print, inam + ' : Release date is not a proper ISO date: '+RELEASE
       return
     endif
-
   endelse
-  ;; Proprietary data
-  if n_elements(RELEASEC) eq 0 then begin
-    releasec = 'Proprietary data, se RELEASE keyword for release date.'
+  if n_elements(RELEASE) gt 0 then begin
+    ;; Proprietary data
+    if n_elements(RELEASEC) eq 0 then begin
+      releasec = 'Proprietary data, se RELEASE keyword for release date.'
+    endif
+    red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASE',  RELEASE
+    red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASEC', RELEASEC
   endif
-  red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASE',  RELEASE
-  red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASEC', RELEASEC
-
+  
 
 
   ;; Add FITS keywords with info available in the file but not as
@@ -230,7 +267,7 @@ pro red::fitscube_finalize, filename $
 
   
   ;; After this, this FITS file should be SOLARNET compliant
-  red_fitsaddkeyword, hdr, 'SOLARNET', 1, 'SOLARNET compliant file'
+  red_fitsaddkeyword, anchor = 'DATE', hdr, 'SOLARNET', 1, 'SOLARNET compliant file'
 
   ;; Add header info about this step
   prstep = 'HEADER-CORRECTION'
@@ -241,14 +278,15 @@ pro red::fitscube_finalize, filename $
 
   if do_spectral then begin
     ;; Change some keywords in the spectral file
-;    sphdr = headfits(indir+spfile)
+    oldsphdr = headfits(indir+spfile)
     ;; Read header and fix PRSTEP info 
     red_fitscube_correct_prstep, indir+spfile, header = sphdr, /nowrite
     ;; Delete header keywords that should not be there
     red_fitsdelkeyword, sphdr, 'STATE'
     ;; After this, this FITS file should be SOLARNET compliant
-    red_fitsaddkeyword, sphdr, 'SOLARNET', 1, 'SOLARNET compliant file'
+    red_fitsaddkeyword, anchor = 'DATE', sphdr, 'SOLARNET', 1, 'SOLARNET compliant file'
     ;; Add keywords after this one:
+    red_fitsaddkeyword, anchor = 'EXTNAME', sphdr, 'TIMESYS', "UTC"
     spanchor = 'TIMESYS'
     self -> headerinfo_addstep, sphdr $
                                 , prstep = prstep $
@@ -285,7 +323,6 @@ pro red::fitscube_finalize, filename $
 
     red_fitsaddkeyword, anchor = anchor, hdr, 'DATASUM', datasum
     fits_add_checksum, hdr
-    red_fitscube_newheader, filename, hdr
 
     if do_spectral then begin
       red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATASUM', datasum
@@ -293,11 +330,14 @@ pro red::fitscube_finalize, filename $
     endif
   endif
 
-  if do_spectral then begin
-    ;; Write the new header to the spectral file
-    red_fitscube_newheader, indir+spfile, sphdr
+  if ~keyword_set(no_write) then begin
+    red_fitscube_newheader, filename, hdr
+    if do_spectral then begin
+      ;; Write the new header to the spectral file
+      red_fitscube_newheader, indir+spfile, sphdr
+    endif
   endif
-
+  
 end
 
 ;; Code for testing. Test only with smaller cubes because we have to
