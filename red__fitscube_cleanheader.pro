@@ -67,13 +67,13 @@
 ;   2020-07-06 : MGL. Split from red::fitscube_export.
 ; 
 ;-
-pro red::fitscube_cleanheader, filename $
-                               , help = help $
-                               , keywords = keywords $
-                               , no_spectral_file = no_spectral_file $
-                               , no_checksum = no_checksum $
-                               , release_date = RELEASE $
-                               , release_comment = RELEASEC
+pro red::fitscube_finalize, filename $
+                            , help = help $
+                            , keywords = keywords $
+                            , no_spectral_file = no_spectral_file $
+                            , no_checksum = no_checksum $
+                            , release_date = RELEASE $
+                            , release_comment = RELEASEC
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -148,7 +148,7 @@ pro red::fitscube_cleanheader, filename $
 ;  hdr = red_readhead(filename)
 
   ;; Read header and fix PRSTEP info 
-  red_fitscube_correct_prstep, filename, header = hdr
+  red_fitscube_correct_prstep, filename, header = hdr, /nowrite
 
   ;; Any spectral file to copy?
   if keyword_set(no_spectral_file) then begin
@@ -243,7 +243,7 @@ pro red::fitscube_cleanheader, filename $
     ;; Change some keywords in the spectral file
 ;    sphdr = headfits(indir+spfile)
     ;; Read header and fix PRSTEP info 
-    red_fitscube_correct_prstep, indir+spfile, header = sphdr
+    red_fitscube_correct_prstep, indir+spfile, header = sphdr, /nowrite
     ;; Delete header keywords that should not be there
     red_fitsdelkeyword, sphdr, 'STATE'
     ;; After this, this FITS file should be SOLARNET compliant
