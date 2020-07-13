@@ -164,9 +164,30 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, 'camera = Chromis-D'
   printf, Clun, 'camera = Chromis-N'
   printf, Clun, '#'
-  printf, Clun, 'direction = 2'    ; Orientation of WB camera, see IDL's rotate().
-  printf, Clun, 'rotation = -42.0' ; Rotation of reference camera, se offset_angle of red_lp_angles().
+
+  ;; Orientation and rotation of WB camera, see IDL's rotate()
+  ;; and  offset_angle of red_lp_angles(). 
+  
+  case strmid(isodate,0,4) of
+    '2016' :  begin
+      direction = 2    
+      rotation = -42.0 
+    end
+    '2017' : begin
+      direction = 2    
+      rotation = -42.0 
+    end 
+    else :  begin
+      direction = 1    
+      rotation = -42.0 
+    end
+  endcase
+  if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
+  if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
+;  printf, Clun, 'direction = 2'  ; Orientation of WB camera, see IDL's rotate().
+;  printf, Clun, 'rotation = -42.0' ; Rotation of reference camera, se offset_angle of red_lp_angles().
   printf, Clun, '#'
+  
   printf, Clun, 'root_dir = ' + root_dir
   printf, Clun, '#'
 
@@ -180,7 +201,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun, '# --- Darks'
   printf, Clun, '#'
-  
+
   if Ndarkdirs gt 0 then begin
     darkdirs = file_dirname(darksubdirs)
     darkdirs = darkdirs[uniq(darkdirs, sort(darkdirs))]
