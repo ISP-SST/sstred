@@ -155,6 +155,8 @@
 ; 
 ;    2020-06-16 : MGL. Remove temporal intensity scaling, deprecate
 ;                 keyword notimecorr.
+; 
+;    2020-07-15 : MGL. Remove keyword smooth.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -607,7 +609,7 @@ pro crisp::make_nb_cube, wcfile $
                                  , nocavitymap = nocavitymap $
                                  , noremove_periodic = noremove_periodic $
                                  , redemodulate = redemodulate $
-                                 , smooth = smooth $
+;                                 , smooth = smooth $
                                  , snames = these_snames $
                                  , stokesdir = stokesdir $
                                  , tiles = tiles

@@ -84,6 +84,8 @@
 ; :History:
 ; 
 ;    2019-03-21 : MGL. First version.
+; 
+;    2020-07-15 : MGL. Remove keyword smooth.
 ;                                
 ;-
 pro crisp::make_stokes_cubes, dir, scanno $
@@ -93,7 +95,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
                               , overwrite = overwrite $
                               , noremove_periodic = noremove_periodic $
                               , redemodulate = redemodulate $
-                              , smooth = smooth $
+;                              , smooth = smooth $
                               , snames = snames $
                               , stokesdir = stokesdir $
                               , tiles = tiles 

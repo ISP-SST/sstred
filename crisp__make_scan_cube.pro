@@ -140,6 +140,8 @@
 ;    2020-04-01 : MGL. New keywords direction and norotation.
 ; 
 ;    2020-04-27 : MGL. New keyword rotation.
+; 
+;    2020-07-15 : MGL. Remove keyword smooth.
 ;
 ;-
 pro crisp::make_scan_cube, dir $
@@ -160,7 +162,7 @@ pro crisp::make_scan_cube, dir $
                            , redemodulate = redemodulate $
                            , rotation = rotation $
                            , scannos = scannos $
-                           , smooth = smooth $
+;                           , smooth = smooth $
                            , tiles = tiles  $
                            , tuning_selection = tuning_selection
                
