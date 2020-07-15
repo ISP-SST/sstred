@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Calculate the 32-bit checksum of the data in a fitscube file.
+; Calculate the 32-bit checksum of the data in the main HDU of a
+; fitscube file.
 ; 
 ; Do the calculations frame by frame so we don't have to keep
 ; the whole data cube in memory.
