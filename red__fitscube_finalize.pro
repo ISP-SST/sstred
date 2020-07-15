@@ -26,6 +26,13 @@
 ; 
 ; :Keywords:
 ;
+;    do_spectral_file : in, optional, type=boolean
+;
+;      Do process the spectral version of the input file (if there is
+;      one). This should not be needed as crispex uses only the main
+;      HDU data, and detects if it is different than in the regular
+;      file. 
+;
 ;    keywords : in, optional, type=struct
 ;
 ;      Keywords and values to be added to the header. Keywords are
@@ -34,9 +41,9 @@
 ;
 ;    no_write : in, optional, type=boolean
 ;
-;      Don't write the new header(s). Combine with keywords header,
-;      old_header, spectral_header, and old_spectral_header to check
-;      what changes would be done.
+;      Don't write the new header(s) (and don't compute checksums).
+;      Combine this with keywords header, old_header, spectral_header,
+;      and old_spectral_header to check what changes would be done.
 ;    
 ;    header : out, optional, type=strarr
 ;
@@ -57,10 +64,6 @@
 ;    no_checksum : in, optional, type=boolean
 ;
 ;      Do not calculate DATASUM and CHECKSUM.
-;
-;    no_spectral_file : in, optional, type=boolean
-;
-;      Do not process any spectral version of the input file.
 ;
 ;    release_date : in, optional, type=string
 ;
@@ -91,8 +94,12 @@
 ;   2020-07-13 : MGL. New keywords no_write, header, old_header,
 ;                spectral_header, old_spectral_header.
 ; 
+;   2020-07-15 : MGL. Remove keyword no_spectral_file, add keyword
+;                do_spectral_file. 
+; 
 ;-
 pro red::fitscube_finalize, filename $
+                            , do_spectral_file = do_spectral_file $
                             , header = hdr $
                             , old_header = oldhdr $
                             , spectral_header = sphdr $
@@ -100,7 +107,6 @@ pro red::fitscube_finalize, filename $
                             , help = help $
                             , keywords = keywords $
                             , no_checksum = no_checksum $
-                            , no_spectral_file = no_spectral_file $
                             , no_write = no_write $
                             , release_date = RELEASE $
                             , release_comment = RELEASEC
@@ -109,7 +115,7 @@ pro red::fitscube_finalize, filename $
   inam = red_subprogram(/low, calling = inam1)
   ;; Make prpara
   red_make_prpara, prpara, keywords     
-  red_make_prpara, prpara, no_spectral_file      
+  red_make_prpara, prpara, do_spectral_file      
   red_make_prpara, prpara, no_checksum 
   red_make_prpara, prpara, release_date      
   red_make_prpara, prpara, release_comment      
@@ -146,16 +152,6 @@ pro red::fitscube_finalize, filename $
   red_append, help_keywords, 'Telescope configuration'
 
   
-  if n_elements(smooth_width) gt 0 then begin
-    ;; We need to implement reading/writing frames from/to spectral
-    ;; fitscubes for this to work easily for spectral cubes.
-    no_spectral_file = 1
-    ;; If smooth_width is set to the inconsequential value of unity,
-    ;; interpret it as a boolean and set to a default width of 11.
-    if smooth_width eq 1 then smooth_width = 11
-  endif
-  
-
   if keyword_set(help) then begin
     print
     print, inam + ' : These are the approved keywords:'
@@ -167,7 +163,7 @@ pro red::fitscube_finalize, filename $
     endfor
     print
     print, 'You can add/change them by specifying them with a struct like this:'
-    print, 'a -> fitscube_finalize, filename, keywords={REQUESTR:"Sonny Ray", PROJECT:"Spots at disk center"}'
+    print, 'a -> fitscube_finalize, filename, keywords={REQUESTR:"Boss P. Erson", PROJECT:"Spots at disk center"}'
     print
     return
   endif
@@ -185,12 +181,12 @@ pro red::fitscube_finalize, filename $
   red_fitscube_correct_prstep, filename, header = hdr, /nowrite
 
   ;; Any spectral file to copy?
-  if keyword_set(no_spectral_file) then begin
-    do_spectral = 0
-  endif else begin
+  if keyword_set(do_spectral_file) then begin
     spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
     do_spectral = spfile ne infile and file_test(indir + spfile)
-  endelse
+  endif else begin
+    do_spectral = 0
+  end
 
   ;; Delete header keywords that should not be there
   red_fitsdelkeyword, hdr, 'STATE'
@@ -204,7 +200,7 @@ pro red::fitscube_finalize, filename $
 
   for itag = 0, n_tags(keywords)-1 do begin
     ;; Add FITS header keywords as requested
-    if max(strmatch(approved_keywords, strupcase((tag_names(keywords))[itag]))) then begin
+  if max(strmatch(approved_keywords, strupcase((tag_names(keywords))[itag]))) then begin
       red_fitsaddkeyword, anchor = anchor, hdr $
                           , strupcase((tag_names(keywords))[itag]), keywords.(itag)
     endif else begin
@@ -295,41 +291,6 @@ pro red::fitscube_finalize, filename $
     red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATE', new_DATE
   endif
 
-
-;  if n_elements(smooth_width) gt 0 then begin
-;    ;; Blur the frames in the fitscube(s)
-;    naxis = fxpar(hdr, 'NAXIS*')
-;    Nframes = round(product(naxis[2:*]))
-;
-;    ;; The statistics will not be right after this!
-;    
-;    for iframe = 0, Nframes-1 do begin
-;
-;      red_progressbar, iframe, Nframes, /predict, 'Blurring frames'
-;
-;      red_fitscube_getframe, outdir+outfile, frame, iframe = iframe
-;      red_fitscube_addframe, outdir+outfile, smooth(frame, smooth_width), iframe = iframe
-;
-;    endfor                      ; iframe
-;    
-;  endif
-
-  if ~keyword_set(no_checksum) then begin
-
-    ;; Don't modify the file(s) after adding datasum and checksum!
-    
-    ;; Checksums
-    datasum = red_fitscube_datasum(filename)
-
-    red_fitsaddkeyword, anchor = anchor, hdr, 'DATASUM', datasum
-    fits_add_checksum, hdr
-
-    if do_spectral then begin
-      red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATASUM', datasum
-      fits_add_checksum, sphdr
-    endif
-  endif
-
   if ~keyword_set(no_write) then begin
     red_fitscube_newheader, filename, hdr
     if do_spectral then begin
@@ -337,7 +298,14 @@ pro red::fitscube_finalize, filename $
       red_fitscube_newheader, indir+spfile, sphdr
     endif
   endif
-  
+
+
+  if ~keyword_set(no_checksum) and ~keyword_set(no_write) then begin
+    red_fitscube_checksums, filename
+    if do_spectral then red_fitscube_checksums, spfilename
+    ;; Don't modify the file(s) after adding datasum and checksum!
+  endif
+
 end
 
 ;; Code for testing. Test only with smaller cubes because we have to
@@ -350,17 +318,32 @@ if 0 then begin
 endif else begin
   cd, '/scratch/mats/2016.09.19/CHROMIS-jan19/'
   filename = 'cubes_nb/nb_3950_2016-09-19T09:28:36_scans=69-75_corrected_im.fits'
+  filename = 'cubes_nb/nb_3950_2016-09-19T10:42:01_scans=0-4_corrected_cmapcorr_im.fits'
   a = chromisred(/dev)
 endelse
 
+a -> fitscube_finalize, filename, no_write = 0 $
+                        , header = hdr $
+                        , old_header = oldhdr $
+                        , spectral_header = sphdr $
+                        , old_spectral_header = oldsphdr  $
+                        , keywords = { observer:'Some person' $
+                                       , requestr:'Boss person' $
+                                     } $
+                        , release_comment = 'These are test data, never to be released' $
+                        , release_date = '2999-12-31'
 
 
-a -> fitscube_cleanheader, filename  $
-                           , keywords = { observer:'Some person' $
-                                          , requestr:'Boss person' $
-                                        } $
-                           , release_comment = 'These are test data, never to be released' $
-                           , release_date = '2999-09-19'
+
+
+end
+
+a -> fitscube_finalize, filename  $
+                        , keywords = { observer:'Some Person' $
+                                       , requestr:'Boss Person' $
+                                     } $
+                        , release_comment = 'These are test data, never to be released' $
+                        , release_date = '2999-09-19'
 
 
 search_keywords = [ 'STARTOBS' $ 
