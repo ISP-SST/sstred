@@ -293,6 +293,7 @@ pro red::fitscube_finalize, filename $
 
   if ~keyword_set(no_write) then begin
     red_fitscube_newheader, filename, hdr
+    red_fitscube_statistics, filename, /write
     if do_spectral then begin
       ;; Write the new header to the spectral file
       red_fitscube_newheader, indir+spfile, sphdr
