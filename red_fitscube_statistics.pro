@@ -120,7 +120,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
       red_fitsdelkeyword, hdr, keyword
     endfor                      ; idata
     removed_stuff = Ndata gt 0 
-  endif
+  endif else removed_stuff = 0 
 
   if keyword_set(remove_only) then begin
     ;; We are done. Close if needed and return.
@@ -143,10 +143,11 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
   if n_elements(angles) eq Nscans then begin
     if n_elements(origNx) gt 0 then Nxx = origNx else Nxx = Nx
     if n_elements(origNy) gt 0 then Nyy = origNy else Nyy = Ny
-  endif else begin
-    ;; Indices of all image pixels, i.e., no masking.
-    mindx = lindgen(Nx, Ny)
-  endelse
+  endif
+;  else begin
+;    ;; Indices of all image pixels, i.e., no masking.
+;    mindx = lindgen(Nx, Ny)
+;  endelse
 
   ;; Calculate statistics for the individual frames
   iprogress = 0
@@ -184,10 +185,26 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
         
         if (iscan eq 0) and (ituning eq 0) and (istokes eq 0) then begin
           ;; Set up the array if it's the first frame
-          frame_statistics = red_image_statistics_calculate(frame[mindx])
+          if n_elements(mindx) gt 0 then begin
+            ;; Calculate statistics based on rotating mask
+            frame_statistics = red_image_statistics_calculate(frame[mindx])
+          endif else begin
+            ;; Calculate statistics based on deselecting missing-data
+            ;; pixels in each frame.
+            red_missing, frame, indx_data = indx_data
+            frame_statistics = red_image_statistics_calculate(frame[indx_data])
+          endelse
           frame_statistics = replicate(temporary(frame_statistics), Ntuning, Nstokes, Nscans)
         endif else begin
-          frame_statistics[ituning, istokes, iscan] = red_image_statistics_calculate(frame[mindx])
+          if n_elements(mindx) gt 0 then begin
+            ;; Calculate statistics based on rotating mask
+            frame_statistics[ituning, istokes, iscan] = red_image_statistics_calculate(frame[mindx])
+          endif else begin
+            ;; Calculate statistics based on deselecting missing-data
+            ;; pixels in each frame.
+            red_missing, frame, indx_data = indx_data
+            frame_statistics[ituning, istokes, iscan] = red_image_statistics_calculate(frame[indx_data])
+          endelse
         endelse 
 
         iprogress++
