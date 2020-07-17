@@ -54,7 +54,8 @@ pro red_missing, image $
                  , indx_data = indx_data $
                  , indx_missing = indx_missing $
                  , missing_type_wanted = missing_type_wanted $
-                 , missing_type_used = missing_type_used
+                 , missing_type_used = missing_type_used $
+                 , verbose = verbose
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -112,12 +113,12 @@ pro red_missing, image $
       currently_constant : missing_type_used = 'nan'
       
       else : begin
-;        print, inam + ' : Could not identify missing data pixels'
-;        print, 'Corner pixel intensities: ' $
-;               , image[ 0,  0] $
-;               , image[ 0, -1] $
-;               , image[-1,  0] $
-;               , image[-1, -1]
+        if keyword_set(verbose) then print, inam + ' : Could not identify missing data pixels'
+        if keyword_set(verbose) then print, 'Corner pixel intensities: ' $
+                                            , image[ 0,  0] $
+                                            , image[ 0, -1] $
+                                            , image[-1,  0] $
+                                            , image[-1, -1]
         missing_type_used = 'none'
       end
       
@@ -129,7 +130,7 @@ pro red_missing, image $
     'nan' : begin               ; Assume all corner pixels have the same value.
       
       if currently_nans then begin
-        print, inam+' : Padding seems to be NaN already.'
+        if keyword_set(verbose) then print, inam+' : Padding seems to be NaN already.'
         indx_data = where(finite(image), Ndata, complement = indx_missing, Ncomplement = Nmissing)
         image_out = image       ; No change
         return
@@ -147,16 +148,17 @@ pro red_missing, image $
     'median' : begin
 
       if currently_constant then begin
-        print, inam+" : Padding seems to be constant. Set to median."
+        if keyword_set(verbose) then print, inam+" : Padding seems to be constant. Set to median."
         mask = image eq image[ 0,  0] 
       endif else begin
-        print, inam+" : Padding seems to be NaN. Set to median."
+        if keyword_set(verbose) then print, inam+" : Padding seems to be NaN. Set to median."
         ;; Find non-finite pixels
         mask = ~finite(image)
       endelse
       
       ;; We want the median
-      indx_data = where(~mask, Ndata)
+      ;;indx_data = where(~mask, Ndata)
+      indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
       if Ndata eq 0 then stop
       missing_value = median(image(indx_data))
       
