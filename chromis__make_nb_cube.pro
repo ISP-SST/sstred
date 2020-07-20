@@ -355,8 +355,12 @@ pro chromis::make_nb_cube, wcfile $
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
   self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
-  red_fitsdelkeyword, hdr, 'STATE'                            ; Not a single state for cube 
-  red_fitsaddkeyword, hdr, 'BITPIX', -32                      ; Floats
+
+  red_fitsdelkeyword, hdr, 'STATE'    ; Not a single state for cube 
+  red_fitsdelkeyword, hdr, 'CHECKSUM' ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'  ; Datasum for WB cube
+
+  red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
 
   
   ;; Add info about this step
@@ -671,7 +675,8 @@ pro chromis::make_nb_cube, wcfile $
 
       ;; Read image, apply prefilter curve and temporal scaling
       nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] ;* tscl
-
+      bg = median(nbim)
+      
 ;      if ~keyword_set(nostatistics) then begin
 ;        ;; Add to the histogram
 ;        hist += histogram(nbim, min = cubemin, max = cubemax, Nbins = Nbins, /nan)
@@ -688,9 +693,13 @@ pro chromis::make_nb_cube, wcfile $
 
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
-      nbim = red_rotation(temporary(nbim), ang[iscan], $
-                          wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+
+      nbim = red_rotation(temporary(nbim), ang[iscan] $
+                          , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
+                          , background = bg)
+      mindx = where(nbim eq bg, Nwhere)
       nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
+      if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
 
 ;      if keyword_set(integer) then begin
 ;        self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
@@ -705,9 +714,13 @@ pro chromis::make_nb_cube, wcfile $
         ;; "aligncont".
         wbim = wwi              ;* tscl
         wbim = red_stretch(temporary(wbim), grid1)
-        wbim = red_rotation(temporary(wbim), ang[iscan], $
-                          wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+        bg = median(wbim)
+        wbim = red_rotation(temporary(wbim), ang[iscan] $
+                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
+                            , background = bg)
+        mindx = where(wbim eq bg, Nwhere)
         wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
+        if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
                                    , iscan = iscan, ituning = iwav
       endif

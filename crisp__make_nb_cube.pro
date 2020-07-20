@@ -592,8 +592,12 @@ pro crisp::make_nb_cube, wcfile $
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
   self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
-  red_fitsdelkeyword, hdr, 'STATE'                            ; Not a single state for cube 
-  red_fitsaddkeyword, hdr, 'BITPIX', -32                      ; Floats
+
+  red_fitsdelkeyword, hdr, 'STATE'    ; Not a single state for cube 
+  red_fitsdelkeyword, hdr, 'CHECKSUM' ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'  ; Datasum for WB cube
+
+  red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
 
   
   if makestokes then begin
@@ -1080,6 +1084,7 @@ pro crisp::make_nb_cube, wcfile $
           
           ;; Reflected
           this_im = (red_readdata(scan_nbrfiles[iim], direction = direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
+          bgr = median(this_im)
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
@@ -1089,6 +1094,7 @@ pro crisp::make_nb_cube, wcfile $
 
           ;; Transmitted
           this_im = (red_readdata(scan_nbtfiles[iim], direction = direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
+          bgt = median(this_im)
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
