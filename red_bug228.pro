@@ -12,6 +12,17 @@
 ; accessed by make_nb_cube, and if it (with its new value) is not
 ; found, some information in the wideband cube is not found.
 ;
+; The symptom is that make_nb_cube stops with an error message similar to: 
+;
+; % Compiled module: RED::HEADERINFO_COPYSTEP.
+; % Variable is undefined: STEPNUMS.
+; % Execution halted at: RED::HEADERINFO_COPYSTEP 89 /home/user/idl/bin/sstred/red__headerinfo_copystep.pro
+; % CHROMIS::MAKE_NB_CUBE 357 /home/user/idl/bin/sstred/chromis__make_nb_cube.pro
+;
+; The line numbers can vary due to later edits (and are definitely
+; different for the crisp and chromis versions) but the problem
+; appears when make_nb_cube calls headerinfo_copystep.
+;
 ; To fix this, change directory to the CRISP or CHROMIS workdir. Start
 ; IDL and do
 ;
