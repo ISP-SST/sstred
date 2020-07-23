@@ -10,7 +10,7 @@
 ; would just propagate through all the processing steps to the final
 ; fitscubes but I had forgotten that one of those keywords is actually
 ; accessed by make_nb_cube, and if it (with its new value) is not
-; found, some information in the wideband cube is not found.
+; found, some information in the wideband cube is not read.
 ;
 ; The symptom is that make_nb_cube stops with an error message similar to: 
 ;
