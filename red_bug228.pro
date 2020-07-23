@@ -57,6 +57,7 @@ pro red_bug228
     if value eq 'MOMFBD' then continue
 
     fxaddpar, h, 'PRSTEP1', 'MOMFBD'
+    fxaddpar, h, 'SOLARNET', 1
     modfits, files[ifile], 0, h
     
   end

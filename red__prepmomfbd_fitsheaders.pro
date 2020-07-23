@@ -335,7 +335,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             ;; processing.
             red_fitsaddkeyword, anchor = anchor, head, 'DATE-OBS', datestamp, after = 'DATE'
             red_fitsaddkeyword, anchor = anchor, head, 'STARTOBS', datestamp ; IS STARTOBS needed?
-            red_fitsaddkeyword, anchor = anchor, head, 'SOLARNET', 0.5, format = 'f3.1'
+            red_fitsaddkeyword, anchor = anchor, head, 'SOLARNET', 1, format = 'f3.1'
             red_fitsaddkeyword, anchor = anchor, head, 'FILENAME', file_basename(output_file), 'MOMFBD restored data'
             red_fitsaddkeyword, anchor = anchor, head, 'FILLED', 1, 'Missing pixels have been filled.'          
             red_fitsaddkeyword, anchor = anchor, head, 'BTYPE', 'Intensity'
