@@ -229,7 +229,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions, no_extension =
     coordno = 1                 ; Tabulated coordinate number, for PVi_3 keywords
     
     ;; First spatial dimension, corner coordinates always tabulated 
-    red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE1', 'HPLN-TAB', 'SOLAR X'
+    red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE1', 'HPLN-TAB', 'Helioprojective longitude'
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT1', 'arcsec', 'Unit along axis 1'
     red_fitsaddkeyword, anchor = anchor, hdr, 'CNAME1', 'Spatial X'
     red_fitsaddkeyword, anchor = anchor, hdr, 'PS1_0', 'WCS-TAB', 'EXTNAME; EXTVER=EXTLEVEL=1 is default'
@@ -242,7 +242,7 @@ pro red::fitscube_addwcs, filename, wcs, dimensions = dimensions, no_extension =
     red_fitsaddkeyword, anchor = anchor, hdr, 'CSYER1', 60, 'Orientation unknown' 
 
     ;; Second spatial dimension, corner coordinates always tabulated 
-    red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE2', 'HPLT-TAB', 'SOLAR Y' 
+    red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE2', 'HPLT-TAB', 'Helioprojective latitude' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT2', 'arcsec', 'Unit along axis 2' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CNAME2', 'Spatial Y' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'PS2_0', 'WCS-TAB', 'EXTNAME; EXTVER=EXTLEVEL=1 is default' 
