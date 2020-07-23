@@ -187,6 +187,7 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
           ;; Set up the array if it's the first frame
           if n_elements(mindx) gt 0 then begin
             ;; Calculate statistics based on rotating mask
+            if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop ; Size mismatch?
             frame_statistics = red_image_statistics_calculate(frame[mindx])
           endif else begin
             ;; Calculate statistics based on deselecting missing-data
@@ -245,10 +246,12 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
         mask = make_array(Nxx, Nyy, /float, value = 1.) 
         mask = red_rotation(mask, angles[iscan], dx, dy, background = 0, full = full)
         mindx = where(mask gt 0.99)
-      endif else begin
-        mask = 0 * frame+1
-        mindx = indgen(n_elements(frame))
-      endelse
+        
+      endif
+;      else begin
+;        mask = 0 * frame+1
+;        mindx = indgen(n_elements(frame))
+;      endelse
 
       for ituning = 0L, Ntuning - 1 do begin 
         for istokes = 0L, Nstokes-1 do begin
@@ -260,11 +263,11 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
           red_fitscube_getframe, fileassoc, frame $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
           
-          if n_elements(mask) eq 0 then begin
+          if n_elements(mindx) eq 0 then begin
             hist += histogram(float(frame), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
           endif else begin
-            if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop ; Size mismatch?
-            hist += histogram(float(frame[mindx]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+            red_missing, frame, indx_data = indx_data
+            hist += histogram(float(frame[indx_data]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
           endelse
           
           iprogress++
