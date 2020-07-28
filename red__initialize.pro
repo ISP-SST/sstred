@@ -216,7 +216,7 @@ pro red::initialize, filename, develop = develop
     ;; config file.
     self.rotation = 48d
   endif 
-  print, 'red::initialize : direction = '+strtrim(self.direction, 2)
+  print, 'red::initialize : direction = '+strtrim(long(self.direction), 2)
   print, 'red::initialize : rotation = '+strtrim(self.rotation, 2)
 
 
