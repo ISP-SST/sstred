@@ -1084,7 +1084,6 @@ pro crisp::make_nb_cube, wcfile $
           
           ;; Reflected
           this_im = (red_readdata(scan_nbrfiles[iim], direction = direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
-          bgr = median(this_im)
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
@@ -1094,7 +1093,6 @@ pro crisp::make_nb_cube, wcfile $
 
           ;; Transmitted
           this_im = (red_readdata(scan_nbtfiles[iim], direction = direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
-          bgt = median(this_im)
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
@@ -1126,19 +1124,26 @@ pro crisp::make_nb_cube, wcfile $
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
       if makestokes then begin
-        nbcube = fltarr(Nx, Ny, Nstokes)
         for istokes = 0, Nstokes-1 do begin
-          nbcube[0, 0, istokes] = red_rotation(nbim[*, *, istokes], ang[iscan], $
-                                               wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-          nbcube[0, 0, istokes] = red_stretch(nbcube[*, *, istokes] $
-                                              , reform(wcGRID[iscan,*,*,*]))
-          self -> fitscube_addframe, fileassoc, nbcube[*, *, istokes] $
+          bg = median(nbim[*, *, istokes])
+          frame = red_rotation(nbim[*, *, istokes], ang[iscan] $
+                               , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
+                               , background = bg)
+          mindx = where(frame eq bg, Nwhere)
+          frame = red_stretch(frame $
+                              , reform(wcGRID[iscan,*,*,*]))
+          if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+          self -> fitscube_addframe, fileassoc, frame $
                                      , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
       endif else begin
+        bg = median(nbim)
         nbim = red_rotation(temporary(nbim), ang[iscan] $
-                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
+                            , background = bg)
+        mindx = where(nbim eq bg, Nwhere)
         nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
+        if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
         self -> fitscube_addframe, fileassoc, nbim $
                                    , iscan = iscan, ituning = ituning
       endelse
