@@ -275,9 +275,6 @@ pro red::fitscube_export, filename $
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'CDELT2A', 0.0, 'Zero FOV extent'
 
-  ;; After this, this FITS file should be SOLARNET compliant
-  red_fitsaddkeyword, hdr, 'SOLARNET', 1, 'SOLARNET compliant file'
-
   ;; Add header info about this step
   prstep = 'HEADER-CORRECTION'
   if n_elements(smooth_width) then prstep += ', SMOOTHING'
