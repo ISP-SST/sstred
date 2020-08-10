@@ -95,13 +95,6 @@
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
-;     smooth : in, optional, type=varies, default=5
-;
-;       How to smooth the modulation matrices? Set to the string
-;       'momfbd' to smooth subfield by subfield using the PSFs
-;       estimated by momfbd. Set to a number to smooth by a Gaussian
-;       kernel of that width. 
-;
 ;     wbsave : in, optional, type=boolean
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
@@ -177,7 +170,7 @@ pro crisp::make_nb_cube, wcfile $
                          , overwrite = overwrite $
                          , redemodulate = redemodulate $
                          , scannos = scannos $
-                         , smooth = smooth $
+;                         , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
                          , wbsave = wbsave
@@ -201,7 +194,7 @@ pro crisp::make_nb_cube, wcfile $
 ;  red_make_prpara, prpara, notimecor 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
-  red_make_prpara, prpara, smooth
+;  red_make_prpara, prpara, smooth
   red_make_prpara, prpara, redemodulate
   red_make_prpara, prpara, tiles        
   red_make_prpara, prpara, wcfile
