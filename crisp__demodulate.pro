@@ -539,10 +539,19 @@ pro crisp::demodulate, outname, immr, immt $
   ;; Telescope model 
   line = (strsplit(wbstates[0].fpi_state,'_',/extract))[0]
   print, inam+' : Detected spectral line -> '+line
-
-
-
+  
   red_logdata, self.isodate, tavg, azel = azel,  tilt = tilt
+
+  if min(finite([azel, tilt])) eq 0 then begin
+    print, inam + ' : red_logdata returned non-finite azimuth, elevation, or tilt for t = ' + strtrim(tavg, 2)
+    print, '  azel : ', azel
+    print, '  tilt : ', tilt
+    print, '  It might be possible to fix this by exiting idl, removing the downloaded turret logfile,'
+    print, '      downloads/sstlogs/positionLog_'+red_strreplace(self.isodate,'-','.',n=2)+'_final'
+    print, '  and then restart the processing that got you to this point.'
+    stop
+  endif
+  
   year = (strsplit(self.isodate, '-', /extract))[0]
   mtel = red_telmat(line, {TIME:tavg, AZ:azel[0], ELEV:azel[1], TILT:tilt} $
                     , /no_zero, year=year)
