@@ -213,7 +213,7 @@ pro red::fitscube_crosstalk, filename  $
     endelse 
       
     ;;crt = red_get_ctalk(d, idx=ppc, mask=pixmask)
-    crt = dblarr(Nstokes)
+;    crt = dblarr(Nstokes)
     numerator   = dblarr(Nstokes)
     denominator = 0d
     for i = 0, n_elements(ppc)-1 do begin
