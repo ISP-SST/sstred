@@ -546,10 +546,15 @@ pro crisp::demodulate, outname, immr, immt $
     print, inam + ' : red_logdata returned non-finite azimuth, elevation, or tilt for t = ' + strtrim(tavg, 2)
     print, '  azel : ', azel
     print, '  tilt : ', tilt
-    print, '  It might be possible to fix this by removing the downloaded turret logfile,'
-    print, '      downloads/sstlogs/positionLog_'+red_strreplace(self.isodate,'-','.',n=2)+'_final'
-    print, '  and then restarting the processing that got you to this point.'
-    retall
+    lfile = 'downloads/sstlogs/positionLog_'+red_strreplace(self.isodate,'-','.',n=2)+'_final'
+    print, '  Will try to fix this by re-downloading the turret logfile,'
+    print, lfile
+    file_delete, lfile, /allow_nonexistent
+    red_logdata, self.isodate, tavg, azel = azel,  tilt = tilt
+    if min(finite([azel, tilt])) eq 0 then begin
+      print, inam + ' : Re-downloading the turret log did not help. Giving up.'
+      retall
+    endif
   endif
   
   year = (strsplit(self.isodate, '-', /extract))[0]
