@@ -390,8 +390,25 @@ pro red::make_intdif_gains, all = all $
               file_link, ofile_0, ofile
 
             endif else begin 
-
+              
               g = gains[*, *, iwav] * reform(cub1[iwav, *, *]/cub2[iwav, *, *])
+
+              if min(finite(g)) eq 0 then begin
+                ;; We need to take care of zeros in cub2, they can cause
+                ;; Infinity values in g.
+                zindx = where( ~finite(g), Nz)
+                ;; Zero pixels that should have been zero anyway
+                for iz = 0, Nz-1 do $
+                   if (gains[*, *, iwav] * reform(cub1[iwav, *, *]))[zindx[iz]] eq 0 then g[zindx[iz]] = 0
+
+                ;; Take care of the rest by filling pixels
+                zindx = where( ~finite(g), Nz)
+                if Nz gt 0 then begin
+                  mask = ~finite(g)
+                  g[zindx] = 0
+                  g = rdx_fillpix(g, mask = mask)
+                end
+              endif
               
 ;;;;;; What if we didn't make new gains from flats here but instead
 ;;;;;; just modified (multiply with cub1/cub2)) the cavityfree gains
@@ -402,7 +419,7 @@ pro red::make_intdif_gains, all = all $
 
               if testflats then begin
                 rat = flats[*, *, iwav] * reform(cub2[iwav, *, *]/cub1[iwav, *, *])
-
+                
                 g2 = float(self -> flat2gain(temporary(rat), min = min, max = max, bad = bad $
                                              , smooth = smooth $
                                              , preserve = keyword_set(preserve) $
@@ -426,7 +443,7 @@ pro red::make_intdif_gains, all = all $
 
               self -> headerinfo_addstep, hdr, prstep = 'RECIPROCAL' $
                                           , prproc = inam, prpara = prpara
-              
+              if min(finite(g)) eq 0 then stop       
               red_writedata, ofile, g, header = hdr,$
                              filetype='fits', overwrite = overwrite
               
