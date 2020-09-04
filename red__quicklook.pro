@@ -104,6 +104,10 @@
 ;
 ;      Number of threads used in a couple of steps.
 ;
+;    only_plot_r0 : in, optional, type=boolean
+;
+;      Only plot per-scan r0 statistics for the datasets, no video.
+;
 ;    overwrite :  in, optional, type=boolean
 ;
 ;      Overwrite existing movies.
@@ -188,6 +192,7 @@ pro red::quicklook, align = align $
                     , no_histo_opt = no_histo_opt $
                     , no_plot_r0 = no_plot_r0 $
                     , nthreads = nthreads $
+                    , only_plot_r0 = only_plot_r0 $
                     , overwrite = overwrite $
                     , remote_dir = remote_dir $
                     , remote_login = remote_login $
@@ -478,6 +483,8 @@ pro red::quicklook, align = align $
       
     endif
 
+    if keyword_set(only_plot_r0) then continue
+    
     if keyword_set(core_and_wings) then begin
       ;; Make an automatic selection of states
       undefine, ustat2
