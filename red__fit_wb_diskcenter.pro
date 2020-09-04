@@ -97,7 +97,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
   ;; If mu isn't available in logs, assume flats are at large enough mu
-  indx = where(~finite(mu)  and strmatch(dirs,'*flat*'), Ndirs)
+  indx = where(~finite(mu)  and strmatch(dirs,'*lats*'), Ndirs)
   if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
 
   

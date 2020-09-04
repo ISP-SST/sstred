@@ -147,7 +147,8 @@ pro red::getalignment, align = align, $
     return
   endif
 
-  head = red_readhead( allstates[ref_idx[0]].filename, /silent )
+  pos = strpos(allstates[ref_idx[0]].filename,'pinhs/')
+  head = red_readhead(strmid(allstates[ref_idx[0]].filename, pos), /silent )
   ref_dims = fxpar(head, 'NAXIS*')
   ref_corners = red_make_corners( [ 0, ref_dims[0]-1 , $
                                     0, ref_dims[1]-1 ] )
@@ -157,8 +158,9 @@ pro red::getalignment, align = align, $
   common_fov = ref_corners
 
   for ialign=0, Nalign-1 do begin
-    
-    head = red_readhead( alignments[ialign].state2.filename, /silent )
+
+    pos = strpos(alignments[ialign].state2.filename,'pinhs/')
+    head = red_readhead(strmid(alignments[ialign].state2.filename, pos), /silent )
     dims = fxpar(head, 'NAXIS*')
     corners = red_make_corners( [ 0, dims[0]-1 , $
                                   0, dims[1]-1 ] )

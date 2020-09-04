@@ -217,7 +217,7 @@ pro red::fitscube_intensitycorr, filename $
       print, "without intensity correction. Or try with corrmethod = 'old'."
       print
       read, 'Delete [Y/n]', s
-      if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
+      if strlowcase(strmid(s, 0, 1)) ne 'n' then begin
         print
         print, inam+' : Deleting '+filename
         print
@@ -253,7 +253,7 @@ pro red::fitscube_intensitycorr, filename $
     t = reform(coordinates.time[0, 0], Ntuning, Nscans)
 
     ;; Check that we are not extrapolating (too far).
-    if ~file_test(wbfitfile) then begin
+    if min(t) lt wb_time_beg or max(t) gt wb_time_end then begin
       s = ''
       print, inam + ' : No WB fit file : '+wbfitfile
       print
@@ -270,7 +270,7 @@ pro red::fitscube_intensitycorr, filename $
       print, "continue without intensity correction."
       print
       read, 'Delete [Y/n]', s
-      if strmid(s, 0, 1) ne 'n' or strmid(s, 0, 1) ne 'N' then begin
+      if strlowcase(strmid(s, 0, 1)) ne 'n' then begin
         print
         print, inam+' : Deleting '+filename
         print

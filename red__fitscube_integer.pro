@@ -28,7 +28,7 @@
 ; 
 ;     flip : in, optional, type=boolean
 ;   
-;       Produce a flipped version if this keywoed is set. 
+;       Produce a flipped version if this keyword is set. 
 ; 
 ;     outname : in, out, optional, type=string, default="Constructed from input file name"
 ;   

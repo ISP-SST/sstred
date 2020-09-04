@@ -79,17 +79,31 @@
 pro red::headerinfo_addstep, header $
                              , addlib = addlib $
                              , anchor = anchor $
-                             , comment_prref = comment_prref $ 
+                             , comment_prref = comment_prref_in $ 
                              , level = level $
                              , prmode = prmode $
                              , prpara = prpara $
                              , prproc = prproc $
                              , prref = prref $
-                             , prstep = prstep $
+                             , prstep = prstep_in $
                              , version = version
-  
-  if n_elements(header) eq 0 then mkhdr, header, 0
 
+  if n_elements(header) eq 0 then mkhdr, header, 0
+  
+  if n_elements(prref_in) gt 0 then begin
+    prref = prref_in
+    if n_elements(comment_prref_in) eq n_elements(prref_in) then begin
+      ;; # of comments match --> use them
+      comment_prref = comment_prref_in
+    endif else begin
+      ;; # of comments does not match --> make empty comments
+      comment_prref = replicate('', n_elements(prref_in))
+    endelse
+  endif
+  ;; Add date to the PRREF list
+  red_append, prref, 'DATE: ' + red_timestamp(/iso)
+  red_append, comment_prref, 'When this step was performed'
+  
   ;; Existing steps
   prsteps_existing = fxpar(header,'PRSTEP*')
   Nexisting = n_elements(prsteps_existing)
@@ -109,7 +123,7 @@ pro red::headerinfo_addstep, header $
     tmp = fxpar(header, 'PRSTEP'+stp, count = count)
   endrep until count eq 0
 
-  if n_elements(prstep) eq 0 then prstep = 'Unknown'
+  if n_elements(prstep_in) eq 0 then prstep = 'Unknown' else prstep = prstep_in
   red_fitsaddkeyword, header, 'PRSTEP'+stp, prstep, 'Processing step name', anchor = anchor
 
   ;; Procedure name
@@ -117,7 +131,7 @@ pro red::headerinfo_addstep, header $
     key = 'PRPROC'+stp
     red_fitsaddkeyword, header, key, prproc, 'Name of procedure used', anchor = anchor
   endif
-
+  
   ;; Add headers with library names and versions. (Bug: Should be
   ;; listed in the order they appear in the path!)
   red_headerinfo_addlib, header, 'SSTRED', self.version_pipeline, prbranch = self.version_pipeline_branch

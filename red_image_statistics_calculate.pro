@@ -26,7 +26,7 @@
 ; 
 ; :Keywords:
 ; 
-;   percentile_p : in, out, optional, type=fltarr, default="[.01, .10, .25, .50, .75, .90, .95, .98, .99]"
+;   percentile_p : in, out, optional, type=fltarr, default="[.01, .02 .05, .10, .25, .50, .75, .90, .95, .98, .99]"
 ;   
 ;      The percentile P limits for which the percentile values are to
 ;      be calculated.
@@ -42,7 +42,7 @@
 function red_image_statistics_calculate, im, percentile_p = percentile_p 
 
   if n_elements(percentile_p) eq 0 then $
-     percentile_p = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
+     percentile_p = [.01, .02, .05, .10, .25, .50, .75, .90, .95, .98, .99]
   
   momnt = moment(im, /double, /nan) ; [mean, variance, skewness, kurtosis]
 

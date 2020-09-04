@@ -58,6 +58,11 @@
 ;      file will it be assumed to be correct when setting the CSYERR
 ;      FITS header keyword.
 ;
+;    integer : in, optional, type=boolean
+;
+;      Store as integers instead of floats. Uses the BZERO and BSCALE
+;      keywords to preserve the intensity scaling.
+;
 ;    interactive : in, optional, type=boolean
 ;
 ;      Set this keyword to define the data cube FOV by use of the XROI
@@ -71,11 +76,6 @@
 ;      measure the median intensity for normalization on disk. Also
 ;      disables autocrop.
 ;
-;    missing : in, optional, type=float,default="median of frame"
-;
-;      Value to set in missing-data pixels. Don't use, intended
-;      for developer experimentation only.
-;
 ;    nametag : in, optional, type=string
 ;
 ;      This string is incorporated into the automatically generated
@@ -84,7 +84,12 @@
 ;    negang : in, optional, type=boolean 
 ;
 ;      Set this to apply the field rotation angles with the opposite
-;      sign. 
+;      sign.
+;
+;    nomissing_nans : in, optional, type=boolean 
+;
+;      Do not set missing-data padding to NaN. (Set it to the median of
+;      each frame instead.)
 ;
 ;    np : in, optional, type=integer, default=3
 ;
@@ -176,8 +181,10 @@
 ;    2020-06-22 : MGL. Append angles to the "full" keyword when
 ;                 calling red_rotation. 
 ; 
-;    2020-06-26 : MGL. New keyword missing.
-;
+;    2020-06-29 : MGL. New keyword nomissing_nans.
+; 
+;    2020-07-08 : MGL. New keyword integer. 
+; 
 ;-
 pro red::make_wb_cube, dir $
                        , align_interactive = align_interactive $
@@ -185,26 +192,20 @@ pro red::make_wb_cube, dir $
                        , clip = clip $
                        , crop = crop $
                        , direction = direction $
+                       , integer = integer $
                        , interactive = interactive $
                        , limb_data = limb_data $
-                       , missing = missing $
                        , nametag = nametag $
                        , negang = negang $
+                       , nomissing_nans = nomissing_nans $
                        , np = np $
                        , rotation = rotation $
                        , scannos = scannos $
+                       , subtract_meanang = subtract_meanang $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
-                       , ybd = ybd $
-                       , subtract_meanang = subtract_meanang 
-;                      , ang = ang $
-;                       , offset_angle = offset_angle $
-;                      , ext_date = ext_date $
-;                      , ext_time = ext_time $
-;                      , shift = shift $
-
-
+                       , ybd = ybd
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -221,26 +222,26 @@ pro red::make_wb_cube, dir $
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   
   ;; Make prpara
-  red_make_prpara, prpara, dir
+  red_make_prpara, prpara, align_interactive
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
-  red_make_prpara, prpara, direction
-  red_make_prpara, prpara, rotation
+  red_make_prpara, prpara, direction  
+  red_make_prpara, prpara, integer
   red_make_prpara, prpara, negang
-  red_make_prpara, prpara, subtract_meanang
+  red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, np
-;  red_make_prpara, prpara, offset_angle
+  red_make_prpara, prpara, rotation
+  red_make_prpara, prpara, subtract_meanang
   red_make_prpara, prpara, tile
   red_make_prpara, prpara, tstep
-  red_make_prpara, prpara, ybd
   red_make_prpara, prpara, xbd
-  red_make_prpara, prpara, align_interactive
+  red_make_prpara, prpara, ybd
 
   if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
   if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
 
   if keyword_set(limb_data) then autocrop = 0
-  
+
   ;; Camera/detector identification
   self->getdetectors
   wbindx = where(strmatch(*self.cameras, instrument+'-W', /fold_case))
@@ -251,39 +252,71 @@ pro red::make_wb_cube, dir $
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
   red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
   red_logdata, self.isodate, time_turret, azel = azel
-  
+
   ;; Search for restored WB images
   case self.filetype of
     'ANA': extension = '.f0'
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
   endcase
-
+  
   files = file_search(dir + '*' + extension, count = Nfiles)
 
   if Nfiles eq 0 then begin
     print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
-    retall
+    s = ''
+    read, 'Do you want to make a raw wb cube? [yN] ', s
+    if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
+      make_raw = 1
+    endif else retall
   endif
 
-  ;; The file names we want should have no tuning info.
-  indx = where(~strmatch(files,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nscans)
-  if Nscans eq 0 then stop
-  wfiles = files[indx]
-  self -> extractstates, wfiles, wstates
+  if keyword_set(make_raw) then begin
+    ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
+    files = red_raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/', scannos = scannos, count = Nraw)
+    if Nraw eq 0 then stop
+    self -> extractstates, files, states
 
-  ;; We have no special state (or absence of state) to identify
-  ;; the global WB images but we do know that their exposure times
-  ;; are much larger than the ones corresponding to the individual
-  ;; NB states.
+    prefilters = states.prefilter
+    prefilters = prefilters[uniq(prefilters, sort(prefilters))]
+    if n_elements(prefilters) ne 1 then stop ;; Fix this later
+    prefilter = prefilters[0]
+
+    allscannos = states.scannumber
+    allscannos = allscannos[uniq(allscannos, sort(allscannos))]
+    Nscans = n_elements(allscannos)
+
+    datestamp = fxpar(red_readhead(files[0]), 'DATE-OBS')
+
+    ;; Now select the first file from each scan (later to be changed to the best?)
+    wfiles = strarr(Nscans)
+    wstates = states[0:Nscans-1]
+    for iscan = 0, Nscans-1 do begin
+      indx = where(strmatch(files, '*_'+string(allscannos[iscan], format = '(i05)')+'_*'))
+      wfiles[iscan] = files[indx[0]]
+      wstates[iscan] = states[indx[0]]
+    endfor                      ; iscan
+    self -> get_calib, wstates[0], darkdata = dark, gaindata = gain
+  endif else begin
+    ;; The file names we want should have no tuning info.
+    indx = where(~strmatch(files,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nscans)
+    if Nscans eq 0 then stop
+    wfiles = files[indx]
+    self -> extractstates, wfiles, wstates
+    
+    ;; We have no special state (or absence of state) to identify
+    ;; the global WB images but we do know that their exposure times
+    ;; are much larger than the ones corresponding to the individual
+    ;; NB states.
 ;  self -> extractstates, files, states
 ;  windx = where(states.EXPOSURE gt mean(states.EXPOSURE)*1.5)
 ;  wstates = states[windx]
 ;  wfiles = files[windx]
 ;  Nscans = n_elements(windx)
 
-  prefilter = wstates[0].prefilter
-  datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
+    prefilter = wstates[0].prefilter
+    datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
+  endelse
 
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
@@ -355,8 +388,14 @@ pro red::make_wb_cube, dir $
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
+    if keyword_set(make_raw) then begin
+      if size(im,/n_dim) gt 2 then im = im[*, *, 0]
+      im -= dark
+      im *= gain
+    endif
     im = rotate(temporary(im), direction)
     
+      
     red_fitspar_getdates, hdr $
                           , date_beg = date_beg $
                           , date_end = date_end $
@@ -372,8 +411,12 @@ pro red::make_wb_cube, dir $
 
     ;; Exposure time
     exp_array[0, iscan]  = fxpar(hdr, 'XPOSURE')
-    sexp_array[0, iscan] = fxpar(hdr, 'TEXPOSUR')
-    nsum_array[0, iscan] = fxpar(hdr, 'NSUMEXP')
+    sexp_array[0, iscan] = fxpar(hdr, 'TEXPOSUR', count = Ntexposure)
+    nsum_array[0, iscan] = fxpar(hdr, 'NSUMEXP', count = Nnsumexp)
+    if Ntexposure eq 0 && Nnsumexp eq 0 then begin
+      sexp_array[0, iscan] = exp_array[0, iscan]
+      nsum_array[0, iscan] = 1
+    endif
     
     if hasdateavg then begin
       date_avg_split = strsplit(date_avg, 'T', /extract, count = Nsplit)
@@ -429,7 +472,7 @@ pro red::make_wb_cube, dir $
   ;; calculate the alignment
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], background = missing)
+    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan])
   endfor                        ; iscan
 
   ;; Align cube
@@ -490,10 +533,11 @@ pro red::make_wb_cube, dir $
   mdy0 = reform(min(shift[1,*]))
   mdy1 = reform(max(shift[1,*]))
   ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
-  
+
   ;; De-rotate and shift cube
-  dum = red_rotation(cub1[*,*,0], full=ff, background = missing $
-                     , ang[0], shift[0,0], shift[1,0])
+  bg = median(cub1)
+  dum = red_rotation(cub1[*,*,0], full=ff $
+                     , ang[0], shift[0,0], shift[1,0], background = bg)
   nd = size(dum,/dim)
   nx = nd[0]
   ny = nd[1]
@@ -502,10 +546,10 @@ pro red::make_wb_cube, dir $
   for iscan=1, Nscans-1 do begin
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
-    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff, background = missing $
-                                  , ang[iscan], shift[0,iscan], shift[1,iscan])
+    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
+                                  , ang[iscan], shift[0,iscan], shift[1,iscan], background = bg)
   endfor                        ; iscan
-
+  
   dts = red_time2double(time)
   if n_elements(tstep) eq 0 then begin
     tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*]))))
@@ -523,20 +567,34 @@ pro red::make_wb_cube, dir $
 
   for iscan = 0L, Nscans - 1 do begin
     red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
-    cub[*,*,iscan] = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
+    imm = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
+    ;;if keyword_set(make_raw) then
+    mindx = where(cub[*,*,iscan] eq bg, Nwhere)
+    ;;if keyword_set(make_raw) &&
+    if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
+    cub[*,*,iscan] = imm
   endfor                        ; iscan
 
   ;; Prepare for making output file names
-  odir = self.out_dir + '/cubes_wb/'
+  if keyword_set(make_raw) then begin
+    odir = self.out_dir + '/cubes_raw/'
+  endif else begin
+    odir = self.out_dir + '/cubes_wb/'
+  endelse
   file_mkdir, odir
   midpart = prefilter + '_' + datestamp + '_scans=' $
             + red_collapserange(uscans, ld = '', rd = '')
 
   ;; Save WB results as a fits file
-  if n_elements(nametag) eq 0 then begin
-    ofil = 'wb_'+midpart+'_corrected_im.fits'
+  if keyword_set(make_raw) then begin
+    datatype = 'raw'
   endif else begin
-    ofil = 'wb_'+midpart+'_'+nametag+'_corrected_im.fits'
+    datatype = 'corrected'
+  endelse
+  if n_elements(nametag) eq 0 then begin
+    ofil = 'wb_'+midpart+'_'+datatype+'_im.fits'
+  endif else begin
+    ofil = 'wb_'+midpart+'_'+nametag+'_'+datatype+'_im.fits'
   endelse
   print, inam + ' : saving WB corrected cube -> ' + odir + ofil
   
@@ -544,9 +602,31 @@ pro red::make_wb_cube, dir $
   dims = [nx, ny, 1, 1, Nscans]
   cub = reform(cub, dims, /overwrite)
 
-  ;; Make it a 2-byte integer array
-  cub = fix(round(cub*30000./max(cub)))
+  if keyword_set(integer) then begin
 
+    ;; Make it an integer FITS file
+    
+    ;; Calculate BZERO and BSCALE
+    datamin = min(cub, /nan)
+    datamax = max(cub, /nan)
+
+    arraymin = -32000.
+    arraymax =  32000.
+
+    ;; BZERO and BSCALE
+    bscale = (datamax-datamin)/(arraymax-arraymin)
+    bzero = datamin - arraymin*bscale
+    
+    ;; Set keywords for rescaled integers
+;  red_fitsaddkeyword, outhdr, 'BITPIX', 16
+    red_fitsaddkeyword, hdr, 'BZERO',  bzero
+    red_fitsaddkeyword, hdr, 'BSCALE', bscale
+
+    ;; Make it a 2-byte integer array
+;  cub = fix(round(cub*30000./max(cub)))
+    cub = fix(round((temporary(cub)-BZERO)/BSCALE))
+  endif
+  
   ;; Make header. Start with header from last input file, it has
   ;; info about MOMFBD processing.
   check_fits, cub, hdr, /update ; Get dimensions right
@@ -555,9 +635,9 @@ pro red::make_wb_cube, dir $
 ;                      , 'Creation UTC date of FITS header' ;
 
   ;; Delete some keywords that do not make sense for WB cubes.
-  red_fitsdelkeyword, hdr, 'FNUMSUM'  ; May add this later
-  red_fitsdelkeyword, hdr, 'FRAMENUM' ; Not applicable here
-  red_fitsdelkeyword, hdr, 'STATE'    ; State info is in WCS and FILTER1 keywords
+  red_fitsdelkeyword, hdr, 'FNUMSUM'    ; May add this later
+  red_fitsdelkeyword, hdr, 'FRAMENUM'   ; Not applicable here
+  red_fitsdelkeyword, hdr, 'STATE'      ; State info is in WCS and FILTER1 keywords
 ;  red_fitsdelkeyword, hdr, '' 
 
   anchor = 'DATE'
@@ -653,13 +733,20 @@ pro red::make_wb_cube, dir $
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
+  if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
+    ;; Set padding pixels to missing-data, i.e., NaN. Statistics not
+    ;; calculated during this step due to integers ==> NaN becomes 0,
+    ;; so we need the mask. (Should probably change the WB integer
+    ;; cube to BZERO/BSCALE integers.)
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan', /nostatistics
+  endif
+
   ;; Calculate statistics
   red_fitscube_statistics, odir + ofil, /write, full = ff $
                            , origNx = origNx $
                            , origNy = origNy $
                            , angles = ang
 
-  
   
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
