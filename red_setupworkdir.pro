@@ -250,6 +250,8 @@
 ;
 ;   2018-12-06 : MGL. Add CRISP to default instruments.
 ;
+;   2020-09-10 : MGL. New keyword old_dir.
+;
 ;-
 pro red_setupworkdir, search_dirs = search_dirs $
                       , out_dir = out_dir $
@@ -402,9 +404,9 @@ pro red_setupworkdir, search_dirs = search_dirs $
           print, 'Setting up for ' + instrument + $
             ', calibration data processing only!'
 
-          if (     max( strmatch( camera_dirs, regexp,    /fold ) ) gt 0 $
-                && max( strmatch( instruments, instrument       ) ) gt 0 $
-          ) then begin
+          if ( max( strmatch( camera_dirs, regexp,    /fold ) ) gt 0 && $
+               max( strmatch( instruments, instrument       ) ) gt 0    $
+             ) then begin
             workdir                 = out_dir + instrument + '-calibrations/'
             all_messages[ iinstr ] += 'Setup in ' + workdir
           endif else begin
@@ -562,9 +564,10 @@ pro red_setupworkdir, search_dirs = search_dirs $
         script_file = red_add_suffix( scriptfile, suffix = suffix )
 
         ;; Setup the different instruments.
-        call_procedure, 'red_setupworkdir_' + instrument,       $
-          workdir, root_dir, config_file, script_file, isodate, $
-          calibrations_only = calibrations_only                 ;
+        call_procedure, 'red_setupworkdir_' + instrument       $
+                        , workdir, root_dir, config_file, script_file, isodate $
+                        , calibrations_only = calibrations_only $
+                        , old_dir = old_dir 
       endif
     endfor
 
