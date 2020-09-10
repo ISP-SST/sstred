@@ -220,8 +220,10 @@ pro red::fitscube_intensitycorr, filename $
       print, "Just continue without intensity correction and then (if you wish)"
       print, "do the old correction afterwards with"
       print, "IDL> a -> fitscube_intensitycorr, filename, intensitycorrmethod = 'old'"
+      print
       print, "When making NB cubes from this day in the future, you can also add the "
-      print, "intensitycorrmethod = 'old' keyword to make_nb_cube."
+      print, "intensitycorrmethod = 'old' keyword to make_nb_cube and then not do"
+      print, "the fitscube_intensitycorr step afterwards."
       print
       read, 'Delete [Y/n]', s
       if strlowcase(strmid(s, 0, 1)) ne 'n' then begin
