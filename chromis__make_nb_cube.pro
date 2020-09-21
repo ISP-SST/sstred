@@ -763,8 +763,7 @@ pro chromis::make_nb_cube, wcfile $
       endif
       restore, cfile                 ; The cavity map is in a struct called "fit". 
       cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-      cmap = rotate(temporary(cmap), direction)
-      cmap /= 10.               ; Make it [nm]
+      cmap /= 10.                    ; Make it [nm]
       cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
       fit = 0B                       ; Don't need the fit struct anymore.
       
