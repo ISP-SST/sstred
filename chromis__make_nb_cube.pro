@@ -803,7 +803,8 @@ pro chromis::make_nb_cube, wcfile $
         else : amap = invert( mean(alignments[indx].map, dim = 3) )
       endcase
       cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
-      cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
+      cmap1 = red_rotate(cmap1, direction)
+      cmap1 = cmap1[x0:x1,y0:y1] ; Clip to the selected FOV
 
       ;; Now make rotated copies of the cavity map
       for iscan = 0L, Nscans-1 do begin
@@ -926,7 +927,7 @@ pro chromis::make_nb_cube, wcfile $
   
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
-  self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+  self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
 
   if keyword_set(integer) then begin
     ;; Convert to integers
