@@ -801,7 +801,7 @@ pro chromis::make_nb_cube, wcfile $
         1    : amap = invert(      alignments[indx].map           )
         else : amap = invert( mean(alignments[indx].map, dim = 3) )
       endcase
-      cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
+      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping
       cmap1 = red_rotate(cmap1, direction)
       cmap1 = cmap1[x0:x1,y0:y1] ; Clip to the selected FOV
 
