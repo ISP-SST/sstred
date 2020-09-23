@@ -220,7 +220,7 @@ pro chromis::bug_233, filename
     endcase
     cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping
     cmap1 = red_rotate(cmap1, direction)            ; Correct orientation
-    cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
+    cmap1 = cmap1[x0:x1,y0:y1]                      ; Clip to the selected FOV
 
     
     ;; Now make rotated copies of the cavity map
