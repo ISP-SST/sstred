@@ -197,7 +197,7 @@ pro red::sumpinh, nthreads = nthreads $
       ;; Get the pinholes file name for the selected state, as well as
       ;; dark and flat data.
       self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
-                         darkname = darkname,  flatname = flatname, $
+                         darkname = darkname, flatname = flatname, $
                          pinhname = pinhname, status = status
       if( status ne 0 ) then begin
         print, inam+' : failed to load calibration data for:', states[sel[0]].filename
