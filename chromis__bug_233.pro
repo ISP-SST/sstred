@@ -9,6 +9,8 @@
 
 pro chromis::bug_233, filename
 
+  inam = red_subprogram(/low, calling = inam1)
+
   if ~file_test(filename) then begin
     print, 'The file does not exist!'
     print, filename
@@ -69,7 +71,7 @@ pro chromis::bug_233, filename
       cube_paras_struct = json_parse(cube_paras, /tostruct)
       wcfile = cube_paras_struct.wcfile
       wbhdr = headfits(wcfile)
-      wbpref = strtrim(fxpar(wbhdr, 'FILTER1'), 2)
+;      wbpref = strtrim(fxpar(wbhdr, 'FILTER1'), 2)
       fxbopen, bunit, cube_paras_struct.wcfile, 'MWCINFO', bbhdr
       fxbreadm, bunit, row = 1 $
                 , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
@@ -88,8 +90,8 @@ pro chromis::bug_233, filename
       
       cube_paras = prparas[pos_makescan[0]]
       cube_paras_struct = json_parse(cube_paras, /tostruct)
-      wbpref = (stregex(cube_paras_struct.dir $
-                        , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
+;      wbpref = (stregex(cube_paras_struct.dir $
+;                        , '/([0-9][0-9][0-9][0-9])/', /extract,/subex))[1]
       wbimage = mrdfits(filename, 'WBIMAGE', ehdr, STATUS=status, /silent)
       wcTMEAN = median(wbimage)
     end
@@ -216,24 +218,20 @@ pro chromis::bug_233, filename
       1    : amap = invert(      alignments[indx].map           )
       else : amap = invert( mean(alignments[indx].map, dim = 3) )
     endcase
-    cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
-    cmap1 = red_rotate(cmap1, direction) ; Correct orientation
+    cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping
+    cmap1 = red_rotate(cmap1, direction)            ; Correct orientation
     cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
 
     
     ;; Now make rotated copies of the cavity map
     for iscan = 0L, Nscans-1 do begin
 
-      if ~keyword_set(nocavitymap) then begin
-        
-        ;; Apply the same derot, align, dewarp as for the science data
-        cmap11 = red_rotation(cmap1, ang[iscan], $
-                              wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-        cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
-        
-        cavitymaps[0, 0, 0, 0, iscan] = cmap11
-
-      endif
+      ;; Apply the same derot, align, dewarp as for the science data
+      cmap11 = red_rotation(cmap1, ang[iscan], $
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
+      cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+      
+      cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
     endfor                      ; iscan
 
