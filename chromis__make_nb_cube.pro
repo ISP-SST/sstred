@@ -483,7 +483,7 @@ pro chromis::make_nb_cube, wcfile $
     ;; Read the shifts for the continuum images
     fzread, align_scannumbers, nname
     fzread, align_shifts, sname, align_header
-
+    
     ;; Get the wavelengths used for the intra-scan alignment from the
     ;; file header.
     if n_elements(align_header) gt 0 then align_wavelengths = double(strsplit(align_header,/extract))
@@ -505,8 +505,43 @@ pro chromis::make_nb_cube, wcfile $
     
     ;; Select align shifts for the relevant scan numbers.
     nb_shifts = fltarr(2, Nscans)
-    nb_shifts[0, *] = align_shifts[0, suba]
-    nb_shifts[1, *] = align_shifts[1, suba]
+    ;; The align_shifts are measured with direction=0 so we need to
+    ;; take direction into account when interpreting the shifts.
+    case direction of
+      0 : begin                 ; ( x, y)
+        nb_shifts[0, *] =  align_shifts[0, suba]
+        nb_shifts[1, *] =  align_shifts[1, suba]
+      end
+      1 : begin                 ; (-y, x)
+        nb_shifts[0, *] = -align_shifts[1, suba]
+        nb_shifts[1, *] =  align_shifts[0, suba]
+      end
+      2 : begin                 ; (-x,-y)
+        nb_shifts[0, *] = -align_shifts[0, suba]
+        nb_shifts[1, *] = -align_shifts[1, suba]
+      end
+      3 : begin                 ; ( y,-x)
+        nb_shifts[0, *] =  align_shifts[1, suba]
+        nb_shifts[1, *] = -align_shifts[0, suba]
+      end
+      4 : begin                 ; ( y, x)
+        nb_shifts[0, *] = align_shifts[1, suba]
+        nb_shifts[1, *] = align_shifts[0, suba]
+      end
+      5 : begin                 ; (-x, y)
+        nb_shifts[0, *] = -align_shifts[0, suba]
+        nb_shifts[1, *] =  align_shifts[1, suba]
+      end
+      6 : begin                 ; (-y,-x)
+        nb_shifts[0, *] = -align_shifts[1, suba]
+        nb_shifts[1, *] = -align_shifts[0, suba]
+      end
+      7 : begin                 ; ( x,-y)
+        nb_shifts[0, *] =  align_shifts[0, suba]
+        nb_shifts[1, *] = -align_shifts[1, suba]
+      end
+      else : stop
+    endcase
   
 ;    ;; Use interpolation to get the shifts for the selected scans.
 ;    nb_shifts = fltarr(2, Nscans)
