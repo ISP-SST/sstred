@@ -212,7 +212,7 @@ pro red::fitscube_intensitycorr, filename $
       print, inam + ' : No WB fit file : '+wbfitfile
       print
       print, "It looks like you haven't run the a->fit_wb_diskcenter step."
-      prijnt
+      print
       print, "If you have the calibration data, you can choose to delete the"
       print, "cube now and come back after running that calibration."
       print, ""
