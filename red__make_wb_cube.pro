@@ -818,6 +818,7 @@ pro red::make_wb_cube, dir $
   if self.direction gt 7 || self.direction ne direction then begin
     ;; Direction not set in the config file, assume unknown
     red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+                         , /update $
                          , csyer_spatial_value = 120. $ ; 2 arc minutes
                          , csyer_spatial_comment = '[arcsec] Orientation unknown'
   endif else begin
@@ -825,6 +826,7 @@ pro red::make_wb_cube, dir $
     ;; good. But there may still be small rotation arrors and
     ;; substantial translations.
     red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+                         , /update $
                          , csyer_spatial_value = 60. $ ; 1 arc minute
                          , csyer_spatial_comment = '[arcsec] Orientation known'
   endelse 
