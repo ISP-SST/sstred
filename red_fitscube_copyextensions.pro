@@ -32,6 +32,11 @@
 ; 
 ; :Keywords:
 ; 
+;     anchor : in, out, optional, type=string
+;
+;        Passed on to red_fitscube_addvarkeyword for extensions that
+;        are variable keywords.
+; 
 ;     ext_list : in, out, optional, type=array, default='All extensions' 
 ;
 ;        Names or indices of extensions to be copied (default) or
@@ -47,6 +52,7 @@
 ; 
 ;-
 pro red_fitscube_copyextensions, infile, outfile $
+                                 , anchor = anchor $
                                  , ext_list = ext_list $
                                  , ignore = ignore 
 
@@ -153,7 +159,8 @@ pro red_fitscube_copyextensions, infile, outfile $
         ;; red_fitscube_addvarkeyword.
         var_key = strmid(fcb_in.extname[ext_numbers[iext]], 8)
         red_fitscube_addvarkeyword, outfile, var_key $
-                                  ,  old_filename = infile
+                                    , anchor = anchor $
+                                    , old_filename = infile
       end
 
       fcb_in.xtension[ext_numbers[iext]] eq 'BINTABLE' : begin
@@ -244,6 +251,7 @@ wdir = '/scratch/mats/2016.09.19/CRISP-aftersummer/'
 cd, wdir
 
 filename = 'cubes_wb/wb_6302_2016-09-19T09:30:20_scans=2-8_corrected_im.fits'
+filename = 'cubes_nb/nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
 
 file_copy, filename, filename+'.bak', /overwrite
 
