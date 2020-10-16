@@ -38,13 +38,13 @@
 ; 
 ; 
 ;-
-pro red_fits_copybinext, file_orig, file_target, extension_name
+pro red_fits_copybinext, file_orig, file_target, extension
   
   ;; Open the binary extension in the original file and transfer
   ;; header and data to an extension in the target file.
 
   ;; Header
-  fxbopen,   olun, file_orig, extension_name, bdr
+  fxbopen,   olun, file_orig, extension, bdr
   fxbcreate, tlun, file_target, bdr ; Create the extension in the file
   
   ;; Find the columns in the extension, transfer them to the new file
