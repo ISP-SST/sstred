@@ -38,6 +38,8 @@
 ; 
 ;   2019-09-12 : MGL. First version.
 ;
+;   2020-10-16 : MGL. Use red_fitscube_copyextensions.
+;
 ;-
 pro red_fitscube_newheader, filename, newheader, Nframes_max = Nframes_max
 
@@ -108,39 +110,8 @@ pro red_fitscube_newheader, filename, newheader, Nframes_max = Nframes_max
   red_fitscube_finish, tmplun   ;, wcs = wcs_coordinates
   red_fitscube_close,  oldfileassoc
 
-  ;; Copy SOLARNET variable keywords
-  var_keys = red_fits_var_keys(oldheader, count = Nkeys)
-  for ikey = 0, Nkeys-1 do begin
-    red_fitscube_addvarkeyword, tmpfilename, var_keys[ikey] $
-                                ,  old_filename = oldfilename
-  endfor                        ; ikey 
-
-  ;; Copy WCS extension
-  print, inam+' : Copy the WCS extension...'
-  tic
-  red_fits_copybinext, oldfilename, tmpfilename, 'WCS-TAB'
-  toc
-  print, inam+' : Copy the WCS extension... Done!'
-
-  ;; Copy cavity maps (WCS distortions) if any
-  fits_open, oldfilename, fcb
-  free_lun, fcb.unit
-  windx = where(fcb.extname eq 'WCSDVARR', Nwcsdvarr)
-  ;; The CWERRj, CWDISj, and DWj keywords should already be in the
-  ;; header. We just need to copy the WCSDVARR (image) extension(s).
-  for iwcsdvarr = 0, Nwcsdvarr-1 do begin
-    wcsdvarr = mrdfits( oldfilename, windx[iwcsdvarr], chdr, status = status, /silent)
-    if status ne 0 then stop
-    writefits, tmpfilename, wcsdvarr, chdr, /append
-  endfor                        ; iwcsdvarr
-
-  ;; Copy the WBIMAGE extension of scan cubes.
-  windx = where(fcb.extname eq 'WBIMAGE', Nwbimage)
-  if Nwbimage gt 0 then begin
-    wbim = mrdfits(oldfilename, 'WBIMAGE', ehdr, status = status, /silent)
-    if status ne 0 then stop
-    writefits, tmpfilename, wbim, ehdr, /append
-  endif
+  ;; Copy all extensions, including variable keywords, from the old file
+  red_fitscube_copyextensions, oldfilename, tmpfilename
   
   ;; Overwrite the old file
   print, inam+' : Move temporary file to the original file name...'
