@@ -13,28 +13,24 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
-; :Returns:
-; 
-; 
 ; :Params:
 ; 
+;    file_orig, in, type=string
 ; 
+;       The file from which to copy the extension.
 ; 
+;    file_target, in, type=string
 ; 
+;       The file to which the extension is to be copied.
 ; 
+;    extension, in, type="string or integer"
 ; 
-; :Keywords:
-; 
-;   
-;   
-;   
+;       The name or number of the extension. Note that when file_orig
+;       has multiple extensions with the same name, specifying the
+;       number gives more control.
 ; 
 ; 
 ; :History:
-; 
-; 
-; 
-; 
 ; 
 ; 
 ;-
