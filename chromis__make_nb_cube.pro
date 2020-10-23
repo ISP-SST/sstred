@@ -483,7 +483,7 @@ pro chromis::make_nb_cube, wcfile $
     ;; Read the shifts for the continuum images
     fzread, align_scannumbers, nname
     fzread, align_shifts, sname, align_header
-
+    
     ;; Get the wavelengths used for the intra-scan alignment from the
     ;; file header.
     if n_elements(align_header) gt 0 then align_wavelengths = double(strsplit(align_header,/extract))
@@ -505,8 +505,43 @@ pro chromis::make_nb_cube, wcfile $
     
     ;; Select align shifts for the relevant scan numbers.
     nb_shifts = fltarr(2, Nscans)
-    nb_shifts[0, *] = align_shifts[0, suba]
-    nb_shifts[1, *] = align_shifts[1, suba]
+    ;; The align_shifts are measured with direction=0 so we need to
+    ;; take direction into account when interpreting the shifts.
+    case direction of
+      0 : begin                 ; ( x, y)
+        nb_shifts[0, *] =  align_shifts[0, suba]
+        nb_shifts[1, *] =  align_shifts[1, suba]
+      end
+      1 : begin                 ; (-y, x)
+        nb_shifts[0, *] = -align_shifts[1, suba]
+        nb_shifts[1, *] =  align_shifts[0, suba]
+      end
+      2 : begin                 ; (-x,-y)
+        nb_shifts[0, *] = -align_shifts[0, suba]
+        nb_shifts[1, *] = -align_shifts[1, suba]
+      end
+      3 : begin                 ; ( y,-x)
+        nb_shifts[0, *] =  align_shifts[1, suba]
+        nb_shifts[1, *] = -align_shifts[0, suba]
+      end
+      4 : begin                 ; ( y, x)
+        nb_shifts[0, *] = align_shifts[1, suba]
+        nb_shifts[1, *] = align_shifts[0, suba]
+      end
+      5 : begin                 ; (-x, y)
+        nb_shifts[0, *] = -align_shifts[0, suba]
+        nb_shifts[1, *] =  align_shifts[1, suba]
+      end
+      6 : begin                 ; (-y,-x)
+        nb_shifts[0, *] = -align_shifts[1, suba]
+        nb_shifts[1, *] = -align_shifts[0, suba]
+      end
+      7 : begin                 ; ( x,-y)
+        nb_shifts[0, *] =  align_shifts[0, suba]
+        nb_shifts[1, *] = -align_shifts[1, suba]
+      end
+      else : stop
+    endcase
   
 ;    ;; Use interpolation to get the shifts for the selected scans.
 ;    nb_shifts = fltarr(2, Nscans)
@@ -763,8 +798,7 @@ pro chromis::make_nb_cube, wcfile $
       endif
       restore, cfile                 ; The cavity map is in a struct called "fit". 
       cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-      cmap = rotate(temporary(cmap), direction)
-      cmap /= 10.               ; Make it [nm]
+      cmap /= 10.                    ; Make it [nm]
       cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
       fit = 0B                       ; Don't need the fit struct anymore.
       
@@ -802,8 +836,9 @@ pro chromis::make_nb_cube, wcfile $
         1    : amap = invert(      alignments[indx].map           )
         else : amap = invert( mean(alignments[indx].map, dim = 3) )
       endcase
-      cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
-      cmap1 = cmap1[x0:x1,y0:y1]           ; Clip to the selected FOV
+      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping
+      cmap1 = red_rotate(cmap1, direction)
+      cmap1 = cmap1[x0:x1,y0:y1] ; Clip to the selected FOV
 
       ;; Now make rotated copies of the cavity map
       for iscan = 0L, Nscans-1 do begin
@@ -926,7 +961,7 @@ pro chromis::make_nb_cube, wcfile $
   
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
-  self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+  self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
 
   if keyword_set(integer) then begin
     ;; Convert to integers

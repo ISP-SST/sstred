@@ -47,7 +47,9 @@ pro crisp::make_periodic_filter, prefilter $
 
   ;; Define kernel for suppressing the chosen spatial frequencies. 
   kernel = fltarr(hole_width, hole_width)
-  for i = 0, hole_width-1 do for j = 0, hole_width-1 do kernel[i, j] = sqrt((i-hole_width/2)^2+(j-hole_width/2)^2)
+  for i = 0, hole_width-1 do $
+     for j = 0, hole_width-1 do $
+        kernel[i, j] = sqrt((i-hole_width/2)^2+(j-hole_width/2)^2)
   kernel /= max(kernel*1.2)
 
   pfiles = file_search('polcal/cam*_'+prefilter+'_polcal.fits', count = Nfiles)
@@ -117,8 +119,14 @@ pro crisp::make_periodic_filter, prefilter $
   ;; the clicked position, as well as the position on the other side
   ;; of the origin. 
   filt = fltarr(Nx, Ny)+1.
-  for i = 0, hole_width-1 do for j = 0, hole_width-1 do filt[Nx/2+round(xx) + i-hole_width/2, Ny/2+round(yy) +j-hole_width/2] = kernel[i, j]
-  for i = 0, hole_width-1 do for j = 0, hole_width-1 do filt[Nx/2-round(xx) + i-hole_width/2, Ny/2-round(yy) +j-hole_width/2] = kernel[i, j]
+  for i = 0, hole_width-1 do $
+     for j = 0, hole_width-1 do $
+        filt[Nx/2+round(xx) + i-hole_width/2 $
+             , Ny/2+round(yy) +j-hole_width/2] = kernel[i, j]
+  for i = 0, hole_width-1 do $
+     for j = 0, hole_width-1 do $
+        filt[Nx/2-round(xx) + i-hole_width/2 $
+             , Ny/2-round(yy) +j-hole_width/2] = kernel[i, j]
 
   ;; Apply the filter
 

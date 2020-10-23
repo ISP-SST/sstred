@@ -547,7 +547,8 @@ pro red::make_wb_cube, dir $
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
-                                  , ang[iscan], shift[0,iscan], shift[1,iscan], background = bg)
+                                  , ang[iscan], shift[0,iscan], shift[1,iscan] $
+                                  , background = bg)
   endfor                        ; iscan
   
   dts = red_time2double(time)

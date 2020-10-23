@@ -23,7 +23,7 @@
 ; 
 ; :Keywords:
 ; 
-;     corrmethod : in, optional, type="string or boolean", default='fit'
+;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       One of 'old' (for correction based on comparing the current
 ;       scan with the prefilter calibration data, or 'fit' (for
@@ -44,7 +44,7 @@
 ; 
 ;-
 pro red::fitscube_intensitycorr, filename $
-                                 , corrmethod = corrmethod
+                                 , intensitycorrmethod = corrmethod
   
 
   inam = red_subprogram(/low, calling = inam1)
@@ -211,10 +211,19 @@ pro red::fitscube_intensitycorr, filename $
       s = ''
       print, inam + ' : No WB fit file : '+wbfitfile
       print
-      print, "It looks like you haven't run the a->fit_wb_diskcenter step. If"
-      print, "you have the calibration data, you can choose to delete the cube"
-      print, "now and come back after running that calibration or to continue"
-      print, "without intensity correction. Or try with corrmethod = 'old'."
+      print, "It looks like you haven't run the a->fit_wb_diskcenter step."
+      print
+      print, "If you have the calibration data, you can choose to delete the"
+      print, "cube now and come back after running that calibration."
+      print, ""
+      print, "If you do not have the calibration data, do not delete."
+      print, "Just continue without intensity correction and then (if you wish)"
+      print, "do the old correction afterwards with"
+      print, "IDL> a -> fitscube_intensitycorr, filename, intensitycorrmethod = 'old'"
+      print
+      print, "When making NB cubes from this day in the future, you can also add the "
+      print, "intensitycorrmethod = 'old' keyword to make_nb_cube and then not do"
+      print, "the fitscube_intensitycorr step afterwards."
       print
       read, 'Delete [Y/n]', s
       if strlowcase(strmid(s, 0, 1)) ne 'n' then begin

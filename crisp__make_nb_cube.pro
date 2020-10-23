@@ -1275,7 +1275,7 @@ pro crisp::make_nb_cube, wcfile $
   
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
-  self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+  self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
   
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
