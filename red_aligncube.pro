@@ -8,7 +8,7 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :Author:
+; :Author: Jaime de la Cruz Rodriguez, Institute for Solar Physics
 ; 
 ; 
 ; 
@@ -59,13 +59,18 @@
 ;   2016-10-24 : MGL. Bypass interactive selection of ROI by providing
 ;                xc and yc.
 ;
+;   2020-10-01 : JdlCR. Adapted keywords for the new red_shift_im.
+;
 ;
 ;-
 function red_aligncube, cub, np $
                         , xbd = xbd, ybd = ybd $
                         , cubic = cubic $
                         , aligncube = aligncube $
-                        , xc = xc, yc = yc, centered = centered
+                        , xc = xc, yc = yc $
+                        , centered = centered $
+                        , nthreads = nthreads $
+                        , nearest = nearest
   
   if n_elements(xbd) eq 0 then xbd = 256
   if n_elements(ybd) eq 0 then ybd = 256
@@ -143,8 +148,7 @@ function red_aligncube, cub, np $
 
     red_progressbar, ii, dim[2], 'Apply the image shifts'
 
-    cub[*, *, ii] = red_shift_im(cub[*, *, ii], shifts[0, ii], shifts[1, ii] $
-                                 , cubic = cubic)
+    cub[*, *, ii] = red_shift_im(cub[*, *, ii], shifts[0, ii], shifts[1, ii], nthreads = nthreads, nearest = nearest)
 
   endfor                        ; ii
 

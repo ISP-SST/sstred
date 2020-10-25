@@ -29,10 +29,10 @@
 ; 
 ;    2016-10-28 : MGL. Added a progress bar. 
 ; 
-; 
+;    2020-10-01 : JdlCR. Added nthreads keyword, which is passed to red_dsgridnest.pro
 ; 
 ;-
-function red_destretch_tseries, cub, platescale, grids, clips, tstep
+function red_destretch_tseries, cub, platescale, grids, clips, tstep, nthreads = nthreads
 
   dim = size(cub, /dim)
   nfiles = dim[2]
@@ -54,7 +54,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep
   for i=1, dim[2]-1 do begin
     red_progressbar, i-1, dim[2]-1, 'Computing destretch grid'
     im = cub[*,*,i]
-    dq = red_dsgridnest(refim, im, grids, clips)
+    dq = red_dsgridnest(refim, im, grids, clips, nthreads = nthreads)
     badg = WHERE(dq gt maxstr, num)
     if num gt 0 then begin
       dq[badg] = 0.0

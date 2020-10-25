@@ -103,6 +103,9 @@
 ;    2020-04-03 : MGL. New keywords direction and norotation.
 ; 
 ;    2020-04-27 : MGL. New keyword rotation.
+;
+;    2020-10-01 : JdlCR. Use the new rotation/de-stretch routines.
+;                 Added nthreads and nearest keywords
 ; 
 ;-
 pro chromis::make_scan_cube, dir $
@@ -123,7 +126,11 @@ pro chromis::make_scan_cube, dir $
                              , overwrite = overwrite $
                              , rotation = rotation $
                              , scannos = scannos $
-                             , tile = tile 
+                             , tile = tile $
+                             , nearest = nearest $
+                             , nthreads = nthreads $
+                             , subtract_meanang = subtract_meanang 
+                    
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -240,8 +247,9 @@ pro chromis::make_scan_cube, dir $
   endif else undefine, ddate, time
 
   ;; Derotation angle
-  ang = (red_lp_angles(time, ddate[0], /from_log, offset_angle = rotation))[0]
-
+  if keyword_set(subtract_meanang) then ang = 0.0d0 $
+  else ang = (red_lp_angles(time, ddate[0], /from_log, offset_angle = rotation))[0]
+  
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -367,9 +375,43 @@ pro chromis::make_scan_cube, dir $
     
     ;; Select align shifts for the relevant scan numbers.
     nb_shifts = fltarr(2, Nscans)
-    nb_shifts[0, *] = align_shifts[0, suba]
-    nb_shifts[1, *] = align_shifts[1, suba]
-  
+    ;;nb_shifts[0, *] = align_shifts[0, suba]
+   ;; nb_shifts[1, *] = align_shifts[1, suba]
+    case direction of
+      0 : begin                 ; ( x, y)
+        nb_shifts[0, *] =  align_shifts[0, suba]
+        nb_shifts[1, *] =  align_shifts[1, suba]
+      end
+      1 : begin                 ; (-y, x)
+        nb_shifts[0, *] = -align_shifts[1, suba]
+        nb_shifts[1, *] =  align_shifts[0, suba]
+      end
+      2 : begin                 ; (-x,-y)
+        nb_shifts[0, *] = -align_shifts[0, suba]
+        nb_shifts[1, *] = -align_shifts[1, suba]
+      end
+      3 : begin                 ; ( y,-x)
+        nb_shifts[0, *] =  align_shifts[1, suba]
+        nb_shifts[1, *] = -align_shifts[0, suba]
+      end
+      4 : begin                 ; ( y, x)
+        nb_shifts[0, *] = align_shifts[1, suba]
+        nb_shifts[1, *] = align_shifts[0, suba]
+      end
+      5 : begin                 ; (-x, y)
+        nb_shifts[0, *] = -align_shifts[0, suba]
+        nb_shifts[1, *] =  align_shifts[1, suba]
+      end
+      6 : begin                 ; (-y,-x)
+        nb_shifts[0, *] = -align_shifts[1, suba]
+        nb_shifts[1, *] = -align_shifts[0, suba]
+      end
+      7 : begin                 ; ( x,-y)
+        nb_shifts[0, *] =  align_shifts[0, suba]
+        nb_shifts[1, *] = -align_shifts[1, suba]
+      end
+      else : stop
+    endcase
 ;    ;; Use interpolation to get the shifts for the selected scans.
 ;    nb_shifts = fltarr(2, Nscans)
 ;    for iscan=0L, Nscans-1 do begin
@@ -385,7 +427,7 @@ pro chromis::make_scan_cube, dir $
     if cccc gt 0 then nb_shifts[pos] = 0
   endif
 
-
+  
   for iscan = 0L, Nscans-1 do begin
     
     ;; This is the loop in which the cubes are written.
@@ -632,14 +674,26 @@ pro chromis::make_scan_cube, dir $
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
         ;; aberrations.
-        nbim = red_shift_sub(nbim, -xshifts[ituning], -yshifts[ituning])
-      endif
+        ;;nbim = red_shift_sub(nbim, -xshifts[ituning], -yshifts[ituning])
+        xshift = -xshifts[ituning]
+        yshift = -yshifts[ituning]
+      endif else begin
+        xshift = 0.0
+        yshift = 0.0
+      endelse
 
+      
       ;; Apply destretch to anchor camera and prefilter correction
-      if wbstretchcorr then nbim = red_stretch(temporary(nbim), grid1)
+      if wbstretchcorr then begin
+        ;;nbim = red_stretch_linear(temporary(nbim), grid1, nthreads=nthreads, nearest = nearest)
+        nbim = red_rotation(temporary(nbim), ang, xshift, yshift, full = ff, stretch_grid = grid1, nthreads = nthreads, nearest = nearest)
+      endif else begin
+        nbim = red_rotation(temporary(nbim), ang, xshift, yshift, full = ff, nthreads = nthreads, nearest = nearest)
+      endelse       
 
+        
       self -> fitscube_addframe, fileassoc $
-                                 , red_rotation(temporary(nbim), ang, full = ff) $
+                                 , temporary(nbim) $
                                  , ituning = ituning
       
     endfor                      ; ituning
@@ -826,7 +880,7 @@ pro chromis::make_scan_cube, dir $
     
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+    self -> fitscube_intensitycorr, filename, intensitycorrmethod  = intensitycorrmethod
     
     if keyword_set(integer) then begin
       ;; Convert to integers

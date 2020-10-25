@@ -80,12 +80,22 @@
 ;       estimated by momfbd. Set to a number to smooth by a Gaussian
 ;       kernel of that width. 
 ;
-; 
+;     nthreads : in, optional, type = int
+;
+;       number of threads to use in red_stretch
+;
+;     nearest : in, optional, type = boolean
+;
+;       perform nearest neighbor interpolation (default = bilinear)
+;
 ; :History:
 ; 
 ;    2019-03-21 : MGL. First version.
 ; 
 ;    2020-07-15 : MGL. Remove keyword smooth.
+;
+;    2020-10-01 : JdlCR. Use the new stretching routines and allow for
+;                 optional nearest neighbor interpolation. 
 ;                                
 ;-
 pro crisp::make_stokes_cubes, dir, scanno $
@@ -98,7 +108,9 @@ pro crisp::make_stokes_cubes, dir, scanno $
 ;                              , smooth = smooth $
                               , snames = snames $
                               , stokesdir = stokesdir $
-                              , tiles = tiles 
+                              , tiles = tiles $
+                              , nthreads = nthreads $
+                              , nearest = nearest
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -149,8 +161,8 @@ pro crisp::make_stokes_cubes, dir, scanno $
   ;; Default keywords
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
   if n_elements(tiles) eq 0 or n_elements(clips) eq 0 then begin
-    tiles = [8, 16, 32, 64, 128]
-    clips = [8, 4,  2,  1,  1  ]
+    tiles = [12, 16, 32, 64, 72]
+    clips = [12, 8,  4,  2 , 1]
   endif
 
 
@@ -563,7 +575,9 @@ pro crisp::make_stokes_cubes, dir, scanno $
                           , units = units $
                           , wbg = wbg $
                           , wcs = wcs $
-                          , wbstates = wbstates[these_wbindx]
+                          , wbstates = wbstates[these_wbindx] $
+                          , nthreads = nthreads $
+                          , nearest = nearest
 
       
     endfor                      ; ituning

@@ -113,6 +113,9 @@
 ; 
 ;    2020-06-16 : MGL. Remove temporal intensity scaling, deprecate
 ;                 keyword notimecorr.
+;
+;    2020-10-01 : JdlCR. Apply all corrections at once and use
+;                 internal interpolation routines 
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -129,7 +132,9 @@ pro chromis::make_nb_cube, wcfile $
                            , odir = odir $
                            , overwrite = overwrite $
                            , tiles = tiles $
-                           , wbsave = wbsave
+                           , wbsave = wbsave $
+                           , nearest = nearest $
+                           , nthreads = nthreads
 
   
   ;; Name of this method
@@ -720,21 +725,34 @@ pro chromis::make_nb_cube, wcfile $
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
         ;; aberrations.
-        nbim = red_shift_sub(nbim, -xshifts[iwav], -yshifts[iwav])
-      endif
+                                ;nbim = red_shift_sub(nbim, -xshifts[iwav], -yshifts[iwav], )
+        ;; add shift to total shift
+        idx_shift =  wcSHIFT[0,iscan] -xshifts[iwav]
+        idy_shift =  wcSHIFT[1,iscan] -yshifts[iwav]
+      endif else begin
+        idx_shift =  wcSHIFT[0,iscan] 
+        idy_shift =  wcSHIFT[1,iscan]
+      endelse
 
       ;; Apply destretch to anchor camera and prefilter correction
-      if wbcor then nbim = red_stretch(temporary(nbim), grid1)
+      ;;
+      ;; JdlCR: Have to figure out how to add this to the total
+      ;; distorsion matrix instead so we do all in one step
+      ;;
+      if wbcor then nbim = red_stretch_linear(temporary(nbim), grid1, nearest=nearest, nthreads=nthreads)
+      
 
+             
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
-
       nbim = red_rotation(temporary(nbim), ang[iscan] $
-                          , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
-                          , background = bg)
-      mindx = where(nbim eq bg, Nwhere)
-      nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
-      if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+                          , idx_shift, idy_shift, full=wcFF $
+                          , background = bg, nearest = nearest, nthreads = nthreads $
+                          , stretch_grid = reform(wcGRID[iscan,*,*,*]))
+      
+      ;;mindx = where(nbim eq bg, Nwhere)
+      ;;nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
+      ;;if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
 
 ;      if keyword_set(integer) then begin
 ;        self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
@@ -748,13 +766,13 @@ pro chromis::make_nb_cube, wcfile $
         ;; Same operations as on narrowband image, except for
         ;; "aligncont".
         wbim = wwi              ;* tscl
-        wbim = red_stretch(temporary(wbim), grid1)
+        wbim = red_stretch_linear(temporary(wbim), grid1, nthreads=nthreads, nearest=nearest)
         bg = median(wbim)
         wbim = red_rotation(temporary(wbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
-                            , background = bg)
+                            , background = bg,  stretch_grid=reform(wcGRID[iscan,*,*,*]), nthreads=nthreads, nearest = nearest)
         mindx = where(wbim eq bg, Nwhere)
-        wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
+        ;;wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
         if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
                                    , iscan = iscan, ituning = iwav
@@ -847,8 +865,10 @@ pro chromis::make_nb_cube, wcfile $
           
           ;; Apply the same derot, align, dewarp as for the science data
           cmap11 = red_rotation(cmap1, ang[iscan], $
-                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-          cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
+                                stretch_grid=reform(wcGRID[iscan,*,*,*]), nthreads=nthreads, nearest=nearest)
+          
+          ;;cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
           
           cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
