@@ -228,8 +228,9 @@ pro chromis::bug_233, filename
 
       ;; Apply the same derot, align, dewarp as for the science data
       cmap11 = red_rotation(cmap1, ang[iscan], $
-                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-      cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
+                            stretch_grid = reform(wcGRID[iscan,*,*,*]))
+      ;;cmap11 = red_stretch_linear(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
       
       cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
