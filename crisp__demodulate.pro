@@ -445,10 +445,10 @@ pro crisp::demodulate, outname, immr, immt $
       
       for istokes = 0L, Nstokes-1 do begin
         rest[*,*,istokes] += red_stretch_linear(reform(mymt[ilc,istokes,*,*]) $
-                                         * img_t[*,*,ilc], grid, nthreads=nthreads, nearest=nearest)
+                                                * img_t[*,*,ilc], grid, nthreads=nthreads, nearest=nearest)
         resr[*,*,istokes] += red_stretch_linear(reform(mymr[ilc,istokes,*,*]) $
                                                 * img_r[*,*,ilc], grid, nthreads=nthreads, nearest=nearest)
-        stop
+        ;;stop
       endfor                    ; istokesstop
       if n_elements(cmap) ne 0 then cmapp += red_stretch_linear(cmap, grid, nthreads=nthreads, nearest=nearest)
     endfor                      ; ilc
