@@ -108,13 +108,6 @@
 ;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
 ;       string '*' to include all.
 ;
-;     smooth : in, optional, type=varies, default=5
-;
-;       How to smooth the modulation matrices? Set to the string
-;       'momfbd' to smooth subfield by subfield using the PSFs
-;       estimated by momfbd. Set to a number to smooth by a Gaussian
-;       kernel of that width. 
-;
 ;     tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
@@ -162,7 +155,6 @@ pro crisp::make_scan_cube, dir $
                            , redemodulate = redemodulate $
                            , rotation = rotation $
                            , scannos = scannos $
-;                           , smooth = smooth $
                            , tiles = tiles  $
                            , tuning_selection = tuning_selection
                
@@ -188,7 +180,6 @@ pro crisp::make_scan_cube, dir $
   red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, rotation    
-  red_make_prpara, prpara, smooth
   red_make_prpara, prpara, tiles
   red_make_prpara, prpara, tuning_selection
 
@@ -492,7 +483,7 @@ pro crisp::make_scan_cube, dir $
                  , complement = complement, Ncomplement = Ncomplement)
 
     ;; Read global WB file to add it as an extension to the cube. And
-    ;; possibly use for WB correctionb.
+    ;; possibly use for WB correction.
     wbim = (red_readdata(wfiles[indx], head = wbhdr, direction = direction))[x0:x1, y0:y1]
 
     ;; The non-global WB files
@@ -508,7 +499,6 @@ pro crisp::make_scan_cube, dir $
                                  , cmap_fwhm = cmap_fwhm $
                                  , nocavitymap = nocavitymap $
                                  , redemodulate = redemodulate $
-                                 , smooth = smooth $
                                  , snames = snames $
                                  , stokesdir = stokesdir $
                                  , tiles = tiles 
