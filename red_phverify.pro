@@ -78,6 +78,12 @@ PRO red_phverify_event, ev
     WIDGET_CONTROL, ev.TOP, /DESTROY
   ENDIF
 
+  if(ev.ID eq (*info).table) then begin
+    WIDGET_CONTROL,(*info).table  , GET_VALUE=value
+    (*info).map = value
+  endif
+
+  
 END
 
 FUNCTION red_phverify, ph1, ph2, map, max_shift=max_shift, nref=nref, threshold=threshold
