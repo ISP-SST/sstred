@@ -43,8 +43,10 @@
 ; 
 ; :History:
 ; 
-;   2019-07-04 : MGL. First version.
+;    2019-07-04 : MGL. First version.
 ; 
+;    2020-10-28 : MGL. Remove statistics calculations.
+;
 ;-
 pro red::make_raw_cube, oldname $
                         , integer = integer $
@@ -199,18 +201,6 @@ pro red::make_raw_cube, oldname $
                               , overwrite = overwrite
     filename = outname
   endif
-
-
-  ;; Add statistics - or remove existing entries from header? Get
-  ;; keywords from quicklook?
-  red_fitscube_statistics, filename, /write ;$
-;                           , angles = ang $
-;                           , full = wcFF $
-;                           , grid = wcGRID $
-;                           , origNx = Nxx $
-;                           , origNy = Nyy $
-;;                             , percentiles = percentiles $
-;                           , shifts = wcSHIFT 
 
   print, inam + ' : Raw data cube stored in:'
   print, filename

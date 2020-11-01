@@ -60,11 +60,6 @@
 ;       Do not add cavity maps to the WCS metadata.
 ;       no effect.)
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. If statistics keywords already exist, then remove them.
-;
 ;     odir : in, optional, type=string, detault='cubes_scan/'
 ;
 ;       The output directory.
@@ -104,6 +99,8 @@
 ; 
 ;    2020-04-27 : MGL. New keyword rotation.
 ; 
+;    2020-10-28 : MGL. Remove statistics calculations.
+;
 ;-
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
@@ -118,7 +115,6 @@ pro chromis::make_scan_cube, dir $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
                              , norotation = norotation $
-                             , nostatistics = nostatistics $
                              , odir = odir $
                              , overwrite = overwrite $
                              , rotation = rotation $
@@ -835,18 +831,6 @@ pro chromis::make_scan_cube, dir $
                                 , outname = outname $
                                 , overwrite = overwrite
       filename = outname
-    endif
-    
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      if keyword_set(norotation) then begin
-        red_fitscube_statistics, filename, /write
-      endif else begin
-        red_fitscube_statistics, filename, /write, full = ff $
-                                 , origNx = Nx $
-                                 , origNy = Ny $
-                                 , angles = [ang]
-      endelse
     endif
     
     ;; Done with this scan.

@@ -42,6 +42,8 @@
 ;   2020-01-22 : MGL. Remove keyword nodiskcenter, new keyword
 ;                corrmethod. 
 ; 
+;   2020-10-28 : MGL. Remove statistics calculations.
+;
 ;-
 pro red::fitscube_intensitycorr, filename $
                                  , intensitycorrmethod = corrmethod
@@ -412,9 +414,6 @@ pro red::fitscube_intensitycorr, filename $
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
 
-  ;; Remove any old statistics info. 
-  red_fitscube_statistics, filename, /remove_only
-  
   ;; For scan cubes, do it also for the WB image.
   fits_info, filename, /SILENT , N_ext = n_ext, EXTNAME=extnames
   if n_ext gt 0 && round(total(strmatch(strtrim(extnames,2),'WBIMAGE'))) eq 1 then begin
@@ -427,8 +426,6 @@ pro red::fitscube_intensitycorr, filename $
     modfits, filename, float(wbimage), ehdr, errmsg = errmsg, extname = 'WBIMAGE'
   endif
 
-;  stop
-  
 end
 
 

@@ -185,6 +185,8 @@
 ; 
 ;    2020-07-08 : MGL. New keyword integer. 
 ; 
+;    2020-10-28 : MGL. Remove statistics calculations.
+;
 ;-
 pro red::make_wb_cube, dir $
                        , align_interactive = align_interactive $
@@ -735,20 +737,10 @@ pro red::make_wb_cube, dir $
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
   if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
-    ;; Set padding pixels to missing-data, i.e., NaN. Statistics not
-    ;; calculated during this step due to integers ==> NaN becomes 0,
-    ;; so we need the mask. (Should probably change the WB integer
-    ;; cube to BZERO/BSCALE integers.)
-    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan', /nostatistics
+    ;; Set padding pixels to missing-data, i.e., NaN.
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
   endif
 
-  ;; Calculate statistics
-  red_fitscube_statistics, odir + ofil, /write, full = ff $
-                           , origNx = origNx $
-                           , origNy = origNy $
-                           , angles = ang
-
-  
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
   x01y01 = [X0, X1, Y0, Y1]
@@ -875,101 +867,6 @@ pro red::make_wb_cube, dir $
                                   , anchor = anchor $
                                   , keyword_method = 'median' $
                                   , axis_numbers = [3, 5]
-;     
-;     ;; Statistics
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMIN', DATAMIN $
-;                                     , comment = 'The minimum data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMIN $
-;                                     , axis_numbers = [3, 5]
-;   
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMAX', DATAMAX $
-;                                     , comment = 'The maximum data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMAX $
-;                                     , axis_numbers = [3, 5]
-;   
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEAN', DATAMEAN $
-;                                     , comment = 'The average data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMEAN $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATARMS', DATARMS $
-;                                     , comment = 'The RMS deviation from the mean' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBERMS $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAKURT', DATAKURT $
-;                                     , comment = 'The kurtosis' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEKURT $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATASKEW', DATASKEW $
-;                                     , comment = 'The skewness' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBESKEW $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP01', DATAP01 $
-;                                     , comment = 'The 01 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP01 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP10', DATAP10 $
-;                                     , comment = 'The 10 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP10 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP25', DATAP25 $
-;                                     , comment = 'The 25 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP25 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEDN', DATAMEDN $
-;                                     , comment = 'The median data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMEDN $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP75', DATAP75 $
-;                                     , comment = 'The 75 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP75 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP90', DATAP90 $
-;                                     , comment = 'The 90 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP90 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP95', DATAP95 $
-;                                     , comment = 'The 95 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP95 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP98', DATAP98 $
-;                                     , comment = 'The 98 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP98 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP99', DATAP99 $
-;                                     , comment = 'The 99 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP99 $
-;                                     , axis_numbers = [3, 5]
-;   
   
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin

@@ -83,11 +83,6 @@
 ;
 ;       Do not apply the direction parameter.
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. If statistics keywords already exist, then remove them.
-;
 ;     odir : in, optional, type=string, detault='cubes_scan/'
 ;
 ;       The output directory.
@@ -135,6 +130,8 @@
 ;    2020-04-27 : MGL. New keyword rotation.
 ; 
 ;    2020-07-15 : MGL. Remove keyword smooth.
+; 
+;    2020-10-28 : MGL. Remove statistics calculations.
 ;
 ;-
 pro crisp::make_scan_cube, dir $
@@ -940,7 +937,6 @@ pro crisp::make_scan_cube, dir $
       ;; magnetic-features mask.
       self -> fitscube_crosstalk, filename $
                                   , mag_mask = mag_mask $
-                                  , /nostatistics $
                                   , tuning_selection = tuning_selection
 
     endif
@@ -978,18 +974,6 @@ pro crisp::make_scan_cube, dir $
       filename = outname
     endif
     
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      if keyword_set(norotation) then begin
-        red_fitscube_statistics, filename, /write
-      endif else begin
-        red_fitscube_statistics, filename, /write, full = ff $
-                                 , origNx = Nx $
-                                 , origNy = Ny $
-                                 , angles = [ang]
-      endelse
-    endif
-
     ;; Done with this scan.
     print, inam + ' : Narrowband scan cube stored in:'
     print, filename

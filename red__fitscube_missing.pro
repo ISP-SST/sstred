@@ -40,10 +40,6 @@
 ;
 ;     Don't make a flipped version.
 ;
-;   nostatistics  : in, optional, type=boolean
-;
-;     Don't calculate statistics.
-;
 ;   oname  : in, optional, type=string, default=filename
 ;
 ;     The path of the output file.
@@ -57,14 +53,15 @@
 ; 
 ; :History:
 ; 
-;     2020-06-29 : MGL. First version.
+;    2020-06-29 : MGL. First version.
+;
+;    2020-10-28 : MGL. Remove statistics calculations.
 ; 
 ;-
 pro red::fitscube_missing, filename $
                            , force = force $
                            , missing_type = missing_type $
                            , noflip = noflip $
-                           , nostatistics = nostatistics $
                            , oname = oname $
                            , overwrite = overwrite
 
@@ -74,7 +71,6 @@ pro red::fitscube_missing, filename $
   red_make_prpara, prpara, filename
   red_make_prpara, prpara, force
   red_make_prpara, prpara, missing_type
-  red_make_prpara, prpara, nostatistics
   red_make_prpara, prpara, oname
 
   hdr = headfits(filename)
@@ -267,11 +263,6 @@ pro red::fitscube_missing, filename $
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
 
-  if ~keyword_set(nostatistics) then begin
-    ;; Calculate statistics
-    red_fitscube_statistics, fname, /write
-  endif
-
   if ~keyword_set(noflip) then begin
     ;; Make a flipped version
     red_fitscube_flip, fname $
@@ -285,9 +276,9 @@ dir = '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb/'
 filename = dir+'nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
 
 a = crispred(/dev)
-;a -> fitscube_missing, filename, oname = dir+'test.fits', /nostatistics, /over, /force
-;a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force
-a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force, missing_type = 'nan'
-;a -> fitscube_missing, dir+'test.fits', /nostatistics, /over, /force, missing_type = 'median'
+;a -> fitscube_missing, filename, oname = dir+'test.fits', /over, /force
+;a -> fitscube_missing, dir+'test.fits', /over, /force
+a -> fitscube_missing, dir+'test.fits', /over, /force, missing_type = 'nan'
+;a -> fitscube_missing, dir+'test.fits', /over, /force, missing_type = 'median'
 
 end
