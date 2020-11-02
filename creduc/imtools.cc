@@ -20,7 +20,7 @@ using namespace std;
 
 void nearest2D(int const ny, int const nx, double* __restrict__ y, double* __restrict__ x,
 	       double*  d_in, int const ny1, int const nx1, double*  yy_in,
-	       double*  xx_in,  double*  res_in, int const nthreads)
+	       double*  xx_in,  double*  res_in, int const nthreads, double const missing)
 {
 
   // --- map data into 2D array ---/
@@ -50,45 +50,50 @@ void nearest2D(int const ny, int const nx, double* __restrict__ y, double* __res
 #pragma omp for schedule(dynamic,10) collapse(2)
     for( jj=0; jj<ny1; ++jj){
       for( ii=0; ii<nx1; ++ii){
-	inty = std::min<double>(std::max<double>(yy[jj][ii],y[0]*1.0000000001),y[ny-1]*0.999999999999);
+	//inty = std::min<double>(std::max<double>(yy[jj][ii],y[0]*1.0000000001),y[ny-1]*0.999999999999);
+	//intx = std::min<double>(std::max<double>(xx[jj][ii],x[0]*1.0000000001),x[nx-1]*0.999999999999);
 	
-	// --- Search y --- //
-	iy = 0;
-
-
-	for( tt=1; tt<ny; ++tt){
-	  if((inty > y[tt-1]) && (inty <= y[tt])){
-	    dy0 = std::abs(inty-y[tt-1]);
-	    dy1 = std::abs(inty-y[tt]);
-	    
-	    if(dy0 < dy1) iy = tt-1;
-	    else iy = tt;
-	    
-	    break;
-	  } // if
-	} //tt
-	
-	// --- now search xx --- //
-	
-	intx = std::min<double>(std::max<double>(xx[jj][ii],x[0]*1.0000000001),x[nx-1]*0.999999999999);
-	ix = 0;
-	for( tt=1; tt<nx; ++tt){
-	  if((intx > x[tt-1]) && (intx <= x[tt])){
-	    dx0 = std::abs(intx-x[tt-1]);
-	    dx1 = std::abs(intx-x[tt]);
-	    
-	    if(dx0 < dx1) ix = tt-1;
-	    else ix = tt;
-	    
-	    break;
-	  } // if
-	} // tt
-	
-	
-	// --- Assign result --- //
-	
-	res[jj][ii] = d[iy][ix];
-	
+	intx = xx[jj][ii], inty = yy[jj][ii];
+	if((intx < x[0]) || (intx > x[nx-1]) || (inty < y[0]) || (inty > y[ny-1])) res[jj][ii] = missing;
+	else{
+	  
+	  // --- Search y --- //
+	  iy = 0;
+	  
+	  
+	  for( tt=1; tt<ny; ++tt){
+	    if((inty > y[tt-1]) && (inty <= y[tt])){
+	      dy0 = std::abs(inty-y[tt-1]);
+	      dy1 = std::abs(inty-y[tt]);
+	      
+	      if(dy0 < dy1) iy = tt-1;
+	      else iy = tt;
+	      
+	      break;
+	    } // if
+	  } //tt
+	  
+	  // --- now search xx --- //
+	  
+	  ix = 0;
+	  for( tt=1; tt<nx; ++tt){
+	    if((intx > x[tt-1]) && (intx <= x[tt])){
+	      dx0 = std::abs(intx-x[tt-1]);
+	      dx1 = std::abs(intx-x[tt]);
+	      
+	      if(dx0 < dx1) ix = tt-1;
+	      else ix = tt;
+	      
+	      break;
+	    } // if
+	  } // tt
+	  
+	  
+	  // --- Assign result --- //
+	  
+	  res[jj][ii] = d[iy][ix];
+	  
+	}
       } // ii 
     } // jj
   } // pragma
@@ -106,7 +111,7 @@ void nearest2D(int const ny, int const nx, double* __restrict__ y, double* __res
 
 void bilint2D(int const ny, int const nx, double* __restrict__ y, double* __restrict__ x,
 	      double*  d_in, int const ny1, int const nx1, double*  yy_in,
-	      double*  xx_in, double* res_in, int const nthreads)
+	      double*  xx_in, double* res_in, int const nthreads, double const missing)
 {
   
   double* __restrict__ c_in = new double [4*(ny-1)*(nx-1)]();
@@ -138,7 +143,7 @@ void bilint2D(int const ny, int const nx, double* __restrict__ y, double* __rest
   
 #pragma omp parallel default(shared) firstprivate(jj,ii,dy,y1,y2,dx,x1,x2,dydx) num_threads(nthreads)  
   {
-#pragma omp for schedule(dynamic,4) collapse(2)
+#pragma omp for schedule(static) collapse(2)
     for( jj=0; jj<nyy; ++jj){
       for( ii=0; ii<nxx; ++ii){
 	
@@ -164,39 +169,44 @@ void bilint2D(int const ny, int const nx, double* __restrict__ y, double* __rest
   
 #pragma omp parallel default(shared) firstprivate(jj,ii,ixx,iyy,idx,idy,tt,cc) num_threads(nthreads)  
   {
-#pragma omp for schedule(dynamic,4) collapse(2)
+#pragma omp for schedule(static) collapse(2)
     for( jj=0; jj<ny1; ++jj){
       for( ii=0; ii<nx1; ++ii){
 
 	// --- If the pixel is out of bounds, force coefficients at the edge --- //
+	ixx = xx[jj][ii], iyy = yy[jj][ii];
 	
-	ixx = std::min<double>(std::max<double>(xx[jj][ii],x[0]*1.0000000001),x[nx-1]*0.999999999999);
-	iyy = std::min<double>(std::max<double>(yy[jj][ii],y[0]*1.0000000001),y[ny-1]*0.999999999999);
-	idx = 0, idy = 0;
+	if((ixx < x[0]) || (ixx > x[nx-1]) || (iyy < y[0]) || (iyy > y[ny-1])) res[jj][ii] = missing;
+	else{ // pixel inside data bounds
+	  
+	  //ixx = std::min<double>(std::max<double>(xx[jj][ii],x[0]*1.0000000001),x[nx-1]*0.999999999999);
+	  //iyy = std::min<double>(std::max<double>(yy[jj][ii],y[0]*1.0000000001),y[ny-1]*0.999999999999);
+	  idx = 0, idy = 0;
+	  
+	  
+	  // --- bracket coordinates --- //
+	  
+	  for( tt=0; tt<nyy; ++tt){
+	    if((iyy >= y[tt]) && (iyy < y[tt+1])){
+	      idy = tt;
+	      break;
+	    } // if
+	  }
+	  
+	  for( tt=0; tt<nxx; ++tt){
+	    if((ixx >= x[tt]) && (ixx < x[tt+1])){
+	      idx = tt;
+	      break;
+	    } // if
+	  }
+	  
+	  
+	  // --- Apply interpolation coefficients --- //
+	  
+	  cc = static_cast<const double* __restrict__>(&c[idy][idx][0]);
+	  res[jj][ii] = cc[0] + cc[1]*ixx + cc[2]*iyy + cc[3]*iyy*ixx;
 
-
-	// --- bracket coordinates --- //
-	
-	for( tt=0; tt<ny; ++tt){
-	  if((iyy >= y[tt]) && (iyy < y[tt+1])){
-	    idy = tt;
-	    break;
-	  } // if
-	}
-	
-	for( tt=0; tt<nx; ++tt){
-	  if((ixx >= x[tt]) && (ixx < x[tt+1])){
-	    idx = tt;
-	    break;
-	  } // if
-	}
-
-	
-	// --- Apply interpolation coefficients --- //
-	
-	cc = static_cast<const double* __restrict__>(&c[idy][idx][0]);
-	res[jj][ii] = cc[0] + cc[1]*ixx + cc[2]*iyy + cc[3]*iyy*ixx;
-	
+	} // else
       } // ii
     } // jj
   }// pragma

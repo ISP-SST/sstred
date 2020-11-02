@@ -192,9 +192,10 @@ extern "C" {
     double* xx   = (double*)argv[8];
     double* dout = (double*)argv[9];
     int const ntr=  *((int*)argv[10]);
+    double const missing = *((double*)argv[11]);
 
 
-    nearest2D(ny, nx, y, x, din, ny1, nx1, yy, xx, dout, ntr);
+    nearest2D(ny, nx, y, x, din, ny1, nx1, yy, xx, dout, ntr, missing);
     
     return 0;
   }
@@ -214,9 +215,9 @@ extern "C" {
     double* xx   = (double*)argv[8];
     double* dout = (double*)argv[9];
     int const ntr=  *((int*)argv[10]);
+    double const missing = *((double*)argv[11]);
 
-
-    bilint2D(ny, nx, y, x, din, ny1, nx1, yy, xx, dout, ntr);
+    bilint2D(ny, nx, y, x, din, ny1, nx1, yy, xx, dout, ntr, missing);
     
     return 0;
   }
