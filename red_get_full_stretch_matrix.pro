@@ -46,17 +46,43 @@
 ; 
 ;-
 
-function red_get_full_stretch_matrix, nx, ny, gr
+function red_get_full_stretch_matrix, nx, ny, gr, original_size = original_size, only_shifts=only_shifts
 
   libfile = red_libfile('creduc.so')
-
-  res = dblarr([nx, ny, 2])
-
+  
   d = size(gr, /dim)
   nx1 = long(d[1])
   ny1 = long(d[2])
   
-  dum = call_external(libfile, 'ana_stretch_full_matrix_wrap', long(ny), long(nx), ny1, nx1, double(gr), res)
-                      
-  return, res
+  res_final = dblarr([nx, ny, 2])
+
+  if(n_elements(container_size) eq 2) then begin
+    res = dblarr([original_size[0], original_size[1], 2])
+    dim = size(res,/dim)
+
+    dum = call_external(libfile, 'ana_stretch_full_matrix_wrap', long(original_size[0]), long(original_size[1]), ny1, nx1, double(gr), res)
+
+    if(keyword_set(only_shifts)) then begin   
+      res[*,*,0] -= dindgen(dim[0])#replicate(1.0d0, dim[1])
+      res[*,*,1] -= replicate(1.0d0, dim[0])#dindgen(dim[1])
+    endif
+    
+    dim = size(res,/dim)
+    dim[0] = min([dim[0], nx])-1
+    dim[1] = min([dim[1], ny])-1
+
+    res_final[0:dim[0],0:dim[1],*] = res[0:dim[0],0:dim[1],*]
+    
+  endif else begin
+    dum = call_external(libfile, 'ana_stretch_full_matrix_wrap', long(ny), long(nx), ny1, nx1, double(gr), res_final)
+
+    if(keyword_set(only_shifts)) then begin   
+      res_final[*,*,0] -= dindgen(nx)#replicate(1.0d0, ny)
+      res_final[*,*,1] -= replicate(1.0d0, nx)#dindgen(ny)
+    endif
+    
+  endelse
+ 
+
+  return, res_final
 end

@@ -43,7 +43,7 @@
 ;    2020-10-10 : JdlCR. First version.
 ; 
 ;-
-function red_stretch_linear, im, gr, nthreads = nthreads, nearest=nearest
+function red_stretch_linear, im, gr, nthreads = nthreads, nearest=nearest, missing = missing
 
   d = size(im, /dim)
   nx = long(d[0])
@@ -60,11 +60,14 @@ function red_stretch_linear, im, gr, nthreads = nthreads, nearest=nearest
 
   libfile = red_libfile('creduc.so')
 
+
+  if(n_elements(missing) eq 0) then missing = mean(im)
+  
   
   if(keyword_set(nearest)) then begin
-    dum = call_external(libfile, 'nearest2D_wrap', ny, nx, y, x, double(im), ny, nx, dmat[*,*,1], dmat[*,*,0], res, nthreads)
+    dum = call_external(libfile, 'nearest2D_wrap', ny, nx, y, x, double(im), ny, nx, dmat[*,*,1], dmat[*,*,0], res, nthreads, missing)
   endif else begin
-    dum = call_external(libfile, 'bilint2D_wrap', ny, nx, y, x, double(im), ny, nx, dmat[*,*,1], dmat[*,*,0], res, nthreads)
+    dum = call_external(libfile, 'bilint2D_wrap', ny, nx, y, x, double(im), ny, nx, dmat[*,*,1], dmat[*,*,0], res, nthreads, missing)
   endelse
   
   return, res

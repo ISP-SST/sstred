@@ -109,7 +109,7 @@ function red_rotation, img, angle, sdx, sdy $
   
   dim = size(img, /dim)
 
-  if n_elements(full) gt 5 then begin
+  if n_elements(full) ge 5 then begin
 
     ;; If "full" is only five elements, use old method below, kept for
     ;; backward compatibility. Otherwise use the angles part when
@@ -151,11 +151,12 @@ function red_rotation, img, angle, sdx, sdy $
     dim1 = round([xmax - xmin + 1, ymax - ymin + 1])
     
     ima = fltarr(dim1) + background
-    ima[-round(xmin), -round(ymin)] = img
+    ;;ima[-round(xmin), -round(ymin)] = img
+    ima[0,0] = img
+    
 
-
-    return, red_rotshift(ima, angle, sdx, sdy, background = background, stretch_grid = stretch_grid $
-                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix)
+    return, red_rotshift(ima, angle, sdx-xmin, sdy-ymin, background = background, stretch_grid = stretch_grid $
+                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
     
   endif else begin
 
@@ -173,9 +174,9 @@ function red_rotation, img, angle, sdx, sdy $
     ;; Add destretch grid correction
     
     if(n_elements(stretch) ne 0) then begin
-      smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch)
-      smatx = smat[*,*,0] - xgrid 
-      smaty = smat[*,*,1] - ygrid
+      smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch, original_size=dim, /only_shifts)
+      smatx = smat[*,*,0]; - xgrid 
+      smaty = smat[*,*,1]; - ygrid
     endif else begin
       smatx = xgrid*0
       smaty = ygrid*0
@@ -184,9 +185,9 @@ function red_rotation, img, angle, sdx, sdy $
 
     dx = cos(angle) * (xgrid - xsi - sdx + smatx) - sin(angle) * (ygrid - ysi - sdy + smaty) + xsi 
     dy = sin(angle) * (xgrid - xsi - sdx + smatx) + cos(angle) * (ygrid - ysi - sdy + smaty) + ysi
-    ima = img
+    ;;ima = img
 
-    return, red_interpolate2D(xgrid[*,0], reform(ygrid[0,*]), ima, dx, dy, nthreads=nthreads, nearest = nearest)
+    return, red_interpolate2D(xgrid[*,0], reform(ygrid[0,*]), img, dx, dy, nthreads=nthreads, nearest = nearest)
     
   endelse
 end

@@ -49,7 +49,11 @@
 ;   
 ;    nthreads: in, optional, type=int
 ;
-;       Number of threads to use 
+;       Number of threads to use
+;
+;     missing: in, optional, type=scalar
+;
+;       Fill missing data values with this value (default = NaN)
 ;
 ; :History:
 ; 
@@ -57,7 +61,7 @@
 ; 
 ;-
 
-function red_interpolate2D, x, y, im, xx, yy, nthreads = nthreads, nearest = nearest
+function red_interpolate2D, x, y, im, xx, yy, nthreads = nthreads, nearest = nearest, missing = missing
 
   ;; Get dimensions of input and output arrays
   
@@ -77,21 +81,26 @@ function red_interpolate2D, x, y, im, xx, yy, nthreads = nthreads, nearest = nea
   if(n_elements(nthreads) eq 0) then nthreads=long(4) $
   else nthreads = max([long(nthreads),long(1)])
 
+
+  ;; missing values?
+  if(n_elements(missing) eq 0) then missing = !VALUES.f_nan
+  
   
   ;; Call C++ interpolation routine
   
   libfile = red_libfile('creduc.so')
 
+  
   if(keyword_set(nearest)) then begin
     
     dum = call_external(libfile, 'nearest2D_wrap', ny, nx, double(y), double(x), $
-                        double(im), ny1, nx1, double(yy), double(xx), res, nthreads)
+                        double(im), ny1, nx1, double(yy), double(xx), res, nthreads, double(missing))
     
   endif else begin
 
     dum = call_external(libfile, 'bilint2D_wrap', ny, nx, double(y), double(x), $
-                        double(im), ny1, nx1, double(yy), double(xx), res, nthreads)
-  endelse
-
+                        double(im), ny1, nx1, double(yy), double(xx), res, nthreads, double(missing))
+  endelse  
+  
   return, res
 end
