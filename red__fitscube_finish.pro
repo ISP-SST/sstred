@@ -79,21 +79,23 @@ pro red::fitscube_finish, lun $
   Nstokes = long(dimensions[3])
   Nscans  = long(dimensions[4])
 
-  ;; Add the WCS coordinates
-  if self.direction gt 7 || self.direction ne direction then begin
-    ;; Direction not (as) set in the config file, assume unknown
-    red_fitscube_addwcs, filename, wcs, dimensions = dimensions $
-                         , csyer_spatial_value = 120. $ ; 2 arc minutes
-                         , csyer_spatial_comment = '[arcsec] Orientation unknown'
-  endif else begin
-    ;; The direction parameter is the value in the config file, so
-    ;; orientation should be good. But there may still be small
-    ;; rotation arrors and substantial translations.
-    red_fitscube_addwcs, filename, wcs, dimensions = dimensions $
-                         , csyer_spatial_value = 60. $ ; 1 arc minute
-                         , csyer_spatial_comment = '[arcsec] Orientation known'
-  endelse 
-
+  if N_elements(wcs) gt 0 then begin
+    ;; Add the WCS coordinates
+    if self.direction gt 7 || self.direction ne direction then begin
+      ;; Direction not (as) set in the config file, assume unknown
+      red_fitscube_addwcs, filename, wcs, dimensions = dimensions $
+                           , csyer_spatial_value = 120. $ ; 2 arc minutes
+                           , csyer_spatial_comment = '[arcsec] Orientation unknown'
+    endif else begin
+      ;; The direction parameter is the value in the config file, so
+      ;; orientation should be good. But there may still be small
+      ;; rotation arrors and substantial translations.
+      red_fitscube_addwcs, filename, wcs, dimensions = dimensions $
+                           , csyer_spatial_value = 60. $ ; 1 arc minute
+                           , csyer_spatial_comment = '[arcsec] Orientation known'
+    endelse 
+  endif
+  
   if ~arg_present(flipfile) then begin
     ;; If we don't want to flip, we are done now.
     return
