@@ -963,7 +963,7 @@ pro crisp::make_scan_cube, dir $
 
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+    self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
 
     if keyword_set(integer) then begin
       ;; Convert to integers
