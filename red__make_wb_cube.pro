@@ -587,7 +587,6 @@ pro red::make_wb_cube, dir $
       cub[*,*,iscan] = imm
     endfor                      ; iscan
   endif
-  stop
   
   ;; Prepare for making output file names
   if keyword_set(make_raw) then begin
