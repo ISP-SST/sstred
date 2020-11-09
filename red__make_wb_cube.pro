@@ -91,6 +91,10 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no stretch vectors if this is set.
+;
 ;    np : in, optional, type=integer, default=3
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
@@ -186,6 +190,8 @@
 ;    2020-07-08 : MGL. New keyword integer. 
 ; 
 ;    2020-10-28 : MGL. Remove statistics calculations.
+; 
+;    2020-11-09 : MGL. New keyword nostretch.
 ;
 ;-
 pro red::make_wb_cube, dir $
@@ -200,6 +206,7 @@ pro red::make_wb_cube, dir $
                        , nametag = nametag $
                        , negang = negang $
                        , nomissing_nans = nomissing_nans $
+                       , nostretch = nostretch $
                        , np = np $
                        , rotation = rotation $
                        , scannos = scannos $
@@ -231,6 +238,7 @@ pro red::make_wb_cube, dir $
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, negang
   red_make_prpara, prpara, nomissing_nans
+  red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, subtract_meanang
@@ -566,18 +574,21 @@ pro red::make_wb_cube, dir $
   print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
   ;; Calculate stretch vectors
-  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep)
-
-  for iscan = 0L, Nscans - 1 do begin
-    red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
-    imm = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
-    ;;if keyword_set(make_raw) then
-    mindx = where(cub[*,*,iscan] eq bg, Nwhere)
-    ;;if keyword_set(make_raw) &&
-    if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
-    cub[*,*,iscan] = imm
-  endfor                        ; iscan
-
+  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep $
+                               , nostretch = nostretch)
+  if ~keyword_set(nostretch) then begin
+    for iscan = 0L, Nscans - 1 do begin
+      red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
+      imm = red_stretch(cub[*,*,iscan], reform(grid[iscan,*,*,*]))
+      ;;if keyword_set(make_raw) then
+      mindx = where(cub[*,*,iscan] eq bg, Nwhere)
+      ;;if keyword_set(make_raw) &&
+      if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
+      cub[*,*,iscan] = imm
+    endfor                      ; iscan
+  endif
+  stop
+  
   ;; Prepare for making output file names
   if keyword_set(make_raw) then begin
     odir = self.out_dir + '/cubes_raw/'

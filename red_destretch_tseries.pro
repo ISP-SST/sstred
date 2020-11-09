@@ -21,18 +21,20 @@
 ; :Params:
 ; 
 ;   
+; :Keywords:
+;
+;    nostretch : in, optional, type=boolean
 ;   
-;   
-; 
+;      Compute no stretch vectors if this is set.
 ; 
 ; :History:
 ; 
 ;    2016-10-28 : MGL. Added a progress bar. 
 ; 
-; 
+;    2020-11-09 : MGL. New keyword nostretch.
 ; 
 ;-
-function red_destretch_tseries, cub, platescale, grids, clips, tstep
+function red_destretch_tseries, cub, platescale, grids, clips, tstep, nostretch = nostretch
 
   dim = size(cub, /dim)
   nfiles = dim[2]
@@ -51,6 +53,8 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep
   
   delta = FLTARR(dim[2], 2, maxgx, maxgy)
 
+  if keyword_set(nostretch) then return, delta
+  
   for i=1, dim[2]-1 do begin
     red_progressbar, i-1, dim[2]-1, 'Computing destretch grid'
     im = cub[*,*,i]
