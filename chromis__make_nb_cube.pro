@@ -191,6 +191,9 @@ pro chromis::make_nb_cube, wcfile $
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
 
+  ;; Don't do any stretching if wcgrid is all zeros.
+  nostretch_temporal = total(abs(wcgrid)) eq 0 
+
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
 
@@ -642,7 +645,7 @@ pro chromis::make_nb_cube, wcfile $
                           , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                           , background = bg)
       mindx = where(nbim eq bg, Nwhere)
-      nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
+      if ~nostretch_temporal then nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
       if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
 
 ;      if keyword_set(integer) then begin
@@ -663,7 +666,7 @@ pro chromis::make_nb_cube, wcfile $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , background = bg)
         mindx = where(wbim eq bg, Nwhere)
-        wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
+        if ~nostretch_temporal then wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
         if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
                                    , iscan = iscan, ituning = iwav
@@ -757,7 +760,7 @@ pro chromis::make_nb_cube, wcfile $
           ;; Apply the same derot, align, dewarp as for the science data
           cmap11 = red_rotation(cmap1, ang[iscan], $
                                 wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-          cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+          if ~nostretch_temporal then cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
           
           cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
