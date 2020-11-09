@@ -62,6 +62,10 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no intrascan stretch vectors if this is set.
+;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
@@ -109,6 +113,8 @@
 ;    2020-06-16 : MGL. Remove temporal intensity scaling, deprecate
 ;                 keyword notimecorr.
 ; 
+;    2020-11-09 : MGL. New keyword nostretch.
+; 
 ;-
 pro chromis::make_nb_cube, wcfile $
                            , clips = clips $
@@ -119,6 +125,7 @@ pro chromis::make_nb_cube, wcfile $
                            , nocavitymap = nocavitymap $
                            , noflipping = noflipping $
                            , nomissing_nans = nomissing_nans $
+                           , nostretch = nostretch $
                            , notimecor = notimecor $
                            , odir = odir $
                            , overwrite = overwrite $
@@ -143,7 +150,7 @@ pro chromis::make_nb_cube, wcfile $
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, nomissing_nans
-;  red_make_prpara, prpara, notimecor 
+  red_make_prpara, prpara, nostretch 
   red_make_prpara, prpara, np           
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, tiles        
@@ -339,7 +346,7 @@ pro chromis::make_nb_cube, wcfile $
   rpref = 1.d0/prefilter_curve
 
   ;; Do WB correction?
-  if Nwb eq Nnb then wbcor = 1B else wbcor = 0B
+  wbcor = Nwb eq Nnb and ~keyword_set(nostretch)
 
   ;; Load WB image and define the image border
 ;  tmp = red_readdata(wbgfiles[0])

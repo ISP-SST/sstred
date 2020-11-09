@@ -93,7 +93,7 @@
 ;
 ;    nostretch : in, optional, type=boolean
 ;   
-;      Compute no stretch vectors if this is set.
+;      Compute no temporal stretch vectors if this is set.
 ;
 ;    np : in, optional, type=integer, default=3
 ;

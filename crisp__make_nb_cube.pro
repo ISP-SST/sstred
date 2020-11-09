@@ -31,29 +31,29 @@
 ; 
 ; :Keywords:
 ; 
-;     clips : in, optional, type=array
+;    clips : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
 ;
-;     cmap_fwhm : in, type=float, default=7
+;    cmap_fwhm : in, type=float, default=7
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
-;     integer : in, optional, type=boolean
+;    integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
 ;       keywords to preserve the intensity scaling.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
+;    intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
-;     nocavitymap : in, optional, type=boolean
+;    nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
-;     nocrosstalk : in, optional, type=boolean
+;    nocrosstalk : in, optional, type=boolean
 ;
 ;       Do not correct the (polarimetric) data cube Stokes components
 ;       for crosstalk from I to Q, U, V.
@@ -63,7 +63,7 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
-;     nopolarimetry : in, optional, type=boolean
+;    nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
 ;       Instead combine all LC states for both cameras into a single
@@ -76,21 +76,25 @@
 ;       Do not attempt to use Fourier filtering to remove polcal
 ;       periodic artifacts. (See crisp::demodulate method.)
 ;
-;     overwrite : in, optional, type=boolean
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no intrascan stretch vectors if this is set.
+;
+;    overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
-;     redemodulate : in, optional, type=boolean
+;    redemodulate : in, optional, type=boolean
 ;
 ;       Delete any old (per scan-and-tuning) stokes cubes so they will
 ;       have to be demodulated from scratch.
 ;
-;     tiles : in, optional, type=array
+;    tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
-;     wbsave : in, optional, type=boolean
+;    wbsave : in, optional, type=boolean
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
 ;       debugging of alignment with extra wideband objects.
@@ -147,6 +151,8 @@
 ;    2020-07-15 : MGL. Remove keyword smooth.
 ;
 ;    2020-10-28 : MGL. Remove statistics calculations.
+; 
+;    2020-11-09 : MGL. New keyword nostretch.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -160,6 +166,7 @@ pro crisp::make_nb_cube, wcfile $
                          , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , noremove_periodic = noremove_periodic $
+                         , nostretch = nostretch $
                          , notimecor = notimecor $
 ;                         , nthreads = nthreads $
                          , odir = odir $
@@ -187,7 +194,7 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, nomissing_nans
-;  red_make_prpara, prpara, notimecor 
+  red_make_prpara, prpara, nostretch 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
 ;  red_make_prpara, prpara, smooth
@@ -418,7 +425,7 @@ pro crisp::make_nb_cube, wcfile $
 
   
   ;; Do WB correction?
-  wbcor = Nwb eq Nnbt 
+  wbcor = Nwb eq Nnbt and ~keyword_set(nostretch)
 
   ;; Load prefilters
   
