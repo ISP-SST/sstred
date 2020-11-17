@@ -143,7 +143,10 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   case strmid(isodate,0,4) of
     '2008' :                    ; Unknown!
     '2009' :                    ; Unknown!
-    '2010' :                    ; Unknown!
+    '2010' : begin              ; Confirmed by comparison with HMI data.
+      direction = 3             ; Confirmed by comparison with HMI data.
+      rotation = -42.0 
+    end
     '2011' :                    ; Unknown!
     '2012' : begin
       direction = 5             ; Confirmed by comparison with HMI data.

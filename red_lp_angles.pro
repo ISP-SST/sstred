@@ -97,3 +97,26 @@ function red_lp_angles, time, date, from_log = from_log, offset_angle = TC
   endelse
   
 end
+
+date = '2016-09-19'
+N = 10000
+time = dindgen(N)/N*11*3600 + 8*3600 ; 11 h, 08-19, in seconds
+
+phi_theory = red_lp_angles(red_timestring(time),date) ; SST rotation angle in radians
+phi_theory *= 180/!pi                                 ; In degrees
+phi_theory -= phi_theory[0]                           ; Relative to beginning
+
+
+phi_log = red_lp_angles(red_timestring(time),date, /from) ; SST rotation angle in radians
+phi_log *= 180/!pi                                        ; In degrees
+phi_log -= phi_log[0]                              ; Relative to beginning
+
+red_timeplot, /add, time, phi_theory, /yno $
+              , xtitle = 'time UT' $
+              , ytitle = 'field rotation angle / 1$\deg$' $
+              , yrange = [-40, 100] $
+              , color = 'red'
+
+cgplot, /add, /over, time, phi_log, color = 'blue'
+
+end

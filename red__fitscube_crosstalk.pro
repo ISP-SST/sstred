@@ -37,11 +37,6 @@
 ;       mask from one call to the next so user only has to to use the
 ;       GUI once.
 ; 
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. If statistics keywords already exist, then remove them.
-;
 ;     tuning_selection : in, out, optional, type="integer or array"
 ;
 ;       The index or indices in the tuning dimension to use for
@@ -62,13 +57,14 @@
 ;   2020-03-23 : OA. Changed calls of red_fitscube_getframe & *_addframe
 ;                with fileassoc instead of filename. Added keyword 'fitscube_info'
 ;                in those calls.
+; 
+;   2020-10-28 : MGL. Remove statistics calculations.
 ;
 ;-
 pro red::fitscube_crosstalk, filename  $
                              , flip = flip $
                              , force = force $
                              , mag_mask = mag_mask $
-                             , nostatistics = nostatistics $
                              , tuning_selection = tuning_selection
 
   inam = red_subprogram(/low, calling = inam1)
@@ -275,32 +271,6 @@ pro red::fitscube_crosstalk, filename  $
 
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
-
-  if keyword_set(nostatistics) then begin
-
-    ;; Remove any existing statistics keywords from the file. 
-
-    ;; Search for DATA* keywords
-    dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)
-    ;; Loop through the keywords backwards so we don't move
-    ;; them before they are deleted.
-    for idata = Ndata-1, 0, -1 do begin
-      keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
-      red_fitsdelkeyword, hdr, keyword
-    endfor                      ; idata
-    
-  endif else begin
-
-    red_fitscube_statistics, filename, /write $
-                             , angles = ang $
-                             , cube_comments = cube_comments $
-                             , full = wcFF $
-                             , grid = wcGRID $
-                             , origNx = Nxx $
-                             , origNy = Nyy $
-                             , shifts = wcSHIFTS 
-
-  endelse
   
   if keyword_set(flip) then begin
     red_fitscube_flip, filename, flipfile = flipfile, /overwrite

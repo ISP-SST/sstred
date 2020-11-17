@@ -81,7 +81,6 @@ pro red::fitscube_integer, fname $
     print, outname
     return
   endif 
-  
 
   dir_out = file_dirname(outname)
   file_mkdir, dir_out
@@ -94,17 +93,14 @@ pro red::fitscube_integer, fname $
   Nstokes = dims[3]
   Nscans  = dims[4]
   
-  iprogress = 0
-  Nprogress = Nscans*Nwav
-
   ;; Calculate BZERO and BSCALE
-  datamin = fxpar(hdr, 'DATAMIN')
-  datamax = fxpar(hdr, 'DATAMAX')
-
+  red_fitspar_getminmax, fname $
+                         , datamax = datamax $
+                         , datamin = datamin
+  
   arraymin = -32000.
   arraymax =  32000.
 
-  ;; BZERO and BSCALE
   bscale = (datamax-datamin)/(arraymax-arraymin)
   bzero = datamin - arraymin*bscale
   
@@ -120,12 +116,7 @@ pro red::fitscube_integer, fname $
   self -> fitscube_initialize, outname, outhdr, lun, fileassoc, dims 
 
   ;; Copy the data
-
-  ;; Make assoc variables
-;  openr, ilun, fname, /get_lun, /swap_if_little_endian ; Input file
-;  im_in  = assoc(ilun, fltarr(Nx, Ny, /nozero), offset)
-  
-  Nframes = Nscans*Nstokes*Nwav
+  Nframes = long(Nscans) * long(Nstokes) * long(Nwav)
   for iframe = 0, Nframes - 1 do begin
 
     red_progressbar, iframe, Nframes $
@@ -140,31 +131,13 @@ pro red::fitscube_integer, fname $
                                , fix(round((temporary(im)-BZERO)/BSCALE)) $
                                , iframe = iframe
     
-    
   endfor                        ; iframe
 
   ;; Close
   self -> fitscube_finish, lun
 
-  ;; Copy the variable keywords
-  var_keys = red_fits_var_keys(hdr, count = Nkeys)
-  for ikey = 0, Nkeys-1 do begin
-    self -> fitscube_addvarkeyword, outname $
-                                    , var_keys[ikey] $
-                                    ,  old_filename = fname
-  endfor                        ; ikey 
-
-
-  ;; Copy WCS extension
-  red_fits_copybinext, fname, outname, 'WCS-TAB'
-
-  ;; Copy cavity maps
-  ;; Do we want to convert it to integer as well?
-  cmaps = mrdfits(fname, 'WCSDVARR', chdr, status = status, /silent)
-  writefits, outname, cmaps, chdr, /append
-  ;; The CWERRj, CWDISj, and DWj keywords should already be in the
-  ;; header. We just need to copy the WCSDVARR (image) extension.
-
+  ;; Copy extensions
+  red_fitscube_copyextensions, fname, outname
 
   ;; Add info about this step
   ;; Put BZERO, BSCALE, and BITPIX in prpara or prref?

@@ -62,11 +62,6 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. 
-;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
@@ -124,7 +119,6 @@ pro chromis::make_nb_cube, wcfile $
                            , nocavitymap = nocavitymap $
                            , noflipping = noflipping $
                            , nomissing_nans = nomissing_nans $
-                           , nostatistics = nostatistics $
                            , notimecor = notimecor $
                            , odir = odir $
                            , overwrite = overwrite $
@@ -356,10 +350,15 @@ pro chromis::make_nb_cube, wcfile $
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
   self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
 
-  red_fitsdelkeyword, hdr, 'STATE'    ; Not a single state for cube 
-  red_fitsdelkeyword, hdr, 'CHECKSUM' ; Checksum for WB cube
-  red_fitsdelkeyword, hdr, 'DATASUM'  ; Datasum for WB cube
-
+  red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
+  red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
+  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata) ; DATA statistics keywords
+  for idata = Ndata-1, 0, -1 do begin
+    keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
+    red_fitsdelkeyword, hdr, keyword
+  endfor                        ; idata
+  
   red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
 
   
@@ -425,27 +424,6 @@ pro chromis::make_nb_cube, wcfile $
                    , time:dblarr(2,2) $
                   }, Nwav, Nscans)
 
-;  if ~keyword_set(nostatistics) then begin
-;    ;; Variables for statistics metadata.
-;    DATAMIN  = dblarr(Nwav, Nscans) ; The minimum data value
-;    DATAMAX  = dblarr(Nwav, Nscans) ; The maximum data value
-;    DATAMEAN = dblarr(Nwav, Nscans) ; The average data value
-;    DATARMS  = dblarr(Nwav, Nscans) ; The RMS deviation from the mean
-;    DATAKURT = dblarr(Nwav, Nscans) ; The kurtosis
-;    DATASKEW = dblarr(Nwav, Nscans) ; The skewness
-;    DATAP01  = dblarr(Nwav, Nscans) ; The 01 percentile
-;    DATAP10  = dblarr(Nwav, Nscans) ; The 10 percentile
-;    DATAP25  = dblarr(Nwav, Nscans) ; The 25 percentile
-;    DATAMEDN = dblarr(Nwav, Nscans) ; The median data value
-;    DATAP75  = dblarr(Nwav, Nscans) ; The 75 percentile
-;    DATAP90  = dblarr(Nwav, Nscans) ; The 90 percentile
-;    DATAP95  = dblarr(Nwav, Nscans) ; The 95 percentile
-;    DATAP98  = dblarr(Nwav, Nscans) ; The 98 percentile
-;    DATAP99  = dblarr(Nwav, Nscans) ; The 99 percentile
-;    percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
-;  end
-
-    
   ;; The narrowband cube is aligned to the wideband cube and all
   ;; narrowband scan positions are aligned to each other. So get hpln
   ;; and hplt from the wideband cube wcs coordinates, this should
@@ -559,70 +537,6 @@ pro chromis::make_nb_cube, wcfile $
   endif
 
   
-;  if ~keyword_set(nostatistics) then begin
-;    ;; Read all images once in order to get statistics. Min and max need
-;    ;; to be calculated here so we can build the histogram in the next
-;    ;; loop.
-;    iprogress = 0
-;    Nprogress = Nscans*Nwav
-;    for iscan = 0L, Nscans - 1 do begin
-;      for iwav = 0L, Nwav - 1 do begin 
-;
-;        red_progressbar, iprogress, Nprogress $
-;                         , /predict $
-;                         , 'Calculate statistics'
-;
-;
-;        ;; The NB files in this scan, sorted in tuning wavelength order.
-;        self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-;                             , cam = nbcamera, scan = uscans[iscan] $
-;                             , sel = scan_nbindx, count = count
-;        scan_nbfiles = pertuningfiles[scan_nbindx]
-;        scan_nbstates = pertuningstates[scan_nbindx]
-;
-;        if keyword_set(notimecor) then tscl = 1. else tscl = mean(prefilter_wb) / wcTMEAN[iscan]
-;        
-;        ;; Read image, apply prefilter curve and temporal scaling
-;        nbim = (red_readdata(scan_nbfiles[iwav]))[x0:x1, y0:y1] * rpref[iwav] * tscl
-;
-;        ;; Calculate statistics metadata before alignment and rotation
-;        ;; so we avoid padding.
-;        momnt = moment(nbim)    ; mean, variance, skewness, kurtosis
-;        perc = cgpercentiles(nbim, percentiles = percentiles)
-;        
-;        DATAMIN[iwav, iscan]  = min(nbim)
-;        DATAMAX[iwav, iscan]  = max(nbim)
-;
-;        DATAMEAN[iwav, iscan] = momnt[0]         
-;        DATARMS[iwav, iscan]  = sqrt(momnt[1])   
-;        DATASKEW[iwav, iscan] = momnt[2]         
-;        DATAKURT[iwav, iscan] = momnt[3]         
-;
-;        DATAP01[iwav, iscan]  = perc[0]          
-;        DATAP10[iwav, iscan]  = perc[1]          
-;        DATAP25[iwav, iscan]  = perc[2]          
-;        DATAMEDN[iwav, iscan] = perc[3]          
-;        DATAP75[iwav, iscan]  = perc[4]          
-;        DATAP90[iwav, iscan]  = perc[5]          
-;        DATAP95[iwav, iscan]  = perc[6]          
-;        DATAP98[iwav, iscan]  = perc[7]          
-;        DATAP99[iwav, iscan]  = perc[8]          
-;
-;        iprogress++
-;        
-;      endfor                    ; iwav
-;    endfor                      ; iscan
-;    CUBEMIN  = min(DATAMIN)
-;    CUBEMAX  = max(DATAMAX)
-;
-;    ;; Accumulate a histogram for the entire cube, use to calculate
-;    ;; percentiles. Setup here, add contributions in the double loop
-;    ;; below. 
-;    Nbins = 2L^16               ; Use many bins!
-;    binsize = (CUBEMAX - CUBEMIN) / (Nbins - 1.)
-;    hist = lonarr(Nbins)
-;  endif
-  
   iprogress = 0
   Nprogress = Nscans*Nwav
   for iscan = 0L, Nscans-1 do begin
@@ -711,11 +625,6 @@ pro chromis::make_nb_cube, wcfile $
       ;; Read image, apply prefilter curve and temporal scaling
       nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] ;* tscl
       bg = median(nbim)
-      
-;      if ~keyword_set(nostatistics) then begin
-;        ;; Add to the histogram
-;        hist += histogram(nbim, min = cubemin, max = cubemax, Nbins = Nbins, /nan)
-;      endif
       
       if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
         ;; Apply alignment to compensate for time-variable chromatic
@@ -972,26 +881,12 @@ pro chromis::make_nb_cube, wcfile $
     filename = outname
   endif
 
-  if keyword_set(nomissing_nans) then begin
-    ;; Calculate statistics if wanted
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write $
-                               , angles = ang $
-                               , full = wcFF $
-                               , grid = wcGRID $
-                               , origNx = origNx $
-                               , origNy = origNy $
-                               , shifts = wcSHIFT 
-    endif
-  endif else begin
-    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
-    ;; (optionally) calculated during this step.
+  if ~keyword_set(nomissing_nans) then begin
+    ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, filename $
                               , /noflip $
-                              , missing_type = 'nan' $
-                              , nostatistics = nostatistics
-  endelse
+                              , missing_type = 'nan' 
+  endif
 
 
   if ~keyword_set(noflipping) then $

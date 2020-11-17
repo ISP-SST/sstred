@@ -76,11 +76,6 @@
 ;       Do not attempt to use Fourier filtering to remove polcal
 ;       periodic artifacts. (See crisp::demodulate method.)
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. 
-;
 ;     overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
@@ -151,6 +146,8 @@
 ; 
 ;    2020-07-15 : MGL. Remove keyword smooth.
 ;
+;    2020-10-28 : MGL. Remove statistics calculations.
+;
 ;-
 pro crisp::make_nb_cube, wcfile $
                          , clips = clips $
@@ -163,7 +160,6 @@ pro crisp::make_nb_cube, wcfile $
                          , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , noremove_periodic = noremove_periodic $
-                         , nostatistics = nostatistics $
                          , notimecor = notimecor $
 ;                         , nthreads = nthreads $
                          , odir = odir $
@@ -586,10 +582,15 @@ pro crisp::make_nb_cube, wcfile $
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
   self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
 
-  red_fitsdelkeyword, hdr, 'STATE'    ; Not a single state for cube 
-  red_fitsdelkeyword, hdr, 'CHECKSUM' ; Checksum for WB cube
-  red_fitsdelkeyword, hdr, 'DATASUM'  ; Datasum for WB cube
-
+  red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
+  red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
+  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata) ; DATA statistics keywords
+  for idata = Ndata-1, 0, -1 do begin
+    keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
+    red_fitsdelkeyword, hdr, keyword
+  endfor                        ; idata
+  
   red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
 
   
@@ -1280,30 +1281,16 @@ pro crisp::make_nb_cube, wcfile $
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
     ;; Correct the cube for cross-talk, I --> Q,U,V.
-    self -> fitscube_crosstalk, filename, /nostatistics ;, nostatistics = nostatistics 
+    self -> fitscube_crosstalk, filename
 
   endif                         ;else
 
-  if keyword_set(nomissing_nans) then begin
-    ;; Calculate statistics if wanted
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write $
-                               , angles = ang $
-                               , full = wcFF $
-                               , grid = wcGRID $
-                               , origNx = origNx $
-                               , origNy = origNy $
-                               , shifts = wcSHIFT 
-    endif
-  endif else begin
-    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
-    ;; (optionally) calculated during this step.
+  if ~keyword_set(nomissing_nans) then begin
+    ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, filename $
                               , /noflip $
-                              , missing_type = 'nan' $
-                              , nostatistics = nostatistics
-  endelse
+                              , missing_type = 'nan'
+  endif
   
   if keyword_set(integer) then begin
     self -> fitscube_integer, filename $
