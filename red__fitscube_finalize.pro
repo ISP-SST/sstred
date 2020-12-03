@@ -231,7 +231,7 @@ pro red::fitscube_finalize, filename $
   if n_elements(RELEASE) gt 0 then begin
     ;; Proprietary data
     if n_elements(RELEASEC) eq 0 then begin
-      releasec = 'Proprietary data, se RELEASE keyword for release date.'
+      releasec = 'Proprietary data, see RELEASE keyword for release date.'
     endif
     red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASE',  RELEASE
     red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASEC', RELEASEC
