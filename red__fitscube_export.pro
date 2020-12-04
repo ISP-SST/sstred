@@ -90,6 +90,8 @@
 ; 
 ;   2020-11-02 : MGL. Remove stuff that is now in fitscube_finalize. 
 ; 
+;   2020-12-04 : MGL. Generate an OID.
+; 
 ;-
 pro red::fitscube_export, filename $
                           , help = help $
@@ -130,8 +132,11 @@ pro red::fitscube_export, filename $
   hdr = red_readhead(filename)
   
   date_beg = fxpar(hdr,'DATE-BEG')
+  date_beg_split = strsplit(date_beg,'T',/extract)
+  ;; We could do the outdir default per site, just like we do for the
+  ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
-                                           + (strsplit(date_beg,'T',/extract))[0] + '/' $
+                                           + date_beg_split[0] + '/' $
                                            + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
   ;; Any old versions of this file?
@@ -252,8 +257,8 @@ pro red::fitscube_export, filename $
 
       ;; Keywords to the SVO ingestion script
       file_url = 'https://dubshen.isf.astro.su.se/'
-      file_path = (strsplit(date_beg,'T',/extract))[0] + '/' $
-                + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
+      file_path = date_beg_split[0] + '/' $
+                  + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
       ;; Get thumbnail from keyword or generate one from the cube?
       ;; Sharpest from brightest tuning?
@@ -262,7 +267,14 @@ pro red::fitscube_export, filename $
       ;; oid=
       ;; Is date + timestamp enough or should this be a hash-like
       ;; string that changes with versioning etc?
-
+      ;;
+      ;; Let's do YYYYMMDD_hhmmss_SCANNUMBERS:
+      time_beg_split = strsplit(date_beg_split[1], ':.', /extract)
+      tm=red_fitsgetkeyword(hdr,'SCANNUM',var=scannos)
+      oid = date_beg_split[0] + '_' $
+            + strjoin(time_beg_split[0:2], '') + '_' $
+            + rdx_ints2str(scannos.values)
+      
       ;; Build the command string
       cmd = cmd[0]
       cmd += ' ' + strlowcase(strtrim(fxpar(hdr,'INSTRUME'),2)) ; The dataset ID in the SOLARNET Data Archive/SVO
@@ -271,10 +283,10 @@ pro red::fitscube_export, filename $
       cmd += ' --file-path ' + file_path                        ; The relative path of the file
       if n_elements(thumbnail_url) gt 0 then $                  ;
          cmd += ' --thumbnail-url ' + thumbnail_url             ; The URL of the thumbnail
-      cmd += ' --username ' + svo_username ; The SVO username of the user owning the data
-      cmd += ' --api-key ' + svo_api_key   ; The SVO API key of the user owning the data
-;      if n_elements(oid) gt 0 then $                ;
-;      cmd += ' --oid ' +        ; The unique observation ID of the metadata
+      cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
+      cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
+      if n_elements(oid) gt 0 then $                            ;
+         cmd += ' --oid ' +                                     ; The unique observation ID of the metadata
       
       ;; Spawn running the script
       spawn, cmd, status
