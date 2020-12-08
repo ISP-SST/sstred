@@ -150,44 +150,47 @@ function red_rotation, img, angle, sdx, sdy $
     
     dim1 = round([xmax - xmin + 1, ymax - ymin + 1])
     
-    ima = fltarr(dim1) + background
+    ima = dblarr(dim1) + background
     ;;ima[-round(xmin), -round(ymin)] = img
     ima[0,0] = img
     
 
-    return, red_rotshift(ima, angle, sdx-xmin, sdy-ymin, background = background, stretch_grid = stretch_grid $
+    return, red_rotshift(ima, angle, sdx-(xmin), sdy-(ymin), background = background, stretch_grid = stretch_grid $
                          , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
     
   endif else begin
 
     ;; Old mechanisms
     
-    xsi = dim[0] * 0.5
-    ysi = dim[1] * 0.5
+    ;; xsi = dim[0] * 0.5
+    ;; ysi = dim[1] * 0.5
     
-    ;; Get the index of each matrix element and create an array for the
-    ;; output image.
-    xgrid = dindgen(dim[0]) # (dblarr(dim[1]) + 1.0d)
-    ygrid = (dblarr(dim[0]) + 1.0d) # dindgen(dim[1])
+    ;; ;; Get the index of each matrix element and create an array for the
+    ;; ;; output image.
+    ;; xgrid = dindgen(dim[0]) # (dblarr(dim[1]) + 1.0d)
+    ;; ygrid = (dblarr(dim[0]) + 1.0d) # dindgen(dim[1])
     
     
-    ;; Add destretch grid correction
+    ;; ;; Add destretch grid correction
     
-    if(n_elements(stretch) ne 0) then begin
-      smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch, original_size=dim, /only_shifts)
-      smatx = smat[*,*,0]; - xgrid 
-      smaty = smat[*,*,1]; - ygrid
-    endif else begin
-      smatx = xgrid*0
-      smaty = ygrid*0
-    endelse
-    ;; Make the size of the rotated image the same as the original image
+    ;; if(n_elements(stretch) ne 0) then begin
+    ;;   smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch, original_size=dim, /only_shifts)
+    ;;   smatx = smat[*,*,0]; - xgrid 
+    ;;   smaty = smat[*,*,1]; - ygrid
+    ;; endif else begin
+    ;;   smatx = xgrid*0
+    ;;   smaty = ygrid*0
+    ;; endelse
+    ;; ;; Make the size of the rotated image the same as the original image
 
-    dx = cos(angle) * (xgrid - xsi - sdx + smatx) - sin(angle) * (ygrid - ysi - sdy + smaty) + xsi 
-    dy = sin(angle) * (xgrid - xsi - sdx + smatx) + cos(angle) * (ygrid - ysi - sdy + smaty) + ysi
-    ;;ima = img
+    ;; dx = cos(angle) * (xgrid - xsi - sdx + smatx) - sin(angle) * (ygrid - ysi - sdy + smaty) + xsi 
+    ;; dy = sin(angle) * (xgrid - xsi - sdx + smatx) + cos(angle) * (ygrid - ysi - sdy + smaty) + ysi
+    ;; ;;ima = img
 
-    return, red_interpolate2D(xgrid[*,0], reform(ygrid[0,*]), img, dx, dy, nthreads=nthreads, nearest = nearest)
+    ;; return, red_interpolate2D(xgrid[*,0], reform(ygrid[0,*]), img, dx, dy, nthreads=nthreads, nearest = nearest)
+    
+    return, red_rotshift(img, angle, sdx, sdy, background = background, stretch_grid = stretch_grid $
+                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
     
   endelse
 end
