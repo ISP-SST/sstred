@@ -770,7 +770,8 @@ pro chromis::make_nb_cube, wcfile $
         bg = median(wbim)
         wbim = red_rotation(temporary(wbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
-                            , background = bg,  stretch_grid=reform(wcGRID[iscan,*,*,*]), nthreads=nthreads, nearest = nearest)
+                            , background = bg,  stretch_grid=reform(wcGRID[iscan,*,*,*]) $
+                            , nthreads=nthreads, nearest = nearest)
         mindx = where(wbim eq bg, Nwhere)
         ;;wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
         if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
@@ -896,14 +897,16 @@ pro chromis::make_nb_cube, wcfile $
               igrid = red_dsgridnest(wb, iwb, itiles, iclip)
               
               ;; Convolve CMAP and apply wavelength dep. de-warp
-              cmap2 = red_stretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid)
+              cmap2 = red_stretch_linear((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, $
+                                         nearest=nearest, nthreads=nthreads)
               
               ;; Derotate and shift
               cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
-                                   total(shift[1,ss]), full=wcFF)
+                                   total(shift[1,ss]), full=wcFF, stretch_grid=reform(grid[ss,*,*,*]), $
+                                   nearest=nearest, nthreads=nthreads)
               
               ;; Time de-warp
-              cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+              ;;cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
               
             endfor              ; ww
           endif
