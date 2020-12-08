@@ -1135,7 +1135,8 @@ pro crisp::make_nb_cube, wcfile $
 
           frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
                                 wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
-                                background = bg, nearest = nearest)
+                               background = bg, nearest = nearest, $
+                               stretch_grid = reform(wcGRID[iscan,*,*,*]), nthreads=nthreads)
           
           ;;if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
           self -> fitscube_addframe, fileassoc, frame $
@@ -1160,7 +1161,7 @@ pro crisp::make_nb_cube, wcfile $
 ;        wbim = wwi * tscl[iscan]
 ;        wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
-                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, reform(wcGRID[iscan,*,*,*]), $
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF,  stretch_grid = reform(wcGRID[iscan,*,*,*]), $
                             nthreads=nthreads, nearest = nearest)
         
        ;; wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
