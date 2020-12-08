@@ -210,6 +210,8 @@ pro red::quicklook, align = align $
   
   inam = red_subprogram(/low, calling = inam1)
 
+  if n_elements(min_nscan) eq 0 then min_nscan=5
+
   if n_elements(format) eq 0 then format = 'mp4'
   case format of
     'avi' : extension = format
