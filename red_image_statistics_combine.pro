@@ -46,6 +46,8 @@
 ;   2019-05-29: MGL. Improve percentiles by interpolating in the
 ;               cumulative histogram.
 ; 
+;   2020-11-30: MGL. Add DATANRMS, remove DATARMS.
+; 
 ;-
 function red_image_statistics_combine, statsarr $
                                        , binsize = binsize $
@@ -56,8 +58,6 @@ function red_image_statistics_combine, statsarr $
   
   Nframes = n_elements(statsarr)
   Npixels = statsarr[0].Npixels ; Assume same for all frames
-
-  
   
   CUBEMIN  = min(statsarr.datamin)
   CUBEMAX  = max(statsarr.datamax)
@@ -89,7 +89,7 @@ function red_image_statistics_combine, statsarr $
                          , 'DATAMIN' , CUBEMIN $
                          , 'DATAMAX' , CUBEMAX $
                          , 'DATAMEAN', CUBEMEAN $       
-                         , 'DATARMS' , CUBERMS $
+                         , 'DATANRMS', CUBERMS/CUBEMEAN $
                          , 'DATASKEW', CUBESKEW $         
                          , 'DATAKURT', CUBEKURT)
 
@@ -98,7 +98,7 @@ function red_image_statistics_combine, statsarr $
                               , 'DATAMIN' , 'The minimum data value' $
                               , 'DATAMAX' , 'The maximum data value' $
                               , 'DATAMEAN', 'The average data value' $       
-                              , 'DATARMS' , 'The RMS deviation from the mean' $
+                              , 'DATANRMS', 'The normalized RMS deviation from the mean' $
                               , 'DATASKEW', 'The skewness of the data' $         
                               , 'DATAKURT', 'The excess kurtosis of the data' )
   

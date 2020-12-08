@@ -40,6 +40,8 @@
 ; 
 ;   2020-11-01: MGL. Add DATAMAD.
 ; 
+;   2020-11-30: MGL. Add DATANRMS, remove DATARMS.
+; 
 ;-
 function red_image_statistics_calculate, im, percentile_p = percentile_p 
 
@@ -56,7 +58,7 @@ function red_image_statistics_calculate, im, percentile_p = percentile_p
                          , 'DATAMIN' , min(im) $
                          , 'DATAMAX' , max(im) $
                          , 'DATAMEAN', momnt[0] $       
-                         , 'DATARMS' , sqrt(momnt[1]) $
+                         , 'DATANRMS', sqrt(momnt[1])/momnt[0] $
                          , 'DATASKEW', momnt[2] $
                          , 'DATAKURT', momnt[3] $
                          , 'DATAMAD' , meanabsdev(im, /double, /nan) $

@@ -57,7 +57,7 @@ PRO red_phverify_event, ev
     h_init = (*info).map
     nref = 10
     (*info).map = rdx_img_align( (*info).ph1, (*info).ph2, nref=(*info).nref, max_shift=(*info).max_shift, $
-      h_init=h_init, verbose=0 )
+      h_init=h_init, verbose=0, threshold=(*info).threshold, margin = (*info).margin)
     WIDGET_CONTROL, (*info).table, SET_VALUE=(*info).map
   ENDIF
   
@@ -78,9 +78,15 @@ PRO red_phverify_event, ev
     WIDGET_CONTROL, ev.TOP, /DESTROY
   ENDIF
 
+  if(ev.ID eq (*info).table) then begin
+    WIDGET_CONTROL,(*info).table  , GET_VALUE=value
+    (*info).map = value
+  endif
+
+  
 END
 
-FUNCTION red_phverify, ph1, ph2, map, max_shift=max_shift, nref=nref, threshold=threshold
+FUNCTION red_phverify, ph1, ph2, map, max_shift=max_shift, nref=nref, threshold=threshold, margin = margin
 
   sz1 = size( ph1, /dim )
   sz2 = size( ph2, /dim )
@@ -90,7 +96,8 @@ FUNCTION red_phverify, ph1, ph2, map, max_shift=max_shift, nref=nref, threshold=
   if(n_elements(threshold) eq 0) then threshold = 0.0
   if(n_elements(nref) eq 0) then nref = 10
   if(n_elements(max_shift) eq 0) then max_shift = 200
-  
+  if(n_elements(margin) eq 0) then margin = 30
+
   drawSz = max([[sz1],[sz2]],dim=2) / [1,2]
 
   base = WIDGET_BASE( /COLUMN )
@@ -113,7 +120,7 @@ FUNCTION red_phverify, ph1, ph2, map, max_shift=max_shift, nref=nref, threshold=
   info = { base:base, draw:draw_ind, ph1:ph1, ph2:ph2, map:map, omap:map, max_shift:max_shift, nref:nref, threshold:threshold, $
     sz1:sz1, sz2:sz2, drawSz:drawSz, table:table, $
     m_flipx:m_flipx, m_flipy:m_flipy, m_calib:m_calib, m_restore:m_restore, m_unity:m_unity, b_done:b_done, $
-    timerid:0L, disp_mapped:0, exit:0 }
+    timerid:0L, disp_mapped:0, exit:0, margin:margin }
     
   info = PTR_NEW( info, /NO_COPY )
   WIDGET_CONTROL, base, SET_UVALUE=info

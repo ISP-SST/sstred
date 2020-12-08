@@ -112,6 +112,11 @@
 ; 
 ;   2020-06-16 : MGL. In FITS header, write SOLARNET recommended
 ;                PRSTEP and POLCCONV.
+;
+;
+;   2020-10-01 : JdlCR. Use the new red_stretch_linear to apply the
+;                wbcorrection. Also allow for nearest neighbor interpolation.
+;
 ; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
@@ -132,7 +137,8 @@ pro crisp::demodulate, outname, immr, immt $
                        , units = units $
                        , wbg = wbg $
                        , wcs = wcs $
-                       , wbstates = wbstates
+                       , wbstates = wbstates $
+                       , nearest = nearest 
 
 ;  testing = 1
 
@@ -451,13 +457,13 @@ pro crisp::demodulate, outname, immr, immt $
     if n_elements(cmap) ne 0 then cmapp = 0.
     for ilc = 0L, Nlc-1 do begin
       grid = red_dsgridnest(wbg, img_wb[*,*,ilc], tiles, clips)
+      
       for istokes = 0L, Nstokes-1 do begin
-        rest[*,*,istokes] += red_stretch(reform(mymt[ilc,istokes,*,*]) $
-                                         * img_t[*,*,ilc], grid)
-        resr[*,*,istokes] += red_stretch(reform(mymr[ilc,istokes,*,*]) $
-                                         * img_r[*,*,ilc], grid)
-      endfor                    ; istokes
-      if n_elements(cmap) ne 0 then cmapp += red_stretch(cmap, grid)
+        rest[*,*,istokes] += red_stretch_linear(reform(mymt[ilc,istokes,*,*]) * img_t[*,*,ilc], grid, nthreads=nthreads, nearest=nearest)
+        resr[*,*,istokes] += red_stretch_linear(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc], grid, nthreads=nthreads, nearest=nearest)
+        ;;stop
+      endfor                    ; istokesstop
+      if n_elements(cmap) ne 0 then cmapp += red_stretch_linear(cmap, grid, nthreads=nthreads, nearest=nearest)
     endfor                      ; ilc
     if n_elements(cmap) ne 0 then cmapp /= Nlc
     

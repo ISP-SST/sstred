@@ -40,8 +40,11 @@
 ;       Outlier clips in pixels.
 ;   
 ;   
-;   
-; 
+;  :Keywords:
+;
+;    nthreads : in, type=int
+;
+;        Number of threads to pass to red_stretch_linear
 ; 
 ; :History:
 ; 
@@ -59,14 +62,18 @@
 ;     2000-12-14 : TEB. Use IDL CONGRID function for faster bilinear
 ;                  interpolation. 
 ; 
-;     201?-??-?? : JdlC. Adapted to CRISPRED and Moved to red_
+;     201?-??-?? : JdlCR. Adapted to CRISPRED and Moved to red_
 ;                  namespace. 
 ; 
 ;     2016-11-17 : MGL. Added documentation header. Trust IDL to
 ;                  destroy local variables at exit.
-; 
+;
+;     2020-10-01 : JdlCR. Use stretch with nearest or bilinear
+;                  interpolation. Bugfix: gx and hy must be of type
+;                  int32, not float32!
+;
 ;-
-function red_dsgridnest, m1, m2, vg, clips
+function red_dsgridnest, m1, m2, vg, clips, nthreads = nthreads
 
   bdp_size = size(m1)
   nx = bdp_size(1)
@@ -98,17 +105,15 @@ function red_dsgridnest, m1, m2, vg, clips
     wy = float(ny)/nyg
     ;; This is supposed to compute the grid the same way as Stu's programs
     gx = findgen(nxg)#(fltarr(nyg)+1.0) ;integer grid coordinates
-    gx = gx*wx+wx/2.-1                  ;in pixels, as required for gridmatch
+    gx = long(gx*wx+wx/2.-1)                 ;in pixels, as required for gridmatch
     gy = (fltarr(nxg)+1.0)#findgen(nyg)
-    gy = gy*wy+wy/2.-1 
+    gy = long(gy*wy+wy/2.-1)
     dx = nw
     dy = nw
     gwid = ngw
 
     if (k eq 0) then begin 
       displ = red_gridmatch(m1,m2,gx,gy,dx,dy,gwid,stretch_clip)
-;      PRINT,'Mean initial = ',STRTRIM(AVG(ABS(displ)),2),$
-;            '   Max(abs) = ',STRTRIM(MAX(ABS(displ)),2)
     end else begin   
 
       if n ne nprev then begin
@@ -122,25 +127,17 @@ function red_dsgridnest, m1, m2, vg, clips
         prev(1,*,*) = fy
       end else prev = displprev
 
-      m3 = red_stretch(m2,prev)
-      displnew = red_gridmatch(m1, m3, gx, gy, dx, dy, gwid,stretch_clip)
-;      PRINT,'Mean incremental = ',STRTRIM(AVG(ABS(displnew)),2),$
-;            '   Max(abs) = ',STRTRIM(MAX(ABS(displnew)),2)
+      m3 = red_stretch_linear(m2,prev, nthreads=nthreads)
+      displnew = red_gridmatch(m1, m3, gx, gy, dx, dy, gwid, stretch_clip)
       displ = prev + displnew
     end
 
     if k lt nest-1 then begin   ;save variables for next cycle if needed
       nprev = n
       displprev = displ		
-;    gxprev = gx
-;    gyprev = gy
     end
 
   end 
 
-;PRINT,'Mean total displacement = ',STRTRIM(AVG(ABS(displ)),2),$
-;      '   Max(abs) = ',STRTRIM(MAX(ABS(displ)),2)
-
   return, displ
-
 end

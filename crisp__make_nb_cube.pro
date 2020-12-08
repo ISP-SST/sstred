@@ -31,29 +31,29 @@
 ; 
 ; :Keywords:
 ; 
-;     clips : in, optional, type=array
+;    clips : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
 ;
-;     cmap_fwhm : in, type=float, default=7
+;    cmap_fwhm : in, type=float, default=7
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
-;     integer : in, optional, type=boolean
+;    integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
 ;       keywords to preserve the intensity scaling.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
+;    intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
-;     nocavitymap : in, optional, type=boolean
+;    nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
-;     nocrosstalk : in, optional, type=boolean
+;    nocrosstalk : in, optional, type=boolean
 ;
 ;       Do not correct the (polarimetric) data cube Stokes components
 ;       for crosstalk from I to Q, U, V.
@@ -63,7 +63,7 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
-;     nopolarimetry : in, optional, type=boolean
+;    nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
 ;       Instead combine all LC states for both cameras into a single
@@ -76,26 +76,33 @@
 ;       Do not attempt to use Fourier filtering to remove polcal
 ;       periodic artifacts. (See crisp::demodulate method.)
 ;
-;     overwrite : in, optional, type=boolean
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no intrascan stretch vectors if this is set.
+;
+;    overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
-;     redemodulate : in, optional, type=boolean
+;    redemodulate : in, optional, type=boolean
 ;
 ;       Delete any old (per scan-and-tuning) stokes cubes so they will
 ;       have to be demodulated from scratch.
 ;
-;     tiles : in, optional, type=array
+;    tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
-;     wbsave : in, optional, type=boolean
+;    wbsave : in, optional, type=boolean
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
 ;       debugging of alignment with extra wideband objects.
 ;
-; 
+;     nearest : in, optional, type=boolean
+;       
+;       Use nearest neighbor interpolation (default = bilinear interpolation)
+;
 ; :History:
 ; 
 ;    2017-08-17 : MGL. First version, based on code from
@@ -146,7 +153,12 @@
 ; 
 ;    2020-07-15 : MGL. Remove keyword smooth.
 ;
+;    2020-10-01 : JdlCR. Modified to use new rotation routine that
+;                 also applies the stretch_grid.
+;
 ;    2020-10-28 : MGL. Remove statistics calculations.
+; 
+;    2020-11-09 : MGL. New keyword nostretch.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -160,6 +172,7 @@ pro crisp::make_nb_cube, wcfile $
                          , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , noremove_periodic = noremove_periodic $
+                         , nostretch = nostretch $
                          , notimecor = notimecor $
 ;                         , nthreads = nthreads $
                          , odir = odir $
@@ -169,7 +182,9 @@ pro crisp::make_nb_cube, wcfile $
 ;                         , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
-                         , wbsave = wbsave
+                         , wbsave = wbsave $
+                         , nearest = nearest $
+                         , nthreads = nthreads 
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -179,6 +194,8 @@ pro crisp::make_nb_cube, wcfile $
     print, inam + ' : Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
     return
   endif
+
+  if(keyword_set(nearest)) then near = 1 else near = 0
   
   ;; Make prpara
   red_make_prpara, prpara, clips         
@@ -187,7 +204,7 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, nomissing_nans
-;  red_make_prpara, prpara, notimecor 
+  red_make_prpara, prpara, nostretch 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
 ;  red_make_prpara, prpara, smooth
@@ -267,6 +284,9 @@ pro crisp::make_nb_cube, wcfile $
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
 
+  ;; Don't do any stretching if wcgrid is all zeros.
+  nostretch_temporal = total(abs(wcgrid)) eq 0
+  
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
   
@@ -415,7 +435,7 @@ pro crisp::make_nb_cube, wcfile $
 
   
   ;; Do WB correction?
-  wbcor = Nwb eq Nnbt 
+  wbcor = Nwb eq Nnbt and ~keyword_set(nostretch)
 
   ;; Load prefilters
   
@@ -610,7 +630,9 @@ pro crisp::make_nb_cube, wcfile $
 ;                                 , smooth = smooth $
                                  , snames = these_snames $
                                  , stokesdir = stokesdir $
-                                 , tiles = tiles
+                                 , tiles = tiles $
+                                 , nearest = nearest $
+                                 , nthreads = nthreads
 
       snames[iscan, *] = these_snames
       
@@ -831,7 +853,7 @@ pro crisp::make_nb_cube, wcfile $
   endif
 
   
-  
+ 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
                               , prstep = 'CONCATENATION' $
@@ -1081,7 +1103,7 @@ pro crisp::make_nb_cube, wcfile $
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
-            this_im = red_stretch(temporary(this_im), grid1)
+            this_im = red_stretch_linear(temporary(this_im), grid1, nthreads=nthreads, nearest = nearest)
           endif
           nbim += this_im
 
@@ -1090,7 +1112,7 @@ pro crisp::make_nb_cube, wcfile $
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
-            this_im = red_stretch(temporary(this_im), grid1)
+            this_im = red_stretch_linear(temporary(this_im), grid1, nthreads = nthreads, nearest = nearest)
           endif
           nbim += this_im
 
@@ -1098,7 +1120,7 @@ pro crisp::make_nb_cube, wcfile $
             ;; Same operations as on narrowband image.
             this_im = wwi       ;* tscl[iscan] 
             if wbcor then begin
-              this_im = red_stretch(temporary(this_im), grid1)
+              this_im = red_stretch_linear(temporary(this_im), grid1, nthreads = nthreads, nearest = nearest)
             endif
             wbim += this_im
           endif 
@@ -1113,20 +1135,24 @@ pro crisp::make_nb_cube, wcfile $
 ;      red_show,wbim,w=1
 ;      blink, [0, 1]
 
-
+      sclstr = 0
+      if ~nostretch_temporal then sclstr = 1
       
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
       if makestokes then begin
         for istokes = 0, Nstokes-1 do begin
           bg = median(nbim[*, *, istokes])
-          frame = red_rotation(nbim[*, *, istokes], ang[iscan] $
-                               , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
-                               , background = bg)
-          mindx = where(frame eq bg, Nwhere)
-          frame = red_stretch(frame $
-                              , reform(wcGRID[iscan,*,*,*]))
-          if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+
+
+          
+          frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
+                               wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
+                               background = bg, nearest = nearest, $
+                               stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, nthreads=nthreads)
+          
+          ;;if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+          
           self -> fitscube_addframe, fileassoc, frame $
                                      , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
@@ -1134,10 +1160,9 @@ pro crisp::make_nb_cube, wcfile $
         bg = median(nbim)
         nbim = red_rotation(temporary(nbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
-                            , background = bg)
-        mindx = where(nbim eq bg, Nwhere)
-        nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
-        if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+                            , background = bg, stretch_grid = reform(wcGRID[iscan,*,*,*])$
+                            , nthreads=nthreads, nearest = nearest)
+
         self -> fitscube_addframe, fileassoc, nbim $
                                    , iscan = iscan, ituning = ituning
       endelse
@@ -1147,8 +1172,10 @@ pro crisp::make_nb_cube, wcfile $
 ;        wbim = wwi * tscl[iscan]
 ;        wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
-                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-        wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF,  stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, $
+                            nthreads=nthreads, nearest = nearest)
+        
+
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
                                    , iscan = iscan, ituning = ituning
       endif
@@ -1161,8 +1188,10 @@ pro crisp::make_nb_cube, wcfile $
       
       ;; Apply the same derot, align, dewarp as for the science data
       cmap11 = red_rotation(cmap1, ang[iscan] $
-                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF)
-      cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
+                            stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, nthreads=nthreads)
+      ;;cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+
       
       cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
@@ -1194,17 +1223,18 @@ pro crisp::make_nb_cube, wcfile $
           im = momfbd_read(st.ofiles[ww,ss])
           
           ;; get dewarp from WB
-          igrid = red_dsgridnest(wb, iwb, itiles, iclip)
+          igrid = red_dsgridnest(wb, iwb, itiles, iclip, nthreads=nthreads)
           
           ;; Convolve CMAP and apply wavelength dep. de-warp
-          cmap2 = red_stretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid)
+          cmap2 = red_stretch_linear((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, nthreads=nthreads, nearest=nearest)
           
           ;; Derotate and shift
           cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
-                               total(shift[1,ss]), full=wcFF)
+                               total(shift[1,ss]), full=wcFF, stretch_grid=reform(wcGRID[iscan,*,*,*]) $
+                               , nthreads=nthreads, nearest=nearest)
           
           ;; Time de-warp
-          cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+          ;;cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
           
         endfor                  ; ww
       endif

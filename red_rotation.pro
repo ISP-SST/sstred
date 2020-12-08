@@ -8,7 +8,7 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :Author:
+; :Author: J. de la Cruz Rodriguez & M. Löfdahl, Institute for Solar Physics
 ; 
 ; 
 ; 
@@ -56,6 +56,14 @@
 ;
 ;      The full-FOV array is padded with this value.
 ;
+;    stretch_grid : in, optional, type=array
+;
+;       stretch grid computed with red_gridmatch (2, nTiles_x, nTiles_y)
+;
+;    nthreads : in, optional, type=int
+;   
+;       Number of threads to use during the interpolation
+;
 ; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
@@ -77,12 +85,22 @@
 ;                dimensions of rotated image iff keyword full is given
 ;                with more than 5 elements. Also fix bug so shifts are
 ;                added before rotation for the same calculation.
+;
+;   2020-10-01 : JdlCR. Modified this routine to a) only allow
+;                bilinear o nearest neighbor interpolation and
+;                b) to allow including the stretch correction
+;                in this interpolation so all corrections are 
+;                applied at once. Use our own interpolation routines.
+;
 ; 
 ;-
 function red_rotation, img, angle, sdx, sdy $
                        , background = background $
                        , full = full $
-                       , linear = linear 
+                       , stretch_grid = stretch_grid $
+                       , nthreads = nthreads $
+                       , nearest = nearest $
+                       , stretch_matrix = stretch_matrix
 
   if n_elements(sdx) eq 0 then sdx = 0.0
   if n_elements(sdy) eq 0 then sdy = 0.0
@@ -91,7 +109,7 @@ function red_rotation, img, angle, sdx, sdy $
   
   dim = size(img, /dim)
 
-  if n_elements(full) gt 5 then begin
+  if n_elements(full) ge 5 then begin
 
     ;; If "full" is only five elements, use old method below, kept for
     ;; backward compatibility. Otherwise use the angles part when
@@ -132,90 +150,47 @@ function red_rotation, img, angle, sdx, sdy $
     
     dim1 = round([xmax - xmin + 1, ymax - ymin + 1])
     
-    ima = fltarr(dim1) + background
-    ima[-round(xmin), -round(ymin)] = img
-
-    ;; Apply rotation and shifts
-    if keyword_set(linear) then begin
-      return, red_rotshift(ima, angle, sdx, sdy, background = background, /linear)
-    endif else begin
-      return, red_rotshift(ima, angle, sdx, sdy, background = background, cubic = -0.5)
-    endelse
+    ima = dblarr(dim1) + background
+    ;;ima[-round(xmin), -round(ymin)] = img
+    ima[0,0] = img
     
-  endif
 
-  ;; Old mechanisms
-  
-  xsi = dim[0] * 0.5
-  ysi = dim[1] * 0.5
-
-  ;; Get the index of each matrix element and create an array for the
-  ;; output image.
-  xgrid = findgen(dim[0]) # (fltarr(dim[1]) + 1.0)
-  ygrid = (fltarr(dim[0]) + 1.0) # findgen(dim[1])
-  if n_elements(full) eq 0 then begin
-
-    ;; Make the size of the rotated image the same as the original image
+    return, red_rotshift(ima, angle, sdx-(xmin), sdy-(ymin), background = background, stretch_grid = stretch_grid $
+                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
     
-    dx = cos(angle) * (xgrid - xsi - sdx) - sin(angle) * (ygrid - ysi-sdy) + xsi
-    dy = sin(angle) * (xgrid - xsi - sdx) + cos(angle) * (ygrid - ysi-sdy) + ysi
-
-    ima = img
-
   endif else begin
 
-    ;; Make the size of the rotated image larger so that it all fits.
+    ;; Old mechanisms
+    
+    ;; xsi = dim[0] * 0.5
+    ;; ysi = dim[1] * 0.5
+    
+    ;; ;; Get the index of each matrix element and create an array for the
+    ;; ;; output image.
+    ;; xgrid = dindgen(dim[0]) # (dblarr(dim[1]) + 1.0d)
+    ;; ygrid = (dblarr(dim[0]) + 1.0d) # dindgen(dim[1])
     
     
+    ;; ;; Add destretch grid correction
     
-    ;; For small angles, this should work.
+    ;; if(n_elements(stretch) ne 0) then begin
+    ;;   smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch, original_size=dim, /only_shifts)
+    ;;   smatx = smat[*,*,0]; - xgrid 
+    ;;   smaty = smat[*,*,1]; - ygrid
+    ;; endif else begin
+    ;;   smatx = xgrid*0
+    ;;   smaty = ygrid*0
+    ;; endelse
+    ;; ;; Make the size of the rotated image the same as the original image
+
+    ;; dx = cos(angle) * (xgrid - xsi - sdx + smatx) - sin(angle) * (ygrid - ysi - sdy + smaty) + xsi 
+    ;; dy = sin(angle) * (xgrid - xsi - sdx + smatx) + cos(angle) * (ygrid - ysi - sdy + smaty) + ysi
+    ;; ;;ima = img
+
+    ;; return, red_interpolate2D(xgrid[*,0], reform(ygrid[0,*]), img, dx, dy, nthreads=nthreads, nearest = nearest)
     
-    dx = cos(full[0]) * (xgrid - xsi) - sin(full[0]) * (ygrid - ysi) + xsi
-    dy = sin(full[0]) * (xgrid - xsi) + cos(full[0]) * (ygrid - ysi) + ysi
-
-    dim1 = dim
-    xmin = round(abs(min(dx         )) + abs(full[1]))
-    xmax = round(abs(max(dx-dim[0]-1)) + abs(full[2]))
-    ymin = round(abs(min(dy         )) + abs(full[3]))
-    ymax = round(abs(max(dy-dim[1]-1)) + abs(full[4]))
-
-    dim1[0] += xmin + xmax
-    dim1[1] += ymin + ymax
-
-    ;; Force an odd number to make things easier for flipthecube to
-    ;; find a correct dimension.
-
-    if((dim1[0]/2)*2 ne dim1[0]) then begin
-      dim1[0] += 1
-      xmax += 1
-    endif 
-
-    if((dim1[1]/2)*2 ne dim1[1]) then begin
-      dim1[1] += 1
-      ymax += 1
-    endif
+    return, red_rotshift(img, angle, sdx, sdy, background = background, stretch_grid = stretch_grid $
+                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
     
-    
-    xgrid = (findgen(dim1[0]) # (fltarr(dim1[1]) + 1.0)) * float(dim[0])/float(dim[0])
-    ygrid = ((fltarr(dim1[0]) + 1.0) # findgen(dim1[1])) * float(dim[1])/float(dim[1])
-    xgrid *= float(dim1[0]) / max(xgrid)
-    ygrid *= float(dim1[1]) / max(ygrid)
-    xsi = dim1[0] * 0.5
-    ysi = dim1[1] * 0.5
-    
-    dx = cos(angle[0]) * (xgrid - xsi - sdx) - sin(angle[0]) * (ygrid - ysi - sdy) + xsi
-    dy = sin(angle[0]) * (xgrid - xsi - sdx) + cos(angle[0]) * (ygrid - ysi - sdy) + ysi
-
-    ima = fltarr(dim1) + background
-    ima[xmin, ymin] = img
-
   endelse
-
-  ;; Interpolation onto new grid
-  if keyword_set(linear) then begin
-    return, interpolate(ima, dx, dy, missing = background)
-  endif else begin
-    return, interpolate(ima, dx, dy, missing = background, cubic = -0.5)
-  endelse
-  
 end

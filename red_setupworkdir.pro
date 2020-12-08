@@ -252,6 +252,8 @@
 ;
 ;   2020-09-10 : MGL. New keyword old_dir.
 ;
+;   2020-10-25 : JdlCR. old_dir was not defined as a keyword.
+;
 ;-
 pro red_setupworkdir, search_dirs = search_dirs $
                       , out_dir = out_dir $
@@ -260,7 +262,8 @@ pro red_setupworkdir, search_dirs = search_dirs $
                       , scriptfile = scriptfile $
                       , download_all = download_all $
                       , date = date $
-                      , calibrations_only = calibrations_only
+                      , calibrations_only = calibrations_only $
+                      , old_dir = old_dir
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
 

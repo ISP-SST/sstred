@@ -59,14 +59,16 @@
 pro chromis::align_continuum, continuum_filter = continuum_filter $
                               , limb_data = limb_data $
                               , momfbddir = momfbddir $
-                              , overwrite = overwrite 
+                              , overwrite = overwrite $
+                              , contrast_thres = contrast_thres
    
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
-
+  if(n_elements(contrast_thres) eq 0) then contrast_thres = 1.1
+  
   maxshifts = 30
   
   ;; The default continuum state for Ca II scans
@@ -247,12 +249,15 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
         ;; The biweight_mean function returns weight zero for
         ;; outliers.
         contrast_mean = biweight_mean(contrasts,contrast_sigma,w)
+        if(max(w) eq 0) then w[*] = 1
+
         cindx = where(w eq 0, N0)
 
         ;; We only want to remove bad quality frames, low or *very*
         ;; high contrasts. So put back moderately high contrasts.
-        for ic = 0, N0-1 do if contrasts[cindx[ic]] lt 1.1*contrast_mean then w[cindx[ic]] = max(w)
+        for ic = 0, N0-1 do if contrasts[cindx[ic]] lt contrast_thres*contrast_mean then w[cindx[ic]] = max(w)
 
+        
         include_mask = w gt 0.0
         ignore_indx = where(~include_mask, count)
         if count gt 0 then begin
@@ -326,7 +331,8 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
           shifts_smooth = shifts
           include_indx = [0]
         endif else begin
-          shifts_mean = biweight_mean(sqrt(total(shifts^2,1)),shifts_sigma,shifts_w)              
+          shifts_mean = biweight_mean(sqrt(total(shifts^2,1)),shifts_sigma,shifts_w)
+          if(max(shifts_w) lt 1.e-5) then shifts_w[*] = 1.0
           include_mask *= shifts_w gt 0.0
           include_indx = where(include_mask)
 
@@ -335,6 +341,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
           weights = contrasts^2 * include_mask
           Ninclude = total(include_mask)
           smooth_window = 35
+          
           for iaxis = 0, 1 do begin ; X and Y axis loop
             case 1 of
               Ninclude le 3 : begin

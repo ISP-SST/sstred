@@ -6,6 +6,10 @@
 #include <sys/types.h>
 #include "types.h"
 #include "creduc.h"
+
+#include "gridmatch.h"
+#include "imtools.hpp"
+
 //
 // creduc.cc wrapper routines in C
 //
@@ -173,6 +177,115 @@ extern "C" {
     return 0;
   }
 
+  // ********************************************************************** //
+
+  short nearest2D_wrap(int const narg, void **argv)
+  {
+    int const ny = *((int*)argv[0]);
+    int const nx = *((int*)argv[1]);
+    double* y    = (double*)argv[2];
+    double* x    = (double*)argv[3];
+    double* din  = (double*)argv[4];
+    int const ny1=  *((int*)argv[5]);
+    int const nx1=  *((int*)argv[6]);
+    double* yy   = (double*)argv[7];
+    double* xx   = (double*)argv[8];
+    double* dout = (double*)argv[9];
+    int const ntr=  *((int*)argv[10]);
+    double const missing = *((double*)argv[11]);
+
+
+    nearest2D(ny, nx, y, x, din, ny1, nx1, yy, xx, dout, ntr, missing);
+    
+    return 0;
+  }
+
+  // ********************************************************************** //
+  
+  short bilint2D_wrap(int const narg, void **argv)
+  {
+    int const ny = *((int*)argv[0]);
+    int const nx = *((int*)argv[1]);
+    double* y    = (double*)argv[2];
+    double* x    = (double*)argv[3];
+    double* din  = (double*)argv[4];
+    int const ny1=  *((int*)argv[5]);
+    int const nx1=  *((int*)argv[6]);
+    double* yy   = (double*)argv[7];
+    double* xx   = (double*)argv[8];
+    double* dout = (double*)argv[9];
+    int const ntr=  *((int*)argv[10]);
+    double const missing = *((double*)argv[11]);
+
+    bilint2D(ny, nx, y, x, din, ny1, nx1, yy, xx, dout, ntr, missing);
+    
+    return 0;
+  }
+
+  // ********************************************************************** //
+  
+  short ana_stretch_wrap(int const narg, void **argv)
+  {    
+    int const ny = *((int*)argv[0]);
+    int const nx = *((int*)argv[1]);
+    double* im   = (double*)argv[2];
+    int const npy= *((int*)argv[3]);
+    int const npx= *((int*)argv[4]);
+    double* gr   = (double*)argv[5];
+    double* out  = (double*)argv[6];
+
+    ana_stretch(ny, nx, im, npy, npx, gr, out);
+    
+    return 0;
+  }
+  
+  // ********************************************************************** //
+
+    short ana_stretch_full_matrix_wrap(int const narg, void **argv)
+  {    
+    int const ny = *((int*)argv[0]);
+    int const nx = *((int*)argv[1]);
+    int const npy= *((int*)argv[2]);
+    int const npx= *((int*)argv[3]);
+    double* gr   = (double*)argv[4];
+    double* outx = (double*)argv[5];
+    double* outy = outx+nx*ny;
+
+    ana_stretch_full_matrix(ny, nx, npy, npx, gr, outx, outy);
+    
+    return 0;
+  }
+
+  // ********************************************************************** //
+
+  short ana_gridmatch_wrap(int const narg, void **argv)
+  {
+    int const ny = *((int*)argv[0]);
+    int const nx = *((int*)argv[1]);
+    double* p1   = (double*)argv[2];
+    double* p2   = (double*)argv[3];
+    int const nyg= *((int*)argv[4]);
+    int const nxg= *((int*)argv[5]);
+    int *gy      = ((int*)argv[6]);
+    int *gx      = ((int*)argv[7]);
+    int const dy = *((int*)argv[8]);
+    int const dx = *((int*)argv[9]);
+    double const gwid = *((double*)argv[10]);
+    int const clip    = *((int*)argv[11]);
+    double* out  = (double*)argv[12];
+
+    
+    ana_gridmatch(ny, nx, p1, p2, nyg, nxg, gy, gx, dy, dx, gwid, clip, out);
+    
+    return 0;
+  }
+
+  // ********************************************************************** //
+
+  
+
+  
+  
 };
 
 

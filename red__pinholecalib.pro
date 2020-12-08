@@ -105,7 +105,10 @@
 ;   2018-10-05 : MGL. New keyword margin.
 ;
 ;   2019-06-18 : THI. Don't overwrite existing results when processing a
-;                different prefilter. New keyword overwrite. 
+;                different prefilter. New keyword overwrite.
+;
+;   2020-10-29 : JdlCR propagate more keywords to phverify, allow the
+;                user to provide an external initialization
 ;
 ;-
 pro red::pinholecalib, cams = cams $
@@ -119,7 +122,8 @@ pro red::pinholecalib, cams = cams $
                        , smooth = smooth $
                        , threshold = threshold $
                        , verbose = verbose $
-                       , verify = verify
+                       , verify = verify $
+                       , init = init
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -245,7 +249,10 @@ pro red::pinholecalib, cams = cams $
       endelse
       
       this_prefilter = cam_states[cam_idx].prefilter
-      if this_prefilter ne last_prefilter then undefine, this_init
+      if this_prefilter ne last_prefilter then begin
+        undefine, this_init
+        if(n_elements(init) eq 9) then this_init = reform(init, [3,3])
+      endif
       
       ref_fn = ref_states_unique[iref].filename
       red_progressbar, iref, n_elements(ref_states_unique), /predict $
@@ -278,7 +285,7 @@ pro red::pinholecalib, cams = cams $
       
       if (last_prefilter ne this_prefilter) or (this_map[2,2] ne 1) then begin
         if keyword_set(verify) then begin
-          this_map = red_phverify( ref_img, cam_img, this_map )
+          this_map = red_phverify( ref_img, cam_img, this_map, nref=nref, threshold=threshold, max_shift=max_shift, margin=margin)
           this_init = this_map
         endif
       endif else begin
