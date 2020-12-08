@@ -83,11 +83,6 @@
 ;
 ;       Do not apply the direction parameter.
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. If statistics keywords already exist, then remove them.
-;
 ;     odir : in, optional, type=string, detault='cubes_scan/'
 ;
 ;       The output directory.
@@ -107,13 +102,6 @@
 ;       Choose scan numbers to include in the sequence by entering a
 ;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
 ;       string '*' to include all.
-;
-;     smooth : in, optional, type=varies, default=5
-;
-;       How to smooth the modulation matrices? Set to the string
-;       'momfbd' to smooth subfield by subfield using the PSFs
-;       estimated by momfbd. Set to a number to smooth by a Gaussian
-;       kernel of that width. 
 ;
 ;     tiles : in, optional, type=array
 ;
@@ -142,6 +130,8 @@
 ;    2020-04-27 : MGL. New keyword rotation.
 ; 
 ;    2020-07-15 : MGL. Remove keyword smooth.
+; 
+;    2020-10-28 : MGL. Remove statistics calculations.
 ;
 ;-
 pro crisp::make_scan_cube, dir $
@@ -162,7 +152,6 @@ pro crisp::make_scan_cube, dir $
                            , redemodulate = redemodulate $
                            , rotation = rotation $
                            , scannos = scannos $
-;                           , smooth = smooth $
                            , tiles = tiles  $
                            , tuning_selection = tuning_selection
                
@@ -188,7 +177,6 @@ pro crisp::make_scan_cube, dir $
   red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, rotation    
-  red_make_prpara, prpara, smooth
   red_make_prpara, prpara, tiles
   red_make_prpara, prpara, tuning_selection
 
@@ -492,7 +480,7 @@ pro crisp::make_scan_cube, dir $
                  , complement = complement, Ncomplement = Ncomplement)
 
     ;; Read global WB file to add it as an extension to the cube. And
-    ;; possibly use for WB correctionb.
+    ;; possibly use for WB correction.
     wbim = (red_readdata(wfiles[indx], head = wbhdr, direction = direction))[x0:x1, y0:y1]
 
     ;; The non-global WB files
@@ -508,7 +496,6 @@ pro crisp::make_scan_cube, dir $
                                  , cmap_fwhm = cmap_fwhm $
                                  , nocavitymap = nocavitymap $
                                  , redemodulate = redemodulate $
-                                 , smooth = smooth $
                                  , snames = snames $
                                  , stokesdir = stokesdir $
                                  , tiles = tiles 
@@ -950,7 +937,6 @@ pro crisp::make_scan_cube, dir $
       ;; magnetic-features mask.
       self -> fitscube_crosstalk, filename $
                                   , mag_mask = mag_mask $
-                                  , /nostatistics $
                                   , tuning_selection = tuning_selection
 
     endif
@@ -977,7 +963,7 @@ pro crisp::make_scan_cube, dir $
 
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    self -> fitscube_intensitycorr, filename, corrmethod = intensitycorrmethod
+    self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
 
     if keyword_set(integer) then begin
       ;; Convert to integers
@@ -988,18 +974,6 @@ pro crisp::make_scan_cube, dir $
       filename = outname
     endif
     
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      if keyword_set(norotation) then begin
-        red_fitscube_statistics, filename, /write
-      endif else begin
-        red_fitscube_statistics, filename, /write, full = ff $
-                                 , origNx = Nx $
-                                 , origNy = Ny $
-                                 , angles = [ang]
-      endelse
-    endif
-
     ;; Done with this scan.
     print, inam + ' : Narrowband scan cube stored in:'
     print, filename

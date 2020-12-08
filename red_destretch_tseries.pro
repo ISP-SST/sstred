@@ -21,9 +21,11 @@
 ; :Params:
 ; 
 ;   
+; :Keywords:
+;
+;    nostretch : in, optional, type=boolean
 ;   
-;   
-; 
+;      Compute no stretch vectors if this is set.
 ; 
 ; :History:
 ; 
@@ -32,7 +34,7 @@
 ;    2020-10-01 : JdlCR. Added nthreads keyword, which is passed to red_dsgridnest.pro
 ; 
 ;-
-function red_destretch_tseries, cub, platescale, grids, clips, tstep, nthreads = nthreads
+function red_destretch_tseries, cub, platescale, grids, clips, tstep, nostretch = nostretch, nthreads = nthreads
 
   dim = size(cub, /dim)
   nfiles = dim[2]
@@ -51,6 +53,8 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep, nthreads =
   
   delta = FLTARR(dim[2], 2, maxgx, maxgy)
 
+  if keyword_set(nostretch) then return, delta
+  
   for i=1, dim[2]-1 do begin
     red_progressbar, i-1, dim[2]-1, 'Computing destretch grid'
     im = cub[*,*,i]

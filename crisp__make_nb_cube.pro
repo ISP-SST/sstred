@@ -31,29 +31,29 @@
 ; 
 ; :Keywords:
 ; 
-;     clips : in, optional, type=array
+;    clips : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
 ;
-;     cmap_fwhm : in, type=float, default=7
+;    cmap_fwhm : in, type=float, default=7
 ;   
 ;       FWHM in pixels of kernel used for smoothing the cavity map.
 ;
-;     integer : in, optional, type=boolean
+;    integer : in, optional, type=boolean
 ;
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
 ;       keywords to preserve the intensity scaling.
 ;
-;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
+;    intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
-;     nocavitymap : in, optional, type=boolean
+;    nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
-;     nocrosstalk : in, optional, type=boolean
+;    nocrosstalk : in, optional, type=boolean
 ;
 ;       Do not correct the (polarimetric) data cube Stokes components
 ;       for crosstalk from I to Q, U, V.
@@ -63,7 +63,7 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
-;     nopolarimetry : in, optional, type=boolean
+;    nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
 ;       Instead combine all LC states for both cameras into a single
@@ -76,26 +76,25 @@
 ;       Do not attempt to use Fourier filtering to remove polcal
 ;       periodic artifacts. (See crisp::demodulate method.)
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. 
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no intrascan stretch vectors if this is set.
 ;
-;     overwrite : in, optional, type=boolean
+;    overwrite : in, optional, type=boolean
 ;
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
-;     redemodulate : in, optional, type=boolean
+;    redemodulate : in, optional, type=boolean
 ;
 ;       Delete any old (per scan-and-tuning) stokes cubes so they will
 ;       have to be demodulated from scratch.
 ;
-;     tiles : in, optional, type=array
+;    tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment. 
 ;
-;     wbsave : in, optional, type=boolean
+;    wbsave : in, optional, type=boolean
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
 ;       debugging of alignment with extra wideband objects.
@@ -157,6 +156,9 @@
 ;    2020-10-01 : JdlCR. Modified to use new rotation routine that
 ;                 also applies the stretch_grid.
 ;
+;    2020-10-28 : MGL. Remove statistics calculations.
+; 
+;    2020-11-09 : MGL. New keyword nostretch.
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -170,7 +172,7 @@ pro crisp::make_nb_cube, wcfile $
                          , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , noremove_periodic = noremove_periodic $
-                         , nostatistics = nostatistics $
+                         , nostretch = nostretch $
                          , notimecor = notimecor $
 ;                         , nthreads = nthreads $
                          , odir = odir $
@@ -202,7 +204,7 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, nomissing_nans
-;  red_make_prpara, prpara, notimecor 
+  red_make_prpara, prpara, nostretch 
   red_make_prpara, prpara, nopolarimetry 
   red_make_prpara, prpara, np           
 ;  red_make_prpara, prpara, smooth
@@ -282,6 +284,9 @@ pro crisp::make_nb_cube, wcfile $
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
 
+  ;; Don't do any stretching if wcgrid is all zeros.
+  nostretch_temporal = total(abs(wcgrid)) eq 0
+  
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
   
@@ -430,7 +435,7 @@ pro crisp::make_nb_cube, wcfile $
 
   
   ;; Do WB correction?
-  wbcor = Nwb eq Nnbt 
+  wbcor = Nwb eq Nnbt and ~keyword_set(nostretch)
 
   ;; Load prefilters
   
@@ -597,10 +602,15 @@ pro crisp::make_nb_cube, wcfile $
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
   self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
 
-  red_fitsdelkeyword, hdr, 'STATE'    ; Not a single state for cube 
-  red_fitsdelkeyword, hdr, 'CHECKSUM' ; Checksum for WB cube
-  red_fitsdelkeyword, hdr, 'DATASUM'  ; Datasum for WB cube
-
+  red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
+  red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
+  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata) ; DATA statistics keywords
+  for idata = Ndata-1, 0, -1 do begin
+    keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
+    red_fitsdelkeyword, hdr, keyword
+  endfor                        ; idata
+  
   red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
 
   
@@ -1125,7 +1135,8 @@ pro crisp::make_nb_cube, wcfile $
 ;      red_show,wbim,w=1
 ;      blink, [0, 1]
 
-
+      sclstr = 0
+      if ~nostretch_temporal then sclstr = 1
       
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
@@ -1133,12 +1144,15 @@ pro crisp::make_nb_cube, wcfile $
         for istokes = 0, Nstokes-1 do begin
           bg = median(nbim[*, *, istokes])
 
+
+          
           frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
-                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
+                               wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
                                background = bg, nearest = nearest, $
-                               stretch_grid = reform(wcGRID[iscan,*,*,*]), nthreads=nthreads)
+                               stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, nthreads=nthreads)
           
           ;;if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+          
           self -> fitscube_addframe, fileassoc, frame $
                                      , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
@@ -1148,10 +1162,7 @@ pro crisp::make_nb_cube, wcfile $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , background = bg, stretch_grid = reform(wcGRID[iscan,*,*,*])$
                             , nthreads=nthreads, nearest = nearest)
-        
-        ;;mindx = where(nbim eq bg, Nwhere)
-        ;;nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
-        ;;if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+
         self -> fitscube_addframe, fileassoc, nbim $
                                    , iscan = iscan, ituning = ituning
       endelse
@@ -1161,10 +1172,10 @@ pro crisp::make_nb_cube, wcfile $
 ;        wbim = wwi * tscl[iscan]
 ;        wbim = red_stretch(temporary(wbim), grid1)
         wbim = red_rotation(temporary(wbim), ang[iscan], $
-                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF,  stretch_grid = reform(wcGRID[iscan,*,*,*]), $
+                            wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF,  stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, $
                             nthreads=nthreads, nearest = nearest)
         
-       ;; wbim = red_stretch(temporary(wbim), reform(wcGRID[iscan,*,*,*]))
+
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
                                    , iscan = iscan, ituning = ituning
       endif
@@ -1178,8 +1189,9 @@ pro crisp::make_nb_cube, wcfile $
       ;; Apply the same derot, align, dewarp as for the science data
       cmap11 = red_rotation(cmap1, ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
-                            stretch_grid = reform(wcGRID[iscan,*,*,*]), nthreads=nthreads)
+                            stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, nthreads=nthreads)
       ;;cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
+
       
       cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
@@ -1299,30 +1311,16 @@ pro crisp::make_nb_cube, wcfile $
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
     ;; Correct the cube for cross-talk, I --> Q,U,V.
-    self -> fitscube_crosstalk, filename, /nostatistics ;, nostatistics = nostatistics 
+    self -> fitscube_crosstalk, filename
 
   endif                         ;else
 
-  if keyword_set(nomissing_nans) then begin
-    ;; Calculate statistics if wanted
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      red_fitscube_statistics, filename, /write $
-                               , angles = ang $
-                               , full = wcFF $
-                               , grid = wcGRID $
-                               , origNx = origNx $
-                               , origNy = origNy $
-                               , shifts = wcSHIFT 
-    endif
-  endif else begin
-    ;; Set padding pixels to missing-data, i.e., NaN. Statistics
-    ;; (optionally) calculated during this step.
+  if ~keyword_set(nomissing_nans) then begin
+    ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, filename $
                               , /noflip $
-                              , missing_type = 'nan' $
-                              , nostatistics = nostatistics
-  endelse
+                              , missing_type = 'nan'
+  endif
   
   if keyword_set(integer) then begin
     self -> fitscube_integer, filename $

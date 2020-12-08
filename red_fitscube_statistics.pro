@@ -81,32 +81,34 @@
 ; 
 ;   2019-08-26 : MGL. New keyword remove_only. 
 ; 
-;   2020-01-21 : MGL. New keyword update.
+;   2020-01-21 : MGL. New keyword update. 
+; 
+;   2020-11-01 : MGL. Remove keywords angles, full, grid, orgiNx,
+;                origNy, and shifts.
 ; 
 ;-
 pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
-                             , angles = angles $
-                             , full = full $
-                             , grid = grid $
-                             , origNx = origNx $
-                             , origNy = origNy $
+;                             , angles = angles $
+;                             , full = full $
+;                             , grid = grid $
+;                             , origNx = origNx $
+;                             , origNy = origNy $ $
+                             , cube_comments = cube_comments $
                              , percentiles = percentiles $
                              , remove_only = remove_only $
-                             , shifts = shifts $
+;                             , shifts = shifts $
                              , update = update $
-                             , write = write $
-                             , cube_comments = cube_comments 
+                             , write = write
 
   if n_elements(percentiles) eq 0 then percentiles = [.01, .10, .25, .50, .75, .90, .95, .98, .99]
   
-  ;; Use angles, shifts, full (if given) to calculate masks that
-  ;; select the rotated and shifted area. Can we do something with
-  ;; grid as well? Maybe use magnitude of grid shifts to calculate a
-  ;; margin around the area?
+;  ;; Use angles, shifts, full (if given) to calculate masks that
+;  ;; select the rotated and shifted area. Can we do something with
+;  ;; grid as well? Maybe use magnitude of grid shifts to calculate a
+;  ;; margin around the area?
 
   ;; Open the file and set up an assoc variable.
-  red_fitscube_open, filename, fileassoc, fitscube_info ;$
-;                     , lun = lun
+  red_fitscube_open, filename, fileassoc, fitscube_info
 
   if keyword_set(remove_only) or keyword_set(write) or keyword_set(update) then begin
     ;; Remove any existing statistics keywords from the file header. 
@@ -140,38 +142,38 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
   Nstokes = fitscube_info.dimensions[3]
   Nscans  = fitscube_info.dimensions[4]
 
-  if n_elements(angles) eq Nscans then begin
-    if n_elements(origNx) gt 0 then Nxx = origNx else Nxx = Nx
-    if n_elements(origNy) gt 0 then Nyy = origNy else Nyy = Ny
-  endif
-;  else begin
-;    ;; Indices of all image pixels, i.e., no masking.
-;    mindx = lindgen(Nx, Ny)
-;  endelse
+;   if n_elements(angles) eq Nscans then begin
+;     if n_elements(origNx) gt 0 then Nxx = origNx else Nxx = Nx
+;     if n_elements(origNy) gt 0 then Nyy = origNy else Nyy = Ny
+;   endif
+; ;  else begin
+; ;    ;; Indices of all image pixels, i.e., no masking.
+; ;    mindx = lindgen(Nx, Ny)
+; ;  endelse
 
   ;; Calculate statistics for the individual frames
   iprogress = 0
   Nprogress = Nscans * Ntuning * Nstokes
   for iscan = 0L, Nscans - 1 do begin
 
-    if n_elements(angles) eq Nscans then begin
-      
-      ;; Make a mask by rotating and shifting an image of unit values
-      ;; the same way as the images from this scan. 
-      
-      if n_elements(shifts) eq 0 then begin
-        dx = 0
-        dy = 0
-      endif else begin
-        dx = shifts[0,iscan]
-        dy = shifts[1,iscan]
-      endelse
-      
-      mask = make_array(Nxx, Nyy, /float, value = 1.) 
-      mask = red_rotation(mask, angles[iscan], dx, dy, background = 0, full = full)
-      mindx = where(mask gt 0.99)
-
-    endif 
+;    if n_elements(angles) eq Nscans then begin
+;      
+;      ;; Make a mask by rotating and shifting an image of unit values
+;      ;; the same way as the images from this scan. 
+;      
+;      if n_elements(shifts) eq 0 then begin
+;        dx = 0
+;        dy = 0
+;      endif else begin
+;        dx = shifts[0,iscan]
+;        dy = shifts[1,iscan]
+;      endelse
+;      
+;      mask = make_array(Nxx, Nyy, /float, value = 1.) 
+;      mask = red_rotation(mask, angles[iscan], dx, dy, background = 0, full = full)
+;      mindx = where(mask gt 0.99)
+;
+;    endif 
 
     for ituning = 0L, Ntuning - 1 do begin 
       for istokes = 0L, Nstokes-1 do begin
@@ -182,30 +184,16 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 
         red_fitscube_getframe, fileassoc, frame $
                                , iscan = iscan, ituning = ituning, istokes = istokes
+        red_missing, frame, indx_data = indx_data
         
         if (iscan eq 0) and (ituning eq 0) and (istokes eq 0) then begin
           ;; Set up the array if it's the first frame
-          if n_elements(mindx) gt 0 then begin
-            ;; Calculate statistics based on rotating mask
-            if ~array_equal(size(mask,/dim),size(frame,/dim)) then stop ; Size mismatch?
-            frame_statistics = red_image_statistics_calculate(frame[mindx])
-          endif else begin
-            ;; Calculate statistics based on deselecting missing-data
-            ;; pixels in each frame.
-            red_missing, frame, indx_data = indx_data
-            frame_statistics = red_image_statistics_calculate(frame[indx_data])
-          endelse
+          frame_statistics = red_image_statistics_calculate(frame[indx_data])
           frame_statistics = replicate(temporary(frame_statistics), Ntuning, Nstokes, Nscans)
         endif else begin
-          if n_elements(mindx) gt 0 then begin
-            ;; Calculate statistics based on rotating mask
-            frame_statistics[ituning, istokes, iscan] = red_image_statistics_calculate(frame[mindx])
-          endif else begin
-            ;; Calculate statistics based on deselecting missing-data
-            ;; pixels in each frame.
-            red_missing, frame, indx_data = indx_data
-            frame_statistics[ituning, istokes, iscan] = red_image_statistics_calculate(frame[indx_data])
-          endelse
+          ;; Calculate statistics based on deselecting missing-data
+          ;; pixels in each frame.
+          frame_statistics[ituning, istokes, iscan] = red_image_statistics_calculate(frame[indx_data])
         endelse 
 
         iprogress++
@@ -223,65 +211,75 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
     ;; percentiles.
     cubemin  = min(frame_statistics.datamin)
     cubemax  = max(frame_statistics.datamax)
+    cubemean = mean(frame_statistics.datamean)
     Nbins = 2L^16               ; Use many bins!
     binsize = (cubemax - cubemin) / (Nbins - 1.)
     hist = lonarr(Nbins)
     iprogress = 0
+    Npix = 0d
+    cubemad = 0d
+    
     for iscan = 0L, Nscans - 1 do begin
 
 
-      if n_elements(angles) eq Nscans then begin
-        
-        ;; Make a mask by rotating and shifting an image of unit values
-        ;; the same way as the images from this scan. 
-        
-        if n_elements(shifts) eq 0 then begin
-          dx = 0
-          dy = 0
-        endif else begin
-          dx = shifts[0,iscan]
-          dy = shifts[1,iscan]
-        endelse
-        
-        mask = make_array(Nxx, Nyy, /float, value = 1.) 
-        mask = red_rotation(mask, angles[iscan], dx, dy, background = 0, full = full)
-        mindx = where(mask gt 0.99)
-        
-      endif
-;      else begin
-;        mask = 0 * frame+1
-;        mindx = indgen(n_elements(frame))
-;      endelse
+;       if n_elements(angles) eq Nscans then begin
+;         
+;         ;; Make a mask by rotating and shifting an image of unit values
+;         ;; the same way as the images from this scan. 
+;         
+;         if n_elements(shifts) eq 0 then begin
+;           dx = 0
+;           dy = 0
+;         endif else begin
+;           dx = shifts[0,iscan]
+;           dy = shifts[1,iscan]
+;         endelse
+;         
+;         mask = make_array(Nxx, Nyy, /float, value = 1.) 
+;         mask = red_rotation(mask, angles[iscan], dx, dy, background = 0, full = full)
+;         mindx = where(mask gt 0.99)
+;         
+;       endif
+; ;      else begin
+; ;        mask = 0 * frame+1
+; ;        mindx = indgen(n_elements(frame))
+; ;      endelse
 
       for ituning = 0L, Ntuning - 1 do begin 
         for istokes = 0L, Nstokes-1 do begin
 
           red_progressbar, iprogress, Nprogress $
                            , /predict $
-                           , 'Accumulate histogram'
+                           , 'Accumulate histogram and MAD'
 
           red_fitscube_getframe, fileassoc, frame $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
           
-          if n_elements(mindx) eq 0 then begin
-            hist += histogram(float(frame), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
-          endif else begin
-            red_missing, frame, indx_data = indx_data
-            hist += histogram(float(frame[indx_data]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
-          endelse
-          
+          red_missing, frame, indx_data = indx_data
+          hist += histogram(float(frame[indx_data]), min = cubemin, max = cubemax, Nbins = Nbins, /nan)
+
+          cubemad += total(abs(double(frame[indx_data]) - cubemean))
+          Npix += n_elements(indx_data)
+
           iprogress++
           
         endfor                  ; istokes
       endfor                    ; ituning
     endfor                      ; iscan
 
+    cubemad /= Npix
+    
     ;; Calculate cube statistics from the histogram and the individual
     ;; frame statistics
     cube_statistics = red_image_statistics_combine(frame_statistics $
                                                    , hist = hist $
                                                    , comments = cube_comments $
                                                    , binsize = binsize)
+
+    ;; Add the MAD
+    cube_statistics = create_struct('DATAMAD', cubemad, cube_statistics)
+    cube_comments = create_struct('DATAMAD', 'The mean absolute deviation from the mean', cube_comments)
+    
   endif
 
   if ~keyword_set(write) and ~keyword_set(update) then begin
@@ -301,12 +299,6 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
   if Nstokes gt 1 then red_append, axis_numbers, 4
   if Nscans gt 1 then red_append, axis_numbers, 5
   
-;    if Nstokes gt 1 then begin
-;      axis_numbers = [3, 4, 5]  ; (Ntuning, Nstokes, Nscans)
-;    endif else begin
-;      axis_numbers = [3, 5]     ; (Ntuning, Nscans)
-;    endelse
-
   
   for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
 

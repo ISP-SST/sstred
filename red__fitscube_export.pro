@@ -88,17 +88,18 @@
 ; 
 ;   2019-10-18 : MGL. New keywords svo_api_key and svo_username.
 ; 
+;   2020-11-02 : MGL. Remove stuff that is now in fitscube_finalize. 
+; 
+;   2020-12-04 : MGL. Generate an OID.
+; 
 ;-
 pro red::fitscube_export, filename $
                           , help = help $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
-                          , no_checksum = no_checksum $
                           , outdir = outdir $
                           , outfile = outfile $
                           , overwrite = overwrite $
-                          , release_date = RELEASE $
-                          , release_comment = RELEASEC $
                           , smooth_width = smooth_width $
                           , svo_api_key = svo_api_key $
                           , svo_username = svo_username
@@ -107,24 +108,8 @@ pro red::fitscube_export, filename $
   inam = red_subprogram(/low, calling = inam1)
   ;; Make prpara
   red_make_prpara, prpara, keywords     
-  red_make_prpara, prpara, no_spectral_file      
-  red_make_prpara, prpara, release_date      
-  red_make_prpara, prpara, release_comment      
+  red_make_prpara, prpara, no_spectral_file    
   red_make_prpara, prpara, smooth_width
-  
-  ;; The keywords keyword will be checked against this list.
-  approved_keywords = strarr(10)
-  help_keywords     = strarr(10)
-  approved_keywords[0] = ['AUTHOR']   & help_keywords[0] = 'Who designed the observation'
-  approved_keywords[1] = ['DATATAGS'] & help_keywords[1] = 'Any additional search terms that do not fit in other keywords'
-  approved_keywords[2] = ['CAMPAIGN'] & help_keywords[2] = 'Coordinated campaign name/number, including instance number'
-  approved_keywords[3] = ['OBSERVER'] & help_keywords[3] = 'Who acquired the data'
-  approved_keywords[4] = ['OBS_MODE'] & help_keywords[4] = 'A string uniquely identifying the mode of operation'
-  approved_keywords[5] = ['PLANNER']  & help_keywords[5] = 'Observation planner(s)'
-  approved_keywords[6] = ['PROJECT']  & help_keywords[6] = 'Name(s) of the project(s) affiliated with the data'
-  approved_keywords[7] = ['REQUESTR'] & help_keywords[7] = 'Who requested this particular observation'
-  approved_keywords[8] = ['SETTINGS'] & help_keywords[8] = 'Other settings - numerical values "parameter1=n, parameter2=m"'
-  approved_keywords[9] = ['TELCONFG'] & help_keywords[9] = 'Telescope configuration'
 
   if n_elements(smooth_width) gt 0 then begin
     ;; We need to implement reading/writing frames from/to spectral
@@ -136,18 +121,6 @@ pro red::fitscube_export, filename $
   endif
   
 
-  if keyword_set(help) then begin
-    print
-    print, inam + ' : These are the approved keywords:'
-    print
-    for i = 0, n_elements(approved_keywords)-1 do begin
-      st = '         : ' + help_keywords[i]
-      strput, st, approved_keywords[i], 0
-      print, st
-    endfor
-    print
-    return
-  endif
 
   ;; This will be used for a new DATE header and also to indicate the
   ;; version of the cube as part of the file name.
@@ -159,8 +132,11 @@ pro red::fitscube_export, filename $
   hdr = red_readhead(filename)
   
   date_beg = fxpar(hdr,'DATE-BEG')
+  date_beg_split = strsplit(date_beg,'T',/extract)
+  ;; We could do the outdir default per site, just like we do for the
+  ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
-                                           + (strsplit(date_beg,'T',/extract))[0] + '/' $
+                                           + date_beg_split[0] + '/' $
                                            + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
   ;; Any old versions of this file?
@@ -214,74 +190,9 @@ pro red::fitscube_export, filename $
   red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', outfile
 
 
-  for itag = 0, n_tags(keywords)-1 do begin
-    ;; Add FITS header keywords as requested
-    if max(strmatch(approved_keywords, strupcase((tag_names(keywords))[itag]))) then begin
-      red_fitsaddkeyword, anchor = anchor, hdr $
-                          , strupcase((tag_names(keywords))[itag]), keywords.(itag)
-    endif else begin
-      print, inam + ' : The tag '+(tag_names(keywords))[itag]+' is not in the list of approved keywords: ' 
-      print, approved_keywords
-      return
-    endelse
-  endfor                        ; itag
-  
-  ;; Proprietary data?
-  if n_elements(RELEASE) eq 0 then begin
-    s = ''
-    print, inam + ' : No release date given. Continue without? [Y]'
-    read, s
-    if s eq '' then s = 'Y'
-    if strupcase(strmid(s, 0, 1)) ne 'Y' then return
-    RELEASE = ''
-    RELEASEC = 'Data is not proprietary.'
-  endif else begin
-    ;; Check that RELEASE is a proper date
-    if ~(strmatch(RELEASE,'[12][90][0-9][0-9]-[012][0-9]-[0123][0-9]') $
-         || RELEASE eq '') then begin
-      print, inam + ' : Release date is not a proper ISO date: '+RELEASE
-      return
-    endif
-
-  endelse
-  ;; Proprietary data
-  if n_elements(RELEASEC) eq 0 then begin
-    releasec = 'Proprietary data, se RELEASE keyword for release date.'
-  endif
-  red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASE',  RELEASE
-  red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASEC', RELEASEC
-
-
-
   ;; Add FITS keywords with info available in the file but not as
   ;; headers. 
 
-  ;; WCS info: DATE-BEG and DATE-END take care of the temporal
-  ;; coordinates, WAVEMIN and WAVEMAX of the spectral coordinates. But
-  ;; we need to specify the pointing as an additional WCS coordinate.
-  red_fitscube_getwcs, filename, coordinates = coordinates   
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'WCSNAMEA', 'AVERAGED APPROXIMATE HPLN-TAN/HPLT-TAN CENTER POINT'
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CRPIX1A', fxpar(hdr,'NAXIS1')/2. + 0.5, 'Center pixel of image array'
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CRPIX2A', fxpar(hdr,'NAXIS2')/2. + 0.5, 'Center pixel of image array' 
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CRVAL1A', mean(coordinates.hpln), '[arcsec] Coordinates of center of image array'
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CRVAL2A', mean(coordinates.hplt), '[arcsec] Coordinates of center of image array' 
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CDELT1A', 0.0, 'Zero FOV extent'
-  red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CDELT2A', 0.0, 'Zero FOV extent'
-
-  ;; Add header info about this step
-  prstep = 'HEADER-CORRECTION'
-  if n_elements(smooth_width) then prstep += ', SMOOTHING'
-  self -> headerinfo_addstep, hdr $
-                              , prstep = prstep $
-                              , prpara = prpara $
-                              , prproc = inam
 
   
   ;; Copy the file and write the new header
@@ -330,23 +241,6 @@ pro red::fitscube_export, filename $
     
   endif
 
-  if ~keyword_set(no_checksum) then begin
-
-    ;; Don't modify the file(s) after adding datasum and checksum!
-    
-    ;; Checksums
-    datasum = red_fitscube_datasum(outdir+outfile)
-
-    red_fitsaddkeyword, anchor = anchor, hdr, 'DATASUM', datasum
-    fits_add_checksum, hdr
-    red_fitscube_newheader, outdir+outfile, hdr
-
-    if copy_spectral then begin
-      red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATASUM', datasum
-      fits_add_checksum, sphdr
-      red_fitscube_newheader, outdir+spoutfile, sphdr
-    endif
-  endif
   
   if n_elements(svo_username) gt 0 and n_elements(svo_api_key) gt 0 then begin
 
@@ -363,8 +257,8 @@ pro red::fitscube_export, filename $
 
       ;; Keywords to the SVO ingestion script
       file_url = 'https://dubshen.isf.astro.su.se/'
-      file_path = (strsplit(date_beg,'T',/extract))[0] + '/' $
-                + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
+      file_path = date_beg_split[0] + '/' $
+                  + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
       ;; Get thumbnail from keyword or generate one from the cube?
       ;; Sharpest from brightest tuning?
@@ -373,7 +267,14 @@ pro red::fitscube_export, filename $
       ;; oid=
       ;; Is date + timestamp enough or should this be a hash-like
       ;; string that changes with versioning etc?
-
+      ;;
+      ;; Let's do YYYYMMDD_hhmmss_SCANNUMBERS:
+      time_beg_split = strsplit(date_beg_split[1], ':.', /extract)
+      tm=red_fitsgetkeyword(hdr,'SCANNUM',var=scannos)
+      oid = date_beg_split[0] + '_' $
+            + strjoin(time_beg_split[0:2], '') + '_' $
+            + rdx_ints2str(scannos.values)
+      
       ;; Build the command string
       cmd = cmd[0]
       cmd += ' ' + strlowcase(strtrim(fxpar(hdr,'INSTRUME'),2)) ; The dataset ID in the SOLARNET Data Archive/SVO
@@ -382,10 +283,10 @@ pro red::fitscube_export, filename $
       cmd += ' --file-path ' + file_path                        ; The relative path of the file
       if n_elements(thumbnail_url) gt 0 then $                  ;
          cmd += ' --thumbnail-url ' + thumbnail_url             ; The URL of the thumbnail
-      cmd += ' --username ' + svo_username ; The SVO username of the user owning the data
-      cmd += ' --api-key ' + svo_api_key   ; The SVO API key of the user owning the data
-;      if n_elements(oid) gt 0 then $                ;
-;      cmd += ' --oid ' +        ; The unique observation ID of the metadata
+      cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
+      cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
+      if n_elements(oid) gt 0 then $                            ;
+         cmd += ' --oid ' +                                     ; The unique observation ID of the metadata
       
       ;; Spawn running the script
       spawn, cmd, status

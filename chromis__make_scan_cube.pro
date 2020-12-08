@@ -60,11 +60,6 @@
 ;       Do not add cavity maps to the WCS metadata.
 ;       no effect.)
 ;
-;     nostatistics : in, optional, type=boolean
-;  
-;       Do not calculate statistics metadata to put in header keywords
-;       DATA*. If statistics keywords already exist, then remove them.
-;
 ;     odir : in, optional, type=string, detault='cubes_scan/'
 ;
 ;       The output directory.
@@ -107,6 +102,8 @@
 ;    2020-10-01 : JdlCR. Use the new rotation/de-stretch routines.
 ;                 Added nthreads and nearest keywords
 ; 
+;    2020-10-28 : MGL. Remove statistics calculations.
+;
 ;-
 pro chromis::make_scan_cube, dir $
                              , autocrop = autocrop $
@@ -121,7 +118,6 @@ pro chromis::make_scan_cube, dir $
                              , noaligncont = noaligncont $
                              , nocavitymap = nocavitymap $
                              , norotation = norotation $
-                             , nostatistics = nostatistics $
                              , odir = odir $
                              , overwrite = overwrite $
                              , rotation = rotation $
@@ -375,8 +371,9 @@ pro chromis::make_scan_cube, dir $
     
     ;; Select align shifts for the relevant scan numbers.
     nb_shifts = fltarr(2, Nscans)
-    ;;nb_shifts[0, *] = align_shifts[0, suba]
-   ;; nb_shifts[1, *] = align_shifts[1, suba]
+
+    ;; The align_shifts are measured with direction=0 so we need to
+    ;; take direction into account when interpreting the shifts.
     case direction of
       0 : begin                 ; ( x, y)
         nb_shifts[0, *] =  align_shifts[0, suba]
@@ -412,6 +409,7 @@ pro chromis::make_scan_cube, dir $
       end
       else : stop
     endcase
+
 ;    ;; Use interpolation to get the shifts for the selected scans.
 ;    nb_shifts = fltarr(2, Nscans)
 ;    for iscan=0L, Nscans-1 do begin
@@ -881,6 +879,7 @@ pro chromis::make_scan_cube, dir $
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
     self -> fitscube_intensitycorr, filename, intensitycorrmethod  = intensitycorrmethod
+
     
     if keyword_set(integer) then begin
       ;; Convert to integers
@@ -889,18 +888,6 @@ pro chromis::make_scan_cube, dir $
                                 , outname = outname $
                                 , overwrite = overwrite
       filename = outname
-    endif
-    
-    if ~keyword_set(nostatistics) then begin
-      ;; Calculate statistics if not done already
-      if keyword_set(norotation) then begin
-        red_fitscube_statistics, filename, /write
-      endif else begin
-        red_fitscube_statistics, filename, /write, full = ff $
-                                 , origNx = Nx $
-                                 , origNy = Ny $
-                                 , angles = [ang]
-      endelse
     endif
     
     ;; Done with this scan.

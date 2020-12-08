@@ -231,7 +231,7 @@ pro red::fitscube_finalize, filename $
   if n_elements(RELEASE) gt 0 then begin
     ;; Proprietary data
     if n_elements(RELEASEC) eq 0 then begin
-      releasec = 'Proprietary data, se RELEASE keyword for release date.'
+      releasec = 'Proprietary data, see RELEASE keyword for release date.'
     endif
     red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASE',  RELEASE
     red_fitsaddkeyword, anchor = anchor, hdr, 'RELEASEC', RELEASEC
@@ -312,9 +312,9 @@ end
 ;; Code for testing. Test only with smaller cubes because we have to
 ;; read the entire cube before calling fits_test_checksum below.
 
-if 0 then begin
+if 1 then begin
   cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'
-  filename = 'cubes_nb/nb_6302_2016-09-19T09:30:20_scans=12-16_stokes_corrected_im.fits'
+  filename = 'cubes_nb/nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
   a = crispred(/dev)
 endif else begin
   cd, '/scratch/mats/2016.09.19/CHROMIS-jan19/'

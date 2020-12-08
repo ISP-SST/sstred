@@ -38,6 +38,10 @@
 ; 
 ;   2020-06-26: MGL. Take care of NaNs.
 ; 
+;   2020-11-01: MGL. Add DATAMAD.
+; 
+;   2020-11-30: MGL. Add DATANRMS, remove DATARMS.
+; 
 ;-
 function red_image_statistics_calculate, im, percentile_p = percentile_p 
 
@@ -50,13 +54,15 @@ function red_image_statistics_calculate, im, percentile_p = percentile_p
   if Nwhere gt 0 then perc = double(cgpercentiles(im, percentiles = percentile_p)) $
   else perc = percentile_p + !Values.F_NaN
 
-  output = create_struct('NPIXELS',  long64(n_elements(im)) $
-                         , 'DATAMIN',  min(im) $
-                         , 'DATAMAX',  max(im) $
+  output = create_struct('NPIXELS',  long64(n_elements(indx)) $
+                         , 'DATAMIN' , min(im) $
+                         , 'DATAMAX' , max(im) $
                          , 'DATAMEAN', momnt[0] $       
-                         , 'DATARMS',  sqrt(momnt[1]) $
+                         , 'DATANRMS', sqrt(momnt[1])/momnt[0] $
                          , 'DATASKEW', momnt[2] $
-                         , 'DATAKURT', momnt[3] )
+                         , 'DATAKURT', momnt[3] $
+                         , 'DATAMAD' , meanabsdev(im, /double, /nan) $
+                        )
 
   for i = 0, n_elements(percentile_p)-1 do begin
     case percentile_p[i] of
@@ -66,11 +72,6 @@ function red_image_statistics_calculate, im, percentile_p = percentile_p
     output =  create_struct(tag, perc[i], output)
   endfor                        ; i
 
-  if n_elements(hist) eq 0 then begin
-
-    
-  endif
-  
   return, output
   
 end

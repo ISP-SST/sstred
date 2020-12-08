@@ -13,38 +13,34 @@
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
 ; 
-; :Returns:
-; 
-; 
 ; :Params:
 ; 
+;    file_orig, in, type=string
 ; 
+;       The file from which to copy the extension.
 ; 
+;    file_target, in, type=string
 ; 
+;       The file to which the extension is to be copied.
 ; 
+;    extension, in, type="string or integer"
 ; 
-; :Keywords:
-; 
-;   
-;   
-;   
+;       The name or number of the extension. Note that when file_orig
+;       has multiple extensions with the same name, specifying the
+;       number gives more control.
 ; 
 ; 
 ; :History:
 ; 
 ; 
-; 
-; 
-; 
-; 
 ;-
-pro red_fits_copybinext, file_orig, file_target, extension_name
+pro red_fits_copybinext, file_orig, file_target, extension
   
   ;; Open the binary extension in the original file and transfer
   ;; header and data to an extension in the target file.
 
   ;; Header
-  fxbopen,   olun, file_orig, extension_name, bdr
+  fxbopen,   olun, file_orig, extension, bdr
   fxbcreate, tlun, file_target, bdr ; Create the extension in the file
   
   ;; Find the columns in the extension, transfer them to the new file

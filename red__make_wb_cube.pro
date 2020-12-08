@@ -91,6 +91,10 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no temporal stretch vectors if this is set.
+;
 ;    np : in, optional, type=integer, default=3
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
@@ -185,6 +189,10 @@
 ; 
 ;    2020-07-08 : MGL. New keyword integer. 
 ; 
+;    2020-10-28 : MGL. Remove statistics calculations.
+; 
+;    2020-11-09 : MGL. New keyword nostretch.
+;
 ;-
 pro red::make_wb_cube, dir $
                        , align_interactive = align_interactive $
@@ -198,6 +206,7 @@ pro red::make_wb_cube, dir $
                        , nametag = nametag $
                        , negang = negang $
                        , nomissing_nans = nomissing_nans $
+                       , nostretch = nostretch $
                        , np = np $
                        , rotation = rotation $
                        , scannos = scannos $
@@ -234,6 +243,7 @@ pro red::make_wb_cube, dir $
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, negang
   red_make_prpara, prpara, nomissing_nans
+  red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, subtract_meanang
@@ -569,22 +579,24 @@ pro red::make_wb_cube, dir $
   print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
   ;; Calculate stretch vectors
-  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep, nthreads = nthreads)
+  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep, nthreads = nthreads, nostretch = nostretch)
 
-  for iscan = 0L, Nscans - 1 do begin
-    red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
-    ;;imm1 = red_stretch_linear(cub[*,*,iscan], reform(grid[iscan,*,*,*]), nthreads = nthreads)
-    imm = red_rotation(cub1[*,*,iscan], full=ff $
-                       , ang[iscan], shift[0,iscan], shift[1,iscan] $
-                       , background = bg, stretch_grid = reform(grid[iscan,*,*,*]) $
-                       , nthreads=nthreads, nearest=nearest)
-
-    ;;if keyword_set(make_raw) then
-    ;;mindx = where(cub[*,*,iscan] eq bg, Nwhere)
-    ;;if keyword_set(make_raw) &&
-    ;;if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
-    cub[*,*,iscan] = imm
-  endfor                        ; iscan
+  if ~keyword_set(nostretch) then begin
+    for iscan = 0L, Nscans - 1 do begin
+      red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
+      ;;imm1 = red_stretch_linear(cub[*,*,iscan], reform(grid[iscan,*,*,*]), nthreads = nthreads)
+      imm = red_rotation(cub1[*,*,iscan], full=ff $
+                         , ang[iscan], shift[0,iscan], shift[1,iscan] $
+                         , background = bg, stretch_grid = reform(grid[iscan,*,*,*]) $
+                         , nthreads=nthreads, nearest=nearest)
+      
+      ;;if keyword_set(make_raw) then
+      ;;mindx = where(cub[*,*,iscan] eq bg, Nwhere)
+      ;;if keyword_set(make_raw) &&
+      ;;if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
+      cub[*,*,iscan] = imm
+    endfor                      ; iscan
+  endif
 
   ;; Prepare for making output file names
   if keyword_set(make_raw) then begin
@@ -745,20 +757,10 @@ pro red::make_wb_cube, dir $
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
   if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
-    ;; Set padding pixels to missing-data, i.e., NaN. Statistics not
-    ;; calculated during this step due to integers ==> NaN becomes 0,
-    ;; so we need the mask. (Should probably change the WB integer
-    ;; cube to BZERO/BSCALE integers.)
-    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan', /nostatistics
+    ;; Set padding pixels to missing-data, i.e., NaN.
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
   endif
 
-  ;; Calculate statistics
-  red_fitscube_statistics, odir + ofil, /write, full = ff $
-                           , origNx = origNx $
-                           , origNy = origNy $
-                           , angles = ang
-
-  
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
   x01y01 = [X0, X1, Y0, Y1]
@@ -828,6 +830,7 @@ pro red::make_wb_cube, dir $
   if self.direction gt 7 || self.direction ne direction then begin
     ;; Direction not set in the config file, assume unknown
     red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+                         , /update $
                          , csyer_spatial_value = 120. $ ; 2 arc minutes
                          , csyer_spatial_comment = '[arcsec] Orientation unknown'
   endif else begin
@@ -835,6 +838,7 @@ pro red::make_wb_cube, dir $
     ;; good. But there may still be small rotation arrors and
     ;; substantial translations.
     red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+                         , /update $
                          , csyer_spatial_value = 60. $ ; 1 arc minute
                          , csyer_spatial_comment = '[arcsec] Orientation known'
   endelse 
@@ -883,101 +887,6 @@ pro red::make_wb_cube, dir $
                                   , anchor = anchor $
                                   , keyword_method = 'median' $
                                   , axis_numbers = [3, 5]
-;     
-;     ;; Statistics
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMIN', DATAMIN $
-;                                     , comment = 'The minimum data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMIN $
-;                                     , axis_numbers = [3, 5]
-;   
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMAX', DATAMAX $
-;                                     , comment = 'The maximum data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMAX $
-;                                     , axis_numbers = [3, 5]
-;   
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEAN', DATAMEAN $
-;                                     , comment = 'The average data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMEAN $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATARMS', DATARMS $
-;                                     , comment = 'The RMS deviation from the mean' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBERMS $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAKURT', DATAKURT $
-;                                     , comment = 'The kurtosis' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEKURT $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATASKEW', DATASKEW $
-;                                     , comment = 'The skewness' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBESKEW $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP01', DATAP01 $
-;                                     , comment = 'The 01 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP01 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP10', DATAP10 $
-;                                     , comment = 'The 10 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP10 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP25', DATAP25 $
-;                                     , comment = 'The 25 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP25 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAMEDN', DATAMEDN $
-;                                     , comment = 'The median data value' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEMEDN $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP75', DATAP75 $
-;                                     , comment = 'The 75 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP75 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP90', DATAP90 $
-;                                     , comment = 'The 90 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP90 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP95', DATAP95 $
-;                                     , comment = 'The 95 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP95 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP98', DATAP98 $
-;                                     , comment = 'The 98 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP98 $
-;                                     , axis_numbers = [3, 5]
-;   
-;     self -> fitscube_addvarkeyword, odir + ofil, 'DATAP99', DATAP99 $
-;                                     , comment = 'The 99 percentile' $
-;                                     , anchor = anchor $
-;                                     , keyword_value = CUBEP99 $
-;                                     , axis_numbers = [3, 5]
-;   
   
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin

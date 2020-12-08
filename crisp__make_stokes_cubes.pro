@@ -204,25 +204,17 @@ pro crisp::make_stokes_cubes, dir, scanno $
   wbgfiles = wfiles[indx]
 
   
-  ;; Maybe we should NOT do any cropping here, always make stokes
-  ;; cubes the size of the momfbd output FOV. Leave cropping to
-  ;; make_wb_cube.
-;  red_bad_subfield_crop, wfiles, crop, autocrop = autocrop,  interactive = interactive
-  crop = [0, 0, 0, 0]
   hdr = red_readhead(wbgfiles[0])
   im_dim = fxpar(hdr, 'NAXIS*')
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+  x0 = 0
+  x1 = im_dim[0]-1
+  y0 = 0
+  y1 = im_dim[1]-1
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
 
   prefilter = strtrim(fxpar(hdr,'FILTER1'), 2)
 
-
-
-  
   wchdr0 = red_readhead(wbgfiles[0])
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
@@ -559,7 +551,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
 
       wcs.wave = nbtstates[these_nbrindx[0]].tun_wavelength*1d9
       ;; wcs.time = ; Set by demodulate
-      
+
       self -> demodulate, snames[ituning], immr, immt $
                           , smooth_by_subfield = smooth_by_subfield $ 
                           , smooth_by_kernel = smooth_by_kernel $ 
