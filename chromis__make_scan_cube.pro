@@ -160,7 +160,7 @@ pro chromis::make_scan_cube, dir $
 
   ;; Default keywords
   if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
-  if n_elements(clip) eq 0 then clip = [8, 4,  2,  1,  1  ]
+  if n_elements(clip) eq 0 then clip = [8, 10,  5,  2,  1  ]
   if n_elements(tile) eq 0 then tile = [8, 16, 32, 64, 128]
 
   if keyword_set(limb_data) then autocrop = 0
@@ -596,7 +596,7 @@ pro chromis::make_scan_cube, dir $
 
     Nstokes = 1
     if ~keyword_set(norotation) then begin
-      ff = [abs(ang),0,0,0,0]
+      ff = [abs(ang),0,0,0,0,0]
       wbim_rot = red_rotation(wbim, ang, full = ff)
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
@@ -795,7 +795,7 @@ pro chromis::make_scan_cube, dir $
         stop
         ;; Write cmap(s) to the cube
         red_fitscube_addcmap, filename $
-                              , reform(red_rotation(cmap1,ang,full=ff),[dims[0:1],1,1,1]) $
+                              , reform(red_rotation(cmap1,ang,full=ff, nthreads=nthreads, nearest=nearest),[dims[0:1],1,1,1]) $
                               ;;, reform(cmap1, Nx, Ny, 1, 1, 1) $
                               , cmap_number = icprefs+1 $
                               , prefilter = cprefs[icprefs] $
