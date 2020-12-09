@@ -65,6 +65,10 @@
 ;
 ;    2020-10-01 : JdlCR. Added the stretch_grid correction and
 ;                        homebrewed multithreaded interpolation.
+;
+;    2020-12-09 : JdlCR. When original_dimensions are provided,
+;                        The image must be rotated relative to
+;                        the center of those dimensions.
 ; 
 ;-
 function red_rotshift, arr, angle, dx, dy $
@@ -76,11 +80,15 @@ function red_rotshift, arr, angle, dx, dy $
                        , original_dimensions = original_dimensions
 
   if n_elements(background) eq 0 then background = median(arr)
-
   dim = size(arr, /dim)
-  xsi = dim[0] * 0.5
-  ysi = dim[1] * 0.5
 
+  if(n_elements(original_dimensions) ne 2) then begin
+     xsi = dim[0] * 0.5
+     ysi = dim[1] * 0.5
+  endif else begin
+     xsi = original_dimensions[0] * 0.5
+     ysi = original_dimensions[1] * 0.5
+  endelse
   xg =  dindgen(dim[0])
   yg =  dindgen(dim[1])
   
@@ -127,7 +135,7 @@ function red_rotshift, arr, angle, dx, dy $
   xgrid1 = co * xterm - si * yterm + xsi
   ygrid1 = si * xterm + co * yterm + ysi 
 
-  ;;stop
+ ;; stop
   
   return, red_interpolate2D(xg, yg, arr, xgrid1, ygrid1, nthreads = nthreads, nearest = nearest, missing = background)
 end
