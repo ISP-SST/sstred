@@ -286,8 +286,10 @@ pro crisp::make_nb_cube, wcfile $
   fxbclose, bunit
 
   ;; Don't do any stretching if wcgrid is all zeros.
-  nostretch = total(abs(wcgrid)) eq 0
-  
+  nostretch_temporal = total(abs(wcgrid)) eq 0
+  sclstr = 0
+  if ~nostretch_temporal then sclstr = 1
+
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
   
@@ -1136,9 +1138,6 @@ pro crisp::make_nb_cube, wcfile $
 ;      red_show,wbim,w=1
 ;      blink, [0, 1]
 
-      sclstr = 0
-      if ~nostretch then sclstr = 1
-      
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
       if makestokes then begin

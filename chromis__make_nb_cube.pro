@@ -151,10 +151,6 @@ pro chromis::make_nb_cube, wcfile $
     return
   endif
 
-  sclstr = 0
-  if ~keyword_set(nostretch) then sclstr = 1
-
-  
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
@@ -213,7 +209,9 @@ pro chromis::make_nb_cube, wcfile $
   fxbclose, bunit
 
   ;; Don't do any stretching if wcgrid is all zeros.
-  nostretch = total(abs(wcgrid)) eq 0 
+  nostretch_temporal = total(abs(wcgrid)) eq 0 
+  sclstr = 0
+  if ~nostretch_temporal then sclstr = 1
 
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
