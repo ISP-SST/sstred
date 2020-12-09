@@ -58,27 +58,29 @@ function red_image_statistics_combine, statsarr $
   
   Nframes = n_elements(statsarr)
   Npixels = statsarr[0].Npixels ; Assume same for all frames
+
+  DATARMS = statsarr.DATANRMS * statsarr.DATAMEAN
   
   CUBEMIN  = min(statsarr.datamin)
   CUBEMAX  = max(statsarr.datamax)
   CUBEMEAN = mean(statsarr.datamean)
 
   CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-                  * ( total( (Npixels-1d) * statsarr.DATARMS^2 $
+                  * ( total( (Npixels-1d) * DATARMS^2 $
                              + Npixels * statsarr.DATAMEAN^2 ) $
                       - Nframes*Npixels * CUBEMEAN^2 ))
   
   CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
-             * total( Npixels * statsarr.DATARMS^3 * statsarr.DATASKEW $
+             * total( Npixels * DATARMS^3 * statsarr.DATASKEW $
                       + Npixels * statsarr.DATAMEAN^3 $
-                      + 3*(Npixels-1) * statsarr.DATAMEAN * statsarr.DATARMS^2) $
+                      + 3*(Npixels-1) * statsarr.DATAMEAN * DATARMS^2) $
              - CUBEMEAN^3 / CUBERMS^3 $
              - 3 * (Npixels*Nframes-1d) * CUBEMEAN / (Npixels*Nframes*CUBERMS)
   
   CUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
-             * total( Npixels * statsarr.DATARMS^4 * (statsarr.DATAKURT+3) $
-                      + 4*Npixels * statsarr.DATAMEAN * statsarr.DATARMS^3 * statsarr.DATASKEW $
-                      + 6*(Npixels-1) * statsarr.DATAMEAN^2 * statsarr.DATARMS^2 $
+             * total( Npixels * DATARMS^4 * (statsarr.DATAKURT+3) $
+                      + 4*Npixels * statsarr.DATAMEAN * DATARMS^3 * statsarr.DATASKEW $
+                      + 6*(Npixels-1) * statsarr.DATAMEAN^2 * DATARMS^2 $
                       + Npixels * statsarr.DATAMEAN^4 ) $
              - 4 * CUBEMEAN * CUBESKEW / CUBERMS $
              - 6 * (Npixels*Nframes-1d) * CUBEMEAN^2 / (Npixels*Nframes*CUBERMS^2) $
