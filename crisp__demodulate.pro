@@ -110,10 +110,11 @@
 ;   2020-06-16 : MGL. In FITS header, write SOLARNET recommended
 ;                PRSTEP and POLCCONV.
 ;
-;
 ;   2020-10-01 : JdlCR. Use the new red_stretch_linear to apply the
-;                wbcorrection. Also allow for nearest neighbor interpolation.
-;
+;                wbcorrection. Also allow for nearest neighbor
+;                interpolation.
+; 
+;   2020-12-09 : MGL. Remove statistics calculations.
 ; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
@@ -644,7 +645,7 @@ pro crisp::demodulate, outname, immr, immt $
   red_fitsdelkeyword, hdr, 'CADENCE' ; Makes no sense to keep?
   
   
-  ;; Set various keywords in hdr. DATE* and statistics are useful.
+  ;; Set various keywords in hdr. DATE* are useful.
   ;; Also make sure we implement the Stokes dimension properly!
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
@@ -680,24 +681,6 @@ pro crisp::demodulate, outname, immr, immt $
   ;; Add "global" metadata
   red_metadata_restore, anchor = anchor, hdr
   
-  ;; Statistics
-  for istokes = 0, Nstokes-1 do begin
-    red_append, statistics, red_image_statistics_calculate(res[*, *, 0, istokes, 0])
-  endfor                        ; istokes
-  Nbins = 2L^16                 ; Use many bins!
-  binsize = (max(double(statistics.datamax)) - min(double(statistics.datamin))) / (Nbins - 1.)
-  hist = lonarr(Nbins)
-  for istokes = 0, Nstokes-1 do begin
-    ;; Accumulate the histogram
-    hist += histogram(res[*, *, 0, istokes, 0] $
-                      , min = min(statistics.datamin) $
-                      , max = max(statistics.datamax) $
-                      , Nbins = Nbins, /nan)
-  endfor                        ; istokes
-  cubestats = red_image_statistics_combine(statistics $
-                                           , hist = hist $
-                                           , binsize = binsize)
-  
   self -> fitscube_initialize, outname, hdr, lun, fileassoc, dims 
   for istokes = 0, Nstokes-1 do begin
     self -> fitscube_addframe, fileassoc, res[*, *, 0, istokes, 0] $
@@ -709,21 +692,6 @@ pro crisp::demodulate, outname, immr, immt $
   self -> fitscube_finish, lun, wcs = wcs
   
   if n_elements(cmap) ne 0 then red_fitscube_addcmap, outname, reform(cmapp, Nx, Ny, 1, 1, 1)
-
-  ;; Add statistics metadata
-  anchor = 'DATE-END'
-  for itag = n_tags(statistics[0])-1, 0, -1 do begin
-    itagc = where((tag_names(statistics[0]))[itag] eq tag_names(cubestats), Nmatch)
-    if Nmatch eq 1 then $
-       self -> fitscube_addvarkeyword, outname $
-                                       , (tag_names(statistics[0]))[itag] $
-                                       , statistics.(itag) $
-                                       , anchor = anchor $
-                                       , keyword_value = cubestats.(itagc) $
-                                       , axis_numbers = 4
-  end
-  
-  
   
 ;    if keyword_set(cmap) then begin
 ;      odir = file_dirname(self.tfiles[0]) + '/cavity_map/'
