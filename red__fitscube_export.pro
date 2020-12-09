@@ -25,6 +25,27 @@
 ; 
 ; :Keywords:
 ;
+;    iframe : in, optional, type=integer, default="based on ituning, istokes, and iscan"
+;
+;       The frame index in the data cube seen as a 3D cube, to be used
+;       for generating a thumbnail. Takes precedence over iscan,
+;       istokes, and ituning.
+;
+;    iscan : in, optional, type=integer, default="Selected for contrast."
+;
+;       The scan index, used to calculate iframe, to be used for
+;       generating a thumbnail.
+;   
+;    istokes  : in, optional, type=integer, default=0
+;
+;       The stokes index, used to calculate iframe, to be used for
+;       generating a thumbnail and video.
+;
+;    ituning  : in, optional, type=integer, default="Selected for brightness"
+;
+;       The tuning index, used to calculate iframe, to be used for
+;       generating a thumbnail and video.
+; 
 ;    smooth_width: in, optional, type=integer
 ;  
 ;      If present, blur all images in the exported cube with
@@ -41,6 +62,14 @@
 ;    no_spectral_file: in, optional, type=boolean
 ;
 ;      Do not copy the sp version of the input file, if there is one.
+;
+;    no_thumbnail: in, optional, type=boolean
+;
+;      Do not make a thumbnail image.
+;
+;    no_video: in, optional, type=boolean
+;
+;      Do not make a video.
 ;
 ;    outdir: in, out, optional, type=string, default='/storage_new/science_data/YYYY-MM-DD/'
 ;   
@@ -90,13 +119,17 @@
 ; 
 ;   2020-11-02 : MGL. Remove stuff that is now in fitscube_finalize. 
 ; 
-;   2020-12-04 : MGL. Generate an OID.
+;   2020-12-04 : MGL. Generate an OID. 
+; 
+;   2020-12-07 : MGL. Generate thumbnail image and video.
 ; 
 ;-
 pro red::fitscube_export, filename $
                           , help = help $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
+                          , no_thumbnail = no_thumbnail $
+                          , no_video = no_video $
                           , outdir = outdir $
                           , outfile = outfile $
                           , overwrite = overwrite $
@@ -260,20 +293,101 @@ pro red::fitscube_export, filename $
       file_path = date_beg_split[0] + '/' $
                   + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
-      ;; Get thumbnail from keyword or generate one from the cube?
-      ;; Sharpest from brightest tuning?
+      dimensions = long(fxpar(hdr, 'NAXIS*'))
+      Nx      = dimensions[0]
+      Ny      = dimensions[1]
+      Ntuning = dimensions[2]
+      Nstokes = dimensions[3]
+      Nscans  = dimensions[4]
+
+      if ~keyword_set(no_thumbnail) then begin
+        ;; Get thumbnail from keyword or generate one from the cube?
+
+        if n_elements(iframe) ne 0 then begin
+
+          ;; Get the selected frame
+          red_fitscube_getframe(filename, thumb $
+                                , iframe = iframe)
+        endif else begin
+
+          ;; No iframe selected. Use sharpest I image from brightest
+          ;; tuning.
+
+          if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
+          
+          if n_elements(ituning) eq 0 then begin
+            if Ntuning eq 1 then ituning = 0 else begin
+              ;; Select the brightest tuning, should be (near-)continuum
+              tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
+              medn = median(datamedn.values[0, *, istokes, *], dim = 4)
+              tmp = max(reform(medn), ituning)
+            endelse
+          endif
+          
+          if n_elements(iscan) eq 0 then begin
+            if Nscans eq 1 then iscan = 0 else begin
+              ;; Select highest RMS contrast, should be the best scan
+              tmp = red_fitsgetkeyword(filename,'DATANRMS',var=datanrms)
+              tmp = max(reform(datanrms.values[0, ituning, istokes, *]), iscan)
+            endelse
+          endif
+
+          ;; Get the selected frame
+          red_fitscube_getframe(filename, thumb $
+                                , iframe = iframe $
+                                , iscan = iscan $
+                                , istokes = istokes $
+                                , ituning = ituning $
+                               )
+        endelse
+
+        ;; Scale the frame.
+        frame = bytscl(red_histoopt(frame))
+        
+        ;; Save it as a png image.
+        write_png, outdir + red_strreplace(outfile, '.fits', '.png'), frame
+        
+      endif
+
+      
+      if ~keyword_set(no_video) then begin
+
+        ;; istokes and ituning may be given as keywords or
+        ;; automatically selected above. But they might not, so repeat
+        ;; those lines here.
+
+        if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
+        
+        if n_elements(ituning) eq 0 then begin
+          if Ntuning eq 1 then ituning = 0 else begin
+            ;; Select the brightest tuning, should be (near-)continuum
+            tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
+            medn = median(datamedn.values[0, *, istokes, *], dim = 4)
+            tmp = max(reform(medn), ituning)
+          endelse
+        endif
+
+        self -> fitscube_video, filename $
+                                , istokes = istokes $
+                                , ituning = ituning $
+                                , format = 'mov' $
+                                , outdir = outdir $
+                                , outfile = red_strreplace(outfile, '.fits', '.mov') 
+        
+      endif
+      
+      
+
       
       ;; Generate OID = unique observation ID of the metadata?
       ;; oid=
       ;; Is date + timestamp enough or should this be a hash-like
       ;; string that changes with versioning etc?
       ;;
-      ;; Let's do YYYYMMDD_hhmmss_SCANNUMBERS:
-      time_beg_split = strsplit(date_beg_split[1], ':.', /extract)
-      tm=red_fitsgetkeyword(hdr,'SCANNUM',var=scannos)
-      oid = date_beg_split[0] + '_' $
-            + strjoin(time_beg_split[0:2], '') + '_' $
-            + rdx_ints2str(scannos.values)
+      ;; Let's do DATE-BEG_PREFILTER_SCANNUMBERS:
+      oid = date_beg + '_' $
+            + fxpar(hdr, 'FILTER1') + '_' $
+            + rdx_ints2str(scannum.values)
       
       ;; Build the command string
       cmd = cmd[0]
