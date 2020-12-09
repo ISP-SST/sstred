@@ -373,7 +373,6 @@ pro red::fitscube_video, infile $
                , bit_rate = bit_rate 
 
   if format eq 'mov' then begin
-    stop
     ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
     mname = outdir + '/' + red_strreplace(outfile, '.'+extension,'.'+format)
     spawn, 'ffmpeg -n -i "' + outdir + '/' + outfile $
