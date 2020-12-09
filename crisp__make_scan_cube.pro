@@ -626,6 +626,8 @@ pro crisp::make_scan_cube, dir $
     
     nbr_rpref = 1.d0/nbr_prefilter_curve
 
+    prefilter_curve = (nbt_prefilter_curve + nbr_prefilter_curve)/2.
+    
     if nbr_units ne nbt_units then begin
       print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
       print, inam + ' : Please rerun the prefilterfit step for these data.'
@@ -891,6 +893,11 @@ pro crisp::make_scan_cube, dir $
     self -> fitscube_addvarkeyword, filename, 'DATE-AVG', date_avg_array $
                                     , comment = 'Average time of observation' $
                                     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
+                                    , axis_numbers = [3] 
+    self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
+                                    , anchor = anchor $
+                                    , comment = 'Applied (combined) response function' $
+                                    , keyword_method = 'mean' $
                                     , axis_numbers = [3] 
     
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
