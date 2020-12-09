@@ -2,7 +2,7 @@ ARCH     = $(shell uname -m)
 ARCHF    = $(shell uname -a)
 CXX = g++
 MDIR = /usr/
-CPPFLAGS = -O3 -march=native -fPIC -fopenmp -I$(MDIR)/include #-no-cpp-precomp -dynamic -m64
+CPPFLAGS = -O3 -std=c++11 -march=native -fPIC -fopenmp -I$(MDIR)/include #-no-cpp-precomp -dynamic -m64
 #
 OFILES = mpfit.o fpi.o imtools.o gridmatch.o creduc.o creduc_wrap.o
 INSTFILES = creduc.so
