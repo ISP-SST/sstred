@@ -43,6 +43,9 @@
 ; :History:
 ; 
 ;    2020-10-10 : JdlCR. First version.
+;
+;    2020-12-09 : JdlCR. The original_size case was not handled
+;                        properly. Now fixed.
 ; 
 ;-
 
@@ -56,11 +59,11 @@ function red_get_full_stretch_matrix, nx, ny, gr, original_size = original_size,
   
   res_final = dblarr([nx, ny, 2])
 
-  if(n_elements(container_size) eq 2) then begin
+  if(n_elements(original_size) eq 2) then begin
     res = dblarr([original_size[0], original_size[1], 2])
     dim = size(res,/dim)
 
-    dum = call_external(libfile, 'ana_stretch_full_matrix_wrap', long(original_size[0]), long(original_size[1]), ny1, nx1, double(gr), res)
+    dum = call_external(libfile, 'ana_stretch_full_matrix_wrap', long(original_size[1]), long(original_size[0]), ny1, nx1, double(gr), res)
 
     if(keyword_set(only_shifts)) then begin   
       res[*,*,0] -= dindgen(dim[0])#replicate(1.0d0, dim[1])
