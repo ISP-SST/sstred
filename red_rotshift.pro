@@ -82,13 +82,9 @@ function red_rotshift, arr, angle, dx, dy $
   if n_elements(background) eq 0 then background = median(arr)
   dim = size(arr, /dim)
 
-  if(n_elements(original_dimensions) ne 2) then begin
-     xsi = dim[0] * 0.5
-     ysi = dim[1] * 0.5
-  endif else begin
-     xsi = original_dimensions[0] * 0.5
-     ysi = original_dimensions[1] * 0.5
-  endelse
+  xsi = dim[0] * 0.5
+  ysi = dim[1] * 0.5
+
   xg =  dindgen(dim[0])
   yg =  dindgen(dim[1])
   
@@ -114,7 +110,7 @@ function red_rotshift, arr, angle, dx, dy $
     
   endif else if(n_elements(stretch_grid) ne 0) then begin
 
-    smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch_grid, original_size=original_dimensions, /only_shifts)
+    smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch_grid,  /only_shifts)
 
     smatx = smat[*,*,0] 
     smaty = smat[*,*,1] 
@@ -135,7 +131,6 @@ function red_rotshift, arr, angle, dx, dy $
   xgrid1 = co * xterm - si * yterm + xsi
   ygrid1 = si * xterm + co * yterm + ysi 
 
- ;; stop
   
   return, red_interpolate2D(xg, yg, arr, xgrid1, ygrid1, nthreads = nthreads, nearest = nearest, missing = background)
 end
