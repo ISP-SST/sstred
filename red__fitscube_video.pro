@@ -87,6 +87,10 @@
 ;
 ;      Multiplicative factors for the RGB channels.
 ;
+;    shrink_fac : in, optional, type=integer
+;
+;      Shrink FOV dimensions by this factor.
+;
 ;    tickcolor : in, optional, type=byte, default=0
 ;   
 ;      The color of the tickmarks, 0=black, 255=white.   
@@ -114,6 +118,7 @@
 ;    2018-11-29 : MGL. Make also spectral movies.
 ; 
 ;    2020-12-10 : MGL. Make .mov files without conversion from .mp4.
+;                 New keyword shrink_fac.
 ; 
 ;-
 pro red::fitscube_video, infile $
@@ -131,6 +136,7 @@ pro red::fitscube_video, infile $
                          , rgbfac = rgbfac $
                          , rgbgamma = rgbgamma $
                          , scannumber = scannumber $
+                         , shrink_fac = shrink_fac $
                          , spectral = spectral $
                          , tickcolor = tickcolor $
                          , tickmarks = tickmarks $
@@ -186,7 +192,7 @@ pro red::fitscube_video, infile $
 
   Nx = dims[0]
   Ny = dims[1]
-
+  
   if keyword_set(spectral) then begin
     
     Nframes = dims[2]
@@ -230,8 +236,23 @@ pro red::fitscube_video, infile $
     
   endelse
 
-  ;; Crop before scaling in case the structure within the FOV would
-  ;; change the scaling.
+  ;; Shrink and crop before scaling in case the structure within the
+  ;; FOV would change the scaling.
+
+  if n_elements(shrink_fac) ne 0 then begin
+    Nxx = Nx - (Nx mod shrink_fac)
+    Nyy = Ny - (Ny mod shrink_fac)
+    vidcube = red_crop(vidcube, size = [Nxx, Nyy], /center)
+    vidcube_shrunk = dblarr([Nxx/shrink_fac, Nyy/shrink_fac, Nframes])
+    for iframe = 0, Nframes-1 do begin
+      vidcube_shrunk[*, *, iframe] = rebin(vidcube[*, *, iframe] $
+                                           , Nxx/shrink_fac $
+                                           , Nyy/shrink_fac $
+                                           , /samp)
+    endfor                      ; iframe
+    vidcube = vidcube_shrunk
+  endif
+  
   if keyword_set(crop) then vidcube = red_crop(vidcube)
   newdims = size(vidcube, /dim)
   Nx = newdims[0]
