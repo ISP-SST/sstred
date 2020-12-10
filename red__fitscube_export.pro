@@ -274,6 +274,93 @@ pro red::fitscube_export, filename $
     
   endif
 
+  dimensions = long(fxpar(hdr, 'NAXIS*'))
+  Nx      = dimensions[0]
+  Ny      = dimensions[1]
+  Ntuning = dimensions[2]
+  Nstokes = dimensions[3]
+  Nscans  = dimensions[4]
+
+  if ~keyword_set(no_thumbnail) then begin
+    ;; Get thumbnail from keyword or generate one from the cube?
+
+    if n_elements(iframe) ne 0 then begin
+
+      ;; Get the selected frame
+      red_fitscube_getframe, filename, thumb $
+                             , iframe = iframe
+    endif else begin
+
+      ;; No iframe selected. Use sharpest I image from brightest
+      ;; tuning.
+
+      if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
+      
+      if n_elements(ituning) eq 0 then begin
+        if Ntuning eq 1 then ituning = 0 else begin
+          ;; Select the brightest tuning, should be (near-)continuum
+          tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
+          medn = median(datamedn.values[0, *, istokes, *], dim = 4)
+          tmp = max(reform(medn), ituning)
+        endelse
+      endif
+      
+      if n_elements(iscan) eq 0 then begin
+        if Nscans eq 1 then iscan = 0 else begin
+          ;; Select highest RMS contrast, should be the best scan
+          tmp = red_fitsgetkeyword(filename,'DATANRMS',var=datanrms)
+          tmp = max(reform(datanrms.values[0, ituning, istokes, *]), iscan)
+        endelse
+      endif
+
+      ;; Get the selected frame
+      red_fitscube_getframe, filename, thumb $
+                             , iframe = iframe $
+                             , iscan = iscan $
+                             , istokes = istokes $
+                             , ituning = ituning                                
+    endelse
+
+    ;; Scale the frame.
+    thumb = bytscl(red_histo_opt(thumb))
+
+    ;; Shrink it to thumb size?
+    
+    ;; Save it as a png image.
+    write_png, outdir + red_strreplace(outfile, '.fits', '.png'), thumb
+    
+  endif
+
+  
+  if ~keyword_set(no_video) then begin
+
+    ;; istokes and ituning may be given as keywords or
+    ;; automatically selected above. But they might not, so repeat
+    ;; those lines here.
+
+    if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
+    
+    if n_elements(ituning) eq 0 then begin
+      if Ntuning eq 1 then ituning = 0 else begin
+        ;; Select the brightest tuning, should be (near-)continuum
+        tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
+        medn = median(datamedn.values[0, *, istokes, *], dim = 4)
+        tmp = max(reform(medn), ituning)
+      endelse
+    endif
+
+    video_extension = 'mov'
+    self -> fitscube_video, filename $
+                            , istokes = istokes $
+                            , ituning = ituning $
+                            , outdir = outdir $
+                            , outfile = red_strreplace(outfile, '.fits' $
+                                                       , '.'+video_extension) 
+    
+  endif
+  
+  
+
   
   if n_elements(svo_username) gt 0 and n_elements(svo_api_key) gt 0 then begin
 
@@ -292,91 +379,6 @@ pro red::fitscube_export, filename $
       file_url = 'https://dubshen.isf.astro.su.se/'
       file_path = date_beg_split[0] + '/' $
                   + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
-
-      dimensions = long(fxpar(hdr, 'NAXIS*'))
-      Nx      = dimensions[0]
-      Ny      = dimensions[1]
-      Ntuning = dimensions[2]
-      Nstokes = dimensions[3]
-      Nscans  = dimensions[4]
-
-      if ~keyword_set(no_thumbnail) then begin
-        ;; Get thumbnail from keyword or generate one from the cube?
-
-        if n_elements(iframe) ne 0 then begin
-
-          ;; Get the selected frame
-          red_fitscube_getframe(filename, thumb $
-                                , iframe = iframe)
-        endif else begin
-
-          ;; No iframe selected. Use sharpest I image from brightest
-          ;; tuning.
-
-          if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
-          
-          if n_elements(ituning) eq 0 then begin
-            if Ntuning eq 1 then ituning = 0 else begin
-              ;; Select the brightest tuning, should be (near-)continuum
-              tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
-              medn = median(datamedn.values[0, *, istokes, *], dim = 4)
-              tmp = max(reform(medn), ituning)
-            endelse
-          endif
-          
-          if n_elements(iscan) eq 0 then begin
-            if Nscans eq 1 then iscan = 0 else begin
-              ;; Select highest RMS contrast, should be the best scan
-              tmp = red_fitsgetkeyword(filename,'DATANRMS',var=datanrms)
-              tmp = max(reform(datanrms.values[0, ituning, istokes, *]), iscan)
-            endelse
-          endif
-
-          ;; Get the selected frame
-          red_fitscube_getframe(filename, thumb $
-                                , iframe = iframe $
-                                , iscan = iscan $
-                                , istokes = istokes $
-                                , ituning = ituning $
-                               )
-        endelse
-
-        ;; Scale the frame.
-        frame = bytscl(red_histoopt(frame))
-        
-        ;; Save it as a png image.
-        write_png, outdir + red_strreplace(outfile, '.fits', '.png'), frame
-        
-      endif
-
-      
-      if ~keyword_set(no_video) then begin
-
-        ;; istokes and ituning may be given as keywords or
-        ;; automatically selected above. But they might not, so repeat
-        ;; those lines here.
-
-        if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
-        
-        if n_elements(ituning) eq 0 then begin
-          if Ntuning eq 1 then ituning = 0 else begin
-            ;; Select the brightest tuning, should be (near-)continuum
-            tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
-            medn = median(datamedn.values[0, *, istokes, *], dim = 4)
-            tmp = max(reform(medn), ituning)
-          endelse
-        endif
-
-        self -> fitscube_video, filename $
-                                , istokes = istokes $
-                                , ituning = ituning $
-                                , format = 'mov' $
-                                , outdir = outdir $
-                                , outfile = red_strreplace(outfile, '.fits', '.mov') 
-        
-      endif
-      
-      
 
       
       ;; Generate OID = unique observation ID of the metadata?
@@ -400,7 +402,7 @@ pro red::fitscube_export, filename $
       cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
       cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
       if n_elements(oid) gt 0 then $                            ;
-         cmd += ' --oid ' +                                     ; The unique observation ID of the metadata
+         cmd += ' --oid '                                       ; The unique observation ID of the metadata
       
       ;; Spawn running the script
       spawn, cmd, status
