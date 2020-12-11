@@ -270,7 +270,12 @@ pro red::fitscube_export, filename $
     print, inam + ' : Wrote '+outdir+spoutfile
   endif
 
+  ;; Checksums need to be checked. And updated for the main hdu.
+  red_fitscube_checksums, filename
+  if ~no_spectral_file then red_fitscube_checksums, spfilename
+  ;; The fitscube files should not be changed after this point!
 
+  
   if n_elements(smooth_width) gt 0 then begin
     ;; Blur the frames in the fitscube(s)
     naxis = fxpar(hdr, 'NAXIS*')
