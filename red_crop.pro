@@ -113,15 +113,15 @@ function red_crop, ims $
     xc = dims[0]/2
     yc = dims[1]/2
   endif
-
+  
   ;; Make sure we have the roi of the FOV
   case 1 of
     n_elements(size) gt 0 and n_elements(xc) gt 0 and n_elements(yc) gt 0 : begin
       ;; The roi is completely specified by size and center
       ;; coordinates.
       roi = lonarr(4)
-      roi[0:1] = [xc-Sx/2, yc-Sy/2]      ; Lower
-      roi[2:3] = roi[0:1] + [Sx, Sy] - 1 ; Upper
+      roi[[0, 2]] = [xc-Sx/2, yc-Sy/2]   ; Lower
+      roi[[1, 3]] = roi[[0, 2]] + [Sx, Sy] - 1 ; Upper
     end
     n_elements(roi) eq 4 : begin
       ;; Carry on, I guess we can use the roi keyword as input!

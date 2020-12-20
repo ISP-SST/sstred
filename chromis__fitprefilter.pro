@@ -769,7 +769,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       prefilter = [measured_spectrum/atlas_spectrum_convolved]
       prf = {wav:measured_lambda $
              , pref:prefilter $
-             , spec:spectrum $
+             , spec:measured_spectrum $
              , wbint:wbint $
              , reg:upref[ipref] $
              , fitpars:prefilter $

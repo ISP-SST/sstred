@@ -25,6 +25,27 @@
 ; 
 ; :Keywords:
 ;
+;    iframe : in, optional, type=integer, default="based on ituning, istokes, and iscan"
+;
+;       The frame index in the data cube seen as a 3D cube, to be used
+;       for generating a thumbnail. Takes precedence over iscan,
+;       istokes, and ituning.
+;
+;    iscan : in, optional, type=integer, default="Selected for contrast."
+;
+;       The scan index, used to calculate iframe, to be used for
+;       generating a thumbnail.
+;   
+;    istokes  : in, optional, type=integer, default=0
+;
+;       The stokes index, used to calculate iframe, to be used for
+;       generating a thumbnail and video.
+;
+;    ituning  : in, optional, type=integer, default="Selected for brightness"
+;
+;       The tuning index, used to calculate iframe, to be used for
+;       generating a thumbnail and video.
+; 
 ;    smooth_width: in, optional, type=integer
 ;  
 ;      If present, blur all images in the exported cube with
@@ -41,6 +62,14 @@
 ;    no_spectral_file: in, optional, type=boolean
 ;
 ;      Do not copy the sp version of the input file, if there is one.
+;
+;    no_thumbnail: in, optional, type=boolean
+;
+;      Do not make a thumbnail image.
+;
+;    no_video: in, optional, type=boolean
+;
+;      Do not make a video.
 ;
 ;    outdir: in, out, optional, type=string, default='/storage_new/science_data/YYYY-MM-DD/'
 ;   
@@ -75,6 +104,15 @@
 ;      Ingest the metadata of the cube into the prototype SVO using
 ;      this USERNAME.
 ;
+;    thumb_shrink_fac : in, optional, type=integer, default=4
+;
+;      If making a thumbnail image, shrink it by this factor.
+;
+;    video_shrink_fac : in, optional, type=integer, default=4
+;
+;      If making a video, shrink the FOV by this factor.
+;
+;
 ; :History:
 ; 
 ;   2019-06-12 : MGL. First version.
@@ -90,19 +128,28 @@
 ; 
 ;   2020-11-02 : MGL. Remove stuff that is now in fitscube_finalize. 
 ; 
-;   2020-12-04 : MGL. Generate an OID.
+;   2020-12-04 : MGL. Generate an OID. 
+; 
+;   2020-12-07 : MGL. Generate thumbnail image and video.
+; 
+;   2020-12-10 : MGL. New keywords thumb_shrink_fac and
+;                video_shrink_fac. 
 ; 
 ;-
 pro red::fitscube_export, filename $
                           , help = help $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
+                          , no_thumbnail = no_thumbnail $
+                          , no_video = no_video $
                           , outdir = outdir $
                           , outfile = outfile $
                           , overwrite = overwrite $
                           , smooth_width = smooth_width $
                           , svo_api_key = svo_api_key $
-                          , svo_username = svo_username
+                          , svo_username = svo_username $
+                          , thumb_shrink_fac = thumb_shrink_fac $
+                          , video_shrink_fac = video_shrink_fac 
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -120,7 +167,8 @@ pro red::fitscube_export, filename $
     if smooth_width eq 1 then smooth_width = 11
   endif
   
-
+  if n_elements(thumb_shrink_fac) eq 0 then thumb_shrink_fac = 4
+  if n_elements(video_shrink_fac) eq 0 then video_shrink_fac = 4
 
   ;; This will be used for a new DATE header and also to indicate the
   ;; version of the cube as part of the file name.
@@ -222,7 +270,12 @@ pro red::fitscube_export, filename $
     print, inam + ' : Wrote '+outdir+spoutfile
   endif
 
+  ;; Checksums need to be checked. And updated for the main hdu.
+  red_fitscube_checksums, filename
+  if ~no_spectral_file then red_fitscube_checksums, spfilename
+  ;; The fitscube files should not be changed after this point!
 
+  
   if n_elements(smooth_width) gt 0 then begin
     ;; Blur the frames in the fitscube(s)
     naxis = fxpar(hdr, 'NAXIS*')
@@ -240,6 +293,103 @@ pro red::fitscube_export, filename $
     endfor                      ; iframe
     
   endif
+
+  dimensions = long(fxpar(hdr, 'NAXIS*'))
+  Nx      = dimensions[0]
+  Ny      = dimensions[1]
+  Ntuning = dimensions[2]
+  Nstokes = dimensions[3]
+  Nscans  = dimensions[4]
+
+  if ~keyword_set(no_thumbnail) then begin
+    ;; Get thumbnail from keyword or generate one from the cube?
+
+    if n_elements(iframe) ne 0 then begin
+
+      ;; Get the selected frame
+      red_fitscube_getframe, filename, thumb $
+                             , iframe = iframe
+    endif else begin
+
+      ;; No iframe selected. Use sharpest I image from brightest
+      ;; tuning.
+
+      if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
+      
+      if n_elements(ituning) eq 0 then begin
+        if Ntuning eq 1 then ituning = 0 else begin
+          ;; Select the brightest tuning, should be (near-)continuum
+          tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
+          medn = median(datamedn.values[0, *, istokes, *], dim = 4)
+          tmp = max(reform(medn), ituning)
+        endelse
+      endif
+      
+      if n_elements(iscan) eq 0 then begin
+        if Nscans eq 1 then iscan = 0 else begin
+          ;; Select highest RMS contrast, should be the best scan
+          tmp = red_fitsgetkeyword(filename,'DATANRMS',var=datanrms)
+          tmp = max(reform(datanrms.values[0, ituning, istokes, *]), iscan)
+        endelse
+      endif
+
+      ;; Get the selected frame
+      red_fitscube_getframe, filename, thumb $
+                             , iframe = iframe $
+                             , iscan = iscan $
+                             , istokes = istokes $
+                             , ituning = ituning                                
+    endelse
+
+    Nxx = Nx - (Nx mod thumb_shrink_fac)
+    Nyy = Ny - (Ny mod thumb_shrink_fac)
+
+    thumb = red_centerpic(thumb, xs = Nxx, ys = Nyy)
+    thumb = rebin(thumb $
+                  , Nxx/thumb_shrink_fac $
+                  , Nyy/thumb_shrink_fac $
+                  , /samp)
+    
+    ;; Scale the frame.
+    thumb = bytscl(red_histo_opt(thumb))
+
+    ;; Shrink it to thumb size?
+    
+    ;; Save it as a png image.
+    write_png, outdir + red_strreplace(outfile, '.fits', '.png'), thumb
+    
+  endif
+
+  
+  if ~keyword_set(no_video) then begin
+
+    ;; istokes and ituning may be given as keywords or
+    ;; automatically selected above. But they might not, so repeat
+    ;; those lines here.
+
+    if n_elements(istokes) eq 0 then istokes = 0 ; Stokes I
+    
+    if n_elements(ituning) eq 0 then begin
+      if Ntuning eq 1 then ituning = 0 else begin
+        ;; Select the brightest tuning, should be (near-)continuum
+        tmp = red_fitsgetkeyword(filename,'DATAMEDN',var=datamedn)
+        medn = median(datamedn.values[0, *, istokes, *], dim = 4)
+        tmp = max(reform(medn), ituning)
+      endelse
+    endif
+
+    video_extension = 'mov'
+    self -> fitscube_video, filename $
+                            , istokes = istokes $
+                            , ituning = ituning $
+                            , outdir = outdir $
+                            , outfile = red_strreplace(outfile, '.fits' $
+                                                       , '.'+video_extension) $
+                            , shrink_fac = video_shrink_fac
+    
+  endif
+  
+  
 
   
   if n_elements(svo_username) gt 0 and n_elements(svo_api_key) gt 0 then begin
@@ -260,20 +410,16 @@ pro red::fitscube_export, filename $
       file_path = date_beg_split[0] + '/' $
                   + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
-      ;; Get thumbnail from keyword or generate one from the cube?
-      ;; Sharpest from brightest tuning?
       
       ;; Generate OID = unique observation ID of the metadata?
       ;; oid=
       ;; Is date + timestamp enough or should this be a hash-like
       ;; string that changes with versioning etc?
       ;;
-      ;; Let's do YYYYMMDD_hhmmss_SCANNUMBERS:
-      time_beg_split = strsplit(date_beg_split[1], ':.', /extract)
-      tm=red_fitsgetkeyword(hdr,'SCANNUM',var=scannos)
-      oid = date_beg_split[0] + '_' $
-            + strjoin(time_beg_split[0:2], '') + '_' $
-            + rdx_ints2str(scannos.values)
+      ;; Let's do DATE-BEG_PREFILTER_SCANNUMBERS:
+      oid = date_beg + '_' $
+            + fxpar(hdr, 'FILTER1') + '_' $
+            + rdx_ints2str(scannum.values)
       
       ;; Build the command string
       cmd = cmd[0]
@@ -286,7 +432,7 @@ pro red::fitscube_export, filename $
       cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
       cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
       if n_elements(oid) gt 0 then $                            ;
-         cmd += ' --oid ' +                                     ; The unique observation ID of the metadata
+         cmd += ' --oid '                                       ; The unique observation ID of the metadata
       
       ;; Spawn running the script
       spawn, cmd, status
@@ -305,6 +451,18 @@ end
 
 ;; Code for testing. Test only with smaller cubes because we have to
 ;; read the entire cube before calling fits_test_checksum below.
+
+cd, '/scratch/mats/2016.09.19/CHROMIS-jan19/'
+a = chromisred(/dev)
+
+odir = './export/'
+infile = 'cubes_nb/nb_3950_2016-09-19T09:28:36_scans=0-3_corrected_im.fits'
+
+;a -> fitscube_finalize, infile
+a -> fitscube_export, infile, outdir = odir
+
+
+stop
 
 if 0 then begin
   cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'

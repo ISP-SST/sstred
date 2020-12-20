@@ -151,11 +151,10 @@ function red_rotation, img, angle, sdx, sdy $
     dim1 = round([xmax - xmin + 1, ymax - ymin + 1])
     
     ima = dblarr(dim1) + background
-    ;;ima[-round(xmin), -round(ymin)] = img
-    ima[0,0] = img
+    ima[-round(xmin), -round(ymin)] = img
     
 
-    return, red_rotshift(ima, angle, sdx-(xmin), sdy-(ymin), background = background, stretch_grid = stretch_grid $
+    return, red_rotshift(ima, angle, sdx, sdy, background = background, stretch_grid = stretch_grid $
                          , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
     
   endif else begin

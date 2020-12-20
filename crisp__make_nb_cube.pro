@@ -49,6 +49,10 @@
 ;       Indicate whether to do intensity correction based on WB data
 ;       and with what method. See documentation for red::fitscube_intensitycorr.
 ;
+;    nearest : in, optional, type=boolean
+;       
+;       Use nearest neighbor interpolation (default = bilinear interpolation)
+;
 ;    nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
@@ -98,10 +102,6 @@
 ;
 ;       Save a cube with the wideband per-tuning align-images. For
 ;       debugging of alignment with extra wideband objects.
-;
-;     nearest : in, optional, type=boolean
-;       
-;       Use nearest neighbor interpolation (default = bilinear interpolation)
 ;
 ; :History:
 ; 
@@ -195,13 +195,14 @@ pro crisp::make_nb_cube, wcfile $
     return
   endif
 
-  if(keyword_set(nearest)) then near = 1 else near = 0
+;  if(keyword_set(nearest)) then near = 1 else near = 0
   
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, intensitycorrmethod  
   red_make_prpara, prpara, cmap_fwhm
+  red_make_prpara, prpara, nearest
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch 
@@ -286,7 +287,9 @@ pro crisp::make_nb_cube, wcfile $
 
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0
-  
+  sclstr = 0
+  if ~nostretch_temporal then sclstr = 1
+
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
   
@@ -450,8 +453,8 @@ pro crisp::make_nb_cube, wcfile $
 
   nbt_units = prf.units
   nbt_prefilter_curve = prf.pref
-  nbt_prefilter_wav = prf.wav
-  nbt_prefilter_wb = prf.wbint
+;  nbt_prefilter_wav = prf.wav
+;  nbt_prefilter_wb = prf.wbint
   
   nbt_rpref = 1.d0/nbt_prefilter_curve
 
@@ -466,12 +469,12 @@ pro crisp::make_nb_cube, wcfile $
 
   nbr_units = prf.units  
   nbr_prefilter_curve = prf.pref
-  nbr_prefilter_wav = prf.wav
-  nbr_prefilter_wb = prf.wbint
+;  nbr_prefilter_wav = prf.wav
+;  nbr_prefilter_wb = prf.wbint
   
   nbr_rpref = 1.d0/nbr_prefilter_curve
 
-
+  prefilter_curve = (nbt_prefilter_curve + nbr_prefilter_curve)/2.
   
   if nbr_units ne nbt_units then begin
     print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
@@ -853,7 +856,7 @@ pro crisp::make_nb_cube, wcfile $
   endif
 
   
- 
+  
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
                               , prstep = 'CONCATENATION' $
@@ -1135,9 +1138,6 @@ pro crisp::make_nb_cube, wcfile $
 ;      red_show,wbim,w=1
 ;      blink, [0, 1]
 
-      sclstr = 0
-      if ~nostretch_temporal then sclstr = 1
-      
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
       if makestokes then begin
@@ -1270,6 +1270,11 @@ pro crisp::make_nb_cube, wcfile $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
+                                  , anchor = anchor $
+                                  , comment = 'Applied (combined) response function' $
+                                  , keyword_method = 'mean' $
+                                  , axis_numbers = [3] 
   
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $

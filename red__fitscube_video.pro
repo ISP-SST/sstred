@@ -73,7 +73,9 @@
 ;    outfile : in, optional, type=string, default='same as infile but with mp4 extension'
 ;
 ;      The name of the output file. Note that periods in this file
-;      name are not allowed. 
+;      name are not allowed (except as a delimiter for the file
+;      extension). The extension of this file name takes precedence
+;      over the format keyword.
 ;                    
 ;    rgbgamma : in, optional, type=fltarr(3), default="[1,1,1]"
 ;
@@ -84,6 +86,10 @@
 ;    rgbfac : in, optional, type=fltarr(3), default="[1,1,1]"
 ;
 ;      Multiplicative factors for the RGB channels.
+;
+;    shrink_fac : in, optional, type=integer
+;
+;      Shrink FOV dimensions by this factor.
 ;
 ;    tickcolor : in, optional, type=byte, default=0
 ;   
@@ -111,6 +117,9 @@
 ; 
 ;    2018-11-29 : MGL. Make also spectral movies.
 ; 
+;    2020-12-10 : MGL. Make .mov files without conversion from .mp4.
+;                 New keyword shrink_fac.
+; 
 ;-
 pro red::fitscube_video, infile $
                          , bit_rate = bit_rate $
@@ -121,12 +130,13 @@ pro red::fitscube_video, infile $
                          , golden = golden $
                          , istokes = istokes $
                          , iscan = iscan $
-                         , iwave = iwave $
+                         , ituning = ituning $
                          , outdir = outdir $
                          , outfile = outfile $
                          , rgbfac = rgbfac $
                          , rgbgamma = rgbgamma $
                          , scannumber = scannumber $
+                         , shrink_fac = shrink_fac $
                          , spectral = spectral $
                          , tickcolor = tickcolor $
                          , tickmarks = tickmarks $
@@ -145,6 +155,7 @@ pro red::fitscube_video, infile $
   case format of
     'avi' : extension = format
     'mp4' : extension = format
+    'mov' : extension = format
     else  : extension = 'mp4'
   end
   if n_elements(video_fps) eq 0 then video_fps = 5
@@ -181,7 +192,7 @@ pro red::fitscube_video, infile $
 
   Nx = dims[0]
   Ny = dims[1]
-
+  
   if keyword_set(spectral) then begin
     
     Nframes = dims[2]
@@ -190,10 +201,10 @@ pro red::fitscube_video, infile $
     if n_elements(iscan) eq 0 then iscan = 0
 
     ;; Read the data
-    for iwave = 0, Nframes-1 do begin
-      red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iscan
-      vidcube[*, *, iwave] = frame
-    endfor                      ; iwave
+    for ituning = 0, Nframes-1 do begin
+      red_fitscube_getframe, infile, frame, ituning = ituning, istokes = istokes, iscan = iscan
+      vidcube[*, *, ituning] = frame
+    endfor                      ; ituning
 
     ;; Default is to scale frames individually
     if n_elements(scale_frames) eq 0 then scale_frames = 1
@@ -203,20 +214,20 @@ pro red::fitscube_video, infile $
     Nframes = dims[4]
     vidcube = dblarr([Nx, Ny, Nframes])
     
-    if n_elements(iwave) eq 0 then begin
-      iwave = 0
+    if n_elements(ituning) eq 0 then begin
+      ituning = 0
     endif else begin
-      if size(iwave, /tname) eq 'STRING' then begin
-        case strlowcase(iwave) of
-          'last' : iwave = dims[2]-1
-          else   : iwave = 0
+      if size(ituning, /tname) eq 'STRING' then begin
+        case strlowcase(ituning) of
+          'last' : ituning = dims[2]-1
+          else   : ituning = 0
         endcase
       endif  
     endelse 
 
     ;; Read the data
     for iscan = 0, Nframes-1 do begin
-      red_fitscube_getframe, infile, frame, ituning = iwave, istokes = istokes, iscan = iscan
+      red_fitscube_getframe, infile, frame, ituning = ituning, istokes = istokes, iscan = iscan
       vidcube[*, *, iscan] = frame
     endfor                      ; iscan
 
@@ -225,8 +236,23 @@ pro red::fitscube_video, infile $
     
   endelse
 
-  ;; Crop before scaling in case the structure within the FOV would
-  ;; change the scaling.
+  ;; Shrink and crop before scaling in case the structure within the
+  ;; FOV would change the scaling.
+
+  if n_elements(shrink_fac) ne 0 then begin
+    Nxx = Nx - (Nx mod shrink_fac)
+    Nyy = Ny - (Ny mod shrink_fac)
+    vidcube = red_crop(vidcube, size = [Nxx, Nyy], /center)
+    vidcube_shrunk = dblarr([Nxx/shrink_fac, Nyy/shrink_fac, Nframes])
+    for iframe = 0, Nframes-1 do begin
+      vidcube_shrunk[*, *, iframe] = rebin(vidcube[*, *, iframe] $
+                                           , Nxx/shrink_fac $
+                                           , Nyy/shrink_fac $
+                                           , /samp)
+    endfor                      ; iframe
+    vidcube = vidcube_shrunk
+  endif
+  
   if keyword_set(crop) then vidcube = red_crop(vidcube)
   newdims = size(vidcube, /dim)
   Nx = newdims[0]
@@ -236,14 +262,14 @@ pro red::fitscube_video, infile $
 
     n = Nx*Ny
 
-    for iwave = 0, Nframes-1 do begin
+    for ituning = 0, Nframes-1 do begin
       
       if clip ne 0 then begin
         ;; Code to do histogram clip, stolen from cgclipscl.pro
-        maxr = max(vidcube[*, *, iwave], MIN=minr, /NAN)
+        maxr = max(vidcube[*, *, ituning], MIN=minr, /NAN)
         range = maxr - minr
         binsize = range / 1000.
-        h = histogram(vidcube[*, *, iwave], BINSIZE=binsize, OMIN=omin, OMAX=omax, /NAN)
+        h = histogram(vidcube[*, *, ituning], BINSIZE=binsize, OMIN=omin, OMAX=omax, /NAN)
         cumTotal = total(h, /CUMULATIVE)
         minIndex = value_locate(cumTotal, n * (clip/100.))
         if minIndex eq -1 then minIndex = 0
@@ -257,14 +283,14 @@ pro red::fitscube_video, infile $
         maxThresh = maxIndex * binsize + omin
 
         ;; Do the clipping
-        vidcube[*, *, iwave] = vidcube[*, *, iwave] > minThresh < maxThresh
+        vidcube[*, *, ituning] = vidcube[*, *, ituning] > minThresh < maxThresh
       endif 
 
       ;; Scale to [0,1] range
-      vidcube[*, *, iwave] -= min(vidcube[*, *, iwave])
-      vidcube[*, *, iwave] /= max(vidcube[*, *, iwave])
+      vidcube[*, *, ituning] -= min(vidcube[*, *, ituning])
+      vidcube[*, *, ituning] /= max(vidcube[*, *, ituning])
 
-    endfor                      ; iwave
+    endfor                      ; ituning
     
   end else begin
 
@@ -353,7 +379,7 @@ pro red::fitscube_video, infile $
       tag += '_scan'+strtrim(scannumbers[iscan], 2)
     endif else begin
       red_fitscube_getwcs, infile, coordinates = coordinates
-      tag += '_' + string(coordinates[iwave,0].wave[0,0], format = '(f7.3)')+'nm'
+      tag += '_' + string(coordinates[ituning,0].wave[0,0], format = '(f7.3)')+'nm'
     endelse
     
     outfile = file_basename(infile, '.fits') + tag 
@@ -365,6 +391,7 @@ pro red::fitscube_video, infile $
     
   endif
 
+  
   ;; Write the video
   write_video, outdir + '/' + outfile $
                , rgbcube $
@@ -372,15 +399,14 @@ pro red::fitscube_video, infile $
                , video_codec = video_codec $
                , bit_rate = bit_rate 
 
-  if format eq 'mov' then begin
-    stop
-    ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
-    mname = outdir + '/' + red_strreplace(outfile, '.'+extension,'.'+format)
-    spawn, 'ffmpeg -n -i "' + outdir + '/' + outfile $
-           + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
-           + mname + '"'
-    spawn, 'rm "' + outdir  + '/' + outfile + '"'
-  endif
+;  if format eq 'mov' then begin
+;    ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
+;    mname = outdir + '/' + red_strreplace(outfile, '.'+extension,'.'+format)
+;    spawn, 'ffmpeg -n -i "' + outdir + '/' + outfile $
+;           + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
+;           + mname + '"'
+;    spawn, 'rm "' + outdir  + '/' + outfile + '"'
+;  endif
   
 end
 

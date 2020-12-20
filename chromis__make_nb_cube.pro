@@ -49,6 +49,10 @@
 ;       Store as integers instead of floats. Uses the BZERO and BSCALE
 ;       keywords to preserve the intensity scaling.
 ;
+;     nearest : in, optional, type=boolean
+;       
+;       Use nearest neighbor interpolation (default = bilinear interpolation)
+;
 ;     noaligncont : in, optional, type=boolean
 ;
 ;       Do not do the align continuum to wideband step.
@@ -57,14 +61,14 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
-;    nomissing_nans : in, optional, type=boolean 
+;     nomissing_nans : in, optional, type=boolean 
 ;
-;      Do not set missing-data padding to NaN. (Set it to the median of
-;      each frame instead.)
+;       Do not set missing-data padding to NaN. (Set it to the median
+;       of each frame instead.)
 ;
-;    nostretch : in, optional, type=boolean
+;     nostretch : in, optional, type=boolean
 ;   
-;      Compute no intrascan stretch vectors if this is set.
+;       Compute no intrascan stretch vectors if this is set.
 ;
 ;     overwrite : in, optional, type=boolean
 ;
@@ -114,7 +118,7 @@
 ;                 keyword notimecorr.
 ;
 ;    2020-10-01 : JdlCR. Apply all corrections at once and use
-;                 internal interpolation routines 
+;                 internal interpolation routines
 ; 
 ;    2020-11-09 : MGL. New keyword nostretch.
 ; 
@@ -147,15 +151,12 @@ pro chromis::make_nb_cube, wcfile $
     return
   endif
 
-  sclstr = 0
-  if ~nostretch_temporal then sclstr = 1
-
-  
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, intensitycorrmethod
   red_make_prpara, prpara, cmap_fwhm
+  red_make_prpara, prpara, nearest
   red_make_prpara, prpara, noaligncont 
   red_make_prpara, prpara, nocavitymap 
   red_make_prpara, prpara, nomissing_nans
@@ -209,6 +210,8 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0 
+  sclstr = 0
+  if ~nostretch_temporal then sclstr = 1
 
   ;; Default for wb cubes without direction parameter
   if n_elements(direction) eq 0 then direction = 0
@@ -341,13 +344,13 @@ pro chromis::make_nb_cube, wcfile $
     
     if count eq 1 then begin
       red_append, prefilter_curve, prf.pref
-      red_append, prefilter_wav, prf.wav
-      red_append, prefilter_wb, prf.wbint
+;      red_append, prefilter_wav, prf.wav
+;      red_append, prefilter_wb, prf.wbint
     endif else begin
       me = median(prf.wav)
       red_append, prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)
-      red_append, prefilter_wav, wav[idxpref]*1.d10
-      red_append, prefilter_wb, replicate(prf.wbint, count)
+;      red_append, prefilter_wav, wav[idxpref]*1.d10
+;      red_append, prefilter_wb, replicate(prf.wbint, count)
     endelse
     
   endfor                        ; inbpref
@@ -789,7 +792,8 @@ pro chromis::make_nb_cube, wcfile $
           ;; Apply the same derot, align, dewarp as for the science data
           cmap11 = red_rotation(cmap1, ang[iscan], $
                                 wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
-                                stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr nthreads=nthreads, nearest=nearest)
+                                stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr $
+                                , nthreads=nthreads, nearest=nearest)
 
 
           cavitymaps[0, 0, 0, 0, iscan] = cmap11
@@ -868,7 +872,12 @@ pro chromis::make_nb_cube, wcfile $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
- 
+  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
+                                  , anchor = anchor $
+                                  , comment = 'Applied response function' $
+                                  , keyword_method = 'mean' $
+                                  , axis_numbers = [3] 
+
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $
                                   , anchor = anchor 
