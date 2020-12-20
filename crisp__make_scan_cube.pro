@@ -133,6 +133,12 @@
 ; 
 ;    2020-10-28 : MGL. Remove statistics calculations.
 ;
+;    2020-12-15 : JdlCR. There is one element missing in dummy ff
+;                 vector. /norotation keywork was not implemented
+;                 properly. The cropping info was not applied to the
+;                 output image.
+;
+;
 ;-
 pro crisp::make_scan_cube, dir $
                            , autocrop = autocrop $
@@ -153,7 +159,7 @@ pro crisp::make_scan_cube, dir $
                            , rotation = rotation $
                            , scannos = scannos $
                            , tiles = tiles  $
-                           , tuning_selection = tuning_selection
+                           , tuning_selection = tuning_selection 
                
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -252,8 +258,9 @@ pro crisp::make_scan_cube, dir $
   endif else undefine, ddate, time
 
   ;; Derotation angle
+  
   ang = (red_lp_angles(time, ddate[0], /from_log, offset_angle = rotation))[0]
-
+  
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
   if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
@@ -586,7 +593,7 @@ pro crisp::make_scan_cube, dir $
     endelse
     
     if ~keyword_set(norotation) then begin
-      ff = [abs(ang),0,0,0,0]
+      ff = [abs(ang),0,0,0,0,0]
       wbim_rot = red_rotation(wbim, ang, full = ff)
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
@@ -730,9 +737,15 @@ pro crisp::make_scan_cube, dir $
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
         for istokes = 0, Nstokes-1 do begin
-          self -> fitscube_addframe, fileassoc $
-                                     , red_rotation(nbims[*, *, 0, istokes], ang, full = ff) $
-                                     , ituning = ituning, istokes = istokes
+          if(~keyword_set(norotation)) then begin
+            self -> fitscube_addframe, fileassoc $
+                                       , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang, full = ff) $
+                                       , ituning = ituning, istokes = istokes
+          endif else begin
+            self -> fitscube_addframe, fileassoc $
+                                       , nbims[x0:x1, y0:y1, 0, istokes] $
+                                       , ituning = ituning, istokes = istokes
+          endelse
         endfor                  ; istokes
 
 
