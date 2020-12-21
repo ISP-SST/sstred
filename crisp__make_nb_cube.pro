@@ -204,6 +204,7 @@ pro crisp::make_nb_cube, wcfile $
   red_make_prpara, prpara, cmap_fwhm
   red_make_prpara, prpara, nearest
   red_make_prpara, prpara, nocavitymap 
+  red_make_prpara, prpara, nocrosstalk 
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch 
   red_make_prpara, prpara, nopolarimetry 

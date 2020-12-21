@@ -151,6 +151,7 @@ pro crisp::make_scan_cube, dir $
                            , interactive = interactive $
                            , limb_data = limb_data $
                            , nocavitymap = nocavitymap $
+                           , nocrosstalk = nocrosstalk $
                            , nopolarimetry = nopolarimetry $
                            , norotation = norotation $
                            , odir = odir $
@@ -179,7 +180,8 @@ pro crisp::make_scan_cube, dir $
   red_make_prpara, prpara, interactive
   red_make_prpara, prpara, limb_data 
   red_make_prpara, prpara, noaligncont 
-  red_make_prpara, prpara, nocavitymap    
+  red_make_prpara, prpara, nocavitymap  
+  red_make_prpara, prpara, nocrosstalk   
   red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
   red_make_prpara, prpara, rotation    
