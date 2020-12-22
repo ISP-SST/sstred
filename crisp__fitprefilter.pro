@@ -222,7 +222,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
   inam = red_subprogram(/low, calling = inam1)
 
   if n_elements(fixcav) gt 0 then begin
-    print, inam + ' : keyword fixcav=X is deprecated. Use value_ncav=X,/fix_ncav instead.'
+    print, inam + ' : keyword fixcav=X is deprecated. Use value_ncav=X, fit_ncav=0 instead.'
     return
   endif
   if n_elements(shift) gt 0 then begin
