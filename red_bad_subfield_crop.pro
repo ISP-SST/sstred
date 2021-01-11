@@ -22,7 +22,9 @@
 ; 
 ;    crop : in, out, type=fltarr(4) 
 ;
-;      See documentation in make_wb_cube method.
+;      See documentation in make_wb_cube method. Note, this cropping
+;      is by default specified in the momfbd-output orientation. Use
+;      the direction keyword to change this - on output only.
 ; 
 ; :Keywords:
 ;
@@ -32,6 +34,12 @@
 ;      subfields along the edges. If this keyword is set, the input
 ;      value of the crop keyword is ignored and is set to the
 ;      auto-detected crop parameters.
+;
+;    direction : in, optional, type=integer, default=0
+;
+;      The relative orientation of reference cameras of different
+;      instruments. The crop parameter will be re-arranged if this
+;      keyword is used.
 ;
 ;    interactive : in, optional, type=boolean
 ;
@@ -46,11 +54,18 @@
 ;    2018-01-12 : MGL. First version, based on code taken from
 ;                 chromis::make_wb_cube.
 ; 
+;    2020-12-23 : MGL. New keyword direction.
+; 
 ;-
-pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = interactive
+pro red_bad_subfield_crop, files, crop $
+                           , autocrop = autocrop $
+                           , direction =  direction $
+                           , interactive = interactive
 
   Nfiles = n_elements(files)
 
+  if n_elements(direction) gt 0 then direction = 0
+  
   if keyword_set(autocrop) or keyword_set(interactive) then begin
     
     dispim = 0.0
@@ -200,8 +215,29 @@ pro red_bad_subfield_crop, files, crop, autocrop = autocrop,  interactive = inte
     Nx = x1 - x0 + 1
     Ny = y1 - y0 + 1
 
-    crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]
+;    crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]
     
   endif
 
+  ;; Take the direction parameter into account. See the direction
+  ;; parameter of the IDL rotate() function.
+  case direction of
+    0 : crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]   ;  X,  Y
+    1 : crop = [y1, im_dim[1]-1-y0, x0, im_dim[0]-1-x1]   ; -Y,  X
+    2 : crop = [x1, im_dim[0]-1-x0, y1, im_dim[1]-1-y0]   ; -X, -Y
+    3 : crop = [y0, im_dim[1]-1-y1, x1, im_dim[0]-1-x0]   ;  Y, -X
+    4 : crop = [y0, im_dim[1]-1-y1, x0, im_dim[0]-1-x1]   ;  Y,  X
+    5 : crop = [x1, im_dim[0]-1-x0, y0, im_dim[1]-1-y1]   ; -X,  Y
+    6 : crop = [y1, im_dim[1]-1-y0, x1, im_dim[0]-1-x0]   ; -Y, -X
+    7 : crop = [x0, im_dim[0]-1-x1, y1, im_dim[1]-1-y0]   ;  X, -Y
+    else : stop
+  endcase
+
 end
+
+
+
+
+
+
+

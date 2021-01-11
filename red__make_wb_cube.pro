@@ -366,35 +366,38 @@ pro red::make_wb_cube, dir $
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
   
-  red_bad_subfield_crop, wfiles, crop, autocrop = autocrop,  interactive = interactive
+  red_bad_subfield_crop, wfiles, crop $
+                         , autocrop = autocrop  $
+                         , direction = direction $
+                         , interactive = interactive
   
   hdr = red_readhead(wfiles[0])
   im_dim = fxpar(hdr, 'NAXIS*')
-  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
-    ;; X and Y switched
-    y0 = crop[0]
-    y1 = im_dim[0]-1 - crop[1]
-    x0 = crop[2]
-    x1 = im_dim[1]-1 - crop[3]
-  endif else begin
-    x0 = crop[0]
-    x1 = im_dim[0]-1 - crop[1]
-    y0 = crop[2]
-    y1 = im_dim[1]-1 - crop[3]
-  endelse
+;  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
+;    ;; X and Y switched
+;    y0 = crop[0]
+;    y1 = im_dim[0]-1 - crop[1]
+;    x0 = crop[2]
+;    x1 = im_dim[1]-1 - crop[3]
+;  endif else begin
+  x0 = crop[0]
+  x1 = im_dim[0]-1 - crop[1]
+  y0 = crop[2]
+  y1 = im_dim[1]-1 - crop[3]
+;  endelse
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
 
   ;; Observations metadata varaibles
-  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
-  tavg_array     = dblarr(1, Nscans) ; Time average for state
-  tend_array     = dblarr(1, Nscans) ; Time end for state
-  date_beg_array = strarr(1, Nscans) ; DATE-BEG for state
-  date_avg_array = strarr(1, Nscans) ; DATE-AVG for state
-  date_end_array = strarr(1, Nscans) ; DATE-END for state
-  exp_array      = fltarr(1, Nscans) ; Total exposure time
-  sexp_array     = fltarr(1, Nscans) ; Single exposure time
-  nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
+  tbeg_array     = dblarr(1, Nscans)   ; Time beginning for state
+  tavg_array     = dblarr(1, Nscans)   ; Time average for state
+  tend_array     = dblarr(1, Nscans)   ; Time end for state
+  date_beg_array = strarr(1, Nscans)   ; DATE-BEG for state
+  date_avg_array = strarr(1, Nscans)   ; DATE-AVG for state
+  date_end_array = strarr(1, Nscans)   ; DATE-END for state
+  exp_array      = fltarr(1, Nscans)   ; Total exposure time
+  sexp_array     = fltarr(1, Nscans)   ; Single exposure time
+  nsum_array     = lonarr(1, Nscans)   ; Number of summed exposures
 
   ;; Read headers to get obs_time and load the images into a cube
   cub = fltarr(origNx, origNy, Nscans)
