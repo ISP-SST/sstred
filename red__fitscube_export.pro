@@ -134,6 +134,8 @@
 ; 
 ;   2020-12-10 : MGL. New keywords thumb_shrink_fac and
 ;                video_shrink_fac. 
+;
+;   2021-01-11 : OA. Submit information about exported cubes to the database.
 ; 
 ;-
 pro red::fitscube_export, filename $
@@ -417,6 +419,7 @@ pro red::fitscube_export, filename $
       ;; string that changes with versioning etc?
       ;;
       ;; Let's do DATE-BEG_PREFILTER_SCANNUMBERS:
+      scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scannum)
       oid = date_beg + '_' $
             + fxpar(hdr, 'FILTER1') + '_' $
             + rdx_ints2str(scannum.values)
@@ -437,6 +440,46 @@ pro red::fitscube_export, filename $
       ;; Spawn running the script
       spawn, cmd, status
       print, cmd
+
+      ;; Put datacube information to the database
+      red_mysql_check, handle
+      release_date = fxpar(hdr,'RELEASE')
+      release_comment = fxpar(hdr,'RELEASEC')
+      ;; Get the current date
+      time = Systime(UTC=Keyword_Set(utc))
+      day = String(StrMid(time, 8, 2), Format='(I2.2)') ; Required because UNIX and Windows differ in time format.
+      month = StrUpCase(Strmid(time, 4, 3))
+      year = Strmid(time, 20, 4)
+      months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+      m = (Where(months EQ month)) + 1
+      current_date =  year + '-' + string(m, FORMAT='(I2.2)') + '-' + day
+
+      if current_date lt release_date then begin
+        if ~keyword_set(allowed_users) then begin
+          allowed_users = ''
+          reply = ''
+          print, 'This data should be protected from unauthorized downloading.'
+          print, "You have to enter users' credentials."
+          while reply ne 'x' do begin
+            read,'Enter a username (put "x" to escape) >', reply
+            allowed_users += reply+';'
+          endwhile
+          allowed_users = strmid(allowed_users, 0, strlen(allowed_users)-2)
+        endif
+        if allowed_users eq '' then begin
+          print, 'You have to provide at least one username for the cubes downloading.'
+          return
+        endif
+        query = "INSERT INTO data_cubes (filename, release_date, release_comment, allowed_users) VALUES ('" + $
+                outfile +"', '"+ release_date +"', '"+ release_comment +"', '"+ allowed_users +"');"
+        print, "Don't forget to ask the administrator to add user to the database and generate password."
+      endif else begin
+        query = "INSERT INTO data_cubes (filename, release_date, release_comment) VALUES ('" + $
+                outfile +"', '"+ release_date +"', '"+ release_comment + "');"
+      endelse
+      
+      red_mysql_cmd, handle, query, ans, nl
+      free_lun,handle
       
     endelse
   endif else begin
