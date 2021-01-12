@@ -273,8 +273,8 @@ pro red::fitscube_export, filename $
   endif
 
   ;; Checksums need to be checked. And updated for the main hdu.
-  red_fitscube_checksums, filename
-  if ~no_spectral_file then red_fitscube_checksums, spfilename
+  red_fitscube_checksums, outdir+outfile ;filename
+  if ~no_spectral_file then red_fitscube_checksums, outdir+spoutfile ;spfilename
   ;; The fitscube files should not be changed after this point!
 
   
@@ -408,7 +408,7 @@ pro red::fitscube_export, filename $
     endif else begin
 
       ;; Keywords to the SVO ingestion script
-      file_url = 'https://dubshen.isf.astro.su.se/'
+      file_url = 'https://dubshen.astro.su.se/'
       file_path = date_beg_split[0] + '/' $
                   + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
@@ -421,7 +421,7 @@ pro red::fitscube_export, filename $
       ;; Let's do DATE-BEG_PREFILTER_SCANNUMBERS:
       scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scannum)
       oid = date_beg + '_' $
-            + fxpar(hdr, 'FILTER1') + '_' $
+            + strtrim(fxpar(hdr, 'FILTER1'),2) + '_' $
             + rdx_ints2str(scannum.values)
       
       ;; Build the command string
@@ -435,7 +435,7 @@ pro red::fitscube_export, filename $
       cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
       cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
       if n_elements(oid) gt 0 then $                            ;
-         cmd += ' --oid '                                       ; The unique observation ID of the metadata
+         cmd += ' --oid ' + oid                                 ; The unique observation ID of the metadata
       
       ;; Spawn running the script
       spawn, cmd, status
