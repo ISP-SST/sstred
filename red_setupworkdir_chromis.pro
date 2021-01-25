@@ -12,11 +12,30 @@
 ; 
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
-; 
-; :Returns:
-; 
-; 
 ; :Params:
+;
+;   work_dir : in, type = string
+;
+;     A name of the directory to set up the directory tree at and to
+;     where the config file and the doit.pro script should be put.
+;
+;   root_dir : in, type = string
+;
+;     A name of the directory where the raw data is stored for a date
+;     given in isodate.
+;
+;   cfgfile : in, type = string
+;
+;     A name of the config file, the default value is 'config.txt'.
+;
+;   scriptfile : in, type = string
+;
+;     A name of the set-up script, the default value is 'doit.pro'.
+;
+;   isodate : in, type = string
+;
+;     A date given in ISO format (e.g., 2017-08-23) to search raw data
+;     for in root_dir.
 ; 
 ; 
 ; :Keywords:
@@ -24,17 +43,17 @@
 ;    calibrations_only : in, optional, type=boolean
 ;
 ;      Set up to process calibration data only.
+; 
+;   no_observer_metadata : in, optional, type=boolean
+;
+;      Do not check for OBSERVER metadata in raw data or offer to
+;      add it by hand. 
 ;
 ;    old_dir : in, optional, type = string
 ;
 ;      Copy files from this directory, in particular summed
 ;      calibration data. Useful if you summed the calibration data in
 ;      La Palma.
-; 
-;   
-;   
-;   
-; 
 ; 
 ; :History:
 ; 
@@ -74,9 +93,13 @@
 ; 
 ;    2020-06-11 : MGL. Add fit_wb_diskcenter step.
 ; 
+;    2021-01-25 : MGL. Check for OBSERVER metadata keyword in raw
+;                 data. New keyword no_observer_metadata.
+; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                               , calibrations_only = calibrations_only $
+                              , no_observer_metadata = no_observer_metadata $
                               , old_dir = old_dir 
 
   inam = red_subprogram(/low, calling = inam1)
@@ -559,6 +582,39 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   free_lun, Clun
   free_lun, Slun
 
+  ;; Do something about OBSERVER metadata keyword
+  if ~keyword_set(no_observer_metadata) then begin
+    ;; See if we can find some metadata by looking in the raw data dirs.
+    chromis_data_dirs = root_dir + '/' + dirarr + '/Chromis-W/'
+    ;; Pick the first file in each.
+    chromis_data_files = file_search(chromis_data_dirs+'/*00000_0000000*fits', count = Nfiles) 
+    ;; Now look for OBSERVER keywords
+    observers = strarr(Nfiles)
+    for ifile = 0, Nfiles-1 do begin
+      red_progressbar, ifile, Nfiles, 'Looking in CHROMIS data for OBSERVER keyword'
+      observers[ifile] = red_fitsgetkeyword(chromis_data_files[ifile], 'OBSERVER')
+    endfor
+    indx = uniq(observers, sort(observers))
+
+    if n_elements(indx) eq 0 then begin
+      ;; Ask only if there were no OBSERVER info in the raw data
+      print
+      print, 'Found no OBSERVER metadata in the raw data.'
+      observer = ''
+      read, 'Add names for that keyword for the CHROMIS workdir or hit return : ', observer
+
+      ;; Write it to the metadata file
+      if observer ne '' then begin
+        print
+        print, inam+' : Adding to CHROMIS metadata, OBSERVER = '+observer
+        red_metadata_store, fname = work_dir + '/info/metadata.fits' $
+                            , [{keyword:'OBSERVER', value:observer $
+                                , comment:'Observer name(s)'}]
+      endif
+    endif
+  endif
+
+  
   if size(old_dir, /tname) ne 'STRING' then return
   
   ;; We will now attempt to copy existing sums of calibration data.

@@ -12,33 +12,47 @@
 ; 
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
-; 
-; :Returns:
-; 
-; 
 ; :Params:
-; 
-; 
-; 
-; 
-; 
+;
+;   work_dir : in, type = string
+;
+;     A name of the directory to set up the directory tree at and to
+;     where the config file and the doit.pro script should be put.
+;
+;   root_dir : in, type = string
+;
+;     A name of the directory where the raw data is stored for a date
+;     given in isodate.
+;
+;   cfgfile : in, type = string
+;
+;     A name of the config file, the default value is 'config.txt'.
+;
+;   scriptfile : in, type = string
+;
+;     A name of the set-up script, the default value is 'doit.pro'.
+;
+;   isodate : in, type = string
+;
+;     A date given in ISO format (e.g., 2017-08-23) to search raw data
+;     for in root_dir.
 ; 
 ; :Keywords:
 ;
-;    old_dir : in, optional, type = string
+;   calibrations_only : in, optional, type=boolean
+;
+;      Set up to process calibration data only.
+; 
+;   no_observer_metadata : in, optional, type=boolean
+;
+;      Do not look for OBSERVER metadata in CHROMIS data or offer to
+;      add it by hand. 
+;   
+;   old_dir : in, optional, type = string
 ;
 ;      Copy files from this directory, in particular summed
 ;      calibration data. Useful if you summed the calibration data in
 ;      La Palma.
-;
-;    calibrations_only : in, optional, type=boolean
-;
-;      Set up to process calibration data only.
-; 
-;   
-;   
-;   
-; 
 ; 
 ; :History:
 ;
@@ -61,20 +75,75 @@
 ; 
 ;    2020-06-11 : MGL. Add fit_wb_diskcenter step.
 ; 
+;    2021-01-25 : MGL. Look for OBSERVER metadata keyword in CHROMIS
+;                 data. New keyword no_observer_metadata.
+; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             , calibrations_only = calibrations_only $
+                            , no_observer_metadata = no_observer_metadata $
                             , old_dir = old_dir 
-
+  
   inam = red_subprogram(/low, calling = inam1)
 
+  if ~keyword_set(no_observer_metadata) then begin
+    ;; See if we can find some metadata by looking in a CHROMIS workdir.
+    chromis_config = file_search(work_dir+'../CHROMIS*/config.txt', count = Nmatch)
+    if Nmatch gt 0 then begin
+      ;; Make an array with data directories.
+      spawn, 'cat '+strjoin(chromis_config, ' ')+' | grep data_dir', chromis_data_dirs
+      chromis_data_dirs = red_strreplace(chromis_data_dirs, 'data_dir = [', '')
+      chromis_data_dirs = red_strreplace(chromis_data_dirs, "]", '')
+      chromis_data_dirs = red_strreplace(chromis_data_dirs, "'", '', n = 100)
+      chromis_data_dirs = strjoin(chromis_data_dirs, ',')          ; Could be several strings ; ;
+      chromis_data_dirs = strsplit(chromis_data_dirs, ',', /extract)                        ; Make array
+      chromis_data_dirs = chromis_data_dirs[uniq(chromis_data_dirs, sort(chromis_data_dirs))] ; Uniquify
+      chromis_data_dirs = root_dir + '/' + chromis_data_dirs + '/Chromis-W/'
+      ;; Pick the first file in each.
+      chromis_data_files = file_search(chromis_data_dirs+'/*00000_0000000*fits', count = Nfiles) 
+      ;; Now look for OBSERVER keywords
+      observers = strarr(Nfiles)
+      for ifile = 0, Nfiles-1 do begin
+        red_progressbar, ifile, Nfiles, 'Looking in CHROMIS data for OBSERVER keyword'
+        observers[ifile] = red_fitsgetkeyword(chromis_data_files[ifile], 'OBSERVER')
+      endfor
+      observers = ['', observers]
+      indx = uniq(observers, sort(observers))
+      if n_elements(indx) gt 1 then begin
+        observers = observers[indx]
+        ;; Let the user choose.
+        print
+        print, 'Found OBSERVER string(s) from CHROMIS.'
+        dum = red_select_subset(observers, indx = indx, maxcount = 1, default = 0 $
+                                , qstring = 'Please select one for CRISP (or hit CR for the empty default)')
+        observer = observers[indx[0]]
+      endif else begin
+        print
+        print, 'Found no OBSERVER metadata in the CHROMIS data.'
+        observer = ''
+        read, 'Add names for that keyword for the CRISP workdir or hit return:', observer
+      endelse
+      ;; Write it to the metadata file
+      if observer ne '' then begin
+        print
+        print, inam+' : Adding to CRISP metadata, OBSERVER = '+observer
+        red_metadata_store, fname = work_dir + '/info/metadata.fits' $
+                             , [{keyword:'OBSERVER', value:observer $
+                                 , comment:'Observer name(s)'}]
+        ;; This info can vary from one science data dir to another in
+        ;; the CHROMIS data. Ideally we'd want to add it that way to
+        ;; CRISP as well. But the metadata.fits file mechanism does
+        ;; not support this.
+      endif
+    endif
+  endif
+  
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                       , [{keyword:'INSTRUME', value:'CRISP' $
                           , comment:'Name of instrument'} $
                          , {keyword:'TELCONFG', value:'Schupmann, imaging', $
                             comment:'Telescope configuration'}]
 
-  
   ;; Are there darks and flats?
   darksubdirs = red_find_instrumentdirs(root_dir, 'crisp', 'dark' $
                                         , count = Ndarkdirs)

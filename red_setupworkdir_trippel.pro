@@ -13,35 +13,45 @@
 ;
 ; :Params:
 ;
-;   work_dir    : in, type = string,
-;                 A name of the directory to set up the directory tree at and to
-;                 where the config file and the doit.pro script should be put.
+;   work_dir : in, type = string
 ;
-;   root_dir    : in, type = string,
-;                 A name of the directory where the raw data is stored for a
-;                 date given in isodate.
+;     A name of the directory to set up the directory tree at and to
+;     where the config file and the doit.pro script should be put.
 ;
-;   cfgfile     : in, type = string,
-;                 A name of the config file, the default value is 'config.txt'.
+;   root_dir : in, type = string
 ;
-;   scriptfile  : in, type = string,
-;                 A name of the set-up script, the default value is 'doit.pro'.
+;     A name of the directory where the raw data is stored for a date
+;     given in isodate.
 ;
-;   isodate     : in, type = string,
-;                 A date given in ISO format (e.g., 2017-08-23) to search raw
-;                 data for in root_dir.
+;   cfgfile : in, type = string
+;
+;     A name of the config file, the default value is 'config.txt'.
+;
+;   scriptfile : in, type = string
+;
+;     A name of the set-up script, the default value is 'doit.pro'.
+;
+;   isodate : in, type = string
+;
+;     A date given in ISO format (e.g., 2017-08-23) to search raw data
+;     for in root_dir.
 ;
 ; :Keywords:
 ;
-;    old_dir : in, optional, type = string
+;   calibrations_only : in, optional, type = boolean,
+;
+;      Set up to process calibration data only. Currently, a dummy
+;      keyword that does nothing.
+; 
+;   no_observer_metadata : in, optional, type=boolean
+;
+;      Do not offer to add OBSERVER metadata.
+;
+;   old_dir : in, optional, type = string
 ;
 ;      Copy files from this directory, in particular summed
 ;      calibration data. Useful if you summed the calibration data in
 ;      La Palma.
-;
-;   calibrations_only : in, optional, type = boolean,
-;                       Set up to process calibration data only.
-;                       Currently, a dummy keyword that does nothing.
 ;
 ; :History:
 ;
@@ -49,10 +59,13 @@
 ;                format header is added as well.
 ;
 ;   2019-07-01 : MGL. New keyword old_dir.
+; 
+;   2021-01-25 : MGL. New keyword no_observer_metadata.
 ;
 ;-
 pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate $
-                              , calibrations_only = calibrations_only  $
+                              , calibrations_only = calibrations_only $
+                              , no_observer_metadata = no_observer_metadata $
                               , old_dir = old_dir 
 
   inam = red_subprogram(/low, calling = inam1)
@@ -65,6 +78,20 @@ pro red_setupworkdir_trippel, work_dir, root_dir, cfgfile, scriptfile, isodate $
                          , {keyword:'TELCONFG', value:'Schupmann, spectrograph table', $
                             comment:'Telescope configuration'}]
 
+  ;; Offer to add the OBSERVER metadata keyword
+  if ~keyword_set(no_observer_metadata) then begin
+    observer = ''
+    read, 'Add names for OBSERVER metadata keyword for the TRIPPEL workdir or hit return:', observer
+    ;; Write it to the metadata file
+    if observer ne '' then begin
+      print
+      print, inam+' : Adding to CHROMIS metadata, OBSERVER = '+observer
+      red_metadata_store, fname = work_dir + '/info/metadata.fits' $
+                          , [{keyword:'OBSERVER', value:observer $
+                              , comment:'Observer name(s)'}]
+    endif
+  endif
+  
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
 
