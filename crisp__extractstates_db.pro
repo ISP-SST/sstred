@@ -44,15 +44,13 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   use_strings = n_elements(datasets) eq 0
-
-  ;; cache is slow comparing to the database at least when BeeGFS is fatigue
-  ;; let's always set /force till further examination
-  ;force = 1B
   
   ;;Clear states and try to get them from cache.
   undefine,states
   if use_strings then begin
     Nstr = n_elements(strings)
+    ;; cache is slow comparing to the database at least when BeeGFS is fatigue
+    
     ;; if ~keyword_set(force) then begin
     ;;   for ifile=0,Nstr-1 do begin
     ;;     this_cache = rdx_cacheget(strings[ifile], count = cnt)   
@@ -161,11 +159,10 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
       print,'Check the database integrity.'
       return
     endif
-    Ncams = nl-1                ; number of cameras (configs) in the dataset
-    ;cams=strarr(Ncams)
+    Nconfs = nl-1                ; number of configs in the dataset
 
-    for icam=1,Ncams do begin
-      conf = strsplit(conf_ans[icam],tab,/extract,/preserve_null)
+    for iconf=1,Nconfs do begin
+      conf = strsplit(conf_ans[iconf],tab,/extract,/preserve_null)
       config_id = conf[0]
 
       camera = conf[2]          ; need this exact variable name to generate dirname
@@ -175,7 +172,6 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
       
       state.exposure = float(conf[4])
       state.camera = camera
-      ;cams[icam-1]=camera
       state.is_wb = strmatch(camera,'*-[DW]')
       state.cam_settings = strtrim(string(state.exposure*1000, format = '(f9.2)'), 2) + 'ms'      
 

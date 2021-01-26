@@ -45,15 +45,13 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
 
   use_strings = n_elements(datasets) eq 0
-
-  ;; cache is slow comparing to the database at least when BeeGFS is
-  ;; let's always set /force till further examination
-  ;force = 1B
   
   ;; clear states and try to get them from the cache
   undefine,states 
   if use_strings then begin
     Nstr = n_elements(strings)
+    ;; cache is slow comparing to the database at least when BeeGFS is fatigue
+
     ;; if ~keyword_set(force) then begin      
     ;;   for ifile=0,Nstr-1 do begin
     ;;     this_cache = rdx_cacheget(strings[ifile], count = cnt)   
@@ -92,7 +90,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
     state = {CHROMIS_STATE}
     red_progressbar, iset, Nsets, /predict, set_msg     
     split_set = strsplit(datasets[iset], ' ', /extract)
-    date_time = datasets[iset];split_set[0] + ' ' + split_set[1]
+    date_time = datasets[iset]
     
     ;; we need Y,...,sec to generate the directory name
     split_date = strsplit(split_set[0],'-',/extract)
@@ -144,15 +142,14 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
     query = 'SELECT * FROM configs WHERE sets_id = ' + set_id + ';'
     red_mysql_cmd,handle,query,conf_ans,nl,debug=debug
     if nl eq 1 then begin
-      print, inam, ': There is no entry in configs table for ' + instrument + ' ' + date_time[iset] + ' ' + cameras[icam] + ' dataset.\r'
+      print, inam, ': There is no entry in configs table for ' + set_id + ' sets_id.\r'
       print,'Check the database integrity.'
       return
     endif
-    Ncams = nl-1                ; number of cameras (configs) in the dataset
-    cams=strarr(Ncams)
+    Nconfs = nl-1                ; number of configs in the dataset
 
-    for icam=1,Ncams do begin
-      conf = strsplit(conf_ans[icam],tab,/extract,/preserve_null)
+    for iconf=1,Nconfs do begin
+      conf = strsplit(conf_ans[iconf],tab,/extract,/preserve_null)
       config_id = conf[0]
 
       camera = conf[2]          ; need this exact variable name to generate dirname
@@ -164,7 +161,6 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       state.exposure = float(conf[4])
       state.nframes = fix(conf[7]) ; NAXIS3 
       state.camera = camera
-      cams[icam-1]=camera
       state.is_wb = strmatch(camera,'*-[DW]')
       state.cam_settings = strtrim(string(state.exposure*1000, format = '(f9.2)'), 2) + 'ms'$
               + '_G' + string(state.gain, format = '(f05.2)')                                      
@@ -361,10 +357,11 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       endfor
       ;; Filter the found states with respect to the file names in
       ;; strings
+      Ncams=n_elements(ucams)
       for icam=0,Ncams-1 do begin
-        ss = where(strmatch(strings,'*'+cams[icam]+'*'))
-        if n_elements(ss) eq 1 then if ss eq -1 then continue
-        fs = cams[icam] + '/' + file_basename(strings[ss])
+        ss = where(strmatch(strings,'*'+ucams[icam]+'*'), count)
+        if count eq 0 then continue
+        fs = ucams[icam] + '/' + file_basename(strings[ss])
         match2, fs, files, suba ;, subb 
         stt = states[suba]
         stt.filename = strings[ss]
