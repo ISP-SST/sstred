@@ -121,20 +121,24 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         print
         print, 'Found no OBSERVER metadata in the CHROMIS data.'
         observer = ''
-        read, 'Add names for that keyword for the CRISP workdir or hit return:', observer
+        read, 'Add names for that keyword for the CRISP workdir or hit return: ', observer
       endelse
       ;; Write it to the metadata file
+      print
       if observer ne '' then begin
-        print
         print, inam+' : Adding to CRISP metadata, OBSERVER = '+observer
         red_metadata_store, fname = work_dir + '/info/metadata.fits' $
-                             , [{keyword:'OBSERVER', value:observer $
-                                 , comment:'Observer name(s)'}]
+                            , [{keyword:'OBSERVER', value:observer $
+                                , comment:'Observer name(s)'}]
         ;; This info can vary from one science data dir to another in
         ;; the CHROMIS data. Ideally we'd want to add it that way to
         ;; CRISP as well. But the metadata.fits file mechanism does
         ;; not support this.
-      endif
+      endif else begin
+        print, inam+' : No OBSERVER keyword in CRISP metadata.'
+      endelse
+      print, inam+' : Edit '+work_dir + '/info/metadata.fits if you need to change this.'
+      print
     endif
   endif
   

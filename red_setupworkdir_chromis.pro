@@ -594,24 +594,28 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       red_progressbar, ifile, Nfiles, 'Looking in CHROMIS data for OBSERVER keyword'
       observers[ifile] = red_fitsgetkeyword(chromis_data_files[ifile], 'OBSERVER')
     endfor
+    observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
     indx = uniq(observers, sort(observers))
-
-    if n_elements(indx) eq 0 then begin
-      ;; Ask only if there were no OBSERVER info in the raw data
-      print
-      print, 'Found no OBSERVER metadata in the raw data.'
+    print
+    if n_elements(indx) gt 1 then begin
+      print, inam + ' : Found OBSERVER keyword(s) in the CHROMIS raw data. All is well.'
+    endif else begin      
+      print, inam + ' : Found no OBSERVER metadata in the CHROMIS raw data.'
       observer = ''
-      read, 'Add names for that keyword for the CHROMIS workdir or hit return : ', observer
-
+      read, 'Add names for that keyword for the CHROMIS workdir or hit return: ', observer
       ;; Write it to the metadata file
+      print
       if observer ne '' then begin
-        print
         print, inam+' : Adding to CHROMIS metadata, OBSERVER = '+observer
         red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                             , [{keyword:'OBSERVER', value:observer $
                                 , comment:'Observer name(s)'}]
-      endif
-    endif
+      endif else begin
+        print, inam+' : No OBSERVER keyword in CHROMIS metadata.'
+      endelse
+      print, inam+' : Edit '+work_dir + '/info/metadata.fits if you need to change this.'
+    endelse
+    print
   endif
 
   
