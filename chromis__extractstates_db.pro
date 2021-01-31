@@ -310,21 +310,10 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
         zz=strpos(fnm,'hrz')
         if strmid(fnm,zz+3,3) eq '***' then stop
 
-        state.filename = dir_root + dir + fnm        
-
-        ;; The fullstate string
-        undefine, fullstate_list
-        if ~keyword_set(strip_settings) then red_append, fullstate_list, state.cam_settings
-        if state.prefilter ne '' then red_append, fullstate_list, state.prefilter
-        if state.tuning ne '' then begin     
-          if keyword_set(strip_wb) then begin
-            if state.is_wb eq 0 then $
-               red_append, fullstate_list, state.tuning
-          endif else begin
-            red_append, fullstate_list, state.tuning
-          endelse
-        endif
-        state.fullstate = strjoin(fullstate_list, '_')
+        state.filename = dir_root + dir + fnm    
+        state.fullstate = state.cam_settings
+        if state.prefilter ne '' then state.fullstate += '_'+state.prefilter
+        state.fullstate += '_'+state.tuning
 
         st[ifile] = state
       endfor                    ; bursts

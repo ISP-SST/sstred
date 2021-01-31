@@ -37,11 +37,6 @@
 ;
 ;        Do not use cached states.
 ;
-;     strip_wb : in, optional, type=boolean
-;
-;        Exclude tuning information from the fullstate entries for WB
-;        cameras
-; 
 ;     strip_settings : in, optional, type=boolean
 ;
 ;        Exclude exposure/gain information from the fullstate entries.
@@ -149,7 +144,6 @@
 ;-
 pro chromis::extractstates_nondb, strings, states $
                             , force = force $
-                            , strip_wb = strip_wb $
                             , strip_settings = strip_settings
   
   ;; Name of this method
@@ -314,68 +308,71 @@ pro chromis::extractstates_nondb, strings, states $
         
       endif else begin
 
-        ;; The tuning information is in digital units, corresponding
-        ;; to tuning. The conversion factor varies between filters.
-        ;; The scans are symmetrical (so far, 2016-09-16) around the
-        ;; line center, which gives us the zero point.
-
-        ;; Get the reference wavelength in du from a file previously
-        ;; created with chromis::hrz_zeropoint.
-        infodir = self.out_dir + 'info/'
-        zfile = infodir + 'hrz_zeropoint_' + states[ifile].prefilter + '.fz'
-
-        if file_test(zfile) then begin
-
-          refinfo = f0(zfile)
-          lambda_ref = refinfo[0]
-          du_ref     = refinfo[1]
-          convfac    = refinfo[2]
-          
-          ;; Tuning in digital units
-          du = long((stregex(fxpar(head,'STATE'), 'hrz([0-9]*)', /extract, /subexpr))[1])
-
-          ;; Tuning in [m]
-          dlambda = convfac * (du-du_ref) 
-
-          ;; Return the wavelength tuning information in the form
-          ;; tuning_finetuning, where tuning is the approximate
-          ;; wavelength in Å and finetuning is the (signed) fine
-          ;; tuning in mÅ. (string)
-          lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
-          tuning_string = strtrim(round(dlambda*1d13), 2)
-          if strmid(tuning_string, 0, 1) ne '-' then tuning_string = '+'+tuning_string
-          states[ifile].tuning = lambda_ref_string + '_' + tuning_string
-          
-          ;; Also return the tuning in decimal form [m]:
-          states[ifile].tun_wavelength = lambda_ref + dlambda
-
+        if states[ifile].is_wb then begin
+          ;; For wideband, if there is no tuning info, assume
+          ;; prefilter wavelength.
+          states[ifile].tun_wavelength = states[ifile].pf_wavelength
+          states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
+                                        , format = '(i04)') $
+                                 + '_+0'
         endif else begin
+          ;; The tuning information is in digital units, corresponding
+          ;; to tuning. The conversion factor varies between filters.
+          ;; The scans are symmetrical (so far, 2016-09-16) around the
+          ;; line center, which gives us the zero point.
 
-          if states[ifile].is_wb then begin
-            ;; For wideband, if there is no tuning info, assume
-            ;; prefilter wavelength.
-            states[ifile].tun_wavelength = states[ifile].pf_wavelength
-            states[ifile].tuning = string(round(states[ifile].tun_wavelength*1d10) $
-                                          , format = '(i04)') $
-                                   + '_+0'
-          endif else if strmatch(states[ifile].filename, file_dirname((*self.dark_dir)[0])+'*') then begin
-            ;; For darks there is no tuning info. This is a kludge,
-            ;; should really set something like states.is_dark and
-            ;; test for that?
-            states[ifile].tun_wavelength = 0
-            states[ifile].tuning = ''
+          ;; Get the reference wavelength in du from a file previously
+          ;; created with chromis::hrz_zeropoint.
+          infodir = self.out_dir + 'info/'
+          zfile = infodir + 'hrz_zeropoint_' + states[ifile].prefilter + '.fz'
+
+          if file_test(zfile) then begin
+
+            refinfo = f0(zfile)
+            lambda_ref = refinfo[0]
+            du_ref     = refinfo[1]
+            convfac    = refinfo[2]
+            
+            ;; Tuning in digital units
+            du = long((stregex(fxpar(head,'STATE'), 'hrz([0-9]*)', /extract, /subexpr))[1])
+
+            ;; Tuning in [m]
+            dlambda = convfac * (du-du_ref) 
+
+            ;; Return the wavelength tuning information in the form
+            ;; tuning_finetuning, where tuning is the approximate
+            ;; wavelength in Å and finetuning is the (signed) fine
+            ;; tuning in mÅ. (string)
+            lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
+            tuning_string = strtrim(round(dlambda*1d13), 2)
+            if strmid(tuning_string, 0, 1) ne '-' then tuning_string = '+'+tuning_string
+            states[ifile].tuning = lambda_ref_string + '_' + tuning_string
+            
+            ;; Also return the tuning in decimal form [m]:
+            states[ifile].tun_wavelength = lambda_ref + dlambda
+
           endif else begin
-            ;; Warn about missing tuning info, but only for
-            ;; narrowband.
-            if ~quiet then begin
-              print, inam + ' : Reference wavelength in du missing.'
-              print, inam + ' : Did you run a -> hrz_zeropoint?'
-            endif
-          endelse 
+
+            if strmatch(states[ifile].filename, file_dirname((*self.dark_dir)[0])+'*') then begin
+              ;; For darks there is no tuning info. This is a kludge,
+              ;; should really set something like states.is_dark and
+              ;; test for that?
+              states[ifile].tun_wavelength = 0
+              states[ifile].tuning = ''
+            endif else begin
+              ;; Warn about missing tuning info, but only for
+              ;; narrowband.
+              if ~quiet then begin
+                print, inam + ' : Reference wavelength in du missing.'
+                print, inam + ' : Did you run a -> hrz_zeropoint?'
+              endif
+            endelse
+            
+          endelse               ; zfile
           
-        endelse
-        
-      endelse
+        endelse                 ; wb
+
+      endelse                   ; tuninfo
 
       if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
@@ -383,14 +380,8 @@ pro chromis::extractstates_nondb, strings, states $
       undefine, fullstate_list
       if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
       if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
-      if states[ifile].tuning ne '' then begin     
-        if keyword_set(strip_wb) then begin
-          if states[ifile].is_wb eq 0 then $
-             red_append, fullstate_list, states[ifile].tuning
-        endif else begin
+      if states[ifile].tuning ne '' then $             
           red_append, fullstate_list, states[ifile].tuning
-        endelse
-      endif
       states[ifile].fullstate = strjoin(fullstate_list, '_')
 
       ;; Store in cache

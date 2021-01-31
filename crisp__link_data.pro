@@ -62,7 +62,8 @@
 ;   2019-07-25 : OA. Added check for sst_db.
 ;  
 ;-
-pro crisp::link_data, dirs = dirs $
+pro crisp::link_data, all_data = all_data $
+                      , dirs = dirs $
                       , pref = pref $
                       , uscan = uscan $
                       , link_dir = link_dir 

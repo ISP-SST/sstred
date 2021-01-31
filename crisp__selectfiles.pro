@@ -169,7 +169,7 @@ pro crisp::selectfiles, cam = cam $
 
   if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
 ;    self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
-    self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings, polcal = polcal, cam = cam, /force
+    self->extractstates, files, states, strip_settings = strip_settings, polcal = polcal, cam = cam
                                 ; TODO: this is a really ugly way to drop the WB states, think of something better
 ;    wb_cams = (strmatch( states.detector, self->getdetector('Crisp-W')) $
 ;               or strmatch( states.detector, self->getdetector('Crisp-D')))

@@ -37,11 +37,6 @@
 ;     force : in, optional, type=boolean
 ;
 ;        Do not use cached states.
-;
-;     strip_wb : in, optional, type=boolean
-;
-;        Exclude tuning information from the fullstate entries for WB
-;        cameras
 ; 
 ;     strip_settings : in, optional, type=boolean
 ;
@@ -62,11 +57,10 @@
 ;-
 pro chromis::extractstates, strings, states $
                             , force = force $
-                            , strip_wb = strip_wb $
                             , strip_settings = strip_settings $
                             , datasets = datasets $
                             , cam = cam
-  
+
   if keyword_set(datasets) then begin ; if we use datasets then we should use the database
     if n_elements(datasets) eq 0 then return
     self->extractstates_db, strings, states, datasets = datasets
@@ -90,11 +84,10 @@ pro chromis::extractstates, strings, states $
     endif
   endfor
   if is_raw and self.db_present then begin ; we can use sst_db only with raw data
-    self->extractstates_db, strings, states, cam = cam
+    self->extractstates_db, strings, states, cam = cam 
   endif else begin
     self->extractstates_nondb, strings, states $
                                , force = force $
-                               , strip_wb = strip_wb $
                                , strip_settings = strip_settings 
   endelse
 

@@ -42,11 +42,6 @@
 ; 
 ;        Set this to add polcal-specific items in the states, qw and
 ;        lp. 
-;
-;     strip_wb : in, optional, type=boolean
-;
-;        Exclude tuning information from the fullstate entries for WB
-;        cameras
 ; 
 ;     strip_settings : in, optional, type=boolean
 ;
@@ -66,7 +61,6 @@
 ;-
 pro crisp::extractstates, strings, states $
                           , force = force $
-                          , strip_wb = strip_wb $
                           , strip_settings = strip_settings $
                           , polcal = polcal $
                           , datasets = datasets $
@@ -99,7 +93,6 @@ pro crisp::extractstates, strings, states $
   endif else begin
     self->extractstates_nondb, strings, states $
                                , force = force $
-                               , strip_wb = strip_wb $
                                , strip_settings = strip_settings $
                                , polcal = polcal
   endelse

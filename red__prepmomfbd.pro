@@ -408,7 +408,7 @@ pro red::prepmomfbd, wb_states = wb_states $
     
     print, inam + ' : Search for reference files in ' + dir
     self->selectfiles, cam=refcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                       files=ref_files, states=ref_states, /force ;, nremove=remove ;, /strip_wb
+                       files=ref_files, states=ref_states, /force 
 
     if n_elements(ref_states) eq 0 then begin
       print, inam, ' : Failed to find files/states for the reference channel in ', dir
@@ -434,7 +434,7 @@ pro red::prepmomfbd, wb_states = wb_states $
       print, inam + ' : Search for PD files in ' + dir
       if file_test(dir + pdcam_name + '_nostate/',/directory) then subdir = pdcam_name + '_nostate/'
       self->selectfiles, cam=pdcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                         files=pd_files, states=pd_states, /force ; , nremove=remove ;, /strip_wb
+                         files=pd_files, states=pd_states, /force
 
       if n_elements(pd_states) eq 0 then begin
         print, inam, ' : Failed to find files/states for the pd channel in ', dir

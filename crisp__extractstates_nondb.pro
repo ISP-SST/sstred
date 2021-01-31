@@ -41,11 +41,6 @@
 ; 
 ;        Set this to add polcal-specific items in the states, qw and
 ;        lp. 
-;
-;     strip_wb : in, optional, type=boolean
-;
-;        Exclude tuning information from the fullstate entries for WB
-;        cameras
 ; 
 ;     strip_settings : in, optional, type=boolean
 ;
@@ -69,7 +64,6 @@
 ;-
 pro crisp::extractstates_nondb, strings, states $
                           , force = force $
-                          , strip_wb = strip_wb $
                           , strip_settings = strip_settings $
                           , polcal = polcal
 
@@ -232,9 +226,9 @@ pro crisp::extractstates_nondb, strings, states $
 
   endif
 
-  ;; If we get to this point, the strings are FITS files. So the
-  ;; following code should be revised once CRISP is run with the new
-  ;; camera system.
+  ;; If we get to this point, the strings are FITS files or momfbd
+  ;; files. So the following code should be revised once CRISP is run
+  ;; with the new camera system.
   
   ;; Some info from file names
   if keyword_set(polcal) then begin
@@ -388,14 +382,8 @@ pro crisp::extractstates_nondb, strings, states $
 ;      red_append, fullstate_list, states[ifile].qw
     endif
     if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
-    if states[ifile].tuning ne '' then begin     
-      if keyword_set(strip_wb) then begin
-        if states[ifile].is_wb eq 0 then $
-           red_append, fullstate_list, states[ifile].tuning
-      endif else begin
+    if states[ifile].tuning ne '' then $
         red_append, fullstate_list, states[ifile].tuning
-      endelse
-    endif
     if states[ifile].is_wb eq 0 then red_append, fullstate_list, 'lc'+strtrim(lc[ifile], 2)
     if n_elements(fullstate_list) gt 0 then states[ifile].fullstate = strjoin(fullstate_list, '_')
     

@@ -59,6 +59,8 @@
 ;   2016-10-24 : MGL. Bypass interactive selection of ROI by providing
 ;                xc and yc.
 ;
+;   2020-06-27 : OA. Added no_display keyword
+;
 ;   2020-10-01 : JdlCR. Adapted keywords for the new red_shift_im.
 ;
 ;
@@ -70,7 +72,8 @@ function red_aligncube, cub, np $
                         , xc = xc, yc = yc $
                         , centered = centered $
                         , nthreads = nthreads $
-                        , nearest = nearest
+                        , nearest = nearest $
+                        , no_display = no_display
   
   if n_elements(xbd) eq 0 then xbd = 256
   if n_elements(ybd) eq 0 then ybd = 256
