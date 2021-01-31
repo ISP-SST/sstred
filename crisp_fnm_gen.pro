@@ -121,9 +121,9 @@ pro crisp_fnm_gen, filename $
     ll = strlen(dirname_format)
     dirname_format = strmid(dirname_format, 0, ll-2) + ')"'
     ll = strlen(dirname_vars)
-    dirname_vars = strmid(dirname_vars, 0, ll-6)
+    dirname_vars = strmid(dirname_vars, 0, ll-1)
     
-    dir_gen = 'dir = string(' + dirname_vars + dirname_format + ')'
+    dir_gen = 'dir = string(' + dirname_vars + ' ' + dirname_format + ')'
 
     if keyword_set(verbose) then begin
       print

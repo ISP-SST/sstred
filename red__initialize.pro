@@ -67,7 +67,10 @@
 ;
 ;   2017-11-08 : THI: Bump the rdx-version dependence. 
 ;
-;   2018-05-31 : MGL. Set self.refcam to camera ending in '-W'. 
+;   2018-05-31 : MGL. Set self.refcam to camera ending in '-W'.
+;
+;   2020-02-12 : OA. Added changes driven by change of
+;                polcal_dir:'' to polcal_dir:ptr_new() in red__define
 ;
 ;   2020-03-11 : MGL. Default for self.direction.
 ;
@@ -86,10 +89,22 @@ pro red::initialize, filename, develop = develop
   endif
   self.filename = filename
   self.filetype = 'MOMFBD'
+
+  ;; Test for sst_db presence
+  if file_test('~/.my.cnf') then begin
+    spawn,'cat ~/.my.cnf | grep sst_db',res
+    if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
+  endif else begin
+    if file_test('/etc/.my.cnf') then begin
+      spawn,'cat /etc/my.cnf | grep sst_db',res
+      if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
+    endif
+  endelse
+  if ~self.db_present then $
+    print,'There is no sst_db database on your system. Consider to install it.'
+    
   
-  ;; Init vars
-  self.polcal_dir = ''
-  
+  ;; Init vars  
   self.dodata = 1B
   self.doflat = 1B
   self.dopinh = 1B
@@ -128,7 +143,6 @@ pro red::initialize, filename, develop = develop
       'out_dir'         : self.out_dir = value
       'pinhole_spacing' : self.pinhole_spacing = float(value)
       'pixel_size'      : self.pixel_size = value
-      'polcal_dir'      : self.polcal_dir = value
       'prefilter_dir'   : self.prefilter_dir = value
       'rotation'        : self.rotation = value
       'telescope_d'     : self.telescope_d = value
@@ -138,9 +152,6 @@ pro red::initialize, filename, develop = develop
         else self.dark_dir = ptr_new(value, /no_copy)
       end
       'flat_dir': begin
-        ;;red_append, self.flat_dir, value, /point
-        ;;help, self.flat_dir
-        ;;stop
         if ptr_valid(self.flat_dir) then red_append, *self.flat_dir, value $
         else self.flat_dir = ptr_new(value, /no_copy)
       end
@@ -149,9 +160,12 @@ pro red::initialize, filename, develop = develop
         else self.pinh_dirs = ptr_new(value, /no_copy)
       end
       'data_dir': begin
-        ;;red_append, self.data_dirs, value, /point
         if ptr_valid(self.data_dirs) then red_append, *self.data_dirs, value $
         else self.data_dirs = ptr_new(value, /no_copy)
+      end
+      'polcal_dir': begin
+        if ptr_valid(self.polcal_dir) then red_append, *self.polcal_dir, value $
+        else self.polcal_dir = ptr_new(value, /no_copy)
       end
       'camera': begin
         if ptr_valid(self.cameras) then red_append, *self.cameras, value $
@@ -180,14 +194,15 @@ pro red::initialize, filename, develop = develop
     IF ptr_valid(self.pinh_dirs) THEN FOR i = 0, n_elements(*self.pinh_dirs)-1 DO $
        IF strmid((*self.pinh_dirs)[i], 0, 1) NE '/' AND strlen((*self.pinh_dirs)[i]) GT 0 $
        THEN (*self.pinh_dirs)[i] = self.root_dir + (*self.pinh_dirs)[i]
-    ;; if(strmid(self.dark_dir, 0, 1) NE '/' AND strlen(self.dark_dir) gt 0) then $
-    ;;   self.dark_dir = self.root_dir + self.dark_dir
+    IF ptr_valid(self.polcal_dir) THEN FOR i = 0, n_elements(*self.polcal_dir)-1 DO $
+       IF strmid((*self.polcal_dir)[i], 0, 1) NE '/' AND strlen((*self.polcal_dir)[i]) GT 0 $
+       THEN (*self.polcal_dir)[i] = self.root_dir + (*self.polcal_dir)[i]
     if(strmid(self.prefilter_dir, 0, 1) NE '/' AND strlen(self.prefilter_dir) gt 0) then $
        self.prefilter_dir = self.root_dir + self.prefilter_dir
     ;; if(strmid(self.data_list[self.ndir-1], 0, 1) NE '/' AND strlen(self.data_list[self.ndir-1]) gt 0) then $
     ;;    self.data_list[0:self.ndir-1] = self.root_dir + self.data_list[0:self.ndir-1]
-    if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then $
-       self.polcal_dir = self.root_dir + self.polcal_dir
+;    if(strmid(self.polcal_dir, 0, 1) NE '/' AND strlen(self.polcal_dir) gt 0) then $
+;       self.polcal_dir = self.root_dir + self.polcal_dir
     ;; if(strmid(self.descatter_dir, 0, 1) NE '/' AND  strlen(self.descatter_dir) gt 0) then $
     ;;     self.descatter_dir = self.root_dir + self.descatter_dir
   endif
@@ -249,7 +264,7 @@ pro red::initialize, filename, develop = develop
     print, 'red::initialize : WARNING : pinh_dir is undefined!'
     self.dopinh = 0B
   endif
-  if(self.polcal_dir eq '') then begin
+  if( ~ptr_valid(self.polcal_dir)) then begin
     print, 'red::initialize : WARNING : polcal_dir is undefined!'
     self.dopolcal = 0B
   endif
@@ -277,13 +292,21 @@ pro red::initialize, filename, develop = develop
   
   ;; print fields
   IF ptr_valid(self.dark_dir) THEN BEGIN
-    if(self.dopolcal) then print, 'red::initialize : polcal_dir = '+ self.polcal_dir
     nn = n_elements(*self.dark_dir)
     IF(nn EQ 1) THEN BEGIN
       print, 'red::initialize : dark_dir = '+ (*self.dark_dir)[0]
     ENDIF ELSE BEGIN
       print, 'red::initialize : dark_dirs :'
       FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.dark_dir)[k]
+    ENDELSE
+  ENDIF
+  IF self.dopolcal THEN BEGIN
+    nn = n_elements(*self.polcal_dir)
+    IF(nn EQ 1) THEN BEGIN
+      print, 'red::initialize : polcal_dir = '+ (*self.polcal_dir)[0]
+    ENDIF ELSE BEGIN
+      print, 'red::initialize : polcal_dirs :'
+      FOR k = 0, nn-1 DO print, string(k, format='(I5)') + ' -> ' + (*self.polcal_dir)[k]
     ENDELSE
   ENDIF
   IF ptr_valid(self.flat_dir) THEN BEGIN
@@ -348,7 +371,7 @@ pro red::initialize, filename, develop = develop
   self.version_pipeline = strjoin((strsplit(pipeline_gitoutput, '-', /extract))[0:1], '-')
 
   ;; Pipeline branch
-  spawn, 'cd '+srcdir+'; ' + git_status_command, pipeline_status
+  spawn, 'cd '+srcdir+'; ' + git_status_command, pipeline_status  
   self.version_pipeline_branch = (strsplit(pipeline_status[0],/extract))[-1]
   if strmatch(self.version_pipeline_branch,'*_dev') then  self.version_problems += 'Running the development branch ' $
      + self.version_pipeline_branch

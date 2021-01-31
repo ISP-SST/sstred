@@ -84,22 +84,18 @@ function crisp::fpi_profile, w, prefilter $
   w0 = double(prefilter)        ; (Default) filter center wavelength, see CASE below
 
   case prefilter of
-    '8542': begin
-      rhr  = 0.930d0            ; HRE reflectivity
-      rlr  = 0.852d0            ; LRE reflectivity
-    end
-    '6302': begin
-      rhr  = 0.935d0
-      rlr  = 0.838d0
-    end
-    '5380': begin
-      rhr  = 0.9375d0
-      rlr  = 0.8510d0
+    '5173': begin
+      rhr  = 0.9585d0
+      rlr  = 0.8654d0
     end
     '5250': begin
       w0   = 5250.5d0
       rhr  = 0.9589d0
       rlr  = 0.8561d0
+    end
+    '5380': begin
+      rhr  = 0.9375d0
+      rlr  = 0.8510d0
     end
     '5576': begin
       w0   = 5576.5d0
@@ -111,9 +107,14 @@ function crisp::fpi_profile, w, prefilter $
       rhr  = 0.9266d0
       rlr  = 0.8567d0
     end
-    '6563': begin
-      rhr  = 0.9330d0
-      rlr  = 0.8492d0
+    '5876': begin   ;just a copy from '5875'
+      w0   = 5876.0d0
+      rhr  = 0.9266d0
+      rlr  = 0.8567d0
+    end
+    '5896': begin
+      rhr  = 0.9270d0
+      rlr  = 0.8545d0
     end
     '6082': begin
       rhr  = 0.9381d0
@@ -123,21 +124,25 @@ function crisp::fpi_profile, w, prefilter $
       rhr  = 0.9380d0
       rlr  = 0.8469d0
     end
+    '6302': begin
+      rhr  = 0.935d0
+      rlr  = 0.838d0
+    end
+    '6563': begin
+      rhr  = 0.9330d0
+      rlr  = 0.8492d0
+    end
     '7090': begin
       rhr  = 0.9430d0
       rlr  = 0.8565d0
-    end
-    '5896': begin
-      rhr  = 0.9270d0
-      rlr  = 0.8545d0
-    end
-    '5173': begin
-      rhr  = 0.9585d0
-      rlr  = 0.8654d0
-    end
+    end    
     '7772': begin
       rhr  = 0.9227d0
       rlr  = 0.8576d0
+    end
+    '8542': begin
+      rhr  = 0.930d0            ; HRE reflectivity
+      rlr  = 0.852d0            ; LRE reflectivity
     end
   endcase
   

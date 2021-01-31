@@ -131,7 +131,6 @@ pro chromis::selectfiles, cam = cam $
                           , selected = selected $
                           , states = states $
                           , strip_settings = strip_settings $
-                          , strip_wb = strip_wb $
                           , subdir = subdir $
                           , ustat = ustat 
 
@@ -169,7 +168,7 @@ pro chromis::selectfiles, cam = cam $
     idx = where( files ne '' )
     if min(idx) ge 0 then files = files[ idx ] $
     else return
-    files = red_sortfiles(files)
+;;    files = red_sortfiles(files) ; slow
     force = 1                   ; we have new files, force extractstates
   endif
   
@@ -183,7 +182,7 @@ pro chromis::selectfiles, cam = cam $
   if keyword_set(force) $                             ; If we choose to
      || n_elements(files) ne n_elements(states) $     ; If numbers don't agree
      || ~min(file_same(files,states.filename)) then $ ; If the actual files are not the same
-        self->extractstates, files, states, strip_wb=strip_wb, strip_settings = strip_settings
+        self->extractstates, files, states, strip_settings = strip_settings, cam = cam
 
   if( n_elements(states) eq 1 ) then states = [states]
   

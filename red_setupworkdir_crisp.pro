@@ -69,6 +69,9 @@
 ;
 ;    2019-07-01 : MGL. New keyword old_dir.
 ;
+;    2019-02-11 : OA. New line "a -> make_periodic_filter". Change
+;                 nref=30 for pinholecalib.
+;
 ;    2020-03-11 : MGL. Set direction in config file.
 ; 
 ;    2020-04-06 : MGL. Set rotation in config file.
@@ -500,6 +503,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + maybe_nodescatter[ipref] 
         printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
+        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
       endfor                    ; ipref
     endif
       
@@ -599,7 +603,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  printf, Slun, 'a -> getoffsets' 
   
   printf, Slun, ''
-  printf, Slun, 'a -> pinholecalib, /verify, nref=10, margin=100'
+  printf, Slun, 'a -> pinholecalib, /verify, nref=30, margin=100'
   
   printf, Slun, ''
   printf, Slun, ';; -----------------------------------------------------'
@@ -703,15 +707,16 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;; Flats
   fdirs = file_search(old_dir+'/flats*', count = Nfdirs)
-  for idir = 0, Nfdirs-1 do begin
-;     if file_test(old_dir+'/flats', /directory) then begin
+;  for idir = 0, Nfdirs-1 do begin
+  if file_test(old_dir+'/flats', /directory) then begin
     ffiles = file_search(old_dir+'/'+fdirs[idir]+'/cam*[0-9].flat.fits', count = Nfiles)
     if Nfiles gt 0 then begin
       file_mkdir, work_dir+'/'+fdirs[idir]
       file_copy, ffiles, work_dir+'/'+fdirs[idir]+'/', /overwrite
       print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/'+fdirs[idir]+'/'
     endif
-  endfor                        ; idir
+   endif
+;  endfor                        ; idir
 
   ;; Pinholes
   if file_test(old_dir+'/pinhs', /directory) then begin

@@ -53,6 +53,10 @@
 ;   2019-04-04 : MGL. New keywords nostatistics and tuning_selection. 
 ; 
 ;   2019-04-05 : MGL. Use red_fitscube_open and red_fitscube_close. 
+;
+;   2020-03-23 : OA. Changed calls of red_fitscube_getframe & *_addframe
+;                with fileassoc instead of filename. Added keyword 'fitscube_info'
+;                in those calls.
 ; 
 ;   2020-10-28 : MGL. Remove statistics calculations.
 ;
@@ -111,15 +115,25 @@ pro red::fitscube_crosstalk, filename  $
   scannum = red_fitsgetkeyword(filename, 'SCANNUM', variable_values = variable_values)
   if n_elements(variable_values) gt 0 then begin
     scannumbers = reform(variable_values.values)
+    if Nscans ne n_elements(scannumbers) then begin
+      print, 'n_elements(scannumbers) ne Nscans (i.e. NAXIS5).'
+      print,'Something is wrong with the cube header. Please, check.'
+      stop
+    endif
   endif else begin
     scannumbers = [scannum]
+    if Nscans ne n_elements(scannumbers) then begin
+      print, 'n_elements(scannumbers) ne Nscans (i.e. NAXIS5).'
+      print,'Something is wrong with the cube header. Please, check.'
+      stop
+    endif
   endelse
   
   ;; Get medians of the I component of the first scan, to be used for
   ;; selecting the wavelength points.
   medi = fltarr(Ntuning)
   for ituning = 0, Ntuning-1 do begin
-    red_fitscube_getframe, filename, frame, istokes = 0, iscan = 0, ituning = ituning
+    red_fitscube_getframe, fileassoc, frame, istokes = 0, iscan = 0, ituning = ituning,fitscube_info = fitscube_info
     medi[ituning] = median(frame)
   endfor                        ; ituning
 
@@ -145,11 +159,11 @@ pro red::fitscube_crosstalk, filename  $
   if n_elements(ppc) gt 1 then begin
     im = 0.
     for i = 0, n_elements(ppc)-1 do begin
-      red_fitscube_getframe, filename, frame, istokes = 3, iscan = 0, ituning = ppc[i]
+      red_fitscube_getframe, fileassoc, frame, istokes = 3, iscan = 0, ituning = ppc[i],fitscube_info = fitscube_info
       im += abs(frame)
     endfor
   endif else begin
-    red_fitscube_getframe, filename, im, istokes = 3, iscan = 0, ituning = ppc[0]
+    red_fitscube_getframe, fileassoc, im, istokes = 3, iscan = 0, ituning = ppc[0], fitscube_info = fitscube_info
   endelse
 
   if n_elements(mag_mask) eq 0 then begin
@@ -213,7 +227,7 @@ pro red::fitscube_crosstalk, filename  $
     numerator   = dblarr(Nstokes)
     denominator = 0d
     for i = 0, n_elements(ppc)-1 do begin
-      red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ppc[i] ; Stokes I
+      red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ppc[i], fitscube_info = fitscube_info ; Stokes I
 
       ;;denominator += median(im0[where(this_mask)] *
       ;;im0[where(this_mask)], /double)
@@ -223,7 +237,8 @@ pro red::fitscube_crosstalk, filename  $
       denominator += a[1]
       
       for istokes=1, Nstokes-1 do begin
-        red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ppc[i]
+        red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ppc[i], fitscube_info = fitscube_info
+
         ;;numerator[istokes] += median(im0[where(this_mask)] * im[where(this_mask)], /double)
         a = red_histo_gaussfit(im0[mindx] * im[mindx], FWlevel = 0.25)
         numerator[istokes] += a[1]
@@ -235,15 +250,15 @@ pro red::fitscube_crosstalk, filename  $
            , crt[1], ', ', crt[2], ', ', crt[3], format='(A,F8.5,A,F8.5,A,F8.5)'
 
     for ituning = 0, Ntuning-1 do begin
-      red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ituning ; Stokes I
-      if makemask then im0[pindx] = median(im0[pindx])                                     ; Set the padding to median
-      red_fitscube_addframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ituning ; Write with updated padding
+      red_fitscube_getframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ituning, fitscube_info = fitscube_info ; Stokes I
+      if makemask then im0[pindx] = median(im0[pindx])                                    ; Set the padding to median
+      red_fitscube_addframe, fileassoc, im0, istokes = 0, iscan = iscan, ituning = ituning, fitscube_info = fitscube_info ; Write with updated padding
       for istokes=1, Nstokes-1 do begin
         ;;d[*,*,tt,ww] -= crt[tt]*d[*,*,0,ww]
-        red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning
+        red_fitscube_getframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning, fitscube_info = fitscube_info
         im -= float(crt[istokes] * im0)
         if makemask then im[pindx] = median(im[pindx]) 
-        red_fitscube_addframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning
+        red_fitscube_addframe, fileassoc, im, istokes = istokes, iscan = iscan, ituning = ituning, fitscube_info = fitscube_info
       endfor                    ; istokes
     endfor                      ; ituning
   endfor                        ; iscan

@@ -70,6 +70,7 @@ function red_readhead_db, files, date_beg=date_beg, framenumbers=framenumbers, s
   status = list()
   date_beg = list()
   framenumbers = list()
+  framenum = 0
   st = {code: 0, msg: ''}
 
   instr = ['CHROMIS', 'Crisp']
@@ -475,7 +476,8 @@ function red_readhead_db, files, date_beg=date_beg, framenumbers=framenumbers, s
     date_beg = date_bgs
     return, hdr
   endif
-  
+
+  free_lun,handle
   return, headers
 end
 

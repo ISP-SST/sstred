@@ -67,7 +67,7 @@ pro red::getdetectors, dir = dir
       ;; another day. Then you can also run getdetectors with the dark
       ;; directory from that other day as the keyword argument.
       ptr_valid(self.dark_dir) : dir = *self.dark_dir
-      ptr_valid(self.pinh_dir) : dir = *self.pinh_dir
+      ptr_valid(self.pinh_dirs) : dir = *self.pinh_dirs
       ptr_valid(self.flat_dir) : dir = *self.flat_dir
       else : begin
         print, inam + ' : Cannot find detector names.'

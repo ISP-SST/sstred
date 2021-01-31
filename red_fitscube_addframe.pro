@@ -53,13 +53,16 @@
 ;                 of from keywords.
 ; 
 ;    2017-11-03 : MGL. New keyword iframe.
+;
+;    2020-03-23 : OA. Added 'fitscube_info' keyword.
 ; 
 ;-
 pro red_fitscube_addframe, filename_or_fileassoc, frame $
                            , iframe = iframe $
                            , ituning = ituning $
                            , istokes = istokes $
-                           , iscan = iscan
+                           , iscan = iscan $
+                           , fitscube_info = fitscube_info
   
   if size(filename_or_fileassoc, /tname) eq 'STRING' then open_and_close = 1 else open_and_close = 0
 
@@ -87,10 +90,23 @@ pro red_fitscube_addframe, filename_or_fileassoc, frame $
     ;; We have an assoc variable, get array dimensions from the file.
     fileassoc = filename_or_fileassoc
     lun = (size(fileassoc,/struc)).file_lun
-    fs = fstat(lun)
-    filename = fs.name
-    hdr = headfits(filename)
+    if ~keyword_set(fitscube_info) then begin
+      fs = fstat(lun)
+      filename = fs.name
+      hdr = headfits(filename)
+      Nx = fxpar(hdr, 'NAXIS1')
+      Ny = fxpar(hdr, 'NAXIS2')
+    endif else begin
+      Nx = fitscube_info.dimensions[0]
+      Ny = fitscube_info.dimensions[1]
+    endelse
   endelse
+
+  sz = size(frame,/dimensions)
+  if sz[0] ne Nx or sz[1] ne Ny then begin  ; shouldn't happen
+    print,"Size of frame doesn't correspond to the size of the cube. Stop in red_fitscube_addframe."
+    stop
+  endif
   
     
   if n_elements(iframe) eq 0 then begin
@@ -100,14 +116,19 @@ pro red_fitscube_addframe, filename_or_fileassoc, frame $
     if n_elements(iscan)   eq 0 then iscan   = 0L
     
     ;; Get dimensions from the file
-    lun = (size(fileassoc,/struc)).file_lun
-    fs = fstat(lun)
-    dimensions = long(fxpar(headfits(fs.name), 'NAXIS*'))
-    Nx      = dimensions[0]
-    Ny      = dimensions[1]
-    Ntuning = dimensions[2]
-    Nstokes = dimensions[3]
-    Nscans  = dimensions[4]
+    if ~keyword_set(fitscube_info) then begin
+      Ntuning = fxpar(hdr,'NAXIS3')
+      Nstokes = fxpar(hdr,'NAXIS4')
+      Nscans = fxpar(hdr,'NAXIS5')
+    endif else begin
+      if open_and_close then begin ;shouldn't happen
+        print, "One should use 'fitscube_info' only with fileassoc. Stop in red_fitscube_addframe."
+        stop
+      endif
+      Ntuning = fitscube_info.dimensions[2]
+      Nstokes = fitscube_info.dimensions[3]
+      Nscans  = fitscube_info.dimensions[4]
+    endelse
     
     ;; Calculate the frame number
     iframe = long(ituning) + long(istokes)*Ntuning $

@@ -66,8 +66,8 @@ pro chromis::align_intrascan, choose_states = choose_states $
                               , momfbddir = momfbddir $
                               , overwrite = overwrite $
                               , state1 = state1 $
-                              , state2 = state2 $
-                              , timestamps = timestamps
+                              , state2 = state2 ;$
+                              ;, timestamps = timestamps
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -85,7 +85,7 @@ pro chromis::align_intrascan, choose_states = choose_states $
   nbcamera   = (*self.cameras)[nbindx[0]]
   nbdetector = (*self.detectors)[nbindx[0]]
 
-  ;; Find timestamp subdirs
+  ;Find timestamp subdirs
   search_dir = self.out_dir + '/'+momfbddir+'/'
   timestamps = file_basename(file_search(search_dir + '*' $
                                          , count = Ntimestamps, /test_dir))
@@ -94,7 +94,7 @@ pro chromis::align_intrascan, choose_states = choose_states $
     return
   endif
 
-  if n_elements(timestamps) eq 0 then begin
+;  if n_elements(timestamps) gt 1 then begin
     ;; Select timestamp folders
     tmp = red_select_subset(timestamps $
                             , qstring = inam + ' : Select timestamp directory ID:' $
@@ -105,7 +105,7 @@ pro chromis::align_intrascan, choose_states = choose_states $
     endif
     timestamps = timestamps[sindx]
     print, inam + ' : Selected -> '+ strjoin(timestamps, ', ')
-  endif
+;  endif
 
 
   
@@ -437,12 +437,12 @@ pro chromis::align_intrascan, choose_states = choose_states $
             rit++
             ;;print, 'Shifts after '+strtrim(rit, 2)+' iterations: '+strjoin(shifts_total, ',')
 
-            if rit gt 1000 then continue
+            if rit gt 1000 then break
             
             shifts[0, iscan] = shifts_total
 
             ;; Diverging?
-            if sqrt(total(shifts_total^2)) gt maxshifts then continue
+            if sqrt(total(shifts_total^2)) gt maxshifts then break
 
           endrep until max(abs(shifts_new)) lt 0.001
 
