@@ -1,3 +1,43 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;   
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; 
+; 
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+; 
+; 
+; 
+; 
+; 
+;-
 pro red_quicklook_batch, dates, work_dir = work_dir, overwrite = overwrite, min_nscan = min_nscan
 
   if ~keyword_set(work_dir) then work_dir = '/scratch/olexa/quicklook/'

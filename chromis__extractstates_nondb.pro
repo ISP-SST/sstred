@@ -24,11 +24,13 @@
 ; 
 ;    strings : in, type=strarr
 ;   
-;      A list of strings from which to extract the states information.
+;        A list of strings from which to extract the states
+;        information.
 ;   
 ;    states : out, optional, type=array(struct)
 ;
-;        An array of structs, containing (partially filled) state information.
+;        An array of structs, containing (partially filled) state
+;        information.
 ; 
 ; 
 ; :Keywords:
@@ -123,7 +125,7 @@
 ;    2016-09-28 : MGL. Use TEXPOSUR for cam_settings of summed files.
 ;                 Parse STATE correctly. FULLSTATE for darks without
 ;                 tuning info. Do not complain if calling from
-;                 hrz_zeropoint.  
+;                 hrz_zeropoint.
 ;
 ;    2016-10-13 : MGL. Added nframes state keyword.  
 ;
@@ -136,11 +138,10 @@
 ;    2017-12-01 : MGL. Cache states during IDL session. New keyword
 ;                 force.
 ;
-;   2019-07-23 : OA. Renamed to chromis::exctractstates_nodb, from now
-;                on chromis::extractstates is a wrapper around db and
-;                nondb versions.
+;    2019-07-23 : OA. Renamed to chromis::exctractstates_nodb, from
+;                 now on chromis::extractstates is a wrapper around db
+;                 and nondb versions.
 ;
-; 
 ;-
 pro chromis::extractstates_nondb, strings, states $
                             , force = force $

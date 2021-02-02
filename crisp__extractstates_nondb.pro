@@ -24,11 +24,13 @@
 ; 
 ;    strings : in, type=strarr
 ;   
-;      A list of strings from which to extract the states information.
+;        A list of strings from which to extract the states
+;        information.
 ;   
 ;    states : out, optional, type=array(struct)
 ;
-;        An array of structs, containing (partially filled) state information.
+;        An array of structs, containing (partially filled) state
+;        information.
 ; 
 ; 
 ; :Keywords:
@@ -40,7 +42,7 @@
 ;     polcal : in, optional, type=boolean
 ; 
 ;        Set this to add polcal-specific items in the states, qw and
-;        lp. 
+;        lp.
 ; 
 ;     strip_settings : in, optional, type=boolean
 ;
@@ -59,7 +61,6 @@
 ;   2019-07-22 : OA. Renamed to crisp::exctractstates_nodb, from now
 ;                on crisp::extractstates is a wrapper around db and
 ;                nondb versions.
-;   
 ;
 ;-
 pro crisp::extractstates_nondb, strings, states $

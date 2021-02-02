@@ -21,22 +21,24 @@
 ; 
 ;    datasets : in, type=strarr
 ;   
-;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to extract the states information.
+;      A list of datasets ('YYYY-MM-DD HH:MM:SS) for which to
+;      extract the states information. 
 ;   
 ;    states : out, type=array(struct)
 ;
-;        An array of structs, containing (partially filled) state information.
+;        An array of structs, containing (partially filled) state
+;        information. 
 ; 
 ; :History:
 ; 
 ;   2019-07-10 : OA. Created. (Derived from chromis__extractstates and
-;   red_readhead_db)
+;                red_readhead_db)
 ;
 ;   2019-07-11 : MGL. Call like extractstates.
 ;
-;   2020-03-11 : OA. Added check for unique cameras when in the procedure call
-;                filenames(strings) are used instead of datasets. Added
-;                keyword 'cam'.
+;   2020-03-11 : OA. Added check for unique cameras when in the
+;                procedure call filenames(strings) are used instead of
+;                datasets. Added keyword 'cam'.
 ;
 ;-
 pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam

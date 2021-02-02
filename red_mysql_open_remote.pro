@@ -103,7 +103,8 @@ pro red_mysql_open_remote, lun, dbname, error $
 
   spawn, 'ssh reduc@polar.astro.su.se', unit=lun ;have to add error check
   line = ''
-  REPEAT readf, lun, line, format='(a)' UNTIL line EQ 'Use idl_crispred_old to start IDL for running the old crispred pipeline_chromis.'    
+  REPEAT readf, lun, line, format='(a)' UNTIL $
+                line EQ 'Use idl_crispred_old to start IDL for running the old crispred pipeline_chromis.'    
   readf, lun, line, format='(a)'  
   
   cmd = 'mysql '

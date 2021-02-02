@@ -25,38 +25,42 @@
 ; 
 ;    strings : in, type=strarr
 ;   
-;      A list of strings from which to extract the states information.
+;        A list of strings from which to extract the states
+;        information. 
 ;   
 ;    states : out, optional, type=array(struct)
 ;
-;        An array of structs, containing (partially filled) state information.
+;        An array of structs, containing (partially filled) state
+;        information. 
 ; 
 ; 
 ; :Keywords:
 ; 
-;     force : in, optional, type=boolean
-;
-;        Do not use cached states.
-; 
-;     polcal : in, optional, type=boolean
-; 
-;        Set this to add polcal-specific items in the states, qw and
-;        lp. 
-; 
-;     strip_settings : in, optional, type=boolean
-;
-;        Exclude exposure/gain information from the fullstate entries.
-;
 ;     datasets : in, optional, type = strarr
 ;
 ;        List of datasets timestamps to be used instead of list of
 ;        filenames. Can be used only if sst_db is installed.
 ; 
+;     force : in, optional, type=boolean
+;
+;        Do not use cached states.
+; 
+;     nondb : in, optional, type=boolean
+; 
+; 
+;     polcal : in, optional, type=boolean
+; 
+;        Set this to add polcal-specific items in the states, qw and
+;        lp.
+; 
+;     strip_settings : in, optional, type=boolean
+;
+;        Exclude exposure/gain information from the fullstate entries.
+;
 ; 
 ; :History:
 ; 
 ;   2019-07-23 : OA. Created.
-;   
 ;
 ;-
 pro crisp::extractstates, strings, states $

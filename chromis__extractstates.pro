@@ -25,11 +25,13 @@
 ; 
 ;    strings : in, type=strarr
 ;   
-;      A list of strings from which to extract the states information.
+;        A list of strings from which to extract the states
+;        information.
 ;   
 ;    states : out, optional, type=array(struct)
 ;
-;        An array of structs, containing (partially filled) state information.
+;        An array of structs, containing (partially filled) state
+;        information.
 ; 
 ; 
 ; :Keywords:
@@ -50,9 +52,7 @@
 ; 
 ; :History:
 ; 
-;
 ;   2019-07-23 : OA. Created.
-;
 ; 
 ;-
 pro chromis::extractstates, strings, states $

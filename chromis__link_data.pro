@@ -62,9 +62,9 @@
 ;   2016-09-14 : MGL. Modify regex for finding files. Bugfix. Make
 ;                link script executable.
 ; 
-;   2019-07-10 :  OA. Rewritten to use database
+;   2019-07-10 : OA. Rewritten to use database
 ;
-;   2019-07-24 :  OA. Added check for sst_db.
+;   2019-07-24 : OA. Added check for sst_db.
 ;   
 ;-
 pro chromis::link_data, all_data = all_data $

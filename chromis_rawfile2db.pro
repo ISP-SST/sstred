@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Write metadata from an array of structures made in red_rawdir2db procedure into the database.
+; Write metadata from an array of structures made in red_rawdir2db
+; procedure into the database. 
 ; 
 ; :Categories:
 ;
@@ -38,10 +39,10 @@
 ;
 ;   2019-10-07 : OA. Optimized sql queries.
 ;
-;   2020-02-04 : OA. Split red_rawfile2db to crisp_rawfile2d & chromis_rawfile2d.                
-;                Added loop for different exposure/gain settings during a scan
-;                which are transfered in config array.
-;
+;   2020-02-04 : OA. Split red_rawfile2db to crisp_rawfile2d &
+;                chromis_rawfile2d. Added loop for different
+;                exposure/gain settings during a scan which are
+;                transfered in config array.
 ;                               
 ;-
 pro chromis_rawfile2db, dbinfo, config, debug=debug
@@ -57,8 +58,9 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
   ;; Make sure database is open
   red_mysql_check, handle
 
-  ; In rawdir2db this procedure is called in cameras loop, so there is only one unique instrument in the 'dbinfo'
-  ; as well as only one 'DATE_OBS' and one 'CAMERA'
+  ;; In rawdir2db this procedure is called in cameras loop, so there
+  ;; is only one unique instrument in the 'dbinfo' as well as only one
+  ;; 'DATE_OBS' and one 'CAMERA'
   instrument = dbinfo[0].INSTRUME
   camera =  dbinfo[0].CAMERA
   is_wb = strmatch(camera, '*-[WD]')

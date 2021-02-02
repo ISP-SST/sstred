@@ -32,8 +32,9 @@
 ;                red_mysql_check. Set default database.
 ;
 ;   2019-10-08 : OA. Added site check to run mysql client on polar
-;                remotely from La Palma (it's much faster to populate 
+;                remotely from La Palma (it's much faster to populate
 ;                the database this way).
+;
 ;-
 pro red_mysql_check, handle, reopen=reopen, database=database
   

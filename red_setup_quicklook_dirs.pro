@@ -1,5 +1,43 @@
+; docformat = 'rst'
 
-
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;   
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; 
+; 
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+; 
+; 
+; 
+; 
+; 
+;-
 pro red_setup_quicklook_dirs, dates, instruments=instruments, out_dir=out_dir
 
   ;; we are at Alba Nova all data should be located in /data

@@ -1,5 +1,43 @@
+; docformat = 'rst'
 
-
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; 
+; 
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+; 
+; 
+; 
+; 
+; 
+;-
 function red_check_dates_range, dates, range
 
   if ~strmatch(dates,'*:*') and strlen(dates) ne 10 then begin

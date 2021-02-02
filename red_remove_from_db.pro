@@ -1,3 +1,43 @@
+; docformat = 'rst'
+
+;+
+; 
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    
+; 
+; 
+; :Returns:
+; 
+; 
+; :Params:
+; 
+; 
+; 
+; 
+; 
+; 
+; :Keywords:
+; 
+;   
+;   
+;   
+; 
+; 
+; :History:
+; 
+; 
+; 
+; 
+; 
+; 
+;-
 pro red_remove_from_db, date, sets=sets, all=all
 
   red_mysql_check, handle
