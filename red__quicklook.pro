@@ -211,6 +211,7 @@ pro red::quicklook, align = align $
   inam = red_subprogram(/low, calling = inam1)
 
   if n_elements(min_nscan) eq 0 then min_nscan=5
+  if keyword_set(no_plot_r0) then no_display = 1B else no_display = 0B
 
   if n_elements(format) eq 0 then format = 'mp4'
   case format of
@@ -362,7 +363,7 @@ pro red::quicklook, align = align $
       if n_elements(use_pat) gt 0 then begin
 
         ;; use_pat constructed from use_states above
-        files = red_file_search(use_pat, dirs[iset] + '/' + cam, count = Nfiles)
+        files = red_file_search(use_pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
 
       endif else begin
 
@@ -383,7 +384,7 @@ pro red::quicklook, align = align $
               ;; wavelength order so we just have to pick the first and
               ;; last states for each prefilter.
               red_append, pat, ustat_pat[sindx[0]]
-;              red_append, pat, ustat_pat[sindx[-1]]
+              red_append, pat, ustat_pat[sindx[-1]]
               ;; Find and select the core.
               imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
               if Nmatch gt 0 then red_append, pat, ustat_pat[sindx[imatch]]
@@ -392,7 +393,7 @@ pro red::quicklook, align = align $
 
           pat = '*'+pat+'*'
           
-          files = red_file_search(pat, dirs[iset] + '/' + cam, count = Nfiles)
+          files = red_file_search(pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
 
         endif else begin        
 
@@ -436,7 +437,7 @@ pro red::quicklook, align = align $
             ;; wavelength order so we just have to pick the first and
             ;; last states for each prefilter.
             red_append, ustat2, ustat[sindx[ 0]]
-            ;red_append, ustat2, ustat[sindx[-1]]
+            red_append, ustat2, ustat[sindx[-1]]
             ;; Find and select the core.
             imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
             if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
@@ -477,7 +478,7 @@ pro red::quicklook, align = align $
       fn = states[0].filename
       date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
       timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
-      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' ; (less then 8 scans).'
+      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' 
       print,"We do not want to bother with short datasets. Skipping it."
       continue
     endif
@@ -515,7 +516,7 @@ pro red::quicklook, align = align $
           ;; wavelength order so we just have to pick the first and
           ;; last states for each prefilter.
           red_append, ustat2, ustat[sindx[ 0]]
-          ;red_append, ustat2, ustat[sindx[-1]]
+          red_append, ustat2, ustat[sindx[-1]]
           ;; Find and select the core.
           imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
           if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
@@ -927,7 +928,7 @@ pro red::quicklook, align = align $
         shifts = red_aligncube(cube, 5, /center $ ;, cubic = -0.5 $
                                , xbd = round(dim[0]*.9) $
                                , ybd = round(dim[1]*.9) $
-                               , /no_display)
+                               , no_display = no_display)
 
         if Nscans gt 3 then begin
           ;; Outliers?

@@ -152,7 +152,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                               , count = NfilesW)      
         if NfilesW eq 0 then break
 
-        self -> extractstates, fnamesw, states
+        self -> extractstates, fnamesw, states, /nondb 
 
         pindx = uniq(states.prefilter, sort(states.prefilter))
         upref = states[pindx].prefilter

@@ -59,7 +59,8 @@ pro chromis::extractstates, strings, states $
                             , force = force $
                             , strip_settings = strip_settings $
                             , datasets = datasets $
-                            , cam = cam
+                            , cam = cam $
+                            , nondb = nondb
 
   if keyword_set(datasets) then begin ; if we use datasets then we should use the database
     if n_elements(datasets) eq 0 then return
@@ -83,7 +84,7 @@ pro chromis::extractstates, strings, states $
       break 
     endif
   endfor
-  if is_raw and self.db_present then begin ; we can use sst_db only with raw data
+  if is_raw and self.db_present and ~keyword_set(nondb) then begin ; we can use sst_db only with raw data
     self->extractstates_db, strings, states, cam = cam 
   endif else begin
     self->extractstates_nondb, strings, states $
