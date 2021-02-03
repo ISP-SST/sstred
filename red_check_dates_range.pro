@@ -1,7 +1,9 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Check format of input string (should be YYYY-MM-DD:MM-DD).
+; Return an array with rang of dates like
+; [year,month_beg,month_end,day_beg,day_end]
 ; 
 ; :Categories:
 ;
@@ -10,32 +12,22 @@
 ; 
 ; :Author:
 ; 
-;    
+;    Oleksii Andriienko, ISP
 ; 
 ; 
 ; :Returns:
-; 
+;
+;    An integer array like [year,month_beg,month_end,day_beg,day_end]
 ; 
 ; :Params:
 ; 
+;    dates : in, type = str
 ; 
-; 
-; 
-; 
-; 
-; :Keywords:
-; 
-;   
-;   
-;   
-; 
+;      Dates in format YYYY-MM-DD:MM-DD or YYYY-MM-DD
 ; 
 ; :History:
 ; 
-; 
-; 
-; 
-; 
+;    2020-06-20 : OA. First version.
 ; 
 ;-
 function red_check_dates_range, dates, range
@@ -48,11 +40,11 @@ function red_check_dates_range, dates, range
   if strlen(dates) eq 10 then begin ;just one date
     dt = strsplit(dates,'-',/extract)
     if n_elements(dt) ne 3 then begin
-      print,'Date should be in YYYY-MM-DT format.'
+      print,'Date should be in YYYY-MM-DD format.'
       return,0
     endif
     if strlen(dt[0]) ne 4 or strlen(dt[1]) ne 2 or strlen(dt[2]) ne 2 then begin
-      print,'Date should be in YYYY-MM-DT format.'
+      print,'Date should be in YYYY-MM-DD format.'
       return,0
     endif
     year = dt[0]
@@ -63,23 +55,23 @@ function red_check_dates_range, dates, range
       print,'There is no data for ', dates, ' day.'
       return,0
     endif
-    range = [fix(dt[0]), fix(dt[1]), fix(dt[1]), fix(dt[2]), fix(dt[2])]
+    range = [fix(year), fix(month), fix(month), fix(day), fix(day)]
     return,1
     
   endif else begin
 
     yy = strsplit(dates,':',/extract)
     if strlen(yy[0]) ne 10 or strlen(yy[1]) ne 5 then begin
-      print,'Date should be in YYYY-MM-DT format.'
+      print,'Date should be in YYYY-MM-DD format.'
       return,0
     endif
     dt = strsplit(yy[0],'-',/extract)
     if n_elements(dt) ne 3 then begin
-      print,'Dates range should be in YYYY-MM-DT:MM-DT format.'
+      print,'Dates range should be in YYYY-MM-DD:MM-DD format.'
       return,0
     endif
     if strlen(dt[0]) ne 4 or strlen(dt[1]) ne 2 or strlen(dt[2]) ne 2 then begin
-      print,'Dates range should be in YYYY-MM-DT:MM-DT format.'
+      print,'Dates range should be in YYYY-MM-DD:MM-DD format.'
       return,0
     endif
     year = dt[0]
@@ -88,11 +80,11 @@ function red_check_dates_range, dates, range
 
     dt = strsplit(yy[1],'-',/extract)
     if n_elements(dt) ne 2 then begin
-      print,'Dates range should be in YYYY-MM-DT:MM-DT format.'
+      print,'Dates range should be in YYYY-MM-DD:MM-DD format.'
       return,0
     endif
     if strlen(dt[0]) ne 2 or strlen(dt[1]) ne 2 then begin
-      print,'Dates range should be in YYYY-MM-DT:MM-DT format.'
+      print,'Dates range should be in YYYY-MM-DD:MM-DD format.'
       return,0
     endif
     month_end = fix(dt[0])

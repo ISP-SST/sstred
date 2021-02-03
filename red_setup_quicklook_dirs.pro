@@ -1,41 +1,38 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; It checks if there are observations for a given range of dates and creates
+; directories for quicklooks.
 ; 
 ; :Categories:
 ;
-;    SST pipeline
-; 
+;    SST pipeline 
 ; 
 ; :Author:
 ; 
-;   
-; 
-; 
-; :Returns:
-; 
+;    Oleksii Andriienko, ISP
 ; 
 ; :Params:
 ; 
+;    dates : in, type = str
 ; 
-; 
-; 
-; 
+;      Dates in format YYYY-MM-DD:MM-DD or YYYY-MM-DD 
 ; 
 ; :Keywords:
 ; 
+;    instruments : in, optional, type=string
 ;   
-;   
-;   
+;      Instruments for which quicklooks will be created
+;
+;    out_dir : in, optional, type=string
+;
+;      The base directory in which directories for quicklooks will be
+;      created.
 ; 
 ; 
 ; :History:
 ; 
-; 
-; 
-; 
-; 
+;     2020-06-20 : OA. First version.
 ; 
 ;-
 pro red_setup_quicklook_dirs, dates, instruments=instruments, out_dir=out_dir

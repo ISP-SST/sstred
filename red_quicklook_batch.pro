@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Create quicklooks for a range of dates.
 ; 
 ; :Categories:
 ;
@@ -10,32 +10,32 @@
 ; 
 ; :Author:
 ; 
-;   
-; 
-; 
-; :Returns:
-; 
+;    Oleksii Andriienko, ISP   
 ; 
 ; :Params:
 ; 
+;    dates : in, type = str
 ; 
-; 
-; 
-; 
+;       Dates in format YYYY-MM-DD:MM-DD or YYYY-MM-DD 
 ; 
 ; :Keywords:
 ; 
+;    work_dir : in, optional, type=string
 ;   
-;   
-;   
+;       Base directory where directories for quicklooks were created.
+;
+;    overwrite : in, optional, type=boolean
+;
+;       Overwrite existing quicklooks.
+;
+;    min_nscan : in, optional, type=integer
+;
+;       Minimal number of scans in a data set.
 ; 
 ; 
 ; :History:
 ; 
-; 
-; 
-; 
-; 
+;     2020-06-20 : OA. First version. 
 ; 
 ;-
 pro red_quicklook_batch, dates, work_dir = work_dir, overwrite = overwrite, min_nscan = min_nscan
@@ -76,7 +76,7 @@ pro red_quicklook_batch, dates, work_dir = work_dir, overwrite = overwrite, min_
       nthreads=20
       if file_test(dir + 'CHROMIS') then begin
         cd, dir + 'CHROMIS'
-        a = chromisred("config.txt", /develop)
+        a = chromisred("config.txt")
         obs_dirs = file_search(root_dir + 'CHROMIS-data/*')
         Ndirs = n_elements(obs_dirs)
         if  Ndirs eq 0 then begin
@@ -108,7 +108,7 @@ pro red_quicklook_batch, dates, work_dir = work_dir, overwrite = overwrite, min_
 
       if file_test(dir + 'CRISP') then begin
         cd, dir + 'CRISP'
-        a = crispred("config.txt", /develop)
+        a = crispred("config.txt")
         obs_dirs = file_search(root_dir + 'Science/*')
         Ndirs = n_elements(obs_dirs)
         if  Ndirs eq 0 then begin
@@ -132,7 +132,7 @@ pro red_quicklook_batch, dates, work_dir = work_dir, overwrite = overwrite, min_
             continue
           endif
           a->quicklook, datasets = time_stamps[idir], /core_and_wings, /destretch, /neuralnet, $
-                        min_nscan = min_nscan, /no_plot_r0, overwrite = overwrite ;, /cube_save
+                        min_nscan = min_nscan, /no_plot_r0, overwrite = overwrite, /cube_save
         endfor
         cd, '..'
         undefine,a
