@@ -707,16 +707,16 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;; Flats
   fdirs = file_search(old_dir+'/flats*', count = Nfdirs)
-;  for idir = 0, Nfdirs-1 do begin
-  if file_test(old_dir+'/flats', /directory) then begin
+;    if file_test(old_dir+'/flats', /directory) then begin
+  for idir = 0, Nfdirs-1 do begin
     ffiles = file_search(old_dir+'/'+fdirs[idir]+'/cam*[0-9].flat.fits', count = Nfiles)
     if Nfiles gt 0 then begin
       file_mkdir, work_dir+'/'+fdirs[idir]
       file_copy, ffiles, work_dir+'/'+fdirs[idir]+'/', /overwrite
       print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/'+fdirs[idir]+'/'
     endif
-   endif
-;  endfor                        ; idir
+  endfor                        ; idir
+;   endif
 
   ;; Pinholes
   if file_test(old_dir+'/pinhs', /directory) then begin
