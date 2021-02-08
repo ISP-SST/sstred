@@ -64,6 +64,11 @@
 ;   
 ;       Number of threads to use during the interpolation
 ;
+;    unrotated_shifts : in, optional, type=array
+;
+;        Array of 2 elements or distorsion grid measured before
+;        derrotating the images.
+;
 ; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
@@ -92,6 +97,9 @@
 ;                in this interpolation so all corrections are 
 ;                applied at once. Use our own interpolation routines.
 ;
+;   2021-02-07 : JdlCR. Introduced unrotated_shifts, in order to
+;                apply shifts that were measured before derotation.
+;
 ; 
 ;-
 function red_rotation, img, angle, sdx, sdy $
@@ -100,11 +108,13 @@ function red_rotation, img, angle, sdx, sdy $
                        , stretch_grid = stretch_grid $
                        , nthreads = nthreads $
                        , nearest = nearest $
-                       , stretch_matrix = stretch_matrix
+                       , stretch_matrix = stretch_matrix $
+                       , unrotated_shifts = unrotated_shifts
 
   if n_elements(sdx) eq 0 then sdx = 0.0
   if n_elements(sdy) eq 0 then sdy = 0.0
-
+  if n_elements(unrotated_shifts) eq 0 then unrotated_shifts = [0,0]
+  
   if n_elements(background) eq 0 then background = median(img)
   
   dim = size(img, /dim)
@@ -155,41 +165,14 @@ function red_rotation, img, angle, sdx, sdy $
     
 
     return, red_rotshift(ima, angle, sdx, sdy, background = background, stretch_grid = stretch_grid $
-                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
+                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix $
+                         , original_dimensions = dim, unrotated_shifts = unrotated_shifts)
     
   endif else begin
 
-    ;; Old mechanisms
-    
-    ;; xsi = dim[0] * 0.5
-    ;; ysi = dim[1] * 0.5
-    
-    ;; ;; Get the index of each matrix element and create an array for the
-    ;; ;; output image.
-    ;; xgrid = dindgen(dim[0]) # (dblarr(dim[1]) + 1.0d)
-    ;; ygrid = (dblarr(dim[0]) + 1.0d) # dindgen(dim[1])
-    
-    
-    ;; ;; Add destretch grid correction
-    
-    ;; if(n_elements(stretch) ne 0) then begin
-    ;;   smat = red_get_full_stretch_matrix(dim[0], dim[1], stretch, original_size=dim, /only_shifts)
-    ;;   smatx = smat[*,*,0]; - xgrid 
-    ;;   smaty = smat[*,*,1]; - ygrid
-    ;; endif else begin
-    ;;   smatx = xgrid*0
-    ;;   smaty = ygrid*0
-    ;; endelse
-    ;; ;; Make the size of the rotated image the same as the original image
-
-    ;; dx = cos(angle) * (xgrid - xsi - sdx + smatx) - sin(angle) * (ygrid - ysi - sdy + smaty) + xsi 
-    ;; dy = sin(angle) * (xgrid - xsi - sdx + smatx) + cos(angle) * (ygrid - ysi - sdy + smaty) + ysi
-    ;; ;;ima = img
-
-    ;; return, red_interpolate2D(xgrid[*,0], reform(ygrid[0,*]), img, dx, dy, nthreads=nthreads, nearest = nearest)
-    
     return, red_rotshift(img, angle, sdx, sdy, background = background, stretch_grid = stretch_grid $
-                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix, original_dimensions = dim)
+                         , nthreads=nthreads, nearest = nearest, stretch_matrix = stretch_matrix $
+                         , original_dimensions = dim, unrotated_shifts = unrotated_shifts)
     
   endelse
 end
