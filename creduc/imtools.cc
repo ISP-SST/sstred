@@ -166,6 +166,12 @@ void bilint2D(int const ny, int const nx, double* __restrict__ y, double* __rest
   }// pragma
 
   // --- Do interpolation --- //
+
+  double const yy0 = y[0];
+  double const yy1 = y[ny-1];
+  double const xx0 = x[0];
+  double const xx1 = x[nx-1];
+
   
 #pragma omp parallel default(shared) firstprivate(jj,ii,ixx,iyy,idx,idy,tt,cc) num_threads(nthreads)  
   {
@@ -176,25 +182,24 @@ void bilint2D(int const ny, int const nx, double* __restrict__ y, double* __rest
 	// --- If the pixel is out of bounds, force coefficients at the edge --- //
 	ixx = xx[jj][ii], iyy = yy[jj][ii];
 	
-	if((ixx < x[0]) || (ixx > x[nx-1]) || (iyy < y[0]) || (iyy > y[ny-1])) res[jj][ii] = missing;
-	else{ // pixel inside data bounds
-	  
-	  //ixx = std::min<double>(std::max<double>(xx[jj][ii],x[0]*1.0000000001),x[nx-1]*0.999999999999);
-	  //iyy = std::min<double>(std::max<double>(yy[jj][ii],y[0]*1.0000000001),y[ny-1]*0.999999999999);
+	if((ixx < xx0) || (ixx > xx1) || (iyy < yy0) || (iyy > yy1)){
+	  res[jj][ii] = missing;
+	}else{ // pixel inside data bounds
+
 	  idx = 0, idy = 0;
 	  
 	  
 	  // --- bracket coordinates --- //
 	  
 	  for( tt=0; tt<nyy; ++tt){
-	    if((iyy >= y[tt]) && (iyy < y[tt+1])){
+	    if((iyy >= y[tt]) && (iyy <= y[tt+1])){
 	      idy = tt;
 	      break;
 	    } // if
 	  }
 	  
 	  for( tt=0; tt<nxx; ++tt){
-	    if((ixx >= x[tt]) && (ixx < x[tt+1])){
+	    if((ixx >= x[tt]) && (ixx <= x[tt+1])){
 	      idx = tt;
 	      break;
 	    } // if
