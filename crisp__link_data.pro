@@ -123,13 +123,7 @@ pro crisp::link_data, all_data = all_data $
 
       cam = cams[icam]
       detector = self->getdetector( cam )
-      iswb = strmatch(cam,'*-[DW]')
-
-      inn = where(sts.camera eq cam)
-      if n_elements(inn) eq 1 then if inn eq -1 then continue ; skipping the camera
-      states = sts(inn)
-
-      files = states.filename      
+      iswb = strmatch(cam,'*-[DW]')      
 
       if self.db_present then begin
         inn = where(sts.camera eq cam)
