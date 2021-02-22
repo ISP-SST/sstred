@@ -165,7 +165,8 @@ pro crisp::make_nb_cube, wcfile $
                          , clips = clips $
                          , cmap_fwhm = cmap_fwhm $
                          , integer = integer $
-                         , intensitycorrmethod = intensitycorrmethod $
+                         , intensitycorrmethod = intensitycorrmethod $ 
+                         , nearest = nearest $
                          , nocavitymap = nocavitymap $
                          , nocrosstalk = nocrosstalk $
                          , noflipping = noflipping $
@@ -174,7 +175,7 @@ pro crisp::make_nb_cube, wcfile $
                          , noremove_periodic = noremove_periodic $
                          , nostretch = nostretch $
                          , notimecor = notimecor $
-;                         , nthreads = nthreads $
+                         , nthreads = nthreads $
                          , odir = odir $
                          , overwrite = overwrite $
                          , redemodulate = redemodulate $
@@ -182,9 +183,7 @@ pro crisp::make_nb_cube, wcfile $
 ;                         , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
-                         , wbsave = wbsave $
-                         , nearest = nearest $
-                         , nthreads = nthreads 
+                         , wbsave = wbsave
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -1327,7 +1326,8 @@ pro crisp::make_nb_cube, wcfile $
                               , /noflip $
                               , missing_type = 'nan'
   endif
-  
+
+    
   if keyword_set(integer) then begin
     self -> fitscube_integer, filename $
                               , /delete $
