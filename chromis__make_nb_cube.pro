@@ -134,18 +134,18 @@ pro chromis::make_nb_cube, wcfile $
                            , cmap_fwhm = cmap_fwhm $
                            , integer = integer $
                            , intensitycorrmethod = intensitycorrmethod $
+                           , nearest = nearest $
                            , noaligncont = noaligncont $
                            , nocavitymap = nocavitymap $
                            , noflipping = noflipping $
                            , nomissing_nans = nomissing_nans $
                            , nostretch = nostretch $
+                           , nthreads = nthreads $
                            , notimecor = notimecor $
                            , odir = odir $
                            , overwrite = overwrite $
                            , tiles = tiles $
-                           , wbsave = wbsave $
-                           , nearest = nearest $
-                           , nthreads = nthreads
+                           , wbsave = wbsave
 
   
   ;; Name of this method
