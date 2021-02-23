@@ -861,7 +861,10 @@ pro crisp::make_nb_cube, wcfile $
   self -> headerinfo_addstep, hdr $
                               , prstep = 'CONCATENATION' $
                               , prpara = prpara $
-                              , prproc = inam
+                              , prproc = inam $
+                              , prref = 'Align reference: '+wcfile $
+                              , comment_prref = 'WB cube file name'
+
 
   self -> headerinfo_addstep, hdr $
                               , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
