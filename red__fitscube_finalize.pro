@@ -303,7 +303,7 @@ pro red::fitscube_finalize, filename $
 
   if ~keyword_set(no_checksum) and ~keyword_set(no_write) then begin
     red_fitscube_checksums, filename
-    if do_spectral then red_fitscube_checksums, spfilename
+    if do_spectral then red_fitscube_checksums, indir+spfile
     ;; Don't modify the file(s) after adding datasum and checksum!
   endif
 
