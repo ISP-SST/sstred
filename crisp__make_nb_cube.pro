@@ -862,7 +862,7 @@ pro crisp::make_nb_cube, wcfile $
                               , prstep = 'CONCATENATION' $
                               , prpara = prpara $
                               , prproc = inam $
-                              , prref = 'Align reference: '+wcfile $
+                              , prref = 'Align reference: '+file_basename(wcfile) $
                               , comment_prref = 'WB cube file name'
 
 
