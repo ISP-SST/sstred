@@ -84,7 +84,7 @@ pro red::headerinfo_addstep, header $
                              , prmode = prmode $
                              , prpara = prpara $
                              , prproc = prproc $
-                             , prref = prref $
+                             , prref = prref_in $
                              , prstep = prstep_in $
                              , version = version
 
