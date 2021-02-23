@@ -395,7 +395,7 @@ pro chromis::make_nb_cube, wcfile $
                               , prstep = 'CONCATENATION' $
                               , prpara = prpara $
                               , prproc = inam $
-                              , prref = 'Align reference: '+file_basename(wcfile) $
+                              , prref = 'Align reference: '+wcfile $
                               , comment_prref = 'WB cube file name'
 
   self -> headerinfo_addstep, hdr $

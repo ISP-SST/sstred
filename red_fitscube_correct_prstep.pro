@@ -194,7 +194,7 @@ pro red_fitscube_correct_prstep, filename $
         if n_elements(prrefs) eq 0 then anchor = 'PRPARA'+strtrim(istep+1, 2) else anchor = prrefs[-1]
         stp = strtrim(istep+1, 2) + chars[ichar]
         red_fitsaddkeyword, header, 'PRREF'+stp $
-                            , 'Align reference: '+file_basename(wcfile) $
+                            , 'Align reference: '+wcfile $
                             , 'WB cube file name' $
                             , anchor = anchor
       endif
