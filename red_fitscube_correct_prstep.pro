@@ -35,6 +35,9 @@
 ; 
 ;    2020-05-12 : MGL. First version.
 ; 
+;    2021-02-23 : MGL. Make sure there is a PRREF for make_nb_cube
+;                 step with the WB cube file name.
+; 
 ;-
 pro red_fitscube_correct_prstep, filename $
                                  , header = header $
@@ -48,7 +51,7 @@ pro red_fitscube_correct_prstep, filename $
   header = headfits(filename)
 
   prsteps = fxpar(header, 'PRSTEP*', count = Nsteps, comment = prstep_comments)
-  prmodes = fxpar(header, 'PRMODE*', count = Nsteps, comment = prmode_comments)
+  prmodes = fxpar(header, 'PRMODE*', count = Nmodes, comment = prmode_comments)
   
   ;; Loop through steps (starting from 1)
   for istep = 0, Nsteps-1 do begin
@@ -60,7 +63,7 @@ pro red_fitscube_correct_prstep, filename $
     if Nproc eq 0 then prproc = ''
     
         
-    case strtrim(prsteps[istep], 2)of
+    case strtrim(prsteps[istep], 2) of
 
       'Gain making' : begin 
         if prproc eq 'red::make_intdif_gains' then begin
@@ -172,6 +175,31 @@ pro red_fitscube_correct_prstep, filename $
       message, /info, 'PRPROC'+strtrim(istep+1, 2)+' : ' + prproc
     endif
 
+    if strmatch(prproc, '*::make_nb_cube') then begin
+      ;; We want to make sure there is a PRREF keyword with the WB
+      ;; cube name. We can get that from PRPARA.
+      chars = ['', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+      for ichar = 0, n_elements(chars)-1 do begin
+        tmp = fxpar(header, 'PRREF'+strtrim(istep+1, 2)+chars[ichar], count = Nref)
+        if Nref eq 0 then break
+        red_append, prrefs, tmp
+      endfor                    ; ichar
+      if n_elements(prrefs) eq 0 || max(strmatch(prrefs, 'Align reference:*')) eq 0 then begin
+        ;; No match, we need to generate an appropriate keyword
+        prpara = fxpar(header, 'PRPARA'+strtrim(istep+1, 2), count = Nparas, comment = prpara_comments)
+        if Nparas eq 0 then stop
+        prpara = json_parse(prpara)
+        if ~prpara.haskey('WCFILE') then stop
+        wcfile = prpara['WCFILE']
+        if n_elements(prrefs) eq 0 then anchor = 'PRPARA'+strtrim(istep+1, 2) else anchor = prrefs[-1]
+        stp = strtrim(istep+1, 2) + chars[ichar]
+        red_fitsaddkeyword, header, 'PRREF'+stp $
+                            , 'Align reference: '+file_basename(wcfile) $
+                            , 'WB cube file name' $
+                            , anchor = anchor
+      endif
+    endif
+    
     ;; Rewrite the keyword in the header
     fxaddpar, header, 'PRSTEP'+strtrim(istep+1, 2), prsteps[istep], strtrim(prstep_comments[istep], 2)
     
