@@ -46,12 +46,16 @@ pro red_fitscube_correct_prstep, filename $
 
   ;; Name of this subprogram
   inam = red_subprogram(/low, calling = inam1)
-
+  
   ;; Read the header
   header = headfits(filename)
 
   prsteps = fxpar(header, 'PRSTEP*', count = Nsteps, comment = prstep_comments)
   prmodes = fxpar(header, 'PRMODE*', count = Nmodes, comment = prmode_comments)
+
+  ;; This subroutine should not be run on exported files. Maybe check
+  ;; for that here and return if it is?
+  
   
   ;; Loop through steps (starting from 1)
   for istep = 0, Nsteps-1 do begin
@@ -184,8 +188,29 @@ pro red_fitscube_correct_prstep, filename $
         if Nref eq 0 then break
         red_append, prrefs, tmp
       endfor                    ; ichar
+
       if n_elements(prrefs) eq 0 || max(strmatch(prrefs, 'Align reference:*')) eq 0 then begin
         ;; No match, we need to generate an appropriate keyword
+        make_prref = 1
+      endif else begin
+        ;; Does the (last) align reference include a directory? It
+        ;; should, unless this is an exported file (in which case this
+        ;; subroutine should not have been run on it. Maybe check for
+        ;; that at entry?).
+        indx = where(strmatch(header, '*Align reference:*'), Nwhere)
+        key = strtrim((strsplit(header[indx[-1]], '=', /extract))[0], 2)
+        wcfile = red_strreplace(fxpar(header, key), 'Align reference: ', '')
+        if file_dirname(wcfile) eq '.' then begin
+          ;; Remove it and make a new one below
+          red_fitsdelkeyword, header, key
+          make_prref = 1
+        endif else begin
+          make_prref = 0
+        endelse
+      endelse
+
+      if make_prref then begin
+        ;; Make the PRREF if needed
         prpara = fxpar(header, 'PRPARA'+strtrim(istep+1, 2), count = Nparas, comment = prpara_comments)
         if Nparas eq 0 then stop
         prpara = json_parse(prpara)
@@ -199,10 +224,10 @@ pro red_fitscube_correct_prstep, filename $
                             , anchor = anchor
       endif
     endif
-    
-    ;; Rewrite the keyword in the header
-    fxaddpar, header, 'PRSTEP'+strtrim(istep+1, 2), prsteps[istep], strtrim(prstep_comments[istep], 2)
-    
+  
+  ;; Rewrite the keyword in the header
+  fxaddpar, header, 'PRSTEP'+strtrim(istep+1, 2), prsteps[istep], strtrim(prstep_comments[istep], 2)
+  
   endfor                        ; istep
 
   if keyword_set(nowrite) then begin
