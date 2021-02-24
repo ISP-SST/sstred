@@ -97,22 +97,32 @@
 ;   2020-07-15 : MGL. Remove keyword no_spectral_file, add keyword
 ;                do_spectral_file. 
 ; 
+;   2020-07-15 : MGL. Recursively finalize also the matching WB cube.
+; 
 ;-
 pro red::fitscube_finalize, filename $
                             , do_spectral_file = do_spectral_file $
                             , header = hdr $
-                            , old_header = oldhdr $
-                            , spectral_header = sphdr $
-                            , old_spectral_header = oldsphdr $
                             , help = help $
                             , keywords = keywords $
                             , no_checksum = no_checksum $
+                            , no_wbcube = no_wbcube $
                             , no_write = no_write $
+                            , old_header = oldhdr $
+                            , old_spectral_header = oldsphdr $
+                            , old_wb_header = oldwbhdr $
+                            , release_comment = RELEASEC $
                             , release_date = RELEASE $
-                            , release_comment = RELEASEC
+                            , spectral_header = sphdr $
+                            , wb_header = wbhdr
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
+
+  ;; We could look for PRPROCn eq 'red::fitscube_finalize' in the
+  ;; header and if we find it show the PRREFn date and ask if we want
+  ;; to finalize again.
+  
   ;; Make prpara
   red_make_prpara, prpara, keywords     
   red_make_prpara, prpara, do_spectral_file      
@@ -213,8 +223,7 @@ pro red::fitscube_finalize, filename $
   ;; Proprietary data?
   if n_elements(RELEASE) eq 0 then begin
     s = ''
-    print, inam + ' : No release date given. Mark as "Not proprietary"? [Yn]'
-    read, s
+    read, inam + ' : No release date given. Mark as "Not proprietary"? [Yn]', s
     if s eq '' then s = 'Y'
     if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
       RELEASE = ''
@@ -300,14 +309,65 @@ pro red::fitscube_finalize, filename $
     endif
   endif
 
-
   if ~keyword_set(no_checksum) and ~keyword_set(no_write) then begin
     red_fitscube_checksums, filename
     if do_spectral then red_fitscube_checksums, indir+spfile
     ;; Don't modify the file(s) after adding datasum and checksum!
   endif
+  
+  if ~keyword_set(no_wbcube) then begin
+    ;; Get wb file name from the last PRREF keyword with an align
+    ;; reference. (If this is a NB cube!)
+    indx = where(strmatch(hdr, '*Align reference:*'), Nwhere)
+    if Nwhere gt 0 then begin
+      key = strtrim((strsplit(hdr[indx[-1]], '=', /extract))[0], 2)
+      wcfile = red_strreplace(fxpar(hdr, key), 'Align reference: ', '')
+      if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
+      ;; Recursively call fitscube_finalize with the wb cube name and
+      ;; many of the origial keywords.
+      self -> fitscube_finalize, wcfile $
+                                 , header = wbhdr $
+                                 , keywords = keywords $
+                                 , no_checksum = no_checksum $
+                                 , /no_wbcube $
+                                 , no_write = no_write $
+                                 , old_header = oldwbhdr $
+                                 , release_comment = RELEASEC $
+                                 , release_date = RELEASE
+    endif
+  endif
 
 end
+
+
+a = crispred(/dev)
+
+nname = 'cubes_nb/nb_6302_2016-09-19T09:30:20_scans=2,3_stokes_corrected_im.fits'
+
+
+h = headfits(nname)
+hgrep, h, 'Align reference:'
+
+stop
+
+a -> fitscube_finalize, nname
+
+h = headfits(nname)
+hgrep, h, 'Align reference:'
+
+
+
+stop
+
+wname = 'cubes_wb/wb_6302_2016-09-19T09:30:20_scans=0-43_corrected_im.fits'
+
+h1 = headfits(wname)
+
+a -> fitscube_finalize, wname
+
+h2 = headfits(wname)
+
+stop
 
 ;; Code for testing. Test only with smaller cubes because we have to
 ;; read the entire cube before calling fits_test_checksum below.
