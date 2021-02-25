@@ -902,7 +902,7 @@ pro crisp::make_nb_cube, wcfile $
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
   if keyword_set(wbsave) then begin
-    wbfilename = strreplace(filename, 'nb_', 'wbalign_')
+    wbfilename = red_strreplace(filename, 'nb_', 'wbalign_')
     wbdims = [Nx, Ny, Ntuning, 1, Nscans] 
     wbhdr = hdr
     self -> fitscube_initialize, wbfilename, wbhdr, wblun, wbfileassoc, wbdims 
