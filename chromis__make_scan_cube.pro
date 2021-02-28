@@ -820,11 +820,12 @@ pro chromis::make_scan_cube, dir $
                                     , comment = 'Average time of observation' $
                                     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                     , axis_numbers = [3] 
-    self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
-                                    , anchor = anchor $
-                                    , comment = 'Applied response function' $
-                                    , keyword_method = 'mean' $
-                                    , axis_numbers = [3] 
+;    self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
+;                                    , anchor = anchor $
+;                                    , comment = 'Applied response function' $
+;                                    , keyword_method = 'mean' $
+;                                    , axis_numbers = [3] 
+    red_fitscube_addrespappl, filename, prefilter_curve, /tun
     
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
     if Nt gt 0 then begin

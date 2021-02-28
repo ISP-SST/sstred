@@ -411,9 +411,20 @@ pro red::fitscube_intensitycorr, filename $
                               , prproc = inam $
                               , prmode = prmode
 
+ 
+  
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
 
+  ;; The applied correction should be saved as a variable keyword
+  ;; RESPAPPL (APPLied RESPonse function).
+;  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', correction $
+;                                  , anchor = anchor $
+;                                  , comment = 'Mean of applied response function' $
+;                                  , keyword_method = 'mean' $
+;                                  , axis_numbers = [5] 
+  red_fitscube_addrespappl, filename, correction, /scans, /update
+  
   ;; For scan cubes, do it also for the WB image.
   fits_info, filename, /SILENT , N_ext = n_ext, EXTNAME=extnames
   if n_ext gt 0 && round(total(strmatch(strtrim(extnames,2),'WBIMAGE'))) eq 1 then begin

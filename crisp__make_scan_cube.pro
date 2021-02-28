@@ -79,7 +79,7 @@
 ;       Do not correct the (polarimetric) data cube Stokes components
 ;       for crosstalk from I to Q, U, V.
 ; 
-;     norotate : in, optional, type=boolean
+;     norotation : in, optional, type=boolean
 ;
 ;       Do not apply the direction parameter.
 ;
@@ -912,22 +912,24 @@ pro crisp::make_scan_cube, dir $
                                     , comment = 'Average time of observation' $
                                     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                     , axis_numbers = [3] 
-    self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
-                                    , anchor = anchor $
-                                    , comment = 'Applied (combined) response function' $
-                                    , keyword_method = 'mean' $
-                                    , axis_numbers = [3] 
-    
+;    self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
+;                                    , anchor = anchor $
+;                                    , comment = 'Applied (combined) response function' $
+;                                    , keyword_method = 'mean' $
+;                                    , axis_numbers = [3] 
+    red_fitscube_addrespappl, filename, prefilter_curve, /tun
+
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
     if Nt gt 0 then begin
+      stop
       self -> fitscube_addvarkeyword, filename, 'ATMOS_R0' $
                                       , metadata_r0[*, tindx_r0] $
                                       , comment = 'Atmospheric coherence length' $
                                       , tunit = 'm' $
-                                      , extra_coordinate1 = [24, 8] $                ; WFS subfield sizes 
-                                      , extra_labels      = ['WFSZ'] $               ; Axis labels for metadata_r0
-                                      , extra_names       = ['WFS subfield size'] $  ; Axis names for metadata_r0
-                                      , extra_units       = ['pix'] $                ; Axis units for metadata_r0
+                                      , extra_coordinate1 = [24, 8] $ ; WFS subfield sizes 
+                                      , extra_labels      = ['WFSZ'] $ ; Axis labels for metadata_r0
+                                      , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
+                                      , extra_units       = ['pix'] $               ; Axis units for metadata_r0
                                       , keyword_value = mean(metadata_r0[1, tindx_r0]) $
                                       , time_coordinate = time_r0[tindx_r0] $
                                       , time_unit       = 's'

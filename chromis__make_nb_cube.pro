@@ -908,11 +908,12 @@ pro chromis::make_nb_cube, wcfile $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
-  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
-                                  , anchor = anchor $
-                                  , comment = 'Applied response function' $
-                                  , keyword_method = 'mean' $
-                                  , axis_numbers = [3] 
+;  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
+;                                  , anchor = anchor $
+;                                  , comment = 'Applied response function' $
+;                                  , keyword_method = 'mean' $
+;                                  , axis_numbers = [3] 
+  red_fitscube_addrespappl, filename, prefilter_curve, /tun
 
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $
