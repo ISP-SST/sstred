@@ -67,6 +67,10 @@
 ;       keywords) will be ignored and the information will be
 ;       collected from this file instead.
 ;
+;   update : in, optional, type=boolean
+;
+;       If the keyword already exists, update it.
+;
 ;   _ref_extra :  in, optional
 ;
 ;       Any extra keywords are used when positioning keywords in the
@@ -86,6 +90,8 @@
 ; 
 ;   2018-06-13 : MGL. New keyword keyword_method. Allow keyword
 ;                positioning keywords. 
+; 
+;   2021-02-26 : MGL. New keyword update.
 ; 
 ; 
 ;-
@@ -107,6 +113,7 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
                                 , time_coordinate        = time_coordinate $
                                 , time_delta             = time_delta $
                                 , time_unit              = time_unit $
+                                , update                 = update $
                                 , wavelength_coordinates = wavelength_coordinates $
                                 , wavelength_delta       = wavelength_delta $
                                 , wavelength_units       = wavelength_units $
@@ -119,12 +126,27 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
   ;; The header
   hdr = headfits(filename) 
 
+  existing_keywords = red_fits_var_keys(hdr, extensions = existing_extensions, count = count)
+  if count gt 0 && max(keyword_name eq existing_keywords) then begin
+    if ~keyword_set(update) then begin
+      print, inam + ' : Keyword '+keyword_name+' is already a variable keyword.'
+      print, inam + ' : Call with /update if you want to overwrite it.'
+      stop
+    endif else do_update = 1    ; We will need to update the keyword
+  endif
+  
+  
   ;; If the main header doesn't have the EXTEND keyword, add it now.
   red_fitsaddkeyword, hdr, 'EXTEND', !true, 'The file has extension(s).'
 
   if n_elements(old_filename) gt 0 then begin
     ;; We will copy the variable keyword from this file.
 
+    if keyword_set(do_update) then begin
+      print, inam + ' : Updating is not implemented for copying from another file.'
+      stop
+    endif
+    
     ;; Read the values
     value = red_fitsgetkeyword(old_filename, keyword_name, comment = comment $
                                , variable_values = variable_values)
@@ -135,8 +157,8 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
     old_keywords = red_fits_var_keys(old_hdr, extensions = extensions)
     
     matches = old_keywords eq keyword_name
-    if max(matches) eq 0 then stop   ; This is not a variable-keyword
-    if total(matches) gt 1 then stop ; There should only be a single match!
+    if max(matches) eq 0 then stop     ; This is not a variable-keyword
+    if total(matches) gt 1 then stop   ; There should only be a single match!
 
     ;; The new file main header
     hdr = headfits(filename) 
@@ -153,7 +175,7 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
     ;; Open the old binary extension and transfer header and data to
     ;; an extension in the new file.
     fxbopen,   olun, old_filename, new_extension, bdr
-    fxbcreate, blun, filename, bdr                 ; Create the extension in the file
+    fxbcreate, blun, filename, bdr ; Create the extension in the file
 
     ;; Find the columns in the extension, transfer them to the new file
     fxbfind, olun, 'TTYPE', column_numbers, column_names, Ncolumns
@@ -242,11 +264,6 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
                                , var_keys = var_keys)
   if var_keys eq '' then stop
 
-  
-  ;; Make the binary extension header
-  fxbhmake, bdr, 1, extension_name $
-            , 'Variable keyword, '+association+' assoc.'
-
   
 ;  ;; Set the var_keys FITS header keyword. 
 ;  var_keys = fxpar(hdr, 'VAR_KEYS', count = Nmatch, comment = comment)
@@ -327,16 +344,26 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
 ;
 ;  endelse
 
-  red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'  
-
-  ;; Write the modified header 
-  modfits, filename, 0, hdr
-
+ 
   
   ;;
   case association of
     
     'coordinate-tabulated' : begin
+      
+      if keyword_set(do_update) then begin
+        print, inam + ' : Updating is not implemented for coordinate-tabulated keywords.'
+        stop
+      endif
+  
+      ;; Make the binary extension header
+      fxbhmake, bdr, 1, extension_name $
+                , 'Variable keyword, '+association+' assoc.'
+
+      red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'  
+
+      ;; Write the modified header 
+      modfits, filename, 0, hdr
 
       case 1 of
         n_elements(time_coordinate) gt 0 $
@@ -483,7 +510,16 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
     end
 
     'pixel-to-pixel' : begin
-      
+
+      ;; Make the binary extension header
+      fxbhmake, bdr, 1, extension_name $
+                , 'Variable keyword, '+association+' assoc.'
+
+      red_fitsaddkeyword, hdr, 'VAR_KEYS', var_keys, 'SOLARNET variable-keywords', AFTER = 'EXTEND'  
+
+      ;; Write the modified header 
+      modfits, filename, 0, hdr
+
       ;; The dimensions must make sense.
       Naxis = fxpar(hdr, 'NAXIS')
       Ndims = size(values, /n_dim)
@@ -500,14 +536,21 @@ pro red_fitscube_addvarkeyword, filename, keyword_name, values $
          newdims(Naxis:n_elements(axis_numbers)-1) = axis_numbers[Ndims:*]
       newdims[axis_numbers-1] = dims
       values2 = reform(values, newdims)
-      
+
       fxbaddcol, 1, bdr, values2, keyword_name ; Add column to the binary extension header
-      fxbcreate, blun, filename, bdr           ; Create the extension in the file
-      fxbwrite, blun, values2, 1, 1            ; Write keyword values as column 1, row 1
-      fxbfinish, blun                          ; Close the binary extension
+      if keyword_set(do_update) then begin
+        ;; Open the extension to be updated
+        fxbopen, blun, filename, extension_name, old_bdr, ACCESS='RW' 
+        fxbgrow, blun, bdr, 1
+      endif else begin
+        ;; Create the extension in the file
+        fxbcreate, blun, filename, bdr 
+      endelse
+      fxbwrite, blun, values2, 1, 1 ; Write keyword values as column 1, row 1
+      fxbfinish, blun               ; Close the binary extension
 
       return
-      
+
     end
 
   endcase
