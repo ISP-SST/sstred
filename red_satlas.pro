@@ -102,16 +102,17 @@ pro red_satlas, xstart, xend, outx, outy $
   restore, this_dir+'ftsatlas.idlsave'
 
   if keyword_set(nm) then begin
-    xstart *= 10.d0 
-    xend   *= 10.d0
-  endif
+    fac = 10.d0     
+  endif else begin
+    fac = 1.d
+  endelse
 
   c=299792458.d0                ; light speed in m/s
 
   ;;pos=where(XL_FTS gt xstart AND XL_FTS lt xend)
   ;;outx=xl_fts;[pos]
   if not keyword_set(nograv) then xl_fts *= (1.d0-633.d0/c)
-  pos = where(xl_fts ge xstart and xl_fts le xend)
+  pos = where(xl_fts ge xstart*fac and xl_fts le xend*fac)
   outx = xl_fts[pos]
   outy = yl_fts[pos]
   con = cint_fts[pos]
