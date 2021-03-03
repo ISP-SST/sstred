@@ -26,7 +26,12 @@
 ;      Statistics for the entire cube.
 ;
 ; :Keywords:
-; 
+;
+;   axis_numbers : out, optional, type=array
+;
+;      The fitscube pixel coordinates axis numbers of the
+;      frame_statistics output.
+;
 ;   angles : in, optional, type=array
 ;   
 ;      Rotation angles for the frames in the cube.
@@ -86,10 +91,13 @@
 ;   2020-11-01 : MGL. Remove keywords angles, full, grid, orgiNx,
 ;                origNy, and shifts.
 ; 
+;   2021-03-03 : MGL. New keyword axis_numbers. 
+; 
 ;-
 pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 ;                             , angles = angles $
-;                             , full = full $
+                             , axis_numbers = axis_numbers $
+                                ;                             , full = full $
 ;                             , grid = grid $
 ;                             , origNx = origNx $
 ;                             , origNy = origNy $ $
@@ -282,6 +290,11 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
     
   endif
 
+  undefine, axis_numbers
+  if Ntuning gt 1 then red_append, axis_numbers, 3
+  if Nstokes gt 1 then red_append, axis_numbers, 4
+  if Nscans gt 1 then red_append, axis_numbers, 5
+  
   if ~keyword_set(write) and ~keyword_set(update) then begin
     red_fitscube_close, fileassoc, fitscube_info
     return
@@ -295,11 +308,6 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
   
   ;; Write the statistics to the fitscube file
 
-  if Ntuning gt 1 then red_append, axis_numbers, 3
-  if Nstokes gt 1 then red_append, axis_numbers, 4
-  if Nscans gt 1 then red_append, axis_numbers, 5
-  
-  
   for itag = n_tags(frame_statistics[0])-1, 0, -1 do begin
 
     itags = where((tag_names(frame_statistics[0]))[itag] eq tag_names(cube_statistics), Nmatch)
