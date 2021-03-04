@@ -20,7 +20,7 @@
 ; 
 ;   filename : in, type=string
 ; 
-;     The name of the file to plot the spectrum of.
+;      The name of the file to plot the spectrum of.
 ; 
 ; :Keywords:
 ; 
@@ -37,17 +37,17 @@
 ;
 ;   lomargin : in, optional, type=array
 ;
-;     Extend lower end of xrange by this many percent of the
-;     wavelength range of the data.
+;      Extend lower end of xrange by this many percent of the
+;      wavelength range of the data.
 ;     
 ;   himargin : in, optional, type=array
 ;
-;     Extend upper end of xrange by this many percent of the
-;     wavelength range of the data.
+;      Extend upper end of xrange by this many percent of the
+;      wavelength range of the data.
 ;     
 ;   xrange : in, optional, type=array
 ;
-;     Set xrange of plot explicitly.
+;      Set xrange of plot explicitly.
 ; 
 ; :History:
 ; 
@@ -134,14 +134,19 @@ pro red_fitscube_plotspectrum, filename $
   atlas_spectrum_convolved = fftconvol(atlas_spectrum, tr)
 
   if n_elements(xrange) eq 0 then xrange = [lambda_min, lambda_max]
+
+  ;; Adapt units for cgplot
+  plunits = red_strreplace(units, '^-1', '$\exp-1$', n = 3)
+  plunits = red_strreplace(plunits, '^-2', '$\exp-2$')
   
   ;; Make the plot
   cgwindow
   cgplot, /add, atlas_lambda/10, atlas_spectrum*1e9 $
-          , xtitle = '$\lambda$ / 1 nm', ytitle = 'Intensity / 1 n'+units $
+          , xtitle = '$\lambda$ / 1 nm', ytitle = 'Intensity / 1 n'+plunits $
           , xrange = xrange
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
+  stop
   
 end
 
@@ -153,7 +158,7 @@ case 0 of
     filename = 'cubes_nb_test/nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
     filename = 'cubes_TEST/nb_6302_2016-09-19T09:30:20_scans=2,3_stokes_corrected_im.fits'
     filename = 'cubes_TEST/nb_6302_2016-09-19T09:30:20_scans=2,3_corrected_im.fits'
-    red_fitscube_plotspectrum, filename, himargin = 50 $
+    red_fitscube_plotspectrum, filename $
                                , axis_numbers = axis_numbers $
                                , frame_statistics = frame_statistics
   end
