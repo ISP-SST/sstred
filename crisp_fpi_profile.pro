@@ -59,11 +59,13 @@
 ;
 ;   2018-05-24 : MGL. Made into a class method. Incorporated the
 ;                relevant parameter settings from red_get_fpi_par. 
+;
+;   2021-03-03 : MGL. Made it into an ordinary function again.
 ; 
 ;-
-function crisp::fpi_profile, w, prefilter $
-                             , ech = ech, ecl = ecl, erh = erh, erl = erl $
-                             , offset_correction = offset_correction
+function crisp_fpi_profile, w, prefilter $
+                            , ech = ech, ecl = ecl, erh = erh, erl = erl $
+                            , offset_correction = offset_correction
 
   ;; Defaults
   if n_elements(ech) eq 0 then ech = 0.d0
