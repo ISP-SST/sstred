@@ -56,9 +56,10 @@
 ;    develop : in, optional, type=boolean
 ; 
 ;       Run in developer mode.
-; 
-; 
 ;
+;    no_db : in, optional, type=boolean
+;
+;       Do not use metadata database.
 ; 
 ; :History:
 ; 
@@ -93,10 +94,12 @@
 ;                (CRISP/CHROMIS).
 ;
 ;   2017-03-09 : MGL. New keyword "develop".
+;
+;   2021-03-03 : MGL. New keyword no_db.
 ; 
 ;-
-function crispred, filename, develop = develop
+function crispred, filename, develop = develop, no_db = no_db
 
-  return, obj_new('crisp', filename, develop = develop)
+  return, obj_new('crisp', filename, develop = develop, no_db = no_db)
   
 end

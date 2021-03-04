@@ -13,6 +13,10 @@
 ; 
 ;       Run in developer mode.
 ;
+;    no_db : in, optional, type=boolean
+;
+;       Do not use metadata database.
+;
 ;
 ; :History:
 ;
@@ -34,11 +38,13 @@
 ;
 ;   2019-05-07 : MGL. Detect directory set up for old pipeline.
 ;
+;   2021-03-03 : MGL. New keyword no_db.
+;
 ;-
-pro crisp::initialize, filename, develop = develop
+pro crisp::initialize, filename, develop = develop, no_db = no_db
 
   ;; Call initialize of the base-class first to load common parameters
-  self->RED::initialize, filename, develop = develop
+  self->RED::initialize, filename, develop = develop, no_db = no_db
 
   spawn, 'grep "camera.*=" '+filename, grepresult1
   if n_elements(grepresult1) eq 1 && grepresult1 eq '' then begin

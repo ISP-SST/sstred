@@ -28,6 +28,10 @@
 ;    develop : in, optional, type=boolean
 ; 
 ;       Run in developer mode.
+;
+;    no_db : in, optional, type=boolean
+;
+;       Do not use metadata database.
 ; 
 ; :History:
 ; 
@@ -76,9 +80,11 @@
 ;
 ;   2020-04-06 : MGL. Default for self.rotation.
 ;
+;   2021-03-03 : MGL. New keyword no_db.
+;
 ;-
-pro red::initialize, filename, develop = develop
-
+pro red::initialize, filename, develop = develop, no_db = no_db
+  
   ;; Are we running in developer mode?
   self.developer_mode = keyword_set(develop)
 
@@ -89,21 +95,25 @@ pro red::initialize, filename, develop = develop
   endif
   self.filename = filename
   self.filetype = 'MOMFBD'
-
-  ;; Test for sst_db presence
-  if file_test('~/.my.cnf') then begin
-    spawn,'cat ~/.my.cnf | grep sst_db',res
-    if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
-  endif else begin
-    if file_test('/etc/.my.cnf') then begin
-      spawn,'cat /etc/my.cnf | grep sst_db',res
-      if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
-    endif
-  endelse
-  if ~self.db_present then $
-    print,'There is no sst_db database on your system. Consider to install it.'
-    
   
+  if keyword_set(no_db) then begin
+    self.db_present = 0B
+    print, 'Not using db.'
+  endif else begin
+    ;; Test for sst_db presence
+    if file_test('~/.my.cnf') then begin
+      spawn,'cat ~/.my.cnf | grep sst_db',res
+      if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
+    endif else begin
+      if file_test('/etc/.my.cnf') then begin
+        spawn,'cat /etc/my.cnf | grep sst_db',res
+        if strmatch(res,'*sst_db*') then self.db_present = 1B else self.db_present = 0B
+      endif
+    endelse
+    if ~self.db_present then $
+       print,'There is no sst_db database on your system. Consider to install it.'
+  endelse
+    
   ;; Init vars  
   self.dodata = 1B
   self.doflat = 1B

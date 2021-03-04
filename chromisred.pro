@@ -17,6 +17,10 @@
 ; 
 ;       Run in developer mode.
 ;
+;    no_db : in, optional, type=boolean
+;
+;       Do not use metadata database.
+;
 ; :History:
 ;
 ;   2016-04-29 : THI. Split class RED into a base-class (instrument
@@ -24,9 +28,11 @@
 ;
 ;   2017-03-09 : MGL. New keyword "develop".
 ;
+;   2021-03-03 : MGL. New keyword no_db.
+;
 ;-
-function chromisred, filename, develop = develop
-
-  return, obj_new('chromis', filename, develop = develop)
+function chromisred, filename, develop = develop, no_db = no_db
+  
+  return, obj_new('chromis', filename, develop = develop, no_db = no_db)
   
 end
