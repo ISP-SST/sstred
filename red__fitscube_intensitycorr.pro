@@ -26,12 +26,12 @@
 ;     intensitycorrmethod : in, optional, type="string or boolean", default='fit'
 ;
 ;       One of 'old' (for correction based on comparing the current
-;       scan with the prefilter calibration data, or 'fit' (for
+;       scan with the prefilter calibration data), or 'fit' (for
 ;       correction based on comparing intensity from
 ;       fit_wb_diskcenter, evaluated at the current time and at the
 ;       time of the prefilter calibration). Boolean value TRUE is
-;       equivalent to 'fit'. FALSE and "none" results in no
-;       correction.
+;       equivalent to 'fit'. FALSE and 'none' (really any string value
+;       that is not 'fit' or 'old') results in no correction.
 ;
 ; :History:
 ; 
@@ -55,9 +55,11 @@ pro red::fitscube_intensitycorr, filename $
 
   case 1 of
 
-    n_elements(corrmethod) eq 0 : corrmethod = 'fit'
+    ;; Default
+    n_elements(corrmethod) eq 0 : corrmethod = 'fit' 
     
-    size(corrmethod, /tname) eq 'STRING' : begin
+    ;; Undefined strings
+    size(corrmethod, /tname) eq 'STRING' : begin 
       if corrmethod ne 'fit' and corrmethod ne 'old' then corrmethod = 'none'
     end
 
@@ -67,10 +69,12 @@ pro red::fitscube_intensitycorr, filename $
   endcase
 
   if corrmethod eq 'none' then begin
+    ;; No correction, just return without doing anything.
     print, inam + ': No correction'
     return
   endif 
-  
+
+  ;; Modes to store in the processing step metadata
   if corrmethod eq 'old' then begin
     PRMODE = 'LOCAL'
   endif else begin
@@ -98,7 +102,9 @@ pro red::fitscube_intensitycorr, filename $
 
   Nframes = long(Ntuning) * long(Nstokes) * long(Nscans)
   
-  ;; Check that it is not already intensity corrected.
+  ;; Check that it is not already intensity corrected. (For cubes with
+  ;; RESPAPPL, we might consider undoing the old corrections and
+  ;; applying new ones.)
   pos = where(strmatch(prprocs, inam), Nmatch)
   if Nmatch gt 0 then begin
     print
@@ -107,7 +113,6 @@ pro red::fitscube_intensitycorr, filename $
     red_fitscube_close, fileassoc, fitscube_info
     return
   endif
-
   
   ;; Get info from the cube making step
   pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
@@ -199,7 +204,7 @@ pro red::fitscube_intensitycorr, filename $
   endfor                        ; iprf
   t_calib = time_avg_sum / time_avg_n
   xposure = prf.xposure
-  prefilter_wb = prf.wbint
+  prefilter_wb = prf.wbint      ; The mean wb intensity from the fitprefilter step.
 
 ;  stop
   
@@ -343,21 +348,18 @@ pro red::fitscube_intensitycorr, filename $
 
     ;; Calculate wb ratio or get it from calling program? We need the
     ;; median prefilter fit calibration WB intensity over the median
-    ;; intensities of the WB cube.
+    ;; intensities of the WB cube. However, while wcTMEAN is a
+    ;; median() value, prefilter_wb is a mean(). Shouldn't matter very
+    ;; much as prefilter_wb is from granulation data so mean() and
+    ;; median() should be close.
     case 1 of
       Nmakenb gt 0 : begin      ; This is a NB cube
-;        stop
-;        print, prf.wbint
-;        print, fxpar(hdr, 'PRSTEP*')
-        ;; Get DATAMEAN of the WB cube frames?
         wbratio = mean(prefilter_wb/wcTMEAN)
         correction = prefilter_wb/wcTMEAN
       end
       Nmakescan gt 0 : begin    ; This is a SCAN cube
-        ;; wcTMEAN is the median of the WB image of this scan.
         wbratio = prefilter_wb/wcTMEAN
         correction = prefilter_wb/wcTMEAN
-        ;; But we divide with wcTMEAN below!?
       end
     endcase
     
@@ -375,7 +377,7 @@ pro red::fitscube_intensitycorr, filename $
   endelse 
 
   ;; Apply the corrections
-
+  print, inam + ' : Corrections = ', correction
 
 ;  ;; Does correction have the correct dimensions?
 ;  help, correction
@@ -410,19 +412,12 @@ pro red::fitscube_intensitycorr, filename $
                               , prref = prref $
                               , prproc = inam $
                               , prmode = prmode
-
  
-  
   ;; Close the file and write the updated header
   red_fitscube_close, fileassoc, fitscube_info, newheader = hdr
 
   ;; The applied correction should be saved as a variable keyword
   ;; RESPAPPL (APPLied RESPonse function).
-;  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', correction $
-;                                  , anchor = anchor $
-;                                  , comment = 'Mean of applied response function' $
-;                                  , keyword_method = 'mean' $
-;                                  , axis_numbers = [5] 
   red_fitscube_addrespappl, filename, correction, /scans, /update
   
   ;; For scan cubes, do it also for the WB image.
