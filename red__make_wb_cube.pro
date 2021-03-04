@@ -794,8 +794,8 @@ pro red::make_wb_cube, dir $
     ;; To read the extension:
     fxbopen, bunit, odir+ofil, 'MWCINFO', bbhdr
     fxbreadm, bunit, row = 1 $
-            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01'] $
-              ,   rANG,   rCROP,   rFF,   rGRID,   rND,  rSHIFT,   rTMEAN,   rX01Y01
+              , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
+              ,  rANG,  rCROP,  rFF,  rGRID,  rND,  rSHIFT,  rTMEAN,  rX01Y01,  rdirection
     ;; Note that the strarr wfiles cannot be read by fxbreadm!
     fxbread, bunit, rWFILES, 'WFILES', 1
     fxbclose, bunit
