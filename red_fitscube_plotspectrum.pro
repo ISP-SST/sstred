@@ -35,14 +35,18 @@
 ;      Intensity statistics for the frames of the fitscube. Used for
 ;      multiple calls with the same filename.
 ;
-;   lomargin : in, optional, type=array
+;   nosave : in, optional, type=boolean
 ;
-;      Extend lower end of xrange by this many percent of the
-;      wavelength range of the data.
-;     
+;      Do not save the plot as a pdf file.
+;
 ;   himargin : in, optional, type=array
 ;
 ;      Extend upper end of xrange by this many percent of the
+;      wavelength range of the data.
+;     
+;   lomargin : in, optional, type=array
+;
+;      Extend lower end of xrange by this many percent of the
 ;      wavelength range of the data.
 ;     
 ;   xrange : in, optional, type=array
@@ -57,8 +61,9 @@
 pro red_fitscube_plotspectrum, filename $
                                , axis_numbers = axis_numbers $
                                , frame_statistics = frame_statistics $
-                               , lomargin = lomargin $
                                , himargin = himargin $
+                               , lomargin = lomargin $
+                               , nosave = nosave $
                                , xrange = xrange
 
   if n_elements(lomargin) eq 0 then lomargin = 15. ; Percent of range
@@ -146,11 +151,12 @@ pro red_fitscube_plotspectrum, filename $
           , xrange = xrange
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
-  stop
+  plfile = file_dirname(filename) + file_basename(filename, '.fits') + '.pdf'
+  if ~keyword_set(nosave) then cgcontrol, output = plfile
   
 end
 
-case 0 of
+case 1 of
   0 : begin
     undefine, axis_numbers, frame_statistics
     cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'
@@ -163,9 +169,16 @@ case 0 of
                                , frame_statistics = frame_statistics
   end
   1 : begin
+    undefine, axis_numbers, frame_statistics
     cd, '/scratch/olexa/2020-10-16/CHROMIS/'
     filename = 'cubes_nb/nb_3950_2020-10-16T09:11:04_scans=0-3,5,6,8,9_corrected_im.fits'
-    red_fitscube_plotspectrum, filename, himargin = -50
+    red_fitscube_plotspectrum, filename $
+                               , axis_numbers = axis_numbers $
+                               , frame_statistics = frame_statistics
+    red_fitscube_plotspectrum, filename $
+                               , axis_numbers = axis_numbers $
+                               , frame_statistics = frame_statistics $
+                               , xrange=[393,393.7]
   end
   2 : begin
     undefine, axis_numbers, frame_statistics
