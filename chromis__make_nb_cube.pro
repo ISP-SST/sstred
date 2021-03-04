@@ -335,7 +335,8 @@ pro chromis::make_nb_cube, wcfile $
       return
     endif
       
-    restore, pfile              ; Restores variable prf which is a struct
+    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+    restore, pfile                  ; Restores variable prf which is a struct
     idxpref = where(my_prefilters eq unbprefs[inbpref], count)
     
     if inbpref eq 0 then begin
@@ -353,8 +354,7 @@ pro chromis::make_nb_cube, wcfile $
 ;      red_append, prefilter_wav, prf.wav
 ;      red_append, prefilter_wb, prf.wbint
     endif else begin
-      me = median(prf.wav)
-      red_append, prefilter_curve, red_intepf(prf.wav-me, prf.pref, wav[idxpref]*1.d10-me)
+      red_append, prefilter_curve, red_intepf(prf.wav, prf.pref, wav[idxpref]*1.d10)
 ;      red_append, prefilter_wav, wav[idxpref]*1.d10
 ;      red_append, prefilter_wb, replicate(prf.wbint, count)
     endelse
@@ -743,7 +743,8 @@ pro chromis::make_nb_cube, wcfile $
   endfor                        ; iscan
 
 
-  
+  ;; Apply wavelength shift from prefilter fit.
+  wcs.wave -= wave_shift
   
   ;; Close fits file.
   self -> fitscube_finish, lun, wcs = wcs

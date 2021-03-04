@@ -11,25 +11,19 @@
 ; :Author:
 ; 
 ;    Jaime de la Cruz, ISP
-; 
-; 
-; :Returns:
-; 
-; 
-; :Params:
-; 
+;
 ; 
 ; :Keywords:
 ;
 ;    cwl : in, optional, type=float, default="Varies depending on prefilter"
 ;
-;        The central wavelength (in Ångström) of the spectral line to
-;        fit. Should be used only if keyword pref is also used.
+;      The central wavelength (in Ångström) of the spectral line to
+;      fit. Should be used only if keyword pref is also used.
 ;
 ;    dir : in, optional, type=string
 ;
-;        Set this to the time-stamp directory to use and bypass the
-;        selection dialogue. 
+;      Set this to the time-stamp directory to use and bypass the
+;      selection dialogue. 
 ;
 ;    fit_fwhm : in, optional, type=boolean
 ;
@@ -74,32 +68,32 @@
 ;
 ;    hints : in, optional, type=boolean
 ;
-;        If set, various hints will aid in the selection of time-stamp
-;        directory. The selection dialogue will have more info than
-;        just the time stamps and the FOV of the directories will be
-;        displayed.
+;      If set, various hints will aid in the selection of time-stamp
+;      directory. The selection dialogue will have more info than just
+;      the time stamps and the FOV of the directories will be
+;      displayed.
 ;
 ;    mask : in, optional, type=boolean
 ;
-;        If set, will allow the user to mask out active areas of the
-;        FOV as well as spectral positions from the fit.
+;      If set, will allow the user to mask out active areas of the FOV
+;      as well as spectral positions from the fit.
 ;
 ;    nasym : in, optional, type=integer, default=0
 ;
-;        The number of asymmetry terms to fit (0, 1, or 2).
+;      Number of asymmetry terms to include in the fit (0, 1, or 2).
 ;
 ;    noabsunits : in, optional, type=boolean
 ;
-;        If set, skip calibrations to establish absolute intensity
-;        units. 
+;      If set, skip calibrations to establish absolute intensity
+;      units.
 ;
-;    pref : in, optional, type=string
+;    pref_keyword : in, optional, type=string
 ;
-;        The four-digit tag of the prefilter to calibrate.
+;      The four-digit tag of the prefilter to calibrate.
 ;
 ;    scan : in, optional, type=integer, default=0
 ;
-;        Use data from this single scan only.
+;      Use data from this single scan only.
 ;
 ;    shift : in, optional, type=float
 ;
@@ -133,6 +127,7 @@
 ;    value_stretch : in, optional, type=double, default=1
 ;
 ;      Initial value for the  spectrum stretch parameter.
+;
 ;
 ; :History:
 ; 
@@ -241,11 +236,11 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
   camWB = 'Crisp-W'
   camsNB = ['Crisp-T', 'Crisp-R']
   camNB = camsNB[0]
-  
+
   ;; For now! We may be able to work around this later! If there are
   ;; WB DC data throughout the observations! Can we check from here?
   noabsunits = keyword_set(useflats)
-  
+
   if keyword_set(noabsunits) then begin
     units = 'dn'                ; "Digital number"
     unitscalib = 0
@@ -260,7 +255,6 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
   if n_elements(value_shift) eq 0 then value_shift = -0.01d
   if n_elements(value_prshift) eq 0 then value_prshift = -0.01d
 
-;  fit_parameters = [1,1,1,0,1,0,0,0] ; default
   fit_parameters = [1,1,1,1,1,1,1,0] ; default
   ;; Check n_elements() rather than keyword_set() so we don't
   ;; set to false just because a keyword is not used.
@@ -367,7 +361,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ims[0, 0, idir] = im
         mos[idir*xds:(idir+1)*xds-1, *] $
            = rebin(ims[*, *, idir], xds, yds)/median(ims[*, *, idir])
-
+        
         ;; Get more hints only for potentially interesting dirs
         if NfilesN gt 0 && NfilesN lt 1000 && mu[idir] gt 0.9 then begin
 
@@ -432,7 +426,6 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       
     endelse
 
-    
     ;; Do the selection
     tmp = red_select_subset(selectionlist $
                             , qstring = qstring $
@@ -459,37 +452,57 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
   ;; Get one scan (scan 0 by default)
   if n_elements(scan) eq 0 then scan = 0
 
-  for icam = 0, 1 do begin
+  for icam = 0, n_elements(camsNB)-1 do begin
 
     camNB = camsNB[icam]
-    
-    filesNBall = file_search(dirs+'/'+camNB+'/*', count=nfilesNB)
-    self->extractstates, filesNBall, statesNBall
-    
-    idx=where(statesNBall.scannumber eq scan, ct)
-    if ct eq 0 then begin
+
+    filesNBall = red_raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan)
+    if nfilesNB eq 0 then begin
       print, inam+' : ERROR, invalid scan number'
       return
     endif
-    statesNBall = statesNBall[idx]
-    filesNBall = filesNBall[idx]
-    
-    if keyword_set(unitscalib) then begin ; Get the corresponding WB files
-      filesWBall = file_search(dirs+'/'+camWB+'/*', count=nfilesWB)
-      self -> extractstates, filesWBall, statesWBall
+    self->extractstates, filesNBall, statesNBall
 
-      idx=where(statesWBall.scannumber eq scan, ct)
-      if ct eq 0 then begin
-        print, inam+' : ERROR, invalid scan number'
-        return
+    if keyword_set(unitscalib) then begin
+      filesWBall = red_raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan)
+      if nfilesNB ne nfilesWB then begin
+        print, inam+' : ERROR, scan numbers mismatch WB and NB'
+        stop
       endif
-      statesWBall = statesWBall[idx]
-      filesWBall = filesWBall[idx]
-      
-      ;; Need NB and WB file lists to be synched!
-      if min(statesWBall.framenumber eq statesNBall.framenumber) eq 0 then stop ; Will this happen?
-      
+;      filesWB = red_sortfiles(filesWB)
+      self -> extractstates, filesWBall, statesWBall
     endif
+
+    ;; Need NB and WB file lists to be synched!
+    if min(statesWBall.framenumber eq statesNBall.framenumber) eq 0 then stop ; Will this happen?
+
+;    filesNBall = file_search(dirs+'/'+camNB+'/*', count=nfilesNB)
+;    self->extractstates, filesNBall, statesNBall
+;    
+;    idx=where(statesNBall.scannumber eq scan, ct)
+;    if ct eq 0 then begin
+;      print, inam+' : ERROR, invalid scan number'
+;      return
+;    endif
+;    statesNBall = statesNBall[idx]
+;    filesNBall = filesNBall[idx]
+;    
+;    if keyword_set(unitscalib) then begin ; Get the corresponding WB files
+;      filesWBall = file_search(dirs+'/'+camWB+'/*', count=nfilesWB)
+;      self -> extractstates, filesWBall, statesWBall
+;
+;      idx=where(statesWBall.scannumber eq scan, ct)
+;      if ct eq 0 then begin
+;        print, inam+' : ERROR, invalid scan number'
+;        return
+;      endif
+;      statesWBall = statesWBall[idx]
+;      filesWBall = filesWBall[idx]
+;      
+;      ;; Need NB and WB file lists to be synched!
+;      if min(statesWBall.framenumber eq statesNBall.framenumber) eq 0 then stop ; Will this happen?
+;      
+;    endif
 
     upref = statesNBall[uniq(statesNBall.prefilter,sort(statesNBall.prefilter))].prefilter
 
@@ -504,7 +517,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       upref = pref_keyword
     endif
     Npref = n_elements(upref)
-    
+
     file_mkdir, self.out_dir+'/prefilter_fits/'
 
     ;; Loop prefilters
@@ -529,7 +542,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
           else : cwl = double(upref[ipref])
         endcase
       endif else cwl = cwl_keyword
-
+      
       if n_elements(value_fwhm) eq 0 then begin
         ;; Default prefilter FWHM (in Ångström).
         case upref[ipref] of
@@ -656,7 +669,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       ;; copy spectra for each prefilter
       
       idx = where(pref eq upref[ipref], nwav)
-      measured_lambda = wav[idx] + (cwl - pref[idx]) ; Adjust wavelength scale
+      measured_lambda = wav[idx] ;+ (cwl - pref[idx]) ; Adjust wavelength scale
       measured_spectrum = spec[idx]
       if keyword_set(unitscalib) then wbint = mean(specwb) else wbint = 1.
       
@@ -664,172 +677,183 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       red_satlas, measured_lambda[0]-1, measured_lambda[-1]+1 $
                   , atlas_lambda, atlas_spectrum $
                   , /si, cont = cont 
-     
+      
       ;; Make FPI transmission profile
       dw = atlas_lambda[1] - atlas_lambda[0]
       np = round((0.080 * 8) / dw)
       np = long((max(atlas_lambda) - min(atlas_lambda)) / dw) - 2
       if np/2*2 eq np then np -=1
       tw = (dindgen(np)-np/2)*dw                                             
-      tr = self -> fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
+;      tr = self -> fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
+      tr = fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
       tr /= total(tr)
       
-      ;; Convolve the measured_spectrum with the FPI profile
-      atlas_spectrum_convolved = fftconvol(atlas_spectrum, tr)     
-      
+      ;; Convolve the spectrum with the FPI profile
+      atlas_spectrum_convolved = fftconvol(atlas_spectrum, tr)
+
       ;; Prepdata
       
-      if keyword_set(mask) then w = red_maskprefilter(measured_lambda, measured_spectrum) $
-      else w = dblarr(n_elements(measured_lambda)) + 1.0d0
-      
-      dat = {xl:atlas_lambda, yl:atlas_spectrum_convolved $
-             , spectrum:measured_spectrum, lambda:measured_lambda, pref:cwl, w:w}
+      if Nwav gt 1 then begin
 
-      ;; Init guess model
-      par = dblarr(8)
-      if n_elements(value_parameters) gt 0 then par[0] = value_parameters 
+        if keyword_set(mask) then w = red_maskprefilter(measured_lambda, measured_spectrum) $
+        else w = dblarr(n_elements(measured_lambda)) + 1.0d0
+        
+        dat = {xl:atlas_lambda, yl:atlas_spectrum_convolved $
+               , spectrum:measured_spectrum, lambda:measured_lambda, pref:float(upref[ipref]), w:w}
+                                ;, spectrum:measured_spectrum, lambda:measured_lambda, pref:cwl, w:w}
 
-      ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
-      fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
-      fitpars.fixed = ~fit_parameters
-      
-      ;; Scale factor
-      par[0] = max(measured_spectrum) * 2d0 / cont[0]
-      if ~fitpars[0].fixed then begin
-        fitpars[0].limited[*] = [1,0]
-        fitpars[0].limits[*] = [0.0d0, 0.0d0]
-      endif
-      
-      ;; Line shift (satlas-obs)
-      if n_elements(value_shift) gt 0 then begin
-        par[1] = value_shift
-      endif
-      if ~fitpars[1].fixed then begin
-        fitpars[1].limited[*] = [1,1]
-        fitpars[1].limits[*]  = [-1.0,1.0]
-      endif
-      
-      ;; Pref. shift
-      if n_elements(value_prshift) gt 0 then begin
-        par[2] = value_prshift
-      endif
-      if ~fitpars[2].fixed then begin
-        fitpars[2].limited[*] = [1,1]
-        fitpars[2].limits[*]  = [-3.0d0,+3.0d0]
-      endif
+        ;; Init guess model
+        par = dblarr(8)
+        if n_elements(value_parameters) gt 0 then par[0] = value_parameters 
+        
+        ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
+        fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
+        fitpars.fixed = ~fit_parameters
+        
+        ;; Scale factor
+        par[0] = max(measured_spectrum) * 2d0 / cont[0]
+        if ~fitpars[0].fixed then begin
+          fitpars[0].limited[*] = [1,0]
+          fitpars[0].limits[*]  = [0.0d0, 0.0d0]
+        endif
+        
+        ;; Line shift (satlas-obs)
+        if n_elements(value_shift) gt 0 then begin
+          par[1] = value_shift
+        endif
+        if ~fitpars[1].fixed then begin
+          fitpars[1].limited[*] = [1,1]
+          fitpars[1].limits[*]  = [-1.0,1.0]
+        endif
+        
+        ;; Pref. shift
+        if n_elements(value_prshift) gt 0 then begin
+          par[2] = value_prshift
+        endif                   ;else begin
+;          par[2] = float(upref[ipref]) - cwl
+;        end
+        if ~fitpars[2].fixed then begin
+          fitpars[2].limited[*] = [1,1]
+          fitpars[2].limits[*]  = [-3.0d0,+3.0d0]
+        endif
+        
+        ;; Pref. FWHM
+        if n_elements(value_fwhm) ne 0 then begin
+          par[3] = value_fwhm
+        endif
+        if ~fitpars[3].fixed then begin
+          fitpars[3].limited[*] = [1,1]
+          fitpars[3].limits[*]  = par[3] + [-0.5, 0.5] 
+        endif
+        
+        ;; Prefilter number of cavities)
+        if n_elements(value_ncav) ne 0 then begin
+          par[4] = value_ncav
+        endif
+        if ~fitpars[4].fixed then begin
+          fitpars[4].limited[*] = [1,1]
+          fitpars[4].limits[*]  = [2.0d0, 3.5d0]
+        endif
+        
+        ;; Asymmetry term 1
+        if ~fitpars[5].fixed then begin
+          fitpars[5].limited[*] = [1,1]
+          fitpars[5].limits[*]  = [-1.d0, 1.d0]
+          par[5] = 0.01d0
+        endif else begin
+          par[5] = 0.0d0
+        endelse
+        
+        ;; Asymmetry term 2
+        if ~fitpars[6].fixed then begin
+          fitpars[6].limited[*] = [1,1]
+          fitpars[6].limits[*] = [-1.d0, 1.d0]
+          par[6] = 0.01d0
+        endif else begin
+          par[6] = 0.0d0
+        endelse
+        
+        ;; Wavelength stretch
+        if n_elements(value_stretch) ne 0 then begin
+          par[7] = value_stretch
+        endif
+        if ~fitpars[7].fixed then begin
+          fitpars[7].limited[*] = [1,1]
+          fitpars[7].limits[*]  = [0.9d0, 1.1d0]
+        endif
+        
+        ;; Now call mpfit
+        par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
+        prefilter = red_prefilter(par, dat.lambda, dat.pref)
 
-      ;; Pref. FWHM
-      if n_elements(value_fwhm) ne 0 then begin
-        par[3] = value_fwhm
-      endif
-      if ~fitpars[3].fixed then begin
-        fitpars[3].limited[*] = [1,1]
-        fitpars[3].limits[*]  = par[3] + [-0.5, 0.5] ;[2.0d0, 7.5d0]
-      endif
-      
-      ;; Prefilter number of cavities)
-      if n_elements(value_ncav) ne 0 then begin
-        par[4] = value_ncav
-      endif
-      if ~fitpars[4].fixed then begin
-        fitpars[4].limited[*] = [1,1]
-        fitpars[4].limits[*]  = [2.0d0, 3.5d0]
-      endif
+        fit_fix = replicate('Fit', 8)
+        for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
+        
+        print, inam + ' : p[0] -> ', par[0], ' '+fit_fix[0]+' (scale factor)'
+        print, inam + ' : p[1] -> ', par[1], ' '+fit_fix[1]+' (solar atlas shift)'
+        print, inam + ' : p[2] -> ', par[2], ' '+fit_fix[2]+' (prefilter shift)'
+        print, inam + ' : p[3] -> ', par[3], ' '+fit_fix[3]+' (prefilter FWHM)'
+        print, inam + ' : p[4] -> ', par[4], ' '+fit_fix[4]+' (prefilter number of cavities)'
+        print, inam + ' : p[5] -> ', par[5], ' '+fit_fix[5]+' (asymmetry term 1)'            
+        print, inam + ' : p[6] -> ', par[6], ' '+fit_fix[6]+' (asymmetry term 2)'            
+        print, inam + ' : p[7] -> ', par[7], ' '+fit_fix[7]+' (wavelength stretch)'          
 
-      ;; Asymmetry term 1
-      if ~fitpars[5].fixed then begin
-        fitpars[5].limited[*] = [1,1]
-        fitpars[5].limits[*]  = [-1.d0, 1.d0]
-        par[5] = 0.01d0
-      endif else begin
-        par[5] = 0.0d0
-      endelse
+        print
+        print, 'cwl - pref = ', (cwl - upref[ipref]) 
+        
+        
+        ;; save curve
+        
+        prf = {wav:measured_lambda $
+               , pref:prefilter $
+               , spec:measured_spectrum $
+               , wbint:wbint $
+               , reg:upref[ipref] $
+               , fitpars:par $
+               , fts_model:interpol(atlas_spectrum_convolved, atlas_lambda+par[1], measured_lambda)*prefilter $
+               , units:units $
+               , time_avg:mean(time_avgs) $
+               , xposure:xposure $
+              }
 
-      ;; Asymmetry term 2
-      if ~fitpars[6].fixed then begin
-        fitpars[6].limited[*] = [1,1]
-        fitpars[6].limits[*] = [-1.d0, 1.d0]
-        par[6] = 0.01d0
-      endif else begin
-        par[6] = 0.0d0
-      endelse
+        ;; Save the fit
+        save, prf $
+              , file = self.out_dir + '/prefilter_fits/' $
+              + camNB + '_' + upref[ipref] + '_prefilter.idlsave'
 
-      ;; Wavelength stretch
-      if n_elements(value_stretch) ne 0 then begin
-        par[7] = value_stretch
-      endif
-      if ~fitpars[7].fixed then begin
-        fitpars[7].fixed = 0
-        fitpars[7].limited[*] = [1,1]
-        fitpars[7].limits[*]  = [0.9d0, 1.1d0]
-      endif
-      
-      ;; Now call mpfit
-      par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg) ; <------
-      prefilter = red_prefilter(par, dat.lambda, dat.pref) ; <------ cwl!?
+        cgwindow
+        colors = ['blue', 'red', 'black']
+        lines = [0, 2, 0]
+        psyms = [16, -3, -3]
+        prefilter_plot = red_prefilter(par, atlas_lambda+par[1], dat.pref) 
+        mx = max([measured_spectrum $
+                  , atlas_spectrum_convolved*prefilter_plot $
+                  , prefilter_plot/par[0] * max(measured_spectrum) $
+                 ]) * 1.05
+        
+        ;; Plot measured spectrum
+        cgplot, /add, measured_lambda/10., measured_spectrum, line = lines[0], color = colors[0] $
+                , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx] $
+                , title = camNB + ' ' + upref[ipref]
+        ;; Plot atlas spectrum times prefilter profile
+        cgplot,/add,/over,(atlas_lambda+par[1])/10,atlas_spectrum_convolved*prefilter_plot   $
+               , color = colors[1], line = lines[1], psym = psyms[1]
+        ;; Plot prefilter profile
+        cgplot, /add, /over,(atlas_lambda+par[1])/10, prefilter_plot/par[0] * max(measured_spectrum) $
+                , color = colors[2], line = lines[2], psym = psyms[2]
+        
+        cglegend, /add, align = 3, /data $
+                  , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
+                  , title = ['obs scan'], color = colors[0], psym = psyms[0], length = 0.0
+        cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
+                  , title = ['filtered spectrum'], line = lines[1], color = colors[1], length = 0.05
+        cglegend, /add, align = 2, /data $
+                  , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
+                  , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
 
-      fit_fix = replicate('Fit', 8)
-      for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
-      
-      print, inam + ' : p[0] -> ', par[0], ' '+fit_fix[0]+' (scale factor)'
-      print, inam + ' : p[1] -> ', par[1], ' '+fit_fix[1]+' (solar atlas shift)'
-      print, inam + ' : p[2] -> ', par[2], ' '+fit_fix[2]+' (prefilter shift)'
-      print, inam + ' : p[3] -> ', par[3], ' '+fit_fix[3]+' (prefilter FWHM)'
-      print, inam + ' : p[4] -> ', par[4], ' '+fit_fix[4]+' (prefilter number of cavities)'
-      print, inam + ' : p[5] -> ', par[5], ' '+fit_fix[5]+' (asymmetry term 1)'            
-      print, inam + ' : p[6] -> ', par[6], ' '+fit_fix[6]+' (asymmetry term 2)'            
-      print, inam + ' : p[7] -> ', par[7], ' '+fit_fix[7]+' (wavelength stretch)'          
+        cgcontrol, output = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
 
-      ;; save curve
-
-      prf = {wav:measured_lambda $
-             , pref:prefilter $
-             , spec:measured_spectrum $
-             , wbint:wbint $
-             , reg:upref[ipref]$
-             , fitpars:par $
-             , fts_model:interpol(atlas_spectrum_convolved, atlas_lambda+par[1], measured_lambda)*prefilter $
-             , units:units $
-             , time_avg:mean(time_avgs) $
-             , xposure:xposure $
-            }
-
-      ;; Save the fit
-      save, prf $
-            , file = self.out_dir + '/prefilter_fits/' $
-            + camNB + '_' + upref[ipref] + '_prefilter.idlsave'
-
-      cgwindow
-      colors = ['blue', 'red', 'black']
-      lines = [0, 2, 0]
-      psyms = [16, -3, -3]
-      prefilter_plot = red_prefilter(par, atlas_lambda, dat.pref) ; <------
-      mx = max([measured_spectrum $
-                , atlas_spectrum_convolved*prefilter_plot $
-                , prefilter_plot/par[0] * max(measured_spectrum) $
-               ]) * 1.05
-
-      ;; Plot measured spectrum
-      cgplot, /add, measured_lambda/10., measured_spectrum, line = lines[0], color = colors[0] $
-              , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx] $
-              , title = camNB + ' ' + upref[ipref]
-      ;; Plot atlas spectrum times prefilter profile
-      cgplot, /add,/over,(atlas_lambda+par[1])/10,atlas_spectrum_convolved*prefilter_plot   $
-              , color = colors[1], line = lines[1], psym = psyms[1]
-      ;; Plot prefilter profile
-      cgplot, /add, /over,(atlas_lambda+par[1])/10, prefilter_plot/par[0] * max(measured_spectrum) $
-              , color = colors[2], line = lines[2], psym = psyms[2]
-      
-      cglegend, /add, align = 3, /data $
-                , location = [!x.crange[0] + (!x.crange[1]-!x.crange[0])*0.1, mean(!y.crange)*.02] $
-                , title = ['obs scan'], color = colors[0], psym = psyms[0], length = 0.0
-      cglegend, /add, align = 5, /data, location = [mean(!x.crange), mean(!y.crange)*.02] $
-                , title = ['filtered spectrum'], line = lines[1], color = colors[1], length = 0.05
-      cglegend, /add, align = 2, /data $
-                , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
-                , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
-
-      cgcontrol, output = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
+      endif else stop           ; Nwav eq 0 should not happen for CRISP
       
     endfor                      ; ipref
     
