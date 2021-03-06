@@ -52,6 +52,7 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
   undefine,states
   if use_strings then begin
     Nstr = n_elements(strings)
+    stings = red_strreplace(strings,'//','/',n=100)
     ;; cache is slow comparing to the database at least when BeeGFS is fatigue
     
     ;; if ~keyword_set(force) then begin
