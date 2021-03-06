@@ -151,7 +151,7 @@ pro red_fitscube_plotspectrum, filename $
           , xrange = xrange
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
-  plfile = file_dirname(filename) + file_basename(filename, '.fits') + '.pdf'
+  plfile = file_dirname(filename) + '/' + file_basename(filename, '.fits') + '.pdf'
   if ~keyword_set(nosave) then cgcontrol, output = plfile
   
 end
