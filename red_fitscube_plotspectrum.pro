@@ -147,7 +147,7 @@ pro red_fitscube_plotspectrum, filename $
   ;; Make the plot
   cgwindow
   cgplot, /add, atlas_lambda/10, atlas_spectrum*1e9 $
-          , xtitle = '$\lambda$ / 1 nm', ytitle = 'Intensity / 1 n'+plunits $
+          , xtitle = '$\lambda$ / 1 nm', ytitle = 'median(Intensity) / 1 n'+plunits $
           , xrange = xrange
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
