@@ -252,7 +252,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
 
   if n_elements(value_ncav) eq 0 then value_ncav = 3.d
   if n_elements(value_stretch) eq 0 then value_stretch = 1.d
-  if n_elements(value_shift) eq 0 then value_shift = -0.01d
+;  if n_elements(value_shift) eq 0 then value_shift = -0.01d
   if n_elements(value_prshift) eq 0 then value_prshift = -0.01d
 
   fit_parameters = [1,1,1,1,1,1,1,0] ; default
@@ -685,7 +685,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       if np/2*2 eq np then np -=1
       tw = (dindgen(np)-np/2)*dw                                             
 ;      tr = self -> fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
-      tr = fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
+      tr = crisp_fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
       tr /= total(tr)
       
       ;; Convolve the spectrum with the FPI profile
@@ -720,7 +720,9 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ;; Line shift (satlas-obs)
         if n_elements(value_shift) gt 0 then begin
           par[1] = value_shift
-        endif
+        endif else begin
+          par[1] = float(upref[ipref]) - cwl
+        end
         if ~fitpars[1].fixed then begin
           fitpars[1].limited[*] = [1,1]
           fitpars[1].limits[*]  = [-1.0,1.0]
@@ -729,9 +731,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ;; Pref. shift
         if n_elements(value_prshift) gt 0 then begin
           par[2] = value_prshift
-        endif                   ;else begin
-;          par[2] = float(upref[ipref]) - cwl
-;        end
+        endif    
         if ~fitpars[2].fixed then begin
           fitpars[2].limited[*] = [1,1]
           fitpars[2].limits[*]  = [-3.0d0,+3.0d0]
@@ -782,10 +782,13 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
           fitpars[7].limits[*]  = [0.9d0, 1.1d0]
         endif
         
-        ;; Now call mpfit
-        par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
+        ;; Now call mpfit. Don't use xtol=1e-4, it sometimes causes
+        ;; the iterations to never get started. Default is 1d-10, so
+        ;; we could try maybe 1e-8. But the iterations are fast so why
+        ;; bother?
+        par = mpfit('red_prefilterfit', par, functar=dat, parinfo=fitpars, ERRMSG=errmsg, status = status)
         prefilter = red_prefilter(par, dat.lambda, dat.pref)
-
+        
         fit_fix = replicate('Fit', 8)
         for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
         
@@ -834,7 +837,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ;; Plot measured spectrum
         cgplot, /add, measured_lambda/10., measured_spectrum, line = lines[0], color = colors[0] $
                 , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx] $
-                , title = camNB + ' ' + upref[ipref]
+                , title = dir + ' : ' + camNB + ' ' + upref[ipref]
         ;; Plot atlas spectrum times prefilter profile
         cgplot,/add,/over,(atlas_lambda+par[1])/10,atlas_spectrum_convolved*prefilter_plot   $
                , color = colors[1], line = lines[1], psym = psyms[1]
