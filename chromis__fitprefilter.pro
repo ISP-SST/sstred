@@ -426,7 +426,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
   for icam = 0, n_elements(camsNB)-1 do begin
 
     camNB = camsNB[icam]
-
+    
     filesNB = red_raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan)
     if nfilesNB eq 0 then begin
       print, inam+' : ERROR, invalid scan number'
@@ -770,7 +770,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         ;; Plot measured spectrum
         cgplot, /add, measured_lambda/10., measured_spectrum, line = lines[0], color = colors[0] $
                 , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx] $
-                , title = camNB + ' ' + upref[ipref]
+                , title = file_basename(dirs) + ' : ' + camNB + ' ' + upref[ipref]
         ;; Plot atlas spectrum times prefilter profile
         cgplot,/add,/over,(atlas_lambda+par[1])/10,atlas_spectrum_convolved*prefilter_plot   $
                , color = colors[1], line = lines[1], psym = psyms[1]
@@ -820,7 +820,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         cgplot, [0], [0], /add, /nodata $
                 , xrange = (measured_lambda[0]+[-1, 1]/2.)/10., yrange = [0, mx] $
                 , xtitle = '$\lambda$ / 1 nm' $
-                , title = camNB + ' ' + upref[ipref]
+                , title = file_basename(dirs) + ' : ' + camNB + ' ' + upref[ipref]
         
         ;; Plot measured spectrum
         cgplot, /add, /over, [measured_lambda]/10., [measured_spectrum] $
