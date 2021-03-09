@@ -142,6 +142,7 @@ pro red::fitscube_export, filename $
                           , help = help $
                           , keywords = keywords $
                           , no_spectral_file = no_spectral_file $
+                          , no_wb_file = no_wb_file $
                           , no_thumbnail = no_thumbnail $
                           , no_video = no_video $
                           , outdir = outdir $
@@ -159,6 +160,37 @@ pro red::fitscube_export, filename $
   red_make_prpara, prpara, keywords     
   red_make_prpara, prpara, no_spectral_file    
   red_make_prpara, prpara, smooth_width
+
+  ;; Get the current date
+  time = Systime(UTC=Keyword_Set(utc))
+  day = String(StrMid(time, 8, 2), Format='(I2.2)') ; Required because UNIX and Windows differ in time format.
+  month = StrUpCase(Strmid(time, 4, 3))
+  year = Strmid(time, 20, 4)
+  months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+  m = (Where(months EQ month)) + 1
+  current_date =  year + '-' + string(m, FORMAT='(I2.2)') + '-' + day
+
+  hdr = red_readhead(filename)
+    
+  release_date = fxpar(hdr,'RELEASE')
+  if current_date lt release_date then begin
+     if ~keyword_set(allowed_users) then begin
+        allowed_users = ''
+        reply = ''
+        print, 'This data should be protected from unauthorized downloading.'
+        print, "You have to enter usernames."
+        while reply ne 'x' do begin
+           read,'Enter a username (put "x" to escape) >  ', reply
+           allowed_users += reply+';'
+        endwhile
+        allowed_users = strmid(allowed_users, 0, strlen(allowed_users)-2)
+      endif
+     print, "Don't forget to ask the administrator to add user to the database and generate password."
+     if allowed_users eq '' then begin
+        print, 'You have to provide at least one username to make the cube available for downloading.'
+        return
+     endif
+  endif
 
   if n_elements(smooth_width) gt 0 then begin
     ;; We need to implement reading/writing frames from/to spectral
@@ -178,22 +210,24 @@ pro red::fitscube_export, filename $
 
   indir  = file_dirname(filename)+'/'
   infile = file_basename(filename)
-
-  hdr = red_readhead(filename)
   
-  date_beg = fxpar(hdr,'DATE-BEG')
-  date_beg_split = strsplit(date_beg,'T',/extract)
+  date_beg_split = strsplit(fxpar(hdr,'DATE-BEG'),'T',/extract)
+  date_beg =  date_beg_split[0]
+  time_beg =  date_beg_split[1]
   ;; We could do the outdir default per site, just like we do for the
   ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
-                                           + date_beg_split[0] + '/' $
+                                           + date_beg + '/' $
                                            + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
   ;; Any old versions of this file?
-  oldfiles = file_search(outdir+'/'+red_strreplace(infile, '_im.fits', '_*.fits'), count = Noldfiles)
+  ;oldfiles = file_search(outdir+'/'+red_strreplace(infile,'_im.fits', '_*.fits'), count = Noldfiles)
+  srch = red_strreplace(infile,'_im.fits', '_*')
+  srch = red_strreplace(srch,'nb_', '_')
+  oldfiles = file_search(outdir + '/' + srch, count = Noldfiles)
   if Noldfiles gt 0 then begin
     s = ''
-    print, inam + ' : There are '+strtrim(Noldfiles, 2)+' older versions of this file in '+outdir+':'
+    print, inam + ' : There are '+strtrim(Noldfiles, 2)+' older versions of exported files in '+outdir+':'
     print, file_basename(oldfiles), format = '(a0)'
     read, '    Delete them [N]? ', s
     if s eq '' then s = 'N'
@@ -221,14 +255,6 @@ pro red::fitscube_export, filename $
     return
   endif
 
-  ;; Any spectral file to copy?
-  if keyword_set(no_spectral_file) then begin
-    copy_spectral = 0
-  endif else begin
-    spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
-    copy_spectral = file_test(indir + spfile)
-  endelse
-
   ;; Delete header keywords that should not be there
   red_fitsdelkeyword, hdr, 'STATE'
 
@@ -239,23 +265,59 @@ pro red::fitscube_export, filename $
   red_fitsaddkeyword, anchor = anchor, hdr, 'DATE', new_DATE
   red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', outfile
 
+  file_mkdir, outdir
 
-  ;; Add FITS keywords with info available in the file but not as
-  ;; headers. 
+  if ~keyword_set(no_wb_file) then begin
 
+     indx = where(strmatch(hdr, '*Align reference:*'), Nwhere)     
+     if Nwhere eq 0 then begin
+        print, 'There is no information about align reference in the header.'
+        print, 'Check the header (may be you should run red_fitscube_correct_prstep)'
+        print, 'or rerun fitscube_export with /no_wb_file option.'
+        return
+     endif
+     key = strtrim((strsplit(hdr[indx[-1]], '=', /extract))[0], 2)
+     
+     wcfile = red_strreplace(fxpar(hdr, key), 'Align reference: ', '')
+     if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
+     if ~file_test(wcfile) then begin
+        print, 'WB file ',wcfile,' does not exist.'
+        print, 'Make the cube or rerun fitscube_export with /no_wb_file option.'
+        return
+     endif
+     
+     wboutfile = red_strreplace(file_basename(wcfile), '_im.fits', '_export'+new_DATE+'_im.fits')     
+     red_fitsaddkeyword, hdr, key $
+                         , 'Align reference: '+wboutfile $
+                         , 'WB cube file name'
+     wbhdr = headfits(wcfile)
+     red_fitsdelkeyword, wbhdr, 'STATE'
+     red_fitsaddkeyword, anchor = 'TIMESYS', wbhdr, 'DATE', new_DATE
+     red_fitsaddkeyword, anchor = 'TIMESYS', wbhdr, 'FILENAME', wboutfile
+     print, inam + ' : Copying the wideband cube...'
+     file_copy, wcfile, outdir+wboutfile
+     red_fitscube_newheader, outdir+wboutfile, wbhdr
+     print, inam + ' : Wrote '+outdir+wboutfile
+     red_fitscube_checksums, outdir+wboutfile
+  endif
 
-  
   ;; Copy the file and write the new header
   print, inam + ' : Copying the fitscube...'
-  file_mkdir, outdir
   file_copy, filename, outdir+outfile
-;  fxhmodify, outdir+outfile, new_header = hdr
   red_fitscube_newheader, outdir+outfile, hdr
-
   print, inam + ' : Wrote '+outdir+outfile
+  ;; Checksums need to be checked. And updated for the main hdu.
+  red_fitscube_checksums, outdir+outfile 
+  ;; The fitscube files should not be changed after this point!
 
-  if copy_spectral then begin
-    ;; Copy the spectral file as well
+    ;; Any spectral file to copy?
+  if ~keyword_set(no_spectral_file) then begin
+    spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
+    if ~file_test(indir + spfile) then begin
+       print, 'File ',spfile,' does not exist.'
+       print, 'Make the spectral cube or rerun fitscube_export with /no_spectral_file option.'
+       return
+    endif
     print, inam + ' : Copying the spectral cube...'
     spoutfile = red_strreplace(outfile, '_im.fits', '_sp.fits')
     file_copy, indir+spfile, outdir+spoutfile
@@ -267,15 +329,13 @@ pro red::fitscube_export, filename $
     spanchor = 'TIMESYS'
     red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATE', new_DATE
     red_fitsaddkeyword, anchor = spanchor, sphdr, 'FILENAME', spoutfile
-    ;;fxhmodify, outdir+spoutfile, new_header = sphdr
     red_fitscube_newheader, outdir+spoutfile, sphdr
     print, inam + ' : Wrote '+outdir+spoutfile
+    red_fitscube_checksums, outdir+spoutfile
   endif
-
-  ;; Checksums need to be checked. And updated for the main hdu.
-  red_fitscube_checksums, outdir+outfile ;filename
-  if ~no_spectral_file then red_fitscube_checksums, outdir+spoutfile ;spfilename
-  ;; The fitscube files should not be changed after this point!
+  
+  ;; Add FITS keywords with info available in the file but not as
+  ;; headers. 
 
   
   if n_elements(smooth_width) gt 0 then begin
@@ -409,8 +469,9 @@ pro red::fitscube_export, filename $
 
       ;; Keywords to the SVO ingestion script
       file_url = 'https://dubshen.astro.su.se/'
-      file_path = date_beg_split[0] + '/' $
-                  + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
+      instrument = strtrim(fxpar(hdr,'INSTRUME'),2)
+      file_path = date_beg + '/' $
+                  + instrument + '/'
 
       
       ;; Generate OID = unique observation ID of the metadata?
@@ -420,13 +481,15 @@ pro red::fitscube_export, filename $
       ;;
       ;; Let's do DATE-BEG_PREFILTER_SCANNUMBERS:
       scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scannum)
-      oid = date_beg + '_' $
-            + strtrim(fxpar(hdr, 'FILTER1'),2) + '_' $
-            + rdx_ints2str(scannum.values)
+      filter = strtrim(fxpar(hdr, 'FILTER1'),2)
+      scans = rdx_ints2str(scannum.values)
+      oid = date_beg+'T'+time_beg + '_' $
+            + filter + '_' $
+            + scans
       
       ;; Build the command string
       cmd = cmd[0]
-      cmd += ' ' + strlowcase(strtrim(fxpar(hdr,'INSTRUME'),2)) ; The dataset ID in the SOLARNET Data Archive/SVO
+      cmd += ' ' + strlowcase(instrument) ; The dataset ID in the SOLARNET Data Archive/SVO
       cmd += ' ' + outdir+outfile                               ; The FITS file to submit to the SVO
       cmd += ' --file-url ' + file_url                          ; The URL of the file
       cmd += ' --file-path ' + file_path                        ; The relative path of the file
@@ -434,48 +497,28 @@ pro red::fitscube_export, filename $
          cmd += ' --thumbnail-url ' + thumbnail_url             ; The URL of the thumbnail
       cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
       cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
-      if n_elements(oid) gt 0 then $                            ;
-         cmd += ' --oid ' + oid                                 ; The unique observation ID of the metadata
+      cmd += ' --oid ' + oid                                    ; The unique observation ID of the metadata
       
       ;; Spawn running the script
       spawn, cmd, status
-      print, cmd
+      print, status
 
       ;; Put datacube information to the database
-      red_mysql_check, handle
-      release_date = fxpar(hdr,'RELEASE')
       release_comment = fxpar(hdr,'RELEASEC')
-      ;; Get the current date
-      time = Systime(UTC=Keyword_Set(utc))
-      day = String(StrMid(time, 8, 2), Format='(I2.2)') ; Required because UNIX and Windows differ in time format.
-      month = StrUpCase(Strmid(time, 4, 3))
-      year = Strmid(time, 20, 4)
-      months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-      m = (Where(months EQ month)) + 1
-      current_date =  year + '-' + string(m, FORMAT='(I2.2)') + '-' + day
-
+      if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
+      red_mysql_check, handle
+      
       if current_date lt release_date then begin
-        if ~keyword_set(allowed_users) then begin
-          allowed_users = ''
-          reply = ''
-          print, 'This data should be protected from unauthorized downloading.'
-          print, "You have to enter users' credentials."
-          while reply ne 'x' do begin
-            read,'Enter a username (put "x" to escape) >', reply
-            allowed_users += reply+';'
-          endwhile
-          allowed_users = strmid(allowed_users, 0, strlen(allowed_users)-2)
-        endif
-        if allowed_users eq '' then begin
-          print, 'You have to provide at least one username for the cubes downloading.'
-          return
-        endif
-        query = "INSERT INTO data_cubes (filename, release_date, release_comment, allowed_users) VALUES ('" + $
-                outfile +"', '"+ release_date +"', '"+ release_comment +"', '"+ allowed_users +"');"
-        print, "Don't forget to ask the administrator to add user to the database and generate password."
+        filename = outdir+outfile
+        query = "INSERT INTO data_cubes (date, time, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
+                filename +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
+                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
       endif else begin
-        query = "INSERT INTO data_cubes (filename, release_date, release_comment) VALUES ('" + $
-                outfile +"', '"+ release_date +"', '"+ release_comment + "');"
+        query = "INSERT INTO data_cubes (date, time, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment) VALUES ("' + date_beg +'", "'+ time_beg+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
+                filename +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
+                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
       endelse
       
       red_mysql_cmd, handle, query, ans, nl
