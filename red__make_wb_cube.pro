@@ -389,15 +389,15 @@ pro red::make_wb_cube, dir $
   origNy = y1 - y0 + 1
 
   ;; Observations metadata varaibles
-  tbeg_array     = dblarr(1, Nscans)   ; Time beginning for state
-  tavg_array     = dblarr(1, Nscans)   ; Time average for state
-  tend_array     = dblarr(1, Nscans)   ; Time end for state
-  date_beg_array = strarr(1, Nscans)   ; DATE-BEG for state
-  date_avg_array = strarr(1, Nscans)   ; DATE-AVG for state
-  date_end_array = strarr(1, Nscans)   ; DATE-END for state
-  exp_array      = fltarr(1, Nscans)   ; Total exposure time
-  sexp_array     = fltarr(1, Nscans)   ; Single exposure time
-  nsum_array     = lonarr(1, Nscans)   ; Number of summed exposures
+  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
+  tavg_array     = dblarr(1, Nscans) ; Time average for state
+  tend_array     = dblarr(1, Nscans) ; Time end for state
+  date_beg_array = strarr(1, Nscans) ; DATE-BEG for state
+  date_avg_array = strarr(1, Nscans) ; DATE-AVG for state
+  date_end_array = strarr(1, Nscans) ; DATE-END for state
+  exp_array      = fltarr(1, Nscans) ; Total exposure time
+  sexp_array     = fltarr(1, Nscans) ; Single exposure time
+  nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
 
   ;; Read headers to get obs_time and load the images into a cube
   cub = fltarr(origNx, origNy, Nscans)
@@ -665,6 +665,13 @@ pro red::make_wb_cube, dir $
   red_fitsdelkeyword, hdr, 'FRAMENUM'   ; Not applicable here
   red_fitsdelkeyword, hdr, 'STATE'      ; State info is in WCS and FILTER1 keywords
 ;  red_fitsdelkeyword, hdr, '' 
+
+  ;; Some old momfbd output could have an old version of the PRSTEP1
+  ;; keyword. Repair that here.
+  prstp = fxpar(hdr, 'PRSTEP1', comment = prcom)
+  if prstp eq 'MOMFBD image restoration' then begin
+    fxaddpar, hdr, 'PRSTEP1', 'MOMFBD', strtrim(prcom, 2)
+  endif
 
   anchor = 'DATE'
 
