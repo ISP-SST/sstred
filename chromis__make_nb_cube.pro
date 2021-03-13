@@ -335,8 +335,8 @@ pro chromis::make_nb_cube, wcfile $
       return
     endif
       
-    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
     restore, pfile                  ; Restores variable prf which is a struct
+    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
     idxpref = where(my_prefilters eq unbprefs[inbpref], count)
     
     if inbpref eq 0 then begin
