@@ -71,6 +71,14 @@ pro red::headerinfo_copystep, hdr, oldhdr $
   ;; Available steps
   prsteps_available = strtrim(fxpar(oldhdr,'PRSTEP*', count = Navailable), 2)
 
+  ;; Make step name changes backward compatible
+  for istep = 0, n_elements(prsteps_available)-1 do begin
+    if prsteps_available[istep] eq 'Demodulate' then $
+       prsteps_available[istep] = 'DEMODULATION'
+    if prsteps_available[istep] eq 'MOMFBD image restoration' then $
+       prsteps_available[istep] = 'MOMFBD'
+  endfor
+
   ;; Any steps to copy?
   if Navailable eq 0 then return
 
