@@ -326,8 +326,9 @@ pro chromis::make_nb_cube, wcfile $
   endif
 
   file_mkdir, odir
-
+  
   ;; Load prefilters
+  wave_shifts = fltarr(Nwav)
   for inbpref = 0L, Nnbprefs-1 do begin
     pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+'_prefilter.idlsave'
     if ~file_test(pfile) then begin
@@ -342,7 +343,10 @@ pro chromis::make_nb_cube, wcfile $
       wave_shift = 0.0
     endelse
     idxpref = where(my_prefilters eq unbprefs[inbpref], count)
-      
+
+    print, 'Wave shifts: ', inbpref, ' ', unbprefs[inbpref], wave_shifts[inbpref]
+    wave_shifts[idxpref] = wave_shift
+    
     if inbpref eq 0 then begin
       units = prf.units
     endif else begin
@@ -364,7 +368,7 @@ pro chromis::make_nb_cube, wcfile $
     endelse
     
   endfor                        ; inbpref
-    
+
   rpref = 1.d0/prefilter_curve
 
   ;; Do WB correction?
@@ -649,6 +653,9 @@ pro chromis::make_nb_cube, wcfile $
       wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength*1d9
       wcs[iwav, iscan].time = tavg_array[iwav, iscan]
 
+      ;; Apply wavelength shift from prefilter fit.
+      wcs[iwav, iscan].wave -= wave_shifts[iwav]
+
       ;; Exposure time
       exp_array[iwav, iscan]  = fxpar(nbhead, 'XPOSURE')
       sexp_array[iwav, iscan] = fxpar(nbhead, 'TEXPOSUR')
@@ -747,9 +754,6 @@ pro chromis::make_nb_cube, wcfile $
   endfor                        ; iscan
 
 
-  ;; Apply wavelength shift from prefilter fit.
-  wcs.wave -= wave_shift
-  
   ;; Close fits file.
   self -> fitscube_finish, lun, wcs = wcs
   if keyword_set(wbsave) then self -> fitscube_finish, wblun, wcs = wcs
