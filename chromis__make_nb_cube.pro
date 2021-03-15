@@ -335,10 +335,14 @@ pro chromis::make_nb_cube, wcfile $
       return
     endif
       
-    restore, pfile                  ; Restores variable prf which is a struct
-    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+    restore, pfile              ; Restores variable prf which is a struct
+    if n_elements(prf.fitpars) gt 1 then begin
+      wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+    endif else begin
+      wave_shift = 0.0
+    endelse
     idxpref = where(my_prefilters eq unbprefs[inbpref], count)
-    
+      
     if inbpref eq 0 then begin
       units = prf.units
     endif else begin
