@@ -179,7 +179,6 @@ pro crisp::make_nb_cube, wcfile $
                          , odir = odir $
                          , overwrite = overwrite $
                          , redemodulate = redemodulate $
-                         , scannos = scannos $
 ;                         , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
@@ -321,19 +320,8 @@ pro crisp::make_nb_cube, wcfile $
   datadir = file_dirname(wbgfiles[0])+'/'
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
 
-  files = file_search(datadir + '*.'+extension, count = Nfiles)      
-
-  ;; If we don't want to make a cube with all scans, this could be
-  ;; unnecessarily many files. Takes a long time to do extracstates on
-  ;; them.
-  undefine,selectfiles 
-  Nscans = n_elements(wbgstates.scannumber)
-  for iscan = 0, Nscans-1 do begin
-    indx = where(strmatch(files, '*_'+string(wbgstates[iscan].scannumber, format = '(i05)')+'_*'), Nmatch)
-    if Nmatch ne 0 then red_append, selectfiles, files[indx]
-  endfor                        ; iscan
-  files = selectfiles
-  Nfiles = n_elements(files)
+  srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*' 
+  files = file_search(datadir + srch + extension, count = Nfiles)
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $

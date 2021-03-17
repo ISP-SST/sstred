@@ -274,8 +274,10 @@ pro red::make_wb_cube, dir $
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
   endcase
-  
-  files = file_search(dir + '*' + extension, count = Nfiles)
+
+  if ~keyword_set(scannos) then srch = '*' $
+    else srch = '*_' + string(red_expandrange(scannos), format='(I05)') + '_*'
+  files = file_search(dir + srch + extension, count = Nfiles)
 
   if Nfiles eq 0 then begin
     print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
@@ -373,18 +375,18 @@ pro red::make_wb_cube, dir $
   
   hdr = red_readhead(wfiles[0])
   im_dim = fxpar(hdr, 'NAXIS*')
-;  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
-;    ;; X and Y switched
-;    y0 = crop[0]
-;    y1 = im_dim[0]-1 - crop[1]
-;    x0 = crop[2]
-;    x1 = im_dim[1]-1 - crop[3]
-;  endif else begin
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
-;  endelse
+  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
+    ;; X and Y switched
+    y0 = crop[2]
+    y1 = im_dim[0]-1 - crop[3]
+    x0 = crop[0]
+    x1 = im_dim[1]-1 - crop[1]
+  endif else begin
+    x0 = crop[0]
+    x1 = im_dim[0]-1 - crop[1]
+    y0 = crop[2]
+    y1 = im_dim[1]-1 - crop[3]
+  endelse
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
 
