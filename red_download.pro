@@ -250,7 +250,7 @@ pro red_download, date = date $
         if datearr[0] ne '2012' then begin
           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
           backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15' $
-                                    , '16', '17', '18', '19', '20']
+                                    , '16', '17', '18', '19', '20', '21']
           backscatter_orientations = bytarr(n_elements(backscatter_years) $
                                             , n_elements(backscatter_cameras))
           ;; Change orientations here if needed. Let's hope the
@@ -269,6 +269,7 @@ pro red_download, date = date $
           backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2018 - same as 2015
           backscatter_orientations[11, *] = [0, 7, 7, 0] ; 2019 - same as 2015
           backscatter_orientations[12, *] = [0, 7, 7, 0] ; 2020 - same as 2015
+          backscatter_orientations[13, *] = [0, 7, 7, 0] ; 2021 - same as 2015
           for ifile = 0, Nfiles-1 do begin
             icam = where(backscatter_cameras $
                          eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
