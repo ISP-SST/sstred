@@ -304,19 +304,12 @@ pro crisp::make_scan_cube, dir $
                          , autocrop = autocrop  $
                          , direction = direction $
                          , interactive = interactive
-  im_dim = fxpar(wbghdr, 'NAXIS*')
-;  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
-;    ;; X and Y switched
-;    y0 = crop[0]
-;    y1 = im_dim[0]-1 - crop[1]
-;    x0 = crop[2]
-;    x1 = im_dim[1]-1 - crop[3]
-;  endif else begin
+  im = red_readdata(wbgfiles[0], direction = direction)
+  im_dim = size(im, /dim)
   x0 = crop[0]
   x1 = im_dim[0]-1 - crop[1]
   y0 = crop[2]
   y1 = im_dim[1]-1 - crop[3]
-;  endelse
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
 
