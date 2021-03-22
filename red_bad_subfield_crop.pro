@@ -64,7 +64,7 @@ pro red_bad_subfield_crop, files, crop $
 
   Nfiles = n_elements(files)
 
-  if n_elements(direction) gt 0 then direction = 0
+  if ~keyword_set(direction) then direction = 0
   
   if keyword_set(autocrop) or keyword_set(interactive) then begin
     
@@ -222,14 +222,14 @@ pro red_bad_subfield_crop, files, crop $
   ;; Take the direction parameter into account. See the direction
   ;; parameter of the IDL rotate() function.
   case direction of
-    0 : crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]   ;  X,  Y
-    1 : crop = [y1, im_dim[1]-1-y0, x0, im_dim[0]-1-x1]   ; -Y,  X
-    2 : crop = [x1, im_dim[0]-1-x0, y1, im_dim[1]-1-y0]   ; -X, -Y
-    3 : crop = [y0, im_dim[1]-1-y1, x1, im_dim[0]-1-x0]   ;  Y, -X
-    4 : crop = [y0, im_dim[1]-1-y1, x0, im_dim[0]-1-x1]   ;  Y,  X
-    5 : crop = [x1, im_dim[0]-1-x0, y0, im_dim[1]-1-y1]   ; -X,  Y
-    6 : crop = [y1, im_dim[1]-1-y0, x1, im_dim[0]-1-x0]   ; -Y, -X
-    7 : crop = [x0, im_dim[0]-1-x1, y1, im_dim[1]-1-y0]   ;  X, -Y
+    0 : crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1] ;  X0,  Y0,    0
+    1 : crop = [im_dim[1]-1-y1, y0, x0, im_dim[0]-1-x1] ; -Y0,  X0, - 90
+    2 : crop = [im_dim[0]-1-x1, x0, im_dim[1]-1-y1, y0] ; -X0, -Y0, -180
+    3 : crop = [y0, im_dim[1]-1-y1, im_dim[0]-1-x1, x0] ;  Y0, -X0, -270
+    4 : crop = [y0, im_dim[1]-1-y1, x0, im_dim[0]-1-x1] ;  Y0,  X0,    0, T
+    5 : crop = [im_dim[0]-1-x1, x0, y0, im_dim[1]-1-y1] ; -X0,  Y0,  -90, T
+    6 : crop = [im_dim[1]-1-y1, y0, im_dim[0]-1-x1, x0] ; -Y0, -X0, -180, T
+    7 : crop = [x0, im_dim[0]-1-x1, im_dim[1]-1-y1, y0] ;  X0, -Y0, -270, T
     else : stop
   endcase
 

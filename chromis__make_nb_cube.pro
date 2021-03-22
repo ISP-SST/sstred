@@ -145,7 +145,7 @@ pro chromis::make_nb_cube, wcfile $
                            , odir = odir $
                            , overwrite = overwrite $
                            , tiles = tiles $
-                           , wbsave = wbsave
+                           , wbsave = wbsave 
 
   
   ;; Name of this method
@@ -245,7 +245,8 @@ pro chromis::make_nb_cube, wcfile $
   search_dir = file_dirname(wbgfiles[0])+'/'
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
 
-  files = file_search(search_dir + '*.'+extension, count = Nfiles)      
+  srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*' 
+  files = file_search(search_dir + srch + extension, count = Nfiles)   
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $

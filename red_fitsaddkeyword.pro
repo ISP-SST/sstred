@@ -176,7 +176,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
         oldvalue = fxpar(header, names[ikey], comment = oldcomment, count = oldcount)
         if oldcount gt 0 then comments[ikey] = oldcomment[0]
       endif
-      sxdelpar, header, names[ikey]
+      red_fitsdelkeyword, header, names[ikey]
     endif
 
     ;; Special handling of blank and COMMENT keywords.
