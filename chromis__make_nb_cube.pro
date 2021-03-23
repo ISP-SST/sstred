@@ -827,7 +827,10 @@ pro chromis::make_nb_cube, wcfile $
       endcase
       cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping
       cmap1 = red_rotate(cmap1, direction)
-      cmap1 = cmap1[x0:x1,y0:y1] ; Clip to the selected FOV
+      cmap_dim = size(cmap1,/dim)
+      xclip = (cmap_dim[0] - origNx)/2.
+      yclip = (cmap_dim[1] - origNy)/2.
+      cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
 
       ;; Now make rotated copies of the cavity map
       for iscan = 0L, Nscans-1 do begin

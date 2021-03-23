@@ -368,30 +368,25 @@ pro red::make_wb_cube, dir $
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
   
-  ;; Observations metadata variables
-  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
-  tavg_array     = dblarr(1, Nscans)  ; Time average for state
-  tend_array     = dblarr(1, Nscans)  ; Time end for state
-  date_beg_array = strarr(1, Nscans)  ; DATE-BEG for state
-  date_avg_array = strarr(1, Nscans)  ; DATE-AVG for state
-  date_end_array = strarr(1, Nscans)  ; DATE-END for state
-  exp_array      = fltarr(1, Nscans)  ; Total exposure time
-  sexp_array     = fltarr(1, Nscans)  ; Single exposure time
-  nsum_array     = lonarr(1, Nscans)  ; Number of summed exposures
-
-  red_bad_subfield_crop, wfiles, crop $
+  x01y01 = red_bad_subfield_crop(wfiles, crop $
                          , autocrop = autocrop  $
                          , direction = direction $
-                         , interactive = interactive
+                         , interactive = interactive)
   
-  im = red_readdata(wfiles[0], direction = direction)
-  im_dim = size(im, /dim)
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+  x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
+
+  ;; Observations metadata varaibles
+  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
+  tavg_array     = dblarr(1, Nscans) ; Time average for state
+  tend_array     = dblarr(1, Nscans) ; Time end for state
+  date_beg_array = strarr(1, Nscans) ; DATE-BEG for state
+  date_avg_array = strarr(1, Nscans) ; DATE-AVG for state
+  date_end_array = strarr(1, Nscans) ; DATE-END for state
+  exp_array      = fltarr(1, Nscans) ; Total exposure time
+  sexp_array     = fltarr(1, Nscans) ; Single exposure time
+  nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
 
   ;; Read headers to get obs_time and load the images into a cube
   cub = fltarr(origNx, origNy, Nscans)
@@ -767,7 +762,7 @@ pro red::make_wb_cube, dir $
 
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
-  x01y01 = [X0, X1, Y0, Y1]
+;  x01y01 = [X0, X1, Y0, Y1]
   fxbaddcol, col, bhdr, ANG,       'ANG'
   fxbaddcol, col, bhdr, CROP,      'CROP'
   fxbaddcol, col, bhdr, FF,        'FF'

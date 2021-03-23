@@ -585,8 +585,11 @@ pro crisp::make_nb_cube, wcfile $
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
     cmap1 = red_rotate(cmap1, direction)
-    cmap1 = cmap1[x0:x1,y0:y1]  ; Clip to the selected FOV
-
+    cmap_dim = size(cmap1,/dim)
+    xclip = (cmap_dim[0] - origNx)/2.
+    yclip = (cmap_dim[1] - origNy)/2.
+    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
+    
   endif
   
   ;; Make FITS header for the NB cube
@@ -1167,7 +1170,7 @@ pro crisp::make_nb_cube, wcfile $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan] $
                             , full=wcFF $
                             , stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr $
-                            , nthreads=nthreads, nearest = nearest )
+                            , nthreads=nthreads, nearest = nearest)
         
 
         self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
@@ -1185,8 +1188,7 @@ pro crisp::make_nb_cube, wcfile $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr $
                             , nthreads=nthreads)
-      ;;cmap11 = red_stretch(temporary(cmap11), reform(wcGRID[iscan,*,*,*]))
-
+      
       cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
       ;; The following block of code is inactive but we want to keep

@@ -57,7 +57,7 @@
 ;    2020-12-23 : MGL. New keyword direction.
 ; 
 ;-
-pro red_bad_subfield_crop, files, crop $
+function red_bad_subfield_crop, files, crop $
                            , autocrop = autocrop $
                            , direction =  direction $
                            , interactive = interactive
@@ -176,8 +176,6 @@ pro red_bad_subfield_crop, files, crop $
   x1 = im_dim[0]-1 - crop[1]
   y0 = crop[2]
   y1 = im_dim[1]-1 - crop[3]
-  Nx = x1 - x0 + 1
-  Ny = y1 - y0 + 1
   
   if keyword_set(interactive) then begin
 
@@ -212,15 +210,11 @@ pro red_bad_subfield_crop, files, crop $
     x1 = round(roi_x[1]) <(im_dim[0]-1)
     y1 = round(roi_y[1]) <(im_dim[1]-1)
 
-    Nx = x1 - x0 + 1
-    Ny = y1 - y0 + 1
 
     crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]
     
   endif
 
-  ;; Take the direction parameter into account. See the direction
-  ;; parameter of the IDL rotate() function.
   case direction of
     0 :                           ;  X,  Y (no change)
     1 : crop = crop[[3, 2, 0, 1]] ; -Y,  X
@@ -232,6 +226,21 @@ pro red_bad_subfield_crop, files, crop $
     7 : crop = crop[[0, 1, 3, 2]] ;  X, -Y
     else : stop
   endcase
+
+  if max(direction eq [1, 3, 4, 6]) eq 1 then begin
+    ;; X and Y switched
+    y0 = crop[2]
+    y1 = im_dim[0]-1 - crop[3]
+    x0 = crop[0]
+    x1 = im_dim[1]-1 - crop[1]
+  endif else begin
+    x0 = crop[0]
+    x1 = im_dim[0]-1 - crop[1]
+    y0 = crop[2]
+    y1 = im_dim[1]-1 - crop[3]
+  endelse
+
+  return, [x0, x1, y0, y1]
 
 end
 
