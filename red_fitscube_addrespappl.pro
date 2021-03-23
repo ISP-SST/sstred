@@ -70,7 +70,10 @@ pro red_fitscube_addrespappl, filename, respappl $
 
   ;; Get dimensions from existing respappl
   old_dims = size(old_respappl, /dim)
-  if n_elements(old_dims) eq 1 then old_dims = [old_dims, 1]
+  if n_elements(old_dims) eq 1 then begin
+    old_respappl = reform(old_respappl, old_dims, 1)
+    old_dims = [old_dims, 1]    
+  endif
   Ntun = old_dims[0]
   Nscans = old_dims[1]
 

@@ -160,7 +160,8 @@ pro crisp::make_scan_cube, dir $
                            , rotation = rotation $
                            , scannos = scannos $
                            , tiles = tiles  $
-                           , tuning_selection = tuning_selection 
+                           , tuning_selection = tuning_selection $
+                           , nthreads = nthreads
                
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -300,16 +301,11 @@ pro crisp::make_scan_cube, dir $
 
   ;; Do we need this?
   ;; Establish the FOV, perhaps based on the selected wb files.
-  red_bad_subfield_crop, wbgfiles, crop $
+  x01y01 = red_bad_subfield_crop(wfiles, crop $
                          , autocrop = autocrop  $
                          , direction = direction $
-                         , interactive = interactive
-  im = red_readdata(wbgfiles[0], direction = direction)
-  im_dim = size(im, /dim)
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+                         , interactive = interactive)
+  x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
 
@@ -434,7 +430,10 @@ pro crisp::make_scan_cube, dir $
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
     cmap1 = red_rotate(cmap1, direction)
-    cmap1 = cmap1[x0:x1,y0:y1]  ; Clip to the selected FOV
+    cmap_dim = size(cmap1,/dim)
+    xclip = (cmap_dim[0] - Nx)/2.
+    yclip = (cmap_dim[1] - Ny)/2.
+    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1]  ; Clip to the selected FOV
 
   endif
 
@@ -591,8 +590,8 @@ pro crisp::make_scan_cube, dir $
     endelse
     
     if ~keyword_set(norotation) then begin
-      ff = [abs(ang),0,0,0,0,0]
-      wbim_rot = red_rotation(wbim, ang, full = ff)
+      ff = [abs(ang),0,0,0,0,ang]
+      wbim_rot = red_rotation(wbim, ang, full = ff, nthreads=nthreads)
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
 
@@ -735,9 +734,9 @@ pro crisp::make_scan_cube, dir $
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
         for istokes = 0, Nstokes-1 do begin
-          if(~keyword_set(norotation)) then begin
+           if(~keyword_set(norotation)) then begin
             self -> fitscube_addframe, fileassoc $
-                                       , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang, full = ff) $
+                                       , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang, full = ff, nthreads=nthreads) $
                                        , ituning = ituning, istokes = istokes
           endif else begin
             self -> fitscube_addframe, fileassoc $
@@ -845,7 +844,7 @@ pro crisp::make_scan_cube, dir $
         nsum_array[ituning] = round(total(nsums))
 
         self -> fitscube_addframe, fileassoc $
-                                   , red_rotation(temporary(nbim), ang, full = ff) $
+                                   , red_rotation(temporary(nbim), ang, full = ff, nthreads=nthreads) $
                                    , ituning = ituning
 
       endelse 
@@ -886,11 +885,9 @@ pro crisp::make_scan_cube, dir $
     self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
     ;; Add cavity maps as WAVE distortions 
-    if ~keyword_set(nocavitymap) then begin
-      cmap1 = red_rotate(cmap1, direction)
+    if ~keyword_set(nocavitymap) then begin 
       red_fitscube_addcmap, filename $
-                            , reform(red_rotation(cmap1,ang,full=ff),[dims[0:1],1,1,1])
-;    , red_rotation(reform(cmap1, Nx, Ny, 1, 1, 1), ang, full = ff)
+                            , reform(red_rotation(cmap1,ang,full=ff, nthreads=nthreads),[dims[0:1],1,1,1])
     endif 
     ;; Add some variable keywords
     self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
@@ -914,7 +911,7 @@ pro crisp::make_scan_cube, dir $
 
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
     if Nt gt 0 then begin
-      stop
+ ;     stop
       self -> fitscube_addvarkeyword, filename, 'ATMOS_R0' $
                                       , metadata_r0[*, tindx_r0] $
                                       , comment = 'Atmospheric coherence length' $

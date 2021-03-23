@@ -132,11 +132,7 @@ pro chromis::make_scan_cube, dir $
   inam = red_subprogram(/low, calling = inam1)
 
   if n_elements(direction) eq 0 then direction = self.direction
-  if n_elements(rotation)  eq 0 then rotation  = self.rotation
-                             
-  ;; Temporarily disable cavity maps by default, can still be be
-  ;; written (experimentally) with explicit nocavitymap=0.
-  if n_elements(nocavitymap) eq 0 then nocavitymap = 1
+  if n_elements(rotation)  eq 0 then rotation  = self.rotation                            
   
   ;; Make prpara
   red_make_prpara, prpara, dir
@@ -282,16 +278,11 @@ pro chromis::make_scan_cube, dir $
 
 
   ;; Establish the FOV, perhaps based on the selected wb files.
-  red_bad_subfield_crop, wfiles, crop $
+  x01y01 = red_bad_subfield_crop(wfiles, crop $
                          , autocrop = autocrop  $
                          , direction = direction $
-                         , interactive = interactive
-  im = red_readdata(wfiles[0], direction = direction)
-  im_dim = size(im, /dim)
-  x0 = crop[0]
-  x1 = im_dim[0]-1 - crop[1]
-  y0 = crop[2]
-  y1 = im_dim[1]-1 - crop[3]
+                         , interactive = interactive)
+  x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
   
@@ -587,7 +578,7 @@ pro chromis::make_scan_cube, dir $
 
     Nstokes = 1
     if ~keyword_set(norotation) then begin
-      ff = [abs(ang),0,0,0,0,0]
+      ff = [abs(ang),0,0,0,0,ang]
       wbim_rot = red_rotation(wbim, ang, full = ff)
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
@@ -781,9 +772,12 @@ pro chromis::make_scan_cube, dir $
         endcase
         cmap1 = rdx_img_project(amap, cmap1) ; Apply the geometrical mapping
         cmap1 = red_rotate(cmap1, direction)
-        cmap1 = cmap1[x0:x1,y0:y1] ; Clip to the selected FOV
+        cmap_dim = size(cmap1,/dim)
+        xclip = (cmap_dim[0] - Nx)/2.
+        yclip = (cmap_dim[1] - Ny)/2.
+        cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
 
-        stop
+;        stop
         ;; Write cmap(s) to the cube
         red_fitscube_addcmap, filename $
                               , reform(red_rotation(cmap1,ang,full=ff, nthreads=nthreads, nearest=nearest),[dims[0:1],1,1,1]) $
