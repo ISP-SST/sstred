@@ -105,6 +105,7 @@ function red_readhead_fits, fname, $
       endif else begin          ; STATE keyword exists but not FILTER1 (e.g. 2016.08.31 data)
         state_split = strsplit( state, '_',  /extr )
         if n_elements(state_split) gt 1 then begin
+          
           state1 = state_split[0] ;  for 2016.08.31:  state = 'wheel00002_hrz32600'
           camera = fxpar(header, red_keytab('camera'), count=count)
           if count gt 0 then begin
@@ -122,10 +123,11 @@ function red_readhead_fits, fname, $
               endcase
             endif else begin
               ;; Chromis-W and Chromis-D
-              case state1 of
-                'wheel00006' : prefilter = '4846' ; H-beta continuum
-                else: prefilter = '3950'          ; Ca II HK wideband
-              endcase
+              prefilter = red_get_chromis_wbfilter(state1)
+;              case state1 of
+;                'wheel00006' : prefilter = '4846' ; H-beta continuum
+;                else: prefilter = '3950'          ; Ca II HK wideband
+;              endcase
             endelse
             if n_elements(prefilter) gt 0 then begin
               ;; Not defined for darks
@@ -133,13 +135,15 @@ function red_readhead_fits, fname, $
             endif
           endif
         endif else begin
+
           case state of
             'hbeta-core' : prefilter = '4862'
             'hbeta-cont' : prefilter = '4846'
             'cah-core'   : prefilter = '3969'
-            'wheel00005' : prefilter = '3950' ; WB: Ca II HK continuum
-            'wheel00006' : prefilter = '4846' ; WB: H-beta continuum
-            else:
+;            'wheel00005' : prefilter = '3950' ; WB: Ca II HK continuum
+;            'wheel00006' : prefilter = '4846' ; WB: H-beta continuum
+            else         : prefilter = red_get_chromis_wbfilter(state)
+
           endcase
           if n_elements(prefilter) gt 0 then begin
             ;; Not defined for darks

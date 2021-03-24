@@ -50,6 +50,9 @@ pro chromis_hrz_zeropoint, workdir
 
   linedefdir = workdir + '/' + 'downloads/'
   ldfiles = file_search(linedefdir + '/linedef.*', count = nLD)
+
+  ;; We could replace the reading below with something like "pylines =
+  ;; red_readlinedef(ldfiles[0])" and then parse pylines.
   
   if nLD eq 1 then begin
     openr, lun, ldfiles[0], /get_lun

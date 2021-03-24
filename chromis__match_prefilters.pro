@@ -47,6 +47,9 @@ function chromis::match_prefilters, pf1, pf2
                      ['3925', '3950'], $
                      ['4862', '4846']]
 
+  ;; Update the table based on linedef.py
+  for i = 0, 5 do prefilter_table[1, i] = red_get_chromis_wbfilter(prefilter_table[0, i])
+
   N1 = n_elements(pf1)
   N2 = n_elements(pf2)
 
@@ -75,18 +78,18 @@ function chromis::match_prefilters, pf1, pf2
      endcase
   endelse
 
-  ret = bytarr(Npref)
-  for ip=0, Npref-1 do begin
-     ret[ip] = max(where( (prefilter_table[0,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) $
-                          or (prefilter_table[1,*] eq list1[ip] and prefilter_table[0,*] eq list2[ip]) $
-                          or (prefilter_table[1,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) $
-                          or (prefilter_table[0,*] eq list1[ip] and prefilter_table[0,*] eq list2[ip]) ) $
-                  ) ge 0
-  endfor
-
-  if n_elements(ret) eq 1 then return, ret[0]
+;  ret = bytarr(Npref)
+;  for ip=0, Npref-1 do begin
+;     ret[ip] = max(where( (prefilter_table[0,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) $
+;                          or (prefilter_table[1,*] eq list1[ip] and prefilter_table[0,*] eq list2[ip]) $
+;                          or (prefilter_table[1,*] eq list1[ip] and prefilter_table[1,*] eq list2[ip]) $
+;                          or (prefilter_table[0,*] eq list1[ip] and prefilter_table[0,*] eq list2[ip]) ) $
+;                  ) ge 0
+;   endfor
   
-  return, ret
+  ret = abs(float(list1) - float(list2)) lt 100. ; Closer than 100 Å or 10 nm
+  
+  if n_elements(ret) eq 1 then return, ret[0] else return, ret
 
 end
 
