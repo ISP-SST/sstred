@@ -66,11 +66,11 @@
 ;
 ;   pig : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
-;     PIG pointing info in xxx coordinates.
+;     PIG pointing info in arc sec.
 ;
 ;   diskpos : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
-;     SST pointing info in xxx coordinates. Based on PIG log data but
+;     SST pointing info in arcsec. Based on PIG log data but
 ;     will use turret data if PIG data is not available or is deemed
 ;     unreliable. The latter can happen when the PIG software has
 ;     problems fitting a circle to the solar disk, like near the

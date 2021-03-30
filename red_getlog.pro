@@ -331,10 +331,10 @@ pro red_getlog, date $
           ;; Change struct of arrays to array of structs
           pig = replicate(pigstruct, Npig)
 
-          pig.time = pigdata.time[indx] - midnight
-          pig.x = pigdata.x[indx]
-          pig.y = pigdata.y[indx]
-          
+          pig.time = pigdata.time[indx] - midnight ; [s]
+          pig.x = pigdata.x[indx]                  ; [arcsec]
+          pig.y = pigdata.y[indx]                  ; [arcsec]
+                                
         endif                   ; Npig
       endif                     ; Successful read      
     endif                       ; pigfile
