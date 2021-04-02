@@ -471,6 +471,8 @@ pro chromis::make_scan_cube, dir $
       
       restore, pfile            ; Restores variable prf which is a struct
       idxpref = where(my_prefilters eq unbprefs[inbpref], count)
+
+      wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
       
       if inbpref eq 0 then begin
         units = prf.units
@@ -704,6 +706,9 @@ pro chromis::make_scan_cube, dir $
     wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
     wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
     wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+
+    ;; Apply wavelength shift from prefilter fit.
+    wcs.wave -= wave_shift
 
     ;; Close fits file 
     self -> fitscube_finish, lun, wcs = wcs, direction = direction
