@@ -28,16 +28,19 @@
 ; 
 ; :Keywords:
 ; 
-;    hist : in, optional, type=array
-; 
-;       A histogram for the entire cube. Must be given for the
-;       percentiles to be calculated.
-;   
 ;    binsize : in, optional, type=float
 ;   
 ;       THe bin size of hist. Must be given for the percentiles to be
 ;       calculated.
 ; 
+;    hist : in, optional, type=array
+; 
+;       A histogram for the entire cube. Must be given for the
+;       percentiles to be calculated.
+;   
+;    old : in, optional, type=boolean
+;   
+;       Use old, deprecated algorithm.
 ; 
 ; :History:
 ; 
@@ -48,52 +51,136 @@
 ; 
 ;   2020-11-30: MGL. Add DATANRMS, remove DATARMS.
 ; 
+;   2021-04-05: MGL. Implement algorithm by Pébay et al. for combining
+;               the moments. 
+; 
 ;-
 function red_image_statistics_combine, statsarr $
                                        , binsize = binsize $
                                        , comments = comments $
-                                       , hist = hist 
+                                       , hist = hist $
+                                       , old = old
 
   tags = tag_names(statsarr[0])
   
   Nframes = n_elements(statsarr)
-  Npixels = statsarr[0].Npixels ; Assume same for all frames
 
   DATARMS = statsarr.DATANRMS * statsarr.DATAMEAN
-  
   CUBEMIN  = min(statsarr.datamin)
   CUBEMAX  = max(statsarr.datamax)
-  CUBEMEAN = mean(statsarr.datamean)
+  
+  if keyword_set(old) then begin
 
-  CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
-                  * ( total( (Npixels-1d) * DATARMS^2 $
-                             + Npixels * statsarr.DATAMEAN^2 ) $
-                      - Nframes*Npixels * CUBEMEAN^2 ))
-  
-  CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
-             * total( Npixels * DATARMS^3 * statsarr.DATASKEW $
-                      + Npixels * statsarr.DATAMEAN^3 $
-                      + 3*(Npixels-1) * statsarr.DATAMEAN * DATARMS^2) $
-             - CUBEMEAN^3 / CUBERMS^3 $
-             - 3 * (Npixels*Nframes-1d) * CUBEMEAN / (Npixels*Nframes*CUBERMS)
-  
-  CUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
-             * total( Npixels * DATARMS^4 * (statsarr.DATAKURT+3) $
-                      + 4*Npixels * statsarr.DATAMEAN * DATARMS^3 * statsarr.DATASKEW $
-                      + 6*(Npixels-1) * statsarr.DATAMEAN^2 * DATARMS^2 $
-                      + Npixels * statsarr.DATAMEAN^4 ) $
-             - 4 * CUBEMEAN * CUBESKEW / CUBERMS $
-             - 6 * (Npixels*Nframes-1d) * CUBEMEAN^2 / (Npixels*Nframes*CUBERMS^2) $
-             - CUBEMEAN^4/CUBERMS^4 - 3 
+    ;; Calculation based on my own derivation.
 
-  
-  output = create_struct('NPIXELS' , Nframes*Npixels $
-                         , 'DATAMIN' , CUBEMIN $
-                         , 'DATAMAX' , CUBEMAX $
-                         , 'DATAMEAN', CUBEMEAN $       
-                         , 'DATANRMS', CUBERMS/CUBEMEAN $
-                         , 'DATASKEW', CUBESKEW $         
-                         , 'DATAKURT', CUBEKURT)
+    Npixels = statsarr[0].Npixels ; Assume same for all frames
+
+    CUBEMEAN = mean(statsarr.datamean)
+
+    CUBERMS  = sqrt(1d/(Nframes*Npixels-1.d) $
+                    * ( total( (Npixels-1d) * DATARMS^2 $
+                               + Npixels * statsarr.DATAMEAN^2 ) $
+                        - Nframes*Npixels * CUBEMEAN^2 ))
+    
+    CUBESKEW = 1.d/(Nframes*Npixels*CUBERMS^3) $
+               * total( Npixels * DATARMS^3 * statsarr.DATASKEW $
+                        + Npixels * statsarr.DATAMEAN^3 $
+                        + 3*(Npixels-1) * statsarr.DATAMEAN * DATARMS^2) $
+               - CUBEMEAN^3 / CUBERMS^3 $
+               - 3 * (Npixels*Nframes-1d) * CUBEMEAN / (Npixels*Nframes*CUBERMS)
+    
+    CUBEKURT = 1.d/(Nframes*Npixels*CUBERMS^4) $
+               * total( Npixels * DATARMS^4 * (statsarr.DATAKURT+3) $
+                        + 4*Npixels * statsarr.DATAMEAN * DATARMS^3 * statsarr.DATASKEW $
+                        + 6*(Npixels-1) * statsarr.DATAMEAN^2 * DATARMS^2 $
+                        + Npixels * statsarr.DATAMEAN^4 ) $
+               - 4 * CUBEMEAN * CUBESKEW / CUBERMS $
+               - 6 * (Npixels*Nframes-1d) * CUBEMEAN^2 / (Npixels*Nframes*CUBERMS^2) $
+               - CUBEMEAN^4/CUBERMS^4 - 3 
+    
+    output = create_struct('NPIXELS' , round(total(statsarr.Npixels)) $
+                           , 'DATAMIN' , CUBEMIN $
+                           , 'DATAMAX' , CUBEMAX $
+                           , 'DATAMEAN', CUBEMEAN $       
+                           , 'DATANRMS', CUBERMS/CUBEMEAN $
+                           , 'DATASKEW', CUBESKEW $         
+                           , 'DATAKURT', CUBEKURT)
+  endif else begin
+
+    ;; Calculation based on Eq. (3.1) of Pébay, P., Terriberry, T. B.,
+    ;; Kolla, H., & Bennett, J. 2016, Computational Statistics, 31,
+    ;; 1305.
+
+    ;; Note that what we call moments here, [mean, variance, skewness,
+    ;; kurtosis] are not the clean 1/n SUM_i (x_i - x_mean)^p of Pébay
+    ;; et al., so our values have to be modified into the assumed
+    ;; form. And then modified back.
+
+    ;; Initialize with statistics for 0th frame
+    Npix = double(statsarr[0].Npixels)
+    CUBEMEAN = statsarr[0].DATAMEAN
+    variance = (statsarr[0].DATANRMS * statsarr[0].DATAMEAN)^2
+    Mp = [ variance * (Npix-1)/Npix $                      ; M2 from variance
+           , statsarr[0].DATASKEW * variance^(3/2.) $      ; M3 from skewness
+           , (statsarr[0].DATAKURT+3) * variance^(4/2.)  $ ; M4 excess kurtosis
+         ] * Npix
+
+    ;; Combine pairwise current accumulated frames with next frame
+    for iframe = 1, Nframes-1 do begin
+
+      ;; Set A is the so far accumulated frames
+      NpixA = Npix
+      datameanA = CUBEMEAN
+      MpA = Mp
+
+      ;; Set B is the next frame
+      NpixB = double(statsarr[iframe].Npixels)
+      datameanB = statsarr[iframe].DATAMEAN
+      variance = (statsarr[iframe].DATANRMS * statsarr[iframe].DATAMEAN)^2
+      MpB = [ variance * (NpixB-1)/NpixB $                         ; M2 from variance
+              , statsarr[iframe].DATASKEW * variance^(3/2.) $      ; M3 from skewness
+              , (statsarr[iframe].DATAKURT+3) * variance^(4/2.)  $ ; M4 from excess kurtosis
+            ] * NpixB
+
+      ;; Combined set
+      Npix = NpixA + NpixB
+      deltaBA = datameanB - datameanA
+      CUBEMEAN = datameanA + deltaBA * NpixB / Npix
+      for p = 2, 4 do begin     ; Eq. (3.1) 
+        Mp[p-2] = MpA[p-2] + MpB[p-2] $
+                  + NpixA * (-NpixB/Npix * deltaBA )^p $
+                  + NpixB * ( NpixA/Npix * deltaBA )^p 
+        for k = 1, p-2 do $
+           Mp[p-2] += red_bico(p, k) * deltaBA^k * ( MpA[p-k-2]*(-NpixB/Npix)^k + MpB[p-k-2]*(NpixA/Npix)^k )
+      endfor                    ; p
+
+    endfor                      ; iframe
+
+    ;; Construct the IDL-definition moments
+    mom =  [CUBEMEAN $
+            , Mp[0] / Npix $    ; Variance
+            , Mp[1] / Npix $    ; Skewness
+            , Mp[2] / Npix $    ; Kurtosis
+           ]
+
+    mom[1] *= Npix/(Npix-1.)    ; Adjust Variance
+    mom[2] /= mom[1]^(3/2.)     ; Adjust Skewness 
+    mom[3] /= mom[1]^(4/2.)     ; Adjust Kurtosis 
+    mom[3] -= 3                 ; Excess kurtosis
+
+    ;; And make a struct with the results
+    output = create_struct('NPIXELS' , long64(Npix) $
+                           , 'DATAMIN' , CUBEMIN $
+                           , 'DATAMAX' , CUBEMAX $
+                           , 'DATAMEAN', CUBEMEAN $       
+                           , 'DATANRMS', sqrt(mom[1]) / CUBEMEAN $
+                           , 'DATASKEW', mom[2] $         
+                           , 'DATAKURT', mom[3] $
+                          )
+
+    
+  endelse
+
 
   if arg_present(comments) then $
      comments = create_struct('NPIXELS' , 'Number of pixels' $
