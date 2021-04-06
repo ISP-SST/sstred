@@ -107,6 +107,7 @@ pro red_fitscube_plotspectrum, filename $
   endelse
   datamedn = frame_statistics.datamedn
   case 1 of
+    array_equal(axis_numbers, [3, 4])    :
     array_equal(axis_numbers, [3, 5])    : 
     array_equal(axis_numbers, [3, 4, 5]) : datamedn = reform(datamedn[*, 0, *])
     else : stop

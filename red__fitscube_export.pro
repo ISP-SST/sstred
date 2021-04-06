@@ -212,8 +212,9 @@ pro red::fitscube_export, filename $
   infile = file_basename(filename)
   
   date_beg_split = strsplit(fxpar(hdr,'DATE-BEG'),'T',/extract)
-  date_beg =  date_beg_split[0]
-  time_beg =  date_beg_split[1]
+  date_beg = date_beg_split[0]
+  time_beg = date_beg_split[1]
+  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
   ;; We could do the outdir default per site, just like we do for the
   ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
@@ -221,9 +222,8 @@ pro red::fitscube_export, filename $
                                            + strtrim(fxpar(hdr,'INSTRUME'),2) + '/'
 
   ;; Any old versions of this file?
-  ;oldfiles = file_search(outdir+'/'+red_strreplace(infile,'_im.fits', '_*.fits'), count = Noldfiles)
-  srch = red_strreplace(infile,'_im.fits', '_*')
-  srch = red_strreplace(srch,'nb_', '_')
+  spl=strsplit(infile,'_',/extract)
+  srch='*'+strjoin(spl[1:3],'_')+'*'
   oldfiles = file_search(outdir + '/' + srch, count = Noldfiles)
   if Noldfiles gt 0 then begin
     s = ''
@@ -331,7 +331,6 @@ pro red::fitscube_export, filename $
     red_fitsaddkeyword, anchor = spanchor, sphdr, 'FILENAME', spoutfile
     red_fitscube_newheader, outdir+spoutfile, sphdr
     print, inam + ' : Wrote '+outdir+spoutfile
-    red_fitscube_checksums, outdir+spoutfile
   endif
   
   ;; Add FITS keywords with info available in the file but not as
@@ -510,14 +509,14 @@ pro red::fitscube_export, filename $
       
       if current_date lt release_date then begin
         filename = outdir+outfile
-        query = "INSERT INTO data_cubes (date, time, wvlnth, pol, scans, filename, release_date,  instrument," + $
-                'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
-                filename +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
+        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
+                scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
                 "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
       endif else begin
-        query = "INSERT INTO data_cubes (date, time, wvlnth, pol, scans, filename, release_date,  instrument," + $
-                'release_comment) VALUES ("' + date_beg +'", "'+ time_beg+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
-                filename +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
+        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
+                outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
                 "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
       endelse
       

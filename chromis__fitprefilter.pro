@@ -299,11 +299,11 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       for idir = 0, Ndirs-1 do begin
 
         print, dirs[idir]
-        
-        fnamesN = file_search(dirs[idir]+'/'+camNB+'/*',   count = NfilesN)
+
+        fnamesN = red_raw_search(dirs[idir]+'/'+camNB+'/', count = NfilesN, scannos = 0)
         Nfiles[idir] = NfilesN
         if keyword_set(unitscalib) then begin
-          fnamesW = file_search(dirs[idir]+'/'+camWB+'/*', count = NfilesW)
+          fnamesW = red_raw_search(dirs[idir]+'/'+camWB+'/', count = NfilesW, scannos = 0)
         endif else begin
           NfilesW = 0
         endelse
@@ -336,7 +336,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         ;; Get more hints only for potentially interesting dirs
         if NfilesN gt 0 && NfilesN lt 1000 && mu[idir] gt 0.9 then begin
 
-          self -> extractstates, fnamesN, sts
+          self -> extractstates, fnamesN, sts, /nondb
           prefs[idir] = ', prefs='+strjoin(sts[uniq(sts.prefilter,sort(sts.prefilter))].prefilter, ',')
 
           contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
@@ -433,7 +433,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       return
     endif
     filesNB = red_sortfiles(filesNB)
-    self->extractstates, filesNB, statesNB
+    self->extractstates, filesNB, statesNB, /nondb
     
     if keyword_set(unitscalib) then begin
       filesWB = red_raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan)
@@ -442,7 +442,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         stop
       endif
       filesWB = red_sortfiles(filesWB)
-      self -> extractstates, filesWB, statesWB
+      self -> extractstates, filesWB, statesWB, /nondb
     endif
 
 ;    filesNB = file_search(dirs+'/'+camNB+'/*.fits', count=nfilesNB)

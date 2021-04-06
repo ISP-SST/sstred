@@ -607,6 +607,8 @@ pro crisp::make_scan_cube, dir $
     endif
     restore, pfile              ; Restores variable prf which is a struct
 
+    wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
+    
     nbt_units = prf.units
     nbt_prefilter_curve = prf.pref
     nbt_prefilter_wav = prf.wav
@@ -627,7 +629,7 @@ pro crisp::make_scan_cube, dir $
     nbr_prefilter_curve = prf.pref
     nbr_prefilter_wav = prf.wav
     nbr_prefilter_wb = prf.wbint
-    
+       
     nbr_rpref = 1.d0/nbr_prefilter_curve
 
     prefilter_curve = (nbt_prefilter_curve + nbr_prefilter_curve)/2.
@@ -880,6 +882,9 @@ pro crisp::make_scan_cube, dir $
     wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
     wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
     wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+
+    ;; Apply wavelength shift from prefilter fit.
+    wcs.wave -= wave_shift
 
     ;; Close fits file 
     self -> fitscube_finish, lun, wcs = wcs, direction = direction
