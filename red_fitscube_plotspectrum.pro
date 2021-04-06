@@ -64,6 +64,7 @@ pro red_fitscube_plotspectrum, filename $
                                , himargin = himargin $
                                , lomargin = lomargin $
                                , nosave = nosave $
+                               , test = test $
                                , xrange = xrange
 
   if n_elements(lomargin) eq 0 then lomargin = 15. ; Percent of range
@@ -151,12 +152,57 @@ pro red_fitscube_plotspectrum, filename $
           , xrange = xrange
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
+
+  if keyword_set(test) then begin
+    ;; Doppler shift from solar rotation. 
+    hpln = median(coordinates.hpln) ; [deg] Helioprojective longitude, westward angle 
+    hplt = median(coordinates.hplt) ; [deg] Helioprojective latitude, northward angle 
+    hel_lat = hplt                  ; [deg] Heliographic latitude
+    ;; Parametrization of solar rotation as function of lat and lon
+    ;; from Snodgrass, H.; Ulrich, R. (1990). "Rotation of Doppler
+    ;; features in the solar photosphere". Astrophysical Journal. 351:
+    ;; 309-316. Bibcode: 1990ApJ...351..309S. doi:10.1086/168467. 
+    A = 14.713                  ; ± 0.0491 °/d - Equatorial rotation rate
+    B = -2.396                  ; ± 0.188 °/d  - Latitudinal rotation gradient
+    C = -1.787                                     ; ± 0.253 °/d  - 
+    sn = sin(hel_lat*!pi/180.)
+    rotation_rate = A + B*sn^2 + C*sn^4            ; [deg/day]
+    rotation_rate /= 360.*60.*60.*24.              ; [revolutions/s]
+    ;; Velocity
+    Rsun = 6.957e8                                 ; [m]
+    v_at_surface = rotation_rate*Rsun*2*!pi        ; [m/s] Rotational velocity along surface 
+    v_toward_obs = v_at_surface*sin(hpln*!pi/180.) ; [m/s] Velocity toward observer
+    ;; Convective Doppler shift varies with mu and wavelength, we may
+    ;; want to include that effect as well. Maybe a suitale reference:
+    ;; https://www.aanda.org/articles/aa/pdf/2011/04/aa15664-10.pdf 
+    
+    ;; Convert to wavelength shift
+    dlambda = median(lambda) * v_toward_obs/!const.c ; [nm]
+    print
+    print, 'Expected Doppler shift (based on coordinates) : '+string(dlambda, format = '(f6.3)')+ ' nm. (Blue arrow.)'
+    print
+;    cgplot, /add, /over, min(lambda) + [0, dlambda], max(atlas_spectrum*1e9)/10.*[1, 1], color = 'blue'
+    cgplot, /add, /over, color = 'blue' $
+            , min(lambda) + [0., 1., 0.7, 0.7, 1.]*dlambda $
+            , max(atlas_spectrum*1e9)/10. + [0., 0., -1, 1, 0.]*dlambda
+    ;; Arrow head does not come out right, even with exaggerated dimensions!
+    cgplot, /add, /over, min(lambda)+dlambda*[1., 0.7, 0.7, 1.], max(atlas_spectrum*1e9)/10. + [0., -1., 1., 0.]*dlambda/2., color = 'red'
+;    x0 = min(lambda)
+;    x1 = x0 + dlambda
+;    y0 = max(atlas_spectrum*1e9)/10. 
+;    y1 = y0
+;    stop
+;;    cgArrow, /add, x0, y0, x1, y1, COLOR='green', /data, /solid, hsize = !D.X_SIZE / 30. ;64. ; / 2
+;    if dlambda gt 0 then pangle = 0 else pangle = 180
+;    cgwindow, /add, 'one_arrow', x0, y0, pangle, ' ', COLOR='green', /data, arrowsize=[abs(dlambda), abs(dlambda)/5., 35.]
+  endif
+  
   plfile = file_dirname(filename) + '/' + file_basename(filename, '.fits') + '.pdf'
   if ~keyword_set(nosave) then cgcontrol, output = plfile
   
 end
 
-case 1 of
+case 4 of
   0 : begin
     undefine, axis_numbers, frame_statistics
     cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'
@@ -164,7 +210,7 @@ case 1 of
     filename = 'cubes_nb_test/nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
     filename = 'cubes_TEST/nb_6302_2016-09-19T09:30:20_scans=2,3_stokes_corrected_im.fits'
     filename = 'cubes_TEST/nb_6302_2016-09-19T09:30:20_scans=2,3_corrected_im.fits'
-    red_fitscube_plotspectrum, filename $
+    red_fitscube_plotspectrum, filename, /test $
                                , axis_numbers = axis_numbers $
                                , frame_statistics = frame_statistics
   end
@@ -192,6 +238,30 @@ case 1 of
                                , frame_statistics = frame_statistics $
                                , xrange=[393,393.7]
   end
+
+  3 : begin
+    undefine, axis_numbers, frame_statistics
+    cd, '/scratch/olexa/2020.04.25/CRISP/'
+    red_fitscube_plotspectrum, 'cubes_nb/nb_6302_2020-04-25T11:08:59_scans=0,1_stokes_corrected_im.fits'
+  end
+
+  4 : begin
+    undefine, axis_numbers, frame_statistics
+    cd, '/scratch/mats/2016.09.19/CHROMIS-jan19'
+    filename = 'cubes_nb/nb_3950_2016-09-19T10:42:01_scans=0-4_corrected_im.fits'
+    red_fitscube_plotspectrum, filename $
+                               , axis_numbers = axis_numbers $
+                               , frame_statistics = frame_statistics
+    red_fitscube_plotspectrum, filename $
+                               , axis_numbers = axis_numbers $
+                               , frame_statistics = frame_statistics $
+                               , xrange=[393,393.7]
+    red_fitscube_plotspectrum, filename $
+                               , axis_numbers = axis_numbers $
+                               , frame_statistics = frame_statistics $
+                               , xrange=[396.5,397.2]
+  end
+  
 endcase
 
 
