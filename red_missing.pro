@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Find pixels with missing data and set them to NaN or median().
+; Find pixels with missing data and set them to NaN, median(), or a
+; given value.
 ; 
 ; :Categories:
 ;
@@ -36,7 +37,8 @@
 ; 
 ;   missing_type_used : out, optional, type=string
 ;
-;     The type of value missing-data pixels were set to.
+;     The type of value missing-data pixels were set to. One of 'nan',
+;     'median' or 'value' (the latter if missing_value was used).
 ;
 ;   missing_type_wanted : in, optional, type=string, default='opposite'
 ;
@@ -44,21 +46,32 @@
 ;     and 'median'. By default, set it to the opposite of what it
 ;     appears to be in the input image.
 ;
+;   missing_value : in, optional, type=number
+;
+;     The value to set missing-data pixels to. If given,
+;     missing_type_wanted is ignored.
+;
 ; :History:
 ; 
 ;     2020-07-16 : MGL. First version.
+; 
+;     2021-04-08 : MGL. New keyword missing_value. Don't change input
+;                  image if image_out is present!
 ; 
 ;-
 pro red_missing, image $
                  , image_out = image_out $
                  , indx_data = indx_data $
                  , indx_missing = indx_missing $
+                 , missing_value = missing_value $
                  , missing_type_wanted = missing_type_wanted $
                  , missing_type_used = missing_type_used $
                  , verbose = verbose
 
   inam = red_subprogram(/low, calling = inam1)
 
+  InPlace = ~arg_present(image_out) ; Change padding inplace iff image_out not present. 
+  
   undefine, indx_data
   undefine, indx_missing
   undefine, image_out
@@ -96,35 +109,38 @@ pro red_missing, image $
                       finite(image[-1, -1]) $
                     )
 
-  
-  if n_elements(missing_type_wanted) gt 0 then begin
 
-    ;; missing_type_wanted specified
-    missing_type_used = missing_type_wanted
+  case 1 of
     
-  endif else begin
+    n_elements(missing_value) gt 0       : missing_type_used = 'value'
+  
+    n_elements(missing_type_wanted) gt 0 : missing_type_used = missing_type_wanted
 
-    ;; missing_type_wanted not specified, change to the opposite of
-    ;; what we have
-    case 1 of
+    else : begin
+      
+      ;; Not specified, change to the opposite of what we have
 
-      currently_nans     : missing_type_used = 'median'
-      
-      currently_constant : missing_type_used = 'nan'
-      
-      else : begin
-        if keyword_set(verbose) then print, inam + ' : Could not identify missing data pixels'
-        if keyword_set(verbose) then print, 'Corner pixel intensities: ' $
-                                            , image[ 0,  0] $
-                                            , image[ 0, -1] $
-                                            , image[-1,  0] $
-                                            , image[-1, -1]
-        missing_type_used = 'none'
-      end
-      
-    endcase
-  endelse
-
+      case 1 of
+        
+        currently_nans     : missing_type_used = 'median'
+        
+        currently_constant : missing_type_used = 'nan'
+        
+        else : begin
+          if keyword_set(verbose) then print, inam + ' : Could not identify missing data pixels'
+          if keyword_set(verbose) then print, 'Corner pixel intensities: ' $
+                                              , image[ 0,  0] $
+                                              , image[ 0, -1] $
+                                              , image[-1,  0] $
+                                              , image[-1, -1]
+          missing_type_used = 'none'
+        end
+        
+      endcase
+    end
+    
+  endcase
+    
   case strlowcase(missing_type_used) of
 
     'nan' : begin               ; Assume all corner pixels have the same value.
@@ -163,6 +179,22 @@ pro red_missing, image $
       missing_value = median(image(indx_data))
       
     end
+ 
+    'value' : begin
+
+      if currently_constant then begin
+        if keyword_set(verbose) then print, inam+" : Padding seems to be constant. Set to the given value."
+        mask = image eq image[ 0,  0] 
+      endif else begin
+        if keyword_set(verbose) then print, inam+" : Padding seems to be NaN. Set to the given value."
+        ;; Find non-finite pixels
+        mask = ~finite(image)
+      endelse
+      
+      indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
+      if Ndata eq 0 then stop
+       
+    end
 
     'none' : begin
 
@@ -176,7 +208,7 @@ pro red_missing, image $
     
   endcase
 
-  if arg_present(image_out) then image_out = image
+  if ~InPlace then image_out = image
   
   if Nmissing eq 0 then return
   
@@ -192,17 +224,18 @@ pro red_missing, image $
   ;; Change the value of those pixels to NaN
   indx_missing = where(mask, Nmissing)
   
-  if arg_present(image_out) then begin
-    image_out = image
+  if InPlace then begin
+    if Nmissing gt 0 then image[indx_missing] = missing_value
+  endif else begin
     if Nmissing gt 0 then image_out[indx_missing] = missing_value
-  endif
+  endelse
   
 end
 
 dir = '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb/'
 filename = dir+'nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
 
-red_fitscube_getframe, filename, image, iframe = 0
+red_fitscube_getframe, filename, image_orig, iframe = 0
 
 ;; Four corners with missing data, but disconnected from each other.
 ;; This works!
@@ -210,7 +243,9 @@ red_fitscube_getframe, filename, image, iframe = 0
 
 
 ;; Three corners, connected. This does not work!
-image = image[0:1000, 0:1000]
+image_orig = image[0:1000, 0:1000]
+
+image = image_orig
 
 red_show, image, w = 1
 
@@ -231,5 +266,13 @@ red_missing, image_med $
              , missing_type_used = missing_type_used
 
 red_show, image_nan, w = 3
+
+
+stop
+
+red_missing, image $
+             , missing_type_wanted = 'median' $
+             , missing_type_used = missing_type_used
+
 
 end
