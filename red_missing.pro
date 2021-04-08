@@ -226,7 +226,7 @@ pro red_missing, image $
   ;; Change the value of those pixels to NaN
   indx_missing = where(mask, Nmissing)
   
-  if InPlace then if Nmissing gt 0 then $
+  if keyword_set(InPlace) then if Nmissing gt 0 then $
      image[indx_missing] = missing_value
 
   if arg_present(image_out) then if Nmissing gt 0 then $
