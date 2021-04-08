@@ -1,8 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Find pixels with missing data and set them to NaN, median(), or a
-; given value.
+; Find pixels with missing data and optionally set them to NaN,
+; median(), or a given value.
 ; 
 ; :Categories:
 ;
@@ -35,6 +35,10 @@
 ; 
 ;      Indices of pixels identified as missing data.
 ; 
+;   inplace : in, optional, type=boolean
+;
+;      Change the padding inplace in the input image.
+;
 ;   missing_type_used : out, optional, type=string
 ;
 ;     The type of value missing-data pixels were set to. One of 'nan',
@@ -63,6 +67,7 @@ pro red_missing, image $
                  , image_out = image_out $
                  , indx_data = indx_data $
                  , indx_missing = indx_missing $
+                 , inplace = inplace $
                  , missing_value = missing_value $
                  , missing_type_wanted = missing_type_wanted $
                  , missing_type_used = missing_type_used $
@@ -70,8 +75,6 @@ pro red_missing, image $
 
   inam = red_subprogram(/low, calling = inam1)
 
-  InPlace = ~arg_present(image_out) ; Change padding inplace iff image_out not present. 
-  
   undefine, indx_data
   undefine, indx_missing
   undefine, image_out
@@ -208,8 +211,8 @@ pro red_missing, image $
     
   endcase
 
-  if ~InPlace then image_out = image
-  
+  if arg_present(image_out) then image_out = image
+    
   if Nmissing eq 0 then return
   
   ;; Use label_region to find the pixels that are connected to
@@ -224,12 +227,12 @@ pro red_missing, image $
   ;; Change the value of those pixels to NaN
   indx_missing = where(mask, Nmissing)
   
-  if InPlace then begin
-    if Nmissing gt 0 then image[indx_missing] = missing_value
-  endif else begin
-    if Nmissing gt 0 then image_out[indx_missing] = missing_value
-  endelse
-  
+  if InPlace then if Nmissing gt 0 then $
+     image[indx_missing] = missing_value
+
+  if arg_present(image_out) then if Nmissing gt 0 then $
+     image_out[indx_missing] = missing_value
+
 end
 
 dir = '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb/'
