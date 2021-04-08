@@ -59,8 +59,7 @@
 ; 
 ;     2020-07-16 : MGL. First version.
 ; 
-;     2021-04-08 : MGL. New keyword missing_value. Don't change input
-;                  image if image_out is present!
+;     2021-04-08 : MGL. New keywords inplace and missing_value.
 ; 
 ;-
 pro red_missing, image $
