@@ -158,6 +158,8 @@ pro red_missing, image $
       mask = image eq image[ 0,  0] 
       indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
 
+      if Nmissing eq 1 then Nmissing = 0 ; image[0,0] is only equal to itself
+      
       ;; We want NaNs
       missing_value = !Values.F_NaN
       
@@ -213,12 +215,12 @@ pro red_missing, image $
   if arg_present(image_out) then image_out = image
     
   if Nmissing eq 0 then return
-  
+
   ;; Use label_region to find the pixels that are connected to
   ;; the corners
   mask = red_centerpic(mask, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
   label = label_region(mask)                                    ; Label regions
-  label = label[4:-5, 4:-5]                                     ; Remove two rows and columns
+  label = label[4:-5, 4:-5]                                     ; Remove extra rows and columns
   mask = label eq label[ 0, 0] $                                ; Connected to any of the corners
          or label eq label[ 0,-1] $
          or label eq label[-1, 0] $
@@ -238,6 +240,18 @@ dir = '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb/'
 filename = dir+'nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
 
 red_fitscube_getframe, filename, image_orig, iframe = 0
+
+im = red_centerpic(image_orig,sz=500)
+red_missing, im $
+             , image_out = image_med $
+             , indx_data = indx_data $
+             , indx_missing = indx_missing $
+             , missing_value = 0. $
+             , missing_type_used = missing_type_used
+
+stop
+
+
 
 ;; Four corners with missing data, but disconnected from each other.
 ;; This works!
