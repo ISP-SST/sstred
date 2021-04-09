@@ -124,119 +124,28 @@ pro red::fitscube_missing, filename $
         red_progressbar, iprogress, Nprogress, /predict $
                          , 'Missing data in frame '+strjoin(strtrim([iscan, istokes, ituning],2),',')
 
+
         ;; Read a frame
         red_fitscube_getframe, fileassoc, frame $
                                , ituning = ituning $
                                , istokes = istokes $
                                , iscan = iscan
         
-        ;; Heuristics for identifying the missing-data pixels. They
-        ;; would be connected to the outermost rows and columns and
-        ;; they would all have the same value, usually the median of
-        ;; the data pixels. We can't simply assume all pixels with
-        ;; this value are missing data as there *could* be interior
-        ;; pixels with this exact value.
-
-        ;; What kind of padding do we have now?
+        ;; Set the padding to the type we want
+        red_missing, frame, /inplace $
+;                     , image_out = image_out $
+                     , missing_type_wanted = missing_type $
+                     , missing_type_used = set_missing_to
         
-        currently_constant = frame[ 0,  0] eq frame[ 0, -1] and $
-                             frame[ 0,  0] eq frame[-1,  0] and $
-                             frame[ 0,  0] eq frame[-1, -1]
-
-        currently_nans = ~( finite(frame[ 0,  0]) or $
-                            finite(frame[ 0, -1]) or $
-                            finite(frame[-1,  0]) or $
-                            finite(frame[-1, -1]) $
-                          )
-
-        
-        if n_elements(missing_type) gt 0 then begin
-
-          ;; missing_type specified
-          set_missing_to = missing_type
-          
-        endif else begin
-
-          ;; missing_type not specified, change to the opposite of
-          ;; what we have
-          case 1 of
-
-            currently_nans     : set_missing_to = 'median'
-          
-            currently_constant : set_missing_to = 'nan'
-          
-            else : begin
-              print, inam + ' : Could not identify missing data pixels'
-              print, 'Corner pixel intensities: ' $
-                     , finite(frame[ 0,  0]) $
-                     , finite(frame[ 0, -1]) $
-                     , finite(frame[-1,  0]) $
-                     , finite(frame[-1, -1])
-              stop
-            end
-            
-          endcase
-        endelse
-
         if iprogress ne 0 && old_set_missing_to ne set_missing_to then begin
           print, inam + ' : set_missing_to changed! (Different padding in different frames.)'
           stop
         endif
         
-        case strlowcase(set_missing_to) of
-
-          'nan' : begin         ; Assume all corner pixels have the same value.
-            
-            if currently_nans then begin
-              print, inam+' : Padding seems to be NaN already.'
-              ;; Close the file and return
-              red_fitscube_close, fileassoc, fitscube_info
-              return
-            endif
-            
-            ;; Find pixels with the same value as the corners
-            mask = frame eq frame[ 0,  0] 
-
-            ;; We want NaNs
-            missing_value = !Values.F_NaN
-            
-          end
-
-          'median' : begin
-
-            if currently_constant then begin
-              print, inam+' : Padding seems to be medians (or at least constant values) already.'
-              ;; Close the file and return
-              red_fitscube_close, fileassoc, fitscube_info
-              return
-            endif
-
-            ;; Find non-finite pixels
-            mask = ~finite(frame)
-
-            ;; We want the median
-            indx_data = where(~mask, Ndata)
-            if Ndata eq 0 then stop
-            missing_value = median(frame(indx_data))
-            
-          end
-
-          else :  stop
+;        frame = temporary(image_out)
         
-        endcase
-
-        ;; Use labal_region to find the pixels that are connected to
-        ;; the corners
-        mask = red_centerpic(mask, xSize = Nx+8, ySize = ny+8, z = 1) ; Add some rows and columns
-        label = label_region(mask)                                    ; Label regions
-        label = label[4:-5, 4:-5]                                     ; Remove two rows and columns
-        mask = label eq label[0, 0]                                   ; Connected to corner
-        
-        ;; Change the value of those pixels to NaN
-        indx = where(mask, Nwhere)
-        if Nwhere gt 0 then frame[indx] = missing_value
-
-        ;; Write the modified frame
+        ;; Write the modified frame. We could skip doing this if frame
+        ;; hasn't changed.
         red_fitscube_addframe, fileassoc, frame $
                                , ituning = ituning $
                                , istokes = istokes $
