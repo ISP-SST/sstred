@@ -61,6 +61,8 @@
 ; 
 ;     2021-04-08 : MGL. New keywords inplace and missing_value.
 ; 
+;     2021-04-14 : MGL. Rewritten. New keywords Ndata and Nmissing.
+; 
 ;-
 pro red_missing, image $
                  , image_out = image_out $
@@ -70,10 +72,14 @@ pro red_missing, image $
                  , missing_value = missing_value $
                  , missing_type_wanted = missing_type_wanted $
                  , missing_type_used = missing_type_used $
+                 , ndata = ndata $
+                 , nmissing = nmissing $
                  , verbose = verbose
 
   inam = red_subprogram(/low, calling = inam1)
 
+  undefine, Ndata
+  undefine, Nmissing
   undefine, indx_data
   undefine, indx_missing
   undefine, image_out
@@ -88,151 +94,225 @@ pro red_missing, image $
   ;; are connected. If cropped slightly, any of the corners or all of
   ;; them) may be disconnected from the others. If cropped a lot,
   ;; there could be missing data in only one or a few of the corners
-  ;; but not necessarily all. The current logic should be good for the
-  ;; first case and perhaps for the second. We need to make sure it
-  ;; works for the second and third cases.
+  ;; but not necessarily all. 
 
+  
+  ;; First, find out what padding we already have, if any.
 
-  ;; Heuristics for identifying the missing-data pixels. They would be
-  ;; connected to the outermost rows and columns and they would all
-  ;; have the same value, usually the median of the data pixels. We
-  ;; can't simply assume all pixels with this value are missing data
-  ;; as there *could* be interior pixels with this exact value.
-
-  ;; What kind of padding do we have now?
-  
-  currently_constant = image[ 0,  0] eq image[ 0, -1] and $
-                       image[ 0,  0] eq image[-1,  0] and $
-                       image[ 0,  0] eq image[-1, -1]
-
-  currently_nans = ~( finite(image[ 0,  0]) or $
-                      finite(image[ 0, -1]) or $
-                      finite(image[-1,  0]) or $
+  ;; Is any of the corner pixels a NaN?
+  currently_nans = ~( finite(image[ 0,  0]) and $
+                      finite(image[ 0, -1]) and $
+                      finite(image[-1,  0]) and $
                       finite(image[-1, -1]) $
                     )
+  ;; Is any of the corner 2x2 sub-matrices constant?
+  currently_constant = stddev(image[ 0: 1, 0: 1]) eq 0 or $
+                         stddev(image[ 0: 1,-2:-1]) eq 0 or $
+                         stddev(image[-2:-1, 0: 1]) eq 0 or $
+                         stddev(image[-2:-1,-2:-1]) eq 0 
 
+
+  ;; Some simple actions depending on detected padding
+  
+  case 1 of
+
+    ~currently_nans and ~currently_constant : begin
+      ;; If there is no padding, just set some keywords and return.
+      Nmissing = 0
+      Ndata = n_elements(image)
+      if arg_present(image_out) then image_out = image 
+      if arg_present(indx_data) then indx_data = lindgen(n_elements(image))
+      return
+    end
+
+    currently_nans and currently_constant : begin
+      ;; Could there be both kinds of padding? Warn about it because we
+      ;; have not implemented support for this case yet.
+      print, inam + ' : Both NaN and finite padding detected. Alert developers!'
+      stop
+    end
+
+    currently_nans : begin
+      if keyword_set(verbose) then print, inam + ' : Detected NaN padding'
+    end
+
+    currently_constant : begin
+      if keyword_set(verbose) then print, inam + ' : Detected constant padding'
+    end
+    
+  endcase
+
+  
+  ;; At this point we have ruled out cases where there is no padding
+  ;; and cases where we don't know if the padding is NaNs or constant
+  ;; values. From now on it should be one of those two.
+
+  
+  ;; Now, find out which pixels are padding and which are data.
 
   case 1 of
     
-    n_elements(missing_value) gt 0       : missing_type_used = 'value'
-  
-    n_elements(missing_type_wanted) gt 0 : missing_type_used = missing_type_wanted
+    currently_nans : begin
 
-    else : begin
+      ;; We define the padding as _all_ NaN pixels, regardless of
+      ;; whether they are connected to a corner.
+
+      indx_data = where(finite(image), Ndata, complement = indx_missing, Ncomplement = Nmissing)
+
+    end
+
+    currently_constant : begin
+
+      ;; There is padding with a finite value. We don't know if
+      ;; it's the median or something else. 
       
-      ;; Not specified, change to the opposite of what we have
+      ;; Find areas of constant values connected to the corners. 
+  
+      mask1 = image eq image[ 0, 0]                                   ; Same intensity as corner 1
+      label = red_centerpic(mask1, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
+      label = label_region(label)                                     ; Label regions
+      label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
+      mask1 = label eq label[0, 0]                                    ; Connected to corner 1
 
+      mask2 = image eq image[ 0,-1]                                   ; Same intensity as corner 2
+      label = red_centerpic(mask2, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
+      label = label_region(label)                                     ; Label regions
+      label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
+      mask2 = label eq label[ 0,-1]                                   ; Connected to corner 2
+
+      mask3 = image eq image[-1, 0]                                   ; Same intensity as corner 3
+      label = red_centerpic(mask3, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
+      label = label_region(label)                                     ; Label regions
+      label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
+      mask3 = label eq label[-1, 0]                                   ; Connected to corner 3
+
+      mask4 = image eq image[-1,-1]                                   ; Same intensity as corner 4
+      label = red_centerpic(mask4, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
+      label = label_region(label)                                     ; Label regions
+      label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
+      mask4 = label eq label[-1,-1]                                   ; Connected to corner 4
+
+      ;; Make a mask with all the padded areas. The individual corner
+      ;; masks are padding only if they are larger than 1.
+      mask = bytarr(Nx, Ny)   
+      if round(total(mask1)) gt 1 then mask or= mask1
+      if round(total(mask2)) gt 1 then mask or= mask2
+      if round(total(mask3)) gt 1 then mask or= mask3
+      if round(total(mask4)) gt 1 then mask or= mask4
+
+      indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
+
+    end
+    
+  endcase
+  
+
+  
+  ;; What kind of padding should we use in the output?
+  
+  case 1 of
+    
+    n_elements(missing_value) gt 0 : begin
+      ;; A value was provided with the missing_value keyword
+      missing_type_used = 'value'
+    end
+    
+    n_elements(missing_type_wanted) gt 0 : begin
+      ;; A type was provided with the missing_type_wanted keyword
+      missing_type_used = missing_type_wanted
+    end
+    
+    else : begin
+      ;; No type or value specified, change to the opposite of what we
+      ;; have
       case 1 of
-        
         currently_nans     : missing_type_used = 'median'
-        
         currently_constant : missing_type_used = 'nan'
-        
-        else : begin
-          if keyword_set(verbose) then print, inam + ' : Could not identify missing data pixels'
-          if keyword_set(verbose) then print, 'Corner pixel intensities: ' $
-                                              , image[ 0,  0] $
-                                              , image[ 0, -1] $
-                                              , image[-1,  0] $
-                                              , image[-1, -1]
-          missing_type_used = 'none'
-        end
-        
       endcase
     end
     
   endcase
+
+  ;; If we don't want to change the image or set image_out then
+  ;; we can return now.
+  if ~arg_present(image_out) and ~keyword_set(inplace) then return
+
+  
+  ;; Now actions depending on combinations of current padding and
+  ;; padding to use.
+
+  case 1 of
     
-  case strlowcase(missing_type_used) of
+    currently_nans : begin
 
-    'nan' : begin               ; Assume all corner pixels have the same value.
-      
-      if currently_nans then begin
-        if keyword_set(verbose) then print, inam+' : Padding seems to be NaN already.'
-        indx_data = where(finite(image), Ndata, complement = indx_missing, Ncomplement = Nmissing)
-        image_out = image       ; No change
-        return
-      endif
-      
-      ;; Find pixels with the same value as the corners
-      mask = image eq image[ 0,  0] 
-      indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
+      case strlowcase(missing_type_used) of
 
-      if Nmissing eq 1 then Nmissing = 0 ; image[0,0] is only equal to itself
-      
-      ;; We want NaNs
-      missing_value = !Values.F_NaN
-      
-    end
+        'nan' : begin
+          ;; Padding is what we want, no need to change the input image
+          if arg_present(image_out) then image_out = image 
+          return
+        end
 
-    'median' : begin
+        'median' : begin
+          missing_value = median(image[indx_data])
+        end
 
-      if currently_constant then begin
-        if keyword_set(verbose) then print, inam+" : Padding seems to be constant. Set to median."
-        mask = image eq image[ 0,  0] 
-      endif else begin
-        if keyword_set(verbose) then print, inam+" : Padding seems to be NaN. Set to median."
-        ;; Find non-finite pixels
-        mask = ~finite(image)
-      endelse
-      
-      ;; We want the median
-      ;;indx_data = where(~mask, Ndata)
-      indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
-      if Ndata eq 0 then stop
-      missing_value = median(image(indx_data))
-      
-    end
- 
-    'value' : begin
+        'value' : begin
+          ;; missing_value already set 
+        end 
 
-      if currently_constant then begin
-        if keyword_set(verbose) then print, inam+" : Padding seems to be constant. Set to the given value."
-        mask = image eq image[ 0,  0] 
-      endif else begin
-        if keyword_set(verbose) then print, inam+" : Padding seems to be NaN. Set to the given value."
-        ;; Find non-finite pixels
-        mask = ~finite(image)
-      endelse
-      
-      indx_missing = where(mask, Nmissing, complement = indx_data, Ncomplement = Ndata)
-      if Ndata eq 0 then stop
-       
-    end
+        else : stop             ; Should not happen!
+        
+      endcase                   ; missing_type_used
 
-    'none' : begin
-
-      Ndata = n_elements(image)
-      indx_data = indgen(Ndata)
-      Nmissing = 0
-      
-    end
+    end                         ; currently_nans
     
-    else :  stop
+    currently_constant : begin
+
+      case strlowcase(missing_type_used) of
+        
+        'nan' : begin
+          missing_value = !Values.F_NaN
+        end
+
+        'median' : begin
+          missing_value = median(image[indx_data])
+        end
+
+        'value' : begin
+          ;; missing_value already set 
+        end
+
+        else : stop             ; Should not happen!
+
+      endcase                   ; missing_type_used
+
+    end                         ; currently_constant
     
-  endcase
+  endcase                       ; currently
 
-  if arg_present(image_out) then image_out = image
-    
-  if Nmissing eq 0 then return
 
-  ;; Use label_region to find the pixels that are connected to
-  ;; the corners
-  mask = red_centerpic(mask, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
-  label = label_region(mask)                                    ; Label regions
-  label = label[4:-5, 4:-5]                                     ; Remove extra rows and columns
-  mask = label eq label[ 0, 0] $                                ; Connected to any of the corners
-         or label eq label[ 0,-1] $
-         or label eq label[-1, 0] $
-         or label eq label[-1,-1] 
-  ;; Change the value of those pixels to NaN
-  indx_missing = where(mask, Nmissing)
-  
-  if keyword_set(InPlace) then if Nmissing gt 0 then $
-     image[indx_missing] = missing_value
+  ;; Finally, pad the input image and/or set image_out to the
+  ;; correctly padded image.
 
-  if arg_present(image_out) then if Nmissing gt 0 then $
-     image_out[indx_missing] = missing_value
+  if keyword_set(inplace) then begin
+    ;; Modify the input image
+    image[indx_missing] = missing_value
+    ;; Did we want image_out as well?
+    if arg_present(image_out) then image_out = image
+    ;; Done!
+    return
+  endif
+
+  if arg_present(image_out) then begin
+    ;; Make an image_out
+    image_out = image
+    image_out[indx_missing] = missing_value
+    return
+  endif
+
+  ;; How did we get here?
+  stop
 
 end
 
@@ -241,54 +321,132 @@ filename = dir+'nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits'
 
 red_fitscube_getframe, filename, image_orig, iframe = 0
 
-im = red_centerpic(image_orig,sz=500)
-red_missing, im $
+if 1 then begin
+
+  ;; Test inplace and missing_value. Works.
+
+  image_orig = red_centerpic(image_orig, sz = 1000)
+  image = image_orig
+  
+  red_show, image, w = 1
+  
+  red_missing, image $
+               , ndata = ndata $
+               , nmissing = nmissing $
+               , image_out = image_med $
+               , indx_data = indx_data $
+               , indx_missing = indx_missing $
+                                ;, missing_type_wanted = 'median' $
+               , missing_type_used = missing_type_used
+  red_show, image_med, w = 2
+  
+  red_missing, image $
+               , ndata = ndata $
+               , nmissing = nmissing $
+               , /inplace $
+               , indx_data = indx_data $
+               , indx_missing = indx_missing $
+               , missing_value = max(image) $
+               , missing_type_used = missing_type_used
+
+  red_show, image, w = 3
+
+endif
+
+
+if 0 then begin
+  ;; No padding. This works!
+  im = red_centerpic(image_orig,sz=500)
+  red_missing, im $
+             , ndata = ndata $
+             , nmissing = nmissing $
              , image_out = image_med $
              , indx_data = indx_data $
              , indx_missing = indx_missing $
              , missing_value = 0. $
              , missing_type_used = missing_type_used
-
-stop
-
-
-
-;; Four corners with missing data, but disconnected from each other.
-;; This works!
-;image = red_centerpic(image, sz = 1000)
+  print, Ndata, Nmissing
+endif
 
 
-;; Three corners, connected. This does not work!
-image_orig = image[0:1000, 0:1000]
+if 0 then begin
 
-image = image_orig
+  ;; Four corners with missing data, but disconnected from each other.
+  ;; This works!
 
-red_show, image, w = 1
+  image_orig = red_centerpic(image_orig, sz = 1000)
+  image = image_orig
+  
+  red_show, image, w = 1
+  
+  red_missing, image $
+               , ndata = ndata $
+               , nmissing = nmissing $
+               , image_out = image_med $
+               , indx_data = indx_data $
+               , indx_missing = indx_missing $
+               , missing_type_wanted = 'median' $
+               , missing_type_used = missing_type_used
+  
+  print, Ndata, Nmissing
+  
+  red_show, image_med, w = 2
+  
+  red_missing, image_med $
+               , ndata = ndata $
+               , nmissing = nmissing $
+               , image_out = image_nan $
+               , indx_data = indx_data $
+               , indx_missing = indx_missing $
+               , missing_type_wanted = 'nan' $
+               , missing_type_used = missing_type_used
+  
+  print, Ndata, Nmissing
+  
+  red_show, image_nan, w = 3
+endif
 
-red_missing, image $
-             , image_out = image_med $
-             , indx_data = indx_data $
-             , indx_missing = indx_missing $
-             , missing_type_wanted = 'median' $
-             , missing_type_used = missing_type_used
+if 0 then begin
+  ;; Three corners, connected. This works!
+  image_orig = image_orig[0:1000, 0:1000]
 
-red_show, image_med, w = 2
+  image = image_orig
+  
+  red_show, image, w = 1
+  
+  red_missing, image $
+               , ndata = ndata $
+               , nmissing = nmissing $
+               , image_out = image_med $
+               , indx_data = indx_data $
+               , indx_missing = indx_missing $
+               , missing_type_wanted = 'median' $
+               , missing_type_used = missing_type_used
+  
+  print, Ndata, Nmissing
+  
+  red_show, image_med, w = 2
+  
+  red_missing, image_med $
+               , ndata = ndata $
+               , nmissing = nmissing $
+               , image_out = image_nan $
+               , indx_data = indx_data $
+               , indx_missing = indx_missing $
+               , missing_type_wanted = 'nan' $
+               , missing_type_used = missing_type_used
+  
+  print, Ndata, Nmissing
+  
+  red_show, image_nan, w = 3
+endif
 
-red_missing, image_med $
-             , image_out = image_nan $
-             , indx_data = indx_data $
-             , indx_missing = indx_missing $
-             , missing_type_wanted = 'nan' $
-             , missing_type_used = missing_type_used
+if 0 then begin
 
-red_show, image_nan, w = 3
-
-
-stop
-
-red_missing, image $
-             , missing_type_wanted = 'median' $
-             , missing_type_used = missing_type_used
+  red_missing, image $
+               , missing_type_wanted = 'median' $
+               , missing_type_used = missing_type_used
+endif
 
 
 end
