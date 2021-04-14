@@ -275,8 +275,8 @@ pro red::make_wb_cube, dir $
     'FITS': extension = '.fits'
   endcase
 
-  if ~keyword_set(scannos) then srch = '*' $
-    else srch = '*_' + string(red_expandrange(scannos), format='(I05)') + '_*'
+  if ~keyword_set(scannos) || scannos eq '*' then srch = '*' $
+  else srch = '*_' + string(red_expandrange(scannos), format='(I05)') + '_*'
   files = file_search(dir + srch + extension, count = Nfiles)
 
   if Nfiles eq 0 then begin
