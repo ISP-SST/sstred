@@ -29,6 +29,10 @@
 ;   
 ;      Use only data points larger than fwlevel times max(histogram). 
 ;   
+;   nan : in, optional, type=boolean
+;
+;      Protect against NaN values.
+;   
 ;   nterms : in, optional, type=integer
 ;   
 ;      Use this when calling mpfitpeak.
@@ -42,14 +46,17 @@
 ; 
 ;   2019-04-02 : MGL. First version.
 ; 
+;   2021-04-10 : MGL. New keyword nan.
+; 
 ;-
 function red_histo_gaussfit, data $
                              , fwlevel = fwlevel $
+                             , nan = nan $
                              , nterms = nterms $
                              , show_plots = show_plots
-
+  
   mn = median(data)
-  st = stddev(data)
+  st = stddev(data, nan = nan)
   
   ;;mn = biweight_mean(images[*,*,ich])
   ;;st = robust_sigma(images[*,*,ich])
@@ -59,7 +66,7 @@ function red_histo_gaussfit, data $
   
   Nbins = 2000
   hh = histogram(data, min = hmin, max = hmax $
-                 , Nbins = Nbins, locations = locations)
+                 , Nbins = Nbins, locations = locations, nan = nan)
   binsize = (hmax - hmin) / (Nbins - 1)
   intensities = locations + binsize/2.
 
