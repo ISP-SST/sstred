@@ -52,10 +52,13 @@ function red_collapserange, arr, ld = ld, rd = rd
   if n_elements(ld) eq 0 then ld = '['
   if n_elements(rd) eq 0 then rd = ']'
 
-  return, ld + rdx_ints2str(arr) + rd
-
-  ;-----------------------
-  
+  case n_elements(arr) of
+    0    : return, ld + rd
+    1    : return, ld + strtrim(arr, 2) + rd
+    else : return, ld + rdx_ints2str(arr) + rd
+  end
+                                ;-----------------------
+    
   ;; Simple cases, one or two elements
   if n_elements(arr) eq 1 then return, ld + strtrim(arr[0], 2) + rd
   if n_elements(arr) eq 2 then return, ld + strjoin(string(arr, format = '(i0)'), ',') + rd
