@@ -122,6 +122,7 @@ pro red_missing, image $
       Ndata = n_elements(image)
       if arg_present(image_out) then image_out = image 
       if arg_present(indx_data) then indx_data = lindgen(n_elements(image))
+      if n_elements(missing_type_wanted) then missing_type_used = missing_type_wanted ; Pretend we did what was ordered
       return
     end
 
