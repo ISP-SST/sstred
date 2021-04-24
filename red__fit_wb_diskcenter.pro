@@ -193,6 +193,12 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     wbza = wbza[indx]
     
     upref = wbprefs[uniq(wbprefs, sort(wbprefs))]
+    if n_elements(pref) ne 0 then begin
+      ;; Limit to specified prefilters 
+      match2, upref, pref, suba
+      mindx = where(suba ne -1, Nmatch)
+      if Nmatch ne 0 then upref = upref[mindx]
+    endif
     Nprefs = n_elements(upref)
     
     fitexpr_used = strarr(Nprefs)
@@ -210,18 +216,11 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       ;;colors = distinct_colors(n_colors = Nprefs, /num)
     endelse
     cgwindow
-
+    
     ;; Loop over prefilters
     for ipref = 0, Nprefs-1 do begin
       indx = where(wbprefs eq upref[ipref])
-
-      if n_elements(pref) ne 0 then begin
-        ;; Limit to specified prefilters 
-        match2, upref[ipref], pref, suba
-        mindx = where(suba ne -1, Nmatch)
-        if Nmatch eq 0 then continue
-      endif 
-
+       
       if ipref eq 0 then begin
         ;; Set up the plot
         red_timeplot, /add $
