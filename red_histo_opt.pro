@@ -31,6 +31,7 @@ FUNCTION red_histo_opt, image, cutoff, ix, top_only=top, bot_only=bot
 ;       06-Jul-1993  P.Suetterlin, KIS
 ;       16-Feb-1995  P.Suetterlin, KIS: Take care for float
 ;                    arrays. Histogram doesn't like them.
+;       15-Apr-2021  M.Löfdahl, ISP: Deal with NaNs.
 ;-
 
 on_error, 2
@@ -49,13 +50,14 @@ s = size(image)
  ;;; shure that the range is ok (especially for normalized images with
  ;;; a range from 0. to 1.). 
  ;;;
+indx = where(finite(image), complement = indx_missing, Ncomplement = Nmissing)
 IF s(s(0)+1) GT 3 THEN BEGIN
-    fak = 10000./(max(image, min = hmin)-hmin)
-    h = histogram(fix((image-hmin)*fak))
+  fak = 10000./(max(image[indx], min = hmin)-hmin)
+  h = histogram(fix((image[indx]-hmin)*fak), /nan)
 ENDIF ELSE BEGIN
-    h = histogram(image)
-    hmin = min(image)
-    fak = 1
+  h = histogram(image[indx], /nan)
+  hmin = min(image[indx])
+  fak = 1
 ENDELSE
 
 nh = n_elements(h)
@@ -82,12 +84,23 @@ cmax = min(where(h GE (1.-cutoff)))/fak+hmin
  ;;;
 IF n_params() EQ 3 THEN ix = where((image LE cmin) OR (image GE cmax))
 
-IF keyword_set(top) THEN $
-  return, image < cmax $
-ELSE IF keyword_set(bot) THEN $
-  return, image > cmin $
-ELSE $
-  return, image > cmin < cmax
-END
+if Nmissing gt 0 then begin
+  if keyword_set(top) then $
+     return, image < cmax $
+  else if keyword_set(bot) then $
+     return, image > cmin $
+  else $
+     return, image > cmin < cmax
+endif else begin
+  outimage = image
+  if keyword_set(top) then $
+     outimage <= cmax $
+  else if keyword_set(bot) then $
+     outimage >= cmin $
+  else $
+     outimage = outimage > cmin < cmax
+  outimage[indx_missing] = !values.f_nan
+  return, outimage
+endelse
 
-
+end
