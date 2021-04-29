@@ -27,13 +27,11 @@
 ;
 ;    fit_fwhm : in, optional, type=boolean
 ;
-;      Keep the filter profile FWHM parameter to the initial value
-;      fixed during the fit.
+;      Include the filter profile FWHM parameter in the fit.
 ;
 ;    fit_ncav : in, optional, type=boolean
 ;
-;      Keep the number of cavities parameter fixed to the initial
-;      value during the fit.
+;      Include the number of cavities parameter in the fit.
 ;
 ;    fit_parameters  : in, optional, type="boolean array[8]", default=[1,1,1,1,1,1,1,0]
 ;
@@ -49,22 +47,19 @@
 ;
 ;    fit_prshift : in, optional, type=boolean
 ;
-;      Keep the filter profile shift parameter fixed to the initial
-;      value during the fit.
+;      Include the filter profile shift parameter in the fit.
 ;
 ;    fit_shift : in, optional, type=boolean
 ;
-;      Keep the spectrum shift parameter fixed to the initial value
-;      during the fit.
+;      Include the spectrum shift parameter in the fit.
 ;
 ;    fit_stretch : in, optional, type=boolean
 ;
-;      Keep the spectrum stretch parameter fixed to the initial value
-;      during the fit.
+;      Include the spectrum stretch parameter in the fit.
 ;
 ;    fixcav : in, optional, type=float, default='Not fixed'
 ;
-;        Fix the number of cavities to this number. (Deprecated.)
+;      Fix the number of cavities to this number. (Deprecated.)
 ;
 ;    hints : in, optional, type=boolean
 ;
