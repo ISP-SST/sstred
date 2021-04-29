@@ -28,7 +28,15 @@
 ;   fwlevel : in, optional, type=float
 ;   
 ;      Use only data points larger than fwlevel times max(histogram). 
-;   
+;
+;   lorentzian  : in, optional, type=boolean
+;
+;      Fit a Lorentzian kernel to the peak, rather than the default Gaussian. 
+;
+;   moffat  : in, optional, type=boolean
+;
+;      Fit a Moffat kernel to the peak, rather than the default Gaussian. 
+;
 ;   nan : in, optional, type=boolean
 ;
 ;      Protect against NaN values.
@@ -48,11 +56,15 @@
 ; 
 ;   2021-04-10 : MGL. New keyword nan.
 ; 
+;   2021-04-25 : MGL. New keywords lorentzian and moffat.
+; 
 ;-
 function red_histo_gaussfit, data $
-                             , fwlevel = fwlevel $
+                             , lorentzian = lorentzian $
+                             , moffat = moffat $
                              , nan = nan $
                              , nterms = nterms $
+                             , fwlevel = fwlevel $
                              , show_plots = show_plots
   
   mn = median(data)
@@ -82,12 +94,16 @@ function red_histo_gaussfit, data $
     endif
   endif
 
-  yfit=mpfitpeak(float(intensities), float(hh), a, nterms = nterms)
+  yfit=mpfitpeak(float(intensities), float(hh), a, nterms = nterms $
+                 , lorentzian = lorentzian, moffat = moffat)
+
   if keyword_set(show_plots) then begin 
     cgplot, intensities, hh, /xstyle, /ystyle
     cgplot, /over, intensities, yfit, color='red'
     cgplot, /over, [0,0]+a[1], [0,1]*max(hh), color='red'
     cgplot, /over, [0,0]+mn,   [0,1]*max(hh), color='cyan'
+    cgplot, /over, [0,0]+A[2], [0,1]*max(hh), color='green'
+    cgplot, /over, [0,0]-A[2], [0,1]*max(hh), color='green'
   endif
   
   return, a
