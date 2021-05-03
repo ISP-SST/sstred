@@ -46,6 +46,9 @@
 ;   2019-09-25 : MGL. Implement reading multiple wavelength
 ;                distortions (cavity maps).
 ; 
+;   2021-05-03 : MGL. Read the record-valued version of DW3, not the
+;                HIERARCH version.
+; 
 ;-
 pro red_fitscube_getwcs, filename $
                          , coordinates = coordinates $
@@ -154,28 +157,27 @@ pro red_fitscube_getwcs, filename $
     undefine, distortions
     
     ;; Read hierarch keyword dw3
-    dw3 = red_fitsgetkeyword(hdr, 'DW3')
+    dw3 = red_fitsgetkeyword(hdr, 'DW3', field_specifiers = dw3_keywords)
     Ndw3 = n_elements(dw3)
     if Ndw3 eq 0 then begin
       print, inam + ' : There is no DW3 keyword.'
       print, inam + ' : No distortions returned.'
       return
     endif
-    dw3_keywords = strarr(Ndw3)
-    for idw3 = 0, Ndw3-1 do dw3_keywords[idw3] = (dw3[idw3])[0]
-    ;; APPLY should be the last DW3 keyword for each distortion, and
-    ;; we usually put NAME first.
-    name_pos = where(strmatch(dw3_keywords, 'NAME'), Nname) 
-    apply_pos = where(strmatch(dw3_keywords, 'APPLY'), Napply)
+
+    ;; APPLY should be the last DW3 keyword for each distortion
+    last_pos = where(strmatch(dw3_keywords, 'APPLY'), Napply)
+    first_pos = [0]
+    if n_elements(last_pos) gt 1 then red_append, first_pos, last_pos[0:-2]+1
 
     ;; Get the scales and offsets for the tuning coordinate
     offsets = fltarr(Napply)
     scales = fltarr(Napply) 
     for i = 0, Napply-1 do begin
-      dw3_sub_keywords = dw3_keywords[name_pos[i]:apply_pos[i]]
-      dw3_sub = dw3[name_pos[i]:apply_pos[i]]
+      dw3_sub_keywords = dw3_keywords[first_pos[i]:last_pos[i]]
+      dw3_sub = dw3[first_pos[i]:last_pos[i]]
       pos = where(dw3_sub_keywords eq 'EXTVER')
-      extver = (dw3_sub[pos[0]])(1)
+      extver = dw3_sub[pos[0]]
       scale_pos = where(dw3_sub_keywords eq 'SCALE3' or dw3_sub_keywords eq 'SCALE.3', Nscale)
       offset_pos = where(dw3_sub_keywords eq 'OFFSET3' or dw3_sub_keywords eq 'OFFSET.3', Noffset)
       if Nscale eq 0 or Noffset eq 0 then begin
@@ -191,8 +193,8 @@ pro red_fitscube_getwcs, filename $
           offsets[i] = ( (indx[-1]+0.5)*(.5+eps) - (1.5-eps)*(indx[0]-0.5) ) / (1. - 2.*eps)
         endelse
       endif else begin
-        scales[extver-1] = (dw3_sub[scale_pos[0]])(1)
-        offsets[extver-1] = (dw3_sub[offset_pos[0]])(1)
+        scales[extver-1] = dw3_sub[scale_pos[0]]
+        offsets[extver-1] = dw3_sub[offset_pos[0]]
       endelse
     endfor                      ; i
     
@@ -243,5 +245,34 @@ pro red_fitscube_getwcs, filename $
     
   endif 
 
+
+end
+
+
+cd, '/scratch/mats/2016.09.19/CHROMIS-jan19'
+fname = 'cubes_nb/nb_3950_2016-09-19T10:42:01_scans=0-4_corrected_im.fits'
+tmpname = 'cubes_nb/tmp.fits'
+
+
+val1 = red_fitsgetkeyword(fname, 'DW3', field_specifiers = fs1)
+
+
+red_fitscube_getwcs, fname $
+                     , coordinates = coordinates $
+                     , distortions = distortions
+
+
+file_copy, fname, tmpname, /over
+
+hdr = headfits(tmpname)
+indx = where(strmid(hdr, 0, 8) ne 'HIERARCH')
+hdr2 = hdr(indx)
+red_fitscube_newheader, tmpname, hdr2
+
+val2 = red_fitsgetkeyword(tmpname, 'DW3', field_specifiers = fs2)
+
+red_fitscube_getwcs, tmpname $
+                     , coordinates = coordinates2 $
+                     , distortions = distortions2
 
 end
