@@ -64,6 +64,9 @@
 ;    2019-09-30 : MGL. Make it a regular subroutine, not a class
 ;                 method. 
 ; 
+;    2021-05-03 : MGL. Do not write the HIERARCH version of DW3. Add
+;                 DISTNAME in the extension header.
+; 
 ;-
 pro red_fitscube_addcmap, filename, cmaps $
                           , cmap_number = cmap_number $
@@ -119,45 +122,22 @@ pro red_fitscube_addcmap, filename, cmaps $
   ;; Make and write the record-valued DWj keyword. Avoid dots in the
   ;; names, please!
 
-  ;; The HIERARCH representation of the records is an array of lists.
-  ;; The lists consist of: The keyword names, the field names, the
-  ;; value, the comment. The only list element that can be omitted is
-  ;; the comment.
-  undefine, hierarch_fields
-  if prefilter eq '' then begin
-    red_append, hierarch_fields, list('NAME'      , 'Cavity error' ,                'Type of correction'          )
-  endif else begin
-    red_append, hierarch_fields, list('NAME'      , 'Cavity error for '+prefilter , 'Type of correction'          )
-  endelse
-  red_append, hierarch_fields, list('EXTVER'      , cmap_number    , 'Extension version number'                   )
-  red_append, hierarch_fields, list('NAXES'       , 5              , 'Number of axes in the extension'            )
-  red_append, hierarch_fields, list('AXIS1'       , 1              , 'Spatial X'                                  )
-  red_append, hierarch_fields, list('AXIS2'       , 2              , 'Spatial Y'                                  )
-  red_append, hierarch_fields, list('AXIS3'       , 3              , 'Tuning'                                     )
-  red_append, hierarch_fields, list('AXIS4'       , 4              , 'Stokes'                                     )
-  red_append, hierarch_fields, list('AXIS5'       , 5              , 'Scan number'                                )
+  red_append, names, 'EXTVER' & red_append, values, cmap_number & red_append, comments, 'Extension version number'        
+  red_append, names, 'NAXES'  & red_append, values, 5           & red_append, comments, 'Number of axes in the extension' 
+  red_append, names, 'AXIS.1' & red_append, values, 1           & red_append, comments, 'Spatial X'                       
+  red_append, names, 'AXIS.2' & red_append, values, 2           & red_append, comments, 'Spatial Y'                       
+  red_append, names, 'AXIS.3' & red_append, values, 3           & red_append, comments, 'Tuning'                          
+  red_append, names, 'AXIS.4' & red_append, values, 4           & red_append, comments, 'Stokes'                          
+  red_append, names, 'AXIS.5' & red_append, values, 5           & red_append, comments, 'Scan number'                     
   if n_elements(indx) ne 0 then begin
-    red_append, hierarch_fields, list('OFFSET3'   , offset         , 'Tuning coordinates offset'                  )
-    red_append, hierarch_fields, list('SCALE3'    , scale          , 'Tuning coordinates scale'                   )
+    red_append, names, 'OFFSET.3' & red_append, values, offset & red_append, comments, 'Tuning coordinates offset'
+    red_append, names, 'SCALE.3'  & red_append, values, scale  & red_append, comments, 'Tuning coordinates scale'   
   endif
-  red_append, hierarch_fields, list('CWERR'       , max(abs(cmaps)), '[nm] Max distortion (this correction step)' )
-  red_append, hierarch_fields, list('CWDIS LOOKUP', 1              , 'Distortions in lookup table'                )
-  red_append, hierarch_fields, list('ASSOCIATE'   , 1              , 'Association stage (pixel coordinates)'      )
-  red_append, hierarch_fields, list('APPLY'       , 6              , 'Application stage (world coordinates)'      )
-  ;; APPLY should be the last keyword
-
-  ;; Translate the hierarch_fields to the kind of record-valued
-  ;; keywords defined in the distortions paper.
-  for ifield = 1, n_elements(hierarch_fields)-1 do begin ; Skip NAME, strings not allowed
-    hfield = red_strreplace((hierarch_fields[ifield])[0],' ','.',n=10)
-    ;; Need a dot in some of the record-valued keywords.
-    if strmid(hfield, 0, 4) eq 'AXIS'   then hfield = 'AXIS.'+strmid(hfield, 4)
-    if strmid(hfield, 0, 4) eq 'SCALE'  then hfield = 'SCALE.'+strmid(hfield, 5)
-    if strmid(hfield, 0, 4) eq 'OFFSET' then hfield = 'OFFSET.'+strmid(hfield, 6)
-    red_append, names,    hfield
-    red_append, values,   (hierarch_fields[ifield])[1]
-    red_append, comments, (hierarch_fields[ifield])[2]
-  endfor                        ; ifield
+  red_append, names, 'CWERR'        & red_append, values, max(abs(cmaps)) & red_append, comments, '[nm] Max distortion (this correction step)' 
+  red_append, names, 'CWDIS LOOKUP' & red_append, values, 1               & red_append, comments, 'Distortions in lookup table'                
+  red_append, names, 'ASSOCIATE'    & red_append, values, 1               & red_append, comments, 'Association stage (pixel coordinates)'      
+  red_append, names, 'APPLY'        & red_append, values, 6               & red_append, comments, 'Application stage (world coordinates)'      
+  ;; Always let APPLY come last, we use that when reading.
 
   ;; Add the DWj keyword name
   names = 'DW'+j+' ' + names
@@ -171,16 +151,17 @@ pro red_fitscube_addcmap, filename, cmaps $
   ;; Write the extended keywords to the header
   red_fitsaddkeyword, anchor = anchor, hdr, names, values, comments, nodelete = cmap_number NE 1
   
-  ;; Write the HIERARCH DW3 keywords to the header, delete earlier
-  ;; instances if this is the first cmap.
-  red_fitsaddkeyword_hierarch, anchor = oldanchor, hdr, 'DW'+j, hierarch_fields, nodelete = cmap_number NE 1
-  
   ;; Construct a header for the image extension with the lookup table. ---------------------------
-  
+  if prefilter eq '' then begin
+    distvalue = 'Cavity error'
+  endif else begin
+    distvalue = 'Cavity error for '+prefilter 
+  endelse
   mkhdr, chdr, cmaps, /image
   anchor = 'DATE'
   red_fitsaddkeyword, anchor = anchor, chdr, 'EXTNAME', 'WCSDVARR', 'WCS distortion array'
-  red_fitsaddkeyword, anchor = anchor, chdr, 'EXTVER', cmap_number, 'Distortion array version number'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'EXTVER',   cmap_number, 'Distortion array version number'
+  red_fitsaddkeyword, anchor = anchor, chdr, 'DISTNAME', distvalue, 'Type of correction'          
   red_fitsaddkeyword, anchor = anchor, chdr, 'PCOUNT', 0, 'Special data area of size zero' 
   red_fitsaddkeyword, anchor = anchor, chdr, 'GCOUNT', 1, 'One data group'
   red_fitsaddkeyword, anchor = anchor, chdr, 'CRPIX1', 1, 'Distortion array reference pixel' 
