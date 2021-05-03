@@ -71,7 +71,9 @@
 ;     
 ;        If this keyword is present and the "name" is a record-valued
 ;        header keyword, the returned values are stripped of the
-;        field-specifiers, which are instead returned here.
+;        field-specifiers, which are instead returned here. Also, if
+;        this keyword is present, don't look for HIERARCH
+;        versions of the keyword.
 ;     
 ;     variable_values : out, optional, type=struct
 ;
@@ -93,6 +95,9 @@
 ; 
 ;    2018-06-15 : MGL. Return variable keywords with the full fitscube
 ;                 dimensions.
+; 
+;    2021-05-03 : MGL. If called with field_specifiers, don't
+;                 look for HIERARCH versions of the keyword.
 ; 
 ;-
 function red_fitsgetkeyword, filename_or_header, name $
@@ -126,27 +131,31 @@ function red_fitsgetkeyword, filename_or_header, name $
     end
   endcase
 
-  ;; Check for HIERARCH with the wanted name.
-  hindx = where(strmatch(hdr, 'HIERARCH ' + name + ' *'), Nmatch)
-  if Nmatch gt 0 then begin
-    for imatch = 0, Nmatch-1 do begin
-      line = red_strreplace(hdr[hindx[imatch]], 'HIERARCH ' + name + ' ', '')
-      split_line = strsplit(line,'=',/extract)
-      field_spec = strtrim(split_line[0], 2)
-      split_line = strsplit(split_line[1], '/', /extract)
-      tmp = execute('field_value='+split_line[0]) ; Get the value with the correct type
-      if n_elements(split_line) ge 2 then begin
-        field_comment = strjoin(split_line[1:*], ' ')
-        field_list = list(field_spec, field_value, field_comment)
-      endif else begin
-        field_list = list(field_spec, field_value)
-      endelse
-      red_append, hierarch_fields, field_list
-    endfor                      ; imatch
+  ;; If we called with field_specifiers, then we want record-valued
+  ;; keywords, not HIERARCH keywords.
+  if ~arg_present(field_specifiers) then begin
+    ;; Check for HIERARCH with the wanted name.
+    hindx = where(strmatch(hdr, 'HIERARCH ' + name + ' *'), Nmatch)
+    if Nmatch gt 0 then begin
+      for imatch = 0, Nmatch-1 do begin
+        line = red_strreplace(hdr[hindx[imatch]], 'HIERARCH ' + name + ' ', '')
+        split_line = strsplit(line,'=',/extract)
+        field_spec = strtrim(split_line[0], 2)
+        split_line = strsplit(split_line[1], '/', /extract)
+        tmp = execute('field_value='+split_line[0]) ; Get the value with the correct type
+        if n_elements(split_line) ge 2 then begin
+          field_comment = strjoin(split_line[1:*], ' ')
+          field_list = list(field_spec, field_value, field_comment)
+        endif else begin
+          field_list = list(field_spec, field_value)
+        endelse
+        red_append, hierarch_fields, field_list
+      endfor                    ; imatch
 
-    ;; No need to look further if we found HIERARCH keywords!
-    return, hierarch_fields
+      ;; No need to look further if we found HIERARCH keywords!
+      return, hierarch_fields
 
+    endif
   endif
   
   ;; Check for multiple occurences. 
