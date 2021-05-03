@@ -48,6 +48,10 @@
 ;   grid : in, optional, type=array
 ;   
 ;      Stretch vectors.
+;
+;   hist : out, optional, type=array
+;
+;      The accumulated histogram.
 ;   
 ;   origNx : in, optional, type=float 
 ;   
@@ -93,15 +97,18 @@
 ; 
 ;   2021-03-03 : MGL. New keyword axis_numbers. 
 ; 
+;   2021-04-07 : MGL. New keyword hist.
+; 
 ;-
 pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
 ;                             , angles = angles $
                              , axis_numbers = axis_numbers $
-                                ;                             , full = full $
+;                             , full = full $
 ;                             , grid = grid $
 ;                             , origNx = origNx $
-;                             , origNy = origNy $ $
+;                             , origNy = origNy $ 
                              , cube_comments = cube_comments $
+                             , hist = hist $
                              , percentiles = percentiles $
                              , remove_only = remove_only $
 ;                             , shifts = shifts $
@@ -323,5 +330,41 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
                                    , axis_numbers = axis_numbers
 
   endfor                        ; itag
+
+end
+
+
+cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/cubes_nb'
+red_fitscube_statistics, 'nb_6302_2016-09-19T09:30:20_scans=2-8_stokes_corrected_im.fits' $
+                         , frame_statistics, cube_statistics, hist = hist
+
+cubemin  = cube_statistics.datamin
+cubemax  = cube_statistics.datamax
+cubemean = cube_statistics.datamean
+Nbins = 2L^16                   ; Use many bins!
+binsize = (cubemax - cubemin) / (Nbins - 1.)
+binloc = cubemin + dindgen(Nbins)*binsize
+
+d = cube_statistics.datap99 - cube_statistics.datap01
+xrange = [cube_statistics.datap01, cube_statistics.datap99] + [-1, 1]*d/100
+
+cgwindow
+indx = where(hist gt 0)
+;cgplot, /add, binloc, total(hist, /cum), xrange = xrange
+cgplot, /add, binloc, hist, xrange = xrange
+
+cgplot, /add, /over, cube_statistics.datap01 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap02 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap05 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap10 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap25 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datamedn * [1, 1], !y.crange >1, color = 'blue'
+cgplot, /add, /over, cube_statistics.datap75 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap90 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap95 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap98 * [1, 1], !y.crange >1, color = 'red'
+cgplot, /add, /over, cube_statistics.datap99 * [1, 1], !y.crange >1, color = 'red'
+
+cgplot, /add, /over, cube_statistics.datamean * [1, 1], !y.crange >1, color = 'green'
 
 end
