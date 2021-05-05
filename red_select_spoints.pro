@@ -41,7 +41,7 @@ function red_select_spoints, wav, imean
   !p.multi = [0,1,1]
                                 ;
   cgplot, wav, imean, psym = -16, xstyle = 3, ystyle = 3, $
-          xtitle = 'Wavelength [A]', ytitle = 'Stokes I', $
+          xtitle = 'Wavelength [nm]', ytitle = 'Stokes I', $
           title = 'Select points regions to calculate cross-talk from I'
                                 ;
                                 ; Loop
