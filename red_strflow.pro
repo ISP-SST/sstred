@@ -1,7 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Split text into multiple lines, not exceeding a specified length.
+; Split text into multiple lines, not exceeding a specified length. As
+; a function, return the text. As a subroutine, print it.
 ; 
 ; :Categories:
 ;
@@ -19,7 +20,7 @@
 ; 
 ; :Params:
 ; 
-;   txt : in, type=string
+;   txt : in, type="string or strarr"
 ; 
 ;     The text to be reflowed.
 ; 
@@ -88,6 +89,15 @@ function red_strflow, txt, width = width
   
 end
 
+pro red_strflow, txt, width = width, lun = lun
+
+  if n_elements(lun) eq 0 then begin
+    hprint, red_strflow(txt, width = width)
+  endif else begin
+    printf, lun, red_strflow(txt, width = width), format = '(a0)'
+  endelse
+  
+end
 
 instring = 'The Duke of Cambridge and Duke of Sussex will walk behind their grandfather’s coffin at his funeral on Saturday. They will, however, be separated by the diplomatic presence of their cousin. The brothers, whose fractured relationship has not recovered since their last awkward encounter at Westminster Abbey a year ago, will be among the nine members of the royal family...'
 
@@ -99,6 +109,12 @@ instrings = ["(CNN) If you've been out driving on the eastern coast of Australia
              , "long way from home, skating alone on an epic voyage of discovery that" $
              , "led him from Melbourne all the way north to Cairns, a 4,000-kilometer" $
              , "route on just four little wheels. "]
+
+openw, lun, 'tmp.txt', /get_lun
+red_strflow, instrings, w = 40, lun = lun
+free_lun, lun
+
+stop
 
 outstring1 = red_strflow(instring)
 outstring2 = red_strflow(instrings, w = 40)
