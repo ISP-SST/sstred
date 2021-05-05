@@ -482,7 +482,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
       red_progressbar, istate, Nstates, 'Loop over states: '+ustate[istate], /predict
 
-      self -> get_calib, statesNB[istate], darkdata=darkN, status = status
+      self -> get_calib, statesNB[istate], darkdata=darkN, gaindata=gainN, status = status
       if status ne 0 then begin
         print, inam+' : ERROR, cannot find dark file for NB'
         stop
@@ -522,10 +522,13 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         if keyword_set(mask) then begin
 
           if kk eq 0 and istate eq 0 then begin
+            imN = imsN[*,*,0]
+            mindx = where(gainn eq 0, Nmissing)
+            if Nmissing gt 0 then imN[mindx] =  !values.f_nan ; Missing pixels
             mmask = red_select_area(imsN[*,*,0], /noedge, /xroi)
             nzero = where(mmask gt 0)
-            bla = imsN[*,*,0]
-            ind = array_indices(bla, nzero)
+;            bla = imsN[*,*,0]
+            ind = array_indices(imN, nzero)
           endif
           
           imsN1 = double(imsN[reform(ind[0,*]),reform(ind[1,*])])

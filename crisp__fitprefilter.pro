@@ -633,6 +633,8 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ;; Get the spectrum point in counts
         if keyword_set(mask) then begin
           if istate eq 0 then begin
+            mindx = where(gainn eq 0, Nmissing)
+            if Nmissing gt 0 then imN[mindx] =  !values.f_nan ; Missing pixels
             mmask = red_select_area(imN, /noedge, /xroi)
             ind = where(mmask gt 0)
           endif 
