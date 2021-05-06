@@ -27,7 +27,7 @@
 ; 
 ; :Keywords:
 ; 
-;   width : in, optional, type=integer, default="Terminal width"
+;   width : in, optional, type=integer, default="min(60,Terminal width-1)"
 ;   
 ;     Make the lines no longer than this.
 ; 
@@ -40,12 +40,11 @@
 function red_strflow, txt, width = width
 
   if n_elements(txt) eq 0 then return, ''
-  if n_elements(width) eq 0 then width = (TERMINAL_SIZE( ))[0]
+  if n_elements(width) eq 0 then width = ((TERMINAL_SIZE( ))[0]-1) <60
   
   istr = strjoin(strtrim(strcompress(txt), 2), ' ')
 
   if strlen(istr) eq 0 then return, ''
-;  if txt eq blanks(strlen(istr)) then return, ''
   
   done = !false
 
@@ -89,12 +88,12 @@ function red_strflow, txt, width = width
   
 end
 
-pro red_strflow, txt, width = width, lun = lun
-
+pro red_strflow, txt, lun = lun, _ref_extra = extra  
+  
   if n_elements(lun) eq 0 then begin
-    hprint, red_strflow(txt, width = width)
+    print, red_strflow(txt, _strict_extra = extra), format = '(a0)'
   endif else begin
-    printf, lun, red_strflow(txt, width = width), format = '(a0)'
+    printf, lun, red_strflow(txt, _strict_extra = extra), format = '(a0)'
   endelse
   
 end
@@ -110,11 +109,11 @@ instrings = ["(CNN) If you've been out driving on the eastern coast of Australia
              , "led him from Melbourne all the way north to Cairns, a 4,000-kilometer" $
              , "route on just four little wheels. "]
 
-openw, lun, 'tmp.txt', /get_lun
-red_strflow, instrings, w = 40, lun = lun
-free_lun, lun
-
-stop
+;openw, lun, 'tmp.txt', /get_lun
+;red_strflow, instring, w = 40, lun = lun
+;free_lun, lun
+;
+;stop
 
 outstring1 = red_strflow(instring)
 outstring2 = red_strflow(instrings, w = 40)
