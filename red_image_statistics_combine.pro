@@ -73,7 +73,7 @@ function red_image_statistics_combine, statsarr $
 
     ;; Calculation based on my own derivation.
 
-    Npixels = statsarr[0].Npixels ; Assume same for all frames
+    Npixels = statsarr[0].Ndatapix ; Assume same for all frames
 
     CUBEMEAN = mean(statsarr.datamean)
 
@@ -98,7 +98,7 @@ function red_image_statistics_combine, statsarr $
                - 6 * (Npixels*Nframes-1d) * CUBEMEAN^2 / (Npixels*Nframes*CUBERMS^2) $
                - CUBEMEAN^4/CUBERMS^4 - 3 
     
-    output = create_struct('NPIXELS' , round(total(statsarr.Npixels)) $
+    output = create_struct('NDATAPIX' , round(total(statsarr.Ndatapix)) $
                            , 'DATAMIN' , CUBEMIN $
                            , 'DATAMAX' , CUBEMAX $
                            , 'DATAMEAN', CUBEMEAN $       
@@ -117,7 +117,7 @@ function red_image_statistics_combine, statsarr $
     ;; form. And then modified back.
 
     ;; Initialize with statistics for 0th frame
-    Npix = double(statsarr[0].Npixels)
+    Npix = double(statsarr[0].Ndatapix)
     CUBEMEAN = statsarr[0].DATAMEAN
     variance = (statsarr[0].DATANRMS * statsarr[0].DATAMEAN)^2
     Mp = [ variance * (Npix-1)/Npix $                      ; M2 from variance
@@ -134,7 +134,7 @@ function red_image_statistics_combine, statsarr $
       MpA = Mp
 
       ;; Set B is the next frame
-      NpixB = double(statsarr[iframe].Npixels)
+      NpixB = double(statsarr[iframe].Ndatapix)
       datameanB = statsarr[iframe].DATAMEAN
       variance = (statsarr[iframe].DATANRMS * statsarr[iframe].DATAMEAN)^2
       MpB = [ variance * (NpixB-1)/NpixB $                         ; M2 from variance
@@ -169,7 +169,7 @@ function red_image_statistics_combine, statsarr $
     mom[3] -= 3                 ; Excess kurtosis
 
     ;; And make a struct with the results
-    output = create_struct('NPIXELS' , long64(Npix) $
+    output = create_struct('NDATAPIX' , long64(Npix) $
                            , 'DATAMIN' , CUBEMIN $
                            , 'DATAMAX' , CUBEMAX $
                            , 'DATAMEAN', CUBEMEAN $       
@@ -183,7 +183,7 @@ function red_image_statistics_combine, statsarr $
 
 
   if arg_present(comments) then $
-     comments = create_struct('NPIXELS' , 'Number of pixels' $
+     comments = create_struct('NDATAPIX' , 'Number of pixels' $
                               , 'DATAMIN' , 'The minimum data value' $
                               , 'DATAMAX' , 'The maximum data value' $
                               , 'DATAMEAN', 'The average data value' $       

@@ -54,7 +54,7 @@ function red_image_statistics_calculate, im, percentile_p = percentile_p
   if Nwhere gt 0 then perc = double(cgpercentiles(im, percentiles = percentile_p)) $
   else perc = percentile_p + !Values.F_NaN
 
-  output = create_struct('NPIXELS',  long64(n_elements(indx)) $
+  output = create_struct('NDATAPIX',  long64(n_elements(indx)) $
                          , 'DATAMIN' , min(im) $
                          , 'DATAMAX' , max(im) $
                          , 'DATAMEAN', momnt[0] $       

@@ -129,7 +129,10 @@ pro red_fitscube_statistics, filename, frame_statistics, cube_statistics $
     ;; Remove any existing statistics keywords from the file header. 
     hdr = fitscube_info.header
     ;; Search for DATA* keywords
-    dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)
+    dindx = where(strmid(hdr, 0, 4) eq 'DATA' $
+                  or strmid(hdr, 0, 7) eq 'NDATAPIX' $
+                  or strmid(hdr, 0, 7) eq 'NPIXELS' $ ; Old cubes could have this
+                  , Ndata)
     ;; Loop through the keywords backwards so we don't move them before
     ;; they are deleted.
     for idata = Ndata-1, 0, -1 do begin
