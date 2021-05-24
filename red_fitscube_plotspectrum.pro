@@ -141,16 +141,23 @@ pro red_fitscube_plotspectrum, filename $
   atlas_spectrum_convolved = fftconvol(atlas_spectrum, tr)
 
   if n_elements(xrange) eq 0 then xrange = [lambda_min, lambda_max]
+  yrange = [0, (max(atlas_spectrum*1e9) > max(datamedn*1e9))*1.02]
 
+  title = file_basename(filename)
+  title = red_strreplace(title, '_corrected_im.fits', '')
+  title = red_strreplace(title, 'nb_', '')
+  
+  
   ;; Adapt units for cgplot
   plunits = red_strreplace(units, '^-1', '$\exp-1$', n = 3)
   plunits = red_strreplace(plunits, '^-2', '$\exp-2$')
   
   ;; Make the plot
   cgwindow
-  cgplot, /add, atlas_lambda/10, atlas_spectrum*1e9 $
+  cgplot, /add, atlas_lambda/10, atlas_spectrum_convolved*1e9 $
           , xtitle = '$\lambda$ / 1 nm', ytitle = 'median(Intensity) / 1 n'+plunits $
-          , xrange = xrange
+          , title = title $
+          , xrange = xrange, yrange = yrange
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
 
