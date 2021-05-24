@@ -441,7 +441,8 @@ pro crisp::make_nb_cube, wcfile $
 
   wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
   nbt_units = prf.units
-  nbt_prefilter_curve = prf.pref
+  nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, nbtstates[utunindx[sortindx]].tun_wavelength*1.d10)
+;  nbt_prefilter_curve = prf.pref
 ;  nbt_prefilter_wav = prf.wav
 ;  nbt_prefilter_wb = prf.wbint
   
@@ -456,14 +457,16 @@ pro crisp::make_nb_cube, wcfile $
   endif
   restore, pfile                ; Restores variable prf which is a struct
 
-  nbr_units = prf.units  
-  nbr_prefilter_curve = prf.pref
+  nbr_units = prf.units
+  nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, nbrstates[utunindx[sortindx]].tun_wavelength*1.d10)
+;  nbr_prefilter_curve = prf.pref
 ;  nbr_prefilter_wav = prf.wav
 ;  nbr_prefilter_wb = prf.wbint
   
   nbr_rpref = 1.d0/nbr_prefilter_curve
 
   prefilter_curve = (nbt_prefilter_curve + nbr_prefilter_curve)/2.
+;  stop
   
   if nbr_units ne nbt_units then begin
     print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
@@ -995,7 +998,8 @@ pro crisp::make_nb_cube, wcfile $
         sexp_array[ituning, iscan] = red_fitsgetkeyword(stokhdr, 'TEXPOSUR')
         nsum_array[ituning, iscan] = red_fitsgetkeyword(stokhdr, 'NSUMEXP')
 
-      endif else begin
+      endif else begin          ; If makestokes above, if not below
+        
         ;; The NB files in this scan, sorted in tuning wavelength order.
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
                              , fpi_states = utuning[ituning] $

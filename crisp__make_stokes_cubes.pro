@@ -21,7 +21,10 @@
 ;     dir : in, type=string
 ; 
 ;       The path to the momfbd-restored data.
-; 
+;
+;     scanno : in, type=integer
+;
+;       The scan number for which to make Stokes cubes.
 ; 
 ; :Keywords:
 ; 
@@ -120,10 +123,10 @@ pro crisp::make_stokes_cubes, dir, scanno $
     retall
   endif
 
-  if n_elements(scanno) eq 0 then begin
+  if n_elements(scanno) ne 1 then begin
     ;; Make it accept only a single scan number so we can return the
     ;; Stokes file names for that scan.
-    print, inam + ' : Please specify the scan number and try again.'
+    print, inam + ' : Please specify a single scan number and try again.'
     return
   endif
   
@@ -196,15 +199,27 @@ pro crisp::make_stokes_cubes, dir, scanno $
     'FITS': extension = '.fits'
   endcase
 
-  ;; Get the FOV based on all scans.
-  wfiles = file_search(dir + wbdetector+'*' + extension, count = Nwfiles) 
-  ;; The global WB file name should have no tuning info.
-  indx = where(~strmatch(wfiles,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nmatch)
-  if Nmatch eq 0 then stop
-  wbgfiles = wfiles[indx]
+  wbgfile = file_search(dir + '*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension, count = Nfiles)
+  if Nfiles ne 1 then stop
+  self -> extractstates, wbgfile, wbgstate
+
+;  files = file_search(dir + '*_'+string(scanno, format = '(i05)')+'_*_[0-9][0-9][0-9][0-9]' + extension, count = Nfiles) ; wbdetector? ; ; ;
+;  self -> extractstates, files, states
+
+;  indx = where(strmatch(files, '*'+wbdetector+'_*_[0-9][0-9][0-9][0-9]'+extension), Nmatch)
+;  wbgfile = files[indx[0]]
+;  wbgstate = states[indx[0]]  
 
   
-  hdr = red_readhead(wbgfiles[0])
+;  ;; Get the FOV based on all scans.
+;  wfiles = file_search(dir + wbdetector+'*' + extension, count = Nwfiles) 
+;  ;; The global WB file name should have no tuning info.
+;  indx = where(~strmatch(wfiles,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nmatch)
+;  if Nmatch eq 0 then stop
+;  wbgfiles = wfiles[indx]
+
+  
+  hdr = red_readhead(wbgfile)
   im_dim = fxpar(hdr, 'NAXIS*')
   x0 = 0
   x1 = im_dim[0]-1
@@ -215,15 +230,40 @@ pro crisp::make_stokes_cubes, dir, scanno $
 
   prefilter = strtrim(fxpar(hdr,'FILTER1'), 2)
 
-  wchdr0 = red_readhead(wbgfiles[0])
+  wchdr0 = red_readhead(wbgfile)
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   
-  datadir = file_dirname(wbgfiles[0])+'/'
-  extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
 
-  files = file_search(datadir + '*.'+extension, count = Nfiles)      
 
+  ;; All other files for this scan
+  pertuningfiles = file_search(dir + '*_'+string(scanno, format = '(i05)') $
+                               + '_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*' $
+                               + extension $
+                               , count = Nfiles)
+  self -> extractstates, pertuningfiles, pertuningstates
+
+  ;; Per-tuning files, wb and nb, only for selected scans
+  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                       , cam = wbcamera $
+                       , sel = wbindx, count = Nwb
+  wbstates = pertuningstates[wbindx]
+  wbfiles = pertuningfiles[wbindx]
+
+  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                       , cam = nbtcamera $
+                       , sel = nbtindx, count = Nnbt
+  nbtstates = pertuningstates[nbtindx]
+  nbtfiles = pertuningfiles[nbtindx]
+  
+  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                       , cam = nbrcamera $
+                       , sel = nbrindx, count = Nnbr
+  nbrstates = pertuningstates[nbrindx]
+  nbrfiles = pertuningfiles[nbrindx]
+
+;  stop
+  
   ;; Load prefilters
   
   ;; Crisp-T
@@ -236,12 +276,10 @@ pro crisp::make_stokes_cubes, dir, scanno $
   restore, pfile                ; Restores variable prf which is a struct
 
   nbt_units = prf.units
-  nbt_prefilter_curve = prf.pref
-  nbt_prefilter_wav = prf.wav
-  nbt_prefilter_wb = prf.wbint
+;  nbt_prefilter_curve = prf.pref
+;  nbt_prefilter_wav = prf.wav
+;  nbt_prefilter_wb = prf.wbint
   
-  nbt_rpref = 1.d0/nbt_prefilter_curve
-
   ;; Crisp-R
 
   pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_prefilter.idlsave'
@@ -252,11 +290,11 @@ pro crisp::make_stokes_cubes, dir, scanno $
   restore, pfile                ; Restores variable prf which is a struct
 
   nbr_units = prf.units  
-  nbr_prefilter_curve = prf.pref
-  nbr_prefilter_wav = prf.wav
-  nbr_prefilter_wb = prf.wbint
+;  nbr_prefilter_curve = prf.pref
+;  nbr_prefilter_wav = prf.wav
+;  nbr_prefilter_wb = prf.wbint
   
-  nbr_rpref = 1.d0/nbr_prefilter_curve
+
 
 
   
@@ -364,7 +402,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
 
   ;; Store Stokes cubes in separate directories for different smooth
   ;; options:
-  stokesdir = datadir + '/stokes_sbs'+strtrim(smooth_by_subfield,2) $
+  stokesdir = dir + '/stokes_sbs'+strtrim(smooth_by_subfield,2) $
               + '_sbk'+strtrim(smooth_by_kernel,2)+'/'
 
   file_mkdir, stokesdir
@@ -377,26 +415,20 @@ pro crisp::make_stokes_cubes, dir, scanno $
                                , camt = nbtcamera, immt = immt $
                                , no_ccdtabs = no_ccdtabs
 
-
-  ;; Loop over the selected scans
   
 
-
-  ;; All files for this scan
-  files = file_search(dir + '*_'+string(scanno, format = '(i05)')+'_*' + extension, count = Nfiles) ; wbdetector?
   
   if Nfiles eq 0 then begin
     print, inam + ' : No files for scan ' + strtrim(scanno, 2)
     return
   endif
   
-  self -> extractstates, files, states
 
-  ;; The global WB file name should have no tuning info.
-  indx = where(~strmatch(files,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nscans)
-  if Nscans eq 0 then stop
-  wbgfile = files[indx]
-  wbgstate = states[indx]
+;  ;; The global WB file name should have no tuning info.
+;  indx = where(~strmatch(files,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nscans)
+;  if Nscans eq 0 then stop
+;  wbgfile = files[indx]
+;  wbgstate = states[indx]
 
   hdr = red_readhead(wbgfile)
   red_fitspar_getdates, hdr $
@@ -424,46 +456,55 @@ pro crisp::make_stokes_cubes, dir, scanno $
   ;;red_wcs_hpl_coords, t_array[0, *], metadata_pointing, time_pointing, hpln, hplt
 ;  Or skip having pointing info in the stokes cubes?
 
-  ;; Find the nb and wb per-tuning files by excluding the global WB image
-  self -> selectfiles, files = files, states = states $
-                       , cam = wbcamera, ustat = '' $
-                       , sel = wbgindx, count = Nscans $
-                       , complement = complement, Ncomplement = Ncomplement
-  ;; We have no special state (or absence of state) to identify
-  ;; the global WB images but we do know that their exposure times
-  ;; are much larger than the ones corresponding to the individual
-  ;; NB states.
-  wbindx = where(states.exposure gt mean(states.exposure)*1.5 $
-                 , Nscans, complement = complement, Ncomplement = Ncomplement)
-  
-  ;; All the per-tuning files and states
-  pertuningfiles = files[complement]
-  pertuningstates = states[complement]
+;  ;; Find the nb and wb per-tuning files by excluding the global WB image
+;  self -> selectfiles, files = files, states = states $
+;                       , cam = wbcamera, ustat = '' $
+;                       , sel = wbgindx, count = Nscans $
+;                       , complement = complement, Ncomplement = Ncomplement
+;  ;; We have no special state (or absence of state) to identify
+;  ;; the global WB images but we do know that their exposure times
+;  ;; are much larger than the ones corresponding to the individual
+;  ;; NB states.
+;  wbindx = where(states.exposure gt mean(states.exposure)*1.5 $
+;                 , Nscans, complement = complement, Ncomplement = Ncomplement)
+;  
+;  ;; All the per-tuning files and states
+;  pertuningfiles = files[complement]
+;  pertuningstates = states[complement]
 
-  ;; Per-tuning files, wb and nb, only for selected scans
-  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , cam = wbcamera $
-                       , sel = wbindx, count = Nwb
-  wbstates = pertuningstates[wbindx]
-  wbfiles = pertuningfiles[wbindx]
-
-  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , cam = nbtcamera $
-                       , sel = nbtindx, count = Nnbt
-  nbtstates = pertuningstates[nbtindx]
-  nbtfiles = pertuningfiles[nbtindx]
-  
-  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , cam = nbrcamera $
-                       , sel = nbrindx, count = Nnbr
-  nbrstates = pertuningstates[nbrindx]
-  nbrfiles = pertuningfiles[nbrindx]
-
+;  ;; Per-tuning files, wb and nb, only for selected scans
+;  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+;                       , cam = wbcamera $
+;                       , sel = wbindx, count = Nwb
+;  wbstates = pertuningstates[wbindx]
+;  wbfiles = pertuningfiles[wbindx]
+;
+;  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+;                       , cam = nbtcamera $
+;                       , sel = nbtindx, count = Nnbt
+;  nbtstates = pertuningstates[nbtindx]
+;  nbtfiles = pertuningfiles[nbtindx]
+;  
+;  self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+;                       , cam = nbrcamera $
+;                       , sel = nbrindx, count = Nnbr
+;  nbrstates = pertuningstates[nbrindx]
+;  nbrfiles = pertuningfiles[nbrindx]
+;
   ;; Unique tuning states, sorted by wavelength
   utunindx = uniq(nbrstates.fpi_state, sort(nbrstates.fpi_state))
   Ntuning = n_elements(utunindx)
   sortindx = sort(nbrstates[utunindx].tun_wavelength)
   utuning = nbrstates[utunindx[sortindx]].fpi_state
+
+  
+  nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, nbtstates[utunindx[sortindx]].tun_wavelength*1.d10)
+  nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, nbrstates[utunindx[sortindx]].tun_wavelength*1.d10)
+
+  nbt_rpref = 1.d0/nbt_prefilter_curve
+  nbr_rpref = 1.d0/nbr_prefilter_curve
+
+
   
   ;; Enough LC states to make a Stokes cube?
   ulc = nbrstates[uniq(nbrstates.lc, sort(nbrstates.lc))].lc
@@ -491,7 +532,6 @@ pro crisp::make_stokes_cubes, dir, scanno $
   
   if keyword_set(redemodulate) then begin
     ;; Delete any stokesIQUV*.fits files that are to be remade.
-;      dfiles = file_search(stokesdir+'stokesIQUV_'+string(scanno, format = '(i05)')+'_*.fits', count = Ndelete)
     print, inam + ' : Will delete the following Stokes cubes if they exist:'
     print, snames, format = '(a0)'
     file_delete, snames, /ALLOW_NONEXISTENT
