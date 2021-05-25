@@ -325,7 +325,7 @@ pro crisp::demodulate, outname, immr, immt $
       print, 'file ', rfiles[ilc], ' has ', cc, ' NaN values.'
     endif
     img_r[*,*,ilc] = im
-    im = red_mozaic(timg[ilc], /crop) * nbrfac
+    im = red_mozaic(timg[ilc], /crop) * nbtfac
     nan = where(~finite(im),cc)
     if cc gt 0 then begin
       im(nan) = 0.
@@ -675,7 +675,7 @@ pro crisp::demodulate, outname, immr, immt $
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
   red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'POLCCONV', '(+HPLT,-HPLN)', '1st axis toward Solar N, 2nd E, 3rd observer'
+                      , 'POLCCONV', '(+HPLT,-HPLN,+HPRZ)', '1st axis toward Solar N, 2nd E, 3rd observer'
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'DATE-BEG', self.isodate + 'T' + red_timestring(tbeg) $
                       , 'Start time of combined observation'
