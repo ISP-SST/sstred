@@ -274,8 +274,9 @@ pro crisp::make_stokes_cubes, dir, scanno $
     return
   endif
   restore, pfile                ; Restores variable prf which is a struct
-
-  nbt_units = prf.units
+  prft = prf
+  
+  nbt_units = prft.units
 ;  nbt_prefilter_curve = prf.pref
 ;  nbt_prefilter_wav = prf.wav
 ;  nbt_prefilter_wb = prf.wbint
@@ -288,8 +289,9 @@ pro crisp::make_stokes_cubes, dir, scanno $
     return
   endif
   restore, pfile                ; Restores variable prf which is a struct
-
-  nbr_units = prf.units  
+  prfr = prf
+  
+  nbr_units = prfr.units  
 ;  nbr_prefilter_curve = prf.pref
 ;  nbr_prefilter_wav = prf.wav
 ;  nbr_prefilter_wb = prf.wbint
@@ -498,14 +500,12 @@ pro crisp::make_stokes_cubes, dir, scanno $
   utuning = nbrstates[utunindx[sortindx]].fpi_state
 
   
-  nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, nbtstates[utunindx[sortindx]].tun_wavelength*1.d10)
-  nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, nbrstates[utunindx[sortindx]].tun_wavelength*1.d10)
+  nbt_prefilter_curve = red_intepf(prft.wav, prft.pref, nbtstates[utunindx[sortindx]].tun_wavelength*1.d10)
+  nbr_prefilter_curve = red_intepf(prfr.wav, prfr.pref, nbrstates[utunindx[sortindx]].tun_wavelength*1.d10)
 
   nbt_rpref = 1.d0/nbt_prefilter_curve
   nbr_rpref = 1.d0/nbr_prefilter_curve
 
-
-  
   ;; Enough LC states to make a Stokes cube?
   ulc = nbrstates[uniq(nbrstates.lc, sort(nbrstates.lc))].lc
   Nlc = n_elements(ulc)
