@@ -254,20 +254,28 @@ pro red::fitscube_crosstalk, filename  $
 ;    lows  = min(Vcube,dim=3, /nan)
 ;    highs = max(Vcube,dim=3, /nan)
 
-    im = mean(vcube, dim=3, /nan)
-    indx = where(finite(im))
+
+    vdims = size(vcube, /dim)
+    if n_elements(vdims) eq 2 || vdims[2] eq 1 then begin
+      im = reform(vcube)
+      ma = abs(im)
+    endif else begin
+      im = mean(vcube, dim=3, /nan)
+      ma = max(abs(vcube), dim=3, /nan, ml)    
+    endelse
+;    indx = where(finite(im))
 
     window, 10, xs = Nx, ys = Ny
     indx_data = where(finite(im), Ndata, complement = indx_missing, ncomplement = Nmissing)
     mn = median(im[indx_data])-2.5*robust_sigma(im[indx_data])
     mx = median(im[indx_data])+2.5*robust_sigma(im[indx_data])
     cgimage, red_histo_opt(im) $
-             , missing_color = 'black' $
+             , missing_color = 'black' $             
+             ;, missing_color = 'yellow' $             
              , missing_index = 0 $
              , stretch = 1  
     
     
-    ma = max(abs(vcube),dim=3, /nan, ml)
 ;    sgp = long(abs(highs) gt abs(lows))
 ;    sgm = long(abs(highs) lt abs(lows))
 ;    sg = sgp - sgm
@@ -279,7 +287,7 @@ pro red::fitscube_crosstalk, filename  $
 ;    im3 = im + !values.f_nan
 ;    im3[indx[q]] = im[indx[q]]
 
-    mn = biweight_mean(ma[indx], sigma, w)
+    mn = biweight_mean(ma[indx_data], sigma, w)
 
 ;    indx1 = where(finite(vcube[*, *, 0]))
 ;    mn1 = biweight_mean(abs((vcube[*, *, 0])[indx1]), sigma1, w1)
@@ -324,7 +332,7 @@ pro red::fitscube_crosstalk, filename  $
     repeat begin
 
       im2 = im + !values.f_nan
-      indx2 = indx[where(w/max(w) gt cutoff)]
+      indx2 = indx_data[where(w/max(w) gt cutoff)]
       im2[indx2] = im[indx2]
       
       
