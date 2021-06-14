@@ -49,6 +49,10 @@
 ;      Extend lower end of xrange by this many percent of the
 ;      wavelength range of the data.
 ;     
+;   title : in, optional, type=string, default='Based on the file name'  
+;     
+;      Used as plot title.
+;     
 ;   xrange : in, optional, type=array
 ;
 ;      Set xrange of plot explicitly.
@@ -65,6 +69,7 @@ pro red_fitscube_plotspectrum, filename $
                                , lomargin = lomargin $
                                , nosave = nosave $
                                , test = test $
+                               , title = title $
                                , xrange = xrange
 
   if n_elements(lomargin) eq 0 then lomargin = 15. ; Percent of range
@@ -143,11 +148,13 @@ pro red_fitscube_plotspectrum, filename $
   if n_elements(xrange) eq 0 then xrange = [lambda_min, lambda_max]
   yrange = [0, (max(atlas_spectrum*1e9) > max(datamedn*1e9))*1.02]
 
-  title = file_basename(filename)
-  title = red_strreplace(title, '_corrected_im.fits', '')
-  title = red_strreplace(title, 'nb_', '')
+  if n_elements(title) eq 0 then begin
+    title = file_basename(filename)
+    title = red_strreplace(title, '_corrected_im.fits', '')
+    title = red_strreplace(title, 'nb_', '')
+  endif
   
-  
+    
   ;; Adapt units for cgplot
   plunits = red_strreplace(units, '^-1', '$\exp-1$', n = 3)
   plunits = red_strreplace(plunits, '^-2', '$\exp-2$')
