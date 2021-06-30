@@ -49,161 +49,161 @@ FUNCTION red_shc, d1, d2, FILTER=filt, INTERPOLATE=int_max, N2=n2, $
 ;                    of them had solar limb in.
 ;-
 
-on_error, 2
-
-p1 = reform(d1) &  s1=size(p1)
-p2 = reform(d2) &  s2=size(p2)
+  on_error, 2
+  
+  p1 = reform(d1) &  s1=size(p1)
+  p2 = reform(d2) &  s2=size(p2)
   ;;; find common size
-sx = s1[1] < s2[1] & sy=s1[2] < s2[2]
+  sx = s1[1] < s2[1] & sy=s1[2] < s2[2]
   ;;; make them even
-sx = 2*(sx/2)
-sy = 2*(sy/2)
+  sx = 2*(sx/2)
+  sy = 2*(sy/2)
 
-IF (s1[0] GT 2) OR (s1[0] EQ 0) OR (s2[0] EQ 0) OR (s2[0] EQ 0) THEN $
+  IF (s1[0] GT 2) OR (s1[0] EQ 0) OR (s2[0] EQ 0) OR (s2[0] EQ 0) THEN $
   message, 'Only 1-d or 2-d Data!'
 
   ;;; use a fft-friendly 2^n size?
-IF keyword_set(n2) THEN BEGIN
+  IF keyword_set(n2) THEN BEGIN
       ;;; use 2^n1+2^n2, but n2 only if it contributes a noticeable
       ;;; part to the size.  First for X-axis
     l = 2^(fix(alog10(sx)/0.30103)-1)
     IF (sx-2*l) NE 0 THEN BEGIN
-        ll = 2^(fix(alog10(sx-2*l)/0.30103)-1)
-        IF (ll NE 0) THEN IF l/ll LT 16 THEN $
-          sx1=2*(l+ll) $
-        ELSE $
-          sx1 = 2*l
+      ll = 2^(fix(alog10(sx-2*l)/0.30103)-1)
+      IF (ll NE 0) THEN IF l/ll LT 16 THEN $
+         sx1=2*(l+ll) $
+      ELSE $
+         sx1 = 2*l
     ENDIF ELSE $
-      sx1 = sx
+       sx1 = sx
     
       ;;; center in the common area
-
+    
     dx = (sx-sx1)/2
     sx = sx1
     p1 = p1[dx:dx+sx-1, *]
     p2 = p2[dx:dx+sx-1, *]
-   
+    
     IF s1[0] NE 1 THEN BEGIN
           ;;; same for 2nd dimension
-        l = 2^(fix(alog10(sy)/0.30103)-1)
-        IF (sy-2*l) NE 0 THEN BEGIN
-            ll = 2^(fix(alog10(sy-2*l)/0.30103)-1)
-            IF (ll NE 0) THEN IF l/ll LT 16 THEN $
-              sy1=2*(l+ll) $
-            ELSE $
-              sy1 = l
-        ENDIF ELSE $
-          sy1 = sy
-        
-        dy = (sy-sy1)/2
-        sy = sy1
-        p1 = p1[*, dy:dy+sy-1]
-        p2 = p2[*, dy:dy+sy-1]
+      l = 2^(fix(alog10(sy)/0.30103)-1)
+      IF (sy-2*l) NE 0 THEN BEGIN
+        ll = 2^(fix(alog10(sy-2*l)/0.30103)-1)
+        IF (ll NE 0) THEN IF l/ll LT 16 THEN $
+           sy1=2*(l+ll) $
+        ELSE $
+           sy1 = l
+      ENDIF ELSE $
+         sy1 = sy
+      
+      dy = (sy-sy1)/2
+      sy = sy1
+      p1 = p1[*, dy:dy+sy-1]
+      p2 = p2[*, dy:dy+sy-1]
     ENDIF
-ENDIF ELSE BEGIN
+  ENDIF ELSE BEGIN
       ;;; just clip to common size
     p1 = p1[0:sx-1, *]
     p2 = p2[0:sx-1, *]
     IF s1[0] NE 1 THEN BEGIN
-        p1 = p1[*, 0:sy-1]
-        p2 = p2[*, 0:sy-1]
+      p1 = p1[*, 0:sy-1]
+      p2 = p2[*, 0:sy-1]
     ENDIF
-ENDELSE
-    
+  ENDELSE
+  
   ;;; is a removal of polynomial fits requested?
-IF keyword_set(pfit) THEN BEGIN
+  IF keyword_set(pfit) THEN BEGIN
     IF s1[0] EQ 1 THEN BEGIN
-        x = findgen(sx)
-        c = poly_fit(x, p1, pfit, fit)
-        p1 = p1-fit
-        c = poly_fit(x, p2, pfit, fit)
-        p2 = p2-fit
+      x = findgen(sx)
+      c = poly_fit(x, p1, pfit, fit)
+      p1 = p1-fit
+      c = poly_fit(x, p2, pfit, fit)
+      p2 = p2-fit
     ENDIF ELSE BEGIN
-        p1 = p1-sfit(p1, pfit)
-        p2 = p2-sfit(p2, pfit)
+      p1 = p1-sfit(p1, pfit)
+      p2 = p2-sfit(p2, pfit)
     ENDELSE
-ENDIF ELSE BEGIN
+  ENDIF ELSE BEGIN
       ;;; just subtract average
     p1 = p1 - mean(p1)
     p2 = p2 - mean(p2)
-ENDELSE
-
-IF s1[0] EQ 1 THEN GOTO, onedim
-
+  ENDELSE
+  
+  IF s1[0] EQ 1 THEN GOTO, onedim
+  
   ;;; Filtering the data?  Use exponential filter
-IF keyword_set(filt) THEN BEGIN
+  IF keyword_set(filt) THEN BEGIN
     IF filt EQ 1 THEN BEGIN
-        
-        x = findgen(sx)
-        x = exp(-(shift(x < (sx-x), sx/2)/(sx/2))^2)
-        y = findgen(sy)
-        y = exp(-(shift(y < (sy-y), sy/2)/(sy/2))^2)
-        mm = x#y
+      
+      x = findgen(sx)
+      x = exp(-(shift(x < (sx-x), sx/2)/(sx/2))^2)
+      y = findgen(sy)
+      y = exp(-(shift(y < (sy-y), sy/2)/(sy/2))^2)
+      mm = x#y
     ENDIF ELSE $
-      mm = hanning(sx, sy, alpha=filt)
+       mm = hanning(sx, sy, alpha=filt)
     p1 = p1*mm
     p2 = p2*mm
-ENDIF
-
+  ENDIF
+  
   ;;; compute cros correlation using FFT, center it
-
-cc = shift(abs(fft(fft(p1, -1)*conj(fft(p2, -1)), 1)), sx/2, sy/2)
-
+  
+  cc = shift(abs(fft(fft(p1, -1)*conj(fft(p2, -1)), 1)), sx/2, sy/2)
+  
   ;;; range clipping?  Only use central square
-
-IF keyword_set(range) THEN cc = cc[(sx/2-range) > 0:((sx/2+range) < sx)-1, $
-                                   (sy/2-range) > 0:((sy/2+range) < sy)-1]
-
-mx = max(cc, loc)
+  
+  IF keyword_set(range) THEN cc = cc[(sx/2-range) > 0:((sx/2+range) < sx)-1, $
+                                     (sy/2-range) > 0:((sy/2+range) < sy)-1]
+  
+  mx = max(cc, loc)
  ;;; Simple Maximum location
-ccsz = size (cc)
-xmax = loc mod ccsz[1]
-ymax = loc/ccsz[1]
-
-IF NOT keyword_set(int_max) THEN GOTO, Ende
-
+  ccsz = size (cc)
+  xmax = loc mod ccsz[1]
+  ymax = loc/ccsz[1]
+  
+  IF NOT keyword_set(int_max) THEN GOTO, Ende
+  
   ;;; if requested: linear iterpolation of the exact position
-IF (xmax*ymax GT 0) AND (xmax LT (ccsz[1]-1)) $
-  AND (ymax LT (ccsz[2]-1)) THEN BEGIN
+  IF (xmax*ymax GT 0) AND (xmax LT (ccsz[1]-1)) $
+     AND (ymax LT (ccsz[2]-1)) THEN BEGIN
     IF int_max EQ 2 THEN BEGIN
            ;;; do full 2D fit to the max
-        fra = max33fit(cc[xmax-1:xmax+1, ymax-1:ymax+1])-1
-        xmax += fra[0]
-        ymax += fra[1]
+      fra = max33fit(cc[xmax-1:xmax+1, ymax-1:ymax+1])-1
+      xmax += fra[0]
+      ymax += fra[1]
     ENDIF ELSE BEGIN
       ;;; Sep 91 phw try including more points in interpolations
-        denom = mx*2 - cc[xmax-1, ymax] - cc[xmax+1, ymax]
-        xfra = (xmax-.5) + (mx-cc[xmax-1, ymax])/denom
-        denom = mx*2 - cc[xmax, ymax-1] - cc[xmax, ymax+1]
-        yfra = (ymax-.5) + (mx-cc[xmax, ymax-1])/denom
-        xmax = xfra
-        ymax = yfra
+      denom = mx*2 - cc[xmax-1, ymax] - cc[xmax+1, ymax]
+      xfra = (xmax-.5) + (mx-cc[xmax-1, ymax])/denom
+      denom = mx*2 - cc[xmax, ymax-1] - cc[xmax, ymax+1]
+      yfra = (ymax-.5) + (mx-cc[xmax, ymax-1])/denom
+      xmax = xfra
+      ymax = yfra
     ENDELSE
-ENDIF
-
+  ENDIF
+  
 Ende:
-
-return, [xmax-ccsz[1]/2, ymax-ccsz[2]/2]
-
+  
+  return, [xmax-ccsz[1]/2, ymax-ccsz[2]/2]
+  
 Onedim:
-IF keyword_set(filt) THEN BEGIN
+  IF keyword_set(filt) THEN BEGIN
     x = findgen(sx)
     x = exp(-(shift(x < (sx-x), sx/2)/(sx/2))^2)
     p1 = p1*x
     p2 = p2*x
-ENDIF
-
-cc = shift(abs(fft(fft(p1, -1)*conj(fft(p2, -1)), 1)), sx/2)
-mx = max(cc[1:sx-2], xmax)
-xmax = xmax+1
-
-IF keyword_set(int_max) THEN BEGIN
-     ;;; Polyfit of degree 2 for three points, extremum
+  ENDIF
+  
+  cc = shift(abs(fft(fft(p1, -1)*conj(fft(p2, -1)), 1)), sx/2)
+  mx = max(cc[1:sx-2], xmax)
+  xmax = xmax+1
+  
+  IF keyword_set(int_max) THEN BEGIN
+    ;; Polyfit of degree 2 for three points, extremum
     c1 = (cc[xmax+1]-cc[xmax-1])/2.
     c2 = cc[xmax+1]-c1-cc[xmax]
     xmax = xmax-c1/c2/2.
-ENDIF
-
-return, xmax-sx/2
-
+  ENDIF
+  
+  return, xmax-sx/2
+  
 END
