@@ -170,7 +170,11 @@ pro red::sum_data_intdif, all = all $
 
     sel_pref = 1B
     if n_elements(pref) gt 0 then begin
-      pos = where(upref eq pref, count)
+       ;; selectfiles convert pref from string to stringarr anyhow,
+       ;; so, we need to convert it here and use first element in the
+       ;; next line (required to work with several datasets)
+      pref = [pref] 
+      pos = where(upref eq pref[0], count)
       if count eq 0 then begin
         print, inam + ' : User supplied prefilter '+pref+' not found in '+dir
         continue
@@ -186,7 +190,7 @@ pro red::sum_data_intdif, all = all $
                                   , qstring = inam + ' : Select a single prefilter:' $
                                   , count = Npref, indx = sindx)
         endwhile
-        pref = pref[sindx[0]]
+        pref = upref[sindx[0]]
 ;        print, inam + ' : Found prefilters:'
 ;        for ii = 0, Npref - 1 do print, string(ii, format='(I3)') + ' -> ' + upref[ii]
 ;        ip = 0L
