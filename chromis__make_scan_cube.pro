@@ -131,6 +131,8 @@ pro chromis::make_scan_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  scannos = string(scannos) ;; to prevent silent error in line 249
+
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation                            
   
@@ -472,7 +474,11 @@ pro chromis::make_scan_cube, dir $
       restore, pfile            ; Restores variable prf which is a struct
       idxpref = where(my_prefilters eq unbprefs[inbpref], count)
 
-      wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
+      if n_elements(prf.fitpars) gt 1 then begin
+        wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+      endif else begin
+        wave_shift = 0.0
+      endelse
       
       if inbpref eq 0 then begin
         units = prf.units
