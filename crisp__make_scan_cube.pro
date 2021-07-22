@@ -280,7 +280,6 @@ pro crisp::make_scan_cube, dir $
                + ' and try again.'
         retall
       endif
-      Nscans = n_elements(scanindx)
     endif else begin
       ;; Selection dialogue
       selectionlist = strtrim(wbgstates[uniq(wbgstates.scannumber, sort(wbgstates.scannumber))].scannumber, 2)
@@ -292,7 +291,7 @@ pro crisp::make_scan_cube, dir $
     wbgfiles  = wbgfiles[scanindx]
   endif
   uscans = wbgstates.scannumber
-  nscans = n_elements(uscans)
+  Nscans = n_elements(uscans)
   
   ;; wbgfiles & wbgstates -> selected and existing global WB files in
   ;; directory. Also uscans is the scans to process and Nscans is the

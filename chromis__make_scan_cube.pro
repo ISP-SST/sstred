@@ -260,7 +260,6 @@ pro chromis::make_scan_cube, dir $
                + ' and try again.'
         retall
       endif
-      Nscans = n_elements(scanindx)
     endif else begin
       ;; Selection dialogue
       selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
@@ -272,6 +271,7 @@ pro chromis::make_scan_cube, dir $
     wfiles  = wfiles[scanindx]
   endif
   uscans = wstates.scannumber
+  Nscans = n_elements(uscans)
 
   ;; wfiles & wstates -> selected and existing global WB files in
   ;; directory. Also uscans is the scans to process and Nscans is the
