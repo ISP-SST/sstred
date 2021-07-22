@@ -52,6 +52,10 @@
 ;   xrange : in, optional, type=array
 ;
 ;      Set xrange of plot explicitly.
+;
+;   yrange : in, optional, type=array
+;
+;      Set yrange of plot explicitly (*10E-9).
 ; 
 ; :History:
 ; 
@@ -65,7 +69,8 @@ pro red_fitscube_plotspectrum, filename $
                                , lomargin = lomargin $
                                , nosave = nosave $
                                , test = test $
-                               , xrange = xrange
+                               , xrange = xrange $
+                               , yrange = yrange
 
   if n_elements(lomargin) eq 0 then lomargin = 15. ; Percent of range
   if n_elements(himargin) eq 0 then himargin = 15. ; Percent of range
@@ -107,6 +112,7 @@ pro red_fitscube_plotspectrum, filename $
   endelse
   datamedn = frame_statistics.datamedn
   case 1 of
+    array_equal(axis_numbers, [3])       :
     array_equal(axis_numbers, [3, 4])    :
     array_equal(axis_numbers, [3, 5])    : 
     array_equal(axis_numbers, [3, 4, 5]) : datamedn = reform(datamedn[*, 0, *])
@@ -141,7 +147,7 @@ pro red_fitscube_plotspectrum, filename $
   atlas_spectrum_convolved = fftconvol(atlas_spectrum, tr)
 
   if n_elements(xrange) eq 0 then xrange = [lambda_min, lambda_max]
-  yrange = [0, (max(atlas_spectrum*1e9) > max(datamedn*1e9))*1.02]
+  if n_elements(yrange) eq 0 then yrange = [0, (max(atlas_spectrum*1e9) > max(datamedn*1e9))*1.02]
 
   title = file_basename(filename)
   title = red_strreplace(title, '_corrected_im.fits', '')
