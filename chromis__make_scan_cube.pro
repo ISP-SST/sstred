@@ -131,7 +131,7 @@ pro chromis::make_scan_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  scannos = string(scannos) ;; to prevent silent error in line 249
+  if keyword_set(scannos) then scannos = string(scannos) ;; to prevent silent error in line 249
 
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation                            
