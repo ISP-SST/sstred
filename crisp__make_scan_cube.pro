@@ -610,9 +610,10 @@ pro crisp::make_scan_cube, dir $
     wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
     
     nbt_units = prf.units
-    nbt_prefilter_curve = prf.pref
-    nbt_prefilter_wav = prf.wav
-    nbt_prefilter_wb = prf.wbint
+;    nbt_prefilter_curve = prf.pref
+    nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, nbtstates[utunindx[sortindx]].tun_wavelength*1.d10)
+;    nbt_prefilter_wav = prf.wav
+;    nbt_prefilter_wb = prf.wbint
     
     nbt_rpref = 1.d0/nbt_prefilter_curve
 
@@ -626,9 +627,11 @@ pro crisp::make_scan_cube, dir $
     restore, pfile              ; Restores variable prf which is a struct
 
     nbr_units = prf.units  
-    nbr_prefilter_curve = prf.pref
-    nbr_prefilter_wav = prf.wav
-    nbr_prefilter_wb = prf.wbint
+;    nbr_prefilter_curve = prf.pref
+    nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, nbrstates[utunindx[sortindx]].tun_wavelength*1.d10)
+    
+;    nbr_prefilter_wav = prf.wav
+;    nbr_prefilter_wb = prf.wbint
        
     nbr_rpref = 1.d0/nbr_prefilter_curve
 
