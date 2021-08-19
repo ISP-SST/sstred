@@ -82,7 +82,7 @@ pro red::headerinfo_copystep, hdr, oldhdr $
   ;; Any steps to copy?
   if Navailable eq 0 then return
 
-  prkeys = ['PRSTEP', 'PRPROC', 'PRMODE', 'PRPARA', 'PRLIB', 'PRVER', 'PRREF', 'PRBRA']
+  prkeys = ['PRSTEP', 'PRPROC', 'PRMODE', 'PRPARA', 'PRLIB', 'PRVER', 'PRREF', 'PRBRA', 'PRHSH', 'PRENV']
   
   ;; Combine steps indicated by the keywords
   if keyword_set(all) then red_append, stepnums, indgen(Navailable)+1
