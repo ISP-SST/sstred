@@ -56,10 +56,16 @@
 ;   xrange : in, optional, type=array
 ;
 ;      Set xrange of plot explicitly.
+;
+;   yrange : in, optional, type=array
+;
+;      Set yrange of plot explicitly (*10E-9).
 ; 
 ; :History:
 ; 
 ;   2021-03-02 : MGL. First version.
+;
+;   2021-07-22 : OA. Added 'yrange' keyword.
 ; 
 ;-
 pro red_fitscube_plotspectrum, filename $
@@ -70,7 +76,9 @@ pro red_fitscube_plotspectrum, filename $
                                , nosave = nosave $
                                , test = test $
                                , title = title $
-                               , xrange = xrange
+                               , xrange = xrange $
+                               , yrange = yrange
+  
 
   if n_elements(lomargin) eq 0 then lomargin = 15. ; Percent of range
   if n_elements(himargin) eq 0 then himargin = 15. ; Percent of range
@@ -98,8 +106,28 @@ pro red_fitscube_plotspectrum, filename $
   ;; Get WCS coordinates 
   red_fitscube_getwcs, filename, coordinates = coordinates
   lambda = coordinates[*, 0].wave[0,0] ;Wavelengths in nm
-  lambda_min = min(lambda) 
-  lambda_max = max(lambda)  
+
+  ;; Adjust lambda range
+  if n_elements(xrange) eq 0 then $
+    lambda_min = min(lambda) $
+  else begin
+    lambda_min = xrange[0]
+    in = where(lambda le xrange[0],cc)
+    if cc ne 0 then begin
+      indx_l = in[-1] + 1
+      lambda = lambda[indx_l:*]
+    endif else indx_l = 0
+  endelse
+  if n_elements(xrange) eq 0 then $
+    lambda_max = max(lambda) $
+  else begin
+    lambda_max = xrange[1]
+    in = where(lambda ge xrange[1],cc)    
+    if cc ne 0 then begin
+      indx_r = in[0] - 1
+      lambda = lambda[0:indx_r]
+    endif else indx_r = n_elements(lambda)-1
+  endelse 
   lambda_delta = lambda_max-lambda_min
   lambda_min -= lambda_delta * lomargin/100.  
   lambda_max += lambda_delta * himargin/100.
@@ -110,8 +138,9 @@ pro red_fitscube_plotspectrum, filename $
   end else begin
     red_fitscube_statistics, filename, frame_statistics, axis_numbers = axis_numbers
   endelse
-  datamedn = frame_statistics.datamedn
+  datamedn = frame_statistics[indx_l:indx_r].datamedn
   case 1 of
+    array_equal(axis_numbers, [3])       :
     array_equal(axis_numbers, [3, 4])    :
     array_equal(axis_numbers, [3, 5])    : 
     array_equal(axis_numbers, [3, 4, 5]) : datamedn = reform(datamedn[*, 0, *])
@@ -146,7 +175,7 @@ pro red_fitscube_plotspectrum, filename $
   atlas_spectrum_convolved = fftconvol(atlas_spectrum, tr)
 
   if n_elements(xrange) eq 0 then xrange = [lambda_min, lambda_max]
-  yrange = [0, (max(atlas_spectrum*1e9) > max(datamedn*1e9))*1.02]
+  if n_elements(yrange) eq 0 then yrange = [0, (max(atlas_spectrum*1e9) > max(datamedn*1e9))*1.02]
 
   if n_elements(title) eq 0 then begin
     title = file_basename(filename)

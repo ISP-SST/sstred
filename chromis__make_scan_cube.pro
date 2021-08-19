@@ -131,6 +131,8 @@ pro chromis::make_scan_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  if keyword_set(scannos) then scannos = string(scannos) ;; to prevent silent error in line 249
+
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation                            
   
@@ -258,7 +260,6 @@ pro chromis::make_scan_cube, dir $
                + ' and try again.'
         retall
       endif
-      Nscans = n_elements(scanindx)
     endif else begin
       ;; Selection dialogue
       selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
@@ -270,6 +271,7 @@ pro chromis::make_scan_cube, dir $
     wfiles  = wfiles[scanindx]
   endif
   uscans = wstates.scannumber
+  Nscans = n_elements(uscans)
 
   ;; wfiles & wstates -> selected and existing global WB files in
   ;; directory. Also uscans is the scans to process and Nscans is the
@@ -472,7 +474,11 @@ pro chromis::make_scan_cube, dir $
       restore, pfile            ; Restores variable prf which is a struct
       idxpref = where(my_prefilters eq unbprefs[inbpref], count)
 
-      wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
+      if n_elements(prf.fitpars) gt 1 then begin
+        wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+      endif else begin
+        wave_shift = 0.0
+      endelse
       
       if inbpref eq 0 then begin
         units = prf.units

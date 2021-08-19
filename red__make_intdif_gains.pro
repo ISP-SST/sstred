@@ -46,9 +46,10 @@
 ;   all : in, optional, type=boolean
 ;   
 ;      Process all data sets.
+;
+;   tdirs : in, optional, type=strarr
 ;   
-;   
-;   
+;      Process datasets with tdirs timestamps
 ; 
 ; 
 ; :History:
@@ -69,6 +70,8 @@
 ;   2019-03-28 : MGL. Make gains with /preserve for prefilters with
 ;                backscatter correction, i.e., 8542 and 7772.
 ;
+;   2021-07-06 : OA. Add tdirs keyword.
+;
 ;-
 pro red::make_intdif_gains, all = all $
                             , bad = bad $
@@ -83,7 +86,8 @@ pro red::make_intdif_gains, all = all $
                             , smallscale = smallscale $
                             , smooth = smooth $
                             , sumlc = sumlc $
-                            , timeaver = timeaver 
+                            , timeaver = timeaver $
+                            , tdirs = tdirs
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -104,25 +108,33 @@ pro red::make_intdif_gains, all = all $
   red_make_prpara, prpara, sumlc
   red_make_prpara, prpara, timeaver
 
+  if ~keyword_set(pref) then pref = '*'
   ;; Search and select output from sum_data_intdif
-  dirs = file_search(self.out_dir+'/cmap_intdif/*', /test_dir, count = count)
-  if count eq 0 then begin
-    print, inam + ' : Subdirectory cmap_intdif/ is empty. Please run sum_data_intdif!'
-    return
-  endif
-  if count gt 1 and ~keyword_set(all) then begin
-    tmp = red_select_subset(dirs, qstring = 'Select folder(s)' $
-                            , indx = sindx, count = Nselect)
-    if Nselect eq 0 then return
-;    for ii = 0L, count -1 do print, red_stri(ii)+' -> '+dirs[ii]
-;    idx = ''
-;    read, idx, prom = inam+'Select folder (* for all of them): '
-;    if idx ne '*' then begin
-    dirs = dirs[sindx]
-    print, inam + ' : Using -> '+dirs
-  endif
+  if keyword_set(tdirs) then begin
+    ww = file_test(self.out_dir+'/cmap_intdif/'+tdirs+'/*'+pref+'*')
+    indx = where(ww eq 1)
+    nindx = where(ww eq -1)
+    if array_equal(nindx, -1,/not_equal) then $
+      for ii=0, n_elements(nindx)-1 do $
+        print, inam + ' : Subdirectory cmap_intdif/'+tdirs[nindx[ii]]+ ' is empty. Please run sum_data_intdif!'
+    if array_equal(indx, -1) then return
+    dirs = self.out_dir+'/cmap_intdif/'+tdirs[indx]
+  endif else begin
+    dirs = file_search(self.out_dir+'/cmap_intdif/*', /test_dir, count = count)
+    if count eq 0 then begin
+      print, inam + ' : Subdirectory cmap_intdif/ is empty. Please run sum_data_intdif!'
+      return
+    endif
+    if count gt 1 and ~keyword_set(all) then begin
+      tmp = red_select_subset(dirs, qstring = 'Select folder(s)' $
+                              , indx = sindx, count = Nselect)
+      if Nselect eq 0 then return
+      dirs = dirs[sindx]
+      print, inam + ' : Using -> '+dirs
+    endif
+  endelse
 
-  ;; Find the narrowband cameras.
+  ;; Find the narrowband cameras.n
   self -> getdetectors
   cams = *self.cameras
 ;  detectors = *self.detectors
@@ -150,10 +162,7 @@ pro red::make_intdif_gains, all = all $
       if n_elements(cam) gt 0 && cams[icam] ne cam then continue
 
       ;; Search files
-      if n_elements(pref) gt 0 then $
-         search = dir + '/' + detectors[icam]+'.'+pref+'.intdif.icube' $
-      else $
-         search = dir + '/' + detectors[icam]+'.*.intdif.icube'
+      search = dir + '/' + detectors[icam]+'.'+pref+'.intdif.icube'
 
       cfile = file_search(search, count = count)
       if count eq 0 then begin
