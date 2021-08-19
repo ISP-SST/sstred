@@ -138,7 +138,14 @@ pro red_fitscube_plotspectrum, filename $
   end else begin
     red_fitscube_statistics, filename, frame_statistics, axis_numbers = axis_numbers
   endelse
-  datamedn = frame_statistics[indx_l:indx_r].datamedn
+ 
+  case 1 of
+    n_elements(indx_l) ne 0 and n_elements(indx_r) ne 0 : datamedn = frame_statistics[indx_l:indx_r].datamedn
+    n_elements(indx_l) ne 0 : datamedn = frame_statistics[indx_l:*].datamedn    
+    n_elements(indx_r) ne 0 : datamedn = frame_statistics[0:indx_r].datamedn    
+    else : datamedn = frame_statistics.datamedn
+  endcase
+  
   case 1 of
     array_equal(axis_numbers, [3])       :
     array_equal(axis_numbers, [3, 4])    :
