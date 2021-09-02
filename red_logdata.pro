@@ -532,3 +532,8 @@ pro red_logdata, date, time $
   endif
 
 end
+
+red_logdata, '2020-10-16', red_time2double('08:06:58'), mu = mu, zenithangle = za
+
+
+end
