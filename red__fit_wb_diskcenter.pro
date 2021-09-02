@@ -19,11 +19,17 @@
 ; 
 ; :Keywords:
 ;
-;    dirs : in, optional, type=string
+;    dirs : in, optional, type=strarr
 ;
 ;        Set this to the time-stamp directories to use to limit the
 ;        automatic selection. Useful for excluding, e.g., data with a
 ;        large sunspot in the field of view.
+;
+;    exclude_dirs : in, optional, type=strarr
+;
+;        Set this to the time-stamp directories to exclude from
+;        the automatically selected directories, or from the
+;        directories specified with the dirs keyword.
 ;
 ;    fitexpr : in, optional, type=string, default="depends on number of data points"
 ;
@@ -58,14 +64,18 @@
 ; 
 ;    2020-01-20 : MGL. Use data from every 20th scan. 
 ; 
+;    2021-08-27 : MGL. New keyword exclude_dirs.
+; 
 ;-
 pro red::fit_wb_diskcenter, dirs = dirs $
+                            , exclude_dirs = exclude_dirs $
                             , fitexpr = fitexpr_in $
                             , mu_limit = mu_limit $
                             , pref = pref $
+                            , sum_all_frames = sum_all_frames $
                             , tmin = tmin $
                             , tmax = tmax
-
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
@@ -83,6 +93,13 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
     if ptr_valid(self.flat_dir)  then red_append, dirs, *self.flat_dir
     if ptr_valid(self.data_dirs) then red_append, dirs, *self.data_dirs
+
+  endif
+
+  if n_elements(exclude_dirs) gt 0 then begin
+
+    match2, file_basename(dirs), file_basename(exclude_dirs), suba, subb
+    dirs = dirs[where(suba eq -1)] 
 
   endif
   
@@ -104,7 +121,6 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   ;; Idea: for flats directories, mu might vary during the data
   ;; collection. So find the data where mu peaks!
   
-
   ;; Is mu large enough? 
   indx = where(mu gt mu_limit, Ndirs)
   if Ndirs eq 0 then begin
@@ -116,7 +132,6 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     mu = mu[indx]
     za = za[indx]
   endelse
-  
   
   ;; In specified time range?
   indx = where(times gt red_time2double(tmin) and times lt red_time2double(tmax), Ntime)
@@ -148,34 +163,70 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       for iscan = 0L, 1000, 20 do begin
 
         ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._][0-9][0-9][0-9][02468]0[._]*', count = NfilesW)      
-        fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]'+string(iscan, format = '(i05)')+'[._]*' $
-                              , count = NfilesW)      
+        ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]'+string(iscan, format = '(i05)')+'[._]*' $
+        ;;                    , count = NfilesW)      
+        fnamesW = red_raw_search(wbdirs[iwb]+'/'+camwb, scannos = iscan, count = NfilesW)
+        print, wbdirs[iwb]+'/'+camwb
+        print, NfilesW
         if NfilesW eq 0 then break
 
-        self -> extractstates, fnamesw, states, /nondb 
+        self -> extractstates, fnamesW, states, /nondb 
 
         pindx = uniq(states.prefilter, sort(states.prefilter))
         upref = states[pindx].prefilter
         Npref = n_elements(upref)
 
         for ipref = 0, Npref-1 do begin
-
-          self -> get_calib, states[pindx[ipref]], darkdata = dark
-          ims = red_readdata(fnamesW[pindx[ipref]], head = hdr, /silent) - dark
-          print, fnamesW[pindx[ipref]]
-
-          if self.dodescatter and (states[pindx[ipref]].prefilter eq '8542' $
-                                   or states[pindx[ipref]].prefilter eq '7772') then begin
-            self -> loadbackscatter, states[pindx[ipref]].detector $
-                                     , states[pindx[ipref]].prefilter, bgain, bpsf
-            ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
-          endif
           
-          red_fitspar_getdates, hdr, date_beg = date_beg
+          self -> get_calib, states[pindx[ipref]], darkdata = dark, gaindata = gain
+
           
-          red_append, wbintensity, median(ims)
+          if keyword_set(sum_all_frames) then begin
+
+            ;; Not for CHROMIS data!
+
+            aindx = where(states.prefilter eq upref[ipref])
+            Nframes = n_elements(aindx)
+            imeans = fltarr(Nframes)
+            tmeans = dblarr(Nframes)
+            maskindx = where(gain ne 0)
+            for iframe = 0, Nframes-1 do begin
+              ims = red_readdata(fnamesW[aindx[iframe]], head = hdr, /silent)
+              ;;  help, ims
+              ims = ims[*, *, 0] - dark ; Select first frame in multi-frame file.
+              ;; Descatter...
+              imeans[iframe] = mean(ims[maskindx])
+              red_fitspar_getdates, hdr, date_beg = date_beg
+              tmeans[iframe] = red_time2double((strsplit(date_beg, 'T', /extract))[1]) 
+            endfor              ; iframe
+
+            red_append, wbintensity, max(imeans) ; This is how momfbd does it
+            red_append, wbtimes, mean(tmeans)
+            
+            
+          endif else begin
+            
+            ims = red_readdata(fnamesW[pindx[ipref]], head = hdr, /silent)
+            
+            help, ims
+            ims = ims[*, *, 0] - dark ; Select first frame in multi-frame file.
+            
+            print, fnamesW[pindx[ipref]]          
+
+            if self.dodescatter and (states[pindx[ipref]].prefilter eq '8542' $
+                                     or states[pindx[ipref]].prefilter eq '7772') then begin
+              self -> loadbackscatter, states[pindx[ipref]].detector $
+                                       , states[pindx[ipref]].prefilter, bgain, bpsf
+              ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
+            endif
+            
+            red_fitspar_getdates, hdr, date_beg = date_beg
+            
+            red_append, wbintensity, median(ims)
+            red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])          
+          endelse
+          
           red_append, wbprefs, upref[ipref]
-          red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])
           red_append, wbexpt, fxpar(hdr, 'XPOSURE')
           red_append, wbmu, mu[wbindx[iwb]]
           red_append, wbza, za[wbindx[iwb]]
@@ -229,7 +280,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                       , wbintensity[indx] / wbexpt[indx] / 1000. $
                       , xtitle = 'time [UT]' $
                       , ytitle = 'WB median intensity/exp time [counts/ms]' $
-                      , xrange = [min(wbtimes), max(wbtimes)] + [-0.1, 0.1] $
+                      , xrange = [min(wbtimes), max(wbtimes)] + [-1., 1.]*60*20 $
                       , yrange = [0, max(wbintensity/wbexpt)*1.05]/1000.
       endif else begin
         cgplot, /add, /over, psym = 16, color = colors[ipref] $
