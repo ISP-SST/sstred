@@ -59,6 +59,8 @@
 ; 
 ;  2019-07-05 : MGL. First version.
 ; 
+;  2021-08-23 : MGL. Adapt searchstrings to WB flats file names.
+; 
 ;-
 function red_raw_search, dir $
                          , count = count $
@@ -76,6 +78,9 @@ function red_raw_search, dir $
     instrument = strupcase((strsplit(file_basename(dir), '-', /extract))[0])
   endif
 
+  iswb = 'W' eq strupcase((strsplit(file_basename(dir), '-', /extract))[1])
+  isflats = strmatch(dir,'*[Ff]lat*')
+  
   ;; Massage the scannos
   case n_elements(scannos_in) of
 
@@ -122,15 +127,20 @@ function red_raw_search, dir $
   case strupcase(instrument) of
     
     'CRISP' : begin
-      
-      Nstrings = Nscans * Nstates
-      searchstrings = strarr(Nstrings)
-      istring = 0
-      for iscan = 0, Nscans-1 do begin
+       Nstrings = Nscans * Nstates
+       searchstrings = strarr(Nstrings)
+       istring = 0
+       for iscan = 0, Nscans-1 do begin
         for istate = 0, Nstates-1 do begin
-          searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
+          if iswb and isflats then begin
+            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
+                                     + prefilters $
+                                     + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+          endif else begin
+            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
                                    + fpi_states[istate] $
                                    + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+          endelse
           istring++
         endfor
       endfor 
@@ -145,10 +155,17 @@ function red_raw_search, dir $
       istring = 0
       for iscan = 0, Nscans-1 do begin
         for istate = 0, Nstates-1 do begin
-          searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-                                   + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-                                   + fpi_states[istate] $
-                                   + '.fits'
+          if iswb and isflats then begin
+            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                     + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
+                                     + '.fits'
+          endif else begin
+            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                     + fpi_states[istate] $
+                                     + '.fits'
+          endelse
           istring++
         endfor
       endfor 
@@ -162,9 +179,9 @@ function red_raw_search, dir $
     end
     
   endcase 
-
+  
   files = red_file_search(searchstrings, dir, count = count)
-
+  
   return, files
 
 end
