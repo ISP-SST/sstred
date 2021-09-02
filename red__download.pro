@@ -117,30 +117,34 @@
 ;                 backscatter gain.
 ;
 ;    2016-02-24 : MGL. Make backscatter renaming work also for years
-;                 prior to 2012. 
+;                 prior to 2012.
 ;
 ;    2017-04-12 : MGL. Pig log can have isodate or dotdate in the
 ;                 path. Use new convertlog as DLM and not separate
-;                 executable. 
+;                 executable.
 ;
-;    2017-08-18 : THI. Also download the FPI calibration values (linedef.py)
-;                 Include FPI calibration in implied downloads.
+;    2017-08-18 : THI. Also download the FPI calibration values
+;                 (linedef.py). Include FPI calibration in implied
+;                 downloads.
+;
+;    2021-08-27 : MGL. Use red_download_log for r0 and PIG log files.
+;                 Include the pig log files in the logs category.
 ;
 ;-
 pro red::download, overwrite = overwrite $
-                  , all = all $
-                  , logs = logs $
-                  , pig = pig $
-                  , pathpig  = pathpig  $
-                  , linedefs = linedefs $
-                  , r0 = r0 $
-                  , pathr0  = pathr0  $
-                  , pathturret = pathturret  $
-                  , turret = turret $
-                  , armap = armap $
-                  , hmi = hmi $
-                  , backscatter = backscatter
-
+                   , all = all $
+                   , logs = logs $
+                   , pig = pig $
+                   , pathpig  = pathpig  $
+                   , linedefs = linedefs $
+                   , r0 = r0 $
+                   , pathr0  = pathr0  $
+                   , pathturret = pathturret  $
+                   , turret = turret $
+                   , armap = armap $
+                   , hmi = hmi $
+                   , backscatter = backscatter
+  
   any = keyword_set(pig) $
         or keyword_set(turret)  $
         or keyword_set(armap)  $
@@ -169,7 +173,8 @@ pro red::download, overwrite = overwrite $
   if keyword_set(logs) then begin
      r0 = 1
      turret = 1
-  endif
+     pig = 1
+   endif
 
   dir = 'downloads/'            ; Make this part of the crispred class structure?
 ;  logdir = dir+'sstlogs/'
@@ -314,87 +319,29 @@ pro red::download, overwrite = overwrite $
 
   ;; R0 log file
   if keyword_set(r0) then begin
-     r0file = 'r0.data.full-'+strjoin(datearr, '')+'.xz'
-
-     downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + r0file $
-                             , file = r0file $
-                             , dir = self.log_dir $
-                             , overwrite = overwrite $
-                             , path = pathr0)
-     
-     if ~downloadOK then begin  ; also try in subfolder /{year}/
-       downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + datearr[0]+'/'+r0file $
-                               , file = r0file $
-                               , dir = self.log_dir $
-                               , overwrite = overwrite $
-                               , path = pathr0) 
-     endif
-
-     if downloadOK then begin
-        spawn, 'cd '+self.log_dir+'; xz -d '+file_basename(pathr0)
-        file_delete, pathr0, /allow_nonexistent
-     endif
-  
+    red_download_log, 'r0', self.isodate, self.log_dir $
+                      , localpath = pathr0 $                      
+                      , status = status
   endif
 
   ;; PIG log file
   if keyword_set(pig) then begin
-     pigfile = 'rmslog_guidercams'
-     DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + self.isodate + '/' + pigfile $
-                             , file = pigfile $
-                             , dir = self.log_dir $
-                             , overwrite = overwrite $
-                             , path = pathpig)
-
-     if ~DownloadOK then begin
-       dotdate = strjoin(datearr, '.')
-       DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate + '/' + pigfile $
-                               , file = pigfile $
-                               , dir = self.log_dir $
-                               , overwrite = overwrite $
-                               , path = pathpig)     
-     endif
-
-     if DownloadOK then begin
-        ;; We actually want the logfile converted to time and x/y
-        ;; coordinates (in arcseconds).
-        pathpig += '_'+self.isodate+'_converted'
-        if ~file_test(pathpig) then begin
-;           pig_N = 16           ; # of positions to average when converting. Originally ~16 pos/s.
-;           convertcmd = 'cd '+self.log_dir+'; convertlog --dx 31.92 --dy 14.81' $
-;                        + ' --rotation 84.87 --scale 4.935 '
-;           if pig_N gt 1 then convertcmd += '-a ' + strtrim(pig_N, 2) + ' '
-           print, 'red::download : Converting PIG log file...'
-           rdx_convertlog, self.log_dir+pigfile, self.log_dir+pigfile+'_'+self.isodate+'_converted', dx=31.92, $
-                           dy=14.81, rotation=84.87, scale=4.935, average=16
-;           spawn, convertcmd+' '+self.log_dir+pigfile+' > '+self.log_dir+pigfile+'_'+self.isodate+'_converted'
-;        file_link, self.log_dir+pigfile+'_'+self.isodate+'_converted', 'log_pig'
-;        print, 'red_download : Linked to ' + link
-        endif else begin
-           print, 'red::download : Converted PIG log file already exists.'
-        endelse
-     endif else begin
-        ;; We tried to download but failed. So any existing files may
-        ;; be corrupt or not correspond to the current state.
-        if pathpig ne '' then begin
-           file_delete, pathpig, /allow_nonexistent
-           file_delete, pathpig + '_' + self.isodate + '_converted', /allow_nonexistent
-           pathpig = ''
-        endif
-     endelse
+    red_download_log, 'pig', self.isodate, self.log_dir $
+                      , localpath = pathpig $                      
+                      , status = status
   endif
-
+  
   ;; Turret log file
 
   if keyword_set(turret) then begin
 
-     ;; Turret log data for a particular day can actually be in the
-     ;; turret log file of an earlier day. So we need to search days
-     ;; backwards until we find one. Then we should concatenate the
-     ;; two files and filter the result to get rid of data for another
-     ;; days and header info that are interspersed with the data.
+    ;; Turret log data for a particular day can actually be in the
+    ;; turret log file of an earlier day. So we need to search days
+    ;; backwards until we find one. Then we should concatenate the two
+    ;; files and filter the result to get rid of data for another days
+    ;; and header info that are interspersed with the data.
 
-     ;; The name of the concatenated and filtered file
+    ;; The name of the concatenated and filtered file
 ;     turretfile = self.log_dir+'positionLog_'+red_strreplace(self.isodate, '-', '.', n = 2)+'_final'
      if ~file_test(self.telog) or keyword_set(overwrite) then begin
         
