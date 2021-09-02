@@ -517,6 +517,12 @@ pro crisp::make_scan_cube, dir $
       ;; Read a header to use as a starting point.
       nbhdr = red_readhead(snames[0])
 
+      utunindx = uniq(sstates.fpi_state, sort(sstates.fpi_state))
+      Ntuning = n_elements(utunindx)
+      sortindx = sort(sstates[utunindx].tun_wavelength)
+      ufpi_states = sstates[utunindx[sortindx]].fpi_state
+      utunwavelength = sstates[utunindx[sortindx]].tun_wavelength
+
     endif else begin
 
       ;; Select files from the two NB cameras
@@ -610,7 +616,7 @@ pro crisp::make_scan_cube, dir $
     
     nbt_units = prf.units
 ;    nbt_prefilter_curve = prf.pref
-    nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, nbtstates[utunindx[sortindx]].tun_wavelength*1.d10)
+    nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
 ;    nbt_prefilter_wav = prf.wav
 ;    nbt_prefilter_wb = prf.wbint
     
@@ -627,7 +633,7 @@ pro crisp::make_scan_cube, dir $
 
     nbr_units = prf.units  
 ;    nbr_prefilter_curve = prf.pref
-    nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, nbrstates[utunindx[sortindx]].tun_wavelength*1.d10)
+    nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
     
 ;    nbr_prefilter_wav = prf.wav
 ;    nbr_prefilter_wb = prf.wbint
