@@ -128,7 +128,7 @@
 ;                 downloads.
 ;
 ;    2021-08-27 : MGL. Use red_download_log for r0 and PIG log files.
-;                 Include the pig log files in the logs category.
+;                 Include the PIG log files in the logs category.
 ;
 ;-
 pro red::download, overwrite = overwrite $
