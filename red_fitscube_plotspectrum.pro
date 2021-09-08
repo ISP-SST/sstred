@@ -29,6 +29,13 @@
 ;      The fitscube pixel coordinates axis numbers of the
 ;      frame_statistics array. Used for multiple calls with the same
 ;      filename.
+;
+;   disk_center : in, optional, type=boolean
+;
+;      Disk center data should match the atlas spectrum but might not
+;      because of a failed intensity level correction. With this
+;      keyword set, plot also the data spectrum adjusted to the atlas
+;      intensity level (blue + symbols).
 ; 
 ;   frame_statistics : in, out, optional, type=array
 ;
@@ -67,9 +74,12 @@
 ;
 ;   2021-07-22 : OA. Added 'yrange' keyword.
 ; 
+;   2021-09-08 : MGL. New keyword disk_center.
+; 
 ;-
 pro red_fitscube_plotspectrum, filename $
                                , axis_numbers = axis_numbers $
+                               , disk_center = disk_center $
                                , frame_statistics = frame_statistics $
                                , himargin = himargin $
                                , lomargin = lomargin $
@@ -204,6 +214,16 @@ pro red_fitscube_plotspectrum, filename $
   for iscan = 0, Nscans-1 do cgplot, /add, /over, lambda, datamedn[*, iscan]*1e9, psym = 9, color = 'red'
 
 
+  ;; Adjust intensity level
+  if keyword_set(disk_center) then begin
+    for iscan = 0, Nscans-1 do begin
+      spec_sample = red_intepf(atlas_lambda/10, atlas_spectrum_convolved*1e9, lambda)
+      data_adjusted = datamedn[*, iscan]*1e9 * mean(spec_sample)/mean(datamedn[*, iscan]*1e9)
+      cgplot, /add, /over, lambda, data_adjusted, psym = 1, color = 'blue'
+    endfor
+  endif
+
+  
   if keyword_set(test) then begin
     ;; Doppler shift from solar rotation. 
     hpln = median(coordinates.hpln) ; [deg] Helioprojective longitude, westward angle 
@@ -252,6 +272,11 @@ pro red_fitscube_plotspectrum, filename $
   if ~keyword_set(nosave) then cgcontrol, output = plfile
   
 end
+
+
+
+
+
 
 case 4 of
   0 : begin
