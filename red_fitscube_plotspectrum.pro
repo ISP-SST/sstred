@@ -218,8 +218,10 @@ pro red_fitscube_plotspectrum, filename $
   if keyword_set(disk_center) then begin
     for iscan = 0, Nscans-1 do begin
       spec_sample = red_intepf(atlas_lambda/10, atlas_spectrum_convolved*1e9, lambda)
-      data_adjusted = datamedn[*, iscan]*1e9 * mean(spec_sample)/mean(datamedn[*, iscan]*1e9)
+      adjust_factor = mean(spec_sample)/mean(datamedn[*, iscan]*1e9)
+      data_adjusted = datamedn[*, iscan]*1e9 * adjust_factor
       cgplot, /add, /over, lambda, data_adjusted, psym = 1, color = 'blue'
+      print, 'Intensity adjust factor:', adjust_factor
     endfor
   endif
 
