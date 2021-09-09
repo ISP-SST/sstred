@@ -612,14 +612,14 @@ pro crisp::make_scan_cube, dir $
     endif
     restore, pfile              ; Restores variable prf which is a struct
 
-    wave_shift = prf.fitpars[1]/10. ; [m] Shift the wavelengths by this amount
+    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
     
     nbt_units = prf.units
 ;    nbt_prefilter_curve = prf.pref
     nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
 ;    nbt_prefilter_wav = prf.wav
 ;    nbt_prefilter_wb = prf.wbint
-    
+
     nbt_rpref = 1.d0/nbt_prefilter_curve
 
     ;; Crisp-R
