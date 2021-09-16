@@ -488,8 +488,8 @@ pro red::fitscube_export, filename $
       
       ;; Build the command string
       cmd = cmd[0]
-      cmd += ' ' + strlowcase(instrument) ; The dataset ID in the SOLARNET Data Archive/SVO
       cmd += ' ' + outdir+outfile                               ; The FITS file to submit to the SVO
+      cmd += ' --dataset ' + strlowcase(instrument)             ; The dataset ID in the SOLARNET Data Archive/SVO
       cmd += ' --file-url ' + file_url                          ; The URL of the file
       cmd += ' --file-path ' + file_path                        ; The relative path of the file
       if n_elements(thumbnail_url) gt 0 then $                  ;
@@ -497,7 +497,8 @@ pro red::fitscube_export, filename $
       cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
       cmd += ' --api-key ' + svo_api_key                        ; The SVO API key of the user owning the data
       cmd += ' --oid ' + oid                                    ; The unique observation ID of the metadata
-      
+      cmd += ' --offline'                                       ; Flag the file as offline
+
       ;; Spawn running the script
       spawn, cmd, status
       print, status
