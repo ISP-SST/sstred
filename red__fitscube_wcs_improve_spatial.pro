@@ -97,7 +97,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   prprocs = fxpar(h,'PRPROC*')
   pos = where(strmatch(prprocs,'*make_*_cube*'), Nmatch)
   if Nmatch eq 0 then stop
-  prpara_old = json_parse((fxpar(h,'PRPARA*'))[pos])
+  prpara_old = json_parse((fxpar(h,'PRPARA*'))[pos[0]])
   if prpara_old.haskey('DIRECTION') then begin
     ;; Direction in the header
     direction = prpara_old['DIRECTION']
