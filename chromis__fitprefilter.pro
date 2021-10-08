@@ -182,7 +182,6 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
                            , pref = pref_keyword $
                            , scan = scan $
                            , useflats = useflats $
-;                           , pref = pref $
                            , time = time $
                            , value_fwhm = value_fwhm $
                            , value_ncav = value_ncav $
@@ -429,7 +428,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
     endif
     filesNB = red_sortfiles(filesNB)
     self->extractstates, filesNB, statesNB, /nondb
-    
+
+   
     if keyword_set(unitscalib) then begin
       filesWB = red_raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan)
       if nfilesNB ne nfilesWB then begin
@@ -440,6 +440,26 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       self -> extractstates, filesWB, statesWB, /nondb
     endif
 
+    ;; We can't just use red_raw_search with
+    ;; prefilters=pref_keyword as for the crisp version of this
+    ;; method. This is because the prefilter is not explicit in the
+    ;; file name for chromis.
+    if n_elements(pref_keyword) then begin
+      indx = where(statesnb.prefilter eq pref_keyword, Nmatch)
+      if Nmatch eq 0 then begin
+        print, inam+' : ERROR, invalid pref keyword: ', pref_keyword
+        stop
+      endif
+      filesNB  = filesNB[indx]      
+      statesNB = statesNB[indx]
+      if keyword_set(unitscalib) then begin
+        filesWB  = filesWB[indx]      
+        statesWB = statesWB[indx]
+      endif
+    endif
+
+      
+      
 ;    filesNB = file_search(dirs+'/'+camNB+'/*.fits', count=nfilesNB)
 ;    filesNB = red_sortfiles(filesNB)
 ;    self->extractstates, filesNB, statesNB
@@ -449,7 +469,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 ;      filesWB = red_sortfiles(filesWB)
 ;      self -> extractstates, filesWB, statesWB
 ;    endif
-    
+      
 ;    ;; Read one scan (scan 0 by default)
 ;    
 ;    if n_elements(scan) eq 0 then scan = 0
@@ -565,18 +585,18 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
     upref = pref[uniq(pref, sort(pref))] 
 
-    ;; Did we specify prefilter(s)?
-    if n_elements(pref_keyword) ne 0 then begin
-      if max(upref eq pref_keyword) ne 1 then begin
-        print, inam + ' : Keyword pref does not match prefilters of available data.'
-        help, pref_keyword, upref
-        stop
-        retall
-      endif
-      upref = pref_keyword
-    endif
+;    ;; Did we specify prefilter(s)?
+;    if n_elements(pref_keyword) ne 0 then begin
+;      if max(upref eq pref_keyword) ne 1 then begin
+;        print, inam + ' : Keyword pref does not match prefilters of available data.'
+;        help, pref_keyword, upref
+;        stop
+;        retall
+;      endif
+;      upref = pref_keyword
+;    endif
     Npref = n_elements(upref)
-
+    
     file_mkdir, self.out_dir+'/prefilter_fits/'
 
     ;; Loop prefilters
