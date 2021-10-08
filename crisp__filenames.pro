@@ -55,6 +55,11 @@
 ;       string (only frame number implemented - used in momfbd config
 ;       files).
 ; 
+;    timestamp : in, optional, type=string
+; 
+;       The dataset timestamp formatted as hh:mm:ss. If needed but not
+;       given, will try to get it from the states.
+; 
 ;    wild_detector  : in, optional, type="boolean or string"
 ;   
 ;       If a string, use this as part of the search string. (It does
@@ -372,7 +377,14 @@ function crisp::filenames, datatype, states $
         
         'scangain' : begin
           ;; Gain tables constructed for a particular scan.
-          dir = self.out_dir + '/gaintables/' + timestamp + '/'
+          if n_elements(timestamp) eq 1 then begin
+            dir = self.out_dir + '/gaintables/' + timestamp + '/'          
+          endif else begin
+            ;; Try to get it from states[istate].filename.
+            ts = stregex(file_dirname(states[istate].filename) $
+                         , timestamp_searchstring, /extract)
+            if strlen(ts) eq 8 then dir = self.out_dir + '/gaintables/' + ts + '/' else stop         
+          endelse
           red_append, tag_list, detector
           red_append, tag_list, scannumber
           red_append, tag_list, states[istate].fullstate
