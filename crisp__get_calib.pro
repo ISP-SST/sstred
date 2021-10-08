@@ -62,6 +62,14 @@
 ; 
 ;        The data in the gain file(s) appropriate to the state(s).
 ; 
+;    sgainname : out, optional, type=strarr 
+; 
+;       The name(s) of the scan gain file(s) appropriate to the state(s).
+; 
+;    sgaindata : out, optional, type=array 
+; 
+;        The data in the scan gain file(s) appropriate to the state(s).
+; 
 ;    pinhname : out, optional, type=strarr 
 ; 
 ;        The name(s) of the pinhole file(s) appropriate to the state(s).
@@ -97,11 +105,13 @@
 ;    2018-07-20 : MGL. New keywords, individual status for the
 ;                 different kinds of data.
 ; 
-;    2018-07-25 : Sum darks and flats, and make gains as needed.
+;    2018-07-25 : MGL. Sum darks and flats, and make gains as needed.
 ; 
-;    2018-11-12 : New keywords cflatname, cflatstatus, cflatdata.
+;    2018-11-12 : MGL. New keywords cflatname, cflatstatus, cflatdata.
 ; 
-;    2019-10-10 : New keywords cgainname, cgainstatus, cgaindata.
+;    2019-10-10 : MGL. New keywords cgainname, cgainstatus, cgaindata.
+; 
+;    2021-10-06 : MGL. New keywords sgainname, sgainstatus, sgaindata.
 ; 
 ;-
 pro crisp::get_calib, states $
@@ -111,11 +121,12 @@ pro crisp::get_calib, states $
                       , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata   $
                       , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata   $
                       , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata   $
-                      , polcname = polcname,   polcdata  = polcdata   $
-                      , polsname = polsname,   polsdata  = polsdata   $
+                      , polcname    = polcname,    polcdata  = polcdata                         $
+                      , polsname    = polsname,    polsdata  = polsdata                         $
                       , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
                       , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
-                      , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata   
+                      , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
+                      , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata   
 
   Nstates = n_elements(states)
 
@@ -143,6 +154,8 @@ pro crisp::get_calib, states $
      cflatname = self -> filenames('cavityflat', states, no_fits = no_fits)
   if arg_present(cgainname) or arg_present(cgaindata) then $
      cgainname = self -> filenames('cavityfree_gain', states, no_fits = no_fits)
+  if arg_present(sgainname) or arg_present(sgaindata) then $
+     sgainname = self -> filenames('scangain', states, no_fits = no_fits)
 
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
@@ -158,8 +171,9 @@ pro crisp::get_calib, states $
   if arg_present(polsdata)  then polsdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   if arg_present(cflatdata) then cflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  if arg_present(cgaindata) then cgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  
+  if arg_present(cgaindata) then cgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates)   
+  if arg_present(sgaindata) then sgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates)   
+
 
   status = 0
 
@@ -247,6 +261,17 @@ pro crisp::get_calib, states $
         cgaindata[0, 0, istate] = red_readdata(cgainname[istate] $
                                                , status = cgainstatus, /silent)
         if status eq 0 then status = cgainstatus
+      endif else status = -1
+      
+    endif                    
+
+    ;; Scan gains
+    if arg_present(sgaindata) then begin
+      
+      if n_elements(sgainname) ne 0 && file_test(sgainname[istate]) then begin
+        sgaindata[0, 0, istate] = red_readdata(sgainname[istate] $
+                                               , status = sgainstatus, /silent)
+        if status eq 0 then status = sgainstatus
       endif else status = -1
       
     endif                    
