@@ -35,10 +35,15 @@
 ;
 ;        The function fit to the intensities by use of mpfitexpr.
 ;
-;    mu_limit : in, optional, type=float, default=0.97
+;    limb_darkening : in, optional, type=boolean
+;
+;        Correct intensities for distance from disk center.
+;
+;    mu_limit : in, optional, type=float, default="0.97 or 0.50"
 ;
 ;        WB data collected farther from disk center than this are
-;        excluded automatically.
+;        excluded automatically. The default depends on whether
+;        correction for limb_darkening is in effect. 
 ;
 ;    pref : in, optional, type=string
 ;
@@ -64,12 +69,15 @@
 ; 
 ;    2020-01-20 : MGL. Use data from every 20th scan. 
 ; 
-;    2021-08-27 : MGL. New keyword exclude_dirs.
+;    2021-08-27 : MGL. New keyword exclude_dirs. 
+; 
+;    2021-09-06 : MGL. New keyword limb_darkening.
 ; 
 ;-
 pro red::fit_wb_diskcenter, dirs = dirs $
                             , exclude_dirs = exclude_dirs $
                             , fitexpr = fitexpr_in $
+                            , limb_darkening = limb_darkening $
                             , mu_limit = mu_limit $
                             , pref = pref $
                             , sum_all_frames = sum_all_frames $
@@ -79,7 +87,12 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
+  if keyword_set(limb_darkening) then begin
+    if n_elements(mu_limit) eq 0 then mu_limit = 0.50d    
+  endif else begin
+    if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
+  endelse
+    
   if n_elements(tmin)     eq 0 then tmin = '00:00:00'
   if n_elements(tmax)     eq 0 then tmax = '24:00:00'
   
@@ -144,6 +157,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     mu = mu[indx]
     za = za[indx]
   endelse 
+
   
   wbindx = where(file_test(dirs+'/'+camwb), Nwb)
   nbindx = where(file_test(dirs+'/'+camnb), Nnb)
@@ -222,8 +236,15 @@ pro red::fit_wb_diskcenter, dirs = dirs $
             
             red_fitspar_getdates, hdr, date_beg = date_beg
             
-            red_append, wbintensity, median(ims)
-            red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])          
+
+            if keyword_set(limb_darkening) then begin
+              red_append, wbintensity, median(ims) / neckel_p5(float(upref[ipref])*1e-10, mu[wbindx[iwb]])
+              red_append, wbintensity_orig, median(ims)
+            endif else begin
+              red_append, wbintensity, median(ims)
+            endelse
+
+            red_append, wbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])
           endelse
           
           red_append, wbprefs, upref[ipref]
@@ -242,6 +263,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     wbexpt = wbexpt[indx]
     wbmu = wbmu[indx]
     wbza = wbza[indx]
+    if keyword_set(limb_darkening) then wbintensity_orig = wbintensity_orig[indx]
     
     upref = wbprefs[uniq(wbprefs, sort(wbprefs))]
     if n_elements(pref) ne 0 then begin
@@ -287,6 +309,11 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                 , wbtimes[indx] $
                 , wbintensity[indx] / wbexpt[indx] / 1000.
       endelse
+
+      if keyword_set(limb_darkening) then $
+         cgplot, /add, /over, psym = 9, color = colors[ipref] $
+                 , wbtimes[indx] $
+                 , wbintensity_orig[indx] / wbexpt[indx] / 1000.
       
       ;; Set up for fitting
       if n_elements(fitexpr_in) eq 0 then begin
@@ -336,6 +363,12 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       printf, lun, '# time, intensity, exp time, mu, zenith angle'
       for i = 0, n_elements(indx)-1 do $
          printf, lun, wbtimes[indx[i]], wbintensity[indx[i]], wbexpt[indx[i]], wbmu[indx[i]], wbza[indx[i]]
+      if keyword_set(limb_darkening) then begin
+        printf, lun, ''        
+        printf, lun, 'Without limb darkening correction:'        
+        for i = 0, n_elements(indx)-1 do $
+           printf, lun, wbtimes[indx[i]], wbintensity_orig[indx[i]], wbexpt[indx[i]], wbmu[indx[i]], wbza[indx[i]]
+      endif
       free_lun, lun
 
     endfor                      ; ipref
