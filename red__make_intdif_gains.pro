@@ -407,8 +407,9 @@ pro red::make_intdif_gains, all = all $
                 ;; Infinity values in g.
                 zindx = where( ~finite(g), Nz)
                 ;; Zero pixels that should have been zero anyway
+                tmp_img = gains[*, *, iwav] * reform(cub1[iwav, *, *])
                 for iz = 0, Nz-1 do $
-                   if (gains[*, *, iwav] * reform(cub1[iwav, *, *]))[zindx[iz]] eq 0 then g[zindx[iz]] = 0
+                   if (tmp_img)[zindx[iz]] eq 0 then g[zindx[iz]] = 0
 
                 ;; Take care of the rest by filling pixels
                 zindx = where( ~finite(g), Nz)
