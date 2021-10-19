@@ -30,9 +30,11 @@
 ;        the automatically selected directories, or from the
 ;        directories specified with the dirs keyword.
 ;
-;    fitexpr : in, optional, type=string, default="depends on number of data points"
+;    fitexpr : in, optional, type="string or integer", default="depends on number of data points"
 ;
-;        The function fit to the intensities by use of mpfitexpr.
+;        The expression that is fit to the intensities by use of
+;        mpfitexpr. An integer is interpreted as shorthand for a
+;        polynomial of that degree.
 ;
 ;    limb_darkening : in, optional, type=boolean
 ;
@@ -63,8 +65,11 @@
 ; 
 ;    2021-09-09 : MGL. First version.
 ; 
+;    2021-10-19 : MGL. New keyword /demodulate.
+; 
 ;-
-pro red::fit_nb_diskcenter, dirs = dirs $
+pro red::fit_nb_diskcenter, demodulate = demodulate $
+                            , dirs = dirs $
                             , exclude_dirs = exclude_dirs $
                             , fitexpr = fitexpr_in $
                             , limb_darkening = limb_darkening $
@@ -77,18 +82,33 @@ pro red::fit_nb_diskcenter, dirs = dirs $
   inam = red_subprogram(/low, calling = inam1)
   instrument = ((typename(self)).tolower())
   
-  if keyword_set(limb_darkening) then begin
-    if n_elements(mu_limit) eq 0 then mu_limit = 0.90d    
+  if keyword_set(limb_darkening) and pref ne '8542' then begin
+    if n_elements(mu_limit) eq 0 then mu_limit = 0.50d    
   endif else begin
     if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
   endelse
     
   if n_elements(tmin) eq 0 then tmin = '00:00:00'
   if n_elements(tmax) eq 0 then tmax = '24:00:00'
-  
+
+  red_make_prpara, prpara, dirs
+  red_make_prpara, prpara, exclude_dirs
+  red_make_prpara, prpara, fitexpr_in
+  red_make_prpara, prpara, limb_darkening
+  red_make_prpara, prpara, mu_limit
+  red_make_prpara, prpara, pref
+  red_make_prpara, prpara, tmin  
+  red_make_prpara, prpara, tmax  
+
   cams = *self.cameras
   camWB = (cams[where(strmatch(cams,'*-W'))])[0]
-  camNB = (cams[where(strmatch(cams,'*-[NT]'))])[0]
+  camsNB = cams[where(strmatch(cams,'*-[NTR]'))]
+  camNB = camsNB[0]
+
+  if keyword_set(demodulate) then begin
+    camT = 'Crisp-T'    
+    camR = 'Crisp-R'    
+  endif
 
   if n_elements(dirs) eq 0 then begin
 
@@ -105,6 +125,10 @@ pro red::fit_nb_diskcenter, dirs = dirs $
     dirs = dirs[where(suba eq -1)] 
 
   endif
+
+  indx = where(strmatch(dirs,'*??:??:??'), Nwhere)
+  if Nwhere eq 0 then stop
+  dirs = dirs[indx]
   
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then stop
@@ -128,7 +152,8 @@ pro red::fit_nb_diskcenter, dirs = dirs $
     
     restore, pfiles[ip]
     pprefs[ip] = (strsplit(file_basename(pfiles[ip]),'_',/extract))[1]
-
+    
+    
     tmp = min(abs(red_time2double(file_basename(dirs)) - prf.time_avg),minloc)
     cdir = dirs[minloc]
 
@@ -223,6 +248,13 @@ pro red::fit_nb_diskcenter, dirs = dirs $
 
       print, pprefs[ipref]
 
+      if keyword_set(demodulate) then begin
+        file_mkdir, self.out_dir + '/nb_intensities/'+pprefs[ipref]+'/'
+        self -> inverse_modmatrices, pprefs[ipref] $
+                                     , self.out_dir + '/nb_intensities/'+pprefs[ipref]+'/' $
+                                     , camr = 'Crisp-R', immr = immr $
+                                     , camt = 'Crisp-T', immt = immt
+      endif
       
       for inb = 0, Nnb-1 do begin
         print, nbdirs[inb]
@@ -230,22 +262,142 @@ pro red::fit_nb_diskcenter, dirs = dirs $
         ;; Read every 20th scan
         for iscan = 0L, 1000, 20 do begin
 
-          
-          fnamesN = red_raw_search(nbdirs[inb]+'/'+camnb, scannos = iscan $
-                                   , count = NfilesN $
-                                   , pref = pprefs[ipref], tunings = ptunings[ipref])
-          print, nbdirs[inb]+'/'+camnb
-          print, NfilesN
-          if NfilesN eq 0 then break
+          if keyword_set(demodulate) then begin
 
-          self -> extractstates, fnamesN, states, /nondb 
+            fnamesT = red_raw_search(nbdirs[inb]+'/'+camt, scannos = iscan $
+                                     , count = NfilesT $
+                                     , pref = pprefs[ipref], tunings = ptunings[ipref])
+            
+            fnamesR = red_raw_search(nbdirs[inb]+'/'+camr, scannos = iscan $
+                                     , count = NfilesR $
+                                     , pref = pprefs[ipref], tunings = ptunings[ipref])
 
+            print, nbdirs[inb]+'/'+camt            
+            print, nbdirs[inb]+'/'+camr            
+            print, NfilesT, NfilesR
+            if NfilesR ne NfilesT then stop
+
+            if NfilesT eq 0 then break
+            
+            self -> extractstates, fnamesT, statesT, /nondb             
+            self -> extractstates, fnamesR, statesR, /nondb             
+
+            ulc = statesT[uniq(statesT.lc, sort(statesT.lc))]
+            Nlc = n_elements(ulc)
+
+            if Nlc ne 4 then begin
+              print, iname + ' : Non-polarimetric data, please call without /demodulate'
+              print, pprefs[ipref]
+              retall
+            endif
+
+            self -> get_calib, statesT[0], darkdata = darkT            
+            self -> get_calib, statesR[0], darkdata = darkR          
+;
+;            imsT = red_readdata(fnamesT[0], head = hdrT, /silent) ; Select first file available            
+;            imsR = red_readdata(fnamesR[0], head = hdrR, /silent) ; Select first file available            
+;
+;            imsT = imsT[*, *, 0] - darkT           
+;            imsR = imsR[*, *, 0] - darkR             
+
+            if self.dodescatter and (statesT[0].prefilter eq '8542' $
+                                     or statesT[0].prefilter eq '7772') then begin
+              self -> loadbackscatter, statesT[0].detector $              
+                                       , statesT[0].prefilter, bgainT, bpsfT              
+              imsT = rdx_descatter(temporary(imsT), bgainT, bpsfT, nthreads = nthread)
+              self -> loadbackscatter, statesR[0].detector $              
+                                       , statesR[0].prefilter, bgainR, bpsfR              
+              imsR = rdx_descatter(temporary(imsR), bgainR, bpsfR, nthreads = nthread)
+            endif
+            
+            ;; Demodulate
+
+            ims_lcT = fltarr(1024, 1024, Nlc) ;; CRISP Sarnoffs!                        
+            ims_lcR = fltarr(1024, 1024, Nlc) ;; CRISP Sarnoffs!                        
+            
+            indx0 = where(statesT.lc eq 0)         
+            indx1 = where(statesT.lc eq 1)          
+            indx2 = where(statesT.lc eq 2)          
+            indx3 = where(statesT.lc eq 3)          
+
+            ims_lcT[*,*,0] = (red_readdata(statesT[indx0[0]].filename, header = h0T) - darkT) ;* gain0          
+            ims_lcT[*,*,1] = (red_readdata(statesT[indx1[0]].filename, header = h1T) - darkT) ;* gain1         
+            ims_lcT[*,*,2] = (red_readdata(statesT[indx2[0]].filename, header = h2T) - darkT) ;* gain2          
+            ims_lcT[*,*,3] = (red_readdata(statesT[indx3[0]].filename, header = h3T) - darkT) ;* gain3          
+
+            ims_lcR[*,*,0] = (red_readdata(statesR[indx0[0]].filename, header = h0R) - darkR) ;* gain0          
+            ims_lcR[*,*,1] = (red_readdata(statesR[indx1[0]].filename, header = h1R) - darkR) ;* gain1         
+            ims_lcR[*,*,2] = (red_readdata(statesR[indx2[0]].filename, header = h2R) - darkR) ;* gain2          
+            ims_lcR[*,*,3] = (red_readdata(statesR[indx3[0]].filename, header = h3R) - darkR) ;* gain3          
+            
+            if self.dodescatter and (pprefs[ipref] eq '8542' $
+                                     or pprefs[ipref] eq '7772') then begin
+              ims_lcT[*,*,0] = rdx_descatter(ims_lcT[*,*,0], bgainT, bpsfT, nthreads = nthread)            
+              ims_lcT[*,*,1] = rdx_descatter(ims_lcT[*,*,1], bgainT, bpsfT, nthreads = nthread)            
+              ims_lcT[*,*,2] = rdx_descatter(ims_lcT[*,*,2], bgainT, bpsfT, nthreads = nthread)            
+              ims_lcT[*,*,3] = rdx_descatter(ims_lcT[*,*,3], bgainT, bpsfT, nthreads = nthread)            
+
+              ims_lcR[*,*,0] = rdx_descatter(ims_lcR[*,*,0], bgainR, bpsfR, nthreads = nthread)            
+              ims_lcR[*,*,1] = rdx_descatter(ims_lcR[*,*,1], bgainR, bpsfR, nthreads = nthread)            
+              ims_lcR[*,*,2] = rdx_descatter(ims_lcR[*,*,2], bgainR, bpsfR, nthreads = nthread)            
+              ims_lcR[*,*,3] = rdx_descatter(ims_lcR[*,*,3], bgainR, bpsfR, nthreads = nthread)            
+
+            endif
+
+            red_fitspar_getdates, h0T, date_avg = date_avg0          
+            red_fitspar_getdates, h1T, date_avg = date_avg1          
+            red_fitspar_getdates, h2T, date_avg = date_avg2          
+            red_fitspar_getdates, h3T, date_avg = date_avg3          
+
+            time_avg0 = red_time2double((strsplit(date_avg0, 'T', /extract))[1])          
+            time_avg1 = red_time2double((strsplit(date_avg1, 'T', /extract))[1])          
+            time_avg2 = red_time2double((strsplit(date_avg2, 'T', /extract))[1])          
+            time_avg3 = red_time2double((strsplit(date_avg3, 'T', /extract))[1])
+
+            time_avg = (time_avg0+time_avg1+time_avg2+time_avg3)/4.
+
+            
+            
+            ims_stokesT = red_demodulate_images(ims_lcT, reform(immt, [4, 4, 1024,1024]), self.isodate, pprefs[ipref], time_avg)            
+            ims_stokesR = red_demodulate_images(ims_lcR, reform(immr, [4, 4, 1024,1024]), self.isodate, pprefs[ipref], time_avg)            
+
+            ;; Should really use the projective transform here! But
+            ;; misalignment errors should average out in the median
+            ;; intensity. 
+            
+            imsT = ims_stokesT[*, *, 0] ; Stokes I           
+            imsR = ims_stokesR[*, *, 0]             
+
+            mediant = median(imsT)
+            medianr = median(imsR)
+            aver = (mediant + medianr) / 2.
+            sct = aver / mediant
+            scr = aver / medianr
+            
+            ims = (sct * (imsT) + scr * (imsR)) / 2.
+
+            date_beg = self.isodate+'T'+red_timestring(time_avg)
+            hdr = h0T
+
+          endif else begin
+            fnamesN = red_raw_search(nbdirs[inb]+'/'+camnb, scannos = iscan $
+                                     , count = NfilesN $
+                                     , pref = pprefs[ipref], tunings = ptunings[ipref])
+            print, nbdirs[inb]+'/'+camnb
+            print, NfilesN
+            if NfilesN eq 0 then break
+
+            self -> extractstates, fnamesN, states, /nondb 
+
+            ulc = states[uniq(states.lc, sort(states.lc))]
+            Nlc = n_elements(ulc)
+            
 ;        pindx = uniq(states.prefilter, sort(states.prefilter))
 ;        upref = states[pindx].prefilter
 ;        Npref = n_elements(upref)
 
-          
-          self -> get_calib, states, darkdata = dark, gaindata = gain
+            
+            self -> get_calib, states, darkdata = dark, gaindata = gain
 ;          if keyword_set(sum_all_frames) then begin
 ;
 ;            ;; Not for CHROMIS data!
@@ -271,22 +423,23 @@ pro red::fit_nb_diskcenter, dirs = dirs $
 ;            
 ;          endif else begin
             
-          ims = red_readdata(fnamesN[0], head = hdr, /silent) ; Select first file available
+            ims = red_readdata(fnamesN[0], head = hdr, /silent) ; Select first file available
             
-          help, ims
-          ims = ims[*, *, 0] - dark ; Select first frame in multi-frame file.
-          
-          print, fnamesN[0]
+            help, ims
+            ims = ims[*, *, 0] - dark ; Select first frame in multi-frame file.
+            
+            print, fnamesN[0]
 
-          if self.dodescatter and (states[0].prefilter eq '8542' $
-                                   or states[0].prefilter eq '7772') then begin
-            self -> loadbackscatter, states[0].detector $
-                                     , states[0].prefilter, bgain, bpsf
-            ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
-          endif
-          
-          red_fitspar_getdates, hdr, date_beg = date_beg
-          
+            if self.dodescatter and (states[0].prefilter eq '8542' $
+                                     or states[0].prefilter eq '7772') then begin
+              self -> loadbackscatter, states[0].detector $
+                                       , states[0].prefilter, bgain, bpsf
+              ims = rdx_descatter(temporary(ims), bgain, bpsf, nthreads = nthread)
+            endif
+            
+            red_fitspar_getdates, hdr, date_beg = date_beg
+
+          endelse
 
           if keyword_set(limb_darkening) then begin
             red_append, nbintensity, median(ims) / neckel_p5(float(pprefs[ipref])*1e-10, mu[nbindx[inb]])
@@ -295,10 +448,9 @@ pro red::fit_nb_diskcenter, dirs = dirs $
             red_append, nbintensity, median(ims)
           endelse
 
-          
           red_append, nbtimes, red_time2double((strsplit(date_beg, 'T', /extract))[1])
 ;          endelse
-            
+          
           red_append, nbprefs, pprefs[ipref]
           red_append, nbexpt, fxpar(hdr, 'XPOSURE')
           red_append, nbmu, mu[nbindx[inb]]
@@ -370,20 +522,35 @@ pro red::fit_nb_diskcenter, dirs = dirs $
       
       ;; Set up for fitting
       if n_elements(fitexpr_in) eq 0 then begin
+        ;; Defaults based on range of data
         case n_elements(indx) of
-          1    : fitexpr = ''
-          2    : fitexpr = 'P[0] + X*P[1]'
-          else : fitexpr = 'P[0] + X*P[1] + X*X*P[2]'
+          1    : fitexpr_used[ipref] = ''
+          2    : fitexpr_used[ipref] = 'P[0] + X*P[1]'
+          else : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2]'
         endcase
-      endif else fitexpr = fitexpr_in
-
-      fitexpr_used[ipref] = fitexpr
+      endif else if size(fitexpr_in, /tname) eq 'STRING' then begin
+        ;; Use an actual string
+        fitexpr_used[ipref] = fitexpr_in
+      endif else begin
+        ;; Assume integer if not string
+        case fitexpr_in of
+          1 : fitexpr_used[ipref] = 'P[0] + X*P[1]'
+          2 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2]'          
+          3 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2] + X*X*X*P[3]'          
+          4 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2] + X*X*X*P[3] + X*X*X*X*P[4]'                    
+          5 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2] + X*X*X*P[3] + X*X*X*X*P[4] + X*X*X*X*X*P[5]'
+          else : stop
+        endcase
+      endelse
       
-      if fitexpr ne '' then begin
+
+;      fitexpr_used[ipref] = fitexpr
+      
+      if fitexpr_used[ipref] ne '' then begin
 
         ;; Do the fit
         err = 1. / nbmu[indx]   ; Large mu is better!
-        pp = mpfitexpr(fitexpr $
+        pp = mpfitexpr(fitexpr_used[ipref] $
                        , nbtimes[indx]/3600. $
                        , nbintensity[indx] / nbexpt[indx] $
                        , err $
@@ -391,20 +558,81 @@ pro red::fit_nb_diskcenter, dirs = dirs $
 
         ;; Plot it
         tt = (findgen(1000)/1000 * (max(nbtimes[indx])-min(nbtimes[indx])) + min(nbtimes[indx])) 
-        nbint = red_evalexpr(fitexpr, tt/3600, pp)
+        nbint = red_evalexpr(fitexpr_used[ipref], tt/3600, pp)
         cgplot, /add, /over, color = colors[ipref], tt, nbint / 1000.
 
+        
+
+        if 0 then begin         ; 6302
+
+          ;; Compare with stokes data
+          stokfiles = file_search('momfbd_nopd/??:??:??/6302/cfg/results/stokes_sbs0_sbk5/stokesIQUV_00000_6302_6302_-290.fits', count = Nstokes)
+
+          stokint = fltarr(Nstokes)
+          stoktime = dblarr(Nstokes)
+          for istok = 0, Nstokes-1 do begin
+            red_fitscube_getframe, stokfiles[istok], stokim, istokes = 0
+            stokint[istok] = median(stokim)
+            stokhdr = headfits(stokfiles[istok])
+            red_fitspar_getdates, stokhdr, date_avg = date_avg
+            stoktime[istok] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+          endfor
+
+          cubfiles = file_search('cubes_scan_none/nb_6302_2016-09-19T??:??:??_scan=0_stokes_corrected.fits', count = Ncub)
+          cubint = fltarr(Ncub)
+          cubtime = dblarr(Ncub)
+          for icub = 0, Ncub-1 do begin
+            red_fitscube_getframe, cubfiles[icub], cubim, istokes = 0, itun = 9
+            cubint[icub] = median(cubim)
+            cubhdr = headfits(cubfiles[icub])
+            red_fitspar_getdates, cubhdr, date_avg = date_avg
+            cubtime[icub] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+          endfor
+
+          ;; WB camera is camXX so not included here:
+          momfiles = file_search('momfbd_nopd/??:??:??/6302/cfg/results/cam???_*_00000_*_-290_*.momfbd', count = Nmom)
+          momint = fltarr(Nmom)
+          momtime = dblarr(Nmom)
+          for imom = 0, Nmom-1 do begin
+            momim = red_readdata(momfiles[imom], h = momhdr)
+            momint[imom] = median(momim)
+            red_fitspar_getdates, momhdr, date_avg = date_avg
+            momtime[imom] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+          endfor
+
+
+
+          
+          red_timeplot,nbtimes,nbintensity/max(nbintensity),psym=16, yrange =[0, 1.1], trange = [8, 11.5]*3600
+          cgplot, /over, momtime, momint/max(momint), psym = 2, color = 'green'
+          cgplot, /over, stoktime, stokint/max(stokint), psym = 16, color = 'red'          
+          cgplot, /over, cubtime, cubint/max(cubint), psym = 16, color = 'blue'
+          cgplot, /over, tt, nbint / max(nbint)
+
+          stop
+          
+        endif
+        
+        
+        
         ;; Save it
         red_mkhdr, phdr, pp
         anchor = 'DATE'
         red_fitsaddkeyword, anchor = anchor, phdr $
-                            , 'FITEXPR', fitexpr, 'mpfitexpr fitting function'
+                            , 'FITEXPR', fitexpr_used[ipref], 'mpfitexpr fitting function'
         red_fitsaddkeyword, anchor = anchor, phdr $
                             , 'TIME-BEG', red_timestring(min(nbtimes[indx])) $
                             , 'Begin fit data time interval'
         red_fitsaddkeyword, anchor = anchor, phdr $
                             , 'TIME-END', red_timestring(max(nbtimes[indx])) $
                             , 'End fit data time interval'
+        
+        ;; Add info about this step
+        self -> headerinfo_addstep, phdr $
+                                    , prstep = 'CALIBRATION' $
+                                    , prpara = prpara $
+                                    , prproc = inam
+
         writefits, nbdir+'nb_fit_'+upref[ipref]+'.fits', pp, phdr
 
         coeffs_str[ipref] = strjoin(strtrim(pp, 2), ',')
@@ -429,13 +657,13 @@ pro red::fit_nb_diskcenter, dirs = dirs $
 
     ;; Transform the fitted expression for printing
     for ipref = 0, Nprefs-1 do begin
-      fitexpr_used = strlowcase(fitexpr_used)
-      fitexpr_used = red_strreplace(fitexpr_used,'x*x*x*x*','x$\exp4$')
-      fitexpr_used = red_strreplace(fitexpr_used,'x*x*x*','x$\exp3$')
-      fitexpr_used = red_strreplace(fitexpr_used,'x*x*','x$\exp2$')
-      fitexpr_used = red_strreplace(fitexpr_used,'x*','x')            
-      fitexpr_used = red_strreplace(fitexpr_used,'p[','p$\sub',n=10)  
-      fitexpr_used = red_strreplace(fitexpr_used,']','$',n=10)        
+      fitexpr_used[ipref] = strlowcase(fitexpr_used[ipref])
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*x*x*','x$\exp4$')
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*x*','x$\exp3$')
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*','x$\exp2$')
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*','x')            
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'p[','p$\sub',n=10)  
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],']','$',n=10)        
     endfor                      ; ipref
     
     ;; Finish the plot
