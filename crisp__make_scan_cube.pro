@@ -110,9 +110,10 @@
 ;     tuning_selection : in, optional, type="integer or array"
 ;
 ;       The index or indices in the tuning dimension to use for
-;       calculating the correction. Should correspond to continuum (or
-;       as close to continuum as possible), where the polarimetric
-;       signal is minimal. Negative indices are allowed.
+;       calculating the polarimetric crosstalk correction. Should
+;       correspond to continuum (or as close to continuum as
+;       possible), where the polarimetric signal is minimal. Negative
+;       indices are allowed.
 ;
 ; 
 ; :History:
