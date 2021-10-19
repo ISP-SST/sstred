@@ -178,10 +178,13 @@
 ;                value_stretch. Default cwl and fwhm values
 ;                individually for each filter. Also bugfix: now works
 ;                with multiple prefilters in the same directory
-;                without using keyword pref.
+;                without using keyword pref.. 
+; 
+;   2021-09-19 : MGL. New keyword /demodulate.
 ; 
 ;-
 pro crisp::fitprefilter, cwl = cwl_keyword $
+                         , demodulate = demodulate $
                          , dir = dir $
                          , fit_fwhm = fit_fwhm $
                          , fit_ncav = fit_ncav $
@@ -199,6 +202,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
                          , scan = scan $
                          , shift = shift $
                          , stretch = stretch $
+                         , sum_all_frames = sum_all_frames $
                          , useflats = useflats  $
                          , value_fwhm = value_fwhm $
                          , value_ncav = value_ncav $
@@ -569,6 +573,9 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       ustates = statesNB[uniq(statesNB.tun_wavelength, sort(statesNB.tun_wavelength))]
       Nwav = n_elements(ustates)
 
+      ulc = statesNB[uniq(statesNB.lc, sort(statesNB.lc))]
+      Nlc = n_elements(ulc)
+
       ;; Load data and compute mean spectrum
       time_avgs = dblarr(Nwav)
       spec      = dblarr(Nwav)
@@ -593,10 +600,12 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ;; Let's not assume that all images for one state must be in the
         ;; same file... just in case.
         
-        pos = where(statesNB.fpi_state eq ustates[istate].fpi_state, count)
+        pos = where(statesNB.fpi_state eq ustates[istate].fpi_state, Nframes)
         
         ;; Get darks for this camera
         self -> get_calib, statesNB[pos[0]], darkdata=darkN, gaindata=gainN, status = status
+        mindx = where(gainn eq 0, Nmissing)                                
+        gindx = where(gainn ne 0, Nmissing)                    
         if status ne 0 then begin
           print, inam+' : ERROR, cannot find dark file for NB'
           stop
@@ -610,30 +619,155 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
             stop
           endif
         endif
-        
-        ;; Sum files with same tuning, checking for outliers. The returned
-        ;; "sum" is the average of the summed frames, so still in counts
-        ;; for a single frame. Also correct for dark.
-        imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4, time_avg = time_avg) - darkN
-        if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
-                                 or statesNB[pos[0]].prefilter eq '7772') then begin
-          imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
-        endif
-        imN *= rdx_fillpix(gainN)
 
-        if keyword_set(unitscalib) then begin
-          imW = rdx_sumfiles(statesWB[pos].filename, /check, nthreads = 4) - darkW
-          if self.dodescatter and (statesWB[pos[0]].prefilter eq '8542' $
-                                   or statesWB[pos[0]].prefilter eq '7772') then begin
-            imW = rdx_descatter(temporary(imW), bgainw, bpsfw, nthreads = nthread)
+        if Nlc eq 4 and keyword_set(demodulate) then begin
+
+          ;; Demodulate polarimetric data and use the Stokes I
+          ;; component.
+          
+          file_mkdir, self.out_dir + '/prefilter_fits/'+upref[ipref]+'/'
+          self -> inverse_modmatrices, upref[ipref] $
+                                       , self.out_dir + '/prefilter_fits/'+upref[ipref]+'/' $
+                                       , camr = 'Crisp-R', immr = immr $
+                                       , camt = 'Crisp-T', immt = immt
+
+          case camNB of
+            'Crisp-T' : immtr = reform(immt, [4, 4, dim[0], dim[1]])            
+            'Crisp-R' : immtr = reform(immr, [4, 4, dim[0], dim[1]])            
+            else : stop
+          endcase
+          
+          indx0 = where(statesNB[pos].lc eq 0)         
+          indx1 = where(statesNB[pos].lc eq 1)          
+          indx2 = where(statesNB[pos].lc eq 2)          
+          indx3 = where(statesNB[pos].lc eq 3)          
+
+          if 0 then begin
+            tstamp = file_basename(dirs)
+            gain0 = red_readdata(self -> filenames('scangain', statesNB[pos[indx0[0]]], timestamp = tstamp))          
+            gain1 = red_readdata(self -> filenames('scangain', statesNB[pos[indx1[0]]], timestamp = tstamp))          
+            gain2 = red_readdata(self -> filenames('scangain', statesNB[pos[indx2[0]]], timestamp = tstamp))          
+            gain3 = red_readdata(self -> filenames('scangain', statesNB[pos[indx3[0]]], timestamp = tstamp))          
+          endif else begin
+            gain0 = 1. 
+            gain1 = 1. 
+            gain2 = 1. 
+            gain3 = 1. 
+          endelse
+
+          ims_lc = fltarr(dim[0], dim[1], Nlc)
+          
+          ims_lc[*,*,0] = (red_readdata(statesNB[pos[indx0[0]]].filename, header = h0) - darkN) * gain0          
+          ims_lc[*,*,1] = (red_readdata(statesNB[pos[indx1[0]]].filename, header = h1) - darkN) * gain1         
+          ims_lc[*,*,2] = (red_readdata(statesNB[pos[indx2[0]]].filename, header = h2) - darkN) * gain2          
+          ims_lc[*,*,3] = (red_readdata(statesNB[pos[indx3[0]]].filename, header = h3) - darkN) * gain3          
+
+          if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
+                                   or statesNB[pos[0]].prefilter eq '7772') then begin
+            ims_lc[*,*,0] = rdx_descatter(ims_lc[*,*,0], bgainn, bpsfn, nthreads = nthread)            
+            ims_lc[*,*,1] = rdx_descatter(ims_lc[*,*,1], bgainn, bpsfn, nthreads = nthread)            
+            ims_lc[*,*,2] = rdx_descatter(ims_lc[*,*,2], bgainn, bpsfn, nthreads = nthread)            
+            ims_lc[*,*,3] = rdx_descatter(ims_lc[*,*,3], bgainn, bpsfn, nthreads = nthread)            
           endif
-          imW *= rdx_fillpix(gainW)
-        endif
+
+;          ;; Stokes I:
+;          imN = reform(immtr[0,0,*,*]) * im0 $
+;                + reform(immtr[1,0,*,*]) * im1 $
+;                + reform(immtr[2,0,*,*]) * im2 $
+;                + reform(immtr[3,0,*,*]) * im3
+          nmask = gainn eq 0
+;          imN = rdx_fillpix(imN, mask = nmask)          
+
+          red_fitspar_getdates, h0, date_avg = date_avg0          
+          red_fitspar_getdates, h1, date_avg = date_avg1          
+          red_fitspar_getdates, h2, date_avg = date_avg2          
+          red_fitspar_getdates, h3, date_avg = date_avg3          
+
+          time_avg0 = red_time2double((strsplit(date_avg0, 'T', /extract))[1])          
+          time_avg1 = red_time2double((strsplit(date_avg1, 'T', /extract))[1])          
+          time_avg2 = red_time2double((strsplit(date_avg2, 'T', /extract))[1])          
+          time_avg3 = red_time2double((strsplit(date_avg3, 'T', /extract))[1])
+
+          time_avg = red_timestring((time_avg0+time_avg1+time_avg2+time_avg3)/4.)
+          
+          ims_stokes = red_demodulate_images(ims_lc, immtr, self.isodate, upref[ipref], red_time2double(time_avg))
+          imN = ims_stokes[*, *, 0] ; Stokes I
+                                ;imN = rdx_fillpix(imN, mask = nmask)          
+          
+          if keyword_set(unitscalib) then begin
+            imW = (rdx_sumfiles(statesWB[pos].filename, /check, nthreads = 4) - darkW) * gainW
+            if self.dodescatter and (statesWB[pos[0]].prefilter eq '8542' $
+                                     or statesWB[pos[0]].prefilter eq '7772') then begin
+              imW = rdx_descatter(temporary(imW), bgainw, bpsfw, nthreads = nthread)
+            endif
+            wmask = gainw eq 0
+            imW = rdx_fillpix(imW, mask = wmask)
+          endif
+          
+        endif else if keyword_set(sum_all_frames) then begin
+
+          ;; Find frame with largest mean value
+          
+          means = fltarr(Nframes)
+
+          for iframe = 0, Nframes-1 do begin
+            imm = rdx_readdata(statesNB[pos[iframe]].filename) - darkN
+            imm *= gainN
+            means[iframe] = mean(imm[gindx])
+          endfor                ; iframe
+          mx = max(means, mloc)
+          
+          imN = red_readdata(statesNB[pos[mloc]].filename, header = hframe) - darkN
+          red_fitspar_getdates, hframe, date_avg = date_avg
+          if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
+                                   or statesNB[pos[0]].prefilter eq '7772') then begin
+            imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
+          endif
+          imN *= rdx_fillpix(gainN)
+          time_avg = (strsplit(date_avg, 'T', /extract))[1]          
+
+          if keyword_set(unitscalib) then begin
+            for iframe = 0, Nframes-1 do begin
+              imm = rdx_readdata(statesWB[pos[iframe]].filename) - darkW
+              imm *= gainW
+              means[iframe] = mean(imm[gindx])
+            endfor              ; iframe
+            mx = max(means, mloc)
+            imW = red_readdata(statesWB[pos[mloc]].filename) - darkW
+            if self.dodescatter and (statesWB[pos[0]].prefilter eq '8542' $
+                                     or statesWB[pos[0]].prefilter eq '7772') then begin
+              imW = rdx_descatter(temporary(imW), bgainn, bpsfn, nthreads = nthread)
+            endif
+            imW *= rdx_fillpix(gainW)
+          endif
+
+        endif else begin
+
+          ;; Sum files with same tuning, checking for outliers. The returned
+          ;; "sum" is the average of the summed frames, so still in counts
+          ;; for a single frame. Also correct for dark.
+
+          imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4, time_avg = time_avg) - darkN
+          if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
+                                   or statesNB[pos[0]].prefilter eq '7772') then begin
+                imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
+          endif
+          imN *= rdx_fillpix(gainN)
+
+          if keyword_set(unitscalib) then begin
+            imW = rdx_sumfiles(statesWB[pos].filename, /check, nthreads = 4) - darkW
+            if self.dodescatter and (statesWB[pos[0]].prefilter eq '8542' $
+                                     or statesWB[pos[0]].prefilter eq '7772') then begin
+              imW = rdx_descatter(temporary(imW), bgainw, bpsfw, nthreads = nthread)
+            endif
+            imW *= rdx_fillpix(gainW)
+          endif
+
+        endelse
         
         ;; Get the spectrum point in counts
         if keyword_set(mask) then begin
           if istate eq 0 then begin
-            mindx = where(gainn eq 0, Nmissing)
             if Nmissing gt 0 then imN[mindx] =  !values.f_nan ; Missing pixels
             mmask = red_select_area(imN, /noedge, /xroi)
             ind = where(mmask gt 0)
@@ -816,9 +950,9 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
               }
 
         ;; Save the fit
-        save, prf $
-              , file = self.out_dir + '/prefilter_fits/' $
-              + camNB + '_' + upref[ipref] + '_prefilter.idlsave'
+        savefile = self.out_dir + '/prefilter_fits/' $
+                   + camNB + '_' + upref[ipref] + '_prefilter.idlsave'
+        save, prf, file = savefile
 
         cgwindow
         colors = ['blue', 'red', 'black']
@@ -850,8 +984,17 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
                   , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
                   , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
 
-        cgcontrol, output = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
+        plotfile = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
+        cgcontrol, output = plotfile
 
+        file_copy, plotfile $
+                   , self.out_dir + '/prefilter_fits/' + camNB + '_' + upref[ipref] $
+                   + '_' + file_basename(dirs) + '_prefilter.pdf'
+
+        file_copy, savefile $
+                   , self.out_dir + '/prefilter_fits/' + camNB + '_' + upref[ipref] $
+                   + '_' + file_basename(dirs) + '_prefilter.idlsave'
+        
       endif else stop           ; Nwav eq 0 should not happen for CRISP
       
     endfor                      ; ipref
