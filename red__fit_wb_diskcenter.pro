@@ -31,9 +31,11 @@
 ;        the automatically selected directories, or from the
 ;        directories specified with the dirs keyword.
 ;
-;    fitexpr : in, optional, type=string, default="depends on number of data points"
+;    fitexpr : in, optional, type="string or integer", default="depends on number of data points"
 ;
-;        The function fit to the intensities by use of mpfitexpr.
+;        The expression that is fit to the intensities by use of
+;        mpfitexpr. An integer is interpreted as shorthand for a
+;        polynomial of that degree.
 ;
 ;    limb_darkening : in, optional, type=boolean
 ;
@@ -71,7 +73,7 @@
 ; 
 ;    2021-08-27 : MGL. New keyword exclude_dirs. 
 ; 
-;    2021-09-06 : MGL. New keyword limb_darkening.
+;    2021-09-06 : MGL. New keyword limb_darkening. 
 ; 
 ;-
 pro red::fit_wb_diskcenter, dirs = dirs $
@@ -87,14 +89,23 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if keyword_set(limb_darkening) then begin
+  if keyword_set(limb_darkening) pref ne '8542' then begin
     if n_elements(mu_limit) eq 0 then mu_limit = 0.50d    
   endif else begin
     if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
   endelse
     
-  if n_elements(tmin)     eq 0 then tmin = '00:00:00'
-  if n_elements(tmax)     eq 0 then tmax = '24:00:00'
+  if n_elements(tmin) eq 0 then tmin = '00:00:00'
+  if n_elements(tmax) eq 0 then tmax = '24:00:00'
+  
+  red_make_prpara, prpara, dirs
+  red_make_prpara, prpara, exclude_dirs
+  red_make_prpara, prpara, fitexpr_in
+  red_make_prpara, prpara, limb_darkening
+  red_make_prpara, prpara, mu_limit
+  red_make_prpara, prpara, pref
+  red_make_prpara, prpara, tmin
+  red_make_prpara, prpara, tmax  
   
   cams = *self.cameras
   camWB = (cams[where(strmatch(cams,'*-W'))])[0]
@@ -116,6 +127,10 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
   endif
   
+  indx = where(strmatch(dirs,'*??:??:??'), Nwhere)
+  if Nwhere eq 0 then stop
+  dirs = dirs[indx]
+  
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then stop
 
@@ -127,8 +142,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
   ;; If mu isn't available in logs, assume flats are at large enough mu
-  indx = where(~finite(mu)  and strmatch(dirs,'*lats*'), Ndirs)
-  if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
+;  indx = where(~finite(mu)  and strmatch(dirs,'*lats*'), Ndirs)
+;  if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
 
   
   ;; Idea: for flats directories, mu might vary during the data
@@ -317,20 +332,32 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       
       ;; Set up for fitting
       if n_elements(fitexpr_in) eq 0 then begin
+        ;; Defaults based on range of data
         case n_elements(indx) of
-          1    : fitexpr = ''
-          2    : fitexpr = 'P[0] + X*P[1]'
-          else : fitexpr = 'P[0] + X*P[1] + X*X*P[2]'
+          1    : fitexpr_used[ipref] = ''
+          2    : fitexpr_used[ipref] = 'P[0] + X*P[1]'
+          else : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2]'
         endcase
-      endif else fitexpr = fitexpr_in
-
-      fitexpr_used[ipref] = fitexpr
+      endif else if size(fitexpr_in, /tname) eq 'STRING' then begin
+        ;; Use an actual string
+        fitexpr_used[ipref] = fitexpr_in
+      endif else begin
+        ;; Assume integer if not string
+        case fitexpr_in of
+          1 : fitexpr_used[ipref] = 'P[0] + X*P[1]'
+          2 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2]'          
+          3 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2] + X*X*X*P[3]'          
+          4 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2] + X*X*X*P[3] + X*X*X*X*P[4]'                    
+          5 : fitexpr_used[ipref] = 'P[0] + X*P[1] + X*X*P[2] + X*X*X*P[3] + X*X*X*X*P[4] + X*X*X*X*X*P[5]'
+          else : stop
+        endcase
+      endelse
       
-      if fitexpr ne '' then begin
+      if fitexpr_used[ipref] ne '' then begin
 
         ;; Do the fit
         err = 1. / wbmu[indx]   ; Large mu is better!
-        pp = mpfitexpr(fitexpr $
+        pp = mpfitexpr(fitexpr_used[ipref] $
                        , wbtimes[indx]/3600. $
                        , wbintensity[indx] / wbexpt[indx] $
                        , err $
@@ -338,14 +365,14 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
         ;; Plot it
         tt = (findgen(1000)/1000 * (max(wbtimes[indx])-min(wbtimes[indx])) + min(wbtimes[indx])) 
-        wbint = red_evalexpr(fitexpr, tt/3600, pp)
+        wbint = red_evalexpr(fitexpr_used[ipref], tt/3600, pp)
         cgplot, /add, /over, color = colors[ipref], tt, wbint / 1000.
 
         ;; Save it
         red_mkhdr, phdr, pp
         anchor = 'DATE'
         red_fitsaddkeyword, anchor = anchor, phdr $
-                            , 'FITEXPR', fitexpr, 'mpfitexpr fitting function'
+                            , 'FITEXPR', fitexpr_used[ipref], 'mpfitexpr fitting function'
         red_fitsaddkeyword, anchor = anchor, phdr $
                             , 'TIME-BEG', red_timestring(min(wbtimes[indx])) $
                             , 'Begin fit data time interval'
@@ -376,13 +403,13 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
     ;; Transform the fitted expression for printing
     for ipref = 0, Nprefs-1 do begin
-      fitexpr_used = strlowcase(fitexpr_used)
-      fitexpr_used = red_strreplace(fitexpr_used,'x*x*x*x*','x$\exp4$')
-      fitexpr_used = red_strreplace(fitexpr_used,'x*x*x*','x$\exp3$')
-      fitexpr_used = red_strreplace(fitexpr_used,'x*x*','x$\exp2$')
-      fitexpr_used = red_strreplace(fitexpr_used,'x*','x')            
-      fitexpr_used = red_strreplace(fitexpr_used,'p[','p$\sub',n=10)  
-      fitexpr_used = red_strreplace(fitexpr_used,']','$',n=10)        
+      fitexpr_used[ipref] = strlowcase(fitexpr_used)
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*x*x*','x$\exp4$')
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*x*','x$\exp3$')
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*','x$\exp2$')
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*','x')            
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'p[','p$\sub',n=10)  
+      fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],']','$',n=10)        
     endfor                      ; ipref
     
     ;; Finish the plot
