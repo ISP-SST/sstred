@@ -1,7 +1,11 @@
 ; docformat = 'rst'
 
 ;+
-; Demodulate a single set of four LC images.
+; Demodulate a single set of four LC images into Stokes images.
+;
+; The demodulation is done both for the polcal calibration matrix
+; (provided when calling) and the telescope Muller matrix (looked up
+; by the program).
 ; 
 ; :Categories:
 ;
@@ -15,19 +19,29 @@
 ; 
 ; :Returns:
 ; 
+;    The Stokes images as datacube (Nx,Ny,4).
 ; 
 ; :Params:
+;
+;    ims_lc : in, type=fltarr(Nx,Ny,4)
+;
+;       Four LC images to be demodulated.
+;
+;    inv_polmat : in, type=fltarr(4,4,Nx,Ny)
+;    
+;       The inverse polarization matrix to use. 
+;    
+;    isodate : in, type=string
+;    
+;       The ISO format date.
+;    
+;    pref : in, type=string
+;    
+;        The prefilter.
+;    
+;    tavg : in, type=double
 ; 
-; 
-; 
-; 
-; 
-; 
-; :Keywords:
-; 
-;   
-;   
-;   
+;        The time the data were collected in seconds after midnight. 
 ; 
 ; 
 ; :History:
