@@ -115,9 +115,10 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
       flat_dirs = *self.flat_dir
       dark_dirs = *self.dark_dir
       pinh_dirs = *self.pinh_dirs
-      polcal_dirs = *self.polcal_dir     
+      if self.dopolcal then polcal_dirs = *self.polcal_dir     
       data_dirs = *self.data_dirs
-      dirs = [flat_dirs, dark_dirs, pinh_dirs, polcal_dirs, data_dirs]
+      dirs = [flat_dirs, dark_dirs, pinh_dirs, data_dirs]
+      if self.dopolcal then dirs = [dirs, polcal_dirs]
       in = where(strmatch(dirs,'*'+split_set[1]+'*'))
       if n_elements(in) eq 1 then begin
         if in eq -1 then begin
