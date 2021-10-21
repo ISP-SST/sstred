@@ -119,6 +119,9 @@
 ; 
 ;   2020-12-09 : MGL. Remove statistics calculations.
 ; 
+;   2021-10-20 : MGL. Save some time by storing smoothed versions of
+;                the inverse demodulation matrices.
+; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
                        , clips = clips $
@@ -248,27 +251,6 @@ pro crisp::demodulate, outname, immr, immt $
   img_t = fltarr(Nx, Ny, 4)
   img_r = fltarr(Nx, Ny, 4)
 
-
-  if keyword_set(testing) then begin
-    
-    testsz = 900
-
-    window, 8, xs = testsz, ys = testsz
-    for ilc = 0L, Nlc-1 do $
-       for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(red_centerpic(reform(immr[ilc+istokes*3,*,*]), sz = testsz) $
-                       , testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
-    
-    window, 9, xs = testsz, ys = testsz
-    for ilc = 0L, Nlc-1 do $
-       for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(red_centerpic(reform(immt[ilc+istokes*3,*,*]), sz = testsz) $
-                       , testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
-
-    stop
-    
-  endif
-
   
   dims = size(immt, /dim)
   Nxx = dims[1]                 ; Detector size
@@ -334,9 +316,6 @@ pro crisp::demodulate, outname, immr, immt $
     img_t[*,*,ilc] = im
   endfor
 
-  
-  mymt = fltarr(Nlc, Nstokes, Nx, Ny)
-  mymr = fltarr(Nlc, Nstokes, Nx, Ny)
 
   
   if keyword_set(smooth_by_subfield) then begin
@@ -349,6 +328,8 @@ pro crisp::demodulate, outname, immr, immt $
     immrs = red_matrix2momfbd(rimg, immr_dm, amap = amapr)
 
     ;; Mozaic inverse modulation matrix
+    mymt = fltarr(Nlc, Nstokes, Nx, Ny)
+    mymr = fltarr(Nlc, Nstokes, Nx, Ny)
     for ilc = 0L, Nlc-1 do begin
       for istokes = 0L, Nstokes-1 do begin
         mymr[ilc,istokes,*,*] = red_mozaic(immrs[ilc,istokes], /crop) 
@@ -360,95 +341,72 @@ pro crisp::demodulate, outname, immr, immt $
 
   endif else begin
 
+    mymrname = outdir + '/mymr.fits'      
+    mymtname = outdir + '/mymt.fits'      
 
-    ;; Do we need to reform the inverse modulation matrices? At least
-    ;; we need to do the projection matrix thing.
-    
-    immr_dm = reform(immr_dm, [Nlc, Nstokes, Nxx, Nyy])
-    immt_dm = reform(immt_dm, [Nlc, Nstokes, Nxx, Nyy])
-
-    amapr_inv = invert(amapr)
-    amapt_inv = invert(amapt)
-    
-    for ilc = 0L, Nlc-1 do begin
-      for istokes = 0L, Nstokes-1 do begin
-        ;; Apply the geometrical mapping and clip to the FOV of the
-        ;; momfbd output.
-        tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc,istokes,*,*]), /preserve_size)
-        mymr[ilc,istokes,*,*] = tmp[rimg[ilc].roi[0]+rimg[ilc].margin:rimg[ilc].roi[1]-rimg[ilc].margin $
-                                    , rimg[ilc].roi[2]+rimg[ilc].margin:rimg[ilc].roi[3]-rimg[ilc].margin]
-        tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
-        mymt[ilc,istokes,*,*] = tmp[timg[ilc].roi[0]+timg[ilc].margin:timg[ilc].roi[1]-timg[ilc].margin $
-                                    , timg[ilc].roi[2]+timg[ilc].margin:timg[ilc].roi[3]-timg[ilc].margin]
-      endfor                    ; istokes
-    endfor                      ; ilc
-
-  endelse
-  
-  if keyword_set(testing) then begin
-    
-    testsz = 900
-
-    window, 8, xs = testsz, ys = testsz
-    for ilc = 0L, Nlc-1 do $
-       for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(red_centerpic(reform(immr_dm[ilc, istokes,*,*]), sz = testsz) $
-                       , testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
-    
-    window, 9, xs = testsz, ys = testsz
-    for ilc = 0L, Nlc-1 do $
-       for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(red_centerpic(reform(immt_dm[ilc, istokes,*,*]), sz = testsz) $
-                       , testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
-
-    stop
-    
-  endif
-  
-  if keyword_set(testing) then begin
-    
-    testsz = 900
-
-    window, 8, xs = testsz, ys = testsz
-    for ilc = 0L, Nlc-1 do $
-       for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(red_centerpic(reform(mymr[ilc, istokes,*,*]), sz = testsz) $
-                       , testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+    if file_test(mymrname) and file_test(mymtname) then begin
+      mymr = readfits(mymrname)    
+      mymt = readfits(mymtname)    
+      ;; Check dimensions?
+    endif else begin
       
-    window, 9, xs = testsz, ys = testsz
-    for ilc = 0L, Nlc-1 do $
-       for istokes = 0L, Nstokes-1 do $
-          tvscl, rebin(red_centerpic(reform(mymt[ilc, istokes,*,*]), sz = testsz) $
-                       , testsz/4, testsz/4), ilc*testsz/4, istokes*testsz/4
+      mymt = fltarr(Nlc, Nstokes, Nx, Ny)
+      mymr = fltarr(Nlc, Nstokes, Nx, Ny)
+      
 
-    stop
-    
-  endif
+      ;; Do we need to reform the inverse modulation matrices? At least
+      ;; we need to do the projection matrix thing.
+      
+      immr_dm = reform(immr_dm, [Nlc, Nstokes, Nxx, Nyy])
+      immt_dm = reform(immt_dm, [Nlc, Nstokes, Nxx, Nyy])
+
+      amapr_inv = invert(amapr)
+      amapt_inv = invert(amapt)
+      
+      for ilc = 0L, Nlc-1 do begin
+        for istokes = 0L, Nstokes-1 do begin
+          ;; Apply the geometrical mapping and clip to the FOV of the
+          ;; momfbd output.
+          tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc,istokes,*,*]), /preserve_size)
+          mymr[ilc,istokes,*,*] = tmp[rimg[ilc].roi[0]+rimg[ilc].margin:rimg[ilc].roi[1]-rimg[ilc].margin $
+                                      , rimg[ilc].roi[2]+rimg[ilc].margin:rimg[ilc].roi[3]-rimg[ilc].margin]
+          tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
+          mymt[ilc,istokes,*,*] = tmp[timg[ilc].roi[0]+timg[ilc].margin:timg[ilc].roi[1]-timg[ilc].margin $
+                                      , timg[ilc].roi[2]+timg[ilc].margin:timg[ilc].roi[3]-timg[ilc].margin]
+        endfor                  ; istokes
+      endfor                    ; ilc
+      
+      if keyword_set(smooth_by_kernel) then begin
+
+        ;; Smooth the inverse modulation matrices by a Gaussian kernel
+
+        dpix = round(smooth_by_kernel)*3
+        if (dpix/2)*2 eq dpix then dpix -= 1
+        dpsf = double(smooth_by_kernel)
+        psf = red_get_psf(dpix, dpix, dpsf, dpsf)
+        psf /= total(psf, /double)
+
+        ;;for ii=0, Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
+
+        ;; Smooth the inverse modulation matrix
+        for ilc = 0L, Nlc-1 do begin
+          for istokes = 0L, Nstokes-1 do begin
+            ;;mymr[ilc,istokes,*,*] = red_convolve(reform(immr_dm[ilc, istokes, *, *]), psf)
+            ;;mymt[ilc,istokes,*,*] = red_convolve(reform(immt_dm[ilc, istokes, *, *]), psf)
+            mymr[ilc,istokes,*,*] = red_convolve(reform(mymr[ilc, istokes, *, *]), psf)
+            mymt[ilc,istokes,*,*] = red_convolve(reform(mymt[ilc, istokes, *, *]), psf)
+          endfor                ; istokes
+        endfor                  ; ilc
+        
+      endif
+
+      writefits, mymrname, mymr    
+      writefits, mymtname, mymt 
+      
+    endelse                     ; read stored mymr and mymt
+
+  endelse                       ; smooth_by_subfield
   
-  if keyword_set(smooth_by_kernel) then begin
-
-    ;; Smooth the inverse modulation matrices by a Gaussian kernel
-
-    dpix = round(smooth_by_kernel)*3
-    if (dpix/2)*2 eq dpix then dpix -= 1
-    dpsf = double(smooth_by_kernel)
-    psf = red_get_psf(dpix, dpix, dpsf, dpsf)
-    psf /= total(psf, /double)
-
-    ;;for ii=0, Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
-
-    ;; Smooth the inverse modulation matrix
-    for ilc = 0L, Nlc-1 do begin
-      for istokes = 0L, Nstokes-1 do begin
-        ;;mymr[ilc,istokes,*,*] = red_convolve(reform(immr_dm[ilc, istokes, *, *]), psf)
-        ;;mymt[ilc,istokes,*,*] = red_convolve(reform(immt_dm[ilc, istokes, *, *]), psf)
-        mymr[ilc,istokes,*,*] = red_convolve(reform(mymr[ilc, istokes, *, *]), psf)
-        mymt[ilc,istokes,*,*] = red_convolve(reform(mymt[ilc, istokes, *, *]), psf)
-      endfor                    ; istokes
-    endfor                      ; ilc
-
-  endif
-
   ;; Load the simultaneous WB images.  
   ;;img_wb = fltarr(dim[0], dim[1], Nlc)
   img_wb = fltarr(Nx, Ny, Nlc)
@@ -517,56 +475,6 @@ pro crisp::demodulate, outname, immr, immt $
   print, '   -> Tcam scale factor -> ' + red_stri(sct) + ' (after '+red_stri(nbtfac)+')'
   print, '   -> Rcam scale factor -> ' + red_stri(scr) + ' (after '+red_stri(nbrfac)+')'
 
-  if keyword_set(testing) then begin
-
-    for istokes = 0, 3 do begin
-      window, xs = 3*(xx1-xx0+1), ys = yy1-yy0+1, 15+istokes
-      tvscl, sct * img_t[xx0:xx1,yy0:yy1,istokes], 0
-      tvscl, sct * img_r[xx0:xx1,yy0:yy1,istokes], 1
-      tvscl, res[xx0:xx1,yy0:yy1,istokes], 2
-    endfor
-    
-    window, 11, xs = 700, ys = 500
-    cghistoplot, sct * img_t[xx0:xx1,yy0:yy1,0], xrange = [1.2, 1.9]*1e-8
-    cghistoplot, scr * img_r[xx0:xx1,yy0:yy1,0], /oplot, color = 'blue'
-    
-    stop
-  endif
-  
-
-  if 0 then begin
-
-    meant=mean(img_t[xx0:xx1,yy0:yy1,0])
-    meanr=mean(img_r[xx0:xx1,yy0:yy1,0])
-    mediant=median(img_t[xx0:xx1,yy0:yy1,0])
-    medianr=median(img_r[xx0:xx1,yy0:yy1,0])
-
-    cghistoplot,img_r[xx0:xx1,yy0:yy1,0],xrange=[2.6,4.3]*1e-8
-    cghistoplot,img_t[xx0:xx1,yy0:yy1,0],/oplot,color='blue' 
-    cgoplot,[1,1]*medianr,[0,20000],color='red',/over,line=2
-    cgoplot,[1,1]*mediant,[0,20000],color='blue',/over,line=2
-    cgoplot,[1,1]*meanr,[0,20000],color='red',/over          
-    cgoplot,[1,1]*meant,[0,20000],color='blue',/over         
-    
-    aver = (meant + meanr) / 2.
-    sct = aver / meant
-    scr = aver / meanr
-    
-    print, inam + ' : Combining data from transmitted and reflected camera'
-    print, '   -> Average Intensity = '  + red_stri(aver)
-    print, '   -> Tcam scale factor -> ' + red_stri(sct) + ' (after '+red_stri(nbtfac)+')'
-    print, '   -> Rcam scale factor -> ' + red_stri(scr) + ' (after '+red_stri(nbrfac)+')'
-
-    aver2 = (mediant + medianr) / 2.
-    sct2 = aver2 / mediant
-    scr2 = aver2 / medianr
-    
-    print, inam + ' : Combining data from transmitted and reflected camera'
-    print, '   -> Average Intensity = '  + red_stri(aver2)
-    print, '   -> Tcam scale factor -> ' + red_stri(sct2) + ' (after '+red_stri(nbtfac)+')'
-    print, '   -> Rcam scale factor -> ' + red_stri(scr2) + ' (after '+red_stri(nbrfac)+')'
-  
-  endif
   
   ;; Telescope model 
   line = (strsplit(wbstates[0].fpi_state,'_',/extract))[0]
@@ -607,9 +515,9 @@ pro crisp::demodulate, outname, immr, immt $
     stop
   endif
   res = temporary(res1)
-    
-    
-    
+  
+  
+  
   if keyword_set(nosave) then return
   
   ;; Save result as a fitscube with all the usual metadata.
@@ -619,7 +527,7 @@ pro crisp::demodulate, outname, immr, immt $
   dims = [Nx, Ny, 1, Nstokes, 1] 
   res = reform(res, dims)
 
- 
+  
   ;; Make header
   hdr = red_readhead(nbrstates[0].filename)
   check_fits, res, hdr, /update, /silent
@@ -667,7 +575,7 @@ pro crisp::demodulate, outname, immr, immt $
   ;; Remove some irrelevant keywords
   red_fitsdelkeyword, hdr, 'TAB_HDUS' ; No tabulated headers in summed file
   red_fitsdelkeyword, hdr, 'FRAMENUM' ; No particular frame number
-  red_fitsdelkeyword, hdr, 'CADENCE' ; Makes no sense to keep?
+  red_fitsdelkeyword, hdr, 'CADENCE'  ; Makes no sense to keep?
   
   
   ;; Set various keywords in hdr. DATE* are useful.
