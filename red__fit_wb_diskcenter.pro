@@ -253,7 +253,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
             
 
             if keyword_set(limb_darkening) then begin
-              red_append, wbintensity, median(ims) / neckel_p5(float(upref[ipref])*1e-10, mu[wbindx[iwb]])
+              red_append, wbintensity, median(ims) / red_neckel_coefficients(float(upref[ipref])*1e-10, mu[wbindx[iwb]])
               red_append, wbintensity_orig, median(ims)
             endif else begin
               red_append, wbintensity, median(ims)

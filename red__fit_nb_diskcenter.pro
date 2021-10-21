@@ -442,7 +442,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
           endelse
 
           if keyword_set(limb_darkening) then begin
-            red_append, nbintensity, median(ims) / neckel_p5(float(pprefs[ipref])*1e-10, mu[nbindx[inb]])
+            red_append, nbintensity, median(ims) / red_neckel_coefficients(float(pprefs[ipref])*1e-10, mu[nbindx[inb]])
             red_append, nbintensity_orig, median(ims)
           endif else begin
             red_append, nbintensity, median(ims)

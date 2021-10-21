@@ -70,8 +70,8 @@ mu = (findgen(100)+1)/100.
 n = n_elements(mu)
 
 
-ld = neckel_p5(lambda, mu)
-ld_anal = neckel_p5(lambda, mu, /analytical)
+ld = red_neckel_coefficients(lambda, mu)
+ld_anal = red_neckel_coefficients(lambda, mu, /analytical)
 
 
 cgplot, mu, ld, xtitle = '$\mu$', ytitle = 'Intensity' $
