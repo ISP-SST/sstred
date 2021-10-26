@@ -667,6 +667,10 @@ pro red::make_wb_cube, dir $
   ;; Add some keywords
   red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1
 
+  ;; POINT_ID (default - to be set manually later in case of grouping of files)
+  date_obs = fxpar(hdr, 'DATE-OBS', count = Ndate_obs)  
+  if Ndate_obs ne 0 then red_fitsaddkeyword, anchor = anchor, hdr, 'POINT_ID', date_obs else stop
+
   ;; Add info to headers
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'

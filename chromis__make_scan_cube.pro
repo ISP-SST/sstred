@@ -591,6 +591,10 @@ pro chromis::make_scan_cube, dir $
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
     
+    ;; POINT_ID (default - to be set manually later in case of grouping of files)
+    date_obs = fxpar(hdr, 'DATE-OBS', count = Ndate_obs)  
+    if Ndate_obs ne 0 then red_fitsaddkeyword, anchor = anchor, hdr, 'POINT_ID', date_obs else stop
+
     ;; Add info to headers
     red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
     red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
