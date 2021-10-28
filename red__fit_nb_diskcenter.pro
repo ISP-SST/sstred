@@ -186,7 +186,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
       if tunlength lt 5 then begin
         ;; Needs zero padding!
         tunsgn = strmid(tunsplt[1], 0, 1)
-        ptunings[ipref] = tunsplt[0] + '_' + tunsgn + string(abs(tunsplt[1]), format = '(i04)')
+        ptunings[ipref] = tunsplt[0] + '_' + tunsgn + '*' + string(abs(tunsplt[1]), format = '(i03)')
       endif
     endfor                      ; ipref
   endif
@@ -293,21 +293,13 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
 
             self -> get_calib, statesT[0], darkdata = darkT            
             self -> get_calib, statesR[0], darkdata = darkR          
-;
-;            imsT = red_readdata(fnamesT[0], head = hdrT, /silent) ; Select first file available            
-;            imsR = red_readdata(fnamesR[0], head = hdrR, /silent) ; Select first file available            
-;
-;            imsT = imsT[*, *, 0] - darkT           
-;            imsR = imsR[*, *, 0] - darkR             
 
             if self.dodescatter and (statesT[0].prefilter eq '8542' $
                                      or statesT[0].prefilter eq '7772') then begin
               self -> loadbackscatter, statesT[0].detector $              
                                        , statesT[0].prefilter, bgainT, bpsfT              
-              imsT = rdx_descatter(temporary(imsT), bgainT, bpsfT, nthreads = nthread)
               self -> loadbackscatter, statesR[0].detector $              
                                        , statesR[0].prefilter, bgainR, bpsfR              
-              imsR = rdx_descatter(temporary(imsR), bgainR, bpsfR, nthreads = nthread)
             endif
             
             ;; Demodulate
@@ -442,7 +434,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
           endelse
 
           if keyword_set(limb_darkening) then begin
-            red_append, nbintensity, median(ims) / red_neckel_coefficients(float(pprefs[ipref])*1e-10, mu[nbindx[inb]])
+            red_append, nbintensity, median(ims) / red_limb_darkening(float(pprefs[ipref])*1e-10, mu[nbindx[inb]])
             red_append, nbintensity_orig, median(ims)
           endif else begin
             red_append, nbintensity, median(ims)
