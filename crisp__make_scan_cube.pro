@@ -623,7 +623,7 @@ pro crisp::make_scan_cube, dir $
     
     ;; Crisp-T
 
-    pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_'+fitpref_time+'_prefilter.idlsave'
     if ~file_test(pfile) then begin
       print, inam + ' : prefilter file not found: '+pfile
       return
@@ -642,7 +642,7 @@ pro crisp::make_scan_cube, dir $
 
     ;; Crisp-R
 
-    pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_'+fitpref_time+'_prefilter.idlsave'
     if ~file_test(pfile) then begin
       print, inam + ' : prefilter file not found: '+pfile
       return

@@ -182,7 +182,8 @@ pro crisp::make_nb_cube, wcfile $
 ;                         , smooth = smooth $
                          , tiles = tiles $
                          , unsharp = unsharp $
-                         , wbsave = wbsave
+                         , wbsave = wbsave $
+                         , fitpref_time = fitpref_time
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -429,10 +430,26 @@ pro crisp::make_nb_cube, wcfile $
   wbcor = Nwb eq Nnbt and ~keyword_set(nostretch)
 
   ;; Load prefilters
+
+  if ~keyword_set(fitpref_time) then begin
+    fitpref_time=''
+    sc_time = red_time2double(timestamp)
+    pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+    if Npfls gt 0 then begin
+      tt = dblarr(Npfls)
+      ts = strarr(Npfls)
+      for ii=0,Npfls-1 do begin
+        ts[ii] = (strsplit(file_basename(pfls[ii]),'_',/extract))[2]
+        tt[ii] = abs(red_time2double(ts[ii]) - sc_time)
+      endfor
+      mn = min(tt,jj)
+      fitpref_time = ts[jj]
+    endif
+  endif
   
   ;; Crisp-T
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_'+fitpref_time+'_prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return
@@ -450,7 +467,7 @@ pro crisp::make_nb_cube, wcfile $
 
   ;; Crisp-R
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_'+fitpref_time+'_prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return
