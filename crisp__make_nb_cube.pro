@@ -432,7 +432,7 @@ pro crisp::make_nb_cube, wcfile $
   ;; Load prefilters
 
   if ~keyword_set(fitpref_time) then begin
-    fitpref_time=''
+    fitpref_time='_'
     sc_time = red_time2double(timestamp)
     pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
@@ -443,13 +443,13 @@ pro crisp::make_nb_cube, wcfile $
         tt[ii] = abs(red_time2double(ts[ii]) - sc_time)
       endfor
       mn = min(tt,jj)
-      fitpref_time = ts[jj]
+      fitpref_time = '_'+ts[jj]+'_'
     endif
   endif
   
   ;; Crisp-T
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_'+fitpref_time+'_prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_time+'prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return
@@ -467,7 +467,7 @@ pro crisp::make_nb_cube, wcfile $
 
   ;; Crisp-R
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_'+fitpref_time+'_prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_time+'prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return
