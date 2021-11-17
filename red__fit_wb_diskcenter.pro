@@ -76,6 +76,7 @@
 ;    2021-09-06 : MGL. New keyword limb_darkening. 
 ; 
 ;-
+
 pro red::fit_wb_diskcenter, dirs = dirs $
                             , exclude_dirs = exclude_dirs $
                             , fitexpr = fitexpr_in $
@@ -89,7 +90,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if keyword_set(limb_darkening) pref ne '8542' then begin
+  if keyword_set(limb_darkening) and pref ne '8542' then begin
     if n_elements(mu_limit) eq 0 then mu_limit = 0.50d    
   endif else begin
     if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
