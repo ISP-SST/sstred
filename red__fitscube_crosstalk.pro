@@ -237,8 +237,13 @@ pro red::fitscube_crosstalk, filename  $
     for iscan = 0, Nscans-1 do begin
       red_progressbar, iscan, Nscans, 'Reading and processing image data'
       for ippc = 0, n_elements(ppc)-1 do begin
-        red_fitscube_getframe, fileassoc, frame, istokes = 3, iscan = iscan, ituning = ppc[ippc] $
+        red_fitscube_getframe, fileassoc, Vframe, istokes = 3, iscan = iscan, ituning = ppc[ippc] $
                                , fitscube_info = fitscube_info
+        red_fitscube_getframe, fileassoc, Iframe, istokes = 0, iscan = iscan, ituning = ppc[ippc] $
+                               , fitscube_info = fitscube_info
+
+        ;; Use V/I, not just V!
+        frame = Vframe/Iframe
         red_missing, frame, missing_type_wanted = 'nan', /inplace
         
         frame_mask = finite(frame)
@@ -247,6 +252,7 @@ pro red::fitscube_crosstalk, filename  $
         if Nmissing gt 0 then frame[frame_indx] = !values.f_nan
         
         Vcube[0, 0, iscan, ippc] = frame
+        
       endfor                    ; ippc
     endfor                      ; iscan
     Vcube = reform(vcube,Nx,Ny,Nscans*n_elements(ppc))
@@ -319,7 +325,8 @@ pro red::fitscube_crosstalk, filename  $
                   , 'additional regions that show magnetic activity. Or you can accept its' $
                   , 'masking as is.']
     print
-    red_strflow, ['You can also choose to change the cutoff value of the automatic mask, either in a GUI or with the keyboard.' $
+    red_strflow, ['You can also choose to change the cutoff value of the automatic mask,' $
+                  , 'either in a GUI or with the keyboard.' $
                   , 'A larger value will mask more pixels, valid interval is [0,1].' $
                   , 'You will then be shown the new automatic mask and can choose again.']
     print
