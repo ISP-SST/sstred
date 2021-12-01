@@ -40,7 +40,8 @@
 ;    point_id : in, type=string
 ; 
 ;       A string identifying the observation. Typically the DATE-OBS
-;       of the first timestamp directory with the same pointing. 
+;       or STARTOBS keyword of data from the first timestamp directory
+;       with the same pointing.
 ; 
 ; 
 ; :Keywords:
