@@ -8,9 +8,9 @@
 ;    CRISP pipeline
 ; 
 ; 
-; :Author: J. de la Cruz Rodriguez & M. Löfdahl, Institute for Solar Physics
+; :Author: 
 ; 
-; 
+;    J. de la Cruz Rodriguez & M. Löfdahl, Institute for Solar Physics
 ; 
 ; 
 ; :Returns:
