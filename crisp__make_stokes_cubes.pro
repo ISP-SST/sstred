@@ -199,7 +199,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
     'FITS': extension = '.fits'
   endcase
 
-  wbgfile = file_search(dir + '*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension, count = Nfiles)
+  wbgfile = file_search(dir + '/*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension, count = Nfiles)
   if Nfiles ne 1 then stop
   self -> extractstates, wbgfile, wbgstate
 
@@ -237,7 +237,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
 
 
   ;; All other files for this scan
-  pertuningfiles = file_search(dir + '*_'+string(scanno, format = '(i05)') $
+  pertuningfiles = file_search(dir + '/*_'+string(scanno, format = '(i05)') $
                                + '_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*' $
                                + extension $
                                , count = Nfiles)
