@@ -128,6 +128,8 @@
 ;                 (if WB rubersheet correcions is not used) as a shift
 ;                 of the rotation axis. 
 ; 
+;    2021-12-02 : MGL. Accept new multi-directory wb cubes.
+; 
 ;-
 pro chromis::make_nb_cube, wcfile $
                            , clips = clips $
@@ -309,9 +311,7 @@ pro chromis::make_nb_cube, wcfile $
   
   ;; Prepare for making output file names
   if(n_elements(odir) eq 0) then odir = self.out_dir + '/cubes_nb/' 
-  midpart = prefilter + '_' + datestamp + '_scans=' $ 
-            + red_collapserange(uscans, ld = '', rd = '')
-  ofile = 'nb_'+midpart+'_corrected_im.fits'
+  ofile = red_strreplace(file_basename(wcfile), 'wb', 'nb')
   filename = odir+ofile
 
   ;; Already done?
@@ -921,11 +921,7 @@ pro chromis::make_nb_cube, wcfile $
                                   , comment = 'Average time of observation' $
                                   , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                   , axis_numbers = [3, 5] 
-;  self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
-;                                  , anchor = anchor $
-;                                  , comment = 'Applied response function' $
-;                                  , keyword_method = 'mean' $
-;                                  , axis_numbers = [3] 
+
   red_fitscube_addrespappl, filename, prefilter_curve, /tun
 
   ;; Copy variable-keywords from wb cube file.
@@ -999,3 +995,10 @@ pro chromis::make_nb_cube, wcfile $
   endif
   
 end
+
+a = chromisred(/dev)
+
+a -> make_nb_cube, 'cubes_wb2/wb_3950_2016-09-19T10:01:52_10:01:52=0_10:03:04=0_10:06:06=0_corrected_im.fits', /overwrite, odir = 'test/'
+
+end
+
