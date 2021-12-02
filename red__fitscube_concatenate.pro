@@ -124,8 +124,7 @@ pro red::fitscube_concatenate, infiles, outfile $
                     , hpln:dblarr(2,2) $
                     , time:dblarr(2,2) $
                   }, Ntuning, Nscans)
-  wcs_distortions = fltarr(Nx, Ny, Nscans)
-  
+   
   ;; Sort files based on DATE-BEG. This way scans will be concatenated
   ;; in the correct order, assuming the cubes do not overlap in the
   ;; time dimension.
@@ -161,17 +160,15 @@ pro red::fitscube_concatenate, infiles, outfile $
 
     if naxis[0, ifile] ne Nx and  naxis[1, ifile] ne Ny then begin
       ;; Note that hpln and hplt are corner coordinates so need to be
-      ;; scaled to frame size used here. (Better to use mid point and
+      ;; scaled to the frame size used here. (Better to use mid point and
       ;; calculate corners from that?) 
-;      hpln_length = coordinates[0,0].hpln[1,0]-coordinates[0,0].hpln[0,0]
-;      hplt_length = coordinates[0,0].hplt[0,1]-coordinates[0,0].hplt[0,0]
       facx = float(Nx)/float(naxis[0, ifile])      
       facy = float(Ny)/float(naxis[1, ifile])
       coordinates.hpln *= facx
       coordinates.hplt *= facy
     endif
     
-    
+    red_append, scannos, red_collapserange(scannum_values.values, /nobrackets)
     
     for i = 0L, Nscans_in-1 do begin
       date_beg_array[*, i+iscan] = (reform(date_beg_values.values))[*, i]      
@@ -184,41 +181,44 @@ pro red::fitscube_concatenate, infiles, outfile $
       date_obs_array[i+iscan]    = (reform(date_obs_values.values))[i]
 
       wcs[*, i+iscan] = coordinates[*, i]
-      
-      ;; Note: possibly two cmaps for CHROMIS Ca II
-      wcs_distortions[*, *, i+iscan] = red_centerpic(distortions.wave[*, *, *, *, i] $
-                                                     , xsize = Nx, ysize = Ny $
-                                                     , z = !Values.F_NaN)
+
+      ;; Cavity maps
+      if ifile eq 0 and i eq 0 then begin
+        Ncprefs = n_elements(distortions) ; # of prefilters for which there are cmaps
+        wcs_distortions = fltarr(Nx, Ny, 1, 1, Nscans, Ncprefs)
+        cprefs = strarr(Ncprefs)
+        wcs_tun_indx = strarr(Ncprefs)
+      endif
+      for icpref = 0, Ncprefs-1 do begin
+        wcs_distortions[*, *, *, *, i+iscan, icpref] = red_centerpic(distortions[icpref].wave[*, *, *, *, i] $
+                                                                     , xsize = Nx, ysize = Ny $
+                                                                     , z = !Values.F_NaN)
+      endfor                    ; icpref
+
     endfor                      ; i
-   
+
+    for icpref = 0, Ncprefs-1 do begin
+      wcs_tun_indx[icpref] = distortions[icpref].tun_index        
+      cprefs[icpref] = ''       ; Should be set to the prefilter tag. Not crucial but nicer.         
+    endfor                      ; icpref
+    
     iscan += Nscans_in
     
   endfor                        ; ifile
-
   
-  
-  ;; Make default outfile name if needed. Concatenated cubes to be
-  ;; stored in cubes_concatenated/ subdir.
+  ;; Make default outfile name if needed.
   if n_elements(outfile) eq 0 then begin
-;;    outfile = 'cubes_concatenated/default_filename.fits' ; Improve on this...
-    ;; Start constructing the output file name
-    datestamps = (stregex(instates[indx].filename,'T([0-2][0-9]:[0-5][0-9]:[0-6][0-9])_',/extra,/sub))[1,*] 
-    ustamps = datestamps[uniq(datestamps, sort(datestamps))]
-    nStamps = n_elements(ustamps)
-;    dirs = file_dirname(infiles)
-;    dirs = dirs[uniq(dirs, sort(dirs))]
-;    nDirs = n_elements(dirs)
-    for istamp = 0, nStamps-1 do begin
-      indx = where(strmatch(datestamps, ustamps[istamp]+'*'))
-      scn = red_collapserange(instates[indx].scannumber,r='',l='')
-      tst = (stregex(instates[indx[0]].filename,'T([0-2][0-9]:[0-5][0-9]:[0-6][0-9])_',/extra,/sub))[1]
-      red_append, midparts, tst+'='+scn
-    endfor                      ; idir
-    prefilter = instates[0].prefilter
-    datestamp = fxpar(red_readhead(infiles[0]), 'STARTOBS')
-    midpart = prefilter + '_' + datestamp + '_' + strjoin(midparts, '_')
-    outfile = 'cubes_concatenated/nb_'+midpart+'_corrected_concatenated_im.fits'
+    timestamps = (stregex(instates[indx].filename,'T([0-2][0-9]:[0-5][0-9]:[0-6][0-9])_',/extra,/sub))[1,*] 
+    outfile = 'cubes_concatenated/' $
+              + red_fitscube_filename('nb' $
+                                      , instates[0].prefilter $
+                                      , timestamps $                                    
+                                      , scannos $                                    
+                                      , point_id $
+                                      , datatags = ['im'] $
+                                     )
   endif
+  
   odir = file_dirname(outfile)
   file_mkdir, odir
 
@@ -253,7 +253,6 @@ pro red::fitscube_concatenate, infiles, outfile $
   for ifile = 0, Nfiles-1 do begin
     
     Nscans_in = naxis[4, ifile]
-    print, ifile, Nscans_in
     
     for iscan_in = 0L, Nscans_in-1 do begin
       
@@ -261,23 +260,18 @@ pro red::fitscube_concatenate, infiles, outfile $
         for istokes = 0L, Nstokes-1 do begin
           
           red_progressbar, iprogress, Nprogress $
-                           , infiles[ifile]+strjoin(string([ifile, iscan_in, ituning, istokes]), ',')
+                           , infiles[ifile]+' '+strjoin(strtrim([ifile, iscan_in, ituning, istokes], 2), ',')
           
           red_fitscube_getframe, infiles[ifile], frame $
                                  , iscan = iscan_in, ituning = ituning, istokes = istokes
 
           ;;  Set missing pixels to NaN.
           red_missing, frame, missing_type_wanted = 'nan', /inplace
-
-          if ituning eq 0 and istokes eq 0 then print
-          if ituning eq 0 and istokes eq 0 then stats, frame
           
           ;; Pad to largest frame size
           frame = red_centerpic(frame $
                                 , xsize = Nx, ysize = Ny $
                                 , z = !Values.F_NaN)
-
-          if ituning eq 0 and istokes eq 0 then stats, frame
           
           red_fitscube_addframe, fileassoc, frame $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
@@ -294,8 +288,18 @@ pro red::fitscube_concatenate, infiles, outfile $
   endfor                        ; ifile
 
   ;; Finish the outfile 
-  self -> fitscube_finish, lun
+  self -> fitscube_finish, lun, wcs=wcs
 
+  ;; Add cavity maps
+  for icpref = 0, Ncprefs-1 do begin
+    red_fitscube_addcmap, outfile, wcs_distortions[*, *, *, *, *, icpref] $
+                          , cmap_number = icpref+1 $
+                          , prefilter = cprefs[icpref] $
+                          , indx = red_expandrange(wcs_tun_indx[icpref])
+  endfor                        ; icpref
+
+  
+  
   ;; Add variable keywords.
   self -> fitscube_addvarkeyword, outfile, 'DATE-BEG', date_beg_array $
                                   , anchor = anchor $
@@ -388,8 +392,6 @@ pro red::fitscube_concatenate, infiles, outfile $
     
   end
 
-
-  
   ;; Store infiles strarr in outfile. One per frame so we have both
   ;; strarr and scanno for each frame.
 
@@ -404,6 +406,21 @@ pro red::fitscube_concatenate, infiles, outfile $
   
 
 end
+
+
+cd, '/scratch/olexa/2020-04-21/CHROMIS'
+a = chromisred(/dev)
+infiles = 'cubes_nb/nb_3950_2020-04-21T07:57:08_scans='+['0-10', '11-20']+'_corrected_im.fits'
+
+a -> fitscube_concatenate, infiles, outfile, /overwrite
+
+red_fitscube_getwcs, outfile  $
+                     , coordinates = coordinates $
+                     , distortions = distortions
+
+help, coordinates, distortions
+
+stop
 
 cd, '/scratch/mats/2016.09.19/CRISP-aftersummer'
 a = crispred(/dev)
