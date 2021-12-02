@@ -25,6 +25,10 @@
 ;       The array of numbers.
 ; 
 ; :Keywords:
+;
+;    nobrackets : in, optional, type=boolean
+; 
+;       Set both ld and rd to the empty string. 
 ; 
 ;    ld : in, optional, type=string, default='['
 ;   
@@ -45,13 +49,20 @@
 ; 
 ;     2017-06-29 : MGL. Use rdx_ints2str, will create colon syntax
 ;                  with increments.
+; 
+;     2021-12-02 : MGL. New keyword nobrackets.
 ;
 ;-
-function red_collapserange, arr, ld = ld, rd = rd
+function red_collapserange, arr, ld = ld, rd = rd, nobrackets = nobrackets
   
-  if n_elements(ld) eq 0 then ld = '['
-  if n_elements(rd) eq 0 then rd = ']'
-
+  if keyword_set(nobrackets) then begin
+    ld = ''
+    rd = ''
+  endif else begin
+    if n_elements(ld) eq 0 then ld = '['
+    if n_elements(rd) eq 0 then rd = ']'
+  endelse
+  
   case n_elements(arr) of
     0    : return, ld + rd
     1    : return, ld + strtrim(arr, 2) + rd
