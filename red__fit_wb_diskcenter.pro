@@ -254,7 +254,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
             
 
             if keyword_set(limb_darkening) then begin
-              red_append, wbintensity, median(ims) / red_neckel_coefficients(float(upref[ipref])*1e-10, mu[wbindx[iwb]])
+              red_append, wbintensity, median(ims) / red_limb_darkening(float(upref[ipref])*1e-10, mu[wbindx[iwb]])
               red_append, wbintensity_orig, median(ims)
             endif else begin
               red_append, wbintensity, median(ims)
@@ -404,7 +404,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
 
     ;; Transform the fitted expression for printing
     for ipref = 0, Nprefs-1 do begin
-      fitexpr_used[ipref] = strlowcase(fitexpr_used)
+      fitexpr_used[ipref] = strlowcase(fitexpr_used[ipref])
       fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*x*x*','x$\exp4$')
       fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*x*','x$\exp3$')
       fitexpr_used[ipref] = red_strreplace(fitexpr_used[ipref],'x*x*','x$\exp2$')
@@ -419,7 +419,11 @@ pro red::fit_wb_diskcenter, dirs = dirs $
               ;;, titles = upref + ' : ' + coeffs_str $
               , location = [0.9, 0.12], align = 2 $
               , colors = colors, psym = 16, length = 0, vspace = 2
-    cgcontrol, output = wbdir+'wb_intensities.pdf'
+    if Nprefs eq 1 then $
+       graph_name = 'wb_intensities_'+upref+'.pdf' $
+    else $
+       graph_name = 'wb_intensities.pdf'
+    cgcontrol, output = wbdir+graph_name
 
   endif
 
