@@ -66,18 +66,33 @@ function red_fitscube_filename, filetype, prefilter, timestamps, scannos, point_
                                 , datatags = datatags $
                                 , oldname = oldname
 
-  Nstamps = n_elements(timestamps)
-  if Nstamps eq 0 then stop
-  if n_elements(scannos) ne Nstamps then stop
+  Nsets = n_elements(timestamps)
+  if n_elements(scannos) ne Nsets then stop
   
-  if keyword_set(oldname) and Nstamps eq 1 then begin
+  ;;Nstamps = n_elements(timestamps)  
+  ;;if n_elements(scannos) ne Nstamps then stop
+  
+  if keyword_set(oldname) and Nsets eq 1 then begin
  
     midparts = timestamps[0] + '_scans=' + scannos[0]
 
   endif else begin
 
-    for istamp = 0, Nstamps-1 do red_append, midparts, timestamps[istamp] + '=' + scannos[istamp]
+    ustamps = timestamps[uniq(timestamps, sort(timestamps))]  
+    Nstamps = n_elements(ustamps)  
+    if Nstamps eq 0 then stop  
 
+    if Nstamps eq Nsets then begin
+      for istamp = 0, Nstamps-1 do red_append, midparts, timestamps[istamp] + '=' + scannos[istamp]
+    endif else begin
+      ;; Fewer timestamps than sets
+      for istamp = 0, Nstamps-1 do begin
+        indx = where(timestamps eq ustamps[istamp])
+        stampstrings = strjoin(scannos[indx], '+')
+        red_append, midparts, timestamps[istamp] + '=' + stampstrings
+      endfor                    ; istamp
+    endelse
+    
   endelse
 
   if n_elements(datatags) eq 0 then begin
