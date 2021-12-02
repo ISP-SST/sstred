@@ -148,11 +148,11 @@ pro red::fitscube_concatenate, infiles, outfile $
 
     ;; SCANNUM is not a variable keywords in scancubes
     tmp = red_fitsgetkeyword(infiles[ifile], 'SCANNUM',  variable_values = scannum_values)      
-    if n_elements(scannum_values) eq 0 then scannum_values = { values:tmp }
-
+    if n_tags(scannum_values) lt 3 then scannum_values = { values:tmp }
+    
     ;; DATE-OBS is not always a variable keyword.
     tmp = red_fitsgetkeyword(infiles[ifile], 'DATE-OBS', variable_values = date_obs_values)    
-    if n_elements(date_obs_values) ne Nscans_in then date_obs_values = { values:replicate(tmp, Nscans_in) }
+    if n_tags(date_obs_values) lt 3 then date_obs_values = { values:replicate(tmp, Nscans_in) }
     
     red_fitscube_getwcs, infiles[ifile]  $
                          , coordinates = coordinates $
@@ -209,6 +209,7 @@ pro red::fitscube_concatenate, infiles, outfile $
   ;; Make default outfile name if needed.
   if n_elements(outfile) eq 0 then begin
     timestamps = (stregex(instates[indx].filename,'T([0-2][0-9]:[0-5][0-9]:[0-6][0-9])_',/extra,/sub))[1,*] 
+    
     outfile = 'cubes_concatenated/' $
               + red_fitscube_filename('nb' $
                                       , instates[0].prefilter $
@@ -408,19 +409,19 @@ pro red::fitscube_concatenate, infiles, outfile $
 end
 
 
-cd, '/scratch/olexa/2020-04-21/CHROMIS'
-a = chromisred(/dev)
-infiles = 'cubes_nb/nb_3950_2020-04-21T07:57:08_scans='+['0-10', '11-20']+'_corrected_im.fits'
-
-a -> fitscube_concatenate, infiles, outfile, /overwrite
-
-red_fitscube_getwcs, outfile  $
-                     , coordinates = coordinates $
-                     , distortions = distortions
-
-help, coordinates, distortions
-
-stop
+;cd, '/scratch/olexa/2020-04-21/CHROMIS'
+;a = chromisred(/dev)
+;infiles = 'cubes_nb/nb_3950_2020-04-21T07:57:08_scans='+['0-10', '11-20']+'_corrected_im.fits'
+;
+;a -> fitscube_concatenate, infiles, outfile, /overwrite
+;
+;red_fitscube_getwcs, outfile  $
+;                     , coordinates = coordinates $
+;                     , distortions = distortions
+;
+;help, coordinates, distortions
+;
+;stop
 
 cd, '/scratch/mats/2016.09.19/CRISP-aftersummer'
 a = crispred(/dev)
