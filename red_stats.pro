@@ -36,10 +36,12 @@
 ;      2013-09-11 : MGL. Renamed red_stats for inclusion in crispred
 ;                   pipeline. 
 ;
-;      2013-09-12 : MGL. Substituted "print" for ANA-ism "type".
+;      2013-09-12 : MGL. Substituted "print" for ANA-ism "type". 
+;
+;      2021-12-01 : MGL. New keywords out and heading.
 ;
 ;-
-pro red_stats, x, name=name			   ; Show statistics about x
+pro red_stats, x, name=name, out = out, heading = heading ; Show statistics about x
 
   DivisorString = '------------------------------------------------------------------'
 
@@ -48,6 +50,13 @@ pro red_stats, x, name=name			   ; Show statistics about x
   MeanString = strtrim(String(Mean(float(x))),2)
   DevString  = strtrim(String(StDev(float(x))),2)
 
+  heading = 'Min, Mean, Max, StDev:'
+  
+  if arg_present(out) then begin
+    out = MinString+' '+MeanString+' '+MaxString+' '+DevString
+    return
+  endif
+  
   IF n_elements(name) gt 0 THEN BEGIN
      print,DivisorString
      print,'Min, Mean, Max, StDev of '+name+':'  
