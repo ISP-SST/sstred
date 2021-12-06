@@ -20,9 +20,9 @@
 ; 
 ; :Params:
 ; 
-;     dir : in, type=string
+;     dirs : in, type=strarr
 ; 
-;       The directory where the momfbd output is stored.
+;       The directories where the momfbd output is stored. 
 ; 
 ; 
 ; :Keywords:
@@ -99,15 +99,28 @@
 ;
 ;      Length of subcubes to use for alignment. See red_aligncube.
 ;
+;    oldname : in, optional, type=boolean
+;
+;      For data from a single datestamp directory, construct the
+;      filename as before multiple directories were implemented.
+;
+;    point_id : in, optional, type=string, default="From first file"
+;
+;      Value for the POINT_ID header keyword. By default the value if
+;      POINT_ID in the temporally first file or, if that does not
+;      exist, the value of DATE-OBS in the temporally first file.
+;
 ;    rotation : in, optional, type=float
 ;
 ;      Offset angle to be added to the field rotation angles.
 ;
-;    scannos : in, optional, type=string, default="ask"
+;    scannos : in, optional, type=strarr, default="ask"
 ;
 ;       Choose scan numbers to include in the sequence by entering a
-;       comma-and-dash delimited string, like '2-5,7-20,22-30' or the
-;       string '*' to include all.
+;       comma-and-dash delimited string per input directory, like
+;       '2-5,7-20,22-30' or the string '*' to include all. Each
+;       element in scannos refers to the corresponding element in the
+;       dirs parameter and should have the same number of elements.
 ;
 ;    subtract_meanang : in, optional, type=boolean
 ;
@@ -192,9 +205,12 @@
 ;    2020-10-28 : MGL. Remove statistics calculations.
 ; 
 ;    2020-11-09 : MGL. New keyword nostretch.
+; 
+;    2021-11-23 : MGL. Combine data from multiple datestamp
+;                 directories. New keywords oldname and point_id. 
 ;
 ;-
-pro red::make_wb_cube, dir $
+pro red::make_wb_cube, dirs $
                        , align_interactive = align_interactive $
                        , autocrop = autocrop $
                        , clip = clip $
@@ -208,6 +224,7 @@ pro red::make_wb_cube, dir $
                        , nomissing_nans = nomissing_nans $
                        , nostretch = nostretch $
                        , np = np $
+                       , oldname = oldname $
                        , rotation = rotation $
                        , scannos = scannos $
                        , subtract_meanang = subtract_meanang $
@@ -216,22 +233,35 @@ pro red::make_wb_cube, dir $
                        , xbd = xbd $
                        , ybd = ybd $
                        , nthreads = nthreads $
-                       , nearest = nearest
+                       , nearest = nearest $
+                       , point_id = point_id
 
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  ;; dirs and scannos should be strarrs of the same length (or scannos
+  ;; not given)
+  nDirs = n_elements(dirs)
+  if nDirs eq 0 then begin
+    print, inam + ' : Please specify the directory with momfbd output.'
+    retall
+  endif
+  if n_elements(scannos) eq 0 then scannos = replicate('*', nDirs)
+  if nDirs ne n_elements(scannos) then stop
+
+  ;; Sort the dirs
+  indx = sort(dirs)
+  dirs = dirs[indx]
+  scannos = scannos[indx]
+ 
   if(~keyword_set(nearest)) then lin = 1 else lin = 0
   
   
   ;; Name of the instrument
   instrument = ((typename(self)).tolower())
 
-  if n_elements(dir) eq 0 then begin
-    print, inam + ' : Please specify the directory with momfbd output.'
-    retall
-  endif
-
+ 
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   
@@ -245,6 +275,7 @@ pro red::make_wb_cube, dir $
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
+  red_make_prpara, prpara, point_id 
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, subtract_meanang
   red_make_prpara, prpara, tile
@@ -275,20 +306,25 @@ pro red::make_wb_cube, dir $
     'FITS': extension = '.fits'
   endcase
 
-  if ~keyword_set(scannos) || scannos eq '*' then srch = '*' $
-  else srch = '*_' + string(red_expandrange(scannos), format='(I05)') + '_*'
-  files = file_search(dir + srch + extension, count = Nfiles)
-
-  if Nfiles eq 0 then begin
-    print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
-    s = ''
-    read, 'Do you want to make a raw wb cube? [yN] ', s
-    if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
-      make_raw = 1
-    endif else retall
-  endif
+  for idir = 0, nDirs-1 do begin
+    if scannos[idir] eq '*' then srch = '*' $
+    else srch = '*_' + string(red_expandrange(scannos), format='(I05)') + '_*'
+    fls = file_search(dirs[idir] + srch + extension, count = Nfls)
+    if Nfls gt 0 then red_append, files, fls
+  endfor
+  Nfiles = n_elements(files)
+  
+;  if Nfiles eq 0 then begin
+;    print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
+;    s = ''
+;    read, 'Do you want to make a raw wb cube? [yN] ', s
+;    if strupcase(strmid(s, 0, 1)) eq 'Y' then begin
+;      make_raw = 1
+;    endif else retall
+;  endif
 
   if keyword_set(make_raw) then begin
+    stop
     ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
     files = red_raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/', scannos = scannos, count = Nraw)
     if Nraw eq 0 then stop
@@ -335,44 +371,38 @@ pro red::make_wb_cube, dir $
     datestamp = fxpar(red_readhead(wfiles[0]), 'STARTOBS')
   endelse
 
-  ;; Get a subset of the available scans, either through the scannos
-  ;; keyword or by a selection dialogue.
-  if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
-    if n_elements(scannos) gt 0 then begin
-      ;; Selected a subset through the scannos keyword
-      uscans = red_expandrange(scannos)
-      match2, uscans, wstates.scannumber, scanindx
-      if max(scanindx eq -1) eq 1 then begin
-        print, inam + ' : You asked for scans ' + scannos + '. However, scans ' $
-               + red_collapserange(uscans[where(scanindx eq -1)], ld = '', rd = '') $
-               + ' are not available.'
-        print, 'Please change the scannos keyword to a subset of ' $
-               + red_collapserange(wstates.scannumber, ld = '', rd = '') $
-               + ' and try again.'
-        retall
-      endif
-      Nscans = n_elements(scanindx)
-    endif else begin
-      ;; Selection dialogue
-      selectionlist = strtrim(wstates[uniq(wstates.scannumber, sort(wstates.scannumber))].scannumber, 2)
-      tmp = red_select_subset(selectionlist $
-                              , qstring = inam + ' : Select scans:' $
-                              , count = Nscans, indx = scanindx)
-    endelse
-    wstates = wstates[scanindx]
-    wfiles  = wfiles[scanindx]
-  endif
+;  ;; Get a subset of the available scans, either through the scannos
+;  ;; keyword or by a selection dialogue.
+;  for idir = 0, nDirs-1 do begin
+;    if ~(scannos[idir] eq '*') then begin
+;      ;; Selected a subset through the scannos keyword
+;      uscans = red_expandrange(scannos[idir])
+;      match2, uscans, wstates.scannumber, scanindx
+;      if max(scanindx eq -1) eq 1 then begin
+;        print, inam + ' : You asked for scans ' + scannos + '. However, scans ' $
+;               + red_collapserange(uscans[where(scanindx eq -1)], ld = '', rd = '') $
+;               + ' are not available.'
+;        print, 'Please change the scannos keyword to a subset of ' $
+;               + red_collapserange(wstates.scannumber, ld = '', rd = '') $
+;               + ' and try again.'
+;        retall
+;      endif
+;      Nscans = n_elements(scanindx)
+;      wstates = wstates[scanindx]
+;      wfiles  = wfiles[scanindx]
+;  endif
+;  endfor                        ; idir
   
   uscans = wstates.scannumber
   time = strarr(Nscans)
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
-  
+
   x01y01 = red_bad_subfield_crop(wfiles, crop $
-                         , autocrop = autocrop  $
-                         , direction = direction $
-                         , interactive = interactive)
-  
+                                 , autocrop = autocrop  $
+                                 , direction = direction $
+                                 , interactive = interactive)
+
   x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
@@ -387,6 +417,7 @@ pro red::make_wb_cube, dir $
   exp_array      = fltarr(1, Nscans) ; Total exposure time
   sexp_array     = fltarr(1, Nscans) ; Single exposure time
   nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
+  date_obs_array = strarr(Nscans)    ; Datasets for each scan
 
   ;; Read headers to get obs_time and load the images into a cube
   cub = fltarr(origNx, origNy, Nscans)
@@ -416,6 +447,8 @@ pro red::make_wb_cube, dir $
     tend_array[0, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
     tavg_array[0, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
+    date_obs_array[iscan] = fxpar(hdr, 'DATE-OBS')
+    
     ;; Exposure time
     exp_array[0, iscan]  = fxpar(hdr, 'XPOSURE')
     sexp_array[0, iscan] = fxpar(hdr, 'TEXPOSUR', count = Ntexposure)
@@ -459,10 +492,15 @@ pro red::make_wb_cube, dir $
     endelse
     
   endfor                        ; iscan
+
+  hdr = red_readhead(wfiles[0]) ; Base cube header on first WB file header
   
   ;; Plot the intensity variations
-  cgplot, uscans, tmean/mean(tmean), xtitle = 'Scan number', ytitle = 'Intensity correction', psym=-1, /ynozero
-
+  red_timeplot, red_time2double(time), tmean/mean(tmean) $
+                , xtitle = 'Time', ytitle = 'Intensity correction' $
+                , psym=-16, /ynozero $
+                , xrange = [red_time2double(time[0]), red_time2double(time[-1])] + 20*[-1, 1]
+  
 ;  ;; Normalize intensity
 ;  tmean = tmean/mean(tmean)
   for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
@@ -571,7 +609,8 @@ pro red::make_wb_cube, dir $
   print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
   ;; Calculate stretch vectors
-  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep, nthreads = nthreads, nostretch = nostretch)
+  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep $
+                               , nthreads = nthreads, nostretch = nostretch)
 
   if ~keyword_set(nostretch) then begin
     for iscan = 0L, Nscans - 1 do begin
@@ -597,9 +636,25 @@ pro red::make_wb_cube, dir $
     odir = self.out_dir + '/cubes_wb/'
   endelse
   file_mkdir, odir
-  midpart = prefilter + '_' + datestamp + '_scans=' $
-            + red_collapserange(uscans, ld = '', rd = '')
-
+  
+;  if keyword_set(oldname) and nDirs eq 1 then begin
+;    midpart = prefilter + '_' + datestamp + '_scans=' $
+;              + red_collapserange(uscans, ld = '', rd = '')
+;  endif else begin
+;    ;; Start constructing the output file name
+    for idir = 0, nDirs-1 do begin
+      indx = where(strmatch(wstates.filename, dirs[idir]+'*'))
+      scn = red_collapserange(wstates[indx].scannumber,r='',l='')
+      tst = (stregex(wstates[indx[0]].filename,'/([0-2][0-9]:[0-5][0-9]:[0-6][0-9])/',/extra,/sub))[1]
+;      red_append, midparts, tst+'='+scn
+      red_append, timestamps, tst      
+      red_append, scannos_actual, scn
+    endfor                      ; idir
+;    midpart = prefilter + '_' + datestamp + '_' + strjoin(midparts, '_')
+;  endelse
+    
+  ;; midpart something like : 6302_2016-09-19T09:28:36_09:28:36=0,1_09:30:20=0-4
+  
   ;; Save WB results as a fits file
   if keyword_set(make_raw) then begin
     datatype = 'raw'
@@ -607,10 +662,28 @@ pro red::make_wb_cube, dir $
     datatype = 'corrected'
   endelse
   if n_elements(nametag) eq 0 then begin
-    ofil = 'wb_'+midpart+'_'+datatype+'_im.fits'
+    ;;  ofil = 'wb_'+midpart+'_'+datatype+'_im.fits'
+    datatags = [datatype, 'im']
   endif else begin
-    ofil = 'wb_'+midpart+'_'+nametag+'_'+datatype+'_im.fits'
+    ;;   ofil = 'wb_'+midpart+'_'+nametag+'_'+datatype+'_im.fits'
+    datatags = [nametag, datatype, 'im']
   endelse
+
+  ;; POINT_ID
+  date_obs = fxpar(hdr, 'DATE-OBS', count = Ndate_obs)  
+  if n_elements(point_id) eq 0 then begin
+    point_id = fxpar(hdr, 'POINT-ID', count = Npoint_id)
+    if Npoint_id eq 0 then point_id = date_obs
+  endif
+
+  ofil = red_fitscube_filename('wb' $
+                               , prefilter $                               
+                               , timestamps $                               
+                               , scannos_actual $                               
+                               , point_id $                   
+                               , datatags = datatags $                               
+                               , oldname = oldname $                               
+                              )
   print, inam + ' : saving WB corrected cube -> ' + odir + ofil
   
   ;; Add the wavelength and Stokes dimensions
@@ -667,10 +740,9 @@ pro red::make_wb_cube, dir $
   ;; Add some keywords
   red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1
 
-  ;; POINT_ID (default - to be set manually later in case of grouping of files)
-  date_obs = fxpar(hdr, 'DATE-OBS', count = Ndate_obs)  
-  if Ndate_obs ne 0 then red_fitsaddkeyword, anchor = anchor, hdr, 'POINT_ID', date_obs else stop
-
+  red_fitsaddkeyword, anchor = anchor, hdr, 'POINT_ID', point_id
+  red_fitsaddkeyword, anchor = anchor, hdr, 'INFILES', strjoin(wfiles,','), 'Concatenated files'
+  
   ;; Add info to headers
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
@@ -870,6 +942,12 @@ pro red::make_wb_cube, dir $
                                   , anchor = anchor $
                                   , keyword_method = 'first' $
                                   , axis_numbers = 5
+
+  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-OBS', date_obs_array $
+                                  , comment = 'Dataset' $
+                                  , anchor = anchor $
+                                  , keyword_method = 'first' $
+                                  , axis_numbers = 5
   
   self -> fitscube_addvarkeyword, odir + ofil, 'XPOSURE', exp_array $
                                   , comment = 'Summed exposure times' $
@@ -944,5 +1022,36 @@ pro red::make_wb_cube, dir $
     help, r0_values
   endif
   
+
+end
+
+a = crispred(/dev)
+dirs = 'momfbd_nopd/09:28:36/6302/cfg/results/'
+scannos = ['*']
+a -> make_wb_cube2, dirs, scannos = scannos
+
+stop
+
+if 1 then begin
+
+  a = crispred(/dev)
+  dirs = 'momfbd_nopd/'+['09:28:36', '09:30:20']+'/6302/cfg/results/'
+  scannos = ['*', '0-4']
+  a -> make_wb_cube, dirs, scannos = scannos
+
+  tmp = red_fitsgetkeyword('cubes_wb2/wb_6302_2016-09-19T09:28:36_scans=0,1,0-4_corrected_im.fits', 'SCANNUM',  variable_values = scannum_values)      
+  infiles = red_fitsgetkeyword('cubes_wb2/wb_6302_2016-09-19T09:28:36_scans=0,1,0-4_corrected_im.fits', 'INFILES')
+
+
+  hprint, strsplit(infiles, ',', /extract) + string(reform(scannum_values.values), format = '(i7)')
+
+endif else begin
+
+  a = chromisred(/dev)
+  dirs = 'momfbd/'+['10:01:52', '10:03:04', '10:06:06']+'/3950/cfg/results/'
+  scannos = ['*', '*', '0-4']
+  a -> make_wb_cube, dirs, scannos = scannos
+
+endelse
 
 end
