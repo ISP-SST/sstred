@@ -114,13 +114,15 @@
 ;
 ;      Offset angle to be added to the field rotation angles.
 ;
-;    scannos : in, optional, type=strarr, default="ask"
+;    scannos : in, optional, type=strarr, default="*"
 ;
 ;       Choose scan numbers to include in the sequence by entering a
 ;       comma-and-dash delimited string per input directory, like
 ;       '2-5,7-20,22-30' or the string '*' to include all. Each
 ;       element in scannos refers to the corresponding element in the
-;       dirs parameter and should have the same number of elements.
+;       dirs parameter and should have the same number of elements. A
+;       scalar scannos (like "0" or "*" ) is repeated for all
+;       directories. 
 ;
 ;    subtract_meanang : in, optional, type=boolean
 ;
@@ -247,21 +249,26 @@ pro red::make_wb_cube, dirs $
     print, inam + ' : Please specify the directory with momfbd output.'
     retall
   endif
-  if n_elements(scannos) eq 0 then scannos = replicate('*', nDirs)
-  if nDirs ne n_elements(scannos) then stop
 
+  case n_elements(scannos) of
+    nDirs :                                    ; Continue...
+    0 : scannos = replicate('*', nDirs)        ; Default is all scans
+    1 : scannos = replicate(scannos[0], nDirs) ; Repeat scalar value
+    else : stop                                ; We don't want scannos of other lengths
+  endcase
+  
   ;; Sort the dirs
   indx = sort(dirs)
   dirs = dirs[indx]
   scannos = scannos[indx]
- 
+  
   if(~keyword_set(nearest)) then lin = 1 else lin = 0
   
   
   ;; Name of the instrument
   instrument = ((typename(self)).tolower())
 
- 
+  
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   
@@ -269,7 +276,8 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, align_interactive
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
-  red_make_prpara, prpara, direction  
+  red_make_prpara, prpara, dirs    
+  red_make_prpara, prpara, direction    
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, negang
   red_make_prpara, prpara, nomissing_nans
@@ -277,7 +285,8 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, np
   red_make_prpara, prpara, point_id 
   red_make_prpara, prpara, rotation
-  red_make_prpara, prpara, subtract_meanang
+  red_make_prpara, prpara, scannos
+  red_make_prpara, prpara, subtract_meanang  
   red_make_prpara, prpara, tile
   red_make_prpara, prpara, tstep
   red_make_prpara, prpara, xbd
@@ -289,7 +298,7 @@ pro red::make_wb_cube, dirs $
   if keyword_set(limb_data) then autocrop = 0
 
   ;; Camera/detector identification
-  self->getdetectors
+  self -> getdetectors
   wbindx = where(strmatch(*self.cameras, instrument+'-W', /fold_case))
   wbcamera = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
@@ -308,7 +317,7 @@ pro red::make_wb_cube, dirs $
 
   for idir = 0, nDirs-1 do begin
     if scannos[idir] eq '*' then srch = '*' $
-    else srch = '*_' + string(red_expandrange(scannos), format='(I05)') + '_*'
+    else srch = '*_' + string(red_expandrange(scannos[idir]), format='(I05)') + '_*'
     fls = file_search(dirs[idir] + srch + extension, count = Nfls)
     if Nfls gt 0 then red_append, files, fls
   endfor
@@ -326,7 +335,8 @@ pro red::make_wb_cube, dirs $
   if keyword_set(make_raw) then begin
     stop
     ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
-    files = red_raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/', scannos = scannos, count = Nraw)
+    files = red_raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
+                           , scannos = scannos, count = Nraw)
     if Nraw eq 0 then stop
     self -> extractstates, files, states
 
@@ -1027,7 +1037,8 @@ end
 
 a = crispred(/dev)
 dirs = 'momfbd_nopd/09:28:36/6302/cfg/results/'
-scannos = ['*']
+dirs = 'momfbd_nopd/'+['09:28:36', '09:30:20']+'/6302/cfg/results/'
+scannos = ['0,1']
 a -> make_wb_cube, dirs, scannos = scannos
 
 stop
