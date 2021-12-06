@@ -1028,7 +1028,7 @@ end
 a = crispred(/dev)
 dirs = 'momfbd_nopd/09:28:36/6302/cfg/results/'
 scannos = ['*']
-a -> make_wb_cube2, dirs, scannos = scannos
+a -> make_wb_cube, dirs, scannos = scannos
 
 stop
 
