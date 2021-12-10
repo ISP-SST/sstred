@@ -121,6 +121,9 @@
 ; 
 ;   2021-10-20 : MGL. Save some time by storing smoothed versions of
 ;                the inverse demodulation matrices.
+;
+;   2021-12-10 : JdlCR. Make use of the new libgrid routines, now
+;                       ported to rdx and maintainable by us.
 ; 
 ;-
 pro crisp::demodulate, outname, immr, immt $
@@ -421,18 +424,16 @@ pro crisp::demodulate, outname, immr, immt $
     
     if n_elements(cmap) ne 0 then cmapp = 0.
     for ilc = 0L, Nlc-1 do begin
-      grid = red_dsgridnest(wbg, img_wb[*,*,ilc], tiles, clips)
+      grid = rdx_cdsgridnest(wbg, img_wb[*,*,ilc], tiles, clips, nthreads=nthreads)
       
       for istokes = 0L, Nstokes-1 do begin
-        rest[*,*,istokes] += red_stretch_linear(reform(mymt[ilc,istokes,*,*]) * img_t[*,*,ilc] $
-                                                , grid, nthreads=nthreads, nearest=nearest)
-        resr[*,*,istokes] += red_stretch_linear(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc] $
-                                                , grid, nthreads=nthreads, nearest=nearest)
+        rest[*,*,istokes] += rdx_cstretch(reform(mymt[ilc,istokes,*,*]) * img_t[*,*,ilc] $
+                                                , grid, nthreads=nthreads)
+        resr[*,*,istokes] += rdx_cstretch(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc] $
+                                                , grid, nthreads=nthreads)
         ;;stop
       endfor                    ; istokesstop
-      if n_elements(cmap) ne 0 then cmapp += red_stretch_linear(cmap, grid $
-                                                                , nthreads=nthreads $
-                                                                , nearest=nearest)
+      if n_elements(cmap) ne 0 then cmapp += rdx_cstretch(cmap, grid, nthreads=nthreads)
     endfor                      ; ilc
     if n_elements(cmap) ne 0 then cmapp /= Nlc
     

@@ -162,6 +162,10 @@
 ; 
 ;    2021-12-02 : MGL. Accept new multi-directory wb cubes.
 ;
+;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
+;                        ported to rdx and maintainable by us.
+; 
+;
 ;-
 pro crisp::make_nb_cube, wcfile $
                          , clips = clips $
@@ -870,7 +874,7 @@ pro crisp::make_nb_cube, wcfile $
             wwi = (red_readdata(scan_wbfiles[iim], direction = direction))[x0:x1, y0:y1]
 ;            wwi = (rotate(temporary(wwi), direction))[x0:x1, y0:y1]
             if keyword_set(unsharp) then wwi = wwi - smooth(wwi, 5)
-            grid1 = red_dsgridnest(wb, wwi, tiles, clips)
+            grid1 = rdx_cdsgridnest(wb, wwi, tiles, clips, nthreads=nthreads)
           endif
           
           ;; Reflected
@@ -878,7 +882,7 @@ pro crisp::make_nb_cube, wcfile $
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
-            this_im = red_stretch_linear(temporary(this_im), grid1, nthreads=nthreads, nearest = nearest)
+            this_im = rdx_cstretch(temporary(this_im), grid1, nthreads=nthreads)
           endif
           nbim += this_im
 
@@ -887,7 +891,7 @@ pro crisp::make_nb_cube, wcfile $
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
-            this_im = red_stretch_linear(temporary(this_im), grid1, nthreads = nthreads, nearest = nearest)
+            this_im = rdx_cstretch(temporary(this_im), grid1, nthreads = nthreads)
           endif
           nbim += this_im
 
@@ -895,7 +899,7 @@ pro crisp::make_nb_cube, wcfile $
             ;; Same operations as on narrowband image.
             this_im = wwi       ;* tscl[iscan] 
             if wbcor then begin
-              this_im = red_stretch_linear(temporary(this_im), grid1, nthreads = nthreads, nearest = nearest)
+              this_im = rdx_cstretch(temporary(this_im), grid1, nthreads = nthreads)
             endif
             wbim += this_im
           endif 
@@ -999,7 +1003,7 @@ pro crisp::make_nb_cube, wcfile $
           igrid = red_dsgridnest(wb, iwb, itiles, iclip, nthreads=nthreads)
           
           ;; Convolve CMAP and apply wavelength dep. de-warp
-          cmap2 = red_stretch_linear((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, nthreads=nthreads, nearest=nearest)
+          cmap2 = rdx_cstretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, nthreads=nthreads)
           
           ;; Derotate and shift
           cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $

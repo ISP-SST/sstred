@@ -129,6 +129,9 @@
 ;                 of the rotation axis. 
 ; 
 ;    2021-12-02 : MGL. Accept new multi-directory wb cubes.
+;
+;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
+;                 ported to rdx and maintainable by us.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -670,7 +673,7 @@ pro chromis::make_nb_cube, wcfile $
       ;; Get destretch to anchor camera (residual seeing)
       if wbcor then begin
         wwi = (red_readdata(scan_wbfiles[iwav], direction = direction))[x0:x1, y0:y1]
-        wb_grid = red_dsgridnest(wb, wwi, tiles, clips)
+        wb_grid = rdx_cdsgridnest(wb, wwi, tiles, clips)
       endif
 
       ;; Read image, apply prefilter curve and temporal scaling
@@ -701,7 +704,7 @@ pro chromis::make_nb_cube, wcfile $
         grid1 = wb_grid
         grid1[0,*,*] += cshift[0]
         grid1[1,*,*] += cshift[1]
-        nbim = red_stretch_linear(temporary(nbim), grid1, nearest=nearest, nthreads=nthreads)
+        nbim = rdx_cstretch(temporary(nbim), grid1, nthreads=nthreads)
         unrotated_shifts = [0,0]
       endif else begin
         unrotated_shifts = cshift
@@ -733,7 +736,7 @@ pro chromis::make_nb_cube, wcfile $
         ;; Same operations as on narrowband image, except for
         ;; "aligncont".
         wbim = wwi              ;* tscl
-        wbim = red_stretch_linear(temporary(wbim), wb_grid, nthreads=nthreads, nearest=nearest)
+        wbim = rdx_cstretch(temporary(wbim), wb_grid, nthreads=nthreads, nearest=nearest)
         bg = median(wbim)
         wbim = red_rotation(temporary(wbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
@@ -868,11 +871,11 @@ pro chromis::make_nb_cube, wcfile $
               im = momfbd_read(st.ofiles[ww,ss])
               
               ;; get dewarp from WB
-              igrid = red_dsgridnest(wb, iwb, itiles, iclip)
+              igrid = rdx_cdsgridnest(wb, iwb, itiles, iclip)
               
               ;; Convolve CMAP and apply wavelength dep. de-warp
-              cmap2 = red_stretch_linear((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, $
-                                         nearest=nearest, nthreads=nthreads)
+              cmap2 = rdx_cstretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, $
+                                   nthreads=nthreads)
               
               ;; Derotate and shift
               cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
