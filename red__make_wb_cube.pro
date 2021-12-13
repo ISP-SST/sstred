@@ -292,8 +292,8 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, xbd
   red_make_prpara, prpara, ybd
 
-  if n_elements(clip) eq 0 then clip = [12,  6,  3,  1]
-  if n_elements(tile) eq 0 then tile = [10, 20, 30, 40]
+  if n_elements(clip) eq 0 then clip = [12,  7,  4,  2, 1]
+  if n_elements(tile) eq 0 then tile = [12, 24, 36, 48, 64]
 
   if keyword_set(limb_data) then autocrop = 0
 

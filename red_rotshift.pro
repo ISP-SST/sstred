@@ -76,7 +76,11 @@
 ;                        the center of those dimensions.
 ;
 ;    2021-02-07 : JdlCR. Introduced unrotated_shifts, in order to
-;                        apply shifts that were measured before derotation.
+;                        apply shifts that were measured before
+;                        derotation.
+;
+;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
+;                        ported to rdx and maintainable by us.
 ;-
 function red_rotshift, arr, angle, dx, dy $
                        , background = background $
@@ -161,6 +165,9 @@ function red_rotshift, arr, angle, dx, dy $
   ygrid1 = si * xterm + co * yterm + ysi + ushifts_y
 
   
-  return, red_interpolate2D(xg, yg, arr, xgrid1, ygrid1, nthreads = nthreads $
-                            , nearest = nearest, missing = background)
+  ;;return, red_interpolate2D(xg, yg, arr, xgrid1, ygrid1, nthreads = nthreads $
+  ;;                          , nearest = nearest, missing =
+  ;;                          background)
+
+  return, rdx_interpol(arr, xgrid1, ygrid1, nthreads=nthreads, nearest=nearest, missing = background)
 end
