@@ -73,8 +73,12 @@ function red_fitscube_filename, filetype, prefilter, timestamps, scannos, point_
   ;;if n_elements(scannos) ne Nstamps then stop
   
   if keyword_set(oldname) and Nsets eq 1 then begin
- 
-    midparts = timestamps[0] + '_scans=' + scannos[0]
+
+    if n_elements(red_expandrange(scannos[0])) eq 1 then begin
+      midparts = 'scan=' + scannos[0]      
+    endif else begin
+      midparts = 'scans=' + scannos[0]      
+    endelse
 
   endif else begin
 
