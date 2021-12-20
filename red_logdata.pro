@@ -483,11 +483,11 @@ pro red_logdata, date, time $
         ;; If NaNs, try to get from turret
         tmp = where(finite(total(diskpos, 1)),compl=nanindx,ncompl=nnan)
         for inan = 0, Nnan-1 do diskpos[*, nanindx[inan]] = $
-           red_turret_select_pointing(turretdata, 'Disk', time = T[nanindx[inan]])
+           red_turret_select_pointing(turretdata, 'Pointing', isodate, time = T[nanindx[inan]])           
       end
       n_elements(turretdata) gt 0 : begin
         ;; Use Disk X/Y from the turret log file
-        diskpos = red_turret_select_pointing(turretdata, 'Disk', time = T)
+        diskpos = red_turret_select_pointing(turretdata, 'Pointing', isodate, time = T)
         ;; If we did not get data for all T points, maybe try to fill
         ;; in data by calculating from Stonyhurst?
       end
@@ -533,7 +533,10 @@ pro red_logdata, date, time $
 
 end
 
-red_logdata, '2020-10-16', red_time2double('08:06:58'), mu = mu, zenithangle = za
+red_logdata, '2013-06-26', time, diskpos = diskpos
 
+stop
+
+red_logdata, '2020-10-16', red_time2double('08:06:58'), mu = mu, zenithangle = za
 
 end
