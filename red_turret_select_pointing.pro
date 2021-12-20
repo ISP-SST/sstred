@@ -152,8 +152,6 @@ function red_turret_select_pointing, turretdata, pointingtype, isodate, time = t
   
   ;; If no interpolation then return all the data points
   if ~interpolate_time then return, pointing_all[indx]
-
-  stop
   
   ;; Interpolate but avoid gaps in data
   pointing[0, *] = red_interpol_nogaps(pointing_all[0, indx], turretdata[indx].time, time)
