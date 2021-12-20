@@ -322,8 +322,7 @@ pro red_logdata, date, time $
   get_pig_file = keyword_set(use_pig_time) $
                  || arg_present(pig) $
                  || arg_present(mu) $
-                 || arg_present(diskpos) $
-                 || arg_present(pointing)
+                 || arg_present(diskpos)
 
   get_turret_file = keyword_set(use_turret_time) $
                     || arg_present(turret) $
@@ -332,7 +331,6 @@ pro red_logdata, date, time $
                     || arg_present(tilt) $
                     || arg_present(stonyhurst) $
                     || arg_present(diskpos) $
-                    || arg_present(pointing) $
                     || arg_present(zenithangle)
   
 
@@ -518,18 +516,6 @@ pro red_logdata, date, time $
 ;    mu = cos(theta)
   endif
 
-
-  ;; Get the "best" pointing info from the PIG log file and the Turret
-  ;; log file. The idea is to use PIG pointing info whenever possible
-  ;; and use Turret pointing info when a) there is no PIG log file
-  ;; (old data) or b) the PIG lost tracking for an extended period of
-  ;; time. 
-  if arg_present(pointing) then begin
-
-    print, 'red_logdata : keyword "pointing" is not implemented yet.'
-    stop
-    
-  endif
 
 end
 
