@@ -417,9 +417,9 @@ pro red_getlog, date $
         ;; {'[NS]', value, '[EW]', value} : Stonyhurst
         ;; {'A',    value, 'E',    value} : Az/El tracking [deg]       
         ;; {'a',    value, 'e',    value} : Az/El wanted   [deg]       
-        ;; {'X',    value, 'Y',    value} : Disk position tracking [”] 
-        ;; {'x',    value, 'y',    value} : Disk position wanted   [”]  
-        ;; {'f',    value, 'f',    value} : Flat field mode?       [??]
+        ;; {'X',    value, 'Y',    value} : Disk position tracking ["] 
+        ;; {'x',    value, 'y',    value} : Disk position wanted   ["]  
+        ;; {'f',    value, 'f',    value} : Flat field mode?       ["]
 
         ;; Stonyhurst
         indx = where( (turretdata.pointtag1 eq 'N' or turretdata.pointtag1 eq 'S') $
@@ -428,7 +428,8 @@ pro red_getlog, date $
           turret[indx].pointingtype1 = 'Stonyhurst N [deg]'
           turret[indx].pointingtype2 = 'Stonyhurst W [deg]'
 
-          ;; Sign can be indicated by the opposite wind from N or W:
+          ;; Negative sign can be indicated by the opposite wind from
+          ;; N or W:
           negindx = where(turretdata.pointtag1[indx] eq 'S', count)
           if count gt 0 then turret[indx[negindx]].pointing1 *= -1
           negindx = where(turretdata.pointtag2[indx] eq 'E', count)
