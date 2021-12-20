@@ -425,45 +425,51 @@ pro red_getlog, date $
         indx = where( (turretdata.pointtag1 eq 'N' or turretdata.pointtag1 eq 'S') $
                       and (turretdata.pointtag2 eq 'E' or turretdata.pointtag2 eq 'W'), count )
         if count gt 0 then begin
-          turret[indx].pointingtype1 = 'Stonyhurst N'
-          turret[indx].pointingtype2 = 'Stonyhurst W'
+          turret[indx].pointingtype1 = 'Stonyhurst N [deg]'
+          turret[indx].pointingtype2 = 'Stonyhurst W [deg]'
 
+          ;; Sign can be indicated by the opposite wind from N or W:
           negindx = where(turretdata.pointtag1[indx] eq 'S', count)
           if count gt 0 then turret[indx[negindx]].pointing1 *= -1
-
           negindx = where(turretdata.pointtag2[indx] eq 'E', count)
           if count gt 0 then turret[indx[negindx]].pointing2 *= -1
         endif
-
+        
         ;; Az/El tracking [deg]       
-        indx = where( (turretdata.pointtag1 eq 'A'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Azimuth [deg]'
-        indx = where( (turretdata.pointtag2 eq 'E'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Elevation [deg]'
-          
+        indx = where( (turretdata.pointtag1 eq 'A') and (turretdata.pointtag2 eq 'E'), count )
+        if count gt 0 then begin
+          turret[indx].pointingtype1 = 'Azimuth [deg]'
+          turret[indx].pointingtype2 = 'Elevation [deg]'
+        endif
+        
         ;; Az/El wanted [deg]           
-        indx = where( (turretdata.pointtag1 eq 'a'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Wanted Azimuth [deg]'
-        indx = where( (turretdata.pointtag2 eq 'e'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Wanted Elevation [deg]'
+        indx = where( (turretdata.pointtag1 eq 'a') and (turretdata.pointtag2 eq 'e'), count )
+        if count gt 0 then begin
+          turret[indx].pointingtype1 = 'Wanted Azimuth [deg]'
+          turret[indx].pointingtype2 = 'Wanted Elevation [deg]'
+        endif
         
-        ;; Disk position tracking [”]
-        indx = where( (turretdata.pointtag1 eq 'X'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Disk X [deg]'
-        indx = where( (turretdata.pointtag2 eq 'Y'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Disk Y [deg]'
- 
-        ;; Disk position wanted [”]
-        indx = where( (turretdata.pointtag1 eq 'x'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Wanted Disk X [deg]'
-        indx = where( (turretdata.pointtag2 eq 'y'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Wanted Disk Y [deg]'
+        ;; Cartesian disk position tracking ["]
+        indx = where( (turretdata.pointtag1 eq 'X') and (turretdata.pointtag2 eq 'Y'), count )
+        if count gt 0 then begin
+          turret[indx].pointingtype1 = 'Disk X ["]'
+          turret[indx].pointingtype2 = 'Disk Y ["]'
+        endif
         
-        ;; Flat field mode? [??]
-        indx = where( (turretdata.pointtag1 eq 'f'), count )
-        if count gt 0 then turret[indx].pointingtype1 = 'Flat 1 [??]'
-        indx = where( (turretdata.pointtag2 eq 'f'), count )
-        if count gt 0 then turret[indx].pointingtype2 = 'Flat 2 [??]'
+        ;; Cartesian disk position wanted ["]
+        indx = where( (turretdata.pointtag1 eq 'x') and (turretdata.pointtag2 eq 'y'), count )
+        if count gt 0 then begin
+          turret[indx].pointingtype1 = 'Wanted Disk X ["]'
+          turret[indx].pointingtype2 = 'Wanted Disk Y ["]'
+        endif
+        
+        ;; Flat field mode? ["]
+        indx = where( (turretdata.pointtag1 eq 'f' or turretdata.pointtag1 eq 'F') $
+                      and (turretdata.pointtag2 eq 'f' or turretdata.pointtag2 eq 'F'), count )
+        if count gt 0 then begin
+          turret[indx].pointingtype1 = 'Flat 1 ["]'
+          turret[indx].pointingtype2 = 'Flat 2 ["]'
+        endif
         
       endif                     ; Nturret
       
