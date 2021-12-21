@@ -113,7 +113,8 @@ pro crisp::make_stokes_cubes, dir, scanno $
                               , stokesdir = stokesdir $
                               , tiles = tiles $
                               , nthreads = nthreads $
-                              , nearest = nearest
+                              , nearest = nearest $
+                              , fitpref_time = fitpref_time
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -265,10 +266,10 @@ pro crisp::make_stokes_cubes, dir, scanno $
 ;  stop
   
   ;; Load prefilters
-  
+  if ~keyword_set(fitpref_time) then fitpref_time='_'
   ;; Crisp-T
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_time+'prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return
@@ -283,7 +284,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
   
   ;; Crisp-R
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+'_prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_time+'prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return

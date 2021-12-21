@@ -164,7 +164,6 @@
 ;
 ;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                 ported to rdx and maintainable by us.
-; 
 ;
 ;-
 pro crisp::make_nb_cube, wcfile $
@@ -388,22 +387,24 @@ pro crisp::make_nb_cube, wcfile $
   wbcor = Nwb eq Nnbt and ~keyword_set(nostretch)
 
   ;; Load prefilters
-
   if ~keyword_set(fitpref_time) then begin
     fitpref_time='_'
-    sc_time = red_time2double(timestamp)
-    pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+    dt = strtrim(fxpar(wchdr0, 'DATE-AVG'), 2)
+    avg_ts = (strsplit(dt, 'T', /extract))[1]
+    avg_time = red_time2double(avg_ts)
+    pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+ $
+                         '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
       tt = dblarr(Npfls)
       ts = strarr(Npfls)
       for ii=0,Npfls-1 do begin
         ts[ii] = (strsplit(file_basename(pfls[ii]),'_',/extract))[2]
-        tt[ii] = abs(red_time2double(ts[ii]) - sc_time)
+        tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
       endfor
       mn = min(tt,jj)
       fitpref_time = '_'+ts[jj]+'_'
     endif
-  endif
+  endif  
   
   ;; Crisp-T
 
@@ -605,7 +606,8 @@ pro crisp::make_nb_cube, wcfile $
                                  , stokesdir = stokesdir $
                                  , tiles = tiles $
                                  , nearest = nearest $
-                                 , nthreads = nthreads
+                                 , nthreads = nthreads $
+                                 , fitpref_time = fitpref_time
 
       snames[iscan, *] = these_snames
       
@@ -1087,10 +1089,13 @@ pro crisp::make_nb_cube, wcfile $
   
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
-  self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
+  self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod $
+                                  ,fitpref_time = fitpref_time 
   
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
+    print, 'Press any key to make crosstalk correction'
+    q=get_kbrd(/KEY_NAME)
     ;; Correct the cube for cross-talk, I --> Q,U,V.
     self -> fitscube_crosstalk, filename
 
