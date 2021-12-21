@@ -157,9 +157,13 @@ if have_solarsoft then begin
   
 endif
 
+red_logdata, isodate, disktime, diskpos = diskpos
+
+
 cgwindow
 cgplot, /add,hpc_sunpy[0,*],hpc_sunpy[1,*], psym=16, xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"', title = 'Helioprojective Cartesian', /yno
 cgplot, /add, /over, hpc[0,*],hpc[1,*], psym=16, color = 'red'
+if 1 then cgplot, /add, /over, diskpos[0,*],diskpos[1,*], psym=16, color = 'purple'
 if have_solarsoft then begin
   cgplot, /add, /over, hpc_lonlat2xy[0,*],hpc_lonlat2xy[1,*], psym=16, color = 'blue'
   cglegend, /add, title = ['SSTRED', 'lonlat2xy', 'SunPy'], colors = ['red', 'blue', 'black'], loc = [0.90, 0.85], align = 1,psym=16,len=0  
