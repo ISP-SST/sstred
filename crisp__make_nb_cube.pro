@@ -163,7 +163,7 @@
 ;    2021-12-02 : MGL. Accept new multi-directory wb cubes.
 ;
 ;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
-;                        ported to rdx and maintainable by us.
+;                 ported to rdx and maintainable by us.
 ; 
 ;
 ;-
