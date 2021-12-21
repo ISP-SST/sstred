@@ -26,6 +26,13 @@
 ;      A 3D cube with cavity maps, each adapted to the corresponding
 ;      scan in the fitscube file. Unit is nm.
 ;
+;    direction : in, optional, type=integer, default="from config file"
+;
+;      The relative orientation of reference cameras of different
+;      instruments. Note that only if direction is set in the config
+;      file will it be assumed to be correct when setting the CSYERR
+;      FITS header keyword.
+;
 ;    dorotate : in, optional, type=boolean
 ; 
 ;      We will assume multi-scan cubes are de-rotated to compensate
@@ -57,7 +64,24 @@
 ;      written, the file name for this will be generated based on
 ;      outname. If a variable, will be returned with the actual file
 ;      name.
+;
+;    overwrite : in, optional, type=boolean
+;
+;       Don't care if cube is already on disk, overwrite it
+;       with a new version.
+;
+;    point_id : in, optional, type=string, default="dateTtimestamp"
+;
+;      Value for the POINT_ID header keyword. 
+;
+;    rotation : in, optional, type=float
+;
+;      Offset angle to be added to the field rotation angles.
 ; 
+;    wbimagefile : in, optional, type=string
+; 
+;      Path to a file with a wideband image to be added as a contect
+;      image for a single-scan file.
 ;
 ; :History:
 ; 
@@ -67,7 +91,7 @@
 ; 
 ;    2021-11-26 : MGL. New default output dir and use
 ;                 red_fitscube_filename() for the filename. New
-;                 keywords point_id, wbfile, direction, rotation.
+;                 keywords point_id, wbimagefile, direction, rotation.
 ;                 Remove keyword nostatistics (and statistics
 ;                 calculations). Various minor bug fixes.
 ; 
@@ -89,7 +113,7 @@ pro red::fitscube_convertlp, inname $
                              , rotation = rotation $
                              , scannumbers = scannumbers $
                              , timestamp = timestamp $
-                             , wbcubefile = wbcubefile $
+;                             , wbcubefile = wbcubefile $
                              , wbimagefile = wbimagefile
 
   ;; Direction and rotation. Cmap.
@@ -263,7 +287,7 @@ pro red::fitscube_convertlp, inname $
     endif
   endif
 
-  point_id = self.isodate + 'T' + timestamp
+  if n_elements(point_id) eq 0 then point_id = self.isodate + 'T' + timestamp
   
   if n_elements(outname) eq 0 then begin
     oname = outdir + '/' $
@@ -502,15 +526,15 @@ pro red::fitscube_convertlp, inname $
   
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0
-  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
-  red_logdata, self.isodate, time_turret, turret = metadata_turret, rsun = rsun
+;  red_logdata, self.isodate, time_pig, pig = metadata_pig, rsun = rsun
+;  red_logdata, self.isodate, time_turret, turret = metadata_turret, rsun = rsun
   red_logdata, self.isodate, time_diskpos, diskpos = diskpos, rsun = rsun
 
-  stop
+  
   
   ;; Get pointing at center of FOV
-  red_wcs_hpl_coords, t_array, metadata_pig, time_pig $
-                      , hpln, hplt
+  ;;red_wcs_hpl_coords, t_array, metadata_turret, time_turret $
+  ;;                    , hpln, hplt
   red_wcs_hpl_coords, t_array, diskpos, time_diskpos $
                       , hpln, hplt
   
@@ -663,7 +687,6 @@ pro red::fitscube_convertlp, inname $
 
   outname = oname
 
-  
   print
   print, inam + ' : Input: ' + inname
   print, inam + ' : Output: ' + oname
@@ -684,9 +707,10 @@ a -> fitscube_convertlp, scannumbers = '0-99' $ ; raw data scans 0-101, stokes c
 
 stop
 
-a -> fitscube_convertlp, scannumbers = '0-99', mirrorx = 1, mirrory = 0, /dorot $
-                         , orig_dir+'crispex.stokes.5876.10:41:20.time_corrected.fcube' $
-                         , wbcubefile = '/scratch/tlibb/2015-04-27/calib_tseries/wb.5876.10:41:20.corrected.icube'
+a -> fitscube_convertlp, scannumbers = '0-99', mirrorx = 1, mirrory = 0, /dorot, /over $
+                         , orig_dir+'crispex.stokes.5876.10:41:20.time_corrected.fcube'
+;$
+;   , wbcubefile = '/scratch/tlibb/2015-04-27/calib_tseries/wb.5876.10:41:20.corrected.icube'
 
 end
 
