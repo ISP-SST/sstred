@@ -51,7 +51,8 @@
 ;
 ;-
 pro red::fitscube_intensitycorr, filename $
-                                 , intensitycorrmethod = corrmethod_in
+                                 , intensitycorrmethod = corrmethod_in $
+                                 , fitpref_time = fitpref_time 
   
 
   inam = red_subprogram(/low, calling = inam1)
@@ -163,79 +164,54 @@ pro red::fitscube_intensitycorr, filename $
 
   print, wcTMEAN
 ;  stop
-  
 
-  pfiles = file_search(self.out_dir $
-                       + '/prefilter_fits/*_prefilter.idlsave' $
-                       , count = Npfiles)
-  prefilters = strarr(Npfiles)
-  for ipref = 0, Npfiles-1 do begin
-    splt = strsplit(file_basename(pfiles[ipref]), '_', /extract)
-    prefilters[ipref] = splt[1]
-  endfor
-  pindx = where(self -> match_prefilters(prefilters, strtrim(fxpar(hdr,'FILTER1'), 2)), Npref)
-  if Npref eq 0 then stop
-  prefilters = prefilters[pindx]
-  ppfiles = pfiles[pindx]
-  
-;  ;; Prefilter fit data - WB intensity and time. 
-;  case strtrim(fxpar(hdr,'INSTRUME'), 2) of
-;
-;    ;; For CRISP, R and T are simultaneous with the same WB data.
-;    'CRISP'   : pfiles = file_search(self.out_dir $
-;                                     + '/prefilter_fits/Crisp-?_' $
-;                                     + strtrim(fxpar(hdr,'FILTER1'), 2) $
-;                                     + '_prefilter.idlsave' $
-;                                     , count = Npfiles)
-;
-;    ;; For CHROMIS, scans are fast so one prefilter should be enough
-;    ;; also for Ca II.
-;    'CHROMIS' : pfiles = file_search(self.out_dir $
-;                                     + '/prefilter_fits/chromis_' $
-;                                     + strtrim(fxpar(hdr,'FILTER1'), 2) $
-;                                     + '_prefilter.idlsave' $
-;                                     , count = Npfiles)
-;    else : stop
-;  endcase 
-;  restore, pfiles[0]            ; Restores variable prf which is a struct
-;  time_avg_sum = n_elements(prf.wav) * prf.time_avg
-;  time_avg_n   = n_elements(prf.wav)
-;  t_calib = time_avg_sum / time_avg_n
-;  prefilter_wb = prf.wbint
-;  xposure = prf.xposure
-  
-;  ;; Load prefilter fit results to get the time of the prefilter fit
-;  ;; calibration data.
-;  prffiles = file_search('prefilter_fits/*_prefilter.idlsave', count = Nprf)
-  time_avg_sum = 0D
-  time_avg_n = 0L
-  for ipref = 0L, n_elements(ppfiles)-1 do begin
-    
-;    nbpref = (strsplit(file_basename(prffiles[ipref]), '_', /extract))[1]
-;    if ~(self -> match_prefilters(nbpref, wbpref)) then continue
-    
-    restore, ppfiles[ipref]     ; Restores variable prf which is a struct
+  case wbpref of
+    '3950' : nbpref = '3999'
+    '4846' : nbpref = '4862'  
+    else   : nbpref =  wbpref
+  endcase
 
-    time_avg_sum += n_elements(prf.wav) * prf.time_avg
-    time_avg_n   += n_elements(prf.wav)
-    
-  endfor                        ; ipref
-  t_calib = time_avg_sum / time_avg_n
+  instrument = strtrim(fxpar(hdr,'INSTRUME'), 2)
+  if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
+  datestamp = strtrim(fxpar(hdr, 'DATE-AVG'), 2)
+  timestamp = (strsplit(datestamp, 'T', /extract))[1]
+
+  if ~keyword_set(fitpref_time) then begin
+    fitpref_time='_'
+    avg_time = red_time2double(timestamp)
+    pfls = file_search(self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+    if Npfls gt 0 then begin
+      tt = dblarr(Npfls)
+      ts = strarr(Npfls)
+      for ii=0,Npfls-1 do begin
+        ts[ii] = (strsplit(file_basename(pfls[ii]),'_',/extract))[2]
+        tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
+      endfor
+      mn = min(tt,jj)
+      fitpref_time = '_'+ts[jj]+'_'
+    endif
+  endif
+
+  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_time+'prefilter.idlsave'
+  restore, pfile
+  t_calib = prf.time_avg
   xposure = prf.xposure
-  prefilter_wb = prf.wbint      ; The mean wb intensity from the fitprefilter step.
+  prefilter_wb = prf.wbint      ; The mean wb intensity from the fitprefilter step.  
 
   if PRMODE eq 'DISK-CENTER' then begin
 
     ;; Do DISK-CENTER based correction
 
-    case wbpref of
-      '3950' : nbpref = '3999'
-      '4846' : nbpref = '4862'  
-      else   : nbpref =  wbpref
-    endcase
-    
-    nbfitfile = 'nb_intensities/nb_fit_'+nbpref+'.fits' ; This has to be different for CHROMIS
-    wbfitfile = 'wb_intensities/wb_fit_'+wbpref+'.fits'
+    noon_time = red_time2double('13:00:00')
+    if avg_time le noon_time then day_time = 'morning' else day_time = 'afternoon'
+    if file_test('nb_intensities/'+day_time) then $
+      nbfitfile = 'nb_intensities/'+day_time+'/'+'nb_fit_'+nbpref+'.fits' $ ; This has to be different for CHROMIS 
+    else $
+      nbfitfile = 'nb_intensities/'+'nb_fit_'+nbpref+'.fits'
+    if file_test('wb_intensities/'+day_time) then $
+      wbfitfile = 'wb_intensities/'+day_time+'/'+'wb_fit_'+wbpref+'.fits' $
+    else $
+      wbfitfile = 'wb_intensities/'+'wb_fit_'+wbpref+'.fits'
     
     case 1 of
       

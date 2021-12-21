@@ -249,22 +249,26 @@ pro crisp::make_scan_cube, dir $
   datestamp = fxpar(wbghdr, 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
 
+  
   if ~keyword_set(fitpref_time) then begin
     fitpref_time='_'
-    sc_time = red_time2double(timestamp)
-    pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+    dt = strtrim(fxpar(wbghdr, 'DATE-AVG'), 2)
+    avg_ts = (strsplit(dt, 'T', /extract))[1]
+    avg_time = red_time2double(avg_ts)
+    pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+ $
+                         '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
       tt = dblarr(Npfls)
       ts = strarr(Npfls)
       for ii=0,Npfls-1 do begin
         ts[ii] = (strsplit(file_basename(pfls[ii]),'_',/extract))[2]
-        tt[ii] = abs(red_time2double(ts[ii]) - sc_time)
+        tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
       endfor
       mn = min(tt,jj)
       fitpref_time = '_'+ts[jj]+'_'
     endif
-  endif
-
+  endif 
+  
   red_fitspar_getdates, wbghdr $
                         , date_beg = date_beg $
                         , date_end = date_end $
