@@ -78,6 +78,11 @@
 ;
 ;      Offset angle to be added to the field rotation angles.
 ; 
+;    scannumbers : in, optional, type=string
+; 
+;      The scan numbers of the scans in the cube as a dash- and
+;      comma-delimited string.
+; 
 ;    wbimagefile : in, optional, type=string
 ; 
 ;      Path to a file with a wideband image to be added as a contect
@@ -268,7 +273,15 @@ pro red::fitscube_convertlp, inname $
   endcase
 
   ;; Dimensions set. Do they match the file?
-  if long(Ntunings) * long(Nscans) * long(Nstokes) ne Nt then stop      
+  if long(Ntunings) * long(Nscans) * long(Nstokes) ne Nt then begin
+    print, inam + ' : Dimensions do not match.'
+    print, 'Nt       : ', Nt    
+    print, 'Ntunings : ', Ntunings    
+    print, 'Nstokes  : ', Nstokes    
+    print, 'Nscans   : ', Nscans
+    print, 'Ntunings x Nstokes x Nscans = ', long(Ntunings) * long(Nscans) * long(Nstokes)
+    stop
+  endif
 
 
 
@@ -451,10 +464,9 @@ pro red::fitscube_convertlp, inname $
     endfor                      ; iwav
   endfor                        ; iscan
 
-
   ;; Rotation angles
-  ang = red_lp_angles(time, self.isodate, /from_log, offset_angle = rotation)
-  mang = mean(ang)
+  ang = red_lp_angles(t_array, self.isodate, /from_log, offset_angle = rotation)
+  mang = mean(ang, /nan)
   old_ang = ang - mang          ; These are most likely the angles used for the cube
   ;; So the angles to use now, for the new cube, is the "rotation" parameter
   ;; angle plus "mang". 
@@ -515,6 +527,7 @@ pro red::fitscube_convertlp, inname $
     red_lpcube_getframe, inname, frame, iframe = 0
     
     ;; Get the frame with size implied by ff
+    frame = rotate(temporary(frame), direction)
     frame = red_rotation(frame, full = ff, 0, 0, 0)
 
     ;; Set the spatial dimensions of the output file.
@@ -578,7 +591,7 @@ pro red::fitscube_convertlp, inname $
       for istokes = 0, Nstokes-1 do begin
 
         red_progressbar, iframe, Nframes, /predict, 'Copying frames'
-
+        
         red_lpcube_getframe, inname, frame, Nscans = Nscans $
                              , iscan = iscan, ituning = ituning, istokes = istokes
 
