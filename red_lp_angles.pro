@@ -49,6 +49,7 @@
 ;   2014-05-07 : MGL. Allow scalar date. Add to the documentation. 
 ; 
 ;   2019-12-05 : MGL. New keywords from_log and offset_angle.
+;
 ;-
 function red_lp_angles, time, date, from_log = from_log, offset_angle = TC
 
@@ -56,7 +57,7 @@ function red_lp_angles, time, date, from_log = from_log, offset_angle = TC
 
     ;; Get az, el, and tilt angle (in degrees) from the turret log 
     red_logdata, date, time, tilt = TL, azel = azel
-     
+    
     if n_elements(TC) eq 0 then TC = 48.d0 ; table constant in degrees
   
     ;; From get_sun_angle.pro by van Noort, de la Cruz Rodriguez, and
