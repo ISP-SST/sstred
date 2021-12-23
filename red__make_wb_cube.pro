@@ -236,7 +236,8 @@ pro red::make_wb_cube, dirs $
                        , ybd = ybd $
                        , nthreads = nthreads $
                        , nearest = nearest $
-                       , point_id = point_id
+                       , point_id = point_id $
+                       , ofile = ofile
 
   
   ;; Name of this method
@@ -686,7 +687,10 @@ pro red::make_wb_cube, dirs $
     if Npoint_id eq 0 then point_id = date_obs
   endif
 
-  ofil = red_fitscube_filename('wb' $
+  if keyword_set(ofile) then $
+    ofil = ofile $
+  else $
+    ofil = red_fitscube_filename('wb' $
                                , prefilter $                               
                                , timestamps $                               
                                , scannos_actual $                               
