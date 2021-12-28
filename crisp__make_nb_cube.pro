@@ -1096,7 +1096,7 @@ pro crisp::make_nb_cube, wcfile $
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
     print, 'Press any key to make crosstalk correction'
-    q=get_kbrd(/KEY_NAME)
+    q=get_kbrd()
     ;; Correct the cube for cross-talk, I --> Q,U,V.
     self -> fitscube_crosstalk, filename
 

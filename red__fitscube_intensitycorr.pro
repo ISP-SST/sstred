@@ -175,10 +175,10 @@ pro red::fitscube_intensitycorr, filename $
   if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
   datestamp = strtrim(fxpar(hdr, 'DATE-AVG'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
+  avg_time = red_time2double(timestamp)
 
   if ~keyword_set(fitpref_time) then begin
-    fitpref_time='_'
-    avg_time = red_time2double(timestamp)
+    fitpref_time='_'    
     pfls = file_search(self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
       tt = dblarr(Npfls)
