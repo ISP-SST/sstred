@@ -240,6 +240,12 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
     ;; Measure DC NB intensities
 
     nbdir = self.out_dir+'/nb_intensities/'
+    if keyword_set(tmax) then $
+      if tmax le '13:00:00' then $
+        nbdir += 'morning/'
+    if keyword_set(tmin) then $
+      if tmin ge '13:00:00' then $
+        nbdir += 'afternoon/'
     file_mkdir, nbdir
     
     nbdirs = dirs[nbindx]
@@ -381,8 +387,8 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
 
             self -> extractstates, fnamesN, states, /nondb 
 
-            ulc = states[uniq(states.lc, sort(states.lc))]
-            Nlc = n_elements(ulc)
+;            ulc = states[uniq(states.lc, sort(states.lc))]
+;            Nlc = n_elements(ulc)
             
 ;        pindx = uniq(states.prefilter, sort(states.prefilter))
 ;        upref = states[pindx].prefilter
@@ -664,7 +670,17 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
               ;;, titles = upref + ' : ' + coeffs_str $
               , location = [0.9, 0.12], align = 2 $
               , colors = colors, psym = 16, length = 0, vspace = 2
-    cgcontrol, output = nbdir+'nb_intensities.pdf'
+    outfile = 'nb_intensities'
+    for ipref=0,Nprefs-1 do outfile += '_' + upref[ipref]
+    outfile += '.pdf'
+    if file_test(nbdir+outfile) then begin
+      print,'File ', nbdir+outfile, ' exists.'
+      print
+      ans=''
+      read,'Would you like to overwrite it? (Y/n): ', ans
+      if strupcase(ans) eq 'N' then return
+    endif
+    cgcontrol, output = nbdir+outfile
 
   endif
 
