@@ -108,8 +108,23 @@ function red_raw_search, dir $
   case n_elements(tunings) of
     0 : tunings = '[0-9][0-9][0-9][0-9]_[+-][0-9]*'
     else : tunings = strtrim(tunings, 2)
+;    else : case strupcase(instrument) of
+;      'CHROMIS' : tunings = strtrim(tunings, 2)
+;      'CRISP' : begin
+;        Ntuning = n_elements(tunings)
+;        for ituning = 0, Ntuning-1 do begin
+;          stop
+;          tunsplt = strsplit(tunings[ituning], '_', /extract)
+;          tunlength = strlen(tunsplt[1]) ; length of the [+-]123 part
+;          if tunlength lt 5 then begin
+;            ;; Needs zero padding!
+;            tunings[ituning] = tunsplt[0] + '_' + 
+;          endif
+;        endfor                  ; ituning
+;      end
+;    endcase
   endcase
-  Ntuning= n_elements(tunings)
+  Ntuning = n_elements(tunings)
 
   ;; Fpi_state
   case n_elements(fpi_states) of
