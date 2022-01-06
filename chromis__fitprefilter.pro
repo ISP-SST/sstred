@@ -861,10 +861,11 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
                 , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
 
-      cgcontrol, output = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
+      plotfile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
+      cgcontrol, output = plotfile
       
-
-      save, file=self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave', prf
+      savefile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave'
+      save, file=savefile, prf
 
       file_copy, plotfile $
                    , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
