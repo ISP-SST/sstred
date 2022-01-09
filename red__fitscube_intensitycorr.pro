@@ -58,7 +58,7 @@ pro red::fitscube_intensitycorr, filename $
   inam = red_subprogram(/low, calling = inam1)
 
   if ~file_test(filename) then stop
-
+  
 
   case 1 of
 
@@ -178,7 +178,7 @@ pro red::fitscube_intensitycorr, filename $
   avg_time = red_time2double(timestamp)
 
   if ~keyword_set(fitpref_time) then begin
-    fitpref_time='_'    
+    fitpref_t='_'    
     pfls = file_search(self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+'_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
       tt = dblarr(Npfls)
@@ -188,11 +188,11 @@ pro red::fitscube_intensitycorr, filename $
         tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
       endfor
       mn = min(tt,jj)
-      fitpref_time = '_'+ts[jj]+'_'
+      fitpref_t = '_'+ts[jj]+'_'
     endif
-  endif
+  endif else fitpref_t = '_'+fitpref_time+'_'
 
-  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_time+'prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave'
   restore, pfile
   t_calib = prf.time_avg
   xposure = prf.xposure
