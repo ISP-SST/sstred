@@ -289,27 +289,21 @@ pro crisp::make_nb_cube, wcfile $
   origNy = y1 - y0 + 1
 
   self -> extractstates, wbgfiles, wbgstates
-  prefilter = wbgstates[0].prefilter
-
-  
+  prefilter = wbgstates[0].prefilter  
   
   wchdr0 = red_readhead(wbgfiles[0])
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   
-  ;;datadir = file_dirname(wbgfiles[0])+'/'
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
-
   srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*'
+  
   for jj=0,n_elements(wbgfiles)-1 do begin
     search_dir = file_dirname(wbgfiles[jj])+'/'
-    ;;srch = '*_' + (strsplit(wbgfiles[jj],'._',/extract))[-3] +'_*'
     ff = file_search(search_dir + srch + extension) 
     red_append,files,ff
   endfor
-  Nfiles = n_elements(files)
-  
-  ;;files = file_search(datadir + srch + extension, count = Nfiles)
+  Nfiles = n_elements(files)  
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
