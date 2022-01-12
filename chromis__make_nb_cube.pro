@@ -247,12 +247,16 @@ pro chromis::make_nb_cube, wcfile $
   wchdr0 = red_readhead(wbgfiles[0])
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
-  
-  search_dir = file_dirname(wbgfiles[0])+'/'
+     
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
-
-  srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*' 
-  files = file_search(search_dir + srch + extension, count = Nfiles)   
+  
+  for jj=0,n_elements(wbgfiles)-1 do begin
+    search_dir = file_dirname(wbgfiles[jj])+'/'
+    srch = '*_' + (strsplit(wbgfiles[jj],'._',/extract))[-3] +'_*'
+    ff = file_search(search_dir + srch + extension) 
+    red_append,files,ff
+  endfor
+  Nfiles = n_elements(files)
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
@@ -337,7 +341,7 @@ pro chromis::make_nb_cube, wcfile $
   for inbpref = 0L, Nnbprefs-1 do begin
     
     if ~keyword_set(fitpref_time) then begin
-      fitpref_time='_'
+      fitpref_t='_'
       dt = strtrim(fxpar(wchdr0, 'DATE-AVG'), 2)
       avg_ts = (strsplit(dt, 'T', /extract))[1]
       avg_time = red_time2double(avg_ts)
@@ -351,11 +355,11 @@ pro chromis::make_nb_cube, wcfile $
           tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
         endfor
         mn = min(tt,jj)
-        fitpref_time = '_'+ts[jj]+'_'
+        fitpref_t = '_'+ts[jj]+'_'
       endif
-    endif
+    endif else fitpref_t = '_'+fitpref_time+'_'
     
-    pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+fitpref_time+'prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+fitpref_t+'prefilter.idlsave'
     if ~file_test(pfile) then begin
       print, inam + ' : prefilter file not found: '+pfile
       return
@@ -507,23 +511,33 @@ pro chromis::make_nb_cube, wcfile $
     
     ;; Get wavelength-variable shifts based on continuum vs wideband
     ;; alignment.
+
+    ff = strsplit(wbgfiles,'/',/extract)
+    dd = (ff.toarray())[*,1]
+    timestamps = dd[uniq(dd)]
     
-    aligndir = self.out_dir + '/align/' + timestamp $
+    aligndirs = self.out_dir + '/align/' + timestamps $
                + '/' + prefilter + '/'
+
+    for jj=0, n_elements(aligndirs)-1 do begin
+       
+      nname = aligndirs[jj]+'scan_numbers.fz'
+      sname = aligndirs[jj]+'continuum_shifts_smoothed.fz'
     
-    nname = aligndir+'scan_numbers.fz'
-    sname = aligndir+'continuum_shifts_smoothed.fz'
+      if ~file_test(nname) or ~file_test(sname) then begin
+        print, inam + ' : At least one file missing for aligncont option:'
+        print, nname
+        print, sname
+        retall
+      endif
     
-    if ~file_test(nname) or ~file_test(sname) then begin
-      print, inam + ' : At least one file missing for aligncont option:'
-      print, nname
-      print, sname
-      retall
-    endif
-    
-    ;; Read the shifts for the continuum images
-    fzread, align_scannumbers, nname
-    fzread, align_shifts, sname, align_header
+      ;; Read the shifts for the continuum images
+      fzread, scans, nname
+      fzread, shifts, sname, align_header
+      red_append, align_scannumbers, scans
+      red_append, x_shifts, reform(shifts[0,*])
+      red_append, y_shifts, reform(shifts[1,*])
+    endfor    ;aligndirs
     
     ;; Get the wavelengths used for the intra-scan alignment from the
     ;; file header.
@@ -550,36 +564,36 @@ pro chromis::make_nb_cube, wcfile $
     ;; take direction into account when interpreting the shifts.
     case direction of
       0 : begin                 ; ( x, y)
-        nb_shifts[0, *] =  align_shifts[0, suba]
-        nb_shifts[1, *] =  align_shifts[1, suba]
+        nb_shifts[0, *] =  x_shifts[suba]
+        nb_shifts[1, *] =  y_shifts[suba]
       end
       1 : begin                 ; (-y, x)
-        nb_shifts[0, *] = -align_shifts[1, suba]
-        nb_shifts[1, *] =  align_shifts[0, suba]
+        nb_shifts[0, *] = -y_shifts[suba]
+        nb_shifts[1, *] =  x_shifts[suba]
       end
       2 : begin                 ; (-x,-y)
-        nb_shifts[0, *] = -align_shifts[0, suba]
-        nb_shifts[1, *] = -align_shifts[1, suba]
+        nb_shifts[0, *] = -x_shifts[suba]
+        nb_shifts[1, *] = -y_shifts[suba]
       end
       3 : begin                 ; ( y,-x)
-        nb_shifts[0, *] =  align_shifts[1, suba]
-        nb_shifts[1, *] = -align_shifts[0, suba]
+        nb_shifts[0, *] =  y_shifts[suba]
+        nb_shifts[1, *] = -x_shifts[suba]
       end
       4 : begin                 ; ( y, x)
-        nb_shifts[0, *] = align_shifts[1, suba]
-        nb_shifts[1, *] = align_shifts[0, suba]
+        nb_shifts[0, *] = y_shifts[suba]
+        nb_shifts[1, *] = x_shifts[suba]
       end
       5 : begin                 ; (-x, y)
-        nb_shifts[0, *] = -align_shifts[0, suba]
-        nb_shifts[1, *] =  align_shifts[1, suba]
+        nb_shifts[0, *] = -x_shifts[suba]
+        nb_shifts[1, *] =  y_shifts[suba]
       end
       6 : begin                 ; (-y,-x)
-        nb_shifts[0, *] = -align_shifts[1, suba]
-        nb_shifts[1, *] = -align_shifts[0, suba]
+        nb_shifts[0, *] = -y_shifts[suba]
+        nb_shifts[1, *] = -x_shifts[suba]
       end
       7 : begin                 ; ( x,-y)
-        nb_shifts[0, *] =  align_shifts[0, suba]
-        nb_shifts[1, *] = -align_shifts[1, suba]
+        nb_shifts[0, *] =  x_shifts[suba]
+        nb_shifts[1, *] = -y_shifts[suba]
       end
       else : stop
     endcase
@@ -610,10 +624,11 @@ pro chromis::make_nb_cube, wcfile $
   for iscan = 0L, Nscans-1 do begin
 
 
+    ts = (strsplit(wbgfiles[iscan],'/',/extract))[1]
     
     ;; The NB files in this scan, sorted in tuning wavelength order.
-    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                         , cam = nbcamera, scan = uscans[iscan] $
+    self -> selectfiles,  files = pertuningfiles, states = pertuningstates $ 
+                         , cam = nbcamera, scan = uscans[iscan], timestamps = ts $
                          , sel = scan_nbindx, count = count
     scan_nbfiles = pertuningfiles[scan_nbindx]
     scan_nbstates = pertuningstates[scan_nbindx]
@@ -622,8 +637,8 @@ pro chromis::make_nb_cube, wcfile $
     scan_nbstates = scan_nbstates[sortindx]
 
     ;; The WB files in this scan, sorted as the NB files
-    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                         , cam = wbcamera, scan = uscans[iscan] $
+    self -> selectfiles, files = pertuningfiles, states = pertuningstates $ 
+                         , cam = wbcamera, scan = uscans[iscan], timestamps = ts $
                          , sel = scan_wbindx, count = count
     scan_wbfiles = pertuningfiles[scan_wbindx]
     scan_wbstates = pertuningstates[scan_wbindx]

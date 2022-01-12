@@ -251,7 +251,7 @@ pro crisp::make_scan_cube, dir $
 
   
   if ~keyword_set(fitpref_time) then begin
-    fitpref_time='_'
+    fitpref_t='_'
     dt = strtrim(fxpar(wbghdr, 'DATE-AVG'), 2)
     avg_ts = (strsplit(dt, 'T', /extract))[1]
     avg_time = red_time2double(avg_ts)
@@ -265,9 +265,9 @@ pro crisp::make_scan_cube, dir $
         tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
       endfor
       mn = min(tt,jj)
-      fitpref_time = '_'+ts[jj]+'_'
+      fitpref_t = '_'+ts[jj]+'_'
     endif
-  endif 
+  endif else fitpref_t = '_'+fitpref_time+'_'
   
   red_fitspar_getdates, wbghdr $
                         , date_beg = date_beg $
@@ -627,7 +627,7 @@ pro crisp::make_scan_cube, dir $
     
     ;; Crisp-T
 
-    pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_time+'prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_t+'prefilter.idlsave'
     if ~file_test(pfile) then begin
       print, inam + ' : prefilter file not found: '+pfile
       return
@@ -646,7 +646,7 @@ pro crisp::make_scan_cube, dir $
 
     ;; Crisp-R
 
-    pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_time+'prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_t+'prefilter.idlsave'
     if ~file_test(pfile) then begin
       print, inam + ' : prefilter file not found: '+pfile
       return
