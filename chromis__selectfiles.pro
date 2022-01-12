@@ -132,7 +132,8 @@ pro chromis::selectfiles, cam = cam $
                           , states = states $
                           , strip_settings = strip_settings $
                           , subdir = subdir $
-                          , ustat = ustat 
+                          , ustat = ustat $
+                          , timestamps = timestamps
 
   compile_opt idl2
   
@@ -273,6 +274,17 @@ pro chromis::selectfiles, cam = cam $
     states[where(selected lt 1)].skip = 1
   endif
 
+  Ntimestamps = n_elements(timestamps)
+  if( Ntimestamps gt 0 ) then begin
+    selected = states.skip * 0
+    ts = [timestamps]         ; make sure it's an array
+    for ip = 0, Ntimestamps-1 do begin
+      pos = where(strmatch(states.filename,'*'+ts[ip]+'*'),count)
+      if( count ne 0 ) then selected[pos] = 1
+    endfor
+    pos = where(selected lt 1,count)
+    if( count ne 0 ) then states[pos].skip = 1
+  endif
   
   selected = where(states.skip lt 1, count $
                    , complement = complement, Ncomplement = Ncomplement)

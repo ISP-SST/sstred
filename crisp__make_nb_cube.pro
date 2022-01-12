@@ -297,11 +297,19 @@ pro crisp::make_nb_cube, wcfile $
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   
-  datadir = file_dirname(wbgfiles[0])+'/'
+  ;;datadir = file_dirname(wbgfiles[0])+'/'
   extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
 
-  srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*' 
-  files = file_search(datadir + srch + extension, count = Nfiles)
+  srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*'
+  for jj=0,n_elements(wbgfiles)-1 do begin
+    search_dir = file_dirname(wbgfiles[jj])+'/'
+    ;;srch = '*_' + (strsplit(wbgfiles[jj],'._',/extract))[-3] +'_*'
+    ff = file_search(search_dir + srch + extension) 
+    red_append,files,ff
+  endfor
+  Nfiles = n_elements(files)
+  
+  ;;files = file_search(datadir + srch + extension, count = Nfiles)
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
@@ -427,7 +435,7 @@ pro crisp::make_nb_cube, wcfile $
 
   ;; Crisp-R
 
-  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_time+'prefilter.idlsave'
+  pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_t+'prefilter.idlsave'
   if ~file_test(pfile) then begin
     print, inam + ' : prefilter file not found: '+pfile
     return
@@ -722,6 +730,7 @@ pro crisp::make_nb_cube, wcfile $
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
+    ts = (strsplit(wbgfiles[iscan],'/',/extract))[1]
     
     if keyword_set(unsharp) then wb -= smooth(wb, 5)
     
@@ -782,7 +791,7 @@ pro crisp::make_nb_cube, wcfile $
         
         ;; The NB files in this scan, sorted in tuning wavelength order.
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[ituning] $
+                             , fpi_states = utuning[ituning], timestamps = ts $
                              , cam = nbtcamera, scan = uscans[iscan] $
                              , sel = scan_nbtindx, count = count
         scan_nbtfiles = pertuningfiles[scan_nbtindx]
@@ -791,7 +800,7 @@ pro crisp::make_nb_cube, wcfile $
         scan_nbtfiles = scan_nbtfiles[sortindx]
         scan_nbtstates = scan_nbtstates[sortindx]
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[ituning] $
+                             , fpi_states = utuning[ituning], timestamps = ts $
                              , cam = nbrcamera, scan = uscans[iscan] $
                              , sel = scan_nbrindx, count = count
         scan_nbrfiles = pertuningfiles[scan_nbrindx]
@@ -807,7 +816,7 @@ pro crisp::make_nb_cube, wcfile $
 
         ;; The WB files in this scan, sorted as the NB files
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[ituning] $
+                             , fpi_states = utuning[ituning], timestamps = ts $
                              , cam = wbcamera, scan = uscans[iscan] $
                              , sel = scan_wbindx, count = count
         scan_wbfiles = pertuningfiles[scan_wbindx]
