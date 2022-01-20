@@ -62,7 +62,8 @@
 ;-
 pro crisp::prepflatcubes, flatdir = flatdir $
                             , pref = pref $
-                            , verbose = verbose
+                            , verbose = verbose $
+                            , nthreads = nthreads
 
 
   ;; Prepare for logging (after setting of defaults).
