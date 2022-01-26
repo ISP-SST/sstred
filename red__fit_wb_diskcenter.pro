@@ -90,10 +90,26 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if keyword_set(limb_darkening) and pref ne '8542' then begin
-    if n_elements(mu_limit) eq 0 then mu_limit = 0.50d    
+  if keyword_set(limb_darkening) then begin 
+    if n_elements(mu_limit) eq 0 then mu_limit = 0.50d
+    if keyword_set(pref) then begin
+      if pref eq '8542' then  begin        
+        if n_elements(mu_limit) ne 0 and mu_limit lt 0.97 then begin
+          print, inam, ' : For 8542 prefilter mu_limit should be >= 0.97'
+          return
+        endif
+        mu_limit = 0.97d
+      endif
+    endif
   endif else begin
-    if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
+    if n_elements(mu_limit) eq 0 then begin
+      mu_limit = 0.97d
+    endif else begin
+      if mu_limit lt 0.97 then begin
+        print, inam, ' : You should use /limb_darkening with mu_limit < 0.97'
+        return
+      endif
+    endelse
   endelse
     
   if n_elements(tmin) eq 0 then tmin = '00:00:00'
@@ -212,6 +228,13 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         pindx = uniq(states.prefilter, sort(states.prefilter))
         upref = states[pindx].prefilter
         Npref = n_elements(upref)
+        if where(strmatch(upref, '8542')) ne -1 then begin
+          if mu_limit lt 0.97 then begin
+            print, inam, ' : You are using mu_limit < 0.97 with 8542 prefilter.'
+            print,'Please change settings and rerun the program.'
+            return
+          endif
+        endif
 
         for ipref = 0, Npref-1 do begin
           

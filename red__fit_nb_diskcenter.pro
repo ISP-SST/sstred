@@ -82,10 +82,26 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
   inam = red_subprogram(/low, calling = inam1)
   instrument = ((typename(self)).tolower())
   
-  if keyword_set(limb_darkening) and pref ne '8542' then begin
-    if n_elements(mu_limit) eq 0 then mu_limit = 0.50d    
+  if keyword_set(limb_darkening) then begin 
+    if n_elements(mu_limit) eq 0 then mu_limit = 0.50d
+    if keyword_set(pref) then begin
+      if pref eq '8542' then  begin        
+        if n_elements(mu_limit) ne 0 and mu_limit lt 0.97 then begin
+          print, inam, ' : For 8542 prefilter mu_limit should be >= 0.97'
+          return
+        endif
+        mu_limit = 0.97d
+      endif
+    endif
   endif else begin
-    if n_elements(mu_limit) eq 0 then mu_limit = 0.97d
+    if n_elements(mu_limit) eq 0 then begin
+      mu_limit = 0.97d
+    endif else begin
+      if mu_limit lt 0.97 then begin
+        print, inam, ' : You should use /limb_darkening with mu_limit < 0.97'
+        return
+      endif
+    endelse
   endelse
     
   if n_elements(tmin) eq 0 then tmin = '00:00:00'
@@ -146,13 +162,19 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
   endcase
 
   pprefs = strarr(Nprefs)
+  for ip = 0, Nprefs-1 do pprefs[ip] = (strsplit(file_basename(pfiles[ip]),'_',/extract))[1]
+  if where(strmatch(pprefs, '8542')) ne -1 then begin
+    if mu_limit lt 0.97 then begin
+      print, inam, ' : You are using mu_limit < 0.97 with 8542 prefilter.'
+      print,'Please change settings and rerun the program.'
+      return
+    endif
+  endif
   ptunings = strarr(Nprefs)
 
   for ip = 0, Nprefs-1 do begin
     
-    restore, pfiles[ip]
-    pprefs[ip] = (strsplit(file_basename(pfiles[ip]),'_',/extract))[1]
-    
+    restore, pfiles[ip]  
     
     tmp = min(abs(red_time2double(file_basename(dirs)) - prf.time_avg),minloc)
     cdir = dirs[minloc]
