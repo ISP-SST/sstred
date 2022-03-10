@@ -69,7 +69,7 @@ pro red_fitscube_checksums, filename $
       ;; following line only checks the header for corruption.
 
       dsum = strtrim(red_fitscube_datasum(filename), 2)
-      datasum = fxpar(main_hdr, 'DATASUM', count = Ndatasum)
+      datasum = strtrim(fxpar(main_hdr, 'DATASUM', count = Ndatasum),2)
       if Ndatasum eq 0 then begin
         ;; No DATASUM keyword
         checksum_status = 0     
