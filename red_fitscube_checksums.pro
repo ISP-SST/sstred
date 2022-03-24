@@ -27,15 +27,22 @@
 ;
 ;      Positive integer array specifying which HDUs to check. Default
 ;      is to check all HDUs, including Main (0).
+;
+;    trust_datasum : in, optional, typy=boolean
+;
+;      Set this keyword to avoid checking datasum.
 ; 
 ; 
 ; :History:
 ; 
 ;    2020-07-13 : MGL. First version.
+;
+;    2022-03-24 : OA. Added trust_datasum keyword.
 ; 
 ;-
 pro red_fitscube_checksums, filename $
-                            , hdus = hdus
+                            , hdus = hdus $
+                            , trust_datasum = trust_datasum
 
   ;; Name of this subprogram
   inam = red_subprogram(/low, calling = inam1)
@@ -68,23 +75,28 @@ pro red_fitscube_checksums, filename $
       ;; We need an incremental check of DATASUM for the main HDU. The
       ;; following line only checks the header for corruption.
 
-      dsum = strtrim(red_fitscube_datasum(filename), 2)
-      datasum = strtrim(fxpar(main_hdr, 'DATASUM', count = Ndatasum),2)
-      if Ndatasum eq 0 then begin
-        ;; No DATASUM keyword
-        checksum_status = 0     
-        ;; Setting checsum_status=0 here *could* hide a faulty
-        ;; CHECKSUM keyword and hence file corruption. But we
-        ;; shouldn't add one unless we first add DATASUM.
-      endif else begin
-        if dsum ne datasum then begin
-          ;; Incorrect DATASUM keyword
-          checksum_status = -1
+      if ~keyword_set(trust_datasum) then begin
+        dsum = strtrim(red_fitscube_datasum(filename), 2)
+        datasum = strtrim(fxpar(main_hdr, 'DATASUM', count = Ndatasum),2)
+        if Ndatasum eq 0 then begin
+          ;; No DATASUM keyword
+          checksum_status = 0     
+          ;; Setting checsum_status=0 here *could* hide a faulty
+          ;; CHECKSUM keyword and hence file corruption. But we
+          ;; shouldn't add one unless we first add DATASUM.
         endif else begin
-          ;; DATASUM keyword present and correct
-          checksum_status = fits_test_checksum(main_hdr, errmsg = errmsg, /trust_datasum)
+          if dsum ne datasum then begin
+            ;; Incorrect DATASUM keyword
+            checksum_status = -1
+          endif else begin
+            ;; DATASUM keyword present and correct
+            checksum_status = fits_test_checksum(main_hdr, errmsg = errmsg, /trust_datasum)
+          endelse
         endelse
+      endif else begin
+        checksum_status = fits_test_checksum(main_hdr, errmsg = errmsg, /trust_datasum)
       endelse
+      
       ext_header = main_hdr
 
     endif else begin
