@@ -169,6 +169,10 @@
 ;                deconvolutions. Implemented derotation and
 ;                destretching. Bugfixes in core_and_wings state
 ;                selection.
+;
+;   2022-03-22 : OA. Reorganized the code for selecting spectral
+;                points. Changed core_and_wings part to select points
+;                in wings instead of first and last ones.
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -206,7 +210,7 @@ pro red::quicklook, align = align $
                     , x_flip = x_flip $
                     , y_flip = y_flip $
                     , min_nscan = min_nscan $
-                    , cube_save = cube_save
+                    , cube_save = cube_save 
   
   inam = red_subprogram(/low, calling = inam1)
 
@@ -227,7 +231,7 @@ pro red::quicklook, align = align $
   
   if n_elements(Nexp) eq 0 or ~keyword_set(neuralnet) then Nexp = 1
   if n_elements(scannos) eq 1 && size(scannos, /tname) eq 'STRING' then scannos = rdx_str2ints(scannos)
-  
+  if keyword_set(core_and_wings) then undefine, use_states
 
   ;; The r0 log file is not available until the day after today 
 ;  if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
@@ -279,62 +283,13 @@ pro red::quicklook, align = align $
     endelse
     Nsets = n_elements(dirs)
   endelse
-
-
-  if strmid(cam, 0, 5) eq 'Crisp' then begin
-
-    ;; CRISP data: we can't do this for CHROMIS data because
-    ;; we need actual files for the conversion between wheel/hrz to
-    ;; states. 
-    
-    if n_elements(use_states) gt 0 then begin
-      ;; If use_states is provided, we base the file search pattern on
-      ;; that. This works for CRISP, where the state is part of the file
-      ;; name.
-      
-      ;; We need to do a bit of massaging here, because the CRISP states
-      ;; in the file names have the tuning (after the sign) zero-padded
-      ;; to 4 digits, while the states returned by extractstates (used
-      ;; below) are not zero padded. We want this to work whether the
-      ;; use_states are given zero padded or not. The pattern used for
-      ;; file searching needs the padding but any padding has to be gone
-      ;; when we get to the state comparison later. To make it even more
-      ;; complicated, we don't know if this tuning is even part
-      ;; of the use_states!
-
-      use_pat = strarr(n_elements(use_states))
-      for istate = 0, n_elements(use_states)-1 do begin
-
-        case use_states[istate] of
-          '+0' : use_pat[istate] = '*+000*' ; Should match also +0000!
-          else : begin
-            st = stregex(use_states[istate], '(_|\.|^)([+-][0-9]*)(_|\.|$)' $
-                         , /extract,/sub)
-            if st[2] ne '' then begin
-              ;; We had a match for the tuning part of the state
-              tun = st[2]
-              tun_padded    = strmid(tun, 0, 1) + string(long(strmid(tun, 1)), format='(i04)')
-              tun_nonpadded = strmid(tun, 0, 1) + string(long(strmid(tun, 1)), format='(i0)')
-              use_pat[istate] = '*' + red_strreplace(use_states[istate], tun, tun_padded) + '*'
-              use_states[istate] = red_strreplace(use_states[istate], tun, tun_nonpadded)
-            endif
-          end
-        endcase
-
-      endfor                    ; istate
-
-    endif
-  endif   
   
   ;; Now loop over datasets (timestamps)
   for iset = 0, Nsets-1 do begin
 
     timestamp = file_basename(dirs[iset])
 
-    print, inam + ' : Working on '+timestamp
-
-    outdir = self.out_dir +'/quicklook/'+timestamp+'/'
-    file_mkdir, outdir
+    print, inam + ' : Working on '+timestamp    
     
     ;; Try to limit the number of files we need to extract states for.
 
@@ -344,128 +299,146 @@ pro red::quicklook, align = align $
       instrument = 'CHROMIS'
     endelse
 
-    if instrument eq 'CRISP' then begin
+    ;; Search file names for scan 0, use them to find out what states
+    ;; are available.
+    ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
+    files0 = red_raw_search(dirs[iset] + '/' + cam, instrument = instrument, scanno = 0, count = Nfiles)
 
-      ;; CRISP data
+    self -> extractstates, files0, states0
+        
+    upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
+    Npref = n_elements(upref)
+    indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
+    ustat = states0[indx].fullstate        
 
-      ;; Search file names for scan 0, use them to find out what states
-      ;; are available.
-      ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-      files0 = red_raw_search(dirs[iset] + '/' + cam, instrument = 'CRISP', scanno = 0, count = Nfiles)
-
-      self -> extractstates, files0, states0
-      indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
-      ustat = states0[indx].fullstate
-      upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
-      Npref = n_elements(upref)
-
-      
-      if n_elements(use_pat) gt 0 then begin
-
-        ;; use_pat constructed from use_states above
-        files = red_file_search(use_pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
-
-      endif else begin
-
-        if keyword_set(core_and_wings) then begin
-
-          ustat_pat = reform((stregex(file_basename(states0[indx].filename) $
-                                      , '\.([0-9][0-9][0-9][0-9]\.[0-9][0-9][0-9][0-9]_[+-][0-9]*\.lc[0-4])\.' $
-                                      , /subex, /extract))[0,*])
-
-          undefine, pat
-          for ipref = 0, Npref-1 do begin
-            sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
-            if Nmatch eq 1 then begin
-              ;; If just one state for this prefilter, then use it!
-              red_append, pat, ustat_pat[sindx[0]]
+    states_count = 0
+    undefine, pat
+    case 1 of
+      n_elements(use_states) gt 0 : begin          
+        for istate = 0,n_elements(use_states)-1 do begin
+          imatch = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
+          if Nmatch ge 1 then begin
+            states_count++
+            red_append, ustat2, ustat[imatch] 
+            fn = states0[indx[imatch]].filename
+            prts = strsplit(fn,'[_.]',/extract)
+            if strmatch(cam,'*W*') then begin
+              if instrument eq 'CHROMIS' then $
+                red_append, pat, '*' + prts[-3] + '*' $
+              else $
+                red_append, pat, '*' +prts[-5] + '*'
             endif else begin
-              ;; Select red and blue wing points. The states are sorted in
-              ;; wavelength order so we just have to pick the first and
-              ;; last states for each prefilter.
-              red_append, pat, ustat_pat[sindx[0]]
-              red_append, pat, ustat_pat[sindx[-1]]
-              ;; Find and select the core.
-              imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
-              if Nmatch gt 0 then red_append, pat, ustat_pat[sindx[imatch]]
+              if instrument eq 'CHROMIS' then $
+               red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+              else $
+                red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
             endelse
-          endfor                ; ipref
-
-          pat = '*'+pat+'*'
-          
-          files = red_file_search(pat, dirs[iset] + '/' + cam + '/', count = Nfiles)
-
-        endif else begin        
-
-;          files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-          files = red_raw_search(dirs[iset] + '/' + cam, scannos = scannos, count = Nfiles)
-
-        end
+          endif else print, 'There is no match for ', use_states[istate], ' state.'
+        endfor                 ; istate
+        if states_count eq 0 then print,'There are no matches for provided states. You have to choose states manually.'
       end
-
-      ;; Check for lcd files!
-      windx = where(~strmatch(files, '*.lcd.*'), Nwhere)
-      if Nwhere eq 0 then files = '' else begin
-        files = files[windx]
-      endelse
-      Nfiles = Nwhere
       
-    endif else begin
-
-      ;; CHROMIS data
-
-      ;; Search file names for scan 0, use them to find out what states
-      ;; are available.
-      ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-      files0 = red_raw_search(dirs[iset] + '/' + cam, instrument = 'CHROMIS', scanno = 0, count = Nfiles)
-      self -> extractstates, files0, states0
-      indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
-      ustat = states0[indx].fullstate
-      upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
-      Npref = n_elements(upref)
-
-      if keyword_set(core_and_wings) then begin
-
-        undefine, ustat2
+      keyword_set(core_and_wings) : begin
         for ipref = 0, Npref-1 do begin
           sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
           if Nmatch eq 1 then begin
             ;; If just one state for this prefilter, then use it!
             red_append, ustat2, ustat[sindx[0]]
-          endif else begin
-            ;; Select red and blue wing points. The states are sorted in
-            ;; wavelength order so we just have to pick the first and
-            ;; last states for each prefilter.
-            red_append, ustat2, ustat[sindx[ 0]]
-            red_append, ustat2, ustat[sindx[-1]]
-            ;; Find and select the core.
+            red_append, sel_in, 0
+          endif else begin              
             imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
-            if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
+            if Nmatch gt 1 then begin
+              print, 'There is more then one spectral line in a scan with ', upref[ipref], ' prefilter.'
+              print, 'You have to choose spectral points manually.'
+              undefine, ustat2
+              break
+            endif
+            if Nmatch gt 0 then begin
+              red_append, ustat2, ustat[sindx[imatch]]
+              red_append, sel_in, sindx[imatch]
+              wv = states0[indx[sindx]].tun_wavelength
+              if n_elements(wv[0:imatch]) mod 2 ne 1 then ex=1 else ex=0
+              wng = median(wv[0:imatch-ex])
+              in = where(wv eq wng)
+              red_append, sel_in, sindx[in]
+              red_append, ustat2, ustat[sindx[in]]
+              if n_elements(wv[0:imatch]) mod 2 ne 1 then ex=1 else ex=0
+              wng = median(wv[imatch+ex:*])
+              in = where(wv eq wng)
+              red_append, sel_in, sindx[in]
+              red_append, ustat2, ustat[sindx[in]]
+           endif else begin
+              np = n_elements(sindx)
+              red_append, ustat2, ustat[sindx[np/4]]
+              red_append, ustat2, ustat[sindx[np/2]]
+              red_append, ustat2, ustat[sindx[np/2+np/4]]
+              red_append, sel_in, [sindx[np/4],sindx[np/2],sindx[np/2+np/4]]
+            endelse
           endelse
-        endfor                  ; ipref
+        endfor                 ; ipref
 
-        ;; CHROMIS file names do not include the state in a
-        ;; human-readable form. But we can see what states are available
-        ;; for scan 0, match the wanted states, and figure out what the
-        ;; file name states are.
-        for istate = 0, n_elements(ustat2)-1 do begin
-          imatch = where(ustat2[istate] eq states0.fullstate, Nmatch)
-          if Nmatch ge 1 then begin ;ustat2[istate] = states0[imatch[0]].fpi_state
-            fn = states0[imatch[0]].filename
-            prts = strsplit(fn,'_',/extract)
-            ustat2[istate] = prts[-2] + '_' + prts[-1]
-          endif
-        endfor                  ; istate
-        
-        pat = '*_'+ustat2 ;+'.fits'
-        files = red_file_search(pat, dirs[iset] + '/' + cam, count = Nfiles)
+        states_count = n_elements(ustat2)
+        for istate = 0, states_count-1 do begin
+          fn = states0[indx[sel_in[istate]]].filename
+          prts = strsplit(fn,'[_.]',/extract)
+          if strmatch(cam,'*W*') then begin
+            if instrument eq 'CHROMIS' then $
+              red_append, pat, '*' + prts[-3] + '*' $
+            else $
+              red_append, pat, '*' +prts[-5] + '*'
+          endif else begin
+            if instrument eq 'CHROMIS' then $
+              red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+            else $
+              red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+          endelse
+        endfor                 ; istate
+        use_states = ustat2
+      end
 
-      endif else begin
-;        files = red_file_search('*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-        files = red_raw_search(dirs[iset] + '/' + cam, scannos = scannos, count = Nfiles)
+      else :
+    endcase
+
+    if states_count eq 0 then begin 
+      tmp = red_select_subset(states0[indx].prefilter+'_'+states0[indx].fullstate $
+                              , qstring = inam + ' : Select states' $
+                              , count = Nstates, indx = ichoice)
+      ustat2 = ustat[ichoice]
+      for istate = 0,n_elements(ustat2)-1 do begin
+        imatch = where(ustat2[istate] eq ustat)
+        fn = states0[indx[imatch]].filename
+        prts = strsplit(fn,'[_.]',/extract)
+        if strmatch(cam,'*W*') then begin
+          if instrument eq 'CHROMIS' then $
+            red_append, pat, '*' + prts[-3] + '*' $
+          else $
+            red_append, pat, '*' +prts[-5] + '*'
+        endif else begin
+          if instrument eq 'CHROMIS' then $
+            red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+          else $
+            red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+        endelse
+      endfor                 ; istate
+      use_states = ustat2      
+    endif
+
+    if n_elements(scannos) gt 0 then begin
+      sc = '*' + string(scannos, format='(I05)')
+      for ii=0, Nstates-1 do $
+        red_append, patt, sc + pat[ii]
+      pat = patt
+    endif
+    files = red_file_search(pat, dirs[iset] + '/' + cam, count = Nfiles)
+
+    if instrument eq 'CRISP' then begin
+      ;; Check for lcd files!
+      windx = where(~strmatch(files, '*.lcd.*'), Nwhere)
+      if Nwhere eq 0 then files = '' else begin
+        files = files[windx]
       endelse
-      
-    endelse
+      Nfiles = Nwhere      
+    endif
     
     if files[0] eq '' then begin
       print, inam + ' : ERROR -> no frames found in '+dirs[iset]
@@ -473,6 +446,7 @@ pro red::quicklook, align = align $
     endif
     
     self -> extractstates, files, states
+
     nsc = max(states.scannumber)
     if nsc lt min_nscan then begin
       fn = states[0].filename
@@ -482,6 +456,9 @@ pro red::quicklook, align = align $
       print,"We do not want to bother with short datasets. Skipping it."
       continue
     endif
+
+    outdir = self.out_dir +'/quicklook/'+timestamp+'/'
+    file_mkdir, outdir
 
     if ~keyword_set(no_plot_r0) then begin
 
@@ -501,58 +478,11 @@ pro red::quicklook, align = align $
       
     endif
 
-    if keyword_set(only_plot_r0) then continue
-    
-    if keyword_set(core_and_wings) then begin
-      ;; Make an automatic selection of states
-      undefine, ustat2
-      for ipref = 0, Npref-1 do begin
-        sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
-        if Nmatch eq 1 then begin
-          ;; E.g., Chromis Ca II core should be included
-          red_append, ustat2, ustat[sindx[0]]
-        endif else begin
-          ;; Select red and blue wing points. The states are sorted in
-          ;; wavelength order so we just have to pick the first and
-          ;; last states for each prefilter.
-          red_append, ustat2, ustat[sindx[ 0]]
-          red_append, ustat2, ustat[sindx[-1]]
-          ;; Find and select the core.
-          imatch = where(strmatch(ustat[sindx], '*+0*'), Nmatch)
-          if Nmatch gt 0 then red_append, ustat2, ustat[sindx[imatch]]
-        endelse
-      endfor                    ; ipref
-      Nstates = n_elements(ustat2)
-      if Nstates eq 0 then continue ; Next dataset
-      ustat = ustat2 
-    endif else if n_elements(use_states) gt 0 then begin
-      undefine, ustat2
-      for istate = 0, n_elements(use_states)-1 do begin
-        ;; Might want to change this into something involving strmatch
-        ;; or stregex!
-        print, use_states[istate]
-        imatch = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
-        print, Nmatch
-        if Nmatch eq 0 then continue ; This ustat didn't match
-        red_append, ustat2, ustat[imatch]
-      endfor                    ; istate
-      Nstates = n_elements(ustat2)
-      if Nstates eq 0 then continue ; Next dataset
-      ustat = ustat2                ; Go with the matching states 
-    endif else begin    
-      if n_elements(ustat) gt 1 then begin
-        ;; Select states.
+    if keyword_set(only_plot_r0) then continue     
 
-        tmp = red_select_subset(states0[indx].prefilter+'_'+states0[indx].tuning $
-                                , qstring = inam + ' : Select states' $
-                                , count = Nstates, indx = ichoice)
-        ustat = ustat[ichoice]
-     endif else begin
-        Nstates = 1
-      endelse
-    endelse 
-
-    
+    ustat = ustat2
+    Nstates = n_elements(ustat)
+        
     for istate = 0, Nstates-1 do begin
       
       self -> selectfiles, files = files, states = states $
@@ -562,14 +492,6 @@ pro red::quicklook, align = align $
       if Nsel eq 0 then continue
       
       uscan = states[sel[uniq(states[sel].scannumber,sort(states[sel].scannumber))]].scannumber
-
-;      ;; Limit uscan based on scannos keyword
-;      if n_elements(scannos) gt 0 then begin
-;        match2, scannos, uscan, scanindx
-;        scanindx = scanindx[where(scanindx ne -1, Nmatch)]
-;        if Nmatch eq 0 then stop
-;        uscan = uscan[scanindx]
-;      endif
 
       Nscans = n_elements(uscan)
       Nexp_available = Nsel/Nscans
@@ -917,7 +839,7 @@ pro red::quicklook, align = align $
         endcase
         for iscan = 0L, Nscans -1 do begin
           red_progressbar, iscan, Nscans, 'Derotating images.'
-          cube[*,*,iscan] = red_rotation(cube[*,*,iscan], ang[iscan])
+          cube[*,*,iscan] = red_rotation(cube[*,*,iscan], ang[iscan], nthreads = nthreads)
         endfor                  ; iscan
       endif
 
@@ -928,7 +850,8 @@ pro red::quicklook, align = align $
         shifts = red_aligncube(cube, 5, /center $ ;, cubic = -0.5 $
                                , xbd = round(dim[0]*.9) $
                                , ybd = round(dim[1]*.9) $
-                               , no_display = no_display)
+                               , no_display = no_display $
+                               , nthreads = nthreads)
 
         if Nscans gt 3 then begin
           ;; Outliers?
@@ -947,7 +870,8 @@ pro red::quicklook, align = align $
           cube[*, *, iscan] = red_shift_im(cube[*, *, iscan] $
                                            , shifts[0, iscan] $
                                            , shifts[1, iscan] $
-                                           , cubic = -0.5)
+                                           , cubic = -0.5 $
+                                           , nthreads = nthreads)
         endfor                  ; iscan
       endif
 
@@ -965,7 +889,7 @@ pro red::quicklook, align = align $
         tstep = tstep < (Nscans-1)
 
         ;; Calculate stretch vectors
-        grid = red_destretch_tseries(cube, 1.0/float(self.image_scale), tiles, clips, tstep)
+        grid = red_destretch_tseries(cube, 1.0/float(self.image_scale), tiles, clips, tstep, nthreads = nthreads)
 
         for iscan = 0L, Nscans - 1 do begin
           red_progressbar, iscan, Nscans, 'Applying the stretches.'
