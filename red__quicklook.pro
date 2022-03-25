@@ -173,6 +173,9 @@
 ;   2022-03-22 : OA. Reorganized the code for selecting spectral
 ;                points. Changed core_and_wings part to select points
 ;                in wings instead of first and last ones.
+;
+;   2022-03-25 : OA. Changed derotation code to avoid FOV clipping 
+;                (imported from other part of the pipeline).
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -641,7 +644,10 @@ pro red::quicklook, align = align $
           endif
           ims[*, *, iframe] *= gg
 
-          im = red_fillpix(ims[*, *, iframe], mask=mask, nthreads=nthreads)
+          if  strmatch(cam,'*W*') then $
+             im = red_fillpix(ims[*, *, iframe], nthreads=nthreads) $
+          else $
+             im = red_fillpix(ims[*, *, iframe], mask=mask, nthreads=nthreads)
 
           idx1 = where(im eq 0.0, Nwhere, complement = idx, Ncomplement = Nnowhere)
           if Nwhere gt 0 && Nnowhere gt 0 then im[idx1] = median(im[idx])
