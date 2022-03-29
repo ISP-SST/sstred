@@ -2,7 +2,7 @@
 
 ;+
 ; Check format of input string (should be YYYY-MM-DD:MM-DD).
-; Return an array with rang of dates like
+; Return an array with range of dates like
 ; [year,month_beg,month_end,day_beg,day_end]
 ; 
 ; :Categories:
@@ -50,11 +50,6 @@ function red_check_dates_range, dates, range
     year = dt[0]
     month = dt[1]
     day = dt[2]
-    dir = '/data/' + year + '/' + year + '-' + month + '/' + year + '-' + month + '-' + day
-    if ~file_test(dir) then begin
-      print,'There is no data for ', dates, ' day.'
-      return,0
-    endif
     range = [fix(year), fix(month), fix(month), fix(day), fix(day)]
     return,1
     
@@ -62,7 +57,7 @@ function red_check_dates_range, dates, range
 
     yy = strsplit(dates,':',/extract)
     if strlen(yy[0]) ne 10 or strlen(yy[1]) ne 5 then begin
-      print,'Date should be in YYYY-MM-DD format.'
+      print,'Date should be in YYYY-MM-DD:MM-DD format.'
       return,0
     endif
     dt = strsplit(yy[0],'-',/extract)

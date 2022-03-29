@@ -112,6 +112,10 @@
 ;
 ;      If making a video, shrink the FOV by this factor.
 ;
+;    trust_datasum : in, optional, typy=boolean
+;
+;      Set this keyword to avoid checking datasum.
+;
 ;
 ; :History:
 ; 
@@ -135,7 +139,10 @@
 ;   2020-12-10 : MGL. New keywords thumb_shrink_fac and
 ;                video_shrink_fac. 
 ;
-;   2021-01-11 : OA. Submit information about exported cubes to the database.
+;   2021-01-11 : OA. Submit information about exported cubes to the
+;   database.
+;
+;    2022-03-24 : OA. Added trust_datasum keyword.
 ; 
 ;-
 pro red::fitscube_export, filename $
@@ -152,7 +159,9 @@ pro red::fitscube_export, filename $
                           , svo_api_key = svo_api_key $
                           , svo_username = svo_username $
                           , thumb_shrink_fac = thumb_shrink_fac $
-                          , video_shrink_fac = video_shrink_fac 
+                          , video_shrink_fac = video_shrink_fac $
+                          , allowed_users = allowed_users $
+                          , trust_datasum = trust_datasum 
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -223,7 +232,7 @@ pro red::fitscube_export, filename $
 
   ;; Any old versions of this file?
   spl=strsplit(infile,'_',/extract)
-  srch='*'+strjoin(spl[1:3],'_')+'*'
+  srch='*'+strjoin(spl[1:4],'_')+'*'
   oldfiles = file_search(outdir + '/' + srch, count = Noldfiles)
   if Noldfiles gt 0 then begin
     s = ''
@@ -298,7 +307,7 @@ pro red::fitscube_export, filename $
      file_copy, wcfile, outdir+wboutfile
      red_fitscube_newheader, outdir+wboutfile, wbhdr
      print, inam + ' : Wrote '+outdir+wboutfile
-     red_fitscube_checksums, outdir+wboutfile
+     red_fitscube_checksums, outdir+wboutfile, trust_datasum = trust_datasum 
   endif
 
   ;; Copy the file and write the new header
@@ -307,7 +316,7 @@ pro red::fitscube_export, filename $
   red_fitscube_newheader, outdir+outfile, hdr
   print, inam + ' : Wrote '+outdir+outfile
   ;; Checksums need to be checked. And updated for the main hdu.
-  red_fitscube_checksums, outdir+outfile 
+  red_fitscube_checksums, outdir+outfile, trust_datasum = trust_datasum 
   ;; The fitscube files should not be changed after this point!
 
     ;; Any spectral file to copy?

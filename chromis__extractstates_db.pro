@@ -268,7 +268,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
             state.pf_wavelength = float(filt[4])*10.^waveunit
           endif else state.pf_wavelength = 0.
           
-          if set[2] eq 'flats' and state.is_wb then begin
+          if state.is_wb then begin
             ;; WB flats 
             state.fpi_state = state.prefilter + '_' + nbpref + '_+000' ;fake state
             state.tun_wavelength = state.pf_wavelength

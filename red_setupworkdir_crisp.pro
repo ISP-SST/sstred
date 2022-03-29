@@ -590,7 +590,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   for ipref = 0, Nprefilters-1 do begin
 ;    if total(prefilters[ipref] eq polprefs) gt 0 then begin
       printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
-              + maybe_nodescatter[ipref]
+              + ', nthreads = nthreads' + maybe_nodescatter[ipref] 
 ;    endif else begin
 ;      printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
 ;              + maybe_nodescatter[ipref]
@@ -625,7 +625,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
 ;  printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
   printf, Slun, ''
-  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
+  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
   printf, Slun, ''
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
   printf, Slun, ''
@@ -656,12 +656,12 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   printf, Slun, ';; Post-MOMFBD stuff:'
-  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
+  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69', nthreads = nthreads"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
   printf, Slun, "; or "
   printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
-  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
+  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits', nthreads = nthreads"
   printf, Slun, ""
 
   

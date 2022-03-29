@@ -384,7 +384,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
     printf, Slun, ''
 
-    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0"
+    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
 
   endif
     
@@ -446,7 +446,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   if ~keyword_set(calibrations_only) then begin  
     printf, Slun, ''
-    printf, Slun, 'a -> pinholecalib, /verify, nref=10'
+    printf, Slun, 'a -> pinholecalib, /verify, nref=20'
 ;    printf, Slun, 'a -> diversitycalib'
   endif
   
@@ -571,12 +571,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ';; Post-MOMFBD stuff:' 
   printf, Slun, "a -> align_continuum"
   printf, Slun
-  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69'"
+  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69', nthreads=nthreads"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
   printf, Slun, "; or "
   printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
-  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits'"
+  printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits', nthreads=nthreads"
 
   
   free_lun, Clun

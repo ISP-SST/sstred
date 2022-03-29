@@ -294,11 +294,10 @@ pro crisp::make_nb_cube, wcfile $
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   
-  extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
-  srch = '*_' + string(wbgstates.scannumber, format = '(I05)')+'_*'
-  
+  extension = (strsplit(wbgfiles[0],'.',/extract))[-1]  
   for jj=0,n_elements(wbgfiles)-1 do begin
     search_dir = file_dirname(wbgfiles[jj])+'/'
+    srch = '*_' + string(wbgstates[jj].scannumber, format = '(I05)')+'_*'
     ff = file_search(search_dir + srch + extension) 
     red_append,files,ff
   endfor
