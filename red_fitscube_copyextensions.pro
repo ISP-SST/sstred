@@ -42,6 +42,16 @@
 ;        Names or indices of extensions to be copied (default) or
 ;        ignored (if /ignore keyword is set). 
 ; 
+;     ext_reqex : in, optional, type=strarr
+; 
+;        Add to ext_list all existing extensions that match any of
+;        these regular expressions.
+; 
+;     ext_statistics : in, optional, type=boolean
+; 
+;        Add to ext_reqex regular expressions that match extensions
+;        corresponding to statistics variable keywords.
+; 
 ;     ignore : in, optional, type=boolean 
 ;
 ;        Interpret ext_list as a list of extensions to ignore.
@@ -50,10 +60,14 @@
 ; 
 ;    2020-10-16 : MGL. First version.
 ; 
+;    2022-03-30 : MGL. New keywords ext_regex and ext_statistics.
+; 
 ;-
 pro red_fitscube_copyextensions, infile, outfile $
                                  , anchor = anchor $
                                  , ext_list = ext_list $
+                                 , ext_regex = ext_regex $
+                                 , ext_statistics = ext_statistics $
                                  , ignore = ignore 
 
 
@@ -63,8 +77,21 @@ pro red_fitscube_copyextensions, infile, outfile $
   main_hdr = headfits(infile)
   fits_open, infile, fcb_in
 
-  Nlist = n_elements(ext_list)
+  
+  if keyword_set(ext_statistics) then red_append, ext_regex, ['VAR-EXT-DATA*', 'VAR-EXT-NPIXELS']
+  
+  for iregex = 0, n_elements(ext_regex)-1 do begin
+    indx = where(strmatch(fcb_in.extname, ext_regex[iregex]), Nmatch)
+    if Nmatch gt 0 then begin
+      red_append, ext_list, fcb_in.extname[indx]
+    endif
+  endfor                        ; iregex
 
+  ;; Don't repeat items in ext_list
+  if n_elements(ext_list) gt 0 then ext_list = ext_list[uniq(ext_list,sort(ext_list))]
+  
+  Nlist = n_elements(ext_list)  
+  
   if Nlist eq 0 then begin
 
     ;; Default: copy all extensions
