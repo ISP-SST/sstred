@@ -62,7 +62,7 @@
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
-;    point_id : in, optional, type=string, default="dateTtimestamp"
+;    point_id : in, optional, type=string, default="YYYY-MM-DDThh:mm:ss"
 ;
 ;      Value for the POINT_ID header keyword. 
 ;
@@ -77,15 +77,24 @@
 ; 
 ;-
 pro red::fitscube_nup, inname  $
-                       , direction = direction $                                                        
+                       , direction = direction $
+                       , wcdirection = wcdirection $
+                       , rotation = rotation $
                        , flip = flip $
+                       , do_wb_cube = do_wb_cube $
+                       , wcs_improve_spatial = wcs_improve_spatial $
                        , mirrorx = mirrorx $                             
                        , mirrory = mirrory $                             
                        , outdir = outdir $
                        , outname = outname $                                    
-                       , overwrite = overwrite $
+                       , overwrite = overwrite $                                                                    
+                       , no_checksum = no_checksum $
+                       , release_date = release_date $
+                       , release_comment = releasec $
+                       , feature = feature $
+                       , observer = observer $
                        , point_id = point_id $
-                       , rotation = rotation 
+                       , status = status
 
   
   ;; Name of this method
@@ -113,10 +122,9 @@ pro red::fitscube_nup, inname  $
   red_make_prpara, prpara, point_id
   red_make_prpara, prpara, rotation 
 
-
-  dir = file_dirname(inname)+'/'
+  dir = self.out_dir
   
-  if n_elements(outdir) eq 0 then outdir = 'cubes_converted/'
+  if n_elements(outdir) eq 0 then outdir = self.out_dir+'cubes_converted/'
   file_mkdir, outdir
  
   ;; Cameras and detectors
@@ -128,21 +136,16 @@ pro red::fitscube_nup, inname  $
   nbcamera = (*self.cameras)[nbindx[0]]
   nbdetector = (*self.detectors)[nbindx[0]]
 
-  inhdr = headfits(inname)
+  ;; Read header and fix PRSTEP info 
+  red_fitscube_correct_prstep, inname, header = inhdr, /nowrite
+  
   dims = fxpar(inhdr, 'NAXIS*')
   Nx       = dims[0]  
   Ny       = dims[1]  
   Ntunings = dims[2]  
   Nstokes  = dims[3]  
   Nscans   = dims[4]  
-
-
-  ;; Read wcs info from input file
-  red_fitscube_getwcs, inname $
-                       , coordinates = wcs $
-                       , distortions = distortions
   
-
   ;; NB cube of WB cube?
   filetype = (strsplit(file_basename(inname),'_',/extract))[0]
   
@@ -165,8 +168,6 @@ pro red::fitscube_nup, inname  $
   ;; Time stamp
   timestamp = (strsplit(point_id, 'T', /extract))[1]
 
-
-
   if n_elements(point_id) eq 0 then point_id = self.isodate + 'T' + timestamp
 
   if n_elements(outname) eq 0 then begin
@@ -182,11 +183,6 @@ pro red::fitscube_nup, inname  $
       if n_elements(datatags) eq 1 then datatags = ['nup', datatags] $
       else datatags = [datatags[0:-2], 'nup', datatags[-1]]
     endif
-    
-;    if strmatch(file_basename(inname), '*_stokes_*') then red_append, datatags, 'stokes'
-;    if strmatch(file_basename(inname), '*_corrected_*') then red_append, datatags, 'corrected'       
-;    red_append, datatags, 'fixorientation'
-;    if strmatch(file_basename(inname), '*_im.fits') then red_append, datatags, 'im'       
 
     oname = outdir + '/' $
             + red_fitscube_filename(filetype $
@@ -211,15 +207,11 @@ pro red::fitscube_nup, inname  $
     endelse
   endif
 
-
   
   ;; Establish the orientation of the file
   if n_elements(mirrorx) eq 0 or n_elements(mirrory) eq 0 then begin
 
-    cfgfiles = file_search(dir+'/../*mfbd*/'+timestamp+'/'+pref+'/cfg/*cfg', count = Ncfg)
-    if Ncfg eq 0 then begin
-      cfgfiles = file_search(dir+'/../../*mfbd*/'+timestamp+'/'+pref+'/cfg/*cfg', count = Ncfg)
-    endif
+    cfgfiles = file_search(dir+'*mfbd*/'+timestamp+'/'+pref+'/cfg/*cfg', count = Ncfg)  
 
     if Ncfg eq 0 then begin
       print, inam + ' : Cannot find a matching momfbd config file.'
@@ -266,36 +258,98 @@ pro red::fitscube_nup, inname  $
 
   endif
 
-  if n_elements(mirrorx) eq 0 then begin
-    mirrorx = 0
-    print, inam + ' : keyword mirrorx default : ', mirrorx
-  endif
-  if n_elements(mirrory) eq 0 then begin
-    mirrory = 0
-    print, inam + ' : keyword mirrory default : ', mirrory
-  endif
-
-
-  ;; Get rotation angle and direction of cube from MWCINFO
-  pr = red_headerinfo_getstep(inhdr, prstep = 'CONCATENATION', prkey = 'PRPARA')
-  wcfile = (json_parse(pr['PRPARA2'].value))['WCFILE']
-  if ~file_test(wcfile) then begin
-    print, inam + ' : Could not find the WB cube'
-    print, wcfile
-    stop
-  endif
+  if filetype eq 'nb' then begin
+    indx = where(strmatch(inhdr, '*WCFILE*'), Nwhere)
+    if Nwhere eq 0 then begin
+      print, 'There is no information about wb cube in the header.'
+      return
+    endif else begin
+      par = strmid(inhdr[indx],0,7)
+      par_key = red_fitsgetkeyword(inhdr, par[0])
+      wcfile = (json_parse(par_key))['WCFILE']
+    endelse
+    if ~file_test(wcfile) then begin
+      print, inam + ' : Could not find the WB cube -- ', wcfile
+      print,'Enter wb cube name manually.'
+      wcfile = ''
+      read,'WB cube name : ',wcfile
+      if strtrim(wcfile,2) eq '' then return
+      if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
+      if ~file_test(wcfile) then begin
+        print,'There is no such wb cube.'
+        return
+      endif
+    endif
+  endif else wcfile = inname
 
   ;; Read parameters from the WB cube
   fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
   fxbreadm, bunit, row = 1 $
             , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
-            , wcANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01, wcdirection
-  ;; Note that the strarr wfiles cannot be read by fxbreadm! Put it in
-  ;; wbgfiles (WideBand Global).
-  fxbread, bunit, wbgfiles, 'WFILES', 1
+            , wcANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01, wcdirection  
   fxbclose, bunit
 
-  
+  if n_elements(wcdirection) eq 0 and $
+    n_elements(mirrorx) eq 0 and $
+    n_elements(mirrory) eq 0 then begin
+
+    print,'There is no information about previous 90 degrees rotations or mirroring of the cube.'
+    ans=''
+    read, 'Do you want to continue (Y/n): ',ans
+    if strupcase(ans) eq 'N' then return
+  endif
+  if  n_elements(wcdirection) eq 0 then wcdirection = 0
+
+  if keyword_set(do_wb_cube) or keyword_set(wcs_improve_spatial) then begin
+    print,'==============================='
+    print,'Processing WB cube first.'
+    print,'==============================='
+    if ~keyword_set(outname) then $
+      wb_oname = outdir + '/' $
+            + red_fitscube_filename('wb' $
+                                    , pref $
+                                    , timestamp $
+                                    , red_collapserange(s_array, /nobrack) $
+                                    , point_id $ 
+                                    , datatags = datatags) $
+    else begin
+      nm = file_basename(inname)
+      prfx = strmid(nm,0,2)
+      if prfx eq 'nb' then $
+        wb_oname = file_dirname(inname) + '/wb' + strmid(inname,2,strlen(nm)) $
+      else $
+        wb_oname = file_dirname(inname) + '/wb_' + nm
+    endelse
+
+    if keyword_set(wcs_improve_spatial) then no_check_sum = 1b else no_check_sum = keyword_set(no_checksum)
+
+    self -> fitscube_nup, wcfile $
+                          , direction = direction $
+                          , rotation = rotation $
+                          , mirrorx = mirrorx $                             
+                          , mirrory = mirrory $                             
+                          , outdir = outdir $
+                          , outname = wb_oname $                                    
+                          , overwrite = overwrite $                                                                  
+                          , no_checksum = no_check_sum $
+                          , release_date = release_date $
+                          , release_comment = releasec $
+                          , feature = feature $
+                          , observer = observer $
+                          , point_id = point_id $
+                          , status = status
+    if ~status then return
+    if keyword_set(wcs_improve_spatial) then begin
+      self -> fitscube_wcs_improve_spatial, wb_oname
+      if ~keyword_set(no_checksum) then red_fitscube_checksums,wb_oname
+    endif
+  endif
+
+  if filetype eq 'wb' then $
+    red_fitscube_getwcs, inname, coordinates = wcs $
+  else $
+    red_fitscube_getwcs, inname, distortions = distortions, coordinates = wcs
+     
   ;; Original derotation angles
   t_array = reform(wcs[0,*].time[0,0])
   ang = red_lp_angles(t_array, self.isodate, /from_log, offset_angle = defrotation) ; [radians]
@@ -306,17 +360,14 @@ pro red::fitscube_nup, inname  $
   maxangle = abs(ang)
   ff = [maxangle, 0., 0., 0., 0., ang]    
 
-;  maxangle = rotation + mang    ; Unless the time-dependent angle is not already applied.
-;  maxangle = abs(rotation + mang)
-;  ff = [maxangle, 0., 0., 0., 0., reform(ang)]    
-;  ff = [maxangle, 0., 0., 0., 0., rotation + mang]    
-
-
   ;; Read one frame
   red_fitscube_getframe, inname, frame, iframe = 0
-  
+   
   ;; Get the frame with size implied by ff
-  frame = rotate(temporary(frame), -wcdirection) ; Undo old direction
+  if wcdirection ne 0 then frame = rotate(temporary(frame), -wcdirection) ; Undo old direction
+  if keyword_set(mirrorx) then frame = reverse(frame, 1, /over)        
+  if keyword_set(mirrory) then frame = reverse(frame, 2, /over)
+                                   
   frame = rotate(temporary(frame), direction)    ; Do the new direction
   frame = red_rotation(frame, full = ff, 0, 0, 0)
 
@@ -328,35 +379,46 @@ pro red::fitscube_nup, inname  $
   Ny = dims[1]  
 
   ;; Make header
-  ;;red_mkhdr, hdr, frame, dims
   outhdr = inhdr
+
+  if keyword_set(wcs_improve_spatial) then begin
+    red_get_wcs,  wb_oname, coordinates = wb_wcs
+    wcs.hpln = wb_wcs.hpln
+    wcs.hplt = wb_wcs.hplt
+  endif else begin
+    hpln = median(wcs.hpln)
+    hplt = median(wcs.hplt)
+    ;; But what we want to tabulate is the pointing in the corners of
+    ;; the FOV. Assume hpln and hplt are the coordinates of the center
+    ;; of the FOV.
+    wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
+    wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
+    wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
+    wcs.hpln[1, 1, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
+
+    wcs.hplt[0, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
+    wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
+    wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+    wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+  endelse
+
+  self -> fitscube_header_finalize, outhdr $
+                       , no_checksum = no_checksum $
+                       , coordinates = wcs $
+                       , release_date = release_date $
+                       , release_comment = releasec $
+                       , feature = feature $
+                       , observer = observer $
+                       , point_id = point_id $
+                       , status = status
+  if ~(status) then return
   
   ;; Add info about this step
   self -> headerinfo_addstep, outhdr $
                               , prstep = 'DATA-CURATION' $
                               , prpara = prpara $
                               , prproc = inam
-
-  
-  ;; Get pointing at center of FOV
-;  red_wcs_hpl_coords, t_array, diskpos, time_diskpos $
-                                ;, hpln, hplt
-
-  hpln = median(wcs.hpln)
-  hplt = median(wcs.hplt)
-
-  ;; But what we want to tabulate is the pointing in the corners of
-  ;; the FOV. Assume hpln and hplt are the coordinates of the center
-  ;; of the FOV.
-  wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[1, 1, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
-  
-  wcs.hplt[0, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+     
 
   ;; Initialize the output file
   self -> fitscube_initialize, oname, outhdr, olun, fileassoc, dims, wcs = wcs  
@@ -373,7 +435,9 @@ pro red::fitscube_nup, inname  $
         
         red_fitscube_getframe, inname, frame $
                                , iscan = iscan, ituning = ituning, istokes = istokes
-        
+
+        ;;old wb cubes are integer and can't be padded with NaNs
+        if size(frame,/type) eq 2 then frame = float(frame)
         red_missing, frame, /inplace, missing_value = !Values.F_NaN
         
         ;; Undo any mirroring done in the momfbd processing (already
@@ -381,7 +445,7 @@ pro red::fitscube_nup, inname  $
         if keyword_set(mirrorx) then frame = reverse(frame, 1, /over)        
         if keyword_set(mirrory) then frame = reverse(frame, 2, /over)        
 
-        frame = rotate(temporary(frame), -wcdirection) ; Undo old
+        if wcdirection ne 0 then frame = rotate(temporary(frame), -wcdirection) ; Undo old
         frame = rotate(temporary(frame), direction)    ; Do new
 
         ;; Frames from the input cube are already rotated to a common
@@ -399,31 +463,40 @@ pro red::fitscube_nup, inname  $
   endfor                        ; iscan   
   
 
-  self -> fitscube_finish, olun, wcs = wcs
+  self -> fitscube_finish, olun, wcs = wcs  
 
-  for icmap = 0, n_elements(distortions)-1 do begin
-    ;; Add cavity maps as WAVE distortions     
-    cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
-    for iscan = 0L, Nscans-1 do begin
-      ;; Same operations as on data frames:
-      frame = rotate(distortions[icmap].wave[*, *, 0, 0, iscan], direction)
-      red_missing, frame, /inplace, missing_value = !Values.F_NaN
-      if keyword_set(mirrorx) then frame = reverse(frame, 1, /over)        
-      if keyword_set(mirrory) then frame = reverse(frame, 2, /over)        
-      frame = rotate(temporary(frame), -wcdirection) ; Undo old
-      frame = rotate(temporary(frame), direction)    ; Do new
-      cavitymaps[*, *, 0, 0, iscan] = red_rotation(frame, full = ff, ang $
-                                                   , 0, 0, background = !Values.F_NaN)
-    endfor                      ; iscan
-    red_fitscube_addcmap, oname, cavitymaps, cmap_number = icmap+1 $
-                          , indx = red_expandrange(distortions[icmap].tun_index)
-  endfor                        ; icmap
-
-  ;; Copy all extensions, including varaible keywords. But exclude
-  ;; WCS-TAB and WCSDVARR, they are WCS info already added in modified
-  ;; form. Exclude also statistics keywords. They should be recalculated.
-  red_fitscube_copyextensions, inname, oname $
+  if filetype eq 'nb' then begin
+    for icmap = 0, n_elements(distortions)-1 do begin
+      ;; Add cavity maps as WAVE distortions     
+      cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
+      for iscan = 0L, Nscans-1 do begin
+        ;; Same operations as on data frames:
+        frame = rotate(distortions[icmap].wave[*, *, 0, 0, iscan], direction)
+        red_missing, frame, /inplace, missing_value = !Values.F_NaN
+        if keyword_set(mirrorx) then frame = reverse(frame, 1, /over)        
+        if keyword_set(mirrory) then frame = reverse(frame, 2, /over)        
+        frame = rotate(temporary(frame), -wcdirection) ; Undo old
+        frame = rotate(temporary(frame), direction)    ; Do new
+        cavitymaps[*, *, 0, 0, iscan] = red_rotation(frame, full = ff, ang $
+                                                     , 0, 0, background = !Values.F_NaN)
+      endfor                      ; iscan
+      red_fitscube_addcmap, oname, cavitymaps, cmap_number = icmap+1 $
+                            , indx = red_expandrange(distortions[icmap].tun_index)
+    endfor                       ; icmap
+    ;; Copy all extensions, including varaible keywords. But exclude
+    ;; WCS-TAB and WCSDVARR, they are WCS info already added in modified
+    ;; form. Exclude also statistics keywords. They should be recalculated.
+    red_fitscube_copyextensions, inname, oname $
                                , ext_list = ['WCS-TAB', 'WCSDVARR'], /ext_statistics, /ignore
+ endif else $
+    red_fitscube_copyextensions, inname, oname $
+                               , ext_list = ['WCS-TAB'], /ext_statistics, /ignore
+  
+
+  red_fitscube_statistics, oname, /write
+  
+  if ~keyword_set(no_checksum) then $
+    red_fitscube_checksums, oname
   
   if keyword_set(flip) then begin
     ;; Make a flipped version
@@ -432,8 +505,6 @@ pro red::fitscube_nup, inname  $
                        , flipfile = flipfile $
                        , overwrite = overwrite
   endif
-
-  outname = oname
 
   print
   print, inam + ' : Input: ' + inname

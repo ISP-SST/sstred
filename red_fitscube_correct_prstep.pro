@@ -80,26 +80,29 @@ pro red_fitscube_correct_prstep, filename $
       end 
       
       'Prepare WB science data cube' : $    ; red__make_wb_cube.pro
-         prsteps[istep] = strjoin(['CONCATENATION' $ ; Combining multiple files 
-                                   , 'SPATIAL-ALIGNMENT' $
-                                   , 'DESTRETCHING'] $
-                                  , ',')
-
+         ;; prsteps[istep] = strjoin(['CONCATENATION' $ ; Combining multiple files 
+         ;;                           , 'SPATIAL-ALIGNMENT' $
+         ;;                           , 'DESTRETCHING'] $
+         ;;                          , ',')
+         prsteps[istep] = 'CONCATENATION'
+                             
       'Prepare NB science data cube' : begin
         if strmatch(prproc, 'make_nb_cube') then begin
           ;; chromis__make_nb_cube.pro, crisp__make_nb_cube.pro
-          prsteps[istep] = strjoin(['CONCATENATION' $ ; Combining multiple files
-                                    , 'SPATIAL-ALIGNMENT' $
-                                    , 'DESTRETCHING' $
-                                    , 'INTENSITY-CALIBRATION'] $
-                                   , ',')
+          ;; prsteps[istep] = strjoin(['CONCATENATION' $ ; Combining multiple files
+          ;;                           , 'SPATIAL-ALIGNMENT' $
+          ;;                           , 'DESTRETCHING' $
+          ;;                           , 'INTENSITY-CALIBRATION'] $
+          ;;                          , ',')
+          prsteps[istep] = 'CALIBRATION-INTENSITY-SPECTRAL'
         endif else begin
           ;; chromis__make_scan_cube.pro, crisp__make_scan_cube.pro
-          prsteps[istep] = strjoin(['CONCATENATION' $ ; Combining  multiple files
-                                    , 'SPATIAL-ALIGNMENT' $
-                                    , 'DESTRETCHING' $
-                                    , 'CALIBRATION-INTENSITY-SPECTRAL'] $
-                                   , ',')
+          ;; prsteps[istep] = strjoin(['CONCATENATION' $ ; Combining  multiple files
+          ;;                           , 'SPATIAL-ALIGNMENT' $
+          ;;                           , 'DESTRETCHING' $
+          ;;                           , 'CALIBRATION-INTENSITY-SPECTRAL'] $
+          ;;                          , ',')
+          prsteps[istep] = 'CALIBRATION-INTENSITY-SPECTRAL' 
         endelse
       end
 
