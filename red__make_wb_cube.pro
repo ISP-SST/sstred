@@ -818,27 +818,41 @@ pro red::make_wb_cube, dirs $
   ;; it really tries to make the pointing the same during the whole
   ;; sequence without allowing for drifts. So we should make the
   ;; pointing metadata constant in time, let's use the median:
-  hpln = median(hpln)
-  hplt = median(hplt)
+;  hpln = median(hpln)
+;  hplt = median(hplt)
 
+  ;; Let's correct coordinates from the log with calculated shifts.
+  ;; (It's mostly needed in case of 'jumps'.)
+  hpln += double(self.image_scale) * shift[0,*]
+  hplt += double(self.image_scale) * shift[1,*]
+
+  ;; Let's smooth coordinates.
+  dt = (t_array[0,-1] - t_array[0,0]) / 60. ; minutes
+  if dt le 15. or Nscans le 3 then fit_expr = 'P[0] + X*P[1]'
+  if dt gt 15. and Nscans gt 3 then fit_expr = 'P[0] + X*P[1] + X*X*P[2]'
+  pp = mpfitexpr(fit_expr, t_array[0,*], hpln)
+  hpln = red_evalexpr(fit_expr, t_array[0,*], pp)
+  pp = mpfitexpr(fit_expr, t_array[0,*], hplt)
+  hplt = red_evalexpr(fit_expr, t_array[0,*], pp)
+  
   ;; But what we want to tabulate is the pointing in the corners of
   ;; the FOV. Assume hpln and hplt are the coordinates of the center
   ;; of the FOV.
-  wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[1, 1, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[0, 0] = hpln - double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[1, 0] = hpln + double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[0, 1] = hpln - double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[1, 1] = hpln + double(self.image_scale) * (Nx-1)/2.d
   
-  wcs.hplt[0, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[0, 0] = hplt - double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[1, 0] = hplt - double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[0, 1] = hplt + double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[1, 1] = hplt + double(self.image_scale) * (Ny-1)/2.d
   
   
   for iscan = 0, Nscans-1 do begin
     self -> fitscube_addframe, fileassoc, cub[*, *, 0, 0, iscan] $
                                , iscan = iscan
-    wcs[0, iscan].time = t_array[iscan]
+    wcs[0, iscan].time = t_array[iscan]    
   endfor                        ; iscan
 ;  free_lun, lun
 ;  print, inam + ' : Wrote file '+odir + ofil

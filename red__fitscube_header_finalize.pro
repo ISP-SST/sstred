@@ -185,7 +185,7 @@ pro red::fitscube_header_finalize, hdr $
         print, 'You have to set FEATURE keyword. Please choose from the list: '
         for j=0, n_elements(approved_features)-1 do $
           print,'[',strtrim(string(j),2),'] ', approved_features[j]
-        read,'Like "1,4,6": ',ans
+        read,'Like "1,4-6": ',ans
         if ans eq '' then begin
           red_fitsaddkeyword, anchor = anchor, hdr, 'FEATURE', 'Missing'  
         endif else begin
@@ -246,6 +246,7 @@ pro red::fitscube_header_finalize, hdr $
     end
     n_elements(observer) eq 0 and ~is_prev_observer : begin
       read, "You have to enter observers' names:", ans
+      observer = strtrim(ans,2)
       red_fitsaddkeyword, anchor = anchor, hdr, 'OBSERVER', ans
     end
     else : 

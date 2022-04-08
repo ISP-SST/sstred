@@ -87,10 +87,10 @@ pro red::fitscube_nup, inname  $
                        , mirrory = mirrory $                             
                        , outdir = outdir $
                        , outname = outname $                                    
-                       , overwrite = overwrite $                                                                    
+                       , overwrite = overwrite $
                        , no_checksum = no_checksum $
                        , release_date = release_date $
-                       , release_comment = releasec $
+                       , release_comment = release_comment $
                        , feature = feature $
                        , observer = observer $
                        , point_id = point_id $
@@ -120,7 +120,8 @@ pro red::fitscube_nup, inname  $
   red_make_prpara, prpara, outdir
   red_make_prpara, prpara, outname
   red_make_prpara, prpara, point_id
-  red_make_prpara, prpara, rotation 
+  red_make_prpara, prpara, rotation
+  red_make_prpara, prpara, no_checksum
 
   dir = self.out_dir
   
@@ -382,31 +383,54 @@ pro red::fitscube_nup, inname  $
   outhdr = inhdr
 
   if keyword_set(wcs_improve_spatial) then begin
-    red_get_wcs,  wb_oname, coordinates = wb_wcs
-    wcs.hpln = wb_wcs.hpln
-    wcs.hplt = wb_wcs.hplt
+    red_firtscube_getwcs,  wb_oname, coordinates = wb_wcs
+    for iscan = 0L, Nscans-1 do begin
+      ;; We rely here on hpln and hplt being the first two tabulated
+      ;; coordinates. To make this more general, we should get the
+      ;; actual indices from the headers. Maybe later...
+      wcs[*, iscan].hpln = wb_wcs[0,iscan].hpln
+      wcs[*, iscan].hplt = wb_wcs[0,iscan].hplt
+    endfor                      ; iscan
   endif else begin
-    hpln = median(wcs.hpln)
-    hplt = median(wcs.hplt)
+    
+    ;; We need to restore coordinates from log files
+
+    time = reform(wcs[0,*].time[0,0])
+    red_logdata, self.isodate, time, diskpos = pointing
+
+    hpln = pointing[0,*] + double(self.image_scale) * wcSHIFT[0,*]
+    hplt = pointing[1,*] + double(self.image_scale) * wcSHIFT[1,*]
+
+    ;; Let's smooth coordinates.
+    dt = (time[-1] - time[0]) / 60. ; minutes
+    if dt le 15. or Nscans le 3 then fit_expr = 'P[0] + X*P[1]'
+    if dt gt 15. and Nscans gt 3 then fit_expr = 'P[0] + X*P[1] + X*X*P[2]'
+    pp = mpfitexpr(fit_expr, time, hpln)
+    hpln = red_evalexpr(fit_expr, time, pp)
+    pp = mpfitexpr(fit_expr, time, hplt)
+    hplt = red_evalexpr(fit_expr, time, pp)
+  
     ;; But what we want to tabulate is the pointing in the corners of
     ;; the FOV. Assume hpln and hplt are the coordinates of the center
     ;; of the FOV.
-    wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-    wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
-    wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-    wcs.hpln[1, 1, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
-
-    wcs.hplt[0, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-    wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-    wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
-    wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+    for iscan = 0L, Nscans-1 do begin
+      wcs[*, iscan].hpln[0, 0] = hpln[iscan] - double(self.image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[1, 0] = hpln[iscan] + double(self.image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[0, 1] = hpln[iscan] - double(self.image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[1, 1] = hpln[iscan] + double(self.image_scale) * (Nx-1)/2.d
+      
+      wcs[*, iscan].hplt[0, 0] = hplt[iscan] - double(self.image_scale) * (Ny-1)/2.d
+      wcs[*, iscan].hplt[1, 0] = hplt[iscan] - double(self.image_scale) * (Ny-1)/2.d
+      wcs[*, iscan].hplt[0, 1] = hplt[iscan] + double(self.image_scale) * (Ny-1)/2.d
+      wcs[*, iscan].hplt[1, 1] = hplt[iscan] + double(self.image_scale) * (Ny-1)/2.d        
+    endfor
   endelse
 
   self -> fitscube_header_finalize, outhdr $
                        , no_checksum = no_checksum $
                        , coordinates = wcs $
                        , release_date = release_date $
-                       , release_comment = releasec $
+                       , release_comment = release_comment $
                        , feature = feature $
                        , observer = observer $
                        , point_id = point_id $
@@ -461,21 +485,34 @@ pro red::fitscube_nup, inname  $
       endfor                    ; istokes
     endfor                      ; ituning   
   endfor                        ; iscan   
-  
 
-  self -> fitscube_finish, olun, wcs = wcs  
+  
+  free_lun, olun
+  if keyword_set(wcs_improve_spatial) then $
+    red_fitscube_addwcs, oname, wcs $
+                         , csyer_spatial_value = 5. $ ; 5 arcsec, minor rotation error may remain
+                         , csyer_spatial_comment = 'Aligned with HMI images' $
+                         , dimensions = fxpar(outhdr, 'NAXIS*') $
+  else $
+    red_fitscube_addwcs, oname, wcs $
+                         , dimensions = fxpar(outhdr, 'NAXIS*') $
+                         , csyer_spatial_value = 60. $ ; 1 arc minute
+                         , csyer_spatial_comment = '[arcsec] Orientation known'
 
   if filetype eq 'nb' then begin
     for icmap = 0, n_elements(distortions)-1 do begin
       ;; Add cavity maps as WAVE distortions     
       cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
+      ;; cavity maps in older cubes were stored as (Nx, Ny, Nscans)
+      ;; let's make reform in case we need to 'curate' newer cubes
+      dd = reform(distortions[icmap].wave)
       for iscan = 0L, Nscans-1 do begin
-        ;; Same operations as on data frames:
-        frame = rotate(distortions[icmap].wave[*, *, 0, 0, iscan], direction)
+        ;; Same operations as on data frames:        
+        frame = dd[*, *, iscan]
         red_missing, frame, /inplace, missing_value = !Values.F_NaN
         if keyword_set(mirrorx) then frame = reverse(frame, 1, /over)        
         if keyword_set(mirrory) then frame = reverse(frame, 2, /over)        
-        frame = rotate(temporary(frame), -wcdirection) ; Undo old
+        if wcdirection ne 0 then frame = rotate(temporary(frame), -wcdirection) ; Undo old
         frame = rotate(temporary(frame), direction)    ; Do new
         cavitymaps[*, *, 0, 0, iscan] = red_rotation(frame, full = ff, ang $
                                                      , 0, 0, background = !Values.F_NaN)
@@ -506,6 +543,7 @@ pro red::fitscube_nup, inname  $
                        , overwrite = overwrite
   endif
 
+  outname = oname
   print
   print, inam + ' : Input: ' + inname
   print, inam + ' : Output: ' + oname
