@@ -69,11 +69,46 @@
 ;    rotation : in, optional, type=float
 ;
 ;      Offset angle to be added to the field rotation angles.
+;
+;    do_wb_cube : in, optional, type=boolean
+;
+;      Set to correct WB cube as well.
+;
+;    wcs_improve_spatial  : in, optional, type=boolean
+;
+;      Set to align FOV of a fitscube with HMI intensity image.
+;      Use when there are prominent features in FOV.
+;
+;    no_checksum : in, optional, type=boolean
+;
+;      Do not calculate DATASUM and CHECKSUM.
+;
+;    release_date : in, optional, type=string
+;
+;      The value of the RELEASE keyword, a date after which the data
+;      are not proprietary.
+;
+;    release_comment : in, optional, type=string
+;
+;      The value of the RELEASEC keyword, a comment with details about
+;      the proprietary state of the data, and whom to contact.
+;
+;    feature : in, optional, type=string
+;
+;      The value of FEATURE keyword, names of solar features in the FOV.
+;
+;    observer  : in, optional, type=string
+;
+;      The value of the OBSERVER keyword, names of observers.
 ; 
 ; 
 ; :History:
 ; 
 ;    2022-03-29 : MGL. First version.
+;
+;    2022-04-11 : OA. Added recursive call for wb cube, keywords for
+;                 finalizing the header, time-dependent solar
+;                 coordinates in WCS.
 ; 
 ;-
 pro red::fitscube_nup, inname  $
@@ -94,6 +129,7 @@ pro red::fitscube_nup, inname  $
                        , feature = feature $
                        , observer = observer $
                        , point_id = point_id $
+                       , nthreads = nthreads $
                        , status = status
 
   
@@ -331,7 +367,7 @@ pro red::fitscube_nup, inname  $
                           , mirrory = mirrory $                             
                           , outdir = outdir $
                           , outname = wb_oname $                                    
-                          , overwrite = overwrite $                                                                  
+                          , overwrite = overwrite $   
                           , no_checksum = no_check_sum $
                           , release_date = release_date $
                           , release_comment = releasec $
@@ -359,10 +395,25 @@ pro red::fitscube_nup, inname  $
   ;; already done. This should be a scalar.
   ang = mean(ang - wcang) - (rotation-defrotation)*!dtor
   maxangle = abs(ang)
-  ff = [maxangle, 0., 0., 0., 0., ang]    
+  ff = [maxangle, 0., 0., 0., 0., ang]
+
+  ;; Open file to read frames  
+  bitpix = fxpar(inhdr, 'BITPIX')
+  case bitpix of
+    16 : array_structure = intarr(Nx, Ny)
+    -32 : array_structure = fltarr(Nx, Ny)
+    else : stop
+  endcase
+  Nlines = where(strmatch(inhdr, 'END *'), Nmatch)
+  Npad = 2880 - (80L*Nlines mod 2880)
+  Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
+  offset = Nblock*2880          ; Offset to start of data
+  ;; Must be an existing file!
+  openr, ilun, inname, /get_lun, /swap_if_little_endian
+  in_fileassoc = assoc(ilun, array_structure, offset)
 
   ;; Read one frame
-  red_fitscube_getframe, inname, frame, iframe = 0
+  red_fitscube_getframe, in_fileassoc, frame, iframe = 0
    
   ;; Get the frame with size implied by ff
   if wcdirection ne 0 then frame = rotate(temporary(frame), -wcdirection) ; Undo old direction
@@ -370,7 +421,7 @@ pro red::fitscube_nup, inname  $
   if keyword_set(mirrory) then frame = reverse(frame, 2, /over)
                                    
   frame = rotate(temporary(frame), direction)    ; Do the new direction
-  frame = red_rotation(frame, full = ff, 0, 0, 0)
+  frame = red_rotation(frame, full = ff, 0, 0, 0, nthreads = nthreads)
 
   ;; Set the spatial dimensions of the output file.
   dims[0:1] = size(frame, /dim)
@@ -381,13 +432,11 @@ pro red::fitscube_nup, inname  $
 
   ;; Make header
   outhdr = inhdr
+  red_fitsaddkeyword, outhdr, 'BITPIX', -32
 
   if keyword_set(wcs_improve_spatial) then begin
-    red_firtscube_getwcs,  wb_oname, coordinates = wb_wcs
+    red_fitscube_getwcs,  wb_oname, coordinates = wb_wcs
     for iscan = 0L, Nscans-1 do begin
-      ;; We rely here on hpln and hplt being the first two tabulated
-      ;; coordinates. To make this more general, we should get the
-      ;; actual indices from the headers. Maybe later...
       wcs[*, iscan].hpln = wb_wcs[0,iscan].hpln
       wcs[*, iscan].hplt = wb_wcs[0,iscan].hplt
     endfor                      ; iscan
@@ -398,16 +447,23 @@ pro red::fitscube_nup, inname  $
     time = reform(wcs[0,*].time[0,0])
     red_logdata, self.isodate, time, diskpos = pointing
 
-    hpln = pointing[0,*] + double(self.image_scale) * wcSHIFT[0,*]
-    hplt = pointing[1,*] + double(self.image_scale) * wcSHIFT[1,*]
+    hpln = pointing[0,*] - double(self.image_scale) * wcSHIFT[0,*]
+    hplt = pointing[1,*] - double(self.image_scale) * wcSHIFT[1,*]        
 
     ;; Let's smooth coordinates.
     dt = (time[-1] - time[0]) / 60. ; minutes
     if dt le 15. or Nscans le 3 then fit_expr = 'P[0] + X*P[1]'
     if dt gt 15. and Nscans gt 3 then fit_expr = 'P[0] + X*P[1] + X*X*P[2]'
-    pp = mpfitexpr(fit_expr, time, hpln)
+    ;; We have to exclude NaNs before running mpfitexpr.
+    indx = where(finite(hpln))
+    lln = hpln[indx]
+    tt = time[indx]
+    pp = mpfitexpr(fit_expr, tt, lln)
     hpln = red_evalexpr(fit_expr, time, pp)
-    pp = mpfitexpr(fit_expr, time, hplt)
+    indx = where(finite(hplt))
+    llt = hplt[indx]
+    tt = time[indx]
+    pp = mpfitexpr(fit_expr, tt, llt)
     hplt = red_evalexpr(fit_expr, time, pp)
   
     ;; But what we want to tabulate is the pointing in the corners of
@@ -457,10 +513,10 @@ pro red::fitscube_nup, inname  $
 
         red_progressbar, iframe, Nframes, /predict, 'Copying frames'
         
-        red_fitscube_getframe, inname, frame $
+        red_fitscube_getframe, in_fileassoc, frame $
                                , iscan = iscan, ituning = ituning, istokes = istokes
 
-        ;;old wb cubes are integer and can't be padded with NaNs
+        ;; Old wb cubes are integer and can't be padded with NaNs
         if size(frame,/type) eq 2 then frame = float(frame)
         red_missing, frame, /inplace, missing_value = !Values.F_NaN
         
@@ -474,7 +530,7 @@ pro red::fitscube_nup, inname  $
 
         ;; Frames from the input cube are already rotated to a common
         ;; angle, we just need to adjust the angle to Solar N.
-        frame = red_rotation(frame, full = ff, ang, 0, 0, background = !Values.F_NaN)
+        frame = red_rotation(frame, full = ff, ang, 0, 0, background = !Values.F_NaN, nthreads = nthreads)
         
         self -> fitscube_addframe, fileassoc, frame  $
                                    , iscan = iscan, ituning = ituning, istokes = istokes
@@ -486,7 +542,7 @@ pro red::fitscube_nup, inname  $
     endfor                      ; ituning   
   endfor                        ; iscan   
 
-  
+  free_lun, ilun
   free_lun, olun
   if keyword_set(wcs_improve_spatial) then $
     red_fitscube_addwcs, oname, wcs $
@@ -515,7 +571,7 @@ pro red::fitscube_nup, inname  $
         if wcdirection ne 0 then frame = rotate(temporary(frame), -wcdirection) ; Undo old
         frame = rotate(temporary(frame), direction)    ; Do new
         cavitymaps[*, *, 0, 0, iscan] = red_rotation(frame, full = ff, ang $
-                                                     , 0, 0, background = !Values.F_NaN)
+                                                     , 0, 0, background = !Values.F_NaN, nthreads = nthreads)
       endfor                      ; iscan
       red_fitscube_addcmap, oname, cavitymaps, cmap_number = icmap+1 $
                             , indx = red_expandrange(distortions[icmap].tun_index)
@@ -525,7 +581,7 @@ pro red::fitscube_nup, inname  $
     ;; form. Exclude also statistics keywords. They should be recalculated.
     red_fitscube_copyextensions, inname, oname $
                                , ext_list = ['WCS-TAB', 'WCSDVARR'], /ext_statistics, /ignore
- endif else $
+  endif else $
     red_fitscube_copyextensions, inname, oname $
                                , ext_list = ['WCS-TAB'], /ext_statistics, /ignore
   

@@ -209,7 +209,9 @@
 ;    2020-11-09 : MGL. New keyword nostretch.
 ; 
 ;    2021-11-23 : MGL. Combine data from multiple datestamp
-;                 directories. New keywords oldname and point_id. 
+;                 directories. New keywords oldname and point_id.
+;
+;    2022-04-08 : OA. Added time-dependent solar coordinates in WCS.
 ;
 ;-
 pro red::make_wb_cube, dirs $
