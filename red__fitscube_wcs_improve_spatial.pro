@@ -124,14 +124,25 @@ pro red::fitscube_wcs_improve_spatial, filename $
   ;; extension unless a frame is specified.
   if ~framespecified && max(strmatch(prprocs,'*make_scan_cube')) then begin ; Scan cube. 
     im_sst = MRDFITS(filename, 'WBIMAGE', STATUS=status)
+    if status lt 0 then return
     iframe = 0
   endif else status = -100
-  if status lt 0 then $         ; Read the specified frame
-     red_fitscube_getframe, filename, im_sst $ 
+  if status lt 0 then begin     ; Read the specified frame
+    if ~framespecified then begin
+      ;; If frame is not specified then take a middle frame from a cube.
+      scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scannum)
+      scans = reform(scannum.values)
+      in = n_elements(scans)/2
+      iscan = scans[in]
+      istokes = 0
+      ituning = 0
+    endif
+    red_fitscube_getframe, filename, im_sst $ 
                             , iframe = iframe $
                             , iscan = iscan $
                             , istokes = istokes $
                             , ituning = ituning
+  endif
   
   im_sst = im_sst/median(im_sst)
   dims_sst = size(im_sst, /dim)
@@ -217,7 +228,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
     maxdim_small = max(dims_sst_small)
     im_sst_orig = red_centerpic(im_sst_orig, sz = maxdim_small, z = median(im_sst_orig))
 
-    window, xs = maxdim_small*8, ys = maxdim_small
+    window,9, xs = maxdim_small*8, ys = maxdim_small
     for i = 0, 7 do begin
       tvscl, red_rotate(im_sst_orig, i), i
       cgtext, i*maxdim_small+10, 10, strtrim(i, 2), /device, color = 'yellow'
@@ -238,9 +249,11 @@ pro red::fitscube_wcs_improve_spatial, filename $
       print, inam + ' : Please edit config.txt, change or add the following line:'
       print, inam + '   direction='+strtrim(direction_select, 2)
       print, inam + '   Then make a new WB cube in a new IDL session and continue from that.'
-      retall
+      wdelete, 9, wid_sst
+      return
     endelse
-    
+
+    wdelete, 9    
   endif 
 
   print, inam + ' : Will now try to measure the misalignment with a subfield.'
@@ -302,6 +315,9 @@ pro red::fitscube_wcs_improve_spatial, filename $
     ;; coordinates in arc sec.
     xc_nominal = mean(wcs[iframe].hpln)
     yc_nominal = mean(wcs[iframe].hplt)
+
+    xc_dif = mean(wcs[-1].hpln) - xc_nominal
+    yc_dif = mean(wcs[-1].hplt) - yc_nominal
 
     ;; Nominal subimage FOV center coordinates in arc sec. Center of
     ;; original FOV plus offset from center of the XROI-selected
@@ -417,10 +433,14 @@ pro red::fitscube_wcs_improve_spatial, filename $
   
   red_show, subim_hmi_before, w = 1
   blink, [wid_subim_sst,1]
+  wdelete, 1, wid_subim_sst, wid_sst
 
+  ;; We need to substitute NaNs 
+  indx = where(~finite(subim_sst))
+  subim_sst[indx] = median(subim_sst)
   ;; Estimate rotation with mpfit
-  p_before = red_rot_magn_align(subim_hmi_before, subim_sst, /displ)
-  p_after  = red_rot_magn_align(subim_hmi_after,  subim_sst, /displ)
+  p_before = red_rot_magn_align(subim_hmi_before, subim_sst, /displ, maxiter = 10)
+  p_after  = red_rot_magn_align(subim_hmi_after,  subim_sst, /displ, maxiter = 10)
 
 ;  p_between = red_rot_magn_align(subim_hmi_before, subim_hmi_after, /displ)
   
@@ -437,6 +457,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
     print, 'Then make a new cube in a new IDL session and rerun fitscube_wcs_improve_spatial'
     print, 'with that (or just use the rotation keyword if you want to iterate a few times).'
     print
+    wdelete, 1, wid_subim_sst, wid_sst
     return
   endif
 
@@ -548,7 +569,6 @@ pro red::fitscube_wcs_improve_spatial, filename $
       wcs[iwcs].hplt = hplt
     end
   endelse
-  
 
   read, 'Do you want to update the WCS info in the cube file [yN]? ', s
 

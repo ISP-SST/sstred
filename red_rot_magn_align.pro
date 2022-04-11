@@ -149,7 +149,9 @@ end
 ;   2020-04-14 : MGL. First version.
 ; 
 ;-
-function red_rot_magn_align, im_ref_in, im_in, display = display
+function red_rot_magn_align, im_ref_in, im_in, display = display, maxiter = maxiter
+
+  if ~keyword_set(maxiter) then maxiter = 500
 
   dims = size(im_in, /dim)
 
@@ -191,7 +193,7 @@ function red_rot_magn_align, im_ref_in, im_in, display = display
   p = mpfit('red_rot_magn_align_deviation' $
             , functargs=functargs $
             , parinfo=parinfo $
-            , maxiter=500 $
+            , maxiter=maxiter $
            )
   
   if keyword_set(display) then begin
@@ -200,6 +202,7 @@ function red_rot_magn_align, im_ref_in, im_in, display = display
     opt = red_rot_magn_align_apply_p(im, p)
     red_show, opt, w = 0, /reuse
     blink, [0, 1]
+    wdelete, 0, 1
   endif
 
   return, p
