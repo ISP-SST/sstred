@@ -181,10 +181,47 @@ pro red::fitscube_nup, inname  $
   Ny       = dims[1]  
   Ntunings = dims[2]  
   Nstokes  = dims[3]  
-  Nscans   = dims[4]  
+  Nscans   = dims[4]
+  bitpix = fxpar(inhdr,'BITPIX')
   
   ;; NB cube of WB cube?
   filetype = (strsplit(file_basename(inname),'_',/extract))[0]
+
+  if filetype eq 'nb' then begin
+    indx = where(strmatch(inhdr, '*WCFILE*'), Nwhere)
+    if Nwhere eq 0 then begin
+      print, 'There is no information about wb cube in the header.'
+      return
+    endif else begin
+      par = strmid(inhdr[indx],0,7)
+      par_key = red_fitsgetkeyword(inhdr, par[0])
+      wcfile = (json_parse(par_key))['WCFILE']
+    endelse
+    if ~file_test(wcfile) then begin
+      print, inam + ' : Could not find the WB cube -- ', wcfile
+      print,'Enter wb cube name manually.'
+      wcfile = ''
+      read,'WB cube name : ',wcfile
+      if strtrim(wcfile,2) eq '' then return
+      if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
+      if ~file_test(wcfile) then begin
+        print,'There is no such wb cube.'
+        return
+      endif
+    endif
+    wb_hdr = headfits(wcfile)
+    wb_type = fxpar(wb_hdr,'BITPIX')
+    if wb_type ne 16 then begin
+      ;; With old nb cubes we need to rely on integer wb cubes for padding
+      ;; Because old padding might be not really same [median] value
+      ;; after rotation and red__missing fails.
+      print,'Corresponding WB cube is not integer (i.e. not very old).'
+      print,'This method might be not optimal for curation.'
+      ans = ''
+      read,'Do you want to continue (y/N) : ',ans
+      if strupcase(ans) ne 'Y' then return
+    endif
+  endif else wcfile = inname
   
   ;; Prefilter
   pref = strtrim(red_fitsgetkeyword(inhdr, 'FILTER1'), 2)
@@ -295,30 +332,6 @@ pro red::fitscube_nup, inname  $
 
   endif
 
-  if filetype eq 'nb' then begin
-    indx = where(strmatch(inhdr, '*WCFILE*'), Nwhere)
-    if Nwhere eq 0 then begin
-      print, 'There is no information about wb cube in the header.'
-      return
-    endif else begin
-      par = strmid(inhdr[indx],0,7)
-      par_key = red_fitsgetkeyword(inhdr, par[0])
-      wcfile = (json_parse(par_key))['WCFILE']
-    endelse
-    if ~file_test(wcfile) then begin
-      print, inam + ' : Could not find the WB cube -- ', wcfile
-      print,'Enter wb cube name manually.'
-      wcfile = ''
-      read,'WB cube name : ',wcfile
-      if strtrim(wcfile,2) eq '' then return
-      if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
-      if ~file_test(wcfile) then begin
-        print,'There is no such wb cube.'
-        return
-      endif
-    endif
-  endif else wcfile = inname
-
   ;; Read parameters from the WB cube
   fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
   fxbreadm, bunit, row = 1 $
@@ -398,7 +411,6 @@ pro red::fitscube_nup, inname  $
   ff = [maxangle, 0., 0., 0., 0., ang]
 
   ;; Open file to read frames  
-  bitpix = fxpar(inhdr, 'BITPIX')
   case bitpix of
     16 : array_structure = intarr(Nx, Ny)
     -32 : array_structure = fltarr(Nx, Ny)
@@ -508,6 +520,14 @@ pro red::fitscube_nup, inname  $
   Nframes = round(product(dims[2:*]))
   iframe = 0
   for iscan = 0, Nscans-1 do begin
+    if filetype eq 'nb' then begin
+      ;; With old nb cubes we need to rely on integer wb cubes for padding
+      ;; Because old padding might be not really same [median] value
+      ;; after rotation and red__missing fails.
+      red_fitscube_getframe,wcfile,wb_frame,iframe=iscan
+      red_missing, wb_frame, /inplace, missing_value = 0
+      pad_indx = where(wb_frame eq 0)
+    endif
     for ituning = 0, Ntunings-1 do begin
       for istokes = 0, Nstokes-1 do begin
 
@@ -516,9 +536,15 @@ pro red::fitscube_nup, inname  $
         red_fitscube_getframe, in_fileassoc, frame $
                                , iscan = iscan, ituning = ituning, istokes = istokes
 
+        if filetype eq 'wb' then begin
+          red_missing, frame, image_out = frm, missing_value = 0
+          pad_indx = where(frm eq 0)
+        endif
+
         ;; Old wb cubes are integer and can't be padded with NaNs
-        if size(frame,/type) eq 2 then frame = float(frame)
-        red_missing, frame, /inplace, missing_value = !Values.F_NaN
+        if bitpix eq 16 then frame = float(frame)
+;        red_missing, frame, /inplace, missing_value = !Values.F_NaN
+        frame[pad_indx] = !Values.F_NaN
         
         ;; Undo any mirroring done in the momfbd processing (already
         ;; included in -wcdirection?)
