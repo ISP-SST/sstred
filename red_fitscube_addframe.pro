@@ -42,7 +42,10 @@
 ;    iscan : in, optional, type=integer, default=0
 ;
 ;       The scan index, used to calculate iframe.
-;   
+;
+;    fitscube_info : in/out, optional, type=structure
+;
+;       Structure with dimensions, lun and header.
 ; 
 ; 
 ; :History:
@@ -70,22 +73,12 @@ pro red_fitscube_addframe, filename_or_fileassoc, frame $
     ;; We have the file name, open the file and set up an assoc
     ;; variable.
     filename = filename_or_fileassoc
-    hdr = headfits(filename)
-    bitpix = fxpar(hdr, 'BITPIX')
-    Nx = fxpar(hdr, 'NAXIS1')
-    Ny = fxpar(hdr, 'NAXIS2')
-    case bitpix of
-      16 : array_structure = intarr(Nx, Ny)
-      -32 : array_structure = fltarr(Nx, Ny)
-      else : stop
-    endcase
-    Nlines = where(strmatch(hdr, 'END *'), Nmatch)
-    Npad = 2880 - (80L*Nlines mod 2880)
-    Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-    offset = Nblock*2880          ; Offset to start of data
-    ;; Must be an existing file!
-    openu, lun, filename, /get_lun, /swap_if_little_endian
-    fileassoc = assoc(lun, array_structure, offset)
+    red_fitscube_open, filename, fileassoc, fitscube_info, /update
+    Nx      = fitscube_info.dimensions[0]
+    Ny      = fitscube_info.dimensions[1]
+    Ntuning = fitscube_info.dimensions[2]
+    Nstokes = fitscube_info.dimensions[3]
+    Nscans  = fitscube_info.dimensions[4]
   endif else begin
     ;; We have an assoc variable, get array dimensions from the file.
     fileassoc = filename_or_fileassoc
@@ -94,11 +87,22 @@ pro red_fitscube_addframe, filename_or_fileassoc, frame $
       fs = fstat(lun)
       filename = fs.name
       hdr = headfits(filename)
-      Nx = fxpar(hdr, 'NAXIS1')
-      Ny = fxpar(hdr, 'NAXIS2')
+      dimensions = long(fxpar(hdr, 'NAXIS*'))
+      Nx      = dimensions[0]
+      Ny      = dimensions[1]
+      Ntuning = dimensions[2]
+      Nstokes = dimensions[3]
+      Nscans  = dimensions[4]
+      fitscube_info = {dimensions:  [Nx, Ny, Ntuning, Nstokes, Nscans] $
+                   , lun:       lun $
+                   , header:    hdr $
+                  }
     endif else begin
       Nx = fitscube_info.dimensions[0]
       Ny = fitscube_info.dimensions[1]
+      Ntuning = fitscube_info.dimensions[2]
+      Nstokes = fitscube_info.dimensions[3]
+      Nscans  = fitscube_info.dimensions[4]
     endelse
   endelse
 
@@ -113,22 +117,7 @@ pro red_fitscube_addframe, filename_or_fileassoc, frame $
     
     if n_elements(ituning) eq 0 then ituning = 0L
     if n_elements(istokes) eq 0 then istokes = 0L
-    if n_elements(iscan)   eq 0 then iscan   = 0L
-    
-    ;; Get dimensions from the file
-    if ~keyword_set(fitscube_info) then begin
-      Ntuning = fxpar(hdr,'NAXIS3')
-      Nstokes = fxpar(hdr,'NAXIS4')
-      Nscans = fxpar(hdr,'NAXIS5')
-    endif else begin
-      if open_and_close then begin ;shouldn't happen
-        print, "One should use 'fitscube_info' only with fileassoc. Stop in red_fitscube_addframe."
-        stop
-      endif
-      Ntuning = fitscube_info.dimensions[2]
-      Nstokes = fitscube_info.dimensions[3]
-      Nscans  = fitscube_info.dimensions[4]
-    endelse
+    if n_elements(iscan)   eq 0 then iscan   = 0L   
     
     ;; Calculate the frame number
     iframe = long(ituning) + long(istokes)*Ntuning $
@@ -140,6 +129,6 @@ pro red_fitscube_addframe, filename_or_fileassoc, frame $
   fileassoc[iframe] = frame
   
   ;; Close if we opened.
-  if open_and_close then free_lun, lun
+  if open_and_close then red_fitscube_close, fileassoc, fitscube_info
   
 end

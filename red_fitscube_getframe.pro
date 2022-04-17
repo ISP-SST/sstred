@@ -46,7 +46,12 @@
 ;    ituning  : in, optional, type=integer, default=0
 ;
 ;       The tuning index, used to calculate iframe.
-; 
+;
+;    fitscube_info : in/out, optional, type=structure
+;
+;       Structure with dimensions, lun and header.
+;
+;
 ; :History:
 ; 
 ;     2017-11-03 : MGL. First version.
@@ -71,15 +76,13 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     ;; variable.
     filename = filename_or_fileassoc
     red_fitscube_open, filename, fileassoc, fitscube_info
-    Nx      = fitscube_info.dimensions[0]
-    Ny      = fitscube_info.dimensions[1]
     Ntuning = fitscube_info.dimensions[2]
     Nstokes = fitscube_info.dimensions[3]
     Nscans  = fitscube_info.dimensions[4]
   endif else begin
     ;; We have an assoc variable, get array dimensions from the file.
+    fileassoc = filename_or_fileassoc
     if ~keyword_set(fitscube_info) then begin
-      fileassoc = filename_or_fileassoc
       lun = (size(fileassoc,/struc)).file_lun
       fs = fstat(lun)
       filename = fs.name
@@ -90,16 +93,19 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
       Ntuning = dimensions[2]
       Nstokes = dimensions[3]
       Nscans  = dimensions[4]
-   endif else begin
+      fitscube_info = {dimensions:  [Nx, Ny, Ntuning, Nstokes, Nscans] $
+                   , lun:       lun $
+                   , header:    hdr $
+                  }
+    endif else begin
       Nx      = fitscube_info.dimensions[0]
       Ny      = fitscube_info.dimensions[1]
       Ntuning = fitscube_info.dimensions[2]
       Nstokes = fitscube_info.dimensions[3]
       Nscans  = fitscube_info.dimensions[4]
-      fileassoc = filename_or_fileassoc
-   endelse
+    endelse
   endelse
-
+  
   if n_elements(iframe) eq 0 then begin
 
     if n_elements(ituning) eq 0 then ituning = 0L
@@ -119,20 +125,8 @@ pro red_fitscube_getframe, filename_or_fileassoc, frame $
     ;; Get the frame
     frame = fileassoc[iframe]
   endif else begin
-    ;; Transform integer data to float
-    if open_and_close then begin
-      filename = filename_or_fileassoc
-      hdr = headfits(filename)
-    endif else begin
-       if ~keyword_set(fitscube_info) then begin
-          fs = fstat(lun)
-          filename = fs.name
-          hdr = headfits(filename)
-       endif else $
-         hdr = fitscube_info.header
-    endelse
-    bzero  = fxpar(hdr, 'BZERO',  count=nzero )
-    bscale = fxpar(hdr, 'BSCALE', count=nscale)
+    bzero  = fxpar(fitscube_info.header, 'BZERO',  count=nzero )
+    bscale = fxpar(fitscube_info.header, 'BSCALE', count=nscale)
     if nzero eq 1 and nscale eq 1 then begin
       ;; Get the frame and rescale
       frame = float(fileassoc[iframe]*bscale + bzero)

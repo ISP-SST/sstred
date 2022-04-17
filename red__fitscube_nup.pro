@@ -158,10 +158,10 @@ pro red::fitscube_nup, inname  $
   red_make_prpara, prpara, point_id
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, no_checksum
-
-  dir = self.out_dir
+  red_make_prpara, prpara, do_wb_cube
+  red_make_prpara, prpara, wcs_improve_spatial  
   
-  if n_elements(outdir) eq 0 then outdir = self.out_dir+'cubes_converted/'
+  if n_elements(outdir) eq 0 then outdir = 'cubes_converted/'
   file_mkdir, outdir
  
   ;; Cameras and detectors
@@ -277,6 +277,7 @@ pro red::fitscube_nup, inname  $
     endif else begin
       print, 'This data cube exists already:'
       print, oname
+      status = 0
       return
     endelse
   endif
@@ -285,7 +286,7 @@ pro red::fitscube_nup, inname  $
   ;; Establish the orientation of the file
   if n_elements(mirrorx) eq 0 or n_elements(mirrory) eq 0 then begin
 
-    cfgfiles = file_search(dir+'*mfbd*/'+timestamp+'/'+pref+'/cfg/*cfg', count = Ncfg)  
+    cfgfiles = file_search('*mfbd*/'+timestamp+'/'+pref+'/cfg/*cfg', count = Ncfg)  
 
     if Ncfg eq 0 then begin
       print, inam + ' : Cannot find a matching momfbd config file.'
@@ -350,6 +351,12 @@ pro red::fitscube_nup, inname  $
   endif
   if  n_elements(wcdirection) eq 0 then wcdirection = 0
 
+  ;; Make header
+  outhdr = inhdr
+  red_fitsaddkeyword, outhdr, 'BITPIX', -32
+  red_fitsaddkeyword, outhdr, 'NAXIS1', Nx
+  red_fitsaddkeyword, outhdr, 'NAXIS2', Ny
+  
   if keyword_set(do_wb_cube) or keyword_set(wcs_improve_spatial) then begin
     print,'==============================='
     print,'Processing WB cube first.'
@@ -363,13 +370,17 @@ pro red::fitscube_nup, inname  $
                                     , point_id $ 
                                     , datatags = datatags) $
     else begin
-      nm = file_basename(inname)
-      prfx = strmid(nm,0,2)
+      prfx = strmid(outname,0,2)
       if prfx eq 'nb' then $
-        wb_oname = file_dirname(inname) + '/wb' + strmid(inname,2,strlen(nm)) $
+        wb_oname = outdir + '/wb' + strmid(outname,2,strlen(outname)) $
       else $
-        wb_oname = file_dirname(inname) + '/wb_' + nm
+        wb_oname = outdir + '/wb_' + outname
     endelse
+    
+    red_fitsaddkeyword, outhdr, key $
+                         , 'Align reference: '+wb_oname $
+                         , 'WB cube file name'
+    
 
     if keyword_set(wcs_improve_spatial) then no_check_sum = 1b else no_check_sum = keyword_set(no_checksum)
 
@@ -410,22 +421,9 @@ pro red::fitscube_nup, inname  $
   maxangle = abs(ang)
   ff = [maxangle, 0., 0., 0., 0., ang]
 
-  ;; Open file to read frames  
-  case bitpix of
-    16 : array_structure = intarr(Nx, Ny)
-    -32 : array_structure = fltarr(Nx, Ny)
-    else : stop
-  endcase
-  Nlines = where(strmatch(inhdr, 'END *'), Nmatch)
-  Npad = 2880 - (80L*Nlines mod 2880)
-  Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-  offset = Nblock*2880          ; Offset to start of data
-  ;; Must be an existing file!
-  openr, ilun, inname, /get_lun, /swap_if_little_endian
-  in_fileassoc = assoc(ilun, array_structure, offset)
-
+  red_fitscube_open, inname, in_fileassoc, in_fitscube_info
   ;; Read one frame
-  red_fitscube_getframe, in_fileassoc, frame, iframe = 0
+  red_fitscube_getframe, in_fileassoc, frame, iframe = 0, fitscube_info = in_fitscube_info
    
   ;; Get the frame with size implied by ff
   if wcdirection ne 0 then frame = rotate(temporary(frame), -wcdirection) ; Undo old direction
@@ -437,14 +435,8 @@ pro red::fitscube_nup, inname  $
 
   ;; Set the spatial dimensions of the output file.
   dims[0:1] = size(frame, /dim)
-  Nx_old = Nx
-  Ny_old = Ny
   Nx = dims[0]  
-  Ny = dims[1]  
-
-  ;; Make header
-  outhdr = inhdr
-  red_fitsaddkeyword, outhdr, 'BITPIX', -32
+  Ny = dims[1]    
 
   if keyword_set(wcs_improve_spatial) then begin
     red_fitscube_getwcs,  wb_oname, coordinates = wb_wcs
@@ -534,7 +526,8 @@ pro red::fitscube_nup, inname  $
         red_progressbar, iframe, Nframes, /predict, 'Copying frames'
         
         red_fitscube_getframe, in_fileassoc, frame $
-                               , iscan = iscan, ituning = ituning, istokes = istokes
+                               , iscan = iscan, ituning = ituning, istokes = istokes $
+                               , fitscube_info = in_fitscube_info
 
         if filetype eq 'wb' then begin
           red_missing, frame, image_out = frm, missing_value = 0
@@ -558,8 +551,9 @@ pro red::fitscube_nup, inname  $
         ;; angle, we just need to adjust the angle to Solar N.
         frame = red_rotation(frame, full = ff, ang, 0, 0, background = !Values.F_NaN, nthreads = nthreads)
         
-        self -> fitscube_addframe, fileassoc, frame  $
-                                   , iscan = iscan, ituning = ituning, istokes = istokes
+        red_fitscube_addframe, fileassoc, frame  $
+                               , iscan = iscan, ituning = ituning, istokes = istokes $
+                               , fitscube_info = fitscube_info
         
  
         iframe++
@@ -568,7 +562,8 @@ pro red::fitscube_nup, inname  $
     endfor                      ; ituning   
   endfor                        ; iscan   
 
-  free_lun, ilun
+;;  free_lun, ilun
+  red_fitscube_close, fileassoc, fitscube_info
   free_lun, olun
   if keyword_set(wcs_improve_spatial) then $
     red_fitscube_addwcs, oname, wcs $
