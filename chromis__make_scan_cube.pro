@@ -126,7 +126,8 @@ pro chromis::make_scan_cube, dir $
                              , nearest = nearest $
                              , nthreads = nthreads $
                              , subtract_meanang = subtract_meanang $
-                             , fitpref_time = fitpref_time
+                             , fitpref_time = fitpref_time $
+                             , nomissing_nans = nomissing_nans
                     
   
   ;; Name of this method
@@ -917,7 +918,14 @@ pro chromis::make_scan_cube, dir $
                                 , outname = outname $
                                 , overwrite = overwrite
       filename = outname
-    endif
+    endif else begin
+      if ~keyword_set(nomissing_nans) then begin
+        ;; Set padding pixels to missing-data, i.e., NaN.
+        self -> fitscube_missing, filename $
+                                 , /noflip $
+                                 , missing_type = 'nan' 
+      endif
+    endelse
     
     ;; Done with this scan.
     print, inam + ' : Narrowband scan cube stored in:'

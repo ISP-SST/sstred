@@ -163,7 +163,8 @@ pro crisp::make_scan_cube, dir $
                            , tiles = tiles  $
                            , tuning_selection = tuning_selection $
                            , nthreads = nthreads $
-                           , fitpref_time = fitpref_time
+                           , fitpref_time = fitpref_time $
+                           , nomissing_nans = nomissing_nans
                
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -1026,7 +1027,14 @@ pro crisp::make_scan_cube, dir $
                                 , outname = outname $
                                 , overwrite = overwrite
       filename = outname
-    endif
+    endif else begin
+      if ~keyword_set(nomissing_nans) then begin
+        ;; Set padding pixels to missing-data, i.e., NaN.
+        self -> fitscube_missing, filename $
+                                 , /noflip $
+                                 , missing_type = 'nan' 
+      endif
+    endelse
     
     ;; Done with this scan.
     print, inam + ' : Narrowband scan cube stored in:'
