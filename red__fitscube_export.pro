@@ -222,8 +222,8 @@ pro red::fitscube_export, filename $
   
   date_beg_split = strsplit(fxpar(hdr,'DATE-BEG'),'T',/extract)
   date_beg = date_beg_split[0]
-  time_beg = date_beg_split[1]
-  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
+  time_beg = (strsplit(date_beg_split[1],'.',/extract))[0]
+;;  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
   ;; We could do the outdir default per site, just like we do for the
   ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
@@ -476,10 +476,10 @@ pro red::fitscube_export, filename $
     endif else begin
 
       ;; Keywords to the SVO ingestion script
-      file_url = 'https://dubshen.astro.su.se/'
+      file_url = 'https://dubshen.astro.su.se/sst_archive/download/' + outfile
       instrument = strtrim(fxpar(hdr,'INSTRUME'),2)
-      file_path = date_beg + '/' $
-                  + instrument + '/'
+;;      file_path = date_beg + '/' + instrument + '/'
+      
 
       
       ;; Generate OID = unique observation ID of the metadata?
@@ -494,13 +494,22 @@ pro red::fitscube_export, filename $
       oid = date_beg+'T'+time_beg + '_' $
             + filter + '_' $
             + scans
+
+      ;; 'file-path' in SVO is a fake for SST data (not uploaded
+      ;; there) but it must be unique.
+      ;; Let's make it same as 'oid' but without semicolons
+      ;; which are not alloweded.
+      tt = strjoin(strsplit(time_beg,':',/extract),'')
+      file_path = date_beg+'T'+ tt + '_' $
+            + filter + '_' $
+            + scans
       
-      ;; Build the command string
-      cmd = cmd[0]
-      cmd += ' ' + strlowcase(instrument) ; The dataset ID in the SOLARNET Data Archive/SVO
-      cmd += ' ' + outdir+outfile                               ; The FITS file to submit to the SVO
+      ;; Build the command string to submit metadata to SVO
+      cmd = cmd[0]      
+      cmd += ' ' + outdir+outfile ; The FITS file to submit to the SVO
+      cmd += ' --dataset ' + strupcase(instrument) ; The dataset ID in the SOLARNET Data Archive/SVO
       cmd += ' --file-url ' + file_url                          ; The URL of the file
-      cmd += ' --file-path ' + file_path                        ; The relative path of the file
+      cmd += ' --file-path ' + file_path                        ; Fake path of the file
       if n_elements(thumbnail_url) gt 0 then $                  ;
          cmd += ' --thumbnail-url ' + thumbnail_url             ; The URL of the thumbnail
       cmd += ' --username ' + svo_username                      ; The SVO username of the user owning the data
@@ -511,26 +520,62 @@ pro red::fitscube_export, filename $
       spawn, cmd, status
       print, status
 
-      ;; Put datacube information to the database
-      release_comment = fxpar(hdr,'RELEASEC')
-      if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
-      red_mysql_check, handle
-      
-      if current_date lt release_date then begin
-        filename = outdir+outfile
-        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
-                'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
-                scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
-                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
+      ;; Submit metadata to sst_archive
+      ;; Unfortunately we can do it only from dubshen
+      cmd = '/usr/bin/ssh olexa@dubshen " sudo /root/bin/submit_cube ' + $
+            date_beg + '/' + instrument + '/' + outfile + ' > /dev/null 2>&1" &'
+      spawn, cmd
+      wait,0.5
+
+      ;; Check submitting status and display it
+      spawn, 'tail -1 /home/olexa/submit/status.log', status
+      if status ne 'Submitting has been started.' then begin
+        print,'We have troubles.'
+        return
       endif else begin
-        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
-                'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
-                outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
-                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
+        bb = string(13B) ; CR w/o LF
+        outline = string(replicate(32B, 70))
+        tw = 0 & ttw = 0
+        while status ne 'Submitting has been finished.' do begin
+          wait,1
+          ttw++ & tw++
+          bar = string(replicate(61B, tw)) ; Replicated '='
+          bar += string(replicate(45B, 41-tw)) ; Replicated '-'
+          strput, outline, string('Submitting: [' + bar + '] ',  ttw, ' sec', format = '(A,I3,A,$)')
+          print, bb, outline, FORMAT = '(A,A,$)'
+          if tw eq 40 then tw = 0
+          print
+          spawn, 'tail -1 /home/olexa/submit/status.log', status
+        endwhile
       endelse
+  
+      ;; Read the log and print it.
+      print
+      spawn, 'tail -12 /home/olexa/submit/cube_submit.log', result
+      print, result
+
+      ;; Probably we don't need following lines anymore.
+
+      ;; Put datacube information to the database
+      ;; release_comment = fxpar(hdr,'RELEASEC')
+      ;; if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
+      ;; red_mysql_check, handle
       
-      red_mysql_cmd, handle, query, ans, nl
-      free_lun,handle
+      ;; if current_date lt release_date then begin
+      ;;   filename = outdir+outfile
+      ;;   query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+      ;;           'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
+      ;;           scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
+      ;;           "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
+      ;; endif else begin
+      ;;   query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+      ;;           'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
+      ;;           outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
+      ;;           "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
+      ;; endelse
+      
+      ;; red_mysql_cmd, handle, query, ans, nl
+      ;; free_lun,handle
       
     endelse
   endif else begin
