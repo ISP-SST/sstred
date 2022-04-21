@@ -617,8 +617,8 @@ pro crisp::demodulate, outname, immr, immt $
   
   self -> fitscube_initialize, outname, hdr, lun, fileassoc, dims 
   for istokes = 0, Nstokes-1 do begin
-    self -> fitscube_addframe, fileassoc, res[*, *, 0, istokes, 0] $
-                               , istokes = istokes    
+    red_fitscube_addframe, fileassoc, res[*, *, 0, istokes, 0] $
+                           , istokes = istokes    
   endfor                        ; istokes
   
 

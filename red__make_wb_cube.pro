@@ -852,8 +852,8 @@ pro red::make_wb_cube, dirs $
   
   
   for iscan = 0, Nscans-1 do begin
-    self -> fitscube_addframe, fileassoc, cub[*, *, 0, 0, iscan] $
-                               , iscan = iscan
+    red_fitscube_addframe, fileassoc, cub[*, *, 0, 0, iscan] $
+                           , iscan = iscan
     wcs[0, iscan].time = t_array[iscan]    
   endfor                        ; iscan
 ;  free_lun, lun

@@ -516,7 +516,11 @@ pro red::fitscube_convertlp, inname $
                      , hpln:dblarr(2,2) $
                      , time:dblarr(2,2) $
                   }, Ntunings, Nscans)
-
+;  red_fitscube_getwcs, filename $
+;                       , coordinates = coordinates $
+;                       , distortions = distortions
+;  stop
+  
   maxangle = rotation + mang    ; Unless the time-dependent angle is not already applied. 
   ff = [maxangle, 0., 0., 0., 0., reform(ang)]  
 
@@ -609,8 +613,8 @@ pro red::fitscube_convertlp, inname $
           frame = red_rotation(frame, full = ff, rotation+mang, 0, 0, background = !Values.F_NaN)
         endif
         
-        self -> fitscube_addframe, fileassoc, frame $
-                                   , iscan = iscan, ituning = ituning, istokes = istokes
+        red_fitscube_addframe, fileassoc, frame $
+                               , iscan = iscan, ituning = ituning, istokes = istokes
 
         iframe++
 

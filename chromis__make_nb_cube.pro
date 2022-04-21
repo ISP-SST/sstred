@@ -761,11 +761,11 @@ pro chromis::make_nb_cube, wcfile $
       ;;if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
 
 ;      if keyword_set(integer) then begin
-;        self -> fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
+;        red_fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
 ;                                   , iscan = iscan, ituning = iwav
 ;      endif else begin
-      self -> fitscube_addframe, fileassoc, temporary(nbim) $
-                                 , iscan = iscan, ituning = iwav
+      red_fitscube_addframe, fileassoc, temporary(nbim) $
+                             , iscan = iscan, ituning = iwav
 ;      endelse
 
       if keyword_set(wbsave) then begin
@@ -781,8 +781,8 @@ pro chromis::make_nb_cube, wcfile $
         
  ;;       mindx = where(wbim eq bg, Nwhere)
  ;;       if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
-        self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
-                                   , iscan = iscan, ituning = iwav
+        red_fitscube_addframe, wbfileassoc, temporary(wbim) $
+                               , iscan = iscan, ituning = iwav
       endif
       
       iprogress++               ; update progress counter

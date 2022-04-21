@@ -770,13 +770,14 @@ pro crisp::make_scan_cube, dir $
 
         for istokes = 0, Nstokes-1 do begin
            if(~keyword_set(norotation)) then begin
-            self -> fitscube_addframe, fileassoc $
-                                       , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang, full = ff, nthreads=nthreads) $
-                                       , ituning = ituning, istokes = istokes
+             red_fitscube_addframe, fileassoc $
+                                    , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang $
+                                                   , full = ff, nthreads=nthreads) $
+                                    , ituning = ituning, istokes = istokes
           endif else begin
-            self -> fitscube_addframe, fileassoc $
-                                       , nbims[x0:x1, y0:y1, 0, istokes] $
-                                       , ituning = ituning, istokes = istokes
+            red_fitscube_addframe, fileassoc $
+                                   , nbims[x0:x1, y0:y1, 0, istokes] $
+                                   , ituning = ituning, istokes = istokes
           endelse
         endfor                  ; istokes
 
@@ -878,9 +879,10 @@ pro crisp::make_scan_cube, dir $
         sexp_array[ituning] = mean(texps)
         nsum_array[ituning] = round(total(nsums))
 
-        self -> fitscube_addframe, fileassoc $
-                                   , red_rotation(temporary(nbim), ang, full = ff, nthreads=nthreads) $
-                                   , ituning = ituning
+        red_fitscube_addframe, fileassoc $
+                               , red_rotation(temporary(nbim), ang $
+                                              , full = ff, nthreads=nthreads) $
+                               , ituning = ituning
 
       endelse 
       

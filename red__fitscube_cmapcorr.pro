@@ -209,11 +209,11 @@ pro red::fitscube_cmapcorr, fname $
       
       for iwav = 0, Nwav-1 do begin
         ;; Write
-        self -> fitscube_addframe, fileassoc $
-                                   , cube_out[*, *, iwav] $
-                                   , ituning = iwav $
-                                   , iscan = iscan $
-                                   , istokes = istokes
+        red_fitscube_addframe, fileassoc $
+                               , cube_out[*, *, iwav] $
+                               , ituning = iwav $
+                               , iscan = iscan $
+                               , istokes = istokes
       endfor                    ; iwav
 
       iprogress++

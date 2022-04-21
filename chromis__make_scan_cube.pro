@@ -701,15 +701,17 @@ pro chromis::make_scan_cube, dir $
       ;; Apply destretch to anchor camera and prefilter correction
       if wbstretchcorr then begin
         ;;nbim = red_stretch_linear(temporary(nbim), grid1, nthreads=nthreads, nearest = nearest)
-        nbim = red_rotation(temporary(nbim), ang, xshift, yshift, full = ff, stretch_grid = grid1, nthreads = nthreads, nearest = nearest)
+        nbim = red_rotation(temporary(nbim), ang, xshift, yshift, full = ff $
+                            , stretch_grid = grid1, nthreads = nthreads, nearest = nearest)
       endif else begin
-        nbim = red_rotation(temporary(nbim), ang, xshift, yshift, full = ff, nthreads = nthreads, nearest = nearest)
+        nbim = red_rotation(temporary(nbim), ang, xshift, yshift, full = ff $
+                            , nthreads = nthreads, nearest = nearest)
       endelse       
 
-        
-      self -> fitscube_addframe, fileassoc $
-                                 , temporary(nbim) $
-                                 , ituning = ituning
+      
+      red_fitscube_addframe, fileassoc $
+                             , temporary(nbim) $
+                             , ituning = ituning
       
     endfor                      ; ituning
 

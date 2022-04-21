@@ -127,9 +127,9 @@ pro red::fitscube_integer, fname $
     red_fitscube_getframe, fname, im, iframe = iframe
 
     ;; Write
-    self -> fitscube_addframe, fileassoc $
-                               , fix(round((temporary(im)-BZERO)/BSCALE)) $
-                               , iframe = iframe
+    red_fitscube_addframe, fileassoc $
+                           , fix(round((temporary(im)-BZERO)/BSCALE)) $
+                           , iframe = iframe
     
   endfor                        ; iframe
 

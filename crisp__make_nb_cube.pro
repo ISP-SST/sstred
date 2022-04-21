@@ -933,8 +933,8 @@ pro crisp::make_nb_cube, wcfile $
           
           ;;if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
           
-          self -> fitscube_addframe, fileassoc, frame $
-                                     , iscan = iscan, ituning = ituning, istokes = istokes
+          red_fitscube_addframe, fileassoc, frame $
+                                 , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
       endif else begin
         bg = median(nbim)
@@ -943,8 +943,8 @@ pro crisp::make_nb_cube, wcfile $
                             , background = bg, stretch_grid = reform(wcGRID[iscan,*,*,*])$
                             , nthreads=nthreads, nearest = nearest)
 
-        self -> fitscube_addframe, fileassoc, nbim $
-                                   , iscan = iscan, ituning = ituning
+        red_fitscube_addframe, fileassoc, nbim $
+                               , iscan = iscan, ituning = ituning
       endelse
       
       if keyword_set(wbsave) then begin
@@ -958,8 +958,8 @@ pro crisp::make_nb_cube, wcfile $
                             , nthreads=nthreads, nearest = nearest)
         
 
-        self -> fitscube_addframe, wbfileassoc, temporary(wbim) $
-                                   , iscan = iscan, ituning = ituning
+        red_fitscube_addframe, wbfileassoc, temporary(wbim) $
+                               , iscan = iscan, ituning = ituning
       endif
       
       iprogress++               ; update progress counter

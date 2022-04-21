@@ -78,7 +78,6 @@ pro red::make_raw_cube, oldname $
   Nstokes = dimensions[3]
   Nscans  = dimensions[4]
   
-  
   ;; Output
   odir = self.out_dir + '/cubes_raw/'
   file_mkdir, odir
@@ -160,14 +159,27 @@ pro red::make_raw_cube, oldname $
 
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dimensions
 
+
+  respappl = red_fitscube_getrespappl(oldname $
+                                      , axis_numbers = axis_numbers $
+                                      , count = Nrespappl $
+                                      , scans_dimension = scans_dimension $
+                                      , tuning_dimension = tuning_dimension $
+                                     )
+  if Nrespappl eq 0 then begin
+    respappl = replicate(1., Ntuning, Nscans)
+  endif else begin
+    if ~scans_dimension or ~scans_dimension then stop
+  endelse
+
   ;; Write the data
   for ituning = 0, Ntuning-1 do begin
     for istokes = 0, Nstokes-1 do begin
       for iscan = 0, Nscans-1 do begin
-        self -> fitscube_addframe, fileassoc, newcube[*, *, 0, 0, iscan] $
-                                   , ituning = ituning $
-                                   , istokes = istokes $
-                                   , iscan = iscan
+        red_fitscube_addframe, fileassoc, newcube[*, *, 0, 0, iscan] $
+                               , ituning = ituning $
+                               , istokes = istokes $
+                               , iscan = iscan
       endfor                    ; iscan
     endfor                      ; istokes
   endfor                        ; ituning

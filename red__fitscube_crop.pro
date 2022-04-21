@@ -246,7 +246,7 @@ pro red::fitscube_crop, infile $
     red_progressbar, iframe, Nframes, /predict, 'Copying cropped frames'
     red_fitscube_getframe, infile, frame, iframe = iframe
     frame = frame[roi[0]:roi[1], roi[2]:roi[3]]
-    self -> fitscube_addframe, fileassoc, temporary(frame), iframe = iframe
+    red_fitscube_addframe, fileassoc, temporary(frame), iframe = iframe
   endfor                        ; iframe
 
   ;; Read WCS extension, adapt roi coordinates to new FOV.
