@@ -140,9 +140,9 @@
 ;                video_shrink_fac. 
 ;
 ;   2021-01-11 : OA. Submit information about exported cubes to the
-;   database.
+;                database.
 ;
-;    2022-03-24 : OA. Added trust_datasum keyword.
+;   2022-03-24 : OA. Added trust_datasum keyword.
 ; 
 ;-
 pro red::fitscube_export, filename $
@@ -223,7 +223,8 @@ pro red::fitscube_export, filename $
   date_beg_split = strsplit(fxpar(hdr,'DATE-BEG'),'T',/extract)
   date_beg = date_beg_split[0]
   time_beg = (strsplit(date_beg_split[1],'.',/extract))[0]
-;;  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
+  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
+
   ;; We could do the outdir default per site, just like we do for the
   ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
@@ -554,28 +555,30 @@ pro red::fitscube_export, filename $
       spawn, 'tail -12 /home/olexa/submit/cube_submit.log', result
       print, result
 
-      ;; Probably we don't need following lines anymore.
+      ;; We still need to fill information in data_cubes table to use
+      ;; idl procedure to download cubes.
+      ;; (Current sst_archive doesn't support downloads with wb and sp cubes.)
 
       ;; Put datacube information to the database
-      ;; release_comment = fxpar(hdr,'RELEASEC')
-      ;; if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
-      ;; red_mysql_check, handle
+      release_comment = fxpar(hdr,'RELEASEC')
+      if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
+      red_mysql_check, handle
       
-      ;; if current_date lt release_date then begin
-      ;;   filename = outdir+outfile
-      ;;   query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
-      ;;           'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
-      ;;           scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
-      ;;           "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
-      ;; endif else begin
-      ;;   query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
-      ;;           'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
-      ;;           outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
-      ;;           "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
-      ;; endelse
+      if current_date lt release_date then begin
+        filename = outdir+outfile
+        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
+                scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
+                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
+      endif else begin
+        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
+                outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
+                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
+      endelse
       
-      ;; red_mysql_cmd, handle, query, ans, nl
-      ;; free_lun,handle
+      red_mysql_cmd, handle, query, ans, nl
+      free_lun,handle
       
     endelse
   endif else begin
