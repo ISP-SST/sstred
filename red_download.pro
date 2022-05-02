@@ -250,7 +250,7 @@ pro red_download, date = date $
         if datearr[0] ne '2012' then begin
           backscatter_cameras = 'cam'+['XVIII', 'XIX', 'XX', 'XXV']
           backscatter_years = '20'+['08', '09', '10', '11', '12', '13', '14', '15' $
-                                    , '16', '17', '18', '19', '20', '21']
+                                    , '16', '17', '18', '19', '20', '21', '22']
           backscatter_orientations = bytarr(n_elements(backscatter_years) $
                                             , n_elements(backscatter_cameras))
           ;; Change orientations here if needed. Let's hope the
@@ -269,7 +269,8 @@ pro red_download, date = date $
           backscatter_orientations[10, *] = [0, 7, 7, 0] ; 2018 - same as 2015
           backscatter_orientations[11, *] = [0, 7, 7, 0] ; 2019 - same as 2015
           backscatter_orientations[12, *] = [0, 7, 7, 0] ; 2020 - same as 2015
-          backscatter_orientations[13, *] = [0, 7, 7, 0] ; 2021 - same as 2015
+          backscatter_orientations[13, *] = [0, 7, 7, 0] ; 2021 - same as 2015          
+          backscatter_orientations[14, *] = [0, 7, 7, 0] ; 2022 - same as 2015          
           for ifile = 0, Nfiles-1 do begin
             icam = where(backscatter_cameras $
                          eq (strsplit(file_basename(gfiles[ifile]),'.', /extract))[0], Ncam)
@@ -279,17 +280,24 @@ pro red_download, date = date $
                      + backscatter_cameras[icam] + ' in year'+datearr[0]+'.'
               print, '       Please do "git pull" in your crispred directory and try again.'
               print, '       Contact crispred maintainers if this does not help.'
-              stop
+;              stop
             endif else begin
               ;; Read the downloaded 2012 files
               fzread, bgain, gfiles[ifile], gheader
               pfile = red_strreplace(gfiles[ifile], 'backgain', 'psf')
               fzread, bpsf, pfile, pheader
               ;; Write them with the transformation given by backscatter_orientations.
+;              red_loadbackscatter, backscatter_cameras[icam], isodate $
+;                                   , backscatter_dir, backscatter[iback] $
+;                                   , rotate(bgain, backscatter_orientations[iyear, icam]) $
+;                                   , rotate(bpsf,  backscatter_orientations[iyear, icam]) $
+;                                   , /write
+              rogain = rotate(bgain, backscatter_orientations[iyear, icam])
+              ropsf = rotate(bpsf, backscatter_orientations[iyear, icam])
               red_loadbackscatter, backscatter_cameras[icam], isodate $
                                    , backscatter_dir, backscatter[iback] $
-                                   , rotate(bgain, backscatter_orientations[iyear, icam]) $
-                                   , rotate(bpsf,  backscatter_orientations[iyear, icam]) $
+                                   , rogain $
+                                   , ropsf $
                                    , /write
             endelse             ; Known year and camera?
           endfor                ; ifile
