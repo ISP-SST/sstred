@@ -376,7 +376,7 @@ pro red::fitscube_nup, inname  $
         wb_oname = outdir + '/wb_' + outname
     endelse
     
-    red_fitsaddkeyword, outhdr, key $
+    red_fitsaddkeyword, outhdr, par_key $
                          , 'Align reference: '+wb_oname $
                          , 'WB cube file name'
     
