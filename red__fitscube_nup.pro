@@ -585,11 +585,13 @@ pro red::fitscube_nup, inname  $
                          , csyer_spatial_value = 5. $ ; 5 arcsec, minor rotation error may remain
                          , csyer_spatial_comment = 'Aligned with HMI images' $
                          , dimensions = fxpar(outhdr, 'NAXIS*') $
+                         , /update $
   else $
     red_fitscube_addwcs, oname, wcs $
                          , dimensions = fxpar(outhdr, 'NAXIS*') $
                          , csyer_spatial_value = 60. $ ; 1 arc minute
-                         , csyer_spatial_comment = '[arcsec] Orientation known'
+                         , csyer_spatial_comment = '[arcsec] Orientation known' $
+                         , /update
 
   if filetype eq 'nb' then begin
     for icmap = 0, n_elements(distortions)-1 do begin
