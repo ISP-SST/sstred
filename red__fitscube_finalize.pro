@@ -127,8 +127,8 @@ pro red::fitscube_finalize, filename $
                             , old_header = oldhdr $
                             , old_spectral_header = oldsphdr $
                             , old_wb_header = oldwbhdr $
-                            , release_comment = RELEASEC $
-                            , release_date = RELEASE $
+                            , release_comment =  release_comment $
+                            , release_date = release_date $
                             , spectral_header = sphdr $
                             , wb_header = wbhdr $
                             , feature = feature $

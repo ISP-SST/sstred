@@ -479,12 +479,8 @@ pro red::fitscube_export, filename $
       ;; Keywords to the SVO ingestion script
       file_url = 'https://dubshen.astro.su.se/sst_archive/download/' + outfile
       instrument = strtrim(fxpar(hdr,'INSTRUME'),2)
-;;      file_path = date_beg + '/' + instrument + '/'
-      
-
       
       ;; Generate OID = unique observation ID of the metadata?
-      ;; oid=
       ;; Is date + timestamp enough or should this be a hash-like
       ;; string that changes with versioning etc?
       ;;
@@ -501,9 +497,9 @@ pro red::fitscube_export, filename $
       ;; Let's make it same as 'oid' but without semicolons
       ;; which are not alloweded.
       tt = strjoin(strsplit(time_beg,':',/extract),'')
+      sc = red_strreplace(scans,':','_',n=100)
       file_path = date_beg+'T'+ tt + '_' $
-            + filter + '_' $
-            + scans
+            + filter + '_' + sc
       
       ;; Build the command string to submit metadata to SVO
       cmd = cmd[0]      
