@@ -161,6 +161,7 @@ pro red::fitscube_export, filename $
                           , thumb_shrink_fac = thumb_shrink_fac $
                           , video_shrink_fac = video_shrink_fac $
                           , allowed_users = allowed_users $
+                          , swedish_data = swedish_data $
                           , trust_datasum = trust_datasum 
   
   ;; Name of this method
@@ -187,9 +188,9 @@ pro red::fitscube_export, filename $
         allowed_users = ''
         reply = ''
         print, 'This data should be protected from unauthorized downloading.'
-        print, "You have to enter usernames."
+        print, "You have to enter users' e-mails."
         while reply ne 'x' do begin
-           read,'Enter a username (put "x" to escape) >  ', reply
+           read,"Enter a user's e-mail (put 'x' to escape) >  ", reply
            allowed_users += reply+';'
         endwhile
         allowed_users = strmid(allowed_users, 0, strlen(allowed_users)-2)
@@ -521,7 +522,12 @@ pro red::fitscube_export, filename $
       ;; Submit metadata to sst_archive
       ;; Unfortunately we can do it only from dubshen
       cmd = '/usr/bin/ssh olexa@dubshen " sudo /root/bin/submit_cube ' + $
-            date_beg + '/' + instrument + '/' + outfile + ' > /dev/null 2>&1" &'
+            date_beg + '/' + instrument + '/' + outfile 
+      if keyword_set(allowed_users) then begin
+        cmd += ' ' + allowed_users
+        if keyword_set(swedish_data) then cmd += ' --swedish-data'
+      endif
+      cmd += ' > /dev/null 2>&1" &'
       spawn, cmd
       wait,0.5
 
