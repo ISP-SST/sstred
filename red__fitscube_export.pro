@@ -224,6 +224,7 @@ pro red::fitscube_export, filename $
   date_beg = date_beg_split[0]
   time_beg = (strsplit(date_beg_split[1],'.',/extract))[0]
   time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
+  time_end = strmid(time_end,0,8)
 
   ;; We could do the outdir default per site, just like we do for the
   ;; raw data directories.
