@@ -214,7 +214,7 @@ pro red::fitscube_finalize, filename $
                        , no_checksum = no_checksum $
                        , coordinates = wcs $
                        , release_date = release_date $
-                       , release_comment = releasec $
+                       , release_comment = release_comment $
                        , feature = feature $
                        , observer = observer $
                        , point_id = point_id    
@@ -279,8 +279,8 @@ pro red::fitscube_finalize, filename $
                                  , /no_wbcube $
                                  , no_write = no_write $
                                  , old_header = oldwbhdr $
-                                 , release_comment = RELEASEC $
-                                 , release_date = RELEASE $
+                                 , release_comment = release_comment $
+                                 , release_date = release_date $
                                  , feature = feature $
                                  , observer = observer $
                                  , point_id = point_id
