@@ -261,7 +261,8 @@ pro red::fitscube_header_finalize, hdr $
   if ~keyword_set(coordinates) then begin
     filename = fxpar(hdr,'FILENAME')
     if file_dirname(filename) eq '.' then begin
-      if strmatch(filename, '*grouped*') then $
+      point_id = fxpar(hdr,'POINT_ID')
+      if strmatch(point_id, '*grouped*') or strmatch(point_id, '*mosaic*') then $
         filename = 'cubes_concatenated/' + filename $
       else begin
         if strmid(filename,0,2) eq 'nb' then $

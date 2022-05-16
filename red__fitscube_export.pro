@@ -291,7 +291,13 @@ pro red::fitscube_export, filename $
      key = strtrim((strsplit(hdr[indx[-1]], '=', /extract))[0], 2)
      
      wcfile = red_strreplace(fxpar(hdr, key), 'Align reference: ', '')
-     if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
+     if file_dirname(wcfile) eq '.' then begin
+        steps = fxpar(hdr,'PRSTEP*')
+        if where(strmatch(steps,'*DATA-CURATION*')) ne -1 then $
+          wcfile = 'cubes_converted/' + wcfile $
+        else $
+          wcfile = 'cubes_wb/' + wcfile
+     endif
      if ~file_test(wcfile) then begin
         print, 'WB file ',wcfile,' does not exist.'
         print, 'Make the cube or rerun fitscube_export with /no_wb_file option.'
