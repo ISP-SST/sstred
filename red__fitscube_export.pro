@@ -529,42 +529,53 @@ pro red::fitscube_export, filename $
 
       ;; Submit metadata to sst_archive
       ;; Unfortunately we can do it only from dubshen
-      cmd = '/usr/bin/ssh olad6860@dubshen " sudo /root/bin/submit_cube ' + $
-            date_beg + '/' + instrument + '/' + outfile 
-      if keyword_set(allowed_users) then begin
-        cmd += ' ' + allowed_users
-        if keyword_set(swedish_data) then cmd += ' --swedish-data'
-      endif
-      cmd += ' > /dev/null 2>&1" &'
-      spawn, cmd
-      wait,0.5
+      spawn, 'whoami',result
+      if result eq 'olad6860' then begin
+        
+        cmd = '/usr/bin/ssh olad6860@dubshen " sudo /root/bin/submit_cube ' + $
+              date_beg + '/' + instrument + '/' + outfile 
+        if keyword_set(allowed_users) then begin
+          cmd += ' ' + allowed_users
+          if keyword_set(swedish_data) then cmd += ' --swedish-data'
+        endif
+        cmd += ' > /dev/null 2>&1" &'
+        spawn, cmd
+        wait,0.5
 
-      ;; Check submitting status and display it
-      spawn, 'tail -1 /home/olexa/submit/status.log', status
-      if status ne 'Submitting has been started.' then begin
-        print,'We have troubles.'
-        return
+        ;; Check submitting status and display it
+        spawn, 'tail -1 /home/olexa/submit/status.log', status
+        if status ne 'Submitting has been started.' then begin
+          print,'We have troubles.'
+          return
+        endif else begin
+          bb = string(13B)      ; CR w/o LF
+          outline = string(replicate(32B, 70))
+          tw = 0 & ttw = 0
+          while status ne 'Submitting has been finished.' do begin
+            wait,1
+            ttw++ & tw++
+            bar = string(replicate(61B, tw))   ; Replicated '='
+            bar += string(replicate(45B, 41-tw)) ; Replicated '-'
+            strput, outline, string('Submitting: [' + bar + '] ',  ttw, ' sec', format = '(A,I3,A,$)')
+            print, bb, outline, FORMAT = '(A,A,$)'
+            if tw eq 40 then tw = 0
+            print
+            spawn, 'tail -1 /home/olexa/submit/status.log', status
+          endwhile
+        endelse
+
+        ;; Read the log and print it.
+        print
+        spawn, 'tail -12 /home/olexa/submit/cube_submit.log', result
+        print, result
+        
       endif else begin
-        bb = string(13B) ; CR w/o LF
-        outline = string(replicate(32B, 70))
-        tw = 0 & ttw = 0
-        while status ne 'Submitting has been finished.' do begin
-          wait,1
-          ttw++ & tw++
-          bar = string(replicate(61B, tw)) ; Replicated '='
-          bar += string(replicate(45B, 41-tw)) ; Replicated '-'
-          strput, outline, string('Submitting: [' + bar + '] ',  ttw, ' sec', format = '(A,I3,A,$)')
-          print, bb, outline, FORMAT = '(A,A,$)'
-          if tw eq 40 then tw = 0
-          print
-          spawn, 'tail -1 /home/olexa/submit/status.log', status
-        endwhile
-      endelse
-  
-      ;; Read the log and print it.
-      print
-      spawn, 'tail -12 /home/olexa/submit/cube_submit.log', result
-      print, result
+        print
+        print,'!!!!!!!!!!!!!!!!!!!!!!!!'
+        print, "Unfortunately only admin can submit metadata to the SST archive."
+        print, "Please don't forget to ask the administrator to do it."
+        print,'!!!!!!!!!!!!!!!!!!!!!!!!'
+      endelse      
 
       ;; We still need to fill information in data_cubes table to use
       ;; idl procedure to download cubes.
