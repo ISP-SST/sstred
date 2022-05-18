@@ -332,9 +332,11 @@ pro red::fitscube_export, filename $
   if ~keyword_set(no_spectral_file) then begin
     spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
     if ~file_test(indir + spfile) then begin
-       print, 'File ',spfile,' does not exist.'
-       print, 'Make the spectral cube or rerun fitscube_export with /no_spectral_file option.'
-       return
+      print, 'File ',spfile,' does not exist.'
+      ans=''
+      read, 'Would you like to continue without spectral cube (Y/n) : ',ans
+      if strupcase(ans) eq 'N' then return
+      print
     endif
     print, inam + ' : Copying the spectral cube...'
     spoutfile = red_strreplace(outfile, '_im.fits', '_sp.fits')
@@ -527,7 +529,7 @@ pro red::fitscube_export, filename $
 
       ;; Submit metadata to sst_archive
       ;; Unfortunately we can do it only from dubshen
-      cmd = '/usr/bin/ssh olexa@dubshen " sudo /root/bin/submit_cube ' + $
+      cmd = '/usr/bin/ssh olad6860@dubshen " sudo /root/bin/submit_cube ' + $
             date_beg + '/' + instrument + '/' + outfile 
       if keyword_set(allowed_users) then begin
         cmd += ' ' + allowed_users
