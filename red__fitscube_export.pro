@@ -140,9 +140,9 @@
 ;                video_shrink_fac. 
 ;
 ;   2021-01-11 : OA. Submit information about exported cubes to the
-;   database.
+;                database.
 ;
-;    2022-03-24 : OA. Added trust_datasum keyword.
+;   2022-03-24 : OA. Added trust_datasum keyword.
 ; 
 ;-
 pro red::fitscube_export, filename $
@@ -161,6 +161,7 @@ pro red::fitscube_export, filename $
                           , thumb_shrink_fac = thumb_shrink_fac $
                           , video_shrink_fac = video_shrink_fac $
                           , allowed_users = allowed_users $
+                          , swedish_data = swedish_data $
                           , trust_datasum = trust_datasum 
   
   ;; Name of this method
@@ -187,9 +188,9 @@ pro red::fitscube_export, filename $
         allowed_users = ''
         reply = ''
         print, 'This data should be protected from unauthorized downloading.'
-        print, "You have to enter usernames."
+        print, "You have to enter users' e-mails."
         while reply ne 'x' do begin
-           read,'Enter a username (put "x" to escape) >  ', reply
+           read,"Enter a user's e-mail (put 'x' to escape) >  ", reply
            allowed_users += reply+';'
         endwhile
         allowed_users = strmid(allowed_users, 0, strlen(allowed_users)-2)
@@ -223,7 +224,9 @@ pro red::fitscube_export, filename $
   date_beg_split = strsplit(fxpar(hdr,'DATE-BEG'),'T',/extract)
   date_beg = date_beg_split[0]
   time_beg = (strsplit(date_beg_split[1],'.',/extract))[0]
-;;  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
+  time_end = (strsplit(fxpar(hdr,'DATE-END'),'T',/extract))[1]
+  time_end = strmid(time_end,0,8)
+
   ;; We could do the outdir default per site, just like we do for the
   ;; raw data directories.
   if n_elements(outdir) eq 0 then outdir = '/storage_new/science_data/' $
@@ -288,7 +291,13 @@ pro red::fitscube_export, filename $
      key = strtrim((strsplit(hdr[indx[-1]], '=', /extract))[0], 2)
      
      wcfile = red_strreplace(fxpar(hdr, key), 'Align reference: ', '')
-     if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
+     if file_dirname(wcfile) eq '.' then begin
+        steps = fxpar(hdr,'PRSTEP*')
+        if where(strmatch(steps,'*DATA-CURATION*')) ne -1 then $
+          wcfile = 'cubes_converted/' + wcfile $
+        else $
+          wcfile = 'cubes_wb/' + wcfile
+     endif
      if ~file_test(wcfile) then begin
         print, 'WB file ',wcfile,' does not exist.'
         print, 'Make the cube or rerun fitscube_export with /no_wb_file option.'
@@ -323,9 +332,11 @@ pro red::fitscube_export, filename $
   if ~keyword_set(no_spectral_file) then begin
     spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
     if ~file_test(indir + spfile) then begin
-       print, 'File ',spfile,' does not exist.'
-       print, 'Make the spectral cube or rerun fitscube_export with /no_spectral_file option.'
-       return
+      print, 'File ',spfile,' does not exist.'
+      ans=''
+      read, 'Would you like to continue without spectral cube (Y/n) : ',ans
+      if strupcase(ans) eq 'N' then return
+      print
     endif
     print, inam + ' : Copying the spectral cube...'
     spoutfile = red_strreplace(outfile, '_im.fits', '_sp.fits')
@@ -478,12 +489,8 @@ pro red::fitscube_export, filename $
       ;; Keywords to the SVO ingestion script
       file_url = 'https://dubshen.astro.su.se/sst_archive/download/' + outfile
       instrument = strtrim(fxpar(hdr,'INSTRUME'),2)
-;;      file_path = date_beg + '/' + instrument + '/'
-      
-
       
       ;; Generate OID = unique observation ID of the metadata?
-      ;; oid=
       ;; Is date + timestamp enough or should this be a hash-like
       ;; string that changes with versioning etc?
       ;;
@@ -500,9 +507,9 @@ pro red::fitscube_export, filename $
       ;; Let's make it same as 'oid' but without semicolons
       ;; which are not alloweded.
       tt = strjoin(strsplit(time_beg,':',/extract),'')
+      sc = red_strreplace(scans,':','_',n=100)
       file_path = date_beg+'T'+ tt + '_' $
-            + filter + '_' $
-            + scans
+            + filter + '_' + sc
       
       ;; Build the command string to submit metadata to SVO
       cmd = cmd[0]      
@@ -522,60 +529,78 @@ pro red::fitscube_export, filename $
 
       ;; Submit metadata to sst_archive
       ;; Unfortunately we can do it only from dubshen
-      cmd = '/usr/bin/ssh olexa@dubshen " sudo /root/bin/submit_cube ' + $
-            date_beg + '/' + instrument + '/' + outfile + ' > /dev/null 2>&1" &'
-      spawn, cmd
-      wait,0.5
+      spawn, 'whoami',result
+      if result eq 'olad6860' then begin
+        
+        cmd = '/usr/bin/ssh olad6860@dubshen " sudo /root/bin/submit_cube ' + $
+              date_beg + '/' + instrument + '/' + outfile 
+        if keyword_set(allowed_users) then begin
+          cmd += ' ' + allowed_users
+          if keyword_set(swedish_data) then cmd += ' --swedish-data'
+        endif
+        cmd += ' > /dev/null 2>&1" &'
+        spawn, cmd
+        wait,0.5
 
-      ;; Check submitting status and display it
-      spawn, 'tail -1 /home/olexa/submit/status.log', status
-      if status ne 'Submitting has been started.' then begin
-        print,'We have troubles.'
-        return
+        ;; Check submitting status and display it
+        spawn, 'tail -1 /home/olexa/submit/status.log', status
+        if status ne 'Submitting has been started.' then begin
+          print,'We have troubles.'
+          return
+        endif else begin
+          bb = string(13B)      ; CR w/o LF
+          outline = string(replicate(32B, 70))
+          tw = 0 & ttw = 0
+          while status ne 'Submitting has been finished.' do begin
+            wait,1
+            ttw++ & tw++
+            bar = string(replicate(61B, tw))   ; Replicated '='
+            bar += string(replicate(45B, 41-tw)) ; Replicated '-'
+            strput, outline, string('Submitting: [' + bar + '] ',  ttw, ' sec', format = '(A,I3,A,$)')
+            print, bb, outline, FORMAT = '(A,A,$)'
+            if tw eq 40 then tw = 0
+            print
+            spawn, 'tail -1 /home/olexa/submit/status.log', status
+          endwhile
+        endelse
+
+        ;; Read the log and print it.
+        print
+        spawn, 'tail -12 /home/olexa/submit/cube_submit.log', result
+        print, result
+        
       endif else begin
-        bb = string(13B) ; CR w/o LF
-        outline = string(replicate(32B, 70))
-        tw = 0 & ttw = 0
-        while status ne 'Submitting has been finished.' do begin
-          wait,1
-          ttw++ & tw++
-          bar = string(replicate(61B, tw)) ; Replicated '='
-          bar += string(replicate(45B, 41-tw)) ; Replicated '-'
-          strput, outline, string('Submitting: [' + bar + '] ',  ttw, ' sec', format = '(A,I3,A,$)')
-          print, bb, outline, FORMAT = '(A,A,$)'
-          if tw eq 40 then tw = 0
-          print
-          spawn, 'tail -1 /home/olexa/submit/status.log', status
-        endwhile
-      endelse
-  
-      ;; Read the log and print it.
-      print
-      spawn, 'tail -12 /home/olexa/submit/cube_submit.log', result
-      print, result
+        print
+        print,'!!!!!!!!!!!!!!!!!!!!!!!!'
+        print, "Unfortunately only admin can submit metadata to the SST archive."
+        print, "Please don't forget to ask the administrator to do it."
+        print,'!!!!!!!!!!!!!!!!!!!!!!!!'
+      endelse      
 
-      ;; Probably we don't need following lines anymore.
+      ;; We still need to fill information in data_cubes table to use
+      ;; idl procedure to download cubes.
+      ;; (Current sst_archive doesn't support downloads with wb and sp cubes.)
 
       ;; Put datacube information to the database
-      ;; release_comment = fxpar(hdr,'RELEASEC')
-      ;; if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
-      ;; red_mysql_check, handle
+      release_comment = fxpar(hdr,'RELEASEC')
+      if fxpar(hdr,'NAXIS4') eq 4 then pol = '1' else pol = '0'
+      red_mysql_check, handle
       
-      ;; if current_date lt release_date then begin
-      ;;   filename = outdir+outfile
-      ;;   query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
-      ;;           'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
-      ;;           scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
-      ;;           "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
-      ;; endif else begin
-      ;;   query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
-      ;;           'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
-      ;;           outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
-      ;;           "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
-      ;; endelse
+      if current_date lt release_date then begin
+        filename = outdir+outfile
+        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment, allowed_users) VALUES ("' + date_beg +'", "'+ time_beg+ '", "'+ time_end+'", '+ filter+', '+pol+', "'+ $
+                scans+'", "'+outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment + '", "' + allowed_users +'") '+ $
+                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment), allowed_users=VALUES(allowed_users);"        
+      endif else begin
+        query = "INSERT INTO data_cubes (date, time_beg, time_end, wvlnth, pol, scans, filename, release_date,  instrument," + $
+                'release_comment) VALUES ("' + date_beg +'", "'+ time_beg +'", "'+ time_end+'", '+ filter+', '+ pol+', "'+ scans+'", "'+ $
+                outfile +'", "'+ release_date +'", "'+ instrument + '", "' + release_comment +'") '+ $
+                "ON DUPLICATE KEY UPDATE filename=VALUES(filename), release_date=VALUES(release_date), release_comment=VALUES(release_comment);"
+      endelse
       
-      ;; red_mysql_cmd, handle, query, ans, nl
-      ;; free_lun,handle
+      red_mysql_cmd, handle, query, ans, nl
+      free_lun,handle
       
     endelse
   endif else begin

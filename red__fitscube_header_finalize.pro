@@ -258,7 +258,21 @@ pro red::fitscube_header_finalize, hdr $
   ;; WCS info: DATE-BEG and DATE-END take care of the temporal
   ;; coordinates, WAVEMIN and WAVEMAX of the spectral coordinates. But
   ;; we need to specify the pointing as an additional WCS coordinate.
-;  red_fitscube_getwcs, filename, coordinates = coordinates   
+  if ~keyword_set(coordinates) then begin
+    filename = fxpar(hdr,'FILENAME')
+    if file_dirname(filename) eq '.' then begin
+      point_id = fxpar(hdr,'POINT_ID')
+      if strmatch(point_id, '*grouped*') or strmatch(point_id, '*mosaic*') then $
+        filename = 'cubes_concatenated/' + filename $
+      else begin
+        if strmid(filename,0,2) eq 'nb' then $
+          filename = 'cubes_nb/' + filename $
+        else $
+          filename = 'cubes_wb/' + filename
+      endelse
+    endif
+    red_fitscube_getwcs, filename, coordinates = coordinates
+  endif
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'WCSNAMEA', 'AVERAGED APPROXIMATE HPLN-TAN/HPLT-TAN CENTER POINT'
   red_fitsaddkeyword, anchor = anchor, hdr $

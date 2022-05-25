@@ -187,39 +187,42 @@ pro red::fitscube_nup, inname  $
   ;; NB cube of WB cube?
   filetype = (strsplit(file_basename(inname),'_',/extract))[0]
 
+  ans=''
+  no_wcfile = 0B
   if filetype eq 'nb' then begin
     indx = where(strmatch(inhdr, '*WCFILE*'), Nwhere)
     if Nwhere eq 0 then begin
       print, 'There is no information about wb cube in the header.'
-      return
+      read, 'Do you want to continue (y/N) : ',ans
+      if strupcase(ans) ne 'Y' then $
+        return $
+      else $
+        no_wcfile = 1B
     endif else begin
       par = strmid(inhdr[indx],0,7)
       par_key = red_fitsgetkeyword(inhdr, par[0])
       wcfile = (json_parse(par_key))['WCFILE']
-    endelse
-    if ~file_test(wcfile) then begin
-      print, inam + ' : Could not find the WB cube -- ', wcfile
-      print,'Enter wb cube name manually.'
-      wcfile = ''
-      read,'WB cube name : ',wcfile
-      if strtrim(wcfile,2) eq '' then return
-      if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
       if ~file_test(wcfile) then begin
-        print,'There is no such wb cube.'
-        return
+        print, inam + ' : Could not find the WB cube -- ', wcfile
+        read, 'Do you want to continue (y/N) : ',ans
+        if strupcase(ans) ne 'Y' then $
+          return $
+        else $
+          no_wcfile = 1B
       endif
-    endif
-    wb_hdr = headfits(wcfile)
-    wb_type = fxpar(wb_hdr,'BITPIX')
-    if wb_type ne 16 then begin
-      ;; With old nb cubes we need to rely on integer wb cubes for padding
-      ;; Because old padding might be not really same [median] value
-      ;; after rotation and red__missing fails.
-      print,'Corresponding WB cube is not integer (i.e. not very old).'
-      print,'This method might be not optimal for curation.'
-      ans = ''
-      read,'Do you want to continue (y/N) : ',ans
-      if strupcase(ans) ne 'Y' then return
+    endelse
+    if ~no_wcfile then begin
+      wb_hdr = headfits(wcfile)
+      wb_type = fxpar(wb_hdr,'BITPIX')
+      if wb_type ne 16 then begin
+        ;; With old nb cubes we need to rely on integer wb cubes for padding
+        ;; Because old padding might be not really same [median] value
+        ;; after rotation and red__missing fails.
+        print,'Corresponding WB cube is not integer (i.e. not very old).'
+        print,'This method might be not optimal for curation.'
+        read,'Do you want to continue (y/N) : ',ans
+        if strupcase(ans) ne 'Y' then return
+      endif
     endif
   endif else wcfile = inname
   
@@ -331,21 +334,13 @@ pro red::fitscube_nup, inname  $
 
     endelse
 
-  endif
-
-  ;; Read parameters from the WB cube
-  fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
-  fxbreadm, bunit, row = 1 $
-            , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
-            , wcANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01, wcdirection  
-  fxbclose, bunit
+  endif  
 
   if n_elements(wcdirection) eq 0 and $
     n_elements(mirrorx) eq 0 and $
     n_elements(mirrory) eq 0 then begin
 
     print,'There is no information about previous 90 degrees rotations or mirroring of the cube.'
-    ans=''
     read, 'Do you want to continue (Y/n): ',ans
     if strupcase(ans) eq 'N' then return
   endif
@@ -358,6 +353,10 @@ pro red::fitscube_nup, inname  $
   red_fitsaddkeyword, outhdr, 'NAXIS2', Ny
   
   if keyword_set(do_wb_cube) or keyword_set(wcs_improve_spatial) then begin
+    if no_wcfile then begin
+      print, "There is no wb cube. Please rerun without 'do_wb_cube' or 'wcs_improve_spatial' options."
+      return
+    endif
     print,'==============================='
     print,'Processing WB cube first.'
     print,'==============================='
@@ -377,7 +376,7 @@ pro red::fitscube_nup, inname  $
         wb_oname = outdir + '/wb_' + outname
     endelse
     
-    red_fitsaddkeyword, outhdr, key $
+    red_fitsaddkeyword, outhdr, par_key $
                          , 'Align reference: '+wb_oname $
                          , 'WB cube file name'
     
@@ -414,6 +413,19 @@ pro red::fitscube_nup, inname  $
   ;; Original derotation angles
   t_array = reform(wcs[0,*].time[0,0])
   ang = red_lp_angles(t_array, self.isodate, /from_log, offset_angle = defrotation) ; [radians]
+
+  if ~no_wcfile then begin
+    ;; Read parameters from the WB cube
+    fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
+    fxbreadm, bunit, row = 1 $
+              , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
+              , wcANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01, wcdirection  
+    fxbclose, bunit
+  endif else begin
+    ;; assume that mean angle was subtracted
+    mang = median(ang)
+    wcang = ang - mang
+  endelse
   
   ;; Angles to use are original derotation angles minus rotation
   ;; already done. This should be a scalar.
@@ -447,28 +459,31 @@ pro red::fitscube_nup, inname  $
   endif else begin
     
     ;; We need to restore coordinates from log files
+    red_logdata, self.isodate, t_array, diskpos = pointing
 
-    time = reform(wcs[0,*].time[0,0])
-    red_logdata, self.isodate, time, diskpos = pointing
-
-    hpln = pointing[0,*] - double(self.image_scale) * wcSHIFT[0,*]
-    hplt = pointing[1,*] - double(self.image_scale) * wcSHIFT[1,*]        
+    if no_wcfile then begin
+      hpln = pointing[0,*]
+      hplt = pointing[1,*]
+    endif else begin
+      hpln = pointing[0,*] - double(self.image_scale) * wcSHIFT[0,*]
+      hplt = pointing[1,*] - double(self.image_scale) * wcSHIFT[1,*]
+    endelse
 
     ;; Let's smooth coordinates.
-    dt = (time[-1] - time[0]) / 60. ; minutes
+    dt = (t_array[-1] - t_array[0]) / 60. ; minutes
     if dt le 15. or Nscans le 3 then fit_expr = 'P[0] + X*P[1]'
     if dt gt 15. and Nscans gt 3 then fit_expr = 'P[0] + X*P[1] + X*X*P[2]'
     ;; We have to exclude NaNs before running mpfitexpr.
     indx = where(finite(hpln))
     lln = hpln[indx]
-    tt = time[indx]
+    tt = t_array[indx]
     pp = mpfitexpr(fit_expr, tt, lln)
-    hpln = red_evalexpr(fit_expr, time, pp)
+    hpln = red_evalexpr(fit_expr, t_array, pp)
     indx = where(finite(hplt))
     llt = hplt[indx]
-    tt = time[indx]
+    tt = t_array[indx]
     pp = mpfitexpr(fit_expr, tt, llt)
-    hplt = red_evalexpr(fit_expr, time, pp)
+    hplt = red_evalexpr(fit_expr, t_array, pp)
   
     ;; But what we want to tabulate is the pointing in the corners of
     ;; the FOV. Assume hpln and hplt are the coordinates of the center
@@ -512,7 +527,7 @@ pro red::fitscube_nup, inname  $
   Nframes = round(product(dims[2:*]))
   iframe = 0
   for iscan = 0, Nscans-1 do begin
-    if filetype eq 'nb' then begin
+    if filetype eq 'nb' and ~no_wcfile then begin
       ;; With old nb cubes we need to rely on integer wb cubes for padding
       ;; Because old padding might be not really same [median] value
       ;; after rotation and red__missing fails.
@@ -529,7 +544,7 @@ pro red::fitscube_nup, inname  $
                                , iscan = iscan, ituning = ituning, istokes = istokes $
                                , fitscube_info = in_fitscube_info
 
-        if filetype eq 'wb' then begin
+        if filetype eq 'wb' or no_wcfile then begin
           red_missing, frame, image_out = frm, missing_value = 0
           pad_indx = where(frm eq 0)
         endif
@@ -570,11 +585,13 @@ pro red::fitscube_nup, inname  $
                          , csyer_spatial_value = 5. $ ; 5 arcsec, minor rotation error may remain
                          , csyer_spatial_comment = 'Aligned with HMI images' $
                          , dimensions = fxpar(outhdr, 'NAXIS*') $
+                         , /update $
   else $
     red_fitscube_addwcs, oname, wcs $
                          , dimensions = fxpar(outhdr, 'NAXIS*') $
                          , csyer_spatial_value = 60. $ ; 1 arc minute
-                         , csyer_spatial_comment = '[arcsec] Orientation known'
+                         , csyer_spatial_comment = '[arcsec] Orientation known' $
+                         , /update
 
   if filetype eq 'nb' then begin
     for icmap = 0, n_elements(distortions)-1 do begin
