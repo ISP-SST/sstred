@@ -445,46 +445,48 @@ pro red_download, date = date $
   if keyword_set(pig) then begin
     pigfile = 'rmslog_guidercams'
 
-    DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + isodate $
-                            + '/' + pigfile $
-                            , file = pigfile+'_'+isodate $
-                            , dir = logdir $
-                            , overwrite = overwrite $
-                            , path = pathpig)
-
-    if ~DownloadOK then begin
-      dotdate = strjoin(datearr, '.')
-      DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate $
+    if ~file_test(logdir+pigfile+'_'+isodate+'_converted') then begin
+      
+      DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + isodate $
                               + '/' + pigfile $
                               , file = pigfile+'_'+isodate $
                               , dir = logdir $
                               , overwrite = overwrite $
-                              , path = pathpig)     
-    endif
+                              , path = pathpig)
 
-    if DownloadOK then begin
-      ;; We actually want the logfile converted to time and x/y
-      ;; coordinates (in arcseconds).
-      pathpig += '_converted'
-      if ~file_test(pathpig) then begin
-        print, 'red_download : Converting PIG log file...'
-        rdx_convertlog, logdir+pigfile+'_'+isodate, logdir+pigfile+'_'+isodate+'_converted' $
-                        , dx=31.92, dy=14.81 $
-                        , rotation=84.87, scale=4.935, average=16
-      endif else begin
-        print, 'red_download : Converted PIG log file already exists.'
-      endelse
-    endif else begin
-      ;; We tried to download but failed. So any existing files may
-      ;; be corrupt or not correspond to the current state.
-      if pathpig ne '' then begin
-        file_delete, pathpig, /allow_nonexistent
-        file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
-        pathpig = ''
+      if ~DownloadOK then begin
+        dotdate = strjoin(datearr, '.')
+        DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate $
+                                + '/' + pigfile $
+                                , file = pigfile+'_'+isodate $
+                                , dir = logdir $
+                                , overwrite = overwrite $
+                                , path = pathpig)     
       endif
-    endelse
-  endif
 
+      if DownloadOK then begin
+        ;; We actually want the logfile converted to time and x/y
+        ;; coordinates (in arcseconds).
+        pathpig += '_converted'
+        if ~file_test(pathpig) then begin
+          print, 'red_download : Converting PIG log file...'
+          rdx_convertlog, logdir+pigfile+'_'+isodate, logdir+pigfile+'_'+isodate+'_converted' $
+                          , dx=31.92, dy=14.81 $
+                          , rotation=84.87, scale=4.935, average=16
+        endif else begin
+          print, 'red_download : Converted PIG log file already exists.'
+        endelse
+      endif else begin
+        ;; We tried to download but failed. So any existing files may
+        ;; be corrupt or not correspond to the current state.
+        if pathpig ne '' then begin
+          file_delete, pathpig, /allow_nonexistent
+          file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
+          pathpig = ''
+        endif
+      endelse
+    endif else pathpig = logdir+pigfile+'_'+isodate+'_converted'
+  endif 
   
   ;; Turret log file
 
