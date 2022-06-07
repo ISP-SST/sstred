@@ -15,29 +15,30 @@
 ; 
 ; :Returns:
 ;
-;    Interpolated version of the input array
+;    In Nxx by Nyy array with values interpolated in the input Nx by
+;    Ny array.
 ; 
 ; :Params:
 ; 
-;    x : in, type=array
+;    x : in, type="array(Nx)"
 ;
 ;       x-coordinates of the input 2D array.
 ;
-;    y : in, type=array
+;    y : in, type="array(Ny)"
 ;
 ;       y-coordinates of the input 2D array.
 ;
-;    im : in, type=array
+;    im : in, type="array(Nx,Ny)"
 ;
 ;      image/2D array to be interpolated.
 ; 
-;    xx : in, type=array
+;    xx : in, type="array(Nxx,Nyy)"
 ;
-;       x-coordinates of the output 2D array. It is a 2D array.
+;       x-coordinates of the output 2D array. 
 ;
-;    yy : in, type=array
+;    yy : in, type="array(Nxx,Nyy)"
 ;
-;       y-coordinates of the output 2D array. It is a 2D array.
+;       y-coordinates of the output 2D array.
 ;
 ; 
 ; :Keywords:
