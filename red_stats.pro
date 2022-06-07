@@ -28,6 +28,11 @@
 ; 
 ;       The name of the variable or some other label that identifies
 ;       the statistics.
+; 
+;    nan : in, optional, type=boolean
+;
+;       Passed when calling min(), max(), etc.
+;
 ;
 ; :History:
 ; 
@@ -40,15 +45,17 @@
 ;
 ;      2021-12-01 : MGL. New keywords out and heading.
 ;
+;      2022-06-07 : MGL. New keyword nan.
+;
 ;-
-pro red_stats, x, name=name, out = out, heading = heading ; Show statistics about x
+pro red_stats, x, name=name, out = out, heading = heading, nan = nan ; Show statistics about x
 
   DivisorString = '------------------------------------------------------------------'
 
-  MaxString  = strtrim(String(Max(float(x))),2)
-  MinString  = strtrim(String(Min(float(x))),2)
-  MeanString = strtrim(String(Mean(float(x))),2)
-  DevString  = strtrim(String(StDev(float(x))),2)
+  MaxString  = strtrim(Max(float(x), nan = nan),2)
+  MinString  = strtrim(Min(float(x), nan = nan),2)
+  MeanString = strtrim(Mean(float(x), nan = nan),2)
+  DevString  = strtrim(StDdev(float(x), nan = nan),2)
 
   heading = 'Min, Mean, Max, StDev:'
   
