@@ -139,6 +139,10 @@
 ;                 properly. The cropping info was not applied to the
 ;                 output image.
 ;
+;    2022-06-24 : JdlCR. Bugfix, the cmap was always rotated
+;                 regardless of the /norotation keyword.
+;
+;
 ;
 ;-
 pro crisp::make_scan_cube, dir $
@@ -926,8 +930,12 @@ pro crisp::make_scan_cube, dir $
 
     ;; Add cavity maps as WAVE distortions 
     if ~keyword_set(nocavitymap) then begin 
-      red_fitscube_addcmap, filename $
-                            , reform(red_rotation(cmap1,ang,full=ff, nthreads=nthreads),[dims[0:1],1,1,1])
+      if ~keyword_set(norotation) then begin
+        red_fitscube_addcmap, filename $
+                              , reform(red_rotation(cmap1,ang,full=ff, nthreads=nthreads),[dims[0:1],1,1,1])
+      endif else begin
+        red_fitscube_addcmap, filename, reform(cmap1,[dims[0:1],1,1,1])
+      endelse
     endif 
     ;; Add some variable keywords
     self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
