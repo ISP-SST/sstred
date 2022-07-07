@@ -63,7 +63,8 @@
 pro crisp::prepflatcubes, flatdir = flatdir $
                             , pref = pref $
                             , verbose = verbose $
-                            , nthreads = nthreads
+                            , nthreads = nthreads $
+                            , no_descatter = no_descatter
 
 
   ;; Prepare for logging (after setting of defaults).

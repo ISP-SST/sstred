@@ -212,7 +212,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , no_pd = no_pd $
                      , refcam = refcam $
                      , extraclip = extraclip $
-                     , redux = redux
+                     , redux = redux $
+                     , cams = cams
 
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
@@ -220,7 +221,7 @@ pro red::prepmomfbd, wb_states = wb_states $
   instrument = ((typename(self)).tolower())
 
   ;; Cameras
-  cams = *self.cameras
+  if ~keyword_set(cams) then cams = *self.cameras
   iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
   ispd = strmatch(cams,'*-D')
 

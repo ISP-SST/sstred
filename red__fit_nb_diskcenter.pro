@@ -97,7 +97,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
     if n_elements(mu_limit) eq 0 then begin
       mu_limit = 0.97d
     endif else begin
-      if mu_limit lt 0.97 then begin
+      if mu_limit lt 0.97d then begin
         print, inam, ' : You should use /limb_darkening with mu_limit < 0.97'
         return
       endif
@@ -133,7 +133,15 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
     if ptr_valid(self.flat_dir)  then red_append, dirs, *self.flat_dir
     if ptr_valid(self.data_dirs) then red_append, dirs, *self.data_dirs
 
-  endif
+  endif else begin
+    match2, dirs, file_basename(*self.data_dirs), suba, subb 
+    mindx = where(subb ne -1, Nwhere)
+    if Nwhere eq 0 then begin
+       print, inam + ' : No data directories match the dirs keyword.'
+       return
+    endif
+    dirs = (*self.data_dirs)[mindx]
+  endelse
 
   if n_elements(exclude_dirs) gt 0 then begin
 
@@ -164,7 +172,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
   pprefs = strarr(Nprefs)
   for ip = 0, Nprefs-1 do pprefs[ip] = (strsplit(file_basename(pfiles[ip]),'_',/extract))[1]
   if where(strmatch(pprefs, '8542')) ne -1 then begin
-    if mu_limit lt 0.97 then begin
+    if mu_limit lt 0.97d then begin
       print, inam, ' : You are using mu_limit < 0.97 with 8542 prefilter.'
       print,'Please change settings and rerun the program.'
       return
