@@ -135,7 +135,15 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     if ptr_valid(self.flat_dir)  then red_append, dirs, *self.flat_dir
     if ptr_valid(self.data_dirs) then red_append, dirs, *self.data_dirs
 
-  endif
+  endif else begin
+    match2, dirs, file_basename(*self.data_dirs), suba, subb 
+    mindx = where(subb ne -1, Nwhere)
+    if Nwhere eq 0 then begin
+       print, inam + ' : No data directories match the dirs keyword.'
+       return
+    endif
+    dirs = (*self.data_dirs)[mindx]
+  endelse
 
   if n_elements(exclude_dirs) gt 0 then begin
 
