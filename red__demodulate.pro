@@ -125,32 +125,29 @@
 ;   2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                       ported to rdx and maintainable by us.
 ; 
+;   2022-07-29 : MGL. Change from a CRISP:: method to a RED:: method. 
+; 
 ;-
-pro crisp::demodulate, outname, immr, immt $
-                       , clips = clips $
-                       , cmap = cmap $
-                       , nbrfac = nbrfac $
-                       , nbrstates = nbrstates $
-                       , nbtfac = nbtfac $
-                       , nbtstates = nbtstates $
-                       , noremove_periodic = noremove_periodic $
+pro red::demodulate, outname, immr, immt $
+                     , clips = clips $
+                     , cmap = cmap $
+                     , nbrfac = nbrfac $
+                     , nbrstates = nbrstates $
+                     , nbtfac = nbtfac $
+                     , nbtstates = nbtstates $
+                     , noremove_periodic = noremove_periodic $
 ;                       , newflats = newflats $
 ;                       , no_ccdtabs = no_ccdtabs $
-                       , nthreads = nthreads $
-                       , overwrite = overwrite $
-                       , smooth_by_kernel = smooth_by_kernel $
-                       , smooth_by_subfield = smooth_by_subfield $
-                       , tiles = tiles $
-                       , units = units $
-                       , wbg = wbg $
-                       , wcs = wcs $
-                       , wbstates = wbstates $
-                       , nearest = nearest 
-
-;  testing = 1
-
-  ;; What to do with the newflats keyword? The polarim method uses it
-  ;; in call to red_getstates_polarim.
+   , nthreads = nthreads $
+   , overwrite = overwrite $
+   , smooth_by_kernel = smooth_by_kernel $
+   , smooth_by_subfield = smooth_by_subfield $
+   , tiles = tiles $
+   , units = units $
+   , wbg = wbg $
+   , wcs = wcs $
+   , wbstates = wbstates $
+   , nearest = nearest 
   
   ;; Name of this method
   inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
