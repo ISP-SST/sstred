@@ -36,6 +36,7 @@ pro crisp2__define
          pf_wavelength:0.0, $
          tun_wavelength:0.0D, $
          exposure:0.0D, $
+         gain:0.0, $
          cam_settings:'', $
          is_wb:0B, $
          lc:0B $
