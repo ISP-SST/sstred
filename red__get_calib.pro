@@ -6,7 +6,7 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -113,20 +113,23 @@
 ; 
 ;    2021-10-06 : MGL. New keywords sgainname, sgainstatus, sgaindata.
 ; 
+;    2022-08-02 : MGL. Change from a CRISP:: method to a RED:: method
+;                 to prepare for CRISP camera upgrade.
+; 
 ;-
-pro crisp::get_calib, states $
-                      , no_fits = no_fits $
-                      , status = status $
-                      , darkstatus  = darkstatus,  darkname  = darkname,  darkdata  = darkdata   $
-                      , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata   $
-                      , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata   $
-                      , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata   $
-                      , polcname    = polcname,    polcdata  = polcdata                         $
-                      , polsname    = polsname,    polsdata  = polsdata                         $
-                      , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
-                      , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
-                      , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
-                      , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata   
+pro red::get_calib, states $
+                    , no_fits = no_fits $
+                    , status = status $
+                    , darkstatus  = darkstatus,  darkname  = darkname,  darkdata  = darkdata  $
+                    , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata  $
+                    , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata  $
+                    , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata  $
+                    , polcname    = polcname,    polcdata  = polcdata                         $
+                    , polsname    = polsname,    polsdata  = polsdata                         $
+                    , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
+                    , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
+                    , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
+                    , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata   
 
   Nstates = n_elements(states)
 
@@ -242,8 +245,8 @@ pro crisp::get_calib, states $
           ;; Try summing flats for this state and then making gains
           if ~file_test(flatname[istate]) then begin
             self -> sumflat, /check, /sum_in_rdx $
-                           , cams = states[istate].camera $
-                           , ustat = states[istate].fullstate
+                             , cams = states[istate].camera $
+                             , ustat = states[istate].fullstate
           endif 
           self -> makegains, smooth=3.0, files = flatname[istate]
         endif 

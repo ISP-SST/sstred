@@ -5,7 +5,7 @@
 ; 
 ; :Categories:
 ;
-;    CHROMIS pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -58,13 +58,16 @@
 ;
 ;   2017-04-13 : MGL. Do not read cavityfree flats! Make FITS header
 ;                for the cube.
+; 
+;   2022-08-01 : MGL. New version for CRISP2 (and old CRISP with new
+;                cameras) based on the old CRISP version.
 ;
 ;-
-pro crisp::prepflatcubes, flatdir = flatdir $
-                            , pref = pref $
-                            , verbose = verbose $
-                            , nthreads = nthreads $
-                            , no_descatter = no_descatter
+pro red::prepflatcubes, flatdir = flatdir $
+                        , pref = pref $
+                        , verbose = verbose $
+                        , nthreads = nthreads $
+                        , no_descatter = no_descatter
 
 
   ;; Prepare for logging (after setting of defaults).
