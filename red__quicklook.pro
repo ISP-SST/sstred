@@ -748,17 +748,19 @@ pro red::quicklook, align = align $
         ;; This part needs to 1) not use non-pipeline subprograms and
         ;; 2) be modified to support aspect ratios != 1.
         
-        caminfo = red_camerainfo(detector)
+        ;; caminfo = red_camerainfo(detector)
         
         lambda = states[sel2[0]].tun_wavelength ; Wavelength [m]
         telescope_d = 0.97d
         arcsecperpix = self.image_scale
-        pixelsize = caminfo.pixelsize
+        ;; pixelsize = caminfo.pixelsize
         sz = max(dim)
         
-        F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
-        Q_number = F_number * lambda/pixelsize
+        ;;   F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
+        ;;   Q_number = F_number * lambda/pixelsize
 
+        Q_number = lambda/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.)) 
+        
         LimFreq = sz / Q_number
         rc = LimFreq/2.d
         r = round(rc)+2
