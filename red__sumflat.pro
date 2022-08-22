@@ -163,7 +163,7 @@ pro red::sumflat, overwrite = overwrite, $
  
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   Ncams = n_elements(cams)
   if( Ncams eq 0) then begin

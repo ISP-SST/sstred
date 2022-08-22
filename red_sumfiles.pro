@@ -184,7 +184,7 @@ function red_sumfiles, files_list $
                        , filter = filter
 
   ;; Name of this subprogram
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   if n_elements(nthreads) eq 0 then nthreads = 2
 

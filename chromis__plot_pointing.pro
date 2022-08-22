@@ -38,8 +38,9 @@
 ;-
 pro chromis::plot_pointing, file = file
 
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  ;; Name of this method
+  inam = red_subprogram(/low, calling = inam1)                                        
+
   if n_elements(file) gt 0 then begin
     if size(1,/tname) ne 'STRING' && keyword_set(file) then begin
       cgPS_Open, 'dir-analysis/pointing_'+self.isodate+'.png', /decomposed

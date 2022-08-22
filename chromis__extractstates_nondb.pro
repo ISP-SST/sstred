@@ -148,7 +148,7 @@ pro chromis::extractstates_nondb, strings, states $
                             , strip_settings = strip_settings
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)            
 
   ;; Don't complain about hrz_zeropoint isn't run already when
   ;; that's what we are doing!

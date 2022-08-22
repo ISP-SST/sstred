@@ -52,8 +52,8 @@
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  inam = red_subprogram(/low, calling = inam1)  
+  
   ;; Check polcal_sums
   if(~file_test(self.out_dir + '/polcal_sums', /directory)) then begin
     print, inam + ' : ERROR, folder not found : '+ self.out_dir + '/polcal_sums'

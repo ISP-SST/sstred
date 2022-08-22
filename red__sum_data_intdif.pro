@@ -73,7 +73,7 @@ pro red::sum_data_intdif, all = all $
 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   ;; Use links created by link_data as default.
   if n_elements(link_dir) eq 0 then link_dir = self.out_dir + '/' + 'data'

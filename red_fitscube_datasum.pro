@@ -44,8 +44,8 @@
 function red_fitscube_datasum, fname, checksum_array = checksum_array
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)                      
+
   if ~file_test(fname) then begin
     print, inam + ' : File does not exist: '
     print, fname

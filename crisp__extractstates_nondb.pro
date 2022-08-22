@@ -64,13 +64,13 @@
 ;
 ;-
 pro crisp::extractstates_nondb, strings, states $
-                          , force = force $
-                          , strip_settings = strip_settings $
-                          , polcal = polcal
+                                , force = force  $
+                                , polcal = polcal $
+                                , strip_settings = strip_settings
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
- 
+  inam = red_subprogram(/low, calling = inam1)                                          
+  
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 

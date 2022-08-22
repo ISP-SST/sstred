@@ -44,8 +44,8 @@
 pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  inam = red_subprogram(/low, calling = inam1)          
+  
   use_strings = n_elements(datasets) eq 0
   
   ;; clear states and try to get them from the cache

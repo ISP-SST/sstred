@@ -55,7 +55,7 @@ pro red_fitscube_getwcs, filename $
                          , distortions = distortions
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                    
 
   hdr = headfits(filename)
   fxbopen, lun, filename, 'WCS-TAB', bdr

@@ -48,7 +48,7 @@ pro red_fitscube_addwcsheader, hdr, wcs $
                                , dimensions = dimensions
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                          
 
   if n_elements(csyer_spatial_value) eq 0 then begin
     csyer_spatial_value = 120.  ; 2 arc minutes

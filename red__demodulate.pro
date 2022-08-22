@@ -148,7 +148,7 @@ pro red::demodulate, outname, immr, immt $
                      , nearest = nearest 
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                                  
 
   if file_test(outname) and ~keyword_set(overwrite) then begin
     print, inam + ' : Already exists: '+outname

@@ -51,7 +51,7 @@ pro crisp::inverse_modmatrices, prefilter, dir $
                                 , overwrite = overwrite
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                                          
 
   if n_elements(camr) gt 0 then begin
     red_append, cams, camr

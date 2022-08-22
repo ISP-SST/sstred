@@ -46,8 +46,8 @@ pro red::diversitycalib, threshold = threshold $
                          , verbose = verbose
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)                                
+
   ;; Logging
   help, /obj, self, output = selfinfo 
   red_writelog, selfinfo = selfinfo, logfile = logfile

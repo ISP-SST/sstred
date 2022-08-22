@@ -92,7 +92,7 @@ pro red::sumpolcal, check=check $
  
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   self -> getdetectors 
   cams = *self.cameras

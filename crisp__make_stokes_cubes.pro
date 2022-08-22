@@ -117,8 +117,8 @@ pro crisp::make_stokes_cubes, dir, scanno $
                               , fitpref_time = fitpref_time
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)                                      
+
   if n_elements(dir) eq 0 then begin
     print, inam + ' : Please specify the directory with momfbd output.'
     retall

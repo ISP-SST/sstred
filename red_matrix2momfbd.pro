@@ -52,7 +52,7 @@ function red_matrix2momfbd, lc, imodmat $
                             , amap = amap
 
   ;; Name of this function
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)      
 
   Nstokes = 4
   Nlc = n_elements(lc)

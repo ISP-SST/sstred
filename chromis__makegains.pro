@@ -81,8 +81,8 @@ pro chromis::makegains, bad=bad $
                         , smoothsize = smoothsize 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)    
+
   red_make_prpara, prpara, bad
   red_make_prpara, prpara, cam 
   red_make_prpara, prpara, max 

@@ -216,8 +216,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                      , cams = cams
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  inam = red_subprogram(/low, calling = inam1)
+  
   instrument = ((typename(self)).tolower())
 
   ;; Cameras

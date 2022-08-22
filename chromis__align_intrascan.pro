@@ -70,7 +70,7 @@ pro chromis::align_intrascan, choose_states = choose_states $
                               ;, timestamps = timestamps
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)          
 
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
 

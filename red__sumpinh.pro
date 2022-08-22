@@ -122,7 +122,7 @@ pro red::sumpinh, nthreads = nthreads $
 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
   
 ;  ;; Logging
 ;  help, /obj, self, output = selfinfo 

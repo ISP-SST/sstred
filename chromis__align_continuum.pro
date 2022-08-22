@@ -64,7 +64,7 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
    
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)        
 
   if n_elements(momfbddir) eq 0 then momfbddir = 'momfbd' 
   if(n_elements(contrast_thres) eq 0) then contrast_thres = 1.1
