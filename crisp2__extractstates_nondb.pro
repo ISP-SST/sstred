@@ -147,10 +147,11 @@
 ;-
 pro crisp2::extractstates_nondb, strings, states $
                                  , force = force $
+                                 , polcal = polcal $
                                  , strip_settings = strip_settings
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)  
 
   strings = strtrim(strings,2)
   idx = where( strings ne '' )
@@ -160,7 +161,11 @@ pro crisp2::extractstates_nondb, strings, states $
   if( Nstrings eq 0 ) then return
 
   ;; Create array of structs to holed the state information
-  states = replicate( {CRISP2_STATE}, Nstrings )
+  if keyword_set(polcal) then begin
+    states = replicate( {CRISP2_POLCAL_STATE}, Nstrings )
+  endif else begin
+    states = replicate( {CRISP2_STATE}, Nstrings )
+  endelse
   states.nframes = 1            ; single frame by default
 
   ;; Read headers and extract information. This should perhaps return
@@ -238,7 +243,7 @@ pro crisp2::extractstates_nondb, strings, states $
         if count eq 1 then begin
           camera = (*self.cameras)[indx[0]]
           states[ifile].camera = camera
-        endif                   ;else begin
+        endif
       endelse
       states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
 
@@ -247,7 +252,7 @@ pro crisp2::extractstates_nondb, strings, states $
         ;; time for the camera setting.
         states[ifile].cam_settings = strtrim(string(texposur*1000 $
                                                     , format = '(f9.2)'), 2) + 'ms'
-      end else if hasexp gt 0 then begin
+      endif else if hasexp gt 0 then begin
         ;; This is not a summed file.
         states[ifile].cam_settings = strtrim(string(states[ifile].exposure*1000 $
                                                     , format = '(f9.2)'), 2) + 'ms'
@@ -303,8 +308,7 @@ pro crisp2::extractstates_nondb, strings, states $
     ;; Store in cache
     rdx_cache, strings[ifile], { state:states[ifile] }
 
-  endelse
+  endfor                        ; ifile
   
-endfor                          ; ifile
+end                             
 
-end
