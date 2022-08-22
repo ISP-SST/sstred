@@ -418,6 +418,15 @@ pro red::prepmomfbd, wb_states = wb_states $
     
     ref_img_dir = file_dirname(file_expand_path(ref_states[0].filename),/mark)
     ref_caminfo = red_camerainfo(detectors[refcam])
+    ref_head = red_readhead(ref_states[0].filename)
+    
+    ;; Pixel size and binning
+    pixelsize = ref_caminfo.pixelsize
+    nbin = fxpar(ref_head, 'NBIN*', count = Nnbin)
+    if Nnbin ne 0 then begin
+      pixelsize *= nbin[0]      ; Assume binning same along both axes
+    endif
+    pixelsize = strtrim(pixelsize, 2)
 
     ;; unique prefilters
     upref = ref_states[uniq(ref_states.prefilter, sort(ref_states.prefilter))].prefilter
@@ -516,7 +525,7 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LF
         cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + LF
         cfg.globals += 'ARCSECPERPIX=' + self.image_scale + LF
-        cfg.globals += 'PIXELSIZE=' + strtrim(ref_caminfo.pixelsize, 2) + LF
+        cfg.globals += 'PIXELSIZE=' + pixelsize + LF
         cfg.globals += 'FILE_TYPE=' + self.filetype + LF
         case self.filetype of
           'ANA' : begin
