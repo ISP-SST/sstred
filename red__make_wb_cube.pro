@@ -126,7 +126,8 @@
 ;
 ;    subtract_meanang : in, optional, type=boolean
 ;
-;      Subtract the mean from the derotation angle. 
+;      Subtract the mean from the derotation angle, resulting in
+;      minimal wasted area. 
 ;
 ;    tile : in, optional, type=array
 ;
@@ -415,7 +416,7 @@ pro red::make_wb_cube, dirs $
                                  , autocrop = autocrop  $
                                  , direction = direction $
                                  , interactive = interactive)
-
+  
   x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
