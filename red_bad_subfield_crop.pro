@@ -58,9 +58,9 @@
 ; 
 ;-
 function red_bad_subfield_crop, files, crop $
-                           , autocrop = autocrop $
-                           , direction =  direction $
-                           , interactive = interactive
+                                , autocrop = autocrop $
+                                , direction =  direction $
+                                , interactive = interactive
 
   Nfiles = n_elements(files)
 
@@ -102,7 +102,7 @@ function red_bad_subfield_crop, files, crop $
       subf_detect = total(subf_stddev*subf_median^2, 3)
     endelse
     
-    ;; Try removing subfields in X first because it's the longest dimension
+    ;; Try removing subfields in X first
     subf_detect_x = max(subf_detect/median(subf_detect),dim=2)
     i0 = -1
     i1 = Nsubf_x
@@ -214,7 +214,7 @@ function red_bad_subfield_crop, files, crop $
     crop = [x0, im_dim[0]-1-x1, y0, im_dim[1]-1-y1]
     
   endif
-
+  
   case direction of
     0 :                           ;  X,  Y (no change)
     1 : crop = crop[[3, 2, 0, 1]] ; -Y,  X
