@@ -386,13 +386,15 @@ function crisp2::filenames, datatype, states $
         end
 
         'flat' : begin
-          dir = self.out_dir + '/flats/' 
+          dir = self.out_dir + '/flats/'
           red_append, tag_list, detector
-          red_append, tag_list, exposure
-          red_append, tag_list, gain
-          red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          red_append, tag_list, states[istate].fullstate
+;          red_append, tag_list, detector
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
@@ -400,11 +402,12 @@ function crisp2::filenames, datatype, states $
         'cavityflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
-          red_append, tag_list, exposure
-          red_append, tag_list, gain
-          red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
           red_append, tag_list, 'cavityfree'
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
@@ -413,11 +416,12 @@ function crisp2::filenames, datatype, states $
         'sumflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
-          red_append, tag_list, exposure
-          red_append, tag_list, gain
-          red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          red_append, tag_list, states[istate].fullstate
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
           red_append, tag_list, 'summed'
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
@@ -425,15 +429,26 @@ function crisp2::filenames, datatype, states $
         
         'scangain' : begin
           ;; Gain tables constructed for a particular scan.
-          dir = self.out_dir + '/gaintables/' + timestamp + '/'
+          if n_elements(timestamp) eq 1 then begin
+            dir = self.out_dir + '/gaintables/' + timestamp + '/'          
+          endif else begin
+            ;; Try to get it from states[istate].filename.
+            ts = stregex(file_dirname(states[istate].filename) $
+                         , timestamp_searchstring, /extract)
+            if strlen(ts) eq 8 then dir = self.out_dir + '/gaintables/' + ts + '/' else stop         
+          endelse
           red_append, tag_list, detector
           red_append, tag_list, scannumber
-          red_append, tag_list, exposure
-          red_append, tag_list, gain
-          red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then begin
-            red_append, tag_list, tuning
-          endif
+          red_append, tag_list, states[istate].fullstate
+;          dir = self.out_dir + '/gaintables/' + timestamp + '/'
+;          red_append, tag_list, detector
+;          red_append, tag_list, scannumber
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then begin
+;            red_append, tag_list, tuning
+;          endif
           ext = '.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
 
@@ -442,22 +457,24 @@ function crisp2::filenames, datatype, states $
         'gain' : begin
           dir = self.out_dir + '/gaintables/' 
           red_append, tag_list, detector
-          red_append, tag_list, exposure
-          red_append, tag_list, gain
-          red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          red_append, tag_list, states[istate].fullstate
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
           ext = '.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
         'cavityfree_gain' : begin
           dir = self.out_dir + '/gaintables/' 
           red_append, tag_list, detector
-          red_append, tag_list, exposure
-          red_append, tag_list, gain
-          red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          red_append, tag_list, states[istate].prefilter ;+'_'+states[istate].fpi_state
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
           ext = '_cavityfree.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
@@ -475,7 +492,7 @@ function crisp2::filenames, datatype, states $
           dir = self.out_dir+'/polcal_sums/'+camera+'/'
           red_append, tag_list, detector
           state_split = strsplit(states[istate].fullstate,'_',/extract)
-          red_append, tag_list, state_split[0:2] ; lp000_qw000_8542
+          red_append, tag_list, state_split[2:4] ; lp000_qw000_8542
           red_append, tag_list, state_split[-1]  ; lc state
           ext = '.pols'
           if ~keyword_set(no_fits) then ext += '.fits'
