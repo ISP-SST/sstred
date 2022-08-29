@@ -61,22 +61,18 @@
 ; 
 ;  2021-08-23 : MGL. Adapt searchstrings to WB flats file names.
 ; 
+;  2021-08-23 : MGL. Make it into a method.
+; 
 ;-
-function red_raw_search, dir $
-                         , count = count $
-                         , fpi_states = fpi_states $
-                         , instrument = instrument $
-                         , prefilters = pref $
-                         , scannos = scannos_in $
-                         , tunings = tunings
+function crisp2::raw_search, dir $
+                             , count = count $
+                             , fpi_states = fpi_states $
+                             , prefilters = pref $
+                             , scannos = scannos_in $
+                             , tunings = tunings
 
   ;; Name of this subprogram
   inam = red_subprogram(/low, calling = inam1)
-
-  if n_elements(instrument) eq 0 then begin
-    ;; Find out from dir
-    instrument = strupcase((strsplit(file_basename(dir), '-', /extract))[0])
-  endif
 
   iswb = 'W' eq strupcase((strsplit(file_basename(dir), '-', /extract))[1])
   isflats = strmatch(dir,'*[Ff]lat*')
@@ -108,92 +104,94 @@ function red_raw_search, dir $
   case n_elements(tunings) of
     0 : tunings = '[0-9][0-9][0-9][0-9]_[+-][0-9]*'
     else : tunings = strtrim(tunings, 2)
-;    else : case strupcase(instrument) of
-;      'CHROMIS' : tunings = strtrim(tunings, 2)
-;      'CRISP' : begin
-;        Ntuning = n_elements(tunings)
-;        for ituning = 0, Ntuning-1 do begin
-;          stop
-;          tunsplt = strsplit(tunings[ituning], '_', /extract)
-;          tunlength = strlen(tunsplt[1]) ; length of the [+-]123 part
-;          if tunlength lt 5 then begin
-;            ;; Needs zero padding!
-;            tunings[ituning] = tunsplt[0] + '_' + 
-;          endif
-;        endfor                  ; ituning
-;      end
-;    endcase
   endcase
   Ntuning = n_elements(tunings)
 
   ;; Fpi_state
   case n_elements(fpi_states) of
-    0 : case strupcase(instrument) of
-      'CHROMIS': fpi_states = 'wheel0000[0-9]_hrz[0-9][0-9][0-9][0-9][0-9]'
-      'CRISP' : fpi_states = prefilters+'.'+tunings+'.lc?'
-      else: stop
-    endcase
+    0 : fpi_states = prefilters+'_'+tunings+'_lc?'
     else : fpi_states = strtrim(fpi_states, 2)
   endcase
   Nstates = n_elements(fpi_states)
   
   
   ;; Construct search strings
-  case strupcase(instrument) of
-    
-    'CRISP' : begin
-       Nstrings = Nscans * Nstates
-       searchstrings = strarr(Nstrings)
-       istring = 0
-       for iscan = 0, Nscans-1 do begin
-        for istate = 0, Nstates-1 do begin
-          if iswb and isflats then begin
-            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
-                                     + prefilters $
-                                     + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-          endif else begin
-            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
-                                   + fpi_states[istate] $
-                                   + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-          endelse
-          istring++
-        endfor
-      endfor 
-
-    end
-
-    'CHROMIS' : begin
-
-      ;; Typical file name: sst_camXXX_00013_0009375_wheel00002_hrz33621.fits
-      Nstrings = Nscans * Nstates
-      searchstrings = strarr(Nstrings)
-      istring = 0
-      for iscan = 0, Nscans-1 do begin
-        for istate = 0, Nstates-1 do begin
-          if iswb and isflats then begin
-            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-                                     + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
-                                     + '.fits'
-          endif else begin
-            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-                                     + fpi_states[istate] $
-                                     + '.fits'
-          endelse
-          istring++
-        endfor
-      endfor 
-
-    end
-
-    else : begin
-
-      print, inam+' : This instrument is not implemented (yet): ', instrument
-      
-    end
-    
-  endcase 
+  Nstrings = Nscans * Nstates
+  searchstrings = strarr(Nstrings)
+  istring = 0
+  for iscan = 0, Nscans-1 do begin
+    for istate = 0, Nstates-1 do begin
+      if iswb and isflats then begin
+        ;; Typical name: sst_camXXXI_00000_0001250_5896.fits
+        searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                 + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                 + prefilters $
+                                 + '.fits'
+      endif else begin
+        ;; Typical name: sst_camXXXI_00002_0002076_5896_5896_+0092_lc4.fits
+        searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                 + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                 + prefilters $
+                                 + '_*.fits'
+        endelse
+        istring++
+      endfor
+  endfor 
+;  case strupcase(instrument) of
+;    
+;    'CRISP' : begin
+;       Nstrings = Nscans * Nstates
+;       searchstrings = strarr(Nstrings)
+;       istring = 0
+;       for iscan = 0, Nscans-1 do begin
+;        for istate = 0, Nstates-1 do begin
+;          if iswb and isflats then begin
+;            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
+;                                     + prefilters $
+;                                     + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+;          endif else begin
+;            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
+;                                   + fpi_states[istate] $
+;                                   + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+;          endelse
+;          istring++
+;        endfor
+;      endfor 
+;
+;    end
+;
+;    'CHROMIS' : begin
+;
+;      ;; Typical file name: sst_camXXX_00013_0009375_wheel00002_hrz33621.fits
+;      Nstrings = Nscans * Nstates
+;      searchstrings = strarr(Nstrings)
+;      istring = 0
+;      for iscan = 0, Nscans-1 do begin
+;        for istate = 0, Nstates-1 do begin
+;          if iswb and isflats then begin
+;            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+;                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+;                                     + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
+;                                     + '.fits'
+;          endif else begin
+;            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+;                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+;                                     + fpi_states[istate] $
+;                                     + '.fits'
+;          endelse
+;          istring++
+;        endfor
+;      endfor 
+;
+;    end
+;
+;    else : begin
+;
+;      print, inam+' : This instrument is not implemented (yet): ', instrument
+;      
+;    end
+;    
+;  endcase 
   
   files = red_file_search(searchstrings, dir, count = count)
   
