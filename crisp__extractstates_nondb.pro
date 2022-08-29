@@ -184,10 +184,10 @@ pro crisp::extractstates_nondb, strings, states $
       states[ncindx[ifile]].camera = red_strreplace((stregex(anahdr,'(\[)(CRISP-[WDTR]+)(\])' $
                                                              , /extr, /subexp))[2] $
                                                     , 'CRISP', 'Crisp') 
-      states[ncindx[ifile]].is_wb = strmatch(states[ncindx[ifile]].camera,'*-[DW]') 
+      states[ncindx[ifile]].is_wb = long(strmatch(states[ncindx[ifile]].camera,'*-[DW]') )
 
       if states[ncindx[ifile]].is_wb then begin
-        states[ncindx[ifile]].tun_wavelength = states[ncindx[ifile]].pf_wavelength ; [nm] Tuning wavelength
+        states[ncindx[ifile]].tun_wavelength = states[ncindx[ifile]].pf_wavelength   ; [nm] Tuning wavelength
         states[ncindx[ifile]].tuning         = states[ncindx[ifile]].prefilter+'_+0'      ; "6302_+0"
       endif else begin
         states[ncindx[ifile]].tun_wavelength = dwav[ifile]*1e-10 ; [nm] Tuning wavelength
@@ -242,7 +242,7 @@ pro crisp::extractstates_nondb, strings, states $
     red_extractstates,strings, lc=lc $
                       , wav = wav, pref = pref
   endelse
-  states.lc = lc
+;  states.lc = lc
 ;  states.fpi_state = pref+'_'+wav
   states.fpi_state = wav
 
@@ -318,7 +318,7 @@ pro crisp::extractstates_nondb, strings, states $
         states[ifile].camera = camera
       endif 
     endelse
-    states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
+    states[ifile].is_wb = long(strmatch(states[ifile].camera,'*-[DW]') )
 
     if hastexp then begin
       ;; This is a summed file, use the single-exposure exposure
