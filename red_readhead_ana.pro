@@ -224,6 +224,17 @@ function red_readhead_ana, fname, $
                                                 , 'LCSTATE', long(lcstate) $
                                                 , 'Liquid crystal state'
 
+      lpstate = ((stregex(filename, '(\.)LP(.?.?.?)(\.)', /extr, /subexp))[2,*])[0]
+      if lpstate ne '' then red_fitsaddkeyword, anchor = anchor, header $
+                                                , 'LPSTATE', long(lpstate) $
+                                                , 'Linear polarizer state'
+ 
+      qwstate = ((stregex(filename, '(\.)qw(.?.?.?)(\.)', /extr, /subexp))[2,*])[0]
+      if qwstate ne '' then red_fitsaddkeyword, anchor = anchor, header $
+                                                , 'QWSTATE', long(qwstate) $
+                                                , 'Quarterwave plate state'
+      
+      
       tuninfo = stregex(filename, '([0-9][0-9][0-9][0-9])[._]([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                         , /extract, /subexpr)
       
