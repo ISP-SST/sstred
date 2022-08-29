@@ -202,11 +202,19 @@ pro crisp2::extractstates_nondb, strings, states $
       endif
 
       ;; Add polarization state info.
+      lcstate = fxpar(head, 'LCSTATE', count = count)
+      if count then states[ifile].lc = lcstate
+      if keyword_set(polcal) then begin
+        lpstate = fxpar(head, 'LPSTATE', count = count) 
+        if count then states[ifile].lp = lpstate       
+        qwstate = fxpar(head, 'QWSTATE', count = count)  
+        if count then states[ifile].qw = qwstate      
+      endif
       
       ;; Numerical keywords
       naxis3 = fxpar(head, 'NAXIS3', count=hasnframes)
       if hasnframes then states[ifile].nframes = naxis3
-      states[ifile].gain = fxpar(head, 'GAIN', count=hasgain)
+      states[ifile].gain = fxpar(head, 'DETGAIN', count=hasgain)
       states[ifile].exposure = fxpar(head, 'XPOSURE', count=hasexp)
       texposur = fxpar(head, 'TEXPOSUR', count=hastexp)
 
@@ -215,15 +223,39 @@ pro crisp2::extractstates_nondb, strings, states $
 
       states[ifile].scannumber = fxpar(head, red_keytab('scannumber'))
       states[ifile].framenumber = fxpar(head, red_keytab('framenumber'))
-
+      
       state = fxpar(head, 'STATE', count=hasstate)
       if hasstate gt 0 then begin
-        states[ifile].fpi_state = state
         state_split = strsplit( state, '_',  /extr )
-        if n_elements(state_split) gt 1 then begin
-          states[ifile].tuning = state_split[1]
-        endif
+        case n_elements(state_split) of
+          1 : begin
+            ;; WB data
+            states[ifile].fpi_state = '0'
+            states[ifile].tuning = state_split[0]+'_+0'
+          end
+          8 : begin
+            ;; Polcal sum
+            states[ifile].fpi_state = strjoin(state_split[5:6], '_')
+            states[ifile].tuning = strjoin(state_split[5:6], '_')
+          end
+          else : begin
+            ;; NB data
+            states[ifile].fpi_state = strjoin(state_split[1:2], '_')
+            states[ifile].tuning = strjoin(state_split[1:2], '_')
+          end
+        endcase
+
+;        if n_elements(state_split) gt 1 then begin
+;          ;; NB data
+;          states[ifile].fpi_state = strjoin(state_split[1:2], '_')
+;          states[ifile].tuning = strjoin(state_split[1:2], '_')
+;        endif else begin
+;          ;; WB data
+;          states[ifile].fpi_state = '0'
+;          states[ifile].tuning = state_split[0]+'_+0'
+;        endelse
       endif
+      
       
       ;; String keywords require checking
       detector = fxpar(head, red_keytab('detector'), count=count)
@@ -245,7 +277,7 @@ pro crisp2::extractstates_nondb, strings, states $
           states[ifile].camera = camera
         endif
       endelse
-      states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
+      states[ifile].is_wb = long(strmatch(states[ifile].camera,'*-[DW]'))
 
       if hastexp then begin
         ;; This is a summed file, use the single-exposure exposure
@@ -285,26 +317,49 @@ pro crisp2::extractstates_nondb, strings, states $
                         , '([0-9][0-9][0-9][0-9])_([+-][0-9]*)' $
                         , /extract, /subexpr) 
 
-      
-      ;; OK, the tuning info is in the form it should be.
-      states[ifile].tuning = tuninfo[0]
-      
-      ;; Also return the tuning in decimal form [m]:
-      states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d-10, 1d-13])
-      
-      
+      if tuninfo[0] eq '' then begin
+        ;; The STATE header keyword does not have tuning info
+        if states[ifile].tuning ne '' then begin
+          tuninfo = strsplit(states[ifile].tuning, '_', /extract)
+          states[ifile].tun_wavelength = total(double(tuninfo)*[1d-10, 1d-13])
+        endif
+      endif else begin
+        ;; OK, the tuning info is in the form it should be.
+        states[ifile].tuning = tuninfo[0]
+        ;; Also return the tuning in decimal form [m]:
+        states[ifile].tun_wavelength = total(double(tuninfo[1:2])*[1d-10, 1d-13])
+      endelse  
+        
     endelse                     ; tuninfo
 
     if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
 
+    ;; Remove zero padding
+    split_tuning = strsplit(states[ifile].tuning, '_', /extract)
+    if n_elements(split_tuning) eq 2 then begin
+      states[ifile].tuning = split_tuning[0] + '_' $
+                           + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
+    endif
+    split_tuning = strsplit(states[ifile].fpi_state, '_', /extract)
+    if n_elements(split_tuning) eq 2 then begin
+      states[ifile].fpi_state = split_tuning[0] + '_' $
+                                + strmid(split_tuning[1],0,1) + strtrim(round(abs(split_tuning[1])),2)
+    endif  
+    
     ;; The fullstate string
     undefine, fullstate_list
     if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
+    if keyword_set(polcal) then begin
+      red_append, fullstate_list, 'lp'+string(round(states[ifile].lp), format = '(i03)')
+      red_append, fullstate_list, 'qw'+string(round(states[ifile].qw), format = '(i03)')
+    endif
     if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
     if states[ifile].tuning ne '' then $             
        red_append, fullstate_list, states[ifile].tuning
+    red_append, fullstate_list, 'lc'+string(round(states[ifile].lc), format = '(i1)')
     states[ifile].fullstate = strjoin(fullstate_list, '_')
-
+  
+    
     ;; Store in cache
     rdx_cache, strings[ifile], { state:states[ifile] }
 
