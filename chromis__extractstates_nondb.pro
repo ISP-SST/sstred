@@ -144,8 +144,9 @@
 ;
 ;-
 pro chromis::extractstates_nondb, strings, states $
-                            , force = force $
-                            , strip_settings = strip_settings
+                                  , force = force $
+                                  , polcal = polcal $
+                                  , strip_settings = strip_settings
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)            
