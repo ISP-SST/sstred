@@ -376,288 +376,245 @@ pro red_setupworkdir, cfgfile = cfgfile $
              'Please run them separately'
     end
   endcase
+
+  ;; Telescope location:
+  ;; wikipedia, geo:28.759733,-17.880736
+  ;; Mats C:        28.759693, -17.880757
+  ;; wikipedia says altitude is 2360 m. Should add 20 m for height
+  ;; of tower?
+  ;; Altitude 2360 plus a few meters according to Google's
+  ;; elevation service. Allowing for the tower we get 2380 m.
+  obsgeo_xyz = round( red_obsgeo( 28.759733d, -17.880736d, 2380d ) )
+
+  all_instruments =       [ 'CHROMIS', 'CRISP2', 'CRISP',  'TRIPPEL', 'SLITJAW']
+  all_regexps     = '*' + [ 'chromis', 'crisp2', 'crisp',  'spec',    'slit'   ] + '*'
+  all_classes     =       [ 'CHROMIS', 'CRISP2', 'CRISP2', 'TRIPPEL', 'SLITJAW']
+  Ninstruments    = n_elements( all_instruments )
+
+  dirs = file_search(found_dir+'/*', count = Ndirs, /test_directory)
+
+  ;; Initialize list of existing directories for instruments
+  existing_instrument_dirs = list()
   
-  ;; Loop over all found directories.
-  for irootdir = 0, nfound_dirs - 1 do begin
+  ;; Identify all instruments with existing data except CRISP with old cameras
+  for iinstrument = 0, Ninstruments-1 do begin
 
-    root_dir = found_dir[ irootdir ]
-
-    ;; Make sure root_dir ends with a slash.
-    if ~strmatch( root_dir, '*/' ) then root_dir += '/'
-
-    ;; Telescope location:
-    ;; wikipedia, geo:28.759733,-17.880736
-    ;; Mats C:        28.759693, -17.880757
-    ;; wikipedia says altitude is 2360 m. Should add 20 m for height
-    ;; of tower?
-    ;; Altitude 2360 plus a few meters according to Google's
-    ;; elevation service. Allowing for the tower we get 2380 m.
-    obsgeo_xyz = round( red_obsgeo( 28.759733d, -17.880736d, 2380d ) )
-
-    all_instruments =       [ 'CHROMIS', 'CRISP2', 'CRISP', 'TRIPPEL', 'SLITJAW' ]
-    all_regexps     = '*' + [ 'chromis', 'crisp2', 'crisp', 'spec',    'slit'    ] + '*'
-    Ninstruments    = n_elements( all_instruments )
-
-    all_messages = strmid( all_instruments + '            ', 0, $
-                           max( strlen( all_instruments ) ) + 1 ) + ': '
-
+    if Ndirs eq 0 then break
     
-    ;; Loop over all defined instruments.
-    for iinstr = 0, Ninstruments - 1 do begin
+    indx = where(strmatch(file_basename(dirs), all_regexps[iinstrument], /fold), Nmatch $
+                 , COMPLEMENT=indx_complement, NCOMPLEMENT=Nnomatch)
 
-      ;; The current instrument and the corresponding regexp.
-      instrument = all_instruments[ iinstr ]
-      regexp     = all_regexps[     iinstr ]
+    if Nmatch gt 0 then begin
+      existing_instrument_dirs.add, dirs[indx]
+      red_append, existing_instruments, all_instruments[iinstrument]
+      red_append, existing_classes, all_classes[iinstrument]
+
+      if Nnomatch eq 0 then begin
+        Ndirs = 0
+      endif else begin
+        Ndirs = Nnomatch
+        dirs = dirs[indx_complement]
+      endelse
       
-      if ~max( strmatch( instruments, instrument ) ) then begin
-        ;; We didn't ask for this instrument to be set up.
+    endif
+    
+  endfor                        ; iinstrument
+
+  ;; Identify CRISP with old cameras as well as non-instrument
+  ;; directories. 
+  if Ndirs gt 0 then begin
+
+    ;; Clean from non-instrument directories
+    non_instrument_dirs = ['reduc']
+    indx = where(strmatch(file_basename(dirs), non_instrument_dirs+'*', /fold), Nmatch $
+                 , COMPLEMENT=indx_complement, NCOMPLEMENT=Nnomatch)
+
+    print, 'Skipping non-instrument direcrories:'
+    print, dirs[indx]
+    
+    ;; Anything not recognized by now should be CRISP with old cameras
+    if Nnomatch gt 0 then begin
+      existing_instrument_dirs.add, dirs[indx_complement]
+      red_append, existing_instruments, 'CRISP'
+      red_append, existing_classes, 'CRISP'
+    endif
+    
+  endif
+  
+
+  if nfound_dirs gt 1 then stop ; Not supported yet - are multiple root directories ever needed?
+  irootdir = 0
+  root_dir = found_dir[ irootdir ]
+  if strmid(root_dir,0,1,/rev) ne '/' then root_dir += '/'
+
+  print, 'Will try to setup for the following instruments: ', instruments
+  
+  ;; Loop over wanted instruments
+  for iinstrument = 0, n_elements(instruments)-1 do begin
+
+    instrument = instruments[iinstrument]
+    
+    iexisting = (where(instrument eq existing_instruments, Nwhere))[0]
+
+    if Nwhere eq 0 then begin
+      print, 'No data for ', instrument
+      continue
+    endif
+
+    class = existing_classes[iexisting]
+    instrument_dirs = reform(existing_instrument_dirs[iexisting])
+
+    if keyword_set( calibrations_only ) then begin
+      
+      if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
+        
+        print, 'Setting up for ' + instrument + $
+               ', calibration data processing only!'
+        
+        workdir = out_dir + instrument + '-calibrations/'
+        
+      endif else begin
         workdir = ''
-        all_messages[iinstr] += 'Not asked for'
-        continue
-      end
-      
-      case instrument of
-        
-        'CHROMIS' : begin
-
-          class = 'chromis'
-          
-          instrument_dirs = file_search( root_dir + 'CHROMIS-*',   $
-                                         /test_directory,         $
-                                         count = Ninstrument_dirs )
-          
-          if Ninstrument_dirs gt 0 then begin
-            camera_dirs = file_search( instrument_dirs + '/*/*',  $
-                                       /test_directory,          $
-                                       count = Ncamera_dirs      )
-          endif else Ncamera_dirs = 0
-        end                     ; CHROMIS
-        
-        'CRISP2' : begin
-          ;; CRISP2 instrument, replacing old CRISP.
-          
-          class = 'crisp2'
-          
-          instrument_dirs = file_search( root_dir + 'CRISP2-*',   $
-                                         /test_directory,         $
-                                         count = Ninstrument_dirs )
-          
-          if Ninstrument_dirs gt 0 then begin
-            camera_dirs = file_search( instrument_dirs + '/*/*',  $
-                                       /test_directory,          $
-                                       count = Ncamera_dirs      )
-          endif
-        end
-        
-        'CRISP' : begin
-          
-          instrument_dirs = file_search( root_dir + 'CRISP-*',   $
-                                         /test_directory,         $
-                                         count = Ninstrument_dirs )
-
-          if Ninstrument_dirs gt 0 then begin
-            ;; CRISP with new cameras. Process with class CRISP2.
-
-            class = 'crisp2'            
-
-            camera_dirs = file_search( root_dir + ['*/*', '*/*/*']+'/Crisp*',  $
-                                       /test_directory,          $
-                                       count = Ncamera_dirs      )
-          endif else begin
-            ;; CRISP with old cameras. Process with class CRISP.
-
-            class = 'crisp'
-
-            camera_dirs = file_search( root_dir + '*/*/*',  $
-                                       /test_directory,     $
-                                       count = Ncamera_dirs )
-            if Ncamera_dirs gt 0 then begin
-              indx = where(strmatch(camera_dirs, '*/Crisp-?'), Nwhere )
-              ;; Note this does not match the Polcal camera
-              ;; directories due to one more directory level. 
-              if Nwhere gt 0 then begin
-                camera_dirs = camera_dirs[indx]
-                Ncamera_dirs = Nwhere
-              endif
-            endif
-          endelse
-          
-        end                     ; CRISP
-        
-        else : begin
-
-          ;; Other instruments like TRIPPEL and HeSP.
-
-          camera_dirs = file_search( root_dir + '*/*/*',  $
-                                     /test_directory,                              $
-                                     count = Ncamera_dirs                          )
-        end                     ; All other instruments
-        
-      endcase
-      
-      
-      if Ncamera_dirs eq 0 then begin
-        all_messages[ iinstr ] += 'No data'
-        continue
-      endif
-      
-      
-      if keyword_set( calibrations_only ) then begin
-
-        if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
-          
-          print, 'Setting up for ' + instrument + $
-                 ', calibration data processing only!'
-          
-          workdir                 = out_dir + instrument + '-calibrations/'
-          all_messages[ iinstr ] += 'Setup in ' + workdir
-          
-        endif else begin
-          workdir = ''
-          all_messages[iinstr] += 'Not in /calibration_only mode'
-        endelse
-        
-      endif else begin ;; full processing mode (not calibration only).
-        
-        print, 'Setting up for ' + instrument + ' with class '+class+'.'
-        
-        ;; We asked for this instrument and there seems to be data
-        odirs = file_search( out_dir + instrument + '*', count = Nodirs )
-        if Nodirs eq 0 then begin
-          workdir = out_dir + instrument + '/'
-        endif else begin
-          print
-          print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
-          print, file_basename( odirs ), format = '(a0)'
-          workdir = ''
-          print, 'Use an existing directory or create a new one.'
-          read, 'Specify ' + instrument + ' workdir name: ', workdir
-          workdir = out_dir + workdir + '/'
-        endelse
-        all_messages[iinstr] += 'Setup in ' + workdir
-        
       endelse
-
-      file_mkdir, workdir
       
-      if keyword_set(calibrations_only) then begin
-        ;; Write a warning message in 0README about the limitations of
-        ;; these data.
-        openw, rlun, /get_lun, workdir+'/0README'
-        printf, rlun, 'This work directory was created to be used for the automatic collection and'
-        printf, rlun, 'co-adding of calibration data, like darks, flats, etc., using the initial'
-        printf, rlun, 'few commands in the data ordinary processing pipeline.'
-        printf, rlun, ''
-        printf, rlun, 'The summed data could be used, with certain limitations, when processing'
-        printf, rlun, 'science data with the same pipeline. In fact, we hope that after some'
-        printf, rlun, 'testing and evaluation, we can stop transferring and storing some of the'
-        printf, rlun, 'raw calibration data, particularly the flats. But, because it is automatic,'
-        printf, rlun, 'the summed data are not necessarily exactly the same as they would be after'
-        printf, rlun, 'running the pipeline manually.'
-        printf, rlun, ''
-        printf, rlun, 'The main limitation comes from the fact that observers often collect'
-        printf, rlun, 'several sets of the same kind of calibration data. Sometimes because'
-        printf, rlun, 'science data are collected both in the morning and in the late afternoon,'
-        printf, rlun, 'each set requiring their own calibrations. But also because of a failed'
-        printf, rlun, 'attempt to collect calibration data, leaving a faulty and/or incomplete'
-        printf, rlun, 'calibration data set on disk.'
-        printf, rlun, ''
-        printf, rlun, 'When running manually, operators can consult the observer logs and the'
-        printf, rlun, 'correct calibration data can be selected for summing. In the automatic'
-        printf, rlun, 'mode we instead sum data from all sets separately, storing the results'
-        printf, rlun, 'in timestamp subdirectories below the ordinary directory for the'
-        printf, rlun, 'particular kind of calibration data. This means a selection often has'
-        printf, rlun, 'to be made, between different versions of the summed data, just like'
-        printf, rlun, 'you would otherwise have to do for the raw calibration data before'
-        printf, rlun, 'summing.'
-        printf, rlun, ''
-        printf, rlun, 'Because the summed and averaged flats are stored after dark subtraction,'
-        printf, rlun, 'and there could be several versions of the darks, the summed and NOT'
-        printf, rlun, 'averaged versions of the flats should be copied over to the ordinary work'
-        printf, rlun, 'directory, and dark corrected with the selected dark version.'
-        printf, rlun, ''
-        printf, rlun, 'The summed pinholes are corrected for both dark and flat and no'
-        printf, rlun, 'un-corrected version is stored here. This means you may end up with'
-        printf, rlun, 'pinhole data that are dark and flat corrected with non-optimal or even'
-        printf, rlun, 'faulty darks and/or flats. The raw pinhole data should therefore always be'
-        printf, rlun, 'copied to the home institute, so the summing could be done again using'
-        printf, rlun, 'the correct darks and flats. However, it is likely that merely using'
-        printf, rlun, 'afternoon darks and flats for morning pinholes will work just fine.'
-        printf, rlun, ''
-        printf, rlun, 'The darks used here for the flats, as well as the darks and flats used'
-        printf, rlun, 'for the pinholes, are always the version that is collected last. This way'
-        printf, rlun, 'we at least avoid the common case with faulty data followed by correct data.'
-        printf, rlun, ''
-        printf, rlun, ''
-        printf, rlun, ''
-        printf, rlun, ''
-        free_lun, rlun
-      endif
-
-      ;; Write string metadata.
-      red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
-                          [ { keyword : 'OBSRVTRY',                                      $
-                              value   : 'Observatorio del Roque de los Muchachos (ORM)',  $
-                              comment : 'Name of observatory' },                          $
-                            { keyword : 'TELESCOP',                                      $
-                              value   : 'Swedish 1-meter Solar Telescope (SST)',          $
-                              comment : 'Name of telescope' },                            $
-                            { keyword : 'OBJECT',                                        $
-                              value   : 'Sun',                                            $
-                              comment : '' } ] ;
+    endif else begin ;; full processing mode (not calibration only).
       
-      year = long((strsplit(isodate, '-', /extract))[0])
-      if year lt 2013 then begin
-        ao_nmode = 37L
-        modename = 'Karhunen-Loeve'
+      print, 'Setting up for ' + instrument + ' with class ' + class + '.'
+      
+      ;; We asked for this instrument and there seems to be data
+      odirs = file_search( out_dir + instrument + '*', count = Nodirs )
+      if Nodirs eq 0 then begin
+        workdir = out_dir + instrument + '/'
       endif else begin
-        ao_nmode = 84L
-        modename = 'Mirror'
+        print
+        print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
+        print, file_basename( odirs ), format = '(a0)'
+        workdir = ''
+        print, 'Use an existing directory or create a new one.'
+        read, 'Specify ' + instrument + ' workdir name: ', workdir
+        workdir = out_dir + workdir + '/'
       endelse
       
-      ;; Write numerical (LONG) metadata.
-      red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
-                          [ { keyword : 'OBSGEO-Z',                                       $
-                              value   : obsgeo_xyz[ 2 ],                                  $
-                              comment : '[m] SST location' },                             $
-                            { keyword : 'OBSGEO-Y',                                       $
-                              value   : obsgeo_xyz[ 1 ],                                  $
-                              comment : '[m] SST location' },                             $
-                            { keyword : 'OBSGEO-X',                                       $
-                              value   : obsgeo_xyz[ 0 ],                                  $
-                              comment : '[m] SST location' },                             $
-                            { keyword : 'AO_NMODE',                                       $
-                              value   : ao_nmode,                                         $
-                              comment : 'Number of AO corrected '+modename+' modes' } ] ;
-      
-      ;; If there are several root_dirs, a corresponding suffix must be added
-      ;; to the doit.pro script and the config.txt file to separate them.
-      ;;suffix = ( nfound_dirs gt 1 ) ? string( irootdir + 1, format = '( i01 )' ) : ''
-      if ( nfound_dirs gt 1 ) then begin
-        suffix = string( irootdir + 1, format = '( i01 )' )
-      endif else begin
-        suffix = ''
-      endelse
-      config_file = red_add_suffix( cfgfile,    suffix = suffix )
-      script_file = red_add_suffix( scriptfile, suffix = suffix )
-      
-      ;; Setup the different instruments.
-      call_procedure, 'red_setupworkdir_' + class       $
-                      , workdir, root_dir, config_file, script_file, isodate $
-                      , calibrations_only = calibrations_only $
-                      , no_observer_metadata = no_observer_metadata $
-                      , old_dir = old_dir
-    endfor                      ; iinstr
+    endelse
     
-  endfor                        ; irootdir
-  
-  ;; Write message and then we are done.
-  for iinstr = 0, Ninstruments-1 do begin
-    print, all_messages[iinstr]
-  endfor
-  
+    file_mkdir, workdir
+    
+    if keyword_set(calibrations_only) then begin
+      ;; Write a warning message in 0README about the limitations of
+      ;; these data.
+      openw, rlun, /get_lun, workdir+'/0README'
+      printf, rlun, 'This work directory was created to be used for the automatic collection and'
+      printf, rlun, 'co-adding of calibration data, like darks, flats, etc., using the initial'
+      printf, rlun, 'few commands in the data ordinary processing pipeline.'
+      printf, rlun, ''
+      printf, rlun, 'The summed data could be used, with certain limitations, when processing'
+      printf, rlun, 'science data with the same pipeline. In fact, we hope that after some'
+      printf, rlun, 'testing and evaluation, we can stop transferring and storing some of the'
+      printf, rlun, 'raw calibration data, particularly the flats. But, because it is automatic,'
+      printf, rlun, 'the summed data are not necessarily exactly the same as they would be after'
+      printf, rlun, 'running the pipeline manually.'
+      printf, rlun, ''
+      printf, rlun, 'The main limitation comes from the fact that observers often collect'
+      printf, rlun, 'several sets of the same kind of calibration data. Sometimes because'
+      printf, rlun, 'science data are collected both in the morning and in the late afternoon,'
+      printf, rlun, 'each set requiring their own calibrations. But also because of a failed'
+      printf, rlun, 'attempt to collect calibration data, leaving a faulty and/or incomplete'
+      printf, rlun, 'calibration data set on disk.'
+      printf, rlun, ''
+      printf, rlun, 'When running manually, operators can consult the observer logs and the'
+      printf, rlun, 'correct calibration data can be selected for summing. In the automatic'
+      printf, rlun, 'mode we instead sum data from all sets separately, storing the results'
+      printf, rlun, 'in timestamp subdirectories below the ordinary directory for the'
+      printf, rlun, 'particular kind of calibration data. This means a selection often has'
+      printf, rlun, 'to be made, between different versions of the summed data, just like'
+      printf, rlun, 'you would otherwise have to do for the raw calibration data before'
+      printf, rlun, 'summing.'
+      printf, rlun, ''
+      printf, rlun, 'Because the summed and averaged flats are stored after dark subtraction,'
+      printf, rlun, 'and there could be several versions of the darks, the summed and NOT'
+      printf, rlun, 'averaged versions of the flats should be copied over to the ordinary work'
+      printf, rlun, 'directory, and dark corrected with the selected dark version.'
+      printf, rlun, ''
+      printf, rlun, 'The summed pinholes are corrected for both dark and flat and no'
+      printf, rlun, 'un-corrected version is stored here. This means you may end up with'
+      printf, rlun, 'pinhole data that are dark and flat corrected with non-optimal or even'
+      printf, rlun, 'faulty darks and/or flats. The raw pinhole data should therefore always be'
+      printf, rlun, 'copied to the home institute, so the summing could be done again using'
+      printf, rlun, 'the correct darks and flats. However, it is likely that merely using'
+      printf, rlun, 'afternoon darks and flats for morning pinholes will work just fine.'
+      printf, rlun, ''
+      printf, rlun, 'The darks used here for the flats, as well as the darks and flats used'
+      printf, rlun, 'for the pinholes, are always the version that is collected last. This way'
+      printf, rlun, 'we at least avoid the common case with faulty data followed by correct data.'
+      printf, rlun, ''
+      printf, rlun, ''
+      printf, rlun, ''
+      printf, rlun, ''
+      free_lun, rlun
+    endif
+    
+    ;; Write string metadata.
+    red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
+                        [ { keyword : 'OBSRVTRY',                                      $
+                            value   : 'Observatorio del Roque de los Muchachos (ORM)',  $
+                            comment : 'Name of observatory' },                          $
+                          { keyword : 'TELESCOP',                                      $
+                            value   : 'Swedish 1-meter Solar Telescope (SST)',          $
+                            comment : 'Name of telescope' },                            $
+                          { keyword : 'OBJECT',                                        $
+                            value   : 'Sun',                                            $
+                            comment : '' } ] ;
+    
+    year = long((strsplit(isodate, '-', /extract))[0])
+    if year lt 2013 then begin
+      ao_nmode = 37L
+      modename = 'Karhunen-Loeve'
+    endif else begin
+      ao_nmode = 84L
+      modename = 'Mirror'
+    endelse
+    
+    ;; Write numerical (LONG) metadata.
+    red_metadata_store, fname = workdir + '/info/metadata.fits',                        $
+                        [ { keyword : 'OBSGEO-Z',                                       $
+                            value   : obsgeo_xyz[ 2 ],                                  $
+                            comment : '[m] SST location' },                             $
+                          { keyword : 'OBSGEO-Y',                                       $
+                            value   : obsgeo_xyz[ 1 ],                                  $
+                            comment : '[m] SST location' },                             $
+                          { keyword : 'OBSGEO-X',                                       $
+                            value   : obsgeo_xyz[ 0 ],                                  $
+                            comment : '[m] SST location' },                             $
+                          { keyword : 'AO_NMODE',                                       $
+                            value   : ao_nmode,                                         $
+                            comment : 'Number of AO corrected '+modename+' modes' } ] ;
+    
+    ;; If there are several root_dirs, a corresponding suffix must be added
+    ;; to the doit.pro script and the config.txt file to separate them.
+    ;;suffix = ( nfound_dirs gt 1 ) ? string( irootdir + 1, format = '( i01 )' ) : ''
+    if ( nfound_dirs gt 1 ) then begin
+      suffix = string( irootdir + 1, format = '( i01 )' )
+    endif else begin
+      suffix = ''
+    endelse
+    config_file = red_add_suffix( cfgfile,    suffix = suffix )
+    script_file = red_add_suffix( scriptfile, suffix = suffix )
+
+    
+    ;; Setup the different instruments.
+    call_procedure, 'red_setupworkdir_' + class       $
+                    , workdir, root_dir, config_file, script_file, isodate $                    
+                    ;;, workdir, root_dir, config_file, script_file, isodate $                    
+                    , calibrations_only = calibrations_only $
+                    , no_observer_metadata = no_observer_metadata $
+                    , old_dir = old_dir
+    
+  endfor                        ; iinstrument    
+
 end
 
-red_setupworkdir, /no_obs, search_dirs = '/scratch/mats/crisp2-simulated-data/2016-09-19/2016-09-19/'
+;red_setupworkdir, /no_obs, search_dirs = '/scratch/mats/crisp2-simulated-data/2016-09-19/2016-09-19/'
+;red_setupworkdir, /no_obs, search_dirs = '/storage/Incoming/2022.08.24/', instr = 'CRISP'
+red_setupworkdir, /no_obs, search_dirs = '/storage/Incoming/2022.08.26/', instr = 'CRISP'
 
 end
