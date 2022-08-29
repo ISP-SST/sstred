@@ -266,6 +266,33 @@ function red_camerainfo, x
                    serialnumber:'15452648', $
                    use:'CHROMIS', $
                    note:''}
+      31: return, {romnum:'XXXI', $
+                   defined:1B, $
+                   model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
+                   xsize:5120, $
+                   ysize:5120, $
+                   pixelsize:5.86e-6, $
+                   serialnumber:'XWSMW2226000', $
+                   use:'CRISP', $
+                   note:''}
+      32: return, {romnum:'XXXII', $
+                   defined:1B, $
+                   model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
+                   xsize:5120, $
+                   ysize:5120, $
+                   pixelsize:5.86e-6, $
+                   serialnumber:'XWSMW2226001', $
+                   use:'CRISP', $
+                   note:''}
+      33: return, {romnum:'XXXIII', $
+                   defined:1B, $
+                   model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
+                   xsize:5120, $
+                   ysize:5120, $
+                   pixelsize:5.86e-6, $
+                   serialnumber:'XWSMW2226002', $
+                   use:'CRISP', $
+                   note:''}
       else: return, {romnum:'', $
                      defined:0B, $
                      model:'', $
