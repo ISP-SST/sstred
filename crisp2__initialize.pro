@@ -47,7 +47,7 @@ pro crisp2::initialize, filename, develop = develop, no_db = no_db
 
   ;; Call initialize of the base-class first to load common parameters
   self->RED::initialize, filename, develop = develop, no_db = no_db
-
+  
   spawn, 'grep "camera.*=" '+filename, grepresult1
   if n_elements(grepresult1) eq 1 && grepresult1 eq '' then begin
     spawn, 'grep "cam_wb.*=" '+filename, grepresult2
@@ -62,6 +62,13 @@ pro crisp2::initialize, filename, develop = develop, no_db = no_db
     print
     retall
   endif
+
+  
+  ;; CRISP2 specific stuff
+
+  self.dodescatter = 0B         ; No descattering needed with the new cameras
+
+
   
   return
   
@@ -71,6 +78,8 @@ pro crisp2::initialize, filename, develop = develop, no_db = no_db
   self.docamr = 1B
   self.docamwb = 1B
 
+  self.dodescatter = 0B         ; No descattering needed with the new cameras
+  
   ;; open file and get fields
   openr, lun, filename, /get_lun
   nl = 0L
