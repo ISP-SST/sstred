@@ -460,23 +460,23 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
         if Npolfiles gt 0 then begin
           hh = red_readhead(files[0])
-          polprefs[ipol] = fxpar(hh, 'FILTER1')
+          polprefs[ipol] = strtrim(fxpar(hh, 'FILTER1'), 2)
         endif
       endif
     endfor                      ; ipol
 
-   if ~keyword_set(calibrations_only) then begin  
-     for ipref = 0, Npol-1 do begin
-       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-               + ", nthreads=nthreads"
-       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-               + ", nthreads=nthreads"
-       printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
-     endfor                     ; ipref
-   endif
+    if ~keyword_set(calibrations_only) then begin  
+      for ipref = 0, Npolcaldirs-1 do begin
+        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+      endfor                    ; ipref
+    endif
 
     
- endif
+  endif
 
   
 ;  polcaldirs = file_search(root_dir+'/*polc*/*', count = Npol, /fold)
