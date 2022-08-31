@@ -1017,7 +1017,7 @@ pro red::quicklook, align = align $
         mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
         file_delete, mname, /allow_nonexist
         spawn, 'ffmpeg -n -i "' + outdir + namout $
-               + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
+               + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
                + mname + '"'
         file_delete, outdir + namout
 ;        spawn, 'rm "' + outdir + namout + '"'
