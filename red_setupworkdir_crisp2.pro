@@ -460,23 +460,23 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
         if Npolfiles gt 0 then begin
           hh = red_readhead(files[0])
-          polprefs[ipol] = fxpar(hh, 'FILTER1')
+          polprefs[ipol] = strtrim(fxpar(hh, 'FILTER1'), 2)
         endif
       endif
     endfor                      ; ipol
 
-   if ~keyword_set(calibrations_only) then begin  
-     for ipref = 0, Npol-1 do begin
-       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-               + ", nthreads=nthreads"
-       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-               + ", nthreads=nthreads"
-       printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
-     endfor                     ; ipref
-   endif
+    if ~keyword_set(calibrations_only) then begin  
+      for ipref = 0, Npolcaldirs-1 do begin
+        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+      endfor                    ; ipref
+    endif
 
     
- endif
+  endif
 
   
 ;  polcaldirs = file_search(root_dir+'/*polc*/*', count = Npol, /fold)
@@ -737,48 +737,52 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; Do something about OBSERVER metadata keyword
   if ~keyword_set(no_observer_metadata) then begin
     ;; See if we can find some metadata by looking in the raw data dirs.
-    data_dirs = root_dir + '/' + dirarr + '/'+instrument.tocaps()+'-W/'
+    data_dirs = root_dir + '/' + dirarr + '/'+instrument.capwords()+'-W/'
     ;; Pick the first file in each.
-    data_files = file_search(data_dirs+'/*00000_0000000*fits', count = Nfiles) 
-    ;; Now look for OBSERVER keywords
-    observers = strarr(Nfiles)
-    for ifile = 0, Nfiles-1 do begin
-      red_progressbar, ifile, Nfiles, 'Looking in '+instrument+' data for OBSERVER keyword'
-      observers[ifile] = red_fitsgetkeyword(data_files[ifile], 'OBSERVER')
-    endfor
-    observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
-    indx = uniq(observers, sort(observers))
-    print
-    if n_elements(indx) gt 1 then begin
-      print, inam + ' : Found OBSERVER keyword(s) in the '+instrument+' raw data. All is well.'
-    endif else begin      
-      print, inam + ' : Found no OBSERVER metadata in the '+instrument+' raw data.'
-      observer = ''
-      read, 'Add names for that keyword for the '+instrument+' workdir or hit return: ', observer
-      ;; Write it to the metadata file
+    data_files = file_search(data_dirs+'/*00000_0000000*fits', count = Nfiles)
+    if Nfiles gt 0 then begin
+      ;; Now look for OBSERVER keywords
+      observers = strarr(Nfiles)
+      for ifile = 0, Nfiles-1 do begin
+        red_progressbar, ifile, Nfiles, 'Looking in '+instrument+' data for OBSERVER keyword'
+        observers[ifile] = red_fitsgetkeyword(data_files[ifile], 'OBSERVER')
+      endfor
+      observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
+      indx = uniq(observers, sort(observers))
       print
-      if observer ne '' then begin
-        print, inam+' : Adding to '+instrument+' metadata, OBSERVER = '+observer
-        red_metadata_store, fname = work_dir + '/info/metadata.fits' $
-                            , [{keyword:'OBSERVER', value:observer $
-                                , comment:'Observer name(s)'}]
-      endif else begin
-        print, inam+' : No OBSERVER keyword in '+instrument+' metadata.'
+      if n_elements(indx) gt 1 then begin
+        print, inam + ' : Found OBSERVER keyword(s) in the '+instrument+' raw data. All is well.'
+      endif else begin      
+        print, inam + ' : Found no OBSERVER metadata in the '+instrument+' raw data.'
+        observer = ''
+        read, 'Add names for that keyword for the '+instrument+' workdir or hit return: ', observer
+        ;; Write it to the metadata file
+        print
+        if observer ne '' then begin
+          print, inam+' : Adding to '+instrument+' metadata, OBSERVER = '+observer
+          red_metadata_store, fname = work_dir + '/info/metadata.fits' $
+                              , [{keyword:'OBSERVER', value:observer $
+                                  , comment:'Observer name(s)'}]
+        endif else begin
+          print, inam+' : No OBSERVER keyword in '+instrument+' metadata.'
+        endelse
+        print, inam+' : Edit '+work_dir + '/info/metadata.fits if you need to change this.'
       endelse
-      print, inam+' : Edit '+work_dir + '/info/metadata.fits if you need to change this.'
+      print
+    endif else begin
+      print, inam+' : Did not find any CHROMIS data to get OBSERVER from.'
     endelse
-    print
   endif
 
   
-  if size(old_dir, /tname) ne 'STRING' then return
-  
-  ;; We will now attempt to copy existing sums of calibration data.
+    if size(old_dir, /tname) ne 'STRING' then return
+    
+    ;; We will now attempt to copy existing sums of calibration data.
 
-  ;; Darks
-  if file_test(old_dir+'/darks', /directory) then begin
-    dfiles = file_search(old_dir+'/darks/cam*.dark.fits', count = Nfiles)
-    if Nfiles gt 0 then begin
+    ;; Darks
+    if file_test(old_dir+'/darks', /directory) then begin
+        dfiles = file_search(old_dir+'/darks/cam*.dark.fits', count = Nfiles)
+        if Nfiles gt 0 then begin
       file_mkdir, work_dir+'/darks'
       file_copy, dfiles, work_dir+'/darks/', /overwrite
       print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/darks/'
