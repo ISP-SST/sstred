@@ -100,7 +100,7 @@ pro red::prepflatcubes, flatdir = flatdir $
     if strmatch(cams[icam],'*-[DW]') then continue ; Don't do this for WB cameras
     
     ;; Find the files (make sure not to get the cavity free flats!)
-    files = file_search(flatdir+'/'+detectors[icam]+'*[0-9].flat.fits', count = Nfiles)
+    files = file_search(flatdir+'/'+detectors[icam]+'_*[0-9].flat.fits', count = Nfiles)
 
     ;; Check files
     if Nfiles eq 0 then begin
@@ -163,7 +163,7 @@ pro red::prepflatcubes, flatdir = flatdir $
         endif
 
         ;; Load backscatter data?
-        if ~keyword_set(no_descatter) AND (upref eq '8542' or upref eq '7772') then begin
+        if ~keyword_set(no_descatter) AND self.dodescatter AND (upref eq '8542' or upref eq '7772') then begin
           self -> loadbackscatter, detectors[icam], upref, bg, psf
         endif
         
@@ -211,7 +211,7 @@ pro red::prepflatcubes, flatdir = flatdir $
             lc3 = red_readdata(lc3, /silent)
             
             ;; Descatter ?
-            if ~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772') then begin
+            if ~keyword_set(no_descatter) AND self.dodescatter AND (upref EQ '8542' or upref eq '7772') then begin
               lc0 = rdx_descatter(temporary(lc0), bg, psf, /verbose, nthreads = nthreads)
               lc1 = rdx_descatter(temporary(lc1), bg, psf, /verbose, nthreads = nthreads)
               lc2 = rdx_descatter(temporary(lc2), bg, psf, /verbose, nthreads = nthreads)
@@ -225,7 +225,7 @@ pro red::prepflatcubes, flatdir = flatdir $
                           
             ;; Load non-polarized flats 
             tmp = red_readdata(sstates[istate].filename, /silent)
-            if ~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772') then begin
+            if ~keyword_set(no_descatter) AND self.dodescatter AND (upref EQ '8542' or upref eq '7772') then begin
               tmp = rdx_descatter(temporary(tmp), bg, psf, /verbose, nthreads = nthreads)
             endif
             
