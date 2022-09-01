@@ -137,82 +137,10 @@ function crisp2::raw_search, dir $
         istring++
       endfor
   endfor 
-;  case strupcase(instrument) of
-;    
-;    'CRISP' : begin
-;       Nstrings = Nscans * Nstates
-;       searchstrings = strarr(Nstrings)
-;       istring = 0
-;       for iscan = 0, Nscans-1 do begin
-;        for istate = 0, Nstates-1 do begin
-;          if iswb and isflats then begin
-;            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
-;                                     + prefilters $
-;                                     + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-;          endif else begin
-;            searchstrings[istring] = 'cam*.' + scannos[iscan] + '.*.' $
-;                                   + fpi_states[istate] $
-;                                   + '.im.[0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-;          endelse
-;          istring++
-;        endfor
-;      endfor 
-;
-;    end
-;
-;    'CHROMIS' : begin
-;
-;      ;; Typical file name: sst_camXXX_00013_0009375_wheel00002_hrz33621.fits
-;      Nstrings = Nscans * Nstates
-;      searchstrings = strarr(Nstrings)
-;      istring = 0
-;      for iscan = 0, Nscans-1 do begin
-;        for istate = 0, Nstates-1 do begin
-;          if iswb and isflats then begin
-;            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-;                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-;                                     + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
-;                                     + '.fits'
-;          endif else begin
-;            searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-;                                     + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-;                                     + fpi_states[istate] $
-;                                     + '.fits'
-;          endelse
-;          istring++
-;        endfor
-;      endfor 
-;
-;    end
-;
-;    else : begin
-;
-;      print, inam+' : This instrument is not implemented (yet): ', instrument
-;      
-;    end
-;    
-;  endcase 
   
   files = red_file_search(searchstrings, dir, count = count)
   
   return, files
-
-end
-
-dir1 = '/data/2019/2019.04/2019.04.14/CHROMIS-data/08:46:09/Chromis-W/'
-files1 = red_raw_search(dir1, scannos = '4,6-7,10' $
-                        , fpi_states = ['wheel00006_*', 'wheel00002_hrz33578'], count = cnt1)
-
-
-dir2 = '/data/2019/2019.04/2019.04.14/CHROMIS-data/08:46:09/Chromis-N/'
-files2 = red_raw_search(dir2, scannos = '4,6-7,10', count = cnt2)
-
-stop
-
-dir3 = '/data/2019/2019.04/2019.04.14/Science/08:09:35/Crisp-W/'
-files3 = red_raw_search(dir3, scannos = '4,6-7,10', pref = '8542', tunings = ['8542_-575', '8542_+700'], count = cnt3)
-dir4 = '/data/2019/2019.04/2019.04.14/Science/08:09:35/Crisp-T/'
-files4 = red_raw_search(dir4, scannos = '4,6-7,10', count = cnt4)
 
 end
 
