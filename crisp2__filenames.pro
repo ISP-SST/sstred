@@ -388,11 +388,15 @@ function crisp2::filenames, datatype, states $
         'flat' : begin
           dir = self.out_dir + '/flats/'
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
+          if states[istate].is_wb then begin
+            red_append, tag_list, exposure
+            red_append, tag_list, gain
+            red_append, tag_list, prefilter
+            ;;red_append, tag_list, prefilter+'_+0' ; Dummy tuning for WB
+          endif else begin
+            red_append, tag_list, states[istate].fullstate
+          endelse
 ;          red_append, tag_list, detector
-;          red_append, tag_list, exposure
-;          red_append, tag_list, gain
-;          red_append, tag_list, prefilter
 ;          if states[istate].is_wb eq 0 and tuning ne '' then $
 ;             red_append, tag_list, tuning
           ext = '.flat'
@@ -402,7 +406,8 @@ function crisp2::filenames, datatype, states $
         'cavityflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
+          red_append, tag_list, states[istate].fullstate
+          ;;red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
 ;          red_append, tag_list, prefilter
@@ -456,20 +461,28 @@ function crisp2::filenames, datatype, states $
 
         'gain' : begin
           dir = self.out_dir + '/gaintables/' 
-          red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, detector            
+          if states[istate].is_wb then begin
+            red_append, tag_list, exposure
+            red_append, tag_list, gain
+            red_append, tag_list, prefilter
+            ;;red_append, tag_list, prefilter+'_+0' ; Dummy tuning for WB
+          endif else begin
+            red_append, tag_list, states[istate].fullstate
+          endelse               
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
 ;          red_append, tag_list, prefilter
 ;          if states[istate].is_wb eq 0 and tuning ne '' then $
 ;             red_append, tag_list, tuning
-          ext = '.gain'
-          if ~keyword_set(no_fits) then ext += '.fits'
+            ext = '.gain'
+            if ~keyword_set(no_fits) then ext += '.fits'
         end
         'cavityfree_gain' : begin
           dir = self.out_dir + '/gaintables/' 
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].prefilter ;+'_'+states[istate].fpi_state
+          red_append, tag_list, states[istate].fullstate
+                                ;red_append, tag_list, states[istate].prefilter ;+'_'+states[istate].fpi_state
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
 ;          red_append, tag_list, prefilter
