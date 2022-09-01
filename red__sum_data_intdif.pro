@@ -147,14 +147,14 @@ pro red::sum_data_intdif, all = all $
     file_mkdir, outdir
     
 ;    files = file_search(dir+ '/' + cams[0] + '/cam*', count = Nfiles)
-    files = file_search(dir+ '/' + cams + '/cam*', count = Nfiles)
+    files = file_search(dir+ '/' + cams + '/*cam*', count = Nfiles)
 
     if Nfiles eq 0 then begin
       print, inam + ' : ERROR, data folder is empty'
       if keyword_set(debug) then stop else return
     endif
-    
- ;   files = red_sortfiles(temporary(files))
+
+    ;;   files = red_sortfiles(temporary(files))
 
     ;; Extract tags from file names
 ;    state = red_getstates(files, /links)
