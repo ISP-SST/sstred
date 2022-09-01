@@ -338,8 +338,8 @@ pro red::make_wb_cube, dirs $
   if keyword_set(make_raw) then begin
     stop
     ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
-    files = red_raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
-                           , scannos = scannos, count = Nraw)
+    files = self -> raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
+                               , scannos = scannos, count = Nraw)
     if Nraw eq 0 then stop
     self -> extractstates, files, states
 

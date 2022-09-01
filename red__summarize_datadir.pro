@@ -86,12 +86,12 @@ pro red::summarize_datadir, dirs
 
     if Nnbcam gt 0 then begin
       ;; All NB files
-      files = red_raw_search(use_dirs[idir] + '/' + camNB, instrument = instrument $
-                             , count = Nfiles)
+      files = self -> raw_search(use_dirs[idir] + '/' + camNB, instrument = instrument $
+                                 , count = Nfiles)
     endif else begin
       ;; All WB files
-      files = red_raw_search(use_dirs[idir] + '/' + camWB, instrument = instrument $
-                             , count = Nfiles, fpi_states = '*')
+      files = self -> raw_search(use_dirs[idir] + '/' + camWB, instrument = instrument $
+                                 , count = Nfiles, fpi_states = '*')
     endelse
   
     ;; Get header info 
@@ -139,8 +139,8 @@ pro red::summarize_datadir, dirs
       
       ;; NB files, first scan. Don't want to extract the states
       ;; from all files!
-      files0 = red_raw_search(use_dirs[idir] + '/' + camNB, instrument = instrument $
-                              , scanno = 0, count = Nfiles0)
+      files0 = self -> raw_search(use_dirs[idir] + '/' + camNB, instrument = instrument $
+                                  , scanno = 0, count = Nfiles0)
       self -> extractstates, files0, states0
 
       ;; Find all unique states, including LC for CRISP
@@ -212,8 +212,8 @@ pro red::summarize_datadir, dirs
       ;; If there are no NB files, this is probably a WB or PD flats
       ;; dir. Let's get some info from the WB files.
 
-      files0 = red_raw_search(use_dirs[idir] + '/' + camWB, instrument = instrument $
-                              , scanno = 0, count = Nfiles0, fpi_states = '*')
+      files0 = self -> raw_search(use_dirs[idir] + '/' + camWB, instrument = instrument $
+                                  , scanno = 0, count = Nfiles0, fpi_states = '*')
       self -> extractstates, files0, states0
 
       ;; Find all unique states, including LC for CRISP

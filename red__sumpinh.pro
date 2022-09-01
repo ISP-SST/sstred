@@ -165,7 +165,7 @@ pro red::sumpinh, nthreads = nthreads $
     if 0 then begin
       ;; Needed for old data? E.g., 2012?
       if n_elements(prefilter) gt 0 then prefin = prefilter else undefine, prefin
-      files = red_raw_search(dirs[0], count = nf) ;, prefilters = prefin)
+      files = self -> raw_search(dirs[0], count = nf) ;, prefilters = prefin)      
       self -> extractstates, files, states
       self->selectfiles, cam=cam, dirs=dirs, prefilter=prefin, ustat=ustat, $
                          files=files, states=states ;, /force
