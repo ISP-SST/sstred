@@ -190,8 +190,8 @@ pro red::make_intdif_gains, all = all $
 
       restore, dfile
       ;; Variables in dfile: done, uwav, ulc, uscan, Ntunings, Nlc,
-      ;; Nscans, pref, Nx, Ny, udwav
-
+      ;; Nscans, pref, Nx, Ny, udwav, usettings, ufullstate
+      
       ;; Open files
       openr, lun, cfile, /get_lun
       dat = assoc(lun, intarr(Nx, Ny, Ntunings, Nlc,/nozero), 512)
@@ -235,6 +235,8 @@ pro red::make_intdif_gains, all = all $
                                , prefilter: pref $
                                , fpi_state: uwav[iwav] $
                                , tuning: uwav[iwav]  $
+                               , cam_settings: usettings[iwav] $                               
+                               , fullstate: ufullstate[iwav] $                               
                              } $
                              , cflatdata = cflatdata $
                              , cflatname = cflatname 
@@ -259,6 +261,8 @@ pro red::make_intdif_gains, all = all $
                              , prefilter: pref $
                              , fpi_state: uwav[iwav] $
                              , tuning: uwav[iwav]  $
+                             , cam_settings: usettings[iwav] $ 
+                             , fullstate: ufullstate[iwav] $
                            } $
                            , cgaindata = cgaindata $
                            , cgainname = cgainname 
@@ -366,9 +370,11 @@ pro red::make_intdif_gains, all = all $
             ofile = self -> filenames('scangain' $
                                       , {camera:cams[icam] $
                                          , detector:detectors[icam] $
-                                         , fullstate:strjoin([pref $
-                                                              , uwav[iwav] $
-                                                              , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
+                                         , cam_settings: usettings[iwav] $ 
+                                         , fullstate: ufullstate[iwav] $
+;                                         , fullstate:strjoin([pref $
+;                                         , uwav[iwav] $
+;                                         , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
                                          , scannumber:uscan[ss] $
                                         } $
                                       , timestamp = imdir $
@@ -386,9 +392,11 @@ pro red::make_intdif_gains, all = all $
               ofile_0 = self -> filenames('scangain' $
                                           , {camera:cams[icam] $
                                              , detector:detectors[icam] $
-                                             , fullstate:strjoin([pref $
-                                                                  , uwav[iwav] $
-                                                                  , 'lc'+strtrim(long(ulc[0]), 2)], '_') $
+                                             , cam_settings: usettings[iwav] $ 
+                                             , fullstate: ufullstate[iwav] $
+;                                             , fullstate:strjoin([pref $
+;                                                                  , uwav[iwav] $
+;                                                                  , 'lc'+strtrim(long(ulc[0]), 2)], '_') $
                                              , scannumber:uscan[ss] $
                                             } $
                                           , timestamp = imdir $

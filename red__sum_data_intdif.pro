@@ -232,6 +232,8 @@ pro red::sum_data_intdif, all = all $
     Ntunings = n_elements(indx)
     uwav = selstates[indx].tuning
     udwav = selstates[indx].tun_wavelength
+    usettings = selstates[indx].cam_settings    
+    ufullstate = selstates[indx].fullstate    
 
     ;; Start summing
     if n_elements(t1) ne 0 then begin
@@ -372,7 +374,8 @@ pro red::sum_data_intdif, all = all $
 
         done[iscan] = 1B
         ;; Save incomplete results
-        save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref, Nx, Ny, udwav
+        save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref $
+              , Nx, Ny, udwav, usettings, ufullstate
 
       endfor                    ; iscan
 
@@ -381,7 +384,8 @@ pro red::sum_data_intdif, all = all $
     endfor                      ; icam
 
     ;; Save final results
-    save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref, Nx, Ny, udwav
+    save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref $
+          , Nx, Ny, udwav, usettings, ufullstate
 
   endfor                        ; idir
 
