@@ -250,7 +250,7 @@ function crisp2::filenames, datatype, states $
     cam_settings = strsplit(states[istate].cam_settings, '_', /extract)
     if n_elements(cam_settings) eq 1 then cam_settings = [cam_settings, 'G00.00']
     if ~keyword_set(wild_exposure)    then exposure    = cam_settings[0]
-    if ~keyword_set(wild_gain)        then  gain        = cam_settings[1]
+    if ~keyword_set(wild_gain)        then gain        = cam_settings[1]
     
     
     undefine, tag_list
