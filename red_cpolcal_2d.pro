@@ -15,7 +15,7 @@
 ; 
 ; :author:
 ; 
-;    2012-01-20 : P.Suetterlin, ISP 
+;    2012-01-20 : P. Suetterlin, ISP 
 ; 
 ; 
 ; 
@@ -31,18 +31,18 @@
 ;      polcal data, 4 LC states, N_q angles of the Quarter wave plate
 ;      (QWP), N_lp angles of the linear polarizer (LP).
 ;   
-;    qq : in, type=fltarr(N_q)
+;    guess : in, optional, type=fltarr(18)
 ;   
-;      The actual QWP angles
+;       Initial values. If omitted, they are computed from the
+;       spatially averaged data
 ;   
 ;    lp : in, type=fltarr(N_lp)
 ;   
 ;       The actual LP angles
 ;   
-;    guess : in, optional, type=fltarr(18)
+;    qq : in, type=fltarr(N_q)
 ;   
-;       Initial values. If omitted, they are computed from the
-;       spatially averaged data
+;      The actual QWP angles
 ;   
 ; 
 ; :Keywords:
@@ -50,23 +50,25 @@
 ;    chisq : out
 ;   
 ;      Named variable to pass back the chi-square values of the fit
-;   
-;    nthreads : in, optional, default="# of CPUs"
+;
+;    mask : in, optional, type="bytarr(Sx,Sy)"
+;
+;    nthreads : in, optional, type=integer, default="# of CPUs"
 ;   
 ;      Number of threads to use.
 ;   
-; :restrictions:
+; :Restrictions:
 ;
 ;       The external C library creduc.so has to be available.
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2013-07-11 : MGL. Use red_polcal_fit, not polcal_fit.
 ; 
-; 
+;   2022-09-02 : PS. New keyword mask.
 ; 
 ;-
 FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt, mask=mask
