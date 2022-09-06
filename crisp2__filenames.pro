@@ -406,8 +406,10 @@ function crisp2::filenames, datatype, states $
         'cavityflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
-          ;;red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
+          ;;         red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, states[istate].cam_settings          
+          red_append, tag_list, states[istate].prefilter          
+          red_append, tag_list, states[istate].fpi_state
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
 ;          red_append, tag_list, prefilter
@@ -481,8 +483,10 @@ function crisp2::filenames, datatype, states $
         'cavityfree_gain' : begin
           dir = self.out_dir + '/gaintables/' 
           red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
-                                ;red_append, tag_list, states[istate].prefilter ;+'_'+states[istate].fpi_state
+;          red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, states[istate].cam_settings          
+          red_append, tag_list, states[istate].prefilter          
+          red_append, tag_list, states[istate].fpi_state
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
 ;          red_append, tag_list, prefilter
