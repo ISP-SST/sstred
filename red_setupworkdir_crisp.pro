@@ -629,8 +629,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
   printf, Slun, ''
-
-  printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin in the call the prepmomfbd.'
+  
+  printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin when calling prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
