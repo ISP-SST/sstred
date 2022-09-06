@@ -145,8 +145,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Settings'
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
-  printf, Clun,'image_scale = -1'     ; Get from pinhole calibration
-  printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
+  printf, Clun,'image_scale = 0.044' ; Get from pinhole calibration
+;  printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
 
   if keyword_set(calibrations_only) then begin
     printf, Slun, 'a = crisp2red("'+cfgfile+'",/dev)' 
@@ -214,7 +214,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; and  offset_angle of red_lp_angles(). 
   case instrument of
     'CRISP' : begin
-      direction = 0
+      direction = 4
       rotation = -42.0 
     end
     'CRISP2' : begin
@@ -645,42 +645,51 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Science data'
   printf, Clun, '# '
 
-  ;; Exclude directories known not to have science data
-  red_append, nonsciencedirs, pinhdirs
-  red_append, nonsciencedirs, polcaldirs
-  red_append, nonsciencedirs, darkdirs
-  red_append, nonsciencedirs, flatdirs
-  ;; Sometimes the morning calibrations data were not deleted, so they
-  ;; have to be excluded too.
-  calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
-                                         , count = Ncalibdirs)
-  if Ncalibdirs gt 0 then begin
-    calibdirs = file_dirname(calibsubdirs)
-    calibdirs = calibdirs[uniq(calibdirs, sort(calibdirs))]
-    red_append, nonsciencedirs, calibdirs
-  end
-  sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
-
-  for i = 0, Ndirs-1 do begin
-
-    if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-      sciencesubdirs = file_search(sciencedirs[i]+'/'+instrument+'*' $
-                                   , count = Nsubdirs, /fold)
-      if Nsubdirs gt 0 then begin
-        red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
-      endif else begin
-        sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
-        for j = 0, Nsubdirs-1 do begin
-          sciencesubsubdirs = file_search(sciencesubdirs[j]+'/'+instrument+'*' $
-                                          , count = Nsubsubdirs, /fold)
-          if Nsubsubdirs gt 0 then begin
-            red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
-          endif
-        endfor                  ; j
-      endelse 
-    endif
-  endfor
-  if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+;  ;; Exclude directories known not to have science data
+;  red_append, nonsciencedirs, pinhdirs
+;  red_append, nonsciencedirs, polcaldirs
+;  red_append, nonsciencedirs, darkdirs
+;  red_append, nonsciencedirs, flatdirs
+;  ;; Sometimes the morning calibrations data were not deleted, so they
+;  ;; have to be excluded too.
+;  calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
+;                                         , count = Ncalibdirs)
+;  if Ncalibdirs gt 0 then begin
+;    calibdirs = file_dirname(calibsubdirs)
+;    calibdirs = calibdirs[uniq(calibdirs, sort(calibdirs))]
+;    red_append, nonsciencedirs, calibdirs
+;  end
+;  sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+;
+;  stop
+  sciencesubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-data*' $
+                                           , count = Nsubdirs)
+  if Nsubdirs gt 0 then begin
+    sciencedirs = file_dirname(sciencesubdirs)
+    dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
+    printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+  endif
+  
+;  for i = 0, Ndirs-1 do begin
+;
+;    if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
+;      sciencesubdirs = file_search(sciencedirs[i]+'/'+instrument+'*' $
+;                                   , count = Nsubdirs, /fold)
+;      if Nsubdirs gt 0 then begin
+;        red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
+;      endif else begin
+;        sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
+;        for j = 0, Nsubdirs-1 do begin
+;          sciencesubsubdirs = file_search(sciencesubdirs[j]+'/'+instrument+'*' $
+;                                          , count = Nsubsubdirs, /fold)
+;          if Nsubsubdirs gt 0 then begin
+;            red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
+;          endif
+;        endfor                  ; j
+;      endelse 
+;    endif
+;  endfor
+;  if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
   printf, Slun, ''
   printf, Slun, 'a -> link_data' 
@@ -696,33 +705,52 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
-  printf, Slun, ''
+;  printf, Slun, ''
+;  for ipref = 0, Nprefilters-1 do begin
+;    if is_wb[ipref] then begin
+;      printf, Slun, "a -> prepmomfbd" $
+;;              + ", date_obs='" + isodate + "'" $
+;              + ", Nremove=2" $
+;              + ", Nmodes=60" $
+;              + ", numpoints=128" $
+;;            + ", margin=5 " $
+;              + ", global_keywords=['FIT_PLANE']" $
+;              + ", maxshift=45" $
+;              + ", /wb_states" $
+;;              + ", /redux" $
+;              + ", /unpol" $
+;              + ", extraclip = [75,125,15,15]" $
+;              + ", pref='" + prefilters[ipref] + "'" $
+;              + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
+;    endif
+;  endfor                        ; ipref ;
+
+
+  
+  printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin when calling prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
-    if is_wb[ipref] then begin
-      printf, Slun, "a -> prepmomfbd" $
-;              + ", date_obs='" + isodate + "'" $
-              + ", Nremove=2" $
-              + ", Nmodes=60" $
-              + ", numpoints=128" $
-;            + ", margin=5 " $
-              + ", global_keywords=['FIT_PLANE']" $
-              + ", maxshift=45" $
-              + ", /wb_states" $
-;              + ", /redux" $
-              + ", /unpol" $
-              + ", extraclip = [75,125,15,15]" $
-              + ", pref='" + prefilters[ipref] + "'" $
-              + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
-    endif
-  endfor                        ; ipref ;
+    printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
+            + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
+            + ', nthreads=nthreads' $
+            + " ; /all"
+    printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
+            + "', cam = 'Crisp-R', /verbose, /show, /overwrite " $
+            + ', nthreads=nthreads' $
+            + " ; /all"
+    printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
+            + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
+    printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'" $
+            + "; Nasym=1, fixcav=2, /hints, dir='10:02:45'"
+    printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
+            + "', numpoints = 116, pref = '"+prefilters[ipref]+"', margin = 5" $
+            + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+  endfor                        ; ipref
 
   printf, Slun, ''
   printf, Slun, ';; Run MOMFBD outside IDL.'
   printf, Slun, ''
 
   printf, Slun, ';; Post-MOMFBD stuff:' 
-  printf, Slun, "a -> align_continuum"
-  printf, Slun
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69', nthreads=nthreads"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
   printf, Slun, "; or "
