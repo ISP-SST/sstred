@@ -91,6 +91,11 @@
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
 ;
+;    nochangesize : in, optional, type=boolean
+;
+;      Do not increase array size to make room for rotation. Useful
+;      for approximately circular FOV.
+;
 ;    nostretch : in, optional, type=boolean
 ;   
 ;      Compute no temporal stretch vectors if this is set.
@@ -212,10 +217,12 @@
 ;                 directories. New keywords oldname and point_id.
 ;
 ;    2022-04-08 : OA. Added time-dependent solar coordinates in WCS.
+; 
+;    2022-09-04 : MGL. New keyword nochangesize.
 ;
 ;-
 pro red::make_wb_cube, dirs $
-                       , align_interactive = align_interactive $
+                       , align_interactive = align_interactive $                       
                        , autocrop = autocrop $
                        , clip = clip $
                        , crop = crop $
@@ -224,22 +231,23 @@ pro red::make_wb_cube, dirs $
                        , interactive = interactive $
                        , limb_data = limb_data $
                        , nametag = nametag $
+                       , nearest = nearest $
                        , negang = negang $
                        , nomissing_nans = nomissing_nans $
+                       , nochangesize = nochangesize $
                        , nostretch = nostretch $
                        , np = np $
+                       , nthreads = nthreads $
+                       , ofile = ofile  $
                        , oldname = oldname $
+                       , point_id = point_id $
                        , rotation = rotation $
                        , scannos = scannos $
                        , subtract_meanang = subtract_meanang $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
-                       , ybd = ybd $
-                       , nthreads = nthreads $
-                       , nearest = nearest $
-                       , point_id = point_id $
-                       , ofile = ofile
+                       , ybd = ybd
 
   
   ;; Name of this method
@@ -584,14 +592,24 @@ pro red::make_wb_cube, dirs $
   shift = red_aligncube(cub, np, xbd = align_size[0], ybd = align_size[1] $
                         , xc = xc, yc = yc, nthreads=nthreads) ;, cubic = cubic, /aligncube)
 
-  ;; Get maximum angle and maximum shift in each direction
-  maxangle = max(abs(ang))
-  mdx0 = reform(min(shift[0,*]))
-  mdx1 = reform(max(shift[0,*]))
-  mdy0 = reform(min(shift[1,*]))
-  mdy1 = reform(max(shift[1,*]))
-  ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
-
+  if keyword_set(nochangesize) then begin
+    ;; Red_rotation.pro only uses keyword full (which is set to ff
+    ;; when calling from make_*_cube) if it is an array with at least
+    ;; 5 elements. So setting it to -1 is the same as letting it stay
+    ;; undefined, but it can still be passed on to make_nb_cube.
+    ff = -1    
+    ;; Possibly change this to take the shifts into account but not
+    ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
+  endif else begin
+    ;; Get maximum angle and maximum shift in each direction
+    maxangle = max(abs(ang))
+    mdx0 = reform(min(shift[0,*]))
+    mdx1 = reform(max(shift[0,*]))
+    mdy0 = reform(min(shift[1,*]))
+    mdy1 = reform(max(shift[1,*]))
+    ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
+  endelse
+  
   ;; De-rotate and shift cube
   bg = median(cub1)
   dum = red_rotation(cub1[*,*,0], full=ff $
