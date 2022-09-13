@@ -164,31 +164,33 @@
 ;
 ;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                 ported to rdx and maintainable by us.
+; 
+;    2022-09-10 : MGL. CRISP --> RED.
 ;
 ;-
-pro crisp::make_nb_cube, wcfile $
-                         , clips = clips $
-                         , cmap_fwhm = cmap_fwhm $
-                         , integer = integer $
-                         , intensitycorrmethod = intensitycorrmethod $ 
-                         , nearest = nearest $
-                         , nocavitymap = nocavitymap $
-                         , nocrosstalk = nocrosstalk $
-                         , noflipping = noflipping $
-                         , nomissing_nans = nomissing_nans $
-                         , nopolarimetry = nopolarimetry $
-                         , noremove_periodic = noremove_periodic $
-                         , nostretch = nostretch $
-                         , notimecor = notimecor $
-                         , nthreads = nthreads $
-                         , odir = odir $
-                         , overwrite = overwrite $
-                         , redemodulate = redemodulate $
+pro red::make_nb_cube, wcfile $
+                       , clips = clips $
+                       , cmap_fwhm = cmap_fwhm $
+                       , integer = integer $
+                       , intensitycorrmethod = intensitycorrmethod $ 
+                       , nearest = nearest $
+                       , nocavitymap = nocavitymap $
+                       , nocrosstalk = nocrosstalk $
+                       , noflipping = noflipping $
+                       , nomissing_nans = nomissing_nans $
+                       , nopolarimetry = nopolarimetry $
+                       , noremove_periodic = noremove_periodic $
+                       , nostretch = nostretch $
+                       , notimecor = notimecor $
+                       , nthreads = nthreads $
+                       , odir = odir $
+                       , overwrite = overwrite $
+                       , redemodulate = redemodulate $
 ;                         , smooth = smooth $
-                         , tiles = tiles $
-                         , unsharp = unsharp $
-                         , wbsave = wbsave $
-                         , fitpref_time = fitpref_time
+                       , tiles = tiles $
+                       , unsharp = unsharp $
+                       , wbsave = wbsave $
+                       , fitpref_time = fitpref_time
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -564,11 +566,21 @@ pro crisp::make_nb_cube, wcfile $
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
+
+    ;; Crop the cavity map to the FOV of the momfbd-restored images.
+    mr = momfbd_read(wbgfiles[0],/nam)
+    cmap1 = red_crop_as_momfbd(cmap1, mr)
+
+    ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
-    cmap_dim = size(cmap1,/dim)
-    xclip = (cmap_dim[0] - origNx)/2.
-    yclip = (cmap_dim[1] - origNy)/2.
-    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
+
+    ;; Clip to the selected FOV
+    cmap1 = cmap1[x0:x1,y0:y1]
+    
+;    cmap_dim = size(cmap1,/dim)
+;    xclip = (cmap_dim[0] - origNx)/2.
+;    yclip = (cmap_dim[1] - origNy)/2.
+;    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
     
   endif
   
@@ -599,7 +611,8 @@ pro crisp::make_nb_cube, wcfile $
       self -> make_stokes_cubes, file_dirname(wbgfiles[iscan]), uscans[iscan] $
                                  , clips = clips $
                                  , cmap_fwhm = cmap_fwhm $
-                                 , nocavitymap = nocavitymap $
+                                 , /nocavitymap $ ; Cavity maps in Stokes cubes aren't used for anything
+;                                 , nocavitymap = nocavitymap $                                 
                                  , noremove_periodic = noremove_periodic $
                                  , redemodulate = redemodulate $
 ;                                 , smooth = smooth $
