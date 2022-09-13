@@ -99,22 +99,24 @@
 ;
 ;    2020-10-01 : JdlCR. Use the new stretching routines and allow for
 ;                 optional nearest neighbor interpolation. 
+; 
+;    2022-09-10 : MGL. CRISP --> RED.
 ;                                
 ;-
-pro crisp::make_stokes_cubes, dir, scanno $
-                              , clips = clips $
-                              , cmap_fwhm = cmap_fwhm $
-                              , nocavitymap = nocavitymap $
-                              , overwrite = overwrite $
-                              , noremove_periodic = noremove_periodic $
-                              , redemodulate = redemodulate $
+pro red::make_stokes_cubes, dir, scanno $
+                            , clips = clips $
+                            , cmap_fwhm = cmap_fwhm $
+                            , nocavitymap = nocavitymap $
+                            , overwrite = overwrite $
+                            , noremove_periodic = noremove_periodic $
+                            , redemodulate = redemodulate $
 ;                              , smooth = smooth $
-                              , snames = snames $
-                              , stokesdir = stokesdir $
-                              , tiles = tiles $
-                              , nthreads = nthreads $
-                              , nearest = nearest $
-                              , fitpref_time = fitpref_time
+                            , snames = snames $
+                            , stokesdir = stokesdir $
+                            , tiles = tiles $
+                            , nthreads = nthreads $
+                            , nearest = nearest $
+                            , fitpref_time = fitpref_time
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)                                      
@@ -239,7 +241,7 @@ pro crisp::make_stokes_cubes, dir, scanno $
 
   ;; All other files for this scan
   pertuningfiles = file_search(dir + '/*_'+string(scanno, format = '(i05)') $
-                               + '_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*' $
+                               + '_*[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*' $
                                + extension $
                                , count = Nfiles)
   self -> extractstates, pertuningfiles, pertuningstates
@@ -545,8 +547,8 @@ pro crisp::make_stokes_cubes, dir, scanno $
     print, inam + ' : Will have to make '+strtrim(Ntodo, 2) + ' Stokes cubes for scan '+strtrim(scanno, 2)+'.'
 
     ;; Get the FOV in the momfbd files.
-    mr = momfbd_read(wbgfile, /names) ; Use /names to avoid reading the data parts
-    mrX01Y01 = mr.roi + mr.margin * [1, -1, 1, -1]
+;    mr = momfbd_read(wbgfile, /names) ; Use /names to avoid reading the data parts
+;    mrX01Y01 = mr.roi + mr.margin * [1, -1, 1, -1]
     
     ;; Read the global WB file for this scan.
     wbg = red_readdata(wbgfile)
