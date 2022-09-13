@@ -94,7 +94,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     if n_elements(mu_limit) eq 0 then mu_limit = 0.50d
     if keyword_set(pref) then begin
       if pref eq '8542' then  begin        
-        if n_elements(mu_limit) ne 0 and mu_limit lt 0.97d then begin
+        if n_elements(mu_limit) ne 0 and mu_limit lt 0.97 then begin
           print, inam, ' : For 8542 prefilter mu_limit should be >= 0.97'
           return
         endif
