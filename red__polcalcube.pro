@@ -116,7 +116,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       
       print, inam + ' : Processing prefilter -> '+upref[ipref]
 
-      dodescatter = ~keyword_set(no_descatter) $
+      dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
                     and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')
       
       if dodescatter then begin
