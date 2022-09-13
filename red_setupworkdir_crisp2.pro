@@ -214,7 +214,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; and  offset_angle of red_lp_angles(). 
   case instrument of
     'CRISP' : begin
-      direction = 4
+      direction = 6
       rotation = -42.0 
     end
     'CRISP2' : begin
