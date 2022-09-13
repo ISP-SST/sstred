@@ -739,8 +739,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + " ; /all"
     printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
-    printf, Slun, "a -> fitprefilter, fixcav = 2.0d, pref = '"+prefilters[ipref]+"'" $
-            + "; Nasym=1, fixcav=2, /hints, dir='10:02:45'"
+    printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
+            + "; Nasym=1,  /hints, dir='10:02:45'"
     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
             + "', numpoints = 116, pref = '"+prefilters[ipref]+"', margin = 5" $
             + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
@@ -751,10 +751,10 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   printf, Slun, ';; Post-MOMFBD stuff:' 
-  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', /autocrop, scannos = '69', nthreads=nthreads"
+  printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', scannos = '69', nthreads=nthreads"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /align_interactive, /nochangesize, /fill_fov"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits', nthreads=nthreads"
 
