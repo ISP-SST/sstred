@@ -161,8 +161,7 @@ function red_readhead_fits, fname, $
             end
           endcase
         endelse
-
-
+        
         ;; LCSTATE, LPSTATE, QWSTATE
         case Nsplit of
 
@@ -177,6 +176,16 @@ function red_readhead_fits, fname, $
             fxaddpar, header, 'STATE', strjoin(state_split[0:2], '_'), 'Shortened by red_readhead_fits'            
           end
 
+          5 :  begin
+            ;; Polcal data, state_split[3:*] = [LP,QW], LCSTATE
+            ;; already in header
+            lp = long(strmid(state_split[3], 2))
+            qw = long(strmid(state_split[4], 2))
+            fxaddpar, header, 'LPSTATE', lp, 'Extracted from state keyword'            
+            fxaddpar, header, 'QWSTATE', qw, 'Extracted from state keyword'            
+            fxaddpar, header, 'STATE', strjoin(state_split[0:2], '_'), 'Shortened by red_readhead_fits'            
+          end
+          
           4 : begin
             ;; Other polarimetric data, state_split[3] = [LC]
             lc = long(strmid(state_split[3], 2))
