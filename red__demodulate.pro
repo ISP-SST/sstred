@@ -385,7 +385,6 @@ pro red::demodulate, outname, immr, immt $
         psf /= total(psf, /double)
 
         ;;for ii=0, Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
-
         ;; Smooth the inverse modulation matrix
         for ilc = 0L, Nlc-1 do begin
           for istokes = 0L, Nstokes-1 do begin
@@ -427,7 +426,7 @@ pro red::demodulate, outname, immr, immt $
         resr[*,*,istokes] += rdx_cstretch(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc] $
                                                 , grid, nthreads=nthreads)
         ;;stop
-      endfor                    ; istokesstop
+      endfor                    ; istokes
       if n_elements(cmap) ne 0 then cmapp += rdx_cstretch(cmap, grid, nthreads=nthreads)
     endfor                      ; ilc
     if n_elements(cmap) ne 0 then cmapp /= Nlc
@@ -536,21 +535,36 @@ pro red::demodulate, outname, immr, immt $
                               , prpara = prpara $
                               , prproc = inam
 
-  if ~keyword_set(noremove_periodic) $
-     and file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
-    ;; Fourier-filter images to get rid of periodic fringes
-    filt = shift(readfits('polcal/periodic_filter_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
-    ;; This reversing should actually depend on the align_map of the
-    ;; cameras, i.e., the signs of the diagonal elements [0,0] and
-    ;; [1,1]. 
-    filt[1:*, 1:*] = reverse(filt[1:*, 1:*], 1)
+  if ~keyword_set(noremove_periodic) and $
+     (file_test('polcal/periodic_filter_'+prefilter+'.fits') or $
+      file_test('polcal/periodic_filter_remapped_'+prefilter+'.fits')) then begin
+    ;; Fourier-filter images to get rid of periodic fringes      
+    if file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
+      ;; CRISP class
+      filt = shift(readfits('polcal/periodic_filter_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
+      ;; This reversing should actually depend on the align_map of the
+      ;; cameras, i.e., the signs of the diagonal elements [0,0] and
+      ;; [1,1]. 
+      filt[1:*, 1:*] = reverse(filt[1:*, 1:*], 1)
+    endif else begin
+      ;; RED class
+      filt = shift(readfits('polcal/periodic_filter_remapped_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
+      ;; This filter is oriented as WB data. So should the data be at
+      ;; this point.
+    endelse
     for istokes = 0L, Nstokes-1 do begin
-      frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx $
-                            , z = median(res[*,*,0, istokes, 0]))
-      filtframe = float(fft(fft(frame)*filt, /inv))
-      res[*,*,0, istokes, 0] = red_centerpic(filtframe, xs = Nx, ys = Ny)
+      red_missing, res[*,*,0, istokes, 0], nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+      if Nmissing gt 0 then begin
+        if istokes eq 0 then bg = median(res[*,*,0, istokes, 0]) else bg = 0
+      endif else begin
+        bg = median(res[*,*,0, istokes, 0])
+      endelse
+      frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx, z = bg)
+      filtframe = red_centerpic(float(fft(fft(frame)*filt, /inv)), xs = Nx, ys = Ny)
+      if Nmissing gt 0 then filtframe[indx_missing] = median(filtframe[indx_data])
+      ;;   if istokes eq 2 then stop ; <------------------------------------------------------------- ***
+      res[*,*,0, istokes, 0] = filtframe
     endfor                      ; ilc
-
     ;; Add info about this step
     taper_width = fxpar(fhdr, 'HOLEWDTH', count = Nkey)
     if Nkey gt 0 then red_make_prpara, filt_prpara, taper_width        
