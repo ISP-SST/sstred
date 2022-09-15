@@ -152,8 +152,6 @@ function red_bad_subfield_crop, files, crop $
     endfor                      ; ifile
 
   endif
-
-  red_missing, dispim, missing_type_wanted='nan', /inplace
   
   hdr = red_readhead(files[0])
   im_dim = fxpar(hdr, 'NAXIS*')
@@ -192,6 +190,8 @@ function red_bad_subfield_crop, files, crop $
 
     ;; Use XROI GUI to select a rectangular area. 
 
+    red_missing, dispim, missing_type_wanted='nan', /inplace
+    
     ;; Initialize the FOV
     X_in = [x0, x1, x1, x0]
     Y_in = [y0, y0, y1, y1]
