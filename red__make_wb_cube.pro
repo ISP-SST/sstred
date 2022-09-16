@@ -451,6 +451,7 @@ pro red::make_wb_cube, dirs $
       if size(im,/n_dim) gt 2 then im = im[*, *, 0]
       im -= dark
       im *= gain
+      im = red_fillpix(im, nthreads = 4L)
     endif
     im = rotate(temporary(im), direction)
     
@@ -493,7 +494,7 @@ pro red::make_wb_cube, dirs $
       time[iscan] = ttime
     endelse
 
-    cub[*, *, iscan] = red_fillpix((temporary(im))[x0:x1, y0:y1], nthreads = 4L)
+    cub[*, *, iscan] = (temporary(im))[x0:x1, y0:y1]
     
     ;; Measure time-dependent intensity variation (sun moves in the Sky)
     if keyword_set(limb_data) then begin
@@ -501,7 +502,7 @@ pro red::make_wb_cube, dirs $
       ;; a certain width, from the limb inward.
       strip_width = 5.                                                ; Approximate width, 5 arsec
       strip_width = round(strip_width/float(self.image_scale))        ; Converted to pixels
-      if iscan gt 0 then wdelete ; Don't use more than one window for the bimodal plots
+      if iscan gt 0 then wdelete                                      ; Don't use more than one window for the bimodal plots
       bimodal_threshold = cgOtsu_Threshold(cub[*, *, iscan], /PlotIt) ; Threshold at the limb
       disk_mask = cub[*, *, iscan] gt bimodal_threshold               
       strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
@@ -538,7 +539,16 @@ pro red::make_wb_cube, dirs $
   ;; calculate the alignment
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads)
+
+    red_missing, cub[*,*,iscan] $
+                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+    if Nmissing gt 0 then begin
+      bg = (cub[*,*,iscan])[indx_missing[0]]
+    endif else begin
+      bg = median(cub[*,*,iscan])
+    endelse
+
+    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads, background = bg)
   endfor                        ; iscan
 
   ;; Align cube
@@ -569,9 +579,9 @@ pro red::make_wb_cube, dirs $
     Y_in = yc + [-1, -1, 1,  1]*ybd/2
     roiobject_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
     roiobject_in -> setproperty, name = 'Default'
-
+    
     ;; Fire up the XROI GUI.
-    dispim = bytscl(total(cub, 3))
+    dispim = bytscl(red_histo_opt(total(cub, 3)))
     xroi, dispim, regions_in = [roiobject_in], regions_out = roiobject, /block $
           , tools = ['Translate-Scale', 'Rectangle'] $
           , title = 'Modify or define alignment ROI'
