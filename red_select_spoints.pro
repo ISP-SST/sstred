@@ -38,6 +38,9 @@
 ; 
 ;-
 function red_select_spoints, wav, imean
+
+  window, 10, xs = 700, ys = 500
+  
   !p.multi = [0,1,1]
                                 ;
   cgplot, wav, imean, psym = -16, xstyle = 3, ystyle = 3, $
