@@ -555,7 +555,8 @@ pro red::demodulate, outname, immr, immt $
     for istokes = 0L, Nstokes-1 do begin
       red_missing, res[*,*,0, istokes, 0], nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
       if Nmissing gt 0 then begin
-        if istokes eq 0 then bg = median(res[*,*,0, istokes, 0]) else bg = 0
+        bg = (res[*,*,0, istokes, 0])[indx_missing[0]]
+        ;;  if istokes eq 0 then bg = (res[*,*,0, istokes, 0])[indx_missing[0]] else bg = 0
       endif else begin
         bg = median(res[*,*,0, istokes, 0])
       endelse
