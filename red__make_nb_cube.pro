@@ -935,9 +935,13 @@ pro red::make_nb_cube, wcfile $
       ;; make_wb_cube
       if makestokes then begin
         for istokes = 0, Nstokes-1 do begin
-          bg = median(nbim[*, *, istokes])
-
-
+          red_missing, nbim[*, *, istokes] $
+                       , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+          if Nmissing gt 0 then begin
+            bg = (nbim[*, *, istokes])[indx_missing[0]]
+          endif else begin
+            bg = median(nbim[*, *, istokes])
+          endelse
           
           frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
@@ -950,7 +954,13 @@ pro red::make_nb_cube, wcfile $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
       endif else begin
-        bg = median(nbim)
+        red_missing, nbim $
+                     , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+        if Nmissing gt 0 then begin
+          bg = nbim[indx_missing[0]]
+        endif else begin
+          bg = median(nbim)
+        endelse
         nbim = red_rotation(temporary(nbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , background = bg, stretch_grid = reform(wcGRID[iscan,*,*,*])$
