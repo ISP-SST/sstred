@@ -30,12 +30,6 @@
 ;
 ;      The date (in iso format) the data was collected.
 ;
-;    download_all : in, optional, type=boolean
-;
-;      Set this to download auxiliary data, like SDO/HMI images and AR
-;      maps. Otherwise download SST log file only.
-;      AVS: obsolete keyword, not in use anymore.
-; 
 ;    no_observer_metadata : in, optional, type=boolean
 ;
 ;      Don't do anything to get OBSERVER metadata. 
@@ -270,7 +264,6 @@
 pro red_setupworkdir, cfgfile = cfgfile $
                       , calibrations_only = calibrations_only $
                       , date = date $
-                      , download_all = download_all $
                       , instruments = instruments $
                       , no_observer_metadata = no_observer_metadata $
                       , old_dir = old_dir $
