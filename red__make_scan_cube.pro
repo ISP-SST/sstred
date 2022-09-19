@@ -74,6 +74,11 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
+;     nochangesize : in, optional, type=boolean
+;
+;       Do not increase array size to make room for rotation. Useful
+;       for approximately circular FOV.
+;
 ;     nocrosstalk : in, optional, type=boolean
 ;
 ;       Do not correct the (polarimetric) data cube Stokes components
@@ -142,34 +147,35 @@
 ;    2022-06-24 : JdlCR. Bugfix, the cmap was always rotated
 ;                 regardless of the /norotation keyword.
 ;
-;
+;    2022-09-04 : MGL. CRISP --> RED. New keyword nochangesize.
 ;
 ;-
-pro crisp::make_scan_cube, dir $
-                           , autocrop = autocrop $
-                           , clips = clips $
-                           , cmap_fwhm = cmap_fwhm $
-                           , crop = crop $
-                           , direction = direction $
-                           , integer = integer $
-                           , intensitycorrmethod = intensitycorrmethod $
-                           , interactive = interactive $
-                           , limb_data = limb_data $
-                           , nocavitymap = nocavitymap $
-                           , nocrosstalk = nocrosstalk $
-                           , nopolarimetry = nopolarimetry $
-                           , norotation = norotation $
-                           , odir = odir $
-                           , overwrite = overwrite $
-                           , redemodulate = redemodulate $
-                           , rotation = rotation $
-                           , scannos = scannos $
-                           , tiles = tiles  $
-                           , tuning_selection = tuning_selection $
-                           , nthreads = nthreads $
-                           , fitpref_time = fitpref_time $
-                           , nomissing_nans = nomissing_nans
-               
+pro red::make_scan_cube, dir $
+                         , autocrop = autocrop $
+                         , clips = clips $
+                         , cmap_fwhm = cmap_fwhm $
+                         , crop = crop $
+                         , direction = direction $
+                         , integer = integer $
+                         , intensitycorrmethod = intensitycorrmethod $
+                         , interactive = interactive $
+                         , limb_data = limb_data $
+                         , nocavitymap = nocavitymap $
+                         , nochangesize = nochangesize $
+                         , nocrosstalk = nocrosstalk $
+                         , nopolarimetry = nopolarimetry $
+                         , norotation = norotation $
+                         , odir = odir $
+                         , overwrite = overwrite $
+                         , redemodulate = redemodulate $
+                         , rotation = rotation $
+                         , scannos = scannos $
+                         , tiles = tiles  $
+                         , tuning_selection = tuning_selection $
+                         , nthreads = nthreads $
+                         , fitpref_time = fitpref_time $
+                         , nomissing_nans = nomissing_nans
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
@@ -455,11 +461,21 @@ pro crisp::make_scan_cube, dir $
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
+
+    ;; Crop the cavity map to the FOV of the momfbd-restored images.
+    mr = momfbd_read(wbgfiles[scanindx[0]],/nam)
+    cmap1 = red_crop_as_momfbd(cmap1, mr)
+
+    ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
-    cmap_dim = size(cmap1,/dim)
-    xclip = (cmap_dim[0] - Nx)/2.
-    yclip = (cmap_dim[1] - Ny)/2.
-    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1]  ; Clip to the selected FOV
+    
+    ;; Clip to the selected FOV
+    cmap1 = cmap1[x0:x1,y0:y1]
+    
+;    cmap_dim = size(cmap1,/dim)
+;    xclip = (cmap_dim[0] - Nx)/2.
+;    yclip = (cmap_dim[1] - Ny)/2.
+;    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1]  ; Clip to the selected FOV
 
   endif
 
@@ -622,7 +638,17 @@ pro crisp::make_scan_cube, dir $
     endelse
     
     if ~keyword_set(norotation) then begin
-      ff = [abs(ang),0,0,0,0,ang]
+      if keyword_set(nochangesize) then begin
+        ;; Red_rotation.pro only uses keyword full (which is set to ff
+        ;; when calling from make_*_cube) if it is an array with at least
+        ;; 5 elements. So setting it to -1 is the same as letting it stay
+        ;; undefined, but it can still be passed on to make_nb_cube.
+        ff = -1    
+        ;; Possibly change this to take the shifts into account but not
+        ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
+      endif else begin
+        ff = [abs(ang),0,0,0,0,ang]
+      endelse
       wbim_rot = red_rotation(wbim, ang, full = ff, nthreads=nthreads)
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
@@ -773,11 +799,20 @@ pro crisp::make_scan_cube, dir $
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
         for istokes = 0, Nstokes-1 do begin
-           if(~keyword_set(norotation)) then begin
-             red_fitscube_addframe, fileassoc $
-                                    , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang $
-                                                   , full = ff, nthreads=nthreads) $
-                                    , ituning = ituning, istokes = istokes
+          if(~keyword_set(norotation)) then begin
+            ;; bg = median(nbims[x0:x1, y0:y1, 0, istokes])
+            red_missing, nbims[x0:x1, y0:y1, 0, istokes] $
+                         , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+            if Nmissing gt 0 then begin
+              bg = (nbims[x0:x1, y0:y1, 0, istokes])[indx_missing[0]]
+            endif else begin
+              bg = median(nbims[x0:x1, y0:y1, 0, istokes])
+            endelse
+            red_fitscube_addframe, fileassoc $
+                                   , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang $
+                                                  , background = bg $
+                                                  , full = ff, nthreads=nthreads) $
+                                   , ituning = ituning, istokes = istokes
           endif else begin
             red_fitscube_addframe, fileassoc $
                                    , nbims[x0:x1, y0:y1, 0, istokes] $
@@ -883,8 +918,15 @@ pro crisp::make_scan_cube, dir $
         sexp_array[ituning] = mean(texps)
         nsum_array[ituning] = round(total(nsums))
 
+        red_missing, nbim, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+        if Nmissing gt 0 then begin
+          bg = nbim[indx_missing[0]]
+        endif else begin
+          bg = median(nbim)  
+        endelse
         red_fitscube_addframe, fileassoc $
                                , red_rotation(temporary(nbim), ang $
+                                              , background = bg $
                                               , full = ff, nthreads=nthreads) $
                                , ituning = ituning
 
