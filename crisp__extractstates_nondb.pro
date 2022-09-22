@@ -106,8 +106,6 @@ pro crisp::extractstates_nondb, strings, states $
 
   if Nnotcached eq 0 then return
 
-
-  
   if strmatch(strmid(strings[0],strlen(strings[0])-1,1),'[0-9]') then begin
 
 
@@ -151,7 +149,7 @@ pro crisp::extractstates_nondb, strings, states $
 ;      print, strings[ncindx]
 ;      print, wav, dwav, lambda
     endelse
-
+    
     states[ncindx].filename         = strings[ncindx] ; File names in input strings
     states[ncindx].detector         = detector        ; "camXIX" 
     states[ncindx].framenumber      = nums            ; Frame numbers
@@ -242,7 +240,7 @@ pro crisp::extractstates_nondb, strings, states $
     red_extractstates,strings, lc=lc $
                       , wav = wav, pref = pref
   endelse
-;  states.lc = lc
+  states.lc = lc
 ;  states.fpi_state = pref+'_'+wav
   states.fpi_state = wav
 
@@ -255,7 +253,7 @@ pro crisp::extractstates_nondb, strings, states $
   ;; number of files?
 
   for ifile = 0, Nstrings-1 do begin
-
+    
     if file_test(strings[ifile]) then begin
       head = red_readhead(strings[ifile], /silent)
       states[ifile].filename = strings[ifile]
