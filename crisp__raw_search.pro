@@ -94,7 +94,7 @@ function crisp::raw_search, dir $
   Nscans = n_elements(scannos)
   
   ;; Prefilter
-  case n_elements(prefilters) of
+  case n_elements(pref) of
     0 : prefilters = '[0-9][0-9][0-9][0-9]'
     else : prefilters = strtrim(pref, 2)
   endcase
@@ -109,11 +109,10 @@ function crisp::raw_search, dir $
 
   ;; Fpi_state
   case n_elements(fpi_states) of
-    0 : fpi_states = prefilters+'_'+tunings+'_lc?'
+    0 : fpi_states = prefilters+'.'+tunings+'.lc?'
     else : fpi_states = strtrim(fpi_states, 2)
   endcase
   Nstates = n_elements(fpi_states)
-  
   
   ;; Construct search strings
   Nstrings = Nscans * Nstates
