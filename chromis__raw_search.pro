@@ -64,12 +64,12 @@
 ;  2021-08-23 : MGL. Make it into a method.
 ; 
 ;-
-function crisp2::raw_search, dir $
-                             , count = count $
-                             , fpi_states = fpi_states $
-                             , prefilters = pref $
-                             , scannos = scannos_in $
-                             , tunings = tunings
+function chromis::raw_search, dir $
+                              , count = count $
+                              , fpi_states = fpi_states $
+                              , prefilters = pref $
+                              , scannos = scannos_in $
+                              , tunings = tunings
 
   ;; Name of this subprogram
   inam = red_subprogram(/low, calling = inam1)
@@ -109,12 +109,11 @@ function crisp2::raw_search, dir $
 
   ;; Fpi_state
   case n_elements(fpi_states) of
-    0 : fpi_states = prefilters+'_'+tunings+'_lc?'
+    0 : fpi_states = 'wheel0000[0-9]_hrz[0-9][0-9][0-9][0-9][0-9]' ;prefilters+'_'+tunings+'_lc?'
     else : fpi_states = strtrim(fpi_states, 2)
   endcase
   Nstates = n_elements(fpi_states)
-  
-  
+
   ;; Construct search strings
   ;; Typical file name: sst_camXXX_00013_0009375_wheel00002_hrz33621.fits
   Nstrings = Nscans * Nstates
