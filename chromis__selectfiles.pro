@@ -154,8 +154,8 @@ pro chromis::selectfiles, cam = cam $
     
     if( n_elements(subdir) ne 1 ) then subdir = cam
 
-    file_template = subdir + '/' + strtrim(detector, 2)+ '*'
-    
+    file_template = subdir + '/*' + strtrim(detector, 2)+ '*'
+
     if( n_elements(dirs) gt 0 ) then dirs = [dirs] $ ; ensure it's an array, even with 1 element
     else begin 
       if( keyword_set(dark) && ptr_valid(self.dark_dir) ) then dirs = *self.dark_dir $
@@ -163,7 +163,7 @@ pro chromis::selectfiles, cam = cam $
     endelse
     
     path_spec = dirs + '/' + file_template
-
+    
     files = file_search(path_spec)
     files = files[where( strpos(files, '.lcd.') LT 0, nf)]
     files = strtrim(files,2)
