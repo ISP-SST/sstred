@@ -537,7 +537,7 @@ pro chromis::make_nb_cube, wcfile $
       red_append, align_scannumbers, scans
       red_append, x_shifts, reform(shifts[0,*])
       red_append, y_shifts, reform(shifts[1,*])
-    endfor    ;aligndirs
+    endfor                      ;aligndirs
     
     ;; Get the wavelengths used for the intra-scan alignment from the
     ;; file header.
