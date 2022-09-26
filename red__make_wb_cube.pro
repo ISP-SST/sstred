@@ -219,6 +219,8 @@
 ;    2022-04-08 : OA. Added time-dependent solar coordinates in WCS.
 ; 
 ;    2022-09-04 : MGL. New keyword nochangesize.
+; 
+;    2022-09-26 : MGL. New keyword rotmargin.
 ;
 ;-
 pro red::make_wb_cube, dirs $
@@ -242,6 +244,7 @@ pro red::make_wb_cube, dirs $
                        , oldname = oldname $
                        , point_id = point_id $
                        , rotation = rotation $
+                       , rotmargin = rotmargin $
                        , scannos = scannos $
                        , subtract_meanang = subtract_meanang $
                        , tile = tile $
@@ -282,6 +285,7 @@ pro red::make_wb_cube, dirs $
   
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
+  if n_elements(rotmargin)  eq 0 then rotmargin  = 40
   
   ;; Make prpara
   red_make_prpara, prpara, align_interactive
@@ -290,7 +294,8 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, dirs    
   red_make_prpara, prpara, direction    
   red_make_prpara, prpara, integer
-  red_make_prpara, prpara, negang
+  red_make_prpara, prpara, rotmargin 
+  red_make_prpara, prpara, negang  
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
@@ -447,6 +452,12 @@ pro red::make_wb_cube, dirs $
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
+
+    red_missing, im, /inplace, missing_type_wanted = 'nan'
+;    red_missing, im, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data        
+;    bg = !Values.F_NaN
+;    if Nmissing gt 0 then im[indx_missing] = bg
+    
     if keyword_set(make_raw) then begin
       if size(im,/n_dim) gt 2 then im = im[*, *, 0]
       im -= dark
@@ -455,7 +466,6 @@ pro red::make_wb_cube, dirs $
     endif
     im = rotate(temporary(im), direction)
     
-      
     red_fitspar_getdates, hdr $
                           , date_beg = date_beg $
                           , date_end = date_end $
@@ -540,13 +550,14 @@ pro red::make_wb_cube, dirs $
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
 
-    red_missing, cub[*,*,iscan] $
-                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
-    if Nmissing gt 0 then begin
-      bg = (cub[*,*,iscan])[indx_missing[0]]
-    endif else begin
-      bg = median(cub[*,*,iscan])
-    endelse
+;    red_missing, cub[*,*,iscan] $    
+;                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data    
+    bg = !Values.F_NaN
+;    if Nmissing gt 0 then begin    
+;      bg = (cub[*,*,iscan])[indx_missing[0]]    
+;    endif else begin    
+;      bg = median(cub[*,*,iscan])    
+;    endelse    
 
     cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads, background = bg)
   endfor                        ; iscan
@@ -601,13 +612,14 @@ pro red::make_wb_cube, dirs $
   ;; Calculate the image shifts
   shift = red_aligncube(cub, np, xbd = align_size[0], ybd = align_size[1] $
                         , xc = xc, yc = yc, nthreads=nthreads) ;, cubic = cubic, /aligncube)
-
+  
   if keyword_set(nochangesize) then begin
     ;; Red_rotation.pro only uses keyword full (which is set to ff
     ;; when calling from make_*_cube) if it is an array with at least
     ;; 5 elements. So setting it to -1 is the same as letting it stay
     ;; undefined, but it can still be passed on to make_nb_cube.
-    ff = -1    
+    ff = -1
+    ff = [0, -rotmargin, rotmargin, -rotmargin, rotmargin, 0]
     ;; Possibly change this to take the shifts into account but not
     ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
   endif else begin
@@ -621,7 +633,8 @@ pro red::make_wb_cube, dirs $
   endelse
   
   ;; De-rotate and shift cube
-  bg = median(cub1)
+  bg = median(cub1)  
+  bg = !Values.F_NaN
   dum = red_rotation(cub1[*,*,0], full=ff $
                      , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
   nd = size(dum,/dim)
@@ -629,9 +642,19 @@ pro red::make_wb_cube, dirs $
   ny = nd[1]
   cub = fltarr([nd, Nscans])
   cub[*,*,0] = temporary(dum)
-  for iscan=1, Nscans-1 do begin
+  for iscan=0, Nscans-1 do begin
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
+
+;    red_missing, cub1[*,*,iscan] $    
+;                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data    
+;    bg = !Values.F_NaN
+;    if Nmissing gt 0 then begin    
+;      bg = (cub1[*,*,iscan])[indx_missing[0]]    
+;    endif else begin    
+;      bg = median(cub[*,*,iscan])    
+;    endelse    
+
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
                                   , ang[iscan], shift[0,iscan], shift[1,iscan] $
                                   , background = bg, nthreads=nthreads)
@@ -888,11 +911,13 @@ pro red::make_wb_cube, dirs $
 ;  print, inam + ' : Wrote file '+odir + ofil
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
-
+  
   if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
     ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
-  endif
+  endif else begin
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'median'
+  endelse
 
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
