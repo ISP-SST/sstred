@@ -157,8 +157,8 @@ pro red_fitscube_getwcs, filename $
     undefine, distortions
     
     ;; Read hierarch keyword dw3
-    dw3 = red_fitsgetkeyword(hdr, 'DW3', field_specifiers = dw3_keywords)
-    Ndw3 = n_elements(dw3)
+    dw3 = red_fitsgetkeyword(hdr, 'DW3', field_specifiers = dw3_keywords, count = Ndw3)
+    ;;Ndw3 = n_elements(dw3)
     if Ndw3 eq 0 then begin
       print, inam + ' : There is no DW3 keyword.'
       print, inam + ' : No distortions returned.'
