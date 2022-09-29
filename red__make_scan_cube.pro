@@ -97,6 +97,10 @@
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
+;     padmargin : in, optional, type=integer, default=40
+;
+;       Amount of rotation padding in pixels.
+; 
 ;     redemodulate : in, optional, type=boolean
 ;
 ;       Delete any old (per scan-and-tuning) stokes cubes so they will
@@ -169,6 +173,7 @@ pro red::make_scan_cube, dir $
                          , overwrite = overwrite $
                          , redemodulate = redemodulate $
                          , rotation = rotation $
+                         , padmargin = padmargin $
                          , scannos = scannos $
                          , tiles = tiles  $
                          , tuning_selection = tuning_selection $
@@ -182,6 +187,7 @@ pro red::make_scan_cube, dir $
   
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
+  if n_elements(padmargin) eq 0 then padmargin  = 40
 
   ;; Make prpara
   red_make_prpara, prpara, dir
@@ -198,6 +204,7 @@ pro red::make_scan_cube, dir $
   red_make_prpara, prpara, nocrosstalk   
   red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, padmargin 
   red_make_prpara, prpara, rotation    
   red_make_prpara, prpara, tiles
   red_make_prpara, prpara, tuning_selection
@@ -463,9 +470,9 @@ pro red::make_scan_cube, dir $
     cmap1 = (cmap1r + cmap1t) / 2.
 
     ;; Crop the cavity map to the FOV of the momfbd-restored images.
-    mr = momfbd_read(wbgfiles[scanindx[0]],/nam)
+    mr = momfbd_read(wbgfiles[0],/nam)
     cmap1 = red_crop_as_momfbd(cmap1, mr)
-
+    
     ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
     
@@ -644,6 +651,7 @@ pro red::make_scan_cube, dir $
         ;; 5 elements. So setting it to -1 is the same as letting it stay
         ;; undefined, but it can still be passed on to make_nb_cube.
         ff = -1    
+        ff = [0, -padmargin, padmargin, -padmargin, padmargin, 0]
         ;; Possibly change this to take the shifts into account but not
         ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
       endif else begin
@@ -653,7 +661,12 @@ pro red::make_scan_cube, dir $
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
 
-
+    if file_test(dir+'/fov_mask.fits') then begin
+      fov_mask = readfits(dir+'/fov_mask.fits')
+      fov_mask = red_crop_as_momfbd(fov_mask, mr)    
+      fov_mask = red_rotate(fov_mask, direction)
+    endif
+    
     ;; Load prefilters
     
     ;; Crisp-T
@@ -777,7 +790,7 @@ pro red::make_scan_cube, dir $
       if keyword_set(makestokes) then begin
         
         nbims = red_readdata(snames[ituning], head = nbhead, direction = direction) ;* tscl
-
+        
         ;; Wavelength 
         wcs[ituning].wave = sstates[ituning].tun_wavelength*1d9
 
@@ -799,6 +812,9 @@ pro red::make_scan_cube, dir $
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
         for istokes = 0, Nstokes-1 do begin
+
+          if n_elements(fov_mask) gt 0 then nbims[*, *, 0, istokes] = nbims[*, *, 0, istokes] * fov_mask
+
           if(~keyword_set(norotation)) then begin
             ;; bg = median(nbims[x0:x1, y0:y1, 0, istokes])
             red_missing, nbims[x0:x1, y0:y1, 0, istokes] $
@@ -1001,7 +1017,7 @@ pro red::make_scan_cube, dir $
 
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
     if Nt gt 0 then begin
- ;     stop
+                                ;     stop
       self -> fitscube_addvarkeyword, filename, 'ATMOS_R0' $
                                       , metadata_r0[*, tindx_r0] $
                                       , comment = 'Atmospheric coherence length' $
