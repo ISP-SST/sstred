@@ -39,6 +39,10 @@
 ;      value of the crop keyword is ignored and is set to the
 ;      auto-detected crop parameters.
 ;
+;    circular_fov : in, optional, type=boolean
+;
+;      Do not make room for corners of the FOV in derotation.
+;
 ;    clip : in, optional, type=array 
 ;
 ;      Successive clips to use when calculating stretch vectors. See
@@ -90,11 +94,6 @@
 ;
 ;      Do not set missing-data padding to NaN. (Set it to the median of
 ;      each frame instead.)
-;
-;    nochangesize : in, optional, type=boolean
-;
-;      Do not increase array size to make room for rotation. Useful
-;      for approximately circular FOV.
 ;
 ;    nostretch : in, optional, type=boolean
 ;   
@@ -222,7 +221,7 @@
 ;
 ;    2022-04-08 : OA. Added time-dependent solar coordinates in WCS.
 ; 
-;    2022-09-04 : MGL. New keyword nochangesize.
+;    2022-09-04 : MGL. New keyword circular_fov.
 ; 
 ;    2022-09-26 : MGL. New keyword padmargin.
 ;
@@ -240,7 +239,7 @@ pro red::make_wb_cube, dirs $
                        , nearest = nearest $
                        , negang = negang $
                        , nomissing_nans = nomissing_nans $
-                       , nochangesize = nochangesize $
+                       , circular_fov = circular_fov $
                        , nostretch = nostretch $
                        , np = np $
                        , nthreads = nthreads $
@@ -617,7 +616,7 @@ pro red::make_wb_cube, dirs $
   shift = red_aligncube(cub, np, xbd = align_size[0], ybd = align_size[1] $
                         , xc = xc, yc = yc, nthreads=nthreads) ;, cubic = cubic, /aligncube)
   
-  if keyword_set(nochangesize) then begin
+  if keyword_set(circular_fov) then begin
     ;; Red_rotation.pro only uses keyword full (which is set to ff
     ;; when calling from make_*_cube) if it is an array with at least
     ;; 5 elements. So setting it to -1 is the same as letting it stay

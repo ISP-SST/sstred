@@ -30,6 +30,10 @@
 ;      value of the crop keyword is ignored and is set to the
 ;      auto-detected crop parameters.
 ; 
+;     circular_fov : in, optional, type=boolean
+;
+;       Do not make room for corners of the FOV in derotation.
+;
 ;     clips : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
@@ -73,11 +77,6 @@
 ;     nocavitymap : in, optional, type=boolean
 ;
 ;       Do not add cavity maps to the WCS metadata.
-;
-;     nochangesize : in, optional, type=boolean
-;
-;       Do not increase array size to make room for rotation. Useful
-;       for approximately circular FOV.
 ;
 ;     nocrosstalk : in, optional, type=boolean
 ;
@@ -151,7 +150,7 @@
 ;    2022-06-24 : JdlCR. Bugfix, the cmap was always rotated
 ;                 regardless of the /norotation keyword.
 ;
-;    2022-09-04 : MGL. CRISP --> RED. New keyword nochangesize.
+;    2022-09-04 : MGL. CRISP --> RED. New keyword circular_fov.
 ;
 ;-
 pro red::make_scan_cube, dir $
@@ -165,7 +164,7 @@ pro red::make_scan_cube, dir $
                          , interactive = interactive $
                          , limb_data = limb_data $
                          , nocavitymap = nocavitymap $
-                         , nochangesize = nochangesize $
+                         , circular_fov = circular_fov $
                          , nocrosstalk = nocrosstalk $
                          , nopolarimetry = nopolarimetry $
                          , norotation = norotation $
@@ -645,7 +644,7 @@ pro red::make_scan_cube, dir $
     endelse
     
     if ~keyword_set(norotation) then begin
-      if keyword_set(nochangesize) then begin
+      if keyword_set(circular_fov) then begin
         ;; Red_rotation.pro only uses keyword full (which is set to ff
         ;; when calling from make_*_cube) if it is an array with at least
         ;; 5 elements. So setting it to -1 is the same as letting it stay
