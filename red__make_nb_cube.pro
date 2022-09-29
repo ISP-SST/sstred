@@ -469,7 +469,16 @@ pro red::make_nb_cube, wcfile $
   ;; Spatial dimensions that match the WB cube
   Nx = wcND[0]
   Ny = wcND[1]
-
+  
+  mr = momfbd_read(wbgfiles[0],/nam)    
+  if file_test(file_dirname(wbgfiles[0])+'/fov_mask.fits') then begin
+    ;; If multiple directories, the fov_mask should be the same. Or we
+    ;; have to think of something.
+    fov_mask = readfits(file_dirname(wbgfiles[0])+'/fov_mask.fits')
+    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    fov_mask = red_rotate(fov_mask, direction)
+  endif
+  
   ;; Create cubes for science data and scan-adapted cavity maps.
   cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
 
@@ -568,7 +577,6 @@ pro red::make_nb_cube, wcfile $
     cmap1 = (cmap1r + cmap1t) / 2.
 
     ;; Crop the cavity map to the FOV of the momfbd-restored images.
-    mr = momfbd_read(wbgfiles[0],/nam)
     cmap1 = red_crop_as_momfbd(cmap1, mr)
 
     ;; Get the orientation right.
@@ -935,6 +943,8 @@ pro red::make_nb_cube, wcfile $
       ;; make_wb_cube
       if makestokes then begin
         for istokes = 0, Nstokes-1 do begin
+          if n_elements(fov_mask) gt 0 then nbim[*, *, istokes] = nbim[*, *, istokes] * fov_mask                    
+          
           red_missing, nbim[*, *, istokes] $
                        , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
           if Nmissing gt 0 then begin
@@ -942,7 +952,7 @@ pro red::make_nb_cube, wcfile $
           endif else begin
             bg = median(nbim[*, *, istokes])
           endelse
-          
+
           frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
                                background = bg, nearest = nearest, $
@@ -954,6 +964,8 @@ pro red::make_nb_cube, wcfile $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
       endif else begin
+        if n_elements(fov_mask) gt 0 then nbim = nbim * fov_mask
+
         red_missing, nbim $
                      , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
         if Nmissing gt 0 then begin
@@ -961,6 +973,7 @@ pro red::make_nb_cube, wcfile $
         endif else begin
           bg = median(nbim)
         endelse
+        
         nbim = red_rotation(temporary(nbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , background = bg, stretch_grid = reform(wcGRID[iscan,*,*,*])$
