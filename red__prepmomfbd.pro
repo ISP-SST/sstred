@@ -50,7 +50,9 @@
 ;    margin : in, optional, type=integer, default=5
 ; 
 ;      A margin (in pixels) to disregard from the FOV edges when
-;      constructing the grid of MOMFBD subfields.
+;      constructing the grid of MOMFBD subfields. A negative margin
+;      adds to the FOV instead, which can be useful when /fill_fov is
+;      used (in which case the default is -numpoints/2). 
 ;
 ;    modes : in, optional, type=string, default="'2-45,50,52-55,65,66'"
 ;   
@@ -73,6 +75,10 @@
 ;   
 ;       Set this if your data is from a near-IR (777 or 854 nm) line
 ;       and you do not want to do backscatter corrections.
+;   
+;    no_fitsheaders : in, optional, type=boolean
+;   
+;       Don't write fitsheader files.
 ;   
 ;    no_pd : in, optional, type=boolean
 ;   
@@ -197,6 +203,8 @@
 ;
 ;   2022-09-11 : MGL. New keyword fill_fov.
 ;
+;   2022-09-27 : MGL. Make FOV mask. New keyword no_fitsheaders.
+;
 ;-
 pro red::prepmomfbd, cams = cams $
                      , date_obs = date_obs $
@@ -213,6 +221,7 @@ pro red::prepmomfbd, cams = cams $
                      , nfac = nfac $
                      , nmodes = nmodes $
                      , no_descatter = no_descatter $
+                     , no_fitsheaders = no_fitsheaders $
                      , no_pd = no_pd $
                      , nremove = nremove $
                      , numpoints = numpoints $                     
@@ -268,8 +277,6 @@ pro red::prepmomfbd, cams = cams $
   if n_elements(nremove) eq 0 then nremove=0
   ;;if n_elements(nfac) eq 0 then nfac = 1.
   if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
-
-  if n_elements(margin) eq 0 then margin = 5
 
   Ndirs = n_elements(dirs)    
   if Ndirs gt 0 then begin
@@ -396,23 +403,31 @@ pro red::prepmomfbd, cams = cams $
     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
   endelse
 
+  if n_elements(margin) eq 0 then margin = 5
+
   if keyword_set(fill_fov) then begin
     ;; Use masks made from gaintable to find the part of the FOV that
     ;; has light. To be used for CRISP with new cameras.
     
     ;; Read gains for all cameras, remap them to the WB orientation
     ;; and position, AND them gt 0, to make a mask.
+
     
-    for icam = 0, n_elements(cams)-1 do begin
+    maps = fltarr(3, 3, Ncams)
+    for icam = 0, Ncams-1 do begin
       gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
       g = red_readdata(gfiles[0])
       indx = where(align.state2.camera eq cams[icam])
+      maps[*, *, icam] = align[indx[0]].map
       if icam eq 0 then begin
-        mask = rdx_img_transform(invert(align[indx[0]].map), g, /preserve) gt 0        
+        dims = size(g, /dim)
+        masks = fltarr([dims, Ncams])
+        mask = rdx_img_transform(invert(maps[*, *, 0]), g, /preserve) gt 0
       endif else begin
-        mask AND= rdx_img_transform(invert(align[indx[0]].map), g, /preserve) gt 0        
+        mask AND= rdx_img_transform(invert(maps[*, *, icam]), g, /preserve) gt 0
       endelse
-    endfor                      ; icam
+      masks[*, *, icam] = g gt 0 ; Masks for individual cameras
+    endfor                       ; icam
 
     ;; Close small holes in the mask
     ste=[[0,1,0],[1,1,1],[0,1,0]]
@@ -420,25 +435,36 @@ pro red::prepmomfbd, cams = cams $
     for iclose = 0, Nclose do mask = dilate(mask, ste)     
     for iclose = 0, Nclose do mask = erode(mask, ste)     
 
-    
-    mask = dilate(mask, ste)    
-    mask = dilate(mask, ste)    
-    mask = dilate(mask, ste)    
-    mask = dilate(mask, ste)    
-    mask = erode(mask, ste)    
-    mask = erode(mask, ste)    
-    mask = erode(mask, ste)    
-    mask = erode(mask, ste)    
 
-    ;; Shave off margin + numpoints/2 from the mask around the perimeter.
-    for ierode = 0, margin + numpoints/2 - 1 do mask = erode(mask, ste) 
+    ;; Save this mask later in the cfg directories, it will be used when making cubes
+    ;;  dims = size(mask, /dim)    
+    fov_mask = mask
+    fov_indices = Where(fov_mask EQ 1)
+    fov_boundaryPts = Find_Boundary(fov_indices, XSize=dims[0], YSize=dims[1])
+    fov_roiObj = Obj_New('IDLanROI', fov_boundaryPts[0,*], fov_boundaryPts[1,*])
+
+    ;; Apply margin keyword
+    cmargin = -numpoints/2
+    if n_elements(cmargin) ne 0 then begin
+      if cmargin gt 0 then begin
+        ;; Make mask smaller
+        for ierode = 0, cmargin-1 do mask = erode(mask, ste)
+      endif else begin
+        ;; Make mask larger
+        for idilate = 0, abs(cmargin)-1 do mask = dilate(mask, ste)
+      endelse 
+    endif
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
-
+  
     ;; Define ROI based on mask
-    dims = size(mask, /dim)
     indices = Where(mask EQ 1)
     boundaryPts = Find_Boundary(indices, XSize=dims[0], YSize=dims[1])
+
+    ;; Apply margin
+    boundaryPts[0, *] = boundaryPts[0, *] >margin <(dims[0]-margin-1)    
+    boundaryPts[1, *] = boundaryPts[1, *] >margin <(dims[1]-margin-1)    
+
     roiObj = Obj_New('IDLanROI', boundaryPts[0,*], boundaryPts[1,*])
 
     ;; sim_x and sim_y based on mask ROI and margin
@@ -448,22 +474,40 @@ pro red::prepmomfbd, cams = cams $
     sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
     sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
 
-    cgplot,(*roiobj.data)[0,*],(*roiobj.data)[1,*],psym=3
+    scrollwindow, xs = 2000, ys = 2000
+    cgplot, (*roiobj.data)[0,*], (*roiobj.data)[1,*], psym=3, /aspect    
+    cgplot, (*fov_roiobj.data)[0,*], (*fov_roiobj.data)[1,*], psym=3, /over, color = 'red'      
 
     
-
     ;; Put coordinate pairs that are inside the mask in sim_xy.
     for ix = 0, n_elements(sim_x)-1 do begin    
       for iy = 0, n_elements(sim_y)-1 do begin    
 
         if roiObj -> ContainsPoints(sim_x[ix], sim_y[iy]) then begin
+
+          for icam = 0, Ncams-1 do begin
+            ;; Are the coordinates within the NB frame?
+            coords = rdx_point_transform( maps[*, *, icam], [sim_x[ix], sim_y[iy]])
+            coords_limited = coords
+            coords_limited[0] = coords[0] >(numpoints/2+margin) <(dims[0]-1-numpoints/2-margin)            
+            coords_limited[1] = coords[1] >(numpoints/2+margin) <(dims[1]-1-numpoints/2-margin)            
+            if coords_limited[0] ne coords[0] or coords_limited[1] ne coords[1] then begin
+              ;; If not, nudge them inside and transform back.
+              coords = rdx_point_transform( invert(maps[*, *, icam]), coords_limited)
+              print, 'Changed!', ix, iy, icam
+              sim_x[ix] = coords[0]
+              sim_y[iy] = coords[1]              
+            endif
+          endfor                ; icam
+          
           red_append, sim_xy, [sim_x[ix], sim_y[iy]]
           cgplot, /over, sim_x[ix], sim_y[iy], psym = 16
+          cgplot, /over, sim_x[ix]+numpoints/2*[1, 1, -1, -1, 1], sim_y[iy]+numpoints/2*[1, -1, -1, 1, 1]
         endif
         
       endfor                    ; iy
     endfor                      ; ix
-
+ 
     sim_xy_string = strjoin(strtrim(sim_xy,2), ',')
     
   endif else begin
@@ -947,7 +991,12 @@ pro red::prepmomfbd, cams = cams $
       file_mkdir, cfg_list[icfg].dir+'/data/'
       file_mkdir, cfg_list[icfg].dir+'/results/'
     endif
-    
+
+    if icfg eq 0 then begin
+      writefits, cfg_list[icfg].dir+'/results/fov_mask.fits', fov_mask    
+    endif
+
+      
 ;    number_str = string(cfg_list[icfg].first_file, format='(I07)') $
 ;                 + '-' + string(cfg_list[icfg].last_file,format='(I07)')
 ;        cfg_list[icfg].globals += 'IMAGE_NUMS=' + number_str +
@@ -968,7 +1017,7 @@ pro red::prepmomfbd, cams = cams $
 
 
   ;; Make header-only fits files to be read post-momfbd.
-  self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
+  if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
 
   return
   
