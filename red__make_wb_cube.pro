@@ -109,6 +109,10 @@
 ;      For data from a single datestamp directory, construct the
 ;      filename as before multiple directories were implemented.
 ;
+;    padmargin : in, optional, type=integer, default=40
+;
+;       Amount of rotation padding in pixels.
+; 
 ;    point_id : in, optional, type=string, default="From first file"
 ;
 ;      Value for the POINT_ID header keyword. By default the value if
@@ -220,7 +224,7 @@
 ; 
 ;    2022-09-04 : MGL. New keyword nochangesize.
 ; 
-;    2022-09-26 : MGL. New keyword rotmargin.
+;    2022-09-26 : MGL. New keyword padmargin.
 ;
 ;-
 pro red::make_wb_cube, dirs $
@@ -244,7 +248,7 @@ pro red::make_wb_cube, dirs $
                        , oldname = oldname $
                        , point_id = point_id $
                        , rotation = rotation $
-                       , rotmargin = rotmargin $
+                       , padmargin = padmargin $
                        , scannos = scannos $
                        , subtract_meanang = subtract_meanang $
                        , tile = tile $
@@ -285,7 +289,7 @@ pro red::make_wb_cube, dirs $
   
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
-  if n_elements(rotmargin)  eq 0 then rotmargin  = 40
+  if n_elements(padmargin) eq 0 then padmargin  = 40
   
   ;; Make prpara
   red_make_prpara, prpara, align_interactive
@@ -294,11 +298,11 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, dirs    
   red_make_prpara, prpara, direction    
   red_make_prpara, prpara, integer
-  red_make_prpara, prpara, rotmargin 
   red_make_prpara, prpara, negang  
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
+  red_make_prpara, prpara, padmargin 
   red_make_prpara, prpara, point_id 
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, scannos
@@ -619,7 +623,7 @@ pro red::make_wb_cube, dirs $
     ;; 5 elements. So setting it to -1 is the same as letting it stay
     ;; undefined, but it can still be passed on to make_nb_cube.
     ff = -1
-    ff = [0, -rotmargin, rotmargin, -rotmargin, rotmargin, 0]
+    ff = [0, -padmargin, padmargin, -padmargin, padmargin, 0]
     ;; Possibly change this to take the shifts into account but not
     ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
   endif else begin
@@ -631,6 +635,15 @@ pro red::make_wb_cube, dirs $
     mdy1 = reform(max(shift[1,*]))
     ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
   endelse
+  
+  if file_test(dirs[0]+'/fov_mask.fits') then begin
+    ;; If multiple directories, the fov_mask should be the same. Or we
+    ;; have to think of something.
+    fov_mask = readfits(dirs[0]+'/fov_mask.fits')
+    mr = momfbd_read(wfiles[0], /nam)
+    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    fov_mask = red_rotate(fov_mask, direction)
+  endif
   
   ;; De-rotate and shift cube
   bg = median(cub1)  
@@ -679,6 +692,7 @@ pro red::make_wb_cube, dirs $
   if ~keyword_set(nostretch) then begin
     for iscan = 0L, Nscans - 1 do begin
       red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
+      if n_elements(fov_mask) gt 0 then cub1[*, *, iscan] = cub1[*, *, iscan] * fov_mask
       ;;imm1 = red_stretch_linear(cub[*,*,iscan], reform(grid[iscan,*,*,*]), nthreads = nthreads)
       imm = red_rotation(cub1[*,*,iscan], full=ff $
                          , ang[iscan], shift[0,iscan], shift[1,iscan] $
