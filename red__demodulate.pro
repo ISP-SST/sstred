@@ -158,8 +158,6 @@ pro red::demodulate, outname, immr, immt $
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, nbrfac 
   red_make_prpara, prpara, nbtfac
-;  red_make_prpara, prpara, newflats
-;  red_make_prpara, prpara, no_ccdtabs 
   red_make_prpara, prpara, smooth_by_kernel
   red_make_prpara, prpara, smooth_by_subfield
   red_make_prpara, prpara, tiles 
@@ -296,25 +294,22 @@ pro red::demodulate, outname, immr, immt $
     immr_dm = immr
   endelse
 
-  ;; Mozaic images 
+  ;; Mozaic images
+  nmask = bytarr(Nx, Ny)+1
   for ilc = 0L, Nlc-1 do begin
     im = red_mozaic(rimg[ilc], /crop) * nbrfac
-    nan = where(~finite(im),cc)
-    if cc gt 0 then begin
-      im(nan) = 0.
-      print, 'file ', rfiles[ilc], ' has ', cc, ' NaN values.'
-    endif
+    nmask = nmask and finite(im)
     img_r[*,*,ilc] = im
     im = red_mozaic(timg[ilc], /crop) * nbtfac
-    nan = where(~finite(im),cc)
-    if cc gt 0 then begin
-      im(nan) = 0.
-      print, 'file ', tfiles[ilc], ' has ', cc, ' NaN values.'
-    endif
+    nmask = nmask and finite(im)
     img_t[*,*,ilc] = im
-  endfor
-
-
+  endfor                        ; ilc
+  
+  for ilc = 0L, Nlc-1 do begin
+    img_r[*,*,ilc] *= nmask
+    img_t[*,*,ilc] *= nmask
+  endfor                        ; ilc
+  
   
   if keyword_set(smooth_by_subfield) then begin
 
@@ -444,7 +439,6 @@ pro red::demodulate, outname, immr, immt $
     if n_elements(cmap) ne 0 then cmapp = cmap
     
   endelse
-
   
   ;; These are now Stokes cubes!
   img_t = temporary(rest)
