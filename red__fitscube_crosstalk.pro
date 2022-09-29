@@ -349,7 +349,7 @@ pro red::fitscube_crosstalk, filename  $
       indx_data = where(finite(im2), Ndata, complement = indx_missing, ncomplement = Nmissing)
       mn = median(im2[indx_data])-2.5*robust_sigma(im2[indx_data])
       mx = median(im2[indx_data])+2.5*robust_sigma(im2[indx_data])
-      cgimage, bytscl(im2, mn, mx)$
+      cgimage, bytscl(im2, mn, mx) $
                , missing_color = 'yellow' $
                , missing_index = 0 $
                , stretch = 1
