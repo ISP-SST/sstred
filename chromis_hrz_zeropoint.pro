@@ -37,7 +37,7 @@ end
 pro chromis_hrz_zeropoint, workdir
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)      
 
   infodir = workdir + '/' + 'info/'
   file_mkdir, infodir

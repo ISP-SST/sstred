@@ -13,8 +13,6 @@
 ;     Tomas Hillberg, ISP
 ; 
 ; 
-; :Returns:
-; 
 ; :Params:
 ; 
 ; 
@@ -109,41 +107,42 @@
 ; 
 ;-
 pro crisp::selectfiles, cam = cam $
-                        , count = count $
                         , complement = complement $
-                        , ncomplement = ncomplement $
+                        , count = count $
+                        , dark = dark $
                         , dirs = dirs $
                         , files = files $
-                        , states = states $
-                        , prefilter = prefilter $
-                        , framenumbers = framenumbers $
-                        , scan = scan $
-                        , ustat = ustat $
-                        , fpi_states = fpi_states $
                         , flat = flat $
-                        , dark = dark $
-                        , nremove = nremove $
                         , force = force $
+                        , fpi_states = fpi_states $
+                        , framenumbers = framenumbers $
+                        , ncomplement = ncomplement $
+                        , nremove = nremove $
+                        , polcal = polcal $
+                        , prefilter = prefilter $
+                        , scan = scan $
                         , selected = selected $
+                        , states = states $
                         , strip_settings = strip_settings $
                         , subdir = subdir $
-                        , polcal = polcal $
-                        , timestamps = timestamps
-
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+                        , timestamps = timestamps $
+                        , ustat = ustat 
+  
+  ;; Name of this method
+  inam = red_subprogram(/low, calling = inam1)                                      
+  
   ;; Unless we select any
   count = 0L                  
   ncomplement = n_elements(files)
 
   if( keyword_set(force) || n_elements(files) eq 0 ) then begin
-
+    
     if( n_elements(cam) ne 1 ) then begin
       print,inam+': Only a single cam supported.'
       return
     endif
     detector = self->RED::getdetector(cam)
-
+    
     if( n_elements(subdir) ne 1 ) then subdir = cam
 
     file_template = subdir + '/' + strtrim(detector, 2)+ '*'
@@ -156,17 +155,17 @@ pro crisp::selectfiles, cam = cam $
     
     path_spec = dirs + '/' + file_template
 
-    print, 212
     files = file_search(path_spec)
     files = files(where( strpos(files, '.lcd.') LT 0, nf) )
 ;    files = red_sortfiles(files) ; Slow! Move sorting to when we have a single state?
     force = 1                   ; we have new files, force extractstates
   endif
-
+  
   if( n_elements(files) eq 0 || files[0] eq '' ) then begin
-    print, 111
     return
   endif
+  
+  if( n_elements(files) eq 1 ) then files = [files]
 
   if( n_elements(force) gt 0 || n_elements(states) eq 0 ) then begin
 ;    self->extractstates, files, states, /basename, /cam, /prefilter, /fullstate
@@ -179,6 +178,8 @@ pro crisp::selectfiles, cam = cam $
 ;    if( min(pos) ge 0 ) then states[pos].fullstate = states[pos].prefilter
   endif
 
+  if( n_elements(states) eq 1 ) then states = [states]
+  
   states.skip *= 0              ; always clear selection, so repeated calls with the same files/states are possible
   if( keyword_set(nremove) ) then self->skip, states, nremove
 
@@ -239,10 +240,11 @@ pro crisp::selectfiles, cam = cam $
     selected = states.skip * 0
     tstates = [ustat]           ; make sure it's an array
     for ip = 0, Nstates-1 do begin
-      pos = where(states.fullstate eq tstates[ip])
-      if( min(pos) ge 0 ) then selected[pos] = 1
+      pos = where(states.fullstate eq tstates[ip],count)
+      if( count ne 0 ) then selected[pos] = 1
     endfor
-    states[where(selected lt 1)].skip = 1
+    pos = where(selected lt 1,count)
+    if( count ne 0 ) then states[pos].skip = 1
   endif
 
   Nfpi = n_elements(fpi_states)
@@ -259,17 +261,17 @@ pro crisp::selectfiles, cam = cam $
   Ntimestamps = n_elements(timestamps)
   if( Ntimestamps gt 0 ) then begin
     selected = states.skip * 0
-    ts = [timestamps]         ; make sure it's an array
+    ts = [timestamps]           ; make sure it's an array
     for ip = 0, Ntimestamps-1 do begin
       pos = where(strmatch(states.filename,'*'+ts[ip]+'*'),count)
       if( count ne 0 ) then selected[pos] = 1
     endfor
     pos = where(selected lt 1,count)
     if( count ne 0 ) then states[pos].skip = 1
-  endif    
-
-  selected = where( states.skip lt 1, count $
-                    , complement = complement, Ncomplement = Ncomplement)
+  endif
+  
+  selected = where(states.skip lt 1, count $
+                   , complement = complement, Ncomplement = Ncomplement)
   
   if arg_present(selected) then begin
     if count eq 0 then undefine,selected ; don't return -1

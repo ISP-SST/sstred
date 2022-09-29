@@ -52,8 +52,8 @@
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  inam = red_subprogram(/low, calling = inam1)  
+  
   ;; Check polcal_sums
   if(~file_test(self.out_dir + '/polcal_sums', /directory)) then begin
     print, inam + ' : ERROR, folder not found : '+ self.out_dir + '/polcal_sums'
@@ -116,7 +116,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       
       print, inam + ' : Processing prefilter -> '+upref[ipref]
 
-      dodescatter = ~keyword_set(no_descatter) $
+      dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
                     and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')
       
       if dodescatter then begin
@@ -140,8 +140,8 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             red_append, fullstate_list, 'lp'+string(round(ulp[ilp]), format = '(i03)')
             red_append, fullstate_list, 'qw'+string(round(uqw[iqw]), format = '(i03)')
             red_append, fullstate_list, upref[ipref]
-            red_append, fullstate_list, 'lc'+strtrim(long(ulc[ilc]), 2)
-            statestring = strjoin(fullstate_list, '_')
+            red_append, fullstate_list, '*lc'+strtrim(long(ulc[ilc]), 2)
+            statestring = '*'+strjoin(fullstate_list, '_')
             
             indx = where(strmatch(selstates.fullstate,statestring ),count)
             if count ne 1 then begin

@@ -332,11 +332,10 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
       for idir = 0, Ndirs-1 do begin
 
         print, dirs[idir]
-
-        fnamesN = red_raw_search(dirs[idir]+'/'+camNB+'/', count = NfilesN, scannos = 0, prefilters = pref_keyword)
+        fnamesN = self -> raw_search(dirs[idir]+'/'+camNB+'/', count = NfilesN, scannos = 0, prefilters = pref_keyword)
         Nfiles[idir] = NfilesN
         if keyword_set(unitscalib) then begin
-          fnamesW = red_raw_search(dirs[idir]+'/'+camWB+'/', count = NfilesW, scannos = 0, prefilters = pref_keyword)
+          fnamesW = self -> raw_search(dirs[idir]+'/'+camWB+'/', count = NfilesW, scannos = 0, prefilters = pref_keyword)
         endif else begin
           NfilesW = 0
         endelse
@@ -455,7 +454,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
 
     camNB = camsNB[icam]
     
-    filesNBall = red_raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan, prefilters = pref_keyword)
+    filesNBall = self -> raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan, prefilters = pref_keyword)
     if nfilesNB eq 0 then begin
       print, inam+' : ERROR, invalid scan number'
       return
@@ -463,7 +462,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
     self->extractstates, red_sortfiles(filesNBall), statesNBall, /nondb
 
     if keyword_set(unitscalib) then begin
-      filesWBall = red_raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan, prefilters = pref_keyword)
+      filesWBall = self -> raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan, prefilters = pref_keyword)
       if nfilesNB ne nfilesWB then begin
         print, inam+' : ERROR, scan numbers mismatch WB and NB'
         stop

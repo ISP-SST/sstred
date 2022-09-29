@@ -161,6 +161,35 @@ extern "C" {
     //
     return 0;
   }
+
+  // ********************************************************************** //
+  short cpolcal_2d_mask(int argc, void *argv[]){
+    //
+    pol_t pol;
+    //
+    pol.nlc = ARG_INT(argv, 0);
+    pol.nqwp = ARG_INT(argv, 1);
+    pol.nlp = ARG_INT(argv, 2);
+    pol.npix = ARG_INT(argv, 3);
+    //
+    float *dat2d = ARG_FLOAT_ARRAY(argv,4);
+    float *qwp =  ARG_FLOAT_ARRAY(argv,5);
+    float *lp =  ARG_FLOAT_ARRAY(argv,6);
+    //
+    double *res =  ARG_FLOAT64_ARRAY(argv,7);
+    float *cs =  ARG_FLOAT_ARRAY(argv,8);
+    //
+    int nthreads = ARG_INT(argv, 9);
+    uint8_t *mask = ARG_BYTE_ARRAY(argv,10);
+    //
+    pol.ndata = pol.nlc * pol.nqwp * pol.nlp;
+    //
+    polcal_2d_mask(pol, nthreads, dat2d, res, cs, qwp, lp, mask);
+    //
+    return 0;
+  }
+
+  // ********************************************************************** //
   
   short cfillpix(int argc, void *argv[]){
     //
@@ -176,9 +205,8 @@ extern "C" {
     //
     return 0;
   }
-
-  // ********************************************************************** //
-
+ 
+  // ********************************************************************** //                                               
   short nearest2D_wrap(int const narg, void **argv)
   {
     int const ny = *((int*)argv[0]);

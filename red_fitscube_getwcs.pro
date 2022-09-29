@@ -55,7 +55,7 @@ pro red_fitscube_getwcs, filename $
                          , distortions = distortions
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                    
 
   hdr = headfits(filename)
   fxbopen, lun, filename, 'WCS-TAB', bdr
@@ -157,8 +157,8 @@ pro red_fitscube_getwcs, filename $
     undefine, distortions
     
     ;; Read hierarch keyword dw3
-    dw3 = red_fitsgetkeyword(hdr, 'DW3', field_specifiers = dw3_keywords)
-    Ndw3 = n_elements(dw3)
+    dw3 = red_fitsgetkeyword(hdr, 'DW3', field_specifiers = dw3_keywords, count = Ndw3)
+    ;;Ndw3 = n_elements(dw3)
     if Ndw3 eq 0 then begin
       print, inam + ' : There is no DW3 keyword.'
       print, inam + ' : No distortions returned.'

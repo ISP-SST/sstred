@@ -89,7 +89,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
-
+  
   if keyword_set(limb_darkening) then begin 
     if n_elements(mu_limit) eq 0 then mu_limit = 0.50d
     if keyword_set(pref) then begin
@@ -105,7 +105,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
     if n_elements(mu_limit) eq 0 then begin
       mu_limit = 0.97d
     endif else begin
-      if mu_limit lt 0.97 then begin
+      if mu_limit lt 0.97d then begin
         print, inam, ' : You should use /limb_darkening with mu_limit < 0.97'
         return
       endif
@@ -226,7 +226,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._][0-9][0-9][0-9][02468]0[._]*', count = NfilesW)      
         ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]'+string(iscan, format = '(i05)')+'[._]*' $
         ;;                    , count = NfilesW)      
-        fnamesW = red_raw_search(wbdirs[iwb]+'/'+camwb, scannos = iscan, count = NfilesW)
+        fnamesW = self -> raw_search(wbdirs[iwb]+'/'+camwb, scannos = iscan, count = NfilesW)
         print, wbdirs[iwb]+'/'+camwb
         print, NfilesW
         if NfilesW eq 0 then break
@@ -237,7 +237,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         upref = states[pindx].prefilter
         Npref = n_elements(upref)
         if where(strmatch(upref, '8542')) ne -1 then begin
-          if mu_limit lt 0.97 then begin
+          if mu_limit lt 0.97d then begin
             print, inam, ' : You are using mu_limit < 0.97 with 8542 prefilter.'
             print,'Please change settings and rerun the program.'
             return

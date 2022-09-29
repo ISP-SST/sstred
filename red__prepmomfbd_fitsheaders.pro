@@ -56,7 +56,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                                  , no_pd = no_pd 
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)  
 
   if n_elements(dirs) gt 0 then begin
     dirs = [dirs] 

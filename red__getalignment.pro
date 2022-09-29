@@ -72,9 +72,8 @@ pro red::getalignment, align = align, $
                        overwrite = overwrite
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)              
   
-
   if( n_elements(cams) gt 0 ) then cams = [cams] $
   else if ptr_valid(self.cameras) then cams = [*self.cameras]
 

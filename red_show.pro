@@ -79,7 +79,7 @@ pro red_show, vari $
   dim=size(var)
   ;;Checks for the right image dimensions
   if dim[0] lt 2 or dim[0] gt 3 then begin
-    print,'Wrong dimensions: '+stri(dim[0])+'.Image must be a 2D or 3D array'
+    print,'Wrong dimensions: '+stri(dim[0])+'. Image must be a 2D or 3D array'
     return
   endif
   ;; Color?

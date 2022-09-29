@@ -67,7 +67,7 @@ function red_shift_im, var, dx, dy, cubic = cubic, missing = missing, nearest = 
 ;;  return, poly_2d(var, p, q, 2, cubic = cubic, missing = missing)
 
   dim  = size(var, /dim)
-  print, dim[1]
+  ;;print, dim[1]
   xx = dindgen(dim[0])
   yy = dindgen(dim[1])
 

@@ -66,7 +66,7 @@ function red_bad_subfield_crop, files, crop $
 
   if n_elements(direction) eq 0 then direction = 0
   
-  if keyword_set(autocrop) or keyword_set(interactive) then begin
+  if keyword_set(autocrop) then begin
     
     dispim = 0.0
 
@@ -137,13 +137,22 @@ function red_bad_subfield_crop, files, crop $
     ;; If user selected autocrop, then do use the detected cropping.
     ;; If user selected interactive, then use the detected cropping
     ;; only if crop keyword was not provided.
-    if keyword_set(autocrop) || $
-       (keyword_set(interactive) && n_elements(crop) eq 0) then begin
-      roi_name = 'Autocrop'
-      crop = ceil( [[i0, (Nsubf_x-1-i1)]*Ssubf_x, [j0, (Nsubf_y-1-j1)]*Ssubf_y] / overlapfacs )
-    endif
-  endif
+    
+    roi_name = 'Autocrop'
+    crop = ceil( [[i0, (Nsubf_x-1-i1)]*Ssubf_x, [j0, (Nsubf_y-1-j1)]*Ssubf_y] / overlapfacs )
+    
+  endif else if keyword_set(interactive) then begin
 
+    dispim = 0.0
+
+    for ifile = 0L, Nfiles -1 do begin
+      red_progressbar, ifile, Nfiles, 'Read momfbd output for interactive crop', /predict
+      mr = momfbd_read(files[ifile], /img)
+      dispim += red_mozaic(mr, /crop)
+    endfor                      ; ifile
+
+  endif
+  
   hdr = red_readhead(files[0])
   im_dim = fxpar(hdr, 'NAXIS*')
 
@@ -181,6 +190,8 @@ function red_bad_subfield_crop, files, crop $
 
     ;; Use XROI GUI to select a rectangular area. 
 
+    red_missing, dispim, missing_type_wanted='nan', /inplace
+    
     ;; Initialize the FOV
     X_in = [x0, x1, x1, x0]
     Y_in = [y0, y0, y1, y1]
@@ -194,7 +205,7 @@ function red_bad_subfield_crop, files, crop $
     print
     
     ;; Fire up the XROI GUI.
-    xroi, bytscl(dispim), regions_in = [roi_in], regions_out = roi, /block $
+    xroi, bytscl(red_histo_opt(dispim)), regions_in = [roi_in], regions_out = roi, /block $
           , tools = ['Translate-Scale', 'Rectangle'] $
           , title = 'Modify or define FOV based on summed image'
 

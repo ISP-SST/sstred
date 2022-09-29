@@ -131,6 +131,9 @@
 ;
 ;   2018-06-08 : MGL. New keyword pref.
 ;
+;   2022-09-01 : MGL. Automatically mask bad pixels and pixels without
+;                light.
+;
 ;-
 pro red::fitgains, all = all $
                    , densegrid = densegrid $                   
@@ -182,7 +185,7 @@ pro red::fitgains, all = all $
   red_make_prpara, prpara, yl
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                              
 
   outdir = self.out_dir + '/flats/'
 
@@ -265,6 +268,7 @@ pro red::fitgains, all = all $
 
         ;; Need to set res (the cavity error map?).
         dat = readfits(ffile)
+        
         wav = float(readfits(wfile)) * 1e10 ; Must be in Å.
         dims = size(dat, /dim)
 ;        if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
@@ -338,20 +342,39 @@ pro red::fitgains, all = all $
     endif 
 
     dat = cub                   ; Why do we make a copy of cub?
+    totdat = total(dat,1)    
 
+    ;; Make a gaintable from the sum of the dat frames and use it to
+    ;; define the pixels we will use to do the fitting.
+    mask = red_flat2gain(totdat) ne 0
+    mindx = where(mask, Nmask)
+    if Nmask eq 0 then stop
+
+    dims = size(dat, /dim)    
+
+    mdat = fltarr(dims[0], 1, Nmask) ; Make a pseudo-2d array that will work with the fitting routines
+    for i = 0, dims[0]-1 do mdat[i, 0, *] = (dat[i, *, *])[mindx]
+    
     ;; Init output vars
-    dims = size(dat, /dim)
     res = dblarr([npar_t, dims[1:2]])
     ratio = fltarr(dims)
 
-    res[0,*,*] = total(dat,1) / nwav
+    mdims = size(mdat, /dim)
+    mres = dblarr([npar_t, mdims[1:2]])
+    mratio = fltarr(mdims)
+    
+    mres[0,*,*] = totdat[mindx] / nwav
+                                ;res[0,*,*] = totdat / nwav
     ;; Is this still needed?
-    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3
+;    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3    
+    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN mres[3:*,*,*] = 1.e-3    
 
+    
     ;; Init cavity map?   
     if(keyword_set(initcmap)) then begin
       print, inam + ' : Initializing cavity-errors with parabola-fit'
-      res[1,*,*] = red_initcmap(wav, dat, x0 = x0, x1 = x1)
+      mres[1,*,*] = red_initcmap(wav, mdat, x0 = x0, x1 = x1)      
+      ;;res[1,*,*] = red_initcmap(wav, dat, x0 = x0, x1 = x1)      
     endif
 
     cgwindow
@@ -370,7 +393,11 @@ pro red::fitgains, all = all $
       ;;  endfor
       
       ;; Get mean spectrum using Hermitian Spline
-      yl = red_get_imean(wav, dat, res, npar_t, iiter $
+                                ;yl = red_get_imean(wav, dat, res, npar_t, iiter $
+                                ;                   , xl = xl, rebin = rebin, densegrid = densegrid, thres = thres $
+                                ;                   , myg = myg, reflec = fit_reflectivity $
+                                ;                   , title = title + ' iter='+strtrim(iiter, 2))
+      yl = red_get_imean(wav, mdat, mres, npar_t, iiter $
                          , xl = xl, rebin = rebin, densegrid = densegrid, thres = thres $
                          , myg = myg, reflec = fit_reflectivity $
                          , title = title + ' iter='+strtrim(iiter, 2))
@@ -379,24 +406,36 @@ pro red::fitgains, all = all $
       
       ;; Pixel-to-pixel fits using a C++ routine to speed-up things
       if iiter eq 0 then begin
-        res1 = res[0:1,*,*]
+        mres1 = mres[0:1,*,*]        
+        ;;res1 = res[0:1,*,*]        
         if(keyword_set(ifit)) then begin
-          red_ifitgain, res1, wav, dat, xl, yl, ratio
-        endif else red_cfitgain, res1, wav, dat, xl, yl, ratio, nthreads=nthreads
-        res[0:1,*,*] = temporary(res1)
+          red_ifitgain, mres1, wav, mdat, xl, yl, mratio          
+          ;;red_ifitgain, res1, wav, dat, xl, yl, ratio          
+          ;;endif else red_cfitgain, res1, wav, dat, xl, yl, ratio, nthreads=nthreads          
+        endif else red_cfitgain, mres1, wav, mdat, xl, yl, mratio, nthreads=nthreads          
+        ;;res[0:1,*,*] = temporary(res1)        
+        mres[0:1,*,*] = temporary(mres1)        
       endif else begin
         if keyword_set(fit_reflectivity) then $
-           red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads $
+           ;;red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads $           
+           red_cfitgain2, mres, wav, mdat, xl, yl, mratio, pref, nthreads = nthreads $           
         else begin
           if(keyword_set(ifit)) then begin
-            red_ifitgain, res, wav, dat, xl, yl, ratio 
-          endif else red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads
+            ;;red_ifitgain, res, wav, dat, xl, yl, ratio             
+            red_ifitgain, mres, wav, mdat, xl, yl, mratio             
+            ;;endif else red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads            
+          endif else red_cfitgain, mres, wav, mdat, xl, yl, mratio, nthreads = nthreads            
         endelse
       endelse
 
     endfor                      ; iiter
 
-    yl = red_get_imean(wav, dat, res, npar_t, iiter $
+                                ;yl = red_get_imean(wav, dat, res, npar_t, iiter $
+                                ;                   , xl = xl, rebin = rebin, densegrid = densegrid $
+                                ;                   , thres = thres, myg = myg, reflec = fit_reflectivity $
+                                ;                   , title = title)
+
+    yl = red_get_imean(wav, mdat, mres, npar_t, iiter $
                        , xl = xl, rebin = rebin, densegrid = densegrid $
                        , thres = thres, myg = myg, reflec = fit_reflectivity $
                        , title = title)
@@ -404,10 +443,25 @@ pro red::fitgains, all = all $
     ;; Create cavity-error-free flat (save in "ratio" variable)
     print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
 
-    for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $
-       reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))
+    for ii = 0L, nwav - 1 do mratio[ii,*,*] *= reform(mres[0,*,*]) * $    
+       reform(red_get_linearcomp(wav[ii], mres, npar_t, reflec = fit_reflectivity))    
+    ;;for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $    
+    ;; reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))    
 
     print, 'done'
+    
+    ;; We want to save ratio and res so we need to fill them with data
+    ;; from mratio and mres.
+    tmp = fltarr(dims[1:2])    
+    for iwav = 0L, nwav - 1 do begin
+      tmp[mindx] = mratio[iwav, 0, *]
+      ratio[iwav, *, *] = tmp
+    endfor
+    tmp = dblarr(dims[1:2])        
+    for ii = 0, npar_t-1 do begin
+      tmp[mindx] = mres[ii, 0, *]
+      res[ii, *, *] = tmp
+    endfor
     
     ;; Save results
     if ~keyword_set(nosave) then begin

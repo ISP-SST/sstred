@@ -89,7 +89,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
   
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)            
 
   if n_elements(title) eq 0 then title = ''
 

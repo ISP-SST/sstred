@@ -125,35 +125,30 @@
 ;   2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                       ported to rdx and maintainable by us.
 ; 
+;   2022-07-29 : MGL. Change from a CRISP:: method to a RED:: method. 
+; 
 ;-
-pro crisp::demodulate, outname, immr, immt $
-                       , clips = clips $
-                       , cmap = cmap $
-                       , nbrfac = nbrfac $
-                       , nbrstates = nbrstates $
-                       , nbtfac = nbtfac $
-                       , nbtstates = nbtstates $
-                       , noremove_periodic = noremove_periodic $
-;                       , newflats = newflats $
-;                       , no_ccdtabs = no_ccdtabs $
-                       , nthreads = nthreads $
-                       , overwrite = overwrite $
-                       , smooth_by_kernel = smooth_by_kernel $
-                       , smooth_by_subfield = smooth_by_subfield $
-                       , tiles = tiles $
-                       , units = units $
-                       , wbg = wbg $
-                       , wcs = wcs $
-                       , wbstates = wbstates $
-                       , nearest = nearest 
-
-;  testing = 1
-
-  ;; What to do with the newflats keyword? The polarim method uses it
-  ;; in call to red_getstates_polarim.
+pro red::demodulate, outname, immr, immt $
+                     , clips = clips $
+                     , cmap = cmap $
+                     , nbrfac = nbrfac $
+                     , nbrstates = nbrstates $
+                     , nbtfac = nbtfac $
+                     , nbtstates = nbtstates $
+                     , noremove_periodic = noremove_periodic $
+                     , nthreads = nthreads $
+                     , overwrite = overwrite $
+                     , smooth_by_kernel = smooth_by_kernel $
+                     , smooth_by_subfield = smooth_by_subfield $
+                     , tiles = tiles $
+                     , units = units $
+                     , wbg = wbg $
+                     , wcs = wcs $
+                     , wbstates = wbstates $
+                     , nearest = nearest 
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                                  
 
   if file_test(outname) and ~keyword_set(overwrite) then begin
     print, inam + ' : Already exists: '+outname
@@ -163,8 +158,6 @@ pro crisp::demodulate, outname, immr, immt $
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, nbrfac 
   red_make_prpara, prpara, nbtfac
-;  red_make_prpara, prpara, newflats
-;  red_make_prpara, prpara, no_ccdtabs 
   red_make_prpara, prpara, smooth_by_kernel
   red_make_prpara, prpara, smooth_by_subfield
   red_make_prpara, prpara, tiles 
@@ -301,25 +294,22 @@ pro crisp::demodulate, outname, immr, immt $
     immr_dm = immr
   endelse
 
-  ;; Mozaic images 
+  ;; Mozaic images
+  nmask = bytarr(Nx, Ny)+1
   for ilc = 0L, Nlc-1 do begin
     im = red_mozaic(rimg[ilc], /crop) * nbrfac
-    nan = where(~finite(im),cc)
-    if cc gt 0 then begin
-      im(nan) = 0.
-      print, 'file ', rfiles[ilc], ' has ', cc, ' NaN values.'
-    endif
+    nmask = nmask and finite(im)
     img_r[*,*,ilc] = im
     im = red_mozaic(timg[ilc], /crop) * nbtfac
-    nan = where(~finite(im),cc)
-    if cc gt 0 then begin
-      im(nan) = 0.
-      print, 'file ', tfiles[ilc], ' has ', cc, ' NaN values.'
-    endif
+    nmask = nmask and finite(im)
     img_t[*,*,ilc] = im
-  endfor
-
-
+  endfor                        ; ilc
+  
+  for ilc = 0L, Nlc-1 do begin
+    img_r[*,*,ilc] *= nmask
+    img_t[*,*,ilc] *= nmask
+  endfor                        ; ilc
+  
   
   if keyword_set(smooth_by_subfield) then begin
 
@@ -390,7 +380,6 @@ pro crisp::demodulate, outname, immr, immt $
         psf /= total(psf, /double)
 
         ;;for ii=0, Nelements-1 do mm[ii,*,*] = red_convolve(reform(mm[ii,*,*]), psf)
-
         ;; Smooth the inverse modulation matrix
         for ilc = 0L, Nlc-1 do begin
           for istokes = 0L, Nstokes-1 do begin
@@ -432,7 +421,7 @@ pro crisp::demodulate, outname, immr, immt $
         resr[*,*,istokes] += rdx_cstretch(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc] $
                                                 , grid, nthreads=nthreads)
         ;;stop
-      endfor                    ; istokesstop
+      endfor                    ; istokes
       if n_elements(cmap) ne 0 then cmapp += rdx_cstretch(cmap, grid, nthreads=nthreads)
     endfor                      ; ilc
     if n_elements(cmap) ne 0 then cmapp /= Nlc
@@ -450,7 +439,6 @@ pro crisp::demodulate, outname, immr, immt $
     if n_elements(cmap) ne 0 then cmapp = cmap
     
   endelse
-
   
   ;; These are now Stokes cubes!
   img_t = temporary(rest)
@@ -541,21 +529,37 @@ pro crisp::demodulate, outname, immr, immt $
                               , prpara = prpara $
                               , prproc = inam
 
-  if ~keyword_set(noremove_periodic) $
-     and file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
-    ;; Fourier-filter images to get rid of periodic fringes
-    filt = shift(readfits('polcal/periodic_filter_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
-    ;; This reversing should actually depend on the align_map of the
-    ;; cameras, i.e., the signs of the diagonal elements [0,0] and
-    ;; [1,1]. 
-    filt[1:*, 1:*] = reverse(filt[1:*, 1:*], 1)
+  if ~keyword_set(noremove_periodic) and $
+     (file_test('polcal/periodic_filter_'+prefilter+'.fits') or $
+      file_test('polcal/periodic_filter_remapped_'+prefilter+'.fits')) then begin
+    ;; Fourier-filter images to get rid of periodic fringes      
+    if file_test('polcal/periodic_filter_'+prefilter+'.fits') then begin
+      ;; CRISP class
+      filt = shift(readfits('polcal/periodic_filter_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
+      ;; This reversing should actually depend on the align_map of the
+      ;; cameras, i.e., the signs of the diagonal elements [0,0] and
+      ;; [1,1]. 
+      filt[1:*, 1:*] = reverse(filt[1:*, 1:*], 1)
+    endif else begin
+      ;; RED class
+      filt = shift(readfits('polcal/periodic_filter_remapped_'+prefilter+'.fits', fhdr), Nxx/2, Nyy/2)
+      ;; This filter is oriented as WB data. So should the data be at
+      ;; this point.
+    endelse
     for istokes = 0L, Nstokes-1 do begin
-      frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx $
-                            , z = median(res[*,*,0, istokes, 0]))
-      filtframe = float(fft(fft(frame)*filt, /inv))
-      res[*,*,0, istokes, 0] = red_centerpic(filtframe, xs = Nx, ys = Ny)
+      red_missing, res[*,*,0, istokes, 0], nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+      if Nmissing gt 0 then begin
+        bg = (res[*,*,0, istokes, 0])[indx_missing[0]]
+        ;;  if istokes eq 0 then bg = (res[*,*,0, istokes, 0])[indx_missing[0]] else bg = 0
+      endif else begin
+        bg = median(res[*,*,0, istokes, 0])
+      endelse
+      frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx, z = bg)
+      filtframe = red_centerpic(float(fft(fft(frame)*filt, /inv)), xs = Nx, ys = Ny)
+      if Nmissing gt 0 then filtframe[indx_missing] = median(filtframe[indx_data])
+      ;;   if istokes eq 2 then stop ; <------------------------------------------------------------- ***
+      res[*,*,0, istokes, 0] = filtframe
     endfor                      ; ilc
-
     ;; Add info about this step
     taper_width = fxpar(fhdr, 'HOLEWDTH', count = Nkey)
     if Nkey gt 0 then red_make_prpara, filt_prpara, taper_width        

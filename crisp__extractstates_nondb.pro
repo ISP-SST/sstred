@@ -64,13 +64,13 @@
 ;
 ;-
 pro crisp::extractstates_nondb, strings, states $
-                          , force = force $
-                          , strip_settings = strip_settings $
-                          , polcal = polcal
+                                , force = force  $
+                                , polcal = polcal $
+                                , strip_settings = strip_settings
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
- 
+  inam = red_subprogram(/low, calling = inam1)                                          
+  
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
@@ -106,8 +106,6 @@ pro crisp::extractstates_nondb, strings, states $
 
   if Nnotcached eq 0 then return
 
-
-  
   if strmatch(strmid(strings[0],strlen(strings[0])-1,1),'[0-9]') then begin
 
 
@@ -151,7 +149,7 @@ pro crisp::extractstates_nondb, strings, states $
 ;      print, strings[ncindx]
 ;      print, wav, dwav, lambda
     endelse
-
+    
     states[ncindx].filename         = strings[ncindx] ; File names in input strings
     states[ncindx].detector         = detector        ; "camXIX" 
     states[ncindx].framenumber      = nums            ; Frame numbers
@@ -184,10 +182,10 @@ pro crisp::extractstates_nondb, strings, states $
       states[ncindx[ifile]].camera = red_strreplace((stregex(anahdr,'(\[)(CRISP-[WDTR]+)(\])' $
                                                              , /extr, /subexp))[2] $
                                                     , 'CRISP', 'Crisp') 
-      states[ncindx[ifile]].is_wb = strmatch(states[ncindx[ifile]].camera,'*-[DW]') 
+      states[ncindx[ifile]].is_wb = long(strmatch(states[ncindx[ifile]].camera,'*-[DW]') )
 
       if states[ncindx[ifile]].is_wb then begin
-        states[ncindx[ifile]].tun_wavelength = states[ncindx[ifile]].pf_wavelength ; [nm] Tuning wavelength
+        states[ncindx[ifile]].tun_wavelength = states[ncindx[ifile]].pf_wavelength   ; [nm] Tuning wavelength
         states[ncindx[ifile]].tuning         = states[ncindx[ifile]].prefilter+'_+0'      ; "6302_+0"
       endif else begin
         states[ncindx[ifile]].tun_wavelength = dwav[ifile]*1e-10 ; [nm] Tuning wavelength
@@ -255,7 +253,7 @@ pro crisp::extractstates_nondb, strings, states $
   ;; number of files?
 
   for ifile = 0, Nstrings-1 do begin
-
+    
     if file_test(strings[ifile]) then begin
       head = red_readhead(strings[ifile], /silent)
       states[ifile].filename = strings[ifile]
@@ -318,7 +316,7 @@ pro crisp::extractstates_nondb, strings, states $
         states[ifile].camera = camera
       endif 
     endelse
-    states[ifile].is_wb = strmatch(states[ifile].camera,'*-[DW]') 
+    states[ifile].is_wb = long(strmatch(states[ifile].camera,'*-[DW]') )
 
     if hastexp then begin
       ;; This is a summed file, use the single-exposure exposure

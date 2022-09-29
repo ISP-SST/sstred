@@ -133,15 +133,15 @@ pro red::fitscube_wcs_improve_spatial, filename $
       scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scannum)
       scans = reform(scannum.values)
       in = n_elements(scans)/2
-      iscan = scans[in]
+      iscan = scans[in]-scans[0]
       istokes = 0
       ituning = 0
     endif
     red_fitscube_getframe, filename, im_sst $ 
-                            , iframe = iframe $
-                            , iscan = iscan $
-                            , istokes = istokes $
-                            , ituning = ituning
+                           , iframe = iframe $
+                           , iscan = iscan $
+                           , istokes = istokes $
+                           , ituning = ituning
   endif
   
   im_sst = im_sst/median(im_sst)

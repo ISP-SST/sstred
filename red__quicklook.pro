@@ -305,7 +305,7 @@ pro red::quicklook, align = align $
     ;; Search file names for scan 0, use them to find out what states
     ;; are available.
     ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
-    files0 = red_raw_search(dirs[iset] + '/' + cam, instrument = instrument, scanno = 0, count = Nfiles)
+    files0 = self -> raw_search(dirs[iset] + '/' + cam, scanno = 0, count = Nfiles)
 
     self -> extractstates, files0, states0
         
@@ -317,30 +317,7 @@ pro red::quicklook, align = align $
     states_count = 0
     undefine, pat
     case 1 of
-      n_elements(use_states) gt 0 : begin          
-        for istate = 0,n_elements(use_states)-1 do begin
-          imatch = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
-          if Nmatch ge 1 then begin
-            states_count++
-            red_append, ustat2, ustat[imatch] 
-            fn = states0[indx[imatch]].filename
-            prts = strsplit(fn,'[_.]',/extract)
-            if strmatch(cam,'*W*') then begin
-              if instrument eq 'CHROMIS' then $
-                red_append, pat, '*' + prts[-3] + '*' $
-              else $
-                red_append, pat, '*' +prts[-5] + '*'
-            endif else begin
-              if instrument eq 'CHROMIS' then $
-               red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
-              else $
-                red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
-            endelse
-          endif else print, 'There is no match for ', use_states[istate], ' state.'
-        endfor                 ; istate
-        if states_count eq 0 then print,'There are no matches for provided states. You have to choose states manually.'
-      end
-      
+
       keyword_set(core_and_wings) : begin
         for ipref = 0, Npref-1 do begin
           sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
@@ -399,7 +376,32 @@ pro red::quicklook, align = align $
         use_states = ustat2
       end
 
+      n_elements(use_states) gt 0 : begin          
+        for istate = 0,n_elements(use_states)-1 do begin
+          imatch = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
+          if Nmatch ge 1 then begin
+            states_count++
+            red_append, ustat2, ustat[imatch] 
+            fn = states0[indx[imatch]].filename
+            prts = strsplit(fn,'[_.]',/extract)
+            if strmatch(cam,'*W*') then begin
+              if instrument eq 'CHROMIS' then $
+                 red_append, pat, '*' + prts[-3] + '*' $
+              else $
+                 red_append, pat, '*' +prts[-5] + '*'
+            endif else begin
+              if instrument eq 'CHROMIS' then $
+                 red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+              else $
+                 red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+            endelse
+          endif else print, 'There is no match for ', use_states[istate], ' state.'
+        endfor                  ; istate
+        if states_count eq 0 then print,'There are no matches for provided states. You have to choose states manually.'
+      end
+      
       else :
+      
     endcase
 
     if states_count eq 0 then begin 
@@ -748,17 +750,19 @@ pro red::quicklook, align = align $
         ;; This part needs to 1) not use non-pipeline subprograms and
         ;; 2) be modified to support aspect ratios != 1.
         
-        caminfo = red_camerainfo(detector)
+        ;; caminfo = red_camerainfo(detector)
         
         lambda = states[sel2[0]].tun_wavelength ; Wavelength [m]
         telescope_d = 0.97d
         arcsecperpix = self.image_scale
-        pixelsize = caminfo.pixelsize
+        ;; pixelsize = caminfo.pixelsize
         sz = max(dim)
         
-        F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
-        Q_number = F_number * lambda/pixelsize
+        ;;   F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
+        ;;   Q_number = F_number * lambda/pixelsize
 
+        Q_number = lambda/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.)) 
+        
         LimFreq = sz / Q_number
         rc = LimFreq/2.d
         r = round(rc)+2
@@ -1015,7 +1019,7 @@ pro red::quicklook, align = align $
         mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
         file_delete, mname, /allow_nonexist
         spawn, 'ffmpeg -n -i "' + outdir + namout $
-               + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
+               + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
                + mname + '"'
         file_delete, outdir + namout
 ;        spawn, 'rm "' + outdir + namout + '"'

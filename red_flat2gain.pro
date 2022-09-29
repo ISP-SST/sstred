@@ -74,16 +74,18 @@ function red_flat2gain, flat, $
   if(n_elements(max) eq 0) then max = 4.0
   if(n_elements(smoothparameter) eq 0) then smoothparameter = 7.0d0
 
-  med = median(flat)
+  indx = where(flat gt max(flat)*.1, complement = cindx, ncompl = Nc) ; CRISP w/ new cameras
+  
+  ;;med = median(flat)  
+  med = median(flat[indx]) 
   g = med / (flat > (med*1e-5))
   mask1 = ~finite(g)
   pos = where(mask1, count, complement=pos1)
-  gain_nozero = red_fillnan(g)
-  if(count gt 0) then begin
-    g[pos]=0.0
-  endif
+  if arg_present(gain_nozero) then gain_nozero = red_fillnan(g)
+  if(count gt 0) then g[pos]=0.0
+  if Nc gt 0 then g[cindx] = 0.0
 
- ;; dgain = g - smooth(g, smoothparameter, /edge_truncate)
+  ;; dgain = g - smooth(g, smoothparameter, /edge_truncate)
   psf = red_get_psf(round(3*smoothparameter), round(3*smoothparameter) $
                     , double(smoothparameter), double(smoothparameter))
   dgain = g - red_convolve(g, psf / total(psf))
@@ -91,7 +93,7 @@ function red_flat2gain, flat, $
 
   ker = replicate(1B, [5, 5])
   mask = morph_open(mask, ker)
-  
+
   idx = where(mask AND finite(g), count, complement= idx1)
   if(count NE n_elements(flat)) then g[idx1] = 0.0
   if(count gt 0) then g[idx] = median(flat[idx])/flat[idx]

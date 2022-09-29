@@ -22,4 +22,5 @@ extern void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *
 extern void polcal_1d(pol_t &pol);
 extern void polcal_fov(pol_t &pol);
 extern void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, float *qwp, float *lp);
+extern void polcal_2d_mask(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, float *qwp, float *lp, uint8_t *mask);
 extern void fillpix(int nx, int ny, float *img,  uint8_t *mask, int nt);

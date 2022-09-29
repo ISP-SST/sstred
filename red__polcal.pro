@@ -46,6 +46,8 @@
 ; 
 ;   2018-04-16 : MGL. Read single FITS files with extensions.
 ; 
+;   2022-09-02 : MGL. Make a spatial mask and use it.
+; 
 ;-
 pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref
 
@@ -125,6 +127,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     print, inam + ' : Detected offset angle -> '+string(da)+' degrees'
     print, inam + ' :          retardance   -> '+string(ql[0])+' degrees'
 
+    
     ;; Init matrix for each camera
     par_t = red_polcal_fit(t1d, tqw, tlp-da, norm=4, fix=ql)
     par_r = red_polcal_fit(r1d, rqw, rlp-da, norm=4, fix=ql)
@@ -146,7 +149,9 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     
     ;; Do fits and save
     data = red_readdata(rname)
-    mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=nthreads)
+    totdata=total(total(total(data,1),1),1)
+    mask = totdata gt max(totdata)/10. ; Mask that deselects bad pixels and pixels without light
+    mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=nthreads, mask = mask)
     file_mkdir, outdir
     oname = outdir + ucam[0]+'_'+pref+'_polcal.fits'
     print, inam + ' : saving '+oname
@@ -155,7 +160,9 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     red_writedata, oname, reform(mm, [16,dim[2],dim[3]], /overwrite), filetype='FITS', /overwrite
 
     data = red_readdata(tname)
-    mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=nthreads)
+    totdata=total(total(total(data,1),1),1)
+    mask = totdata gt max(totdata)/10. ; Mask that deselects bad pixels and pixels without light
+    mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=nthreads, mask = mask)
     oname = outdir + ucam[1]+'_'+pref+'_polcal.fits'
     print, inam + ' : saving '+oname
     dim = size(mm,/dim)

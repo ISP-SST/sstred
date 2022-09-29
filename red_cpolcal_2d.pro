@@ -15,7 +15,7 @@
 ; 
 ; :author:
 ; 
-;    2012-01-20 : P.Suetterlin, ISP 
+;    2012-01-20 : P. Suetterlin, ISP 
 ; 
 ; 
 ; 
@@ -31,18 +31,18 @@
 ;      polcal data, 4 LC states, N_q angles of the Quarter wave plate
 ;      (QWP), N_lp angles of the linear polarizer (LP).
 ;   
-;    qq : in, type=fltarr(N_q)
+;    guess : in, optional, type=fltarr(18)
 ;   
-;      The actual QWP angles
+;       Initial values. If omitted, they are computed from the
+;       spatially averaged data
 ;   
 ;    lp : in, type=fltarr(N_lp)
 ;   
 ;       The actual LP angles
 ;   
-;    guess : in, optional, type=fltarr(18)
+;    qq : in, type=fltarr(N_q)
 ;   
-;       Initial values. If omitted, they are computed from the
-;       spatially averaged data
+;      The actual QWP angles
 ;   
 ; 
 ; :Keywords:
@@ -50,26 +50,28 @@
 ;    chisq : out
 ;   
 ;      Named variable to pass back the chi-square values of the fit
-;   
-;    nthreads : in, optional, default="# of CPUs"
+;
+;    mask : in, optional, type="bytarr(Sx,Sy)"
+;
+;    nthreads : in, optional, type=integer, default="# of CPUs"
 ;   
 ;      Number of threads to use.
 ;   
-; :restrictions:
+; :Restrictions:
 ;
 ;       The external C library creduc.so has to be available.
 ; 
 ; 
-; :history:
+; :History:
 ; 
 ;   2013-06-04 : Split from monolithic version of crispred.pro.
 ; 
 ;   2013-07-11 : MGL. Use red_polcal_fit, not polcal_fit.
 ; 
-; 
+;   2022-09-02 : PS. New keyword mask.
 ; 
 ;-
-FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
+FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt, mask=mask
 
   on_error, 2
   
@@ -90,12 +92,6 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
   ;;; # of threads = # of CPUs
   IF NOT keyword_set(nt) THEN nt = !CPU.HW_NCPU ELSE nt = long(nt)
   
- ;;; If no initial guess is supplied, create one from averaged data
-  IF n_params() LT 4 THEN BEGIN
-     d1d = total(total(dat, 5), 4)
-     guess = red_polcal_fit(d1d, qq, lp, norm=4)
-  ENDIF
-  
   nqq = n_elements(qq)
   nlp = n_elements(lp)
   lc = bindgen(4)
@@ -106,12 +102,45 @@ FUNCTION red_cpolcal_2D, dat, qq, lp, guess, chisq = chisq, nthreads=nt
   ny = dim[4]
   npix = nx * ny
   res = dblarr(18, nx, ny)
+  IF keyword_set(mask) THEN BEGIN
+    IF total((size(mask, /dim) EQ [nx, ny])) NE 2 THEN BEGIN
+      message, 'Supplied mask must have the same dimensions as the data!', /info
+      return, -1
+    ENDIF
+    IF (size(mask, /type) NE 1) OR (max(mask) GT 1b) THEN BEGIN
+      message, 'Supplied mask must be a logical BYTE array', /info
+      return, -1
+    ENDIF
+    tm = total(mask GT 0)
+  ENDIF
+  
+  ;;; If no initial guess is supplied, create one from averaged data
+  IF n_params() LT 4 THEN BEGIN
+    IF keyword_set(mask) THEN BEGIN
+      d1d = fltarr(nlc, nqq, nlp)
+      FOR k=0, nlp-1 DO FOR j=0, nqq-1 DO FOR i=0, nlc-1 DO $
+        d1d[i, j, k] = total(reform(dat[i, j, k, *, *])*mask)/tm
+    ENDIF ELSE BEGIN
+      d1d = total(total(dat, 5), 4)
+    ENDELSE
+    guess = red_polcal_fit(d1d, qq, lp, norm=4)
+    ;;print, reform(guess[0:15], 4, 4)
+    ;;print, guess[16:*]
+  ENDIF
   FOR ii=0, 17 DO res[ii, *, *] = guess[ii]
   chisq = fltarr(nx, ny)
   
   print, 'red_cpolcal_2d : using libfile -> '+libfile
-  dum = call_external(libfile, 'cpolcal_2d', nlc, nqq, nlp, npix, $
-                      dat, qq, lp, res, chisq, nt)
+  IF keyword_set(mask) THEN BEGIN
+    
+    dum = call_external(libfile, 'cpolcal_2d_mask', nlc, nqq, nlp, npix, $
+                        dat, qq, lp, res, chisq, nt, mask)
+
+  ENDIF ELSE BEGIN
+    
+    dum = call_external(libfile, 'cpolcal_2d', nlc, nqq, nlp, npix, $
+                        dat, qq, lp, res, chisq, nt)
+  ENDELSE
                                 ;
   res = float(reform(res[0:15, *, *], 4, 4, nx, ny))
   

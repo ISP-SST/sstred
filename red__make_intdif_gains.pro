@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Make time-dependent gainfiles.
 ; 
 ; :Categories:
 ;
@@ -47,6 +47,10 @@
 ;   
 ;      Process all data sets.
 ;
+;   overwrite : in, optional, type=boolean
+;
+;      Overwrite existing gainfiles.
+;
 ;   tdirs : in, optional, type=strarr
 ;   
 ;      Process datasets with tdirs timestamps
@@ -71,6 +75,9 @@
 ;                backscatter correction, i.e., 8542 and 7772.
 ;
 ;   2021-07-06 : OA. Add tdirs keyword.
+; 
+;   2019-03-28 : MGL. New keyword overwrite. Default is now not to
+;                overwrite existing gainfiles.
 ;
 ;-
 pro red::make_intdif_gains, all = all $
@@ -79,6 +86,7 @@ pro red::make_intdif_gains, all = all $
                             , debug = debug $
                             , max = max $
                             , min = min $
+                            , overwrite = overwrite $
                             , pref = pref $
                             , preserve = preserve $
                             , psfw = psfw $
@@ -86,8 +94,8 @@ pro red::make_intdif_gains, all = all $
                             , smallscale = smallscale $
                             , smooth = smooth $
                             , sumlc = sumlc $
-                            , timeaver = timeaver $
-                            , tdirs = tdirs
+                            , tdirs = tdirs $
+                            , timeaver = timeaver 
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -190,7 +198,7 @@ pro red::make_intdif_gains, all = all $
 
       restore, dfile
       ;; Variables in dfile: done, uwav, ulc, uscan, Ntunings, Nlc,
-      ;; Nscans, pref, Nx, Ny, udwav
+      ;; Nscans, pref, Nx, Ny, udwav, usettings, ufullstate
 
       ;; Open files
       openr, lun, cfile, /get_lun
@@ -235,6 +243,8 @@ pro red::make_intdif_gains, all = all $
                                , prefilter: pref $
                                , fpi_state: uwav[iwav] $
                                , tuning: uwav[iwav]  $
+                               , cam_settings: usettings[iwav] $                               
+                               ;;, fullstate: ufullstate[iwav] $                               
                              } $
                              , cflatdata = cflatdata $
                              , cflatname = cflatname 
@@ -259,6 +269,8 @@ pro red::make_intdif_gains, all = all $
                              , prefilter: pref $
                              , fpi_state: uwav[iwav] $
                              , tuning: uwav[iwav]  $
+                             , cam_settings: usettings[iwav] $ 
+                             ;;, fullstate: ufullstate[iwav] $
                            } $
                            , cgaindata = cgaindata $
                            , cgainname = cgainname 
@@ -286,13 +298,15 @@ pro red::make_intdif_gains, all = all $
       
       ;; Sum images
       for ss = t0, t1 do begin 
+
+        ;; Do we want this scan?
         if n_elements(scan) gt 0 then begin
           if uscan[ss] ne scan then begin
-            print, inam + ' : skipping scan -> '+uscan[ss]
+            print, inam + ' : Not wanted -> ' + detectors[icam] + ', Scan '+strtrim(uscan[ss], 2)
             continue
           endif
         endif
-
+       
         ;; Get timeaver bounds
         dt = timeaver/2
         x0 = (ss-dt) > t0
@@ -311,7 +325,7 @@ pro red::make_intdif_gains, all = all $
           endfor                ; ii
           print, ' '
         endif else begin
-          if (ox0 ne x0) or (ox1 ne x1) then print, inam + 'correcting loaded cube:' else $
+          if (ox0 ne x0) or (ox1 ne x1) then print, inam + ' : Correcting loaded cube:' else $
              print, inam + ' : time-average window has not changed -> not loading data for this scan'
           if ox0 ne x0 then begin
             print, '   -> x0(='+red_stri(x0)+') != ox0(='+red_stri(ox0)+') -> removing t='+red_stri( ox0)
@@ -333,6 +347,37 @@ pro red::make_intdif_gains, all = all $
 
           endif else begin
 
+            if ~keyword_set(sumlc) then begin
+              ;; Check if scan is already done      
+              ofiles = strarr(Ntunings)
+              for iwav = 0, Ntunings-1 do begin
+                fullstate = strjoin([(strsplit(ufullstate[iwav],'_',/extract))[0:-2],'lc'+strtrim(long(ulc[ilc]), 2)],'_')
+                ofiles[iwav] = self -> filenames('scangain' $
+                                                 , {camera:cams[icam] $
+                                                    , detector:detectors[icam] $
+                                                    , cam_settings: usettings[iwav] $ 
+                                                    , fullstate: fullstate $
+;                                         , fullstate:strjoin([pref $
+;                                         , uwav[iwav] $
+;                                         , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
+                                                    , scannumber:uscan[ss] $
+                                                   } $
+                                                 , timestamp = imdir $
+                                                 , /wild_framenumber $
+                                                 , /wild_prefilter $
+                                                 , /wild_tuning $
+                                                )
+                
+                
+              endfor            ; iwav
+              
+              done = file_test(ofiles)
+              if min(done) eq 1 && ~keyword_set(overwrite) then begin
+                print, inam + ' : Already done -> ' + detectors[icam] + ', Scan '+strtrim(uscan[ss], 2)+', LC'+strtrim(ilc, 2) 
+                continue
+              endif
+            end
+            
             if ~keyword_set(sumlc) then begin
               cub2 = transpose(cub[*,*,*,ilc], [2,0,1])
             endif else begin
@@ -362,20 +407,22 @@ pro red::make_intdif_gains, all = all $
           
           ;; Compute new gains
           for iwav = 0, Ntunings-1 do begin
-            
+            fullstate = strjoin([(strsplit(ufullstate[iwav],'_',/extract))[0:-2],'lc'+strtrim(long(ulc[ilc]), 2)],'_')
             ofile = self -> filenames('scangain' $
                                       , {camera:cams[icam] $
                                          , detector:detectors[icam] $
-                                         , fullstate:strjoin([pref $
-                                                              , uwav[iwav] $
-                                                              , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
+                                         , cam_settings: usettings[iwav] $ 
+                                         , fullstate: fullstate $
+;                                         , fullstate:strjoin([pref $
+;                                         , uwav[iwav] $
+;                                         , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
                                          , scannumber:uscan[ss] $
                                         } $
                                       , timestamp = imdir $
                                       , /wild_framenumber $
                                       , /wild_prefilter $
                                       , /wild_tuning $
-                                      )
+                                     )
             
             
             if keyword_set(sumlc) and ilc gt 0 then begin
@@ -386,9 +433,11 @@ pro red::make_intdif_gains, all = all $
               ofile_0 = self -> filenames('scangain' $
                                           , {camera:cams[icam] $
                                              , detector:detectors[icam] $
-                                             , fullstate:strjoin([pref $
-                                                                  , uwav[iwav] $
-                                                                  , 'lc'+strtrim(long(ulc[0]), 2)], '_') $
+                                             , cam_settings: usettings[iwav] $ 
+                                             , fullstate: fullstate $
+;                                             , fullstate:strjoin([pref $
+;                                                                  , uwav[iwav] $
+;                                                                  , 'lc'+strtrim(long(ulc[0]), 2)], '_') $
                                              , scannumber:uscan[ss] $
                                             } $
                                           , timestamp = imdir $

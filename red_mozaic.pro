@@ -54,8 +54,16 @@ function red_mozaic, momfbd_struct, _REF_EXTRA = ex
   
   do_transpose = 0
   if double(momfbd_struct.version) lt 20201022.1 then begin
+    ;;  print, 'Do transpose'
     do_transpose = 1
   endif
+
+  if 1 then return, rdx_mozaic(momfbd_struct.patch.img $
+                               , momfbd_struct.patch.xl $
+                               , momfbd_struct.patch.yl $
+                               , transpose=do_transpose $
+                               , ptranspose=do_transpose $
+                               , _EXTRA=ex)
   
   return, mozaic( momfbd_struct.patch.img, $
                   momfbd_struct.patch[*,0].xl, $

@@ -39,6 +39,10 @@
 ;      value of the crop keyword is ignored and is set to the
 ;      auto-detected crop parameters.
 ;
+;    circular_fov : in, optional, type=boolean
+;
+;      Do not make room for corners of the FOV in derotation.
+;
 ;    clip : in, optional, type=array 
 ;
 ;      Successive clips to use when calculating stretch vectors. See
@@ -104,6 +108,10 @@
 ;      For data from a single datestamp directory, construct the
 ;      filename as before multiple directories were implemented.
 ;
+;    padmargin : in, optional, type=integer, default=40
+;
+;       Amount of rotation padding in pixels.
+; 
 ;    point_id : in, optional, type=string, default="From first file"
 ;
 ;      Value for the POINT_ID header keyword. By default the value if
@@ -213,10 +221,14 @@
 ;                 directories. New keywords oldname and point_id.
 ;
 ;    2022-04-08 : OA. Added time-dependent solar coordinates in WCS.
+; 
+;    2022-09-04 : MGL. New keyword circular_fov.
+; 
+;    2022-09-26 : MGL. New keyword padmargin.
 ;
 ;-
 pro red::make_wb_cube, dirs $
-                       , align_interactive = align_interactive $
+                       , align_interactive = align_interactive $                       
                        , autocrop = autocrop $
                        , clip = clip $
                        , crop = crop $
@@ -225,22 +237,24 @@ pro red::make_wb_cube, dirs $
                        , interactive = interactive $
                        , limb_data = limb_data $
                        , nametag = nametag $
+                       , nearest = nearest $
                        , negang = negang $
                        , nomissing_nans = nomissing_nans $
+                       , circular_fov = circular_fov $
                        , nostretch = nostretch $
                        , np = np $
+                       , nthreads = nthreads $
+                       , ofile = ofile  $
                        , oldname = oldname $
+                       , point_id = point_id $
                        , rotation = rotation $
+                       , padmargin = padmargin $
                        , scannos = scannos $
                        , subtract_meanang = subtract_meanang $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
-                       , ybd = ybd $
-                       , nthreads = nthreads $
-                       , nearest = nearest $
-                       , point_id = point_id $
-                       , ofile = ofile
+                       , ybd = ybd
 
   
   ;; Name of this method
@@ -275,6 +289,7 @@ pro red::make_wb_cube, dirs $
   
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
+  if n_elements(padmargin) eq 0 then padmargin  = 40
   
   ;; Make prpara
   red_make_prpara, prpara, align_interactive
@@ -283,10 +298,11 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, dirs    
   red_make_prpara, prpara, direction    
   red_make_prpara, prpara, integer
-  red_make_prpara, prpara, negang
+  red_make_prpara, prpara, negang  
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
+  red_make_prpara, prpara, padmargin 
   red_make_prpara, prpara, point_id 
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, scannos
@@ -339,8 +355,8 @@ pro red::make_wb_cube, dirs $
   if keyword_set(make_raw) then begin
     stop
     ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
-    files = red_raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
-                           , scannos = scannos, count = Nraw)
+    files = self -> raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
+                               , scannos = scannos, count = Nraw)
     if Nraw eq 0 then stop
     self -> extractstates, files, states
 
@@ -440,14 +456,20 @@ pro red::make_wb_cube, dirs $
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
+
+    red_missing, im, /inplace, missing_type_wanted = 'nan'
+;    red_missing, im, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data        
+;    bg = !Values.F_NaN
+;    if Nmissing gt 0 then im[indx_missing] = bg
+    
     if keyword_set(make_raw) then begin
       if size(im,/n_dim) gt 2 then im = im[*, *, 0]
       im -= dark
       im *= gain
+      im = red_fillpix(im, nthreads = 4L)
     endif
     im = rotate(temporary(im), direction)
     
-      
     red_fitspar_getdates, hdr $
                           , date_beg = date_beg $
                           , date_end = date_end $
@@ -486,7 +508,7 @@ pro red::make_wb_cube, dirs $
       time[iscan] = ttime
     endelse
 
-    cub[*, *, iscan] = red_fillpix((temporary(im))[x0:x1, y0:y1], nthreads = 4L)
+    cub[*, *, iscan] = (temporary(im))[x0:x1, y0:y1]
     
     ;; Measure time-dependent intensity variation (sun moves in the Sky)
     if keyword_set(limb_data) then begin
@@ -494,7 +516,7 @@ pro red::make_wb_cube, dirs $
       ;; a certain width, from the limb inward.
       strip_width = 5.                                                ; Approximate width, 5 arsec
       strip_width = round(strip_width/float(self.image_scale))        ; Converted to pixels
-      if iscan gt 0 then wdelete ; Don't use more than one window for the bimodal plots
+      if iscan gt 0 then wdelete                                      ; Don't use more than one window for the bimodal plots
       bimodal_threshold = cgOtsu_Threshold(cub[*, *, iscan], /PlotIt) ; Threshold at the limb
       disk_mask = cub[*, *, iscan] gt bimodal_threshold               
       strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
@@ -531,7 +553,17 @@ pro red::make_wb_cube, dirs $
   ;; calculate the alignment
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads)
+
+;    red_missing, cub[*,*,iscan] $    
+;                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data    
+    bg = !Values.F_NaN
+;    if Nmissing gt 0 then begin    
+;      bg = (cub[*,*,iscan])[indx_missing[0]]    
+;    endif else begin    
+;      bg = median(cub[*,*,iscan])    
+;    endelse    
+
+    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads, background = bg)
   endfor                        ; iscan
 
   ;; Align cube
@@ -562,9 +594,9 @@ pro red::make_wb_cube, dirs $
     Y_in = yc + [-1, -1, 1,  1]*ybd/2
     roiobject_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
     roiobject_in -> setproperty, name = 'Default'
-
+    
     ;; Fire up the XROI GUI.
-    dispim = bytscl(total(cub, 3))
+    dispim = bytscl(red_histo_opt(total(cub, 3)))
     xroi, dispim, regions_in = [roiobject_in], regions_out = roiobject, /block $
           , tools = ['Translate-Scale', 'Rectangle'] $
           , title = 'Modify or define alignment ROI'
@@ -584,17 +616,38 @@ pro red::make_wb_cube, dirs $
   ;; Calculate the image shifts
   shift = red_aligncube(cub, np, xbd = align_size[0], ybd = align_size[1] $
                         , xc = xc, yc = yc, nthreads=nthreads) ;, cubic = cubic, /aligncube)
-
-  ;; Get maximum angle and maximum shift in each direction
-  maxangle = max(abs(ang))
-  mdx0 = reform(min(shift[0,*]))
-  mdx1 = reform(max(shift[0,*]))
-  mdy0 = reform(min(shift[1,*]))
-  mdy1 = reform(max(shift[1,*]))
-  ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
-
+  
+  if keyword_set(circular_fov) then begin
+    ;; Red_rotation.pro only uses keyword full (which is set to ff
+    ;; when calling from make_*_cube) if it is an array with at least
+    ;; 5 elements. So setting it to -1 is the same as letting it stay
+    ;; undefined, but it can still be passed on to make_nb_cube.
+    ff = -1
+    ff = [0, -padmargin, padmargin, -padmargin, padmargin, 0]
+    ;; Possibly change this to take the shifts into account but not
+    ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
+  endif else begin
+    ;; Get maximum angle and maximum shift in each direction
+    maxangle = max(abs(ang))
+    mdx0 = reform(min(shift[0,*]))
+    mdx1 = reform(max(shift[0,*]))
+    mdy0 = reform(min(shift[1,*]))
+    mdy1 = reform(max(shift[1,*]))
+    ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
+  endelse
+  
+  if file_test(dirs[0]+'/fov_mask.fits') then begin
+    ;; If multiple directories, the fov_mask should be the same. Or we
+    ;; have to think of something.
+    fov_mask = readfits(dirs[0]+'/fov_mask.fits')
+    mr = momfbd_read(wfiles[0], /nam)
+    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    fov_mask = red_rotate(fov_mask, direction)
+  endif
+  
   ;; De-rotate and shift cube
-  bg = median(cub1)
+  bg = median(cub1)  
+  bg = !Values.F_NaN
   dum = red_rotation(cub1[*,*,0], full=ff $
                      , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
   nd = size(dum,/dim)
@@ -602,9 +655,19 @@ pro red::make_wb_cube, dirs $
   ny = nd[1]
   cub = fltarr([nd, Nscans])
   cub[*,*,0] = temporary(dum)
-  for iscan=1, Nscans-1 do begin
+  for iscan=0, Nscans-1 do begin
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
+
+;    red_missing, cub1[*,*,iscan] $    
+;                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data    
+;    bg = !Values.F_NaN
+;    if Nmissing gt 0 then begin    
+;      bg = (cub1[*,*,iscan])[indx_missing[0]]    
+;    endif else begin    
+;      bg = median(cub[*,*,iscan])    
+;    endelse    
+
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
                                   , ang[iscan], shift[0,iscan], shift[1,iscan] $
                                   , background = bg, nthreads=nthreads)
@@ -629,6 +692,7 @@ pro red::make_wb_cube, dirs $
   if ~keyword_set(nostretch) then begin
     for iscan = 0L, Nscans - 1 do begin
       red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
+      if n_elements(fov_mask) gt 0 then cub1[*, *, iscan] = cub1[*, *, iscan] * fov_mask
       ;;imm1 = red_stretch_linear(cub[*,*,iscan], reform(grid[iscan,*,*,*]), nthreads = nthreads)
       imm = red_rotation(cub1[*,*,iscan], full=ff $
                          , ang[iscan], shift[0,iscan], shift[1,iscan] $
@@ -861,11 +925,13 @@ pro red::make_wb_cube, dirs $
 ;  print, inam + ' : Wrote file '+odir + ofil
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
-
+  
   if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
     ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
-  endif
+  endif else begin
+    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'median'
+  endelse
 
   print, inam + ' : Add calibration data to file '+odir + ofil
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'

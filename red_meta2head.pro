@@ -180,7 +180,7 @@ function red_meta2head, head, metadata=metaStruct
         if tuninfo[0] ne '' then begin
           if tuninfo[1] ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                                    , red_keytab('pref'), tuninfo[1] $
-                                                   , 'Inferred from tuning info in filename.'
+             , 'Inferred from tuning info in filename.'
         endif
       endif
       
@@ -201,9 +201,10 @@ function red_meta2head, head, metadata=metaStruct
           endif
         endif else begin
           ;; NB
-          red_fitsaddkeyword, anchor = anchor, newhead $
-                          , 'STATE', red_strreplace(tuninfo[0], '.', '_') $
-                          , 'Inferred from tuning info in filename.' ;strjoin(tuninfo[2:3], '_')          
+          if tuninfo[0] ne '' then $
+             red_fitsaddkeyword, anchor = anchor, newhead $
+                                 , 'STATE', red_strreplace(tuninfo[0], '.', '_') $
+                                 , 'Inferred from tuning info in filename.' ;strjoin(tuninfo[2:3], '_')
         endelse
       endif
 ;      endif else begin
@@ -337,6 +338,11 @@ function red_meta2head, head, metadata=metaStruct
             wavelnth = 557.8e-9
             fwhm = 0.30e-9
             waveband = 'Fe I ' + strtrim(prefilter,2)
+          end
+          '5896' : begin        ; CRISP (with new cameras)
+            wavelnth = 589.7e-9
+            fwhm = 0.38e-9
+            waveband = 'Na D ' + strtrim(prefilter,2)
           end
           '5897' : begin        ; CRISP
             wavelnth = 589.7e-9

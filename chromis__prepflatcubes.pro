@@ -71,11 +71,7 @@ pro chromis::prepflatcubes, flatdir = flatdir $
   red_make_prpara, prpara, pref
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-;  ;; Logging
-;  help, /obj, self, output = selfinfo 
-;  red_writelog, selfinfo = selfinfo
+  inam = red_subprogram(/low, calling = inam1)                                            
 
   ;; Check keywords
   if(~keyword_set(flatdir)) then flatdir = self.out_dir+'/flats/'

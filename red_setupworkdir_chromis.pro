@@ -102,6 +102,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                               , no_observer_metadata = no_observer_metadata $
                               , old_dir = old_dir 
 
+  ;; Name of this program
   inam = red_subprogram(/low, calling = inam1)
 
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
@@ -109,8 +110,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                           , comment:'Name of instrument'} $
                          , {keyword:'TELCONFG', value:'Schupmann, imaging table', $
                             comment:'Telescope configuration'}]
-
-
+  
   ;; Are there darks and flats?
   darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
                                         , count = Ndarkdirs)
@@ -121,7 +121,6 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     print, 'No CHROMIS darks were found. No setup generated.'
     return
   endif
-  
   
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.

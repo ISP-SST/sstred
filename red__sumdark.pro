@@ -5,7 +5,7 @@
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SSTRED pipeline
 ; 
 ; 
 ; :Author:
@@ -120,19 +120,17 @@
 ;   2018-04-18 : MGL. Write only in FITS format.
 ;
 ;-
-pro red::sumdark, overwrite = overwrite, $
-                  check = check, $
-                  cams = cams, $
-                  dirs = dirs, $
-                  outdir = outdir, $
-                  softlink = softlink, $
-                  nthreads = nthreads, $
-                  sum_in_rdx = sum_in_rdx, $
-                  filter = filter
+pro red::sumdark, cams = cams $
+                  , check = check $
+                  , dirs = dirs $
+                  , filter = filter $
+                  , nthreads = nthreads $
+                  , outdir = outdir $
+                  , overwrite = overwrite $
+                  , softlink = softlink $
+                  , sum_in_rdx = sum_in_rdx
 
   ;; Defaults
-;  if n_elements(overwrite) eq 0 then overwrite = 0
-;  if n_elements(check) eq 0 then check = 0
   if n_elements(dirs) gt 0 then dirs = [dirs] $
   else if ptr_valid(self.dark_dir) then dirs = *self.dark_dir
   if n_elements(cams) gt 0 then cams = [cams] $
@@ -147,15 +145,10 @@ pro red::sumdark, overwrite = overwrite, $
   red_make_prpara, prpara, dirs
   red_make_prpara, prpara, filter
   red_make_prpara, prpara, outdir
- 
+  
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
-;  ;; Logging
-;  help, /obj, self, output = selfinfo1
-;  help, /struct, self.done, output = selfinfo2 
-;  red_writelog, selfinfo = [selfinfo1, selfinfo2]
-
+  inam = red_subprogram(/low, calling = inam1)
+  
   Ncams = n_elements(cams)
   if( Ncams eq 0) then begin
     print, inam+' : ERROR : undefined cams (and cameras)'
@@ -263,12 +256,7 @@ pro red::sumdark, overwrite = overwrite, $
 
       self -> headerinfo_addstep, head, prstep = 'SUMMING' $
                                   , prproc = inam, prpara = prpara
-
-;      ;; Write ANA format dark
-;      print, inam+' : saving ', darkname
-;      fxaddpar, head, 'FILENAME', file_basename(darkname), after = 'DATE'
-;      red_writedata, darkname, dark, header=head, filetype='ana', overwrite = overwrite
-
+      
       ;; Write FITS format dark
       print, inam+' : saving ', darkname
       fxaddpar, head, 'FILENAME', file_basename(darkname)
@@ -281,8 +269,6 @@ pro red::sumdark, overwrite = overwrite, $
       if keyword_set(softlink) and n_elements(outdir) ne 0 then begin
         file_delete, origname, /allow_nonexistent
         file_link, sourcename, origname
-;        file_delete, origname+'.fits', /allow_nonexistent
-;        file_link, sourcename+'.fits', origname+'.fits'
       endif
 
     endfor                      ; states

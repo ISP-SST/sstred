@@ -271,15 +271,16 @@ pro red::fitscube_crosstalk, filename  $
     endelse
 ;    indx = where(finite(im))
 
-    window, 10, xs = Nx, ys = Ny
+;    window, 10, xs = Nx, ys = Ny
+    red_show, im, w = win1, /scroll, title = 'Average image'
     indx_data = where(finite(im), Ndata, complement = indx_missing, ncomplement = Nmissing)
     mn = median(im[indx_data])-2.5*robust_sigma(im[indx_data])
     mx = median(im[indx_data])+2.5*robust_sigma(im[indx_data])
     cgimage, red_histo_opt(im) $
              , missing_color = 'black' $             
-             ;, missing_color = 'yellow' $             
+             ;;, missing_color = 'yellow' $             
              , missing_index = 0 $
-             , stretch = 1  
+             , stretch = 1
     
     
 ;    sgp = long(abs(highs) gt abs(lows))
@@ -309,17 +310,17 @@ pro red::fitscube_crosstalk, filename  $
     
  
     print
-    print, inam + ' : Please inspect the image in windows 10 and 11.'
+    print, inam + ' : Please inspect the image in windows '+strtrim(win1, 2)+' and 11.'
     print
-    print, 'Window 10:'
+    print, 'Average image:'
     red_strflow, ['This image is the average image from the selected tunings and all' $
                   , 'the scans. You can use this image in XROI and deselect regions that' $
                   , 'show magnetic activity. Note that all frames have been cropped by' $
                   , 'a margin of '+strtrim(margin, 2)+' pixels before averaging. You' $
                   , 'can change this with the "margin" keyword.']
     print
-    print, 'Window 11:'
-    red_strflow, ['This image is the same as the one in Window 10 but an attempt has been' $
+    print, 'Average image with automatic mask:'
+    red_strflow, ['Also the average image but an attempt has been' $
                   , 'made to identify magnetic activity and mask those pixels out. The' $
                   , 'masked pixels are yellow. You can use this image in XROI and deselect' $
                   , 'additional regions that show magnetic activity. Or you can accept its' $
@@ -343,14 +344,15 @@ pro red::fitscube_crosstalk, filename  $
       im2[indx2] = im[indx2]
       
       
-      window, 11, xs = Nx, ys = Ny
+;      window, 11, xs = Nx, ys = Ny
+      red_show, im2, w = win2, /scroll, title = 'Average image with automatic mask'
       indx_data = where(finite(im2), Ndata, complement = indx_missing, ncomplement = Nmissing)
       mn = median(im2[indx_data])-2.5*robust_sigma(im2[indx_data])
       mx = median(im2[indx_data])+2.5*robust_sigma(im2[indx_data])
-      cgimage, bytscl(im2, mn, mx)$
+      cgimage, bytscl(im2, mn, mx) $
                , missing_color = 'yellow' $
                , missing_index = 0 $
-               , stretch = 1  
+               , stretch = 1
 
       print, 'Current cutoff: ', cutoff
       tmp = red_select_subset( ['XROI with image from window 10' $

@@ -5,7 +5,7 @@
 ; 
 ; :Categories:
 ;
-;    CHROMIS pipeline
+;    SST pipeline
 ; 
 ; 
 ; :Author:
@@ -58,22 +58,20 @@
 ;
 ;   2017-04-13 : MGL. Do not read cavityfree flats! Make FITS header
 ;                for the cube.
+; 
+;   2022-08-01 : MGL. New version for CRISP2 (and old CRISP with new
+;                cameras) based on the old CRISP version.
 ;
 ;-
-pro crisp::prepflatcubes, flatdir = flatdir $
-                            , pref = pref $
-                            , verbose = verbose $
-                            , nthreads = nthreads $
-                            , no_descatter = no_descatter
+pro red::prepflatcubes, flatdir = flatdir $
+                        , pref = pref $
+                        , verbose = verbose $
+                        , nthreads = nthreads $
+                        , no_descatter = no_descatter
 
 
-  ;; Prepare for logging (after setting of defaults).
-  ;; Set up a dictionary with all parameters that are in use
-  red_make_prpara, prpara, flatdir
-  red_make_prpara, prpara, pref
-  
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)  
 
   ;; Check keywords
   if(~keyword_set(flatdir)) then flatdir = self.out_dir+'/flats/'
@@ -87,12 +85,22 @@ pro crisp::prepflatcubes, flatdir = flatdir $
   detectors = *self.detectors
   Ncams = n_elements(cams)
 
+  ;; Descatter only needed for CRISP with old Sarnoff cameras,
+  ;; processed with the CRISP class.
+  if ((typename(self)).tolower()) ne 'crisp' then no_descatter = 1 
+  
+  ;; Prepare for logging (after setting of defaults).
+  ;; Set up a dictionary with all parameters that are in use
+  red_make_prpara, prpara, flatdir
+  red_make_prpara, prpara, pref
+  red_make_prpara, prpara, no_descatter
+  
   for icam = 0, Ncams-1 do begin
 
     if strmatch(cams[icam],'*-[DW]') then continue ; Don't do this for WB cameras
     
     ;; Find the files (make sure not to get the cavity free flats!)
-    files = file_search(flatdir+'/'+detectors[icam]+'*[0-9].flat.fits', count = Nfiles)
+    files = file_search(flatdir+'/'+detectors[icam]+'_*[0-9].flat.fits', count = Nfiles)
 
     ;; Check files
     if Nfiles eq 0 then begin
@@ -143,10 +151,8 @@ pro crisp::prepflatcubes, flatdir = flatdir $
           pname = self->filenames('polc',sstates)
           pname = pname[uniq(pname, sort(pname))]
           if n_elements(pname) gt 1 then stop
-;          pname = file_search(self.out_dir+'/polcal/'+detectors[icam]+'_'+upref+'_polcal.fits', count = Npolcal)
           
           if ~file_test(pname) then begin
-;            print, inam + ' : ERROR, '+detectors[icam]+'.'+upref+' -> files not found in '+self.out_dir+'/polcal/'
             print, inam + ' : ERROR, file not found:'
             print, pname
             continue
@@ -157,7 +163,7 @@ pro crisp::prepflatcubes, flatdir = flatdir $
         endif
 
         ;; Load backscatter data?
-        if ~keyword_set(no_descatter) AND (upref eq '8542' or upref eq '7772') then begin
+        if ~keyword_set(no_descatter) AND self.dodescatter AND (upref eq '8542' or upref eq '7772') then begin
           self -> loadbackscatter, detectors[icam], upref, bg, psf
         endif
         
@@ -176,8 +182,7 @@ pro crisp::prepflatcubes, flatdir = flatdir $
             ;; Load flats and demodulate
 
             fname0 = self->filenames('flat',sstates[istate])           
-            ;;flatdir+'/'+detectors[icam]+'_'+sstates[istate].fullstate+'.flat.fits'
-                
+            
             lc0 = file_search(fname0, count = nlc0)
             lc1 = file_search(red_strreplace(fname0, 'lc0', 'lc1'), count = nlc1)
             lc2 = file_search(red_strreplace(fname0, 'lc0', 'lc2'), count = nlc2)
@@ -206,7 +211,7 @@ pro crisp::prepflatcubes, flatdir = flatdir $
             lc3 = red_readdata(lc3, /silent)
             
             ;; Descatter ?
-            if ~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772') then begin
+            if ~keyword_set(no_descatter) AND self.dodescatter AND (upref EQ '8542' or upref eq '7772') then begin
               lc0 = rdx_descatter(temporary(lc0), bg, psf, /verbose, nthreads = nthreads)
               lc1 = rdx_descatter(temporary(lc1), bg, psf, /verbose, nthreads = nthreads)
               lc2 = rdx_descatter(temporary(lc2), bg, psf, /verbose, nthreads = nthreads)
@@ -220,7 +225,7 @@ pro crisp::prepflatcubes, flatdir = flatdir $
                           
             ;; Load non-polarized flats 
             tmp = red_readdata(sstates[istate].filename, /silent)
-            if ~keyword_set(no_descatter) AND (upref EQ '8542' or upref eq '7772') then begin
+            if ~keyword_set(no_descatter) AND self.dodescatter AND (upref EQ '8542' or upref eq '7772') then begin
               tmp = rdx_descatter(temporary(tmp), bg, psf, /verbose, nthreads = nthreads)
             endif
             

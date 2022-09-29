@@ -16,70 +16,70 @@
 ; 
 ; :Keywords:
 ; 
-;    wb_states : in, optional, type=boolean
+;    date_obs : in, optional, type=string
 ;   
-;      Generate extra WB objects, one per NB state, using the TRACE
-;      config file keyword.
+;      The date of observations in ISO (YYYY-MM-DD) format. If not
+;      given, taken from class object.
 ;   
-;    old_wb_states : in, optional, type=boolean
+;    dirs : in, optional, type=strarr
 ;   
-;      Generate extra WB objects, one per NB state, using the old
-;      mechanism where they are explicitly specified in the config
-;      file.
+;       The data directories to process. Or just the timestamps.
 ;   
-;    numpoints : in, optional, type=integer, default=88
+;    div : 
+;
+;
+;
+;    escan :  in, optional, type=integer
 ;   
-;      The size of MOMFBD subfields.
+;       Scan number.
 ;   
+;    extraclip : in, optional, type="intarr(4)", default="[0,0,0,0]"
+; 
+;      A margin (in pixels) to apply to the FOV edges of the reference
+;      channel when calculating the largest common FOV. The order is
+;      [left, right, top, bottom]
+;
+;    fill_fov : in, optional, type=boolean
+; 
+;      Fill the illuminated field of view with momfbd subfields.
+; 
+;    global_keywords : in, optional, type=strarr
+;   
+;      Any global keywords that you want to add to the momfbd config file.
+;   
+;    margin : in, optional, type=integer, default=5
+; 
+;      A margin (in pixels) to disregard from the FOV edges when
+;      constructing the grid of MOMFBD subfields. A negative margin
+;      adds to the FOV instead, which can be useful when /fill_fov is
+;      used (in which case the default is -numpoints/2). 
+;
 ;    modes : in, optional, type=string, default="'2-45,50,52-55,65,66'"
 ;   
 ;      The modes to include in the expansions of the wavefront phases.
+;   
+;    momfbddir :  in, optional, type=string, default='momfbd'
+;   
+;       Top directory of output tree.
+; 
+;    nfac : in, optional, type=float
+;
+;       Noise factor.
 ;   
 ;    nmodes : in, optional, type=integer, default=51
 ;
 ;      If keyword modes is not given, use the Nmodes most significant
 ;      KL modes.
 ;   
-;    date_obs : in, optional, type=string
-;   
-;      The date of observations in ISO (YYYY-MM-DD) format. If not
-;      given, taken from class object.
-;   
-;    state : 
-;   
-;   
-;   
 ;    no_descatter : in, optional, type=boolean
 ;   
 ;       Set this if your data is from a near-IR (777 or 854 nm) line
 ;       and you do not want to do backscatter corrections.
 ;   
-;    global_keywords : in, optional, type=strarr
+;    no_fitsheaders : in, optional, type=boolean
 ;   
-;      Any global keywords that you want to add to the momfbd config file.
+;       Don't write fitsheader files.
 ;   
-;    unpol : 
-;   
-;   
-;   
-;    skip : 
-;   
-;   
-;   
-;    pref : 
-;   
-;   
-; 
-;    dirs : in, optional, type=strarr
-;   
-;       The data directories to process. Or just the timestamps.
-;   
-;    escan :  in, optional, type=integer
-;   
-;       Scan number.
-;   
-;    div : 
-;
 ;    no_pd : in, optional, type=boolean
 ;   
 ;       Set this to exclude phase diversity data and processing. 
@@ -87,29 +87,43 @@
 ;    nremove : 
 ;   
 ;   
-;    nfac : in, optional, type=float
-;
-;       Noise factor.
+;    numpoints : in, optional, type=integer, default=88
+;   
+;      The size of MOMFBD subfields.
+;   
+;    old_wb_states : in, optional, type=boolean
+;   
+;      Generate extra WB objects, one per NB state, using the old
+;      mechanism where they are explicitly specified in the config
+;      file.
 ;   
 ;    oldgains :
+;
+;
 ;   
-;    momfbddir :  in, optional, type=string, default='momfbd'
+;    pref : 
 ;   
-;       Top directory of output tree.
+;   
 ; 
+;    skip : 
+;   
+;   
+;   
+;    state : 
+;   
+;   
+;   
+;    unpol : 
+;   
+;   
+;   
+;    wb_states : in, optional, type=boolean
+;   
+;      Generate extra WB objects, one per NB state, using the TRACE
+;      config file keyword.
+;   
 ;
 ;
-;    margin : in, optional, type=integer, default=5
-; 
-;      A margin (in pixels) to disregard from the FOV edges when
-;      constructing the grid of MOMFBD subfields.
-;
-;
-;    extraclip : in, optional, type="intarr(4)", default="[0,0,0,0]"
-; 
-;      A margin (in pixels) to apply to the FOV edges of the reference
-;      channel when calculating the largest common FOV. The order is
-;      [left, right, top, bottom]
 ;
 ;
 ; :History:
@@ -187,37 +201,43 @@
 ;   2019-09-20 : MGL. Remove all code for ~keyword_set(redux). Keep
 ;                the keyword itself for backward compatibility.
 ;
+;   2022-09-11 : MGL. New keyword fill_fov.
+;
+;   2022-09-27 : MGL. Make FOV mask. New keyword no_fitsheaders.
+;
 ;-
-pro red::prepmomfbd, wb_states = wb_states $
-                     , numpoints = numpoints $
-                     , modes = modes $
-                     , nmodes = nmodes $
+pro red::prepmomfbd, cams = cams $
                      , date_obs = date_obs $
                      , dirs = dirs $
-                     , state = state $
-                     , no_descatter = no_descatter $
-                     , global_keywords = global_keywords $
-                     , unpol = unpol $
-                     , skip = skip $
-                     , pref = pref $
-                     , escan = escan $
                      , div = div $
-                     , nremove = nremove $
-                     , oldgains = oldgains $
-                     , nfac = nfac $
-                     , weight = weight $
-                     , maxshift = maxshift $
-                     , momfbddir = momfbddir $
-                     , margin = margin $
-                     , no_pd = no_pd $
-                     , refcam = refcam $
+                     , escan = escan $
                      , extraclip = extraclip $
+                     , fill_fov = fill_fov $
+                     , global_keywords = global_keywords $
+                     , margin = margin $
+                     , maxshift = maxshift $
+                     , modes = modes $
+                     , momfbddir = momfbddir $
+                     , nfac = nfac $
+                     , nmodes = nmodes $
+                     , no_descatter = no_descatter $
+                     , no_fitsheaders = no_fitsheaders $
+                     , no_pd = no_pd $
+                     , nremove = nremove $
+                     , numpoints = numpoints $                     
+                     , oldgains = oldgains $
+                     , pref = pref $
                      , redux = redux $
-                     , cams = cams
+                     , refcam = refcam $
+                     , skip = skip $
+                     , state = state $
+                     , unpol = unpol $
+                     , weight = weight $
+                     , wb_states = wb_states
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-
+  inam = red_subprogram(/low, calling = inam1)
+  
   instrument = ((typename(self)).tolower())
 
   ;; Cameras
@@ -257,8 +277,6 @@ pro red::prepmomfbd, wb_states = wb_states $
   if n_elements(nremove) eq 0 then nremove=0
   ;;if n_elements(nfac) eq 0 then nfac = 1.
   if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
-
-  if n_elements(margin) eq 0 then margin = 5
 
   Ndirs = n_elements(dirs)    
   if Ndirs gt 0 then begin
@@ -385,20 +403,131 @@ pro red::prepmomfbd, wb_states = wb_states $
     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
   endelse
 
+  if n_elements(margin) eq 0 then margin = 5
 
-  ref_clip = align[0].clip
-  sim_roi = ref_clip
-  sim_roi[[0,2]] += margin      ; shrink the common FOV by margin along all edges.
-  sim_roi[[1,3]] -= margin
-  if sim_roi[0] gt sim_roi[1] || sim_roi[2] gt sim_roi[3] then begin
-    print, inam + ' : Error: The region of interest looks weird. sim_roi = [' + strjoin(strtrim(sim_roi,2),',') + ']'
-    print, inam + '                                               margin = ' + strtrim(margin,2)
-    return
-  endif
-  sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
-  sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
-  sim_x_string = strjoin(strtrim(sim_x,2), ',')
-  sim_y_string = strjoin(strtrim(sim_y,2), ',')
+  if keyword_set(fill_fov) then begin
+    ;; Use masks made from gaintable to find the part of the FOV that
+    ;; has light. To be used for CRISP with new cameras.
+    
+    ;; Read gains for all cameras, remap them to the WB orientation
+    ;; and position, AND them gt 0, to make a mask.
+
+    
+    maps = fltarr(3, 3, Ncams)
+    for icam = 0, Ncams-1 do begin
+      gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
+      g = red_readdata(gfiles[0])
+      indx = where(align.state2.camera eq cams[icam])
+      maps[*, *, icam] = align[indx[0]].map
+      if icam eq 0 then begin
+        dims = size(g, /dim)
+        masks = fltarr([dims, Ncams])
+        mask = rdx_img_transform(invert(maps[*, *, 0]), g, /preserve) gt 0
+      endif else begin
+        mask AND= rdx_img_transform(invert(maps[*, *, icam]), g, /preserve) gt 0
+      endelse
+      masks[*, *, icam] = g gt 0 ; Masks for individual cameras
+    endfor                       ; icam
+
+    ;; Close small holes in the mask
+    ste=[[0,1,0],[1,1,1],[0,1,0]]
+    Nclose = 10
+    for iclose = 0, Nclose do mask = dilate(mask, ste)     
+    for iclose = 0, Nclose do mask = erode(mask, ste)     
+
+
+    ;; Save this mask later in the cfg directories, it will be used when making cubes
+    ;;  dims = size(mask, /dim)    
+    fov_mask = mask
+    fov_indices = Where(fov_mask EQ 1)
+    fov_boundaryPts = Find_Boundary(fov_indices, XSize=dims[0], YSize=dims[1])
+    fov_roiObj = Obj_New('IDLanROI', fov_boundaryPts[0,*], fov_boundaryPts[1,*])
+
+    ;; Apply margin keyword
+    cmargin = -numpoints/2
+    if n_elements(cmargin) ne 0 then begin
+      if cmargin gt 0 then begin
+        ;; Make mask smaller
+        for ierode = 0, cmargin-1 do mask = erode(mask, ste)
+      endif else begin
+        ;; Make mask larger
+        for idilate = 0, abs(cmargin)-1 do mask = dilate(mask, ste)
+      endelse 
+    endif
+    
+    ;; Fill the masked FOV with subfield coordinates using sim_xy
+  
+    ;; Define ROI based on mask
+    indices = Where(mask EQ 1)
+    boundaryPts = Find_Boundary(indices, XSize=dims[0], YSize=dims[1])
+
+    ;; Apply margin
+    boundaryPts[0, *] = boundaryPts[0, *] >margin <(dims[0]-margin-1)    
+    boundaryPts[1, *] = boundaryPts[1, *] >margin <(dims[1]-margin-1)    
+
+    roiObj = Obj_New('IDLanROI', boundaryPts[0,*], boundaryPts[1,*])
+
+    ;; sim_x and sim_y based on mask ROI and margin
+    sim_roi = round([roiobj.roi_xrange, roiobj.roi_yrange])
+    ;;sim_roi[[0,2]] += margin    ; shrink the common FOV by margin along all edges.
+    ;;sim_roi[[1,3]] -= margin
+    sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
+    sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
+
+    scrollwindow, xs = 2000, ys = 2000
+    cgplot, (*roiobj.data)[0,*], (*roiobj.data)[1,*], psym=3, /aspect    
+    cgplot, (*fov_roiobj.data)[0,*], (*fov_roiobj.data)[1,*], psym=3, /over, color = 'red'      
+
+    
+    ;; Put coordinate pairs that are inside the mask in sim_xy.
+    for ix = 0, n_elements(sim_x)-1 do begin    
+      for iy = 0, n_elements(sim_y)-1 do begin    
+
+        if roiObj -> ContainsPoints(sim_x[ix], sim_y[iy]) then begin
+
+          for icam = 0, Ncams-1 do begin
+            ;; Are the coordinates within the NB frame?
+            coords = rdx_point_transform( maps[*, *, icam], [sim_x[ix], sim_y[iy]])
+            coords_limited = coords
+            coords_limited[0] = coords[0] >(numpoints/2+margin) <(dims[0]-1-numpoints/2-margin)            
+            coords_limited[1] = coords[1] >(numpoints/2+margin) <(dims[1]-1-numpoints/2-margin)            
+            if coords_limited[0] ne coords[0] or coords_limited[1] ne coords[1] then begin
+              ;; If not, nudge them inside and transform back.
+              coords = rdx_point_transform( invert(maps[*, *, icam]), coords_limited)
+              print, 'Changed!', ix, iy, icam
+              sim_x[ix] = coords[0]
+              sim_y[iy] = coords[1]              
+            endif
+          endfor                ; icam
+          
+          red_append, sim_xy, [sim_x[ix], sim_y[iy]]
+          cgplot, /over, sim_x[ix], sim_y[iy], psym = 16
+          cgplot, /over, sim_x[ix]+numpoints/2*[1, 1, -1, -1, 1], sim_y[iy]+numpoints/2*[1, -1, -1, 1, 1]
+        endif
+        
+      endfor                    ; iy
+    endfor                      ; ix
+ 
+    sim_xy_string = strjoin(strtrim(sim_xy,2), ',')
+    
+  endif else begin
+
+    ref_clip = align[0].clip
+    sim_roi = ref_clip
+    sim_roi[[0,2]] += margin    ; shrink the common FOV by margin along all edges.
+    sim_roi[[1,3]] -= margin
+    if sim_roi[0] gt sim_roi[1] || sim_roi[2] gt sim_roi[3] then begin
+      print, inam + ' : Error: The region of interest looks weird. sim_roi = [' + strjoin(strtrim(sim_roi,2),',') + ']'
+      print, inam + '                                               margin = ' + strtrim(margin,2)
+      return
+    endif
+    sim_x = rdx_segment( sim_roi[0], sim_roi[1], numpoints, /momfbd )
+    sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
+    sim_x_string = strjoin(strtrim(sim_x,2), ',')
+    sim_y_string = strjoin(strtrim(sim_y,2), ',')
+
+  endelse
+
   
   for idir=0L, Ndirs-1 do begin
     
@@ -418,6 +547,15 @@ pro red::prepmomfbd, wb_states = wb_states $
     
     ref_img_dir = file_dirname(file_expand_path(ref_states[0].filename),/mark)
     ref_caminfo = red_camerainfo(detectors[refcam])
+    ref_head = red_readhead(ref_states[0].filename)
+    
+    ;; Pixel size and binning
+    pixelsize = ref_caminfo.pixelsize
+    nbin = fxpar(ref_head, 'NBIN*', count = Nnbin)
+    if Nnbin ne 0 then begin
+      pixelsize *= nbin[0]      ; Assume binning same along both axes
+    endif
+    pixelsize = strtrim(pixelsize, 2)
 
     ;; unique prefilters
     upref = ref_states[uniq(ref_states.prefilter, sort(ref_states.prefilter))].prefilter
@@ -516,7 +654,7 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LF
         cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + LF
         cfg.globals += 'ARCSECPERPIX=' + self.image_scale + LF
-        cfg.globals += 'PIXELSIZE=' + strtrim(ref_caminfo.pixelsize, 2) + LF
+        cfg.globals += 'PIXELSIZE=' + pixelsize + LF
         cfg.globals += 'FILE_TYPE=' + self.filetype + LF
         case self.filetype of
           'ANA' : begin
@@ -527,8 +665,12 @@ pro red::prepmomfbd, wb_states = wb_states $
             cfg.globals += 'GET_PSF_AVG' + LF
           end
         endcase
-        cfg.globals += 'SIM_X=' + sim_x_string + LF
-        cfg.globals += 'SIM_Y=' + sim_y_string + LF
+        if keyword_set(fill_fov) then begin
+          cfg.globals += 'SIM_XY=' + sim_xy_string + LF
+        endif else begin
+          cfg.globals += 'SIM_X=' + sim_x_string + LF
+          cfg.globals += 'SIM_Y=' + sim_y_string + LF
+        endelse
         if keyword_set(wb_states) then cfg.globals += 'TRACE' + LF
 
         ;; External keywords?
@@ -554,7 +696,7 @@ pro red::prepmomfbd, wb_states = wb_states $
         cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
 
         if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
-           ~keyword_set(no_descatter) then begin
+           ~keyword_set(no_descatter) AND self.dodescatter then begin
           self -> loadbackscatter, detectors[refcam], upref[ipref] $
                                    , bgfile = bgf, bpfile = psff
           if(file_test(psff) AND file_test(bgf)) then begin
@@ -595,7 +737,7 @@ pro red::prepmomfbd, wb_states = wb_states $
           cfg.objects += '        DARK_NUM=0000001' + LF
           cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(pd_map, 9), 2), ',') + LF
           if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
-             ~keyword_set(no_descatter) then begin
+             ~keyword_set(no_descatter) AND self.dodescatter then begin
             self -> loadbackscatter, detectors[refcam], upref[ipref] $
                                      , bgfile = bgf, bpfile = psff
             if(file_test(psff) AND file_test(bgf)) then begin
@@ -746,7 +888,7 @@ pro red::prepmomfbd, wb_states = wb_states $
               cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
               cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align_map, 9), 2), ',') + LF
               if( ustates[istate].prefilter EQ '8542' OR ustates[istate].prefilter EQ '7772' ) AND $
-                 ~keyword_set(no_descatter) then begin
+                 ~keyword_set(no_descatter) AND self.dodescatter then begin
                 self -> loadbackscatter, detectors[icam], ustates[istate].prefilter, bgfile = bgf, bpfile = psff
                 if(file_test(psff) AND file_test(bgf)) then begin
                   cfg_list[cfg_idx].objects += '        PSF=' + psff + LF
@@ -806,7 +948,8 @@ pro red::prepmomfbd, wb_states = wb_states $
                 cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
                 cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
                 if( ustates[istate].prefilter EQ '8542' OR $
-                    ustates[istate].prefilter EQ '7772' ) AND ~keyword_set(no_descatter) then begin
+                    ustates[istate].prefilter EQ '7772' ) AND $
+                   ~keyword_set(no_descatter) AND self.dodescatter then begin
                   self -> loadbackscatter, detectors[refcam], ustates[istate].prefilter $
                                            , bgfile = bgf, bpfile = psff
                   if(file_test(psff) AND file_test(bgf)) then begin
@@ -848,7 +991,12 @@ pro red::prepmomfbd, wb_states = wb_states $
       file_mkdir, cfg_list[icfg].dir+'/data/'
       file_mkdir, cfg_list[icfg].dir+'/results/'
     endif
-    
+
+    if icfg eq 0 then begin
+      writefits, cfg_list[icfg].dir+'/results/fov_mask.fits', fov_mask    
+    endif
+
+      
 ;    number_str = string(cfg_list[icfg].first_file, format='(I07)') $
 ;                 + '-' + string(cfg_list[icfg].last_file,format='(I07)')
 ;        cfg_list[icfg].globals += 'IMAGE_NUMS=' + number_str +
@@ -869,7 +1017,7 @@ pro red::prepmomfbd, wb_states = wb_states $
 
 
   ;; Make header-only fits files to be read post-momfbd.
-  self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
+  if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
 
   return
   

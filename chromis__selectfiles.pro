@@ -57,7 +57,7 @@
 ; 
 ;     force : in, optional, type=boolean
 ;
-;        Re-populate files.
+;        Re-populate files/states.
 ;
 ;     scan : in, optional, type=intarr
 ;
@@ -114,7 +114,7 @@
 ;   2018-05-30 : MGL. Add selection by fpi_states.
 ; 
 ;-
-pro chromis::selectfiles, cam = cam $
+pro chromis::selectfiles, cam = cam $ 
                           , complement = complement $
                           , count = count $
                           , dark = dark $
@@ -132,19 +132,20 @@ pro chromis::selectfiles, cam = cam $
                           , states = states $
                           , strip_settings = strip_settings $
                           , subdir = subdir $
-                          , ustat = ustat $
-                          , timestamps = timestamps
+                          , timestamps = timestamps $
+                          , ustat = ustat
 
   compile_opt idl2
   
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  ;; Name of this method
+  inam = red_subprogram(/low, calling = inam1)
   
   ;; Unless we select any
   count = 0L                  
   ncomplement = n_elements(files)
 
   if( keyword_set(force) || n_elements(files) eq 0 ) then begin
-
+    
     if( n_elements(cam) ne 1 ) then begin
       print,inam+': Only a single cam supported.'
       return
@@ -152,9 +153,9 @@ pro chromis::selectfiles, cam = cam $
     detector = self->RED::getdetector(cam)
     
     if( n_elements(subdir) ne 1 ) then subdir = cam
-    
-    file_template = subdir + '/*' + detector + '*'
-    
+
+    file_template = subdir + '/*' + strtrim(detector, 2)+ '*'
+
     if( n_elements(dirs) gt 0 ) then dirs = [dirs] $ ; ensure it's an array, even with 1 element
     else begin 
       if( keyword_set(dark) && ptr_valid(self.dark_dir) ) then dirs = *self.dark_dir $
@@ -162,7 +163,7 @@ pro chromis::selectfiles, cam = cam $
     endelse
     
     path_spec = dirs + '/' + file_template
-
+    
     files = file_search(path_spec)
     files = files[where( strpos(files, '.lcd.') LT 0, nf)]
     files = strtrim(files,2)
@@ -277,7 +278,7 @@ pro chromis::selectfiles, cam = cam $
   Ntimestamps = n_elements(timestamps)
   if( Ntimestamps gt 0 ) then begin
     selected = states.skip * 0
-    ts = [timestamps]         ; make sure it's an array
+    ts = [timestamps]           ; make sure it's an array
     for ip = 0, Ntimestamps-1 do begin
       pos = where(strmatch(states.filename,'*'+ts[ip]+'*'),count)
       if( count ne 0 ) then selected[pos] = 1
@@ -295,7 +296,7 @@ pro chromis::selectfiles, cam = cam $
   endif
   
                                 ; if keyword selected is not present, return selected subsets as new files/states
-  if( count ne 0 ) then begin
+  if count ne 0 then begin
     states = states[selected]
     files = states.filename
   endif else begin              ; return empty files/states

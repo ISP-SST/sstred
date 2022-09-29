@@ -36,9 +36,12 @@
 ;    2019-12-06 : MGL. New keyword hole_width. Write some header info
 ;                 to the filter file.
 ; 
+;    2022-09-14 : MGL. CRISP --> RED. Take missing pixels into
+;                 account. 
+; 
 ;-
-pro crisp::make_periodic_filter, prefilter $
-                                 , hole_width = hole_width
+pro red::make_periodic_filter, prefilter $
+                               , hole_width = hole_width
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -57,15 +60,48 @@ pro crisp::make_periodic_filter, prefilter $
      print, inam + ' : No polcal files for prefilter ' + prefilter
      retall
   endif
-  
-  ;; Make power spectrum based on sum of polcal components.
-  
-  polcal1 = readfits(pfiles[0], h = h1) 
-  polcal2 = readfits(pfiles[1], h = h2) 
-  pp = total(polcal2,1) + total(polcal1,1)
 
-  Nx = 1024L
-  Ny = 1024L
+  detector1 = (strsplit(file_basename(pfiles[0]), '_', /extract))[0]  
+  detector2 = (strsplit(file_basename(pfiles[1]), '_', /extract))[0]  
+
+  ;; Geometrical distortion maps for the two NB cameras
+  self -> getalignment, align=align, prefilters=prefilter
+  indx = where(align.state2.detector eq detector1, Nalign)
+  case Nalign of
+    0    : stop                 ; Should not happen!
+    1    : amap1 =      align[indx].map
+    else : amap1 = mean(align[indx].map, dim = 3)
+  endcase
+  amap1 /= amap1[2, 2]          ; Normalize
+  indx = where(align.state2.detector eq detector2, Nalign)
+  case Nalign of
+    0    : stop                 ; Should not happen!
+    1    : amap2 =      align[indx].map
+    else : amap2 = mean(align[indx].map, dim = 3)
+  endcase
+  amap2 /= amap2[2, 2]          ; Normalize
+
+  amap1_inv = invert(amap1)
+  amap2_inv = invert(amap2)
+  
+  ;; Polcal components.  
+  polcal1 = readfits(pfiles[0], h = h1) 
+  polcal2 = readfits(pfiles[1], h = h2)
+  polcal1 = total(polcal1,1)
+  polcal2 = total(polcal2,1)
+  polcal1 -= median(polcal1)  
+  polcal2 -= median(polcal2)  
+  ;; WB orientation:
+  polcal1 = rdx_img_project(amap1_inv, polcal1, /preserve)
+  polcal2 = rdx_img_project(amap2_inv, polcal2, /preserve)  
+  
+  pp = polcal1 + polcal2
+  
+  
+  dims = size(pp, /dim)
+  
+  Nx = dims[0]
+  Ny = dims[1]
   
   ;; Make a mask for pixel filling
   ccc = red_histo_gaussfit(pp)
@@ -84,7 +120,7 @@ pro crisp::make_periodic_filter, prefilter $
   pp = rdx_fillpix(pp*(1-newmask), mask = newmask)
 
   ;; Inspect the sum image and decide whether to continue
-  red_show, pp
+  red_show, pp, /scroll
   s = ''
   read, 'Do you want to continue [y/N]? ', s
   if strupcase(strmid(s, 0, 1)) ne 'Y' then return
@@ -135,17 +171,17 @@ pro crisp::make_periodic_filter, prefilter $
 
   ;; Display the polcal sum before and after filtering
   pp2 = float(fft(shift(ff2, Nx/2, Ny/2), /inv)) + med
-  red_show, [pp, pp2]
+  red_show, [pp, pp2], /scroll
 
   ;; Display the filter
-  red_show, filt, w = 2
-
+  red_show, filt, w = 2, /scroll
+  
   ;; Write the filter to the polcal/ directory
   red_mkhdr, hdr, filt
   fxaddpar, hdr, 'HOLEWDTH', hole_width, 'Width of "hole" around filtered frequency component'
   fxaddpar, hdr, 'HOLE_X', round(xx), 'Center x frequency coordinate of filtered component'
   fxaddpar, hdr, 'HOLE_Y', round(xx), 'Center y frequency coordinate of filtered component'
-  writefits, 'polcal/periodic_filter_'+prefilter+'.fits', filt
+  writefits, 'polcal/periodic_filter_remapped_'+prefilter+'.fits', filt
 
 end 
 

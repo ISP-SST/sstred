@@ -30,6 +30,10 @@
 ;      value of the crop keyword is ignored and is set to the
 ;      auto-detected crop parameters.
 ; 
+;     circular_fov : in, optional, type=boolean
+;
+;       Do not make room for corners of the FOV in derotation.
+;
 ;     clips : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
@@ -92,6 +96,10 @@
 ;       Don't care if cube is already on disk, overwrite it
 ;       with a new version.
 ;
+;     padmargin : in, optional, type=integer, default=40
+;
+;       Amount of rotation padding in pixels.
+; 
 ;     redemodulate : in, optional, type=boolean
 ;
 ;       Delete any old (per scan-and-tuning) stokes cubes so they will
@@ -142,40 +150,43 @@
 ;    2022-06-24 : JdlCR. Bugfix, the cmap was always rotated
 ;                 regardless of the /norotation keyword.
 ;
-;
+;    2022-09-04 : MGL. CRISP --> RED. New keyword circular_fov.
 ;
 ;-
-pro crisp::make_scan_cube, dir $
-                           , autocrop = autocrop $
-                           , clips = clips $
-                           , cmap_fwhm = cmap_fwhm $
-                           , crop = crop $
-                           , direction = direction $
-                           , integer = integer $
-                           , intensitycorrmethod = intensitycorrmethod $
-                           , interactive = interactive $
-                           , limb_data = limb_data $
-                           , nocavitymap = nocavitymap $
-                           , nocrosstalk = nocrosstalk $
-                           , nopolarimetry = nopolarimetry $
-                           , norotation = norotation $
-                           , odir = odir $
-                           , overwrite = overwrite $
-                           , redemodulate = redemodulate $
-                           , rotation = rotation $
-                           , scannos = scannos $
-                           , tiles = tiles  $
-                           , tuning_selection = tuning_selection $
-                           , nthreads = nthreads $
-                           , fitpref_time = fitpref_time $
-                           , nomissing_nans = nomissing_nans
-               
+pro red::make_scan_cube, dir $
+                         , autocrop = autocrop $
+                         , clips = clips $
+                         , cmap_fwhm = cmap_fwhm $
+                         , crop = crop $
+                         , direction = direction $
+                         , integer = integer $
+                         , intensitycorrmethod = intensitycorrmethod $
+                         , interactive = interactive $
+                         , limb_data = limb_data $
+                         , nocavitymap = nocavitymap $
+                         , circular_fov = circular_fov $
+                         , nocrosstalk = nocrosstalk $
+                         , nopolarimetry = nopolarimetry $
+                         , norotation = norotation $
+                         , odir = odir $
+                         , overwrite = overwrite $
+                         , redemodulate = redemodulate $
+                         , rotation = rotation $
+                         , padmargin = padmargin $
+                         , scannos = scannos $
+                         , tiles = tiles  $
+                         , tuning_selection = tuning_selection $
+                         , nthreads = nthreads $
+                         , fitpref_time = fitpref_time $
+                         , nomissing_nans = nomissing_nans
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
   
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
+  if n_elements(padmargin) eq 0 then padmargin  = 40
 
   ;; Make prpara
   red_make_prpara, prpara, dir
@@ -192,6 +203,7 @@ pro crisp::make_scan_cube, dir $
   red_make_prpara, prpara, nocrosstalk   
   red_make_prpara, prpara, norotation    
   red_make_prpara, prpara, overwrite
+  red_make_prpara, prpara, padmargin 
   red_make_prpara, prpara, rotation    
   red_make_prpara, prpara, tiles
   red_make_prpara, prpara, tuning_selection
@@ -455,11 +467,21 @@ pro crisp::make_scan_cube, dir $
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
+
+    ;; Crop the cavity map to the FOV of the momfbd-restored images.
+    mr = momfbd_read(wbgfiles[0],/nam)
+    cmap1 = red_crop_as_momfbd(cmap1, mr)
+    
+    ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
-    cmap_dim = size(cmap1,/dim)
-    xclip = (cmap_dim[0] - Nx)/2.
-    yclip = (cmap_dim[1] - Ny)/2.
-    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1]  ; Clip to the selected FOV
+    
+    ;; Clip to the selected FOV
+    cmap1 = cmap1[x0:x1,y0:y1]
+    
+;    cmap_dim = size(cmap1,/dim)
+;    xclip = (cmap_dim[0] - Nx)/2.
+;    yclip = (cmap_dim[1] - Ny)/2.
+;    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1]  ; Clip to the selected FOV
 
   endif
 
@@ -622,12 +644,28 @@ pro crisp::make_scan_cube, dir $
     endelse
     
     if ~keyword_set(norotation) then begin
-      ff = [abs(ang),0,0,0,0,ang]
+      if keyword_set(circular_fov) then begin
+        ;; Red_rotation.pro only uses keyword full (which is set to ff
+        ;; when calling from make_*_cube) if it is an array with at least
+        ;; 5 elements. So setting it to -1 is the same as letting it stay
+        ;; undefined, but it can still be passed on to make_nb_cube.
+        ff = -1    
+        ff = [0, -padmargin, padmargin, -padmargin, padmargin, 0]
+        ;; Possibly change this to take the shifts into account but not
+        ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
+      endif else begin
+        ff = [abs(ang),0,0,0,0,ang]
+      endelse
       wbim_rot = red_rotation(wbim, ang, full = ff, nthreads=nthreads)
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
 
-
+    if file_test(dir+'/fov_mask.fits') then begin
+      fov_mask = readfits(dir+'/fov_mask.fits')
+      fov_mask = red_crop_as_momfbd(fov_mask, mr)    
+      fov_mask = red_rotate(fov_mask, direction)
+    endif
+    
     ;; Load prefilters
     
     ;; Crisp-T
@@ -751,7 +789,7 @@ pro crisp::make_scan_cube, dir $
       if keyword_set(makestokes) then begin
         
         nbims = red_readdata(snames[ituning], head = nbhead, direction = direction) ;* tscl
-
+        
         ;; Wavelength 
         wcs[ituning].wave = sstates[ituning].tun_wavelength*1d9
 
@@ -773,11 +811,23 @@ pro crisp::make_scan_cube, dir $
         tavg_array[ituning] = red_time2double((strsplit(date_avg,'T',/extract))[1])
 
         for istokes = 0, Nstokes-1 do begin
-           if(~keyword_set(norotation)) then begin
-             red_fitscube_addframe, fileassoc $
-                                    , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang $
-                                                   , full = ff, nthreads=nthreads) $
-                                    , ituning = ituning, istokes = istokes
+
+          if n_elements(fov_mask) gt 0 then nbims[*, *, 0, istokes] = nbims[*, *, 0, istokes] * fov_mask
+
+          if(~keyword_set(norotation)) then begin
+            ;; bg = median(nbims[x0:x1, y0:y1, 0, istokes])
+            red_missing, nbims[x0:x1, y0:y1, 0, istokes] $
+                         , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+            if Nmissing gt 0 then begin
+              bg = (nbims[x0:x1, y0:y1, 0, istokes])[indx_missing[0]]
+            endif else begin
+              bg = median(nbims[x0:x1, y0:y1, 0, istokes])
+            endelse
+            red_fitscube_addframe, fileassoc $
+                                   , red_rotation(nbims[x0:x1, y0:y1, 0, istokes], ang $
+                                                  , background = bg $
+                                                  , full = ff, nthreads=nthreads) $
+                                   , ituning = ituning, istokes = istokes
           endif else begin
             red_fitscube_addframe, fileassoc $
                                    , nbims[x0:x1, y0:y1, 0, istokes] $
@@ -883,8 +933,15 @@ pro crisp::make_scan_cube, dir $
         sexp_array[ituning] = mean(texps)
         nsum_array[ituning] = round(total(nsums))
 
+        red_missing, nbim, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+        if Nmissing gt 0 then begin
+          bg = nbim[indx_missing[0]]
+        endif else begin
+          bg = median(nbim)  
+        endelse
         red_fitscube_addframe, fileassoc $
                                , red_rotation(temporary(nbim), ang $
+                                              , background = bg $
                                               , full = ff, nthreads=nthreads) $
                                , ituning = ituning
 
@@ -959,7 +1016,7 @@ pro crisp::make_scan_cube, dir $
 
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
     if Nt gt 0 then begin
- ;     stop
+                                ;     stop
       self -> fitscube_addvarkeyword, filename, 'ATMOS_R0' $
                                       , metadata_r0[*, tindx_r0] $
                                       , comment = 'Atmospheric coherence length' $

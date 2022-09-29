@@ -164,31 +164,33 @@
 ;
 ;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                 ported to rdx and maintainable by us.
+; 
+;    2022-09-10 : MGL. CRISP --> RED.
 ;
 ;-
-pro crisp::make_nb_cube, wcfile $
-                         , clips = clips $
-                         , cmap_fwhm = cmap_fwhm $
-                         , integer = integer $
-                         , intensitycorrmethod = intensitycorrmethod $ 
-                         , nearest = nearest $
-                         , nocavitymap = nocavitymap $
-                         , nocrosstalk = nocrosstalk $
-                         , noflipping = noflipping $
-                         , nomissing_nans = nomissing_nans $
-                         , nopolarimetry = nopolarimetry $
-                         , noremove_periodic = noremove_periodic $
-                         , nostretch = nostretch $
-                         , notimecor = notimecor $
-                         , nthreads = nthreads $
-                         , odir = odir $
-                         , overwrite = overwrite $
-                         , redemodulate = redemodulate $
+pro red::make_nb_cube, wcfile $
+                       , clips = clips $
+                       , cmap_fwhm = cmap_fwhm $
+                       , integer = integer $
+                       , intensitycorrmethod = intensitycorrmethod $ 
+                       , nearest = nearest $
+                       , nocavitymap = nocavitymap $
+                       , nocrosstalk = nocrosstalk $
+                       , noflipping = noflipping $
+                       , nomissing_nans = nomissing_nans $
+                       , nopolarimetry = nopolarimetry $
+                       , noremove_periodic = noremove_periodic $
+                       , nostretch = nostretch $
+                       , notimecor = notimecor $
+                       , nthreads = nthreads $
+                       , odir = odir $
+                       , overwrite = overwrite $
+                       , redemodulate = redemodulate $
 ;                         , smooth = smooth $
-                         , tiles = tiles $
-                         , unsharp = unsharp $
-                         , wbsave = wbsave $
-                         , fitpref_time = fitpref_time
+                       , tiles = tiles $
+                       , unsharp = unsharp $
+                       , wbsave = wbsave $
+                       , fitpref_time = fitpref_time
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -467,7 +469,16 @@ pro crisp::make_nb_cube, wcfile $
   ;; Spatial dimensions that match the WB cube
   Nx = wcND[0]
   Ny = wcND[1]
-
+  
+  mr = momfbd_read(wbgfiles[0],/nam)    
+  if file_test(file_dirname(wbgfiles[0])+'/fov_mask.fits') then begin
+    ;; If multiple directories, the fov_mask should be the same. Or we
+    ;; have to think of something.
+    fov_mask = readfits(file_dirname(wbgfiles[0])+'/fov_mask.fits')
+    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    fov_mask = red_rotate(fov_mask, direction)
+  endif
+  
   ;; Create cubes for science data and scan-adapted cavity maps.
   cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
 
@@ -564,11 +575,20 @@ pro crisp::make_nb_cube, wcfile $
     ;; respect to the cavity errors on the etalons. So we can sum
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
+
+    ;; Crop the cavity map to the FOV of the momfbd-restored images.
+    cmap1 = red_crop_as_momfbd(cmap1, mr)
+
+    ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
-    cmap_dim = size(cmap1,/dim)
-    xclip = (cmap_dim[0] - origNx)/2.
-    yclip = (cmap_dim[1] - origNy)/2.
-    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
+
+    ;; Clip to the selected FOV
+    cmap1 = cmap1[x0:x1,y0:y1]
+    
+;    cmap_dim = size(cmap1,/dim)
+;    xclip = (cmap_dim[0] - origNx)/2.
+;    yclip = (cmap_dim[1] - origNy)/2.
+;    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
     
   endif
   
@@ -599,7 +619,8 @@ pro crisp::make_nb_cube, wcfile $
       self -> make_stokes_cubes, file_dirname(wbgfiles[iscan]), uscans[iscan] $
                                  , clips = clips $
                                  , cmap_fwhm = cmap_fwhm $
-                                 , nocavitymap = nocavitymap $
+                                 , /nocavitymap $ ; Cavity maps in Stokes cubes aren't used for anything
+;                                 , nocavitymap = nocavitymap $                                 
                                  , noremove_periodic = noremove_periodic $
                                  , redemodulate = redemodulate $
 ;                                 , smooth = smooth $
@@ -922,10 +943,16 @@ pro crisp::make_nb_cube, wcfile $
       ;; make_wb_cube
       if makestokes then begin
         for istokes = 0, Nstokes-1 do begin
-          bg = median(nbim[*, *, istokes])
-
-
+          if n_elements(fov_mask) gt 0 then nbim[*, *, istokes] = nbim[*, *, istokes] * fov_mask                    
           
+          red_missing, nbim[*, *, istokes] $
+                       , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+          if Nmissing gt 0 then begin
+            bg = (nbim[*, *, istokes])[indx_missing[0]]
+          endif else begin
+            bg = median(nbim[*, *, istokes])
+          endelse
+
           frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
                                background = bg, nearest = nearest, $
@@ -937,7 +964,16 @@ pro crisp::make_nb_cube, wcfile $
                                  , iscan = iscan, ituning = ituning, istokes = istokes
         endfor                  ; istokes
       endif else begin
-        bg = median(nbim)
+        if n_elements(fov_mask) gt 0 then nbim = nbim * fov_mask
+
+        red_missing, nbim $
+                     , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+        if Nmissing gt 0 then begin
+          bg = nbim[indx_missing[0]]
+        endif else begin
+          bg = median(nbim)
+        endelse
+        
         nbim = red_rotation(temporary(nbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , background = bg, stretch_grid = reform(wcGRID[iscan,*,*,*])$

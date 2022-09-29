@@ -69,20 +69,21 @@
 ; 
 ;   2018-08-21 : MGL. New keyword files.
 ; 
+;   2022-08-29 : MGL. CHROMIS --> RED.
 ; 
 ;-
-pro chromis::makegains, bad=bad $
-                        , cam = cam $
-                        , files = files $
-                        , max = max $
-                        , min = min $
-                        , nthreads = nthreads $
-                        , pref = pref $
-                        , smoothsize = smoothsize 
+pro red::makegains, bad=bad $
+                    , cam = cam $
+                    , files = files $
+                    , max = max $
+                    , min = min $
+                    , nthreads = nthreads $
+                    , pref = pref $
+                    , smoothsize = smoothsize 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
-  
+  inam = red_subprogram(/low, calling = inam1)    
+
   red_make_prpara, prpara, bad
   red_make_prpara, prpara, cam 
   red_make_prpara, prpara, max 

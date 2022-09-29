@@ -80,13 +80,12 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
-  instrument = ((typename(self)).tolower())
   
   if keyword_set(limb_darkening) then begin 
     if n_elements(mu_limit) eq 0 then mu_limit = 0.50d
     if keyword_set(pref) then begin
       if pref eq '8542' then  begin        
-        if n_elements(mu_limit) ne 0 and mu_limit lt 0.97 then begin
+        if n_elements(mu_limit) ne 0 and mu_limit lt 0.97d then begin
           print, inam, ' : For 8542 prefilter mu_limit should be >= 0.97'
           return
         endif
@@ -121,6 +120,8 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
   camsNB = cams[where(strmatch(cams,'*-[NTR]'))]
   camNB = camsNB[0]
 
+  instrument = strlowcase((strsplit(cams[0],'-',/extract))[0])
+  
   if keyword_set(demodulate) then begin
     camT = 'Crisp-T'    
     camR = 'Crisp-R'    
@@ -187,7 +188,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
     tmp = min(abs(red_time2double(file_basename(dirs)) - prf.time_avg),minloc)
     cdir = dirs[minloc]
 
-    cfiles = red_raw_search(cdir+'/'+camnb, pref = pprefs[ip], scannos = 0)
+    cfiles = self -> raw_search(cdir+'/'+camnb, pref = pprefs[ip], scannos = 0)
     self -> extractstates, cfiles, cstates
     tunindx = uniq(cstates.tun_wavelength, sort(cstates.tun_wavelength))
     utunwvl = cstates[tunindx].tun_wavelength
@@ -300,13 +301,13 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
 
           if keyword_set(demodulate) then begin
 
-            fnamesT = red_raw_search(nbdirs[inb]+'/'+camt, scannos = iscan $
-                                     , count = NfilesT $
-                                     , pref = pprefs[ipref], tunings = ptunings[ipref])
+            fnamesT = self -> raw_search(nbdirs[inb]+'/'+camt, scannos = iscan $
+                                         , count = NfilesT $
+                                         , pref = pprefs[ipref], tunings = ptunings[ipref])
             
-            fnamesR = red_raw_search(nbdirs[inb]+'/'+camr, scannos = iscan $
-                                     , count = NfilesR $
-                                     , pref = pprefs[ipref], tunings = ptunings[ipref])
+            fnamesR = self -> raw_search(nbdirs[inb]+'/'+camr, scannos = iscan $
+                                         , count = NfilesR $
+                                         , pref = pprefs[ipref], tunings = ptunings[ipref])
 
             print, nbdirs[inb]+'/'+camt            
             print, nbdirs[inb]+'/'+camr            
@@ -408,9 +409,9 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
             hdr = h0T
 
           endif else begin
-            fnamesN = red_raw_search(nbdirs[inb]+'/'+camnb, scannos = iscan $
-                                     , count = NfilesN $
-                                     , pref = pprefs[ipref], tunings = ptunings[ipref])
+            fnamesN = self -> raw_search(nbdirs[inb]+'/'+camnb, scannos = iscan $
+                                         , count = NfilesN $
+                                         , pref = pprefs[ipref], tunings = ptunings[ipref])
             print, nbdirs[inb]+'/'+camnb
             print, NfilesN
             if NfilesN eq 0 then break

@@ -288,7 +288,15 @@ pro red::fitscube_header_finalize, hdr $
   red_fitsaddkeyword, anchor = anchor, hdr $
                       , 'CDELT2A', 0.0, 'Zero FOV extent'
 
-  
+  ;; These two keywords are required by SOLARNET. But are they 100%
+  ;; accurate? We do adjust the wavelength coordinate somewhat, it
+  ;; will do something for the velocity (depending on where the
+  ;; calibration data were collected).
+  red_fitsaddkeyword, anchor = anchor, hdr $
+                      , 'SPECSYS', 'TOPOCENT', 'Coordinate reference frame = observer'
+  red_fitsaddkeyword, anchor = anchor, hdr $
+                      , 'VELOSYS', 0, '[m s-1] No velocity correction applied to WAVE'
+
   ;; After this, this FITS file should be SOLARNET compliant
   red_fitsaddkeyword, anchor = 'DATE', hdr, 'SOLARNET', 1, 'SOLARNET compliant file'
 

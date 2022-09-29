@@ -41,17 +41,19 @@
 ;   2019-05-29: MGL. Use the cache to avoid reading the inverse
 ;               modulation matrices over and over.
 ; 
+;   2022-09-10: MGL. CRISP --> RED.
+; 
 ;-
-pro crisp::inverse_modmatrices, prefilter, dir $
-                                , camr = camr $
-                                , camt = camt $
-                                , immr = immr $
-                                , immt = immt $
-                                , no_ccdtabs = no_ccdtabs $
-                                , overwrite = overwrite
+pro red::inverse_modmatrices, prefilter, dir $
+                              , camr = camr $
+                              , camt = camt $
+                              , immr = immr $
+                              , immt = immt $
+                              , no_ccdtabs = no_ccdtabs $
+                              , overwrite = overwrite
   
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)                                          
 
   if n_elements(camr) gt 0 then begin
     red_append, cams, camr

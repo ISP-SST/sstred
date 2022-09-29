@@ -56,7 +56,7 @@ pro red::make_raw_cube, oldname $
                         , overwrite = overwrite
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)        
 
   if n_elements(tiles) eq 0 or n_elements(clips) eq 0 then begin
     tiles = [8, 16, 32, 64, 128]

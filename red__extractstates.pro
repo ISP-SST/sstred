@@ -4,13 +4,15 @@
 ; Extract states information from an array of strings (typically file
 ; names). 
 ;
-; Substitutes original crisp__extractstates.pro that was copied to
-; crisp__extractstates_nondb.pro. This procedure is a wrapper around
-; db and nondb versions.
+; Substitutes original crisp__extractstates.pro and
+; chromis__extractstates.pro that were copied to
+; crisp__extractstates_nondb.pro and chromis__extractstates_nondb.pro,
+; respectively. This procedure is a wrapper around db and nondb
+; versions.
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SSTRED
 ; 
 ; 
 ; :Author:
@@ -61,15 +63,18 @@
 ; :History:
 ; 
 ;   2019-07-23 : OA. Created.
+; 
+;   2022-07-29 : MGL. Change from a CRISP:: method to a RED:: method
+;                to prepare for CRISP camera upgrade.
 ;
 ;-
-pro crisp::extractstates, strings, states $
-                          , force = force $
-                          , strip_settings = strip_settings $
-                          , polcal = polcal $
-                          , datasets = datasets $
-                          , cam = cam $
-                          , nondb = nondb
+pro red::extractstates, strings, states $
+                        , cam = cam $
+                        , datasets = datasets $ 
+                        , force = force $
+                        , nondb = nondb $
+                        , polcal = polcal $
+                        , strip_settings = strip_settings
   
   if keyword_set(datasets) then begin ; if we use datasets then we should use the database
     if n_elements(datasets) eq 0 then return
@@ -77,15 +82,17 @@ pro crisp::extractstates, strings, states $
     return
   endif
   Nstrings = n_elements(strings)
+  
   if Nstrings eq 0 then return
-  ;; Check for raw data directories in 'strings'. We presume that we will not populate
-  ;; the database with old CRISP data with different directory names
-  raw_data_dirs = ['*Darks*','*Flats*','*Pinholes*','*Polcal*','*Science*','*CRISP/data/*']
+
+  ;; Check for raw data directories in 'strings'.
+  raw_data_dirs = [self -> raw_data_dirs(),'*/data/*']
+  
   is_raw = 0B
-  for i=0,5 do begin
-    bb = strmatch(strings,raw_data_dirs[i])
-    ss = where(bb eq 1)
-    if n_elements(ss) gt 1 then begin
+  for i=0,n_elements(raw_data_dirs)-1 do begin
+        bb = strmatch(strings,raw_data_dirs[i])
+        ss = where(bb eq 1)
+        if n_elements(ss) gt 1 then begin
       is_raw = 1B
       break  ; we should not have raw and processed data files in one call
     endif else if n_elements(ss) eq 1 and ss ne -1 then begin

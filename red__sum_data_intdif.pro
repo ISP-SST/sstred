@@ -73,7 +73,7 @@ pro red::sum_data_intdif, all = all $
 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
 
   ;; Use links created by link_data as default.
   if n_elements(link_dir) eq 0 then link_dir = self.out_dir + '/' + 'data'
@@ -147,14 +147,14 @@ pro red::sum_data_intdif, all = all $
     file_mkdir, outdir
     
 ;    files = file_search(dir+ '/' + cams[0] + '/cam*', count = Nfiles)
-    files = file_search(dir+ '/' + cams + '/cam*', count = Nfiles)
+    files = file_search(dir+ '/' + cams + '/*cam*', count = Nfiles)
 
     if Nfiles eq 0 then begin
       print, inam + ' : ERROR, data folder is empty'
       if keyword_set(debug) then stop else return
     endif
-    
- ;   files = red_sortfiles(temporary(files))
+
+    ;;   files = red_sortfiles(temporary(files))
 
     ;; Extract tags from file names
 ;    state = red_getstates(files, /links)
@@ -232,6 +232,8 @@ pro red::sum_data_intdif, all = all $
     Ntunings = n_elements(indx)
     uwav = selstates[indx].tuning
     udwav = selstates[indx].tun_wavelength
+    usettings = selstates[indx].cam_settings    
+    ufullstate = selstates[indx].fullstate    
 
     ;; Start summing
     if n_elements(t1) ne 0 then begin
@@ -372,7 +374,8 @@ pro red::sum_data_intdif, all = all $
 
         done[iscan] = 1B
         ;; Save incomplete results
-        save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref, Nx, Ny, udwav
+        save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref $
+              , Nx, Ny, udwav, usettings, ufullstate
 
       endfor                    ; iscan
 
@@ -381,7 +384,8 @@ pro red::sum_data_intdif, all = all $
     endfor                      ; icam
 
     ;; Save final results
-    save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref, Nx, Ny, udwav
+    save, file=dfile, done, uwav, ulc, uscan, Ntunings, Nlc, Nscans, pref $
+          , Nx, Ny, udwav, usettings, ufullstate
 
   endfor                        ; idir
 

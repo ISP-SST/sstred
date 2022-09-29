@@ -1,9 +1,8 @@
 pro red::measure_data_destretch, clip = clips, tile = tiles, verbose=verbose, overwrite = overwrite, $
                                  t0 = t0, t1 = t1, norotation = norotation, notimecor = notime
                                  
- ;; Get procedure name
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0]) + ': '
-
+  ;; Get procedure name
+  inam = red_subprogram(/low, calling = inam1)    
 
   ;; Defaults
   if(n_elements(clip) eq 0) then clips = [32, 16,  8,  4,  2]

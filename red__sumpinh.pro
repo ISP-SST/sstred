@@ -122,7 +122,7 @@ pro red::sumpinh, nthreads = nthreads $
 
 
   ;; Name of this method
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])
+  inam = red_subprogram(/low, calling = inam1)
   
 ;  ;; Logging
 ;  help, /obj, self, output = selfinfo 
@@ -165,11 +165,12 @@ pro red::sumpinh, nthreads = nthreads $
     if 0 then begin
       ;; Needed for old data? E.g., 2012?
       if n_elements(prefilter) gt 0 then prefin = prefilter else undefine, prefin
-      files = red_raw_search(dirs[0], count = nf) ;, prefilters = prefin)
+      files = self -> raw_search(dirs[0], count = nf) ;, prefilters = prefin)      
       self -> extractstates, files, states
       self->selectfiles, cam=cam, dirs=dirs, prefilter=prefin, ustat=ustat, $
                          files=files, states=states ;, /force
     endif else begin
+      if n_elements(prefilter) gt 0 then prefin = prefilter else undefine, prefin
       self->selectfiles, cam=cam, dirs=dirs, prefilter=prefin, ustat=ustat, $
                          files=files, states=states, /force
     endelse
@@ -223,7 +224,7 @@ pro red::sumpinh, nthreads = nthreads $
       
       pref = states[sel[0]].prefilter
       print, inam+' : adding pinholes for state -> ' + state_list[istate].fpi_state
-
+      
       DoBackscatter = 0
       if (~keyword_set(no_descatter) AND self.dodescatter AND (pref eq '8542' OR pref eq '7772')) then begin
         self -> loadbackscatter, detector, pref, bgt, Psft
@@ -235,7 +236,7 @@ pro red::sumpinh, nthreads = nthreads $
       gain = self->flat2gain(ff)
 
       ;; Sum files
-
+      
       ;; Dark and flat correction and bad-pixel filling done by
       ;; red_sumfiles on each frame before alignment.
       if rdx_hasopencv() and keyword_set(sum_in_rdx) then begin

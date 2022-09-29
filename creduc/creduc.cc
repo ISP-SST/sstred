@@ -757,7 +757,7 @@ void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, flo
   //float **bla = var2dim<float>(dat2d, pol.npix, pol.ndata);
   //
   char inam[] = "polcal_2d :";
-  fprintf(stderr, "%s ndata=%d, npix=%d, nlc=%d, nqwp=%d, nlp=%d, nele=%d\n",inam,pol.ndata, pol.npix, pol.nlc, pol.nqwp, pol.nlp,pol.npix*pol.ndata);
+  fprintf(stderr, "%s ndata=%d, npix=%d, nlc=%d, nqwp=%d, nlp=%d, nele=%u\n",inam,pol.ndata, pol.npix, pol.nlc, pol.nqwp, pol.nlp,(uint64_t)pol.npix*pol.ndata);
   //
   int i, tid;
   int npix = pol.npix, ndata = pol.ndata;
@@ -809,7 +809,7 @@ void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, flo
       for(i=0;i<npix;i++){
 	//
 	//
-	pol.dat = &dat2d[i*ndata];
+	  pol.dat = &dat2d[(uint64_t)i*ndata];
 	//
 	status = mpfit(compute_chisq_lm, ndata, npar, 
 		       &res[i*18], pars, &config, (void*) &pol, &result);
@@ -835,6 +835,85 @@ void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, flo
   // Clean-up
   //
   //delete [] res;
+}
+
+void polcal_2d_mask(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, float *qwp, float *lp, uint8_t *mask){
+  char inam[] = "polcal_2d :";
+  fprintf(stderr, "%s ndata=%d, npix=%d, nlc=%d, nqwp=%d, nlp=%d, nele=%u\n",inam,pol.ndata, pol.npix, pol.nlc, pol.nqwp, pol.nlp,(uint64_t)pol.npix*pol.ndata);
+  //
+  int i, tid;
+  int npix = pol.npix, ndata = pol.ndata;
+  //
+  // Prepare L-M settings
+  //
+  int status, chunk = 10;
+  int per=0, oper=-1;
+  float ntot = 100.0 / (pol.npix - 1.0);
+  //
+  //shared(pol, bla,nthreads,chunk, ndone, pars, npar, ndata, npix)
+#pragma omp parallel shared(cs, res, dat2d, qwp, lp, npix, ndata, inam, mask, ntot, nthreads, per, oper, chunk) private(i, tid, status) firstprivate(pol) num_threads(nthreads)
+  {
+    int npar = 18;
+    mp_par pars[npar];
+    memset(&pars[0], 0, sizeof(pars));
+    // Variable limits
+    for(i=0;i<16;++i){
+      pars[i].limited[0] = 1;
+      pars[i].limited[1] = 1;
+      pars[i].limits[0] = -1.5;
+      pars[i].limits[1] = 1.5;
+    }
+    // Fix the retardance and offset angle
+    pars[16].fixed = 1;
+    pars[17].fixed = 1;
+    //
+    for(i=0;i<npar-2;++i){ 
+      pars[i].step = 1.0E-10;
+      //pars[ii].side = 0;
+    }
+    mp_result result;
+    memset(&result,0,sizeof(result));       /* Zero results structure */
+    //
+    mp_config config;
+    memset(&config,0,sizeof(config));
+    config.maxiter = 40;
+    //
+    tid = omp_get_thread_num();
+    pol.tid = tid;
+    if (tid == 0){
+	fprintf(stderr,"%s %d threads\n", inam, nthreads);
+      }
+    pol.cur = new double [ndata];;
+    pol.qwp = qwp;
+    pol.lp = lp;
+    //
+#pragma omp for schedule(dynamic, 1)
+      for(i=0;i<npix;i++){
+	//
+	if ( mask[i] == 0 ) continue;
+	//
+	pol.dat = &dat2d[(uint64_t)i*ndata];
+	//
+	status = mpfit(compute_chisq_lm, ndata, npar, 
+		       &res[i*18], pars, &config, (void*) &pol, &result);
+	//
+	cs[i] = pol.Chisq;     
+	//
+	if(pol.tid==0){
+	  per = (int)(ntot*i);
+	  if(per != oper){
+	    oper = per;
+	    fprintf(stderr, "\r%s fitting data -> %d%s",inam, per, "%");
+	  }
+
+	}
+      }
+    
+  delete [] pol.cur;
+  pol.lp=NULL;
+  pol.qwp=NULL;
+  }
+  fprintf(stderr,"\r%s fitting data -> %d%s", inam, 100, "%\n");
 }
 
 

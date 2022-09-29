@@ -52,7 +52,7 @@
 function red_applyoffsets, img, xoff, yoff, clips = clips
   
   ;; Get function name
-  inam = strlowcase((reverse((scope_traceback(/structure)).routine))[0])+' : '
+  inam = red_subprogram(/low, calling = inam1)                                    
 
   if n_elements(clips) ne 0 then imc = red_clipim(img, clips) else imc = img
 

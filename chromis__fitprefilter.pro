@@ -294,10 +294,10 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
         print, dirs[idir]
 
-        fnamesN = red_raw_search(dirs[idir]+'/'+camNB+'/', count = NfilesN, scannos = 0)
+        fnamesN = self -> raw_search(dirs[idir]+'/'+camNB+'/', count = NfilesN, scannos = 0)
         Nfiles[idir] = NfilesN
         if keyword_set(unitscalib) then begin
-          fnamesW = red_raw_search(dirs[idir]+'/'+camWB+'/', count = NfilesW, scannos = 0)
+          fnamesW = self -> raw_search(dirs[idir]+'/'+camWB+'/', count = NfilesW, scannos = 0)
         endif else begin
           NfilesW = 0
         endelse
@@ -421,7 +421,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
     camNB = camsNB[icam]
     
-    filesNB = red_raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan)
+    filesNB = self -> raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan)
     if nfilesNB eq 0 then begin
       print, inam+' : ERROR, invalid scan number'
       return
@@ -431,7 +431,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
    
     if keyword_set(unitscalib) then begin
-      filesWB = red_raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan)
+      filesWB = self -> raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan)
       if nfilesNB ne nfilesWB then begin
         print, inam+' : ERROR, scan numbers mismatch WB and NB'
         stop
