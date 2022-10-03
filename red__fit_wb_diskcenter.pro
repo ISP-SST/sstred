@@ -234,7 +234,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         self -> extractstates, fnamesW, states, /nondb 
 
         pindx = uniq(states.prefilter, sort(states.prefilter))
-        upref = states[pindx].prefilter
+        if n_elements(pref) eq 0 then upref = states[pindx].prefilter else upref = pref
         Npref = n_elements(upref)
         if where(strmatch(upref, '8542')) ne -1 then begin
           if mu_limit lt 0.97d then begin
