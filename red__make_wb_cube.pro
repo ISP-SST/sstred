@@ -574,9 +574,15 @@ pro red::make_wb_cube, dirs $
 ;    read, np, prompt = prompt
 ;  endif
 
-  if n_elements(xbd) eq 0 then xbd = round(origNx*0.9)
-  if n_elements(ybd) eq 0 then ybd = round(origNy*0.9)
 
+;  if n_elements(xbd) eq 0 then xbd = round(origNx*0.9)  
+;  if n_elements(ybd) eq 0 then ybd = round(origNy*0.9)
+  ;; Default align box size is 20"
+  if n_elements(xbd) eq 0 then xbd = round(20/float(self.image_scale))  < round(origNx*0.9)
+  if n_elements(ybd) eq 0 then ybd = round(20/float(self.image_scale))  < round(origNy*0.9)
+
+
+  
   ;; Define (default) alignment FOV
   xc = origNx/2
   yc = origNy/2
