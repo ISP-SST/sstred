@@ -35,10 +35,6 @@
 ;       Limit the search to files with these fpi_states as part of
 ;       their file names.
 ; 
-;    instrument : in, optional, type=string, default='Get from dir'
-; 
-;       Specify the instrument.
-; 
 ;    prefilters : in, optional, type=strarr
 ; 
 ;       Limit the search to files with these prefilters as part of
@@ -133,9 +129,9 @@ function crisp2::raw_search, dir $
                                  + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
                                  + prefilters $
                                  + '_*.fits'
-        endelse
-        istring++
-      endfor
+      endelse
+      istring++
+    endfor
   endfor 
   
   files = red_file_search(searchstrings, dir, count = count)

@@ -35,10 +35,6 @@
 ;       Limit the search to files with these fpi_states as part of
 ;       their file names.
 ; 
-;    instrument : in, optional, type=string, default='Get from dir'
-; 
-;       Specify the instrument.
-; 
 ;    prefilters : in, optional, type=strarr
 ; 
 ;       Limit the search to files with these prefilters as part of
