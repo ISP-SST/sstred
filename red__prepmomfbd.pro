@@ -992,7 +992,7 @@ pro red::prepmomfbd, cams = cams $
       file_mkdir, cfg_list[icfg].dir+'/results/'
     endif
     
-    writefits, cfg_list[icfg].dir+'/results/fov_mask.fits', fov_mask
+    if n_elements(fov_mask) gt 0 then writefits, cfg_list[icfg].dir+'/results/fov_mask.fits', fov_mask
     
 ;    number_str = string(cfg_list[icfg].first_file, format='(I07)') $
 ;                 + '-' + string(cfg_list[icfg].last_file,format='(I07)')
