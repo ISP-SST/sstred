@@ -219,7 +219,8 @@ pro red_extractstates, strings $
           endcase
         endelse
       endif
-      is_wb[iwhere] = ~strmatch(camera, '*-N')
+      is_wb[iwhere] = strmatch(camera, '*-[WD]')      
+;      is_wb[iwhere] = ~strmatch(camera, '*-N')      
       is_pd[iwhere] =  strmatch(camera, '*-D')
     endfor                      ; iwhere
   endif
@@ -277,7 +278,7 @@ pro red_extractstates, strings $
   endif
   
   if arg_present(fullstate) or arg_present(states) then $
-     fullstate = strjoin(transpose([[pref], [wav], [lc]]), '.')
+     fullstate = strjoin(transpose([[strtrim(pref, 2)], [strtrim(wav, 2)], [strtrim(lc, 2)]]), '.')
 
   if arg_present(lambda) then lambda = float(pref)*1e-10
 
