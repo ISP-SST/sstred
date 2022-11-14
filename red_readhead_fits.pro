@@ -110,7 +110,15 @@ function red_readhead_fits, fname, $
         ;; So now we know there is a state keyword. But does it have
         ;; the tuning info in readable form?
         state_split = strsplit( state, '_',  /extr )
-        Nsplit = n_elements(state_split)
+        
+        ;; Automatic-mosaic data have state strings that start with
+        ;; "mosNN", where "NN" is a two-digit number. Remove it!
+        if strmatch(state_split[0], 'mos[0-9][0-9]') then begin
+          state_split = state_split[1:*]
+          fxaddpar, header, 'STATE', strjoin(state_split, '_'), 'Shortened by red_readhead_fits'  
+        endif
+        
+        Nsplit = n_elements(state_split)        
 
         state1 = state_split[0]
         
@@ -124,7 +132,7 @@ function red_readhead_fits, fname, $
           
           ;; This is probably chromis data with the state given in the
           ;; something like 'wheel00002_hrz32600'. Or it could be
-          ;; CRSIP darks
+          ;; CRISP darks.
 
           case camera of
 
