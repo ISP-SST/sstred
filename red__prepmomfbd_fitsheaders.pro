@@ -51,6 +51,7 @@
 ;-
 pro red::prepmomfbd_fitsheaders, dirs = dirs $
                                  , momfbddir = momfbddir $
+                                 , mosaic = mosaic $
                                  , pref = pref $
                                  , scanno = scanno $
                                  , no_pd = no_pd 
@@ -99,19 +100,27 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
     for ipref = 0, Nprefs-1 do begin
       
       cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
-      cfg_files = file_search(cfg_dir + 'momfbd_reduc_' + prefs[ipref] $
-                              + '_?????.cfg', count = Ncfg)
+      if keyword_set(mosaic) then begin
+        ;; For automatic mosaic observations
+        cfg_files = file_search(cfg_dir + 'momfbd_reduc_mos??_' + prefs[ipref] $
+                                + '_?????.cfg', count = Ncfg)                              
+      endif else begin
+        ;; For regular observations
+        cfg_files = file_search(cfg_dir + 'momfbd_reduc_' + prefs[ipref] $
+                                + '_?????.cfg', count = Ncfg)                                      
+      endelse 
       
-      progress_msg = 'Making fits headers for ' $
-                     + red_strreplace(red_strreplace(cfg_dir,'//','/') $
-                                      , self.out_dir,'')
-
+ 
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
 
+        progress_msg = 'Making fits headers for ' $
+                       + red_strreplace(red_strreplace(cfg_dir,'//','/') $
+                                        , self.out_dir,'') 
+                       
         red_progressbar, icfg, Ncfg, progress_msg, /predict
 
-    
+        
         if n_elements(scanno) ne 0 then $
            if long(scanno) ne long((strsplit(file_basename(cfg_files[icfg],'.cfg') $
                                              ,'_',/extract))[3]) then $
@@ -354,6 +363,16 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT1', 'arcsec', 'Unit along axix 1'
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axix 2'
 
+            if keyword_set(mosaic) then begin
+
+              ;; Possibly add some mosaic-specific info here. Like the
+              ;; mosNN number. What header keyword to use for that?
+              ;; MOS_TILE? The 2D tile position would also be good if
+              ;; we can figure it out. Or maybe Pit could add it
+              ;; directly in the raw file headers.
+              
+            endif
+            
             ;; Write the header file
             fxaddpar,head,'EXTEND','T' ; Required by fxwrite
             fxwrite, header_file, head 
