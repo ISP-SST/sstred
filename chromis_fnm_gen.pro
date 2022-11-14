@@ -5,7 +5,8 @@
 ; with aid of 'execute' function. The strings are to be stored in the database 
 ; instead of full filenames.
 ; 
-; Derived (including comments) from crisp_filename_template.pro by Mats Löfdahl.
+; Derived (including comments) from crisp_filename_template.pro by
+; Mats Löfdahl. 
 ; 
 ; :Categories:
 ;
@@ -29,18 +30,21 @@
 ;   
 ;   fnm_gen : out, optional, type=string
 ;
-;      The constructed IDL string to generate (with aid of execute function) the base filename.
+;      The constructed IDL string to generate (with aid of execute
+;      function) the base filename. 
 ;
 ;   dir_gen, optional, type=string
 ;   
-;      The constructed IDL string to generate the directory name (starting from
-;      the date).
+;      The constructed IDL string to generate the directory name
+;      (starting from the date).
 ; 
 ; :History:
 ; 
 ;    2019-03-12 : MGL. First version of crisp_filename_template.pro.
-;    2019-03-15 : OA. Rename the procedure. Switch to IDL strings generation instead of 
-;                 abstract templates.
+; 
+;    2019-03-15 : OA. Rename the procedure. Switch to IDL strings
+;                 generation instead of abstract templates.
+; 
 ;-
 pro chromis_fnm_gen, filename $
                              , fnm_gen = fnm_gen $
