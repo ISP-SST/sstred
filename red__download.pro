@@ -175,10 +175,12 @@ pro red::download, overwrite = overwrite $
     turret = 1
     pig = 1
   endif
+  
+  if self.isodate ge '2022-11-03' then linedefs = 0
+
 
   dir = 'downloads/'            ; Make this part of the crispred class structure?
-;  logdir = dir+'sstlogs/'
-
+  
   if any then file_mkdir, self.log_dir
 
 ;  if n_elements(date) gt 0 then begin
@@ -281,7 +283,7 @@ pro red::download, overwrite = overwrite $
       endelse        
     endfor                      ; iback
   endif
-
+    
   ;; linedefs
   if keyword_set(linedefs) AND (min(where(*self.cameras eq 'Chromis-N')) ne -1) then begin
     dotdate = strjoin(datearr, '.')
