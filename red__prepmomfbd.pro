@@ -278,7 +278,8 @@ pro red::prepmomfbd, cams = cams $
   ;;if n_elements(nfac) eq 0 then nfac = 1.
   if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
 
-  Ndirs = n_elements(dirs)    
+  Ndirs = n_elements(dirs)
+  ismos = bytarr(Ndirs)         ; Should be TRUE for directories with automatic mosaic data. 
   if Ndirs gt 0 then begin
     if Ndirs eq 1 then dirs = [dirs] 
     for idir = 0, Ndirs-1 do begin
@@ -293,10 +294,10 @@ pro red::prepmomfbd, cams = cams $
       endif
     endfor                      ; idir
   endif else begin
-    if ~ptr_valid(self.data_dirs) then begin
-      print, inam+' : ERROR : undefined data_dir'
-      return
-    endif
+;    if ~ptr_valid(self.data_dirs) then begin
+;      print, inam+' : ERROR : undefined data_dir'
+;      return
+;    endif
     dirs = file_search(self.out_dir+'data/*')
 ;    dirs = *self.data_dirs
     Ndirs = n_elements(dirs)
@@ -548,6 +549,9 @@ pro red::prepmomfbd, cams = cams $
     ref_img_dir = file_dirname(file_expand_path(ref_states[0].filename),/mark)
     ref_caminfo = red_camerainfo(detectors[refcam])
     ref_head = red_readhead(ref_states[0].filename)
+
+    ;; Are these data automatic mosaics?
+    ismos[idir] = strmatch(fxpar(ref_head, 'FILENAME'), '*mos00*')
     
     ;; Pixel size and binning
     pixelsize = ref_caminfo.pixelsize
@@ -1016,6 +1020,16 @@ pro red::prepmomfbd, cams = cams $
   ;; Make header-only fits files to be read post-momfbd.
   if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
 
+  ;; Call prepmomfbd_mosaic on dirs that are automatic mosaics..
+  for idir = 0, n_elements(dirs)-1 do begin
+
+    if ismos[idir] then begin
+      self -> prepmomfbd_mosaic, dirs=dirs, momfbddir=momfbddir, pref = pref
+    end
+
+  endfor                        ; idir
+
+  
   return
   
   
