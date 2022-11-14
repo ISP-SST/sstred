@@ -159,14 +159,6 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun
     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
   endif
-
-  
-;  if Nflatdirs gt 0 then begin
-;    ;; This step requires flats. And the hrz --> tuning conversion is
-;    ;; not needed if we don't have them.
-;    printf, Slun
-;    printf, Slun, 'a -> hrz_zeropoint' ; Find the reference wavelenght of CHROMIS scans
-;  endif
   
   ;; Analyze directories and produce r0 plots (optional)
   if ~keyword_set(calibrations_only) then begin
@@ -277,10 +269,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
     Nflatdirs = n_elements(flatdirs)
 
-    ;; Do the linedefs and hrz_calib thing
-    red_download_linedefs, isodate, flatdirs, work_dir
-    chromis_hrz_zeropoint, work_dir
-
+    ;; CHROMIS file names aren't wheel-and-hrz coded from 2022-11-03 
+    if isodate lt '2022-11-03' then begin
+      ;; Do the linedefs and hrz_calib thing for earlier observations
+      red_download_linedefs, isodate, flatdirs, work_dir
+      chromis_hrz_zeropoint, work_dir
+    endif
+    
     ;; Loop over the flatdirs, write each to the config file and
     ;; to the script file
     printf, Slun
@@ -300,13 +295,27 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       if Nfiles gt 0 then begin
         
         camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
-        red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd
+        red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd, wav = wav
+        
+        if isodate lt '2022-11-03' then begin
+          ;; Old filenames with wheel and hrz
+          red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd, wav = wav
+        endif else begin
+          ;; New filenames with proper tuning but NB files having WB
+          ;; prefilter in the names and states.
+          red_extractstates, fnames, /basename, wav = wav, fullstate = fullstate
+          this_is_wb = strmatch(fnames, '*/Chromis-[WD]/*')          
+          this_is_pd = strmatch(fnames, '*/Chromis-D/*')
+          if this_is_wb[0] then wls = strmid(fullstate, 0, 4) else wls = strmid(wav, 0, 4)
+        endelse
+
         indx = uniq(wls, sort(wls))
         wls = wls[indx]
         this_is_wb = this_is_wb[indx]
         this_is_pd = this_is_pd[indx]
-        wls = wls[WHERE(wls ne '')]
-
+        wls = wls[where(wls ne '')]
+        
+        
         if n_elements(wls) gt 0 then begin
           wavelengths = strjoin(wls, ' ')
           
@@ -348,9 +357,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   Nprefilters = n_elements(prefilters)
 
   if ~keyword_set(calibrations_only) then begin  
-    for ipref = 0, Nprefilters-1 do begin
-      if ~is_wb[ipref] then printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
-    endfor                      ; ipref
+    ;;if ~is_wb[ipref] then
+    printf, Slun, "a -> prepflatcubes"
   endif
   
   if ~keyword_set(calibrations_only) then begin  
@@ -358,12 +366,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
     printf, Slun, '; whether you need to use different keyword settings.'
     printf, Slun, '; Then, if you have already run makegains, rerun it.'
-    for ipref = 0, Nprefilters-1 do begin
-      if ~is_wb[ipref] then begin
-        printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
-                + prefilters[ipref] + "'"
-      end
-    endfor                      ; ipref
+    printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res"
 ;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
 ;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
 ;    printf, Slun, '; keyword:'
@@ -380,7 +383,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
 ;    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
 ;    printf, Slun, '; Then, if you have already run makegains, rerun it.'
-
+    
     printf, Slun, ''
 
     printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
@@ -407,13 +410,10 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
         outdirkey = ', outdir="'+outdir+'"'
       endif else outdirkey = ''
 
-      for ipref = 0, Nprefilters-1 do begin
-        printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
-                + ', nthreads=nthreads' $
-                + outdirkey $
-                + ", dirs=root_dir+'" + red_strreplace(pinhdirs[i], root_dir, '') $
-                + "', pref='"+prefilters[ipref]+"'"
-      endfor                    ; ipref
+      printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
+              + ', nthreads=nthreads' $
+              + outdirkey $
+              + ", dirs=root_dir+'" + red_strreplace(pinhdirs[i], root_dir, '') + "'"
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
       printf, Slun
@@ -431,13 +431,11 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
             outdirkey = ', outdir="'+outdir+'"'
           endif else outdirkey = ''
 
-          for ipref = 0, Nprefilters-1 do begin
-            printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
-                    + ', nthreads=nthreads' $
-                    + outdirkey $
-                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[j], root_dir, '') $
-                    + "';, pref='" + prefilters[ipref]+"'" 
-          endfor                ; ipref
+          printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
+                  + ', nthreads=nthreads' $
+                  + outdirkey $
+                  + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[j], root_dir, '') $
+                  + "';, pref='" + prefilters[ipref]+"'" 
         endif
       endfor                    ; j
     endelse
