@@ -51,7 +51,18 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
 
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then return
-  
+
+  for idir = 0, Ndirs-1 do begin
+    if ~file_test(dirs[idir]) then begin
+      if file_test(self.out_dir+'data/'+dirs[idir]) then begin
+        dirs[idir] = self.out_dir+'data/'+dirs[idir]
+      endif else begin
+        print,'The directory ',self.out_dir+'data/'+dirs[idir], " doesn't exist."
+        print,"Run a->link_data, dir=['",dirs[idir],"'] first."
+        return
+      endelse
+    endif
+  endfor                        ; idir
 
   if n_elements(momfbddir) eq 0 then begin
     if keyword_set(no_pd) then begin
@@ -60,7 +71,6 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
       momfbddir = 'momfbd' 
     endelse
   endif
-
   
   ;; Loop directories
   for idir=0L, Ndirs-1 do begin
@@ -118,13 +128,14 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
           self -> extractstates, files, states
           undefine, image_nums
           for istate = 0, Nfiles-1 do $
-             red_append, image_nums, states[istate].framenumber + indgen(states[istate].nframes)
+             red_append, image_nums, states[istate].framenumber ;+ indgen(states[istate].nframes)
+          image_nums = image_nums[uniq(image_nums, sort(image_nums))]
           image_nums = rdx_ints2str(image_nums)
           redux_cfgaddkeyword, cfg_mos, 'IMAGE_NUMS', image_nums
           
           for iobject = 0, nobjects-1 do begin
 
-            ;; Change OUTPUT_FILE 
+            ;; Change output directory 
             ofile = redux_cfggetkeyword(cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.OUTPUT_FILE')
             ofile = red_strreplace(ofile, 'results', 'results_mos'+mosnums[imos])
             redux_cfgaddkeyword, cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.OUTPUT_FILE', ofile
@@ -137,10 +148,32 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
               redux_cfgaddkeyword, cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.CHANNEL0.FILENAME_TEMPLATE', ftemp
             endif
 
+            ;; Change GAIN_FILE for CRISP data. The NB objects have
+            ;; time-dependent gaintables, need to add a "mosNN" tag to
+            ;; them. (OBJECT0 not needed, always WB.)
+            if iobject gt 0 then begin
+              gfile = redux_cfggetkeyword(cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.CHANNEL0.GAIN_FILE')
+              if strmatch(file_basename(file_dirname(gfile)),'[0-9][0-9]:[0-9][0-9]:[0-9][0-9]') then begin
+                ;; Ok, this is a time-dependent gain file!
+                gdir = file_dirname(gfile)
+                gsplit = strsplit(file_basename(gfile), '_', /extract)
+                gfile = strjoin([gsplit[0], 'mos'+mosnums[imos], gsplit[1:*]], '_')
+                redux_cfgaddkeyword, cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.CHANNEL0.GAIN_FILE' $
+                                     , gdir + '/' + gfile
+              endif
+            endif
+            
+            
           endfor                ; iobject
 
           redux_writecfg, cfg_file_mos, cfg_mos
           
+          ;; Copy FOV mask if possible
+          if file_test(cfg_dir+'/results/fov_mask.fits') then begin
+            file_copy, cfg_dir+'/results/fov_mask.fits' $
+                       , cfg_dir+'/results_mos'+mosnums[imos]+'/fov_mask.fits'
+          endif
+
         endfor                  ; imos
 
         if ~keyword_set(no_delete) then file_delete, cfg_files[icfg]
@@ -151,9 +184,6 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
                                         , pref = pref[ipref] $
                                         , no_pd = no_pd 
 
-        ;; Possibly add some mosaic-specific info to the fitsheader
-        ;; files in prepmomfbd_fitsheaders.
-        
       endfor                    ; icfg ;
 
     endfor                      ; ipref

@@ -69,6 +69,9 @@
 ;   2022-08-21 : MGL. Version for CRISP2 based on the CHROMIS version.
 ;                Make nonstate links to WB data files, links to
 ;                directories for NB data.
+;
+;   2022-11-06 : MGL. This version now used for CRISP2 and CHROMIS
+;                (2022-11-03 or later). Special case is mosaic data.
 ;   
 ;-
 pro red::link_data, all_data = all_data $
@@ -77,11 +80,24 @@ pro red::link_data, all_data = all_data $
                     , uscan = uscan $
                     , link_dir = link_dir
 
-  if n_elements(link_dir) eq 0 then link_dir = 'data'
-  if n_elements(uscan) eq 0 then uscan = ''
-
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
+
+  if ((typename(self)).tolower()) eq 'chromis' $
+     && self.isodate lt '2022-11-03' then begin
+    ;; Use the old CHROMIS method for CHROMIS data with undecoded
+    ;; wheel and hrz file names.
+    self -> link_data_wheelhrz, all_data = all_data $
+                                , dirs = dirs $
+                                , pref = pref $
+                                , uscan = uscan $
+                                , link_dir = link_dir
+    return
+  end
+  
+  
+  if n_elements(link_dir) eq 0 then link_dir = 'data'
+  if n_elements(uscan) eq 0 then uscan = ''
 
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then begin
@@ -108,7 +124,7 @@ pro red::link_data, all_data = all_data $
 
   cams = *self.cameras
   Ncams = n_elements(cams)
-
+  
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin
     data_dir = dirs[idir]
@@ -210,25 +226,12 @@ pro red::link_data, all_data = all_data $
         printf, lun, '#!/bin/bash'
         
         ;; Create folders
-;        outdir = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '/'
-;        file_mkdir, outdir
-;        if iswb then begin
         outdir1 = self.out_dir + '/' + link_dir + '/' + folder_tag+ '/' + cam + '_nostate/'
         file_mkdir, outdir1
-;        endif
         
         for ifile = 0L, Nfiles - 1 do begin
           if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
           
-;          namout = outdir + detector $
-;                   + '_' + string(states[ifile].scannumber, format = '(i05)') $
-;                   + '_' + strtrim(states[ifile].fullstate, 2) $
-;                   + '_' + string(states[ifile].framenumber, format = '(i07)') $
-;                   + '.fits'
-;          
-;          printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
-;          
-;          if iswb then begin
           namout = outdir1 + detector $
                    + '_' + string(states[ifile].scannumber, format = '(i05)') $
                    + '_' + strtrim(states[ifile].prefilter, 2) $
@@ -236,8 +239,7 @@ pro red::link_data, all_data = all_data $
                    + '.fits'
           
           printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
-;          endif
-
+          
           red_progressbar, ifile, Nfiles, inam+' : creating linker for '+cam
           
         endfor                  ; ifile

@@ -38,6 +38,11 @@
 ;
 ;       If set, generate link name. (Only for raw science data.)
 ; 
+;    mosaic_tag : in, optional, type=string
+; 
+;       Filename tag that identifies different tiles in data collected
+;       in automatic mosaic mode.
+; 
 ;    no_dir : in, optional, type=boolean
 ; 
 ;       If set, generate file names without directory. 
@@ -112,6 +117,8 @@
 ; 
 ;    2022-07-29 : MGL. CRISP2 (and CRISP with new cameras) file names. 
 ; 
+;    2022-11-15 : MGL. New keyword mosaic_tag.
+; 
 ;-
 function crisp2::filenames, datatype, states $
                             , wild_detector = wild_detector $         ; camXXVII
@@ -124,6 +131,7 @@ function crisp2::filenames, datatype, states $
                             , wild_exposure = wild_exposure $         ; 12.00ms
                             , wild_gain = wild_gain $                 ; G10.00
                             , wild_cam_settings = wild_cam_settings $ ; 12.00ms_G10.00
+                            , mosaic_tag = mosaic_tag $
                             , no_fits = no_fits $
                             , no_dir = no_dir $
                             , raw = raw $
@@ -445,6 +453,9 @@ function crisp2::filenames, datatype, states $
             if strlen(ts) eq 8 then dir = self.out_dir + '/gaintables/' + ts + '/' else stop         
           endelse
           red_append, tag_list, detector
+          if keyword_set(mosaic_tag) then begin
+            red_append, tag_list, mosaic_tag
+          endif
           red_append, tag_list, scannumber
           red_append, tag_list, states[istate].fullstate
 ;          dir = self.out_dir + '/gaintables/' + timestamp + '/'

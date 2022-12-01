@@ -46,6 +46,11 @@
 ;   all : in, optional, type=boolean
 ;   
 ;      Process all data sets.
+; 
+;   mosaic_tag : in, optional, type=string
+; 
+;      Filename tag that identifies different tiles in data collected
+;      in automatic mosaic mode.
 ;
 ;   overwrite : in, optional, type=boolean
 ;
@@ -78,6 +83,8 @@
 ; 
 ;   2019-03-28 : MGL. New keyword overwrite. Default is now not to
 ;                overwrite existing gainfiles.
+; 
+;   2022-11-15 : MGL. New keyword mosaic_tag.
 ;
 ;-
 pro red::make_intdif_gains, all = all $
@@ -86,6 +93,7 @@ pro red::make_intdif_gains, all = all $
                             , debug = debug $
                             , max = max $
                             , min = min $
+                            , mosaic_tag = mosaic_tag $
                             , overwrite = overwrite $
                             , pref = pref $
                             , preserve = preserve $
@@ -123,8 +131,8 @@ pro red::make_intdif_gains, all = all $
     indx = where(ww eq 1)
     nindx = where(ww eq -1)
     if array_equal(nindx, -1,/not_equal) then $
-      for ii=0, n_elements(nindx)-1 do $
-        print, inam + ' : Subdirectory cmap_intdif/'+tdirs[nindx[ii]]+ ' is empty. Please run sum_data_intdif!'
+       for ii=0, n_elements(nindx)-1 do $
+          print, inam + ' : Subdirectory cmap_intdif/'+tdirs[nindx[ii]]+ ' is empty. Please run sum_data_intdif!'
     if array_equal(indx, -1) then return
     dirs = self.out_dir+'/cmap_intdif/'+tdirs[indx]
   endif else begin
@@ -142,7 +150,7 @@ pro red::make_intdif_gains, all = all $
     endif
   endelse
 
-  ;; Find the narrowband cameras.n
+  ;; Find the narrowband cameras.
   self -> getdetectors
   cams = *self.cameras
 ;  detectors = *self.detectors
@@ -170,12 +178,49 @@ pro red::make_intdif_gains, all = all $
       if n_elements(cam) gt 0 && cams[icam] ne cam then continue
 
       ;; Search files
-      search = dir + '/' + detectors[icam]+'.'+pref+'.intdif.icube'
-
+      if keyword_set(mosaic_tag) then begin
+        search = dir + '/' + detectors[icam] + '_' + mosaic_tag + '.' + pref + '.intdif.icube'
+      endif else begin
+        search = dir + '/' + detectors[icam] + '.' + pref + '.intdif.icube'
+      endelse
+      
       cfile = file_search(search, count = count)
+      
       if count eq 0 then begin
+        if ~keyword_set(mosaic_tag) then begin
+          tmpfiles = file_search(dir + '/' + detectors[icam] + '_mos??.' + pref + '.intdif.icube', count = tmpcount)
+          if tmpcount gt 0 then begin
+            ;; So this is a directory where data were collected in
+            ;; automatic mosaic mode. Find out how many mosaic tiles
+            ;; there are and call ourself individually for each tile.
+            pos = strpos(file_basename(tmpfiles[-1]), '_mos')
+            Nmos = long(strmid(file_basename(tmpfiles[-1]), pos+4, 2))+1
+            for imos = 0, Nmos-1 do begin
+              mosaic_tag = 'mos'+string(imos, format = '(i02)')
+              self ->  make_intdif_gains, all = all $
+                                          , bad = bad $
+                                          , cam = cams[icam] $
+                                          , debug = debug $
+                                          , max = max $
+                                          , min = min $
+                                          , mosaic_tag = mosaic_tag $
+                                          , overwrite = overwrite $
+                                          , pref = pref $
+                                          , preserve = preserve $
+                                          , psfw = psfw $
+                                          , scan = scan $
+                                          , smallscale = smallscale $
+                                          , smooth = smooth $
+                                          , sumlc = sumlc $
+                                          , tdirs = file_basename(dir) $
+                                          , timeaver = timeaver
+            endfor              ; imos
+            continue
+          endif
+        endif
         print, inam + ' : No files match search string "'+search+'"'
       endif
+      
       if count eq 0 then continue
       
       dfile = dir+'/'+file_basename(cfile,'icube')+'save'
@@ -306,7 +351,7 @@ pro red::make_intdif_gains, all = all $
             continue
           endif
         endif
-       
+        
         ;; Get timeaver bounds
         dt = timeaver/2
         x0 = (ss-dt) > t0
@@ -362,6 +407,7 @@ pro red::make_intdif_gains, all = all $
 ;                                         , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
                                                     , scannumber:uscan[ss] $
                                                    } $
+                                                 , mosaic_tag = mosaic_tag $
                                                  , timestamp = imdir $
                                                  , /wild_framenumber $
                                                  , /wild_prefilter $
@@ -418,6 +464,7 @@ pro red::make_intdif_gains, all = all $
 ;                                         , 'lc'+strtrim(long(ulc[ilc]), 2)], '_') $
                                          , scannumber:uscan[ss] $
                                         } $
+                                      , mosaic_tag = mosaic_tag $
                                       , timestamp = imdir $
                                       , /wild_framenumber $
                                       , /wild_prefilter $
@@ -440,11 +487,12 @@ pro red::make_intdif_gains, all = all $
 ;                                                                  , 'lc'+strtrim(long(ulc[0]), 2)], '_') $
                                              , scannumber:uscan[ss] $
                                             } $
+                                          , mosaic_tag = mosaic_tag $
                                           , timestamp = imdir $
                                           , /wild_framenumber $
                                           , /wild_prefilter $
                                           , /wild_tuning $
-                                       )
+                                         )
               file_link, ofile_0, ofile
 
             endif else begin 
@@ -515,6 +563,7 @@ pro red::make_intdif_gains, all = all $
       endfor                    ; ss
 
       undefine, cub
+      undefine, mosaic_tag
       free_lun, lun
 
     endfor                      ; icam
