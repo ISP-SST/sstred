@@ -76,7 +76,7 @@ pro red_headerinfo_deletestep, hdr $
   ;; Some step could be indicated by multiple keywords
   stepnums = stepnums(uniq(stepnums, sort(stepnums))) 
 
-  print, stepnums
+  ;;print, stepnums
   
   for istep = 0, n_elements(stepnums)-1 do begin
     for ikey = 0, n_elements(prkeys)-1 do begin
@@ -84,7 +84,7 @@ pro red_headerinfo_deletestep, hdr $
 
         name = prkeys[ikey]+strtrim(stepnums[istep], 2)+letter
 
-        print, name
+        ;;print, name
         
         value = red_fitsgetkeyword(hdr, name, count = count)
         if count eq 0 then break
