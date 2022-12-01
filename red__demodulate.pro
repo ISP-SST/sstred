@@ -181,20 +181,34 @@ pro red::demodulate, outname, immr, immt $
   tfiles = nbtstates.filename
   wfiles = wbstates.filename
 
-  for ilc = 0, Nlc-1 do begin
-    red_append, rimg, momfbd_read(rfiles[ilc])
-    red_append, timg, momfbd_read(tfiles[ilc])
-    red_append, wimg, momfbd_read(wfiles[ilc])
-  endfor
+  if self.filetype eq 'MOMFBD' then begin
+    ;; MOMFBD output
+    for ilc = 0, Nlc-1 do begin
+      red_append, rimg, momfbd_read(rfiles[ilc])
+      red_append, timg, momfbd_read(tfiles[ilc])
+;      red_append, wimg, momfbd_read(wfiles[ilc])  ; Never used
+    endfor
 
-  ;; FOV is given in the momfbd output, use it to crop the modulation matrices.
+    ;; FOV is given in the momfbd output, use it to crop the modulation matrices.
 ;  mr = momfbd_read(tfiles[0], /names) ; Use /names to avoid reading
 ;  the data parts
-  mr = rimg[0]
-  x0 = mr.roi[0] + mr.margin
-  x1 = mr.roi[1] - mr.margin
-  y0 = mr.roi[2] + mr.margin
-  y1 = mr.roi[3] - mr.margin
+    mr = rimg[0]
+    roi = mr.roi
+    margin = mr.margin
+    x0 = roi[0] + margin
+    x1 = roi[1] - margin
+    y0 = roi[2] + margin
+    y1 = roi[3] - margin
+  endif else begin
+    ;; FITS files from red::bypass_momfbd
+    hdr = red_readhead(wfiles[0])
+    x0 = fxpar(hdr, 'CROP_X0')
+    x1 = fxpar(hdr, 'CROP_X1')
+    y0 = fxpar(hdr, 'CROP_Y0')
+    y1 = fxpar(hdr, 'CROP_Y1')
+    roi = [x0, x1, y0, y1]
+    margin = 0
+  endelse
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
   
@@ -297,10 +311,13 @@ pro red::demodulate, outname, immr, immt $
   ;; Mozaic images
   nmask = bytarr(Nx, Ny)+1
   for ilc = 0L, Nlc-1 do begin
-    im = red_mozaic(rimg[ilc], /crop) * nbrfac
+    ;;stop
+    im = red_readdata(rfiles[ilc]) * nbrfac
+    ;;im = red_mozaic(rimg[ilc], /crop) * nbrfac
     nmask = nmask and finite(im)
     img_r[*,*,ilc] = im
-    im = red_mozaic(timg[ilc], /crop) * nbtfac
+    im = red_readdata(tfiles[ilc]) * nbtfac
+    ;;im = red_mozaic(timg[ilc], /crop) * nbtfac
     nmask = nmask and finite(im)
     img_t[*,*,ilc] = im
   endfor                        ; ilc
@@ -361,11 +378,11 @@ pro red::demodulate, outname, immr, immt $
           ;; Apply the geometrical mapping and clip to the FOV of the
           ;; momfbd output.
           tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc,istokes,*,*]), /preserve_size)
-          mymr[ilc,istokes,*,*] = tmp[rimg[ilc].roi[0]+rimg[ilc].margin:rimg[ilc].roi[1]-rimg[ilc].margin $
-                                      , rimg[ilc].roi[2]+rimg[ilc].margin:rimg[ilc].roi[3]-rimg[ilc].margin]
+          mymr[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
+                                      , roi[2]+margin:roi[3]-margin]
           tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
-          mymt[ilc,istokes,*,*] = tmp[timg[ilc].roi[0]+timg[ilc].margin:timg[ilc].roi[1]-timg[ilc].margin $
-                                      , timg[ilc].roi[2]+timg[ilc].margin:timg[ilc].roi[3]-timg[ilc].margin]
+          mymt[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
+                                      , roi[2]+margin:roi[3]-margin]
         endfor                  ; istokes
       endfor                    ; ilc
       

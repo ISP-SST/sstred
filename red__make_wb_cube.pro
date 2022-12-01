@@ -646,8 +646,10 @@ pro red::make_wb_cube, dirs $
     ;; If multiple directories, the fov_mask should be the same. Or we
     ;; have to think of something.
     fov_mask = readfits(dirs[0]+'/fov_mask.fits')
-    mr = momfbd_read(wfiles[0], /nam)
-    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    if self.filetype eq 'MOMFBD' then begin
+      mr = momfbd_read(wfiles[0], /nam)
+      fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    endif 
     fov_mask = red_rotate(fov_mask, direction)
   endif
   

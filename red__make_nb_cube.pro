@@ -470,12 +470,14 @@ pro red::make_nb_cube, wcfile $
   Nx = wcND[0]
   Ny = wcND[1]
   
-  mr = momfbd_read(wbgfiles[0],/nam)    
+  if self.filetype eq 'MOMFBD' then mr = momfbd_read(wbgfiles[0],/nam)    
   if file_test(file_dirname(wbgfiles[0])+'/fov_mask.fits') then begin
     ;; If multiple directories, the fov_mask should be the same. Or we
     ;; have to think of something.
     fov_mask = readfits(file_dirname(wbgfiles[0])+'/fov_mask.fits')
-    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    if self.filetype eq 'MOMFBD' then begin
+      fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    endif
     fov_mask = red_rotate(fov_mask, direction)
   endif
   
@@ -576,9 +578,11 @@ pro red::make_nb_cube, wcfile $
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
 
-    ;; Crop the cavity map to the FOV of the momfbd-restored images.
-    cmap1 = red_crop_as_momfbd(cmap1, mr)
-
+    if self.filetype eq 'MOMFBD' then begin
+      ;; Crop the cavity map to the FOV of the momfbd-restored images.
+      cmap1 = red_crop_as_momfbd(cmap1, mr)
+    endif
+    
     ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
 
@@ -595,12 +599,18 @@ pro red::make_nb_cube, wcfile $
   ;; Make FITS header for the NB cube
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
-  self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
-
+  if self.filetype eq 'MOMFBD' then begin                     ; ...and then copy one we want
+    ;; The momfbd processing step:
+    self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD'
+  endif else begin
+    ;; Should be the the bypass_momfbd step:
+    self -> headerinfo_copystep, hdr, wchead, stepnum = 1
+  endelse
+  
   red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
-  red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
-  red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
-  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata) ; DATA statistics keywords
+  red_fitsdelkeyword, hdr, 'CHECKSUM'                 ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'                  ; Datasum for WB cube
+  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)   ; DATA statistics keywords
   for idata = Ndata-1, 0, -1 do begin
     keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
     red_fitsdelkeyword, hdr, keyword

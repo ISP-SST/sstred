@@ -468,9 +468,12 @@ pro red::make_scan_cube, dir $
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
 
-    ;; Crop the cavity map to the FOV of the momfbd-restored images.
-    mr = momfbd_read(wbgfiles[0],/nam)
-    cmap1 = red_crop_as_momfbd(cmap1, mr)
+    
+    if self.filetype eq 'MOMFBD' then begin
+      ;; Crop the cavity map to the FOV of the momfbd-restored images.
+      mr = momfbd_read(wbgfiles[0],/nam)
+      cmap1 = red_crop_as_momfbd(cmap1, mr)
+    endif
     
     ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
@@ -662,7 +665,9 @@ pro red::make_scan_cube, dir $
 
     if file_test(dir+'/fov_mask.fits') then begin
       fov_mask = readfits(dir+'/fov_mask.fits')
-      fov_mask = red_crop_as_momfbd(fov_mask, mr)    
+      if self.filetype eq 'MOMFBD' then begin
+        fov_mask = red_crop_as_momfbd(fov_mask, mr)    
+      endif
       fov_mask = red_rotate(fov_mask, direction)
     endif
     
@@ -884,10 +889,12 @@ pro red::make_scan_cube, dir $
           ;; Apply prefilter curve
           nbtim *= nbt_rpref[ituning] ;* nbt_tscl
           nbrim *= nbr_rpref[ituning] ;* nbr_tscl
-          
+
+;          stop
           if wbstretchcorr then begin
             wim = (red_readdata(tun_wfiles[iexposure], head = whdr, direction = direction))[x0:x1, y0:y1]
             grid1 = red_dsgridnest(wbim, wim, tiles, clips)
+;            wims = red_stretch(wim, grid1)
             nbtim = red_stretch(temporary(nbtim), grid1)
             nbrim = red_stretch(temporary(nbrim), grid1)
           endif
