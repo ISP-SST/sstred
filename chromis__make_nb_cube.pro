@@ -413,12 +413,18 @@ pro chromis::make_nb_cube, wcfile $
   ;; Make FITS header for the NB cube
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
-  self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
+  if self.filetype eq 'MOMFBD' then begin                     ; ...and then copy one we want
+    ;; The momfbd processing step:
+    self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD'
+  endif else begin
+    ;; Should be the the bypass_momfbd step:
+    self -> headerinfo_copystep, hdr, wchead, stepnum = 1
+  endelse
 
   red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
-  red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
-  red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
-  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata) ; DATA statistics keywords
+  red_fitsdelkeyword, hdr, 'CHECKSUM'                   ; Checksum for WB cube
+  red_fitsdelkeyword, hdr, 'DATASUM'                    ; Datasum for WB cube
+  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)     ; DATA statistics keywords
   for idata = Ndata-1, 0, -1 do begin
     keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
     red_fitsdelkeyword, hdr, keyword
