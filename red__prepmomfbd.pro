@@ -455,9 +455,15 @@ pro red::prepmomfbd, cams = cams $
         for idilate = 0, abs(cmargin)-1 do mask = dilate(mask, ste)
       endelse 
     endif
+
+    ;; Zero MAXSHIFT outermost rows and columns in mask.
+    tmp = bytarr(dims[0]-2*maxshift, dims[1]-2*maxshift) + 1
+    tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
+    tmp AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
+    mask AND= tmp
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
-  
+    
     ;; Define ROI based on mask
     indices = Where(mask EQ 1)
     boundaryPts = Find_Boundary(indices, XSize=dims[0], YSize=dims[1])
@@ -476,7 +482,8 @@ pro red::prepmomfbd, cams = cams $
     sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
 
     scrollwindow, xs = 2000, ys = 2000
-    cgplot, (*roiobj.data)[0,*], (*roiobj.data)[1,*], psym=3, /aspect    
+    cgplot, (*roiobj.data)[0,*], (*roiobj.data)[1,*], psym=3, /aspect $
+            , xrange = [0, dims[0]], yrange = [0, dims[1]]
     cgplot, (*fov_roiobj.data)[0,*], (*fov_roiobj.data)[1,*], psym=3, /over, color = 'red'      
 
     
@@ -990,8 +997,8 @@ pro red::prepmomfbd, cams = cams $
     
     red_progressbar, icfg, n_elements(cfg_list) $
                      , 'Write config file ' + red_strreplace(cfg_list[icfg].file, self.out_dir, '')
-
-    if( ~file_test(cfg_list[icfg].dir, /directory) ) then begin
+    
+    if( ~file_test(cfg_list[icfg].dir+'/data/', /directory) ) then begin
       file_mkdir, cfg_list[icfg].dir+'/data/'
       file_mkdir, cfg_list[icfg].dir+'/results/'
     endif
