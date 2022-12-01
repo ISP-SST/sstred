@@ -129,7 +129,7 @@ pro red::headerinfo_copystep, hdr, oldhdr $
 
         name = prkeys[ikey]+strtrim(stepnums[istep], 2)+letter
 
-        print, name
+;        print, name
         
         value = red_fitsgetkeyword(oldhdr, name, comment = comment, count = count)
         if count eq 0 then break
