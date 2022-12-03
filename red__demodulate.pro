@@ -255,18 +255,15 @@ pro red::demodulate, outname, immr, immt $
   tend = max(tends)
   
   if n_elements(wcs) gt 0 then wcs.time = tavg
-
-                                ;
+  
   ;; Create arrays for the image mozaics
   img_t = fltarr(Nx, Ny, 4)
   img_r = fltarr(Nx, Ny, 4)
 
-  
   dims = size(immt, /dim)
   Nxx = dims[1]                 ; Detector size
   Nyy = dims[2]
-
-
+  
   if 0 then begin
 
     ;; Adapt this block to new code base!
@@ -522,8 +519,6 @@ pro red::demodulate, outname, immr, immt $
   endif
   res = temporary(res1)
   
-  
-  
   if keyword_set(nosave) then return
   
   ;; Save result as a fitscube with all the usual metadata.
@@ -533,7 +528,6 @@ pro red::demodulate, outname, immr, immt $
   dims = [Nx, Ny, 1, Nstokes, 1] 
   res = reform(res, dims)
 
-  
   ;; Make header
   hdr = red_readhead(nbrstates[0].filename)
   check_fits, res, hdr, /update, /silent
@@ -572,8 +566,13 @@ pro red::demodulate, outname, immr, immt $
         bg = median(res[*,*,0, istokes, 0])
       endelse
       frame = red_centerpic(res[*,*,0, istokes, 0], sz = Nxx, z = bg)
-      filtframe = red_centerpic(float(fft(fft(frame)*filt, /inv)), xs = Nx, ys = Ny)
-      if Nmissing gt 0 then filtframe[indx_missing] = median(filtframe[indx_data])
+      indx_nan = where(~finite(frame), Nnan)
+      if Nnan gt 0 then frame[indx_nan] = bg
+      filtframe = float(fft(fft(frame)*filt, /inv))
+      bg = median(filtframe)
+      if Nnan gt 0 then filtframe[indx_nan] = bg
+      filtframe = red_centerpic(filtframe, xs = Nx, ys = Ny)
+      if Nmissing gt 0 then filtframe[indx_missing] = bg
       ;;   if istokes eq 2 then stop ; <------------------------------------------------------------- ***
       res[*,*,0, istokes, 0] = filtframe
     endfor                      ; ilc
