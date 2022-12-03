@@ -112,7 +112,16 @@ pro red::bypass_momfbd, cfgfile $
   anchor_dark_file = redux_cfggetkeyword(cfg, 'OBJECT0.CHANNEL0.DARK_TEMPLATE')  
   image_data_dir = redux_cfggetkeyword(cfg, 'OBJECT0.CHANNEL0.IMAGE_DATA_DIR')
   filename_template = redux_cfggetkeyword(cfg, 'OBJECT0.CHANNEL0.FILENAME_TEMPLATE')
-  
+  back_gain = redux_cfggetkeyword(cfg, 'OBJECT0.CHANNEL0.BACK_GAIN', count = DoBackscatter)
+  if DoBackscatter then begin
+    ;; Use the presence of the back_gain keyword only as a boolean.
+    ;; Load the backscatter gain and psf the usual way.
+    split_template = strsplit(filename_template, '_', /extract)
+    detector = split_template[0]
+    pref = split_template[2]
+    self -> loadbackscatter, detector, pref, bgt, Psft
+  endif
+
   filename_parts = strsplit(filename_template, '%', /extract)
   wfiles = file_search(image_data_dir+'/'+filename_parts[0]+'*', count = Nfiles)
   self -> extractstates, wfiles, wstates
@@ -129,11 +138,14 @@ pro red::bypass_momfbd, cfgfile $
     if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
     im = red_readdata(image_data_dir+'/'+filename)
     im -= anchor_dark
+    if DoBackscatter then begin
+      im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
+    endif
     im *= anchor_gain
     mask = anchor_gain eq 0
     wcube[*, *, iexposure] = rdx_fillpix(im, nthreads=nthreads, mask = mask)
   endfor                        ; iexposure
-
+  
   anchor_bg = median(wcube)
 
   np = 3
@@ -179,7 +191,6 @@ pro red::bypass_momfbd, cfgfile $
                                          , nthreads=nthreads, nearest=nearest)
   endfor                        ; iexposure
   anchorim = mean(wcube1, dim = 3)
-
   
 
 ;;for iexposure = 0, Nexposures-1 do tvscl,[wcube[*,*,iexposure],wcube1[*,*,iexposure]]
@@ -236,6 +247,17 @@ pro red::bypass_momfbd, cfgfile $
     filename_template = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.FILENAME_TEMPLATE')
     align_map = float(reform(strsplit(redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.ALIGN_MAP') $
                                       , ',', /extract), 3, 3))
+    back_gain = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.BACK_GAIN', count = DoBackscatter)
+    if DoBackscatter then begin
+      ;; Use the presence of the back_gain keyword only as a boolean.
+      ;; Load the backscatter gain and psf the usual way.
+      split_template = strsplit(filename_template, '_', /extract)
+      if detector ne split_template[0] or pref ne split_template[2] then begin
+        detector = split_template[0]
+        pref = split_template[2]
+        self -> loadbackscatter, detector, pref, bgt, Psft
+      endif
+    endif
     
     filename_parts = strsplit(filename_template, '%', /extract)
     files = file_search(image_data_dir+'/'+filename_parts[0]+'*', count = Nfiles)
@@ -260,10 +282,14 @@ pro red::bypass_momfbd, cfgfile $
 ;      if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
       im = red_readdata(files[ifile])
       im -= dark
+      if DoBackscatter then begin
+        im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
+      endif
       im *= gain
       mask = gain eq 0
       im = rdx_fillpix(im, nthreads=nthreads, mask = mask)
       im = rdx_img_transform(invert(align_map), im, /preserve) >0
+      if max(im) eq min(im) then stop
       red_missing, im, missing_type_wanted = 'median', /inplace
       cube[*, *, ifile] = im
                                 ;cube[*, *, ifile] = red_rotate(im, self.direction)
@@ -354,9 +380,11 @@ a = crispred(/dev, /no)
 cfgfile = 'momfbd_nopd/09:30:20/6302/cfg/momfbd_reduc_6302_00001.cfg'
 cfgfile = 'momfbd_nopd/09:30:20/6302/cfg/momfbd_reduc_6302_00002.cfg'
 
+cfgfile = 'momfbd_nopd/09:30:20/8542/cfg/momfbd_reduc_8542_00003.cfg'
+
 a -> bypass_momfbd, cfgfile, /over
 
-;stop
+stop
 
 a -> setproperty, 'filetype', 'FITS'
 a -> make_scan_cube, 'momfbd_nopd/09:30:20/6302/cfg/results_bypass/', odir = 'cubes_bypass/', scanno = 2, /over
