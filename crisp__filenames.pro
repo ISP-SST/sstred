@@ -37,6 +37,11 @@
 ;
 ;       If set, generate link name. (Only for raw science data.)
 ; 
+;    mosaic_tag : in, optional, type=string
+; 
+;       Not used, for compatibility with crisp2::filenames and
+;       chromis::filenames. 
+; 
 ;    no_dir : in, optional, type=boolean
 ; 
 ;       If set, generate file names without directory. 
@@ -108,6 +113,7 @@ function crisp::filenames, datatype, states $
                            , wild_lc = wild_lc $                     ; lc1
                            , wild_tuning = wild_tuning $             ; 3934_+0
                            , wild_prefilter = wild_prefilter $       ; Four digits
+                           , mosaic_tag = mosaic_tag $
                            , no_fits = no_fits $
                            , no_dir = no_dir $
                            ;; , raw = raw $
