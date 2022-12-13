@@ -15,9 +15,9 @@
 ; 
 ; :Params:
 ; 
-;    header : in, type=strarr
+;    header : in, out, type=strarr
 ;
-;      The FITS header to be modified.
+;      The FITS header to be modified or after modification.
 ; 
 ; :Keywords:
 ;
@@ -26,6 +26,20 @@
 ;       A comment to the PRREFna FITS keyword, used only if prref
 ;       present. Should be either a string or a string array the same
 ;       length as prref.
+;
+;    cubefile : in, optional, type=string
+;
+;       File to which the header, including any variable keywords,
+;       should be written. Requires that the file is closed before
+;       this method is called.
+;
+;    files : in, optional, type=strarr
+;
+;       Files, the headers of which provide info about a preceding
+;       step, possibly with varying methods or parameters. Design
+;       case: the wb files in make_wb_cube, which could be momfbd
+;       processed with different parameters or even bypassing momfbd.
+;       Requires that the file is closed before this method is called.
 ;
 ;    prmode : in, optional, type=string
 ;
@@ -74,12 +88,16 @@
 ;   2020-05-07 : MGL. New keyword prref.
 ;
 ;   2020-06-17 : MGL. New keyword comment_prref.
+;
+;   2022-12-13 : MGL. New keywords cubefile, files.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
                              , addlib = addlib $
                              , anchor = anchor $
-                             , comment_prref = comment_prref_in $ 
+                             , comment_prref = comment_prref_in $
+                             , cubefile = cubefile $
+                             , files = files $
                              , level = level $
                              , prmode = prmode $
                              , prpara = prpara $
@@ -89,7 +107,7 @@ pro red::headerinfo_addstep, header $
                              , version = version
 
   if n_elements(header) eq 0 then mkhdr, header, 0
-  
+
   if n_elements(prref_in) gt 0 then begin
     prref = prref_in
     if n_elements(comment_prref_in) eq n_elements(prref_in) then begin
@@ -123,10 +141,23 @@ pro red::headerinfo_addstep, header $
     tmp = fxpar(header, 'PRSTEP'+stp, count = count)
   endrep until count eq 0
 
+
+  if n_elements(files) gt 0 then begin
+    ;; Combine the PRSTEP info from the individual scans (i.e., files)
+    ;; and write to the cubefile. This is the step *before* the step
+    ;; specified with the prXXXX keywords to this method.
+    ;;
+    ;; Can we check that the cubefile is closed?
+    self -> headerinfo_combinestep, header, cubefile, files, stepnumber, anchor = anchor
+    stp = strtrim(stepnumber, 2)
+  endif
+  
+
+  
   if n_elements(prstep_in) eq 0 then prstep = 'Unknown' else prstep = prstep_in
   red_fitsaddkeyword, header, 'PRSTEP'+stp, prstep, 'Processing step name', anchor = anchor
 
-  ;; Procedure name
+;; Procedure name
   if n_elements(prproc) ne 0 then begin
     key = 'PRPROC'+stp
     red_fitsaddkeyword, header, key, prproc, 'Name of procedure used', anchor = anchor
@@ -187,6 +218,12 @@ pro red::headerinfo_addstep, header $
   Nlines = where(strmatch(header, 'END *'), Nmatch)
   if Nmatch eq 0 then stop
   header = header[0:Nlines]
+
+  if n_elements(cubefile) gt 0 then begin
+    ;; Write the header to the cubefile.
+    ;; Can we check that the cubefile is closed?  endif
+    red_fitscube_newheader, cubefile, header
+  endif
 
 end
 
@@ -249,7 +286,7 @@ end
 ;; DARK-SUBTRACTION      (rather than DARK-CORRECTION)
 ;; FLATFIELDING          (rather than FLAT-CORRECTION or FLAT-DIVISION)
 
-          
+
 ;; - There have been no objections to the following descriptions:
 
 ;; FIXED-PATTERN-REMOVAL 

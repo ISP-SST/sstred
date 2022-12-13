@@ -333,6 +333,7 @@ pro red::make_wb_cube, dirs $
     'ANA': extension = '.f0'
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
+    'MIXED' : extension = '.{fits,momfbd}'
   endcase
 
   for idir = 0, nDirs-1 do begin
@@ -342,6 +343,8 @@ pro red::make_wb_cube, dirs $
     if Nfls gt 0 then red_append, files, fls
   endfor
   Nfiles = n_elements(files)
+
+  stop
   
 ;  if Nfiles eq 0 then begin
 ;    print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
@@ -529,7 +532,8 @@ pro red::make_wb_cube, dirs $
     
   endfor                        ; iscan
 
-  hdr = red_readhead(wfiles[0]) ; Base cube header on first WB file header
+  hdr = red_readhead(wfiles[0])         ; Base cube header on first WB file header
+  red_headerinfo_deletestep, hdr, /last ; This processing step will be added later, could vary with scan number
   
   ;; Plot the intensity variations
   red_timeplot, red_time2double(time), tmean/mean(tmean) $
@@ -817,12 +821,12 @@ pro red::make_wb_cube, dirs $
   red_fitsdelkeyword, hdr, 'STATE'      ; State info is in WCS and FILTER1 keywords
 ;  red_fitsdelkeyword, hdr, '' 
 
-  ;; Some old momfbd output could have an old version of the PRSTEP1
-  ;; keyword. Repair that here.
-  prstp = fxpar(hdr, 'PRSTEP1', comment = prcom)
-  if prstp eq 'MOMFBD image restoration' then begin
-    fxaddpar, hdr, 'PRSTEP1', 'MOMFBD', strtrim(prcom, 2)
-  endif
+;  ;; Some old momfbd output could have an old version of the PRSTEP1
+;  ;; keyword. Repair that here.
+;  prstp = fxpar(hdr, 'PRSTEP1', comment = prcom, count = cnt)
+;  if cnt eq 1 && prstp eq 'MOMFBD image restoration' then begin
+;    fxaddpar, hdr, 'PRSTEP1', 'MOMFBD', strtrim(prcom, 2)
+;  endif
 
   anchor = 'DATE'
 
@@ -848,11 +852,6 @@ pro red::make_wb_cube, dirs $
     endif
   endif
 
-  ;; Add info about this step
-  self -> headerinfo_addstep, hdr $
-                              , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
-                              , prpara = prpara $
-                              , prproc = inam
 
   ;; Make time tabhdu extension with Nscans rows
   s_array = lonarr(Nscans)
@@ -933,6 +932,15 @@ pro red::make_wb_cube, dirs $
 ;  print, inam + ' : Wrote file '+odir + ofil
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
+
+  ;; Add info about this step
+  self -> headerinfo_addstep, hdr $
+                              , anchor = 'SOLARNET' $
+                              , files = wfiles, cubefile = odir + ofil $
+                              , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
+                              , prpara = prpara $
+                              , prproc = inam
+
   
   if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
     ;; Set padding pixels to missing-data, i.e., NaN.
