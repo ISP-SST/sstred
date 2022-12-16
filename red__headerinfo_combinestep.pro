@@ -53,8 +53,7 @@ pro red::headerinfo_combinestep, hdr, cubefile, files, stepnumber, anchor = anch
 
   outstp = strtrim(stepnumber, 2) ; The step to write to cubefile
 
-  prkeys = ['PRSTEP', 'PRPROC', 'PRMODE', 'PRPARA', 'PRLIB', 'PRVER', 'PRREF', 'PRBRA', 'PRHSH', 'PRENV']
-  Nkeys = n_elements(prkeys)
+  prkeys = red_headerinfo_prkeys(count = Nkeys)
   
   Nfiles = n_elements(files)
   
@@ -77,9 +76,7 @@ pro red::headerinfo_combinestep, hdr, cubefile, files, stepnumber, anchor = anch
     inkey = prkeys[ikey]+instp
     outkey = prkeys[ikey]+outstp
 
-    print, inkey
-    
-    ;; Read all key values
+    ;; Read key values from all files
     nokey = 0
     for ifile = 0, Nfiles-1 do begin
 
@@ -90,7 +87,8 @@ pro red::headerinfo_combinestep, hdr, cubefile, files, stepnumber, anchor = anch
 
       if cnt eq 0 then begin
         nokey = 1               ; This keyword does not exist in file
-      endif else begin values[ifile] = val
+      endif else begin
+        values[ifile] = val
         comments[ifile] = comment
       endelse
       
@@ -128,10 +126,8 @@ pro red::headerinfo_combinestep, hdr, cubefile, files, stepnumber, anchor = anch
 
       print, 'Add '+outkey+' as a VARIABLE keyword.'
 
-    ;;  stop
-
-      ;; fitscube_addvarkeyword writes the header so we have to write
-      ;; what we have changed so far...
+      ;; fitscube_addvarkeyword reads and writes the header so we have
+      ;; to write what we have changed so far...
       red_fitscube_newheader, cubefile, hdr
 
       self -> fitscube_addvarkeyword, cubefile, outkey, values $
