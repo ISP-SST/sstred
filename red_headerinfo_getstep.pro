@@ -23,6 +23,8 @@
 ; 
 ;     A FITS file header. If only one element or a scalar string,
 ;     interpreted as the name of a file from which to read the header.
+;     Note: needs to be a filename if any of the step keywords are are
+;     variable keywords.
 ; 
 ; :Keywords:
 ; 
@@ -46,8 +48,9 @@
 function red_headerinfo_getstep, header $
                                  , count = count $
                                  , prkey = prkey $
-                                 , prstep = prstep
-
+                                 , prstep = prstep $
+                                 , stepnumber = stepnumber
+  
   if n_elements(header) eq 0 then begin
     count = 0
     print, 'No header provided.'
@@ -55,10 +58,11 @@ function red_headerinfo_getstep, header $
   endif
 
   hdr = header                  ; Protect input string
-  
+
   if n_elements(hdr) eq 1 then begin
     ;; Is it a file name?
     if file_test(hdr[0]) then begin
+      filename = hdr
       hdr = headfits(hdr[0])
     endif else begin
       ;; Nope
@@ -83,9 +87,12 @@ function red_headerinfo_getstep, header $
     endif
   endif
 
-;  prkeys = ['PRSTEP', 'PRPROC', 'PRMODE', 'PRPARA', 'PRLIB', 'PRVER', 'PRREF', 'PRBRA', 'PRHSH', 'PRENV']
-;  Nkeys = n_elements(prkeys)
-
+  ;; Did we call with stepnumber?
+  if n_elements(stepnumber) then begin
+    sindx = [stepnumber-1]
+    count = n_elements(sindx)
+  endif
+  
   prkeys = red_headerinfo_prkeys(count = Nkeys) ; List of defined PR* keywords.
     
   h8 = strmid(hdr, 0, 8)        ; Just the header keywords, 8 first characters.
@@ -116,8 +123,18 @@ function red_headerinfo_getstep, header $
   ;; Get the keyword info for the selected keys
   output = hash()
   for ikey = 0, count-1 do begin
-    value = fxpar(hdr, keys[ikey], comment = comment)
-    output[strtrim(keys[ikey], 2)] = {value:value, comment:comment}
+                                ;value = fxpar(hdr, keys[ikey], comment = comment)
+    undefine, variable_values
+    if n_elements(filename) ne 0 then begin
+      value = red_fitsgetkeyword(filename, keys[ikey], comment = comment, variable_values = variable_values)
+    endif else begin
+      value = red_fitsgetkeyword(hdr, keys[ikey], comment = comment)
+    endelse
+    if n_elements(variable_values) gt 0 then begin
+      output[strtrim(keys[ikey], 2)] = {value:value, comment:comment, variable_values:variable_values}
+    endif else begin
+      output[strtrim(keys[ikey], 2)] = {value:value, comment:comment}
+    endelse
   endfor                        ; ikey
 
   return, output
