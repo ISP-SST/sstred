@@ -121,25 +121,60 @@ pro red::headerinfo_addstep, header $
   ;; Add date to the PRREF list
   red_append, prref, 'DATE: ' + red_timestamp(/iso)
   red_append, comment_prref, 'When this step was performed'
-  
-  ;; Existing steps
-  prsteps_existing = fxpar(header,'PRSTEP*')
-  Nexisting = n_elements(prsteps_existing)
-  if n_elements(anchor) eq 0 then begin
-    if Nexisting gt 0 then begin
-      anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
-    endif else begin
-      anchor = 'OBS_HDU'        ;'SOLARNET'
-    endelse
-  endif
-  
-  ;; Look for existing processing steps, set stepnumber to one higher.
-  stepnumber = 0
-  repeat begin
-    stepnumber++
-    stp = strtrim(stepnumber, 2)
-    tmp = fxpar(header, 'PRSTEP'+stp, count = count)
-  endrep until count eq 0
+
+  ;; Find the anchor and the next stepnumber.
+  red_headerinfo_anchor, header, anchor, next_stepnumber = stepnumber
+
+;; Existing steps
+;  prsteps_existing = fxpar(header,'PRSTEP*')
+;  Nexisting = n_elements(prsteps_existing)
+;  if n_elements(anchor) eq 0 then begin
+;    if Nexisting gt 0 then begin
+;      anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
+;    endif else begin
+;      anchor = 'OBS_HDU'        ;'SOLARNET'
+;    endelse
+;  endif
+
+;  ;; List of defined PR* keywords.
+;  prkeys = red_headerinfo_prkeys(count = Nkeys) 
+;
+;  ;; Given anchor overridden if there are steps already
+;  if Nexisting gt 0 then begin
+;
+;    ;; Look for last PR* keyword to use as anchor
+;    pos = 0
+;    ;;keywrd = strmid(oldheader, 0, 8)
+;    keywrd = strmid(header, 0, 8)
+;    iend = n_elements(keywrd)
+;    for ikey = 0, n_elements(prkeys)-1 do begin
+;      for istep = 0, Nexisting-1 do begin
+;        stepnum = istep+1
+;        foreach letter, ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
+;          name = prkeys[ikey]+strtrim(stepnum, 2)+letter
+;          thispos = fxparpos(keywrd, iend, before = name)
+;          
+;          if thispos eq iend then break
+;          if thispos gt pos then begin
+;            pos = thispos
+;            anchor = name
+;          endif
+;        end
+;      endfor                    ; istep
+;    endfor                      ; ikey
+;    
+;  endif
+;  ;; Default:
+;  if n_elements(anchor) eq 0 then anchor = 'OBS_HDU' 
+;
+;  ;; Look for existing processing steps, set stepnumber to one higher.
+;  stepnumber = Nexisting+1
+  stp = strtrim(stepnumber, 2)
+                                ;  repeat begin
+;    stepnumber++
+;    stp = strtrim(stepnumber, 2)
+;    tmp = fxpar(header, 'PRSTEP'+stp, count = count)
+;  endrep until count eq 0
 
 
   if n_elements(files) gt 0 then begin
@@ -149,15 +184,17 @@ pro red::headerinfo_addstep, header $
     ;;
     ;; Can we check that the cubefile is closed?
     self -> headerinfo_combinestep, header, cubefile, files, stepnumber, anchor = anchor
-    stp = strtrim(stepnumber, 2)
   endif
   
+  stp = strtrim(stepnumber, 2)
+  print, 'Anchor: ', anchor
+  print, 'Keyword: ', 'PRSTEP'+stp
 
   
   if n_elements(prstep_in) eq 0 then prstep = 'Unknown' else prstep = prstep_in
   red_fitsaddkeyword, header, 'PRSTEP'+stp, prstep, 'Processing step name', anchor = anchor
 
-;; Procedure name
+  ;; Procedure name
   if n_elements(prproc) ne 0 then begin
     key = 'PRPROC'+stp
     red_fitsaddkeyword, header, key, prproc, 'Name of procedure used', anchor = anchor
