@@ -272,13 +272,13 @@ pro crisp::selectfiles, cam = cam $
   
   selected = where(states.skip lt 1, count $
                    , complement = complement, Ncomplement = Ncomplement)
-  
+
   if arg_present(selected) then begin
     if count eq 0 then undefine,selected ; don't return -1
     return
   endif
   
-                                ; if keyword selected is not present, return selected subsets as new files/states
+  ;; if keyword selected is not present, return selected subsets as new files/states
   if count ne 0 then begin
     states = states[selected]
     files = states.filename
