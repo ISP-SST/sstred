@@ -200,6 +200,7 @@ pro red::make_stokes_cubes, dir, scanno $
     'ANA': extension = '.f0'
     'MOMFBD': extension = '.momfbd'
     'FITS': extension = '.fits'
+    'MIXED' : extension = '.{fits,momfbd}'
   endcase
 
   wbgfile = file_search(dir + '/*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension, count = Nfiles)

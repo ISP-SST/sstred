@@ -181,7 +181,7 @@ pro red::demodulate, outname, immr, immt $
   tfiles = nbtstates.filename
   wfiles = wbstates.filename
 
-  if self.filetype eq 'MOMFBD' then begin
+  if rdx_filetype(rfiles[0]) eq 'MOMFBD' then begin
     ;; MOMFBD output
     for ilc = 0, Nlc-1 do begin
       red_append, rimg, momfbd_read(rfiles[ilc])
