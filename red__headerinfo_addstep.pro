@@ -187,8 +187,8 @@ pro red::headerinfo_addstep, header $
   endif
   
   stp = strtrim(stepnumber, 2)
-  print, 'Anchor: ', anchor
-  print, 'Keyword: ', 'PRSTEP'+stp
+;  print, 'Anchor: ', anchor
+;  print, 'Keyword: ', 'PRSTEP'+stp
 
   
   if n_elements(prstep_in) eq 0 then prstep = 'Unknown' else prstep = prstep_in
