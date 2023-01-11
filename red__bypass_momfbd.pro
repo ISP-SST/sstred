@@ -37,6 +37,11 @@
 ;       Don't care if output is already on disk, overwrite with new
 ;       versions.
 ;
+;    nostretch : in, optional, type=boolean
+;
+;       Skip destretching for these data. Might be useful if the data
+;       quality is particularly low.
+;
 ;    tiles : in, optional, type=array
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
@@ -46,13 +51,16 @@
 ; 
 ;   2022-11-29 : MGL. First version.
 ; 
+;   2023-01-11 : MGL. New keyword nostretch.
+; 
 ;-
 pro red::bypass_momfbd, cfgfile $
                         , clips = clips $
                         , overwrite = overwrite $
+                        , nostretch = nostretch $
                         , tiles = tiles
 
-                        
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
@@ -60,6 +68,9 @@ pro red::bypass_momfbd, cfgfile $
   
   if n_elements(tiles) eq 0 then tiles =   [ 8, 16, 16, 32, 32]  ;, 64, 64]
   if n_elements(clips) eq 0 then clips = 2*[16, 16,  8,  4,  2]  ;,  2,  1  ]
+
+;  if n_elements(tiles) eq 0 then tiles =   [ 8,  8, 16, 16] ;, 64, 64]
+;  if n_elements(clips) eq 0 then clips = 2*[16, 16, 16,  8] ;,  2,  1  ]
 
   ;; Base default tiles and clips on num_points and max_local_shift?
   ;; Num_points gives final number of tiles. Max_local_shift gives
@@ -125,18 +136,28 @@ pro red::bypass_momfbd, cfgfile $
   filename_parts = strsplit(filename_template, '%', /extract)
   wfiles = file_search(image_data_dir+'/'+filename_parts[0]+'*', count = Nfiles)
   self -> extractstates, wfiles, wstates
+
+  nframes_perfile = wstates.nframes
   
+  wcube=red_readdata_multiframe(wfiles)
+  dims = size(wcube, /dim)
+  wcube1 = fltarr(dims)
+  Nx = dims[0]
+  Ny = dims[1]
+  Nexposures = dims[2]
+    
   anchor_dark = red_readdata(anchor_dark_file)
   anchor_gain = red_readdata(anchor_gain_file)
-  dims = size(anchor_dark, /dim)
-  wcube = fltarr([dims, Nexposures])  
-  wcube1 = fltarr([dims, Nexposures])  
+;  dims = size(anchor_dark, /dim)
+;  wcube = fltarr([dims, Nexposures])  
+;  wcube1 = fltarr([dims, Nexposures])  
   for iexposure = 0, Nexposures-1 do begin
-    red_progressbar, iexposure, Nexposures, 'Reading raw anchor images'
-    file_num = image_nums[iexposure]
-    filename = filename_parts[0] + string(file_num, format = '(i07)')
-    if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
-    im = red_readdata(image_data_dir+'/'+filename)
+    red_progressbar, iexposure, Nexposures, 'Processing raw anchor images'
+;    file_num = image_nums[iexposure]
+;    filename = filename_parts[0] + string(file_num, format = '(i07)')
+;    if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
+;    im = red_readdata(image_data_dir+'/'+filename)
+    im = wcube[*, *, iexposure]
     im -= anchor_dark
     if DoBackscatter then begin
       im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
@@ -156,40 +177,51 @@ pro red::bypass_momfbd, cfgfile $
        = red_rotation(wcube[*, *, iexposure], 0., shift[0,iexposure], shift[1,iexposure] $
                       , background = anchor_bg, nthreads=nthreads)
   endfor                        ; iexposure
-  
-  for iexposure = 1, Nexposures-1 do begin
-    red_progressbar, iexposure, Nexposures, 'Calculating stretch vectors for anchor images.'
-    grid = rdx_cdsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
-                           , tiles, clips, nthreads=nthreads)
-    if iexposure eq 1 then begin
-      gdims = size(grid, /dim)
-      grids = dblarr(Nexposures, 2, gdims[1], gdims[2])
-    endif
-    grids[iexposure, *, *, *] = grid
-  endfor                        ; iexposure
 
-  for itile = 0, gdims[1]-1 do begin  
-    red_progressbar, itile, gdims[1], 'Preparing displacement grids'
-    for jtile = 0, gdims[2]-1 do begin
-      ;; Note that we apply a cumulative displacement grid  
-      grids[*, 0, itile, jtile] = total(grids[*, 0, itile, jtile], /cumulative)      
-      grids[*, 1, itile, jtile] = total(grids[*, 1, itile, jtile], /cumulative)      
-      ;; Subtract average displacements, don't want to stretch
-      ;; to first frame
-      grids[*, 0, itile, jtile] = grids[*, 0, itile, jtile] - mean(grids[*, 0, itile, jtile])
-      grids[*, 1, itile, jtile] = grids[*, 1, itile, jtile] - mean(grids[*, 1, itile, jtile])      
+  if ~keyword_set(nostretch) then begin
+    for iexposure = 1, Nexposures-1 do begin
+      red_progressbar, iexposure, Nexposures, 'Calculating stretch vectors for anchor images.'
+      grid = rdx_cdsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
+                             , tiles, clips, nthreads=nthreads)
+      if iexposure eq 1 then begin
+        gdims = size(grid, /dim)
+        grids = dblarr(Nexposures, 2, gdims[1], gdims[2])
+      endif
+      grids[iexposure, *, *, *] = grid
+    endfor                      ; iexposure
+    
+    for itile = 0, gdims[1]-1 do begin  
+      red_progressbar, itile, gdims[1], 'Preparing displacement grids'
+      for jtile = 0, gdims[2]-1 do begin
+        ;; Note that we apply a cumulative displacement grid  
+        grids[*, 0, itile, jtile] = total(grids[*, 0, itile, jtile], /cumulative)      
+        grids[*, 1, itile, jtile] = total(grids[*, 1, itile, jtile], /cumulative)      
+        ;; Subtract average displacements, don't want to stretch
+        ;; to first frame
+        grids[*, 0, itile, jtile] = grids[*, 0, itile, jtile] - mean(grids[*, 0, itile, jtile])
+        grids[*, 1, itile, jtile] = grids[*, 1, itile, jtile] - mean(grids[*, 1, itile, jtile])      
+      endfor
     endfor
-  endfor
+  endif
   
-  tighttv,[wcube[*,*,0],wcube1[*,*,0]]
+;  tighttv,[wcube[*,*,0],wcube1[*,*,0]]
   for iexposure = 0, Nexposures-1 do begin
-    red_progressbar, iexposure, Nexposures, 'Stretching the anchor images.'
-    wcube1[*,*,iexposure] = red_rotation(wcube[*,*,iexposure] $
-                                         , 0.0, shift[0,iexposure], shift[1,iexposure] $
-                                         , stretch_grid = reform(grids[iexposure,*,*,*]) $
-                                         , background = anchor_bg $
-                                         , nthreads=nthreads, nearest=nearest)
+    if keyword_set(nostretch) then begin
+      red_progressbar, iexposure, Nexposures, 'Shifting the anchor images.'
+      wcube1[*,*,iexposure] = red_rotation(wcube[*,*,iexposure] $
+                                           , 0.0, shift[0,iexposure], shift[1,iexposure] $
+                                           , background = anchor_bg $
+                                           , nthreads=nthreads, nearest=nearest)
+    endif else begin
+      red_progressbar, iexposure, Nexposures, 'Shifting and stretching the anchor images.'
+      wcube1[*,*,iexposure] = red_rotation(wcube[*,*,iexposure] $
+                                           , 0.0, shift[0,iexposure], shift[1,iexposure] $
+                                           , stretch_grid = reform(grids[iexposure,*,*,*]) $
+                                           , background = anchor_bg $
+                                           , nthreads=nthreads, nearest=nearest)
+    endelse
   endfor                        ; iexposure
+  
   anchorim = mean(wcube1, dim = 3)
   
 
@@ -206,15 +238,26 @@ pro red::bypass_momfbd, cfgfile $
   header = headfits(cfgdir+'/'+anchor_output_file + '.fitsheader')
 
   red_headerinfo_deletestep, header, /last
-  self -> headerinfo_addstep, header $
-                              , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
-                              , prpara = prpara $
-                              , prproc = inam
-
+  if keyword_set(nostretch) then begin
+    self -> headerinfo_addstep, header $
+                                , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT' $
+                                , prpara = prpara $
+                                , prproc = inam
+  endif else begin
+    self -> headerinfo_addstep, header $
+                                , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
+                                , prpara = prpara $
+                                , prproc = inam
+  endelse
+  
   anchor_output_file = cfgdir+'/'+red_strreplace(anchor_output_file, 'results', 'results'+outdir_tag) + '.fits'
 ;  anchor_output_file = cfgdir+'/'+red_strreplace(anchor_output_file, 'results', 'results'+outdir_tag) + '.momfbd'
   
-  fxaddpar, header, 'FILENAME', file_basename(anchor_output_file), 'Destretched raw data'
+  if keyword_set(nostretch) then begin
+    fxaddpar, header, 'FILENAME', file_basename(anchor_output_file), 'Aligned raw data'
+  endif else begin
+    fxaddpar, header, 'FILENAME', file_basename(anchor_output_file), 'Destretched raw data'
+  endelse
   fxaddpar, header, 'CROP_X0', x0, 'Crop llx pixel'  
   fxaddpar, header, 'CROP_X1', x1, 'Crop urx pixel'  
   fxaddpar, header, 'CROP_Y0', y0, 'Crop lly pixel'  
@@ -224,10 +267,10 @@ pro red::bypass_momfbd, cfgfile $
                                 ; , extra_info = { name:wfiles, Nx_orig:dims[0], Ny_orig:dims[1] $
                                 ;                 , x0:x0, y0:y0, x1:x1, y1:y1 }
 
-  
 
   
-  ;;                       ----- All other images -----  
+  ;;                       ----- All other images -----
+  
   for iobject = 1, Nobjects-1 do begin
     
     ;; For each NB object, read the cube of raw NB images, and correct
@@ -265,22 +308,38 @@ pro red::bypass_momfbd, cfgfile $
 
     if trace then toutput_file = red_strreplace(output_file, states[0].detector, wstates[0].detector)    
     
-
-    match2, image_nums, states.framenumber, suba, indx    
+    ;; Find the wcube frame indices for this object
+    match2, image_nums, states.framenumber, suba, file_indx
+    undefine, indx
+    for iindx = 0, n_elements(file_indx)-1 do begin
+      if file_indx[iindx] eq 0 then begin
+        istart = 0
+      endif else begin
+        istart = round(total(nframes_perfile[0:file_indx[iindx]-1]))
+      endelse
+      red_append, indx, lindgen(nframes_perfile[file_indx[iindx]]) + istart
+    endfor                      ; iindx
+    
 
     dark = red_readdata(dark_file)
     gain = red_readdata(gain_file)
+
     
-    cube = fltarr([dims, Nfiles])  
-    cube1 = fltarr([dims, Nfiles])
-    
-    for ifile = 0, Nfiles-1 do begin
-      red_progressbar, ifile, Nfiles, 'Reading raw images for object ' + strtrim(iobject, 2) $
+    cube = red_readdata_multiframe(files)
+    dims = size(cube, /dim)
+    cube1 = fltarr(dims)
+    Nframes = dims[2]
+
+    if Nframes ne n_elements(indx) then stop
+
+    for iframe = 0, Nframes-1 do begin
+      red_progressbar, iframe, Nframes, 'Processing raw images for object ' + strtrim(iobject, 2) $
                        + ' of ' + strtrim(Nobjects, 2)
 ;      file_num = image_nums[ifile] ; <-------------------------
 ;      filename = filename_parts[0] + string(file_num, format = '(i07)')
 ;      if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
-      im = red_readdata(files[ifile])
+      ;;im = red_readdata(files[ifile])
+      im = cube[*, *, iframe]
       im -= dark
       if DoBackscatter then begin
         im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
@@ -290,19 +349,24 @@ pro red::bypass_momfbd, cfgfile $
       im = rdx_fillpix(im, nthreads=nthreads, mask = mask)
       im = rdx_img_transform(invert(align_map), im, /preserve) >0
       if max(im) eq min(im) then stop
+
       red_missing, im, missing_type_wanted = 'median', /inplace
-      cube[*, *, ifile] = im
+      cube[*, *, iframe] = im
                                 ;cube[*, *, ifile] = red_rotate(im, self.direction)
-    endfor                      ; ifile
+    endfor                      ; iframe
     bg = median(cube)
 
     
-    for ifile = 0, Nfiles-1 do begin
-      red_progressbar, ifile, Nfiles, 'Stretching the images.'
-      iexposure = indx[ifile]
+    for iframe = 0, Nframes-1 do begin
+      if keyword_set(nostretch) then begin
+        red_progressbar, iframe, Nframes, 'Shifting the images.'
+      endif else begin
+        red_progressbar, iframe, Nframes, 'Shifting and stretching the images.'
+      endelse
+      iexposure = indx[iframe]
       xshift = shift[0,iexposure]
       yshift = shift[1,iexposure]
-      grid = reform(grids[iexposure,*,*,*])
+      if ~keyword_set(nostretch) then grid = reform(grids[iexposure,*,*,*])
 
 ;      print, wfiles[iexposure]
 ;      print, files[ifile]
@@ -311,24 +375,42 @@ pro red::bypass_momfbd, cfgfile $
 ;
 ;
 ;      stop
-      cube1[*,*,ifile] = red_rotation(cube[*,*,ifile] $
-                                      , 0.0, xshift, yshift $
-                                      , stretch_grid = grid $
-                                      , nthreads=nthreads, nearest=nearest)
+      if keyword_set(nostretch) then begin
+        cube1[*,*,iframe] = red_rotation(cube[*,*,iframe] $
+                                         , 0.0, xshift, yshift $
+                                         , nthreads=nthreads, nearest=nearest)
+      endif else begin
+        cube1[*,*,iframe] = red_rotation(cube[*,*,iframe] $
+                                         , 0.0, xshift, yshift $
+                                         , stretch_grid = grid $
+                                         , nthreads=nthreads, nearest=nearest)
+      endelse
     endfor                      ; iexposure
+
     im = mean(cube1, dim = 3)
     red_missing, im, missing_type_wanted = 'nan', /inplace
 
     header = headfits(cfgdir+'/'+output_file + '.fitsheader')
 
     red_headerinfo_deletestep, header, /last
-    self -> headerinfo_addstep, header $
-                                , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
-                                , prpara = prpara $
-                                , prproc = inam
-
+    if keyword_set(nostretch) then begin
+      self -> headerinfo_addstep, header $
+                                  , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT' $
+                                  , prpara = prpara $
+                                  , prproc = inam
+    endif else begin
+      self -> headerinfo_addstep, header $
+                                  , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
+                                  , prpara = prpara $
+                                  , prproc = inam
+    endelse
+    
     output_file = cfgdir+'/'+red_strreplace(output_file, 'results', 'results'+outdir_tag) + '.fits'
-    fxaddpar, header, 'FILENAME', file_basename(output_file), 'Destretched raw data'
+    if keyword_set(nostretch) then begin
+      fxaddpar, header, 'FILENAME', file_basename(output_file), 'Aligned raw data'
+    endif else begin
+      fxaddpar, header, 'FILENAME', file_basename(output_file), 'Destretched raw data'
+    endelse
     fxaddpar, header, 'CROP_X0', x0, 'Crop llx pixel'  
     fxaddpar, header, 'CROP_X1', x1, 'Crop urx pixel'  
     fxaddpar, header, 'CROP_Y0', y0, 'Crop lly pixel'  
@@ -338,7 +420,7 @@ pro red::bypass_momfbd, cfgfile $
 
     
     if trace then begin
-    
+      
 ;      tcube = fltarr([dims, Nfiles])  
 ;      tcube1 = fltarr([dims, Nfiles])
 ;      for ifile = 0, Nfiles-1 do begin
@@ -355,23 +437,50 @@ pro red::bypass_momfbd, cfgfile $
       red_missing, tim, missing_type_wanted = 'nan', /inplace
       theader = headfits(cfgdir+'/'+toutput_file + '.fitsheader')
       red_headerinfo_deletestep, theader, /last
-      self -> headerinfo_addstep, theader $
+      if keyword_set(nostretch) then begin
+        self -> headerinfo_addstep, theader $
+                                    , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT' $
+                                    , prpara = prpara $
+                                    , prproc = inam
+      endif else begin
+        self -> headerinfo_addstep, theader $
                                   , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
                                   , prpara = prpara $
                                   , prproc = inam
+      endelse
       toutput_file = cfgdir+'/'+red_strreplace(toutput_file, 'results', 'results'+outdir_tag) + '.fits'
-      fxaddpar, theader, 'FILENAME', file_basename(toutput_file), 'Destretched raw data'
+      if keyword_set(nostretch) then begin
+        fxaddpar, theader, 'FILENAME', file_basename(toutput_file), 'Aligned raw data'
+      endif else begin
+        fxaddpar, theader, 'FILENAME', file_basename(toutput_file), 'Destretched raw data'
+      endelse
       fxaddpar, theader, 'CROP_X0', x0, 'Crop llx pixel'  
       fxaddpar, theader, 'CROP_X1', x1, 'Crop urx pixel'  
       fxaddpar, theader, 'CROP_Y0', y0, 'Crop lly pixel'  
       fxaddpar, theader, 'CROP_Y1', y1, 'Crop ury pixel'  
-      red_writedata, toutput_file, tim[x0:x1,y0:y1], header =theader, overwrite = overwrite
+      red_writedata, toutput_file, tim[x0:x1,y0:y1], header = theader, overwrite = overwrite
     endif
     
   endfor                        ; iobject
 
   
 end 
+
+
+;cd, '/scratch/mats/2016.09.19/CHROMIS-jan19'
+;
+;
+;a = chromisred("config.txt", /dev, /no)
+;root_dir = "/data/2016/2016.09/2016.09.19/"
+;nthreads=20
+;
+;cfgfile = 'momfbd/09:28:36/3950/cfg/momfbd_reduc_3950_00004.cfg'
+;a -> bypass_momfbd, cfgfile, /over
+;cfgfile = 'momfbd/09:28:36/3950/cfg/momfbd_reduc_3950_00005.cfg'
+;a -> bypass_momfbd, cfgfile, /over
+;
+;
+;stop
 
 cd, '/scratch/mats/2016.09.19/CRISP-aftersummer'
 
@@ -380,7 +489,7 @@ a = crispred(/dev, /no)
 cfgfile = 'momfbd_nopd/09:30:20/6302/cfg/momfbd_reduc_6302_00001.cfg'
 cfgfile = 'momfbd_nopd/09:30:20/6302/cfg/momfbd_reduc_6302_00002.cfg'
 
-cfgfile = 'momfbd_nopd/09:30:20/8542/cfg/momfbd_reduc_8542_00003.cfg'
+;cfgfile = 'momfbd_nopd/09:30:20/8542/cfg/momfbd_reduc_8542_00003.cfg'
 
 a -> bypass_momfbd, cfgfile, /over
 
