@@ -344,7 +344,6 @@ pro red::make_wb_cube, dirs $
   endfor
   Nfiles = n_elements(files)
 
-  stop
   
 ;  if Nfiles eq 0 then begin
 ;    print, inam + ' : No files matching regexp: ' + dir + wbdetector + '*' + extension
