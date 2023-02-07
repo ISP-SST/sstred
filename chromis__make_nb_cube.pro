@@ -220,8 +220,6 @@ pro chromis::make_nb_cube, wcfile $
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
 
-  if self.filetype eq 'MIXED' then wbgfiles = strtrim(wbgfiles, 2)
-
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0 
   sclstr = 0
@@ -259,10 +257,10 @@ pro chromis::make_nb_cube, wcfile $
   endcase
   
   for jj=0,n_elements(wbgfiles)-1 do begin
-          search_dir = file_dirname(wbgfiles[jj])+'/'
-          srch = '*_' + (strsplit(wbgfiles[jj],'._',/extract))[-3] +'_*'
-          ff = file_search(search_dir + srch + extension) 
-          red_append,files,ff
+    search_dir = file_dirname(wbgfiles[jj])+'/'
+    srch = '*_' + (strsplit(wbgfiles[jj],'._',/extract))[-3] +'_*'
+    ff = file_search(search_dir + srch + extension) 
+    red_append,files,ff
   endfor
   Nfiles = n_elements(files)
   
@@ -811,11 +809,22 @@ pro chromis::make_nb_cube, wcfile $
 
 
   ;; Close fits file.
-  self -> fitscube_finish, lun, wcs = wcs
-  if keyword_set(wbsave) then self -> fitscube_finish, wblun, wcs = wcs
+  free_lun, lun
+  whdr = headfits(wcfile)
+  csyer_spatial_value = fxpar(whdr, 'CSYER1', comment = csyer_spatial_comment)
+  red_fitscube_addwcs, filename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
+                         , dimensions = dims
+  if keyword_set(wbsave) then begin 
+     free_lun, wblun
+     red_fitscube_addwcs, wbfilename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
+                         , dimensions = dims
+  endif
 
-
-  ;; Copy the MOMFBD or bypass_momfbd step (or a mix):
+    ;; Copy the MOMFBD or bypass_momfbd step (or a mix):
   self -> headerinfo_copystep, filename, wcfile, stepnum = 1
   
   ;; Add info about this step
@@ -834,8 +843,7 @@ pro chromis::make_nb_cube, wcfile $
                                          , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
                               , prproc = inam
   red_fitscube_newheader, filename, hdr
-
-
+  if keyword_set(wbsave) then red_fitscube_newheader, wbfilename, hdr
   
 ;; Create cubes for science data and scan-adapted cavity maps.
   cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
