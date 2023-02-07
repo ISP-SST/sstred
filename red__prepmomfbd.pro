@@ -1025,7 +1025,7 @@ pro red::prepmomfbd, cams = cams $
 
 
   ;; Make header-only fits files to be read post-momfbd.
-  if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
+  if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref, scanno = escan
 
   ;; Call prepmomfbd_mosaic on dirs that are automatic mosaics..
   for idir = 0, n_elements(dirs)-1 do begin

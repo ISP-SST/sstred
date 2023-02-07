@@ -148,8 +148,6 @@ function chromis::raw_search, dir $
     endfor
   endfor 
 
-  stop
-  
   files = red_file_search(searchstrings, dir, count = count)
   
   return, files
