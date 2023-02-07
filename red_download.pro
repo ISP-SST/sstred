@@ -593,8 +593,13 @@ pro red_download, date = date $
     for i = 0, n_elements(timestamps_hmi)-1 do begin
       for j = 0, n_elements(hmitypes)-1 do begin
         hmifile = strjoin(datearr, '')+'_'+timestamps_hmi[i]+'_'+hmitypes[j]+'.jpg'
-        tmp = red_geturl(hmisite+hmidir+hmifile $ 
-                         , file = hmifile, dir = dir+'/HMI/', overwrite = overwrite) 
+        for ll = 0,2 do begin 
+           OK = red_geturl(hmisite+hmidir+hmifile $ 
+                         , file = hmifile, dir = dir+'/HMI/', overwrite = overwrite)
+           if OK then break
+           wait, 2
+        endfor
+        if ~OK then print, 'Failed to download ', hmifile
       endfor
     endfor                      ; i
   endif

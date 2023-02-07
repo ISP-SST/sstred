@@ -235,7 +235,7 @@ pro red::fitscube_export, filename $
 
   ;; Any old versions of this file?
   spl=strsplit(infile,'_',/extract)
-  srch='*'+strjoin(spl[1:4],'_')+'*'
+  srch='*'+strjoin(spl[1:5],'_')+'*'
   oldfiles = file_search(outdir + '/' + srch, count = Noldfiles)
   if Noldfiles gt 0 then begin
     s = ''
