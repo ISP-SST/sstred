@@ -42,7 +42,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep, nostretch 
 
   dim = size(cub, /dim)
   nfiles = dim[2]
-  refim = cub[*,*,0]
+  refim = red_fillnan(cub[*,*,0])
 
   maxg = MAX(grids)
   maxstr = 2 * platescale       ; 2" maximum allowed displacement for any one grid cell.
@@ -61,7 +61,7 @@ function red_destretch_tseries, cub, platescale, grids, clips, tstep, nostretch 
   
   for i=1, dim[2]-1 do begin
     red_progressbar, i-1, dim[2]-1, 'Computing destretch grid'
-    im = cub[*,*,i]
+    im = red_fillnan(cub[*,*,i])
     dq = rdx_cdsgridnest(refim, im, grids, clips, nthreads = nthreads)
     badg = WHERE(dq gt maxstr, num)
     if num gt 0 then begin
