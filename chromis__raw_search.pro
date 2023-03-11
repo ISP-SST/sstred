@@ -35,10 +35,6 @@
 ;       Limit the search to files with these fpi_states as part of
 ;       their file names.
 ; 
-;    instrument : in, optional, type=string, default='Get from dir'
-; 
-;       Specify the instrument.
-; 
 ;    prefilters : in, optional, type=strarr
 ; 
 ;       Limit the search to files with these prefilters as part of
@@ -76,7 +72,7 @@ function chromis::raw_search, dir $
 
   iswb = 'W' eq strupcase((strsplit(file_basename(dir), '-', /extract))[1])
   isflats = strmatch(dir,'*[Ff]lat*')
-  
+
   ;; Massage the scannos
   case n_elements(scannos_in) of
 
@@ -121,22 +117,37 @@ function chromis::raw_search, dir $
   istring = 0
   for iscan = 0, Nscans-1 do begin
     for istate = 0, Nstates-1 do begin
-      if iswb and isflats then begin
-        searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-                                 + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-                                 + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
-                                 + '.fits'
-      endif else begin
-        searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
-                                 + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-                                 + fpi_states[istate] $
-                                 + '.fits'
+      if self.isodate ge '2022-11-03' then begin
+        if iswb and isflats then begin
+          ;; Typical name: sst_camXXXI_00000_0001250_5896.fits
+          searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                   + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                   + prefilters $
+                                   + '.fits'
+        endif else begin
+          ;; Typical name: sst_camXXXI_00002_0002076_5896_5896_+0092_lc4.fits
+          searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                   + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                   + prefilters $
+                                   + '_*.fits'
+        endelse
+      endif else begin 
+        if iswb and isflats then begin
+          searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                   + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                   + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
+                                   + '.fits'
+        endif else begin
+          searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                                   + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                                   + fpi_states[istate] $
+                                   + '.fits'
+        endelse
       endelse
       istring++
     endfor
   endfor 
 
-  
   files = red_file_search(searchstrings, dir, count = count)
   
   return, files

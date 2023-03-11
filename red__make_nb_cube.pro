@@ -264,7 +264,8 @@ pro red::make_nb_cube, wcfile $
   ;; wbgfiles (WideBand Global).
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
-
+  if self.filetype eq 'MIXED' then wbgfiles = strtrim(wbgfiles, 2)
+  
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0
   sclstr = 0
@@ -295,8 +296,15 @@ pro red::make_nb_cube, wcfile $
   wchdr0 = red_readhead(wbgfiles[0])
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
+
+  case self.filetype of
+    'ANA': extension = '.f0'
+    'MOMFBD': extension = '.momfbd'
+    'FITS': extension = '.fits'
+    'MIXED' : extension = '.{fits,momfbd}'
+  endcase
   
-  extension = (strsplit(wbgfiles[0],'.',/extract))[-1]  
+  ;;extension = (strsplit(wbgfiles[0],'.',/extract))[-1]  
   for jj=0,n_elements(wbgfiles)-1 do begin
     search_dir = file_dirname(wbgfiles[jj])+'/'
     srch = '*_' + string(wbgstates[jj].scannumber, format = '(I05)')+'_*'
@@ -304,6 +312,7 @@ pro red::make_nb_cube, wcfile $
     red_append,files,ff
   endfor
   Nfiles = n_elements(files)  
+
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
@@ -320,7 +329,6 @@ pro red::make_nb_cube, wcfile $
   ;; All the per-tuning files and states
   pertuningfiles = files[complement]
   pertuningstates = states[complement]
-
 
   ;; Get the scan selection from wfiles (from the sav file)
   self -> extractstates, wbgfiles, wbgstates
@@ -470,12 +478,14 @@ pro red::make_nb_cube, wcfile $
   Nx = wcND[0]
   Ny = wcND[1]
   
-  mr = momfbd_read(wbgfiles[0],/nam)    
+  if self.filetype eq 'MOMFBD' then mr = momfbd_read(wbgfiles[0],/nam)    
   if file_test(file_dirname(wbgfiles[0])+'/fov_mask.fits') then begin
     ;; If multiple directories, the fov_mask should be the same. Or we
     ;; have to think of something.
     fov_mask = readfits(file_dirname(wbgfiles[0])+'/fov_mask.fits')
-    fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    if self.filetype eq 'MOMFBD' then begin
+      fov_mask = red_crop_as_momfbd(fov_mask, mr)
+    endif
     fov_mask = red_rotate(fov_mask, direction)
   endif
   
@@ -576,9 +586,11 @@ pro red::make_nb_cube, wcfile $
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
 
-    ;; Crop the cavity map to the FOV of the momfbd-restored images.
-    cmap1 = red_crop_as_momfbd(cmap1, mr)
-
+    if self.filetype eq 'MOMFBD' then begin
+      ;; Crop the cavity map to the FOV of the momfbd-restored images.
+      cmap1 = red_crop_as_momfbd(cmap1, mr)
+    endif
+    
     ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
 
@@ -595,12 +607,12 @@ pro red::make_nb_cube, wcfile $
   ;; Make FITS header for the NB cube
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
-  self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
+  red_fitsdelkeyword, hdr, 'VAR_KEYS'                         ; Variable keywords copied later
 
   red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
   red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
-  red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
-  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata) ; DATA statistics keywords
+  red_fitsdelkeyword, hdr, 'DATASUM'                  ; Datasum for WB cube
+  dindx = where(strmid(hdr, 0, 4) eq 'DATA', Ndata)   ; DATA statistics keywords
   for idata = Ndata-1, 0, -1 do begin
     keyword = strtrim(strmid(hdr[dindx[idata]], 0, 8), 2)
     red_fitsdelkeyword, hdr, keyword
@@ -637,38 +649,11 @@ pro red::make_nb_cube, wcfile $
 
     
 
-    ;; Need to copy some info from the stokes cube headers to hdr.
-    ;; E.g. the prpara info.
-
-    
-    hh = red_readhead(snames[0, 0])
-    self -> headerinfo_copystep, hdr, hh, prstep = 'DEMODULATION'
-
-    ;; At some point we also need to examine all the stokes cubes and
-    ;; make sure they are done using the same parameters. Or else
-    ;; either stop or note somehow in the nb_cube header that they
-    ;; differ.
     
   endif
 
   
   
-  ;; Add info about this step
-  self -> headerinfo_addstep, hdr $
-                              , prstep = 'CONCATENATION' $
-                              , prpara = prpara $
-                              , prproc = inam $
-                              , prref = 'Align reference: '+wcfile $
-                              , comment_prref = 'WB cube file name'
-
-
-  self -> headerinfo_addstep, hdr $
-                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
-                              , prpara = prpara $
-                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
-                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
-                              , prproc = inam
-
   anchor = 'DATE'
 
   ;; Add some keywords
@@ -1063,9 +1048,55 @@ pro red::make_nb_cube, wcfile $
   wcs.wave -= wave_shift
   
   ;; Close fits file.
-  self -> fitscube_finish, lun, wcs = wcs
-  if keyword_set(wbsave) then self -> fitscube_finish, wblun, wcs = wcs
+  free_lun, lun
+  whdr = headfits(wcfile)
+  csyer_spatial_value = fxpar(whdr, 'CSYER1', comment = csyer_spatial_comment)
+  red_fitscube_addwcs, filename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
+                         , dimensions = dims
+  if keyword_set(wbsave) then begin 
+     free_lun, wblun
+     red_fitscube_addwcs, wbfilename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
+                         , dimensions = dims
+  endif 
 
+  ;; Copy the MOMFBD or bypass_momfbd step (or a mix):
+  self -> headerinfo_copystep, filename, wcfile, stepnum = 1
+  
+  if makestokes then begin
+    ;; Need to copy prpara info from the stokes cube headers to hdr.
+    ;;hh = red_readhead(snames[0, 0])
+    ;;self -> headerinfo_copystep, filename, hh, prstep = 'DEMODULATION'
+    self -> headerinfo_copystep, filename, snames[0, 0] , prstep = 'DEMODULATION'
+    ;; Should we examine all the stokes cubes and make sure they are
+    ;; done using the same parameters? Or else either stop or note
+    ;; somehow in the nb_cube header that they differ. (There is a
+    ;; mechanism for that now! Except that potentially this is not per
+    ;; scan but per Stokes cube.)
+  endif
+
+  ;; Add info about this step
+  hdr = headfits(filename)
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CONCATENATION' $
+                              , prpara = prpara $
+                              , prproc = inam $
+                              , prref = 'Align reference: '+wcfile $
+                              , comment_prref = 'WB cube file name'
+
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                              , prpara = prpara $
+                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                              , prproc = inam
+  red_fitscube_newheader, filename, hdr
+  if keyword_set(wbsave) then red_fitscube_newheader, wbfilename, hdr
+  
+  
   ;; Add cavity maps as WAVE distortions 
   if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename, cavitymaps
 

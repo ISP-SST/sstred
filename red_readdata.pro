@@ -323,7 +323,13 @@ function red_readdata, fname $
       endif else begin
         mr = momfbd_read(fname, /img)
       endelse
-      data = red_mozaic(mr, /crop)
+      if n_elements(mr.patch) eq 1 then begin
+        ;; If just one patch, return it as is
+        data = mr.patch.img
+      endif else begin
+        ;; If more than one patch, make mosaic
+        data = red_mozaic(mr, /crop)
+      endelse
     end
 
   endcase

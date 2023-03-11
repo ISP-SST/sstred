@@ -278,7 +278,8 @@ pro red::prepmomfbd, cams = cams $
   ;;if n_elements(nfac) eq 0 then nfac = 1.
   if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
 
-  Ndirs = n_elements(dirs)    
+  Ndirs = n_elements(dirs)
+  ismos = bytarr(Ndirs)         ; Should be TRUE for directories with automatic mosaic data. 
   if Ndirs gt 0 then begin
     if Ndirs eq 1 then dirs = [dirs] 
     for idir = 0, Ndirs-1 do begin
@@ -293,10 +294,10 @@ pro red::prepmomfbd, cams = cams $
       endif
     endfor                      ; idir
   endif else begin
-    if ~ptr_valid(self.data_dirs) then begin
-      print, inam+' : ERROR : undefined data_dir'
-      return
-    endif
+;    if ~ptr_valid(self.data_dirs) then begin
+;      print, inam+' : ERROR : undefined data_dir'
+;      return
+;    endif
     dirs = file_search(self.out_dir+'data/*')
 ;    dirs = *self.data_dirs
     Ndirs = n_elements(dirs)
@@ -454,9 +455,15 @@ pro red::prepmomfbd, cams = cams $
         for idilate = 0, abs(cmargin)-1 do mask = dilate(mask, ste)
       endelse 
     endif
+
+    ;; Zero MAXSHIFT outermost rows and columns in mask.
+    tmp = bytarr(dims[0]-2*maxshift, dims[1]-2*maxshift) + 1
+    tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
+    tmp AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
+    mask AND= tmp
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
-  
+    
     ;; Define ROI based on mask
     indices = Where(mask EQ 1)
     boundaryPts = Find_Boundary(indices, XSize=dims[0], YSize=dims[1])
@@ -475,7 +482,8 @@ pro red::prepmomfbd, cams = cams $
     sim_y = rdx_segment( sim_roi[2], sim_roi[3], numpoints, /momfbd )
 
     scrollwindow, xs = 2000, ys = 2000
-    cgplot, (*roiobj.data)[0,*], (*roiobj.data)[1,*], psym=3, /aspect    
+    cgplot, (*roiobj.data)[0,*], (*roiobj.data)[1,*], psym=3, /aspect $
+            , xrange = [0, dims[0]], yrange = [0, dims[1]]
     cgplot, (*fov_roiobj.data)[0,*], (*fov_roiobj.data)[1,*], psym=3, /over, color = 'red'      
 
     
@@ -548,6 +556,9 @@ pro red::prepmomfbd, cams = cams $
     ref_img_dir = file_dirname(file_expand_path(ref_states[0].filename),/mark)
     ref_caminfo = red_camerainfo(detectors[refcam])
     ref_head = red_readhead(ref_states[0].filename)
+
+    ;; Are these data automatic mosaics?
+    ismos[idir] = strmatch(fxpar(ref_head, 'FILENAME'), '*mos00*')
     
     ;; Pixel size and binning
     pixelsize = ref_caminfo.pixelsize
@@ -986,13 +997,13 @@ pro red::prepmomfbd, cams = cams $
     
     red_progressbar, icfg, n_elements(cfg_list) $
                      , 'Write config file ' + red_strreplace(cfg_list[icfg].file, self.out_dir, '')
-
-    if( ~file_test(cfg_list[icfg].dir, /directory) ) then begin
+    
+    if( ~file_test(cfg_list[icfg].dir+'/data/', /directory) ) then begin
       file_mkdir, cfg_list[icfg].dir+'/data/'
       file_mkdir, cfg_list[icfg].dir+'/results/'
     endif
     
-    writefits, cfg_list[icfg].dir+'/results/fov_mask.fits', fov_mask
+    if n_elements(fov_mask) gt 0 then writefits, cfg_list[icfg].dir+'/results/fov_mask.fits', fov_mask
     
 ;    number_str = string(cfg_list[icfg].first_file, format='(I07)') $
 ;                 + '-' + string(cfg_list[icfg].last_file,format='(I07)')
@@ -1014,8 +1025,18 @@ pro red::prepmomfbd, cams = cams $
 
 
   ;; Make header-only fits files to be read post-momfbd.
-  if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref
+  if ~keyword_set(no_fitsheaders) then self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref, scanno = escan
 
+  ;; Call prepmomfbd_mosaic on dirs that are automatic mosaics..
+  for idir = 0, n_elements(dirs)-1 do begin
+
+    if ismos[idir] then begin
+      self -> prepmomfbd_mosaic, dirs=dirs, momfbddir=momfbddir, pref = pref
+    end
+
+  endfor                        ; idir
+
+  
   return
   
   

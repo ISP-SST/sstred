@@ -133,7 +133,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
       scn = red_fitsgetkeyword(filename, 'SCANNUM', comment = comment, variable_values = scannum)
       scans = reform(scannum.values)
       in = n_elements(scans)/2
-      iscan = scans[in]-scans[0]
+      iscan = in ;scans[in]-scans[0]
       istokes = 0
       ituning = 0
     endif
@@ -181,18 +181,23 @@ pro red::fitscube_wcs_improve_spatial, filename $
            + red_strreplace(self.isodate, '-', '', n = 2) $
            + '_' + timestamps_hmi + '_Ic_flat_4k.jpg'
 
-  ;; Read the HMI image before the SST image was collected
-  read_jpeg, hnames[0], im_hmi_before
-  im_hmi_before = reform(im_hmi_before[1, *, *]) ; use green channel
-  im_hmi_before = im_hmi_before/median(red_centerpic(im_hmi_before,sz=1000))
+  if file_test(hnames[0]) and file_test(hnames[1]) then begin
+    ;; Read the HMI image before the SST image was collected  
+    read_jpeg, hnames[0], im_hmi_before
+    im_hmi_before = reform(im_hmi_before[1, *, *]) ; use green channel
+    im_hmi_before = im_hmi_before/median(red_centerpic(im_hmi_before,sz=1000))
 
-  ;; Read the HMI image after the SST image was collected
-  read_jpeg, hnames[1], im_hmi_after
-  im_hmi_after = reform(im_hmi_after[1, *, *]) ; use green channel
-  im_hmi_after = im_hmi_after/median(red_centerpic(im_hmi_after,sz=1000))
+    ;; Read the HMI image after the SST image was collected
+    read_jpeg, hnames[1], im_hmi_after
+    im_hmi_after = reform(im_hmi_after[1, *, *]) ; use green channel
+    im_hmi_after = im_hmi_after/median(red_centerpic(im_hmi_after,sz=1000))
 
-  dims_hmi = size(im_hmi_before, /dim)
-  hmi_image_scale = 0.5         ; arc sec / pixel
+    dims_hmi = size(im_hmi_before, /dim)
+    hmi_image_scale = 0.5         ; arc sec / pixel
+  endif else begin
+    print,'Failed to get HMI images.'
+    return
+  endelse
   
   ;; Display the "before" HMI image
   red_show, im_hmi_before, /scroll, offs = show_offset $

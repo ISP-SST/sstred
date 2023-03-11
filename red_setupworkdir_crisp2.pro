@@ -662,8 +662,10 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
 ;
 ;  stop
-  sciencesubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-data*' $
+  sciencesubdirs = red_find_instrumentdirs(root_dir, instrument $
+                                           , instrument+['-data*', '-mosaic*'] $
                                            , count = Nsubdirs)
+  
   if Nsubdirs gt 0 then begin
     sciencedirs = file_dirname(sciencesubdirs)
     dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
@@ -738,7 +740,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
-            + "/mask ;, /hints, dir='10:02:45'"
+            + ", /mask ;, /hints, dir='10:02:45'"
     printf, Slun, "a -> prepmomfbd, /fill_fov, /wb_states, date_obs = '" + isodate $
             + "', numpoints = 116, pref = '"+prefilters[ipref]+"', margin = 5" $
             + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "

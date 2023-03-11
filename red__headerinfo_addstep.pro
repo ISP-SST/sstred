@@ -15,9 +15,9 @@
 ; 
 ; :Params:
 ; 
-;    header : in, type=strarr
+;    header : in, out, type=strarr
 ;
-;      The FITS header to be modified.
+;      The FITS header to be modified or after modification.
 ; 
 ; :Keywords:
 ;
@@ -26,6 +26,20 @@
 ;       A comment to the PRREFna FITS keyword, used only if prref
 ;       present. Should be either a string or a string array the same
 ;       length as prref.
+;
+;    cubefile : in, optional, type=string
+;
+;       File to which the header, including any variable keywords,
+;       should be written. Requires that the file is closed before
+;       this method is called.
+;
+;    files : in, optional, type=strarr
+;
+;       Files, the headers of which provide info about a preceding
+;       step, possibly with varying methods or parameters. Design
+;       case: the wb files in make_wb_cube, which could be momfbd
+;       processed with different parameters or even bypassing momfbd.
+;       Requires that the file is closed before this method is called.
 ;
 ;    prmode : in, optional, type=string
 ;
@@ -74,12 +88,16 @@
 ;   2020-05-07 : MGL. New keyword prref.
 ;
 ;   2020-06-17 : MGL. New keyword comment_prref.
+;
+;   2022-12-13 : MGL. New keywords cubefile, files.
 ; 
 ;-
 pro red::headerinfo_addstep, header $
                              , addlib = addlib $
                              , anchor = anchor $
-                             , comment_prref = comment_prref_in $ 
+                             , comment_prref = comment_prref_in $
+                             , cubefile = cubefile $
+                             , files = files $
                              , level = level $
                              , prmode = prmode $
                              , prpara = prpara $
@@ -89,7 +107,7 @@ pro red::headerinfo_addstep, header $
                              , version = version
 
   if n_elements(header) eq 0 then mkhdr, header, 0
-  
+
   if n_elements(prref_in) gt 0 then begin
     prref = prref_in
     if n_elements(comment_prref_in) eq n_elements(prref_in) then begin
@@ -103,26 +121,76 @@ pro red::headerinfo_addstep, header $
   ;; Add date to the PRREF list
   red_append, prref, 'DATE: ' + red_timestamp(/iso)
   red_append, comment_prref, 'When this step was performed'
-  
-  ;; Existing steps
-  prsteps_existing = fxpar(header,'PRSTEP*')
-  Nexisting = n_elements(prsteps_existing)
-  if n_elements(anchor) eq 0 then begin
-    if Nexisting gt 0 then begin
-      anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
-    endif else begin
-      anchor = 'OBS_HDU'        ;'SOLARNET'
-    endelse
+
+  ;; Find the anchor and the next stepnumber.
+  red_headerinfo_anchor, header, anchor, next_stepnumber = stepnumber
+
+;; Existing steps
+;  prsteps_existing = fxpar(header,'PRSTEP*')
+;  Nexisting = n_elements(prsteps_existing)
+;  if n_elements(anchor) eq 0 then begin
+;    if Nexisting gt 0 then begin
+;      anchor = 'PRBRA'+strtrim(Nexisting, 2) ; This should be the last existing
+;    endif else begin
+;      anchor = 'OBS_HDU'        ;'SOLARNET'
+;    endelse
+;  endif
+
+;  ;; List of defined PR* keywords.
+;  prkeys = red_headerinfo_prkeys(count = Nkeys) 
+;
+;  ;; Given anchor overridden if there are steps already
+;  if Nexisting gt 0 then begin
+;
+;    ;; Look for last PR* keyword to use as anchor
+;    pos = 0
+;    ;;keywrd = strmid(oldheader, 0, 8)
+;    keywrd = strmid(header, 0, 8)
+;    iend = n_elements(keywrd)
+;    for ikey = 0, n_elements(prkeys)-1 do begin
+;      for istep = 0, Nexisting-1 do begin
+;        stepnum = istep+1
+;        foreach letter, ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
+;          name = prkeys[ikey]+strtrim(stepnum, 2)+letter
+;          thispos = fxparpos(keywrd, iend, before = name)
+;          
+;          if thispos eq iend then break
+;          if thispos gt pos then begin
+;            pos = thispos
+;            anchor = name
+;          endif
+;        end
+;      endfor                    ; istep
+;    endfor                      ; ikey
+;    
+;  endif
+;  ;; Default:
+;  if n_elements(anchor) eq 0 then anchor = 'OBS_HDU' 
+;
+;  ;; Look for existing processing steps, set stepnumber to one higher.
+;  stepnumber = Nexisting+1
+  stp = strtrim(stepnumber, 2)
+                                ;  repeat begin
+;    stepnumber++
+;    stp = strtrim(stepnumber, 2)
+;    tmp = fxpar(header, 'PRSTEP'+stp, count = count)
+;  endrep until count eq 0
+
+
+  if n_elements(files) gt 0 then begin
+    ;; Combine the PRSTEP info from the individual scans (i.e., files)
+    ;; and write to the cubefile. This is the step *before* the step
+    ;; specified with the prXXXX keywords to this method.
+    ;;
+    ;; Can we check that the cubefile is closed?
+    self -> headerinfo_combinestep, header, cubefile, files, stepnumber, anchor = anchor
   endif
   
-  ;; Look for existing processing steps, set stepnumber to one higher.
-  stepnumber = 0
-  repeat begin
-    stepnumber++
-    stp = strtrim(stepnumber, 2)
-    tmp = fxpar(header, 'PRSTEP'+stp, count = count)
-  endrep until count eq 0
+  stp = strtrim(stepnumber, 2)
+;  print, 'Anchor: ', anchor
+;  print, 'Keyword: ', 'PRSTEP'+stp
 
+  
   if n_elements(prstep_in) eq 0 then prstep = 'Unknown' else prstep = prstep_in
   red_fitsaddkeyword, header, 'PRSTEP'+stp, prstep, 'Processing step name', anchor = anchor
 
@@ -188,6 +256,12 @@ pro red::headerinfo_addstep, header $
   if Nmatch eq 0 then stop
   header = header[0:Nlines]
 
+  if n_elements(cubefile) gt 0 then begin
+    ;; Write the header to the cubefile.
+    ;; Can we check that the cubefile is closed?  endif
+    red_fitscube_newheader, cubefile, header
+  endif
+
 end
 
 ;; Mail with list of approved PRSTEP labels from 2018-02.16, Subject:
@@ -249,7 +323,7 @@ end
 ;; DARK-SUBTRACTION      (rather than DARK-CORRECTION)
 ;; FLATFIELDING          (rather than FLAT-CORRECTION or FLAT-DIVISION)
 
-          
+
 ;; - There have been no objections to the following descriptions:
 
 ;; FIXED-PATTERN-REMOVAL 

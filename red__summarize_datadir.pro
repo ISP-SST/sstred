@@ -86,12 +86,10 @@ pro red::summarize_datadir, dirs
 
     if Nnbcam gt 0 then begin
       ;; All NB files
-      files = self -> raw_search(use_dirs[idir] + '/' + camNB, instrument = instrument $
-                                 , count = Nfiles)
+      files = self -> raw_search(use_dirs[idir] + '/' + camNB, count = Nfiles)
     endif else begin
       ;; All WB files
-      files = self -> raw_search(use_dirs[idir] + '/' + camWB, instrument = instrument $
-                                 , count = Nfiles, fpi_states = '*')
+      files = self -> raw_search(use_dirs[idir] + '/' + camWB, count = Nfiles, fpi_states = '*')
     endelse
   
     ;; Get header info 

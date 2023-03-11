@@ -208,7 +208,7 @@ pro red::fitscube_header_finalize, hdr $
   prev_point_id = fxpar(hdr,'POINT_ID')
   is_prev_point_id = 0B
   if prev_point_id then $
-     if strtrim(prev_point_id,2) then is_prev_point_id = 1B
+     if strtrim(prev_point_id,2) ne '' then is_prev_point_id = 1B
   case 1 of 
     n_elements(point_id) gt 0 and is_prev_point_id : begin
       print, 'There is POINT_ID keyword in the header: ', prev_point_id        

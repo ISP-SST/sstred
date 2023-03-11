@@ -3,6 +3,13 @@
 ;+
 ; Delete processing step keywords (PR*na) from a FITS header. 
 ; 
+; Note: this will not delete any extensions defining variable
+; keywords. Still fine if you just want to use a header from one fits
+; file, modify it (by deleting steps), and then using it for another
+; file. You can use this to remove the scalar keywords, and then
+; optionally use red_headerinfo_copystep to copy any steps you want,
+; including any variable keywords.
+; 
 ; :Categories:
 ;
 ;    SST pipeline
@@ -62,8 +69,8 @@ pro red_headerinfo_deletestep, hdr $
 
   if Nexisting eq 0 then return
 
-  prkeys = ['PRSTEP', 'PRPROC', 'PRMODE', 'PRPARA', 'PRLIB', 'PRVER', 'PRREF', 'PRBRA']
-
+  prkeys = red_headerinfo_prkeys(count = Nkeys)
+  
   if keyword_set(all) then stepnums = indgen(Nexisting)+1
   if keyword_set(last) then red_append, stepnums, Nexisting
   if n_elements(stepnum) gt 0 then red_append, stepnums, stepnum
@@ -75,16 +82,16 @@ pro red_headerinfo_deletestep, hdr $
   
   ;; Some step could be indicated by multiple keywords
   stepnums = stepnums(uniq(stepnums, sort(stepnums))) 
-
-  print, stepnums
+  
+  ;;print, stepnums
   
   for istep = 0, n_elements(stepnums)-1 do begin
     for ikey = 0, n_elements(prkeys)-1 do begin
       foreach letter, ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'] do begin
-
+        
         name = prkeys[ikey]+strtrim(stepnums[istep], 2)+letter
-
-        print, name
+        
+        ;;print, name
         
         value = red_fitsgetkeyword(hdr, name, count = count)
         if count eq 0 then break

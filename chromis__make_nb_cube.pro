@@ -248,7 +248,13 @@ pro chromis::make_nb_cube, wcfile $
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
      
-  extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
+  ;;extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
+  case self.filetype of
+    'ANA': extension = '.f0'
+    'MOMFBD': extension = '.momfbd'
+    'FITS': extension = '.fits'
+    'MIXED' : extension = '.{fits,momfbd}'
+  endcase
   
   for jj=0,n_elements(wbgfiles)-1 do begin
     search_dir = file_dirname(wbgfiles[jj])+'/'
@@ -413,7 +419,15 @@ pro chromis::make_nb_cube, wcfile $
   ;; Make FITS header for the NB cube
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
-  self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD' ; ...and then copy one we want
+  red_fitsdelkeyword, hdr, 'VAR_KEYS'                         ; Variable keywords copied later
+
+;  if self.filetype eq 'MOMFBD' then begin ; ...and then copy one we want
+;    ;; The momfbd processing step:
+;    self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD'
+;  endif else begin
+;    ;; Should be the the bypass_momfbd step:
+;    self -> headerinfo_copystep, hdr, wchead, stepnum = 1
+;  endelse
 
   red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
   red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
@@ -427,20 +441,20 @@ pro chromis::make_nb_cube, wcfile $
   red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
 
   
-  ;; Add info about this step
-  self -> headerinfo_addstep, hdr $
-                              , prstep = 'CONCATENATION' $
-                              , prpara = prpara $
-                              , prproc = inam $
-                              , prref = 'Align reference: '+wcfile $
-                              , comment_prref = 'WB cube file name'
-
-  self -> headerinfo_addstep, hdr $
-                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
-                              , prpara = prpara $
-                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
-                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
-                              , prproc = inam
+;  ;; Add info about this step
+;  self -> headerinfo_addstep, hdr $
+;                              , prstep = 'CONCATENATION' $
+;                              , prpara = prpara $
+;                              , prproc = inam $
+;                              , prref = 'Align reference: '+wcfile $
+;                              , comment_prref = 'WB cube file name'
+;
+;  self -> headerinfo_addstep, hdr $
+;                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+;                              , prpara = prpara $
+;                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+;                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+;                              , prproc = inam
 
   anchor = 'DATE'
 
@@ -795,11 +809,43 @@ pro chromis::make_nb_cube, wcfile $
 
 
   ;; Close fits file.
-  self -> fitscube_finish, lun, wcs = wcs
-  if keyword_set(wbsave) then self -> fitscube_finish, wblun, wcs = wcs
+  free_lun, lun
+  whdr = headfits(wcfile)
+  csyer_spatial_value = fxpar(whdr, 'CSYER1', comment = csyer_spatial_comment)
+  red_fitscube_addwcs, filename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
+                         , dimensions = dims
+  if keyword_set(wbsave) then begin 
+     free_lun, wblun
+     red_fitscube_addwcs, wbfilename, wcs $
+                         , csyer_spatial_value = csyer_spatial_value $
+                         , csyer_spatial_comment = csyer_spatial_comment $
+                         , dimensions = dims
+  endif
 
-
-  ;; Create cubes for science data and scan-adapted cavity maps.
+    ;; Copy the MOMFBD or bypass_momfbd step (or a mix):
+  self -> headerinfo_copystep, filename, wcfile, stepnum = 1
+  
+  ;; Add info about this step
+  hdr = headfits(filename)
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CONCATENATION' $
+                              , prpara = prpara $
+                              , prproc = inam $
+                              , prref = 'Align reference: '+wcfile $
+                              , comment_prref = 'WB cube file name'
+  
+  self -> headerinfo_addstep, hdr $
+                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                              , prpara = prpara $
+                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                              , prproc = inam
+  red_fitscube_newheader, filename, hdr
+  if keyword_set(wbsave) then red_fitscube_newheader, wbfilename, hdr
+  
+;; Create cubes for science data and scan-adapted cavity maps.
   cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
 
   if ~keyword_set(nocavitymap) then begin

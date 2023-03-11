@@ -111,6 +111,12 @@ pro red_missing, image $
                          stddev(image[-2:-1, 0: 1]) eq 0 or $
                          stddev(image[-2:-1,-2:-1]) eq 0 
 
+  if currently_constant then begin
+    ;; A small number of pixels could have the same values by chance!
+    if total(image eq image[0,0] or image eq image[0,-1] $
+             or image eq image[-1,-1] or image eq image[-1,0]) / n_elements(image) lt 1e-3 $
+    then currently_constant = 0
+  endif
 
   ;; Some simple actions depending on detected padding
   

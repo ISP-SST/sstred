@@ -315,7 +315,7 @@ pro red::quicklook, align = align $
     ustat = states0[indx].fullstate        
 
     states_count = 0
-    undefine, pat
+    undefine, pat, ustat2, sel_in
     case 1 of
 
       keyword_set(core_and_wings) : begin
@@ -342,7 +342,7 @@ pro red::quicklook, align = align $
               in = where(wv eq wng)
               red_append, sel_in, sindx[in]
               red_append, ustat2, ustat[sindx[in]]
-              if n_elements(wv[0:imatch]) mod 2 ne 1 then ex=1 else ex=0
+              if n_elements(wv[imatch:*]) mod 2 ne 1 then ex=1 else ex=0
               wng = median(wv[imatch+ex:*])
               in = where(wv eq wng)
               red_append, sel_in, sindx[in]

@@ -208,7 +208,8 @@ pro red::fitscube_finalize, filename $
 
   ;; Read header and fix PRSTEP info 
   red_fitscube_correct_prstep, filename, header = hdr, /nowrite
-  
+
+  if keyword_set(point_id) then pp = point_id
   self -> fitscube_header_finalize, hdr $
                        , keywords = keywords $
                        , no_checksum = no_checksum $
@@ -217,7 +218,7 @@ pro red::fitscube_finalize, filename $
                        , release_comment = release_comment $
                        , feature = feature $
                        , observer = observer $
-                       , point_id = point_id    
+                       , point_id = pp    
 
   ;; Any spectral file to copy?
   if keyword_set(do_spectral_file) then begin

@@ -25,6 +25,11 @@
 ;   
 ;      Process all data sets.
 ; 
+;   mosaic_tag : in, optional, type=string
+; 
+;      Filename tag that identifies different tiles in data collected
+;      in automatic mosaic mode.
+; 
 ;   no_descatter : in, optional, type=boolean 
 ;   
 ;      Don't do back-scatter compensation.
@@ -56,18 +61,20 @@
 ;                SOLARNET keywords.
 ; 
 ;   2018-04-18 : MGL. Adapt to new code-base. New keyword tdir.
-;
+; 
+;   2022-11-15 : MGL. New keyword mosaic_tag.
 ;
 ;-
 pro red::sum_data_intdif, all = all $
-                          , cam = cam $
-                          , tdirs = tdir $
                           , link_dir = link_dir $
+                          , mosaic_tag = mosaic_tag $
                           , no_descatter = no_descatter $
                           , nthreads = nthreads $
-                          , overwrite=overwrite $
+                          , overwrite = overwrite $
                           , pref = pref $
                           , show = show $
+                          , tdirs = tdir $
+                          , cam = cam $
                           , t1 = t1 $
                           , verbose = verbose 
 
@@ -121,8 +128,6 @@ pro red::sum_data_intdif, all = all $
     endelse
     
   endelse
-  
-
 
   ;; Find the narrowband cameras.
   self -> getdetectors
@@ -146,18 +151,42 @@ pro red::sum_data_intdif, all = all $
     outdir = self.out_dir + '/cmap_intdif/' + file_basename(dir) + '/'
     file_mkdir, outdir
     
-;    files = file_search(dir+ '/' + cams[0] + '/cam*', count = Nfiles)
-    files = file_search(dir+ '/' + cams + '/*cam*', count = Nfiles)
-
+    if keyword_set(mosaic_tag) then begin
+      files = file_search(dir+ '/' + cams + '/sst_cam*_'+mosaic_tag+'_*.fits', count = Nfiles)
+    endif else begin
+      files = file_search(dir+ '/' + cams + '/*cam*', count = Nfiles)
+    endelse
+    
     if Nfiles eq 0 then begin
       print, inam + ' : ERROR, data folder is empty'
       if keyword_set(debug) then stop else return
     endif
 
-    ;;   files = red_sortfiles(temporary(files))
-
-    ;; Extract tags from file names
-;    state = red_getstates(files, /links)
+    if ~keyword_set(mosaic_tag) && strmatch(file_basename(files[0]), '*_mos[0-9][0-9]_*') then begin
+      ;; So this is a directory where data were collected in automatic
+      ;; mosaic mode. Find out how many mosaic tiles there are and
+      ;; call ourself individually for each tile.
+      pos = strpos(file_basename(files[-1]), '_mos')
+      Nmos = long(strmid(file_basename(files[-1]), pos+4, 2))+1
+      for imos = 0, Nmos-1 do begin
+        mosaic_tag = 'mos'+string(imos, format = '(i02)')
+        self -> sum_data_intdif, all = all $
+                                 , link_dir = link_dir $
+                                 , mosaic_tag = mosaic_tag $
+                                 , no_descatter = no_descatter $
+                                 , nthreads = nthreads $
+                                 , overwrite = overwrite $
+                                 , pref = pref $
+                                 , show = show $
+                                 , t1 = t1 $
+                                 , tdirs = file_basename(dir) $
+                                 , cam = cam $
+                                 , verbose = verbose 
+      endfor                    ; imos
+      return                    ; Done
+    endif
+    
+    ;; Extract states
     self -> extractstates, files, states
     
     ;; Remove frames
@@ -170,9 +199,9 @@ pro red::sum_data_intdif, all = all $
 
     sel_pref = 1B
     if n_elements(pref) gt 0 then begin
-       ;; selectfiles convert pref from string to stringarr anyhow,
-       ;; so, we need to convert it here and use first element in the
-       ;; next line (required to work with several datasets)
+      ;; selectfiles convert pref from string to stringarr anyhow,
+      ;; so, we need to convert it here and use first element in the
+      ;; next line (required to work with several datasets)
       pref = [pref] 
       pos = where(upref eq pref[0], count)
       if count eq 0 then begin
@@ -281,9 +310,14 @@ pro red::sum_data_intdif, all = all $
       mfiles = mstates.filename
       mstar  = lonarr(Nselect)  ; all zeros
 
-      cfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.icube'
-      dfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.save'
-
+      if keyword_set(mosaic_tag) then begin
+        cfile = outdir + '/' + detectors[icam] + '_' + mosaic_tag + '.'+ pref + '.intdif.icube'
+        dfile = outdir + '/' + detectors[icam] + '_' + mosaic_tag + '.'+ pref + '.intdif.save'
+      endif else begin
+        cfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.icube'
+        dfile = outdir + '/' + detectors[icam] + '.'+ pref + '.intdif.save'
+      endelse
+      
       ;; We could change the icube + save files to fitscubes with the save
       ;; info in the header/extensions.
       

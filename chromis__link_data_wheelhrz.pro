@@ -65,13 +65,16 @@
 ;   2019-07-10 : OA. Rewritten to use database
 ;
 ;   2019-07-24 : OA. Added check for sst_db.
+;
+;   2022-11-14 : MGL. This method now used only for CHROMIS data with
+;                the old undecoded wheel and hrz file names.
 ;   
 ;-
-pro chromis::link_data, all_data = all_data $
-                        , dirs = dirs $
-                        , pref = pref $
-                        , uscan = uscan $
-                        , link_dir = link_dir
+pro chromis::link_data_wheelhrz, all_data = all_data $
+                                 , dirs = dirs $
+                                 , pref = pref $
+                                 , uscan = uscan $
+                                 , link_dir = link_dir
 
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
