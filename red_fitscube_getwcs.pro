@@ -32,9 +32,19 @@
 ;      WAVE, TIME }, as 2 by 2 arrays representing the spatial corners
 ;      of the FOV.
 ; 
-;    distortions : out, optional
+;    distortions : out, optional, type=structarr
 ;
+;      WCS coordinate distortions. Typically cavity maps in the form
+;      of distortions to the wavelength coordinate. The number of
+;      elements in the array is the number of prefilters requiring
+;      separate cavity maps. Each struct has two members: WAVE is the
+;      wavelength distortions for each spatial coordinate and scan
+;      index. TUN_INDEX is a list (a comma- and dash-separated string,
+;      like '0-20') of tuning indices for which the distortions apply.
 ;      
+;    iscan : in, optional, type=integer  
+;      
+;      Return only wcs info for this scan index. 
 ; 
 ; :History:
 ; 
@@ -49,10 +59,13 @@
 ;   2021-05-03 : MGL. Read the record-valued version of DW3, not the
 ;                HIERARCH version.
 ; 
+;   2023-03-22 : MGL. New keyword iscan.
+; 
 ;-
 pro red_fitscube_getwcs, filename $
                          , coordinates = coordinates $
-                         , distortions = distortions
+                         , distortions = distortions $
+                         , iscan = iscan
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)                    
@@ -98,14 +111,19 @@ pro red_fitscube_getwcs, filename $
   if TabulateWAVE then N_wave = coord_dims[i_wave] else N_wave = 1
   if TabulateTIME then N_time = coord_dims[i_time] else N_time = 1
 
+  if n_elements(iscan) gt 0 && iscan ge N_time then begin
+    print, inam + ' : iscan too large: ', iscan, N_time
+    stop 
+  endif
+    
   ;; Reconstruct coord_dims in case of non-tabulated (degenerate)
   ;; dimensions. 
   coord_dims = [N_hpln, N_hplt, N_wave, N_time]
   
   coordinates = replicate({ wave:dblarr(N_hpln, N_hplt) $
-                          , hplt:dblarr(N_hpln, N_hplt) $
-                          , hpln:dblarr(N_hpln, N_hplt) $
-                          , time:dblarr(N_hpln, N_hplt) $
+                            , hplt:dblarr(N_hpln, N_hplt) $
+                            , hpln:dblarr(N_hpln, N_hplt) $
+                            , time:dblarr(N_hpln, N_hplt) $
                           }, N_wave, N_time)
 
   case 1 of
@@ -152,6 +170,12 @@ pro red_fitscube_getwcs, filename $
   ;; To do this properly, we should check that CUNIT{3,5} are nm and
   ;; s, respectively.
 
+  if n_elements(iscan) gt 0 then begin
+    ;; The amount of data in coordinates is small so we read them all
+    ;; and then select only iscan.
+    coordinates = coordinates[*, iscan]
+  endif
+  
   if arg_present(distortions) then begin
 
     undefine, distortions
@@ -213,14 +237,17 @@ pro red_fitscube_getwcs, filename $
     
     for idist = 0, Ndist-1 do begin
 
-      wcsdvarr = mrdfits( filename, dindx[idist], chdr, status = status, /silent)
-
-      if status ne 0 then  begin
-        print, inam + ' : There was an error reading WCSDVARR extension #'+strtrim(idist, 2)
-        print, inam + ' : No distortions returned.'
-        undefine, distortions
-        return
-      endif
+      ;;wcsdvarr = mrdfits( filename, dindx[idist], chdr, status =
+      ;;status, /silent)
+      ;; If iscan is given, read data for just for that scan.
+      wcsdvarr = readfits( filename, exten_no = dindx[idist], nslice = iscan)
+      
+      ;;if status ne 0 then  begin
+      ;;  print, inam + ' : There was an error reading WCSDVARR extension #'+strtrim(idist, 2)
+      ;;  print, inam + ' : No distortions returned.'
+      ;;  undefine, distortions
+      ;;  return
+      ;;endif
       
       if n_elements(distortions) eq 0 then begin
         ;; So far we have only implemented distortions in the
@@ -259,8 +286,9 @@ val1 = red_fitsgetkeyword(fname, 'DW3', field_specifiers = fs1)
 
 red_fitscube_getwcs, fname $
                      , coordinates = coordinates $
-                     , distortions = distortions
+                     , distortions = distortions, iscan = 2
 
+stop
 
 file_copy, fname, tmpname, /over
 
