@@ -126,7 +126,8 @@ pro red::fitscube_cmapcorr, fname $
   ;; cavity map wavelength distortions).
   red_fitscube_getwcs, fname $
                        , coordinates = coordinates $
-                       , distortions = distortions
+                       , distortions = distortions $
+                       , iscan = 0
 
   Ndist = n_elements(distortions)
   lambda = reform(coordinates[*,0].wave[0,0,*])
@@ -148,6 +149,12 @@ pro red::fitscube_cmapcorr, fname $
   iprogress = 0
   Nprogress = Nscans*Nstokes
   for iscan = 0, Nscans-1 do begin
+
+    ;; Read distortions for this scan
+    red_fitscube_getwcs, fname $
+                         , distortions = distortions $
+                         , iscan = iscan
+
     for istokes = 0, Nstokes-1 do begin
 
       red_progressbar, iprogress, Nprogress, /predict  $
@@ -166,6 +173,7 @@ pro red::fitscube_cmapcorr, fname $
       for idist = 0, Ndist-1 do begin
         ;; Loop over multiple distortions, interpolate subcubes.
 
+  
         dlambda = distortions[idist].wave
         tun_index = red_expandrange(distortions[idist].tun_index)
         
@@ -174,18 +182,21 @@ pro red::fitscube_cmapcorr, fname $
           case interpolmethod of
             'interpol' : begin
               cube_out[ix, iy, tun_index] = interpol(cube_in[ix, iy, tun_index] $
-                                                     , lambda[tun_index] + dlambda[ix, iy, 0, 0, iscan] $
+                                                     , lambda[tun_index] + dlambda[ix, iy] $
+;;                                                     , lambda[tun_index] + dlambda[ix, iy, 0, 0, iscan] $
                                                      , lambda[tun_index] $
                                                      , _strict_extra = extra)
             end
             'spline' : begin
-              cube_out[ix, iy, *] = spline(lambda + dlambda[ix,iy,iscan] $
+;;              cube_out[ix, iy, *] = spline(lambda + dlambda[ix,iy,iscan] $
+              cube_out[ix, iy, *] = spline(lambda + dlambda[ix,iy] $
                                            , cube_in[ix, iy, *] $
                                            , lambda $
                                            , _strict_extra = extra)
             end
             'quadterp' : begin
-              quadterp, lambda + dlambda[ix,iy,iscan] $
+;;              quadterp, lambda + dlambda[ix,iy,iscan] $
+              quadterp, lambda + dlambda[ix,iy] $
                         , reform(cube_in[ix, iy, *]) $
                         , lambda $
                         , yint $
