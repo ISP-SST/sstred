@@ -111,10 +111,8 @@ pro red::headerinfo_combinestep, hdr, cubefile, files, stepnumber, anchor = anch
       red_fitsaddkeyword, hdr, outkey, values[0], comments[0], anchor = anchor
     endif else begin
 
-      ;; If key values vary, construct a scalar version of a
-      ;; variable-keyword. Make it a uniqueified list of the values.
-      unique_values = values[uniq(values, sort(values))]
-      scalar_value = strjoin(unique_values, ',')
+      ;; Just take the first value for this
+      scalar_value = values[0]
       
       ;; We could think of a way to combine also the comments. Or pick
       ;; the first one?

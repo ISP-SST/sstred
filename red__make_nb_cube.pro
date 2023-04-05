@@ -166,6 +166,9 @@
 ;                 ported to rdx and maintainable by us.
 ; 
 ;    2022-09-10 : MGL. CRISP --> RED.
+:
+;    2023-04-04 : OA. Added clipping of cavity maps with information
+;                 from configuration files (needed to make 'mixed' cubes).
 ;
 ;-
 pro red::make_nb_cube, wcfile $
@@ -477,15 +480,43 @@ pro red::make_nb_cube, wcfile $
   ;; Spatial dimensions that match the WB cube
   Nx = wcND[0]
   Ny = wcND[1]
-  
-  if self.filetype eq 'MOMFBD' then mr = momfbd_read(wbgfiles[0],/nam)    
-  if file_test(file_dirname(wbgfiles[0])+'/fov_mask.fits') then begin
-    ;; If multiple directories, the fov_mask should be the same. Or we
-    ;; have to think of something.
-    fov_mask = readfits(file_dirname(wbgfiles[0])+'/fov_mask.fits')
-    if self.filetype eq 'MOMFBD' then begin
-      fov_mask = red_crop_as_momfbd(fov_mask, mr)
-    endif
+
+  ;; If multiple directories, the fov_mask should be the same. Or we
+  ;; have to think of something.
+  spl = strsplit(wbgfiles[0],'/',/extract)
+  cw = where(strmatch(spl,'*cfg*'))
+  cfg_dir=strjoin(spl[0:cw],'/')
+  if self.filetype eq 'MOMFBD' then begin
+    mr = momfbd_read(wbgfiles[0],/nam)
+  endif else begin               ; get cropping from cfg file    
+    cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+               string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+    cfg = redux_readcfg(cfg_file)
+    num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+    margin = num_points/8
+    sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+    if cnt gt 0 then begin
+      sim_xy = rdx_str2ints(sim_xy)
+      indx = indgen(n_elements(sim_xy)/2)*2
+      indy = indx+1
+      sim_x = sim_xy[indx]
+      sim_y = sim_xy[indy]   
+    endif else begin
+      sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+      sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+    endelse
+    xx0 = min(sim_x) + margin - num_points/2 
+    xx1 = max(sim_x) - margin + num_points/2 - 1
+    yy0 = min(sim_y) + margin - num_points/2 
+    yy1 = max(sim_y) - margin + num_points/2 - 1      
+  endelse
+   
+  if file_test(cfg_dir+'/fov_mask.fits') then begin
+    fov_mask = readfits(cfg_dir+'/fov_mask.fits')
+      if self.filetype eq 'MOMFBD' then $
+        fov_mask = red_crop_as_momfbd(fov_mask, mr) $
+      else $
+        fov_mask = fov_mask[xx0:xx1,yy0:yy1]
     fov_mask = red_rotate(fov_mask, direction)
   endif
   
@@ -589,7 +620,9 @@ pro red::make_nb_cube, wcfile $
     if self.filetype eq 'MOMFBD' then begin
       ;; Crop the cavity map to the FOV of the momfbd-restored images.
       cmap1 = red_crop_as_momfbd(cmap1, mr)
-    endif
+    endif else begin
+      cmap1 = cmap1[xx0:xx1,yy0:yy1]
+    endelse
     
     ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
@@ -728,6 +761,8 @@ pro red::make_nb_cube, wcfile $
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
+    indx_nan = where(~finite(wb),Nnan, complement=data_indx)
+    if Nnan then wb[indx_nan] = median(wb[data_indx])
     ts = (strsplit(wbgfiles[iscan],'/',/extract))[1]
     
     if keyword_set(unsharp) then wb -= smooth(wb, 5)
@@ -883,6 +918,8 @@ pro red::make_nb_cube, wcfile $
             ;; Get destretch to anchor camera (residual seeing)
             wwi = (red_readdata(scan_wbfiles[iim], direction = direction))[x0:x1, y0:y1]
 ;            wwi = (rotate(temporary(wwi), direction))[x0:x1, y0:y1]
+            indx_nan = where(~finite(wwi),Nnan, complement=data_indx)
+            if Nnan then wwi[indx_nan] = median(wwi[data_indx])
             if keyword_set(unsharp) then wwi = wwi - smooth(wwi, 5)
             grid1 = rdx_cdsgridnest(wb, wwi, tiles, clips, nthreads=nthreads)
           endif
@@ -890,6 +927,8 @@ pro red::make_nb_cube, wcfile $
           ;; Reflected
           this_im = (red_readdata(scan_nbrfiles[iim], direction = direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbr_rpref[ituning]
+          indx_nan = where(~finite(this_im),Nnan, complement=data_indx)
+          if Nnan then this_im[indx_nan] = median(this_im[data_indx])
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = rdx_cstretch(temporary(this_im), grid1, nthreads=nthreads)
@@ -899,6 +938,8 @@ pro red::make_nb_cube, wcfile $
           ;; Transmitted
           this_im = (red_readdata(scan_nbtfiles[iim], direction = direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
+          indx_nan = where(~finite(this_im),Nnan, complement=data_indx)
+          if Nnan then this_im[indx_nan] = median(this_im[data_indx])
           if wbcor then begin
             ;; Apply destretch to anchor camera and prefilter correction
             this_im = rdx_cstretch(temporary(this_im), grid1, nthreads = nthreads)
@@ -988,12 +1029,12 @@ pro red::make_nb_cube, wcfile $
     endfor                      ; ituning
 
     if ~keyword_set(nocavitymap) then begin
-      
+      if ~keyword_set(nomissing_nans) then bg=!Values.F_NaN
       ;; Apply the same derot, align, dewarp as for the science data
       cmap11 = red_rotation(cmap1, ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
                             , stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr $
-                            , nthreads=nthreads)
+                            , nthreads=nthreads, background=bg)
       
       cavitymaps[0, 0, 0, 0, iscan] = cmap11
 
@@ -1175,6 +1216,11 @@ pro red::make_nb_cube, wcfile $
     self -> fitscube_missing, filename $
                               , /noflip $
                               , missing_type = 'nan'
+    if keyword_set(wbsave) then begin
+      self -> fitscube_missing, wbfilename $
+                              , /noflip $
+                               , missing_type = 'nan'
+    endif
   endif
 
   

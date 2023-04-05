@@ -132,6 +132,9 @@
 ;
 ;    2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                 ported to rdx and maintainable by us.
+;
+;    2021-04-03 : OA. Added clipping of cavity maps with information
+;                 from configuration files (needed to make 'mixed' cubes).
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -219,6 +222,7 @@ pro chromis::make_nb_cube, wcfile $
   ;; wbgfiles (WideBand Global).
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
+  if self.filetype eq 'MIXED' then wbgfiles = strtrim(wbgfiles, 2)
 
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0 
@@ -247,8 +251,7 @@ pro chromis::make_nb_cube, wcfile $
   wchdr0 = red_readhead(wbgfiles[0])
   datestamp = strtrim(fxpar(wchdr0, 'STARTOBS'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
-     
-  ;;extension = (strsplit(wbgfiles[0],'.',/extract))[-1]
+
   case self.filetype of
     'ANA': extension = '.f0'
     'MOMFBD': extension = '.momfbd'
@@ -420,15 +423,6 @@ pro chromis::make_nb_cube, wcfile $
   hdr = wchead                                                ; Start with the WB cube header
   red_headerinfo_deletestep, hdr, /all                        ; Remove make_wb_cube steps 
   red_fitsdelkeyword, hdr, 'VAR_KEYS'                         ; Variable keywords copied later
-
-;  if self.filetype eq 'MOMFBD' then begin ; ...and then copy one we want
-;    ;; The momfbd processing step:
-;    self -> headerinfo_copystep, hdr, wchead, prstep = 'MOMFBD'
-;  endif else begin
-;    ;; Should be the the bypass_momfbd step:
-;    self -> headerinfo_copystep, hdr, wchead, stepnum = 1
-;  endelse
-
   red_fitsdelkeyword, hdr, 'STATE'                  ; Not a single state for cube 
   red_fitsdelkeyword, hdr, 'CHECKSUM'               ; Checksum for WB cube
   red_fitsdelkeyword, hdr, 'DATASUM'                ; Datasum for WB cube
@@ -439,23 +433,6 @@ pro chromis::make_nb_cube, wcfile $
   endfor                        ; idata
   
   red_fitsaddkeyword, hdr, 'BITPIX', -32 ; Floats
-
-  
-;  ;; Add info about this step
-;  self -> headerinfo_addstep, hdr $
-;                              , prstep = 'CONCATENATION' $
-;                              , prpara = prpara $
-;                              , prproc = inam $
-;                              , prref = 'Align reference: '+wcfile $
-;                              , comment_prref = 'WB cube file name'
-;
-;  self -> headerinfo_addstep, hdr $
-;                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
-;                              , prpara = prpara $
-;                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
-;                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
-;                              , prproc = inam
-
   anchor = 'DATE'
 
   ;; Add some keywords
@@ -910,25 +887,56 @@ pro chromis::make_nb_cube, wcfile $
         1    : amap = invert(      alignments[indx].map           )
         else : amap = invert( mean(alignments[indx].map, dim = 3) )
       endcase
-      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping
-      cmap1 = red_rotate(cmap1, direction)
-      cmap_dim = size(cmap1,/dim)
-      xclip = (cmap_dim[0] - origNx)/2.
-      yclip = (cmap_dim[1] - origNy)/2.
-      cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
+      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping      
 
+      if self.filetype eq 'MOMFBD' then begin
+        ;; Crop the cavity map to the FOV of the momfbd-restored images.
+        mr = momfbd_read(wfiles[0],/nam)
+        cmap1 = red_crop_as_momfbd(cmap1, mr)
+      endif else begin ;; Crop with information from the cfg file
+         spl = strsplit(wbgfiles[0],'/',/extract)
+         cw = where(strmatch(spl,'*cfg*'))
+         cfg_dir=strjoin(spl[0:cw],'/')
+         cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+                    string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+         cfg = redux_readcfg(cfg_file)
+         num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+         margin = num_points/8
+         sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+         if cnt gt 0 then begin
+           sim_xy = rdx_str2ints(sim_xy)
+           indx = indgen(n_elements(sim_xy)/2)*2
+           indy = indx+1
+           sim_x = sim_xy[indx]
+           sim_y = sim_xy[indy]   
+         endif else begin
+           sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+           sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+         endelse
+         xx0 = min(sim_x) + margin - num_points/2 
+         xx1 = max(sim_x) - margin + num_points/2 - 1
+         yy0 = min(sim_y) + margin - num_points/2 
+         yy1 = max(sim_y) - margin + num_points/2 - 1
+         cmap1 = cmap1[xx0:xx1,yy0:yy1]
+      endelse
+      ;; Get the orientation right
+      cmap1 = red_rotate(cmap1, direction)
+      ;; Clip to the selected FOV
+      cmap1 = cmap1[x0:x1,y0:y1]
+      
       ;; Now make rotated copies of the cavity map
       for iscan = 0L, Nscans-1 do begin
 
         if ~keyword_set(nocavitymap) then begin
-          
+
+          if ~keyword_set(nomissing_nans) then bg=!Values.F_NaN
           ;; Apply the same derot, align, dewarp as for the science data
           cmap11 = red_rotation(cmap1, ang[iscan], $
                                 wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
                                 stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr, $
                                 nthreads=nthreads, nearest=nearest, $
-                                unrotated_shifts = cshift_mean[*,icprefs,iscan])
-          
+                                unrotated_shifts = cshift_mean[*,icprefs,iscan], $
+                                background=bg)          
 
           cavitymaps[0, 0, 0, 0, iscan] = cmap11
 

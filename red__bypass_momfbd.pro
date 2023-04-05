@@ -46,31 +46,61 @@
 ;
 ;       Used to compute stretch vectors for the wideband alignment.
 ;
-; 
+;    global_gain : in, optional, type=boolean
+;
+;       Set this keyword to not use time-dependent gains (for CRISP).
+;
+;    no_display : in, optional, type=boolean
+;
+;       Set this keyword not to show alignment process.
+;
+;    outdir_tag : in, optional, type=string
+;
+;       String to be add to putput directory name - 'results'+outdir_tag,
+;       default - '_bypass'.
+;
+;    nthreads : in, optional, type=integer
+;
+;       Number of threads to be used in processing.
+;
+;    align_interactive : in, optional, type=boolean
+;
+;      Set this keyword to define the alignment FOV by use of the XROI GUI.
+;
+;    roi_align : in, optional, type=integer array
+;
+;      Coordinates of a region to be used for alignment.
+;
 ; :History:
 ; 
 ;   2022-11-29 : MGL. First version.
 ; 
 ;   2023-01-11 : MGL. New keyword nostretch.
+;
+;   2023-04-03 : OA. New keywords global_gain, no_display, outdir_tag, nthreads,
+;                    align_interactive, roi_align
 ; 
 ;-
 pro red::bypass_momfbd, cfgfile $
                         , clips = clips $
                         , overwrite = overwrite $
                         , nostretch = nostretch $
-                        , tiles = tiles
+                        , tiles = tiles $
+                        , global_gain = global_gain $
+                        , no_display = no_display $
+                        , outdir_tag = outdir_tag $
+                        , nthreads = nthreads $
+                        , align_interactive = align_interactive $
+                        , roi_align = roi_align
 
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  outdir_tag = '_bypass'
+  if ~keyword_set(outdir_tag) then outdir_tag = '_bypass'
   
-  if n_elements(tiles) eq 0 then tiles =   [ 8, 16, 16, 32, 32]  ;, 64, 64]
-  if n_elements(clips) eq 0 then clips = 2*[16, 16,  8,  4,  2]  ;,  2,  1  ]
-
-;  if n_elements(tiles) eq 0 then tiles =   [ 8,  8, 16, 16] ;, 64, 64]
-;  if n_elements(clips) eq 0 then clips = 2*[16, 16, 16,  8] ;,  2,  1  ]
+  if n_elements(tiles) eq 0 then tiles =   [ 8, 16, 16, 32, 32]  
+  if n_elements(clips) eq 0 then clips = 2*[16, 16,  8,  4,  2]  
 
   ;; Base default tiles and clips on num_points and max_local_shift?
   ;; Num_points gives final number of tiles. Max_local_shift gives
@@ -85,6 +115,8 @@ pro red::bypass_momfbd, cfgfile $
   cfg = redux_readcfg(cfgfile)
   cfgdir = file_dirname(cfgfile)
 
+  if file_test(cfgdir+'/fov_mask.fits') then fov_mask = readfits(cfgdir+'/fov_mask.fits')
+
   Nobjects = n_elements(redux_cfggetkeyword(cfg, 'OBJECT*'))
 
   trace = redux_cfggetkeyword(cfg, 'TRACE')
@@ -97,9 +129,11 @@ pro red::bypass_momfbd, cfgfile $
   margin = num_points/8
   sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
   if cnt gt 0 then begin
-    sim_xy = reform(rdx_str2ints(sim_xy), 2, cnt/2)
-    sim_x = sim_xy[0, *]    
-    sim_y = sim_xy[1, *]    
+    sim_xy = rdx_str2ints(sim_xy)
+    indx = indgen(n_elements(sim_xy)/2)*2
+    indy = indx+1
+    sim_x = sim_xy[indx]
+    sim_y = sim_xy[indy]   
   endif else begin
     sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
     sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
@@ -138,7 +172,7 @@ pro red::bypass_momfbd, cfgfile $
   self -> extractstates, wfiles, wstates
 
   nframes_perfile = wstates.nframes
-  
+
   wcube=red_readdata_multiframe(wfiles)
   dims = size(wcube, /dim)
   wcube1 = fltarr(dims)
@@ -148,41 +182,91 @@ pro red::bypass_momfbd, cfgfile $
     
   anchor_dark = red_readdata(anchor_dark_file)
   anchor_gain = red_readdata(anchor_gain_file)
-;  dims = size(anchor_dark, /dim)
-;  wcube = fltarr([dims, Nexposures])  
-;  wcube1 = fltarr([dims, Nexposures])  
+  mask = anchor_gain eq 0
+  if n_elements(fov_mask) ne 0 then mask *= fov_mask
+
   for iexposure = 0, Nexposures-1 do begin
     red_progressbar, iexposure, Nexposures, 'Processing raw anchor images'
-;    file_num = image_nums[iexposure]
-;    filename = filename_parts[0] + string(file_num, format = '(i07)')
-;    if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
-;    im = red_readdata(image_data_dir+'/'+filename)
     im = wcube[*, *, iexposure]
     im -= anchor_dark
     if DoBackscatter then begin
-      im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
+;      im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
+      im = red_cdescatter(im, bgt, Psft,nthreads = nthreads)
     endif
     im *= anchor_gain
-    mask = anchor_gain eq 0
     wcube[*, *, iexposure] = rdx_fillpix(im, nthreads=nthreads, mask = mask)
   endfor                        ; iexposure
   
-  anchor_bg = median(wcube)
+  anchor_bg = median(wcube[*,*,0])
+
+  xc = Nx/2
+  yc = Ny/2
+  xbd = round(20/float(self.image_scale))  < round(Nx*0.9)
+  ybd = round(20/float(self.image_scale))  < round(Ny*0.9)
+  align_size = [xbd, ybd]
+
+  if n_elements(roi_align) ne 0 then begin
+     xc = roi_align[0]
+     yc = roi_align[1]
+     align_size[0] = roi_align[2]
+     align_size[1] = roi_align[3]
+  endif else begin
+     if keyword_set(align_interactive) then begin
+        
+        print
+        print, 'Use the XROI GUI to either modify an initial alignment ROI/FOV or define a new one from scratch.'
+        print, 'Select Quit in the File menu. The last ROI is used.'
+        print
+
+        ;; Define default roi
+        X_in = xc + [-1,  1, 1, -1]*xbd/2 
+        Y_in = yc + [-1, -1, 1,  1]*ybd/2
+        roiobject_in = OBJ_NEW('IDLgrROI', X_in, Y_in)
+        roiobject_in -> setproperty, name = 'Default'
+        
+        ;; Fire up the XROI GUI.
+;    dispim = bytscl(red_histo_opt(total(wcube, 3)))
+        dispim = bytscl(red_histo_opt(wcube[*,*,Nexposures/2]))
+        xroi, dispim, regions_in = [roiobject_in], regions_out = roiobject, /block $
+              , tools = ['Translate-Scale', 'Rectangle'] $
+              , title = 'Modify or define alignment ROI'
+        roiobject[-1] -> getproperty, roi_xrange = roi_x
+        roiobject[-1] -> getproperty, roi_yrange = roi_y
+
+        obj_destroy, roiobject_in
+        obj_destroy, roiobject
+
+        xc = round(mean(roi_x))
+        yc = round(mean(roi_y))
+
+        align_size = [round(roi_x[1])-round(roi_x[0]), round(roi_y[1])-round(roi_y[0])]
+
+        roi_align = intarr(4)
+        roi_align[0] = xc
+        roi_align[1] = yc
+        roi_align[2] = align_size[0]
+        roi_align[3] = align_size[1]
+     endif
+  endelse
 
   np = 3
-  shift = red_aligncube(wcube, np, xc = Nx/2, yc = Ny/2, xbd = 500, ybd = 500, nthreads=nthreads)
+  shift = red_aligncube(wcube, np, xc = xc, yc = yc, xbd = align_size[0], ybd = align_size[1] $
+                        , nthreads=nthreads, no_display = no_display)
   for iexposure = 0, Nexposures-1 do begin
     red_progressbar, iexposure, Nexposures, 'Shifting anchor images'
     wcube1[*, *, iexposure] $
        = red_rotation(wcube[*, *, iexposure], 0., shift[0,iexposure], shift[1,iexposure] $
-                      , background = anchor_bg, nthreads=nthreads)
+                      , background = anchor_bg $
+                      , nthreads=nthreads)
   endfor                        ; iexposure
 
   if ~keyword_set(nostretch) then begin
     for iexposure = 1, Nexposures-1 do begin
       red_progressbar, iexposure, Nexposures, 'Calculating stretch vectors for anchor images.'
-      grid = rdx_cdsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
-                             , tiles, clips, nthreads=nthreads)
+;      grid = rdx_cdsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
+;                             , tiles, clips, nthreads=nthreads)
+      grid = red_dsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
+                             , tiles, clips, nthreads=nthreads, mask=fov_mask)
       if iexposure eq 1 then begin
         gdims = size(grid, /dim)
         grids = dblarr(Nexposures, 2, gdims[1], gdims[2])
@@ -204,29 +288,29 @@ pro red::bypass_momfbd, cfgfile $
     endfor
   endif
   
-;  tighttv,[wcube[*,*,0],wcube1[*,*,0]]
   for iexposure = 0, Nexposures-1 do begin
     if keyword_set(nostretch) then begin
-      red_progressbar, iexposure, Nexposures, 'Shifting the anchor images.'
-      wcube1[*,*,iexposure] = red_rotation(wcube[*,*,iexposure] $
-                                           , 0.0, shift[0,iexposure], shift[1,iexposure] $
-                                           , background = anchor_bg $
-                                           , nthreads=nthreads, nearest=nearest)
+      ;; red_progressbar, iexposure, Nexposures, 'Shifting the anchor images.'
+      ;; imm = red_rotation(wcube[*,*,iexposure] $
+      ;;                    , 0.0, shift[0,iexposure], shift[1,iexposure] $
+      ;;                    , background = anchor_bg $
+      ;;                    , nthreads=nthreads, nearest=nearest)
+      if n_elements(fov_mask) ne 0 then wcube1[*,*,iexposure] *= fov_mask
+      ;;wcube1[*,*,iexposure] = imm
     endif else begin
       red_progressbar, iexposure, Nexposures, 'Shifting and stretching the anchor images.'
-      wcube1[*,*,iexposure] = red_rotation(wcube[*,*,iexposure] $
-                                           , 0.0, shift[0,iexposure], shift[1,iexposure] $
-                                           , stretch_grid = reform(grids[iexposure,*,*,*]) $
-                                           , background = anchor_bg $
-                                           , nthreads=nthreads, nearest=nearest)
+      imm = red_rotation(wcube[*,*,iexposure] $
+                         , 0.0, shift[0,iexposure], shift[1,iexposure] $
+                         , stretch_grid = reform(grids[iexposure,*,*,*]) $
+                         , background = anchor_bg $
+                         , nthreads=nthreads, nearest=nearest)
+      if n_elements(fov_mask) ne 0 then imm *= fov_mask
+      wcube1[*,*,iexposure] = imm      
     endelse
   endfor                        ; iexposure
   
   anchorim = mean(wcube1, dim = 3)
-  
-
-;;for iexposure = 0, Nexposures-1 do tvscl,[wcube[*,*,iexposure],wcube1[*,*,iexposure]]
-
+  red_missing, anchorim, /inplace, missing_type_wanted = 'nan'
 
 ;; Add the string "_bypass" to the "results" outdir, otherwise
 ;; generate the same filenames as momfbd would do (except with a
@@ -251,7 +335,6 @@ pro red::bypass_momfbd, cfgfile $
   endelse
   
   anchor_output_file = cfgdir+'/'+red_strreplace(anchor_output_file, 'results', 'results'+outdir_tag) + '.fits'
-;  anchor_output_file = cfgdir+'/'+red_strreplace(anchor_output_file, 'results', 'results'+outdir_tag) + '.momfbd'
   
   if keyword_set(nostretch) then begin
     fxaddpar, header, 'FILENAME', file_basename(anchor_output_file), 'Aligned raw data'
@@ -268,7 +351,7 @@ pro red::bypass_momfbd, cfgfile $
                                 ;                 , x0:x0, y0:y0, x1:x1, y1:y1 }
 
 
-  
+
   ;;                       ----- All other images -----
   
   for iobject = 1, Nobjects-1 do begin
@@ -303,7 +386,7 @@ pro red::bypass_momfbd, cfgfile $
     endif
     
     filename_parts = strsplit(filename_template, '%', /extract)
-    files = file_search(image_data_dir+'/'+filename_parts[0]+'*', count = Nfiles)
+    files = file_search(image_data_dir+'/'+filename_parts[0]+'*'+strmid(filename_parts[1],3,strlen(filename_parts[1])-3), count = Nfiles)
     self -> extractstates, files, states
 
     if trace then toutput_file = red_strreplace(output_file, states[0].detector, wstates[0].detector)    
@@ -318,12 +401,22 @@ pro red::bypass_momfbd, cfgfile $
         istart = round(total(nframes_perfile[0:file_indx[iindx]-1]))
       endelse
       red_append, indx, lindgen(nframes_perfile[file_indx[iindx]]) + istart
-    endfor                      ; iindx
-    
+    endfor                      ; iindx    
 
-    dark = red_readdata(dark_file)
-    gain = red_readdata(gain_file)
+    if keyword_set(global_gain) then begin
+      self -> get_calib, states[0] $
+                         , darkdata = dark, darkstatus = darkstatus $
+                         , cgaindata = gain, cgainstatus = gainstatus
+      if darkstatus ne 0 then stop
+      if gainstatus ne 0 then stop
+    endif else begin
+      dark = red_readdata(dark_file)
+      gain = red_readdata(gain_file)
+    endelse
 
+    gain = rdx_img_transform(invert(align_map), gain, /preserve) >0
+    mask = gain eq 0
+    if n_elements(fov_mask) ne 0 then mask *= fov_mask
     
     cube = red_readdata_multiframe(files)
     dims = size(cube, /dim)
@@ -335,28 +428,21 @@ pro red::bypass_momfbd, cfgfile $
     for iframe = 0, Nframes-1 do begin
       red_progressbar, iframe, Nframes, 'Processing raw images for object ' + strtrim(iobject, 2) $
                        + ' of ' + strtrim(Nobjects, 2)
-;      file_num = image_nums[ifile] ; <-------------------------
-;      filename = filename_parts[0] + string(file_num, format = '(i07)')
-;      if filename_parts[1] ne '07d' then filename += '.fits' ; Add .fits extension
-      ;;im = red_readdata(files[ifile])
       im = cube[*, *, iframe]
       im -= dark
       if DoBackscatter then begin
-        im = rdx_descatter(im, bgt, Psft, verbose = verbose, nthreads = nthreads)
+;        im = rdx_descatter(im, bgt, Psft, nthreads = nthreads)
+        im = red_cdescatter(im, bgt, Psft, nthreads = nthreads)
       endif
-      im *= gain
-      mask = gain eq 0
-      im = rdx_fillpix(im, nthreads=nthreads, mask = mask)
       im = rdx_img_transform(invert(align_map), im, /preserve) >0
+      im *= gain
+      im = rdx_fillpix(im, nthreads=nthreads, mask = mask)
       if max(im) eq min(im) then stop
 
-      red_missing, im, missing_type_wanted = 'median', /inplace
       cube[*, *, iframe] = im
-                                ;cube[*, *, ifile] = red_rotate(im, self.direction)
     endfor                      ; iframe
-    bg = median(cube)
-
-    
+    bg = median(cube[*,*,0])
+   
     for iframe = 0, Nframes-1 do begin
       if keyword_set(nostretch) then begin
         red_progressbar, iframe, Nframes, 'Shifting the images.'
@@ -366,92 +452,75 @@ pro red::bypass_momfbd, cfgfile $
       iexposure = indx[iframe]
       xshift = shift[0,iexposure]
       yshift = shift[1,iexposure]
-      if ~keyword_set(nostretch) then grid = reform(grids[iexposure,*,*,*])
-
-;      print, wfiles[iexposure]
-;      print, files[ifile]
-;      tighttv, wcube[*, *, iexposure]    
-;      tvscl, cube[*, *, ifile]
-;
-;
-;      stop
+      ;;if ~keyword_set(nostretch) then grid = reform(grids[iexposure,*,*,*])
+     
       if keyword_set(nostretch) then begin
-        cube1[*,*,iframe] = red_rotation(cube[*,*,iframe] $
-                                         , 0.0, xshift, yshift $
-                                         , nthreads=nthreads, nearest=nearest)
+         imm = red_rotation(cube[*,*,iframe] $
+                            , 0.0, xshift, yshift $
+                            , background = bg $
+                            , nthreads=nthreads, nearest=nearest)
+        if  n_elements(fov_mask) ne 0 then imm *= fov_mask
+        cube1[*,*,iframe] = imm
       endif else begin
-        cube1[*,*,iframe] = red_rotation(cube[*,*,iframe] $
-                                         , 0.0, xshift, yshift $
-                                         , stretch_grid = grid $
-                                         , nthreads=nthreads, nearest=nearest)
+        imm = red_rotation(cube[*,*,iframe] $
+                           , 0.0, xshift, yshift $
+                           , stretch_grid = reform(grids[iexposure,*,*,*]) $
+                           , background = bg $
+                           , nthreads=nthreads, nearest=nearest)
+         if n_elements(fov_mask) ne 0 then imm *= fov_mask
+         cube1[*,*,iframe] = imm
       endelse
     endfor                      ; iexposure
 
     im = mean(cube1, dim = 3)
-    red_missing, im, missing_type_wanted = 'nan', /inplace
+;    if Nfiles gt 1 then im = mean(cube1, dim = 3) else im = reform(cube1)
+    red_missing, im, /inplace, missing_type_wanted = 'median'
 
     header = headfits(cfgdir+'/'+output_file + '.fitsheader')
-
     red_headerinfo_deletestep, header, /last
+
     if keyword_set(nostretch) then begin
       self -> headerinfo_addstep, header $
                                   , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT' $
                                   , prpara = prpara $
                                   , prproc = inam
+      fxaddpar, header, 'FILENAME', file_basename(output_file), 'Aligned raw data'
     endif else begin
       self -> headerinfo_addstep, header $
                                   , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
                                   , prpara = prpara $
                                   , prproc = inam
+      fxaddpar, header, 'FILENAME', file_basename(output_file), 'Destretched raw data'
     endelse
     
     output_file = cfgdir+'/'+red_strreplace(output_file, 'results', 'results'+outdir_tag) + '.fits'
-    if keyword_set(nostretch) then begin
-      fxaddpar, header, 'FILENAME', file_basename(output_file), 'Aligned raw data'
-    endif else begin
-      fxaddpar, header, 'FILENAME', file_basename(output_file), 'Destretched raw data'
-    endelse
     fxaddpar, header, 'CROP_X0', x0, 'Crop llx pixel'  
     fxaddpar, header, 'CROP_X1', x1, 'Crop urx pixel'  
     fxaddpar, header, 'CROP_Y0', y0, 'Crop lly pixel'  
     fxaddpar, header, 'CROP_Y1', y1, 'Crop ury pixel'  
     red_writedata, output_file, im[x0:x1,y0:y1], header = header, overwrite = overwrite
-
-
     
     if trace then begin
-      
-;      tcube = fltarr([dims, Nfiles])  
-;      tcube1 = fltarr([dims, Nfiles])
-;      for ifile = 0, Nfiles-1 do begin
-;        red_progressbar, ifile, Nfiles, 'Reading raw trace images for object'+strtrim(iobject, 2)
-;        file = files[ifile]     ; <----------------------------------------------------
-;        im = red_readdata(file, direction = self.direction)
-;        im -= anchor_dark
-;        im *= anchor_gain
-;        mask = anchor_gain eq 0
-;        tcube[*, *, ifile] = rdx_fillpix(im, nthreads=nthreads, mask = mask)
-;      endfor                    ; ifile
+
+      theader = headfits(cfgdir+'/'+toutput_file + '.fitsheader')
+      toutput_file = cfgdir+'/'+red_strreplace(toutput_file, 'results', 'results'+outdir_tag) + '.fits'
+      if file_test(toutput_file) and ~keyword_set(overwrite) then continue
       tcube1 = wcube1[*, *, indx]
       tim = mean(tcube1, dim = 3)
-      red_missing, tim, missing_type_wanted = 'nan', /inplace
-      theader = headfits(cfgdir+'/'+toutput_file + '.fitsheader')
+;      if n_elements(indx) gt 1 then tim = mean(tcube1, dim = 3) else tim = reform(tcube1)
+      red_missing, tim, /inplace, missing_type_wanted = 'median' 
       red_headerinfo_deletestep, theader, /last
       if keyword_set(nostretch) then begin
         self -> headerinfo_addstep, theader $
                                     , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT' $
                                     , prpara = prpara $
                                     , prproc = inam
+        fxaddpar, theader, 'FILENAME', file_basename(toutput_file), 'Aligned raw data'
       endif else begin
         self -> headerinfo_addstep, theader $
                                   , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
                                   , prpara = prpara $
                                   , prproc = inam
-      endelse
-      toutput_file = cfgdir+'/'+red_strreplace(toutput_file, 'results', 'results'+outdir_tag) + '.fits'
-      if keyword_set(nostretch) then begin
-        fxaddpar, theader, 'FILENAME', file_basename(toutput_file), 'Aligned raw data'
-      endif else begin
         fxaddpar, theader, 'FILENAME', file_basename(toutput_file), 'Destretched raw data'
       endelse
       fxaddpar, theader, 'CROP_X0', x0, 'Crop llx pixel'  

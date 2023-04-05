@@ -157,6 +157,10 @@
 ;      The Y size in pixels of the FOV used for alignment. See
 ;      red_aligncube.  
 ;
+;    select_intensity_region : in, optional, type=boolean
+;
+;      Set this keyword to select regions for intensity correction
+;      with time (needed for big flares).
 ; 
 ; 
 ; :History:
@@ -226,6 +230,11 @@
 ; 
 ;    2022-09-26 : MGL. New keyword padmargin.
 ;
+;    2023-04-03 : OA. New keyword select_intensity_region. 
+;                 Added clipping of FOV mask with information
+;                 from configuration files (needed to make 'mixed' cubes).
+;                 Moved time-dependent intensity correction after cube alignment.
+;
 ;-
 pro red::make_wb_cube, dirs $
                        , align_interactive = align_interactive $                       
@@ -254,7 +263,8 @@ pro red::make_wb_cube, dirs $
                        , tile = tile $
                        , tstep = tstep $
                        , xbd = xbd $
-                       , ybd = ybd
+                       , ybd = ybd $
+                       , select_intensity_region = select_intensity_region
 
   
   ;; Name of this method
@@ -459,7 +469,7 @@ pro red::make_wb_cube, dirs $
 
     im = red_readdata(wfiles[iscan], head = hdr)
 
-    red_missing, im, /inplace, missing_type_wanted = 'nan'
+    red_missing, im, /inplace, missing_type_wanted = 'median' ; 'nan'
 ;    red_missing, im, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data        
 ;    bg = !Values.F_NaN
 ;    if Nmissing gt 0 then im[indx_missing] = bg
@@ -468,7 +478,7 @@ pro red::make_wb_cube, dirs $
       if size(im,/n_dim) gt 2 then im = im[*, *, 0]
       im -= dark
       im *= gain
-      im = red_fillpix(im, nthreads = 4L)
+      im = red_fillpix(im, nthreads = nthreads)
     endif
     im = rotate(temporary(im), direction)
     
@@ -510,39 +520,11 @@ pro red::make_wb_cube, dirs $
       time[iscan] = ttime
     endelse
 
-    cub[*, *, iscan] = (temporary(im))[x0:x1, y0:y1]
-    
-    ;; Measure time-dependent intensity variation (sun moves in the Sky)
-    if keyword_set(limb_data) then begin
-      ;; For limb data, calculate the median in a strip of pixels with
-      ;; a certain width, from the limb inward.
-      strip_width = 5.                                                ; Approximate width, 5 arsec
-      strip_width = round(strip_width/float(self.image_scale))        ; Converted to pixels
-      if iscan gt 0 then wdelete                                      ; Don't use more than one window for the bimodal plots
-      bimodal_threshold = cgOtsu_Threshold(cub[*, *, iscan], /PlotIt) ; Threshold at the limb
-      disk_mask = cub[*, *, iscan] gt bimodal_threshold               
-      strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
-      strip_indx = where(strip_mask, Nmask) ; Indices within the strip
-      if Nmask eq 0 then stop
-      tmean[iscan] = median((cub[*, *, iscan])[strip_indx])
-    endif else begin
-      tmean[iscan] = median(cub[*,*,iscan])
-    endelse
-    
+    cub[*, *, iscan] = (temporary(im))[x0:x1, y0:y1]       
   endfor                        ; iscan
 
   hdr = red_readhead(wfiles[0])         ; Base cube header on first WB file header
-  red_headerinfo_deletestep, hdr, /last ; This processing step will be added later, could vary with scan number
-  
-  ;; Plot the intensity variations
-  red_timeplot, red_time2double(time), tmean/mean(tmean) $
-                , xtitle = 'Time', ytitle = 'Intensity correction' $
-                , psym=-16, /ynozero $
-                , xrange = [red_time2double(time[0]), red_time2double(time[-1])] + 20*[-1, 1]
-  
-;  ;; Normalize intensity
-;  tmean = tmean/mean(tmean)
-  for iscan = 0L, Nscans - 1 do cub[*,*,iscan] /= tmean[iscan]
+  red_headerinfo_deletestep, hdr, /last ; This processing step will be added later, could vary with scan number  
 
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
@@ -554,18 +536,9 @@ pro red::make_wb_cube, dirs $
   
   ;; De-rotate images in the cube, has to be done before we can
   ;; calculate the alignment
+  bg = median(cub[*,*,0])
   for iscan = 0L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-
-;    red_missing, cub[*,*,iscan] $    
-;                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data    
-    bg = !Values.F_NaN
-;    if Nmissing gt 0 then begin    
-;      bg = (cub[*,*,iscan])[indx_missing[0]]    
-;    endif else begin    
-;      bg = median(cub[*,*,iscan])    
-;    endelse    
-
     cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads, background = bg)
   endfor                        ; iscan
 
@@ -624,7 +597,7 @@ pro red::make_wb_cube, dirs $
   
   ;; Calculate the image shifts
   shift = red_aligncube(cub, np, xbd = align_size[0], ybd = align_size[1] $
-                        , xc = xc, yc = yc, nthreads=nthreads) ;, cubic = cubic, /aligncube)
+                        , xc = xc, yc = yc, nthreads=nthreads) ;, cubic = cubic, /aligncube)  
   
   if keyword_set(circular_fov) then begin
     ;; Red_rotation.pro only uses keyword full (which is set to ff
@@ -644,45 +617,94 @@ pro red::make_wb_cube, dirs $
     mdy1 = reform(max(shift[1,*]))
     ff = [maxangle, mdx0, mdx1, mdy0, mdy1, reform(ang)]
   endelse
-  
-  if file_test(dirs[0]+'/fov_mask.fits') then begin
-    ;; If multiple directories, the fov_mask should be the same. Or we
-    ;; have to think of something.
+
+  ;; If multiple directories, the fov_mask should be the same. Or we
+  ;; have to think of something.
+  spl = strsplit(wfiles[0],'/',/extract)
+  cw = where(strmatch(spl,'*cfg*'))
+  cfg_dir=strjoin(spl[0:cw],'/')
+  if file_test(cfg_dir+'/fov_mask.fits') then begin    
     fov_mask = readfits(dirs[0]+'/fov_mask.fits')
     if self.filetype eq 'MOMFBD' then begin
       mr = momfbd_read(wfiles[0], /nam)
       fov_mask = red_crop_as_momfbd(fov_mask, mr)
-    endif 
+    endif else begin ; get cropping from cfg file      
+      cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+                 string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+      cfg = redux_readcfg(cfg_file)
+      num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+      margin = num_points/8
+      sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+      if cnt gt 0 then begin
+        sim_xy = rdx_str2ints(sim_xy)
+        indx = indgen(n_elements(sim_xy)/2)*2
+        indy = indx+1
+        sim_x = sim_xy[indx]
+        sim_y = sim_xy[indy]   
+      endif else begin
+        sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+        sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+      endelse
+      xx0 = min(sim_x) + margin - num_points/2 
+      xx1 = max(sim_x) - margin + num_points/2 - 1
+      yy0 = min(sim_y) + margin - num_points/2 
+      yy1 = max(sim_y) - margin + num_points/2 - 1
+      fov_mask = fov_mask[xx0:xx1,yy0:yy1]
+    endelse
     fov_mask = red_rotate(fov_mask, direction)
   endif
   
   ;; De-rotate and shift cube
-  bg = median(cub1)  
-  bg = !Values.F_NaN
+  bg = median(cub1[*,*,0])  
   dum = red_rotation(cub1[*,*,0], full=ff $
                      , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
   nd = size(dum,/dim)
   nx = nd[0]
   ny = nd[1]
   cub = fltarr([nd, Nscans])
-  cub[*,*,0] = temporary(dum)
+  cub[*,*,0] = dum
+
+  case 1 of
+    keyword_set(select_intensity_region) : begin
+      xroi,bytscl(dum), Regions_Out=ROI, /Block, title = 'Select region to be used for intensity correction with time.'
+      int_indx = where( (ROI[0] -> ComputeMask(Dimensions=nd, Mask_Rule=2)) )
+    end
+    keyword_set(limb_data) : begin
+      ;; For limb data, calculate the median in a strip of pixels with
+      ;; a certain width, from the limb inward.
+      strip_width = 5.                                              ; Approximate width, 5 arsec
+      strip_width = round(strip_width/float(self.image_scale))      ; Converted to pixels
+      bimodal_threshold = cgOtsu_Threshold(dum, /PlotIt) ; Threshold at the limb
+      disk_mask = dum gt bimodal_threshold               
+      strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
+      int_indx = where(strip_mask, Nmask) ; Indices within the strip
+      if Nmask eq 0 then stop
+      wdelete
+    end
+    else :
+  endcase
+  
   for iscan=0, Nscans-1 do begin
     red_progressbar, iscan, Nscans $
                      , inam+' : Making full-size cube, de-rotating and shifting.'
 
-;    red_missing, cub1[*,*,iscan] $    
-;                 , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data    
-;    bg = !Values.F_NaN
-;    if Nmissing gt 0 then begin    
-;      bg = (cub1[*,*,iscan])[indx_missing[0]]    
-;    endif else begin    
-;      bg = median(cub[*,*,iscan])    
-;    endelse    
-
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
                                   , ang[iscan], shift[0,iscan], shift[1,iscan] $
                                   , background = bg, nthreads=nthreads)
-  endfor                        ; iscan
+    ;; Measure time-dependent intensity variation
+    dum = reform(cub[*,*,iscan])
+    if n_elements(int_indx) ne 0 then $
+      tmean[iscan] = median(dum[int_indx]) $
+    else $
+      tmean[iscan] = median(dum)
+  
+    cub[*,*,iscan] /= tmean[iscan]
+  endfor                         ; iscan
+
+  red_timeplot, red_time2double(time), tmean/mean(tmean) $
+                 , xtitle = 'Time', ytitle = 'Intensity correction' $
+                 , psym=-16, /ynozero $
+                 , xrange = [red_time2double(time[0]), red_time2double(time[-1])] + 20*[-1, 1]
   
   dts = red_time2double(time)
   if n_elements(tstep) eq 0 then begin
@@ -701,6 +723,7 @@ pro red::make_wb_cube, dirs $
                                , nthreads = nthreads, nostretch = nostretch)
 
   if ~keyword_set(nostretch) then begin
+    if ~keyword_set(nomissing_nans) then bg = !Values.F_NaN
     for iscan = 0L, Nscans - 1 do begin
       red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
       if n_elements(fov_mask) gt 0 then cub1[*, *, iscan] = cub1[*, *, iscan] * fov_mask
