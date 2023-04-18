@@ -51,24 +51,29 @@ function red_interpol_nogaps, y, x, xp, tol = tol, test = test, _ref_extra = ext
 
   ;; Distance between data points.
   dx = red_differential(x)
+  mdx = median(dx)
 
   ;; Find endpoints of OK intervals. This is based on the assumption
   ;; that the data have more or less constant dx, except for gaps.
 
-  indx_largedist = where(dx gt median(dx)*(1.+tol), Nlarge)
+  indx_largedist = where(dx gt mdx*(1.+tol), Nlarge)
   if Nlarge eq 0 then begin
     ;; No large distances detected, just do normal interpolation.
     return, interpol(y, x, xp, _strict_extra = extra)
   endif
+
   
   ;; Some large distances detected. We want to use only the
   ;; stretches of data where the distances are small enough.
   mask_smalldist = dx lt median(dx)*(1.+tol)
   onoff = red_differential(float(dx lt median(dx)*(1.+tol)))
-  on = [0, where(onoff gt 0)]
-  off = where(onoff lt 0)
+;  on = [0, where(onoff gt 0)]
+;  off = where(onoff lt 0)
+  ;; Looks like the on and off points were off by one.
+  on = [0, where(onoff gt 0)-1]
+  off = where(onoff lt 0)-1
   if n_elements(off) lt n_elements(on) then off = [off, n_elements(x)-1]
-
+  
   Nintervals = n_elements(on)
 ;  
 ;  indx_smalldist = where(dx lt median(dx)*(1.+tol), Nsmall)
@@ -81,12 +86,15 @@ function red_interpol_nogaps, y, x, xp, tol = tol, test = test, _ref_extra = ext
 ;  intervals = indx[dindx]
 ;
 ;  if red_odd(n_elements(intervals)) then stop
-  
+
   for iinterval = 0, Nintervals-1 do begin
 ;    print, iinterval
     Npoints = off[iinterval] - on[iinterval]
     if Npoints gt 0 then begin
-      indx = where((xp ge x[on[iinterval]]) and (xp le x[off[iinterval]-1]), count)
+      ;;  indx = where((xp ge x[on[iinterval]]) and (xp le
+      ;;  x[off[iinterval]-1]), count)
+      ;; Include a margin of half the median dx in the data intervals.
+      indx = where((xp ge x[on[iinterval]]-mdx/2.) and (xp le x[off[iinterval]]+mdx/2.), count)
       if count gt 0 then begin
         yp[indx] = interpol(y[on[iinterval]:off[iinterval]-1] $
                             , x[on[iinterval]:off[iinterval]-1] $
@@ -104,10 +112,28 @@ function red_interpol_nogaps, y, x, xp, tol = tol, test = test, _ref_extra = ext
 
   endfor                        ; iinterval
 
+
+;  cgplot, x/3600, y, psym = 9, xrange = [10.75, 11.50]
+;  cgplot, /over, xp/3600, yp, psym = 16
+;  for i = 0, n_elements(xp) -1 do cgplot, /over, xp[i]/3600*[1, 1], !y.crange
+;  indx = where(~finite(yp))
+;  cgplot, /over, xp[indx]/3600,  0*indx, psym = 16, color = 'red'
+;  
+;  print, xp[indx]/3600
+;  print, yp[indx]
+;  stop
+  
   return, yp
   
 end
 
+
+cd, '/scratch/alex/2017.09.06/CHROMIS'
+a = chromisred(/dev)
+a->fit_wb_diskcenter,pref='3950',tmax='12:00'
+
+
+stop
 
 x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 14, 16, 17, 18, 19]/20.*!pi
 y = sin(x)
