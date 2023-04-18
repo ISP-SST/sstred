@@ -891,7 +891,7 @@ pro chromis::make_nb_cube, wcfile $
 
       if self.filetype eq 'MOMFBD' then begin
         ;; Crop the cavity map to the FOV of the momfbd-restored images.
-        mr = momfbd_read(wfiles[0],/nam)
+        mr = momfbd_read(wbgfiles[0],/nam)
         cmap1 = red_crop_as_momfbd(cmap1, mr)
       endif else begin ;; Crop with information from the cfg file
          spl = strsplit(wbgfiles[0],'/',/extract)

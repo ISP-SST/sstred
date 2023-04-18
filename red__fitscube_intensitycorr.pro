@@ -162,7 +162,7 @@ pro red::fitscube_intensitycorr, filename $
     end
   endcase
 
-  print, wcTMEAN
+;  print, wcTMEAN
 ;  stop
 
   case wbpref of
@@ -284,17 +284,19 @@ pro red::fitscube_intensitycorr, filename $
     ;; We need the WCS time coordinates 
     red_fitscube_getwcs, filename, coordinates = coordinates
     t = reform(coordinates.time[0, 0], Ntuning, Nscans)
+    t_cube_beg = min(t)
+    t_cube_end = max(t)
 
     
     ;; Check that we are not extrapolating (too far).
-    if min(t) lt time_beg or max(t) gt time_end then begin
+    if t_cube_beg lt time_beg or t_cube_end gt time_end then begin
       s = ''
       print, inam + ' : No WB fit file : '+wbfitfile
       print
-      print, inam + "It looks like your a->fit_wb_diskcenter step didn't find WB data"
+      print, inam + "It looks like your a->fit_[n/w]b_diskcenter step didn't find data"
       print, "for a long enough time range. Either your prefilter fit calibration data"
       print, "or your data cube have time stamps outside the range:"
-      print, 'WB data range (plus margin) : [' + red_timestring(time_beg) $
+      print, 'Data range (plus margin) : [' + red_timestring(time_beg) $
              + ',' + red_timestring(time_end) + '].'
       print, 'Cube time range : [' + red_timestring(min(t)) $
              + ',' + red_timestring(max(t)) + '].'
@@ -318,16 +320,6 @@ pro red::fitscube_intensitycorr, filename $
       endelse
     endif
 
-    ;; Use the fit to get the WB intensities
-    ints     = red_evalexpr(fitexpr, t/3600,       pp) 
-    intcalib = red_evalexpr(fitexpr, t_calib/3600, pp)
-   
-    ;; Change intensity to compensate for time difference
-    ;; between prefilterfit and data collection. Use the ratio
-    ;; of (WB intensity)/(exposure time) for interpolated times
-    ;; of calibration data and cube data.
-    intratio = intcalib / ints
-
     ;; Need also ratio of exposure times to compensate the NB
     ;; data for different exposure time in calibration data and
     ;; in cube data! MOMFBD processing divides output with the
@@ -335,13 +327,51 @@ pro red::fitscube_intensitycorr, filename $
     ;; the appropriate one.
     xpratio = xposure / fxpar(hdr,'TEXPOSUR')
 
+    ;; Use the fit to get the WB intensities
+    ints     = red_evalexpr(fitexpr, t/3600,       pp) 
+    intcalib = red_evalexpr(fitexpr, t_calib/3600, pp)
+
+    if intcalib lt 0 then begin
+      print
+      print, inam+' : '
+      print, 'Unfortunately DC intensities fit is bad at time of prefilter fit: ', intcalib
+      print, 'No correction!'
+      print
+      return
+    endif
+
+    if t_calib+3600 lt t_cube_beg or t_calib-3600 gt t_cube_end then begin
+      print
+      print, inam+' : '
+      print, 'Time of prefilter fit is too far from your observations.'
+      print
+      print, 'Intensity corrections at beginning/end of your cube would be: ', $
+             string(xpratio*intcalib/red_evalexpr(fitexpr, t_cube_beg/3600, pp), format='(f6.2)'), ' / ', $
+             string(xpratio*intcalib/red_evalexpr(fitexpr, t_cube_end/3600, pp), format='(f6.2)')
+      s=''
+      read,'Do you want to continue [y/N]: ', s
+      print      
+      if strlowcase(strmid(s, 0, 1)) ne 'y' then begin
+        print, 'No correction!'
+        print
+        return
+      endif
+    endif
+   
+    ;; Change intensity to compensate for time difference
+    ;; between prefilterfit and data collection. Use the ratio
+    ;; of (WB intensity)/(exposure time) for interpolated times
+    ;; of calibration data and cube data.
+    intratio = intcalib / ints
+
+    
 ;    oldcorrection = 1d / wcTMEAN
 ;    fitcorrection = intratio * xpratio
 ;    stop
     
     ;; We want the scan-to-scan variations of the "LOCAL" old kind of
     ;; correction. But scaled to the WB intensity calibration.
-    correction_old = mean(intratio * xpratio) * mean(wcTMEAN) / wcTMEAN
+;    correction_old = mean(intratio * xpratio) * mean(wcTMEAN) / wcTMEAN
 
     correction = intratio * xpratio
 ;    cgplot, correction_old,psym=16,color='red'
@@ -399,8 +429,10 @@ pro red::fitscube_intensitycorr, filename $
     
   endelse 
 
-  ;; Apply the corrections
-  print, inam + ' : Corrections = ', correction
+  ;; Apply the corrections  
+  print, 'Intensity corrections at beginning/end of your cube are: ', $
+         string(xpratio*intcalib/red_evalexpr(fitexpr, t_cube_beg/3600, pp), format='(f6.2)'), ' / ', $
+         string(xpratio*intcalib/red_evalexpr(fitexpr, t_cube_end/3600, pp), format='(f6.2)')
 
 ;  ;; Does correction have the correct dimensions?
 ;  help, correction
