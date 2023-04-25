@@ -96,20 +96,20 @@ pro red_getlog, date $
     
     red_download, date = isodate, /shabar, pathshabar = shabarfile
     if shabarfile then begin
-
+      
       shabartemplate = { VERSION:1.0 $
-                       , DATASTART:0L $
-                       , DELIMITER:32B $
-                       , MISSINGVALUE:!VALUES.F_NAN $
-                       , COMMENTSYMBOL:'' $
-                       , FIELDCOUNT:24L $
-                       , FIELDTYPES:[5L, replicate(4L, 23)] $
-                       , FIELDNAMES:['time', 'what', 'why', 'trump' $
-                                     , replicate('val', 20)] $
-                       , FIELDLOCATIONS:[0L, 18L, 31L, 44L, 14L*lindgen(20)+58L] $
-                       , FIELDGROUPS:[0L, 1L, 2L, 3L, replicate(4L, 20)] $
-                     }
-      shabarstruct = {time:0d, what:0., why:0., trump:0., val:fltarr(20)}
+                         , DATASTART:0L $
+                         , DELIMITER:32B $
+                         , MISSINGVALUE:!VALUES.F_NAN $
+                         , COMMENTSYMBOL:'' $
+                         , FIELDCOUNT:24L $
+                         , FIELDTYPES:[5L, replicate(4L, 23)] $
+                         , FIELDNAMES:['time', 'what', 'why', 'trump' $
+                                       , replicate('val', 19), 'intensity'] $
+                         , FIELDLOCATIONS:[0L, 18L, 31L, 44L, 14L*lindgen(20)+58L] $
+                         , FIELDGROUPS:[0L, 1L, 2L, 3L, replicate(4L, 19), 5L] $
+                       }
+      shabarstruct = {time:0d, what:0., why:0., trump:0., val:fltarr(19), intensity:0.}
       shabardata = read_ascii(shabarfile, TEMPLATE=shabartemplate)
 
       ;; Remove glitches
@@ -121,11 +121,13 @@ pro red_getlog, date $
 
         shabar = replicate(shabarstruct, Nshabar)
 
-        shabar.time  = shabardata.time[indx] - midnight ; In seconds since midnight
-        shabar.what  = shabardata.what[indx]
-        shabar.why   = shabardata.why[indx]
-        shabar.trump = shabardata.trump[indx]
-        shabar.val   = shabardata.val[*, indx]
+        shabar.time      = shabardata.time[indx] - midnight ; In seconds since midnight
+        shabar.what      = shabardata.what[indx]
+        shabar.why       = shabardata.why[indx]
+        shabar.trump     = shabardata.trump[indx]
+        shabar.val       = shabardata.val[*, indx]
+        shabar.intensity = shabardata.intensity[indx]
+        
       endif                     ; Nshabar
 
     endif
@@ -478,3 +480,15 @@ pro red_getlog, date $
   endif                         ; Turret
 
 end
+
+cd, '/scratch/mats/2016.09.19/CRISP-aftersummer/'
+
+date = '2016-09-19'
+red_getlog, date, shabar = shabar
+cgwindow
+red_timeplot,/add, shabar.time,shabar.intensity, xtitle = 'time [UT]', ytitle = 'SHABAR intensity', title = date
+;cgcontrol, out = 'shabar_intensity_'+date+'.pdf'
+
+
+end
+
