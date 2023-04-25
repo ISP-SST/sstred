@@ -86,6 +86,9 @@
 ;
 ;       Solar radius in arcsec.
 ;
+;   shabar_intensity : out, optional, type=float
+;
+;       Intensity from the SHABAR.
 ;
 ;   Sundist : out, optional, type=double
 ;
@@ -157,6 +160,8 @@
 ;
 ;     2018-10-29 : MGL. New keyword tilt.
 ;
+;     2023-04-25 : MGL. New keyword shabar_intensity.
+;
 ;-
 pro red_logdata, date, time $
                  , ao_lock = ao_lock $
@@ -167,12 +172,14 @@ pro red_logdata, date, time $
                  , pig = pig $
                  , r0 = r0 $
                  , Rsun = Rsun $
+                 , shabar_intensity = shabar_intensity $
                  , stonyhurst = stonyhurst $
                  , Sundist = Sundist $
                  , tilt = tilt $
                  , turret = turret $
                  , zenithangle = zenithangle $
                  , use_pig_time = use_pig_time $
+                 , use_shabar_time = use_shabar_time $
                  , use_turret_time = use_turret_time $
                  , use_r0_time = use_r0_time
 
@@ -333,10 +340,13 @@ pro red_logdata, date, time $
                     || arg_present(diskpos) $
                     || arg_present(zenithangle)
   
-
+  get_shabar_file = keyword_set(use_shabar_time) $
+                    || arg_present(shabar_intensity)
+  
   ;; Decide what time coordinates to use
   if ~keyword_set(use_r0_time) $
      && ~keyword_set(use_turret_time) $
+     && ~keyword_set(use_shabar_time) $
      && ~keyword_set(use_pig_time) then begin
     ;; If we didn't ask for a particular time, then decide here:
     case 1 of
@@ -344,6 +354,7 @@ pro red_logdata, date, time $
       get_r0_file          : use_r0_time = 1     ; Every s
       get_pig_file ne 0    : use_pig_time = 1    ; Every s?
       get_turret_file ne 0 : use_turret_time = 1 ; Every 30 s
+      get_shabar_file ne 0 : use_shabar_time = 1 ; Every ~10 s
       else : begin
         print, 'red_logdata : No time coordinates!'
         return
@@ -355,6 +366,7 @@ pro red_logdata, date, time $
   get_r0_file     = get_r0_file     || keyword_set(use_r0_time)
   get_pig_file    = get_pig_file    || keyword_set(use_pig_time) 
   get_turret_file = get_turret_file || keyword_set(use_turret_time) 
+  get_shabar_file = get_shabar_file || keyword_set(use_shabar_time) 
   
   ;; Get the log data
   if get_r0_file then begin
@@ -381,6 +393,12 @@ pro red_logdata, date, time $
        print, 'red_logdata : No turret log file.'
   endif
 
+  if get_shabar_file then begin
+    red_getlog, isodate, shabar = shabardata
+    if n_elements(shabardata) eq 0 then $
+       print, 'red_logdata : No shabar log file.'
+  endif
+
   
   ;; Use the selected time
   case 1 of
@@ -395,6 +413,10 @@ pro red_logdata, date, time $
     end
     keyword_set(use_turret_time) : begin
       T = turretdata.time
+      time = T
+    end
+    keyword_set(use_shabar_time) : begin
+      T = shabardata.time
       time = T
     end
     else : begin
@@ -443,6 +465,17 @@ pro red_logdata, date, time $
       pig[1, *] = red_interpol_nogaps(pigdata.y, pigdata.time, T)
     endelse 
 
+  endif
+
+  
+  if n_elements(shabardata) gt 0 then begin
+    if keyword_set(use_shabar_time) then begin
+      ;; Return all values
+      shabar_intensity = shabardata.intensity
+    endif else begin
+      ;; Get interpolated values
+      shabar_intensity  = red_interpol_nogaps(shabardata.intensity, shabardata.time, T)
+    endelse 
   endif
 
   
@@ -518,6 +551,15 @@ pro red_logdata, date, time $
 
 
 end
+
+date = '2016-09-19'
+red_logdata, date, time, shabar_intensity = shabar_intensity
+cgwindow
+red_timeplot, /add, time, shabar_intensity, xtitle = 'time [UT]', ytitle = 'SHABAR intensity', title = date
+;cgcontrol, out = 'shabar_intensity_'+date+'.pdf'
+
+stop
+
 
 red_logdata, '2013-06-26', time, diskpos = diskpos
 
