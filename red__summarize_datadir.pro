@@ -137,7 +137,7 @@ pro red::summarize_datadir, dirs
       
       ;; NB files, first scan. Don't want to extract the states
       ;; from all files!
-      files0 = self -> raw_search(use_dirs[idir] + '/' + camNB, instrument = instrument $
+      files0 = self -> raw_search(use_dirs[idir] + '/' + camNB $
                                   , scanno = 0, count = Nfiles0)
       self -> extractstates, files0, states0
 
@@ -210,7 +210,7 @@ pro red::summarize_datadir, dirs
       ;; If there are no NB files, this is probably a WB or PD flats
       ;; dir. Let's get some info from the WB files.
 
-      files0 = self -> raw_search(use_dirs[idir] + '/' + camWB, instrument = instrument $
+      files0 = self -> raw_search(use_dirs[idir] + '/' + camWB $
                                   , scanno = 0, count = Nfiles0, fpi_states = '*')
       self -> extractstates, files0, states0
 
@@ -280,7 +280,7 @@ end
 ;; Testing:
 
 pwd = getenv('PWD')
-case 1 of
+case 0 of
   strmatch(pwd,'*CRISP*') : begin
     a=crispred(/dev)
     a -> summarize_datadir, ['09:30:20', '11:18:58', '11:21:22']
