@@ -147,9 +147,6 @@ pro red::summarize_datadir, dirs
       indx = indx[sort(states0[indx].tun_wavelength)]
       Nstates = n_elements(indx)
       
-      ufullstat = states0[indx].fullstate 
-      ustat = states0[indx].prefilter + '_' + states0[indx].tuning
-
       if max(strmatch(TAG_NAMES(states0[0]), 'LC')) eq 1 then begin
         ulc = states0[uniq(states0.lc, sort(states0.lc))].lc
         Nlc = n_elements(ulc)
@@ -162,6 +159,13 @@ pro red::summarize_datadir, dirs
       endif
       red_append, output, 'Nstates x Nscans = ' + strtrim(Nstates*Nscans, 2)      
       red_append, output, ' '
+ 
+      ufullstat = states0[indx].fullstate 
+      if Nlc le 1 then begin
+        ustat = states0[indx].prefilter + '_' + states0[indx].tuning
+      endif else begin
+        ustat = states0[indx].prefilter + '_' + states0[indx].tuning + '_LC' + strtrim(long(states0[indx].lc),2)
+      endelse
 
       upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
 
@@ -190,7 +194,8 @@ pro red::summarize_datadir, dirs
             stat = strmid(ustat[istate]+'   ', 0, 15)
           end
           'CRISP' : begin
-            stat = strmid(ufullstat[istate]+'   ', 0, 19)
+            ;;stat = strmid(ufullstat[istate]+'   ', 0, 19)
+            stat = strmid(ustat[istate]+'   ', 0, 19)
           end
         endcase
 
