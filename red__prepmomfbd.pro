@@ -456,11 +456,11 @@ pro red::prepmomfbd, cams = cams $
       endelse 
     endif
 
-    ;; Zero MAXSHIFT outermost rows and columns in mask.
+    ;; Zero MAXSHIFT outermost rows and columns in mask, in all cameras.
     tmp = bytarr(dims[0]-2*maxshift, dims[1]-2*maxshift) + 1
     tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
-    tmp AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
-    mask AND= tmp
+    for icam = 0, Ncams-1 do mask AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
+;    mask AND= tmp
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
     
