@@ -624,7 +624,7 @@ pro red::make_wb_cube, dirs $
   cw = where(strmatch(spl,'*cfg*'))
   cfg_dir=strjoin(spl[0:cw],'/')
   if file_test(cfg_dir+'/fov_mask.fits') then begin    
-    fov_mask = readfits(dirs[0]+'/fov_mask.fits')
+    fov_mask = readfits(cfg_dir+'/fov_mask.fits')
     if self.filetype eq 'MOMFBD' then begin
       mr = momfbd_read(wfiles[0], /nam)
       fov_mask = red_crop_as_momfbd(fov_mask, mr)

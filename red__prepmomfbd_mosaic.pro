@@ -167,12 +167,6 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
           endfor                ; iobject
 
           redux_writecfg, cfg_file_mos, cfg_mos
-          
-          ;; Copy FOV mask if possible
-          if file_test(cfg_dir+'/results/fov_mask.fits') then begin
-            file_copy, cfg_dir+'/results/fov_mask.fits' $
-                       , cfg_dir+'/results_mos'+mosnums[imos]+'/fov_mask.fits'
-          endif
 
         endfor                  ; imos
 
