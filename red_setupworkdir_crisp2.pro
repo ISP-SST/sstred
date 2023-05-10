@@ -185,7 +185,14 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun, '# --- Cameras'
   printf, Clun, '#'
-  for icam = 0, n_elements(darksubdirs) - 1 do printf, Clun, 'camera = '+file_basename(darksubdirs[icam])
+
+  cams = file_basename(darksubdirs)
+  cams = cams[uniq(cams,sort(cams))]
+  ;; We want the W camera first!
+  indx = sort(abs(reform(byte(strmid(cams,0,1,/reverse)))  - (byte('W'))[0]))
+  cams = cams[indx]
+ 
+  for icam = 0, n_elements(cams)-1 do printf, Clun, 'camera = '+cams[icam]
 ;  case instrument of
 ;
 ;    'CRISP' : begin    
