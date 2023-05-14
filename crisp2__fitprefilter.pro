@@ -499,7 +499,9 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; of the state, rather than the "prefilter" part?
         ;; (state=prefilter_line_[+-]tuning))
         case upref[ipref] of
-          '5173' : cwl = 5172.70   
+          '5173' : cwl = 5172.70
+          '5576' : cwl = 5576.5
+          '5380' : cwl = 5380.0
           '5876' : cwl = 5876.28   
           '5896' : cwl = 5895.93
           '6173' : cwl = 6173.34
@@ -515,6 +517,8 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; Default prefilter FWHM (in Ångström).
         case upref[ipref] of
           '5173' : value_fwhm = 3.2d ; Alluxa
+          '5576' : value_fwhm = 3.0d ; Barr
+          '5380' : value_fwhm = 3.3d ; Barr
           '5876' : value_fwhm = 5.4d ; Alluxa
           '5896' : value_fwhm = 3.9d ; Barr
           '6173' : value_fwhm = 5.0d ; Alluxa
