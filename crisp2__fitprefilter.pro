@@ -500,7 +500,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; (state=prefilter_line_[+-]tuning))
         case upref[ipref] of
           '5173' : cwl = 5172.70
-          '5576' : cwl = 5576.5
+          '5576' : cwl = 5576.0
           '5380' : cwl = 5380.0
           '5876' : cwl = 5876.28   
           '5896' : cwl = 5895.93
