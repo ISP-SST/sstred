@@ -329,12 +329,22 @@ function red_meta2head, head, metadata=metaStruct
             fwhm = 0.30e-9
             waveband = 'Fe I ' + strtrim(prefilter,2)
           end
+          '5380' : begin        ; CRISP
+            wavelnth = 538.0e-9
+            fwhm = 0.33e-9
+            waveband = 'C I ' + strtrim(prefilter,2)
+          end
           '5382' : begin        ; CRISP
             wavelnth = 538.2e-9
             fwhm = 0.33e-9
             waveband = 'C I ' + strtrim(prefilter,2)
           end
-          '5578' : begin        ; CRISP
+          '5576' : begin        ; CRISP
+            wavelnth = 557.6e-9
+            fwhm = 0.30e-9
+            waveband = 'Fe I ' + strtrim(prefilter,2)
+          end
+           '5578' : begin        ; CRISP
             wavelnth = 557.8e-9
             fwhm = 0.30e-9
             waveband = 'Fe I ' + strtrim(prefilter,2)
