@@ -137,7 +137,11 @@ function crisp_fpi_profile, w, prefilter $
     '7090': begin
       rhr  = 0.9430d0
       rlr  = 0.8565d0
-    end    
+    end
+    '7699' : begin
+      rhr = 0.9249d0
+      rlr = 0.8575d0
+    end
     '7772': begin
       rhr  = 0.9227d0
       rlr  = 0.8576d0

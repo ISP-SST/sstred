@@ -379,6 +379,11 @@ function red_meta2head, head, metadata=metaStruct
             fwhm = 0.49e-9
             waveband = 'H-alpha' 
           end
+          '7699' : begin        ; CRISP
+             wavelnth = 769.9e-9
+             fwhm = 0.8e-9
+             waveband = 'K I ' + strtrim(prefilter,2)
+          end
           '7772' : begin        ; CRISP
             wavelnth = 777.25e-9
             fwhm = 0.7e-9

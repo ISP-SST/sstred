@@ -507,6 +507,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
           '6173' : cwl = 6173.34
           '6302' : cwl = 6302.50
           '6563' : cwl = 6562.82
+          '7699' : cwl = 7699.00 ; 7700.1 in datasheet
           '7772' : cwl = 7772.00
           '8542' : cwl = 8542.13
           else : cwl = double(upref[ipref])
@@ -524,6 +525,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
           '6173' : value_fwhm = 5.0d ; Alluxa
           '6302' : value_fwhm = 5.0d ; Alluxa
           '6563' : value_fwhm = 5.3d ; Alluxa
+          '7699' : value_fwhm = 8.0d ; Alluxa (6.0d in datasheet)
           '7772' : value_fwhm = 7.7d ; Barr
           '8542' : value_fwhm = 8.3d ; Alluxa
         endcase
