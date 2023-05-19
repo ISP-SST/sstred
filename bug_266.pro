@@ -1,4 +1,6 @@
 
+;; See https://dubshen.astro.su.se/redmine/issues/266
+
 pro bug_266, fname
 
   ims = red_readdata(fname, h = header)
