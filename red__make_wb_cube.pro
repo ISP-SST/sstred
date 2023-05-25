@@ -32,7 +32,7 @@
 ;      Set this keyword to define the alignment FOV by use of the XROI
 ;      GUI.
 ;
-;    autocrop : in, optional, type=booean
+;    autocrop : in, optional, type=boolean
 ;
 ;      Try to determine the largest FOV that avoids any bad momfbd
 ;      subfields along the edges. If this keyword is set, the input
@@ -737,7 +737,7 @@ pro red::make_wb_cube, dirs $
       ;;mindx = where(cub[*,*,iscan] eq bg, Nwhere)
       ;;if keyword_set(make_raw) &&
       ;;if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
-      cub[*,*,iscan] = imm
+      cub[*,*,iscan] = imm/tmean[iscan]
     endfor                      ; iscan
   endif
 
