@@ -73,7 +73,9 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       cms = strarr(Nstr)
       for ii = 0, Nstr-1 do begin
         dr = file_dirname(strings[ii])
-        cms[ii] = (strsplit(dr,'/',/extract))[-1]
+        cm = (strsplit(dr,'/',/extract))[-1]
+        if strmatch(cm,'*nostate*') then cm = (strsplit(cm,'_',/extract))[0]
+        cms[ii] = cm
       endfor
       ucams = cms[uniq(cms,sort(cms))]
     endelse
@@ -81,7 +83,9 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
 
   instrument = 'CHROMIS'
 
-  red_mysql_check, handle
+  year = strmid(self.isodate,0,4)
+  if year ge 2023 then db = 'sst_db_' + year else db = 'sst_db'
+  red_mysql_check, handle, database=db
 
   Nsets = n_elements(datasets)
   set_msg = string('Get DB values for ', strtrim(string(Nsets),2), ' datasets.')
@@ -158,7 +162,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       camera = conf[2]          ; need this exact variable name to generate dirname
       ;; skip database query if we don't need an information
       if use_strings then $
-        if where(strmatch(ucams,camera)) eq -1 then continue
+        if where(strmatch(ucams,'*'+camera+'*')) eq -1 then continue
 
       state.gain = float(conf[3])
       state.exposure = float(conf[4])
@@ -225,73 +229,73 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
         state.scannumber = long(scannum)
         state.framenumber = long(first_frame)
         cal_id = burst[8]
-        state.prefilter = burst[9]
+        filter1 = fix(burst[9]) ; need this for filename generation
+        mosaic_pos = burst[10]  ; need this for filename generation
+        wheel = fix(burst[7])   ; need this for filename generation
+        hrz = long(burst[2])    ; need this for filename generation
 
-        if cal_id ne 0 then begin ;  otherwise it can be darks ...               
-          ;; get calibration data for CHROMIS to convert wheel*_hrz* into line+tuning
-          query = 'SELECT filter1, convfac, du_ref, lambda_ref FROM calibrations WHERE id = ' + cal_id + ';'
-          red_mysql_cmd,handle,query,calib_ans,nl,debug=debug
-          if nl eq 1 then begin
-            print,inam, ': There is no entry in calibrations table for id ' + cal_id
-            print,'Check the database integrity.'
-            return
-          endif
-
-          calib = strsplit(calib_ans[1],tab,/extract,/preserve_null)
-          nbpref = calib[0]
-          convfac = double(calib[1])
-          du_ref = double(calib[2])
-          lambda_ref = double(calib[3])
-          wheel = fix(burst[7])  ; required for filename generation
-          hrz = long(burst[2])   ; required for filename generation
-
-          ;; get information about prefilter if data are not darks
-          if burst[9] ne '0' then begin
-            query = 'SELECT * FROM filters WHERE filter1 = ' + state.prefilter + ';'
-            red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
-            skip_pref = 0B
+        if datatype ne 'darks' then begin 
+          if year lt 2023 then begin
+            ;; get calibration data for CHROMIS to convert wheel*_hrz* into line+tuning
+            query = 'SELECT filter1, convfac, du_ref, lambda_ref FROM calibrations WHERE id = ' + cal_id + ';'
+            red_mysql_cmd,handle,query,calib_ans,nl,debug=debug
             if nl eq 1 then begin
-              if state.is_wb then begin
-                print,inam, ', Warning: There is no entry in filters table for prefilter = ' +  burst[9]
-                print, 'Perhaps WB flats were taken with more prefilters than NB flats and science data.'
-                skip_pref = 1B
-              endif else begin
-                print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
-                print, 'Check the database integrity.'
-                return
-              endelse
+               print,inam, ': There is no entry in calibrations table for id ' + cal_id
+               print,'Check the database integrity.'
+               return
             endif
-          endif else skip_pref = 1B
-          if ~skip_pref then begin
+            calib = strsplit(calib_ans[1],tab,/extract,/preserve_null)
+            nbpref = calib[0]
+            ;; convert 'wheel_hrz' to 'line_+tuning'
+            convfac = double(calib[1])
+            du_ref = double(calib[2])
+            lambda_ref = double(calib[3]) 
+            dlambda = convfac * (hrz-du_ref)
+            lambda_ref_string = string(round(lambda_ref*1d10), format = '(I04)')
+            tuning_string = strtrim(string(round(dlambda*1d13), format = '(I+)'),2)
+            tuning = lambda_ref_string + '_' + tuning_string
+            state.tun_wavelength = lambda_ref + dlambda
+          endif else begin
+            nbpref = strtrim(wheel, 2)
+            tuning = strtrim(wheel, 2) + '_' + strtrim(string(hrz, format = '(I+)'),2)
+            state.tun_wavelength = double(nbpref)*1d-10 + double(tuning)*1d-10
+          endelse
+          
+          state.fullstate = state.cam_settings          
+          
+          if ~state.is_wb then begin            
+            state.prefilter = nbpref
+            ;; get information about prefilter 
+            query = 'SELECT * FROM filters WHERE filter1 = ' + nbpref + ';'
+            red_mysql_cmd,handle,query,filt_ans,nl,debug=debug
+            if nl eq 1 then begin
+              print,inam, ': There is no entry in filters table for prefilter = ' +  burst[9]
+              print, 'Check the database integrity.'
+              return
+            endif
             filt = strsplit(filt_ans[1],tab,/extract,/preserve_null)
             waveunit = fix(filt[5])
             state.pf_wavelength = float(filt[4])*10.^waveunit
-          endif else state.pf_wavelength = 0.
-          
-          if state.is_wb then begin
-            ;; WB flats 
-            state.fpi_state = state.prefilter + '_' + nbpref + '_+000' ;fake state
-            state.tun_wavelength = state.pf_wavelength
-            state.tuning = string(round(state.tun_wavelength*1d10) $
-                   , format = '(i04)')  + '_+0'
-          endif else begin
-            ;; convert 'wheel_hrz' to 'line_+tuning'
-            dlambda = convfac * (hrz-du_ref)
-            lambda_ref_string = string(round(lambda_ref*1d10), format = '(i04)')
-            tuning_string = strtrim(round(dlambda*1d13), 2)
-            if strmid(tuning_string, 0, 1) ne '-' then tuning_string = '+'+tuning_string 
-            state.fpi_state = nbpref + '_' + lambda_ref_string + '_' + tuning_string
-            state.tuning = lambda_ref_string + '_' + tuning_string
-            ;; Also return the tuning in decimal form [m]:
-            state.tun_wavelength = lambda_ref + dlambda
-          endelse
-        endif
 
-        if set[2] eq 'darks' then begin
+            state.tuning = tuning
+            state.fpi_state = state.tuning ;nbpref + '_' + state.tuning                        
+            state.fullstate += '_' + nbpref + '_' + tuning
+          endif else begin
+            state.prefilter = burst[9]
+            state.tuning = burst[9] + '_+0'
+            if datatype eq 'flats' then $        ; WB flats
+               state.fpi_state = burst[9] + '_+0' $ ;fake state
+            else $
+               state.fpi_state = tuning           
+            state.pf_wavelength = double(filter1)*1d-10
+            state.tun_wavelength = state.pf_wavelength
+            state.fullstate += '_' + burst[9] + '_' + burst[9] + '_+0'
+          endelse
+        endif else begin
           state.tun_wavelength = 0
           state.tuning = ''
           state.fpi_state = ''
-        endif
+        endelse
         
         ; do we need this?
         ;;if states[ifile].tuning eq '0000_+0' then states[ifile].tuning = ''
@@ -313,11 +317,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
         zz=strpos(fnm,'hrz')
         if strmid(fnm,zz+3,3) eq '***' then stop
 
-        state.filename = dir_root + dir + fnm    
-        state.fullstate = state.cam_settings
-        if state.prefilter ne '' then state.fullstate += '_'+state.prefilter
-        state.fullstate += '_'+state.tuning
-
+        state.filename = dir_root + dir + fnm
         st[ifile] = state
       endfor                    ; bursts
 
@@ -328,23 +328,43 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
   endfor   ;states
 
   if use_strings then begin
-    if strmatch(strings[0],'*CHROMIS/data/*') then begin
+    if strmatch(strings[0],'*data/*') then begin
       ;;We have to generate filenames as link_data routine does.
       Nst = n_elements(states)
       files=strarr(Nst)       
       for ifile=0,Nst-1 do begin
-        if states[ifile].is_wb then begin
-          files[ifile] =  states[ifile].camera + '/' +  states[ifile].detector $
-                          + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                          + '_' + strtrim(states[ifile].prefilter, 2) $
-                          + '_' + string(states[ifile].framenumber, format = '(i07)') $
-                          + '.fits'      
-        endif else begin 
-          files[ifile] = states[ifile].camera + '/' + states[ifile].detector $
-                         + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                         + '_' + strtrim(states[ifile].fullstate, 2) $
-                         + '_' + string(states[ifile].framenumber, format = '(i07)')  $
-                         + '.fits'
+        if year lt 2023 then begin
+          if states[ifile].is_wb then begin
+            files[ifile] =  states[ifile].camera + '/' +  states[ifile].detector $
+                             + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                             + '_' + strtrim(states[ifile].prefilter, 2) $
+                             + '_' + string(states[ifile].framenumber, format = '(i07)') $
+                             + '.fits'      
+          endif else begin 
+            files[ifile] = states[ifile].camera + '/' + states[ifile].detector $
+                            + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                            + '_' + strtrim(states[ifile].fullstate, 2) $
+                            + '_' + string(states[ifile].framenumber, format = '(i07)')  $
+                            + '.fits'
+          endelse
+        endif else begin
+          if states[ifile].is_wb then begin
+            if strmatch(strings[0], '*nostate*') then begin
+              files[ifile] = states[ifile].camera + '_nostate/' +  states[ifile].detector $
+                             + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                             + '_' + strtrim(states[ifile].prefilter, 2) $
+                             + '_' + string(states[ifile].framenumber, format = '(i07)') $
+                             + '.fits'
+            endif else begin
+              files[ifile] = states[ifile].camera + '/sst_' + states[ifile].detector $
+                             + '_' + string(states[ifile].scannumber, format = '(i05)') $
+                             + '_' + string(states[ifile].framenumber, format = '(i07)') $
+                             + '_' + strtrim(states[ifile].prefilter, 2) $
+                             + '_' + strtrim(states[ifile].fpi_state, 2) $
+                             + '.fits'
+            endelse
+          endif else $
+            files[ifile] = states[ifile].camera + '/' + file_basename(states[ifile].filename)
         endelse
       endfor
       ;; Filter the found states with respect to the file names in
@@ -353,7 +373,10 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       for icam=0,Ncams-1 do begin
         ss = where(strmatch(strings,'*'+ucams[icam]+'*'), count)
         if count eq 0 then continue
-        fs = ucams[icam] + '/' + file_basename(strings[ss])
+        if strmatch(strings[0], '*nostate*') then $
+          fs = ucams[icam] + '_nostate/' + file_basename(strings[ss]) $
+        else $
+          fs = ucams[icam] + '/' + file_basename(strings[ss])
         match2, fs, files, suba ;, subb 
         stt = states[suba]
         stt.filename = strings[ss]
@@ -362,7 +385,12 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       states = sts
     endif else begin      
       ;; Filter the found states with respect to the file names in strings
-      match2, strings, states.filename, suba ;, subb 
+      match2, strings, states.filename, suba ;, subb
+      if min(suba) eq -1 then begin
+        print,'There are no matches in the database for provided filenames.'
+        print,'Something is wrong.'
+        stop
+      endif
       states = states[suba]
     endelse
     ;; Store in cache

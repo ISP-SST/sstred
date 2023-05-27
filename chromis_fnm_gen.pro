@@ -49,8 +49,9 @@
 pro chromis_fnm_gen, filename $
                              , fnm_gen = fnm_gen $
                              , dir_gen = dir_gen $
-                             , verbose = verbose
- 
+                             , verbose = verbose $
+                             , chromis2 = chromis2
+                     
   timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
   dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
 
@@ -125,15 +126,15 @@ pro chromis_fnm_gen, filename $
 
 
   ;; Construct the template for the file basename
-  if basename ne '' and arg_present(fnm_gen) then begin
+  if basename ne '' and arg_present(fnm_gen) and ~keyword_set(chromis2) then begin
 
     basename_parts = strsplit(basename, '_', /extract)
                                 ; Find out datatype
     case n_elements(basename_parts) of
       4: begin ; darks 
-           filename_format += '3A, I05, A1, I07, A)"'
-           filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, ".fits", '
-         end
+        filename_format += '3A, I05, A1, I07, A)"'
+        filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, ".fits", '
+      end
       5: begin                  ; WB flats
         filename_format += '3A, I05, A, I07, A, I05, A)"'
         filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_wheel", wheel, ".fits",'
@@ -152,6 +153,37 @@ pro chromis_fnm_gen, filename $
       print, fnm_gen
     endif
     
+  endif
+
+  if basename ne '' and arg_present(fnm_gen) and keyword_set(chromis2) then begin
+    basename_parts = strsplit(basename, '_', /extract)
+    ;; Find out datatype
+    case n_elements(basename_parts) of
+      4: begin ; darks 
+        filename_format += '3A, I05, A1, I07, A)"'
+        filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, ".fits", '
+      end
+      5: begin                  ; WB flats
+        filename_format += '3A, I05, A, I07, A, I4, A)"'
+        filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_", filter1, ".fits",'
+      end
+      7 : begin ; science(data), NB flats, pinholes
+        filename_format += '3A, I05, A1, I07, A1, I4, A1, I4, A1,I+05,A)"'
+        filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_", filter1, "_", wheel, "_", hrz, ".fits", '  
+     end
+     8 : begin                 ; mosaic
+       filename_format += '3A, I05, A1, I07, A, I02, A1, I4, A1, I4, A1,I+05,A)"'
+       filename_vars += '"sst_", detector, "_", scannum, "_", first_frame, "_mos", mosaic_pos, "_", filter1, "_", wheel, "_", hrz, ".fits", '
+     end
+    endcase
+ 
+    fnm_gen = 'fnm = string(' + filename_vars + filename_format + ')'       
+
+    if keyword_set(verbose) then begin
+      print
+      print, basename
+      print, fnm_gen
+    endif
   endif
 
 end
