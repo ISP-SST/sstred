@@ -696,7 +696,7 @@ pro red::make_wb_cube, dirs $
     if n_elements(int_indx) ne 0 then $
       tmean[iscan] = median(dum[int_indx]) $
     else $
-      tmean[iscan] = median(dum)
+      tmean[iscan] = median(dum[nx/2-xbd/2:nx/2+xbd/2,ny/2-ybd/2:ny/2+ybd/2])
   
     cub[*,*,iscan] /= tmean[iscan]
   endfor                         ; iscan
