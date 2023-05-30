@@ -38,6 +38,7 @@
 ;      Automatically select states for which to make quicklook movies.
 ;      The selection includes the core and extreme wing tunings of
 ;      each prefilter. If this keyword is set, use_states is ignored.
+;      Cannot be combined with /filter_change.
 ;
 ;    cube : out, optional, type=fltarr
 ;
@@ -59,6 +60,13 @@
 ;
 ;      Set this to destretch the cube to compensate for geometrical
 ;      effects from anisoplanatism. Implies derotate and align.
+;
+;    filter_change : in, optional, type=boolean
+;
+;      Automatically select states for which to make quicklook movies.
+;      Selected states are directly after a change of prefilter. If
+;      this keyword is set, use_states is ignored. Cannot be combined
+;      with /core_and_wings.
 ;
 ;    format : in, optional, string, default='mp4'
 ;   
@@ -176,6 +184,8 @@
 ;
 ;   2022-03-25 : OA. Changed derotation code to avoid FOV clipping 
 ;                (imported from other part of the pipeline).
+;
+;   2023-05-30 : MGL. New keyword filter_change.
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -188,6 +198,7 @@ pro red::quicklook, align = align $
                     , datasets = datasets $
                     , derotate = derotate $
                     , destretch = destretch $
+                    , filter_change = filter_change $
                     , format = format $
                     , gain =  gain $
                     , maxshift = maxshift $
@@ -234,7 +245,7 @@ pro red::quicklook, align = align $
   
   if n_elements(Nexp) eq 0 or ~keyword_set(neuralnet) then Nexp = 1
   if n_elements(scannos) eq 1 && size(scannos, /tname) eq 'STRING' then scannos = rdx_str2ints(scannos)
-  if keyword_set(core_and_wings) then undefine, use_states
+  if keyword_set(core_and_wings) or keyword_set(filter_change) then undefine, use_states
 
   ;; The r0 log file is not available until the day after today 
 ;  if self.isodate eq (strsplit(red_timestamp(/utc,/iso),'T',/extract))[0] then no_plot_r0 = 1
@@ -318,7 +329,40 @@ pro red::quicklook, align = align $
     undefine, pat, ustat2, sel_in
     case 1 of
 
+      keyword_set(filter_change) : begin
+
+        tunings = self -> tunings_after_filterchange(dirs[iset] + '/' + cam, count = Ntunings)
+        
+        for ituning = 0, Ntunings-1 do begin
+          ;; The _ added to ustat needed to match chromis data. Didn't
+          ;; work to add the end-of-line character ($) to the regex.
+          sindx = where(strmatch(ustat+'_', '*_'+tunings[ituning]+'_*'), Nmatch)
+          red_append, ustat2, ustat[sindx[0]]
+          red_append, sel_in, sindx[0]
+        endfor                  ; ituning
+        
+        states_count = n_elements(ustat2)
+        for istate = 0, states_count-1 do begin
+          fn = states0[indx[sel_in[istate]]].filename
+          prts = strsplit(fn,'[_.]',/extract)
+          if strmatch(cam,'*W*') then begin
+            if instrument eq 'CHROMIS' then $
+              red_append, pat, '*' + prts[-3] + '*' $
+            else $
+              red_append, pat, '*' +prts[-5] + '*'
+          endif else begin
+            if instrument eq 'CHROMIS' then $
+              red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+            else $
+              red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+          endelse
+        endfor                 ; istate
+        use_states = ustat2
+        
+      end                       ; filter_change
+      
       keyword_set(core_and_wings) : begin
+        
         for ipref = 0, Npref-1 do begin
           sindx = where(strmatch(ustat, '*_'+upref[ipref]+'_*'), Nmatch)
           if Nmatch eq 1 then begin
@@ -374,9 +418,11 @@ pro red::quicklook, align = align $
           endelse
         endfor                 ; istate
         use_states = ustat2
-      end
 
-      n_elements(use_states) gt 0 : begin          
+      end                       ; core_and_wings
+
+      n_elements(use_states) gt 0 : begin
+        
         for istate = 0,n_elements(use_states)-1 do begin
           imatch = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
           if Nmatch ge 1 then begin
@@ -398,12 +444,14 @@ pro red::quicklook, align = align $
           endif else print, 'There is no match for ', use_states[istate], ' state.'
         endfor                  ; istate
         if states_count eq 0 then print,'There are no matches for provided states. You have to choose states manually.'
-      end
+        
+      end                       ; use_states
       
-      else :
+      else : 
       
     endcase
 
+    
     if states_count eq 0 then begin 
       tmp = red_select_subset(states0[indx].prefilter+'_'+states0[indx].fullstate $
                               , qstring = inam + ' : Select states' $
@@ -452,15 +500,17 @@ pro red::quicklook, align = align $
     
     self -> extractstates, files, states
 
+
+    
     nsc = max(states.scannumber)
-    if nsc lt min_nscan then begin
-      fn = states[0].filename
-      date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
-      timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
-      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' 
-      print,"We do not want to bother with short datasets. Skipping it."
-      continue
-    endif
+;    if nsc lt min_nscan then begin
+;      fn = states[0].filename
+;      date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
+;      timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
+;      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' 
+;      print,"We do not want to bother with short datasets. Skipping it."
+;      continue
+;    endif
 
     outdir = self.out_dir +'/quicklook/'+timestamp+'/'
     file_mkdir, outdir
