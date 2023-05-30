@@ -150,7 +150,10 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
         ;; Find all the NB continuum images 
         search_dir = self.out_dir + '/' + momfbddir + '/' + timestamp $
                      + '/' + prefilters[ipref] + '/cfg/results/'
-        files = file_search(search_dir + '*.'+['f0', 'momfbd', 'fits'], count = Nfiles)      
+        files = file_search(search_dir + '*.'+strlowcase(self.filetype), count = Nfiles)
+        ;; we need to exclude global WB files
+        wbgindx=where(strmatch(files,'*'+prefilters[ipref]+'.'+strlowcase(self.filetype)),complement=ind)
+        files = files(ind)
         
         self -> selectfiles, files = files, states = states $
                              , cam = nbcamera, prefilter = continuum_filter $

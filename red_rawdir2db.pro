@@ -59,6 +59,7 @@ pro red_rawdir2db, all = all $
                    , date = date $
                    , dir = dir $
                    , instrument = instrument $
+                   , statistics = statistics $
                    , debug = debug
 
   inam = red_subprogram(/low, calling = inam1)
@@ -160,6 +161,7 @@ pro red_rawdir2db, all = all $
     timestamp = stregex(camdirs[idir], '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
     isodate = red_strreplace(date, '.', '-', n = 2)
     date_obs = isodate+' '+timestamp ; 'T'
+    year = strmid(isodate,0,4)
     
 ;    is_wb = strmatch(camera, '*-[WD]')
     
@@ -175,30 +177,33 @@ pro red_rawdir2db, all = all $
         'darks'    : datatype = 'darks'
         'flats'    : datatype = 'flats'
         'pinholes' : datatype = 'pinholes'
-        'data'     : datatype = 'science' 
+        'data'     : datatype = 'science'
+        'mosaic'   : datatype = 'mosaic'
         else : datatype = ' (unknown)'
       endcase
 
       ;; Array with NB prefilters to be indexed with the "wheel" number
       ;; minus 1. Same index to use for lambda_ref, du_ref, convfac.
       nbprefs = ['3925', '3934', '3969', '3978', '3999', '4862']
-      Nnbprefs = n_elements(nbprefs)
-      lambda_ref = dblarr(Nnbprefs)
-      du_ref     = dblarr(Nnbprefs)
-      convfac    = dblarr(Nnbprefs)
-      for wheel = 1, Nnbprefs do begin
-        zfile = './info/hrz_zeropoint_' + nbprefs[wheel-1] + '.fz'
+      if year lt 2023 then begin
+        Nnbprefs = n_elements(nbprefs)
+        lambda_ref = dblarr(Nnbprefs)
+        du_ref     = dblarr(Nnbprefs)
+        convfac    = dblarr(Nnbprefs)
+        for wheel = 1, Nnbprefs do begin
+          zfile = './info/hrz_zeropoint_' + nbprefs[wheel-1] + '.fz'
                                 ;refinfo = f0(zfile)
-        refinfo = dblarr(3)
-        hh = bytarr(512)
-        openr,11,zfile
-        readu,11,hh
-        readu,11,refinfo
-        close,11
-        lambda_ref[wheel-1] = refinfo[0]
-        du_ref[wheel-1]     = refinfo[1]
-        convfac[wheel-1]    = refinfo[2]
-      endfor                    ; wheel
+          refinfo = dblarr(3)
+          hh = bytarr(512)
+          openr,11,zfile
+          readu,11,hh
+          readu,11,refinfo
+          close,11
+          lambda_ref[wheel-1] = refinfo[0]
+          du_ref[wheel-1]     = refinfo[1]
+          convfac[wheel-1]    = refinfo[2]
+        endfor                  ; wheel
+      endif
       
 
       ;; Get the hrz conversion info
@@ -207,19 +212,34 @@ pro red_rawdir2db, all = all $
       ;chromis_hrz_zeropoint, './'
       
     endif else begin
-      ;; CRISP directory structure is not strict
       instrume = 'CRISP'
-      datatype = '(unknown)'
-      if stregex(camdirs[idir],'Darks',/boolean) then datatype = 'darks'
-      if stregex(camdirs[idir],'Flats',/boolean) then datatype = 'flats'
-      if stregex(camdirs[idir],'Pinholes',/boolean) then datatype = 'pinholes'
-      if stregex(camdirs[idir],'Polcal',/boolean) then datatype = 'polcal'
-      if stregex(camdirs[idir],'Science',/boolean) then datatype = 'science'
-      
+      a = stregex(camdirs[idir], '/CRISP-([a-zA-Z]*)/', /extract, /sub)
+      if a[0] ne '' then begin  ; CRISP2
+        instrume = 'CRISP2'
+        datatype = a[1]
+        case datatype of
+          'darks'    : datatype = 'darks'
+          'flats'    : datatype = 'flats'
+          'pinholes' : datatype = 'pinholes'
+          'polcal'   : datatype = 'polcal'
+          'data'     : datatype = 'science'
+          'mosaic'   : datatype = 'mosaic'
+          else : datatype = ' (unknown)'
+        endcase
+      endif else begin
+        ;; old CRISP directory structure is not strict        
+        datatype = '(unknown)'
+        if stregex(camdirs[idir],'Darks',/boolean) then datatype = 'darks'
+        if stregex(camdirs[idir],'Flats',/boolean) then datatype = 'flats'
+        if stregex(camdirs[idir],'Pinholes',/boolean) then datatype = 'pinholes'
+        if stregex(camdirs[idir],'Polcal',/boolean) then datatype = 'polcal'
+        if stregex(camdirs[idir],'Science',/boolean) then datatype = 'science'
+      endelse
     endelse
     
     ;; Now search for the actual files
     files = file_search(camdirs[idir]+'/*', count = Nfiles)
+    if ~strmatch(files[0],'*wheel*') then chromis2 = 1B else chromis2 = 0B
     
     if Nfiles eq 0 then continue
     
@@ -241,6 +261,7 @@ pro red_rawdir2db, all = all $
  ;             , FILENAME       : ''          $
               , FILTER1        : '0'          $
               , FIRST_FRAME    : 0L           $
+              , FRAMENUMBERS   : '[""]'      $
               , INSTRUME       : instrume    $
  ;             , IS_WB          : is_wb       $
  ;             , NAXIS          : 0L          $
@@ -266,14 +287,15 @@ pro red_rawdir2db, all = all $
               , DETTEMP        : 0.          $
               , DIR_TEMPLATE   : ''          $
               , FNM_TEMPLATE   : ''          $
-              , LC_STATE       : '-1'          $ ; fake lc_state (crisp darks)
+              , MOSAIC_POS     : '-1'        $ ; fake mosaic position
+              , LC_STATE       : '-1'        $ ; fake lc_state (crisp darks)
               , QW_STATE       : ''          $
               , LP_STATE       : ''          $
               , FOCUS          : 888         $
-              , FRAME_MAX      : ''          $
-              , FRAME_MIN      : ''          $
-              , FRAME_MEDIAN   : ''          $
-              , FRAME_STDDEV   : ''          $
+              , FRAME_MAX      : '["0"]'      $ ; fake json (to skip statistics)
+              , FRAME_MIN      : '["0"]'      $
+              , FRAME_MEDIAN   : '["0"]'      $
+              , FRAME_STDDEV   : '["0"]'      $
               , NB_PREFS       : ''          $
               , LAMBDA_REF     : ''          $
               , DU_REF         : ''          $
@@ -326,43 +348,55 @@ pro red_rawdir2db, all = all $
 ;        value = fxpar(h, 'OBS_HDU' , count=cnt) & if cnt eq 1 then dbinfo.OBS_HDU  = value 
 ;        value = fxpar(h, 'ORIGIN'  , count=cnt) & if cnt eq 1 then dbinfo.ORIGIN   = value 
 ;        value = fxpar(h, 'TELESCOP', count=cnt) & if cnt eq 1 then dbinfo.TELESCOP = value
-        if instrume eq 'CRISP' then begin
-          crisp_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen
-          dbinfo.DIR_TEMPLATE = dir_gen
-          dbinfo.FNM_TEMPLATE = fnm_gen
-          ;; For CRISP filename templates can be different for different prefilters.
-          cf = strarr(1,2)
-          cf[0,0] = filt1
-          cf[0,1] = fnm_gen
-          red_append,config,cf
+;        if instrume eq 'CRISP' then begin
+        if strmatch(instrume, 'CRISP*') then begin
+          if instrume eq 'CRISP2' then begin
+            crisp_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen, /crisp2
+            dbinfo.DIR_TEMPLATE = dir_gen
+            dbinfo.FNM_TEMPLATE = fnm_gen
+            cf = fltarr(1,2)
+            cf[0,0] = xpos
+            cf[0,1] = gain
+          endif else begin
+            crisp_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen
+            dbinfo.DIR_TEMPLATE = dir_gen
+            dbinfo.FNM_TEMPLATE = fnm_gen
+            ;; For CRISP filename templates can be different for different prefilters.
+            cf = strarr(1,2)
+            cf[0,0] = filt1
+            cf[0,1] = fnm_gen
+            red_append,config,cf
+          endelse
         endif else begin        ; CHROMIS
           cf = fltarr(1,2)
           cf[0,0] = xpos
           cf[0,1] = gain
           red_append,config,cf
-          chromis_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen
+          chromis_fnm_gen, files[ifile], fnm_gen = fnm_gen, dir_gen = dir_gen, chromis2=chromis2
           dbinfo.DIR_TEMPLATE = dir_gen
           dbinfo.FNM_TEMPLATE = fnm_gen
           dbinfo.NB_PREFS = json_serialize(nbprefs)
-          dbinfo.LAMBDA_REF = json_serialize(lambda_ref)
-          dbinfo.CONVFAC = json_serialize(convfac)
-          dbinfo.DU_REF = json_serialize(du_ref)
+          if year lt 2023 then begin 
+            dbinfo.LAMBDA_REF = json_serialize(lambda_ref)
+            dbinfo.CONVFAC = json_serialize(convfac)
+            dbinfo.DU_REF = json_serialize(du_ref)
+          endif
         endelse        
       endif
 
       ;; We need to find unique exposure/gain pairs for CHROMIS
       ;; (For CHROMIS they can change during a scan)
-      if instrume eq 'CHROMIS' then begin
-          sz = size(config)
-          cnt = 0
-          for ll=0, sz[1]-1 do begin
-            if config[ll,0] eq xpos and config[ll,1] eq gain then cnt += 1
-          endfor
-          if cnt eq 0 then begin
-            cf[0,0] = xpos
-            cf[0,1] = gain
-            red_append, config,cf
-          endif
+      if instrume eq 'CHROMIS' or instrume eq 'CRISP2'  then begin
+        sz = size(config)
+        cnt = 0
+        for ll=0, sz[1]-1 do begin
+          if config[ll,0] eq xpos and config[ll,1] eq gain then cnt += 1
+        endfor
+        if cnt eq 0 then begin
+          cf[0,0] = xpos
+          cf[0,1] = gain
+          red_append, config,cf
+        endif
       endif
       ;; For CRISP filenames template can be different for different
       ;; prefilters.     
@@ -388,24 +422,26 @@ pro red_rawdir2db, all = all $
         
         dbinfo[ifile].FIRST_FRAME = framenumbers[0] ;red_collapserange(framenumbers, ld='', rd='')
         dbinfo[ifile].DATE_BEGS = json_serialize(date_beg)
-        
-        ;STATISTIC
-        dat = red_readdata(files[ifile])
-        Nframes = n_elements(framenumbers)
-        mn = intarr(Nframes)
-        mx = intarr(Nframes)
-        med = intarr(Nframes)
-        std = fltarr(Nframes)
-        for ifrm=0,Nframes-1 do begin
-          mx[ifrm] = max(dat[*,*,ifrm], min=mnm)
-          mn[ifrm] = mnm
-          med[ifrm] = median(dat[*,*,ifrm])
-          std[ifrm] = stddev(dat[*,*,ifrm])
-        endfor
-        dbinfo[ifile].FRAME_MAX = json_serialize(mx)
-        dbinfo[ifile].FRAME_MIN = json_serialize(mn)
-        dbinfo[ifile].FRAME_MEDIAN = json_serialize(med)
-        dbinfo[ifile].FRAME_STDDEV = json_serialize(std)
+
+        if keyword_set(statistics) then begin
+           ;;STATISTIC
+           dat = red_readdata(files[ifile])
+           Nframes = n_elements(framenumbers)
+           mn = intarr(Nframes)
+           mx = intarr(Nframes)
+           med = intarr(Nframes)
+           std = fltarr(Nframes)
+           for ifrm=0,Nframes-1 do begin
+              mx[ifrm] = max(dat[*,*,ifrm], min=mnm)
+              mn[ifrm] = mnm
+              med[ifrm] = median(dat[*,*,ifrm])
+              std[ifrm] = stddev(dat[*,*,ifrm])
+           endfor
+           dbinfo[ifile].FRAME_MAX = json_serialize(mx)
+           dbinfo[ifile].FRAME_MIN = json_serialize(mn)
+           dbinfo[ifile].FRAME_MEDIAN = json_serialize(med)
+           dbinfo[ifile].FRAME_STDDEV = json_serialize(std)
+        endif
           
         ;; For Chromis data we may have to convert prefilter and tuning info in
         ;; wheel+hrz form to something readable.
@@ -430,7 +466,10 @@ pro red_rawdir2db, all = all $
           end
           strmatch(state, '[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-][0-9]*') : begin
             ;; State is in the "prefilter_line_[+-]tuning" format.
-            ;; Don't change it!
+            ;; Don't change it
+            st = strsplit(state,'_',/extract)
+            dbinfo[ifile].WHEEL = fix(st[1])
+            dbinfo[ifile].HRZ = fix(st[2])
           end
           strmatch(state,'wheel[0-9]*') : begin
             if ~strmatch(state,'hrz[0-9]*') then begin
@@ -462,28 +501,48 @@ pro red_rawdir2db, all = all $
           dbinfo[ifile].WHEEL = fix(st[1]) ; in fact reference line
           dbinfo[ifile].HRZ = fix(st[2]) ; in fact tuning
         endif
-          dbinfo[ifile].FIRST_FRAME = framenumbers
-          dbinfo[ifile].DATE_BEGS = date_beg
-          fnm = files[ifile]
-          pos = stregex(fnm, 'lc[0-9]')
-          if pos ne -1 then dbinfo[ifile].LC_STATE = strmid(fnm, pos+2, 1)
-          pos = stregex(fnm, 'LP[0-9][0-9][0-9]')
-          if pos ne -1 then dbinfo[ifile].LP_STATE = strmid(fnm, pos+2, 3)
-          pos = stregex(fnm, 'qw[0-9][0-9][0-9]')
-          if pos ne -1 then dbinfo[ifile].QW_STATE = strmid(fnm, pos+2, 3)
-          pos = stregex(fnm, 'f[+-][0-9][0-9][0-9]')
-          if pos ne -1 then dbinfo[ifile].FOCUS = strmid(fnm, pos+1, 4)        
-        ;STATISTIC
-        dat = red_readdata(files[ifile])
-        dbinfo[ifile].FRAME_MAX = string(max(dat,min=mn))
-        dbinfo[ifile].FRAME_MIN = string(mn)
-        dbinfo[ifile].FRAME_MEDIAN = string(median(dat))
-        dbinfo[ifile].FRAME_STDDEV = string(stddev(dat))
+        
+        dbinfo[ifile].FIRST_FRAME = framenumbers[0]
+        ;dbinfo[ifile].DATE_BEGS = date_beg
+        dbinfo[ifile].DATE_BEGS = json_serialize(date_beg)
+        dbinfo[ifile].QW_STATE = strmid(stregex(files[ifile], '(qw[0-9]*)',/extr),2)
+        if instrume eq 'CRISP2' then begin
+          lps = 'lp'
+          dbinfo[ifile].FRAMENUMBERS = json_serialize(framenumbers)
+        endif else lps='LP'
+        dbinfo[ifile].LP_STATE = strmid(stregex(files[ifile], '('+lps+'[0-9]*)',/extr),2)
+        if datatype ne 'darks' then begin
+          lcs = strmid(stregex(files[ifile], '(lc[0-9])',/extr),2)
+          if lcs ne '' then dbinfo[ifile].LC_STATE = lcs
+        endif
+        foc = strmid(stregex(files[ifile], '(f[+-][0-9]*)',/extr),1)
+        if foc ne '' then dbinfo[ifile].FOCUS = foc
+
+        if keyword_set(statistics) then begin
+           ;;STATISTIC
+           dat = red_readdata(files[ifile])
+           Nframes = n_elements(framenumbers)
+           mn = intarr(Nframes)
+           mx = intarr(Nframes)
+           med = intarr(Nframes)
+           std = fltarr(Nframes)
+           for ifrm=0,Nframes-1 do begin
+              mx[ifrm] = max(dat[*,*,ifrm], min=mnm)
+              mn[ifrm] = mnm
+              med[ifrm] = median(dat[*,*,ifrm])
+              std[ifrm] = stddev(dat[*,*,ifrm])
+           endfor
+           dbinfo[ifile].FRAME_MAX = json_serialize(mx)
+           dbinfo[ifile].FRAME_MIN = json_serialize(mn)
+           dbinfo[ifile].FRAME_MEDIAN = json_serialize(med)
+           dbinfo[ifile].FRAME_STDDEV = json_serialize(std)
+        endif
         
       endelse
 
-      dbinfo[ifile].STATE = state          
-
+      dbinfo[ifile].STATE = state
+      mos_pos = strmid(stregex(files[ifile], '(mos[0-9][0-9]*)',/extr),3)
+      if mos_pos ne '' then dbinfo[ifile].MOSAIC_POS = mos_pos
     endfor                      ; ifile
 
     ;; Check for complete scans only
@@ -507,10 +566,18 @@ pro red_rawdir2db, all = all $
     ;; Send the array of structs as input to a command that knows what
     ;; info should go into what table, and writes it there.   
     if keyword_set(debug) then save, dbinfo, filename = date + '_' + timestamp + '_' + camera + '.sav'
-    if instrume eq 'CHROMIS' then $
-       chromis_rawfile2db, dbinfo, config, debug=debug $
-    else $
-       crisp_rawfile2db, dbinfo, config, debug=debug    
+    case instrume of
+      'CHROMIS' : chromis_rawfile2db, dbinfo, config, debug=debug;, chromis2=chromis2
+      'CRISP' : crisp_rawfile2db, dbinfo, config, debug=debug
+      'CRISP2' : crisp2_rawfile2db, dbinfo, config, debug=debug
+      else : stop
+    endcase
+    
+    ;; if instrume eq 'CHROMIS' then $
+    ;;   chromis_rawfile2db, dbinfo, config, debug=debug $
+    ;; else $
+    ;;   crisp_rawfile2db, dbinfo, config, debug=debug  
+    
 
     undefine,config
   endfor                        ; icam

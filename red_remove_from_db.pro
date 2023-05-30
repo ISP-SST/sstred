@@ -40,7 +40,9 @@
 ;-
 pro red_remove_from_db, date, sets=sets, all=all
 
-  red_mysql_check, handle
+  year = strmid(date,0,4)
+  if year ge 2023 then db = 'sst_db_' + year else db = 'sst_db'  
+  red_mysql_check, handle, database=db
   debug = 0B
   tab = string(9B)
 
@@ -58,7 +60,7 @@ pro red_remove_from_db, date, sets=sets, all=all
   if ~keyword_set(sets) then begin
     query='select date_obs from datasets;'
     red_mysql_cmd, handle, query, ans, nl, debug=debug
-    for iset=1,nl-2 do begin
+    for iset=1,nl-1 do begin
       if strmatch(ans[iset],'*'+date+'*') then begin
         set = strsplit(ans[iset],' ',/extract)
         red_append,sets, set[1]

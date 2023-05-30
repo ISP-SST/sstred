@@ -45,7 +45,7 @@
 ;                transfered in config array.
 ;                               
 ;-
-pro chromis_rawfile2db, dbinfo, config, debug=debug
+pro chromis_rawfile2db, dbinfo, config, debug=debug;, chromis2=chromis2
   
   inam = red_subprogram(/low, calling = inam1)
 
@@ -54,9 +54,11 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
     print, inam, 'There is nothing to put in the database. The array of structures is empty.' 
     return
   endif
-  
+
   ;; Make sure database is open
-  red_mysql_check, handle
+  year = strmid(dbinfo[0].DATE_OBS,0,4)
+  if year ge 2023 then db = 'sst_db_' + year else db = 'sst_db'  
+  red_mysql_check, handle, database=db
 
   ;; In rawdir2db this procedure is called in cameras loop, so there
   ;; is only one unique instrument in the 'dbinfo' as well as only one
@@ -67,11 +69,12 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
   datatype = dbinfo[0].DATATYPE
   tab = string(9B)  
 
-  d = strsplit(dbinfo[0].DATE_OBS,' ',/extract)
-  if instrument eq 'CHROMIS' then begin      
-    query = 'SELECT id, filter1 FROM calibrations WHERE date = "' + d[0] + '";'
+  if year lt 2023 then begin
+ ;    d = strsplit(dbinfo[0].DATE_OBS,' ',/extract)
+    dt = strmid(dbinfo[0].DATE_OBS,0,10)
+    query = 'SELECT id, filter1 FROM calibrations WHERE date = "' + dt + '";'
     red_mysql_cmd, handle, query, ans, nl, debug=debug
-    if nl eq 1 then begin
+    if nl eq 1 and year lt 2023 then begin
       ;; insert data in calibrations table for the date
       nbprefs = json_parse(dbinfo[0].NB_PREFS,/TOARRAY)
       lambda_ref = json_parse(dbinfo[0].LAMBDA_REF,/TOARRAY)
@@ -80,8 +83,8 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
       nel = n_elements(nbprefs)
       query = 'INSERT INTO calibrations (filter1, convfac, du_ref, date, lambda_ref) VALUES '
       for jj=0,nel-1  do $
-        query += '(' + nbprefs[jj] + ', ' + strtrim(string(convfac[jj]),2) + ', ' + $
-        strtrim(string(du_ref[jj]),2) + ', "' + d[0] + '", ' + strtrim(string(lambda_ref[jj]),2) + '),'
+         query += '(' + nbprefs[jj] + ', ' + strtrim(string(convfac[jj]),2) + ', ' + $
+         strtrim(string(du_ref[jj]),2) + ', "' + d[0] + '", ' + strtrim(string(lambda_ref[jj]),2) + '),'
       ll = strlen(query)
       query = strmid(query, 0, ll-1) + ';'
       red_mysql_cmd, handle, query, ans, nl, debug=debug ;insert
@@ -90,7 +93,7 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
     endif
     calib = strarr(nl-1,2)
     for jj = 1, nl -1 do $
-      calib[jj-1,*] = strsplit(ans[jj],tab,/extract,/preserve_null) ; we need calibration_id for bursts table
+       calib[jj-1,*] = strsplit(ans[jj],tab,/extract,/preserve_null) ; we need calibration_id for bursts table
   endif
 
   print,'---------------------------------------------------------------------------------'
@@ -150,10 +153,12 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
   if nl ne 1 then begin
     ;; Insert new row in the table for the detector with new firmware if it doesn't exist
     ;; Copy column values from the last row for the detector    
-    dets = strsplit(ans,tab,/extract,/preserve_null)
-    f_indx = where(dets[1] eq dbinfo[0].DETFIRM)          
+    dets = strarr(nl-1,2)    
+    for jj = 1, nl -1 do $
+      dets[jj-1,*] = strsplit(ans[jj],tab,/extract,/preserve_null)
+    f_indx = where(dets[*,1] eq dbinfo[0].DETFIRM)          
     if f_indx eq -1 then begin
-      id = ans[0,nl-1] ; last id with the current detector
+      id = dets[-1,0] ; last id with the current detector
       query = 'INSERT INTO detectors (manufacturer, model, xsize, ysize, pixel_pitch, serial_number, name, detfirm) ' + $
         'SELECT manufacturer, model, xsize, ysize, pixel_pitch, serial_number, name, "' + dbinfo[0].DETFIRM + $
         '" FROM detectors WHERE id = ' + id + ';'
@@ -162,27 +167,28 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
       detectors_id = ans[1]
     endif $ ;; take id from the detectors table for the detector with current firmware
       else detectors_id = dets[f_indx,0]            
-  endif
+  endif else stop
   
   scan0 = where(dbinfo.scannum eq 0)  
   ;; Insert information for prefilter if it's not there.
   ;; We use one set of filters at the moment and don't have to
   ;; distinguish similar ones. May be it will change...
-  filt_in = uniq(dbinfo[scan0].FILTER1, sort(dbinfo[scan0].FILTER1))
-  ;; if it is darks then skip
-  if dbinfo[filt_in[0]].WAVEMAX ne 0. then begin
-    query = 'INSERT INTO filters (filter1, wavemax, wavemin, wavelnth, waveunit) VALUES ' ;
-    for ifilt = 0, n_elements(filt_in)-1 do begin
-      fin = filt_in[ifilt]
-      query += '(' + dbinfo[fin].FILTER1 + $
-               ', ' + strtrim(string(dbinfo[fin].WAVEMAX),2) + ', ' + strtrim(string(dbinfo[fin].WAVEMIN),2) + ', ' + $
-               strtrim(string(dbinfo[fin].WAVELNTH),2) + ', ' + strtrim(string(dbinfo[fin].WAVEUNIT),2) + '),'    
-    endfor
-    ll = strlen(query)
-    query = strmid(query, 0, ll-1)
-    query += ' ON DUPLICATE KEY UPDATE wavemax = VALUES(wavemax), wavemin = VALUES(wavemin), wavelnth = VALUES(wavelnth);'
-    red_mysql_cmd, handle, query, ans, nl, debug=debug
-  endif
+  
+  ;; filt_in = uniq(dbinfo[scan0].FILTER1, sort(dbinfo[scan0].FILTER1))  
+  ;; ;; if it is darks then skip
+  ;; if dbinfo[filt_in[0]].WAVEMAX ne 0. then begin
+  ;;   query = 'INSERT INTO filters (filter1, wavemax, wavemin, wavelnth, waveunit) VALUES ' ;
+  ;;   for ifilt = 0, n_elements(filt_in)-1 do begin
+  ;;     fin = filt_in[ifilt]
+  ;;     query += '(' + dbinfo[fin].FILTER1 + $
+  ;;              ', ' + strtrim(string(dbinfo[fin].WAVEMAX),2) + ', ' + strtrim(string(dbinfo[fin].WAVEMIN),2) + ', ' + $
+  ;;              strtrim(string(dbinfo[fin].WAVELNTH),2) + ', ' + strtrim(string(dbinfo[fin].WAVEUNIT),2) + '),'    
+  ;;   endfor
+  ;;   ll = strlen(query)
+  ;;   query = strmid(query, 0, ll-1)
+  ;;   query += ' ON DUPLICATE KEY UPDATE wavemax = VALUES(wavemax), wavemin = VALUES(wavemin), wavelnth = VALUES(wavelnth);'
+  ;;   red_mysql_cmd, handle, query, ans, nl, debug=debug
+  ;; endif
 
 
   Nconf = size(config)
@@ -227,10 +233,16 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
       red_progressbar, ifl, Nfiles, /predict, strtrim(string(Nfiles),2) + ' bursts.'        
       ifile = files_in[ifl]
 
-      st = strsplit(dbinfo[ifile].STATE,'_',/extract)
-      in_cal = where(strmatch(calib[*,1],st[0]) eq 1)
       ;; We need calibration_id for burst table
-      if in_cal ne -1 then calibration_id = calib[in_cal,0] else calibration_id = '0'
+      st = strsplit(dbinfo[ifile].STATE, '_', /extract, count=ns)
+      if year lt 2023 then begin
+        if ns ge 2 then begin
+          in_cal = where(strmatch(calib[*,1],st[0]) eq 1)
+          if in_cal ne -1 then calibration_id = calib[in_cal,0] else stop
+        endif else calibration_id = '0'
+      endif else calibration_id = '0'
+      
+ ;     if in_cal ne -1 then calibration_id = calib[in_cal,0] else calibration_id = '0'
 
       ;; change date format to be complient with mariaDB
       ss = strsplit(dbinfo[ifile].DATE, 'T',/extract)
@@ -241,13 +253,13 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
       ;;of the bursts table to reconstruct filenames and FP state
       ;;after.
       query = 'BEGIN;'
-      query += 'INSERT INTO bursts(config_id, filter1, line, tuning, calibration_id, scannum, first_frame, dettemp, date) VALUES(' + $
+      query += 'INSERT INTO bursts(config_id, filter1, line, tuning, calibration_id, scannum, first_frame, dettemp, date, mosaic_pos) VALUES(' + $
                strtrim(string(config_id),2) + ', ' + dbinfo[ifile].FILTER1 + ', ' + strtrim(string(dbinfo[ifile].WHEEL),2) + ', ' + $
                strtrim(string(dbinfo[ifile].HRZ),2) + ', ' + calibration_id + ', ' + $
                strtrim(string(dbinfo[ifile].SCANNUM), 2) + ', ' + strtrim(string(dbinfo[ifile].FIRST_FRAME),2) + ', ' + $
-               strtrim(string(dbinfo[ifile].DETTEMP),2) + ', "' + dt + '") ON DUPLICATE KEY UPDATE ' + $
+               strtrim(string(dbinfo[ifile].DETTEMP),2) + ', "' + dt + '",' + dbinfo[ifile].MOSAIC_POS + ') ON DUPLICATE KEY UPDATE ' + $
                'filter1 = VALUES(filter1), line = VALUES(line), tuning = VALUES(tuning), calibration_id = VALUES(calibration_id), ' + $
-               'scannum = VALUES(scannum), dettemp = VALUES(dettemp), date = VALUES(date);'
+               'scannum = VALUES(scannum), dettemp = VALUES(dettemp), date = VALUES(date), mosaic_pos = VALUES(mosaic_pos);'
       query += 'SELECT id FROM bursts WHERE first_frame = ' + strtrim(string(dbinfo[ifile].FIRST_FRAME),2) + $
                ' AND config_id = ' + config_id + ' INTO @burst_id;'     
 
@@ -260,7 +272,20 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
 
       query += 'INSERT INTO chromis_frames (burst_id, framenum, date_begs, beg_frac, max, min, median, stddev) VALUES '
       for iframe = 0, Nframe-1 do begin
-        frame_num = dbinfo[ifile].FIRST_FRAME + iframe ;
+
+        frame_num = dbinfo[ifile].FIRST_FRAME + iframe         
+        if n_elements(mx) ne 1 then begin
+          maxx = mx[ifrm]
+          minn = mn[ifrm]
+          std = stddev[ifrm]
+          mdn = median[ifrm]
+        endif else begin
+          maxx = 0
+          minn = 0
+          std = 0
+          mdn = 0
+        endelse
+        
         ss = strsplit(date_begs[iframe],'T',/extract)
         zz = strsplit(ss[1],'.',/extract)
         if n_elements(zz) eq 1 then begin ; a rare ocasion of datastamp without fraction of second
@@ -271,8 +296,8 @@ pro chromis_rawfile2db, dbinfo, config, debug=debug
           beg_frac = '.'+zz[1]
         endelse
         query += '( @burst_id, ' + strtrim(string(frame_num),2) + ', "' + beg_time + '", ' + $
-                 beg_frac + ', ' + strtrim(string(mx[iframe]),2) + ', ' + strtrim(string(mn[iframe]),2) + $
-                 ', ' + strtrim(string(median[iframe]),2) + ', ' + strtrim(string(stddev[iframe]),2) + '),'
+                 beg_frac + ', ' + strtrim(maxx,2) + ', ' + strtrim(minn,2) + $
+                 ', ' + strtrim(mdn,2) + ', ' + strtrim(std,2) + '),'
       endfor                    ; iframe
       ll = strlen(query)
       query = strmid(query, 0, ll-1)

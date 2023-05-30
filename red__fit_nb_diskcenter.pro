@@ -323,7 +323,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
             Nlc = n_elements(ulc)
 
             if Nlc ne 4 then begin
-              print, iname + ' : Non-polarimetric data, please call without /demodulate'
+              print, inam + ' : Non-polarimetric data, please call without /demodulate'
               print, pprefs[ipref]
               retall
             endif

@@ -46,9 +46,10 @@
 ;
 ;-
 pro crisp_fnm_gen, filename $
-                             , fnm_gen = fnm_gen $
-                             , dir_gen = dir_gen $
-                             , verbose = verbose
+                   , fnm_gen = fnm_gen $
+                   , dir_gen = dir_gen $
+                   , verbose = verbose $
+                   , crisp2 = crisp2
  
   timeregex = '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]'
   dateregex = '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]'
@@ -102,8 +103,14 @@ pro crisp_fnm_gen, filename $
     ;; data base.
     ;red_append, dirname_template_parts, dirname_parts[1]
     ;;red_append, dirname_template_parts, '<TYPE>'
-    dirname_format += 'A, A1, '
-    dirname_vars += 'datatype, "/", '
+    
+    if keyword_set(crisp2) then begin
+      dirname_format += 'A, A, A1, '
+      dirname_vars += '"CRISP-", datatype, "/", '
+    endif  else begin
+      dirname_format += 'A, A1, '
+      dirname_vars += 'datatype, "/", '
+    endelse
 
     ;; For polcal data we have to add the prefilter
     if strmatch(dirname_parts[1], 'Polcal') then begin
@@ -142,71 +149,82 @@ pro crisp_fnm_gen, filename $
 
     ;; Loop through the dot-delimited parts of the file basename and
     ;; try to identify the parts.
-    basename_parts = strsplit(basename, '.', /extract)
+    if keyword_set(crisp2) then begin
+      sep='_'
+      lps = 'lp'
+    endif else begin
+      sep='.'
+      lps = 'LP'
+    endelse
+    basename_parts = strsplit(basename, '.,_', /extract)
     for ipart = 0, n_elements(basename_parts)-1 do begin
-      case 1 of
-        ;; 4-digit prefilter
-        strmatch(basename_parts[ipart], '[0-9][0-9][0-9][0-9]') : begin
-          filename_format += 'I04, A1, '
-          filename_vars += 'filter1, ".", '
-        end
+      case 1 of        
         ;; 5-digit scan number
         strmatch(basename_parts[ipart], '[0-9][0-9][0-9][0-9][0-9]') : begin 
           filename_format += 'I05, A1, '
-          filename_vars += 'scannum, ".", '
+          filename_vars += 'scannum, "'+sep+'", '
         end
         ;; 7-digit frame number
         strmatch(basename_parts[ipart], '[0-9][0-9][0-9][0-9][0-9][0-9][0-9]') : begin 
           filename_format += 'I07, A1, '
-          filename_vars += 'framenum, ".", '
+          filename_vars += 'framenum, "'+sep+'", '
         end
         ;; Camera tag
         strmatch(basename_parts[ipart] , 'cam[XVI]*') : begin 
           filename_format += 'A, A1, '
-          filename_vars += 'detector, ".", '
+          filename_vars += 'detector, "'+sep+'", '
         end
         ;; Liquid crystal state
         strmatch(basename_parts[ipart], 'lc[0-9]') : begin 
-          filename_format += 'A2, I1, A1,'
-          filename_vars += '"lc", lc_state, ".", '
+          filename_format += 'A2, I1, A1, '
+          filename_vars += '"lc", lc_state, "'+sep+'", '
         end
         ;; Linear polarizer state
-        strmatch(basename_parts[ipart], 'LP[0-9][0-9][0-9]') : begin 
+        strmatch(basename_parts[ipart], lps+'[0-9][0-9][0-9]') : begin 
           filename_format += 'A2, I03, A1, '
-          filename_vars += '"LP", lp_state, ".", '
+          filename_vars += '"'+lps+'", lp_state, "'+sep+'", '
         end
         ;; Quarterwave plate state
-        strmatch(basename_parts[ipart], 'qw[0-9][0-9][0-9]') : begin 
-          filename_format += 'A2, I03, A1, '
-          filename_vars += '"qw", qw_state, ".", '
+        strmatch(basename_parts[ipart], 'qw[0-9]*') : begin
+          Ndigits = strlen(basename_parts[ipart])-2
+          filename_format += 'A2, I0' + strtrim(Ndigits, 2) +  ', A1, '
+          filename_vars += '"qw", qw_state, "'+sep+'", '
         end
         ;; DM focus
-        strmatch(basename_parts[ipart], 'f[+-][0-9][0-9][0-9]') : begin 
+        strmatch(basename_parts[ipart], 'f[+-][0-9]*') : begin 
           filename_format += 'A1, I+03, A1, '
-          filename_vars += '"f", focus, ".", '
+          filename_vars += '"f", focus, "'+sep+'", '
         end
-        ;; Tuning
-        strmatch(basename_parts[ipart], '[0-9][0-9][0-9][0-9]_[+-][0-9]*') : begin 
-          ;; The tuning info is a four-digit LINE followed by an
-          ;; underscore and the finetuning. We need to find out how
-          ;; many digits are used for the tuning part. For CRISP it is
-          ;; always zero-padded and has a sign.
-          Ndigits = strlen(basename_parts[ipart]) - 5
-          filename_format += 'I04, A1, I+0' + strtrim(Ndigits, 2) + ', A1, '
-          filename_vars += 'line, "_", tuning, ".", '
+        ;; 4-digit prefilter & tuning
+        strmatch(basename_parts[ipart], '[0-9][0-9][0-9][0-9]') : begin
+          if ~strmatch(basename_parts[ipart+1], '[+-][0-9]*') then begin 
+            filename_format += 'I04, A1, '
+            filename_vars += 'filter1, "'+sep+'", '
+          endif else begin
+            Ndigits = strlen(basename_parts[ipart+1])
+            filename_format += 'I04, A1, I+0' + strtrim(Ndigits, 2) + ', A1, '
+            filename_vars += 'line, "_", tuning, "'+sep+'", '
+          endelse
         end
         ;; Unidentified parts, add as text.
         else : begin
-          filename_format += 'A, A1, '
-          filename_vars += '"' + basename_parts[ipart] + '", ".", '
+          if ~strmatch(basename_parts[ipart], '[+-][0-9]*') then begin
+            filename_format += 'A, A1, '
+            filename_vars += '"' + basename_parts[ipart] + '", "'+sep+'", '
+          endif
         end
       endcase
-    endfor                      ; ipart
+    endfor                       ; ipart
     
-    ll = strlen(filename_format)
-    filename_format = strmid(filename_format, 0, ll-2) + ')"' 
-    ll = strlen(filename_vars)
-    filename_vars = strmid(filename_vars, 0, ll-6)
+    lf = strlen(filename_format)
+    lv = strlen(filename_vars)
+    if basename_parts[-1] eq 'fits' then begin
+      filename_format = strmid(filename_format, 0, lf-10) + ')"'
+      filename_vars = strmid(filename_vars, 0, lv-18) + '".fits", '
+    endif else begin
+      filename_format = strmid(filename_format, 0, lf-6) + ')"' 
+      filename_vars = strmid(filename_vars, 0, lv-5)
+    endelse
 
     fnm_gen = 'fnm = string(' + filename_vars + filename_format + ')'       
 
