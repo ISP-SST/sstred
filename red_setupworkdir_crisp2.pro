@@ -755,6 +755,10 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
             + ", /mask ;, /hints, dir='10:02:45'"
+    printf, Slun
+    printf, Slun, "When calling prepmomfbd, nremove should be 1 for polarimetry data"
+    printf, Slun, "and 2 for data without polarimetry. This is to give the etalons"
+    printf, Slun, "time to stabilize after a tuning change."
     printf, Slun, "a -> prepmomfbd" $
             + ", /fill_fov" $
             + ", /wb_states" $
