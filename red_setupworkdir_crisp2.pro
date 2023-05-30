@@ -736,6 +736,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin when calling prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
+    ;; The number of frames to be discarded by momfbd from every state
+    ;; is 2 for data without polarimetry and 1 for data with
+    ;; polarimetry. This is because with polarimetry, 1 discarded
+    ;; frame from every state means 4 frames are actually discarded
+    ;; from each tuning because the LC is changing faster than the
+    ;; tuning.
+    if max(prefilters[ipref] eq polprefs) eq 1 then Nremove = 1 else Nremove = 2
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
             + ', nthreads=nthreads' $
@@ -748,8 +755,15 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
             + ", /mask ;, /hints, dir='10:02:45'"
-    printf, Slun, "a -> prepmomfbd, /fill_fov, /wb_states, date_obs = '" + isodate $
-            + "', numpoints = 116, pref = '"+prefilters[ipref]+"', margin = 5" $
+    printf, Slun, "a -> prepmomfbd" $
+            + ", /fill_fov" $
+            + ", /wb_states" $
+            + ", date_obs = '" + isodate + "'" $
+            + ", numpoints = 116" $
+            + ", global_keywords=['FIT_PLANE']" $
+            + ", pref = '"+prefilters[ipref]+"'" $
+            + ", margin = 5" $
+            + ", Nremove="+strtrim(Nremove, 2) $
             + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
   endfor                        ; ipref
 
