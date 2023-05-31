@@ -234,6 +234,8 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
         wheel = fix(burst[7])   ; need this for filename generation
         hrz = long(burst[2])    ; need this for filename generation
 
+        state.fullstate = state.cam_settings 
+        
         if datatype ne 'darks' then begin 
           if year lt 2023 then begin
             ;; get calibration data for CHROMIS to convert wheel*_hrz* into line+tuning
@@ -259,9 +261,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
             nbpref = strtrim(wheel, 2)
             tuning = strtrim(wheel, 2) + '_' + strtrim(string(hrz, format = '(I+)'),2)
             state.tun_wavelength = double(nbpref)*1d-10 + double(tuning)*1d-10
-          endelse
-          
-          state.fullstate = state.cam_settings          
+          endelse        
           
           if ~state.is_wb then begin            
             state.prefilter = nbpref
@@ -328,12 +328,12 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
   endfor   ;states
 
   if use_strings then begin
-    if strmatch(strings[0],'*data/*') then begin
+    if strmatch(strings[0],'*CHROMIS/data/*') then begin
       ;;We have to generate filenames as link_data routine does.
       Nst = n_elements(states)
       files=strarr(Nst)       
       for ifile=0,Nst-1 do begin
-        if year lt 2023 then begin
+        if year lt 2023 or strmatch(strings[0], '*nostate*') then begin
           if states[ifile].is_wb then begin
             files[ifile] =  states[ifile].camera + '/' +  states[ifile].detector $
                              + '_' + string(states[ifile].scannumber, format = '(i05)') $
@@ -347,25 +347,8 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
                             + '_' + string(states[ifile].framenumber, format = '(i07)')  $
                             + '.fits'
           endelse
-        endif else begin
-          if states[ifile].is_wb then begin
-            if strmatch(strings[0], '*nostate*') then begin
-              files[ifile] = states[ifile].camera + '_nostate/' +  states[ifile].detector $
-                             + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                             + '_' + strtrim(states[ifile].prefilter, 2) $
-                             + '_' + string(states[ifile].framenumber, format = '(i07)') $
-                             + '.fits'
-            endif else begin
-              files[ifile] = states[ifile].camera + '/sst_' + states[ifile].detector $
-                             + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                             + '_' + string(states[ifile].framenumber, format = '(i07)') $
-                             + '_' + strtrim(states[ifile].prefilter, 2) $
-                             + '_' + strtrim(states[ifile].fpi_state, 2) $
-                             + '.fits'
-            endelse
-          endif else $
+        endif else $
             files[ifile] = states[ifile].camera + '/' + file_basename(states[ifile].filename)
-        endelse
       endfor
       ;; Filter the found states with respect to the file names in
       ;; strings
@@ -373,10 +356,7 @@ pro chromis::extractstates_db, strings, states, datasets = datasets, cam = cam
       for icam=0,Ncams-1 do begin
         ss = where(strmatch(strings,'*'+ucams[icam]+'*'), count)
         if count eq 0 then continue
-        if strmatch(strings[0], '*nostate*') then $
-          fs = ucams[icam] + '_nostate/' + file_basename(strings[ss]) $
-        else $
-          fs = ucams[icam] + '/' + file_basename(strings[ss])
+        fs = ucams[icam] + '/' + file_basename(strings[ss])
         match2, fs, files, suba ;, subb 
         stt = states[suba]
         stt.filename = strings[ss]
