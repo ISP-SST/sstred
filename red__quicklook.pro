@@ -63,10 +63,10 @@
 ;
 ;    filter_change : in, optional, type=boolean
 ;
-;      Automatically select states for which to make quicklook movies.
-;      Selected states are directly after a change of prefilter. If
-;      this keyword is set, use_states is ignored. Cannot be combined
-;      with /core_and_wings.
+;      Automatically select states that are directly after a change of
+;      prefilter. Then output only the highest contrast frames but no
+;      videos. If this keyword is set, use_states is ignored. Cannot
+;      be combined with /core_and_wings.
 ;
 ;    format : in, optional, string, default='mp4'
 ;   
@@ -503,14 +503,16 @@ pro red::quicklook, align = align $
 
     
     nsc = max(states.scannumber)
-;    if nsc lt min_nscan then begin
-;      fn = states[0].filename
-;      date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
-;      timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
-;      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' 
-;      print,"We do not want to bother with short datasets. Skipping it."
-;      continue
-;    endif
+    if ~keyword_set(filter_change) && nsc lt min_nscan then begin
+      ;; Ignore short datasets (likely disk center intensity
+      ;; calibrations) unless the filter_change keyword is set.
+      fn = states[0].filename
+      date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
+      timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
+      print, 'Dataset ', date + ' ' + timestamp + ' is too short.' 
+      print,"We do not want to bother with short datasets. Skipping it."
+      continue
+    endif
 
     outdir = self.out_dir +'/quicklook/'+timestamp+'/'
     file_mkdir, outdir
@@ -583,7 +585,9 @@ pro red::quicklook, align = align $
       namout += '_' + timestamp
       namout += '_' + pref $
                 + '_' + states[sel[0]].tuning
-      if keyword_set(neuralnet) then namout += '_NN' 
+      print, inam + ' : Cube '+namout
+      
+     if keyword_set(neuralnet) then namout += '_NN' 
       if keyword_set(mtf_deconvolve) then namout += '_MTF'
       if keyword_set(cube_save) then begin
          cubnam = namout +  '.fits'
@@ -630,8 +634,6 @@ pro red::quicklook, align = align $
       if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
          mask = red_cleanmask(gg ne 0)
 
-      print, inam + ' : Cube '+namout
-      
       for iscan = 0L, Nscans -1 do begin
 
         red_progressbar, iscan, Nscans, 'Read and select files', /predict
@@ -718,9 +720,9 @@ pro red::quicklook, align = align $
 
           ;; Deconvolve the data with a neural net.
 
-          ;; Select the best frames
+          ;; Select the highest contrast frames
           nn_indx = reverse(sort(contrasts))
-          cube[0, 0, 0, iscan] =ims[*, *, nn_indx[0:(Nexp <Nexp_available)-1]]
+          cube[0, 0, 0, iscan] = ims[*, *, nn_indx[0:(Nexp <Nexp_available)-1]]
           
         endif else begin
 
@@ -1004,38 +1006,40 @@ pro red::quicklook, align = align $
         writefits, outdir+contrastnam, best_contrasts
       endif
       set_plot,'X'
-      
-      ;; We could write metadata to the video file with the
-      ;; write_video METADATA keyword:
-      ;;
-      ;; METADATA
-      ;; 
-      ;; Set this keyword to a [2, n] element string array denoting n
-      ;; [key, value] pairs of metadata to be written to the file. 
-      ;; 
-      ;; Note: Metadata must be written before any video or audio
-      ;; data.
-      ;;
-      ;; The keys are limited to this set: [album, artist, comment,
-      ;; copyright, genre, title]. We could perhaps use comment,
-      ;; genre, and title.
-      ;;
-      ;; Something like:
-      ;; genre = "SST quicklook movie"
-      ;; title = instrument + date + timestamp + state
-      ;; comment = Things like date when made, pipeline version?
-      metadata = strarr(2, 3)
-      metadata[*, 0] = ['genre', 'SST quicklook movie']
-      metadata[*, 1] = ['title', strjoin([cam $
-                                          , self.isodate $
-                                          , timestamp $
-                                          , pref + '_' + states[sel[0]].tuning $
-                                         ], ' ')]
 
-      metadata[*, 2] = ['comment', 'Movie made ' $
-                        + red_timestamp(/utc, /iso) $
-                        + ' UTC' $
-                       ]
+      if ~keyword_set(filter_change) then begin ; Skip making video if only checking for filter change
+        
+        ;; We could write metadata to the video file with the
+        ;; write_video METADATA keyword:
+        ;;
+        ;; METADATA
+        ;; 
+        ;; Set this keyword to a [2, n] element string array denoting n
+        ;; [key, value] pairs of metadata to be written to the file. 
+        ;; 
+        ;; Note: Metadata must be written before any video or audio
+        ;; data.
+        ;;
+        ;; The keys are limited to this set: [album, artist, comment,
+        ;; copyright, genre, title]. We could perhaps use comment,
+        ;; genre, and title.
+        ;;
+        ;; Something like:
+        ;; genre = "SST quicklook movie"
+        ;; title = instrument + date + timestamp + state
+        ;; comment = Things like date when made, pipeline version?
+        metadata = strarr(2, 3)
+        metadata[*, 0] = ['genre', 'SST quicklook movie']
+        metadata[*, 1] = ['title', strjoin([cam $
+                                            , self.isodate $
+                                            , timestamp $
+                                            , pref + '_' + states[sel[0]].tuning $
+                                           ], ' ')]
+
+        metadata[*, 2] = ['comment', 'Movie made ' $
+                          + red_timestamp(/utc, /iso) $
+                          + ' UTC' $
+                         ]
 
 
 ;      dims = size(rgbcube, /dim)
@@ -1043,18 +1047,31 @@ pro red::quicklook, align = align $
 
 ;      help, bit_rate, video_fps
 
-      file_delete, outdir+namout, /allow
-      write_video, outdir+namout, rgbcube $
-                   , bit_rate = bit_rate $
-                   , metadata = metadata $
-                   , video_fps = video_fps $
-                   , video_codec = video_codec 
-      
+        file_delete, outdir+namout, /allow
+        write_video, outdir+namout, rgbcube $
+                     , bit_rate = bit_rate $
+                     , metadata = metadata $
+                     , video_fps = video_fps $
+                     , video_codec = video_codec 
+        
+        if format eq 'mov' then begin
+          ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
+          mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
+          file_delete, mname, /allow_nonexist
+          spawn, 'ffmpeg -n -i "' + outdir + namout $
+                 + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
+                 + mname + '"'
+          file_delete, outdir + namout
+;        spawn, 'rm "' + outdir + namout + '"'
+;        find . -name '*mp4' -exec sh -c 'ffmpeg -n -i "$1" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "${1%.mp4}.mov"' sh {} \ ;
+        endif
 
+      endif
+      
 ;      stop
       
-      ;; Make a jpeg image of the best frame. 
-      mx = max(best_contrasts, ml)
+      ;; Make a jpeg image of the best frame.
+      if Nscans eq 1 then ml = 0 else mx = max(best_contrasts, ml)
       jname = outdir+red_strreplace(namout, '.'+extension, '_scan='+strtrim(uscan[ml], 2)+'.jpg')
 
       file_delete, jname, /allow
@@ -1064,17 +1081,6 @@ pro red::quicklook, align = align $
       print, jname
       print, strjoin(strtrim(size(cube, /dim), 2), ' x ')
 
-      if format eq 'mov' then begin
-        ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
-        mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
-        file_delete, mname, /allow_nonexist
-        spawn, 'ffmpeg -n -i "' + outdir + namout $
-               + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
-               + mname + '"'
-        file_delete, outdir + namout
-;        spawn, 'rm "' + outdir + namout + '"'
-;        find . -name '*mp4' -exec sh -c 'ffmpeg -n -i "$1" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "${1%.mp4}.mov"' sh {} \ ;
-      endif
       
     endfor                      ; istate
   endfor                        ; iset
