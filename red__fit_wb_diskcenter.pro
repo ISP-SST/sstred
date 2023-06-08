@@ -212,7 +212,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       if tmax le '13:00:00' then $
         wbdir += 'morning/'
     if keyword_set(tmin) then $
-      if tmin ge '13:00:00' then $
+      if tmin ge '12:59:59' then $
         wbdir += 'afternoon/'
      
     file_mkdir, wbdir

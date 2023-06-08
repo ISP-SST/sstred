@@ -275,7 +275,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
       if tmax le '13:00:00' then $
         nbdir += 'morning/'
     if keyword_set(tmin) then $
-      if tmin ge '13:00:00' then $
+      if tmin ge '12:59:59' then $
         nbdir += 'afternoon/'
     file_mkdir, nbdir
     
