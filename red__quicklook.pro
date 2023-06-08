@@ -231,6 +231,13 @@ pro red::quicklook, align = align $
   if n_elements(min_nscan) eq 0 then min_nscan=5
   if keyword_set(no_plot_r0) then no_display = 1B else no_display = 0B
 
+  ;; We don't want to use our database for quicklooks on La Palma.
+  self.getproperty, 'db_present', db_present
+  if db_present then begin
+    red_currentsite, site=site
+    if site eq 'La Palma' then self.setproperty,'db_present', 0B
+  endif
+
   if n_elements(format) eq 0 then format = 'mp4'
   case format of
     'avi' : extension = format
