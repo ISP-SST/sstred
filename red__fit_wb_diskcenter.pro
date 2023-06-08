@@ -418,7 +418,10 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         red_fitsaddkeyword, anchor = anchor, phdr $
                             , 'TIME-END', red_timestring(max(wbtimes[indx])) $
                             , 'End fit data time interval'
-        writefits, wbdir+'wb_fit_'+upref[ipref]+'.fits', pp, phdr
+        outfile = 'wb_fit_'+upref[ipref]+'.fits'
+        writefits, wbdir+outfile, pp, phdr
+        if ~file_test(self.out_dir+'/wb_intensities/'+outfile) then $
+          spawn, 'ln -sf ' + wbdir+outfile + ' ' + self.out_dir + '/wb_intensities/' + outfile
 
         coeffs_str[ipref] = strjoin(strtrim(pp, 2), ',')
         
@@ -459,14 +462,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
               , colors = colors, psym = 16, length = 0, vspace = 2
     outfile = 'wb_intensities'
     for ipref=0,Nprefs-1 do outfile += '_' + upref[ipref]
-    outfile += '.pdf'
-    if file_test(wbdir+outfile) then begin
-      print,'File ', wbdir+outfile, ' exists.'
-      print
-      ans=''
-      read,'Would you like to overwrite it? (Y/n): ', ans
-      if strupcase(ans) eq 'N' then return
-    endif
+    outfile += '.pdf'    
     cgcontrol, output = wbdir+outfile
 
   endif
@@ -478,7 +474,7 @@ end
 ;a = chromisred(/dev)
 a = crispred(/dev)
 
-a -> fit_wb_diskcenter
+a -> fit_wbdiskcenter
 a -> fit_wb_diskcenter, pref = '4846'
 
 pp=readfits('prefilter_fits/wb/wb_fit_6563.fits',h)
