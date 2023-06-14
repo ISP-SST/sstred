@@ -742,7 +742,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     ;; frame from every state means 4 frames are actually discarded
     ;; from each tuning because the LC is changing faster than the
     ;; tuning.
-    if max(prefilters[ipref] eq polprefs) eq 1 then Nremove = 1 else Nremove = 2
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
             + ', nthreads=nthreads' $
@@ -756,9 +755,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
             + ", /mask ;, /hints, dir='10:02:45'"
     printf, Slun
-    printf, Slun, "When calling prepmomfbd, nremove should be 1 for polarimetry data"
-    printf, Slun, "and 2 for data without polarimetry. This is to give the etalons"
-    printf, Slun, "time to stabilize after a tuning change."
     printf, Slun, "a -> prepmomfbd" $
             + ", /fill_fov" $
             + ", /wb_states" $
@@ -767,7 +763,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + ", global_keywords=['FIT_PLANE']" $
             + ", pref = '"+prefilters[ipref]+"'" $
             + ", margin = 5" $
-            + ", Nremove="+strtrim(Nremove, 2) $
             + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
   endfor                        ; ipref
 
