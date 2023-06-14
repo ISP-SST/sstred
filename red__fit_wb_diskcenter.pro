@@ -167,8 +167,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   endfor                        ; idir
   red_logdata, self.isodate, times, mu = mu, zenithangle = za
   ;; If mu isn't available in logs, assume flats are at large enough mu
-;  indx = where(~finite(mu)  and strmatch(dirs,'*lats*'), Ndirs)
-;  if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
+  indx = where(~finite(mu)  and strmatch(dirs,'*lats*'), Ndirs)
+  if Ndirs gt 0 then mu[indx] = mu_limit+1d-3
 
   
   ;; Idea: for flats directories, mu might vary during the data
@@ -212,7 +212,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
       if tmax le '13:00:00' then $
         wbdir += 'morning/'
     if keyword_set(tmin) then $
-      if tmin ge '13:00:00' then $
+      if tmin ge '12:59:59' then $
         wbdir += 'afternoon/'
      
     file_mkdir, wbdir
@@ -418,7 +418,10 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         red_fitsaddkeyword, anchor = anchor, phdr $
                             , 'TIME-END', red_timestring(max(wbtimes[indx])) $
                             , 'End fit data time interval'
-        writefits, wbdir+'wb_fit_'+upref[ipref]+'.fits', pp, phdr
+        outfile = 'wb_fit_'+upref[ipref]+'.fits'
+        writefits, wbdir+outfile, pp, phdr
+        if ~file_test(self.out_dir+'/wb_intensities/'+outfile) then $
+          spawn, 'ln -sf ' + wbdir+outfile + ' ' + self.out_dir + '/wb_intensities/' + outfile
 
         coeffs_str[ipref] = strjoin(strtrim(pp, 2), ',')
         
@@ -459,14 +462,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
               , colors = colors, psym = 16, length = 0, vspace = 2
     outfile = 'wb_intensities'
     for ipref=0,Nprefs-1 do outfile += '_' + upref[ipref]
-    outfile += '.pdf'
-    if file_test(wbdir+outfile) then begin
-      print,'File ', wbdir+outfile, ' exists.'
-      print
-      ans=''
-      read,'Would you like to overwrite it? (Y/n): ', ans
-      if strupcase(ans) eq 'N' then return
-    endif
+    outfile += '.pdf'    
     cgcontrol, output = wbdir+outfile
 
   endif
@@ -478,7 +474,7 @@ end
 ;a = chromisred(/dev)
 a = crispred(/dev)
 
-a -> fit_wb_diskcenter
+a -> fit_wbdiskcenter
 a -> fit_wb_diskcenter, pref = '4846'
 
 pp=readfits('prefilter_fits/wb/wb_fit_6563.fits',h)

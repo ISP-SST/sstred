@@ -275,7 +275,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
       if tmax le '13:00:00' then $
         nbdir += 'morning/'
     if keyword_set(tmin) then $
-      if tmin ge '13:00:00' then $
+      if tmin ge '12:59:59' then $
         nbdir += 'afternoon/'
     file_mkdir, nbdir
     
@@ -662,7 +662,10 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
                                     , prpara = prpara $
                                     , prproc = inam
 
-        writefits, nbdir+'nb_fit_'+upref[ipref]+'.fits', pp, phdr
+        outfile = 'nb_fit_'+upref[ipref]+'.fits'
+        writefits, nbdir+outfile, pp, phdr
+        if ~file_test(self.out_dir+'/nb_intensities/'+outfile) then $
+          spawn, 'ln -sf ' + nbdir+outfile + ' ' + self.out_dir + '/nb_intensities/' + outfile
 
         coeffs_str[ipref] = strjoin(strtrim(pp, 2), ',')
         
@@ -703,14 +706,7 @@ pro red::fit_nb_diskcenter, demodulate = demodulate $
               , colors = colors, psym = 16, length = 0, vspace = 2
     outfile = 'nb_intensities'
     for ipref=0,Nprefs-1 do outfile += '_' + upref[ipref]
-    outfile += '.pdf'
-    if file_test(nbdir+outfile) then begin
-      print,'File ', nbdir+outfile, ' exists.'
-      print
-      ans=''
-      read,'Would you like to overwrite it? (Y/n): ', ans
-      if strupcase(ans) eq 'N' then return
-    endif
+    outfile += '.pdf'    
     cgcontrol, output = nbdir+outfile
 
   endif
