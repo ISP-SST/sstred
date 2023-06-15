@@ -500,12 +500,14 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; (state=prefilter_line_[+-]tuning))
         case upref[ipref] of
           '5173' : cwl = 5172.70   
+          '5576' : cwl = 5576.0
+          '5380' : cwl = 5380.0
           '5876' : cwl = 5876.28   
           '5896' : cwl = 5895.93
           '6173' : cwl = 6173.34
           '6302' : cwl = 6302.50
           '6563' : cwl = 6562.82
-          '7699' : cwl = 7699.;7700.1
+          '7699' : cwl = 7699.00 ; 7700.1 in datasheet
           '7772' : cwl = 7772.00
           '8542' : cwl = 8542.13
           else : cwl = double(upref[ipref])
@@ -516,12 +518,14 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; Default prefilter FWHM (in Ångström).
         case upref[ipref] of
           '5173' : value_fwhm = 3.2d ; Alluxa
+          '5576' : value_fwhm = 3.0d ; Barr
+          '5380' : value_fwhm = 3.3d ; Barr
           '5876' : value_fwhm = 5.4d ; Alluxa
           '5896' : value_fwhm = 3.9d ; Barr
           '6173' : value_fwhm = 5.0d ; Alluxa
           '6302' : value_fwhm = 5.0d ; Alluxa
           '6563' : value_fwhm = 5.3d ; Alluxa
-          '7699' : value_fwhm = 8.0 ; 6.0d ; Alluxa
+          '7699' : value_fwhm = 8.0d ; Alluxa (6.0d in datasheet)
           '7772' : value_fwhm = 7.7d ; Barr
           '8542' : value_fwhm = 8.3d ; Alluxa
         endcase
