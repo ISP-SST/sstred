@@ -519,9 +519,13 @@ function crisp2::filenames, datatype, states $
         'pols' :  begin
           dir = self.out_dir+'/polcal_sums/'+camera+'/'
           red_append, tag_list, detector
-          state_split = strsplit(states[istate].fullstate,'_',/extract)
-          red_append, tag_list, state_split[2:4] ; lp000_qw000_8542
-          red_append, tag_list, state_split[-1]  ; lc state
+          red_append, tag_list, 'lp'+string(states[istate].lp,format='(I03)')
+          red_append, tag_list, 'qw'+string(states[istate].qw,format='(I03)')
+          red_append, tag_list, prefilter
+          red_append, tag_list, 'lc'+string(states[istate].lc,format='(I1)')
+          ;; state_split = strsplit(states[istate].fullstate,'_',/extract)
+          ;; red_append, tag_list, state_split[2:4] ; lp000_qw000_8542
+          ;; red_append, tag_list, state_split[-1]  ; lc state
           ext = '.pols'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
