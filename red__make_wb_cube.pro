@@ -666,7 +666,10 @@ pro red::make_wb_cube, dirs $
 
   case 1 of
     keyword_set(select_intensity_region) : begin
-      xroi,bytscl(dum), Regions_Out=ROI, /Block, title = 'Select region to be used for intensity correction with time.'
+      dumm = red_rotation(cub1[*,*,-1], full=ff $
+                     , ang[-1], shift[0,-1], shift[1,-1], background = bg, nthreads=nthreads)
+      dispim = bytscl(red_histo_opt(dum+dumm))
+      xroi,dispim, Regions_Out=ROI, /Block, title = 'Select region to be used for intensity correction with time.'
       int_indx = where( (ROI[0] -> ComputeMask(Dimensions=nd, Mask_Rule=2)) )
     end
     keyword_set(limb_data) : begin
@@ -775,7 +778,10 @@ pro red::make_wb_cube, dirs $
   endelse
   if n_elements(nametag) eq 0 then begin
     ;;  ofil = 'wb_'+midpart+'_'+datatype+'_im.fits'
-    datatags = [datatype, 'im']
+    if self.filetype eq 'MIXED' then $
+      datatags=['mixed',datatype, 'im'] $
+    else $
+      datatags = [datatype, 'im']
   endif else begin
     ;;   ofil = 'wb_'+midpart+'_'+nametag+'_'+datatype+'_im.fits'
     datatags = [nametag, datatype, 'im']
