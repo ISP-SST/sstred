@@ -763,7 +763,7 @@ pro chromis::make_nb_cube, wcfile $
         ;; Same operations as on narrowband image, except for
         ;; "aligncont".
         wbim = wwi              ;* tscl
-        wbim = rdx_cstretch(temporary(wbim), wb_grid, nthreads=nthreads, nearest=nearest)
+        wbim = rdx_cstretch(temporary(wbim), wb_grid, nthreads=nthreads)
         bg = median(wbim)
         wbim = red_rotation(temporary(wbim), ang[iscan] $
                             , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
