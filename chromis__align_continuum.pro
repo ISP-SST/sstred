@@ -60,7 +60,8 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
                               , limb_data = limb_data $
                               , momfbddir = momfbddir $
                               , overwrite = overwrite $
-                              , contrast_thres = contrast_thres
+                              , contrast_thres = contrast_thres $
+                              , dir_tag = dir_tag
    
   
   ;; Name of this method
@@ -102,6 +103,21 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   endif
   timestamps = timestamps[sindx]
   print, inam + ' : Selected -> '+ strjoin(timestamps, ', ')
+
+  case self.filetype of
+    'ANA': extension = '.f0'
+    'MOMFBD': extension = '.momfbd'
+    'FITS': begin
+      extension = '.fits'
+      if ~keyword_set(dir_tag) then dir_tag='_bypass'
+    end
+    'MIXED' : begin
+      extension = '.{fits,momfbd}'
+      if ~keyword_set(dir_tag) then dir_tag='_mixed'
+    end
+  endcase
+
+  if ~keyword_set(dir_tag) then dir_tag = ''
 
   ;; Loop over timestamp directories
   for itimestamp = 0L, Ntimestamps-1 do begin
@@ -149,10 +165,10 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 
         ;; Find all the NB continuum images 
         search_dir = self.out_dir + '/' + momfbddir + '/' + timestamp $
-                     + '/' + prefilters[ipref] + '/cfg/results/'
-        files = file_search(search_dir + '*.'+strlowcase(self.filetype), count = Nfiles)
+                     + '/' + prefilters[ipref] + '/cfg/results' + dir_tag + '/'
+        files = file_search(search_dir + '*'+extension, count = Nfiles)
         ;; we need to exclude global WB files
-        wbgindx=where(strmatch(files,'*'+prefilters[ipref]+'.'+strlowcase(self.filetype)),complement=ind)
+        wbgindx=where(strmatch(files,'*'+prefilters[ipref]+'.*'),complement=ind)
         files = files(ind)
         
         self -> selectfiles, files = files, states = states $
