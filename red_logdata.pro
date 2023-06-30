@@ -62,7 +62,7 @@
 ;
 ;   turret : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
-;     Turret pointing info in xxx coordinates.
+;     Turret pointing info in Cartesian disk coordinates.
 ;
 ;   pig : out, optional, type="fltarr(2) or fltarr(2,N)"
 ;
@@ -161,6 +161,9 @@
 ;     2018-10-29 : MGL. New keyword tilt.
 ;
 ;     2023-04-25 : MGL. New keyword shabar_intensity.
+;
+;     2023-04-25 : MGL. The turret keyword now returns (hpln,hplt)
+;                  coordinates rather than az/el.
 ;
 ;-
 pro red_logdata, date, time $
@@ -480,17 +483,7 @@ pro red_logdata, date, time $
 
   
   if n_elements(turretdata) gt 0 then begin
-    
-    if keyword_set(use_turret_time) then begin
-      ;; Return all values
-      turret = transpose([[turretdata.az],[turretdata.el]]) ; az/el on sky
-    endif else begin
-      ;; Get interpolated values
-      turret = fltarr(2, Ntimes) ; az/el on sky
-      turret[0, *] = red_interpol_nogaps(turretdata.az, turretdata.time, T)
-      turret[1, *] = red_interpol_nogaps(turretdata.el, turretdata.time, T)
-    endelse 
-    
+    turret= red_turret_select_pointing(turretdata, 'Disk', isodate, time = T)
   endif
 
   
@@ -498,8 +491,16 @@ pro red_logdata, date, time $
 
   ;; Azimuth and elevation
   if (arg_present(azel) || arg_present(zenithangle)) $
-     && n_elements(turret) gt 0 then azel = turret
-
+     && n_elements(turret) gt 0 then begin ;azel = turret
+    if keyword_set(use_turret_time) then begin
+      ;; Return all values
+      azel = transpose([[turretdata.az],[turretdata.el]]) ; az/el on sky
+    endif else begin
+      azel = fltarr(2, Ntimes)  ; az/el on sky
+      azel[0, *] = red_interpol_nogaps(turretdata.az, turretdata.time, T)
+      azel[1, *] = red_interpol_nogaps(turretdata.el, turretdata.time, T)
+    endelse
+  endif
 
   if arg_present(tilt) && n_elements(turret) gt 0 then begin
     tilt = red_interpol_nogaps(turretdata.solar_local_tilt, turretdata.time, T)
