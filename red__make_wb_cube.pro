@@ -161,7 +161,11 @@
 ;
 ;      Set this keyword to select regions for intensity correction
 ;      with time (needed for big flares).
-; 
+;
+;    use_turret_coordinates : in, optional, type=boolean
+;
+;      Use pointing coordinates as logged by the turret rather than
+;      the default PIG coordinates.
 ; 
 ; :History:
 ; 
@@ -230,15 +234,19 @@
 ; 
 ;    2022-09-26 : MGL. New keyword padmargin.
 ;
-;    2023-04-03 : OA. New keyword select_intensity_region. 
-;                 Added clipping of FOV mask with information
-;                 from configuration files (needed to make 'mixed' cubes).
-;                 Moved time-dependent intensity correction after cube alignment.
+;    2023-04-03 : OA. New keyword select_intensity_region. Added
+;                 clipping of FOV mask with information from
+;                 configuration files (needed to make 'mixed' cubes).
+;                 Moved time-dependent intensity correction after cube
+;                 alignment.
+;
+;    2023-06-20 :  MGL. New keyword use_turret_coordinates.
 ;
 ;-
 pro red::make_wb_cube, dirs $
-                       , align_interactive = align_interactive $                       
-                       , autocrop = autocrop $
+                       , align_interactive = align_interactive $     $
+                       , autocrop = autocrop $                  
+                       , circular_fov = circular_fov $
                        , clip = clip $
                        , crop = crop $
                        , direction = direction $
@@ -249,22 +257,22 @@ pro red::make_wb_cube, dirs $
                        , nearest = nearest $
                        , negang = negang $
                        , nomissing_nans = nomissing_nans $
-                       , circular_fov = circular_fov $
                        , nostretch = nostretch $
                        , np = np $
                        , nthreads = nthreads $
                        , ofile = ofile  $
                        , oldname = oldname $
+                       , padmargin = padmargin $
                        , point_id = point_id $
                        , rotation = rotation $
-                       , padmargin = padmargin $
                        , scannos = scannos $
+                       , select_intensity_region = select_intensity_region $
                        , subtract_meanang = subtract_meanang $
                        , tile = tile $
                        , tstep = tstep $
+                       , use_turret_coordinates = use_turret_coordinates $
                        , xbd = xbd $
-                       , ybd = ybd $
-                       , select_intensity_region = select_intensity_region
+                       , ybd = ybd
 
   
   ;; Name of this method
@@ -305,8 +313,8 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, align_interactive
   red_make_prpara, prpara, clip
   red_make_prpara, prpara, crop
-  red_make_prpara, prpara, dirs    
   red_make_prpara, prpara, direction    
+  red_make_prpara, prpara, dirs    
   red_make_prpara, prpara, integer
   red_make_prpara, prpara, negang  
   red_make_prpara, prpara, nomissing_nans
@@ -319,6 +327,7 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, subtract_meanang  
   red_make_prpara, prpara, tile
   red_make_prpara, prpara, tstep
+  red_make_prpara, prpara, use_turret_coordinates
   red_make_prpara, prpara, xbd
   red_make_prpara, prpara, ybd
 
@@ -335,7 +344,11 @@ pro red::make_wb_cube, dirs $
 
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
-  red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
+  if keyword_set(use_turret_coordinates) then begin
+    red_logdata, self.isodate, time_pointing, turret = metadata_pointing, rsun = rsun
+  endif else begin
+    red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
+  endelse
   red_logdata, self.isodate, time_turret, azel = azel
 
   ;; Search for restored WB images
