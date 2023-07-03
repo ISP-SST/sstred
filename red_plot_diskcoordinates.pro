@@ -61,8 +61,10 @@ pro red_plot_diskcoordinates, diskpos $
                               , psym = psym $
                               , symsize = symsize $
                               , indx = indx $
-                              , title = title
+                              , title = title $
+                              , unit = unit
 
+  if n_elements(unit) eq 0 then unit = 'R$\sun$'
   if n_elements(psym) eq 0 then psym = 3
   if n_elements(symsize) eq 0 then symsize = 1
   if n_elements(rplot) eq 0 then rplot = 1.
@@ -82,7 +84,7 @@ pro red_plot_diskcoordinates, diskpos $
     x = findgen(201)/100 - 1
     y = sqrt(1-x^2)
     cgplot, x, y, xrange=range, yrange=range, /aspect $
-            , xtitle = 'X / R$\sun$',  ytitle = 'Y / R$\sun$' $
+            , xtitle = 'X / '+unit,  ytitle = 'Y / '+unit $
             , title = title
     cgplot, /over, x, -y
     cgplot, /over, !x.crange, [0,0]
