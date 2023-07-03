@@ -1,3 +1,25 @@
+; docformat = 'rst'
+
+;+
+; Compare pointing according to pig and turret.
+;
+; Change directory to a CRISP2 workdir and then do .rn red_compare_pigturret.
+; 
+; :Categories:
+;
+;    SST pipeline
+; 
+; 
+; :Author:
+; 
+;    Mats Löfdahl, Institute for Solar Physics
+; 
+; 
+; :History:
+; 
+;    2023-07-03: MGL. First version.
+; 
+;-
 
 pro red_compare_pigturret, dum
 
@@ -42,7 +64,7 @@ pro red_compare_pigturret, dum
 
 end
 
-a = crisp2red(/dev, /no)
+a = crisp2red(/dev, /no)        ; Change to chromisred or crispred if you want to use a non-crisp2 workdir.
 a -> download
 red_compare_pigturret
 
