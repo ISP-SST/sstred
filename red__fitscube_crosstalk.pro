@@ -204,7 +204,7 @@ pro red::fitscube_crosstalk, filename  $
   medi = fltarr(Ntuning)
   for ituning = 0, Ntuning-1 do begin
     red_fitscube_getframe, fileassoc, frame, istokes = 0, iscan = 0, ituning = ituning,fitscube_info = fitscube_info
-    medi[ituning] = median(frame)
+    medi[ituning] = median(frame[Nx/2-199:Nx/2+200,Ny/2-199:Ny/2+200])
   endfor                        ; ituning
 
   if n_elements(tuning_selection) gt 0 then begin
