@@ -194,9 +194,9 @@ pro red::fitscube_intensitycorr, filename $
 
   pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave'
   restore, pfile
-  t_calib = prf.time_avg
-  xposure = prf.xposure
-  prefilter_wb = prf.wbint      ; The mean wb intensity from the fitprefilter step.  
+  t_calib = double(prf.time_avg)
+  xposure = double(prf.xposure)
+  prefilter_wb = double(prf.wbint)      ; The mean wb intensity from the fitprefilter step.  
 
   if PRMODE eq 'DISK-CENTER' then begin
 
