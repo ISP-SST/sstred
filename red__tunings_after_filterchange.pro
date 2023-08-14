@@ -92,8 +92,7 @@ endif else begin
   dir = 'data/10:42:01/Chromis-N/'
 endelse
 
-tuns = a -> tunings_after_filterchange(dir)
-
-hprint, tuns
+tuns = a -> tunings_after_filterchange(dir, count = count)
+if count gt 0 then hprint, tuns
 
 end
