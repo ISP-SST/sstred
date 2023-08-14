@@ -142,6 +142,7 @@
 ;
 ;    2020-03-26 : MGL. New keyword timestamps_hmi.
 ;
+;    2023-08-14 : MGL. Use red_download_log for r0 and PIG log files.
 ;
 ;-
 pro red_download, date = date $
