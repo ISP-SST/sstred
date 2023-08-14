@@ -410,84 +410,101 @@ pro red_download, date = date $
   
   ;; R0 log file
   if keyword_set(r0) then begin
-
-    r0file = 'r0.data.full-'+strjoin(datearr, '')
-
-    if ~file_test(logdir+r0file) or keyword_set(overwrite) then begin
-      downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + r0file + '.xz' $
-                              , file = r0file + '.xz' $
-                              , dir = logdir $
-                              , overwrite = overwrite $
-                              , path = pathr0)
-      
-      if ~downloadOK then begin ; also try in subfolder /{year}/
-        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + datearr[0] $
-                                + '/' + r0file + '.xz' $
-                                , file = r0file + '.xz' $
-                                , dir = logdir $
-                                , overwrite = overwrite $
-                                , path = pathr0) 
-      endif
-      
-      if downloadOK then begin
-        spawn, 'cd '+logdir+'; xz -df '+file_basename(pathr0)
-        file_delete, pathr0, /allow_nonexistent
-
-        ;; Where did the uncompressed file end up?
-        pathr0 = logdir + file_basename(pathr0,'.xz')
-      endif
-
-    endif else pathr0 = logdir + r0file
-
+    red_download_log, 'r0', isodate, logdir $
+                      , localpath = pathr0 $                      
+                      , status = status
   endif
 
-  
   ;; PIG log file
   if keyword_set(pig) then begin
-    pigfile = 'rmslog_guidercams'
+    red_download_log, 'pig', isodate, logdir $
+                      , localpath = pathpig $                      
+                      , status = status
+  endif
+  
 
-    if ~file_test(logdir+pigfile+'_'+isodate+'_converted') then begin
-      
-      DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + isodate $
-                              + '/' + pigfile $
-                              , file = pigfile+'_'+isodate $
-                              , dir = logdir $
-                              , overwrite = overwrite $
-                              , path = pathpig)
-
-      if ~DownloadOK then begin
-        dotdate = strjoin(datearr, '.')
-        DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate $
-                                + '/' + pigfile $
-                                , file = pigfile+'_'+isodate $
-                                , dir = logdir $
-                                , overwrite = overwrite $
-                                , path = pathpig)     
-      endif
-
-      if DownloadOK then begin
-        ;; We actually want the logfile converted to time and x/y
-        ;; coordinates (in arcseconds).
-        pathpig += '_converted'
-        if ~file_test(pathpig) then begin
-          print, 'red_download : Converting PIG log file...'
-          rdx_convertlog, logdir+pigfile+'_'+isodate, logdir+pigfile+'_'+isodate+'_converted' $
-                          , dx=31.92, dy=14.81 $
-                          , rotation=84.87, scale=4.935, average=16
-        endif else begin
-          print, 'red_download : Converted PIG log file already exists.'
-        endelse
-      endif else begin
-        ;; We tried to download but failed. So any existing files may
-        ;; be corrupt or not correspond to the current state.
-        if pathpig ne '' then begin
-          file_delete, pathpig, /allow_nonexistent
-          file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
-          pathpig = ''
-        endif
-      endelse
-    endif else pathpig = logdir+pigfile+'_'+isodate+'_converted'
-  endif 
+;
+;  
+;  ;; R0 log file
+;  if keyword_set(r0) then begin
+;
+;    r0file = 'r0.data.full-'+strjoin(datearr, '')
+;
+;    if ~file_test(logdir+r0file) or keyword_set(overwrite) then begin
+;      downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + r0file + '.xz' $
+;                              , file = r0file + '.xz' $
+;                              , dir = logdir $
+;                              , overwrite = overwrite $
+;                              , path = pathr0)
+;      
+;      if ~downloadOK then begin ; also try in subfolder /{year}/
+;        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/R0/' + datearr[0] $
+;                                + '/' + r0file + '.xz' $
+;                                , file = r0file + '.xz' $
+;                                , dir = logdir $
+;                                , overwrite = overwrite $
+;                                , path = pathr0) 
+;      endif
+;      
+;      if downloadOK then begin
+;        spawn, 'cd '+logdir+'; xz -df '+file_basename(pathr0)
+;        file_delete, pathr0, /allow_nonexistent
+;
+;        ;; Where did the uncompressed file end up?
+;        pathr0 = logdir + file_basename(pathr0,'.xz')
+;      endif
+;
+;    endif else pathr0 = logdir + r0file
+;
+;  endif
+;
+;  
+;  ;; PIG log file
+;  if keyword_set(pig) then begin
+;    pigfile = 'rmslog_guidercams'
+;
+;    if ~file_test(logdir+pigfile+'_'+isodate+'_converted') then begin
+;      
+;      DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + isodate $
+;                              + '/' + pigfile $
+;                              , file = pigfile+'_'+isodate $
+;                              , dir = logdir $
+;                              , overwrite = overwrite $
+;                              , path = pathpig)
+;
+;      if ~DownloadOK then begin
+;        dotdate = strjoin(datearr, '.')
+;        DownloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/' + dotdate $
+;                                + '/' + pigfile $
+;                                , file = pigfile+'_'+isodate $
+;                                , dir = logdir $
+;                                , overwrite = overwrite $
+;                                , path = pathpig)     
+;      endif
+;
+;      if DownloadOK then begin
+;        ;; We actually want the logfile converted to time and x/y
+;        ;; coordinates (in arcseconds).
+;        pathpig += '_converted'
+;        if ~file_test(pathpig) then begin
+;          print, 'red_download : Converting PIG log file...'
+;          rdx_convertlog, logdir+pigfile+'_'+isodate, logdir+pigfile+'_'+isodate+'_converted' $
+;                          , dx=31.92, dy=14.81 $
+;                          , rotation=84.87, scale=4.935, average=16
+;        endif else begin
+;          print, 'red_download : Converted PIG log file already exists.'
+;        endelse
+;      endif else begin
+;        ;; We tried to download but failed. So any existing files may
+;        ;; be corrupt or not correspond to the current state.
+;        if pathpig ne '' then begin
+;          file_delete, pathpig, /allow_nonexistent
+;          file_delete, pathpig + '_' + isodate + '_converted', /allow_nonexistent
+;          pathpig = ''
+;        endif
+;      endelse
+;    endif else pathpig = logdir+pigfile+'_'+isodate+'_converted'
+;  endif 
   
   ;; Turret log file
 
