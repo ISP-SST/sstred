@@ -196,7 +196,7 @@ pro red_logdata, date, time $
       isodate = red_strreplace((strsplit(Ts, ' ', /extract))[0], '.', '-', n = 2)
       date = isodate
     endif else begin
-      print, 'sst_logdata : No date given.'
+      print, 'red_logdata : No date given.'
       date = stregex(getenv('PWD'),'[12][0-9][0-9][0-9][-.][0-1][0-9][-.][0-3][0-9]' $
                      , /extract)
       if date eq '' then begin
@@ -249,7 +249,7 @@ pro red_logdata, date, time $
   endif else begin
     ;; No explicit time info given.
     Ntimes = 0
-    print, 'sst_logdata : No time info given.'
+    print, 'red_logdata : No time info given.'
     print, '              Will return data for time coordinates in r0 log file'
     print, '              if keyword_set(r0), else time coordinates in PIG file.'
   endelse
