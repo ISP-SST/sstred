@@ -59,6 +59,8 @@
 ; 
 ;  2021-08-23 : MGL. Make it into a method.
 ; 
+;  2023-08-14 : MGL. Recognize also mosaic data.
+; 
 ;-
 function crisp2::raw_search, dir $
                              , count = count $
@@ -131,12 +133,35 @@ function crisp2::raw_search, dir $
                                  + '_*.fits'
       endelse
       istring++
-    endfor
-  endfor 
+    endfor                      ; istate
+  endfor                        ; iscan
   
   files = red_file_search(searchstrings, dir, count = count)
-  
-  return, files
 
+  if count gt 0 || isflats then return, files
+
+  ;; If we didn't find any files, this might be a mosaic science data
+  ;; directory (not flats). Then the file names have an extra "mosNN"
+  ;; tag.
+  
+  ;; Construct alternate search strings
+  searchstrings = strarr(Nstrings)
+  istring = 0
+  for iscan = 0, Nscans-1 do begin
+    for istate = 0, Nstates-1 do begin
+      ;; Typical name: sst_camXXXI_00002_0002076_mos01_5896_5896_+0092_lc4.fits
+      searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                               + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                               + 'mos[0-9][0-9]_' $
+                               + prefilters $
+                               + '_*.fits'
+      istring++
+    endfor                      ; istate
+  endfor                        ; iscan
+  
+  files = red_file_search(searchstrings, dir, count = count)
+
+  return, files
+  
 end
 

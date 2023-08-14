@@ -59,6 +59,8 @@
 ; 
 ;  2021-08-23 : MGL. Make it into a method.
 ; 
+;  2023-08-14 : MGL. Recognize also mosaic data.
+; 
 ;-
 function chromis::raw_search, dir $
                               , count = count $
@@ -111,7 +113,6 @@ function chromis::raw_search, dir $
   Nstates = n_elements(fpi_states)
 
   ;; Construct search strings
-  ;; Typical file name: sst_camXXX_00013_0009375_wheel00002_hrz33621.fits
   Nstrings = Nscans * Nstates
   searchstrings = strarr(Nstrings)
   istring = 0
@@ -135,9 +136,10 @@ function chromis::raw_search, dir $
         if iswb and isflats then begin
           searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
                                    + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
-                                   + 'wheel0000[0-9]' $ ; Will have to change when new file naming scheme is implemented
+                                   + 'wheel0000[0-9]' $ 
                                    + '.fits'
         endif else begin
+          ;; Typical file name: sst_camXXX_00013_0009375_wheel00002_hrz33621.fits
           searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
                                    + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
                                    + fpi_states[istate] $
@@ -150,6 +152,33 @@ function chromis::raw_search, dir $
 
   files = red_file_search(searchstrings, dir, count = count)
   
+  if count gt 0 || isflats || self.isodate lt '2022-11-03' then return, files
+
+  ;; If we didn't find any files, this might be a mosaic science data
+  ;; directory (not flats). Then the file names have an extra "mosNN"
+  ;; tag. Mosaic data were not implemented before CHROMIS file names
+  ;; were switched from wheel/nrz tags to proper filter and tuning
+  ;; tags.
+
+  
+  ;; Construct alternate search strings
+  searchstrings = strarr(Nstrings)
+  istring = 0
+  for iscan = 0, Nscans-1 do begin
+    for istate = 0, Nstates-1 do begin
+      ;; Typical name: sst_camXXXI_00002_0002076_mos01_5896_5896_+0092_lc4.fits
+      searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
+                               + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
+                               + 'mos[0-9][0-9]_' $
+                               + prefilters $
+                               + '_*.fits'
+      istring++
+    endfor                      ; istate
+  endfor                        ; iscan
+  
+  files = red_file_search(searchstrings, dir, count = count)
+
   return, files
+  
 
 end

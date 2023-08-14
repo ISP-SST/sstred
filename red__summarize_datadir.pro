@@ -23,6 +23,8 @@
 ; 
 ;   2019-08-07 : MGL. First version.
 ; 
+;   2023-08-14 : MGL. Recognize also mosaic data.
+; 
 ;-
 pro red::summarize_datadir, dirs
 
@@ -34,7 +36,7 @@ pro red::summarize_datadir, dirs
 
   top_flatdir = file_dirname((*self.flat_dir)[0])
   top_datadir = file_dirname((*self.data_dirs)[0])
-
+  
   if n_elements(dirs) eq 0 then begin
     
     use_dirs = available_dirs
@@ -83,7 +85,7 @@ pro red::summarize_datadir, dirs
     camNB = (cams[where(strmatch(cams,'*-[NTR]'), Nnbcam)])[0]
 
     instrument = strupcase((strsplit(camWB, '-', /extract))[0])
-
+    
     if Nnbcam gt 0 then begin
       ;; All NB files
       files = self -> raw_search(use_dirs[idir] + '/' + camNB, count = Nfiles)
@@ -95,7 +97,7 @@ pro red::summarize_datadir, dirs
     ;; Get header info 
     hdr0 = red_readhead(files[0])
     hdrN = red_readhead(files[-1])
-
+    
     time_beg = (strsplit(fxpar(hdr0, 'DATE-BEG'), 'T', /extract))[1]
     time_end = (strsplit(fxpar(hdrN, 'DATE-END'), 'T', /extract))[1] ; Note: from last file!
     red_append, output, 'Started : ' + time_beg
@@ -151,15 +153,27 @@ pro red::summarize_datadir, dirs
         ulc = states0[uniq(states0.lc, sort(states0.lc))].lc
         Nlc = n_elements(ulc)
       endif else Nlc = 0
-
       red_append, output, 'Nstates: ' + strtrim(Nstates, 2)
+
+      ;; Mosaic data?
+      pos = strpos(file_basename(files[-1]), '_mos')
+      if pos ne -1 then begin
+        Nmos = long(strmid(file_basename(files[-1]), pos+4, 2))+1
+        red_append, output, 'Ntiles: ' + strtrim(Nmos, 2)
+      endif else begin
+        Nmos = 1
+      endelse
+      
       if Nlc gt 0 then begin
         red_append, output, 'Nlc : '+strtrim(Nlc, 2)
         red_append, output, 'Polarization states: '+strjoin(strtrim(long(ulc), 2), ', ')
       endif
-      red_append, output, 'Nstates x Nscans = ' + strtrim(Nstates*Nscans, 2)      
+      red_append, output, 'Nstates x Nscans = ' + strtrim(Nstates*Nscans, 2)
+      if Nmos gt 1 then begin
+        red_append, output, 'Nstates x Nscans x Ntiles = ' + strtrim(Nstates*Nscans*Nmos, 2)
+      endif
       red_append, output, ' '
- 
+      
       ufullstat = states0[indx].fullstate 
       if Nlc le 1 then begin
         ustat = states0[indx].prefilter + '_' + states0[indx].tuning
@@ -187,7 +201,7 @@ pro red::summarize_datadir, dirs
             Nexp += fxpar(hdr, 'NAXIS3') >1
           endfor                ; isfile
         endif
-        
+        Nexp /= Nmos            ; Divide by number of mosaic tiles
 
         case instrument of
           'CHROMIS' : begin
