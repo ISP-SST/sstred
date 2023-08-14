@@ -31,8 +31,13 @@
 ;
 ;     offs : in, type=integer, default=57
 ;
-;        integer removes pixel from the Y-dimension of
+;        Integer removes pixel from the Y-dimension of
 ;        the screen so compensates for the menubar and so on.
+;
+;     opt : in, optional, type=boolean 
+;
+;        Do a histogram optimization on the intensity limits.
+;
 ;
 ;     reuse : in, optional, type=boolean
 ;
