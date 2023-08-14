@@ -285,7 +285,7 @@ pro red::download, overwrite = overwrite $
   endif
     
   ;; linedefs
-  if keyword_set(linedefs) AND (min(where(*self.cameras eq 'Chromis-N')) ne -1) then begin
+  if keyword_set(linedefs) && (min(where(*self.cameras eq 'Chromis-N')) ne -1) then begin
     dotdate = strjoin(datearr, '.')
     ldpath = 'http://www.sst.iac.es/Logfiles/CHROMIS/linedef/'
     downloadOK = red_geturl(ldpath , contents=ldfiles )
