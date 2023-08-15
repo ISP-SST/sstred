@@ -362,7 +362,7 @@ pro red::fitscube_intensitycorr, filename $
     ;; between prefilterfit and data collection. Use the ratio
     ;; of (WB intensity)/(exposure time) for interpolated times
     ;; of calibration data and cube data.
-    intratio = intcalib / ints
+    intratio = replicate(intcalib, Ntuning, Nscans) / ints
 
     
 ;    oldcorrection = 1d / wcTMEAN
