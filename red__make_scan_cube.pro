@@ -473,7 +473,9 @@ pro red::make_scan_cube, dir $
       ;; Crop the cavity map to the FOV of the momfbd-restored images.
       mr = momfbd_read(wbgfiles[0],/nam)
       cmap1 = red_crop_as_momfbd(cmap1, mr)
-    endif
+    endif else begin
+      cmap1 = cmap1[xx0:xx1,yy0:yy1]
+    endelse
     
     ;; Get the orientation right.
     cmap1 = red_rotate(cmap1, direction)
@@ -663,11 +665,37 @@ pro red::make_scan_cube, dir $
       dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
     endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
 
-    if file_test(dir+'/fov_mask.fits') then begin
-      fov_mask = readfits(dir+'/fov_mask.fits')
+    spl = strsplit(wfiles[0],'/',/extract)
+    cw = where(strmatch(spl,'*cfg*'))
+    cfg_dir=strjoin(spl[0:cw],'/')
+    if file_test(cfg_dir+'/fov_mask.fits') then begin    
+      fov_mask = readfits(cfg_dir+'/fov_mask.fits')
       if self.filetype eq 'MOMFBD' then begin
-        fov_mask = red_crop_as_momfbd(fov_mask, mr)    
-      endif
+        mr = momfbd_read(wfiles[0], /nam)
+        fov_mask = red_crop_as_momfbd(fov_mask, mr)
+      endif else begin          ; get cropping from cfg file      
+        cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+                   string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+        cfg = redux_readcfg(cfg_file)
+        num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+        margin = num_points/8
+        sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+        if cnt gt 0 then begin
+          sim_xy = rdx_str2ints(sim_xy)
+          indx = indgen(n_elements(sim_xy)/2)*2
+          indy = indx+1
+          sim_x = sim_xy[indx]
+          sim_y = sim_xy[indy]   
+        endif else begin
+          sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+          sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+        endelse
+        xx0 = min(sim_x) + margin - num_points/2 
+        xx1 = max(sim_x) - margin + num_points/2 - 1
+        yy0 = min(sim_y) + margin - num_points/2 
+        yy1 = max(sim_y) - margin + num_points/2 - 1
+        fov_mask = fov_mask[xx0:xx1,yy0:yy1]
+      endelse
       fov_mask = red_rotate(fov_mask, direction)
     endif
     
