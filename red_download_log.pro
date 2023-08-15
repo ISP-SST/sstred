@@ -154,7 +154,7 @@ pro red_download_log, instrument, date, outdir $
         if file_test(downloadpath) then begin
           rdx_convertlog, downloadpath, localpath, average=16 $
 ;                          , dx=31.92, dy=14.81, rotation=84.87, scale=4.935
-                          dx=20.24, dy=18.35, scale=4.31830, rotation = 84.599 
+                          , dx=20.24, dy=18.35, scale=4.31830, rotation = 84.599 
           ;; Switched to dx,dy,scale parameters averaged from this
           ;; year's limb calibrations by Pit on 2 Aug 2023. Also
           ;; switched to rotation parameter used in the PIG/turret
