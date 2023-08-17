@@ -305,7 +305,7 @@ pro red::make_scan_cube, dir $
   
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
-  if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
+  if ~(n_elements(scannos) gt 0 && string(scannos) eq '*') then begin
     if n_elements(scannos) gt 0 then begin
       ;; Selected a subset through the scannos keyword
       uscans = red_expandrange(string(scannos))
@@ -927,6 +927,7 @@ pro red::make_scan_cube, dir $
             nbrim = red_stretch(temporary(nbrim), grid1)
           endif
           nbim += (nbtim + nbrim) / 2.
+          if n_elements(fov_mask) gt 0 then nbim *= fov_mask
 
           red_fitspar_getdates, nbthdr $
                                 , date_beg = date_beg $
