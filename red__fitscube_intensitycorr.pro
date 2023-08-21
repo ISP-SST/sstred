@@ -431,8 +431,8 @@ pro red::fitscube_intensitycorr, filename $
 
   ;; Apply the corrections  
   print, 'Intensity corrections at beginning/end of your cube are: ', $
-         string(xpratio*intcalib/red_evalexpr(fitexpr, t_cube_beg/3600, pp), format='(f6.2)'), ' / ', $
-         string(xpratio*intcalib/red_evalexpr(fitexpr, t_cube_end/3600, pp), format='(f6.2)')
+         string(correction[0], format='(f6.2)'), ' / ', $
+         string(correction[-1], format='(f6.2)')
 
 ;  ;; Does correction have the correct dimensions?
 ;  help, correction
