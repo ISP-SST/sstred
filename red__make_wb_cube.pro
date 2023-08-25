@@ -550,9 +550,19 @@ pro red::make_wb_cube, dirs $
   ;; De-rotate images in the cube, has to be done before we can
   ;; calculate the alignment
   bg = median(cub[*,*,0])
-  for iscan = 0L, Nscans -1 do begin
+  maxangle = max(abs(ang))
+  ff=[maxangle,0,0,0,0,reform(ang)]
+  dum = red_rotation(cub[*,*,0], full=ff $
+                     , ang[0], 0, 0, background = bg, nthreads=nthreads)
+  nd = size(dum,/dim)
+  nx = nd[0]
+  ny = nd[1]
+  cub = fltarr([nd, Nscans])
+  cub[*,*,0] = dum
+  for iscan = 1L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
-    cub[*,*,iscan] = red_rotation(cub[*,*,iscan], ang[iscan], nthreads=nthreads, background = bg)
+    cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
+                     , ang[iscan], 0, 0, background = bg, nthreads=nthreads)
   endfor                        ; iscan
 
   ;; Align cube
@@ -591,7 +601,7 @@ pro red::make_wb_cube, dirs $
     roiobject_in -> setproperty, name = 'Default'
     
     ;; Fire up the XROI GUI.
-    dispim = bytscl(red_histo_opt(total(cub, 3)))
+    dispim = bytscl(red_histo_opt(cub[*,*,0]+cub[*,*,-1]))
     xroi, dispim, regions_in = [roiobject_in], regions_out = roiobject, /block $
           , tools = ['Translate-Scale', 'Rectangle'] $
           , title = 'Modify or define alignment ROI'
@@ -642,8 +652,8 @@ pro red::make_wb_cube, dirs $
       mr = momfbd_read(wfiles[0], /nam)
       fov_mask = red_crop_as_momfbd(fov_mask, mr)
     endif else begin ; get cropping from cfg file      
-      cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
-                 string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+      cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wstates[0].prefilter+'_'+$
+                 string(wstates[0].scannumber,format='(I05)')+'.cfg'
       cfg = redux_readcfg(cfg_file)
       num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
       margin = num_points/8
