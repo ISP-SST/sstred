@@ -151,14 +151,14 @@ pro red::fitscube_video, infile $
     retall
   endif
 
-  if n_elements(format) eq 0 then format = 'mp4'
+  if n_elements(format) eq 0 then format = 'mov'
   case format of
     'avi' : extension = format
     'mp4' : extension = format
-    'mov' : extension = format
     else  : extension = 'mp4'
   end
   if n_elements(video_fps) eq 0 then video_fps = 5
+  if n_elements(bit_rate) eq 0 then bit_rate = 40000
   if n_elements(video_codec) eq 0 then video_codec = 'mjpeg'
 
   ;; Gamma and color settings
@@ -393,20 +393,22 @@ pro red::fitscube_video, infile $
 
   
   ;; Write the video
+  file_delete, outdir + '/' + outfile, /allow
   write_video, outdir + '/' + outfile $
                , rgbcube $
                , video_fps = video_fps $
                , video_codec = video_codec $
                , bit_rate = bit_rate 
 
-;  if format eq 'mov' then begin
-;    ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
-;    mname = outdir + '/' + red_strreplace(outfile, '.'+extension,'.'+format)
-;    spawn, 'ffmpeg -n -i "' + outdir + '/' + outfile $
-;           + '" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "' $
-;           + mname + '"'
-;    spawn, 'rm "' + outdir  + '/' + outfile + '"'
-;  endif
+  if format eq 'mov' then begin
+    ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago     
+    mname = outdir + '/' + red_strreplace(outfile, '.'+extension,'.'+format)
+    file_delete,mname, /allow
+    spawn, 'ffmpeg -n -i "' + outdir + '/' + outfile $
+           + '" -c:v libx264 -preset slow -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -crf 26 -tune grain "' $
+           + mname + '"'
+    file_delete, outdir + '/' + outfile
+  endif
   
 end
 
