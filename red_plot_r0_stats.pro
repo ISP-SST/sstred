@@ -25,20 +25,22 @@
 ; 
 ; :Keywords:
 ; 
+;   ismos : in, optional, type=boolean
 ;   
-;   
-;   
+;     This is a mosaic directory, plot for tiles rather than scans.
 ; 
+;   pname : in, optional, type=string
+;
+;     File name in which to save the plot.
 ; 
 ; :History:
 ; 
-; 
-; 
-; 
-; 
+;   2023-08-28 : MGL. New keyword ismos.
 ; 
 ;-
-pro red_plot_r0_stats, states, pname = pname
+pro red_plot_r0_stats, states $
+                       , ismos = ismos $
+                       , pname = pname
 
   inam = red_subprogram(/low, calling = inam1)
 
@@ -46,8 +48,7 @@ pro red_plot_r0_stats, states, pname = pname
 
   ;; Find first and last files
   tmp = max(states.framenumber, mxl, subscript_min=mnl)
-
-
+  
   ;; From header
   h0 = red_readhead(states[mnl].filename)
   date_obs = strsplit(fxpar(h0, 'DATE-OBS'), 'T', /extract)
@@ -58,8 +59,18 @@ pro red_plot_r0_stats, states, pname = pname
   ;; From states
   upref = states(uniq(states.prefilter, sort(states.prefilter))).prefilter
   Npref = n_elements(upref)
-  uscan = states[uniq(states.scannumber,sort(states.scannumber))].scannumber
-  Nscans = n_elements(uscan)
+
+  if keyword_set(ismos) then begin
+    Nscans = 1
+    amos = reform((stregex(states.filename, 'mos([0-9][0-9])', /extract, /subexpr))[1, *])
+    umos = amos[uniq(amos,sort(amos))]
+    Nmos = n_elements(umos)
+    Npoints = Nmos
+  endif else begin
+    uscan = states[uniq(states.scannumber,sort(states.scannumber))].scannumber
+    Nscans = n_elements(uscan)
+    Npoints = Nscans
+  endelse
   
   ;; Download the r0 log file 
   red_logdata, isodate, r0time, r0 = r0data, /use_r0_time
@@ -72,61 +83,74 @@ pro red_plot_r0_stats, states, pname = pname
   
   title = instrument + ' ' + strjoin(upref, ',') + ' ' + isodate + ' ' + timestamp
 
+  
+  
   ;; Arrays to hold the stats
-  tmin = dblarr(Nscans)
-  tmax = dblarr(Nscans)
-  r0_8x8_min    = fltarr(Nscans)
-  r0_8x8_mean   = fltarr(Nscans)
-  r0_8x8_median = fltarr(Nscans)
-  r0_8x8_max    = fltarr(Nscans)
-  r0_24x24_min    = fltarr(Nscans)
-  r0_24x24_mean   = fltarr(Nscans)
-  r0_24x24_median = fltarr(Nscans)
-  r0_24x24_max    = fltarr(Nscans)
+  tmin = dblarr(Npoints)
+  tmax = dblarr(Npoints)
+  r0_8x8_min    = fltarr(Npoints)
+  r0_8x8_mean   = fltarr(Npoints)
+  r0_8x8_median = fltarr(Npoints)
+  r0_8x8_max    = fltarr(Npoints)
+  r0_24x24_min    = fltarr(Npoints)
+  r0_24x24_mean   = fltarr(Npoints)
+  r0_24x24_median = fltarr(Npoints)
+  r0_24x24_max    = fltarr(Npoints)
 
-  for iscan = 0L, Nscans-1 do begin
+  for ipoint = 0L, Npoints-1 do begin
     
     ;; Time
-    indx = where(states.scannumber eq uscan[iscan])
+    if keyword_set(ismos) then begin
+      indx = where(amos eq umos[ipoint])
+    endif else begin
+      indx = where(states.scannumber eq uscan[ipoint])
+    end
     tmp = max(states[indx].framenumber, mxl, subscript_min=mnl)
 
     hmn = red_readhead(states[indx[mnl]].filename)
-    tmin[iscan] = red_time2double((strsplit(fxpar(hmn, 'DATE-BEG'), 'T', /extract))[1])
+    tmin[ipoint] = red_time2double((strsplit(fxpar(hmn, 'DATE-BEG'), 'T', /extract))[1])
     hmx = red_readhead(states[indx[mxl]].filename)
-    tmax[iscan] = red_time2double((strsplit(fxpar(hmx, 'DATE-END'), 'T', /extract))[1])
+    tmax[ipoint] = red_time2double((strsplit(fxpar(hmx, 'DATE-END'), 'T', /extract))[1])
 
     ;; Statistics
-    indx = where(r0time ge tmin[iscan] and r0time le tmax[iscan], Nmatch)
+    indx = where(r0time ge tmin[ipoint] and r0time le tmax[ipoint], Nmatch)
     if Nmatch gt 0 then begin
       if size(r0data, /n_dim) eq 2 then begin
-        r0_24x24_min[iscan]    = min(r0data[0, indx])    
-        r0_24x24_mean[iscan]   = mean(r0data[0, indx])   
-        r0_24x24_median[iscan] = median(r0data[0, indx]) 
-        r0_24x24_max[iscan]    = max(r0data[0, indx])    
-        r0_8x8_min[iscan]      = min(r0data[1, indx])    
-        r0_8x8_mean[iscan]     = mean(r0data[1, indx])   
-        r0_8x8_median[iscan]   = median(r0data[1, indx]) 
-        r0_8x8_max[iscan]      = max(r0data[1, indx])    
+        r0_24x24_min[ipoint]    = min(r0data[0, indx])    
+        r0_24x24_mean[ipoint]   = mean(r0data[0, indx])   
+        r0_24x24_median[ipoint] = median(r0data[0, indx]) 
+        r0_24x24_max[ipoint]    = max(r0data[0, indx])    
+        r0_8x8_min[ipoint]      = min(r0data[1, indx])    
+        r0_8x8_mean[ipoint]     = mean(r0data[1, indx])   
+        r0_8x8_median[ipoint]   = median(r0data[1, indx]) 
+        r0_8x8_max[ipoint]      = max(r0data[1, indx])    
       endif else begin
-        r0_24x24_min[iscan]    = min(r0data[indx])    
-        r0_24x24_mean[iscan]   = mean(r0data[indx])   
-        r0_24x24_median[iscan] = median(r0data[indx]) 
-        r0_24x24_max[iscan]    = max(r0data[indx])    
+        r0_24x24_min[ipoint]    = min(r0data[indx])    
+        r0_24x24_mean[ipoint]   = mean(r0data[indx])   
+        r0_24x24_median[ipoint] = median(r0data[indx]) 
+        r0_24x24_max[ipoint]    = max(r0data[indx])    
       endelse
     endif
     
-  endfor                        ; iscan
+  endfor                        ; ipoint
 
+  if keyword_set(ismos) then begin
+    xtitle = 'tile #'
+    xrange = [-0.1, Nmos-1+0.1]
+  endif else begin
+    xtitle = 'scan #'
+    xrange =  [min(states.scannumber), max(states.scannumber)]
+  endelse 
   cgwindow, 'cgplot', /nodata, [0], [0] $
-            , xrange =  [min(states.scannumber), max(states.scannumber)] $
+            , xrange = xrange $
             , yrange = [0, r0max] $
-            , xtitle = 'scan #', ytitle = 'r$\sub0$ / 1 m' $
+            , xtitle = xtitle, ytitle = 'r$\sub0$ / 1 m' $
             , xstyle = 8 
 
   ;; Add a time axis on top
   
   L = red_gen_timeaxis([min(tmin), max(tmax)])
-
+  
   cgwindow, /add, 'cgaxis', xaxis = 1 $
             , /xstyle $
             , xrange = [min(tmin), max(tmax)] $
@@ -136,30 +160,41 @@ pro red_plot_r0_stats, states, pname = pname
 
   statscolors = ['green', 'red', 'blue', 'cyan']
   statslines = [0, 1]
-  
-  xpoly = [uscan, reverse(uscan), uscan[0]]
 
+  if keyword_set(ismos) then begin
+    xpoints = long(umos)
+    xpoly = long([umos, reverse(umos), umos[0]])
+  endif else begin
+    xpoints = uscan
+    xpoly = [uscan, reverse(uscan), uscan[0]]
+  endelse
+
+
+  
+  stop
+  
   ypoly = [r0_24x24_min, reverse(r0_24x24_max), r0_24x24_min[0]]
   cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Light Gray'
 
   ypoly = [r0_8x8_min, reverse(r0_8x8_max), r0_8x8_min[0]]
   cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Pale Goldenrod'
 
-  cgwindow, /add, /over, 'cgplot', uscan, r0_8x8_mean $
+  cgwindow, /add, /over, 'cgplot', xpoints, r0_8x8_mean $
             , linestyle = statslines[0], color = statscolors[1]
-  cgwindow, /add, /over, 'cgplot', uscan, r0_8x8_median $
+  cgwindow, /add, /over, 'cgplot', xpoints, r0_8x8_median $
             , linestyle = statslines[0], color = statscolors[2]
-  cgwindow, /add, /over, 'cgplot', uscan, r0_24x24_mean $
+  cgwindow, /add, /over, 'cgplot', xpoints, r0_24x24_mean $
             , linestyle = statslines[1], color = statscolors[1]
-  cgwindow, /add, /over, 'cgplot', uscan, r0_24x24_median $
+  cgwindow, /add, /over, 'cgplot', xpoints, r0_24x24_median $
             , linestyle = statslines[1], color = statscolors[2]
 
-
-  delta = 5
-  for ii = delta, uscan[-1]-1, delta do begin
-    cgwindow, /add, /over, 'cgplot', [ii, ii], !y.crange, color = 'gray', linestyle = 1
-  endfor
-
+  if ~ismos then begin
+    delta = 5
+    for ii = delta, uscan[-1]-1, delta do begin
+      cgwindow, /add, /over, 'cgplot', [ii, ii], !y.crange, color = 'gray', linestyle = 1
+    endfor
+  endif
+  
   cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
             , title = ['mean', 'median'], colors = statscolors[[1, 2]]
 
