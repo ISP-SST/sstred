@@ -114,23 +114,29 @@ pro red_plot_r0_stats, states $
 
     ;; Statistics
     indx = where(r0time ge tmin[ipoint] and r0time le tmax[ipoint], Nmatch)
-    if Nmatch gt 0 then begin
-      if size(r0data, /n_dim) eq 2 then begin
-        r0_24x24_min[ipoint]    = min(r0data[0, indx])    
-        r0_24x24_mean[ipoint]   = mean(r0data[0, indx])   
-        r0_24x24_median[ipoint] = median(r0data[0, indx]) 
-        r0_24x24_max[ipoint]    = max(r0data[0, indx])    
-        r0_8x8_min[ipoint]      = min(r0data[1, indx])    
-        r0_8x8_mean[ipoint]     = mean(r0data[1, indx])   
-        r0_8x8_median[ipoint]   = median(r0data[1, indx]) 
-        r0_8x8_max[ipoint]      = max(r0data[1, indx])    
-      endif else begin
-        r0_24x24_min[ipoint]    = min(r0data[indx])    
-        r0_24x24_mean[ipoint]   = mean(r0data[indx])   
-        r0_24x24_median[ipoint] = median(r0data[indx]) 
-        r0_24x24_max[ipoint]    = max(r0data[indx])    
-      endelse
-    endif
+    if Nmatch eq 0 then begin
+      ;; There might not be any r0 values during the exposure of one
+      ;; tile. In that case, pic the closest one.
+      tt = (tmax[ipoint]+tmin[ipoint])/2.
+      diff = abs(r0time - tt)
+      tmp = min(diff, indx)
+    endif 
+    if size(r0data, /n_dim) eq 2 then begin
+      r0_24x24_min[ipoint]    = min(r0data[0, [indx]])    
+      r0_24x24_mean[ipoint]   = mean(r0data[0, [indx]])   
+      r0_24x24_median[ipoint] = median(r0data[0, [indx]]) 
+      r0_24x24_max[ipoint]    = max(r0data[0, [indx]])    
+      r0_8x8_min[ipoint]      = min(r0data[1, [indx]])    
+      r0_8x8_mean[ipoint]     = mean(r0data[1, [indx]])   
+      r0_8x8_median[ipoint]   = median(r0data[1, [indx]]) 
+      r0_8x8_max[ipoint]      = max(r0data[1, [indx]])    
+    endif else begin
+      r0_24x24_min[ipoint]    = min(r0data[[indx]])    
+      r0_24x24_mean[ipoint]   = mean(r0data[[indx]])   
+      r0_24x24_median[ipoint] = median(r0data[[indx]]) 
+      r0_24x24_max[ipoint]    = max(r0data[[indx]])    
+    endelse
+    
     
   endfor                        ; ipoint
 
