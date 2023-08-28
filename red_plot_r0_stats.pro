@@ -168,10 +168,6 @@ pro red_plot_r0_stats, states $
     xpoints = uscan
     xpoly = [uscan, reverse(uscan), uscan[0]]
   endelse
-
-
-  
-  stop
   
   ypoly = [r0_24x24_min, reverse(r0_24x24_max), r0_24x24_min[0]]
   cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Light Gray'
