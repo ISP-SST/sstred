@@ -186,6 +186,8 @@
 ;                (imported from other part of the pipeline).
 ;
 ;   2023-05-30 : MGL. New keyword filter_change.
+;
+;   2023-08-28 : MGL. Adaptations for mosaic data.
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -507,12 +509,17 @@ pro red::quicklook, align = align $
     
     self -> extractstates, files, states
 
-
-    
+    ;; If this is a mosaic directory we should 1) not select best
+    ;; scan, because there is only one, 2) make images of all tiles,
+    ;; 3) not make video, 4) make sure we get a sensibe r0 plot.
+    ismos = strmatch(files[0], '*mos00*')
+       
     nsc = max(states.scannumber)
-    if ~keyword_set(filter_change) && nsc lt min_nscan then begin
+    if ~keyword_set(filter_change) && nsc lt min_nscan && ~ismos then begin
       ;; Ignore short datasets (likely disk center intensity
       ;; calibrations) unless the filter_change keyword is set.
+      ;; But allow short data sets in the "filter_change" mode and for
+      ;; mosaic data.
       fn = states[0].filename
       date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract)
       timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
@@ -537,11 +544,12 @@ pro red::quicklook, align = align $
       pname += '.pdf'
 
       if keyword_set(overwrite) || ~file_test(outdir+pname) then begin
-        red_plot_r0_stats, states, pname = outdir+pname
+        red_plot_r0_stats, states, pname = outdir+pname, ismos = ismos
       endif
       
     endif
 
+    
     if keyword_set(only_plot_r0) then continue     
 
     ustat = ustat2
@@ -592,461 +600,574 @@ pro red::quicklook, align = align $
       namout += '_' + timestamp
       namout += '_' + pref $
                 + '_' + states[sel[0]].tuning
-      print, inam + ' : Cube '+namout
-      
-     if keyword_set(neuralnet) then namout += '_NN' 
-      if keyword_set(mtf_deconvolve) then namout += '_MTF'
-      if keyword_set(cube_save) then begin
-         cubnam = namout +  '.fits'
-         contrastnam = namout + '_contrast.fits'
-      endif
-      namout += '.' + extension
 
-      if ~keyword_set(overwrite) && file_test(outdir+namout) then continue
+      if ismos then begin
 
-      print, inam + ' : saving to folder -> '+outdir 
-      
-      dim = (fxpar(red_readhead(files[sel[0]]),'NAXIS*'))[0:1]
-      x0 = 0
-      x1 = dim[0] - 1
-      y0 = 0
-      y1 = dim[1] - 1
-      case n_elements(clip) of
-        0 : begin
-          x0 += 50
-          x1 -= 50
-          y0 += 10
-          y1 -= 10
-        end
-        1 : begin
-          x0 += clip
-          x1 -= clip
-          y0 += clip
-          y1 -= clip
-        end
-        4 : begin
-          x0 += clip[0]
-          x1 -= clip[1]
-          y0 += clip[2]
-          y1 -= clip[3]
-        end
-        else : stop
-      endcase
-      
-      ;; RGB cube
-      cube = fltarr(dim[0], dim[1], Nexp <Nexp_available, Nscans)
-      best_contrasts = fltarr(Nscans)
-      time_avg = strarr(Nscans)
-      
-      if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
-         mask = red_cleanmask(gg ne 0)
+        ;; Mosaic directory: no video, save images for all tiles.
+        Nmos = Nsel
+        umos = reform((stregex(files[sel], 'mos([0-9][0-9])', /extract, /subexpr))[1, *])
+        
+        for imos = 0, Nmos-1 do begin
 
-      for iscan = 0L, Nscans -1 do begin
+          hdr = red_readhead(files[sel[imos]])
+          red_fitspar_getdates, hdr, date_avg = date_avg
+          date_avg = red_strreplace(date_avg, 'T', ' ')
+          date_avg = (strsplit(date_avg,'.',/extr))[0] ; No decimal seconds
+          
+          ims = red_readdata(files[sel[imos]])
+          dim = size(ims, /dim)
+          if n_elements(dim) eq 2 then Nframes = 1 else Nframes = dim[2]
 
-        red_progressbar, iscan, Nscans, 'Read and select files', /predict
+          if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
+             mask = red_cleanmask(gg ne 0)
 
-        self -> selectfiles, files = files, states = states $
-                             , ustat = ustat[istate] $
-                             , scan = uscan[iscan] $
-                             , selected = sel2
+          ;; Do dark and gain  correction.
+          for iframe = 0, Nframes-1 do begin
+            ims[*, *, iframe] -= dd
+            ims[*, *, iframe] *= gg
 
-        docontinue = 0
-        case n_elements(sel2) of
+            if  strmatch(cam,'*W*') then $
+               im = red_fillpix(ims[*, *, iframe], nthreads=nthreads) $
+            else $
+               im = red_fillpix(ims[*, *, iframe], mask=mask, nthreads=nthreads)
+
+            idx1 = where(im eq 0.0, Nwhere, complement = idx, Ncomplement = Nnowhere)
+            if Nwhere gt 0 && Nnowhere gt 0 then im[idx1] = median(im[idx])
+
+;            if(keyword_set(x_flip)) then im = reverse(temporary(im), 1)
+;            if(keyword_set(y_flip)) then im = reverse(temporary(im), 2)
+;
+            ims[*, *, iframe] = im
+
+          endfor                ; iframe
+
+          x0 = 0
+          x1 = dim[0] - 1
+          y0 = 0
+          y1 = dim[1] - 1
+          case n_elements(clip) of
+            0 : begin
+              x0 += 50
+              x1 -= 50
+              y0 += 10
+              y1 -= 10
+            end
+            1 : begin
+              x0 += clip
+              x1 -= clip
+              y0 += clip
+              y1 -= clip
+            end
+            4 : begin
+              x0 += clip[0]
+              x1 -= clip[1]
+              y0 += clip[2]
+              y1 -= clip[3]
+            end
+            else : stop
+          endcase
+
+          im = ims[*, *, 0]     ; Select best image?
+          ;; if ~keyword_set(no_histo_opt) then im = red_histo_opt(im)
+          im = bytscl(im)
+
+          ;; Add annotations and make the rgb cube
+          thisDevice = !D.Name
+          set_plot, 'Z'
+          device, Set_Resolution = [x1-x0+1, y1-y0+1] $
+                  , Z_Buffer = 0 $
+                  , Set_Pixel_Depth = 24 $
+                  , Decomposed=0 $
+                  , set_font="Helvetica" $
+                  , /tt_font
+          !P.font = 1
+
+
+          erase
+          tv, im[x0:x1, y0:y1]
+
+
+
+          
+          ;; Annotation
+          annstring = date_avg $ ;self.isodate $ ;+ ' ' + time_avg[iscan] $
+                      + '   ' + ustat[istate] $
+                      + '   tile : ' + umos[imos] 
+          cgtext, [0.01], [0.95], annstring $
+                  , /normal, charsize=3., color=textcolor, font=1
+          
+          rgbcube = tvrd(/true)
+          set_plot,'X'
+          
+          ;; Make jpeg images.
+          jname = outdir+namout+'_mos'+umos[imos] + '.jpg'
+
+          file_delete, jname, /allow
+          write_jpeg, jname, rgbcube, q = 100, /true
+
+          print, jname
+
+
+        endfor                  ; imos
+        
+
+      endif else begin
+        
+        print, inam + ' : Cube '+namout
+        
+        if keyword_set(neuralnet) then namout += '_NN' 
+        if keyword_set(mtf_deconvolve) then namout += '_MTF'
+        if keyword_set(cube_save) then begin
+          cubnam = namout +  '.fits'
+          contrastnam = namout + '_contrast.fits'
+        endif
+        namout += '.' + extension
+
+        if ~keyword_set(overwrite) && file_test(outdir+namout) then continue
+
+        print, inam + ' : saving to folder -> '+outdir 
+        
+        dim = (fxpar(red_readhead(files[sel[0]]),'NAXIS*'))[0:1]
+        x0 = 0
+        x1 = dim[0] - 1
+        y0 = 0
+        y1 = dim[1] - 1
+        case n_elements(clip) of
           0 : begin
-            if iscan ne Nscans-1 then stop
-            ;; The last scan does not include this state. Make the
-            ;; movie one frame shorter!
-            Nscans--
-            cube = cube[*, *, 0:Nscans-1]
-            best_contrasts = best_contrasts[0:Nscans-1]
-            time_avg = time_avg[0:Nscans-1]
-            docontinue = 1
+            x0 += 50
+            x1 -= 50
+            y0 += 10
+            y1 -= 10
           end
           1 : begin
-            ;; Just a single file
-            ims = float(red_readdata(states[sel2[0]].filename))
-            Nframes = (fxpar(red_readhead(files[sel2[0]]),'NAXIS3') >1)
-            red_fitspar_getdates, red_readhead(states[sel2[0]].filename), date_avg = date_avg
+            x0 += clip
+            x1 -= clip
+            y0 += clip
+            y1 -= clip
           end
-          else : begin
-            ;; Multiple files, e.g. CHROMIS WB. Or any CRISP camera.
-            ;; (Ideally, you should be able to call red_readdata with
-            ;; multiple file names and if would do the right thing.
-            ;; Needs to produce a combined header, too!)
-            Nframes = 0L
-            red_fitspar_getdates, red_readhead(states[sel2[0]].filename), date_avg = date_avg
-            for ifile = 0, n_elements(sel2)-1 do begin
-              Nframes += (fxpar(red_readhead(files[sel2[ifile]]),'NAXIS3') >1)
-            endfor              ; ifile
-            ims = fltarr(dim[0], dim[1], Nframes)
-            iframe = 0
-            for ifile = 0, n_elements(sel2)-1 do begin
-;              print, 'Read '+file_basename(files[sel2[ifile]])
-              ims[0, 0, iframe] = red_readdata(files[sel2[ifile]], head = head)
-              iframe += (fxpar(head,'NAXIS3') >1)
-            endfor              ; ifile
+          4 : begin
+            x0 += clip[0]
+            x1 -= clip[1]
+            y0 += clip[2]
+            y1 -= clip[3]
           end
+          else : stop
         endcase
-        if docontinue then continue ; Not allowed in the case statement
 
-        time_avg[iscan] = (strsplit((strsplit(date_avg, 'T', /extract))[1], '.', /extract))[0]
-
-        contrasts = fltarr(Nframes)
-
+        ;; RGB cube
+        cube = fltarr(dim[0], dim[1], Nexp <Nexp_available, Nscans)
+        best_contrasts = fltarr(Nscans)
+        time_avg = strarr(Nscans)
         
-        ;; Do dark and gain (and possibly backscatter) correction.
-        for iframe = 0, Nframes-1 do begin
-          ims[*, *, iframe] -= dd
-          if DoBackscatter then begin ; Backscatter if needed
-            ims[*, *, iframe] = rdx_descatter(ims[*, *, iframe] $
-                                              , bgt, Psft $
-                                              , verbose = verbose $
-                                              , nthreads = nthreads)
-          endif
-          ims[*, *, iframe] *= gg
+        if (n_elements(gg) ne 1) && (gainstatus eq 0) then $
+           mask = red_cleanmask(gg ne 0)
 
-          if  strmatch(cam,'*W*') then $
-             im = red_fillpix(ims[*, *, iframe], nthreads=nthreads) $
-          else $
-             im = red_fillpix(ims[*, *, iframe], mask=mask, nthreads=nthreads)
+        for iscan = 0L, Nscans -1 do begin
 
-          idx1 = where(im eq 0.0, Nwhere, complement = idx, Ncomplement = Nnowhere)
-          if Nwhere gt 0 && Nnowhere gt 0 then im[idx1] = median(im[idx])
+          red_progressbar, iscan, Nscans, 'Read and select files', /predict
 
-          if(keyword_set(x_flip)) then im = reverse(temporary(im), 1)
-          if(keyword_set(y_flip)) then im = reverse(temporary(im), 2)
+          self -> selectfiles, files = files, states = states $
+                               , ustat = ustat[istate] $
+                               , scan = uscan[iscan] $
+                               , selected = sel2
 
-          ims[*, *, iframe] = im
+          docontinue = 0
+          case n_elements(sel2) of
+            0 : begin
+              if iscan ne Nscans-1 then stop
+              ;; The last scan does not include this state. Make the
+              ;; movie one frame shorter!
+              Nscans--
+              cube = cube[*, *, 0:Nscans-1]
+              best_contrasts = best_contrasts[0:Nscans-1]
+              time_avg = time_avg[0:Nscans-1]
+              docontinue = 1
+            end
+            1 : begin
+              ;; Just a single file
+              ims = float(red_readdata(states[sel2[0]].filename))
+              Nframes = (fxpar(red_readhead(files[sel2[0]]),'NAXIS3') >1)
+              red_fitspar_getdates, red_readhead(states[sel2[0]].filename), date_avg = date_avg
+            end
+            else : begin
+              ;; Multiple files, e.g. CHROMIS WB. Or any CRISP camera.
+              ;; (Ideally, you should be able to call red_readdata with
+              ;; multiple file names and if would do the right thing.
+              ;; Needs to produce a combined header, too!)
+              Nframes = 0L
+              red_fitspar_getdates, red_readhead(states[sel2[0]].filename), date_avg = date_avg
+              for ifile = 0, n_elements(sel2)-1 do begin
+                Nframes += (fxpar(red_readhead(files[sel2[ifile]]),'NAXIS3') >1)
+              endfor            ; ifile
+              ims = fltarr(dim[0], dim[1], Nframes)
+              iframe = 0
+              for ifile = 0, n_elements(sel2)-1 do begin
+;              print, 'Read '+file_basename(files[sel2[ifile]])
+                ims[0, 0, iframe] = red_readdata(files[sel2[ifile]], head = head)
+                iframe += (fxpar(head,'NAXIS3') >1)
+              endfor            ; ifile
+            end
+          endcase
+          if docontinue then continue ; Not allowed in the case statement
 
-        endfor                  ; iframe
-        
-        for iframe = 0, Nframes-1 do contrasts[iframe] $
-           = stddev(ims[x0:x1, y0:y1, iframe])/mean(ims[x0:x1, y0:y1, iframe])
+          time_avg[iscan] = (strsplit((strsplit(date_avg, 'T', /extract))[1], '.', /extract))[0]
+
+          contrasts = fltarr(Nframes)
+
+          
+          ;; Do dark and gain (and possibly backscatter) correction.
+          for iframe = 0, Nframes-1 do begin
+            ims[*, *, iframe] -= dd
+            if DoBackscatter then begin ; Backscatter if needed
+              ims[*, *, iframe] = rdx_descatter(ims[*, *, iframe] $
+                                                , bgt, Psft $
+                                                , verbose = verbose $
+                                                , nthreads = nthreads)
+            endif
+            ims[*, *, iframe] *= gg
+
+            if  strmatch(cam,'*W*') then $
+               im = red_fillpix(ims[*, *, iframe], nthreads=nthreads) $
+            else $
+               im = red_fillpix(ims[*, *, iframe], mask=mask, nthreads=nthreads)
+
+            idx1 = where(im eq 0.0, Nwhere, complement = idx, Ncomplement = Nnowhere)
+            if Nwhere gt 0 && Nnowhere gt 0 then im[idx1] = median(im[idx])
+
+            if(keyword_set(x_flip)) then im = reverse(temporary(im), 1)
+            if(keyword_set(y_flip)) then im = reverse(temporary(im), 2)
+
+            ims[*, *, iframe] = im
+
+          endfor                ; iframe
+          
+          for iframe = 0, Nframes-1 do contrasts[iframe] $
+             = stddev(ims[x0:x1, y0:y1, iframe])/mean(ims[x0:x1, y0:y1, iframe])
+
+          if keyword_set(neuralnet) then begin
+
+            ;; Deconvolve the data with a neural net.
+
+            ;; Select the highest contrast frames
+            nn_indx = reverse(sort(contrasts))
+            cube[0, 0, 0, iscan] = ims[*, *, nn_indx[0:(Nexp <Nexp_available)-1]]
+            
+          endif else begin
+
+            if size(ims, /n_dim) eq 3 then begin
+              ;; Select the best frame
+              ;; Possible improvement: base this selection on wb contrast?
+              mx = max(contrasts, ml)
+              im = ims[*, *, ml] 
+              best_contrasts[iscan] = contrasts[ml]
+            endif else begin
+              im = ims 
+              best_contrasts[iscan] = contrasts[0]
+            endelse
+            
+          endelse
+          
+          cube[*, *, 0, iscan] = im
+
+        endfor                  ; iscan
 
         if keyword_set(neuralnet) then begin
 
-          ;; Deconvolve the data with a neural net.
+          if ~file_test('~reduc/mfbdNN/encdec_sst.py') then begin
+            print, inam + ' : You do not seem to have the neural net software installed.'
+            return          
+          endif
+          
+          ;; Run the neural net
+          ts = cgTimeStamp(11, RANDOM_DIGITS=12, /UTC)
+          tmpoutfile = '/tmp/quick_raw'+ts+'.fits'
+          tmpinfile = '/tmp/quick_deconvolved'+ts+'.fits'
 
-          ;; Select the highest contrast frames
-          nn_indx = reverse(sort(contrasts))
-          cube[0, 0, 0, iscan] = ims[*, *, nn_indx[0:(Nexp <Nexp_available)-1]]
+          ;; Make the command to process the data with the NN.
+          nn_cmd = 'cd ~reduc/mfbdNN/ ; python encdec_sst.py -i '+tmpoutfile+' -o '+tmpinfile 
+          
+          ;; Write the data to disk
+          red_mkhdr, hhh, cube
+          anchor = 'DATE'
+          red_fitsaddkeyword, anchor = anchor, hhh $
+                              , 'WAVELNTH' $
+                              , float((strsplit(ustat[istate],'_',/extract))[0]) / 10. $
+                              , 'Wavelength based on prefilter'
+          red_fitsaddkeyword, anchor = anchor, hhh, 'WAVEUNIT', -9 $
+                              , 'Wavelength unit 10^WAVEUNIT m = nm'
+          red_fitsaddkeyword, anchor = anchor, hhh, 'INSTRUME', instrument $
+                              , 'CRISP or CHROMIS data?'
+          writefits, tmpoutfile, cube, hhh
+
+
+          
+          ;; Spawn the NN command and wait for it to terminate
+          print, 'Do neural net deconvolution of '+strtrim(Nscans, 2)+' scans:'
+          tic
+          spawn, nn_cmd
+          toc
+          
+          ;; Read data back into the same cube variable, which will now
+          ;; have one dimension less.
+          cube = readfits(tmpinfile, /silent)
+
+          file_delete, tmpinfile, tmpoutfile
+
+          ;; Caclulate the contrasts of the deconvolved images
+          for iscan = 0, Nscans-1 do begin
+            best_contrasts[iscan] = stddev(cube[x0:x1, y0:y1, iscan])/mean(cube[x0:x1, y0:y1, iscan])
+          endfor
           
         endif else begin
 
-          if size(ims, /n_dim) eq 3 then begin
-            ;; Select the best frame
-            ;; Possible improvement: base this selection on wb contrast?
-            mx = max(contrasts, ml)
-            im = ims[*, *, ml] 
-            best_contrasts[iscan] = contrasts[ml]
-          endif else begin
-            im = ims 
-            best_contrasts[iscan] = contrasts[0]
-          endelse
+          ;; Remove the extra dimension
+          cube = reform(cube, dim[0], dim[1], Nscans)
           
         endelse
         
-        cube[*, *, 0, iscan] = im
+        if keyword_set(mtf_deconvolve) then begin
 
-      endfor                    ; iscan
+          ;; This part needs to 1) not use non-pipeline subprograms and
+          ;; 2) be modified to support aspect ratios != 1.
+          
+          ;; caminfo = red_camerainfo(detector)
+          
+          lambda = states[sel2[0]].tun_wavelength ; Wavelength [m]
+          telescope_d = 0.97d
+          arcsecperpix = self.image_scale
+          ;; pixelsize = caminfo.pixelsize
+          sz = max(dim)
+          
+          ;;   F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
+          ;;   Q_number = F_number * lambda/pixelsize
 
-      if keyword_set(neuralnet) then begin
+          Q_number = lambda/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.)) 
+          
+          LimFreq = sz / Q_number
+          rc = LimFreq/2.d
+          r = round(rc)+2
+          r = sz/4
 
-        if ~file_test('~reduc/mfbdNN/encdec_sst.py') then begin
-          print, inam + ' : You do not seem to have the neural net software installed.'
-          return          
-        endif
-        
-        ;; Run the neural net
-        ts = cgTimeStamp(11, RANDOM_DIGITS=12, /UTC)
-        tmpoutfile = '/tmp/quick_raw'+ts+'.fits'
-        tmpinfile = '/tmp/quick_deconvolved'+ts+'.fits'
-
-        ;; Make the command to process the data with the NN.
-        nn_cmd = 'cd ~reduc/mfbdNN/ ; python encdec_sst.py -i '+tmpoutfile+' -o '+tmpinfile 
-        
-        ;; Write the data to disk
-        red_mkhdr, hhh, cube
-        anchor = 'DATE'
-        red_fitsaddkeyword, anchor = anchor, hhh $
-                            , 'WAVELNTH' $
-                            , float((strsplit(ustat[istate],'_',/extract))[0]) / 10. $
-                            , 'Wavelength based on prefilter'
-        red_fitsaddkeyword, anchor = anchor, hhh, 'WAVEUNIT', -9 $
-                            , 'Wavelength unit 10^WAVEUNIT m = nm'
-        red_fitsaddkeyword, anchor = anchor, hhh, 'INSTRUME', instrument $
-                            , 'CRISP or CHROMIS data?'
-        writefits, tmpoutfile, cube, hhh
-
-
-        
-        ;; Spawn the NN command and wait for it to terminate
-        print, 'Do neural net deconvolution of '+strtrim(Nscans, 2)+' scans:'
-        tic
-        spawn, nn_cmd
-        toc
-        
-        ;; Read data back into the same cube variable, which will now
-        ;; have one dimension less.
-        cube = readfits(tmpinfile, /silent)
-
-        file_delete, tmpinfile, tmpoutfile
-
-        ;; Caclulate the contrasts of the deconvolved images
-        for iscan = 0, Nscans-1 do begin
-          best_contrasts[iscan] = stddev(cube[x0:x1, y0:y1, iscan])/mean(cube[x0:x1, y0:y1, iscan])
-        endfor
-        
-      endif else begin
-
-        ;; Remove the extra dimension
-        cube = reform(cube, dim[0], dim[1], Nscans)
-        
-      endelse
-      
-      if keyword_set(mtf_deconvolve) then begin
-
-        ;; This part needs to 1) not use non-pipeline subprograms and
-        ;; 2) be modified to support aspect ratios != 1.
-        
-        ;; caminfo = red_camerainfo(detector)
-        
-        lambda = states[sel2[0]].tun_wavelength ; Wavelength [m]
-        telescope_d = 0.97d
-        arcsecperpix = self.image_scale
-        ;; pixelsize = caminfo.pixelsize
-        sz = max(dim)
-        
-        ;;   F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
-        ;;   Q_number = F_number * lambda/pixelsize
-
-        Q_number = lambda/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.)) 
-        
-        LimFreq = sz / Q_number
-        rc = LimFreq/2.d
-        r = round(rc)+2
-        r = sz/4
-
-        x_coord = (findgen(sz, sz) mod sz)-sz/2
-        y_coord = transpose(x_coord)
-        r_coord = sqrt(x_coord*x_coord+y_coord*y_coord)
-        pupil = r_coord lt limfreq/2
-        ap = r_coord lt limfreq
-        
+          x_coord = (findgen(sz, sz) mod sz)-sz/2
+          y_coord = transpose(x_coord)
+          r_coord = sqrt(x_coord*x_coord+y_coord*y_coord)
+          pupil = r_coord lt limfreq/2
+          ap = r_coord lt limfreq
+          
 ;        pupil = double(aperture(2*r, rc))
 ;        ap = double(aperture(2*r, 2*rc))
 
-        psf = abs(fft(pupil))^2 / total(pupil)
-        mtf = double(fft(psf, /inv))
-        mtf = mtf/mtf[0, 0]
+          psf = abs(fft(pupil))^2 / total(pupil)
+          mtf = double(fft(psf, /inv))
+          mtf = mtf/mtf[0, 0]
 
-        ;; Make a window in an array the size of a padded (in case of
-        ;; aspect ratio != 1) image.
-        w = fltarr(sz, sz)
-        w[0:dim[0]-1, 0:dim[1]-1] = hanning(dim[0], dim[1])
-        dimdiff = dim[0] - dim[1] 
+          ;; Make a window in an array the size of a padded (in case of
+          ;; aspect ratio != 1) image.
+          w = fltarr(sz, sz)
+          w[0:dim[0]-1, 0:dim[1]-1] = hanning(dim[0], dim[1])
+          dimdiff = dim[0] - dim[1] 
 
-        ;; Deconvolve and caclulate the contrasts of the deconvolved images
-        for iscan = 0, Nscans-1 do begin
-          
-          red_progressbar, iscan, Nscans, 'MTF deconvolution.'
-          im = double(cube[*, *, iscan])
-          md = median(im)
-          im = im - md
+          ;; Deconvolve and caclulate the contrasts of the deconvolved images
+          for iscan = 0, Nscans-1 do begin
+            
+            red_progressbar, iscan, Nscans, 'MTF deconvolution.'
+            im = double(cube[*, *, iscan])
+            md = median(im)
+            im = im - md
 
-          if dimdiff ne 0 then begin
-            im2 = fltarr(sz, sz)
-            im2[0:dim[0]-1, 0:dim[1]-1] = im
-            im = im2
-          endif
-              
-          fim = fft(w*im)       ; FFT of windowed image
+            if dimdiff ne 0 then begin
+              im2 = fltarr(sz, sz)
+              im2[0:dim[0]-1, 0:dim[1]-1] = im
+              im = im2
+            endif
+            
+            fim = fft(w*im)     ; FFT of windowed image
+            
+            ;; Make a low-pass noise filter
+            nl = red_noiselevel(fim, limfreq = limfreq, /Fourier) / sz
+            filt = smooth(abs(shift(fim, sz/2, sz/2))^2,15) / (smooth(abs(shift(fim, sz/2, sz/2))^2,15) + nl^2*4)
+            nl_filt = median(filt(where(~ap))) ; Level outside diffraction limit
+            mask = filt gt nl_filt*2
+            ;; Clean the filter from high-frequency noise contributions
+            x = INDGEN(16*16) MOD 16 + sz/2
+            y = INDGEN(16*16) / 16 + sz/2
+            roiPixels = x + y * sz
+            mindx = region_grow(mask,roipixels,threshold=[0.9,1.1])
+            mask[mindx] = 255
+            mask = mask gt 200
+            filt = shift(smooth(filt*mask, 15), sz/2, sz/2)
+            
+            im = float(fft(filt*(fim/(mtf >1e-3)), /inv)) ; Deconvolved image
+            im /= (w >3e-4)                               ; Undo the windowing
+            
+            cube[0, 0, iscan] = im[0:dim[0]-1, 0:dim[1]-1] + md ; Add the median back
+            best_contrasts[iscan] = stddev(cube[x0:x1, y0:y1, iscan])/mean(cube[x0:x1, y0:y1, iscan])
+            
+          endfor
           
-          ;; Make a low-pass noise filter
-          nl = red_noiselevel(fim, limfreq = limfreq, /Fourier) / sz
-          filt = smooth(abs(shift(fim, sz/2, sz/2))^2,15) / (smooth(abs(shift(fim, sz/2, sz/2))^2,15) + nl^2*4)
-          nl_filt = median(filt(where(~ap))) ; Level outside diffraction limit
-          mask = filt gt nl_filt*2
-          ;; Clean the filter from high-frequency noise contributions
-          x = INDGEN(16*16) MOD 16 + sz/2
-          y = INDGEN(16*16) / 16 + sz/2
-          roiPixels = x + y * sz
-          mindx = region_grow(mask,roipixels,threshold=[0.9,1.1])
-          mask[mindx] = 255
-          mask = mask gt 200
-          filt = shift(smooth(filt*mask, 15), sz/2, sz/2)
-          
-          im = float(fft(filt*(fim/(mtf >1e-3)), /inv)) ; Deconvolved image
-          im /= (w >3e-4)                               ; Undo the windowing
-          
-          cube[0, 0, iscan] = im[0:dim[0]-1, 0:dim[1]-1] + md ; Add the median back
-          best_contrasts[iscan] = stddev(cube[x0:x1, y0:y1, iscan])/mean(cube[x0:x1, y0:y1, iscan])
-          
-        endfor
+        endif
         
-      endif
-      
-      if Nscans gt 3 && ~keyword_set(no_normalize) then begin
-        ;; Normalize intensities
+        if Nscans gt 3 && ~keyword_set(no_normalize) then begin
+          ;; Normalize intensities
 ;        med = median(median(cube, dim = 1), dim = 1)
-        med = fltarr(Nscans)
-        for iscan = 0, Nscans-1 do med[iscan] = median(cube[*, *, iscan])
-        mm = mean(med)
-        cc = poly_fit(findgen(Nscans), med/mm, 2, yfit=yfit)
-        for iscan = 0, Nscans-1 do cube[*,*,iscan] /= yfit[iscan]*mm
-      endif
-      
-      if keyword_set(derotate) || keyword_set(align) || keyword_set(destretch) then begin
-        ;; Derotate images
-        ang = red_lp_angles(time_avg, self.isodate)
-        mang = median(ang)
-        ang -= mang
-        case cam of
-          'Crisp-W' : ang = -ang
+          med = fltarr(Nscans)
+          for iscan = 0, Nscans-1 do med[iscan] = median(cube[*, *, iscan])
+          mm = mean(med)
+          cc = poly_fit(findgen(Nscans), med/mm, 2, yfit=yfit)
+          for iscan = 0, Nscans-1 do cube[*,*,iscan] /= yfit[iscan]*mm
+        endif
+        
+        if keyword_set(derotate) || keyword_set(align) || keyword_set(destretch) then begin
+          ;; Derotate images
+          ang = red_lp_angles(time_avg, self.isodate)
+          mang = median(ang)
+          ang -= mang
+          case cam of
+            'Crisp-W' : ang = -ang
 ;          'Crisp-T' : ang = -ang
-          else :
-        endcase
-        for iscan = 0L, Nscans -1 do begin
-          red_progressbar, iscan, Nscans, 'Derotating images.'
-          cube[*,*,iscan] = red_rotation(cube[*,*,iscan], ang[iscan], nthreads = nthreads)
-        endfor                  ; iscan
-      endif
+            else :
+          endcase
+          for iscan = 0L, Nscans -1 do begin
+            red_progressbar, iscan, Nscans, 'Derotating images.'
+            cube[*,*,iscan] = red_rotation(cube[*,*,iscan], ang[iscan], nthreads = nthreads)
+          endfor                ; iscan
+        endif
 
-      if keyword_set(align) || keyword_set(destretch) then begin
-        ;; Align images
-        
-        ;; Measure image shifts
-        shifts = red_aligncube(cube, 5, /center $ ;, cubic = -0.5 $
-                               , xbd = round(dim[0]*.9) $
-                               , ybd = round(dim[1]*.9) $
-                               , no_display = no_display $
-                               , nthreads = nthreads)
+        if keyword_set(align) || keyword_set(destretch) then begin
+          ;; Align images
+          
+          ;; Measure image shifts
+          shifts = red_aligncube(cube, 5, /center $ ;, cubic = -0.5 $
+                                 , xbd = round(dim[0]*.9) $
+                                 , ybd = round(dim[1]*.9) $
+                                 , no_display = no_display $
+                                 , nthreads = nthreads)
 
-        if Nscans gt 3 then begin
-          ;; Outliers?
-          indx_included = where((abs(shifts[0,*] - median(reform(shifts[0,*]),3)) le maxshift) $
-                                and (abs(shifts[1,*] - median(reform(shifts[1,*]),3)) le maxshift) $
-                                , complement = indx_excluded, Nincluded, Ncomplement = Nexcluded)
-          if Nexcluded gt 0 then begin
-            shifts[0, indx_excluded] = interpol(shifts[0, indx_included], indx_included, indx_excluded)
-            shifts[1, indx_excluded] = interpol(shifts[1, indx_included], indx_included, indx_excluded)
+          if Nscans gt 3 then begin
+            ;; Outliers?
+            indx_included = where((abs(shifts[0,*] - median(reform(shifts[0,*]),3)) le maxshift) $
+                                  and (abs(shifts[1,*] - median(reform(shifts[1,*]),3)) le maxshift) $
+                                  , complement = indx_excluded, Nincluded, Ncomplement = Nexcluded)
+            if Nexcluded gt 0 then begin
+              shifts[0, indx_excluded] = interpol(shifts[0, indx_included], indx_included, indx_excluded)
+              shifts[1, indx_excluded] = interpol(shifts[1, indx_included], indx_included, indx_excluded)
+            endif
           endif
+          
+          ;; Align the cube
+          for iscan = 0, Nscans-1 do begin
+            red_progressbar, iscan, Nscans, 'Applying the shifts.'
+            cube[*, *, iscan] = red_shift_im(cube[*, *, iscan] $
+                                             , shifts[0, iscan] $
+                                             , shifts[1, iscan] $
+                                             , cubic = -0.5 $
+                                             , nthreads = nthreads)
+          endfor                ; iscan
         endif
-        
-        ;; Align the cube
-        for iscan = 0, Nscans-1 do begin
-          red_progressbar, iscan, Nscans, 'Applying the shifts.'
-          cube[*, *, iscan] = red_shift_im(cube[*, *, iscan] $
-                                           , shifts[0, iscan] $
-                                           , shifts[1, iscan] $
-                                           , cubic = -0.5 $
-                                           , nthreads = nthreads)
-        endfor                  ; iscan
-      endif
 
-      if keyword_set(destretch) then begin
+        if keyword_set(destretch) then begin
 
-        ;; Destretch images
-        
-        if n_elements(clips) eq 0 then clips = [12,  6,  3]
-        if n_elements(tiles) eq 0 then tiles = [10, 20, 30]
+          ;; Destretch images
+          
+          if n_elements(clips) eq 0 then clips = [12,  6,  3]
+          if n_elements(tiles) eq 0 then tiles = [10, 20, 30]
 
-        dts = red_time2double(time_avg)
-        if n_elements(tstep) eq 0 then begin
-          tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*]))))
+          dts = red_time2double(time_avg)
+          if n_elements(tstep) eq 0 then begin
+            tstep = fix(round(180. / median(abs(dts[0:Nscans-2] - dts[1:*]))))
+          endif
+          tstep = tstep < (Nscans-1)
+
+          ;; Calculate stretch vectors
+          grid = red_destretch_tseries(cube, 1.0/float(self.image_scale), tiles, clips, tstep, nthreads = nthreads)
+
+          for iscan = 0L, Nscans - 1 do begin
+            red_progressbar, iscan, Nscans, 'Applying the stretches.'
+            cube[*,*,iscan] = red_stretch(cube[*,*,iscan], reform(grid[iscan,*,*,*]))
+          endfor                ; iscan
         endif
-        tstep = tstep < (Nscans-1)
 
-        ;; Calculate stretch vectors
-        grid = red_destretch_tseries(cube, 1.0/float(self.image_scale), tiles, clips, tstep, nthreads = nthreads)
+        if arg_present(cube) then return
+        
+        if ~keyword_set(no_histo_opt) then cube = red_histo_opt(temporary(cube))
 
-        for iscan = 0L, Nscans - 1 do begin
-          red_progressbar, iscan, Nscans, 'Applying the stretches.'
-          cube[*,*,iscan] = red_stretch(cube[*,*,iscan], reform(grid[iscan,*,*,*]))
-        endfor                  ; iscan
-      endif
+        cube = bytscl(cube[x0:x1, y0:y1, *])
+        rgbcube = bytarr(3, x1-x0+1, y1-y0+1, Nscans)
+        
+        ;; Add annotations and make the rgb cube
+        thisDevice = !D.Name
+        set_plot, 'Z'
+        device, Set_Resolution = [x1-x0+1, y1-y0+1] $
+                , Z_Buffer = 0 $
+                , Set_Pixel_Depth = 24 $
+                , Decomposed=0 $
+                , set_font="Helvetica" $
+                , /tt_font
+        !P.font = 1
+        ;; k = 0L
+        for iscan=0, Nscans-1 do begin
 
-      if arg_present(cube) then return
-      
-      if ~keyword_set(no_histo_opt) then cube = red_histo_opt(temporary(cube))
+          erase
+          tv, cube[*,*,iscan]
 
-      cube = bytscl(cube[x0:x1, y0:y1, *])
-      rgbcube = bytarr(3, x1-x0+1, y1-y0+1, Nscans)
-      
-      ;; Add annotations and make the rgb cube
-      thisDevice = !D.Name
-      set_plot, 'Z'
-      device, Set_Resolution = [x1-x0+1, y1-y0+1] $
-              , Z_Buffer = 0 $
-              , Set_Pixel_Depth = 24 $
-              , Decomposed=0 $
-              , set_font="Helvetica" $
-              , /tt_font
-      !P.font = 1
-      ;; k = 0L
-      for iscan=0, Nscans-1 do begin
-
-        erase
-        tv, cube[*,*,iscan]
-
-        ;; Annotation
-        annstring = self.isodate + ' ' + time_avg[iscan] $
-                    + '   ' + ustat[istate] $
-                    + '   scan :' + string(uscan[iscan],format='(I5)') 
-        cgtext, [0.01], [0.95], annstring $
-                , /normal, charsize=3., color=textcolor, font=1
+          ;; Annotation
+          annstring = self.isodate + ' ' + time_avg[iscan] $
+                      + '   ' + ustat[istate] $
+                      + '   scan :' + string(uscan[iscan],format='(I5)') 
+          cgtext, [0.01], [0.95], annstring $
+                  , /normal, charsize=3., color=textcolor, font=1
 
 ;        print, date_avg
 ;        print, time_avg[iscan]
 ;        print, annstring
 ;        stop
-        
-        ;; tvrd(/true) reads an RGB image [3,Nx,Ny]
-        snap2 = tvrd(/true)
+          
+          ;; tvrd(/true) reads an RGB image [3,Nx,Ny]
+          snap2 = tvrd(/true)
 
-        rgbcube[0, 0, 0, iscan] = snap2
+          rgbcube[0, 0, 0, iscan] = snap2
 
-      endfor                    ; iscan
+        endfor                  ; iscan
 
-      if keyword_set(cube_save) then begin
-        writefits,outdir+cubnam,cube
-        writefits, outdir+contrastnam, best_contrasts
-      endif
-      set_plot,'X'
+        if keyword_set(cube_save) then begin
+          writefits,outdir+cubnam,cube
+          writefits, outdir+contrastnam, best_contrasts
+        endif
+        set_plot,'X'
 
-      if ~keyword_set(filter_change) then begin ; Skip making video if only checking for filter change
-        
-        ;; We could write metadata to the video file with the
-        ;; write_video METADATA keyword:
-        ;;
-        ;; METADATA
-        ;; 
-        ;; Set this keyword to a [2, n] element string array denoting n
-        ;; [key, value] pairs of metadata to be written to the file. 
-        ;; 
-        ;; Note: Metadata must be written before any video or audio
-        ;; data.
-        ;;
-        ;; The keys are limited to this set: [album, artist, comment,
-        ;; copyright, genre, title]. We could perhaps use comment,
-        ;; genre, and title.
-        ;;
-        ;; Something like:
-        ;; genre = "SST quicklook movie"
-        ;; title = instrument + date + timestamp + state
-        ;; comment = Things like date when made, pipeline version?
-        metadata = strarr(2, 3)
-        metadata[*, 0] = ['genre', 'SST quicklook movie']
-        metadata[*, 1] = ['title', strjoin([cam $
-                                            , self.isodate $
-                                            , timestamp $
-                                            , pref + '_' + states[sel[0]].tuning $
-                                           ], ' ')]
+        if ~keyword_set(filter_change) then begin ; Skip making video if only checking for filter change
+          
+          ;; We could write metadata to the video file with the
+          ;; write_video METADATA keyword:
+          ;;
+          ;; METADATA
+          ;; 
+          ;; Set this keyword to a [2, n] element string array denoting n
+          ;; [key, value] pairs of metadata to be written to the file. 
+          ;; 
+          ;; Note: Metadata must be written before any video or audio
+          ;; data.
+          ;;
+          ;; The keys are limited to this set: [album, artist, comment,
+          ;; copyright, genre, title]. We could perhaps use comment,
+          ;; genre, and title.
+          ;;
+          ;; Something like:
+          ;; genre = "SST quicklook movie"
+          ;; title = instrument + date + timestamp + state
+          ;; comment = Things like date when made, pipeline version?
+          metadata = strarr(2, 3)
+          metadata[*, 0] = ['genre', 'SST quicklook movie']
+          metadata[*, 1] = ['title', strjoin([cam $
+                                              , self.isodate $
+                                              , timestamp $
+                                              , pref + '_' + states[sel[0]].tuning $
+                                             ], ' ')]
 
-        metadata[*, 2] = ['comment', 'Movie made ' $
-                          + red_timestamp(/utc, /iso) $
-                          + ' UTC' $
-                         ]
+          metadata[*, 2] = ['comment', 'Movie made ' $
+                            + red_timestamp(/utc, /iso) $
+                            + ' UTC' $
+                           ]
 
 
 ;      dims = size(rgbcube, /dim)
@@ -1054,40 +1175,41 @@ pro red::quicklook, align = align $
 
 ;      help, bit_rate, video_fps
 
-        file_delete, outdir+namout, /allow
-        write_video, outdir+namout, rgbcube $
-                     , bit_rate = bit_rate $
-                     , metadata = metadata $
-                     , video_fps = video_fps $
-                     , video_codec = video_codec 
-        
-        if format eq 'mov' then begin
-          ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
-          mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
-          file_delete, mname, /allow_nonexist
-          spawn, 'ffmpeg -n -i "' + outdir + namout $
-                 + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
-                 + mname + '"'
-          file_delete, outdir + namout
+          file_delete, outdir+namout, /allow
+          write_video, outdir+namout, rgbcube $
+                       , bit_rate = bit_rate $
+                       , metadata = metadata $
+                       , video_fps = video_fps $
+                       , video_codec = video_codec 
+          
+          if format eq 'mov' then begin
+            ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
+            mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
+            file_delete, mname, /allow_nonexist
+            spawn, 'ffmpeg -n -i "' + outdir + namout $
+                   + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
+                   + mname + '"'
+            file_delete, outdir + namout
 ;        spawn, 'rm "' + outdir + namout + '"'
 ;        find . -name '*mp4' -exec sh -c 'ffmpeg -n -i "$1" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "${1%.mp4}.mov"' sh {} \ ;
+          endif
+
         endif
-
-      endif
-      
+        
 ;      stop
-      
-      ;; Make a jpeg image of the best frame.
-      if Nscans eq 1 then ml = 0 else mx = max(best_contrasts, ml)
-      jname = outdir+red_strreplace(namout, '.'+extension, '_scan='+strtrim(uscan[ml], 2)+'.jpg')
+        
+        ;; Make a jpeg image of the best frame.
+        if Nscans eq 1 then ml = 0 else mx = max(best_contrasts, ml)
+        jname = outdir+red_strreplace(namout, '.'+extension, '_scan='+strtrim(uscan[ml], 2)+'.jpg')
 
-      file_delete, jname, /allow
-      write_jpeg, jname, rgbcube[*, *, *, ml], q = 100, /true
+        file_delete, jname, /allow
+        write_jpeg, jname, rgbcube[*, *, *, ml], q = 100, /true
 
-      print, outdir+namout
-      print, jname
-      print, strjoin(strtrim(size(cube, /dim), 2), ' x ')
+        print, outdir+namout
+        print, jname
+        print, strjoin(strtrim(size(cube, /dim), 2), ' x ')
 
+      endelse
       
     endfor                      ; istate
   endfor                        ; iset
