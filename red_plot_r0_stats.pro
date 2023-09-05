@@ -82,8 +82,6 @@ pro red_plot_r0_stats, states $
   endif
   
   title = instrument + ' ' + strjoin(upref, ',') + ' ' + isodate + ' ' + timestamp
-
-  
   
   ;; Arrays to hold the stats
   tmin = dblarr(Npoints)
@@ -137,69 +135,91 @@ pro red_plot_r0_stats, states $
       r0_24x24_max[ipoint]    = max(r0data[[indx]])    
     endelse
     
-    
   endfor                        ; ipoint
-
+  
   if keyword_set(ismos) then begin
-    xtitle = 'tile #'
-    xrange = [-0.1, Nmos-1+0.1]
+    xtitle = 'time'
+    xrange = [min(tmin), max(tmax)]
+    dx = xrange[1]-xrange[0]
+    xrange += dx*[-1, 1]*0.05
+    yrange =[0, r0max]
+
+    title = instrument + ' mosaic ' + strjoin(upref, ',') + ' ' + isodate + ' ' + timestamp
+    title = instrument + ' mosaic ' + states[0].tuning + ' ' + isodate + ' ' + timestamp
+
+    xpoints = long(umos)
+    xpoly = long([umos, reverse(umos), umos[0]])
+    
+    cgwindow, 'red_timeplot', xrange, yrange, color=cgcolor('white')-1 $
+              , xrange = xrange $
+              , yrange = yrange $
+              , xtitle=xtitle, ytitle='r$\sub0$ / 1 m', title = title
+
+    colors = ['darkgreen', 'black']
+    
+    cgplot, /add, /over, r0time, r0data[0, *], psym=-16, color=colors[0]
+    cgplot, /add, /over, r0time, r0data[1, *], psym=-16, color=colors[1]
+
+    FOR imos=0, Nmos-1 DO cgplot, /add, /over, tmin[imos]*[1, 1], !y.crange
+    FOR imos=0, Nmos-1 DO cgplot, /add, /over, tmax[imos]*[1, 1], !y.crange
+    
+    FOR imos=0, Nmos-1 DO cgtext, /add, /data, align=0.5 $
+                                  , (tmin[imos]+tmax[imos])/2, 0.01 $
+                                  , strtrim(umos[imos], 2)
+    
+
   endif else begin
     xtitle = 'scan #'
     xrange =  [min(states.scannumber), max(states.scannumber)]
-  endelse 
-  cgwindow, 'cgplot', /nodata, [0], [0] $
-            , xrange = xrange $
-            , yrange = [0, r0max] $
-            , xtitle = xtitle, ytitle = 'r$\sub0$ / 1 m' $
-            , xstyle = 8 
 
-  ;; Add a time axis on top
-  
-  L = red_gen_timeaxis([min(tmin), max(tmax)])
-  
-  cgwindow, /add, 'cgaxis', xaxis = 1 $
-            , /xstyle $
-            , xrange = [min(tmin), max(tmax)] $
-            , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+    cgwindow, 'cgplot', /nodata, [0], [0] $
+              , xrange=xrange $
+              , yrange=[0, r0max] $
+              , xtitle=xtitle, ytitle='r$\sub0$ / 1 m' $
+              , xstyle=8 
 
-  cgtext, mean(!x.crange), !y.crange[1]*.03, title, /data, align = 0.5,/add
-
-  statscolors = ['green', 'red', 'blue', 'cyan']
-  statslines = [0, 1]
-
-  if keyword_set(ismos) then begin
-    xpoints = long(umos)
-    xpoly = long([umos, reverse(umos), umos[0]])
-  endif else begin
+    ;; Add a time axis on top
+    
+    L = red_gen_timeaxis([min(tmin), max(tmax)])
+    
+    cgwindow, /add, 'cgaxis', xaxis=1 $
+              , /xstyle $
+              , xrange=[min(tmin), max(tmax)] $
+              , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
+    
+    cgtext, mean(!x.crange), !y.crange[1]*.03, title, /data, align=0.5, /add
+    
+    statscolors = ['green', 'red', 'blue', 'cyan']
+    statslines = [0, 1]
+    
     xpoints = uscan
     xpoly = [uscan, reverse(uscan), uscan[0]]
+
+    ypoly = [r0_24x24_min, reverse(r0_24x24_max), r0_24x24_min[0]]
+    cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color='Light Gray'
+
+    ypoly = [r0_8x8_min, reverse(r0_8x8_max), r0_8x8_min[0]]
+    cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color='Pale Goldenrod'
+
+    cgwindow, /add, /over, 'cgplot', xpoints, r0_8x8_mean $
+              , linestyle=statslines[0], color=statscolors[1]
+    cgwindow, /add, /over, 'cgplot', xpoints, r0_8x8_median $
+              , linestyle=statslines[0], color=statscolors[2]
+    cgwindow, /add, /over, 'cgplot', xpoints, r0_24x24_mean $
+              , linestyle=statslines[1], color=statscolors[1]
+    cgwindow, /add, /over, 'cgplot', xpoints, r0_24x24_median $
+              , linestyle=statslines[1], color=statscolors[2]
+
+    delta = 5
+    for ii=delta, uscan[-1]-1, delta do begin
+      cgwindow, /add, /over, 'cgplot', [ii, ii], !y.crange, color='gray', linestyle=1
+    endfor
+    
+    cglegend, /add, align=0, location=[.15, .85], linestyle=0 $
+              , title=['mean', 'median'], colors=statscolors[[1, 2]]
+
   endelse
   
-  ypoly = [r0_24x24_min, reverse(r0_24x24_max), r0_24x24_min[0]]
-  cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Light Gray'
-
-  ypoly = [r0_8x8_min, reverse(r0_8x8_max), r0_8x8_min[0]]
-  cgwindow, /add, 'cgcolorfill', xpoly, ypoly, color = 'Pale Goldenrod'
-
-  cgwindow, /add, /over, 'cgplot', xpoints, r0_8x8_mean $
-            , linestyle = statslines[0], color = statscolors[1]
-  cgwindow, /add, /over, 'cgplot', xpoints, r0_8x8_median $
-            , linestyle = statslines[0], color = statscolors[2]
-  cgwindow, /add, /over, 'cgplot', xpoints, r0_24x24_mean $
-            , linestyle = statslines[1], color = statscolors[1]
-  cgwindow, /add, /over, 'cgplot', xpoints, r0_24x24_median $
-            , linestyle = statslines[1], color = statscolors[2]
-
-  if ~ismos then begin
-    delta = 5
-    for ii = delta, uscan[-1]-1, delta do begin
-      cgwindow, /add, /over, 'cgplot', [ii, ii], !y.crange, color = 'gray', linestyle = 1
-    endfor
-  endif
-  
-  cglegend, /add, align = 0, location = [.15, .85], linestyle = 0 $
-            , title = ['mean', 'median'], colors = statscolors[[1, 2]]
-
   if n_elements(pname) eq 0 then begin
     pname = 'dir-analysis/' + 'r0stats_'+ strjoin(upref, ',')+ '_' + isodate + '_' $
             + timestamp $
