@@ -328,7 +328,7 @@ pro red::quicklook, align = align $
     files0 = self -> raw_search(dirs[iset] + '/' + cam, scanno = 0, count = Nfiles)
 
     self -> extractstates, files0, states0
-        
+    
     upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
     Npref = n_elements(upref)
     indx = uniq(states0.tun_wavelength, sort(states0.tun_wavelength))
@@ -356,16 +356,16 @@ pro red::quicklook, align = align $
           prts = strsplit(fn,'[_.]',/extract)
           if strmatch(cam,'*W*') then begin
             if instrument eq 'CHROMIS' then $
-              red_append, pat, '*' + prts[-3] + '*' $
+               red_append, pat, '*' + prts[-3] + '*' $
             else $
-              red_append, pat, '*' +prts[-5] + '*'
+               red_append, pat, '*' +prts[-5] + '*'
           endif else begin
             if instrument eq 'CHROMIS' then $
-              red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+               red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
             else $
-              red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+               red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
           endelse
-        endfor                 ; istate
+        endfor                  ; istate
         use_states = ustat2
         
       end                       ; filter_change
@@ -400,7 +400,7 @@ pro red::quicklook, align = align $
               in = where(wv eq wng)
               red_append, sel_in, sindx[in]
               red_append, ustat2, ustat[sindx[in]]
-           endif else begin
+            endif else begin
               np = n_elements(sindx)
               red_append, ustat2, ustat[sindx[np/4]]
               red_append, ustat2, ustat[sindx[np/2]]
@@ -408,7 +408,7 @@ pro red::quicklook, align = align $
               red_append, sel_in, [sindx[np/4],sindx[np/2],sindx[np/2+np/4]]
             endelse
           endelse
-        endfor                 ; ipref
+        endfor                  ; ipref
 
         states_count = n_elements(ustat2)
         for istate = 0, states_count-1 do begin
@@ -416,16 +416,16 @@ pro red::quicklook, align = align $
           prts = strsplit(fn,'[_.]',/extract)
           if strmatch(cam,'*W*') then begin
             if instrument eq 'CHROMIS' then $
-              red_append, pat, '*' + prts[-3] + '*' $
+               red_append, pat, '*' + prts[-3] + '*' $
             else $
-              red_append, pat, '*' +prts[-5] + '*'
+               red_append, pat, '*' +prts[-5] + '*'
           endif else begin
             if instrument eq 'CHROMIS' then $
-              red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+               red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
             else $
-              red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+               red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
           endelse
-        endfor                 ; istate
+        endfor                  ; istate
         use_states = ustat2
 
       end                       ; core_and_wings
@@ -472,23 +472,23 @@ pro red::quicklook, align = align $
         prts = strsplit(fn,'[_.]',/extract)
         if strmatch(cam,'*W*') then begin
           if instrument eq 'CHROMIS' then $
-            red_append, pat, '*' + prts[-3] + '*' $
+             red_append, pat, '*' + prts[-3] + '*' $
           else $
-            red_append, pat, '*' +prts[-5] + '*'
+             red_append, pat, '*' +prts[-5] + '*'
         endif else begin
           if instrument eq 'CHROMIS' then $
-            red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
+             red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
           else $
-            red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
+             red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
         endelse
-      endfor                 ; istate
+      endfor                    ; istate
       use_states = ustat2      
     endif
 
     if n_elements(scannos) gt 0 then begin
       sc = '*' + string(scannos, format='(I05)')
       for ii=0, Nstates-1 do $
-        red_append, patt, sc + pat[ii]
+         red_append, patt, sc + pat[ii]
       pat = patt
     endif
     files = red_file_search(pat, dirs[iset] + '/' + cam, count = Nfiles)
@@ -563,7 +563,7 @@ pro red::quicklook, align = align $
 
     ustat = ustat2
     Nstates = n_elements(ustat)
-        
+    
     for istate = 0, Nstates-1 do begin
       
       self -> selectfiles, files = files, states = states $
