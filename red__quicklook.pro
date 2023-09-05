@@ -512,8 +512,8 @@ pro red::quicklook, align = align $
     ;; If this is a mosaic directory we should 1) not select best
     ;; scan, because there is only one, 2) make images of all tiles,
     ;; 3) not make video, 4) make sure we get a sensibe r0 plot.
-    ismos = strmatch(files[0], '*mos00*')
-       
+    ismos = strmatch(files[0], '*_mos[0-9]*')
+    
     nsc = max(states.scannumber)
     if ~keyword_set(filter_change) && nsc lt min_nscan && ~ismos then begin
       ;; Ignore short datasets (likely disk center intensity
@@ -537,12 +537,21 @@ pro red::quicklook, align = align $
 
       cgcontrol, /delete, /all
 
-      pname = states[0].camera
-      pname += '_' + 'r0'
-      pname += '_' + self.isodate
-      pname += '_' + timestamp
-      pname += '.pdf'
-
+      if keyword_set(ismos) then begin
+        pname = states[0].camera
+        pname += '_' + 'r0'
+        pname += '_' + self.isodate
+        pname += '_' + timestamp
+        pname += '_' + states[0].prefilter + '_' + states[0].tuning
+        pname += '.pdf'
+      endif else begin
+        pname = states[0].camera
+        pname += '_' + 'r0'
+        pname += '_' + self.isodate
+        pname += '_' + timestamp
+        pname += '.pdf'
+      endelse
+      
       if keyword_set(overwrite) || ~file_test(outdir+pname) then begin
         red_plot_r0_stats, states, pname = outdir+pname, ismos = ismos
       endif
