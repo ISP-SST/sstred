@@ -271,7 +271,7 @@ function red_camerainfo, x
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
                    xsize:5120, $
                    ysize:5120, $
-                   pixelsize:5.86e-6, $
+                   pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2226000', $
                    use:'CRISP', $
                    note:''}
@@ -280,7 +280,7 @@ function red_camerainfo, x
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
                    xsize:5120, $
                    ysize:5120, $
-                   pixelsize:5.86e-6, $
+                   pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2226001', $
                    use:'CRISP', $
                    note:''}
@@ -289,7 +289,7 @@ function red_camerainfo, x
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
                    xsize:5120, $
                    ysize:5120, $
-                   pixelsize:5.86e-6, $
+                   pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2226002', $
                    use:'CRISP', $
                    note:''}
@@ -298,7 +298,7 @@ function red_camerainfo, x
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
                    xsize:5120, $
                    ysize:5120, $
-                   pixelsize:5.86e-6, $
+                   pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2326000', $
                    use:'CRISP', $
                    note:''}
@@ -307,7 +307,7 @@ function red_camerainfo, x
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
                    xsize:5120, $
                    ysize:5120, $
-                   pixelsize:5.86e-6, $
+                   pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2326001', $
                    use:'CRISP', $
                    note:''}
