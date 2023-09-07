@@ -146,7 +146,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
   printf, Clun,'image_scale = 0.044' ; Get from pinhole calibration
-;  printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
+  printf, Clun, 'diversity = 4.0e-3' ; Nominal value for Sep 2023
 
   if keyword_set(calibrations_only) then begin
     printf, Slun, 'a = crisp2red("'+cfgfile+'",/dev)' 
