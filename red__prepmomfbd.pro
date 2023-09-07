@@ -558,8 +558,8 @@ pro red::prepmomfbd, cams = cams $
     ref_head = red_readhead(ref_states[0].filename)
 
     ;; Are these data automatic mosaics?
-    ismos[idir] = strmatch(fxpar(ref_head, 'FILENAME'), '*mos00*')
-    
+    ismos[idir] = strmatch(fxpar(ref_head, 'FILENAME'), '*_mos*')
+
     ;; Pixel size and binning
     pixelsize = ref_caminfo.pixelsize
     nbin = fxpar(ref_head, 'NBIN*', count = Nnbin)
@@ -1029,11 +1029,9 @@ pro red::prepmomfbd, cams = cams $
 
   ;; Call prepmomfbd_mosaic on dirs that are automatic mosaics..
   for idir = 0, n_elements(dirs)-1 do begin
-
     if ismos[idir] then begin
       self -> prepmomfbd_mosaic, dirs=dirs, momfbddir=momfbddir, pref = pref
     end
-
   endfor                        ; idir
 
   
