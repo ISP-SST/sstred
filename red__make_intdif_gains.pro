@@ -193,10 +193,14 @@ pro red::make_intdif_gains, all = all $
             ;; So this is a directory where data were collected in
             ;; automatic mosaic mode. Find out how many mosaic tiles
             ;; there are and call ourself individually for each tile.
-            pos = strpos(file_basename(tmpfiles[-1]), '_mos')
-            Nmos = long(strmid(file_basename(tmpfiles[-1]), pos+4, 2))+1
+;            pos = strpos(file_basename(tmpfiles[-1]), '_mos')
+;            Nmos = long(strmid(file_basename(tmpfiles[-1]), pos+4, 2))+1
+            amos = reform((stregex(tmpfiles, 'mos([0-9][0-9])', /extract, /subexpr))[1, *])
+            umos = amos[uniq(amos,sort(amos))]
+            Nmos = n_elements(umos)
             for imos = 0, Nmos-1 do begin
-              mosaic_tag = 'mos'+string(imos, format = '(i02)')
+              mosaic_tag = 'mos'+umos[imos]
+;              mosaic_tag = 'mos'+string(imos, format = '(i02)')
               self ->  make_intdif_gains, all = all $
                                           , bad = bad $
                                           , cam = cams[icam] $

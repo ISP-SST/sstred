@@ -142,9 +142,10 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
 
             ;; Change FILENAME_TEMPLATE (all channels!) (OBJECT0 not
             ;; needed, mosNN not included in [WD]_nostate file names.
-            if iobject gt 0 && imos gt 0 then begin
+            if iobject gt 0 then begin
               ftemp = redux_cfggetkeyword(cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.CHANNEL0.FILENAME_TEMPLATE')
-              ftemp = red_strreplace(ftemp, 'mos00', 'mos'+mosnums[imos])
+              oldmostag = (reform((stregex(ftemp, '(mos[0-9][0-9])', /extract, /subexpr))[1, *]))[0]
+              ftemp = red_strreplace(ftemp, oldmostag, 'mos'+mosnums[imos])
               redux_cfgaddkeyword, cfg_mos, 'OBJECT'+strtrim(iobject, 2)+'.CHANNEL0.FILENAME_TEMPLATE', ftemp
             endif
 

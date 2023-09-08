@@ -156,7 +156,7 @@ pro red::sum_data_intdif, all = all $
     endif else begin
       files = file_search(dir+ '/' + cams + '/*cam*', count = Nfiles)
     endelse
-    
+      
     if Nfiles eq 0 then begin
       print, inam + ' : ERROR, data folder is empty'
       if keyword_set(debug) then stop else return
@@ -164,12 +164,14 @@ pro red::sum_data_intdif, all = all $
 
     if ~keyword_set(mosaic_tag) && strmatch(file_basename(files[0]), '*_mos[0-9][0-9]_*') then begin
       ;; So this is a directory where data were collected in automatic
-      ;; mosaic mode. Find out how many mosaic tiles there are and
-      ;; call ourself individually for each tile.
-      pos = strpos(file_basename(files[-1]), '_mos')
-      Nmos = long(strmid(file_basename(files[-1]), pos+4, 2))+1
+      ;; mosaic mode. Call ourself recursively for each tile.
+      amos = reform((stregex(files, 'mos([0-9][0-9])', /extract, /subexpr))[1, *])
+      umos = amos[uniq(amos,sort(amos))]
+      Nmos = n_elements(umos)
+;      pos = strpos(file_basename(files[-1]), '_mos')
+;      Nmos = long(strmid(file_basename(files[-1]), pos+4, 2))+1
       for imos = 0, Nmos-1 do begin
-        mosaic_tag = 'mos'+string(imos, format = '(i02)')
+        mosaic_tag = 'mos'+umos[imos]
         self -> sum_data_intdif, all = all $
                                  , link_dir = link_dir $
                                  , mosaic_tag = mosaic_tag $
@@ -183,7 +185,7 @@ pro red::sum_data_intdif, all = all $
                                  , cam = cam $
                                  , verbose = verbose 
       endfor                    ; imos
-      return                    ; Done
+      continue                  ; Done
     endif
     
     ;; Extract states
