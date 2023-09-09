@@ -49,7 +49,31 @@ FUNCTION red_gen_timeaxis, x
   range = ma-mi
   print, 'range:', range
   CASE 1 OF
+    range LE 2:  BEGIN
+      step = 1l
+      minor = 10 
+    END
+    range LE 5:  BEGIN
+      step = 1l
+      minor = 2 
+    END
+    range LE 15:  BEGIN
+      step = 5l
+      minor = 5 
+    END
+    range LE 30:  BEGIN
+      step = 10l
+      minor = 10 
+    END
+    range LE 120:  BEGIN
+      step = 30l
+      minor = 3 
+    END
     range LE 300:  BEGIN
+      step = 60l
+      minor = 6 
+    END
+    range LE 600:  BEGIN
       step = 60l
       minor = 6 
     END
@@ -100,13 +124,44 @@ FUNCTION red_gen_timeaxis, x
   ENDIF
   tickv = (lindgen(ticks+1)+x0)*step
 ;minor = 5
-  IF step EQ 3600 THEN $
-     name = strtrim((tickv/3600) MOD 24, 2) $
-  ELSE $
-     name = strtrim((tickv/3600) MOD 24, 2)+':'+red_nnumber((tickv-tickv/3600*3600)/60, 2)
+;  IF step EQ 3600 THEN $
+;     name = strtrim((tickv/3600) MOD 24, 2) $
+;  ELSE $
+;     name = strtrim((tickv/3600) MOD 24, 2)+':'+red_nnumber((tickv-tickv/3600*3600)/60, 2)
+
+  h = tickv/3600
+  m = (tickv-h*3600)/60
+  s = tickv-h*3600-m*60
+
+  h_tags = strtrim(h MOD 24, 2)
+  m_tags = string(m, format = '(i02)')
+  s_tags = string(s, format = '(i02)')
+  
+  case 1 of
+    step eq 3600 : name = h_tags
+    step ge 60   : name = h_tags + ':' + m_tags
+    else         : name = h_tags + ':' + m_tags + ':' + s_tags
+  endcase 
+
+;  case 1 of
+;    step eq 3600 : name = strtrim((tickv/3600) MOD 24, 2)
+;    step ge 60 : name = strtrim((tickv/3600) MOD 24, 2)+':'+red_nnumber((tickv-tickv/3600*3600)/60, 2)
+;    else : name = strtrim((tickv/3600) MOD 24, 2)+':'+red_nnumber((tickv-tickv/3600*3600)/60, 2)
+;  endcase 
+  
   return, {ticks: ticks, $
            Minor: minor, $
            Tickv: tickv, $
            Name:  name}
 
 END
+
+time = [8.5, 9.8]*3600
+time = [8.45, 8.55]*3600
+time = [8, 8]*3600 + [26.42, 26.44]*60
+print, red_timestring(time)
+
+red_timeplot, time, 0*time+1, yrange = [0, 2]
+
+
+end

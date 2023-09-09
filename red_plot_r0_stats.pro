@@ -155,10 +155,10 @@ pro red_plot_r0_stats, states $
               , yrange = yrange $
               , xtitle=xtitle, ytitle='r$\sub0$ / 1 m', title = title
 
-    colors = ['darkgreen', 'black']
+    colors = ['green', 'black']
     
-    cgplot, /add, /over, r0time, r0data[0, *], psym=-16, color=colors[0]
-    cgplot, /add, /over, r0time, r0data[1, *], psym=-16, color=colors[1]
+    cgplot, /add, /over, r0time, r0data[0, *], color=colors[0]
+    cgplot, /add, /over, r0time, r0data[1, *], color=colors[1]
 
     FOR imos=0, Nmos-1 DO cgplot, /add, /over, tmin[imos]*[1, 1], !y.crange
     FOR imos=0, Nmos-1 DO cgplot, /add, /over, tmax[imos]*[1, 1], !y.crange
