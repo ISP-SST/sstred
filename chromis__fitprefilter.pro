@@ -867,13 +867,13 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       savefile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave'
       save, file=savefile, prf
 
-      file_copy, plotfile $
-                   , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
-                   + '_' + file_basename(dirs) + '_prefilter.pdf'
+      file_copy, /overwrite, plotfile $
+                 , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
+                 + '_' + file_basename(dirs) + '_prefilter.pdf'
 
-      file_copy, savefile $
-                   , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
-                   + '_' + file_basename(dirs) + '_prefilter.idlsave'
+      file_copy, /overwrite, savefile $
+                 , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
+                 + '_' + file_basename(dirs) + '_prefilter.idlsave'
       
     endfor                      ; ipref
 

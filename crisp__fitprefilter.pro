@@ -986,11 +986,11 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         plotfile = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
         cgcontrol, output = plotfile
 
-        file_copy, plotfile $
+        file_copy, /overwrite, plotfile $
                    , self.out_dir + '/prefilter_fits/' + camNB + '_' + upref[ipref] $
                    + '_' + file_basename(dirs) + '_prefilter.pdf'
 
-        file_copy, savefile $
+        file_copy, /overwrite, savefile $
                    , self.out_dir + '/prefilter_fits/' + camNB + '_' + upref[ipref] $
                    + '_' + file_basename(dirs) + '_prefilter.idlsave'
         
