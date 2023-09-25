@@ -48,8 +48,11 @@
 ;   
 ;    weather : out, optional, type=structarr
 ;   
-;       Weather data returned in this variable.   
+;       Weather data returned in this variable.     
 ;   
+;    wfwfs : out, optional, type=structarr
+;   
+;       Wide-field wavefront sensor r0 data returned in this variable.
 ; 
 ; 
 ; :History:
@@ -63,8 +66,7 @@
 ; 
 ;    2017-10-02 : MGL. Check pig data for successful read.
 ; 
-; 
-; 
+;    2023-09-25 : MGL. New keyword wfwfs.
 ; 
 ;-
 pro red_getlog, date $
@@ -73,7 +75,8 @@ pro red_getlog, date $
                 , shabar = shabar $
                 , turret = turret $
                 , temp = temp $
-                , weather = weather
+                , weather = weather $
+                , wfwfs = wfwfs
 
   ;; Make sure we have the date in ISO format
   isodate = (strsplit(date_conv(red_strreplace(date, '.', '-', n = 2), 'F'), 'T', /extract))[0]
@@ -87,7 +90,45 @@ pro red_getlog, date $
   CDF_EPOCH, epoch, 1970, 1, 1, 0, /COMPUTE_EPOCH    ; In milliseconds
   CDF_EPOCH, midnight, yr, mo, dy, 0, /COMPUTE_EPOCH ; In milliseconds
   midnight = (midnight-epoch)/1000.d                 ; Unix system time for midnight today.
+  
+  ;; WFWFS - Wide-field wavefront sensor r0 data
+  if arg_present(wfwfs) then begin
 
+    print, 'red_getlog : Get WFWFS data'
+    ;; Columns: timestamp "triangle" (5s average) "triangle" (30s
+    ;; average) "triangle" (180s average) "triangle_sub" (5s average)
+    ;; "triangle_sub" (30s average) "triangle_sub" (180s average)
+    red_download, date = isodate, /wfwfs, pathwfwfs = wfwfsfile
+    if wfwfsfile then begin
+      wfwfstemplate = { VERSION:1.0 $
+                        , DATASTART: 7 $
+                        , DELIMITER: 32B $
+                        , MISSINGVALUE: !VALUES.F_NAN $
+                        , COMMENTSYMBOL: "#" $
+                        , FIELDCOUNT: 7 $
+                        , FIELDTYPES: [5, 4, 4, 4, 4, 4, 4] $
+                        , FIELDNAMES: [ "time", "r0_5s", "r0_30s", "r0_180s" $
+                                        , "r0_sub_5s", "r0_sub_30s", "r0_sub_180s"] $
+                        , FIELDLOCATIONS: [0L, 18L, 27L, 36L, 45L, 54L, 63L] $
+                        , FIELDGROUPS: [0L, 1L, 2L, 3L, 4L, 5L, 6L] $
+                      }
+      wfwfsstruct = {time:0d, r0_5s:0., r0_30s:0., r0_180s:0., r0_sub_5s:0., r0_sub_30s:0., r0_sub_180s:0.}
+      wfwfsdata = read_ascii(wfwfsfile, TEMPLATE=wfwfstemplate)
+      indx = where(wfwfsdata.time ne 0, Nwfwfs)
+      if Nwfwfs ne 0 then begin
+        wfwfs = replicate(wfwfsstruct, Nwfwfs)
+
+        wfwfs.time        = wfwfsdata.time[indx] - midnight ; In seconds since midnight
+        wfwfs.r0_5s       = wfwfsdata.r0_5s[indx]           ; Ground layer r0, 5s average  
+        wfwfs.r0_30s      = wfwfsdata.r0_30s[indx]          ; Ground layer r0, 30s average 
+        wfwfs.r0_180s     = wfwfsdata.r0_180s[indx]         ; Ground layer r0, 180s average
+        wfwfs.r0_sub_5s   = wfwfsdata.r0_sub_5s[indx]       ; AO WFS FOV r0, 5s average  
+        wfwfs.r0_sub_30s  = wfwfsdata.r0_sub_30s[indx]      ; AO WFS FOV r0, 30s average 
+        wfwfs.r0_sub_180s = wfwfsdata.r0_sub_180s[indx]     ; AO WFS FOV r0, 180s average
+      endif
+    endif
+  endif
+  
   
   ;; SHABAR
   if arg_present(shabar) then begin

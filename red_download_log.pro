@@ -84,6 +84,12 @@ pro red_download_log, instrument, date, outdir $
       localfile  = 'r0.data.full-'+strjoin(datearr, '')      
     end
 
+    'WFWFS' : begin
+      remotedirs = 'http://www.sst.iac.es/Logfiles/wfwfs/' 
+      remotefile = 'wfwfs_r0.log-'+strjoin(datearr, '')
+      localfile  = remotefile
+    end
+
     else : begin
       print, 'Instrument '+instrument+' not implemented.'
       stop
@@ -93,7 +99,7 @@ pro red_download_log, instrument, date, outdir $
 
   downloadpath = outdir + '/' + remotefile          
   localpath    = outdir + '/' + localfile          
-
+  
   if ~keyword_set(overwrite) then begin
     if file_test(downloadpath+'.xz') then begin
       print, 'Compressed file exists'
@@ -149,20 +155,69 @@ pro red_download_log, instrument, date, outdir $
 
     'PIG' : begin
       if ~file_test(localfile) then begin
-        ;; Needs to be converted
+        
+        ;; PIG logfile needs to be converted. For that we need the
+        ;; limb calibration results.
+        print, 'red_download_log : Downloading 4-limb calibration file...'
+        downloadOK = red_geturl('http://www.sst.iac.es/Logfiles/PIG/PIG_center' $
+                                , file = 'PIG_center' $
+                                , dir = outdir $
+                                , overwrite = overwrite $
+                                , path = pigcfile)
+        pigctemplate = { VERSION: 1.0, $
+                         DATASTART: 0L, $
+                         DELIMITER: 32B, $
+                         MISSINGVALUE: 0.0, $
+                         COMMENTSYMBOL: "#", $
+                         FIELDCOUNT: 4, $
+                         FIELDTYPES: [7L, 5L, 5L, 5L], $
+                         FIELDNAMES: [ "date", "dx", "dy", "scale"], $
+                         FIELDLOCATIONS: [0L, 12L, 31L, 50L], $
+                         FIELDGROUPS: [0L, 1L, 2L, 3L] $
+                       }
+;        pigcstruct = {date:'', dx:0.d, dy:0.d, scale:0.d}
+        pig_center = read_ascii(pigcfile, TEMPLATE=pigctemplate, count = count)
+
+        ;; In theory we'd use the dx,dy,scale parameters from the
+        ;; calibration that is nearest in time. But there are outliers
+        ;; so we better remove them by use of median filtering. Also,
+        ;; there are differences from year to year (sometimes large)
+        ;; so we first select just the year.
+        indx = where(strmid(pig_center.date, 0, 4) eq datearr[0], Nwhere)
+        if Nwhere eq 0 then begin
+          ;; Average first half of 2023
+          dx=20.24
+          dy=18.35
+          scale=4.31830
+        endif else begin
+          pig_center_date = pig_center.date[indx]
+          pig_center_dx = median(pig_center.dx[indx], 5)
+          pig_center_dy = median(pig_center.dy[indx], 5)
+          pig_center_scale = median(pig_center.scale[indx], 5)
+          juldate = date_conv(isodate, 'J')
+          pig_center_juldates = dblarr(Nwhere)
+          for i = 0, Nwhere-1 do pig_center_juldates[i] = date_conv(pig_center_date[i], 'J') ; Convert to Julian
+          dist = min(abs(pig_center_juldates - juldate), ii)                                 ; Nearest date ii
+          dx = pig_center_dx[ii]
+          dy = pig_center_dy[ii]
+          scale = pig_center_scale[ii]
+        endelse
+        
+        ;; Now do the converting
         print, 'red_download_log : Converting PIG log file...'
         if file_test(downloadpath) then begin
           rdx_convertlog, downloadpath, localpath, average=16 $
 ;                          , dx=31.92, dy=14.81, rotation=84.87, scale=4.935
-                          , dx=20.24, dy=18.35, scale=4.31830, rotation = 84.599 
+                          , dx=dx, dy=dy, scale=scale $
+                          , rotation = 84.599 
           ;; Switched to dx,dy,scale parameters averaged from this
           ;; year's limb calibrations by Pit on 2 Aug 2023. Also
           ;; switched to rotation parameter used in the PIG/turret
           ;; code.
         endif else begin
-          print, 'Download failed, no PIG log file to convert!'
-          status = 1
-          return
+            print, 'Download failed, no PIG log file to convert!'
+            status = 1
+            return
         endelse
       endif
     end

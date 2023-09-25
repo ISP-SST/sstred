@@ -45,10 +45,20 @@
 ;      The path to where the pig log file was saved (or the empty
 ;      string).
 ;
+;    wfwfs : in, optional, type=boolean
+;
+;      Try to download the SST/WFWFS r0 log file. Returns with the
+;      downloaded file name (or empty string in case download failed).
+;
 ;    r0 : in, optional, type=boolean
 ;
 ;      Try to download the SST/AO r0 log file. Returns with the
 ;      downloaded file name (or empty string in case download failed).
+;
+;    pathwfwfs : out, optional, type=string
+;
+;      The path to where the wfwfs r0 log file was saved (or the empty
+;      string).
 ;
 ;    pathr0 : out, optional, type=string
 ;
@@ -144,6 +154,8 @@
 ;
 ;    2023-08-14 : MGL. Use red_download_log for r0 and PIG log files.
 ;
+;    2023-09-25 : MGL. New keywords wfwfs and pathwfwfs.
+;
 ;-
 pro red_download, date = date $
                   , overwrite = overwrite $
@@ -159,6 +171,8 @@ pro red_download, date = date $
                   , pathpig  = pathpig  $
                   , r0 = r0 $
                   , pathr0  = pathr0  $
+                  , wfwfs = wfwfs $
+                  , pathwfwfs  = pathwfwfs  $
                   , turret = turret $
                   , pathturret = pathturret  $
                   , armap = armap $
@@ -173,6 +187,7 @@ pro red_download, date = date $
         or keyword_set(timestamps_hmi)  $
         or keyword_set(logs) $
         or keyword_set(r0)  $
+        or keyword_set(wfwfs)  $
         or keyword_set(shabar)  $
         or keyword_set(temp)  $
         or keyword_set(turret)  $
@@ -187,6 +202,7 @@ pro red_download, date = date $
     hmi = 1
     pig = 1
     r0 = 1
+    wfwfs = 1
     shabar = 1
     temp = 1
     turret = 1
@@ -408,10 +424,19 @@ pro red_download, date = date $
   endif
   
   
+  ;; WFWFS r0 log file
+  if keyword_set(wfwfs) then begin
+    red_download_log, 'wfwfs', isodate, logdir $
+                      , localpath = pathwfwfs $                      
+                      , overwrite = overwrite $
+                      , status = status
+  endif
+
   ;; R0 log file
   if keyword_set(r0) then begin
     red_download_log, 'r0', isodate, logdir $
                       , localpath = pathr0 $                      
+                      , overwrite = overwrite $
                       , status = status
   endif
 
@@ -419,6 +444,7 @@ pro red_download, date = date $
   if keyword_set(pig) then begin
     red_download_log, 'pig', isodate, logdir $
                       , localpath = pathpig $                      
+                      , overwrite = overwrite $
                       , status = status
   endif
   
