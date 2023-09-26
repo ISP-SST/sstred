@@ -734,7 +734,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
 
   
-  printf, Slun, '; If MOMFBD has problems near the edges, try to increase the margin when calling prepmomfbd.'
+  printf, Slun, '; If MOMFBD has problems near the edges, try increasing the margin when calling prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
     ;; The number of frames to be discarded by momfbd from every state
     ;; is 2 for data without polarimetry and 1 for data with
@@ -754,7 +754,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
             + ", /mask ;, /hints, dir='10:02:45'"
-    printf, Slun
     printf, Slun, "a -> prepmomfbd" $
             + ", /fill_fov" $
             + ", /wb_states" $
@@ -764,6 +763,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             + ", pref = '"+prefilters[ipref]+"'" $
             + ", margin = 5" $
             + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+    printf, Slun
   endfor                        ; ipref
 
   printf, Slun, ''
