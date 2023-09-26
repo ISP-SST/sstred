@@ -426,13 +426,30 @@ pro red_download, date = date $
   
   ;; WFWFS r0 log file
   if keyword_set(wfwfs) then begin
-    red_download_log, 'wfwfs', isodate, logdir $
-                      , localpath = pathwfwfs $                      
-                      , overwrite = overwrite $
-                      , status = status
+    red_currentsite,site=site
+    if site eq 'AlbaNova' then begin
+      ;; In Stockholm, prefer the file in /storage/, it is more
+      ;; complete than the one on the web site.
+      pathwfwfs = logdir+'/wfwfs_r0.log-'+strjoin(datearr, '')
+      if keyword_set(overwrite) || ~file_test(pathwfwfs) then begin
+        wfwfsfile = '/storage/wfwfs/sst/logs/wfwfs_r0_'+strjoin(datearr, '-')+'.log'
+        if file_test(wfwfsfile) then begin
+          file_copy, wfwfsfile, pathwfwfs, /overwrite
+          status = 0
+        endif else begin
+          status = 1
+        endelse
+      endif
+    endif 
+    if n_elements(status) eq 0 || status eq 1 then begin
+      red_download_log, 'wfwfs', isodate, logdir $
+                        , localpath = pathwfwfs $                      
+                        , overwrite = overwrite $
+                        , status = status
+    endif
   endif
 
-  ;; R0 log file
+;; R0 log file
   if keyword_set(r0) then begin
     red_download_log, 'r0', isodate, logdir $
                       , localpath = pathr0 $                      
