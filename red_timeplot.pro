@@ -51,19 +51,27 @@
 ;-
 pro red_timeplot, t, y, overplot = overplot, trange = trange, xrange = xrange, _extra = extra
 
+  if n_elements(trange) gt 0 then begin
+    if n_elements(xrange) gt 0 then begin
+      print, 'red_timeplot : use only one of the trange and xrange keywords.'
+      return
+    endif
+    xrange = trange
+  endif
+  
   if keyword_set(overplot) then begin
     
     cgplot, t, y, _strict_extra = extra, /overplot
 
   endif else begin
     
-    case 1 of
-      n_elements(trange) ne 0 : L = red_gen_timeaxis(trange)
-      n_elements(xrange) ne 0 : L = red_gen_timeaxis(xrange)
-      else : L = red_gen_timeaxis(t)
-    endcase
+    if n_elements(xrange) ne 0 then begin
+      L = red_gen_timeaxis(xrange)
+    endif else begin
+      L = red_gen_timeaxis(t)
+    endelse
     
-    cgplot, t, y, _strict_extra = extra $
+    cgplot, t, y, xrange = xrange,_strict_extra = extra $
             , XTICKV=L.tickv, XTICKS=L.ticks, XMIN=L.minor, XTICKNAM=L.name
 
   endelse
