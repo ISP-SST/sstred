@@ -279,7 +279,6 @@ pro red::prepmomfbd, cams = cams $
   if n_elements(nfac) eq 1 then nfac = replicate(nfac,3)
 
   Ndirs = n_elements(dirs)
-  ismos = bytarr(Ndirs)         ; Should be TRUE for directories with automatic mosaic data. 
   if Ndirs gt 0 then begin
     if Ndirs eq 1 then dirs = [dirs] 
     for idir = 0, Ndirs-1 do begin
@@ -319,6 +318,8 @@ pro red::prepmomfbd, cams = cams $
     return
   ENDIF
 
+  ismos = bytarr(Ndirs)         ; Should be TRUE for directories with automatic mosaic data. 
+  
   if keyword_set(no_pd) then begin
     ;; Remove PD camera if any
     indx = where(~ispd)
