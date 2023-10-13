@@ -154,15 +154,6 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
           read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
           if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then use_gain = 1 else use_gain = 0
         endif
-        if use_gain then begin
-          gstate = selstates[0]
-          gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
-          gstate.tuning = gtuning[minloc]
-          gstate.fpi_state = gtuning[minloc]
-          self -> get_calib, gstate $
-                             , gaindata = gg, gainstatus  = gainstatus
-          if gainstatus ne 0 then stop
-        endif else gg = 1.
       endelse 
 
       if dodescatter then begin
@@ -176,6 +167,22 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       d = fltarr(Nlc, Nqw, Nlp, Nx, Ny)
       d1d = fltarr(Nlc, Nqw, Nlp)
 
+      gains = fltarr(Nx, Ny, Nlc) + 1.0 ; Default unity
+      if use_gain then begin
+        gstate = selstates[0]
+        gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
+        gstate.tuning = gtuning[minloc]
+        gstate.fpi_state = gtuning[minloc]
+        for ilc = 0, Nlc-1 do begin
+          gstate.lc = ulc[ilc]
+          self -> get_calib, gstate $
+                             , gaindata = gg, gainstatus  = gainstatus
+          if gainstatus ne 0 then stop
+          gains[*, *, ilc] = gg
+        endfor
+      endif 
+
+      
       iloop = 0
       Nloop = Nlp*Nqw*Nlc
       for ilp = 0, Nlp - 1 do begin
@@ -195,10 +202,10 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
               stop
             endif 
             red_progressbar, iloop, Nloop, /predict, cams[icam]+' : '+file_basename(selfiles[indx])
-            d[ilc,iqw,ilp,*,*] = (red_readdata(selfiles[indx], /silent) - dd) * gg
+            d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx], /silent) - dd
             if dodescatter then $
                d[ilc,iqw,ilp,*,*] = rdx_descatter(reform(d[ilc,iqw,ilp,*,*]) $
-                                                  , bg, psf, nthreads = nthreads)
+                                                  , bg, psf, nthreads = nthreads) * gains[*, *, ilc]
             d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
 
             iloop++
