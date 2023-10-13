@@ -402,7 +402,12 @@ function crisp2::filenames, datatype, states $
             red_append, tag_list, prefilter
             ;;red_append, tag_list, prefilter+'_+0' ; Dummy tuning for WB
           endif else begin
-            red_append, tag_list, states[istate].fullstate
+;            red_append, tag_list, states[istate].fullstate
+            red_append, tag_list, exposure
+            red_append, tag_list, gain
+            red_append, tag_list, prefilter
+            red_append, tag_list, tuning
+            red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
           endelse
 ;          red_append, tag_list, detector
 ;          if states[istate].is_wb eq 0 and tuning ne '' then $
@@ -481,7 +486,12 @@ function crisp2::filenames, datatype, states $
             red_append, tag_list, prefilter
             ;;red_append, tag_list, prefilter+'_+0' ; Dummy tuning for WB
           endif else begin
-            red_append, tag_list, states[istate].fullstate
+;            red_append, tag_list, states[istate].fullstate
+            red_append, tag_list, exposure
+            red_append, tag_list, gain
+            red_append, tag_list, prefilter
+            red_append, tag_list, tuning
+            red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
           endelse               
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
