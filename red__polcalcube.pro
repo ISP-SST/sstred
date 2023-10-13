@@ -47,6 +47,8 @@
 ; 
 ;   2018-04-16 : MGL. Write single FITS files with extensions.
 ; 
+;   2023-10-13 : MGL. Do gain correction. Optionally with nearest
+;                tuning if polcal tuning gains not available. 
 ; 
 ;-
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
@@ -60,65 +62,109 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     stop
   endif
 
-  ;; Files and states
   files = file_search(self.out_dir + 'polcal_sums/*/*.fits', count = count)
   self -> extractstates, files, states, /polcal
 
-  ;; Get cameras
+  upref = (states[uniq(states.prefilter, sort(states.prefilter))]).prefilter
   cams = (states[uniq(states.camera, sort(states.camera))]).camera
 
-  ;; Loop camera
-  for icam = 0, n_elements(cams)-1 do begin
+  ;; Take pref keyword into account
+  if keyword_set(pref) then begin
+    indx = where(upref eq pref, count)
+    if count eq 0 then begin
+      print, inam + ' : ERROR, user provided prefilter is not on the list -> '+pref
+      print, inam + ' : Available prefilters are:'
+      for ipref = 0, Npref-1 do print, ipref, +' -> '+upref[ipref], FORMAT='(I3,A)'
+      read, ipref, prompt = 'Select prefilter number: '
+      upref = upref[ipref]
+    endif else upref = upref[indx]
+  endif 
+
+  Npref = n_elements(upref)
+
+  ;; Loop prefilters
+  for ipref = 0, Npref-1 do begin
     
-    if(keyword_set(cam)) then begin
-      if(cams[icam] ne cam) then begin
-        print, inam + ' : skipping cam -> '+cams[icam]+' != '+cam
-        continue
+    print, inam + ' : Processing prefilter -> '+upref[ipref]
+
+    undefine, use_gain
+    
+    dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
+                  and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')
+    
+;    ;; Files and states
+;    files = file_search(self.out_dir + 'polcal_sums/*/*_'+upref[ipref]+'_*.fits', count = count)
+;    self -> extractstates, files, states, /polcal
+ 
+
+    ;; Loop cameras
+    for icam = 0, n_elements(cams)-1 do begin
+      
+      if(keyword_set(cam)) then begin
+        if(cams[icam] ne cam) then begin
+          print, inam + ' : skipping cam -> '+cams[icam]+' != '+cam
+          continue
+        endif
       endif
-    endif
-    print, inam + ' : processing '+cams[icam]
-    
-    self -> selectfiles, files = files, states = states $
-                         , cam = cams[icam], sel = sel
-    selstates = states[sel]
-    selfiles = files[sel]
-
-    detector = selstates[0].detector
-
-    upref = (states[uniq(selstates.prefilter, sort(selstates.prefilter))]).prefilter
-    uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
-    ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
-    ulc = (selstates[uniq(selstates.lc, sort(selstates.lc))]).lc
-
-    Npref = n_elements(upref)
-    Nqw = n_elements(uqw)
-    Nlp = n_elements(ulp)
-    Nlc = n_elements(ulc)
-    
-    ;; Load dark
-    self -> get_calib, selstates[0], darkdata = dd, status = status
-
-    ;; Take pref keyword into account
-    if keyword_set(pref) then begin
-      indx = where(upref eq pref, count)
-      if(count eq 0) then begin
-        print, inam + ' : ERROR, user provided prefilter is not on the list -> '+pref
-        print, inam + ' : Available prefilters are:'
-        for ipref = 0, Npref-1 do print, ipref, +' -> '+upref[ipref], FORMAT='(I3,A)'
-        read, ipref, prompt = 'Select prefilter number: '
-        upref = upref[ipref]
-      endif else upref = upref[indx]
-    endif 
-
-    Npref = n_elements(upref)
-    ;; Loop prefilters
-    for ipref = 0, Npref-1 do begin
+      print, inam + ' : processing '+cams[icam]
       
-      print, inam + ' : Processing prefilter -> '+upref[ipref]
+      self -> selectfiles, files = files, states = states $
+                           , cam = cams[icam], pref = upref[ipref], sel = sel
+      selstates = states[sel]
+      selfiles = files[sel]
 
-      dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
-                    and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')
-      
+      detector = selstates[0].detector
+
+      uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
+      ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
+      ulc = (selstates[uniq(selstates.lc, sort(selstates.lc))]).lc
+
+      Npref = n_elements(upref)
+      Nqw = n_elements(uqw)
+      Nlp = n_elements(ulp)
+      Nlc = n_elements(ulc)
+
+      ;; Load dark
+      self -> get_calib, selstates[0] $
+                         , darkdata = dd, darkstatus  = darkstatus $
+                         , gainname = gn 
+      if darkstatus ne 0 then stop
+
+      if file_test(gn) then begin
+        gg = red_readdata(gn)
+      endif else begin
+        ;; Do we want to use gains from a nearby wavelength?
+        gfiles = file_search('gaintables/' $
+                             + selstates[0].detector + '_' $
+                             + selstates[0].cam_settings + '_' $
+                             + selstates[0].prefilter + '_' $
+                             + '*' $
+                             + 'lc'+strtrim(long(selstates[0].lc), 2) $
+                             + '.gain.fits' $
+                             , count = Ng )
+                                ; get tuning from each of gfiles
+        red_extractstates, gfiles, dwav = gtun_wavelength, wav = gtuning
+        mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
+        if n_elements(use_gain) eq 0 then begin
+          print
+          print, inam + ' : There are no flat field data for the polcal wavelength.'
+          print, '   Tuning for the polcal data: '+selstates[0].tuning
+          print, '   Nearest flats tuning: '+gtuning[minloc]
+          s = ''
+          read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
+          if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then use_gain = 1 else use_gain = 0
+        endif
+        if use_gain then begin
+          gstate = selstates[0]
+          gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
+          gstate.tuning = gtuning[minloc]
+          gstate.fpi_state = gtuning[minloc]
+          self -> get_calib, gstate $
+                             , gaindata = gg, gainstatus  = gainstatus
+          if gainstatus ne 0 then stop
+        endif else gg = 1.
+      endelse 
+
       if dodescatter then begin
         self -> loadbackscatter, detector, upref[ipref], bg, psf
       endif
@@ -149,7 +195,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
               stop
             endif 
             red_progressbar, iloop, Nloop, /predict, cams[icam]+' : '+file_basename(selfiles[indx])
-            d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx], /silent) - dd
+            d[ilc,iqw,ilp,*,*] = (red_readdata(selfiles[indx], /silent) - dd) * gg
             if dodescatter then $
                d[ilc,iqw,ilp,*,*] = rdx_descatter(reform(d[ilc,iqw,ilp,*,*]) $
                                                   , bg, psf, nthreads = nthreads)
@@ -181,7 +227,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'LP', 'Linear polarrizer angles'
       writefits, pname, ulp, ehdr, /append
 
-    endfor                      ; ipref
-  endfor                        ; icam
+    endfor                      ; icam
+  endfor                        ; ipref
   
 end
