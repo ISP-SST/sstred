@@ -91,11 +91,15 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     
     dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
                   and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')
+    if dodescatter then begin
+      self -> loadbackscatter, detector, upref[ipref], bg, psf
+    endif
+    
     
 ;    ;; Files and states
 ;    files = file_search(self.out_dir + 'polcal_sums/*/*_'+upref[ipref]+'_*.fits', count = count)
 ;    self -> extractstates, files, states, /polcal
- 
+    
 
     ;; Loop cameras
     for icam = 0, n_elements(cams)-1 do begin
@@ -119,21 +123,36 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
       ulc = (selstates[uniq(selstates.lc, sort(selstates.lc))]).lc
 
-      Npref = n_elements(upref)
       Nqw = n_elements(uqw)
       Nlp = n_elements(ulp)
       Nlc = n_elements(ulc)
 
+      dim = fxpar(headfits(files[0]), 'NAXIS*')
+      Nx = dim[0]
+      Ny = dim[1]
+
       ;; Load dark
-      self -> get_calib, selstates[0] $
+      gstate = selstates[0]
+      self -> get_calib, gstate $
                          , darkdata = dd, darkstatus  = darkstatus $
                          , gainname = gn 
       if darkstatus ne 0 then stop
 
       if file_test(gn) then begin
-        gg = red_readdata(gn)
+        print, inam + ' : Gains exist for the polcal wavelength, using them.'
+        gains = fltarr(Nx, Ny, Nlc)
+        for ilc = 0, Nlc-1 do begin
+          gstate.lc = ulc[ilc]
+          self -> get_calib, gstate, gainname = gainname $
+                             , gaindata = gg, gainstatus  = gainstatus
+          print, gainname
+          if gainstatus ne 0 then stop
+          gains[*, *, ilc] = gg
+        endfor
+        mask = total(gains,3) ne 0 
       endif else begin
-        ;; Do we want to use gains from a nearby wavelength?
+        ;; Do we want to use gains from a nearby tuning? Check what
+        ;; tunings are available.
         gfiles = file_search('gaintables/' $
                              + selstates[0].detector + '_' $
                              + selstates[0].cam_settings + '_' $
@@ -142,7 +161,6 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
                              + 'lc'+strtrim(long(selstates[0].lc), 2) $
                              + '.gain.fits' $
                              , count = Ng )
-                                ; get tuning from each of gfiles
         red_extractstates, gfiles, dwav = gtun_wavelength, wav = gtuning
         mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
         if n_elements(use_gain) eq 0 then begin
@@ -154,34 +172,34 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
           read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
           if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then use_gain = 1 else use_gain = 0
         endif
-      endelse 
+        
+        if use_gain then begin
+          gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
+          gstate.tuning = gtuning[minloc]
+          gstate.fpi_state = gtuning[minloc]
+          gains = fltarr(Nx, Ny, Nlc)
+          for ilc = 0, Nlc-1 do begin
+            gstate.lc = ulc[ilc]
+            self -> get_calib, gstate, gainname = gainname $
+                               , gaindata = gg, gainstatus  = gainstatus
+            if gainstatus ne 0 then stop
+            print, gainname
+            gains[*, *, ilc] = gg
+          endfor                ; ilc
+          mask = total(gains,3) ne 0
+        endif else begin
+          gains = replicate(1., Nx, Ny, Nlc) ; Just unity then
+          if Nx ne Ny then stop              ; Not implemented yet
+          mask = red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
+        endelse
 
-      if dodescatter then begin
-        self -> loadbackscatter, detector, upref[ipref], bg, psf
-      endif
+      endelse
 
       ;; Read data
-      dim = fxpar(headfits(files[0]), 'NAXIS*')
-      Nx = dim[0]
-      Ny = dim[1]
       d = fltarr(Nlc, Nqw, Nlp, Nx, Ny)
       d1d = fltarr(Nlc, Nqw, Nlp)
-
-      gains = fltarr(Nx, Ny, Nlc) + 1.0 ; Default unity
-      if use_gain then begin
-        gstate = selstates[0]
-        gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
-        gstate.tuning = gtuning[minloc]
-        gstate.fpi_state = gtuning[minloc]
-        for ilc = 0, Nlc-1 do begin
-          gstate.lc = ulc[ilc]
-          self -> get_calib, gstate $
-                             , gaindata = gg, gainstatus  = gainstatus
-          if gainstatus ne 0 then stop
-          gains[*, *, ilc] = gg
-        endfor
-      endif 
-
+      
+      total_mask = total(mask)
       
       iloop = 0
       Nloop = Nlp*Nqw*Nlc
@@ -205,9 +223,18 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx], /silent) - dd
             if dodescatter then $
                d[ilc,iqw,ilp,*,*] = rdx_descatter(reform(d[ilc,iqw,ilp,*,*]) $
-                                                  , bg, psf, nthreads = nthreads) * gains[*, *, ilc]
-            d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
-
+                                                  , bg, psf, nthreads = nthreads) 
+            ;;d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
+            d1d[ilc,iqw,ilp] = total(mask*reform(d[ilc,iqw,ilp,*, *] * gains[*, *, ilc]), /nan) / total_mask
+            ;; To be completely correct, total_mask would need to take
+            ;; the number of NaNs into account. Otherwise we would
+            ;; either have to make new mask each time and this is deep
+            ;; inside multiple loops. However, this is only an
+            ;; initialization for optimization done by polcal so we
+            ;; bet on that number to be small within the mask. A
+            ;; mask-less way of calculating d1d would be to use
+            ;; median(), which treats NaNs as missing data.
+            
             iloop++
             
           endfor                ; ilc
@@ -236,5 +263,5 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
 
     endfor                      ; icam
   endfor                        ; ipref
-  
+
 end
