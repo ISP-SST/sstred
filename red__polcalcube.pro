@@ -231,9 +231,9 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             ;; either have to make new mask each time and this is deep
             ;; inside multiple loops. However, this is only an
             ;; initialization for optimization done by polcal so we
-            ;; bet on that number to be small within the mask. A
-            ;; mask-less way of calculating d1d would be to use
-            ;; median(), which treats NaNs as missing data.
+            ;; bet on that number to be small within the mask. We
+            ;; could also use both the mask and median(), which treats
+            ;; NaNs as missing data.
             
             iloop++
             
