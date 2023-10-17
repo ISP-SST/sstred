@@ -350,6 +350,12 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endif                     ; Nfiles
     endfor                      ; idir
   endif                         ; Nsubdirs
+
+  printf, Slun
+  printf, Slun, '; We (potentially) use gains in polcalcube now, so we run makegains here.'
+  printf, Slun, '; Then run it again efter running fitgains.'
+  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
+
   
   Nprefilters = n_elements(prefilters)
   if Nprefilters gt 0 then begin
