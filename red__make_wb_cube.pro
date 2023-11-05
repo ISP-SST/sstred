@@ -481,8 +481,8 @@ pro red::make_wb_cube, dirs $
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
     im = red_readdata(wfiles[iscan], head = hdr)
-
-    red_missing, im, /inplace, missing_type_wanted = 'median' ; 'nan'
+    red_missing, im, /inplace, missing_type_wanted = 'median' ; Set bg to corners of ragged crisp outline
+    red_missing, im, /inplace, missing_type_wanted = 'nan'    ; Set bg to NaN
 ;    red_missing, im, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data        
 ;    bg = !Values.F_NaN
 ;    if Nmissing gt 0 then im[indx_missing] = bg
@@ -541,6 +541,7 @@ pro red::make_wb_cube, dirs $
 
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
+
   ang = red_lp_angles(time, date[0], /from_log, offset_angle = rotation)
   mang = median(ang)
   if keyword_set(subtract_meanang) then ang -= mang
@@ -549,16 +550,19 @@ pro red::make_wb_cube, dirs $
   
   ;; De-rotate images in the cube, has to be done before we can
   ;; calculate the alignment
-  bg = median(cub[*,*,0])
+  bg = !Values.F_NaN
+  ;;bg = median(cub[*,*,0])
   maxangle = max(abs(ang))
   ff=[maxangle,0,0,0,0,reform(ang)]
-  dum = red_rotation(cub[*,*,0], full=ff $
+  
+  dum = red_rotation(cub1[*,*,0], full=ff $
                      , ang[0], 0, 0, background = bg, nthreads=nthreads)
   nd = size(dum,/dim)
   nx = nd[0]
   ny = nd[1]
   cub = fltarr([nd, Nscans])
   cub[*,*,0] = dum
+
   for iscan = 1L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
@@ -674,11 +678,13 @@ pro red::make_wb_cube, dirs $
       yy1 = max(sim_y) - margin + num_points/2 - 1
       fov_mask = fov_mask[xx0:xx1,yy0:yy1]
     endelse
-    fov_mask = red_rotate(fov_mask, direction)
+    fov_mask = float(red_rotate(fov_mask, direction))
+    red_missing,/inplace,fov_mask,missing_type_wanted='nan'
   endif
   
   ;; De-rotate and shift cube
-  bg = median(cub1[*,*,0])  
+;  bg = median(cub1[*,*,0])
+  bg = !Values.F_NaN
   dum = red_rotation(cub1[*,*,0], full=ff $
                      , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
   nd = size(dum,/dim)
@@ -749,7 +755,6 @@ pro red::make_wb_cube, dirs $
                                , nthreads = nthreads, nostretch = nostretch)
 
   if ~keyword_set(nostretch) then begin
-    if ~keyword_set(nomissing_nans) then bg = !Values.F_NaN
     for iscan = 0L, Nscans - 1 do begin
       red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
       if n_elements(fov_mask) gt 0 then cub1[*, *, iscan] = cub1[*, *, iscan] * fov_mask
