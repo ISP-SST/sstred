@@ -364,11 +364,6 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   endelse
 
-  printf, Slun
-  printf, Slun, '; We (potentially) use gains in polcalcube now, so we run makegains here.'
-  printf, Slun, '; Then run it again efter running fitgains.'
-  printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
-
   
   ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
   ;; some of the method calls, so add it commented out. (This if
