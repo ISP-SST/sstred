@@ -196,15 +196,15 @@ function red_geturl, url $
 
      if DownloadOK then begin
         
-        file_move, tmpfile, path, /overwrite
-        print, 'red_geturl : Downloaded OK to ' + path
-        if n_elements(link) ne 0 then begin
-           file_link, path, link
-           print, 'red_geturl : Linked to ' + link
-        endif
+       file_move, tmpfile, path, /overwrite
+       print, 'red_geturl : Downloaded OK to ' + path
+       if n_elements(link) ne 0 then begin
+         file_link, path, link
+         print, 'red_geturl : Linked to ' + link
+       endif
 
-        if n_elements(link) ne 0 then begin
-           ;; Link anyway
+       if n_elements(link) ne 0 then begin
+         ;; Link anyway
            file_link, path, link
            print, 'red_geturl : Linked to ' + link
         endif
