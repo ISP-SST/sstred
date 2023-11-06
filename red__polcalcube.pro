@@ -47,9 +47,6 @@
 ; 
 ;   2018-04-16 : MGL. Write single FITS files with extensions.
 ; 
-;   2023-10-13 : MGL. Do gain correction. Optionally with nearest
-;                tuning if polcal tuning gains not available. 
-; 
 ;-
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
 
@@ -138,62 +135,65 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
                          , gainname = gn 
       if darkstatus ne 0 then stop
 
-      if file_test(gn) then begin
-        print, inam + ' : Gains exist for the polcal wavelength, using them.'
-        gains = fltarr(Nx, Ny, Nlc)
-        for ilc = 0, Nlc-1 do begin
-          gstate.lc = ulc[ilc]
-          self -> get_calib, gstate, gainname = gainname $
-                             , gaindata = gg, gainstatus  = gainstatus
-          print, gainname
-          if gainstatus ne 0 then stop
-          gains[*, *, ilc] = gg
-        endfor
-        mask = total(gains,3) ne 0 
-      endif else begin
-        ;; Do we want to use gains from a nearby tuning? Check what
-        ;; tunings are available.
-        gfiles = file_search('gaintables/' $
-                             + selstates[0].detector + '_' $
-                             + selstates[0].cam_settings + '_' $
-                             + selstates[0].prefilter + '_' $
-                             + '*' $
-                             + 'lc'+strtrim(long(selstates[0].lc), 2) $
-                             + '.gain.fits' $
-                             , count = Ng )
-        red_extractstates, gfiles, dwav = gtun_wavelength, wav = gtuning
-        mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
-        if n_elements(use_gain) eq 0 then begin
-          print
-          print, inam + ' : There are no flat field data for the polcal wavelength.'
-          print, '   Tuning for the polcal data: '+selstates[0].tuning
-          print, '   Nearest flats tuning: '+gtuning[minloc]
-          s = ''
-          read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
-          if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then use_gain = 1 else use_gain = 0
-        endif
-        
-        if use_gain then begin
-          gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
-          gstate.tuning = gtuning[minloc]
-          gstate.fpi_state = gtuning[minloc]
-          gains = fltarr(Nx, Ny, Nlc)
-          for ilc = 0, Nlc-1 do begin
-            gstate.lc = ulc[ilc]
-            self -> get_calib, gstate, gainname = gainname $
-                               , gaindata = gg, gainstatus  = gainstatus
-            if gainstatus ne 0 then stop
-            print, gainname
-            gains[*, *, ilc] = gg
-          endfor                ; ilc
-          mask = total(gains,3) ne 0
-        endif else begin
-          gains = replicate(1., Nx, Ny, Nlc) ; Just unity then
-          if Nx ne Ny then stop              ; Not implemented yet
-          mask = red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
-        endelse
-
-      endelse
+      gains = replicate(1., Nx, Ny, Nlc) ; Just unity until gain correction is sufficiently tested
+      mask = red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
+      
+;      if file_test(gn) then begin
+;        print, inam + ' : Gains exist for the polcal wavelength, using them.'
+;        gains = fltarr(Nx, Ny, Nlc)
+;        for ilc = 0, Nlc-1 do begin
+;          gstate.lc = ulc[ilc]
+;          self -> get_calib, gstate, gainname = gainname $
+;                             , gaindata = gg, gainstatus  = gainstatus
+;          print, gainname
+;          if gainstatus ne 0 then stop
+;          gains[*, *, ilc] = gg
+;        endfor
+;        mask = total(gains,3) ne 0 
+;      endif else begin
+;        ;; Do we want to use gains from a nearby tuning? Check what
+;        ;; tunings are available.
+;        gfiles = file_search('gaintables/' $
+;                             + selstates[0].detector + '_' $
+;                             + selstates[0].cam_settings + '_' $
+;                             + selstates[0].prefilter + '_' $
+;                             + '*' $
+;                             + 'lc'+strtrim(long(selstates[0].lc), 2) $
+;                             + '.gain.fits' $
+;                             , count = Ng )
+;        red_extractstates, gfiles, dwav = gtun_wavelength, wav = gtuning
+;        mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
+;        if n_elements(use_gain) eq 0 then begin
+;          print
+;          print, inam + ' : There are no flat field data for the polcal wavelength.'
+;          print, '   Tuning for the polcal data: '+selstates[0].tuning
+;          print, '   Nearest flats tuning: '+gtuning[minloc]
+;          s = ''
+;          read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
+;          if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then use_gain = 1 else use_gain = 0
+;        endif
+;        
+;        if use_gain then begin
+;          gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
+;          gstate.tuning = gtuning[minloc]
+;          gstate.fpi_state = gtuning[minloc]
+;          gains = fltarr(Nx, Ny, Nlc)
+;          for ilc = 0, Nlc-1 do begin
+;            gstate.lc = ulc[ilc]
+;            self -> get_calib, gstate, gainname = gainname $
+;                               , gaindata = gg, gainstatus  = gainstatus
+;            if gainstatus ne 0 then stop
+;            print, gainname
+;            gains[*, *, ilc] = gg
+;          endfor                ; ilc
+;          mask = total(gains,3) ne 0
+;        endif else begin
+;          gains = replicate(1., Nx, Ny, Nlc) ; Just unity then
+;          if Nx ne Ny then stop              ; Not implemented yet
+;          mask = red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
+;        endelse
+;
+;      endelse
 
       ;; Read data
       d = fltarr(Nlc, Nqw, Nlp, Nx, Ny)
@@ -224,8 +224,12 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             if dodescatter then $
                d[ilc,iqw,ilp,*,*] = rdx_descatter(reform(d[ilc,iqw,ilp,*,*]) $
                                                   , bg, psf, nthreads = nthreads) 
+            
+            ;;red_show, reform(d[ilc,iqw,ilp,*, *]) * gains[*, *, ilc], /re
+
+            d[ilc,iqw,ilp,*,*] = reform(d[ilc,iqw,ilp,*, *]) * gains[*, *, ilc]
             ;;d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
-            d1d[ilc,iqw,ilp] = total(mask*reform(d[ilc,iqw,ilp,*, *] * gains[*, *, ilc]), /nan) / total_mask
+            d1d[ilc,iqw,ilp] = total(mask*reform(d[ilc,iqw,ilp,*, *]), /nan) / total_mask
             ;; To be completely correct, total_mask would need to take
             ;; the number of NaNs into account. Otherwise we would
             ;; either have to make new mask each time and this is deep
