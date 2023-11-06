@@ -34,6 +34,10 @@
 ;   
 ;      Don't do back-scatter compensation.
 ;
+;   scanno : in, optional, type=integer
+;
+;      Do it for this scan number only.
+;
 ;   tdirs : in, optional, type=strarr
 ;
 ;      Time-stamp directories, should exist in data/ subdirectory (or
@@ -64,6 +68,8 @@
 ; 
 ;   2022-11-15 : MGL. New keyword mosaic_tag.
 ;
+;   2023-11-01 : MGL. New keyword scanno.
+;
 ;-
 pro red::sum_data_intdif, all = all $
                           , link_dir = link_dir $
@@ -72,6 +78,7 @@ pro red::sum_data_intdif, all = all $
                           , nthreads = nthreads $
                           , overwrite = overwrite $
                           , pref = pref $
+                          , scanno = scanno $
                           , show = show $
                           , tdirs = tdir $
                           , cam = cam $
@@ -346,6 +353,13 @@ pro red::sum_data_intdif, all = all $
       Nx = dim[0]
       Ny = dim[1]
 
+      if n_elements(scanno) gt 0 then begin
+        iindx = where(uscan eq scanno[0], Nwhere)
+        if Nwhere eq 0 then continue
+        tt0 = iindx
+        tt1 = iindx
+      endif
+      
       head = red_pol_lpheader(Nx, Ny, Nlc*(tt1+1L)*Ntunings)
       writeu,lun, head
       dat = assoc(lun, intarr(Nx, Ny, /nozer), 512)
