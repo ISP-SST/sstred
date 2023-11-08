@@ -65,7 +65,7 @@
 function crisp2::raw_search, dir $
                              , count = count $
                              , fpi_states = fpi_states $
-                             , prefilters = pref $
+                             , prefilters = prefilters $
                              , scannos = scannos_in $
                              , tunings = tunings
 
@@ -94,7 +94,7 @@ function crisp2::raw_search, dir $
   ;; Prefilter
   case n_elements(prefilters) of
     0 : prefilters = '[0-9][0-9][0-9][0-9]'
-    else : prefilters = strtrim(pref, 2)
+    else : prefilters = strtrim(prefilters, 2)
   endcase
   Npref = n_elements(prefilters)
   
