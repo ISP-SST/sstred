@@ -146,6 +146,7 @@ pro crisp::selectfiles, cam = cam $
     if( n_elements(subdir) ne 1 ) then subdir = cam
 
     file_template = subdir + '/' + strtrim(detector, 2)+ '*'
+    if n_elements(scan) eq 1 then file_template += string(scan, format='(I05)') + '*'
     
     if( n_elements(dirs) gt 0 ) then dirs = [dirs] $ ; ensure it's an array, even with 1 element
     else begin 
