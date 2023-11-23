@@ -59,6 +59,7 @@ pro red::fitscube_header_finalize, hdr $
                             , feature = feature $
                             , observer = observer $
                             , point_id = point_id $
+                            , silent = silent $
                             , status = status
   
   ;; Name of this method
@@ -136,8 +137,10 @@ pro red::fitscube_header_finalize, hdr $
   download_ok = red_geturl('https://dubshen.astro.su.se/sst_tags/features.txt',content=approved_features)
   case 1 of
     n_elements(feature) gt 0 and is_prev_feature : begin
-      print, 'There is FEATURE keyword in the header: ', prev_feature       
-      read,'Would you like to overwrite it? (Y/N): ',ans
+      if ~keyword_set(silent) then begin
+        print, 'There is FEATURE keyword in the header: ', prev_feature       
+        read,'Would you like to overwrite it? (Y/N): ',ans
+      endif else ans='Y'
       if strupcase(ans) eq 'Y' then begin
         if download_ok then begin
           ftrs = strsplit(feature,',',/extract)
@@ -211,8 +214,10 @@ pro red::fitscube_header_finalize, hdr $
      if strtrim(prev_point_id,2) ne '' then is_prev_point_id = 1B
   case 1 of 
     n_elements(point_id) gt 0 and is_prev_point_id : begin
-      print, 'There is POINT_ID keyword in the header: ', prev_point_id        
-      read,'Would you like to overwrite it? (Y/N): ',ans
+      if ~keyword_set(silent) then begin
+        print, 'There is POINT_ID keyword in the header: ', prev_point_id        
+        read,'Would you like to overwrite it? (Y/N): ',ans
+      endif else ans='Y'
       if strupcase(ans) eq 'Y' then $
         red_fitsaddkeyword, anchor = anchor, hdr, 'POINT_ID', point_id $
       else $
@@ -234,8 +239,10 @@ pro red::fitscube_header_finalize, hdr $
      if strtrim(prev_observer,2) ne '' then is_prev_observer = 1B
   case 1 of 
     n_elements(observer) gt 0 and is_prev_observer : begin
-      print, 'There is OBSERVER keyword in the header: ', prev_observer        
-      read,'Would you like to overwrite it? (Y/N): ',ans
+      if ~keyword_set(silent) then begin
+        print, 'There is OBSERVER keyword in the header: ', prev_observer        
+        read,'Would you like to overwrite it? (Y/N): ',ans
+      endif else ans='Y'
       if strupcase(ans) eq 'Y' then $
         red_fitsaddkeyword, anchor = anchor, hdr, 'OBSERVER', observer $
       else $
