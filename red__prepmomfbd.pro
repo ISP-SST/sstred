@@ -1057,14 +1057,13 @@ pro red::prepmomfbd, cams = cams $
 ;  if ~keyword_set(no_fitsheaders) && ~ismos[idir] then $
 ;     self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref, scanno = escan
   
-  ;; Call prepmomfbd_mosaic on dirs that are automatic mosaics..
+  ;; Call prepmomfbd_mosaic on dirs that are automatic mosaics.
   for idir = 0, Ndirs-1 do begin
     if ismos[idir] then begin
       ;; Replicate config files for each mosaic tile
       self -> prepmomfbd_mosaic, dirs=dirs[idir], momfbddir=momfbddir, pref = pref, no_fitsheaders = no_fitsheaders
     endif else begin
       ;; Make header-only fits files to be read post-momfbd.
-      stop
       if ~keyword_set(no_fitsheaders) then $
          self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir = momfbddir, pref = pref $
                                          , scanno = escan, no_narrowband = no_narrowband
