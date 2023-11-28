@@ -143,7 +143,7 @@ pro red::headerinfo_combinestep, hdr, cubefile, files, stepnumber, anchor = anch
   
   red_fitscube_newheader, cubefile, hdr
 
-  stepnumber++
+  if fstep gt 0 then stepnumber++
   
 end
 

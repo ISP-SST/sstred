@@ -87,7 +87,7 @@ pro red::initialize, filename, develop = develop, no_db = no_db
   
   ;; Are we running in developer mode?
   self.developer_mode = keyword_set(develop)
-
+  
   ;; Test file
   if(~file_test(filename)) then begin
     print, 'red::initialize : ERROR : file not found: ', filename
@@ -297,7 +297,7 @@ pro red::initialize, filename, develop = develop, no_db = no_db
   self.descatter_dir = self.out_dir+'/downloads/backscatter/'  
   if ptr_valid(self.cameras) then begin
     self.refcam = where(strmatch(*self.cameras,'*-W'), Nmatch)
-    if Nmatch eq 0 then stop
+;    if Nmatch eq 0 then stop
   endif
   
   ;; print fields

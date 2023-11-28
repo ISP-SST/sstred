@@ -55,7 +55,6 @@ function red_readhead_ana, fname, $
     print, 'No ana header in '+fname
     return, ''
   endif 
-
   
   if strmatch( anaheader, "SIMPLE*" ) gt 0 then begin
     
@@ -133,8 +132,6 @@ function red_readhead_ana, fname, $
            , 'DATE-OBS', date_obs $
            , 'Data set timestamp'
       endelse
-      
-
       
       ;; We have already found the starting time
       date_beg = strmid(anaheader, tspos+3, 26)
@@ -346,40 +343,104 @@ function red_readhead_ana, fname, $
       
     endif else begin
       
-      ;; Assume this is fz format output from momfbd
-      
-      ;; Header date 
-      dpos = strpos(anaheader, 'DATE=')
-      if dpos ne -1 then begin
-            date = (red_strreplace(strmid(anaheader, dpos+5, 19), ' ', 'T'))[0]
-            red_fitsaddkeyword, header, 'DATE', date, ''
-      endif
+      ;; This is fz format output from momfbd or perhaps HeSP data
 
-      case 1 of
-        strmatch(anaheader,'*CRISP-W*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-W' 
-        strmatch(anaheader,'*CRISP-R*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-R' 
-        strmatch(anaheader,'*CRISP-T*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-T' 
-        strmatch(anaheader,'*CRISP-D*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-D'
-        else:
-      endcase
-      
-      ;; Observations date
-      dpos = strpos(anaheader, 'DATE_OBS')
-      if dpos ne -1 then begin
-        date_obs = strmid(anaheader, dpos+9, 10)
-        ;; Would like to add a time but TIME_OBS is usually empty
-        tpos = strpos(anaheader, 'TIME_OBS')
-        if tpos ne -1 then begin
-          time_obs = strmid(anaheader, tpos+9,dpos-(tpos+9))
-          if strlen(time_obs) gt 1 then date_obs += 'T' + time_obs
-        endif 
-        red_fitsaddkeyword, anchor = anchor, header, 'DATE-AVG', date_obs, '', after = 'DATE'
-      endif
+      tpos = strpos(anaheader, 'time=')
+      if tpos ne -1 then begin
 
+        ;; HeSP data
+
+        header = red_meta2head(header, meta={filename:fname})
+
+        dirsplt = strsplit(directory, '/', /extract)
+
+        ;; For now 
+        camera = dirsplt[-2]
+        red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', camera
+        red_fitsaddkeyword, anchor = anchor, header, 'DETECTOR', camera
+        
+        ;; Typical anaheader:
+        ;; 000000000: time=1698318857828932  type=B scdcnt=7894 corrupt=0 Temperatures:  13.6 compressed:yes slice=7
+        ;; frameno: unixtime frametype continuitycounter corrupt+ dettemp-relativeok anacompression  
+        ahsplt = strsplit(anaheader, /extract)
+        
+        red_fitsaddkeyword, anchor = anchor, header, 'FRAMENUM', long(ahsplt[0])
+        red_fitsaddkeyword, anchor = anchor, header, 'HESP_DIR', directory, 'HeSP directory'
+        if camera eq 'hesp_ctx' then begin
+          temperature = float(ahsplt[3])
+        endif else begin
+          red_fitsaddkeyword, anchor = anchor, header, 'HESP_TYP', (strsplit(ahsplt[2],      '=', /extract))[1], 'HeSP frame type'
+          red_fitsaddkeyword, anchor = anchor, header, 'HESP_CNT', long((strsplit(ahsplt[3], '=', /extract))[1]), 'HeSP counter'
+          red_fitsaddkeyword, anchor = anchor, header, 'HESP_CRP', long((strsplit(ahsplt[4], '=', /extract))[1]), 'HeSP corrupt flag'
+          temperature = float(ahsplt[6])
+        endelse
+        red_fitsaddkeyword, anchor = anchor, header, 'DETTEMP', temperature, '[C] Temperature'
+        
+        ;; Exposure time is about 8.5 millisec, set by cadence and
+        ;; some margin
+        cadence = 340/3.            ; from Michiel
+        exp_time = 0.96 / cadence   ; circa
+        red_fitsaddkeyword, anchor = anchor, header, 'CADENCE', cadence
+        red_fitsaddkeyword, anchor = anchor, header, 'EXPOSURE', exp_time, 'Approximate exposure time'
+
+        ;; DATE-OBS in this header has only the date (followed by a T),
+        ;; not the time.
+        date_obs = fxpar(header, 'DATE-OBS')
+        date_obs = red_strreplace(date_obs, '.', '-', n = 2)
+        dsplt = strsplit(date_obs, '-T', /extract)
+        yr = long(dsplt[0])
+        mo = long(dsplt[1])
+        dy = long(dsplt[2])
+        CDF_EPOCH, epoch, 1970, 1, 1, 0, /COMPUTE_EPOCH      ; In milliseconds
+        CDF_EPOCH, midnight, yr, mo, dy, 0, /COMPUTE_EPOCH   ; In milliseconds
+        midnight = (midnight-epoch)/1000.d                   ; Unix system time for midnight today.
+
+        utime = ulong64((strsplit(ahsplt[1], '=', /extract))[1])/1d6 ; Unix time
+        date_beg = date_obs + red_timestring(utime-midnight)
+        date_avg = date_obs + red_timestring(utime-midnight + exp_time/2.) 
+        date_end = date_obs + red_timestring(utime-midnight + exp_time)
+        date_obs = date_obs + red_timestring(utime-midnight, n=0)
+        red_fitsaddkeyword, anchor = anchor, header, 'DATE-OBS', date_obs
+        red_fitsaddkeyword, anchor = anchor, header, 'DATE-BEG', date_beg
+        red_fitsaddkeyword, anchor = anchor, header, 'DATE-AVG', date_avg
+        red_fitsaddkeyword, anchor = anchor, header, 'DATE-END', date_end
+
+        
+      endif else begin
+        
+        ;; Header date 
+        dpos = strpos(anaheader, 'DATE=')
+        if dpos ne -1 then begin
+          date = (red_strreplace(strmid(anaheader, dpos+5, 19), ' ', 'T'))[0]
+          red_fitsaddkeyword, header, 'DATE', date, ''
+        endif
+        
+        case 1 of
+          strmatch(anaheader,'*CRISP-W*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-W' 
+          strmatch(anaheader,'*CRISP-R*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-R' 
+          strmatch(anaheader,'*CRISP-T*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-T' 
+          strmatch(anaheader,'*CRISP-D*',/FOLD) : red_fitsaddkeyword, anchor = anchor, header, 'CAMERA', 'Crisp-D'
+          else:
+        endcase
+        
+        ;; Observations date
+        dpos = strpos(anaheader, 'DATE_OBS')
+        if dpos ne -1 then begin
+          date_obs = strmid(anaheader, dpos+9, 10)
+          ;; Would like to add a time but TIME_OBS is usually empty
+          tpos = strpos(anaheader, 'TIME_OBS')
+          if tpos ne -1 then begin
+            time_obs = strmid(anaheader, tpos+9,dpos-(tpos+9))
+            if strlen(time_obs) gt 1 then date_obs += 'T' + time_obs
+          endif 
+          red_fitsaddkeyword, anchor = anchor, header, 'DATE-AVG', date_obs, '', after = 'DATE'
+        endif
+        
+      endelse
+      
       header = red_meta2head(header, meta={filename:fname})
       
-    endelse
-
+    endelse 
   endelse
 
   

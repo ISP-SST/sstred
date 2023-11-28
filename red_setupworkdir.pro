@@ -379,9 +379,9 @@ pro red_setupworkdir, cfgfile = cfgfile $
   ;; elevation service. Allowing for the tower we get 2380 m.
   obsgeo_xyz = round( red_obsgeo( 28.759733d, -17.880736d, 2380d ) )
 
-  all_instruments =       [ 'CHROMIS', 'CRISP2', 'CRISP',  'TRIPPEL', 'SLITJAW']
-  all_regexps     = '*' + [ 'chromis', 'crisp2', 'crisp',  'spec',    'slit'   ] + '*'
-  all_classes     =       [ 'CHROMIS', 'CRISP2', 'CRISP2', 'TRIPPEL', 'SLITJAW']
+  all_instruments =       [ 'CHROMIS', 'CRISP2', 'CRISP',  'TRIPPEL', 'SLITJAW', 'HeSP']
+  all_regexps     = '*' + [ 'chromis', 'crisp2', 'crisp',  'spec',    'slit',    'HeSP'] + '*'
+  all_classes     =       [ 'CHROMIS', 'CRISP2', 'CRISP2', 'TRIPPEL', 'SLITJAW', 'HESP']
   Ninstruments    = n_elements( all_instruments )
 
   dirs = file_search(found_dir+'/*', count = Ndirs, /test_directory)
@@ -394,7 +394,9 @@ pro red_setupworkdir, cfgfile = cfgfile $
 
     if Ndirs eq 0 then break
     
-    indx = where(strmatch(file_basename(dirs), all_regexps[iinstrument], /fold), Nmatch $
+;    indx = where(strmatch(file_basename(dirs), all_regexps[iinstrument], /fold), Nmatch $
+;                 , COMPLEMENT=indx_complement, NCOMPLEMENT=Nnomatch)
+    indx = where(strmatch(dirs, all_regexps[iinstrument], /fold), Nmatch $
                  , COMPLEMENT=indx_complement, NCOMPLEMENT=Nnomatch)
 
     if Nmatch gt 0 then begin
@@ -412,13 +414,15 @@ pro red_setupworkdir, cfgfile = cfgfile $
     endif
     
   endfor                        ; iinstrument
-
+  
   ;; Identify CRISP with old cameras as well as non-instrument
   ;; directories. 
   if Ndirs gt 0 then begin
 
     ;; Clean from non-instrument directories
     non_instrument_dirs = ['reduc']
+;    indx = where(strmatch(file_basename(dirs), non_instrument_dirs+'*', /fold), Nmatch $
+;                 , COMPLEMENT=indx_complement, NCOMPLEMENT=Nnomatch)
     indx = where(strmatch(file_basename(dirs), non_instrument_dirs+'*', /fold), Nmatch $
                  , COMPLEMENT=indx_complement, NCOMPLEMENT=Nnomatch)
 
@@ -433,8 +437,7 @@ pro red_setupworkdir, cfgfile = cfgfile $
     endif
     
   endif
-  
-
+    
   if nfound_dirs gt 1 then stop ; Not supported yet - are multiple root directories ever needed?
   irootdir = 0
   root_dir = found_dir[ irootdir ]
@@ -592,7 +595,6 @@ pro red_setupworkdir, cfgfile = cfgfile $
     endelse
     config_file = red_add_suffix( cfgfile,    suffix = suffix )
     script_file = red_add_suffix( scriptfile, suffix = suffix )
-
     
     ;; Setup the different instruments.
     call_procedure, 'red_setupworkdir_' + class       $
@@ -606,8 +608,12 @@ pro red_setupworkdir, cfgfile = cfgfile $
 
 end
 
+red_setupworkdir, /no_obs, search_dirs = '/storage/Incoming/HeSP/2023.10.26/', instr = 'HeSP'
+
+
+
 ;red_setupworkdir, /no_obs, search_dirs = '/scratch/mats/crisp2-simulated-data/2016-09-19/2016-09-19/'
 ;red_setupworkdir, /no_obs, search_dirs = '/storage/Incoming/2022.08.24/', instr = 'CRISP'
-red_setupworkdir, /no_obs, search_dirs = '/storage/Incoming/2022.08.26/', instr = 'CRISP'
+;red_setupworkdir, /no_obs, search_dirs = '/storage/Incoming/2022.08.26/', instr = 'CRISP'
 
 end
