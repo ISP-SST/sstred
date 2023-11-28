@@ -80,6 +80,11 @@
 ;   
 ;       Don't write fitsheader files.
 ;   
+;    no_narrowband : in, optional, type=boolean
+;   
+;       Set this to include only wideband data, including diversity
+;       data if any.
+;   
 ;    no_pd : in, optional, type=boolean
 ;   
 ;       Set this to exclude phase diversity data and processing. 
@@ -205,6 +210,8 @@
 ;
 ;   2022-09-27 : MGL. Make FOV mask. New keyword no_fitsheaders.
 ;
+;   2023-11-24 : MGL. New keyword no_narrowband.
+;
 ;-
 pro red::prepmomfbd, cams = cams $
                      , date_obs = date_obs $
@@ -222,6 +229,7 @@ pro red::prepmomfbd, cams = cams $
                      , nmodes = nmodes $
                      , no_descatter = no_descatter $
                      , no_fitsheaders = no_fitsheaders $
+                     , no_narrowband = no_narrowband $
                      , no_pd = no_pd $
                      , nremove = nremove $
                      , numpoints = numpoints $                     
@@ -256,10 +264,18 @@ pro red::prepmomfbd, cams = cams $
 
   ;; Get keywords
   if n_elements(momfbddir) eq 0 then begin
-    if keyword_set(no_pd) then begin
-      momfbddir = 'momfbd_nopd' 
+    if keyword_set(no_narrowband) then begin
+      if keyword_set(no_pd) then begin
+        momfbddir = 'mfbd_nopd' 
+      endif else begin
+        momfbddir = 'mfbd' 
+      endelse
     endif else begin
-      momfbddir = 'momfbd' 
+      if keyword_set(no_pd) then begin
+        momfbddir = 'momfbd_nopd' 
+      endif else begin
+        momfbddir = 'momfbd' 
+      endelse
     endelse
   endif
   if n_elements(date_obs) eq 0 then date_obs = self.isodate
@@ -773,6 +789,8 @@ pro red::prepmomfbd, cams = cams $
 
     endfor                      ; iscan 
 
+    if keyword_set(no_narrowband) then continue ; Don't add NB objects
+    
     for icam=0L, Ncams-1 do begin
 
       ;;if icam ne refcam then begin
@@ -1036,8 +1054,10 @@ pro red::prepmomfbd, cams = cams $
       self -> prepmomfbd_mosaic, dirs=dirs[idir], momfbddir=momfbddir, pref = pref
     endif else begin
       ;; Make header-only fits files to be read post-momfbd.
-      if ~keyword_set(no_fitsheaders)then $
-         self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir=momfbddir, pref = pref, scanno = escan
+      stop
+      if ~keyword_set(no_fitsheaders) then $
+         self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir = momfbddir, pref = pref $
+                                         , scanno = escan, no_narrowband = no_narrowband
     endelse
   endfor                        ; idir
 
