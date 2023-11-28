@@ -133,6 +133,7 @@ pro red::fitscube_finalize, filename $
                             , wb_header = wbhdr $
                             , feature = feature $
                             , observer = observer $
+                            , silent = silent $
                             , point_id = point_id
   
   ;; Name of this method
@@ -218,6 +219,7 @@ pro red::fitscube_finalize, filename $
                        , release_comment = release_comment $
                        , feature = feature $
                        , observer = observer $
+                       , silent = silent $
                        , point_id = pp    
 
   ;; Any spectral file to copy?
@@ -284,6 +286,7 @@ pro red::fitscube_finalize, filename $
                                  , release_date = release_date $
                                  , feature = feature $
                                  , observer = observer $
+                                 , silent = silent $
                                  , point_id = point_id
     endif
   endif

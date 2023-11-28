@@ -37,7 +37,8 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
                             , momfbddir=momfbddir $
                             , pref = pref $
                             , no_delete = no_delete  $
-                            , no_pd = no_pd 
+                            , no_pd = no_pd $
+                            , no_fitsheaders = no_fitsheaders
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)  
@@ -172,8 +173,9 @@ pro red::prepmomfbd_mosaic, dirs=dirs $
         endfor                  ; imos
 
         if ~keyword_set(no_delete) then file_delete, cfg_files[icfg]
-        
-        self -> prepmomfbd_fitsheaders, /mosaic $
+
+        if ~keyword_set(no_fitsheaders)then $
+          self -> prepmomfbd_fitsheaders, /mosaic $
                                         , dirs = dirs[idir] $
                                         , momfbddir = momfbddir $
                                         , pref = pref[ipref] $

@@ -147,7 +147,7 @@ pro crisp2::selectfiles, cam = cam $
   compile_opt idl2
   
   ;; Name of this method
-  inam = red_subprogram(/low, calling = inam1)                                            
+  inam = red_subprogram(/low, calling = inam1)
   
   ;; Unless we select any
   count = 0L                  
@@ -164,6 +164,7 @@ pro crisp2::selectfiles, cam = cam $
     if( n_elements(subdir) ne 1 ) then subdir = cam
 
     file_template = subdir + '/*' + strtrim(detector, 2)+ '_*'
+    if n_elements(scan) eq 1 then file_template += string(scan, format='(I05)') + '_*'
     
     if( n_elements(dirs) gt 0 ) then dirs = [dirs] $ ; ensure it's an array, even with 1 element
     else begin 

@@ -248,6 +248,18 @@ pro red::prepmomfbd, cams = cams $
   
   instrument = ((typename(self)).tolower())
 
+  case n_elements(escan) of
+     0 : 
+     1 : if size(escan, /tname) ne 'INT' then begin
+        print, "Error: 'escan' keyword should be an integer number."
+        return
+     endif
+     else : begin
+        print, "Error: 'escan' keyword should be an integer number."
+        return
+     end
+  endcase
+
   ;; Cameras
   if ~keyword_set(cams) then cams = *self.cameras
   iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
@@ -563,7 +575,7 @@ pro red::prepmomfbd, cams = cams $
     
     print, inam + ' : Search for reference files in ' + dir
     self->selectfiles, cam=refcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                       files=ref_files, states=ref_states, /force 
+                       files=ref_files, states=ref_states, /force, scan = escan
 
     if n_elements(ref_states) eq 0 then begin
       print, inam, ' : Failed to find files/states for the reference channel in ', dir
@@ -601,7 +613,7 @@ pro red::prepmomfbd, cams = cams $
       print, inam + ' : Search for PD files in ' + dir
       if file_test(dir + pdcam_name + '_nostate/',/directory) then subdir = pdcam_name + '_nostate/'
       self->selectfiles, cam=pdcam_name, dirs=dir, prefilter=pref, subdir=subdir, $
-                         files=pd_files, states=pd_states, /force
+                         files=pd_files, states=pd_states, /force, scan = escan
 
       if n_elements(pd_states) eq 0 then begin
         print, inam, ' : Failed to find files/states for the pd channel in ', dir
@@ -618,9 +630,8 @@ pro red::prepmomfbd, cams = cams $
 
       red_progressbar, iscan, Nscans, 'Config info for WB', /predict
 
-      if n_elements(escan) ne 0 then if iscan ne escan then continue 
+      if n_elements(escan) ne 0 then scannumber = escan else scannumber = uscan[iscan]
 
-      scannumber = uscan[iscan]
       scanstring = string(scannumber,format='(I05)')
 
       for ipref=0L, Nprefs-1 do begin
@@ -798,15 +809,14 @@ pro red::prepmomfbd, cams = cams $
         
         ;; Get a list of all states for this camera
         self->selectfiles, cam=cams[icam], dirs=dir, files=files, $
-                           states=states, /force ; , nremove=remove
+                           states=states, /force, scan = escan ; , nremove=remove
 
         for iscan=0L, Nscans-1 do begin
           
           red_progressbar, iscan, Nscans, 'Config info for NB '+cams[icam], /predict
       
-          if n_elements(escan) ne 0 then if iscan ne escan then continue 
+          if n_elements(escan) ne 0 then scannumber = escan else scannumber = uscan[iscan]
 
-          scannumber = uscan[iscan]
           scanstring = string(scannumber,format='(I05)')
 
           for ipref=0L, Nprefs-1 do begin        
@@ -1051,7 +1061,7 @@ pro red::prepmomfbd, cams = cams $
   for idir = 0, Ndirs-1 do begin
     if ismos[idir] then begin
       ;; Replicate config files for each mosaic tile
-      self -> prepmomfbd_mosaic, dirs=dirs[idir], momfbddir=momfbddir, pref = pref
+      self -> prepmomfbd_mosaic, dirs=dirs[idir], momfbddir=momfbddir, pref = pref, no_fitsheaders = no_fitsheaders
     endif else begin
       ;; Make header-only fits files to be read post-momfbd.
       stop

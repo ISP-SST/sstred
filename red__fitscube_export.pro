@@ -331,26 +331,27 @@ pro red::fitscube_export, filename $
     ;; Any spectral file to copy?
   if ~keyword_set(no_spectral_file) then begin
     spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
-    if ~file_test(indir + spfile) then begin
-      print, 'File ',spfile,' does not exist.'
+    if file_test(indir + spfile) then begin
+      print, inam + ' : Copying the spectral cube...'
+      spoutfile = red_strreplace(outfile, '_im.fits', '_sp.fits')
+      file_copy, indir+spfile, outdir+spoutfile
+      ;; Change some keywords in the spectral file
+      sphdr = headfits(outdir+spoutfile)
+      ;; Delete header keywords that should not be there
+      red_fitsdelkeyword, sphdr, 'STATE'
+      ;; Add keywords after this one:
+      spanchor = 'TIMESYS'
+      red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATE', new_DATE
+      red_fitsaddkeyword, anchor = spanchor, sphdr, 'FILENAME', spoutfile
+      red_fitscube_newheader, outdir+spoutfile, sphdr
+      print, inam + ' : Wrote '+outdir+spoutfile
+    endif else begin 
+      print, 'WARNING: file ',spfile,' does not exist.'
       ans=''
       read, 'Would you like to continue without spectral cube (Y/n) : ',ans
       if strupcase(ans) eq 'N' then return
       print
-    endif
-    print, inam + ' : Copying the spectral cube...'
-    spoutfile = red_strreplace(outfile, '_im.fits', '_sp.fits')
-    file_copy, indir+spfile, outdir+spoutfile
-    ;; Change some keywords in the spectral file
-    sphdr = headfits(outdir+spoutfile)
-    ;; Delete header keywords that should not be there
-    red_fitsdelkeyword, sphdr, 'STATE'
-    ;; Add keywords after this one:
-    spanchor = 'TIMESYS'
-    red_fitsaddkeyword, anchor = spanchor, sphdr, 'DATE', new_DATE
-    red_fitsaddkeyword, anchor = spanchor, sphdr, 'FILENAME', spoutfile
-    red_fitscube_newheader, outdir+spoutfile, sphdr
-    print, inam + ' : Wrote '+outdir+spoutfile
+    endelse    
   endif
   
   ;; Add FITS keywords with info available in the file but not as
@@ -459,13 +460,12 @@ pro red::fitscube_export, filename $
       endelse
     endif
 
-    video_extension = 'mov'
     self -> fitscube_video, filename $
                             , istokes = istokes $
                             , ituning = ituning $
                             , outdir = outdir $
-                            , outfile = red_strreplace(outfile, '.fits' $
-                                                       , '.'+video_extension) $
+                            , outfile = red_strreplace(outfile, '.fits', '.mp4') $
+                            , format = 'mov' $
                             , shrink_fac = video_shrink_fac
     
   endif

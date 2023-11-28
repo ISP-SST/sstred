@@ -178,7 +178,8 @@ pro red::make_scan_cube, dir $
                          , tuning_selection = tuning_selection $
                          , nthreads = nthreads $
                          , fitpref_time = fitpref_time $
-                         , nomissing_nans = nomissing_nans
+                         , nomissing_nans = nomissing_nans $
+                         , mosaic = mosaic
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -507,8 +508,10 @@ pro red::make_scan_cube, dir $
     if makestokes then Nstokes = 4 else Nstokes = 1
 
     ;; Make output file name
-    midpart = prefilter + '_' + datestamp + '_scan=' $ 
-              + strtrim(uscans[iscan], 2)
+    if n_elements(mosaic) ne 0 then $
+      midpart = prefilter + '_' + datestamp + '_mos' + string(mosaic, format='(I02)') $
+    else $
+      midpart = prefilter + '_' + datestamp + '_scan=' + strtrim(uscans[iscan], 2)
     if makestokes then midpart += '_stokes'
     ofile = 'nb_'+midpart+'_corrected.fits'
     filename = odir+ofile
