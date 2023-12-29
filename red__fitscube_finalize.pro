@@ -220,8 +220,14 @@ pro red::fitscube_finalize, filename $
                        , feature = feature $
                        , observer = observer $
                        , silent = silent $
-                       , point_id = pp    
+                       , point_id = pp $
+                       , status = status
 
+  if ~status then begin
+    print, 'The header change has failed.'
+    return
+  endif
+  
   ;; Any spectral file to copy?
   if keyword_set(do_spectral_file) then begin
     spfile = red_strreplace(infile, '_im.fits', '_sp.fits')
@@ -275,6 +281,7 @@ pro red::fitscube_finalize, filename $
       if file_dirname(wcfile) eq '.' then wcfile = 'cubes_wb/'+wcfile
       ;; Recursively call fitscube_finalize with the wb cube name and
       ;; many of the origial keywords.
+      if keyword_set(point_id) then pp = point_id
       self -> fitscube_finalize, wcfile $
                                  , header = wbhdr $
                                  , keywords = keywords $
@@ -287,7 +294,7 @@ pro red::fitscube_finalize, filename $
                                  , feature = feature $
                                  , observer = observer $
                                  , silent = silent $
-                                 , point_id = point_id
+                                 , point_id = pp
     endif
   endif
 
