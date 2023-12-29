@@ -36,6 +36,7 @@ pro red::archive_workdir, sudo=sudo
   
   isodate = self.isodate
   instrument = typename(self)
+  if instrument eq 'CRISP2' then instrument='CRISP'
   outdir='/storage/science_workdirs/' + isodate + '/' + instrument + '/'
 
   openw, /get_lun, lun, 'archive_workdir.sh'
