@@ -23,9 +23,9 @@ pro fitscube_crosstalk_event, event
       indx2 = indx[where((*info).weight gt (*info).cutoff)]
       im2[indx2] = (*info).image[indx2]
 
-      indx_data = where(finite(im2), Ndata, complement = indx_missing, ncomplement = Nmissing)
-      mn = median(im2[indx_data])-2.5*robust_sigma(im2[indx_data])
-      mx = median(im2[indx_data])+2.5*robust_sigma(im2[indx_data])
+      indx_dat = where(finite(im2), Ndata, complement = indx_missing, ncomplement = Nmissing)
+      mn = median(im2[indx_dat])-2.5*robust_sigma(im2[indx_dat])
+      mx = median(im2[indx_dat])+2.5*robust_sigma(im2[indx_dat])
 
       imshow = bytscl(im2, mn, mx)
       rg = imshow
@@ -346,9 +346,9 @@ pro red::fitscube_crosstalk, filename  $
       
 ;      window, 11, xs = Nx, ys = Ny
       red_show, im2, w = win2, /scroll, title = 'Average image with automatic mask'
-      indx_data = where(finite(im2), Ndata, complement = indx_missing, ncomplement = Nmissing)
-      mn = median(im2[indx_data])-2.5*robust_sigma(im2[indx_data])
-      mx = median(im2[indx_data])+2.5*robust_sigma(im2[indx_data])
+      indx_dat = where(finite(im2), Ndata, complement = indx_missing, ncomplement = Nmissing)
+      mn = median(im2[indx_dat])-2.5*robust_sigma(im2[indx_dat])
+      mx = median(im2[indx_dat])+2.5*robust_sigma(im2[indx_dat])
       cgimage, bytscl(im2, mn, mx) $
                , missing_color = 'yellow' $
                , missing_index = 0 $
