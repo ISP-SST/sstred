@@ -184,7 +184,7 @@ pro red::make_scan_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  
+  if n_elements(mosaic) gt 0 and n_elements(scannos) eq 0 then scannos = '0'
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   if n_elements(padmargin) eq 0 then padmargin  = 40
