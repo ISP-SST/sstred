@@ -134,8 +134,12 @@ pro red::archive_workdir, sudo=sudo
       lines_dirs = file_search(momfbd_dirs[ii]+'/[3-9][0-9][0-9][0-9]/cfg', count = Nlines)
       if Nlines gt 0 then begin
         printf, lun, 'tar -cf ' + tar_fn + ' ' + lines_dirs[0] + '/*.cfg'
+        if file_test(lines_dirs[0] + '/fov_mask.fits') then $
+          printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[0] + '/fov_mask.fits'
         printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[0] + '/results/'
         for jj = 1, Nlines-1 do begin
+          if file_test(lines_dirs[jj] + '/fov_mask.fits') then $
+            printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[jj] + '/fov_mask.fits'
           printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[jj] + '/*.cfg'
           printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[jj] + '/results/'
         endfor
