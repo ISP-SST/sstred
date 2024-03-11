@@ -226,7 +226,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
         ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._][0-9][0-9][0-9][02468]0[._]*', count = NfilesW)      
         ;;fnamesW = file_search(wbdirs[iwb]+'/'+camwb+'/*[._]'+string(iscan, format = '(i05)')+'[._]*' $
         ;;                    , count = NfilesW)      
-        fnamesW = self -> raw_search(wbdirs[iwb]+'/'+camwb, scannos = iscan, count = NfilesW)
+        fnamesW = self -> raw_search(wbdirs[iwb]+'/'+camwb, scannos = iscan, prefilters=pref, count = NfilesW)
         print, wbdirs[iwb]+'/'+camwb
         print, NfilesW
         if NfilesW eq 0 then break
