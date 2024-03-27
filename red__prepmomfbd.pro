@@ -429,7 +429,7 @@ pro red::prepmomfbd, cams = cams $
     
     maps = fltarr(3, 3, Ncams)
     for icam = 0, Ncams-1 do begin
-      gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
+      gfiles = file_search('gaintables/'+detectors[icam]+'_*'+pref+'*.fits')
       g = red_readdata(gfiles[0])
       indx = where(align.state2.camera eq cams[icam])
       maps[*, *, icam] = align[indx[0]].map
