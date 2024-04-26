@@ -102,7 +102,11 @@ pro red::archive_workdir, sudo=sudo
   else $
     printf,"#  WARNING: 'doit.pro' file doesn't exist!"
   printf, lun
-
+  if file_test('detectors.idlsave') then $
+    printf, lun, 'tar -rf ' + tar_fn + ' detectors.idlsave' $
+  else $
+    printf,"#  WARNING: 'detectors.idlsave' file doesn't exist!"
+                
   dirs = ['link_scripts','downloads','info','prefilter_fits','*intensities','calib','pipeline-log','notes']
   if instrument eq 'CRISP' then $
     dirs = [dirs,'polcal'] $
