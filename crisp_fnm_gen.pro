@@ -169,6 +169,11 @@ pro crisp_fnm_gen, filename $
           filename_format += 'I07, A1, '
           filename_vars += 'framenum, "'+sep+'", '
         end
+        ;; mosaic position
+        strmatch(basename_parts[ipart] , 'mos[0-9][0-9]') : begin
+          filename_format += 'A3, I02, A1, '
+          filename_vars += '"mos", mosaic_pos, "'+sep+'", '
+        end
         ;; Camera tag
         strmatch(basename_parts[ipart] , 'cam[XVI]*') : begin 
           filename_format += 'A, A1, '

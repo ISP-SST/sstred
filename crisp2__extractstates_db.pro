@@ -55,18 +55,17 @@ pro crisp2::extractstates_db, strings, states, datasets = datasets, cam = cam
   if use_strings then begin
     Nstr = n_elements(strings)
     strings = red_strreplace(strings,'//','/',n=100)
-    ;; cache is slow comparing to the database at least when BeeGFS is fatigue
-    
-    ;; if ~keyword_set(force) then begin
-    ;;   for ifile=0,Nstr-1 do begin
-    ;;     this_cache = rdx_cacheget(strings[ifile], count = cnt)   
-    ;;     if cnt gt 0 then begin
-    ;;       red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
-    ;;       red_append,states,this_cache.state
-    ;;     endif
-    ;;   endfor
-    ;;   if n_elements(states) eq Nstr then return else undefine,states
-    ;; endif
+    ;; cache can be slow comparing to the database at least when BeeGFS is fatigue   
+    if ~keyword_set(force) then begin
+      for ifile=0,Nstr-1 do begin
+        this_cache = rdx_cacheget(strings[ifile], count = cnt)   
+        if cnt gt 0 then begin
+          red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
+          red_append,states,this_cache.state
+        endif
+      endfor
+      if n_elements(states) eq Nstr then return else undefine,states
+    endif
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
     utimestamps = timestamps[uniq(timestamps,sort(timestamps))]
     datasets = self.isodate + ' ' + utimestamps
@@ -332,8 +331,8 @@ pro crisp2::extractstates_db, strings, states, datasets = datasets, cam = cam
           qw_state = fix(frame[9])
           lp_state = fix(frame[10])
           state.fullstate = state.cam_settings + '_lp' + string(lp_state, format = '(i03)') + '_' $
-                            + 'qw' + string(qw_state, format = '(i03)') + '_' $
-                            + state.fullstate
+                            + 'qw' + string(qw_state, format = '(i03)') $
+                            + '_' + burst[9] + '_' + burst[7] + '_' + strtrim(string(tuning, format='(I+)'),2) + '_lc' + frame[8]
           state.qw = qw_state
           state.lp = lp_state
         endif          
@@ -362,17 +361,10 @@ pro crisp2::extractstates_db, strings, states, datasets = datasets, cam = cam
                           + '_' + string(states[ifile].scannumber, format = '(i05)') $
                           + '_' + strtrim(states[ifile].prefilter, 2) $
                           + '_' + string(states[ifile].framenumber, format = '(i07)') + '.fits'
-       endfor
+        endfor
       endif else begin
-        for ifile=0,Nst-1 do begin
-          tt = strsplit(states[ifile].tuning,'_',/extract)
-          files[ifile] = states[ifile].camera + '/sst_' + states[ifile].detector $
-                         + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                         + '_' + string(states[ifile].framenumber, format = '(i07)') $
-                         + '_' + strtrim(states[ifile].prefilter, 2) $
-                         + '_' + tt[0] + '_' + string(fix(tt[1]),format = '(I+05)') $
-                         + '_lc' + strtrim(fix(states[ifile].lc), 2) + '.fits'
-       endfor
+        for ifile=0,Nst-1 do $
+          files[ifile] = states[ifile].camera + '/' + file_basename(states[ifile].filename)
       endelse
       ;; Filter the found states with respect to the file names in
       ;; strings

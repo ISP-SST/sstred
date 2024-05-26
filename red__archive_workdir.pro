@@ -36,6 +36,7 @@ pro red::archive_workdir, sudo=sudo
   
   isodate = self.isodate
   instrument = typename(self)
+  if instrument eq 'CRISP2' then instrument='CRISP'
   outdir='/storage/science_workdirs/' + isodate + '/' + instrument + '/'
 
   openw, /get_lun, lun, 'archive_workdir.sh'
@@ -101,7 +102,11 @@ pro red::archive_workdir, sudo=sudo
   else $
     printf,"#  WARNING: 'doit.pro' file doesn't exist!"
   printf, lun
-
+  if file_test('detectors.idlsave') then $
+    printf, lun, 'tar -rf ' + tar_fn + ' detectors.idlsave' $
+  else $
+    printf,"#  WARNING: 'detectors.idlsave' file doesn't exist!"
+                
   dirs = ['link_scripts','downloads','info','prefilter_fits','*intensities','calib','pipeline-log','notes']
   if instrument eq 'CRISP' then $
     dirs = [dirs,'polcal'] $
@@ -133,8 +138,12 @@ pro red::archive_workdir, sudo=sudo
       lines_dirs = file_search(momfbd_dirs[ii]+'/[3-9][0-9][0-9][0-9]/cfg', count = Nlines)
       if Nlines gt 0 then begin
         printf, lun, 'tar -cf ' + tar_fn + ' ' + lines_dirs[0] + '/*.cfg'
+        if file_test(lines_dirs[0] + '/fov_mask.fits') then $
+          printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[0] + '/fov_mask.fits'
         printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[0] + '/results/'
         for jj = 1, Nlines-1 do begin
+          if file_test(lines_dirs[jj] + '/fov_mask.fits') then $
+            printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[jj] + '/fov_mask.fits'
           printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[jj] + '/*.cfg'
           printf, lun, 'tar -rf ' + tar_fn + ' ' + lines_dirs[jj] + '/results/'
         endfor

@@ -53,18 +53,17 @@ pro crisp::extractstates_db, strings, states, datasets = datasets, cam = cam
   if use_strings then begin
     Nstr = n_elements(strings)
     strings = red_strreplace(strings,'//','/',n=100)
-    ;; cache is slow comparing to the database at least when BeeGFS is fatigue
-    
-    ;; if ~keyword_set(force) then begin
-    ;;   for ifile=0,Nstr-1 do begin
-    ;;     this_cache = rdx_cacheget(strings[ifile], count = cnt)   
-    ;;     if cnt gt 0 then begin
-    ;;       red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
-    ;;       red_append,states,this_cache.state
-    ;;     endif
-    ;;   endfor
-    ;;   if n_elements(states) eq Nstr then return else undefine,states
-    ;; endif
+    ; cache can be slow comparing to the database at least when BeeGFS is fatigue    
+    if ~keyword_set(force) then begin
+      for ifile=0,Nstr-1 do begin
+        this_cache = rdx_cacheget(strings[ifile], count = cnt)   
+        if cnt gt 0 then begin
+          red_progressbar, ifile, Nstr, 'Extract state info from cache', /predict
+          red_append,states,this_cache.state
+        endif
+      endfor
+      if n_elements(states) eq Nstr then return else undefine,states
+    endif
     timestamps = stregex(strings,'[0-2][0-9]:[0-5][0-9]:[0-5][0-9]', /extract)
     utimestamps = timestamps[uniq(timestamps,sort(timestamps))]
     datasets = self.isodate + ' ' + utimestamps

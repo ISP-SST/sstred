@@ -59,7 +59,13 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     stop
   endif
 
-  files = file_search(self.out_dir + 'polcal_sums/*/*.fits', count = count)
+  search_str = 'polcal_sums/'
+  if keyword_set(cam) then search_str += cam + '/' else search_str += '*/'
+  if keyword_set(pref) then $
+     search_str += '*' + pref + '*.fits' $
+  else $
+      search_str += '*.fits'
+  files = file_search(self.out_dir + search_str, count = count)
   self -> extractstates, files, states, /polcal
 
   upref = (states[uniq(states.prefilter, sort(states.prefilter))]).prefilter

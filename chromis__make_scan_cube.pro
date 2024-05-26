@@ -127,14 +127,14 @@ pro chromis::make_scan_cube, dir $
                              , nthreads = nthreads $
                              , subtract_meanang = subtract_meanang $
                              , fitpref_time = fitpref_time $
-                             , nomissing_nans = nomissing_nans
+                             , nomissing_nans = nomissing_nans $
+                             , mosaic = mosaic
                     
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if keyword_set(scannos) then scannos = string(scannos) ;; to prevent silent error in line 249
-
+  if n_elements(mosaic) gt 0 and n_elements(scannos) eq 0 then scannos = '0'
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation                            
   
@@ -248,10 +248,10 @@ pro chromis::make_scan_cube, dir $
   
   ;; Get a subset of the available scans, either through the scannos
   ;; keyword or by a selection dialogue.
-  if ~(n_elements(scannos) gt 0 && scannos eq '*') then begin
+  if ~(n_elements(scannos) gt 0 && string(scannos) eq '*') then begin
     if n_elements(scannos) gt 0 then begin
       ;; Selected a subset through the scannos keyword
-      uscans = red_expandrange(scannos)
+      uscans = red_expandrange(string(scannos))
       match2, uscans, wstates.scannumber, scanindx
       if max(scanindx eq -1) eq 1 then begin
         print, inam + ' : You asked for scans ' + scannos + '. However, scans ' $
@@ -419,8 +419,10 @@ pro chromis::make_scan_cube, dir $
     ;; This is the loop in which the cubes are written.
     
     ;; Make output file name
-    midpart = prefilter + '_' + datestamp + '_scan=' $ 
-              + strtrim(uscans[iscan], 2)
+    if n_elements(mosaic) ne 0 then $
+      midpart = prefilter + '_' + datestamp + '_mos' + string(mosaic, format='(I02)') $
+    else $
+      midpart = prefilter + '_' + datestamp + '_scan=' + strtrim(uscans[iscan], 2)
     ofile = 'nb_'+midpart+'_corrected.fits'
     filename = odir+ofile
 
