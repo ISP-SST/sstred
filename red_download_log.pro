@@ -102,10 +102,10 @@ pro red_download_log, instrument, date, outdir $
   
   if ~keyword_set(overwrite) then begin
     if file_test(downloadpath+'.xz') then begin
-      print, 'Compressed file exists'
+      ;;print, 'Compressed file exists'
 
       if file_test(downloadpath) then begin
-        print, 'Uncompressed file also exists'
+        ;;print, 'Uncompressed file also exists'
       endif else begin
         spawn, 'cd '+file_dirname(localpath) $
                + '; xzcat '+file_basename(downloadpath)+ '.xz > ' + file_basename(downloadpath)
@@ -184,25 +184,43 @@ pro red_download_log, instrument, date, outdir $
         ;; there are differences from year to year (sometimes large)
         ;; so we first select just the year.
         indx = where(strmid(pig_center.date, 0, 4) eq datearr[0], Nwhere)
-        if Nwhere eq 0 then begin
-          ;; Average first half of 2023
-          dx=20.24
-          dy=18.35
-          scale=4.31830
-        endif else begin
-          pig_center_date = pig_center.date[indx]
-          pig_center_dx = median(pig_center.dx[indx], 5)
-          pig_center_dy = median(pig_center.dy[indx], 5)
-          pig_center_scale = median(pig_center.scale[indx], 5)
-          juldate = date_conv(isodate, 'J')
-          pig_center_juldates = dblarr(Nwhere)
-          for i = 0, Nwhere-1 do pig_center_juldates[i] = date_conv(pig_center_date[i], 'J') ; Convert to Julian
-          dist = min(abs(pig_center_juldates - juldate), ii)                                 ; Nearest date ii
-          dx = pig_center_dx[ii]
-          dy = pig_center_dy[ii]
-          scale = pig_center_scale[ii]
-        endelse
+
+        stop
         
+        case Nwhere of
+
+          0 : begin
+            ;; Average first half of 2023
+            dx=20.24
+            dy=18.35
+            scale=4.31830
+          end
+
+          1 : begin
+            pig_center_date = pig_center.date[indx]
+            dx = pig_center.dx[indx[0]]
+            dy = pig_center.dy[indx[0]]
+            scale = pig_center.scale[indx[0]]
+          end
+
+          else : begin
+            Nmedian = (Nwhere - 1) <5
+            pig_center_date = pig_center.date[indx]
+            pig_center_dx = median(pig_center.dx[indx], Nmedian)
+            pig_center_dy = median(pig_center.dy[indx], Nmedian)
+            pig_center_scale = median(pig_center.scale[indx], Nmedian)
+            juldate = date_conv(isodate, 'J')
+            pig_center_juldates = dblarr(Nwhere)
+            for i = 0, Nwhere-1 do pig_center_juldates[i] = date_conv(pig_center_date[i], 'J') ; Convert to Julian
+            dist = min(abs(pig_center_juldates - juldate), ii)                                 ; Nearest date ii
+            dx = pig_center_dx[ii]
+            dy = pig_center_dy[ii]
+            scale = pig_center_scale[ii]
+            
+          end
+          
+        endcase
+    
         ;; Now do the converting
         print, 'red_download_log : Converting PIG log file...'
         if file_test(downloadpath) then begin
