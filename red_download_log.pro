@@ -185,8 +185,6 @@ pro red_download_log, instrument, date, outdir $
         ;; so we first select just the year.
         indx = where(strmid(pig_center.date, 0, 4) eq datearr[0], Nwhere)
 
-        stop
-        
         case Nwhere of
 
           0 : begin
