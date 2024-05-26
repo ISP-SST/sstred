@@ -296,10 +296,9 @@ pro red::prepmomfbd, cams = cams $
   if n_elements(modes) eq 0 then begin
     ;; Is the number of modes specified or do we need a default number?
     if n_elements(Nmodes) eq 0 then Nmodes = 51
-    ;; KL modes in variance order:
-    manymodes = red_expandrange('2-6,9,10,7,8,14,15,11-13,20,21,18,19,16,17,27,28,25,26,22-24,35,36,33,34,44,45,31,32,29,30,54,55,42,43,40,41,37-39,65,66,52,53,50,51,77,78,48,49,46,47,63,64,61,62,90,91,75,76,59,60,56-58,104,105,73,74,88,89,71,72,69,70,67,68,119,120,86,87,102,103,84,85,135,136,82,83,79-81,100,101,117,118,152,153,98,99,96,97,115,116,133,134,94,95,92,93,170,171,113,114,150,151,131,132,111,112,189,190,109,110,106-108,129,130,168,169,148,149,209,210,127,128,125,126,123,124,121,122,146,147,187,188,230,231,166,167,144,145,142,143,207,208,164,165,252,253,140,141,137-139,185,186,162,163,275,276,228,229,160,161,183,184,205,206,158,159,156,157,154,155,181,182,299,300,250,251,203,204,179,180,226,227,177,178,175,176,324,325,172-174,201,202,273,274,224,225,248,249,199,200,350,351,197,198,297,298,222,223,195,196,193,194,191,192,246,247,271,272,220,221,377,378,322,323,218,219,244,245,216,217,295,296,269,270,214,215,211-213,405,406,242,243,348,349,240,241,267,268,320,321,293,294,434,435,238,239,236,237,375,376,265,266,234,235,232,233,291,292,346,347,263,264,464,465,318,319,261,262,403,404,289,290,259,260,257,258,254-256,495,496,373,374,316,317,344,345,287,288,432,433,285,286,314,315,527,528,283,284,401,402,342,343,281,282,371,372,279,280,277,278,462,463,312,313,560,561,310,311,340,341,430,431,308,309,369,370,399,400,493,494,306,307,338,339,304,305,301-303,594,595,367,368,336,337,460,461,397,398,525,526,428,429,334,335,629,630,365,366,332,333,330,331,328,329,326,327,491,492,395,396,363,364,558,559,458,459,426,427,665,666,361,362,393,394,359,360,523,524,357,358,592,593,424,425,355,356,352-354,489,490,391,392,456,457,702,703,389,390,422,423,556,557,627,628,387,388,454,455,521,522,740,741,385,386,487,488,420,421,383,384,381,382,379,380,590,591,418,419,452,453,663,664,779,780,485,486,416,417,554,555,519,520,450,451,414,415,412,413,625,626,410,411,700')
-    ;; Use the Nmodes most significant modes:
-    if Nmodes le n_elements(manymodes) then modes = red_collapserange(manymodes[0:Nmodes-1], ld = '', rd = '') else stop
+    ;; Modes 2 through Nmodes+1. Use SORT_MODES keyword instead of the
+    ;; manyodes thing.
+    modes = red_collapserange(indgen(Nmodes)+2, ld = '', rd = '')
   endif
 
   if n_elements(nremove) eq 0 then nremove=0
@@ -312,14 +311,14 @@ pro red::prepmomfbd, cams = cams $
     for idir = 0, Ndirs-1 do begin
       if ~file_test(dirs[idir]) then begin
         if file_test(self.out_dir+'data/'+dirs[idir]) then begin
-           dirs[idir] = self.out_dir+'data/'+dirs[idir]
+          dirs[idir] = self.out_dir+'data/'+dirs[idir]
         endif else begin
           print,'The directory ',self.out_dir+'data/'+dirs[idir], " doesn't exist."
           print,"Run a->link_data, dir=['",dirs[idir],"'] first."
           return
         endelse
       endif
-    endfor                      ; idir
+    endfor ; idir
   endif else begin
 ;    if ~ptr_valid(self.data_dirs) then begin
 ;      print, inam+' : ERROR : undefined data_dir'
@@ -346,7 +345,7 @@ pro red::prepmomfbd, cams = cams $
     return
   ENDIF
 
-  ismos = bytarr(Ndirs)         ; Should be TRUE for directories with automatic mosaic data. 
+  ismos = bytarr(Ndirs) ; Should be TRUE for directories with automatic mosaic data. 
   
   if keyword_set(no_pd) then begin
     ;; Remove PD camera if any
@@ -354,13 +353,13 @@ pro red::prepmomfbd, cams = cams $
     cams = cams[indx]
     iswb = iswb[indx]
     ispd = ispd[indx]
-    Ncams = n_elements(cams)    ; Number of cameras
+    Ncams = n_elements(cams) ; Number of cameras
   endif else begin
     ;; Establish PD camera
     indx = where(iswb and ispd)
     if max(indx) ge 0 then pdcam = indx[0] $
     else pdcam = self.pdcam 
-    Ncams = n_elements(cams)    ; Number of cameras
+    Ncams = n_elements(cams) ; Number of cameras
     if pdcam ge Ncams then begin
       print, inam, ' : index of PD camera out of range: ', pdcam, ' >= ', Ncams
       return
@@ -689,6 +688,7 @@ pro red::prepmomfbd, cams = cams $
           cfg.globals += 'GRADIENT=gradient_Vogel' + LF
         endelse
         cfg.globals += 'MODES=' + modes + LF
+        cfg.globals += 'SORT_MODES' + LF
         cfg.globals += 'TELESCOPE_D=0.97' + LF
         cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LF
         cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + LF
