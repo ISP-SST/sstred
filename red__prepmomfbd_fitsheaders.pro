@@ -285,7 +285,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                   endif
                 endfor          ; iline
 
-                if itrace gt 0 && thiscam eq wbcam then begin
+                if thiscam eq wbcam then begin
+                  ;;if itrace gt 0 && thiscam eq wbcam then begin
                   wb_filename_template = filename_template
                   wb_image_data_dir = image_data_dir
                 endif else begin
