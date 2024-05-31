@@ -52,6 +52,7 @@
 pro red::prepmomfbd_fitsheaders, dirs = dirs $
                                  , momfbddir = momfbddir $
                                  , mosaic = mosaic $
+                                 , no_narrowband = no_narrowband $
                                  , pref = pref $
                                  , scanno = scanno $
                                  , no_pd = no_pd 
@@ -186,6 +187,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         Ostarts = where(strmatch(cfg,'object{*'),Nobj)
         for iobj = 0, Nobj-1 do begin
 
+          if keyword_set(no_narrowband) && iobj gt 0 then continue
+
           for itrace = 0, Ntrace-1 do begin
           
             prpara = Gprpara[*] ; Start from the global parameters
@@ -282,7 +285,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                   endif
                 endfor          ; iline
 
-                if thiscam eq wbcam then begin
+                if itrace gt 0 && thiscam eq wbcam then begin
                   wb_filename_template = filename_template
                   wb_image_data_dir = image_data_dir
                 endif else begin
