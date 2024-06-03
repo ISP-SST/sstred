@@ -95,10 +95,11 @@ pro red::link_data, all_data = all_data $
     return
   end
   
-  
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
 
+  instrument = ((typename(self)).tolower())
+  
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then begin
     ;; No dirs given in keyword, use default
@@ -109,7 +110,9 @@ pro red::link_data, all_data = all_data $
       if ~file_test(dirs[idir], /dir) then begin
         ;; This dir is not an existing directory.
         ;; Try to interpret as a selection from the default dirs.
-        dirs[idir] = file_dirname((*self.data_dirs)[0])+'/'+dirs[idir]
+        tmp = file_search(self.root_dir + instrument.toupper() + '-*/' + dirs[idir], count = cnt)
+        if cnt eq 1 then dirs[idir] = tmp
+        ;;    dirs[idir] = file_dirname((*self.data_dirs)[0])+'/'+dirs[idir]
       endif
     endfor                      ; idir
   endelse
