@@ -98,6 +98,8 @@ n_ref = n_elements(ref_states_unique)
   ;;; Loop through ref states, find matches based on fpi_state, and process those
 
 undefine, alignments
+openw, unit, 'calib/refgrid.txt', /get, /append
+printf, unit, '#   State         Center         Step   Angle'
 
 FOR i_ref = 0, n_ref-1 DO BEGIN
     l_shape = [7, 3]
@@ -138,8 +140,13 @@ FOR i_ref = 0, n_ref-1 DO BEGIN
             ref_lpos = ref_pos[*, ref_lind] 
             IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l1
         ENDFOR
-        print, inam, ' : Unable to locate the reference pinholes. Try /manual'
-        stop
+        print, inam, ' : Unable to locate the reference pinholes! Mark them manually'
+        REPEAT BEGIN
+            ref_lind = red_markpinholes(ref_m, ref_pos, title='Reference Pinholes')
+            ref_lpos = ref_pos[*, ref_lind]
+            IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l1
+            print, inam, ' : This is not the 3 bigger pinholes!'
+        ENDREP UNTIL 0
     ENDELSE
 found_l1:
     print, inam, ' : Found the reference L'
@@ -157,6 +164,9 @@ found_l1:
     print, inam, ' : regular grid width ', strtrim(par[0], 2), 'px, tilt ', strtrim(par[1]*!radeg, 2), 'deg'
     reg_pos = x0#replicate(1, np_ref)-red_grid_func(par, x = tmp_i, y = 0)
     reg_i = tmp_i
+    printf, unit, string(this_ref_state.fpi_state, X0, par, $
+                         form="(a-12,f7.2,'  ',f7.2,'   ',f7.3,f+7.3)")
+    
       ;;; compute warp matrices, forward (kxy) and backward(lxy)
     map = transpose([ref_pos, reg_pos])
     red_clean_warp, map, kx, ky, warp_dim
@@ -197,7 +207,13 @@ found_l1:
                 img_lpos = img_pos[*, img_lind] 
                 IF red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l2
             ENDFOR
-            print, inam, ' : Unable to locate the reference pinholes. Try /manual'
+            print, inam, ' : Unable to locate the reference pinholes. Try marking them manually'
+            REPEAT BEGIN
+                img_lind = red_markpinholes(img_m, img_pos, title='Dependent Pinholes')
+                img_lpos = img_pos[*, img_lind]
+                IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l2
+                print, inam, ' : This is not the 3 bigger pinholes!'
+            ENDREP UNTIL 0
         ENDELSE
 
 found_l2:
@@ -227,6 +243,8 @@ found_l2:
     ENDFOR    ;;; loop dependent files
     IF keyword_set(manual) THEN wdelete
 ENDFOR        ;;; loop reference files
+
+free_lun, unit
 
 save, file = output_file, alignments
 
