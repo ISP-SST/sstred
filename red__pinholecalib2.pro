@@ -162,8 +162,19 @@ found_l1:
     par = mpfit('red_grid_func', [gridstep, ang], $
                 functargs = {X:tmp_i, Y:tmp}, /quiet)
     print, inam, ' : regular grid width ', strtrim(par[0], 2), 'px, tilt ', strtrim(par[1]*!radeg, 2), 'deg'
-    reg_pos = x0#replicate(1, np_ref)-red_grid_func(par, x = tmp_i, y = 0)
-    reg_i = tmp_i
+       ;;; check that there are no double index positions
+    iix = replicate(1b, np_ref)
+    FOR i=0, np_ref-2 DO FOR j=i+1, np_ref-1 DO $
+      IF total(tmp_i[*, i] EQ tmp_i[*, j]) EQ 2 THEN BEGIN
+        iix[i] = 0
+        ref_pos[*, j] = (ref_pos[*, i]+ref_pos[*, j])/2
+    ENDIF
+    iix = where(iix EQ 1)
+    ref_pos = ref_pos[*, iix]
+    reg_i = tmp_i[*, iix]
+    np_ref = (size(reg_i, /dim))[1]
+    reg_pos = x0#replicate(1, np_ref)-red_grid_func(par, x = reg_i, y = 0)
+
     printf, unit, string(this_ref_state.fpi_state, X0, par, $
                          form="(a-12,f7.2,'  ',f7.2,'   ',f7.3,f+7.3)")
     
