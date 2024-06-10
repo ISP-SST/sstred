@@ -1,4 +1,6 @@
-FUNCTION red_histo_opt, image, cutoff, ix, top_only=top, bot_only=bot
+FUNCTION red_histo_opt, image, cutoff, ix, top_only=top, bot_only=bot $
+                        , cmin = cmin $
+                        , cmax = cmax
 ;+
 ; NAME:
 ;       HISTO_OPT
@@ -14,6 +16,8 @@ FUNCTION red_histo_opt, image, cutoff, ix, top_only=top, bot_only=bot
 ; OPTIONAL PARAMETERS:
 ;       IX    : (Output) Contains indices of the clipped values
 ; KEYWORDS:
+;       CMAX     : (Output) Upper cutoff.
+;       CMIN     : (Output) Lower cutoff.
 ;       TOP_ONLY : (Flag) Clip only the upper values
 ;       BOT_ONLY : (Flag)  "     "  "   lower   "
 ; OUTPUTS:
@@ -32,11 +36,12 @@ FUNCTION red_histo_opt, image, cutoff, ix, top_only=top, bot_only=bot
 ;       16-Feb-1995  P.Suetterlin, KIS: Take care for float
 ;                    arrays. Histogram doesn't like them.
 ;       15-Apr-2021  M.Löfdahl, ISP: Deal with NaNs.
+;       10-Jun-2024  M.Löfdahl, ISP: New keywords cmin, cmax.
 ;-
 
-on_error, 2
+  on_error, 2
 
-IF n_params() EQ 0 THEN BEGIN
+  IF n_params() EQ 0 THEN BEGIN
     message, 'Usage: RESULT = HISTO_OPT ( IMAGE [,CUTOFF] )', /cont
     return, undefined
 ENDIF
