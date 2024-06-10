@@ -125,7 +125,7 @@ pro red_fitsaddkeyword, header, name, value, comment $
   if n_elements(comments) ne Nkeys then comments = replicate(comments, Nkeys)
   
   ;; Remove trailing blank lines
-  Nlines = where(strmatch(header, 'END *'), Nmatch)
+  Nlines = where(strmatch(header, 'END *') or header eq 'END', Nmatch)
   if Nmatch eq 0 then stop
   header = header[0:Nlines]
 
