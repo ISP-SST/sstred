@@ -182,7 +182,15 @@ function red_readdata, fname $
     'FITS' : begin
 
       ;; Read the original header
-      header = headfits(fname)
+      header = headfits(fname, errmsg = errmsg, silent = silent)
+      if errmsg ne '' then begin
+
+        message, errmsg + ' : '+fname, /info
+        status = -1
+        return, 0B
+
+      endif
+
       
       if fxpar(header, 'SOLARNET') ne 0 then begin
         ;; This is a SOLARNET file 
