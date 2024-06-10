@@ -67,11 +67,15 @@
 ; 
 ;    2017-06-02 : MGL. Use red_fitsaddpar.
 ; 
-;    2017-07-06 : THI. Adding keywords: framenumbers, time_beg, time_end, time_avg
+;    2017-07-06 : THI. Adding keywords: framenumbers, time_beg,
+;                 time_end, time_avg  
 ; 
 ;    2017-09-01 : THI. Get date_beg and framenumbers from file.
 ;
 ;    2017-09-07 : MGL. Changed red_fitsaddpar --> red_fitsaddkeyword. 
+;
+;    2024-06-10 : MGL. Allow for files from multiple cameras (WB and
+;                 PD).
 ;
 ;-
 function red_sumheaders, files, sum $
@@ -153,9 +157,6 @@ function red_sumheaders, files, sum $
   endelse
 
   
-  ;; Remove duplicate framenumbers
-  framenumbers = framenumbers[uniq(framenumbers, sort(framenumbers))]
-  
   if n_elements(Nsum) eq 0 then begin
     Nsum = n_elements(framenumbers)
   endif else begin
@@ -168,9 +169,43 @@ function red_sumheaders, files, sum $
     endif
   endelse
 
+
+  ;; Remove duplicate framenumbers. Note, AFTER counting them so e.g.
+  ;; WB and PD frames are both counted.
+  framenumbers = framenumbers[uniq(framenumbers, sort(framenumbers))]
+  ;; This assumes that the same frames are available for all cameras.
+  ;; If we want to allow for cases where this is not true, we need to
+  ;; write separate FNUMSUM for the cameras. But as long as the
+  ;; multiple cameras feature here is used for .fitsheader files that
+  ;; go with .momfbd files, in later stages we can rely on the list of
+  ;; files in the .momfbd file to get more accurate info.
+
+
+
   ;; Assume all file headers are the same, except for frame numbers,
   ;; timestamps, etc. We use info from the latest read header and
   ;; modify it where necessary.
+
+  
+  
+  ;; But we are allowing for multiple cameras/detectors so we need to
+  ;; take care of the corresponding keywords.
+;  cameras = red_fitsgetkeyword_multifile(files, 'CAMERA')
+;  cameras = cameras[uniq(cameras, sort(cameras))]
+;  if n_elements(cameras) gt 1 then red_fitsaddkeyword, head, 'CAMERA', strjoin(cameras, ', ')
+;  detectors = red_fitsgetkeyword_multifile(files, 'DETECTOR')
+;  detectors = detectors[uniq(detectors, sort(detectors))]
+;  if n_elements(detectors) gt 1 then red_fitsaddkeyword, head, 'DETECTOR', strjoin(detectors, ', ')
+  keywords = ['CAMERA', 'DETECTOR', 'DETGAIN', 'DETOFFS', 'DETMODEL', 'DETFIRM', 'DETTEMP'] 
+  anchor = 'INSTRUME'
+  for ikey = 0, n_elements(keywords)-1 do begin
+    values = strtrim(red_fitsgetkeyword_multifile(files, keywords[ikey], comment=comments), 2)
+    values = values[uniq(values, sort(values))]
+    Nvalues = n_elements(values)
+    values = strjoin(values, ', ')
+    comments = strjoin(comments[uniq(comments, sort(comments))], ', ')
+    if Nvalues gt 1 then red_fitsaddkeyword, head, keywords[ikey], values, comments, anchor = anchor
+  end                           ; keyword
   
   ;; Update header with respect to summed array
   if n_elements(sum) then begin
