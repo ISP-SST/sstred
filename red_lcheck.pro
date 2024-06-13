@@ -1,6 +1,7 @@
-FUNCTION red_lcheck, l_pos, l_ind, gridstep, RATIO=rat
+FUNCTION red_lcheck, l_pos, l_ind, gridstep, LIMIT=lim, RATIO=rat
 
 IF ~keyword_set(rat) THEN rat = [7, 3]
+IF ~keyword_set(lim) THEN lim = 0.04
 
   ;;; find the corner
 dr = fltarr(3)
@@ -50,7 +51,7 @@ ENDIF
   ;;; check that it is a right angle triangle with correct side ratio
 sl = dr/[rat,sqrt(total(rat^2))]
 gridstep = mean(sl)
-IF total(abs(sl-gridstep)) GT 0.1*gridstep THEN BEGIN
+IF total(abs(sl-gridstep)) GT lim*gridstep THEN BEGIN
       ;;; not our L triangle.
     return, 0
 ENDIF
