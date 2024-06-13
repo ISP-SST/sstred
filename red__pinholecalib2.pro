@@ -157,7 +157,7 @@ found_l1:
     tmp = ref_pos - X0 # replicate(1, np_ref)
     tmp_i = round(tmp/gridstep)  ;;; index
     ang = atan(ref_lpos[1, 1]-ref_lpos[1, 0], ref_lpos[0, 1]-ref_lpos[0, 0])
-    IF ref_lpos[0, 1] LT ref_lpos[0, 0] THEN ang += !pi
+    IF (ref_lpos[0, 1] - ref_lpos[0, 0]) LT (-gridstep) THEN ang += !pi
     ;print, gridstep, ang
     par = mpfit('red_grid_func', [gridstep, ang], $
                 functargs = {X:tmp_i, Y:tmp}, /quiet)
@@ -191,7 +191,8 @@ found_l1:
     FOR i_dep = 0, n_idx-1 DO BEGIN
         state = states[idx[i_dep]]
         img = red_readdata(state.filename, /silent)
-        mask = img GE max(img)/10.
+        is_pd = strmatch(state.camera, '*-D')
+        mask = img GE max(img)/(is_pd ? 8. : 10.)
         img_m = red_separate_mask(mask)
         img_np = max(img_m)
         img_area = lonarr(img_np)
@@ -203,12 +204,13 @@ found_l1:
             lu = (min(ix, dim = 1, max = ro)-3) > [0, 0]
             ro = (ro+3) < (ref_siz-1)
             bx = img[lu[0]:ro[0], lu[1]:ro[1]]
+            bx_m = img_m[lu[0]:ro[0], lu[1]:ro[1]]
             img_pos[*, i] = lu + red_centroid(bx)
-            img_area[i] = total(bx GT max(bx)/5.)
+            img_area[i] = (is_pd ? total(bx_m GT 0) : total(bx GT max(bx)/5.))
         ENDFOR
         IF keyword_set(manual) THEN BEGIN
             print, 'Mark the same three pinholes as for the reference'
-            img_lind = red_markpinholes(img_m, img_pos)
+            img_lind = red_markpinholes(img, img_pos)
             img_lpos = img_pos[*, img_lind]
             IF red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) NE 1 THEN stop
         ENDIF ELSE BEGIN
@@ -220,7 +222,7 @@ found_l1:
             ENDFOR
             print, inam, ' : Unable to locate the reference pinholes. Try marking them manually'
             REPEAT BEGIN
-                img_lind = red_markpinholes(img_m, img_pos, title='Dependent Pinholes')
+                img_lind = red_markpinholes(img, img_pos, title='Dependent Pinholes')
                 img_lpos = img_pos[*, img_lind]
                 IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l2
                 print, inam, ' : This is not the 3 bigger pinholes!'

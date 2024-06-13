@@ -7,7 +7,7 @@ s_scr -= [20, 50]
 FOR scale=1., 8. DO $
   IF min(scale*s_scr/siz) GT 1 THEN BREAK
 window, /free, xsi=siz[0]/scale, ysi=siz[1]/scale, title=tit
-tvscl, rebin(ref_m GT 0, siz[0]/scale, siz[1]/scale)
+tvscl, rebin(ref_m, siz[0]/scale, siz[1]/scale)
 ref_lind = intarr(3)
 FOR i=0, 2 DO BEGIN
     cursor, a, b, /dev
