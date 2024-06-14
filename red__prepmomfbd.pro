@@ -773,8 +773,18 @@ pro red::prepmomfbd, cams = cams $
         cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LF
         cfg.objects += '        DARK_NUM=0000001' + LF
         IF keyword_set(nal) THEN BEGIN
-            cfg.objects += '        ALIGN_MAP_X='+strjoin(strtrim(align[0].map_x[*], 2), ',') + LF
-            cfg.objects += '        ALIGN_MAP_Y='+strjoin(strtrim(align[0].map_y[*], 2), ',') + LF
+             ;;; reference is no longer an identity map - we need to average matching maps
+            align_idx = where( align.state.camera eq cams[refcam], count)
+            IF count EQ 0 THEN stop
+            IF count GT 1 THEN BEGIN
+                ref_mapx = total(align[align_idx].map_x, 3)/count
+                ref_mapy = total(align[align_idx].map_y, 3)/count
+            ENDIF ELSE BEGIN
+                ref_mapx = align[align_idx].map_x
+                ref_mapy = align[align_idx].map_y
+            ENDELSE
+            cfg.objects += '        ALIGN_MAP_X='+strjoin(strtrim(ref_mapx[*], 2), ',') + LF
+            cfg.objects += '        ALIGN_MAP_Y='+strjoin(strtrim(ref_mapy[*], 2), ',') + LF
         ENDIF ELSE BEGIN
             cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
         ENDELSE
