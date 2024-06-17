@@ -253,6 +253,7 @@ pro red::prepmomfbd, cams = cams $
 
   if ~isa(escan, /integer, /scalar) then begin
     print, inam + " : 'escan' keyword should be an integer number."
+    return
   endif
 
   ;; Cameras
