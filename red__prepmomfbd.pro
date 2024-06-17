@@ -251,17 +251,9 @@ pro red::prepmomfbd, cams = cams $
   
   instrument = ((typename(self)).tolower())
 
-  case n_elements(escan) of
-     0 : 
-     1 : if size(escan, /tname) ne 'INT' then begin
-        print, "Error: 'escan' keyword should be an integer number."
-        return
-     endif
-     else : begin
-        print, "Error: 'escan' keyword should be an integer number."
-        return
-     end
-  endcase
+  if ~isa(escan, /integer, /scalar) then begin
+    print, inam + " : 'escan' keyword should be an integer number."
+  endif
 
   ;; Cameras
   if ~keyword_set(cams) then cams = *self.cameras
