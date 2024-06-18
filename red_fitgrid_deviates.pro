@@ -52,23 +52,30 @@
 ;  
 ;    2013-09-16 : MGL. First version.
 ; 
-; 
+;    2024-06-18 : MGL. Re-implemented.
 ;-
-function red_fitgrid_deviates, p, X = x, Y = y, Nx = Nx, Ny = Ny
+function red_fitgrid_deviates, p, X = x, Y = y
 
-  grid = red_gridpoints(p[0], p[1], p[2], p[3], p[4], Nx, Ny)
+  x0    = p[0]
+  y0    = p[1]
+  dx    = p[2]
+  dy    = p[3]
+  theta = p[4]
 
-  Npoints = n_elements(x)
-  if Npoints ne n_elements(y) then begin
-     print, 'Different numbers of x and y coordinates'
-     help, x, y
-     retall
-  endif
+  ;; 1. Subtract (x0,y0) and rotate the data coordinates by -theta
 
-  dev = fltarr(Npoints)
+  xr = (x-x0)*cos(-theta) - (y-y0)*sin(-theta)
+  yr = (x-x0)*sin(-theta) + (y-y0)*cos(-theta)
   
-  for i = 0, Npoints-1 do dev[i] = sqrt(min( (grid.x-x[i])^2 + (grid.y-y[i])^2 ))
+  ;; 2. Divide by dx and dy
+  xr /= dx
+  yr /= dy
+  
+  ;; 3. The fit error is now the distance from integer coordinates
+  ;;dev = sqrt( (xr - round(xr))^2 + (yr - round(yr))^2 )
+  dev = [ xr - round(xr), yr - round(yr) ]
 
   return, dev
 
 end
+

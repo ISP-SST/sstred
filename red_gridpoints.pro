@@ -62,6 +62,8 @@
 ;  
 ;    2019-12-09 : MGL. Allow the first parameter to be a struct or an
 ;                 array, replacing the parameters.
+; 
+;    2024-06-18 : MGL. Changes due to re-implementation of red_fitgrid.
 ;    
 ;-
 function red_gridpoints, x0, y0, dx, dy, theta, Nx, Ny, grid = grid
@@ -85,12 +87,12 @@ function red_gridpoints, x0, y0, dx, dy, theta, Nx, Ny, grid = grid
       Ny    = grid[6]
     endelse
   endif
-
-  x = (findgen(Nx)*dx+x0) # replicate(1., Ny)
-  y = (findgen(Ny)*dy+y0) ## replicate(1., Nx)
+ 
+  x = ((findgen(2L*Nx)-Nx)*dx) # replicate(1., 2L*Ny)
+  y = ((findgen(2L*Ny)-Ny)*dy) ## replicate(1., 2L*Nx)
   
-  xr = x*cos(theta) - y*sin(theta)
-  yr = x*sin(theta) + y*cos(theta)
+  xr = x*cos(theta) - y*sin(theta) + x0
+  yr = x*sin(theta) + y*cos(theta) + y0
 
   return, {x:xr, y:yr}
 

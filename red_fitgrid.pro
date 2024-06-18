@@ -17,10 +17,9 @@
 ; :Returns:
 ;
 ;    The grid parameters as a structure, { x0:x0, y0:y0, dx:dx, dy:dy,
-;    theta:theta, Nx:Nx, Ny:Ny}, where (X0,y0) are the pixel
-;    coordinates of one point in the grid, dx and dy are the grid
-;    spacings in X and Y resp., theta is a rotation angle in radians,
-;    and Nx and Ny are the number of grid columns/rows detected.
+;    theta:theta}, where (X0,y0) are the pixel coordinates of one
+;    point in the grid, dx and dy are the grid spacings in X and Y
+;    resp., and theta is a rotation angle in radians.
 ; 
 ; :Params:
 ; 
@@ -30,14 +29,9 @@
 ;   
 ; :Keywords:  
 ; 
-;    dx_init : in, optional, type=scalar, default=100
+;    debug : in, optional, type=boolean
 ; 
-;      Approximate X spacing in pixels between pinholes.
-; 
-;    dy_init : in, optional, type=scalar, default=dx_init
-; 
-;      Approximate Y spacing in pixels between pinholes.
-; 
+;      Use when debugging.
 ; 
 ; :History:
 ;  
@@ -47,161 +41,201 @@
 ;                 pinholes near array limits. Improve the initial
 ;                 fitting in X and Y.
 ; 
+;    2024-06-18 : MGL. Re-implemented
+; 
 ;-
-function red_fitgrid, im, dx_init = dx_init, dy_init = dy_init
- 
+function red_fitgrid, im, dx_init = dx_init, dy_init = dy_init, debug = debug
+
   dims = size(im, /dim)
-
-  if n_elements(dx_init) eq 0 then dx_init = 100
-  if n_elements(dy_init) eq 0 then dy_init = dx_init
-
-  Nblockx = 0.8*dx_init
-  Nblocky = 0.8*dy_init
-
-  ;; Zero outermost pixels
-  imm = im
-  imm[0:Nblockx/2, *] = 0
-  imm[*, 0:Nblocky/2] = 0
-  imm[-Nblockx/2:-1, *] = 0
-  imm[*, -Nblocky/2:-1] = 0
+  x = indgen(dims[0])#replicate(1, dims[1])
+  y = indgen(dims[1])##replicate(1, dims[0])
   
-  
-  ;; Get starting values for the fit
+  ;; Segment the pinholes
+  seg = red_separate_mask(im GE max(im)/5)
+  Nholes = max(seg)
+  if Nholes lt 10 then begin
+    return, { x0:0d, y0:0d, dx:0d, dy:0d, theta:0d}
+  endif
 
-  ;; X direction
-  xproj = total(im, 2)
-  xproj = smooth(xproj-median(xproj), dx_init/8)
+  xy = fltarr(2, Nholes)
+  for ihole = 0, Nholes-1 do begin
+    ;; If this is not good enough, we could run 2d peak fitting on the
+    ;; individual pinhole spots.  
+    indx = where(seg eq ihole+1)
+;    xy[0, ihole] = mean(x[indx])
+;    xy[1, ihole] = mean(y[indx])
+;    print, xy[*, ihole]
+    ;;centroids
+    xy[0, ihole] = total(x[indx]*im[indx])/total(im[indx])
+    xy[1, ihole] = total(y[indx]*im[indx])/total(im[indx])
+;    print, xy[*, ihole]
+  endfor                        ; ihole
 
+  ;; Remove spots too close to the border.
+  margin = 40
+  indx = where(xy[0,*] ge margin  and $
+               xy[0,*] lt dims[0]-margin and $
+               xy[1,*] ge margin and $
+               xy[1,*] lt dims[1]-margin $
+               , Nwhere)
+  if Nwhere eq 0 then stop
+  xy = xy[*, indx]
 
-  xsz = n_elements(xproj)
-  xprojj = xproj
-  mx = max(xproj)
-  ix = 0
-  while max(xproj) gt mx*.5 do begin
-    lx = max(xproj, loc)
-    indx = loc+indgen(Nblockx)-Nblockx/2 >0 <(xsz-1)
-    peak = xproj[indx]
-    cgplot, indx, peak, color = 'red'
-    peakfit = MPFITPEAK(indx, peak, A, NTERMS=4)
-    cgplot, indx, peakfit, color = 'blue', /over
-    if ix eq 0 then xlocs = [A[1]] else xlocs = [xlocs, A[1]]
-    xproj[indx] = 0             ; Zero this peak so we won't find it again
-    ix += 1
-  endwhile   
-;  cgplot, xprojj
-;  cgplot, xproj, /over, color = 'green'
-;  cgplot, color = 'red', /over, psym = 9, xlocs, xprojj[xlocs]
+  ;; Display image
+  cgimage, im, /axes, /keep
 
-  
-  xlocs = xlocs(sort(xlocs))
-  x0 = xlocs[0]
-  dx = median(deriv(xlocs(sort(xlocs))))
-  Nx = n_elements(xlocs)
+  ;; Plot approximate locations
+  cgplot, /over, xy[0, *], xy[1, *], psym = 9, color = 'cyan', symsize = 4
 
+  ;; Find coordinates of a central spot
+  tmp = min(sqrt((xy[0,*]-mean(xy[0,*]))^2 + (xy[1,*]-mean(xy[1,*]))^2),ipos)
+  x0 = xy[0,ipos]
+  y0 = xy[1,ipos]
 
-  ;; Y direction
+  cgplot, /over, [x0], [y0], psym = 2, color = 'orange', symsize=2
 
-  yproj = total(im, 1)
-  yproj = smooth(yproj-median(yproj), dy_init/8.)
+  sim = smooth((seg gt 0)*im,11)
 
-  ysz = n_elements(yproj)
-  yprojj = yproj
-  mx = max(yproj)
-  iy = 0
-  while max(yproj) gt mx*.5 do begin
-    ly = max(yproj, loc)
-    indx = loc+indgen(Nblocky)-Nblocky/2 >0 <(ysz-1)
-    peak = yproj[indx]
-    cgplot, indx, peak, color = 'red'
-    peakfit = MPFITPEAK(indx, peak, A, NTERMS=4)
-    cgplot, indx, peakfit, color = 'blue', /over
-    if iy eq 0 then ylocs = [A[1]] else ylocs = [ylocs, A[1]]
-    yproj[indx] = 0             ; Zero this peak so we won't find it again
-    iy += 1
-  endwhile   
-;  cgplot, yprojj
-;  cgplot, yproj, /over, color = 'green'
-;  cgplot, color = 'red', /over, psym = 9, ylocs, yprojj[ylocs]
+  ;; Two passes to get initial dx,dy,theta
+  rim = im*(sim gt 0)
+  xproj = total(rim, 2)
+  yproj = total(rim, 1)
+  xpos = where(red_differential(xproj gt max(xproj)/10.) gt 10)
+  ypos = where(red_differential(yproj gt max(yproj)/10.) gt 10)
 
-  
-  ylocs = ylocs(sort(ylocs))
-  y0 = ylocs[0]
-  dy = median(deriv(ylocs(sort(ylocs))))
-  Ny = n_elements(ylocs)
+  dx = median(red_differential(xpos))
+  dy = median(red_differential(ypos))
 
   ;; Rotation angle
-  ;theta = atan(dy,dx)-!pi/4.    ; Does not work due to different spacing in x and y.
-  theta = 0.01                  ; Expected order of magnitude.
+;  indx = where(abs(xy[0,*] - x0) lt dx/2)
+;  cgplot, /over, xy[0,indx], xy[1,indx], psym = 4, symsize=2, color = 'pink'
+;  theta = atan(max(xy[1,indx])-min(xy[1,indx]),max(xy[0,indx])-min(xy[0,indx])) - !pi/2
+  indx =  where(abs(xy[1,*] - y0) lt dy/2)
+  cgplot, /over, xy[0,indx], xy[1,indx], psym = 4, symsize=2, color = 'pink'
+                                ;theta = atan(max(xy[1,indx])-min(xy[1,indx]),max(xy[0,indx])-min(xy[0,indx]))
+  theta = atan(xy[1,indx[-1]]-xy[1,indx[0]],xy[0,indx[-1]]-xy[0,indx[0]])
+  if abs(theta - !pi) lt abs(theta) then theta = theta - !pi
+  if abs(theta + !pi) lt abs(theta) then theta = theta + !pi
+  
+  if 0 then begin
+    rim = rot(im*(sim gt 0),theta*180/!pi)
+    xproj = total(rim, 2)
+    yproj = total(rim, 1)
+    xpos = where(red_differential(xproj gt max(xproj)/10.) gt 10)
+    ypos = where(red_differential(yproj gt max(yproj)/10.) gt 10)
+
+    dx = median(red_differential(xpos))
+    dy = median(red_differential(ypos))
+
+    ;; Rotation angle
+    indx =  where(abs(xy[1,*] - y0) lt dy/2)
+    cgplot, /over, xy[0,indx], xy[1,indx], psym = 12, symsize=2, color = 'pink'
+    theta = atan(max(xy[1,indx])-min(xy[1,indx]),max(xy[0,indx])-min(xy[0,indx])) 
+  endif
+  
+  Nx = n_elements(xpos) + 2
+  Ny = n_elements(ypos) + 2
 
   
-  ;; Now find the 2D coordinates
-  immm = imm
-  ii = 0
-  mx = max(immm)
-  while max(immm) gt mx*0.5 do begin
-    ly = max(immm, loc)
-    xpos = loc mod xsz
-    ypos = loc / xsz
-    peak = immm[(xpos-Nblockx/2) >0:(xpos+Nblockx/2-1) <(dims[0]-1) $
-                ,(ypos-Nblocky/2) >0:(ypos+Nblocky/2-1) <(dims[1]-1)]
+  
+  ;;
+;  x0 = min(xy[0,*])
+;  y0 = min(xy[1,*])
 
-    yfit = mpfit2dpeak(peak, A )
+  
+;  ;; X direction
+;  xproj = total(sim, 2)
+;  yproj = total(sim, 1)
+;  ;;xproj = smooth(xproj-median(xproj), dx_init/8)
+;
+;  xpos = where(red_differential(xproj gt max(xproj)/10.) gt 10)
+;  ypos = where(red_differential(yproj gt max(yproj)/10.) gt 10)
+; dx = median(red_differential(xpos)) 
+; dy = median(red_differential(ypos)) 
+;
 
-    if ii eq 0 then begin
-      xlocs = [xpos-Nblockx/2+A[4]]
-      ylocs = [ypos-Nblocky/2+A[5]]
-    endif else begin 
-      xlocs = [xlocs, xpos-Nblockx/2+A[4]]
-      ylocs = [ylocs, ypos-Nblocky/2+A[5]]
-    endelse
-
-    immm[(xpos-Nblockx/2) >0:(xpos+Nblockx/2-1) <(dims[0]-1) $
-         ,(ypos-Nblocky/2) >0:(ypos+Nblocky/2-1) <(dims[1]-1)] = 0.
-
-    ii += 1
-  endwhile   
- 
   parinfo = replicate({ limited:[0,0], limits:[0.D,0] } $
                       , 5)
 
-  parinfo.limited[0] = [1, 1, 1, 1, 0] ; Lower limited
-  parinfo.limited[1] = [1, 1, 1, 1, 0] ; Upper limited
-  parinfo[0].limits = [0d, dx]         ; x0 limits
-  parinfo[1].limits = [0d, dy]         ; y0 limits
-  parinfo[2].limits = dx*[0.9, 1.1]    ; dx limits
-  parinfo[3].limits = dy*[0.9, 1.1]    ; dy limits
+  parinfo.limited[0] = [1, 1, 1, 1, 1]    ; Lower limited
+  parinfo.limited[1] = [1, 1, 1, 1, 1]    ; Upper limited
+                                ;parinfo[0].limits = [0d, dx_init*1.5]    ; x0 limits
+;;parinfo[1].limits = [0d, dy_init*1.5]    ; y0 limits
+  parinfo[0].limits = x0+dx*[-1d, 1d]/2   ; x0 limits
+  parinfo[1].limits = y0+dy*[-1d, 1d]/2   ; y0 limits
+  parinfo[2].limits = dx*[0.9, 1.1]       ; dx limits
+  parinfo[3].limits = dy*[0.9, 1.1]       ; dy limits
+  parinfo[4].limits = 5.*[-1, 1] *!pi/180. ; angle limits +/- 5 deg
 
   Pinit = [x0, y0, dx, dy, theta]
-
-  functargs = {X : xlocs, Y : ylocs, Nx : Nx, Ny : Ny}
-
-  print, 'Do mpfit now'
-  P = mpfit("red_fitgrid_deviates", Pinit, FUNCTARGS=functargs, PARINFO = parinfo)
-
-  fitgrid = red_gridpoints(p[0], p[1], p[2], p[3], p[4], Nx, Ny)
-
-  red_show, imm, w = 1 
-  
-  ;; Display image
-  cgimage, -imm, /axes, /keep
-
   grid = red_gridpoints(pinit[0], pinit[1], pinit[2], pinit[3], pinit[4], Nx, Ny)
 
-  ;; Plot initial grid
-  cgplot, /over, grid.x, grid.y, psym = 9, xrange = [0, xsz], /xstyle, yrange = [0, ysz], /ystyle $
-          , color = 'green', symsize = 9
+;; Plot initial grid
+  cgplot, /over, grid.x, grid.y, psym = 9, color = 'green', symsize = 6
 
-  ;; Plot approximate locations
-  cgplot, /over, xlocs, ylocs, psym = 9, color = 'blue', symsize = 5
+;  stop
+
+  functargs = {X : reform(xy[0, *]), Y : reform(xy[1, *])}
+
+                                ;help, red_fitgrid_deviates(Pinit, x = reform(xy[0, *]), y = reform(xy[1, *]))
   
-  ;; Plot fitted grid
-  cgplot, /over, fitgrid.x, fitgrid.y, psym = 9, xrange = [0, xsz], /xstyle, yrange = [0, ysz], /ystyle $
-          , color = 'red', symsize = 3
+  print, 'Do mpfit now'
+  P = mpfit("red_fitgrid_deviates", Pinit, FUNCTARGS=functargs, PARINFO = parinfo, status = status, errm = errm, quiet = ~keyword_set(debug))
+
+  if errm ne '' then begin
+    print, errm
+    return, { x0:0d, y0:0d, dx:0d, dy:0d, theta:0d}
+    stop
+  endif
   
+  fitgrid = red_gridpoints(p[0], p[1], p[2], p[3], p[4], Nx, Ny)
+
+;  red_show, imm, w = 1 
+
+
+;; Plot approximate locations
+;  cgplot, /over, xlocs, ylocs, psym = 9, color = 'cyan', symsize = 5
+
+;; Plot fitted grid
+  cgplot, /over, fitgrid.x, fitgrid.y, psym = 9, color = 'yellow', symsize = 3
+
+;  gridspacing_in_arcsec = 5.12  ; From the CRISPRED paper
+  print, 'Initial:'
+  print, 'x0,y0 : ', Pinit[0], Pinit[1]
+  print, 'dx,dy : ', Pinit[2], Pinit[3]
+  print, 'Angle [deg] : ', Pinit[4]*180/!pi
+
+  print, 'Fitted:'
   print, 'x0,y0 : ', P[0], P[1]
   print, 'dx,dy : ', P[2], P[3]
   print, 'Angle [deg] : ', P[4]*180/!pi
 
-  return, { x0:P[0], y0:P[1], dx:P[2], dy:P[3], theta:P[4], Nx:Nx, Ny:Ny}
+  if keyword_set(debug) then stop
+
+  p = float(p)
+  return, { x0:P[0], y0:P[1], dx:P[2], dy:P[3], theta:P[4]}
+
+end
+
+cd, '/scratch/mats/2016.09.19/CRISP-aftersummer'
+
+
+cams = 'cam' + ['XX', 'XIX', 'XXV']
+
+for icam = 0, 2 do begin
+
+  dark = file_search('darks/'+cams[icam]+'.dark.fits')
+
+  pinhs = file_search('pinhs/'+cams[icam]+'_6302_6302_+0.pinh.fits', count = Nfiles)
+
+  im = red_readdata(pinhs[0]) - red_readdata(dark[0])
+  
+
+  p = red_fitgrid(im)
+
+  stop
+  
+endfor
+
 
 end
