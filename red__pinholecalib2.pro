@@ -207,8 +207,15 @@ found_l1:
             ro = (ro+3) < (ref_siz-1)
             bx = img[lu[0]:ro[0], lu[1]:ro[1]]
             bx_m = img_m[lu[0]:ro[0], lu[1]:ro[1]]
-            img_pos[*, i] = lu + red_centroid(bx)
-            img_area[i] = (is_pd ? total(bx_m GT 0) : total(bx GT max(bx)/5.))
+            IF is_pd EQ 1 THEN BEGIN
+                bxd = (size(bx, /dim))[0]
+                bxp = max(bx, wo)
+                img_pos[*, i] = lu + [wo MOD bxd, wo/bxd]
+                img_area[i] = total(bx_m GT 0)
+            ENDIF ELSE BEGIN
+                img_pos[*, i] = lu + red_centroid(bx)
+                img_area[i] = total(bx GT max(bx)/5.)
+            ENDELSE
         ENDFOR
         IF keyword_set(manual) THEN BEGIN
             print, 'Mark the same three pinholes as for the reference'
