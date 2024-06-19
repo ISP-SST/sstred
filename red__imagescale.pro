@@ -105,55 +105,89 @@ function red::imagescale, pref, no_gridfile = no_gridfile
   dont_use_gridfile:
   
   ;; Maybe offer to do fitgrid on the appropriate pinhole image?
-  pfiles = file_search('pinhs/*', count = Nfiles)
-  if Nfiles gt 0 then begin
-    self -> extractstates, pfiles, pstates
+  image_scale = red_imagescale_from_pinholes(pref, self.isodate)
 
-    mtch = pstates.prefilter eq pref
-
-
-    indx = where(pstates.is_wb and pstates.camera eq (*self.cameras)[self.refcam] and mtch, Nmatch)
-    if Nmatch eq 0 then begin
-      print, inam + ' : No matching pinhole images.'
-      goto, dont_use_data
-    endif
-  
-    print
-    print, inam + ' : Using pinhole image in ' + pfiles[indx[0]]
-
-    pim = red_readdata(pfiles[indx[0]])
-    fitinfo = red_fitgrid(pim)
-    grid_pitch_pixels = (fitinfo.dx+fitinfo.dy)/2.
-    image_scale = grid_pitch_arcsec / grid_pitch_pixels ; ["/pix]
-    
+  if image_scale ne 0 then begin
     print, inam + ' : Image scale from config.txt : ' + strtrim(self.image_scale, 2) + '"/pix'
     print, inam + ' : Using the image scale from pinhole image : ' + strtrim(image_scale, 2) + '"/pix'
     print
-
     return, image_scale
-
   endif
 
-  dont_use_data:
   
+;  
+;  pfiles = file_search('pinhs/*', count = Nfiles)
+;  if Nfiles gt 0 then begin
+;    self -> extractstates, pfiles, pstates
+;
+;    mtch = pstates.prefilter eq pref
+;
+;
+;    indx = where(pstates.is_wb and pstates.camera eq (*self.cameras)[self.refcam] and mtch, Nmatch)
+;    if Nmatch eq 0 then begin
+;      print, inam + ' : No matching pinhole images.'
+;      goto, dont_use_data
+;    endif
+;  
+;    print
+;    print, inam + ' : Using pinhole image in ' + pfiles[indx[0]]
+;
+;    pim = red_readdata(pfiles[indx[0]])
+;    fitinfo = red_fitgrid(pim)
+;    grid_pitch_pixels = (fitinfo.dx+fitinfo.dy)/2.
+;    image_scale = grid_pitch_arcsec / grid_pitch_pixels ; ["/pix]
+;    
+;    print, inam + ' : Image scale from config.txt : ' + strtrim(self.image_scale, 2) + '"/pix'
+;    print, inam + ' : Using the image scale from pinhole image : ' + strtrim(image_scale, 2) + '"/pix'
+;    print
+;
+;    return, image_scale
+;
+;  endif
+
   print, inam + ' : Using the image scale from the config file: ' + strtrim(self.image_scale, 2) + '"/pix'
   print
   
   return, self.image_scale
 
-
-
 end
 
-cd, '/scratch/mats/2024-04-21/CHROMIS'
+if 1 then begin
+  
+  cd, '/scratch/mats/2024-04-21/CHROMIS'
 
-a = chromisred("config.txt",/no, /dev)
+  a = chromisred("config.txt",/no, /dev)
 
-pref = '3950'
-image_scale = a -> imagescale(pref)
-print
-image_scale = a -> imagescale(pref, /no_gridfile)
-print
-image_scale = a -> imagescale('2590')
+  pref = '3950'
+  image_scale = a -> imagescale(pref)
+  print
+  image_scale = a -> imagescale(pref, /no_gridfile)
+  print
+  image_scale = a -> imagescale('2590')
 
+endif else begin
+
+  cd, '/scratch/mats/2018.10.03/CRISP/'
+
+  a = crispred("config.txt",/no, /dev)
+
+  print
+  image_scale = a -> imagescale('5896')
+
+  print
+  image_scale = a -> imagescale('6173')
+
+  print
+  image_scale = a -> imagescale('6302')
+
+  print
+  image_scale = a -> imagescale('6563')
+
+  print
+  image_scale = a -> imagescale('8542')
+
+  
+endelse
+
+  
 end
