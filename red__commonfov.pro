@@ -102,12 +102,10 @@ common_fov = ref_corners
 
 FOR ialign = 0, Nalign-1 DO BEGIN
       ;;; project to respective camera plane and clip
-    ;;common_fov = red_warp_coords(common_fov, alignments[ialign].map_x, alignments[ialign].map_y)
     common_fov = rdx_point_warp(alignments[ialign].map_x, alignments[ialign].map_y, common_fov)
     common_fov[*, 0] = common_fov[*, 0] > 0 < (dims[0]-1)
     common_fov[*, 1] = common_fov[*, 1] > 0 < (dims[1]-1)
       ;;; project back, clip again
-    ;;common_fov = red_warp_coords(common_fov, alignments[ialign].revmap_x, alignments[ialign].revmap_y)
     common_fov = rdx_point_warp(alignments[ialign].revmap_x, alignments[ialign].revmap_y, common_fov)
     common_fov[*, 0] = common_fov[*, 0] > 0 < (dims[0]-1)
     common_fov[*, 1] = common_fov[*, 1] > 0 < (dims[1]-1)

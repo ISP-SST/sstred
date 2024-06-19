@@ -547,8 +547,6 @@ pro red::prepmomfbd, cams = cams $
           for icam = 0, Ncams-1 do begin
               ;; Are the coordinates within the NB frame?
             IF keyword_set(nal) THEN BEGIN
-                ;;coords = red_warp_coords([sim_x[ix], sim_y[iy]],
-                ;;align[mapidx[icam]].map_x, align[mapidx[icam]].map_y)
                 coords = rdx_point_warp(align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, [sim_x[ix], sim_y[iy]])
             ENDIF ELSE BEGIN
                 coords = rdx_point_transform( maps[*, *, icam], [sim_x[ix], sim_y[iy]])
@@ -559,7 +557,6 @@ pro red::prepmomfbd, cams = cams $
             if coords_limited[0] ne coords[0] or coords_limited[1] ne coords[1] then begin
               ;; If not, nudge them inside and transform back.
               IF keyword_set(nal) THEN BEGIN
-                  ;;coords = red_warp_coords(coords_limited, align[mapidx[icam]].revmap_x, align[mapidx[icam]].revmap_y)
                   coords = rdx_point_warp(align[mapidx[icam]].revmap_x, align[mapidx[icam]].revmap_y, coords_limited)
               ENDIF ELSE BEGIN
                   coords = rdx_point_transform( invert(maps[*, *, icam]), coords_limited)
