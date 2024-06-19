@@ -135,6 +135,7 @@ pro red::demodulate, outname, immr, immt $
                      , nbrstates = nbrstates $
                      , nbtfac = nbtfac $
                      , nbtstates = nbtstates $
+                     , newalign = nal $
                      , noremove_periodic = noremove_periodic $
                      , nthreads = nthreads $
                      , overwrite = overwrite $
@@ -218,22 +219,39 @@ pro red::demodulate, outname, immr, immt $
   camr = nbrstates[0].camera
 
   ;; Geometrical distortion maps for the two NB cameras
-  self -> getalignment, align=align, prefilters=prefilter
-  indx = where(align.state2.camera eq camt, Nalign)
-  case Nalign of
-    0    : stop                 ; Should not happen!
-    1    : amapt =      align[indx].map
-    else : amapt = mean(align[indx].map, dim = 3)
-  endcase
-  amapt /= amapt[2, 2]          ; Normalize
-  indx = where(align.state2.camera eq camr, Nalign)
-  case Nalign of
-    0    : stop                 ; Should not happen!
-    1    : amapr =      align[indx].map
-    else : amapr = mean(align[indx].map, dim = 3)
-  endcase
-  amapr /= amapr[2, 2]          ; Normalize
-
+  IF keyword_set(nal) THEN BEGIN
+    fov = self -> commonfov(align=align, prefilters=prefilter)
+    indx = where(align.state.camera eq camt, Nalign)
+    case Nalign of
+        0    : stop             ; Should not happen!
+        1    : amapt = {X: align[indx].map_x, Y: align[indx].map_y}
+        else : amapt = {X: mean(align[indx].map_x, dim=3), $
+                        Y: mean(align[indx].map_y, dim=3) }
+    endcase
+    indx = where(align.state.camera eq camr, Nalign)
+    case Nalign of
+        0    : stop             ; Should not happen!
+        1    : amapr = {X: align[indx].map_x, Y: align[indx].map_y}
+        else : amapr = {X: mean(align[indx].map_x, dim=3), $
+                        Y: mean(align[indx].map_y, dim=3) }
+    endcase
+  ENDIF ELSE BEGIN
+    self -> getalignment, align=align, prefilters=prefilter
+    indx = where(align.state2.camera eq camt, Nalign)
+    case Nalign of
+        0    : stop             ; Should not happen!
+        1    : amapt =      align[indx].map
+        else : amapt = mean(align[indx].map, dim=3)
+    endcase
+    amapt /= amapt[2, 2]        ; Normalize
+    indx = where(align.state2.camera eq camr, Nalign)
+    case Nalign of
+        0    : stop             ; Should not happen!
+        1    : amapr =      align[indx].map
+        else : amapr = mean(align[indx].map, dim=3)
+    endcase
+    amapr /= amapr[2, 2]        ; Normalize
+  ENDELSE
   
   ;; Get some header info
   
@@ -366,18 +384,26 @@ pro red::demodulate, outname, immr, immt $
       
       immr_dm = reform(immr_dm, [Nlc, Nstokes, Nxx, Nyy])
       immt_dm = reform(immt_dm, [Nlc, Nstokes, Nxx, Nyy])
-
-      amapr_inv = invert(amapr)
-      amapt_inv = invert(amapt)
+      
+      IF ~keyword_set(nal) THEN BEGIN
+          amapr_inv = invert(amapr)
+          amapt_inv = invert(amapt)
+      ENDIF
       
       for ilc = 0L, Nlc-1 do begin
         for istokes = 0L, Nstokes-1 do begin
           ;; Apply the geometrical mapping and clip to the FOV of the
           ;; momfbd output.
-          tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc,istokes,*,*]), /preserve_size)
+          IF keyword_set(nal) THEN $
+            tmp = poly_2d(reform(immr_dm[ilc, istokes, *, *]), amapr.x, amapr.y, miss=0) $
+          ELSE $
+            tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc, istokes, *, *]), /preserve_size)
           mymr[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                       , roi[2]+margin:roi[3]-margin]
-          tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
+          IF keyword_set(nal) THEN $
+            tmp = poly_2d(reform(immt_dm[ilc, istokes, *, *]), amapt.x, amapt.y, miss=0) $
+          ELSE $
+            tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
           mymt[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                       , roi[2]+margin:roi[3]-margin]
         endfor                  ; istokes

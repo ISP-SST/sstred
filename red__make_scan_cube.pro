@@ -165,6 +165,7 @@ pro red::make_scan_cube, dir $
                          , limb_data = limb_data $
                          , nocavitymap = nocavitymap $
                          , circular_fov = circular_fov $
+                         , newalign = nal $
                          , nocrosstalk = nocrosstalk $
                          , nopolarimetry = nopolarimetry $
                          , norotation = norotation $
@@ -437,31 +438,54 @@ pro red::make_scan_cube, dir $
       cmap1t = red_convolve(cmapt, psf)
     endelse
     
-    ;; Read the output of the pinhole calibrations so we can do the same
-    ;; to the cavity maps as was done to the raw data in the momfbd
-    ;; step. This output is in a struct "alignments" in the save file
-    ;; 'calib/alignments.sav'
-    restore, 'calib/alignments.sav'
-    ;; Should be based on state1 or state2 in the struct? make_cmaps
-    ;; says "just pick one close to continuum (last state?)".
-;    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-    indxt = where(alignments.state2.camera eq 'Crisp-T', Nalignt)
-    case Nalignt of
-      0    : stop               ; Should not happen!
-      1    : amapt = invert(      alignments[indxt].map           )
-      else : amapt = invert( mean(alignments[indxt].map, dim = 3) )
-    endcase
-    indxr = where(alignments.state2.camera eq 'Crisp-R', Nalignr)
-    case Nalignr of
-      0    : stop               ; Should not happen!
-      1    : amapr = invert(      alignments[indxr].map           )
-      else : amapr = invert( mean(alignments[indxr].map, dim = 3) )
-    endcase
-    
-    cmap1r = rdx_img_project(amapr, cmap1r, /preserve) ; Apply the geometrical mapping
-;    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
-    cmap1t = rdx_img_project(amapt, cmap1t, /preserve) ; Apply the geometrical mapping
-;    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
+    IF keyword_set(nal) THEN BEGIN
+        restore, 'calib/alignments_new.sav'
+        indx = where(alignments.state.camera eq 'Crisp-T', Nalign)
+        CASE Nalign OF
+            0    : stop         ; Should not happen!
+            1    : amapt = {X: alignments[indx].map_x, Y: alignments[indx].map_y}
+            ELSE : amapt = {X: mean(alignments[indx].map_x, dim=3), $
+                            Y: mean(alignments[indx].map_y, dim=3) }
+        ENDCASE
+        indx = where(alignments.state.camera eq 'Crisp-R', Nalign)
+        CASE Nalign OF
+            0    : stop         ; Should not happen!
+            1    : amapr = {X: alignments[indx].map_x, Y: alignments[indx].map_y}
+            ELSE : amapr = {X: mean(alignments[indx].map_x, dim=3), $
+                            Y: mean(alignments[indx].map_y, dim=3) }
+        ENDCASE
+        cmap1r = poly_2d(cmap1r, amapr.x, amapr.y, miss=0)
+        cmap1t = poly_2d(cmap1t, amapt.x, amapt.y, miss=0)
+          ;; Clip to the selected FOV
+;        cmap1r = cmap1r[x0:x1,y0:y1]
+;        cmap1t = cmap1t[x0:x1,y0:y1]
+    ENDIF ELSE BEGIN 
+      ;; Read the output of the pinhole calibrations so we can do the same
+      ;; to the cavity maps as was done to the raw data in the momfbd
+      ;; step. This output is in a struct "alignments" in the save file
+      ;; 'calib/alignments.sav'
+      restore, 'calib/alignments.sav'
+      ;; Should be based on state1 or state2 in the struct? make_cmaps
+      ;; says "just pick one close to continuum (last state?)".
+      ;    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
+      indxt = where(alignments.state2.camera eq 'Crisp-T', Nalignt)
+      case Nalignt of
+        0    : stop               ; Should not happen!
+        1    : amapt = invert(      alignments[indxt].map           )
+        else : amapt = invert( mean(alignments[indxt].map, dim = 3) )
+      endcase
+      indxr = where(alignments.state2.camera eq 'Crisp-R', Nalignr)
+      case Nalignr of
+        0    : stop               ; Should not happen!
+        1    : amapr = invert(      alignments[indxr].map           )
+        else : amapr = invert( mean(alignments[indxr].map, dim = 3) )
+      endcase
+
+      cmap1r = rdx_img_project(amapr, cmap1r) ; Apply the geometrical mapping
+;      cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
+      cmap1t = rdx_img_project(amapt, cmap1t) ; Apply the geometrical mapping
+;      cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
+    ENDELSE
     
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with
@@ -554,6 +578,7 @@ pro red::make_scan_cube, dir $
       self -> make_stokes_cubes, dir, uscans[iscan] $
                                  , clips = clips $
                                  , cmap_fwhm = cmap_fwhm $
+                                 , newalign = nal $
                                  , nocavitymap = nocavitymap $
                                  , redemodulate = redemodulate $
                                  , snames = snames $
