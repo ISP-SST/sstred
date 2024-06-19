@@ -120,7 +120,10 @@
 ; 
 ;   2022-08-02 : MGL. CRISP2 version, based mostly on the one for
 ;                CHROMIS.
-; 
+;
+;   2024-06-19 : Pit. Make camera search a substring match, as it can be 
+;                     something like 'Crisp-D, Crisp-W' for PD data
+;
 ;-
 pro crisp2::selectfiles, cam = cam $ 
                          , complement = complement $
@@ -206,7 +209,7 @@ pro crisp2::selectfiles, cam = cam $
     selected = [states.skip] * 0
     camt = [cam]                ; make sure it's an array
     for ip = 0, Ncam-1 do begin
-      pos = where(states.camera eq camt[ip],count)
+      pos = where(strpos(states.camera, camt[ip]) GE 0, count)
       if( count ne 0 ) then begin
         selected[pos] = 1
       endif
