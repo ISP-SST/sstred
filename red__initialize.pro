@@ -228,13 +228,6 @@ pro red::initialize, filename, develop = develop, no_db = no_db
   if(strlen(self.camsz) eq 0) then self.camsz = '1024'
   print, 'red::initialize : camsz = '+self.camsz
 
-  if self.pinhole_spacing eq 0.0 then begin
-    ;; Default value (5.12 arcseconds between pinholes) was
-    ;; measured in 2013 by comparison with SDO/HMI images.
-    self.pinhole_spacing = 5.12
-  endif 
-  print, 'red::initialize : pinhole_spacing = '+strtrim(self.pinhole_spacing, 2)
-
   if self.rotation eq 0.0 then begin
     ;; Default value 48 degrees, from red_lp_angles. This is what
     ;; would be expected in old workdirs without rotation in the
@@ -290,6 +283,7 @@ pro red::initialize, filename, develop = develop, no_db = no_db
       self.isodate = red_strreplace(date, '.', '-', n = 2)
     endelse
   endif
+
   
   ;; Fields that depend on fields defined above:
   self.log_dir = self.out_dir+'/downloads/sstlogs/'
@@ -299,6 +293,14 @@ pro red::initialize, filename, develop = develop, no_db = no_db
     self.refcam = where(strmatch(*self.cameras,'*-W'), Nmatch)
 ;    if Nmatch eq 0 then stop
   endif
+
+  if self.pinhole_spacing eq 0.0 then begin
+    ;;   self.pinhole_spacing = 5.12
+    self.pinhole_spacing = red_pinhole_pitch_arcsec(self.isodate)
+  endif 
+  print, 'red::initialize : pinhole_spacing = '+strtrim(self.pinhole_spacing, 2)
+
+
   
   ;; print fields
   IF ptr_valid(self.dark_dir) THEN BEGIN
