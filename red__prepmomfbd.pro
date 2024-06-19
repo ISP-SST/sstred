@@ -455,7 +455,7 @@ pro red::prepmomfbd, cams = cams $
             g = red_readdata(gfiles[0])
             indx = (where(align.state.camera EQ cams[icam]))[0]
             mapidx[icam] = indx
-            g = poly_2d(g, align[indx].revmap_x, align[indx].revmap_y, miss = 0)
+            g = poly_2d(g, align[indx].map_x, align[indx].map_y, miss = 0)
             mask = mask AND (g GT 0)
         ENDFOR
         dims = size(mask, /dim)
@@ -508,7 +508,7 @@ pro red::prepmomfbd, cams = cams $
     tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
     IF keyword_set(nal) THEN BEGIN
         FOR icam = 0, Ncams-1 DO mask AND= $
-          poly_2d(tmp, align[mapidx[icam]].revmap_x, align[mapidx[icam]].revmap_y, miss = 0)
+          poly_2d(tmp, align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, miss = 0)
     ENDIF ELSE BEGIN
         for icam = 0, Ncams-1 do mask AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
     ENDELSE

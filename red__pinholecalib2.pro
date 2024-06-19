@@ -179,9 +179,7 @@ found_l1:
                          form="(a-12,f7.2,'  ',f7.2,'   ',f7.3,f+7.3)")
     
       ;;; compute warp matrices, forward (kxy) and backward(lxy)
-      ;;; k maps are for converting ref coordinates into image coordinates
-      ;;; l maps are for de-warping an image (match refrence grid)
-    map = transpose([reg_pos, ref_pos])
+    map = transpose([ref_pos, reg_pos])
     red_clean_warp, map, kx, ky, warp_dim
     red_clean_warp, map[*, [2, 3, 0, 1]], lx, ly, warp_dim
     
@@ -253,8 +251,7 @@ found_l2:
                         reg_i[1, *] EQ vflip*tmp_i[1, ph], nf)
             IF nf EQ 0 THEN CONTINUE
               ;;; have a match, add the pair to map
-            ;;red_append, nmap, [tmp[*, ph]+xx0, reg_pos[*, ix]] 
-            red_append, nmap, [reg_pos[*, ix], tmp[*, ph]+xx0] 
+            red_append, nmap, [tmp[*, ph]+xx0, reg_pos[*, ix]] 
             n_pairs++
         ENDFOR
         nmap = transpose(reform(nmap, 4, n_pairs))
