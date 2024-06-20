@@ -395,13 +395,13 @@ pro red::demodulate, outname, immr, immt $
           ;; Apply the geometrical mapping and clip to the FOV of the
           ;; momfbd output.
           IF keyword_set(nal) THEN $
-            tmp = poly_2d(reform(immr_dm[ilc, istokes, *, *]), amapr.x, amapr.y, miss=0) $
+            tmp = poly_2d(reform(immr_dm[ilc, istokes, *, *]), amapr.x, amapr.y, 1, miss=0) $
           ELSE $
             tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc, istokes, *, *]), /preserve_size)
           mymr[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                       , roi[2]+margin:roi[3]-margin]
           IF keyword_set(nal) THEN $
-            tmp = poly_2d(reform(immt_dm[ilc, istokes, *, *]), amapt.x, amapt.y, miss=0) $
+            tmp = poly_2d(reform(immt_dm[ilc, istokes, *, *]), amapt.x, amapt.y, 1, miss=0) $
           ELSE $
             tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
           mymt[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $

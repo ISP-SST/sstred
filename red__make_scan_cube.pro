@@ -454,8 +454,8 @@ pro red::make_scan_cube, dir $
             ELSE : amapr = {X: mean(alignments[indx].map_x, dim=3), $
                             Y: mean(alignments[indx].map_y, dim=3) }
         ENDCASE
-        cmap1r = poly_2d(cmap1r, amapr.x, amapr.y, miss=0)
-        cmap1t = poly_2d(cmap1t, amapt.x, amapt.y, miss=0)
+        cmap1r = poly_2d(cmap1r, amapr.x, amapr.y, 1, miss=0)
+        cmap1t = poly_2d(cmap1t, amapt.x, amapt.y, 1, miss=0)
           ;; Clip to the selected FOV
 ;        cmap1r = cmap1r[x0:x1,y0:y1]
 ;        cmap1t = cmap1t[x0:x1,y0:y1]
