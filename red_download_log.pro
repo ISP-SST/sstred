@@ -201,6 +201,18 @@ pro red_download_log, instrument, date, outdir $
             scale = pig_center.scale[indx[0]]
           end
 
+          2 : begin
+            ;; Quick fix, should interpolate?
+            juldate = date_conv(isodate, 'J')
+            pig_center_date = pig_center.date[indx]
+            pig_center_juldates = dblarr(2)
+            for i = 0, 1 do pig_center_juldates[i] = date_conv(pig_center_date[i], 'J')
+            dist = min(abs(pig_center_juldates - juldate), ii) ; Nearest date ii
+            dx = pig_center.dx[indx[ii]]
+            dy = pig_center.dy[indx[ii]]
+            scale = pig_center.scale[indx[ii]]
+          end
+
           else : begin
             Nmedian = (Nwhere - 1) <5
             pig_center_date = pig_center.date[indx]
@@ -214,7 +226,6 @@ pro red_download_log, instrument, date, outdir $
             dx = pig_center_dx[ii]
             dy = pig_center_dy[ii]
             scale = pig_center_scale[ii]
-            
           end
           
         endcase
