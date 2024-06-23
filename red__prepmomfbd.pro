@@ -251,7 +251,7 @@ pro red::prepmomfbd, cams = cams $
   
   instrument = ((typename(self)).tolower())
 
-  if ~isa(escan, /integer, /scalar) then begin
+  if n_elements(escan) && ~isa(escan, /integer, /scalar) then begin
     print, inam + " : 'escan' keyword should be an integer number."
     return
   endif
