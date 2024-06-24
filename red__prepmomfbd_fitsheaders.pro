@@ -149,7 +149,6 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         ;; output files.
         if redux_cfggetkeyword(cfginfo,'TRACE') then begin
           Ntrace = 2
-;          wbout = file_basename(redux_cfggetkeyword(cfginfo,'OBJECT0.OUTPUT_FILE'))
           wb_filename_template = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.FILENAME_TEMPLATE')
           wb_detector          = (strsplit(file_basename(wb_filename_template),'_',/extr))[0]
           wb_image_data_dir    = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.IMAGE_DATA_DIR')
@@ -160,7 +159,6 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
           wb_align_map_x       = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.ALIGN_MAP_X')
           wb_align_map_y       = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.ALIGN_MAP_Y')
           if has_diversity then begin
-;            pdout = file_basename(redux_cfggetkeyword(cfginfo,'OBJECT0.OUTPUT_FILE'))
             pd_filename_template = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL1.FILENAME_TEMPLATE')
             pd_detector          = (strsplit(file_basename(pd_filename_template),'_',/extr))[0]
             pd_image_data_dir    = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL1.IMAGE_DATA_DIR')
@@ -216,16 +214,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
             ;; Do the anchor object only once, no TRACE for that.
             if iobj eq 0 and itrace gt 0 then continue 
-            
-            print, 'iobj, itrace:', iobj, itrace
 
-;            if itrace eq 0 then begin
-            ;; The NB object
             objinfo = redux_cfggetkeyword(cfginfo,'OBJECT'+strtrim(iobj, 2))
-;            endif else begin
-;              ;; The TRACE object is object0
-;              objinfo = redux_cfggetkeyword(cfginfo,'OBJECT0')
-;            endelse
             
             objkeys = objinfo.keys()
             Nkeys   = objinfo.count()
@@ -290,10 +280,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                   ;; have a unit attached and then be a string. So
                   ;; make sure we can handle a mix.
                   if chankeys[ikey] eq 'DIVERSITY' then value = strtrim(value, 2)
-;                  print, ichan, ' ', value
                   red_append, values, value
                 endfor          ; ichan
-;                print, chankeys[ikey], ' ', values
                 if isa(value,/boolean) then begin
                   if total(values) then red_make_prpara, prpara, paraname = chankeys[ikey], values
                 endif else begin
@@ -348,35 +336,6 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               endfor            ; ifile 
             endelse
 
-
-;            if itrace eq 0 then begin
-;              undefine, fnames, wb_fnames
-;              for ichan = 0, Nchan-1 do begin 
-;                chaninfo = redux_cfggetkeyword(objinfo,'CHANNEL'+strtrim(ichan, 2))
-;                filename_template = redux_cfggetkeyword(chaninfo,'FILENAME_TEMPLATE')
-;                image_data_dir    = redux_cfggetkeyword(chaninfo,'IMAGE_DATA_DIR')
-;                discard           = redux_cfggetkeyword(chaninfo,'DISCARD')
-;                for ifile = 0, n_elements(file_nums)-1 do begin
-;                  fname = image_data_dir + '/' $
-;                          + string(file_nums[ifile], format='(%"'+filename_template+'")')
-;                  if file_test(fname) then begin
-;                    red_append, fnames, fname
-;                    ;; TRACE object filenames match the NB file names
-;                    wb_fname = wb_image_data_dir + '/' $
-;                               + string(file_nums[ifile], format='(%"'+wb_filename_template+'")')
-;                    if file_test(wb_fname) then red_append, wb_fnames, wb_fname
-;                    if has_diversity then begin
-;                      ;; Add also the PD file names to wb_fnames
-;                      pd_fname = pd_image_data_dir + '/' $
-;                                 + string(file_nums[ifile], format='(%"'+pd_filename_template+'")')
-;                      if file_test(pd_fname) then red_append, wb_fnames, pd_fname
-;                    endif
-;                  endif
-;                endfor          ; ifile
-;              endfor            ; ichan
-;            endif
-
-  
             ;; Make header corresponding to the sum.
             head = red_sumheaders(fnames, discard = discard)
             if has_diversity then prmode = 'Phase Diversity' else undefine, prmode 
