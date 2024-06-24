@@ -172,9 +172,7 @@ function red_readdata, fname $
     'ANA' : begin
       
       ;; Data stored in ANA fz format files.
-      
-      fzread, data, fname, anaheader
-
+      data = rdx_readdata(fname)
       if arg_present(header) then header = red_readhead(fname)
 
     end
