@@ -327,6 +327,12 @@ pro red::quicklook, align = align $
     ;;files0 = red_file_search('*[_.]00000[_.]*', dirs[iset] + '/' + cam + '/', count = Nfiles)
     files0 = self -> raw_search(dirs[iset] + '/' + cam, scanno = 0, count = Nfiles)
 
+    if Nfiles eq 0 then begin
+      ;; Assuming if no scan 0, there are no scans at all
+      print, inam + ' : No scan 0 files from camera ' + cam + ' in ' + dirs[iset]
+      continue
+    endif
+    
     self -> extractstates, files0, states0
     
     upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
