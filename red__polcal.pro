@@ -127,7 +127,6 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     print, inam + ' : Detected offset angle -> '+string(da)+' degrees'
     print, inam + ' :          retardance   -> '+string(ql[0])+' degrees'
 
-    
     ;; Init matrix for each camera
     par_t = red_polcal_fit(t1d, tqw, tlp-da, norm=4, fix=ql)
     par_r = red_polcal_fit(r1d, rqw, rlp-da, norm=4, fix=ql)
@@ -148,21 +147,27 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
            + 'V =' + string(dum[3]*100., format='(F5.1)') + '%'
     
     ;; Do fits and save
-    data = red_readdata(rname)
-    totdata=total(total(total(data,1),1),1)
-    mask = totdata gt max(totdata)/10. ; Mask that deselects bad pixels and pixels without light
-    mm = red_cpolcal_2d(temporary(data), rqw, rlp-da, par_r, nthreads=nthreads, mask = mask)
+
+    ;; Make a common mask for both R and T cameras.
+    rdata = red_readdata(rname)
+    tdata = red_readdata(tname)
+    totrdata = total(total(total(rdata,1),1),1)
+    tottdata = total(total(total(tdata,1),1),1)
+    mask = tottdata gt max(tottdata)/10. and totrdata gt max(totrdata)/10.
+
     file_mkdir, outdir
+
+    mm = red_cpolcal_2d(temporary(rdata), rqw, rlp-da, par_r, nthreads=nthreads, mask = mask)
     oname = outdir + ucam[0]+'_'+pref+'_polcal.fits'
     print, inam + ' : saving '+oname
     dim = size(mm,/dim)
 
     red_writedata, oname, reform(mm, [16,dim[2],dim[3]], /overwrite), filetype='FITS', /overwrite
 
-    data = red_readdata(tname)
-    totdata=total(total(total(data,1),1),1)
-    mask = totdata gt max(totdata)/10. ; Mask that deselects bad pixels and pixels without light
-    mm = red_cpolcal_2d(temporary(data), tqw, tlp-da, par_t, nthreads=nthreads, mask = mask)
+;    data = red_readdata(tname)
+;    totdata=total(total(total(data,1),1),1)
+;    mask = totdata gt max(totdata)/10. ; Mask that deselects bad pixels and pixels without light
+    mm = red_cpolcal_2d(temporary(tdata), tqw, tlp-da, par_t, nthreads=nthreads, mask = mask)
     oname = outdir + ucam[1]+'_'+pref+'_polcal.fits'
     print, inam + ' : saving '+oname
     dim = size(mm,/dim)
