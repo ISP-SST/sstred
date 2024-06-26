@@ -378,11 +378,12 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT1', 'arcsec', 'Unit along axis 1'
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axis 2'
 
-            self -> extractstates, fnames, states
-            if states[0].is_wb then begin
-              state = states[0].prefilter + '_' + states[0].tuning
-              red_fitsaddkeyword,  anchor = anchor, head, 'STATE', state, 'Added by prepmomfbd_fitsheaders'
-            endif
+;            self -> extractstates, fnames, states
+;            if states[0].is_wb then begin
+;              stop
+;              state = states[0].prefilter + '_' + states[0].tuning
+;              red_fitsaddkeyword,  anchor = anchor, head, 'STATE', state, 'Added by prepmomfbd_fitsheaders'
+;            endif
             
             ;; Write the header file
             fxaddpar,head,'EXTEND','T' ; Required by fxwrite
