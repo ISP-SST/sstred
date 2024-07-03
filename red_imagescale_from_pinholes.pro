@@ -32,35 +32,57 @@
 ;   fitinfo : out, optional, type=struct
 ;
 ;     The output from red_fitgrid.
+;
+;   rawfile : in, optional, type=string
+;
+;     Use raw pinhole image from this file rather than summed pinhole images. 
 ; 
 ; :History:
 ; 
 ;   2024-06-19 : MGL. First version.
+;
+;   2024-07-03 : MGL. New keyword "rawfile".
 ; 
 ;-
-function red_imagescale_from_pinholes, pref, isodate, fitinfo = fitinfo
+function red_imagescale_from_pinholes, pref, isodate $
+                                       , fitinfo = fitinfo $
+                                       , rawfile = rawfile
 
   inam = red_subprogram(/low, calling = inam1)
   
   grid_pitch_arcsec = red_pinhole_pitch_arcsec(isodate)
 
-  pfiles = file_search('pinhs/*', count = Nfiles)
-  if Nfiles eq 0 then return, 0
+  if n_elements(rawfile) gt 0 then begin
 
-  cameras = strtrim(red_fitsgetkeyword_multifile(pfiles, 'CAMERA'), 2)
-  prefilters = strtrim(red_fitsgetkeyword_multifile(pfiles, 'FILTER1'), 2)
+    print, inam + ' : Using pinhole image in ' + rawfile
 
-  is_wb = ((strsplit(cameras, '-', /extract)).toarray())[*,1] eq 'W'
-
-  indx = where(is_wb and prefilters eq pref, Nmatch)
-  if Nmatch eq 0 then begin
-    print, inam + ' : No matching pinhole images.'
-    return, 0
-  endif
+    pim = red_readdata(rawfile) ; Read the raw file
+    pim = median(pim, 3)        ; Filter out hot pixels
+    pim -= median(pim)          ; Rudimentary dark subtraction
     
-  print, inam + ' : Using pinhole image in ' + pfiles[indx[0]]
+  endif else begin
 
-  pim = red_readdata(pfiles[indx[0]])
+    ;; Look for summed file
+    
+    pfiles = file_search('pinhs/*', count = Nfiles)
+    if Nfiles eq 0 then return, 0
+
+    cameras = strtrim(red_fitsgetkeyword_multifile(pfiles, 'CAMERA'), 2)
+    prefilters = strtrim(red_fitsgetkeyword_multifile(pfiles, 'FILTER1'), 2)
+
+    is_wb = ((strsplit(cameras, '-', /extract)).toarray())[*,1] eq 'W'
+
+    indx = where(is_wb and prefilters eq pref, Nmatch)
+    if Nmatch eq 0 then begin
+      print, inam + ' : No matching pinhole images.'
+      return, 0
+    endif
+    
+    print, inam + ' : Using pinhole image in ' + pfiles[indx[0]]
+
+    pim = red_readdata(pfiles[indx[0]])
+  endelse
+  
   fitinfo = red_fitgrid(pim)
   grid_pitch_pixels = (fitinfo.dx+fitinfo.dy)/2.
   image_scale = grid_pitch_arcsec / grid_pitch_pixels ; ["/pix]
