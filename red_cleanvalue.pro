@@ -2,7 +2,7 @@
 
 ;+
 ; Clean a keyval "value" string, strip blanks and quotes from
-; beginning and end, detect array representation.
+; beginning and end, detect array and json representations.
 ; 
 ; :Categories:
 ;
@@ -36,8 +36,7 @@
 ; 
 ;    2017-06-20 : MGL. First version.
 ; 
-; 
-; 
+;    2024-07-03 : MGL. Detect json strings.
 ; 
 ;-
 function red_cleanvalue, x, status = status
@@ -50,6 +49,12 @@ function red_cleanvalue, x, status = status
     dum = execute('tmp='+xx)
     status = 0
     return, tmp
+  endif
+
+  ;; Or is it a json string?
+  if strmid(xx,0,1) eq '{' and strmid(xx,strlen(xx)-1,1) eq '}' then begin
+    status = 0
+    return, json_parse(xx)
   endif
   
   ;; Split at
