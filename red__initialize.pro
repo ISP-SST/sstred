@@ -82,6 +82,8 @@
 ;
 ;   2021-03-03 : MGL. New keyword no_db.
 ;
+;   2024-07-03 : MGL. Set self.image_scales.
+;
 ;-
 pro red::initialize, filename, develop = develop, no_db = no_db
   
@@ -149,6 +151,7 @@ pro red::initialize, filename, develop = develop, no_db = no_db
       'direction'       : self.direction = value
       'filetype'        : self.filetype = value
       'image_scale'     : self.image_scale = value
+      'image_scales'    : self.image_scales = value
       'isodate'         : self.isodate = value
       'out_dir'         : self.out_dir = value
       'pinhole_spacing' : self.pinhole_spacing = float(value)
