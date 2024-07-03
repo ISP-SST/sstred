@@ -61,8 +61,8 @@ function red_fitsgetkeyword_multifile, filenames, name $
                                , _strict_extra = extra)
     
     red_append, values, value   ; Use red_append because we don't know the type
-    comments[ifile] = comment
     counts[ifile] = count
+    if count gt 0 then comments[ifile] = comment
     
   endfor                        ; ifile
 
