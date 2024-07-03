@@ -81,6 +81,9 @@
 ;    2021-01-25 : MGL. Look for OBSERVER metadata keyword in CHROMIS
 ;                 data. New keyword no_observer_metadata.
 ; 
+;    2024-07-03 : MGL. Measure image scale for all prefilters by use
+;                 of pinhole images.
+; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             , calibrations_only = calibrations_only $
@@ -391,7 +394,8 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     pinhsubdirs = file_search(pinhdirs[i]+'/crisp*', count = Nsubdirs, /fold)
     if Nsubdirs gt 0 then begin
       printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
-      
+      red_append, pinh_dirs, red_strreplace(pinhdirs[i], root_dir, '')
+
       if keyword_set(calibrations_only) then begin
         ;; For /calibrations_only we want to output the summed data in
         ;; timestamp directories so we can handle multiple sets.
@@ -411,6 +415,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
         if Nsubsubdirs gt 0 then begin
           printf, Clun, 'pinh_dir = ' $
                   + red_strreplace(pinhsubdirs[j], root_dir, '')
+          red_append, pinh_dirs, red_strreplace(pinhsubdirs[j], root_dir, '')
           
           if keyword_set(calibrations_only) then begin
             ;; For /calibrations_only we want to output the summed data in
@@ -427,6 +432,20 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endfor                    ; j
     endelse                     ; Nsubdirs
   endfor                        ; i
+
+
+  ;; Image scales from pinholes
+  pfiles = file_search(root_dir + '/' + pinh_dirs + '/Crisp-W/*', count = Npfiles)
+  red_extractstates, pfiles, pref = pfiles_pref
+  ;; Measure image scale from WB pinhole images for all prefilters.
+  imscales = fltarr(Nprefilters)
+  for ipref = 0, Nprefilters-1 do begin
+    indx = where(pfiles_pref eq prefilters[ipref], Nwhere)
+    if Nwhere eq 0 then stop
+    imscales[ipref] = red_imagescale_from_pinholes(pref, isodate, rawfile = pfiles[indx[0]])
+  endfor                        ; ipref
+  printf, Clun, 'image_scales='+json_serialize(hash(prefilters, imscales))
+
   printf, Slun, ''  
   printf, Slun, 'a -> pinholecalib, /verify, nref=30, margin=100'
   printf, Slun, ''  
