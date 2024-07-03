@@ -36,6 +36,8 @@
 ;
 ;   2020-04-07 : MGL. New member "rotation".
 ;
+;   2024-07-03 : MGL. New member "image_scales".
+;
 ;-
 PRO red__define
 
@@ -78,7 +80,8 @@ PRO red__define
             root_dir:'',$                 ;
             dodescatter:0B,$              ;
             telescope_d:'',$              ; The diameter of the telescope pupil in meters
-            image_scale:'',$              ; The image scale in arxsec per pixel
+            image_scale:'',$              ; The WB image scale in arcsec per pixel
+            image_scales:hash(), $        ; The WB image scales in arcsec per pixel for each prefilter
             pixel_size:'',$               ; The pixel size in meters on the detector
             diversity:'', $               ; The nominal amount of focus diversity in -D camera, if any, in meters. 
             camsz:'',$                    ;
