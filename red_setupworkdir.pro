@@ -259,6 +259,9 @@
 ; 
 ;   2022-08-02 : MGL. Support CRISP's new cameras as well as future
 ;                CRISP2 instrument.
+; 
+;   2024-07-04 : MGL. Automatically copy summed calibration data from
+;                a reduc/ subdirectory in the raw data root directory.
 ;
 ;-
 pro red_setupworkdir, cfgfile = cfgfile $
@@ -595,6 +598,12 @@ pro red_setupworkdir, cfgfile = cfgfile $
     endelse
     config_file = red_add_suffix( cfgfile,    suffix = suffix )
     script_file = red_add_suffix( scriptfile, suffix = suffix )
+
+    if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
+      ;; Look for already summed data in a reduc/ subdirectory.
+      sum_dir = root_dir + 'reduc/' + instrument
+      if ~file_test(sum_dir, /directory) then undefine, sum_dir
+    endelse
     
     ;; Setup the different instruments.
     call_procedure, 'red_setupworkdir_' + class       $
@@ -602,7 +611,7 @@ pro red_setupworkdir, cfgfile = cfgfile $
                     ;;, workdir, root_dir, config_file, script_file, isodate $                    
                     , calibrations_only = calibrations_only $
                     , no_observer_metadata = no_observer_metadata $
-                    , old_dir = old_dir
+                    , old_dir = sum_dir
     
   endfor                        ; iinstrument    
 
