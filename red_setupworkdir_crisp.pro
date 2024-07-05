@@ -586,6 +586,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   red_append, nonsciencedirs, darkdirs
   red_append, nonsciencedirs, flatdirs
   sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+  indx = where(~strmatch(sciencedirs, root_dir+'reduc*'), Ndirs)
+  if Ndirs eq 0 then stop
+  sciencedirs = sciencedirs[indx]
 
   for i = 0, Ndirs-1 do begin
 
