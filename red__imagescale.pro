@@ -5,6 +5,13 @@
 ;
 ; The CRISP image scale depends on the prefilter for some years. If no
 ; measurements exist, just use the default from the config file.
+;
+; Try to get a value, using these sources in order: 1.
+; self.image_scales (from raw pinholes, written in config file), 2.
+; measurements from file (by the pinhole alignment step), 3. measure
+; from summed pinholes, 4. self.image_scale. The first 3 are
+; individual measurments for different prefilters. The last one is
+; common to all prefilters.
 ; 
 ; :Categories:
 ;
@@ -29,26 +36,50 @@
 ; 
 ; :Keywords:
 ; 
+;   use_config : in, optional, type=boolean
+;   
+;     Use the image scales from the config file, self.image_scale or
+;     self.image_scales, and not those measured for this day.
+;
+;   use_measurment : in, optional, type=boolean
+;   
+;     Use measurments based on this day's pinhole data.
+; 
 ;   no_gridfile : in, optional, type=boolean
 ;   
 ;     Do not use the pre-measured gridhole pitch values.
 ; 
+;   verbose : in, optional, type=boolean
+; 
+;     Write messages about what we are doing.
 ; 
 ; :History:
 ; 
 ;   2024-06-17 : MGL. First version. 
 ; 
 ;-
-function red::imagescale, pref, no_gridfile = no_gridfile
+function red::imagescale, pref $
+                          , no_gridfile = no_gridfile $
+                          , use_config = use_config $
+                          , use_measurement = use_measurement $
+                          , verbose = verbose
 
   inam = red_subprogram(/low, calling = inam1)
+
+  if ~keyword_set(use_measurement) && n_elements(self.image_scales) ne 0 then begin
+    if keyword_set(verbose) then print, inam + ' : Image scales from config.txt : ' $
+                                        + strtrim(self.image_scales[pref], 2) + '"/pix'
+    return, self.image_scales[pref]
+  endif
 
   grid_pitch_arcsec = self.pinhole_spacing ; ["]
 
   if keyword_set(no_gridfile) then begin
-    print
-    print, inam + ' : Prefilter: ' + pref
-    print, 'Do not use the gridfile.'
+    if keyword_set(verbose) then begin
+      print
+      print, inam + ' : Prefilter: ' + pref
+      print, 'Do not use the gridfile.'
+    endif
     goto, dont_use_gridfile
   endif
 
@@ -71,8 +102,10 @@ function red::imagescale, pref, no_gridfile = no_gridfile
     case Nmatch of
 
       0 : begin
-        print, inam + ' : Prefilter: ' + pref
-        print, inam + ' : No matching prefilter in ' + gridfile
+        if keyword_set(verbose) then begin
+          print, inam + ' : Prefilter: ' + pref
+          print, inam + ' : No matching prefilter in ' + gridfile
+        endif
         goto, dont_use_gridfile
       end
 
@@ -82,18 +115,22 @@ function red::imagescale, pref, no_gridfile = no_gridfile
       
     endcase
     
-    print
-    print, inam + ' : Prefilter: ' + pref
-    print, inam + ' : Image scale from config.txt : ' + strtrim(self.image_scale, 2) + '"/pix'
-    print, inam + ' : Using the image scale from pinholes : ' + strtrim(image_scale, 2) + '"/pix'
-    print
+    if keyword_set(verbose) then begin
+      print
+      print, inam + ' : Prefilter: ' + pref
+      print, inam + ' : Image scale from config.txt : ' + strtrim(self.image_scale, 2) + '"/pix'
+      print, inam + ' : Using the image scale from pinholes : ' + strtrim(image_scale, 2) + '"/pix'
+      print
+    endif
     
     return, image_scale
 
   endif else begin
-    print
-    print, inam + ' : File missing: '+gridfile
-    print, inam + ' : Prefilter: ' + pref
+    if keyword_set(verbose) then begin
+      print
+      print, inam + ' : File missing: '+gridfile
+      print, inam + ' : Prefilter: ' + pref
+    endif
   endelse
 
   dont_use_gridfile:
@@ -102,53 +139,60 @@ function red::imagescale, pref, no_gridfile = no_gridfile
   image_scale = red_imagescale_from_pinholes(pref, self.isodate)
 
   if image_scale ne 0 then begin
-    print, inam + ' : Image scale from config.txt : ' + strtrim(self.image_scale, 2) + '"/pix'
-    print, inam + ' : Using the image scale from pinhole image : ' + strtrim(image_scale, 2) + '"/pix'
-    print
+    if keyword_set(verbose) then begin
+      print, inam + ' : Image scale from config.txt : ' + strtrim(self.image_scale, 2) + '"/pix'
+      print, inam + ' : Using the image scale from pinhole image : ' + strtrim(image_scale, 2) + '"/pix'
+      print
+    endif
     return, image_scale
   endif
 
-  print, inam + ' : Using the image scale from the config file: ' + strtrim(self.image_scale, 2) + '"/pix'
-  print
-  
-  return, self.image_scale
+  if ~keyword_set(use_measurement) && self.image_scale ne 0 then begin
+    if keyword_set(verbose) then begin
+      print, inam + ' : Using the image scale from the config file: ' + strtrim(self.image_scale, 2) + '"/pix'
+      print
+    endif
+    return, self.image_scale
+  endif
 
+  ;; Failure
+  if keyword_set(verbose) then begin
+    print
+    print, inam + ' : No value returned.'
+  endif
+  return, 0
+  
 end
 
-if 1 then begin
+verbose = 1
+
+if 0 then begin
   
   cd, '/scratch/mats/2024-04-21/CHROMIS'
 
   a = chromisred("config.txt",/no, /dev)
 
   pref = '3950'
-  image_scale = a -> imagescale(pref)
+  image_scale = a -> imagescale(pref, verbose = verbose)
   print
-  image_scale = a -> imagescale(pref, /no_gridfile)
+  image_scale = a -> imagescale(pref, /no_gridfile, verbose = verbose)
   print
-  image_scale = a -> imagescale('2590')
+  image_scale = a -> imagescale('2590', verbose = verbose)
 
 endif else begin
 
-  cd, '/scratch/mats/2018.10.03/CRISP/'
+  cd, '/scratch/mats/2016.09.19/CRISP-imscale/'
 
-  a = crispred("config.txt",/no, /dev)
-
-  print
-  image_scale = a -> imagescale('5896')
+  a = crispred("config.txt", /no, /dev)
 
   print
-  image_scale = a -> imagescale('6173')
+  image_scale = a -> imagescale('6302', verbose = verbose)
 
   print
-  image_scale = a -> imagescale('6302')
+  image_scale = a -> imagescale('6563', verbose = verbose)
 
   print
-  image_scale = a -> imagescale('6563')
-
-  print
-  image_scale = a -> imagescale('8542')
-
+  image_scale = a -> imagescale('8542', verbose = verbose)
   
 endelse
 
