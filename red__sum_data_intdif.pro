@@ -388,9 +388,13 @@ pro red::sum_data_intdif, all = all $
                         (mscan EQ uscan[iscan]) AND mstar eq 0, count)
 
             if(count eq 0) then begin
-              print, inam + ' : No files found for state ' + mstates[idx[0]].fullstate
+              print, inam + ' : Scan ' + red_stri(uscan[iscan]) + ', ' + cams[icam] $
+                     + ' ' + mstates[idx[0]].fullstate $
+                     + ' -> found NO images.'
             endif else begin
-              print, inam + ' : Found ' + red_stri(count) + ' images for state ' + mstates[idx[0]].fullstate
+              print, inam + ' : Scan ' + red_stri(uscan[iscan]) + ', ' + cams[icam] $
+                     + ' ' + mstates[idx[0]].fullstate $
+                     + ' -> found ' + red_stri(count) + ' images.'
             endelse
 
 
