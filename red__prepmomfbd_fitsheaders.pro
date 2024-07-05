@@ -112,7 +112,9 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         cfg_files = file_search(cfg_dir + 'momfbd_reduc_' + prefs[ipref] $
                                 + '_?????.cfg', count = Ncfg)                                      
       endelse 
-      
+
+      image_scale = self -> imagescale(prefs[ipref])
+     
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
 
@@ -372,9 +374,9 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             red_fitsaddkeyword, anchor = anchor, head, 'CTYPE1', 'INSX-TAN', 'Instrument X'
             red_fitsaddkeyword, anchor = anchor, head, 'CTYPE2', 'INSY-TAN', 'Instrument Y'
             red_fitsaddkeyword, anchor = anchor, head $
-                                , 'CDELT1', float(self.image_scale), 'x-coordinate increment'
+                                , 'CDELT1', float(image_scale), 'x-coordinate increment'
             red_fitsaddkeyword, anchor = anchor, head $
-                                , 'CDELT2', float(self.image_scale), 'y-coordinate increment' 
+                                , 'CDELT2', float(image_scale), 'y-coordinate increment' 
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT1', 'arcsec', 'Unit along axis 1'
             red_fitsaddkeyword, anchor = anchor, head, 'CUNIT2', 'arcsec', 'Unit along axis 2'
 

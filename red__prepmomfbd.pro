@@ -682,6 +682,8 @@ pro red::prepmomfbd, cams = cams $
                            , gainname = ref_gainname, darkname = ref_darkname, status = status
         if( status lt 0 ) then continue
 
+        image_scale = self -> imagescale(upref[ipref])
+
         if ~keyword_set(no_pd) then begin
 
           filename = file_basename(pd_states[ref_sel[0]].filename)
@@ -722,7 +724,7 @@ pro red::prepmomfbd, cams = cams $
         cfg.globals += 'TELESCOPE_D=0.97' + LF
         cfg.globals += 'MAX_LOCAL_SHIFT='+string(maxshift,format='(I0)') + LF
         cfg.globals += 'NUM_POINTS=' + strtrim(numpoints,2) + LF
-        cfg.globals += 'ARCSECPERPIX=' + self.image_scale + LF
+        cfg.globals += 'ARCSECPERPIX=' + strtrim(image_scale, 2) + LF
         cfg.globals += 'PIXELSIZE=' + pixelsize + LF
         cfg.globals += 'FILE_TYPE=' + self.filetype + LF
         case self.filetype of
