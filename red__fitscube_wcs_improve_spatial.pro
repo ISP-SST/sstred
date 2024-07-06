@@ -120,6 +120,9 @@ pro red::fitscube_wcs_improve_spatial, filename $
   ;; So we should stop and say that new cubes have to be made for this
   ;; method to work. 
 
+  ;; Prefilter
+  pref = strtrim(red_fitsgetkeyword(h, 'FILTER1'), 2)
+  
   ;; Read the data frame. For scan cubes, use the WB image in the
   ;; extension unless a frame is specified.
   if ~framespecified && max(strmatch(prprocs,'*make_scan_cube')) then begin ; Scan cube. 
@@ -149,8 +152,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   date_beg = fxpar(h, 'DATE-BEG')
   time_beg = red_time2double((strsplit(date_beg, 'T', /extract))[1])
 
-  sst_image_scale = float(self.image_scale)
-  
+  sst_image_scale = self -> imagescale(pref)
   
   ;; SST FOV WCS info, array coordinates in arc sec
   red_fitscube_getwcs, filename, coordinates=wcs
