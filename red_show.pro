@@ -13,11 +13,10 @@
 ; 
 ; :Params:
 ;
-;     vari : in
+;     vari : in, type="array or string"
 ;
-;        2D or 3D image
-; 
-; 
+;        A 2D image (possibly with color, making the array 3D) or the
+;        name of a file with such content.
 ; 
 ; :Keywords:
 ; 
@@ -54,7 +53,7 @@
 ;        If a window is created, it will have this title.
 ;
 ;
-; :history:
+; :History:
 ;
 ;    2013-07-24 : Renamed red_show for inclusion in crispred pipeline.
 ;
@@ -63,6 +62,8 @@
 ;    2019-10-17 : MGL. New keyword reuse.
 ;
 ;    2020-04-07 : MGL. New keyword scroll.
+;
+;    20204-07-06 : MGL. Allow file name as input parameter.
 ;
 ;-
 pro red_show, vari $
@@ -79,8 +80,16 @@ pro red_show, vari $
   if ~keyword_set(wnum) then wnum=0
   if ~keyword_set(offs) then offs=24
 
-  ;; Image
-  var=reform(vari)
+  ;; Did we call with a file name?
+  if isa(vari, /string) then begin
+    var = reform(red_readdata(vari))
+    ;; This should be ok for FITS, ANA, MOMFBD format files, as long
+    ;; as the contents is 2D.
+  endif else begin
+    ;; Image
+    var=reform(vari)
+  endelse
+  
   dim=size(var)
   ;;Checks for the right image dimensions
   if dim[0] lt 2 or dim[0] gt 3 then begin
