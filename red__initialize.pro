@@ -82,7 +82,7 @@
 ;
 ;   2021-03-03 : MGL. New keyword no_db.
 ;
-;   2024-07-03 : MGL. Set self.image_scales.
+;   2024-07-03 : MGL. Set self.image_scales from config file.
 ;
 ;-
 pro red::initialize, filename, develop = develop, no_db = no_db
