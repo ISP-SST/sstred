@@ -539,6 +539,9 @@ pro red::make_wb_cube, dirs $
   hdr = red_readhead(wfiles[0])         ; Base cube header on first WB file header
   red_headerinfo_deletestep, hdr, /last ; This processing step will be added later, could vary with scan number  
 
+  ;; Get the image scale from the header
+  image_scale = float(fxpar(hdr, 'CDELT1'))
+  
   ;; Set aside non-rotated and non-shifted cube (re-use variable cub1)
   cub1 = cub
 
@@ -581,8 +584,8 @@ pro red::make_wb_cube, dirs $
 ;  if n_elements(xbd) eq 0 then xbd = round(origNx*0.9)  
 ;  if n_elements(ybd) eq 0 then ybd = round(origNy*0.9)
   ;; Default align box size is 20"
-  if n_elements(xbd) eq 0 then xbd = round(20/float(self.image_scale))  < round(origNx*0.9)
-  if n_elements(ybd) eq 0 then ybd = round(20/float(self.image_scale))  < round(origNy*0.9)
+  if n_elements(xbd) eq 0 then xbd = round(20/float(image_scale))  < round(origNx*0.9)
+  if n_elements(ybd) eq 0 then ybd = round(20/float(image_scale))  < round(origNy*0.9)
 
 
   
@@ -705,7 +708,7 @@ pro red::make_wb_cube, dirs $
       ;; For limb data, calculate the median in a strip of pixels with
       ;; a certain width, from the limb inward.
       strip_width = 5.                                              ; Approximate width, 5 arsec
-      strip_width = round(strip_width/float(self.image_scale))      ; Converted to pixels
+      strip_width = round(strip_width/float(image_scale))      ; Converted to pixels
       bimodal_threshold = cgOtsu_Threshold(dum, /PlotIt) ; Threshold at the limb
       disk_mask = dum gt bimodal_threshold               
       strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
@@ -746,12 +749,12 @@ pro red::make_wb_cube, dirs $
 
   print, inam + ' : Using the following parameters for de-stretching the time-series: '
   print, '   tstep [~3 m. (?)]= ', tstep
-  print, '   scale [pixels / arcsec] = ', 1.0/float(self.image_scale)
+  print, '   scale [pixels / arcsec] = ', 1.0/float(image_scale)
   print, '   tile = ['+strjoin(string(tile, format='(I3)'),',')+']'
   print, '   clip = ['+strjoin(string(clip, format='(I3)'),',')+']'
 
   ;; Calculate stretch vectors
-  grid = red_destretch_tseries(cub, 1.0/float(self.image_scale), tile, clip, tstep $
+  grid = red_destretch_tseries(cub, 1.0/float(image_scale), tile, clip, tstep $
                                , nthreads = nthreads, nostretch = nostretch)
 
   if ~keyword_set(nostretch) then begin
@@ -953,8 +956,8 @@ pro red::make_wb_cube, dirs $
 
   ;; Let's correct coordinates from the log with calculated shifts.
   ;; (It's mostly needed in case of 'jumps'.)
-  hpln += double(self.image_scale) * shift[0,*]
-  hplt += double(self.image_scale) * shift[1,*]
+  hpln += double(image_scale) * shift[0,*]
+  hplt += double(image_scale) * shift[1,*]
 
   ;; Let's smooth coordinates.
   dt = (t_array[0,-1] - t_array[0,0]) / 60. ; minutes
@@ -968,15 +971,15 @@ pro red::make_wb_cube, dirs $
   ;; But what we want to tabulate is the pointing in the corners of
   ;; the FOV. Assume hpln and hplt are the coordinates of the center
   ;; of the FOV.
-  wcs.hpln[0, 0] = hpln - double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[1, 0] = hpln + double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[0, 1] = hpln - double(self.image_scale) * (Nx-1)/2.d
-  wcs.hpln[1, 1] = hpln + double(self.image_scale) * (Nx-1)/2.d
+  wcs.hpln[0, 0] = hpln - double(image_scale) * (Nx-1)/2.d
+  wcs.hpln[1, 0] = hpln + double(image_scale) * (Nx-1)/2.d
+  wcs.hpln[0, 1] = hpln - double(image_scale) * (Nx-1)/2.d
+  wcs.hpln[1, 1] = hpln + double(image_scale) * (Nx-1)/2.d
   
-  wcs.hplt[0, 0] = hplt - double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[1, 0] = hplt - double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[0, 1] = hplt + double(self.image_scale) * (Ny-1)/2.d
-  wcs.hplt[1, 1] = hplt + double(self.image_scale) * (Ny-1)/2.d
+  wcs.hplt[0, 0] = hplt - double(image_scale) * (Ny-1)/2.d
+  wcs.hplt[1, 0] = hplt - double(image_scale) * (Ny-1)/2.d
+  wcs.hplt[0, 1] = hplt + double(image_scale) * (Ny-1)/2.d
+  wcs.hplt[1, 1] = hplt + double(image_scale) * (Ny-1)/2.d
   
   
   for iscan = 0, Nscans-1 do begin

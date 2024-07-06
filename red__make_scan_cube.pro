@@ -267,7 +267,9 @@ pro red::make_scan_cube, dir $
   wbghdr = red_readhead(wbgfiles[0])
   datestamp = fxpar(wbghdr, 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
-
+  
+  ;; Get the image scale from the header
+  image_scale = float(fxpar(wbghdr, 'CDELT1'))
   
   if ~keyword_set(fitpref_time) then begin
     fitpref_t='_'
@@ -1033,15 +1035,15 @@ pro red::make_scan_cube, dir $
     ;; But what we want to tabulate is the pointing in the corners of
     ;; the FOV. Assume hpln and hplt are the coordinates of the center
     ;; of the FOV.
-    wcs.hpln[0, 0, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-    wcs.hpln[1, 0, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
-    wcs.hpln[0, 1, *, *] = hpln - double(self.image_scale) * (Nx-1)/2.d
-    wcs.hpln[1, 1, *, *] = hpln + double(self.image_scale) * (Nx-1)/2.d
+    wcs.hpln[0, 0, *, *] = hpln - double(image_scale) * (Nx-1)/2.d
+    wcs.hpln[1, 0, *, *] = hpln + double(image_scale) * (Nx-1)/2.d
+    wcs.hpln[0, 1, *, *] = hpln - double(image_scale) * (Nx-1)/2.d
+    wcs.hpln[1, 1, *, *] = hpln + double(image_scale) * (Nx-1)/2.d
     
-    wcs.hplt[0, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-    wcs.hplt[1, 0, *, *] = hplt - double(self.image_scale) * (Ny-1)/2.d
-    wcs.hplt[0, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
-    wcs.hplt[1, 1, *, *] = hplt + double(self.image_scale) * (Ny-1)/2.d
+    wcs.hplt[0, 0, *, *] = hplt - double(image_scale) * (Ny-1)/2.d
+    wcs.hplt[1, 0, *, *] = hplt - double(image_scale) * (Ny-1)/2.d
+    wcs.hplt[0, 1, *, *] = hplt + double(image_scale) * (Ny-1)/2.d
+    wcs.hplt[1, 1, *, *] = hplt + double(image_scale) * (Ny-1)/2.d
 
     ;; Apply wavelength shift from prefilter fit.
     wcs.wave -= wave_shift

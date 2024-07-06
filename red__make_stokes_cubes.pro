@@ -476,6 +476,8 @@ pro red::make_stokes_cubes, dir, scanno $
   red_wcs_hpl_coords, red_time2double(ttime), metadata_pointing, time_pointing $
                       , hpln, hplt
 
+  ;; Get the image scale from the header
+  image_scale = float(fxpar(hdr, 'CDELT1'))
   
 ;  ;; Read wcs extension of wb file to get pointing info
 ;  fxbopen, wlun, wcfile, 'WCS-TAB', wbdr
@@ -607,15 +609,15 @@ pro red::make_stokes_cubes, dir, scanno $
              , time:dblarr(2,2) $
             }
       
-      wcs.hpln[0, 0] = hpln - double(self.image_scale) * (Nx-1)/2.d
-      wcs.hpln[1, 0] = hpln + double(self.image_scale) * (Nx-1)/2.d
-      wcs.hpln[0, 1] = hpln - double(self.image_scale) * (Nx-1)/2.d
-      wcs.hpln[1, 1] = hpln + double(self.image_scale) * (Nx-1)/2.d
+      wcs.hpln[0, 0] = hpln - double(image_scale) * (Nx-1)/2.d
+      wcs.hpln[1, 0] = hpln + double(image_scale) * (Nx-1)/2.d
+      wcs.hpln[0, 1] = hpln - double(image_scale) * (Nx-1)/2.d
+      wcs.hpln[1, 1] = hpln + double(image_scale) * (Nx-1)/2.d
       
-      wcs.hplt[0, 0] = hplt - double(self.image_scale) * (Ny-1)/2.d
-      wcs.hplt[1, 0] = hplt - double(self.image_scale) * (Ny-1)/2.d
-      wcs.hplt[0, 1] = hplt + double(self.image_scale) * (Ny-1)/2.d
-      wcs.hplt[1, 1] = hplt + double(self.image_scale) * (Ny-1)/2.d
+      wcs.hplt[0, 0] = hplt - double(image_scale) * (Ny-1)/2.d
+      wcs.hplt[1, 0] = hplt - double(image_scale) * (Ny-1)/2.d
+      wcs.hplt[0, 1] = hplt + double(image_scale) * (Ny-1)/2.d
+      wcs.hplt[1, 1] = hplt + double(image_scale) * (Ny-1)/2.d
 
       wcs.wave = nbtstates[these_nbrindx[0]].tun_wavelength*1d9
       ;; wcs.time = ; Set by demodulate
