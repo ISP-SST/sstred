@@ -192,7 +192,10 @@ pro red::fitscube_video, infile $
 
   Nx = dims[0]
   Ny = dims[1]
-  
+
+  pref = strtrim(red_fitsgetkeyword(inhdr, 'FILTER1'), 2)
+  image_scale = self -> imagescale(pref)
+
   if keyword_set(spectral) then begin
     
     Nframes = dims[2]
@@ -337,7 +340,7 @@ pro red::fitscube_video, infile $
     ;; Code inspired by Luc's tickbox_f.ana
     marg = min([Nx, Ny])/20 >30 ;30
     hmarg = 0
-    sc = float(self.image_scale)
+    sc = float(image_scale)
     pix = 1./sc
     Lx = fix(Nx*sc)
     Ly = fix(Ny*sc)
