@@ -228,6 +228,7 @@ pro red::fitscube_nup, inname  $
   
   ;; Prefilter
   pref = strtrim(red_fitsgetkeyword(inhdr, 'FILTER1'), 2)
+  image_scale = self -> imagescale(pref)
   
   ;; Scan numbers
   tmp = red_fitsgetkeyword(inname, 'SCANNUM', variable_values = variable_values)
@@ -465,8 +466,8 @@ pro red::fitscube_nup, inname  $
       hpln = pointing[0,*]
       hplt = pointing[1,*]
     endif else begin
-      hpln = pointing[0,*] - double(self.image_scale) * wcSHIFT[0,*]
-      hplt = pointing[1,*] - double(self.image_scale) * wcSHIFT[1,*]
+      hpln = pointing[0,*] - double(image_scale) * wcSHIFT[0,*]
+      hplt = pointing[1,*] - double(image_scale) * wcSHIFT[1,*]
     endelse
 
     ;; Let's smooth coordinates.
@@ -489,15 +490,15 @@ pro red::fitscube_nup, inname  $
     ;; the FOV. Assume hpln and hplt are the coordinates of the center
     ;; of the FOV.
     for iscan = 0L, Nscans-1 do begin
-      wcs[*, iscan].hpln[0, 0] = hpln[iscan] - double(self.image_scale) * (Nx-1)/2.d
-      wcs[*, iscan].hpln[1, 0] = hpln[iscan] + double(self.image_scale) * (Nx-1)/2.d
-      wcs[*, iscan].hpln[0, 1] = hpln[iscan] - double(self.image_scale) * (Nx-1)/2.d
-      wcs[*, iscan].hpln[1, 1] = hpln[iscan] + double(self.image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[0, 0] = hpln[iscan] - double(image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[1, 0] = hpln[iscan] + double(image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[0, 1] = hpln[iscan] - double(image_scale) * (Nx-1)/2.d
+      wcs[*, iscan].hpln[1, 1] = hpln[iscan] + double(image_scale) * (Nx-1)/2.d
       
-      wcs[*, iscan].hplt[0, 0] = hplt[iscan] - double(self.image_scale) * (Ny-1)/2.d
-      wcs[*, iscan].hplt[1, 0] = hplt[iscan] - double(self.image_scale) * (Ny-1)/2.d
-      wcs[*, iscan].hplt[0, 1] = hplt[iscan] + double(self.image_scale) * (Ny-1)/2.d
-      wcs[*, iscan].hplt[1, 1] = hplt[iscan] + double(self.image_scale) * (Ny-1)/2.d        
+      wcs[*, iscan].hplt[0, 0] = hplt[iscan] - double(image_scale) * (Ny-1)/2.d
+      wcs[*, iscan].hplt[1, 0] = hplt[iscan] - double(image_scale) * (Ny-1)/2.d
+      wcs[*, iscan].hplt[0, 1] = hplt[iscan] + double(image_scale) * (Ny-1)/2.d
+      wcs[*, iscan].hplt[1, 1] = hplt[iscan] + double(image_scale) * (Ny-1)/2.d        
     endfor
   endelse
 
