@@ -63,7 +63,7 @@
 ;
 ;    2020-04-07 : MGL. New keyword scroll.
 ;
-;    20204-07-06 : MGL. Allow file name as input parameter.
+;    2024-07-06 : MGL. Allow file name as input parameter.
 ;
 ;-
 pro red_show, vari $
