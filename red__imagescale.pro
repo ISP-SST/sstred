@@ -67,11 +67,15 @@ function red::imagescale, pref $
   inam = red_subprogram(/low, calling = inam1)
 
   if ~keyword_set(use_measurement) && n_elements(self.image_scales) ne 0 then begin
-    if keyword_set(verbose) then print, inam + ' : Image scales from config.txt : ' $
-                                        + strtrim(self.image_scales[pref], 2) + '"/pix'
-    return, self.image_scales[pref]
+    if ~(n_elements(self.image_scales) eq 1 && self.image_scales eq !null) then begin
+      if keyword_set(verbose) then print, inam + ' : Image scales from config.txt : ' $
+                                          + strtrim(self.image_scales[pref], 2) + '"/pix'
+      return, self.image_scales[pref]
+    endif
   endif
 
+  if keyword_set(use_config) then goto, use_config
+  
   grid_pitch_arcsec = self.pinhole_spacing ; ["]
 
   if keyword_set(no_gridfile) then begin
@@ -147,7 +151,8 @@ function red::imagescale, pref $
     return, image_scale
   endif
 
-  if ~keyword_set(use_measurement) && self.image_scale ne 0 then begin
+  use_config:
+  if ~keyword_set(use_measurement) && self.image_scale ne 0.0 then begin
     if keyword_set(verbose) then begin
       print, inam + ' : Using the image scale from the config file: ' + strtrim(self.image_scale, 2) + '"/pix'
       print
