@@ -228,7 +228,7 @@ pro red::fitscube_nup, inname  $
   
   ;; Prefilter
   pref = strtrim(red_fitsgetkeyword(inhdr, 'FILTER1'), 2)
-  image_scale = self -> imagescale(pref)
+  image_scale = self -> imagescale(pref, /use_config)
   
   ;; Scan numbers
   tmp = red_fitsgetkeyword(inname, 'SCANNUM', variable_values = variable_values)

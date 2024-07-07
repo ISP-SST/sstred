@@ -152,7 +152,7 @@ pro red::fitscube_wcs_improve_spatial, filename $
   date_beg = fxpar(h, 'DATE-BEG')
   time_beg = red_time2double((strsplit(date_beg, 'T', /extract))[1])
 
-  sst_image_scale = self -> imagescale(pref)
+  sst_image_scale = self -> imagescale(pref, /use_config)
   
   ;; SST FOV WCS info, array coordinates in arc sec
   red_fitscube_getwcs, filename, coordinates=wcs
