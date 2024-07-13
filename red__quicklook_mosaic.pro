@@ -131,8 +131,6 @@ pro red::quicklook_mosaic, align=align $
     files = self -> raw_search(dirs[iset] + '/' + cam, scanno=0, count=Nfiles $
                                , prefilters = prefilters )
 
-    stop
-    
     if files[0] eq '' then begin
       print, inam + ' : ERROR -> no frames found in '+dirs[iset]
       continue                  ; Goto next dataset
@@ -300,6 +298,11 @@ pro red::quicklook_mosaic, align=align $
         namout += '_' + timestamp
         namout += '_' + pref
 
+        annstring = self.isodate
+        annstring += ' ' + timestamp
+        annstring += ' ' + selstates[0].camera
+        annstring += ' ' + pref
+        
       endif else begin
         
         self -> selectfiles, files=files, states=states $
@@ -319,6 +322,12 @@ pro red::quicklook_mosaic, align=align $
         namout += '_' + timestamp
         namout += '_' + pref $
                 + '_' + selstates[0].tuning
+
+        annstring = self.isodate
+        annstring += ' ' + timestamp
+        annstring += ' ' + selstates[0].camera
+        annstring += ' ' + pref $
+                     + ' ' + selstates[0].tuning
       endelse
 
       image_scale = float(self -> imagescale(pref, /use_config))
@@ -624,8 +633,7 @@ pro red::quicklook_mosaic, align=align $
       mosaic = bytscl(mosaic >cmin <cmax)
       
       red_show, mosaic, /scroll
-
-      
+    
       ;; Add annotations and make the rgb cube
       thisDevice = !D.Name
       set_plot, 'Z'
@@ -639,24 +647,28 @@ pro red::quicklook_mosaic, align=align $
       old_font = !P.font
       !P.font = 1
       erase
-      tv, mosaic
-      if is_wb then begin
-        annstring = self.isodate + ' ' + timestamp $
-                    + '   ' + cam + '   ' + pref
-      endif else begin
-        annstring = self.isodate + ' ' + timestamp $
-                    + '   ' + cam + ' ' + ustat[istate]
-      end
-      cgtext, [0.01], [0.95], annstring $
-              , /normal, charsize=1.5, color=textcolor, font=1
+                                ;tv, mosaic
+      cgimage, /keep, red_tickbox(mosaic, image_scale*fac, marg=-sx/200., /arc5, /arc10)
+;      if is_wb then begin
+;        annstring = self.isodate + ' ' + timestamp $
+;                    + '   ' + cam + '   ' + pref
+;      endif else begin
+;        annstring = self.isodate + ' ' + timestamp $
+;                    + '   ' + cam + ' ' + ustat[istate]
+;      end
+      charsize = 1.5
+      charsize = (bb[2]-bb[0]+1) / 450.
+      cgtext, [0.02], [0.02], annstring $
+              , /normal, charsize=charsize, color=textcolor, font=1
       snap2 = tvrd(/true)
       set_plot,'X'
       !P.font = old_font
       
-      
       write_png, outdir + namout + '.png', snap2
-      
-      
+
+      print, inam + ' : Wrote mosaic to ' + outdir + namout + '.png'
+
+      stop
     endfor                      ; istate
   endfor                        ; iset
   
@@ -672,10 +684,10 @@ if 0 then begin
 endif else begin
   cd, '/scratch/mats/2024-06-11/CRISP'
   a = crisp2red("config.txt", /dev, /no)
-;  a -> quicklook_mosaic, cam = 'Crisp-R', /align, /core
-  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '8542'
-  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '6563'
-  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '6173'
+  a -> quicklook_mosaic, cam = 'Crisp-R', /align, /core, compress = 2
+;  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '8542'
+;  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '6563'
+;  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '6173'
 endelse
 
 
