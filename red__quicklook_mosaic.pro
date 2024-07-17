@@ -85,8 +85,7 @@ pro red::quicklook_mosaic, align=align $
   if n_elements(maxshift) eq 0 then maxshift = 6
   if n_elements(nthreads) eq 0 then nthreads = 6
 
-  restore, 'calib/alignments.sav'
-  
+
   ;; Limit possible datasets to mosaic directories
   mos_dirs = (*self.data_dirs)[where(strmatch(*self.data_dirs, '*mosaic*'), Nwhere)]
   IF Nwhere EQ 0 THEN stop
@@ -298,10 +297,11 @@ pro red::quicklook_mosaic, align=align $
         namout += '_' + timestamp
         namout += '_' + pref
 
-        annstring = self.isodate
+        annstring = 'SST ' + self.isodate
         annstring += ' ' + timestamp
+        annstring += ' ' + 'UT, '
         annstring += ' ' + selstates[0].camera
-        annstring += ' ' + pref
+        annstring += ' ' + pref + ' $\Angstrom$'
         
       endif else begin
         
@@ -320,42 +320,65 @@ pro red::quicklook_mosaic, align=align $
         namout += '_' + 'quick'
         namout += '_' + self.isodate
         namout += '_' + timestamp
-        namout += '_' + pref $
-                + '_' + selstates[0].tuning
+        namout += '_' + pref 
+        namout += '_' + selstates[0].tuning
 
-        annstring = self.isodate
+        annstring = 'SST ' + self.isodate
         annstring += ' ' + timestamp
+        annstring += ' ' + 'UT, '
         annstring += ' ' + selstates[0].camera
-        annstring += ' ' + pref $
-                     + ' ' + selstates[0].tuning
+        fpisplit = strsplit(selstates[0].tuning, '_', /extract)
+        annstring += ' ' + fpisplit[0] + ' $\Angstrom$' + ' ' + fpisplit[1] + ' m$\Angstrom$'
       endelse
-
-      image_scale = float(self -> imagescale(pref, /use_config))
       
+      image_scale = float(self -> imagescale(pref, /use_config))
+
+      if ~file_test('calib/alignments.sav') then begin
+        ;; Try to make sure we have alignments.
+
+        ;; At this point, we can call sumpinh for one state per
+        ;; camera, and then call pinholecalib. Hopefully this provides
+        ;; the needed info in alignments.sav, so we restore it and try
+        ;; again. Failure is caught in the next case statement.
+        
+        for icam = 0, n_elements(*self.cameras)-1 do begin
+          case 1 of
+
+            strmatch((*self.cameras)[icam], '*-D') : begin
+              ;; Don't care about diversity camera D
+            end
+            
+            strmatch((*self.cameras)[icam], '*-W') : begin
+              ;; Wideband camera W
+              self -> sumpinh, cams = (*self.cameras)[icam] $
+                               , pref = selstates[0].prefilter
+            end
+            
+            else : begin
+              ;; Narrowband cameras NRT
+              self -> sumpinh, cams = (*self.cameras)[icam] $
+                               , ustat = selstates[0].fullstate $
+                               , pref = selstates[0].prefilter
+            end
+
+          endcase 
+        endfor                  ; icam
+        self -> pinholecalib
+      endif
+
       self -> getalignment, align=align, prefilters=pref
       indx = where(align.state2.camera eq cam, Nalign)
+
       case Nalign of
-        0    : stop             ; Should not happen!
+        0    : begin
+          stop                  ; If this happens, we forgot to collect pinholes for this state.
+        end
         1    : amap =      align[indx].map
         else : amap = mean(align[indx].map, dim=3)
       endcase
       amap /= amap[2, 2]      ; Normalize
       amap_inv = invert(amap)
       
-;        Nmos = Nsel
-;        umos = reform((stregex(selfiles, 'mos([0-9][0-9])', /extract, /subexpr))[1, *])
-        
-;        IF n_elements(umos) NE Nmos THEN stop
-        
-        ;; Sort files based on mos number!
-;        indx = sort(umos)
-;        umos = umos[indx]
-;        selfiles = selfiles[indx]
-
-
-        
-      ;; Need to determine Nx and Ny based on logged positions.
-
       ;; Get date_avg from file headers
       date_avg = red_fitsgetkeyword_multifile(selfiles, 'DATE-AVG', count = Ndates)
       time_avg = red_time2double(strmid(date_avg, 11))
@@ -462,6 +485,10 @@ pro red::quicklook_mosaic, align=align $
         
       endfor                    ; imos
 
+      xc = round(mean(xpos*image_scale))
+      yc = round(mean(ypos*image_scale))
+      annstring += ', HPLN/T: (' + red_stri(xc) + '",' + red_stri(yc) + '")'
+      
       xpos = xpos - min(xpos) + naxis[0]/2 + 50
       ypos = ypos - min(ypos) + naxis[1]/2 + 50
 
@@ -657,7 +684,7 @@ pro red::quicklook_mosaic, align=align $
 ;                    + '   ' + cam + ' ' + ustat[istate]
 ;      end
       charsize = 1.5
-      charsize = (bb[2]-bb[0]+1) / 450.
+      charsize = (bb[3]-bb[1]+1) / 500.
       cgtext, [0.02], [0.02], annstring $
               , /normal, charsize=charsize, color=textcolor, font=1
       snap2 = tvrd(/true)
@@ -668,11 +695,22 @@ pro red::quicklook_mosaic, align=align $
 
       print, inam + ' : Wrote mosaic to ' + outdir + namout + '.png'
 
-      stop
     endfor                      ; istate
   endfor                        ; iset
+
   
 end
+
+root_dir = "/data/2024/2024.07/2024.07.09/"
+nthreads=20
+
+cd, '/scratch/mats/2024-07-09/CRISP'
+a = crisp2red("config.txt", /dev, /no)
+pref = '6563'
+a -> quicklook_mosaic, cam = 'Crisp-T', /align, /core, compress = 2, pref = pref
+a -> quicklook_mosaic, cam = 'Crisp-W', /align, compress = 2, pref = pref
+
+stop
 
 ;; Run quicklook_mosaic only after doing pinholecalib
 root_dir = "/data/2024/2024.06/2024.06.11/"
