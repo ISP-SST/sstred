@@ -29,6 +29,8 @@
 ; 
 ;   2024-07-12 : MGL. First version.
 ; 
+;   2024-07-18 : MGL. Works for CHROMIS.
+; 
 ;-
 pro red::quicklook_mosaic, align=align $
                            , cam=cam $
@@ -363,7 +365,7 @@ pro red::quicklook_mosaic, align=align $
 
           endcase 
         endfor                  ; icam
-        self -> pinholecalib
+        self -> pinholecalib, /verify, nref=20, max_shift = 30 
       endif
 
       self -> getalignment, align=align, prefilters=pref
@@ -376,8 +378,11 @@ pro red::quicklook_mosaic, align=align $
         1    : amap =      align[indx].map
         else : amap = mean(align[indx].map, dim=3)
       endcase
-      amap /= amap[2, 2]      ; Normalize
       amap_inv = invert(amap)
+      amap_inv /= amap_inv[2, 2] ; Normalize
+
+      print, 'Inverse amap:'
+      print, amap_inv
       
       ;; Get date_avg from file headers
       date_avg = red_fitsgetkeyword_multifile(selfiles, 'DATE-AVG', count = Ndates)
@@ -423,21 +428,27 @@ pro red::quicklook_mosaic, align=align $
  
       if total(self.direction eq [1, 3, 4, 6]) eq 1 then naxis[[0, 1]] = naxis[[1, 0]]
 
+      weight = rdx_img_project(amap_inv, weight, /preserve_size) >0
+      mask   = rdx_img_project(amap_inv, mask,   /preserve_size)
+      
       weight = red_rotate(weight, self.direction)
-      mask   = red_rotate(mask, self.direction)
-
+      mask   = red_rotate(mask,   self.direction)
+      
+      ;; Find out area after rotation
+      ang = red_lp_angles(time_mos, self.isodate, /from_log, offset_angle = self.rotation)
+      maxangle = max(abs(ang))
+      ff = [maxangle,0,0,0,0,reform(ang)]
+      dum = red_rotation(weight, full=ff $
+                         , ang[0], 0, 0, background = bg, nthreads=nthreads)
+      naxis = size(dum,/dim)
       
       t = dblarr(Nmos)
       xpos = lonarr(Nmos)
       ypos = lonarr(Nmos)
-      images = fltarr(naxis[0], naxis[1], Nmos)
+      images  = fltarr(naxis[0], naxis[1], Nmos)
       weights = fltarr(naxis[0], naxis[1], Nmos)
-      masks = fltarr(naxis[0], naxis[1], Nmos)
+      masks   = fltarr(naxis[0], naxis[1], Nmos)
 
-      
-      weight = rdx_img_project(amap_inv, weight, /preserve_size) >0
-      mask   = rdx_img_project(amap_inv, mask,   /preserve_size)
-      
       for imos=0, Nmos-1 do begin
 
         indx = where(strpos(selfiles, 'mos'+umos[imos]) ne -1, Nwhere)
@@ -449,7 +460,7 @@ pro red::quicklook_mosaic, align=align $
           tmp = red_readhead(selfiles[indx[i]], date_beg = dbeg)
           red_append, date_mos, dbeg
         endfor                  ; i
-        help, date_mos, ims
+;        help, date_mos, ims
         time_mos = red_time2double(strmid(date_mos, 11))
         red_logdata, self.isodate, time_mos, diskpos=diskpos_mos, rsun = rsun
 
@@ -463,14 +474,15 @@ pro red::quicklook_mosaic, align=align $
         mx = max(sd, loc)
         im = ims[*, *, loc[0]]
         im = rdx_img_project(amap_inv, im, /preserve_size)
-
+        im = red_rotate(im, self.direction)
+        
         t[imos] = time_mos[loc[0]]
         pos = diskpos_mos[*, loc[0]]
 ;        red_logdata, self.isodate, t[imos], pig = pos
         
         if ~finite(pos[0]) then pos[0] = median(diskpos_mos[0,*])
         if ~finite(pos[1]) then pos[1] = median(diskpos_mos[1,*])
-      
+        
         ang = red_lp_angles(t[imos], self.isodate, /from_log, offset_angle = self.rotation)
 
         xpos[imos] = pos[0]/image_scale
@@ -478,10 +490,11 @@ pro red::quicklook_mosaic, align=align $
 
         cgplot, /add, /over, xpos[imos]*image_scale, ypos[imos]*image_scale, psym = 16, color = 'red'
         print, 'pos:', imos, xpos[imos]*image_scale, ypos[imos]*image_scale
-        
-        images[*, *, imos]  = red_rotation(red_rotate(im,     self.direction), ang[0], background=0.0)
-        weights[*, *, imos] = red_rotation(red_rotate(weight, self.direction), ang[0], background=0.0) >0
-        masks[*, *, imos]   = red_rotation(red_rotate(mask,   self.direction), ang[0], background=0.0)
+
+        images[*, *, imos]  = red_rotation(im,     ang[0], background=0.0, full=ff, nthreads=nthreads)
+        weights[*, *, imos] = red_rotation(weight, ang[0], background=0.0, full=ff, nthreads=nthreads) >0
+        masks[*, *, imos]   = red_rotation(mask,   ang[0], background=0.0, full=ff, nthreads=nthreads) $
+                              * (weights[*, *, imos] gt 0)
         
       endfor                    ; imos
 
@@ -507,7 +520,9 @@ pro red::quicklook_mosaic, align=align $
 ;      cgplot, /add, xpos, ypos, psym=16, color='red' $
 ;              , xrange = [0, Sx], yrange = [0, Sy] $
 ;              , xtitle = 'x', ytitle = 'y', title = 'Mosaic pointing '+self.isodate+' '+timestamp
-
+      
+;      tiles = fltarr(round(1.5*(max(xpos) + Sx/2. + 20.)/fac), round(1.5*(max(ypos) + Sy/2. + 20.)/fac))
+      
       imap = fltarr(Sx/fac, Sy/fac, Nmos) ; image map
       wmap = fltarr(Sx/fac, Sy/fac, Nmos) ; weight map
       mmap = fltarr(Sx/fac, Sy/fac, Nmos) ; mask map
@@ -521,11 +536,20 @@ pro red::quicklook_mosaic, align=align $
         urx = llx + naxis[0]/fac - 1
         ury = lly + naxis[1]/fac - 1
 
+        llx2 = 2*(xpos[imos]/fac - naxis[0]/2/fac)
+        lly2 = 2*(ypos[imos]/fac - naxis[1]/2/fac)
+        urx2 = llx2 + naxis[0]/fac - 1
+        ury2 = lly2 + naxis[1]/fac - 1
+
+
         if fac eq 1 then begin
+;          tiles[llx2 : urx2, lly2 : ury2] = images[*, *, imos]
           imap[llx : urx, lly : ury, imos] = masks[*, *, imos] * images[*, *, imos]
           wmap[llx : urx, lly : ury, imos] = masks[*, *, imos] * weights[*, *, imos]
           mmap[llx : urx, lly : ury, imos] = masks[*, *, imos]
         endif else begin
+;          tiles[llx2 : urx2, lly2 : ury2] = congrid( images[*, *, imos] $
+;          , naxis[0]/fac, naxis[1]/fac, cubic = -0.5 )
           imap[llx : urx, lly : ury, imos] = congrid( masks[*, *, imos] * images[*, *, imos] $
                                                       , naxis[0]/fac, naxis[1]/fac, cubic = -0.5 )
           wmap[llx : urx, lly : ury, imos] = congrid( masks[*, *, imos] * weights[*, *, imos] $
@@ -534,7 +558,9 @@ pro red::quicklook_mosaic, align=align $
                                                       , naxis[0]/fac, naxis[1]/fac, cubic = -0.5 ) $
                                               * (wmap[llx : urx, lly : ury, imos] gt 0)
         endelse
-
+    
+;        red_show, tiles, /re
+        
       endfor                    ; imos
 
       if keyword_set(align) || keyword_set(destretch) then begin
@@ -568,6 +594,7 @@ pro red::quicklook_mosaic, align=align $
               shifts = red_alignoffset(im,imi)
             endif else begin
               bb = red_boundingbox(commonmask)
+              print, 'boundingbox : ', bb
               shifts = red_shc_mask((totim / (1e-5 + totw))[bb[0]:bb[2],bb[1]:bb[3]] $
                                     , imap[bb[0]:bb[2],bb[1]:bb[3], ord[imos]] $
                                     , commonmask[bb[0]:bb[2],bb[1]:bb[3]] $
@@ -652,7 +679,10 @@ pro red::quicklook_mosaic, align=align $
 
       bb = red_boundingbox(mosaic gt 0)
       mosaic = mosaic[bb[0]:bb[2],bb[1]:bb[3]] >0
-                                ;, red_missing, mosaic, missing_type_wanted = 'nan', /inplace
+
+      red_missing, mosaic, missing_type_wanted = 'nan',/inplace
+      mosaic = red_fillpix(mosaic, nthreads=nthreads)
+      red_missing, mosaic, missing_value = 0,/inplace
 
       indx = where(mosaic gt median(mosaic)/100)
       tmp = red_histo_opt(mosaic[indx], cmin = cmin, cmax = cmax)
@@ -660,7 +690,7 @@ pro red::quicklook_mosaic, align=align $
       mosaic = bytscl(mosaic >cmin <cmax)
       
       red_show, mosaic, /scroll
-    
+      
       ;; Add annotations and make the rgb cube
       thisDevice = !D.Name
       set_plot, 'Z'
@@ -701,31 +731,24 @@ pro red::quicklook_mosaic, align=align $
   
 end
 
-root_dir = "/data/2024/2024.07/2024.07.09/"
-nthreads=20
-
-cd, '/scratch/mats/2024-07-09/CRISP'
-a = crisp2red("config.txt", /dev, /no)
-pref = '6563'
-a -> quicklook_mosaic, cam = 'Crisp-T', /align, /core, compress = 2, pref = pref
-a -> quicklook_mosaic, cam = 'Crisp-W', /align, compress = 2, pref = pref
-
-stop
 
 ;; Run quicklook_mosaic only after doing pinholecalib
-root_dir = "/data/2024/2024.06/2024.06.11/"
 nthreads=20
-if 0 then begin
-  cd, '/scratch/mats/2024-06-11/CHROMIS'
+cd, '/scratch/mats/2024-07-09'
+cd, '/scratch/mats/2024-06-11'
+if 1 then begin
+  cd, 'CHROMIS'
   a = chromisred("config.txt", /dev, /no)
-  a -> quicklook_mosaic, cam = 'Chromis-W', /align
+  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-N', /align, compress = 2, /core ; use = '3999_+0'
+;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-N', /align, /core, compress = 4
+;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-W', /align
 endif else begin
-  cd, '/scratch/mats/2024-06-11/CRISP'
+  cd, 'CRISP'
   a = crisp2red("config.txt", /dev, /no)
-  a -> quicklook_mosaic, cam = 'Crisp-R', /align, /core, compress = 2
-;  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '8542'
-;  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '6563'
-;  a -> quicklook_mosaic, cam = 'Crisp-W', /align, pref = '6173'
+  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-R', /align, /core, compress = 4
+;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-W', /align, pref = '8542'
+;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-W', /align, pref = '6563'
+;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-W', /align, pref = '6173'
 endelse
 
 
