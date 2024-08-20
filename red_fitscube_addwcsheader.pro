@@ -41,6 +41,8 @@
 ;    2020-04-30 : MGL. New keywords csyer_spatial_value,
 ;                 csyer_spatial_comment.
 ; 
+;    2024-08-20 : MGL. Add CRPIXi for 1 long dimensions.
+; 
 ;-
 pro red_fitscube_addwcsheader, hdr, wcs $
                                , csyer_spatial_value = csyer_spatial_value $
@@ -278,6 +280,7 @@ pro red_fitscube_addwcsheader, hdr, wcs $
     red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE3', 'WAVE'
     red_fitsaddkeyword, anchor = anchor, hdr, 'CNAME3', 'Wavelength' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT3', 'nm', 'Wavelength unit'
+    red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX3', 1, 'Needed when CRVAL3 is used'
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL3', wcs.wave[0], 'Just a single wavelength'  , /force
   endelse
   
@@ -305,6 +308,7 @@ pro red_fitscube_addwcsheader, hdr, wcs $
     red_fitsaddkeyword, anchor = anchor, hdr, 'CTYPE5', 'UTC', 'Time'  
     red_fitsaddkeyword, anchor = anchor, hdr, 'CNAME5', 'Time since DATEREF, increases with dim. 3 and 5' 
     red_fitsaddkeyword, anchor = anchor, hdr, 'CUNIT5', 's' 
+    red_fitsaddkeyword, anchor = anchor, hdr, 'CRPIX5', 1, 'Needed when CRVAL5 is used'
     red_fitsaddkeyword, anchor = anchor, hdr, 'CRVAL5', wcs.time[0], 'Just a single time'  
   endelse
 
