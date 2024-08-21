@@ -393,11 +393,11 @@ pro red::quicklook_mosaic, align=align $
 
       ;; Get pointing
       red_logdata, self.isodate, time_avg, diskpos=diskpos, rsun = rsun
-      cgwindow
-      cgplot, /add, diskpos[0,*], diskpos[1,*], psym=1, color='green' $
-              , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
-              , title = 'Mosaic pointing '+self.isodate+' '+timestamp
-
+;      cgwindow
+;      cgplot, /add, diskpos[0,*], diskpos[1,*], psym=1, color='green' $
+;              , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
+;              , title = 'Mosaic pointing '+self.isodate+' '+timestamp
+;
       hdr = red_readhead(selfiles[0])
       naxis = fxpar(hdr,'NAXIS*')
 
@@ -487,7 +487,7 @@ pro red::quicklook_mosaic, align=align $
         xpos[imos] = pos[0]/image_scale
         ypos[imos] = pos[1]/image_scale
 
-        cgplot, /add, /over, xpos[imos]*image_scale, ypos[imos]*image_scale, psym = 16, color = 'red'
+;        cgplot, /add, /over, xpos[imos]*image_scale, ypos[imos]*image_scale, psym = 16, color = 'red'
         print, 'pos:', imos, xpos[imos]*image_scale, ypos[imos]*image_scale
 
         images[*, *, imos]  = red_rotation(im,     ang[0], background=0.0, full=ff, nthreads=nthreads)
@@ -562,9 +562,24 @@ pro red::quicklook_mosaic, align=align $
         
       endfor                    ; imos
 
+      cgwindow
+      colors = distinct_colors(n_colors = Nmos, /num)
+      cgplot, /add, /nodata, [0], [0] $
+              , xrange = [0, Sx*image_scale], yrange = [0, Sy*image_scale] $
+              , aspect = Sy/float(Sx) $
+              , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
+              , title = 'Mosaic FOVs '+self.isodate+' '+timestamp+' '+pref
+
+;      for imos=0, Nmos-1 do begin
+;        edge = sobel(mmap[*, *, imos])
+;        indx = array_indices(edge, where(edge gt 0.5*max(edge)))
+;        cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[imos]
+;      endfor
+      
+        
       if keyword_set(align) || keyword_set(destretch) then begin
 
-        if 1 then begin
+        if 0 then begin
 
           ;; Start with center tile, then continue outward while
           ;; aligning to sum so far.
@@ -622,47 +637,91 @@ pro red::quicklook_mosaic, align=align $
           red_missing, mosaic, /inplace, missing_type_wanted = 'nan'
           
         endif else begin
-          ;; Calculate shift vectors for all overlapping pairs of tiles
+
+          ;; Start with the center tile, then base the order of
+          ;; stitching on the largest overlapping area.
+
           
-          dx = fltarr(Nmos, Nmos)
-          dy = fltarr(Nmos, Nmos)
-          commonarea = fltarr(Nmos, Nmos)
-  
-          for imos=0, Nmos-2 do begin
-            for jmos=imos+1, Nmos-1 do begin
+          xc = median(xpos)
+          yc = median(ypos)
+          dr = sqrt((xpos-xc)^2 + (ypos-yc)^2)
+          ord = sort(dr)      
+
+          edge = sobel(mmap[*, *, ord[0]])
+          indx = array_indices(edge, where(edge gt 0.5*max(edge)))
+          cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[ord[0]]
+          
+          
+          ;; Add center tile
+          totim = imap[*, *, ord[0]] * wmap[*, *, ord[0]]
+          totw  = wmap[*, *, ord[0]]
+          totm  = mmap[*, *, ord[0]]
+
+          commonarea = fltarr(Nmos)
+
+          ;; Loop over remaining tiles
+          for imos = 1, Nmos-1 do begin
+
+            if imos ne Nmos-1 then begin
+              ;; Find the tile with the most overlap with the mosaic so
+              ;; far assembled
+              print, imos, ord[imos]
+              for jmos = imos, Nmos-1 do begin
+                commonmask = mmap[*, *, ord[jmos]] * totm
+                commonarea[jmos] = total(commonmask)
+                print, jmos, ord[jmos], commonarea[jmos]
+              endfor            ; jmos
+              print, ord[imos:Nmos-1]
+              print, commonarea[imos:Nmos-1]
+              ;; Find max
+              mxx = max(commonarea[imos:Nmos-1], maxloc)
               
-              commonmask = mmap[*, *, imos] * mmap[*, *, jmos]
-              commonarea[imos, jmos] = total(commonmask)
-              print, imos, jmos, commonarea[imos, jmos]
-              if commonarea[imos, jmos] lt 2000/fac^2 then continue
-
-              imi = imap[*, *, imos] * commonmask
-              imj = imap[*, *, jmos] * commonmask
-
-              red_missing, imi, /inplace, missing_type_wanted = 'median'
-              red_missing, imj, /inplace, missing_type_wanted = 'median'
-
-              shifts = red_alignoffset(imi,imj)
-              print, shifts
+              ;; Swap to get it first of remaining
+              tmp = ord[imos]
+              ord[imos] = ord[maxloc+imos]
+              ord[maxloc+imos] = tmp
               
-              dx[imos, jmos] = shifts[0]
-              dy[imos, jmos] = shifts[1]
+            endif 
 
-              imap[*, *, jmos] = red_shift_im(imap[*, *, jmos], dx[imos, jmos], dy[imos, jmos], missing = 0.0)
-              wmap[*, *, jmos] = red_shift_im(wmap[*, *, jmos], dx[imos, jmos], dy[imos, jmos], missing = 0.0) >0
-              mmap[*, *, jmos] = red_shift_im(mmap[*, *, jmos], dx[imos, jmos], dy[imos, jmos], missing = 0.0) $
-                                 * (wmap[*, *, jmos] gt 0)
-              ;; imj = red_shift_im(imj, dx[imos, jmos], dy[imos, jmos])
-              
-            endfor              ; jmos
+            ;; We should now add tile ord[imos] to the mosaic
+            edge = sobel(mmap[*, *, ord[imos]])
+            indx = array_indices(edge, where(edge gt 0.5*max(edge)))
+            cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[ord[imos]]
+
+            commonmask = mmap[*, *, ord[imos]] * totm
+
+     
+            print, ' --------------                        Add tile '+red_stri(ord[imos])+' to the mosaic'
+            
+            bb = red_boundingbox(commonmask)
+            print, 'boundingbox : ', bb
+            shifts = red_shc_mask((totim / (1e-5 + totw))[bb[0]:bb[2],bb[1]:bb[3]] $
+                                  , imap[bb[0]:bb[2],bb[1]:bb[3], ord[imos]] $
+                                  , commonmask[bb[0]:bb[2],bb[1]:bb[3]] $
+                                  , range = 25, poly = 2)
+            
+            print, shifts
+            
+            ;; Accept shifts only if they are less than a few arcsec.
+            dr = sqrt(total(shifts^2)) * fac * image_scale
+            if dr lt 10 then begin
+              imap[*, *, ord[imos]] = red_shift_im(imap[*, *, ord[imos]], shifts[0], shifts[1], missing = 0.0)
+              wmap[*, *, ord[imos]] = red_shift_im(wmap[*, *, ord[imos]], shifts[0], shifts[1], missing = 0.0) >0
+              mmap[*, *, ord[imos]] = red_shift_im(mmap[*, *, ord[imos]], shifts[0], shifts[1], missing = 0.0) $
+                                      * (wmap[*, *, ord[imos]] gt 0)
+            endif else stop
+            
+            totim += imap[*, *, ord[imos]] * wmap[*, *, ord[imos]]
+            totw  += wmap[*, *, ord[imos]]
+            totm  OR= mmap[*, *, ord[imos]]
+
           endfor                ; imos
 
-          totim = total(imap*wmap, 3)
-          totw = total(wmap, 3)
-          totm = total(mmap, 3)
           indx = where(totm gt 0)
           mosaic = fltarr(Sx/fac, Sy/fac)
           mosaic[indx] = totim[indx]/totw[indx]
+          red_missing, mosaic, /inplace, missing_type_wanted = 'nan'
+          
         endelse
         
       endif else begin
