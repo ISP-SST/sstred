@@ -124,11 +124,6 @@ pro red::quicklook_mosaic, align=align $
 
     print, inam + ' : Working on '+timestamp
 
-;    fn = states[0].filename
-;    date = stregex(fn, '20[0-2][0-9][.-][01][0-9][.-][0-3][0-9]', /extract) ; get from self?
-;    timestamp = stregex(fn, '[0-2][0-9]:[0-5][0-9]:[0-6][0-9]', /extract)
-
-    
     files = self -> raw_search(dirs[iset] + '/' + cam, scanno=0, count=Nfiles $
                                , prefilters = prefilters )
 
@@ -246,7 +241,8 @@ pro red::quicklook_mosaic, align=align $
               endelse
             endif else print, 'There is no match for ', use_states[istate], ' state.'
           endfor                ; istate
-          if states_count eq 0 then print, 'There are no matches for provided states. You have to choose states manually.'
+          if states_count eq 0 then $
+             print, 'There are no matches for provided states. You have to choose states manually.'
           
         end                     ; use_states
         
@@ -367,16 +363,23 @@ pro red::quicklook_mosaic, align=align $
         endfor                  ; icam
         self -> pinholecalib, /verify, nref=20, max_shift = 30 
       endif
+      
+      ;;self -> getalignment, align=align, prefilters=pref
+      self -> getalignment, align=align
+      indx = where(align.state2.camera eq cam and $
+                   align.state2.prefilter eq pref $
+                   , Nalign)
 
-      self -> getalignment, align=align, prefilters=pref
-      indx = where(align.state2.camera eq cam, Nalign)
+      help, Nalign
 
+      if Nalign eq 0 then begin
+        print, inam + ' : Pinhole calibration not done for prefilter ' + pref
+        continue                ; Can't do this from within the "case" statement below
+      end
+      
       case Nalign of
-        0    : begin
-          stop                  ; If this happens, we forgot to collect pinholes for this state.
-        end
-        1    : amap =      align[indx].map
-        else : amap = mean(align[indx].map, dim=3)
+         1    : amap =      align[indx].map
+         else : amap = mean(align[indx].map, dim=3)
       endcase
       amap_inv = invert(amap)
       amap_inv /= amap_inv[2, 2] ; Normalize
@@ -421,11 +424,7 @@ pro red::quicklook_mosaic, align=align $
       ww = morph_distance(mmask,neigh=3)
       ww /= max(ww)
       weight = sin(ww*!pi/2.)^2
-      
-;      weight = shift(dist(naxis[0], naxis[1]), naxis[0]/2, naxis[1]/2)
-;      weight = 1 - weight/max(weight)
-;      weight = sin(weight*!pi/2.)^2
- 
+
       if total(self.direction eq [1, 3, 4, 6]) eq 1 then naxis[[0, 1]] = naxis[[1, 0]]
 
       weight = rdx_img_project(amap_inv, weight, /preserve_size) >0
@@ -460,7 +459,7 @@ pro red::quicklook_mosaic, align=align $
           tmp = red_readhead(selfiles[indx[i]], date_beg = dbeg)
           red_append, date_mos, dbeg
         endfor                  ; i
-;        help, date_mos, ims
+
         time_mos = red_time2double(strmid(date_mos, 11))
         red_logdata, self.isodate, time_mos, diskpos=diskpos_mos, rsun = rsun
 
@@ -706,13 +705,7 @@ pro red::quicklook_mosaic, align=align $
       erase
                                 ;tv, mosaic
       cgimage, /keep, red_tickbox(mosaic, image_scale*fac, marg=-sx/200., /arc5, /arc10)
-;      if is_wb then begin
-;        annstring = self.isodate + ' ' + timestamp $
-;                    + '   ' + cam + '   ' + pref
-;      endif else begin
-;        annstring = self.isodate + ' ' + timestamp $
-;                    + '   ' + cam + ' ' + ustat[istate]
-;      end
+      
       charsize = 1.5
       charsize = (bb[3]-bb[1]+1) / 500.
       cgtext, [0.02], [0.02], annstring $
@@ -732,11 +725,20 @@ pro red::quicklook_mosaic, align=align $
 end
 
 
-;; Run quicklook_mosaic only after doing pinholecalib
+;; Run quicklook_mosaic only after summing darks and flats. Pinhole
+;; calibration is now automatic but do it properly with /verify if the
+;; results do not look good.
+
+;; Note: Remove automatically summed calibration data, gaintables, and
+;; calib/alignments.sav after making quicklooks. Then do those steps
+;; properly with commands from doit.pro.
+
+
 nthreads=20
 cd, '/scratch/mats/2024-07-09'
 cd, '/scratch/mats/2024-06-11'
-if 1 then begin
+cd, '/scratch/mats/2023-10-17'
+if 0 then begin
   cd, 'CHROMIS'
   a = chromisred("config.txt", /dev, /no)
   a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-N', /align, compress = 2, /core ; use = '3999_+0'
