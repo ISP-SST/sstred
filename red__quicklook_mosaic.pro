@@ -11,13 +11,6 @@
 ; 
 ;    Mats Löfdahl, Institute for Solar Physics
 ; 
-; :Params:
-; 
-; 
-; 
-; 
-; 
-; 
 ; :Keywords:
 ; 
 ;   
@@ -31,32 +24,23 @@
 ; 
 ;   2024-07-18 : MGL. Works for CHROMIS.
 ; 
+;   2024-08-22 : MGL. New keyword debug.
+; 
 ;-
 pro red::quicklook_mosaic, align=align $
                            , cam=cam $
-                           , clip=clip $
                            , compress_factor = compress_factor $
                            , core_and_wings=core_and_wings $
                            , cube=cube $
                            , dark=dark $
                            , datasets=datasets $
-                           , derotate=derotate $
+                           , debug = debug $
                            , destretch=destretch $
-                           , gain=gain $
                            , maxshift=maxshift $
-                           , mtf_deconvolve=mtf_deconvolve $
-                           , no_calib=no_calib $
-                           , no_histo_opt=no_histo_opt $
-                           , no_plot_r0=no_plot_r0 $
                            , nthreads=nthreads $
-                           , overwrite=overwrite $
                            , prefilters = prefilters $
                            , textcolor=textcolor $
-                           , use_states=use_states $
-                           , verbose=verbose $
-                           , x_flip=x_flip $
-                           , y_flip=y_flip $
-                           , cube_save=cube_save 
+                           , use_states=use_states 
 
   inam = red_subprogram(/low, calling=inam1)
 
@@ -84,7 +68,7 @@ pro red::quicklook_mosaic, align=align $
   ENDIF
 
   if n_elements(textcolor) eq 0 then textcolor = 'yellow'
-  if n_elements(maxshift) eq 0 then maxshift = 6
+  if n_elements(maxshift) eq 0 then maxshift = 10
   if n_elements(nthreads) eq 0 then nthreads = 6
 
 
@@ -365,9 +349,9 @@ pro red::quicklook_mosaic, align=align $
       endif
       
       ;;self -> getalignment, align=align, prefilters=pref
-      self -> getalignment, align=align
-      indx = where(align.state2.camera eq cam and $
-                   align.state2.prefilter eq pref $
+      self -> getalignment, alignment=alignment
+      indx = where(alignment.state2.camera eq cam and $
+                   alignment.state2.prefilter eq pref $
                    , Nalign)
 
       help, Nalign
@@ -378,14 +362,16 @@ pro red::quicklook_mosaic, align=align $
       end
       
       case Nalign of
-         1    : amap =      align[indx].map
-         else : amap = mean(align[indx].map, dim=3)
-      endcase
+        1    : amap =      alignment[indx].map
+        else : amap = mean(alignment[indx].map, dim=3)
+       endcase
       amap_inv = invert(amap)
       amap_inv /= amap_inv[2, 2] ; Normalize
 
-      print, 'Inverse amap:'
-      print, amap_inv
+      if keyword_set(debug) then begin
+        print, 'Inverse amap:'
+        print, amap_inv
+      endif
       
       ;; Get date_avg from file headers
       date_avg = red_fitsgetkeyword_multifile(selfiles, 'DATE-AVG', count = Ndates)
@@ -488,7 +474,7 @@ pro red::quicklook_mosaic, align=align $
         ypos[imos] = pos[1]/image_scale
 
 ;        cgplot, /add, /over, xpos[imos]*image_scale, ypos[imos]*image_scale, psym = 16, color = 'red'
-        print, 'pos:', imos, xpos[imos]*image_scale, ypos[imos]*image_scale
+        if keyword_set(debug) then print, 'pos:', imos, xpos[imos]*image_scale, ypos[imos]*image_scale
 
         images[*, *, imos]  = red_rotation(im,     ang[0], background=0.0, full=ff, nthreads=nthreads)
         weights[*, *, imos] = red_rotation(weight, ang[0], background=0.0, full=ff, nthreads=nthreads) >0
@@ -598,7 +584,7 @@ pro red::quicklook_mosaic, align=align $
             
             commonmask = mmap[*, *, ord[imos]] * totm
             commonarea = total(commonmask)
-            print, imos, ord[imos], commonarea
+            if keyword_set(debug) then print, imos, ord[imos], commonarea
             
             if 0 then begin
               im  = commonmask * (totim / (1e-5 + totw))
@@ -608,17 +594,17 @@ pro red::quicklook_mosaic, align=align $
               shifts = red_alignoffset(im,imi)
             endif else begin
               bb = red_boundingbox(commonmask)
-              print, 'boundingbox : ', bb
+              if keyword_set(debug) then print, 'boundingbox : ', bb
               shifts = red_shc_mask((totim / (1e-5 + totw))[bb[0]:bb[2],bb[1]:bb[3]] $
-                                    , imap[bb[0]:bb[2],bb[1]:bb[3], ord[imos]] $
-                                    , commonmask[bb[0]:bb[2],bb[1]:bb[3]] $
-                                    , range = 25, poly = 2)
+                                     , imap[bb[0]:bb[2],bb[1]:bb[3], ord[imos]] $
+                                     , commonmask[bb[0]:bb[2],bb[1]:bb[3]] $
+                                     , range = 25, poly = 2)
             endelse
-            print, shifts
+            if keyword_set(debug) then print, shifts
               
             ;; Accept shifts only if they are less than a few arcsec.
             dr = sqrt(total(shifts^2)) * fac * image_scale
-            if dr lt 10 then begin
+            if dr lt maxshift then begin
               imap[*, *, ord[imos]] = red_shift_im(imap[*, *, ord[imos]], shifts[0], shifts[1], missing = 0.0)
               wmap[*, *, ord[imos]] = red_shift_im(wmap[*, *, ord[imos]], shifts[0], shifts[1], missing = 0.0) >0
               mmap[*, *, ord[imos]] = red_shift_im(mmap[*, *, ord[imos]], shifts[0], shifts[1], missing = 0.0) $
@@ -646,7 +632,8 @@ pro red::quicklook_mosaic, align=align $
           yc = median(ypos)
           dr = sqrt((xpos-xc)^2 + (ypos-yc)^2)
           ord = sort(dr)      
-
+          red_progressbar, 0, Nmos, 'Add tile '+red_stri(ord[0])+' to the mosaic'
+          
           edge = sobel(mmap[*, *, ord[0]])
           indx = array_indices(edge, where(edge gt 0.5*max(edge)))
           cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[ord[0]]
@@ -665,14 +652,14 @@ pro red::quicklook_mosaic, align=align $
             if imos ne Nmos-1 then begin
               ;; Find the tile with the most overlap with the mosaic so
               ;; far assembled
-              print, imos, ord[imos]
+              if keyword_set(debug) then print, imos, ord[imos]
               for jmos = imos, Nmos-1 do begin
                 commonmask = mmap[*, *, ord[jmos]] * totm
                 commonarea[jmos] = total(commonmask)
-                print, jmos, ord[jmos], commonarea[jmos]
+                if keyword_set(debug) then print, jmos, ord[jmos], commonarea[jmos]
               endfor            ; jmos
-              print, ord[imos:Nmos-1]
-              print, commonarea[imos:Nmos-1]
+              if keyword_set(debug) then print, ord[imos:Nmos-1]
+              if keyword_set(debug) then print, commonarea[imos:Nmos-1]
               ;; Find max
               mxx = max(commonarea[imos:Nmos-1], maxloc)
               
@@ -683,6 +670,8 @@ pro red::quicklook_mosaic, align=align $
               
             endif 
 
+            red_progressbar, imos, Nmos, 'Add tile '+red_stri(ord[imos])+' to the mosaic'
+            
             ;; We should now add tile ord[imos] to the mosaic
             edge = sobel(mmap[*, *, ord[imos]])
             indx = array_indices(edge, where(edge gt 0.5*max(edge)))
@@ -690,17 +679,14 @@ pro red::quicklook_mosaic, align=align $
 
             commonmask = mmap[*, *, ord[imos]] * totm
 
-     
-            print, ' --------------                        Add tile '+red_stri(ord[imos])+' to the mosaic'
-            
             bb = red_boundingbox(commonmask)
-            print, 'boundingbox : ', bb
+            if keyword_set(debug) then print, 'boundingbox : ', bb
             shifts = red_shc_mask((totim / (1e-5 + totw))[bb[0]:bb[2],bb[1]:bb[3]] $
                                   , imap[bb[0]:bb[2],bb[1]:bb[3], ord[imos]] $
                                   , commonmask[bb[0]:bb[2],bb[1]:bb[3]] $
                                   , range = 25, poly = 2)
             
-            print, shifts
+            if keyword_set(debug) then print, shifts
             
             ;; Accept shifts only if they are less than a few arcsec.
             dr = sqrt(total(shifts^2)) * fac * image_scale
@@ -783,6 +769,7 @@ pro red::quicklook_mosaic, align=align $
   
 end
 
+debug = 0
 
 ;; Run quicklook_mosaic only after summing darks and flats. Pinhole
 ;; calibration is now automatic but do it properly with /verify if the
@@ -797,16 +784,16 @@ nthreads=20
 cd, '/scratch/mats/2024-07-09'
 cd, '/scratch/mats/2024-06-11'
 cd, '/scratch/mats/2023-10-17'
-if 0 then begin
+if 1 then begin
   cd, 'CHROMIS'
   a = chromisred("config.txt", /dev, /no)
-  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-N', /align, compress = 2, /core ; use = '3999_+0'
+  a -> quicklook_mosaic, debug = debug, nthreads = nthreads, cam = 'Chromis-N', /align, compress = 2, /core_and_wings ; use = '3999_+0'
 ;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-N', /align, /core, compress = 4
 ;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Chromis-W', /align
 endif else begin
   cd, 'CRISP'
   a = crisp2red("config.txt", /dev, /no)
-  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-R', /align, /core, compress = 4
+  a -> quicklook_mosaic, debug = debug, nthreads = nthreads, cam = 'Crisp-R', /align, /core_and_wings, compress = 4
 ;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-W', /align, pref = '8542'
 ;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-W', /align, pref = '6563'
 ;  a -> quicklook_mosaic, nthreads = nthreads, cam = 'Crisp-W', /align, pref = '6173'
