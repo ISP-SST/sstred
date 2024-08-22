@@ -349,7 +349,7 @@ pro red::quicklook_mosaic, align=align $
       endif
       
       ;;self -> getalignment, align=align, prefilters=pref
-      self -> getalignment, alignment=alignment
+      self -> getalignment, align=alignment
       indx = where(alignment.state2.camera eq cam and $
                    alignment.state2.prefilter eq pref $
                    , Nalign)
@@ -383,7 +383,7 @@ pro red::quicklook_mosaic, align=align $
 ;      cgplot, /add, diskpos[0,*], diskpos[1,*], psym=1, color='green' $
 ;              , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
 ;              , title = 'Mosaic pointing '+self.isodate+' '+timestamp
-;
+
       hdr = red_readhead(selfiles[0])
       naxis = fxpar(hdr,'NAXIS*')
 
@@ -550,19 +550,21 @@ pro red::quicklook_mosaic, align=align $
 
       cgwindow
       colors = distinct_colors(n_colors = Nmos, /num)
+;      stop
+
+      xcp = median(diskpos[0, *]) - Sx*image_scale/2.
+      ycp = median(diskpos[1, *]) - Sy*image_scale/2.
+      
       cgplot, /add, /nodata, [0], [0] $
-              , xrange = [0, Sx*image_scale], yrange = [0, Sy*image_scale] $
+              , xrange = xcp+[0, Sx*image_scale] $
+              , yrange = ycp+[0, Sy*image_scale] $
+              ;;, xrange = [0, Sx*image_scale], yrange = [0, Sy*image_scale] $
               , aspect = Sy/float(Sx) $
               , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
               , title = 'Mosaic FOVs '+self.isodate+' '+timestamp+' '+pref
 
-;      for imos=0, Nmos-1 do begin
-;        edge = sobel(mmap[*, *, imos])
-;        indx = array_indices(edge, where(edge gt 0.5*max(edge)))
-;        cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[imos]
-;      endfor
+      if keyword_set(debug) then cgplot, /add, /over, diskpos[0,*], diskpos[1,*], psym=16, color='red'
       
-        
       if keyword_set(align) || keyword_set(destretch) then begin
 
         if 0 then begin
@@ -636,8 +638,15 @@ pro red::quicklook_mosaic, align=align $
           
           edge = sobel(mmap[*, *, ord[0]])
           indx = array_indices(edge, where(edge gt 0.5*max(edge)))
-          cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[ord[0]]
-          
+          cgplot, /add, /over $
+                  , xcp+indx[0,*]*fac*image_scale $
+                  , ycp+indx[1,*]*fac*image_scale $
+                  , psym=3, color=colors[ord[0]]
+          cgtext, /add, align = 0.5, color = colors[ord[0]], charsize = 3 $
+                  , xcp+median(indx[0,*]*fac*image_scale) $
+                  , ycp+median(indx[1,*]*fac*image_scale) $
+                  , red_stri(ord[0]) + '('+red_stri(0)+')' 
+                  
           
           ;; Add center tile
           totim = imap[*, *, ord[0]] * wmap[*, *, ord[0]]
@@ -675,7 +684,15 @@ pro red::quicklook_mosaic, align=align $
             ;; We should now add tile ord[imos] to the mosaic
             edge = sobel(mmap[*, *, ord[imos]])
             indx = array_indices(edge, where(edge gt 0.5*max(edge)))
-            cgplot, /add, /over, indx[0,*]*fac*image_scale, indx[1,*]*fac*image_scale, psym=3, color=colors[ord[imos]]
+            cgplot, /add, /over $
+                    , xcp+indx[0,*]*fac*image_scale $
+                    , ycp+indx[1,*]*fac*image_scale $
+                    , psym=3, color = colors[ord[imos]]
+            cgtext, /add , align = 0.5, color = colors[ord[imos]], charsize = 3 $
+                    , xcp+median(indx[0,*]*fac*image_scale) $
+                    , ycp+median(indx[1,*]*fac*image_scale) $
+                    , red_stri(ord[imos])  + '('+red_stri(imos)+')' 
+                   
 
             commonmask = mmap[*, *, ord[imos]] * totm
 
@@ -782,9 +799,9 @@ debug = 0
 
 nthreads=20
 cd, '/scratch/mats/2024-07-09'
-cd, '/scratch/mats/2024-06-11'
-cd, '/scratch/mats/2023-10-17'
-if 1 then begin
+;cd, '/scratch/mats/2024-06-11'
+;cd, '/scratch/mats/2023-10-17'
+if 0 then begin
   cd, 'CHROMIS'
   a = chromisred("config.txt", /dev, /no)
   a -> quicklook_mosaic, debug = debug, nthreads = nthreads, cam = 'Chromis-N', /align, compress = 2, /core_and_wings ; use = '3999_+0'
