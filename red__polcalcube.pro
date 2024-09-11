@@ -93,10 +93,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
     undefine, use_gain
     
     dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
-                  and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')
-    if dodescatter then begin
-      self -> loadbackscatter, detector, upref[ipref], bg, psf
-    endif
+                  and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')    
     
     
 ;    ;; Files and states
@@ -121,6 +118,9 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       selfiles = files[sel]
 
       detector = selstates[0].detector
+      if dodescatter then begin
+        self -> loadbackscatter, detector, upref[ipref], bg, psf
+      endif
 
       uqw = (selstates[uniq(selstates.qw, sort(selstates.qw))]).qw
       ulp = (selstates[uniq(selstates.lp, sort(selstates.lp))]).lp
