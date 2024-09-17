@@ -529,6 +529,8 @@ pro red::fitscube_crosstalk, filename  $
 
       ;;denominator += median(im0[where(this_mask)] *
       ;;im0[where(this_mask)], /double)
+
+      im0 = double(im0)
       
       ;; Find the centroid by fitting a Gaussian
       a = red_histo_gaussfit(im0[mindx] * im0[mindx], FWlevel = 0.25)
