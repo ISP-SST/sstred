@@ -207,9 +207,9 @@ pro crisp::selectfiles, cam = cam $
       if( min(pos) ge 0 ) then begin
         selected[pos] = 1
       endif
-                                ; stop
     endfor                      ; ip
-    states[where(selected lt 1)].skip = 1
+    pos = where(selected lt 1,count)
+    if( count ne 0 ) then states[pos].skip = 1
   endif
   
   Nframes = n_elements(framenumbers)
