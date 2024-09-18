@@ -176,6 +176,12 @@ pro red::fitscube_intensitycorr, filename $
   datestamp = strtrim(fxpar(hdr, 'DATE-AVG'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   avg_time = red_time2double(timestamp)
+  datestamp = strtrim(fxpar(hdr, 'DATE-BEG'), 2)
+  timestamp = (strsplit(datestamp, 'T', /extract))[1]
+  beg_time = red_time2double(timestamp)
+  datestamp = strtrim(fxpar(hdr, 'DATE-END'), 2)
+  timestamp = (strsplit(datestamp, 'T', /extract))[1]
+  end_time = red_time2double(timestamp)
 
   if ~keyword_set(fitpref_time) then begin
     fitpref_t='_'    
@@ -203,7 +209,9 @@ pro red::fitscube_intensitycorr, filename $
     ;; Do DISK-CENTER based correction
 
     noon_time = red_time2double('13:00:00')
-    if avg_time le noon_time then day_time = 'morning' else day_time = 'afternoon'
+    day_time = ''
+    if end_time le noon_time then day_time = 'morning'
+    if beg_time ge noon_time then day_time = 'afternoon'
     if file_test('nb_intensities/'+day_time) then $
       nbfitfile = 'nb_intensities/'+day_time+'/'+'nb_fit_'+nbpref+'.fits' $ ; This has to be different for CHROMIS 
     else $
@@ -233,7 +241,9 @@ pro red::fitscube_intensitycorr, filename $
       
       else :  begin
         s = ''
-        print, inam + ' : No WB fit file : '+wbfitfile
+        print, inam + ' : No WB/NB fit file : '
+        print, '        ', wbfitfile
+        print, '        ', nbfitfile
         print
         print, "It looks like you haven't run the a->fit_wb_diskcenter step."
         print
@@ -291,8 +301,6 @@ pro red::fitscube_intensitycorr, filename $
     ;; Check that we are not extrapolating (too far).
     if t_cube_beg lt time_beg or t_cube_end gt time_end then begin
       s = ''
-      print, inam + ' : No WB fit file : '+wbfitfile
-      print
       print, inam + "It looks like your a->fit_[n/w]b_diskcenter step didn't find data"
       print, "for a long enough time range. Either your prefilter fit calibration data"
       print, "or your data cube have time stamps outside the range:"

@@ -85,7 +85,8 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                             , pref = pref $
                             , sum_all_frames = sum_all_frames $
                             , tmin = tmin $
-                            , tmax = tmax
+                            , tmax = tmax $
+                            , overwrite = overwrite
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -420,6 +421,12 @@ pro red::fit_wb_diskcenter, dirs = dirs $
                             , 'TIME-END', red_timestring(max(wbtimes[indx])) $
                             , 'End fit data time interval'
         outfile = 'wb_fit_'+upref[ipref]+'.fits'
+        if file_test(wbdir+outfile) and keyword_set(overwrite) then begin
+          file_delete, wbdir+outfile
+        endif  else begin
+          print, "Set '/overwrite' keyword if you want to replace existing file."
+          return
+        endelse
         writefits, wbdir+outfile, pp, phdr
         if ~file_test(self.out_dir+'/wb_intensities/'+outfile) then $
           spawn, 'ln -sf ' + wbdir+outfile + ' ' + self.out_dir + '/wb_intensities/' + outfile
