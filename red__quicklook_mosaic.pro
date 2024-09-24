@@ -549,8 +549,7 @@ pro red::quicklook_mosaic, align=align $
       endfor                    ; imos
 
       cgwindow
-      colors = distinct_colors(n_colors = Nmos, /num)
-;      stop
+      colors = red_distinct_colors(Nmos, /num)
 
       xcp = median(diskpos[0, *]) - Sx*image_scale/2.
       ycp = median(diskpos[1, *]) - Sy*image_scale/2.
