@@ -65,9 +65,9 @@ function red_tickbox, im, sc $
                       , thickness = thickness $
                       , tickcolor = tickcolor
   
-  if not defined(thickness) then thickness = 1
-  IF not defined(inv) THEN inv = 0
-  if not defined(rgb) then rgb = 0
+  if n_elements(thickness) eq 0 then thickness = 1
+  if n_elements(inv) eq 0 then inv = 0
+  if n_elements(rgb) eq 0 then rgb = 0
   
   if rgb then begin
      Ncolors = 3
@@ -107,7 +107,7 @@ function red_tickbox, im, sc $
   end else begin
      hmarg = 0
   end
-  
+
   if (size(imm))[(size(imm))[0]+1] eq 1 then begin ; Byte array
      if inv ne 0 then begin
         mi = byte(255)
@@ -130,8 +130,8 @@ function red_tickbox, im, sc $
   
 ;  pix = fix(1/sc)
   pix = 1/sc
-  lx = nx*sc	&	lx = fix(lx)
-  ly = ny*sc	&	ly = fix(ly)
+  lx = float(nx)*sc	&	lx = fix(lx)
+  ly = float(ny)*sc	&	ly = fix(ly)
 
   if n_elements(tickcolor) eq 0 then tickcolor = ma
   
@@ -209,5 +209,25 @@ function red_tickbox, im, sc $
      ;; Remove extra dimension before returning
     return, reform(box)
   endelse
+
+end
+
+
+
+cd, '/scratch/mats/2023-10-17/CRISP'
+
+ims = readfits('cubes_scan/nb_6173_2023-10-17T09:37:06_scan=52_stokes_corrected.fits')
+
+im = bytscl(red_centerpic(ims[*,*,0,0], sz = 1000))
+
+im = f0('test.f0')
+
+imb = red_tickbox(im, 0.044,/inv,marg=-50, thick = 3)
+tighttv, imb
+
+tvscl, imb
+
+
+help, im, imb
 
 end
