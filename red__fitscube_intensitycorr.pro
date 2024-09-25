@@ -247,31 +247,17 @@ pro red::fitscube_intensitycorr, filename $
         print
         print, "It looks like you haven't run the a->fit_wb_diskcenter step."
         print
-        print, "If you have the calibration data, you can choose to delete the"
-        print, "cube now and come back after running that calibration."
-        print, ""
-        print, "If you do not have the calibration data, do not delete."
-        print, "Just continue without intensity correction and then (if you wish)"
-        print, "do the old correction afterwards with"
+        print, "Please run it and then run 'a -> fitscube_intensitycorr, filename'"
+        print
+        print, "If you do not have the calibration data you can run:"
+        print
         print, "IDL> a -> fitscube_intensitycorr, filename, intensitycorrmethod = 'old'"
         print
-        print, "When making NB cubes from this day in the future, you can also add the "
-        print, "intensitycorrmethod = 'old' keyword to make_nb_cube and then not do"
-        print, "the fitscube_intensitycorr step afterwards."
+        print, "or you can just skip this step."
         print
-        read, 'Delete [Y/n]', s
-        if strlowcase(strmid(s, 0, 1)) ne 'n' then begin
-          print
-          print, inam+' : Deleting '+filename
-          print
-          file_delete, filename
-          retall
-        endif else begin
-          print
-          print, inam+' : No correction!'
-          print
-          return
-        endelse
+        print, inam+' : No correction!'
+        print
+        return
       end 
     endcase
     
@@ -309,23 +295,13 @@ pro red::fitscube_intensitycorr, filename $
       print, 'Cube time range : [' + red_timestring(min(t)) $
              + ',' + red_timestring(max(t)) + '].'
       print
-      print, "If you have more calibration data, you can choose to delete the"
-      print, "cube now and come back after running that calibration again or to"
-      print, "continue without intensity correction."
-      print
-      read, 'Delete [Y/n]', s
-      if strlowcase(strmid(s, 0, 1)) ne 'n' then begin
-        print
-        print, inam+' : Deleting '+filename
-        print
-        file_delete, filename
-        retall
-      endif else begin
+      read, "Do you want to proceed anyhow? [Y/n]", s      
+      if strlowcase(strmid(s, 0, 1)) eq 'n' then begin       
         print
         print, inam+' : No correction!'
         print
         return
-      endelse
+      endif
     endif
 
     ;; Need also ratio of exposure times to compensate the NB
