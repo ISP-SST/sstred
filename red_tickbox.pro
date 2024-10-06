@@ -73,7 +73,7 @@ function red_tickbox, im, sc $
      Ncolors = 3
      ;; Assume rgb is first dimension
      dim = size(im,/dim)
-     nx = dim[1]	
+     nx = dim[1]
      ny = dim[2]
      imm = im
   endif else begin

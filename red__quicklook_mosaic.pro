@@ -136,7 +136,7 @@ pro red::quicklook_mosaic, align=align $
       
     endif else begin
       
-      indx = uniq(states.tuning, sort(states.tuning))
+      indx = uniq(states.tun_wavelength, sort(states.tun_wavelength))
       ustat = states[indx].fullstate        
       
       states_count = 0
@@ -550,7 +550,7 @@ pro red::quicklook_mosaic, align=align $
 
       cgwindow
       qq = Nmos
-      colors = distinct_colors(n_colors = qq, /num)
+      colors = red_distinct_colors(qq, /num)
       if Nmos gt 9 then colors=[colors,colors[0:Nmos-10]]
 
       xcp = median(diskpos[0, *]) - Sx*image_scale/2.

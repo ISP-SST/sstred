@@ -6,8 +6,8 @@
 ; Default, without keyword, is black (0), white (255) and 9 colours
 ; that are as distinct as possible in both normal and colour-blind
 ; vision, but also match well together. They stay distinct when
-; printed on paper. Optimized preselections are available with keyword
-; N_COLORS set to a value in the range 1 to 12.
+; printed on paper. Optimized preselections are available with colnum
+; set to a value in the range 1 to 12.
 ; 
 ; :Categories:
 ;
