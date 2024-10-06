@@ -72,13 +72,15 @@ function red_tickbox, im, sc $
   if rgb then begin
      Ncolors = 3
      ;; Assume rgb is first dimension
-     nx = dimen(im,1)	
-     ny = dimen(im,2)
+     dim = size(im,/dim)
+     nx = dim[1]	
+     ny = dim[2]
      imm = im
   endif else begin
      Ncolors = 1
-     nx = dimen(im,0)	
-     ny = dimen(im,1)
+     dim = size(im,/dim)
+     nx = dim[0]
+     ny = dim[1]
      if (size(imm))[(size(imm))[0]+1] eq 1 then begin ; Byte array
         imm = bytarr(1, nx, ny)
      endif else begin
@@ -87,7 +89,7 @@ function red_tickbox, im, sc $
      imm[0, *, *] = im
   endelse
   
-  if not defined(margin) then begin
+  if n_elements(margin) eq 0 then begin
      marg = round(max([nx,ny])/15.)
   end else begin
      marg = margin
@@ -100,7 +102,7 @@ function red_tickbox, im, sc $
      ticks_direction =  1
   end
   
-  marg = marg + odd(marg)
+  marg = marg + ( marg ne (marg/2)*2 )
   
   if ticks_direction eq 1 then begin
      hmarg = marg/2
