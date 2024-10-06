@@ -49,8 +49,10 @@ function red_imagescale_from_pinholes, pref, isodate $
                                        , rawfile = rawfile
 
   inam = red_subprogram(/low, calling = inam1)
-  
+
   grid_pitch_arcsec = red_pinhole_pitch_arcsec(isodate)
+
+  print, 'Pinhole pitch: ', strtrim(grid_pitch_arcsec, 2), ' arcsec/pixel'
 
   if n_elements(rawfile) gt 0 then begin
 

@@ -31,10 +31,10 @@
 ;-
 function red_pinhole_pitch_arcsec, isodate
 
-  ;; The pinhole array installed just before the 2013 season.
+  ;; The pinhole array installed just before the 2023 season.
   ;; Calculated in 2024 from the pitch of the old array and the ratio
   ;; of pitches in pixels of the old and new array.
-  if isodate ge 2023-01-01 then return, 4.13 ; ["]
+  if isodate lt 2023-01-01 then return, 4.13 ; ["]
 
   ;; The pinhole array used 2004-2012. Based on calibration with
   ;; SDO/HMI images in 2013, data from 2012.
