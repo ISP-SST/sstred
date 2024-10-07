@@ -58,7 +58,13 @@
 ; 
 ;   2010-08-14 : P.J.J. Tol. Changed 8-colour set.
 ; 
-;   2015-01-18. MGL. Do not set colour table, return colors instead. 
+;   2015-01-18 : MGL. Do not set colour table, return colors instead. 
+; 
+;   2024-09-24 : MGL. Make the number of colors a parameter instead of
+;                a keyword.
+; 
+;   2024-10-07 : MGL. Make 12 the default number of colors if you
+;                specify it out of range.
 ; 
 ;-
 function red_distinct_colors, colnum $
@@ -71,14 +77,16 @@ function red_distinct_colors, colnum $
     colnum = ROUND(colnum)
     IF KEYWORD_SET(gray) THEN BEGIN
       IF (colnum LT 1 OR colnum GT 4) THEN BEGIN
-        MESSAGE, 'Number of colors for a gray background is 1..4, set to 4.', /INFORMATIONAL
+        MESSAGE, 'Color numbers for a gray background is 1..4, set to 4.', /INFORMATIONAL
         colnum = 4
       ENDIF
     ENDIF ELSE BEGIN
+      print, colnum
       IF (colnum LT 1 OR colnum GT 12) THEN BEGIN
-        MESSAGE, 'Number of colors is 1..12, set to 9.', /INFORMATIONAL
-        colnum = 9
+        MESSAGE, 'Color numbers are 1..12, colnum set to 12.', /INFORMATIONAL
+        colnum = 12
       ENDIF
+      print, colnum
     ENDELSE
   ENDIF ELSE BEGIN
     IF KEYWORD_SET(gray) THEN colnum = 4 ELSE colnum = 9
@@ -86,18 +94,18 @@ function red_distinct_colors, colnum $
   
   ;; colour coordinates
   xarr = $
-     [[12,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], $
-      [12,  6,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], $
-      [12,  6,  5,  0,  0,  0,  0,  0,  0,  0,  0,  0], $
-      [12,  6,  5,  3,  0,  0,  0,  0,  0,  0,  0,  0], $
-      [ 0,  1,  3,  5,  6,  0,  0,  0,  0,  0,  0,  0], $
-      [ 0,  1,  3,  5,  6,  8,  0,  0,  0,  0,  0,  0], $
-      [ 0,  1,  2,  3,  5,  6,  8,  0,  0,  0,  0,  0], $
-      [ 0,  1,  2,  3,  4,  5,  6,  8,  0,  0,  0,  0], $
-      [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  0,  0], $
-      [ 0,  1,  2,  3,  4,  5,  9,  6,  7,  8,  0,  0], $
-      [ 0, 10,  1,  2,  3,  4,  5,  9,  6,  7,  8,  0], $
-      [ 0, 10,  1,  2,  3,  4,  5,  9,  6, 11,  7,  8]]
+   [[12,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], $
+    [12,  6,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], $
+    [12,  6,  5,  0,  0,  0,  0,  0,  0,  0,  0,  0], $
+    [12,  6,  5,  3,  0,  0,  0,  0,  0,  0,  0,  0], $
+    [ 0,  1,  3,  5,  6,  0,  0,  0,  0,  0,  0,  0], $
+    [ 0,  1,  3,  5,  6,  8,  0,  0,  0,  0,  0,  0], $
+    [ 0,  1,  2,  3,  5,  6,  8,  0,  0,  0,  0,  0], $
+    [ 0,  1,  2,  3,  4,  5,  6,  8,  0,  0,  0,  0], $
+    [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  0,  0], $
+    [ 0,  1,  2,  3,  4,  5,  9,  6,  7,  8,  0,  0], $
+    [ 0, 10,  1,  2,  3,  4,  5,  9,  6,  7,  8,  0], $
+    [ 0, 10,  1,  2,  3,  4,  5,  9,  6, 11,  7,  8]]
   x = xarr[0:colnum-1,colnum-1]
   
   IF KEYWORD_SET(gray) THEN BEGIN
@@ -115,7 +123,7 @@ function red_distinct_colors, colnum $
     green = green[[x]]
     blue  = blue[[x]]
   ENDELSE
-  
+
   N = n_elements(red)
   
   rgb = lonarr(3, N)
@@ -143,3 +151,16 @@ function red_distinct_colors, colnum $
   return, rgb
   
 END
+
+
+n_colors = 12
+
+colors = red_distinct_colors(n_colors, /num)
+
+
+cgplot, [0], [0], /nodata, xrange = [0, 1], yrange = [0, n_elements(colors)+1]
+for i = n_elements(colors)-1, 0, -1 do begin
+  cgplot, !x.crange, [i, i]+1, color = colors[i], /over, thick = 15
+endfor
+
+end
