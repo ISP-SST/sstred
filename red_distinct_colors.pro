@@ -35,11 +35,6 @@
 ;     Sets colours 0, 255 and up to 4 main colours as used in SRON
 ;     presentations.
 ; 
-;   screen : in, optional, type=boolean
-; 
-;     Reverses colours 0 and 255. Then the screen shows what
-;     PostScript output will look like without this keyword.
-; 
 ;   hex : in, optional, type=boolean
 ; 
 ;     Return the RGB values as an array of hex strings.
@@ -66,10 +61,11 @@
 ;   2024-10-07 : MGL. Make 12 the default number of colors if you
 ;                specify it out of range.
 ; 
+;   2024-10-09 : MGL. Remove unused keyword screen.
+; 
 ;-
 function red_distinct_colors, colnum $
                               , gray_background = gray $
-                              , screen = screen $
                               , hex = hex $
                               , num = num
 
