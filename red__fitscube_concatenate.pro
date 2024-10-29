@@ -87,7 +87,7 @@ pro red::fitscube_concatenate, infiles, outfile $
   isodate = (strsplit(date_obs, 'T', /extract))[0]
 
   if n_elements(point_id) eq 0 then begin
-    point_id = fxpar(h, 'POINT-ID', count = Npoint_id)
+    point_id = fxpar(h, 'POINT_ID', count = Npoint_id)
     if Npoint_id eq 0 then point_id = date_obs
   endif
   
