@@ -75,6 +75,39 @@ pro red::fitscube_header_finalize, hdr $
   red_make_prpara, prpara, release_date      
   red_make_prpara, prpara, release_comment        
 
+  ;; The keywords keyword will be checked against this list.
+  red_append, approved_keywords, 'AUTHOR'
+  red_append, help_keywords, 'Who designed the observation'
+
+  red_append, approved_keywords, 'CAMPAIGN'
+  red_append, help_keywords, 'Coordinated campaign name/number, including instance number'
+
+  red_append, approved_keywords, 'DATATAGS'
+  red_append, help_keywords, 'Any additional search terms that do not fit in other keywords'
+
+  red_append, approved_keywords, 'OBS_MODE'
+  red_append, help_keywords, 'A string uniquely identifying the mode of operation'
+
+  red_append, approved_keywords, 'OBSERVER'
+  red_append, help_keywords, 'Who acquired the data'
+
+  red_append, approved_keywords, 'PLANNER'
+  red_append, help_keywords, 'Observation planner(s)'
+
+  red_append, approved_keywords, 'PROJECT'
+  red_append, help_keywords, 'Name(s) of the project(s) affiliated with the data'
+
+  red_append, approved_keywords, 'REQUESTR'
+  red_append, help_keywords, 'Who requested this particular observation'
+
+  red_append, approved_keywords, 'SETTINGS'
+  red_append, help_keywords, 'Other settings - numerical values "parameter1=n, parameter2=m"'
+
+  red_append, approved_keywords, 'TELCONFG'
+  red_append, help_keywords, 'Telescope configuration'
+
+
+  
   ;; This will be used for a new DATE header.
   new_DATE = red_timestamp(/utc,/iso)
 
