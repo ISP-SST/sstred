@@ -110,6 +110,8 @@ FOR i_ref = 0, n_ref-1 DO BEGIN
     this_ref_state = ref_states_unique[i_ref]
     ref_img = red_readdata(this_ref_state.filename, /silent)
     ref_siz = size(ref_img, /dim)
+    ;;; For CRISP wideband mask the stronger distorted corners
+    IF this_ref_state.camera EQ 'Crisp-W' THEN ref_img *= (shift(dist(ref_siz), ref_siz/2) LE 0.49*ref_siz[0])
       ;;; find all pinholes, locate the 'L', and fit a regular grid
     ref_m = red_separate_mask(ref_img GE max(ref_img)/10.)
     np_ref = max(ref_m)
@@ -128,7 +130,7 @@ FOR i_ref = 0, n_ref-1 DO BEGIN
     ENDFOR
     IF keyword_set(manual) THEN BEGIN
         print, 'Mark 3 pinholes in shape of an L'
-        ref_lind = red_markpinholes(ref_m, ref_pos, title='Reference Pinholes', /keep)
+        ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes', /keep)
         read, 'Enter length of long and short arm in gridsteps: ', l_shape
         ref_lpos = ref_pos[*, ref_lind]
         IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) NE 1 THEN stop
@@ -142,7 +144,7 @@ FOR i_ref = 0, n_ref-1 DO BEGIN
         ENDFOR
         print, inam, ' : Unable to locate the reference pinholes! Mark them manually'
         REPEAT BEGIN
-            ref_lind = red_markpinholes(ref_m, ref_pos, title='Reference Pinholes')
+            ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes')
             ref_lpos = ref_pos[*, ref_lind]
             IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l1
             print, inam, ' : This is not the 3 bigger pinholes!'

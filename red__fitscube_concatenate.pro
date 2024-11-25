@@ -87,8 +87,9 @@ pro red::fitscube_concatenate, infiles, outfile $
   isodate = (strsplit(date_obs, 'T', /extract))[0]
 
   if n_elements(point_id) eq 0 then begin
-    point_id = fxpar(h, 'POINT-ID', count = Npoint_id)
+    point_id = fxpar(h, 'POINT_ID', count = Npoint_id)
     if Npoint_id eq 0 then point_id = date_obs
+    if strmatch(infiles[0],'*mos*') then point_id += '_mosaic'
   endif
   
   ;; Check dimensions
@@ -221,6 +222,10 @@ pro red::fitscube_concatenate, infiles, outfile $
   endif
   
   odir = file_dirname(outfile)
+  if odir eq '.' then begin
+    odir = 'cubes_concatenated/'
+    outfile = odir + outfile
+  endif
   file_mkdir, odir
 
   print, outfile

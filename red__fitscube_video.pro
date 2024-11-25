@@ -193,7 +193,7 @@ pro red::fitscube_video, infile $
   Nx = dims[0]
   Ny = dims[1]
 
-  pref = strtrim(red_fitsgetkeyword(inhdr, 'FILTER1'), 2)
+  pref = strtrim(red_fitsgetkeyword(hdr, 'FILTER1'), 2)
   image_scale = self -> imagescale(pref, /use_config)
 
   if keyword_set(spectral) then begin
