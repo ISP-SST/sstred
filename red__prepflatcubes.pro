@@ -62,6 +62,10 @@
 ;   2022-08-01 : MGL. New version for CRISP2 (and old CRISP with new
 ;                cameras) based on the old CRISP version.
 ;
+;
+;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
+
+;
 ;-
 pro red::prepflatcubes, flatdir = flatdir $
                         , pref = pref $

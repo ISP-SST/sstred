@@ -115,7 +115,11 @@
 ; 
 ;    2022-08-02 : MGL. Change from a CRISP:: method to a RED:: method
 ;                 to prepare for CRISP camera upgrade.
-; 
+;
+;
+;    2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
+;                 Now it also handles a case with lccgain
+
 ;-
 pro red::get_calib, states $
                     , no_fits = no_fits $

@@ -47,7 +47,9 @@
 ;   2018-04-16 : MGL. Read single FITS files with extensions.
 ; 
 ;   2022-09-02 : MGL. Make a spatial mask and use it.
-; 
+;
+;
+;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
 ;-
 pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref
 
@@ -94,7 +96,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
       pref = upref[idx]
     endelse
   endif
-  print, inam + ' : Selected prefilter -> '+pref
+r  print, inam + ' : Selected prefilter -> '+pref
 
   ;; Select cameras
   idx = where(mpref eq pref, count)

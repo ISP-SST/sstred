@@ -75,6 +75,10 @@
 ;   2016-10-26 : MGL. Add progress bar, don't redraw plots so often.  
 ;
 ;   2017-04-20 : MGL. Plot spline nodes on the model curve.
+;
+;   2023-11-02 : JdlCR. Modifications for multiple LC fitting with
+;                a single cavity map value for the new demodulation
+;                and flat-fielding scheme.
 ; 
 ;-
 function red_get_imean, wav, dat, pp, npar, iter $
