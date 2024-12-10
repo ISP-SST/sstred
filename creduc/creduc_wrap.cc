@@ -51,21 +51,24 @@ extern "C" {
     //
     int nwav = ARG_INT(argv, 0);
     int nmean = ARG_INT(argv, 1);
-    int npar = ARG_INT(argv, 2);
-    int npix = ARG_INT(argv, 3);
-    int nt = ARG_INT(argv, 10);
+    int nlc = ARG_INT(argv, 2);
+
+    int npar = ARG_INT(argv, 3);
+    int npix = ARG_INT(argv, 4);
+    int nt = ARG_INT(argv, 11);
 
     //
-    float *xl = ARG_FLOAT_ARRAY(argv,4);
-    float *yl = ARG_FLOAT_ARRAY(argv,5);
-    float *wav = ARG_FLOAT_ARRAY(argv,6);
-    float *dat1 = ARG_FLOAT_ARRAY(argv,7);
+    float *xl = ARG_FLOAT_ARRAY(argv,5);
+    float *yl = ARG_FLOAT_ARRAY(argv,6);
+    float *wav = ARG_FLOAT_ARRAY(argv,7);
+    float *dat1 = ARG_FLOAT_ARRAY(argv,8);
     //
-    double *pars1 = ARG_FLOAT64_ARRAY(argv,8); // At input contains the guess parameters to init L-M
-    float *ratio1 = ARG_FLOAT_ARRAY(argv,9); // At input contains the guess parameters to init L-M
+    double *pars1 = ARG_FLOAT64_ARRAY(argv,9); // At input contains the guess parameters to init L-M
+    float *ratio1 = ARG_FLOAT_ARRAY(argv,10); // At input contains the guess parameters to init L-M
+    double *sig = ARG_FLOAT64_ARRAY(argv,11); // At input contains the guess parameters to init L-M
 
     //
-    fitgain(nwav, nmean, npar, npix, xl, yl, wav, dat1, pars1, ratio1, nt); 
+    fitgain(nwav, nmean, nlc, npar, npix, xl, yl, wav, dat1, pars1, ratio1, sig, nt); 
     //
     return 0;
   }

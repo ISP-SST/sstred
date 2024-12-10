@@ -307,27 +307,92 @@ pro red::make_intdif_gains, all = all $
       endif
       
       ;; Load cavity-error free gains
-      gains = fltarr(Nx, Ny, Ntunings)
+      gains = fltarr(Nx, Ny, Ntunings,Nlc)
       fhdrs = list()
-      for iwav=0, Ntunings-1 do begin
+      
+      ;; test for clcgain
+      self -> get_calib, { camera:cams[icam] $
+                           , detector:detectors[icam] $
+                           , scannumber:uscan[0] $
+                           , framenumber: 0 $
+                           , prefilter: pref $
+                           , fpi_state: uwav[0] $
+                           , tuning: uwav[0]  $
+                           , cam_settings: usettings[0] $
+                           , lc: 0 $
+                           ;;, fullstate: ufullstate[iwav] $
+                         } $
+                         , clcgaindata = clcgaindata $
+                         , clcgainname = clcgainname $
+                         , clcgainstatus = clcgainstat
 
+      cgainstat = -1
+      polcal_flatfielding = 0
+      if(clcgainstat gt -1) then polcal_flatfielding = 1 else begin
         self -> get_calib, { camera:cams[icam] $
                              , detector:detectors[icam] $
                              , scannumber:uscan[0] $
                              , framenumber: 0 $
                              , prefilter: pref $
-                             , fpi_state: uwav[iwav] $
-                             , tuning: uwav[iwav]  $
-                             , cam_settings: usettings[iwav] $ 
+                             , fpi_state: uwav[0] $
+                             , tuning: uwav[0]  $
+                             , cam_settings: usettings[0] $
+                             , lc: 0 $
                              ;;, fullstate: ufullstate[iwav] $
                            } $
                            , cgaindata = cgaindata $
-                           , cgainname = cgainname 
+                           , cgainname = cgainname $
+                           , cgainstatus = cgainstat
+      endelse
 
-        print, inam + ' : loading -> '+file_basename(cgainname)
+      if(clcgainstat eq -1 and cgainstat eq -1) then begin
+        print, inam+': ERROR, no adequate gains found'
+        stop
+      endif
+      
+      
+      for iwav=0, Ntunings-1 do begin
+        if(polcal_flatfielding gt 0) then begin
+          for ss=0,Nlc-1 do begin
+            self -> get_calib, { camera:cams[icam] $
+                                 , detector:detectors[icam] $
+                                 , scannumber:uscan[0] $
+                                 , framenumber: 0 $
+                                 , prefilter: pref $
+                                 , fpi_state: uwav[iwav] $
+                                 , tuning: uwav[iwav]  $
+                                 , cam_settings: usettings[iwav] $
+                                 , lc: ss $
+                               } $
+                               , clcgaindata = clcgaindata $
+                               , clcgainname = clcgainname $
+                               , clcgainstatus = clcgainstat
+            
+            print, inam + ' : loading -> '+file_basename(clcgainname)
+            gains[*,*,iwav,ss] = clcgaindata
+            fhdrs.add, red_readhead(clcgainname)
 
-        gains[*,*,iwav] = cgaindata
-        fhdrs.add, red_readhead(cgainname)
+          endfor
+        endif else begin
+          self -> get_calib, { camera:cams[icam] $
+                               , detector:detectors[icam] $
+                               , scannumber:uscan[0] $
+                               , framenumber: 0 $
+                               , prefilter: pref $
+                               , fpi_state: uwav[iwav] $
+                               , tuning: uwav[iwav]  $
+                               , cam_settings: usettings[iwav] $
+                             } $
+                             , cgaindata = cgaindata $
+                             , cgainname = cgainname $
+                             , cgainstatus = cgainstat 
+        
+          print, inam + ' : loading -> '+file_basename(cgainname)
+          for ss=0,Nlc-1 do gains[*,*,iwav,ss] = cgaindata
+        
+          fhdrs.add, red_readhead(cgainname)
+        endelse
+
 
       endfor                    ; iwav
 
@@ -501,14 +566,14 @@ pro red::make_intdif_gains, all = all $
 
             endif else begin 
               
-              g = gains[*, *, iwav] * reform(cub1[iwav, *, *]/cub2[iwav, *, *])
+              g = gains[*, *, iwav,ilc] * reform(cub1[iwav, *, *]/cub2[iwav, *, *])
 
               if min(finite(g)) eq 0 then begin
                 ;; We need to take care of zeros in cub2, they can cause
                 ;; Infinity values in g.
                 zindx = where( ~finite(g), Nz)
                 ;; Zero pixels that should have been zero anyway
-                tmp_img = gains[*, *, iwav] * reform(cub1[iwav, *, *])
+                tmp_img = gains[*, *, iwav,ilc] * reform(cub1[iwav, *, *])
                 for iz = 0, Nz-1 do $
                    if (tmp_img)[zindx[iz]] eq 0 then g[zindx[iz]] = 0
 

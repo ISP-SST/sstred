@@ -20,6 +20,8 @@ struct fgd{
   complex_t *otft;
   float64_t *psf;
   int32_t npsf;
+  int32_t nlc;
+  float64_t *sig;
 };
 
 struct pol{

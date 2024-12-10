@@ -6,12 +6,12 @@
 //
 // Overview
 //
-template <class T> T *intep(int32_t &np, float32_t *&x, float32_t *&y, int32_t &nxp, T *&xp);
 template <class T> T *invert4x4(T *&a);
 //
 // Definitions
 //
-template <class T> T *intep(int32_t &np, float32_t *&x, float32_t *&y, int32_t &nxp, T *&xp){
+/*
+template <class T> T *intep(int32_t const np, float32_t* const x, float32_t* const y, int32_t const nxp, T* const xp){
   //
   int32_t np1 = np - 1;
   T *yp  = new T [nxp];
@@ -72,6 +72,7 @@ template <class T> T *intep(int32_t &np, float32_t *&x, float32_t *&y, int32_t &
     if(xp[ii] < x[0]) yp[ii] = a0 * xp[ii] + b0;
     if(xp[ii] > x[np-1]) yp[ii] = a1 * xp[ii] + b1;
   }
+  /*
   //
   // Clean-up
   //

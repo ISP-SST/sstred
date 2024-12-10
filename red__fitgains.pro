@@ -134,6 +134,10 @@
 ;   2022-09-01 : MGL. Automatically mask bad pixels and pixels without
 ;                light.
 ;
+;   2023-11-02 : JdlCR. Modifications for multiple LC fitting with
+;                a single cavity map value for the new demodulation
+;                and flat-fielding scheme.
+;
 ;-
 pro red::fitgains, all = all $
                    , densegrid = densegrid $                   
@@ -153,7 +157,8 @@ pro red::fitgains, all = all $
                    , thres = thres $
                    , w0 = w0, w1 = w1 $
                    , x0 = x0, x1 = x1 $
-                   , xl = xl, yl = yl 
+                   , xl = xl, yl = yl $
+                   , sig = sig
 
 
   ;; Defaults
@@ -271,9 +276,11 @@ pro red::fitgains, all = all $
         
         wav = float(readfits(wfile)) * 1e10 ; Must be in Å.
         dims = size(dat, /dim)
+        dims = dims[-2:-1]
+        
 ;        if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
         npar_t = 1
-        res = dblarr([npar_t, dims[1:2]])
+        res = dblarr([npar_t, dims[0:1]])
         res[0,*,*] = dat
 
         ;; Need to set xl, yl (from red_get_imean):
@@ -310,24 +317,48 @@ pro red::fitgains, all = all $
       endcase
     endif else nparr = npar
     ;; npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
-    if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
+    
 
     cub = readfits(ffile)
     wav = float(readfits(wfile)) * 1e10 ; Must be in Å.
+    
+    
+    dim = size(cub, /dim)
+    sig1 = dblarr(dim[0])+1.0
+    
+    if(n_elements(sig) ne 0) then begin
+      nsig = n_elements(sig)
+      nmax = min([dim[0],nsig])
+      sig1[0:nmax-1] = sig[0:nmax-1]
+    endif
+    sig = sig1
 
+    
+    if(n_elements(dim) eq 3) then begin
+      cub = reform(temporary(cub), [dim[0], 1, dim[1], dim[2]])
+      dim = size(cub, /dim)
+    endif
+    Nlc = dim[1]
+
+    if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
+    npar_t_save = npar_t
+    npar_one = npar_t-1 ;; parameters per lc without the cavity error
+    
+    npar_t = Nlc*(npar_t-1)+1 ;; all LCs see the same cavity map and are fitted at once.
+    
     case 1 of 
       n_elements(w0) gt 0 and n_elements(w1) gt 0 : begin
-        cub = (temporary(cub))[w0:w1,*,*]
+        cub = (temporary(cub))[w0:w1,*,*,*]
         wav = wav[w0:w1]
         namelist = namelist[w0:w1]
       end
       n_elements(w0) gt 0 : begin
-        cub = (temporary(cub))[w0:*,*,*]
+        cub = (temporary(cub))[w0:*,*,*,*]
         wav = wav[w0:*]
         namelist = namelist[w0:*]
       end
       n_elements(w1) gt 0 : begin
-        cub = (temporary(cub))[0:w1,*,*]
+        cub = (temporary(cub))[0:w1,*,*,*]
         wav = wav[0:w1]
         namelist = namelist[0:w1]
       end
@@ -342,38 +373,45 @@ pro red::fitgains, all = all $
     endif 
 
     dat = cub                   ; Why do we make a copy of cub?
-    totdat = total(dat,1)    
-
+    totdat = total(dat,1) / nwav
+    
     ;; Make a gaintable from the sum of the dat frames and use it to
     ;; define the pixels we will use to do the fitting.
-    mask = red_flat2gain(totdat) ne 0
+    
+    mask = red_flat2gain(total(totdat,1)/nlc) ne 0
     mindx = where(mask, Nmask)
     if Nmask eq 0 then stop
 
     dims = size(dat, /dim)    
 
-    mdat = fltarr(dims[0], 1, Nmask) ; Make a pseudo-2d array that will work with the fitting routines
-    for i = 0, dims[0]-1 do mdat[i, 0, *] = (dat[i, *, *])[mindx]
+    mdat = fltarr(dims[0], Nlc, 1, Nmask) ; Make a pseudo-2d array that will work with the fitting routines
+    for i = 0, dims[0]-1 do for ss=0,Nlc-1 do mdat[i,ss, 0, *] = (reform(dat[i,ss, *, *]))[mindx]
     
     ;; Init output vars
-    res = dblarr([npar_t, dims[1:2]])
+    res = dblarr([npar_t, dims[2:3]])
     ratio = fltarr(dims)
 
     mdims = size(mdat, /dim)
-    mres = dblarr([npar_t, mdims[1:2]])
+    mres = dblarr([npar_t, mdims[2:3]])
     mratio = fltarr(mdims)
     
-    mres[0,*,*] = totdat[mindx] / nwav
+    off = indgen(Nlc)*npar_t_save
+    for ss = 0, Nlc-1 do begin
+      if(ss ge 2) then off[ss] -= (ss-1)
+    endfor
+
+    ;; Init the gains to the mean of each lc state
+    for ss=0,Nlc-1 do mres[off[ss],*,*] = (reform(totdat[ss,*,*]))[mindx]
                                 ;res[0,*,*] = totdat / nwav
     ;; Is this still needed?
 ;    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3    
-    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN mres[3:*,*,*] = 1.e-3    
+    ;;IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN mres[3:*,*,*] = 1.e-3    ;; // JDLCR: fix this!!!!!
 
     
     ;; Init cavity map?   
     if(keyword_set(initcmap)) then begin
       print, inam + ' : Initializing cavity-errors with parabola-fit'
-      mres[1,*,*] = red_initcmap(wav, mdat, x0 = x0, x1 = x1)      
+      mres[1,*,*] = red_initcmap(wav, total(mdat, 2)/nlc, x0 = x0, x1 = x1)      
       ;;res[1,*,*] = red_initcmap(wav, dat, x0 = x0, x1 = x1)      
     endif
 
@@ -403,28 +441,27 @@ pro red::fitgains, all = all $
                          , title = title + ' iter='+strtrim(iiter, 2))
 
       if iiter eq 0 then cgcontrol, output = pfile0
-      
+      ddim = size(mres, /dim)
+
       ;; Pixel-to-pixel fits using a C++ routine to speed-up things
-      if iiter eq 0 then begin
-        mres1 = mres[0:1,*,*]        
-        ;;res1 = res[0:1,*,*]        
-        if(keyword_set(ifit)) then begin
-          red_ifitgain, mres1, wav, mdat, xl, yl, mratio          
-          ;;red_ifitgain, res1, wav, dat, xl, yl, ratio          
-          ;;endif else red_cfitgain, res1, wav, dat, xl, yl, ratio, nthreads=nthreads          
-        endif else red_cfitgain, mres1, wav, mdat, xl, yl, mratio, nthreads=nthreads          
+      if iiter eq 0  and ~keyword_set(initcmap) then begin
+        ;;mres1 = mres[0:1,*,*]
+        ;;ddim = size(mres, /dim)
+        mres1 = dblarr(Nlc+1,ddim[1], ddim[2])
+        mres1[0:1,*,*] = mres[0:1,*,*]
+        for dd=1,Nlc-1 do mres1[dd+1,*,*] = mres[off[dd],*,*]
+               
+        red_cfitgain, mres1, wav, mdat, xl, yl, mratio, sig, nthreads=nthreads          
         ;;res[0:1,*,*] = temporary(res1)        
-        mres[0:1,*,*] = temporary(mres1)        
+        mres[0:1,*,*] = mres1[0:1,*,*]
+        for ss=1,nlc-1 do mres[off[ss],*,*] = mres1[1+ss,*,*]
+        
       endif else begin
         if keyword_set(fit_reflectivity) then $
            ;;red_cfitgain2, res, wav, dat, xl, yl, ratio, pref, nthreads = nthreads $           
            red_cfitgain2, mres, wav, mdat, xl, yl, mratio, pref, nthreads = nthreads $           
         else begin
-          if(keyword_set(ifit)) then begin
-            ;;red_ifitgain, res, wav, dat, xl, yl, ratio             
-            red_ifitgain, mres, wav, mdat, xl, yl, mratio             
-            ;;endif else red_cfitgain, res, wav, dat, xl, yl, ratio, nthreads = nthreads            
-          endif else red_cfitgain, mres, wav, mdat, xl, yl, mratio, nthreads = nthreads            
+          red_cfitgain, mres, wav, mdat, xl, yl, mratio, sig, nthreads = nthreads            
         endelse
       endelse
 
@@ -443,21 +480,42 @@ pro red::fitgains, all = all $
     ;; Create cavity-error-free flat (save in "ratio" variable)
     print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
 
-    for ii = 0L, nwav - 1 do mratio[ii,*,*] *= reform(mres[0,*,*]) * $    
-       reform(red_get_linearcomp(wav[ii], mres, npar_t, reflec = fit_reflectivity))    
-    ;;for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $    
+    
+    tmp_par = dblarr(npar_one+1, ddim[1], ddim[2])
+    for ss=0,Nlc-1 do begin
+      
+      if(ss eq 0) then begin
+        tmp_par[*,*,*] = mres[0:npar_one,*,*]
+      endif else begin
+        tmp_par[0,*,*] = mres[off[ss],*,*]
+        tmp_par[1,*,*] = mres[1,*,*]
+
+        if(npar_one+1 gt 2) then begin
+          tmp_par[2:*,*,*] = mres[off[ss]+1:off[ss]+npar_one-1,*,*]
+        endif
+      endelse
+      
+      for ii = 0L, nwav - 1 do begin
+        
+        mratio[ii,ss,*,*] *= reform(tmp_par[0,*,*]) * $    
+                             reform(red_get_linearcomp(wav[ii], tmp_par, npar_one+1, reflec = fit_reflectivity))
+      endfor
+    endfor
+      ;;for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $    
     ;; reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))    
 
     print, 'done'
     
     ;; We want to save ratio and res so we need to fill them with data
     ;; from mratio and mres.
-    tmp = fltarr(dims[1:2])    
-    for iwav = 0L, nwav - 1 do begin
-      tmp[mindx] = mratio[iwav, 0, *]
-      ratio[iwav, *, *] = tmp
+    tmp = fltarr(dims[2:3])    
+    for ss=0,Nlc-1 do for iwav = 0L, nwav - 1 do begin
+      tmp[mindx] = reform(mratio[iwav, ss, 0, *])
+      ratio[iwav, ss, *, *] = tmp
     endfor
-    tmp = dblarr(dims[1:2])        
+    
+    
+    tmp = dblarr(dims[2:3])        
     for ii = 0, npar_t-1 do begin
       tmp[mindx] = mres[ii, 0, *]
       res[ii, *, *] = tmp
@@ -467,21 +525,43 @@ pro red::fitgains, all = all $
     if ~keyword_set(nosave) then begin
 
       for iwav = 0L, Nwav - 1 do begin
+        for ss=0, Nlc-1 do begin
+          output = reform(ratio[iwav,ss,*,*,*])
+          
+          if(Nlc eq 1) then begin
+         
+            ;; Make FITS header
+            head = red_readhead(namelist[iwav])
+            check_fits, output, head, /UPDATE, /SILENT  
+            fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
+            fxaddpar, head, 'FILENAME', file_basename(outnames[iwav]), after = 'DATE'
+            self -> headerinfo_addstep, head, prstep = 'SPECTRAL-COORDINATE-DISTORTION-CORRECTION' $
+                                        , prproc = inam, prpara = prpara
+            
+            print, inam + ' : Saving file -> '+outnames[iwav]
+            red_writedata, outnames[iwav], output, header = head, /overwrite
+          endif else begin
 
-        output = reform(ratio[iwav,*,*])
+            lc = 'lc'+string(ss,format='(I1)')
+            
+            iname = red_strreplace(namelist[iwav], 'lc0', lc)
+            oname = red_strreplace(iname, '.flat', '_cavityfree.flat')
 
-        ;; Make FITS header
-        head = red_readhead(namelist[iwav])
-        check_fits, output, head, /UPDATE, /SILENT  
-        fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
-        fxaddpar, head, 'FILENAME', file_basename(outnames[iwav]), after = 'DATE'
-        self -> headerinfo_addstep, head, prstep = 'SPECTRAL-COORDINATE-DISTORTION-CORRECTION' $
-                                    , prproc = inam, prpara = prpara
-
-        print, inam + ' : Saving file -> '+outnames[iwav]
-        red_writedata, outnames[iwav], output, header = head, /overwrite
-
-      endfor                    ; iwav
+            head = red_readhead(iname)
+     
+            check_fits, output, head, /UPDATE, /SILENT  
+            fxaddpar, head, 'DATE', red_timestamp(/iso), 'UTC creation date of FITS header'
+            fxaddpar, head, 'FILENAME', file_basename(outnames[iwav]), after = 'DATE'
+            self -> headerinfo_addstep, head, prstep = 'SPECTRAL-COORDINATE-DISTORTION-CORRECTION' $
+                                        , prproc = inam, prpara = prpara
+            
+            print, inam + ' : Saving file -> '+oname
+            red_writedata, oname, output, header = head, /overwrite
+            
+            
+          endelse
+        endfor                  ; iwav
+      endfor
       
       fit = {pars:res, yl:yl, xl:xl, oname:outnames}
       save, file = sfile, fit
@@ -492,9 +572,9 @@ pro red::fitgains, all = all $
 
     endif
     
-    scrollwindow, /free, xs = dims[1], ys = dims[2] $
+    scrollwindow, /free, xs = dims[2], ys = dims[3] $
                   , title = 'Cavity map for '+selectionlist[ifile] + ' npar='+strtrim(nparr, 2)
-    tvscl, reform(res[1,*,*])
+    tvscl, red_histo_opt(reform(res[1,*,*]), 5e-3)
 
   endfor                        ; iselect
 

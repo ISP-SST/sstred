@@ -17,7 +17,7 @@
 extern void descatter(int nx, int ny, float *img, float *fgain, float *fpsf, float *res, int nthreads, int verbose);
 //
 extern void convolve(int inx, int iny, int pnx, int pny, float *timg, float *tfpsf, float *res1,int nthreads, int verbose);
-extern void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, int nt);
+extern void fitgain(int nwav, int nmean, int nlc, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, double* sig, int nt);
 extern void fitgain2(int nwav, int nmean, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, int nt, int line);
 extern void polcal_1d(pol_t &pol);
 extern void polcal_fov(pol_t &pol);

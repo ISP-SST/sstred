@@ -433,6 +433,25 @@ function crisp2::filenames, datatype, states $
           if ~keyword_set(no_fits) then ext += '.fits'
         end
 
+        'cavityflat_lc' : begin
+          dir = self.out_dir + '/flats/' 
+          red_append, tag_list, detector
+          ;;         red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, states[istate].cam_settings          
+          red_append, tag_list, states[istate].prefilter          
+          red_append, tag_list, states[istate].fpi_state
+          red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
+          red_append, tag_list, 'cavityfree'
+          ext = '.flat'
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+        
         'sumflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
@@ -508,6 +527,23 @@ function crisp2::filenames, datatype, states $
           red_append, tag_list, states[istate].cam_settings          
           red_append, tag_list, states[istate].prefilter          
           red_append, tag_list, states[istate].fpi_state
+       
+;          red_append, tag_list, exposure
+;          red_append, tag_list, gain
+;          red_append, tag_list, prefilter
+;          if states[istate].is_wb eq 0 and tuning ne '' then $
+;             red_append, tag_list, tuning
+          ext = '_cavityfree.gain'          
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+        'cavityfree_lc_gain' : begin
+          dir = self.out_dir + '/gaintables/' 
+          red_append, tag_list, detector
+;          red_append, tag_list, states[istate].fullstate
+          red_append, tag_list, states[istate].cam_settings          
+          red_append, tag_list, states[istate].prefilter          
+          red_append, tag_list, states[istate].fpi_state
+          red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
 ;          red_append, tag_list, exposure
 ;          red_append, tag_list, gain
 ;          red_append, tag_list, prefilter
@@ -516,6 +552,7 @@ function crisp2::filenames, datatype, states $
           ext = '_cavityfree.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
+
         
         'pinh' :  begin
           dir = self.out_dir+'/pinhs/'
