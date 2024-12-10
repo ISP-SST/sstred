@@ -117,7 +117,9 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     tqw = mrdfits(tname,'QW')
     rlp = mrdfits(rname,'LP')
     tlp = mrdfits(tname,'LP')
-
+    tpf = mrdfits(tname,'PF')
+    rpf = mrdfits(rname,'PF')
+    
     ;; Get offset and delta (using QWP angle as reference)
     qlt = (red_polcal_fit(t1d, tqw, tlp, norm=4))[16:17]
     qlr = (red_polcal_fit(r1d, rqw, rlp, norm=4))[16:17]
@@ -163,7 +165,13 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     dim = size(mm,/dim)
 
     red_writedata, oname, reform(mm, [16,dim[2],dim[3]], /overwrite), filetype='FITS', /overwrite
+    
+    mkhdr, ehdr, [rpf], /image
+    red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'PF', 'Polcal flatfielding'
+    writefits, oname, [rpf], ehdr, /append
+      
 
+    
 ;    data = red_readdata(tname)
 ;    totdata=total(total(total(data,1),1),1)
 ;    mask = totdata gt max(totdata)/10. ; Mask that deselects bad pixels and pixels without light
@@ -173,7 +181,11 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
     dim = size(mm,/dim)
 
     red_writedata, oname, reform(mm, [16,dim[2],dim[3]], /overwrite), filetype='FITS', /overwrite
-
+    
+    mkhdr, ehdr, [tpf], /image
+    red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'PF', 'Polcal flatfielding'
+    writefits, oname, [tpf], ehdr, /append
+      
   endif 
   
 end
