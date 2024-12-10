@@ -372,6 +372,16 @@ function crisp::filenames, datatype, states $
           if ~keyword_set(no_fits) then ext += '.fits'
         end
 
+        'cavityflat_lc' : begin
+          dir = self.out_dir + '/flats/' 
+          red_append, tag_list, detector
+          red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
+          red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+          red_append, tag_list, 'cavityfree'
+          ext = '.flat'
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+
         'sumflat' : begin
           dir = self.out_dir + '/flats/' 
           red_append, tag_list, detector
@@ -414,7 +424,15 @@ function crisp::filenames, datatype, states $
           ext = '.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
-        
+        'cavityfree_lc_gain' : begin
+            dir = self.out_dir + '/gaintables/' 
+            red_append, tag_list, detector
+            red_append, tag_list, states[istate].prefilter+'_'+states[istate].fpi_state
+            red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+            red_append, tag_list, 'cavityfree'
+            ext = '.gain'
+            if ~keyword_set(no_fits) then ext += '.fits'
+         end
         'pinh' :  begin
           dir = self.out_dir+'/pinhs/'
           red_append, tag_list, detector

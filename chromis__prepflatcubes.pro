@@ -141,7 +141,7 @@ pro chromis::prepflatcubes, flatdir = flatdir $
           if(istate eq 0) then begin
             head = red_readhead(sstates[istate].filename)
             dim = [fxpar(head, 'NAXIS1'), fxpar(head, 'NAXIS2')]
-            cub = fltarr([Nstates, dim])
+            cub = fltarr([Nstates, 1, dim])
             wav = dblarr(Nstates)
             tomask = bytarr(dim)
           endif
@@ -156,7 +156,7 @@ pro chromis::prepflatcubes, flatdir = flatdir $
           endif
 
           ;; Result
-          cub[istate, *, *] = tmp
+          cub[istate, 0, *, *] = tmp
 ;           wav[istate] = stat.wav[pos[istate]] - double(stat.pref[pos[istate]])
 ;           wav[istate] = sstates[istate].tun_wavelength
           wav[istate] = double((strsplit(sstates[istate].tuning,'_',/extract))[1])*1d-13
@@ -164,13 +164,13 @@ pro chromis::prepflatcubes, flatdir = flatdir $
         endfor                  ; istate
 
         for jj = 0L, dim[1]-1 do for ii = 0L, dim[0]-1 do begin
-          if(tomask[ii,jj] eq 1B) then cub[*,ii,jj] = 0.0
+          if(tomask[ii,jj] eq 1B) then cub[*,*,ii,jj] = 0.0
         endfor
 
         ;; Sort states (so far they are sorted as strings -> incorrect order)
         print, inam + ' : sorting wavelengths ... ', FORMAT = '(A,$)'
         ord = sort(wav)
-        cub = (temporary(cub))[ord, *,*]
+        cub = (temporary(cub))[ord,*,*,*]
         wav = wav[ord]
         sstates = sstates[ord]
         print, 'done'
