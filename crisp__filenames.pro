@@ -101,6 +101,8 @@
 ; 
 ;    2018-04-20 : MGL. First version, based on chromis::filenames,
 ;                 with keyword raw inactive.
+;
+;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
 ; 
 ; 
 ;-
