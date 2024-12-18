@@ -96,7 +96,7 @@ pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pre
       pref = upref[idx]
     endelse
   endif
-r  print, inam + ' : Selected prefilter -> '+pref
+  print, inam + ' : Selected prefilter -> '+pref
 
   ;; Select cameras
   idx = where(mpref eq pref, count)
