@@ -363,48 +363,14 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     cameras = red_fitsgetkeyword_multifile(fnames, 'CAMERA', counts = cnt)
     is_wb = strmatch(cameras, 'Chromis-[WD]')          
     is_pd = strmatch(cameras, 'Chromis-D')
-    ;;  if this_is_wb[0] then wls = strmid(fullstate, 0, 4) else wls = strmid(wav, 0, 4)
-
-    ;; indx = uniq(wls, sort(wls))
-    ;; wls = wls[indx]
-    ;; this_is_wb = this_is_wb[indx]
-    ;; this_is_pd = this_is_pd[indx]
-    ;; wls = wls[where(wls ne '')]
-    
-    ;; if n_elements(wls) gt 0 then begin
-    ;;   wavelengths = strjoin(wls, ' ')
-    ;;   
-    ;;   if keyword_set(calibrations_only) then begin
-    ;;     ;; For /calibrations_only we want to output the summed data
-    ;;     ;; in timestamp directories so we can handle multiple sets.
-    ;;     outdir = 'flats/' + file_basename(flatdirs[idir])
-    ;;     outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
-    ;;   endif else outdirkey = ''
-    ;;   
-    ;;   ;; Print to script file
-    ;;   printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
-    ;;           + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') + '"' $
-    ;;           + ', nthreads=nthreads' $
-    ;;           + outdirkey $
-    ;;           + ' ; ' + camdirs+' ('+wavelengths+')'
-    ;; 
-    ;;   red_append, prefilters, wls
-    ;;   red_append, is_wb, this_is_wb
-    ;;   red_append, is_pd, this_is_pd
-    ;; endif
   endif 
-  
-  if Nprefilters gt 0 then begin
-    indx = uniq(prefilters, sort(prefilters))
-    is_wb = is_wb[indx]
-    is_pd = is_pd[indx]
-    prefilters = prefilters[indx]
-  endif else begin
-    stop
-    prefilters = prefilters[uniq(prefilters, sort(prefilters))]
-    
-    ;; Need to set also cameras here.
-  endelse
+
+  if Nprefilters eq 0 then stop
+
+  indx = uniq(prefilters, sort(prefilters))
+  is_wb = is_wb[indx]
+  is_pd = is_pd[indx]
+  prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
 
   if ~keyword_set(calibrations_only) then begin  

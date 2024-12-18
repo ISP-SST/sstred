@@ -190,11 +190,21 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   cams = file_basename(darksubdirs)
   cams = cams[uniq(cams,sort(cams))]
-  ;; We want the W camera first!
+ 
+  if n_elements(cams) le 1 and n_elements(old_dir) gt 0 then begin
+    dnames = file_search(old_dir+'/darks/cam*fits', count = Ndarks)
+    if Ndarks eq 0 then stop
+    cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
+    if total(cnt) eq 0 then stop
+    cams = red_uniquify(cams)
+  endif
+
+  ;; We want the WB camera first!
   indx = sort(abs(reform(byte(strmid(cams,0,1,/reverse)))  - (byte('W'))[0]))
   cams = cams[indx]
  
-  for icam = 0, n_elements(cams)-1 do printf, Clun, 'camera = '+cams[icam]
+  printf, Clun, 'camera = '+cams, format='(a0)'
+;  for icam = 0, n_elements(cams)-1 do printf, Clun, 'camera = '+cams[icam]
 ;  case instrument of
 ;
 ;    'CRISP' : begin    
@@ -377,24 +387,14 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     is_pd = strmatch(cameras, (instrument.tolower()).capwords()+'-D')
   endif
 
-  
-  if Nprefilters gt 0 then begin
-    indx = uniq(prefilters, sort(prefilters))
-    is_wb = is_wb[indx]
-    is_pd = is_pd[indx]
-    prefilters = prefilters[indx]
-  endif else begin
-    stop
-    ;; This can happen if flats were already summed in La Palma and
-    ;; then deleted. Look for prefilters in the summed flats directory
-    ;; instead.
-    spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
-    ;; Need to set also cameras here.
-  endelse
+  if Nprefilters eq 0 then stop
+
+  indx = uniq(prefilters, sort(prefilters))
+  is_wb = is_wb[indx]
+  is_pd = is_pd[indx]
+  prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
 
-
-  
   printf, Slun, ''
   print, 'Pinholes'
   printf, Clun, '#'
@@ -508,10 +508,26 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
       endfor                    ; ipref
     endif
-
     
-  endif
+  endif else if n_elements(old_dir) gt 0 then begin
 
+    ;; Need to find polprefs and Npolcaldirs from the summed data
+    pdir = old_dir + '/polcal_sums/Crisp-T/'
+    pfiles = file_search(pdir+'cam*fits', count = Npfiles)
+    if Npfiles eq 0 then Npolcaldirs = 0 else begin
+      red_extractstates, pfiles, /basename, pref = polprefs
+      polprefs = polprefs[uniq(polprefs,sort(polprefs))]
+    endelse
+    
+    for ipref = 0, n_elements(polprefs)-1 do begin
+      printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+              + ", nthreads=nthreads"
+      printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+              + ", nthreads=nthreads"
+      printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+    endfor                      ; ipref
+  endif
+  
   
 ;  polcaldirs = file_search(root_dir+'/*polc*/*', count = Npol, /fold)
 ;  stop
@@ -619,12 +635,9 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  ;; If we implement dealing with prefilter scans in the pipeline,
 ;  ;; here is where the command should be written to the script file.
 
-
-  
-
   if ~keyword_set(calibrations_only) then begin  
     for ipref = 0, Nprefilters-1 do begin
-      if ~is_wb[ipref] then printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
+      printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
     endfor                      ; ipref
   endif
 
@@ -634,10 +647,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, '; whether you need to use different keyword settings.'
     printf, Slun, '; Then, if you have already run makegains, rerun it.'
     for ipref = 0, Nprefilters-1 do begin
-      if ~is_wb[ipref] then begin
-        printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
-                + prefilters[ipref] + "'"
-      end
+      printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
+              + prefilters[ipref] + "'"
     endfor  ; ipref
 ;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
 ;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
@@ -853,7 +864,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   if size(old_dir, /tname) ne 'STRING' then return
     
   ;; We will now attempt to copy existing sums of calibration data.
-
+  
   ;; Darks
   if file_test(old_dir+'/darks', /directory) then begin
     dfiles = file_search(old_dir+'/darks/cam*.dark*', count = Nfiles)
