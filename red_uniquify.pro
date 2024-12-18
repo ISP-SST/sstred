@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 
 ;+
-; 
+; Remove duplicates from a 1D array.
 ; 
 ; :Categories:
 ;
@@ -15,7 +15,7 @@
 ; 
 ; :Returns:
 ; 
-; A sorted list where all elements are unique.
+;   A sorted list where all elements are unique.
 ; 
 ; :Params:
 ; 
