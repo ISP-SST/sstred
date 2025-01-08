@@ -279,10 +279,15 @@ pro red::get_calib, states $
 
   ;; Cavityfree_lc gains    
   if arg_present(clcgaindata) then begin
-    if n_elements(clcgainname) ne 0 and file_test(clcgainname) then begin
-      clcgaindata = red_readdata_multiframe(clcgainname, status = clcgainstatus, /silent)
-      status = min([status, clcgainstatus])
-    endif else status = -1
+    if n_elements(clcgainname) ne 0 then begin
+      if ~file_test(clcgainname) then begin ; we need this for unpolarized gains
+        clcgainstatus = -1
+        status = -1
+      endif else begin
+        clcgaindata = red_readdata_multiframe(clcgainname, status = clcgainstatus, /silent)
+        status = min([status, clcgainstatus])
+      endelse
+    endif else status = -1     
   endif                         ; Cavityfree gains         
 
   
