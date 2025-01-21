@@ -48,8 +48,8 @@
 ; 
 ;   2022-09-02 : MGL. Make a spatial mask and use it.
 ;
+;   2024-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
 ;
-;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
 ;-
 pro red::polcal, offset = offset, nthreads=nthreads, nodual = nodual, pref = pref
 
