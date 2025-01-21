@@ -99,11 +99,11 @@
 ; 
 ; :History:
 ; 
-;    2018-04-20 : MGL. First version, based on chromis::filenames,
-;                 with keyword raw inactive.
+;   2018-04-20 : MGL. First version, based on chromis::filenames,
+;                with keyword raw inactive.
 ;
-;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
-; 
+;   2024-11-02 : JdlCR. Modifications for new
+;                demodulation/flat-fielding scheme.
 ; 
 ;-
 function crisp::filenames, datatype, states $

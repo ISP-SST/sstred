@@ -70,7 +70,8 @@
 ;
 ;   2023-11-01 : MGL. New keyword scanno.
 ;
-;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
+;   2024-11-02 : JdlCR. Modifications for new
+;                demodulation/flat-fielding scheme.
 ;
 ;-
 pro red::sum_data_intdif, all = all $

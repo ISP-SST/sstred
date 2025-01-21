@@ -71,10 +71,9 @@
 ; 
 ;   2022-08-29 : MGL. CHROMIS --> RED.
 ;
+;   2024-11-02 : JdlCR. Modifications for new
+;                demodulation/flat-fielding scheme.
 ;
-;
-;   2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
-
 ;-
 pro red::makegains, bad=bad $
                     , cam = cam $

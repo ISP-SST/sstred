@@ -119,7 +119,8 @@
 ; 
 ;    2022-11-15 : MGL. New keyword mosaic_tag.
 ;
-;    2023-11-02 : JdlCR. Modifications for new demodulation/flat-fielding scheme
+;    2024-11-02 : JdlCR. Modifications for new
+;                 demodulation/flat-fielding scheme.
 ; 
 ;-
 function crisp2::filenames, datatype, states $
