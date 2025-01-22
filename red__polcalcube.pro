@@ -47,15 +47,15 @@
 ; 
 ;   2018-04-16 : MGL. Write single FITS files with extensions.
 ;
+;   2024-11-21 : JdlCR. Implemented flatfielding of the modulation
+;                matrix for alternative demodulation done through. To
+;                revert to old behaviour use /no_polcal_flatfielding.
 ;
-;   2024-11-21 : JdlCR. Implemented flatfielding of the modulation matrix for alternative demodulation
-;                done through. To revert to old behaviour use /no_polcal_flatfielding.
 ;-
-
-function red_date2num, var
-  tmp = strsplit(var, '-', /extract)
-  return, long64(tmp[0])*10000LL + long64(tmp[1])*100LL + long64(tmp[2])
-end
+;function red_date2num, var
+;  tmp = strsplit(var, '-', /extract)
+;  return, long64(tmp[0])*10000LL + long64(tmp[1])*100LL + long64(tmp[2])
+;end
 
 
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads $
@@ -63,13 +63,22 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
                      , force_polcal_flatfielding = force_polcal_flatfielding
 
 
-  ;; We started taking proper flats at the polcal wavelength in 2024. Flat-field the polcal
-  ;; data by default if the year is >= 2024
-  ;;
-  date_ref = red_date2num('2023-10-12')
-  date = red_date2num(self.isodate)
+  ;; We started taking proper flats at the polcal wavelength in late
+  ;; 2023. Flat-field the polcal data by default if the date is later
+  ;; than that.
   
-  if((date < date_ref) and ~keyword_set(force_polcal_flatfielding)) then no_polcal_flatfielding = 1B
+;  date_ref = red_date2num('2023-10-12')
+;  date = red_date2num(self.isodate)
+;  
+;  if((date < date_ref) and ~keyword_set(force_polcal_flatfielding)) then no_polcal_flatfielding = 1B
+
+  date_ref = '2023-10-12'
+  if (self.isodate LT date_ref) && ~keyword_set(force_polcal_flatfielding) then no_polcal_flatfielding = 1B
+
+  ;; Alternatively, check wavelength of polcal data and see if we have
+  ;; flats at that wavelength. Then base the default processing on
+  ;; that! (This check is done later so we might be able to move that
+  ;; up to here. Or to the beginning of the prefilter loop.)
   
   
   ;; Name of this method
@@ -117,7 +126,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
 
     undefine, use_gain
     
-    dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
+    dodescatter = ~keyword_set(no_descatter) AND self.dodescatter $
                   and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')    
     
     
@@ -171,7 +180,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       
       flat_failed = 1
       
-      if(~keyword_set(no_polcal_flatfielding) and (Nlc gt 1)) then begin
+      if(~keyword_set(no_polcal_flatfielding) && (Nlc gt 1)) then begin
         flat_failed = 0
         if(file_test(fn)) then begin
           for ilc=0,Nlc-1 do begin
@@ -182,7 +191,10 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
               print, inam + " : reading polcal flat-field file and making gain -> "+fn
               ff = red_readdata(fn)
               gains[*,*,ilc] = red_flat2gain(ff, bad=1.0, smooth=3.0, min=0.085, max=5.0)
-              if((gains[0,0,ilc] eq 0) and (gains[0,-1,ilc] eq 0) and (gains[-1,0,ilc] eq 0) and (gains[-1,-1,ilc] eq 0)) then begin
+              if((gains[0,0,ilc] eq 0) && $
+                 (gains[0,-1,ilc] eq 0) && $
+                 (gains[-1,0,ilc] eq 0) && $
+                 (gains[-1,-1,ilc] eq 0)) then begin
                 mask[*,*,ilc] = red_cleanmask(gains[*,*,ilc] eq 0, /circ)
               endif else mask[*,*,ilc] = 1.0
             endif else begin
@@ -230,9 +242,12 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
               if flatstatus ne 0 then stop
               print, inam+" : loading flat data and making gain -> "+fn 
               gains[*, *, ilc] = red_flat2gain(ff, bad=1.5, smooth=3.0, min=0.085, max=5.0)
-              if((gains[0,0,ilc] eq 0) and (gains[0,-1,ilc] eq 0) and (gains[-1,0,ilc] eq 0) and (gains[-1,-1,ilc] eq 0)) then begin
+              if((gains[0,0,ilc] eq 0) && $
+                 (gains[0,-1,ilc] eq 0) && $
+                 (gains[-1,0,ilc] eq 0) && $
+                 (gains[-1,-1,ilc] eq 0)) then begin
                 mask[*,*,ilc] = red_cleanmask(gains[*,*,ilc] eq 0, /circ)
-                endif else mask[*,*,ilc] = 1.0
+              endif else mask[*,*,ilc] = 1.0
 
             endfor              ; ilc              
           endif
