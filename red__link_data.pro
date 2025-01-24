@@ -84,7 +84,7 @@ pro red::link_data, all_data = all_data $
   inam = red_subprogram(/low, calling = inam1)
 
   if ((typename(self)).tolower()) eq 'chromis' $
-     && self.isodate lt '2022-11-03' then begin
+     && self.isodate lt red_dates('CHROMIS tuning metadata') then begin
     ;; Use the old CHROMIS method for CHROMIS data with undecoded
     ;; wheel and hrz file names.
     self -> link_data_wheelhrz, all_data = all_data $

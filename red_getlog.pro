@@ -284,7 +284,6 @@ pro red_getlog, date $
     if r0file then begin
 
       ;; Read r0 file
-;      if isodate ge '2013-10-28' then begin
       if isodate ge red_dates(tag = 'AO 8x8') then begin
         ;; 8x8 measurements exist from this date.
         have8x8 = 1

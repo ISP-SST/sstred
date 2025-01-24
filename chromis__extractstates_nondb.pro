@@ -156,11 +156,11 @@ pro chromis::extractstates_nondb, strings, states $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)            
 
-  if self.isodate lt '2022-11-03' then begin
+  if self.isodate lt red_dates('CHROMIS tuning metadata') then begin
     ;; Old data with wheel and hrz instead of prefilter and tuning. 
     self -> extractstates_wheelhrz_nondb, strings, states $
-                                          , force = force $
-                                          , strip_settings = strip_settings
+       , force = force $
+       , strip_settings = strip_settings
   endif
 
   strings = strtrim(strings,2)

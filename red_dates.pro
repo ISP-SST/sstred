@@ -43,8 +43,7 @@
 ; 
 ; :History:
 ; 
-;   2025-02-24 : MGL. First version with date when collection of
-;                polcal flats routinely started.
+;   2025-02-24 : MGL. First version.
 ; 
 ;-
 function red_dates $
@@ -61,6 +60,10 @@ function red_dates $
   red_append, tags, 'AO 8x8'
   red_append, dates, '2013-10-28'
   red_append, explanations, 'AO log has 8x8 measurements from '+dates[-1]
+  
+  red_append, tags, 'CHROMIS tuning metadata'
+  red_append, dates, '2022-11-03'
+  red_append, explanations, 'CHROMIS tuning metadata avaialble from '+dates[-1]
   
   red_append, tags, 'polcal flats'
   red_append, dates, '2023-10-12'

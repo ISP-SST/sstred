@@ -52,37 +52,23 @@
 ;                revert to old behaviour use /no_polcal_flatfielding.
 ;
 ;-
-;function red_date2num, var
-;  tmp = strsplit(var, '-', /extract)
-;  return, long64(tmp[0])*10000LL + long64(tmp[1])*100LL + long64(tmp[2])
-;end
-
-
 pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads $
                      , no_polcal_flatfielding = no_polcal_flatfielding $
                      , force_polcal_flatfielding = force_polcal_flatfielding
-
+  
+  ;; Name of this method
+  inam = red_subprogram(/low, calling = inam1)  
 
   ;; We started taking proper flats at the polcal wavelength in late
   ;; 2023. Flat-field the polcal data by default if the date is later
   ;; than that.
-  
-;  date_ref = red_date2num('2023-10-12')
-;  date = red_date2num(self.isodate)
-;  
-;  if((date < date_ref) and ~keyword_set(force_polcal_flatfielding)) then no_polcal_flatfielding = 1B
-
-  date_ref = '2023-10-12'
-  if (self.isodate LT date_ref) && ~keyword_set(force_polcal_flatfielding) then no_polcal_flatfielding = 1B
+  if (self.isodate LT red_getdates('polcal flats')) $
+     && ~keyword_set(force_polcal_flatfielding) then no_polcal_flatfielding = 1B
 
   ;; Alternatively, check wavelength of polcal data and see if we have
   ;; flats at that wavelength. Then base the default processing on
   ;; that! (This check is done later so we might be able to move that
   ;; up to here. Or to the beginning of the prefilter loop.)
-  
-  
-  ;; Name of this method
-  inam = red_subprogram(/low, calling = inam1)  
   
   ;; Check polcal_sums
   if(~file_test(self.out_dir + '/polcal_sums', /directory)) then begin
