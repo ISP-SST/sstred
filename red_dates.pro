@@ -15,7 +15,7 @@
 ; 
 ; :Returns:
 ; 
-;    A date in ISO format YYYY-MM-DD.
+;    A date in ISO format YYYY-MM-DD or tags for such a date.
 ; 
 ; :Params:
 ; 
@@ -32,7 +32,7 @@
 ; 
 ;    explanation : out, optional, type=string
 ;   
-;      A longer explanation of the relvant event crresponding to the
+;      A longer explanation of the relvant event corresponding to the
 ;      date and tag.
 ; 
 ;    tag : in, out, optional, type=string
