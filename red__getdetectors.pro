@@ -47,10 +47,13 @@
 ;
 ;   2017-08-09 : MGL. Better default dir for finding detector tags. 
 ; 
+;   2024-12-18 : MGL. Look for detector info in already summed files.
+;
 ;-
 pro red::getdetectors, dir = dir
 
-  inam = 'red::getdetectors : '
+  ;; Name of this program
+  inam = red_subprogram(/low, calling = inam1)
 
   ptr_free,self.detectors
   tagfil = self.out_dir+'/detectors.idlsave'
@@ -69,6 +72,7 @@ pro red::getdetectors, dir = dir
       ptr_valid(self.dark_dir) : dir = *self.dark_dir
       ptr_valid(self.pinh_dirs) : dir = *self.pinh_dirs
       ptr_valid(self.flat_dir) : dir = *self.flat_dir
+      file_test('darks') : dir = 'darks/'
       else : begin
         print, inam + ' : Cannot find detector names.'
         retall
@@ -76,23 +80,51 @@ pro red::getdetectors, dir = dir
     endcase
   endif
 
-  for i=0, n_elements(*self.cameras)-1 do begin
-    path_spec = dir + '/' + (*self.cameras)[i] + '/*'
-    files = file_search(path_spec, count=nf)
-    if( nf eq 0 || files[0] eq '' ) then begin
-      print, inam + 'ERROR -> no frames found in [' + dir + '] for ' + (*self.cameras)[i]
-      ctag = red_detectorname(files[0])
-    endif else begin
-      ctag = red_detectorname(files[0])
-    endelse
-    if ptr_valid(self.detectors) then red_append, *self.detectors, ctag $
-    else self.detectors = ptr_new(ctag, /NO_COPY)
-  endfor
-  
-  detectors = *self.detectors
+  if dir eq 'darks/' then begin
 
+    ;; Summed darks
+    files = file_search('darks/*fits', count=nf)
+
+    ;; Both cameras and detectors are in the headers
+    file_cams = red_fitsgetkeyword_multifile(files, 'CAMERA', count = cnt)
+    file_dets = red_fitsgetkeyword_multifile(files, 'DETECTOR', count = cnt)
+
+    ;; Remoce duplicates if any, could be darks with different exposure times.
+    file_cams = red_uniquify(file_cams, indx = indx)
+    file_dets = file_dets[indx]
+
+    ;; Sort the detectors in the order of self.cameras
+    match2, *self.cameras, file_cams, suba, subb
+    detectors = file_dets[suba]
+
+    self.detectors = ptr_new(strtrim(detectors, 2), /NO_COPY)
+    
+  endif else begin
+    
+    ;; Raw data
+    
+    for i=0, n_elements(*self.cameras)-1 do begin
+      path_spec = dir + '/' + (*self.cameras)[i] + '/*'
+      files = file_search(path_spec, count=nf)
+      if( nf eq 0 || files[0] eq '' ) then begin
+        print, inam + ' : ERROR -> no frames found in [' + dir + '] for ' + (*self.cameras)[i]
+        ctag = red_detectorname(files[0])
+      endif else begin
+        ctag = red_detectorname(files[0])
+      endelse
+      if ptr_valid(self.detectors) then red_append, *self.detectors, ctag $
+      else self.detectors = ptr_new(ctag, /NO_COPY)
+    endfor
+    
+    detectors = *self.detectors
+
+  endelse
+  
   save, file=tagfil, detectors
 
+  print, inam + ' : Write to '+tagfil
+  print,'   ' + *self.cameras + ' = ' + detectors, format='(a0)'
+  
   return
   
 end

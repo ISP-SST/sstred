@@ -66,9 +66,9 @@
 pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
                               , all = all $
                               , anchor = anchor $
-                              , stepnum = stepnum $
                               , last = last $
-                              , prstep = prstep 
+                              , prstep = prstep $
+                              , stepnum = stepnum 
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)

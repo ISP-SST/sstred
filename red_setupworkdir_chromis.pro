@@ -342,18 +342,35 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif                         ; Nsubdirs
   
   Nprefilters = n_elements(prefilters)
-  if Nprefilters gt 0 then begin
-    indx = uniq(prefilters, sort(prefilters))
-    is_wb = is_wb[indx]
-    is_pd = is_pd[indx]
-    prefilters = prefilters[indx]
-  endif else begin
+
+  if Nprefilters eq 0 then begin
     ;; This can happen if flats were already summed in La Palma and
     ;; then deleted. Look for prefilters in the summed flats directory
     ;; instead.
-    spawn, 'ls flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
-    ;; Need to set also cameras here.
-  endelse
+    if file_test(work_dir + '/flats') then begin
+      fdir = work_dir + '/flats/'
+      ;;  spawn, 'ls '+work_dir+'/flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
+    endif else if file_test(old_dir + '/flats') then begin
+      fdir = old_dir + '/flats/'
+      ;;   spawn, 'ls '+old_dir+'/flats/cam*.fits | cut -d. -f2|sort|uniq', prefilters
+    endif
+    fnames = file_search(fdir+'cam*fits', count = Nfiles)
+    if Nfiles eq 0 then stop
+    ;; New filenames with proper tuning but NB files having WB
+    ;; prefilter in the names and states.
+    red_extractstates, fnames, /basename, wav = wav, fullstate = fullstate, pref = prefilters
+    Nprefilters = n_elements(prefilters)
+    cameras = red_fitsgetkeyword_multifile(fnames, 'CAMERA', counts = cnt)
+    is_wb = strmatch(cameras, 'Chromis-[WD]')          
+    is_pd = strmatch(cameras, 'Chromis-D')
+  endif 
+
+  if Nprefilters eq 0 then stop
+
+  indx = uniq(prefilters, sort(prefilters))
+  is_wb = is_wb[indx]
+  is_pd = is_pd[indx]
+  prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
 
   if ~keyword_set(calibrations_only) then begin  
@@ -619,7 +636,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   if size(old_dir, /tname) ne 'STRING' then return
   
   ;; We will now attempt to copy existing sums of calibration data.
-
+  
   ;; Darks
   if file_test(old_dir+'/darks', /directory) then begin
     dfiles = file_search(old_dir+'/darks/cam*.dark.fits', count = Nfiles)

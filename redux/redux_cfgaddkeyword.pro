@@ -43,6 +43,8 @@
 ; 
 ;    2020-03-07 : MGL. Create hash if needed.
 ; 
+;    2024-10-17 : MGL. Value can be a hash.
+; 
 ;-
 pro redux_cfgaddkeyword, cfginfo, name, value $
                          , hcfg = hcfg 
@@ -64,6 +66,7 @@ pro redux_cfgaddkeyword, cfginfo, name, value $
 
     case 1 of
       n_elements(value) eq 0 : hcfg[name] = !true
+      isa(value, "hash") :  hcfg[name] = value
       isa(value, /array) : hcfg[name] = strjoin(strtrim(value, 2), ',')
       else : hcfg[name] = strtrim(value, 2)
     endcase
