@@ -284,7 +284,8 @@ pro red_getlog, date $
     if r0file then begin
 
       ;; Read r0 file
-      if isodate ge '2013-10-28' then begin
+;      if isodate ge '2013-10-28' then begin
+      if isodate ge red_dates(tag = 'AO 8x8') then begin
         ;; 8x8 measurements exist from this date.
         have8x8 = 1
         r0template = { VERSION:1.0 $
@@ -301,7 +302,7 @@ pro red_getlog, date $
                      }
         r0struct = {time:0d, r0_8x8:fltarr(9), r0_24x24:0. $
                     , closedloop:0., subimages:0.}
-      endif else begin
+        endif else begin
         have8x8 = 0
         r0template = { VERSION:1.0 $
                        , DATASTART:0L $

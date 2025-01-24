@@ -57,11 +57,17 @@ function red_dates $
   inam = red_subprogram(/low, calling = inam1)  
 
   ;; Define dates, tags, and explanations
+
+  red_append, tags, 'AO 8x8'
+  red_append, dates, '2013-10-28'
+  red_append, explanations, 'AO log has 8x8 measurements from '+dates[-1]
   
   red_append, tags, 'polcal flats'
   red_append, dates, '2023-10-12'
   red_append, explanations, 'Collection of flats for the polcal wavelengths routinely started on '+dates[-1]
 
+  
+  
   if n_elements(tag) gt 0 && n_elements(date) gt 0 then begin
 
     print, inam + ' : Please use only one of tag or date keywords'

@@ -508,7 +508,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + ", nthreads=nthreads"
         printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
-        if isodate ge red_dates(tag = 'polcal flats') then begin
+        if isodate ge red_dates(tag = 'polcal flats', explanation = explanation) then begin
+          print, explanation
           printf, Slun, "; The periodic filter should not be necessary when we have polcal flats"
           printf, Slun, "; a -> make_periodic_filter,'" + polprefs[ipref] + "'"
         endif else begin
