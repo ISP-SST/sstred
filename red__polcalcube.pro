@@ -62,7 +62,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
   ;; We started taking proper flats at the polcal wavelength in late
   ;; 2023. Flat-field the polcal data by default if the date is later
   ;; than that.
-  if (self.isodate LT red_getdates('polcal flats')) $
+  if (self.isodate LT red_dates(tag = 'polcal flats')) $
      && ~keyword_set(force_polcal_flatfielding) then no_polcal_flatfielding = 1B
 
   ;; Alternatively, check wavelength of polcal data and see if we have

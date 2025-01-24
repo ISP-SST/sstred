@@ -157,12 +157,12 @@ pro red::download, overwrite = overwrite $
 
   if ~any then begin 
     logs = 1
-    if self.isodate lt red_dates('CHROMIS tuning metadata') then linedefs = 1
+    if self.isodate lt red_dates(tag = 'CHROMIS tuning metadata') then linedefs = 1
   endif
   
   if keyword_set(all) then begin
     pig = 1
-    if self.isodate lt red_dates('CHROMIS tuning metadata') then linedefs = 1
+    if self.isodate lt red_dates(tag = 'CHROMIS tuning metadata') then linedefs = 1
     r0 = 1
     turret = 1
     armap = 1
@@ -176,7 +176,7 @@ pro red::download, overwrite = overwrite $
     pig = 1
   endif
   
-;  if self.isodate ge red_dates('CHROMIS tuning metadata') then linedefs = 0
+;  if self.isodate ge red_dates(tag = 'CHROMIS tuning metadata') then linedefs = 0
 
 
   dir = 'downloads/'            ; Make this part of the crispred class structure?

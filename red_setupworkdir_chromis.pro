@@ -270,7 +270,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     Nflatdirs = n_elements(flatdirs)
 
     ;; CHROMIS file names aren't wheel-and-hrz coded from 2022-11-03 
-    if isodate lt red_dates('CHROMIS tuning metadata') then begin
+    if isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
       ;; Do the linedefs and hrz_calib thing for earlier observations
       red_download_linedefs, isodate, flatdirs, work_dir
       chromis_hrz_zeropoint, work_dir
@@ -297,7 +297,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
         camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
         red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd, wav = wav
         
-        if isodate lt red_dates('CHROMIS tuning metadata') then begin
+        if isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
           ;; Old filenames with wheel and hrz
           red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd, wav = wav
         endif else begin
