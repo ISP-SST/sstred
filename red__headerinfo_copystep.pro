@@ -1,8 +1,8 @@
 ; docformat = 'rst'
 
 ;+
-; Copy FITS info about a processing step from one FITS header to
-; another. 
+; Copy FITS info about a processing step from one FITS header or file
+; to another.
 ; 
 ; :Categories:
 ;
@@ -142,7 +142,7 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
   
   ;; List of defined PR* keywords.
   prkeys = red_headerinfo_prkeys(count = Nkeys) 
-
+  
   ;; Combine steps indicated by the keywords
   if keyword_set(all) then red_append, stepnums, indgen(Navailable)+1
   if keyword_set(last) then red_append, stepnums, Navailable
@@ -241,7 +241,12 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
     outstep++                   ; Step number in the new header
   endfor                        ; istep
 
-end
+  if n_elements(filename) gt 0 then begin
+    ;; Write the new header to the file
+    red_fitscube_newheader, filename, hdr
+  endif
+  
+endif
 
 
 a = crispred(/dev)
