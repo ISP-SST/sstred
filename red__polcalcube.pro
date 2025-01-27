@@ -193,29 +193,36 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
         
         if(flat_failed) then begin
         
-          ;; No flat at polcal wavelength, check if there is another 
-          ffiles = file_search('flats/' $
-                               + selstates[0].detector + '_' $
-                               + selstates[0].cam_settings + '_' $
-                               + selstates[0].prefilter + '_' $
-                               + '*' $
-                               + 'lc'+strtrim(long(selstates[0].lc), 2) $
-                               + '.flat.fits' $
-                               , count = Ng )
-          
-          red_extractstates, ffiles, dwav = gtun_wavelength, wav = gtuning
-          mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
+          ;; No flat at polcal wavelength, check if there is another
+;          ffiles = file_search('flats/' $
+;                               + selstates[0].detector + '_' $
+;                               + selstates[0].cam_settings + '_' $
+;                               + selstates[0].prefilter + '_' $
+;                               + '*' $
+;                               + 'lc'+strtrim(long(selstates[0].lc), 2) $
+;                                        + '.flat.fits' $
+;                                        , count = Ng )
+          search_str = self -> filenames('flat', selstates[0], /wild_tuning)
+          ffiles = file_search(search_str, count = Ng)
+
+          self -> extractstates, ffiles, fstates
+          mn = min(abs(fstates.tun_wavelength - selstates[0].tun_wavelength),minloc)
+;          red_extractstates, ffiles, dwav = gtun_wavelength, wav = gtuning
+;          mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
           print
           print, inam + ' : There are no flat field data for the polcal wavelength.'
-          print, '   Tuning for the polcal data: '+selstates[0].tuning
-          print, '   Nearest flats tuning: '+gtuning[minloc]
+          print, '   Tuning for the polcal data: '+selstates[0].fpi_state
+          print, '   Nearest flats tuning: '+fstates[minloc].fpi_state
           s = ''
           read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
           
           if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then begin
-            gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
-            gstate.tuning = gtuning[minloc]
-            gstate.fpi_state = gtuning[minloc]
+            gstate.tun_wavelength =fstates[minloc].tun_wavelength
+            gstate.tuning = fstates[minloc].tuning
+            gstate.fpi_state = fstates[minloc].fpi_state
+;            gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
+;            gstate.tuning = gtuning[minloc]
+;            gstate.fpi_state = gtuning[minloc]
             ;;gains = fltarr(Nx, Ny, Nlc)
             for ilc = 0, Nlc-1 do begin
               gstate.lc = ulc[ilc]
