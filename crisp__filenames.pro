@@ -227,7 +227,12 @@ function crisp::filenames, datatype, states $
     if ~keyword_set(wild_framenumber) then framenumber = string(states[istate].framenumber $
                                                                 , format = '(i07)')
     if ~keyword_set(wild_prefilter)   then prefilter   = states[istate].prefilter
-    if ~keyword_set(wild_tuning)      then tuning      = states[istate].tuning
+    if ~keyword_set(wild_tuning)      then begin
+      if states[istate].tuning ne '' then $
+         tuning = states[istate].tuning $
+      else $
+         tuning = states[istate].fpi_state
+    endif
     
     undefine, tag_list
     dir = ''
@@ -358,9 +363,16 @@ function crisp::filenames, datatype, states $
         end
 
         'flat' : begin
-          dir = self.out_dir + '/flats/' 
-          red_append, tag_list, detector
-          red_append, tag_list, states[istate].fullstate
+          dir = self.out_dir + '/flats/'
+          if states[istate].is_wb then begin
+            red_append, tag_list, detector
+            red_append, tag_list, states[istate].fullstate
+          endif else begin
+            red_append, tag_list, detector
+            red_append, tag_list, states[istate].prefilter
+            red_append, tag_list, tuning
+            red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+          endelse
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
