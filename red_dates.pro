@@ -61,13 +61,9 @@ function red_dates $
   red_append, dates, '2013-10-28'
   red_append, explanations, 'AO log has 8x8 measurements from '+dates[-1]
 
-  ;; Add a date in Aug 2022 for when we switched CRISP cameras from
-  ;; Sarnoff to Ximea? The information usually available by looking in
-  ;; raw file formats or directories, or headers of processed files.
-  ;; But could potentially be usefull.
-;   red_append, tags, 'CRISP Ximea'
-;   red_append, dates, '2022-08-??'
-;   red_append, explanations, 'Installed new CRISP Ximea cameras from '+dates[-1]
+  red_append, tags, 'CRISP Ximea'
+  red_append, dates, '2022-08-19'
+  red_append, explanations, 'Installed new CRISP Ximea cameras from '+dates[-1]
   
   red_append, tags, 'CHROMIS tuning metadata'
   red_append, dates, '2022-11-03'
