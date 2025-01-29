@@ -246,7 +246,7 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
     red_fitscube_newheader, filename, hdr
   endif
   
-endif
+end
 
 
 a = crispred(/dev)
