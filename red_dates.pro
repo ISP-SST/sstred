@@ -57,6 +57,11 @@ function red_dates $
 
   ;; Define dates, tags, and explanations
 
+  ;; Note: Normally the tags whould never be changed. If you do it
+  ;; anyway, you need to make sure to change it also in any subprogram
+  ;; that uses it. (Also potentially in other branches. So don't do
+  ;; it. Really!)
+  
   red_append, tags, 'AO 8x8'
   red_append, dates, '2013-10-28'
   red_append, explanations, 'AO log has 8x8 measurements from '+dates[-1]
