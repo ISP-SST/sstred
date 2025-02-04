@@ -42,6 +42,15 @@
 ; 
 ; :Keywords:
 ; 
+;    model_parameters : out, optional, type="fltarr(15)"
+;   
+;      Telcal model parameters.
+;   
+;    no_solar_north : in, optional, type=boolean
+;   
+;      If set, do not correct for the rotation angle between last
+;      mirror and solar north direction.
+;   
 ;    no_zero_offset : in, optional, type=boolean
 ;   
 ;      If set, do not set the angle offset between polarimeter
@@ -54,10 +63,10 @@
 ;      old polcal whis has opposite handedness, set this keyword to
 ;      convert to the proper orientation.
 ;   
-;    no_solar_north : in, optional, type=boolean
+;    year : in, optional, type=integer, default=2015
 ;   
-;      If set, do not correct for the rotation angle between last
-;      mirror and solar north direction.
+;      The year of the observations, used to decide which year's
+;      calibrations to use.
 ;   
 ; :Restrictions:
 ;
@@ -86,9 +95,12 @@
 ; 
 ;   2018-10-24 : MGL. Added cases for 5173 (use 5250) and 6300 (use
 ;                6302). 
+; 
+;   2025-02-04 : MGL. New keyword model_parameters.
 ;
 ;-
 function red_telmat, lam, telpos, time $
+                     , model_parameters = par $
                      , NO_SOLAR_NORTH=nsn $
                      , NO_ZERO_OFFSET=nzo $
                      , OLD_POLCAL=oldpc $
