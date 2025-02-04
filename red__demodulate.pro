@@ -127,6 +127,10 @@
 ; 
 ;   2022-07-29 : MGL. Change from a CRISP:: method to a RED:: method. 
 ; 
+;   2025-02-04 : MGL. Added the telescope calibration model parameters
+;                and the telescope Mueller matrix as PRREF to the
+;                demodulation step information.
+; 
 ;-
 pro red::demodulate, outname, immr, immt $
                      , clips = clips $
@@ -135,6 +139,7 @@ pro red::demodulate, outname, immr, immt $
                      , nbrstates = nbrstates $
                      , nbtfac = nbtfac $
                      , nbtstates = nbtstates $
+                     , nearest = nearest $
                      , newalign = nal $
                      , noremove_periodic = noremove_periodic $
                      , nthreads = nthreads $
@@ -144,9 +149,8 @@ pro red::demodulate, outname, immr, immt $
                      , tiles = tiles $
                      , units = units $
                      , wbg = wbg $
-                     , wcs = wcs $
                      , wbstates = wbstates $
-                     , nearest = nearest 
+                     , wcs = wcs
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)                                  
@@ -195,7 +199,13 @@ pro red::demodulate, outname, immr, immt $
 ;  the data parts
     mr = rimg[0]
     roi = mr.roi
-    margin = mr.margin
+    if n_elements(mr.patch) eq 1 then begin
+      ;; Single subfield, no mosaic, no cropping by red_readdata.
+      margin = 0
+    endif else begin
+      ;; This is how much red_readdata crops a mosaic
+      margin = mr.margin
+    endelse
     x0 = roi[0] + margin
     x1 = roi[1] - margin
     y0 = roi[2] + margin
@@ -528,7 +538,7 @@ pro red::demodulate, outname, immr, immt $
   
   year = (strsplit(self.isodate, '-', /extract))[0]
   mtel = red_telmat(line, {TIME:tavg, AZ:azel[0], ELEV:azel[1], TILT:tilt} $
-                    , /no_zero, year=year)
+                    , /no_zero, year=year, model_parameters = telcal_parameters)
   imtel = invert(mtel) 
   imtel /= imtel[0]
 
@@ -562,9 +572,12 @@ pro red::demodulate, outname, immr, immt $
   
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'DEMODULATION' $
-                              , prpara = prpara $
-                              , prproc = inam
+     , prstep = 'DEMODULATION' $
+     , prpara = prpara $
+     , prmode = prmode $
+     , prproc = inam $
+     , prref = ['Telescope calibration model parameters: '+json_serialize(telcal_parameters) $
+                , 'Telescope Mueller matrix: '+json_serialize(mtel)]
 
   if ~keyword_set(noremove_periodic) and $
      (file_test('polcal/periodic_filter_'+prefilter+'.fits') or $
@@ -622,7 +635,8 @@ pro red::demodulate, outname, immr, immt $
   ;; Remove some irrelevant keywords
   red_fitsdelkeyword, hdr, 'TAB_HDUS' ; No tabulated headers in summed file
   red_fitsdelkeyword, hdr, 'FRAMENUM' ; No particular frame number
-  red_fitsdelkeyword, hdr, 'CADENCE'  ; Makes no sense to keep?
+  red_fitsdelkeyword, hdr, 'FRAMEINC' ; Makes no sense to keep
+  red_fitsdelkeyword, hdr, 'CADENCE'  ; Makes no sense to keep
   
   
   ;; Set various keywords in hdr. DATE* are useful.
