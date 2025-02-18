@@ -115,7 +115,11 @@
 ; 
 ;    2022-08-02 : MGL. Change from a CRISP:: method to a RED:: method
 ;                 to prepare for CRISP camera upgrade.
-; 
+;
+;    2024-11-02 : JdlCR. Modifications for new
+;                 demodulation/flat-fielding scheme. Now it also
+;                 handles a case with lccgain.
+;
 ;-
 pro red::get_calib, states $
                     , no_fits = no_fits $
@@ -129,7 +133,8 @@ pro red::get_calib, states $
                     , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
                     , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
                     , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
-                    , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata   
+                    , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata $
+                    , clcgainstatus = clcgainstatus, clcgainname = clcgainname, clcgaindata = clcgaindata
 
   Nstates = n_elements(states)
 
@@ -155,6 +160,8 @@ pro red::get_calib, states $
      sflatname = self -> filenames('sumflat', states, no_fits = no_fits)
   if arg_present(cflatname) or arg_present(cflatdata) then $
      cflatname = self -> filenames('cavityflat', states, no_fits = no_fits)
+  if arg_present(clcgainname) or arg_present(clcgaindata) then $
+     clcgainname = self -> filenames('cavityfree_lc_gain', states, no_fits = no_fits)
   if arg_present(cgainname) or arg_present(cgaindata) then $
      cgainname = self -> filenames('cavityfree_gain', states, no_fits = no_fits)
   if arg_present(sgainname) or arg_present(sgaindata) then $
@@ -262,13 +269,27 @@ pro red::get_calib, states $
 
   ;; Cavityfree gains    
   if arg_present(cgaindata) then begin
-    if n_elements(cgainname) ne 0 then begin
+    if n_elements(cgainname) ne 0 and file_test(cgainname) then begin
       
       cgaindata = red_readdata_multiframe(cgainname, status = cgainstatus, /silent)
       status = min([status, cgainstatus])
 
     endif else status = -1
   endif                         ; Cavityfree gains             
+
+  ;; Cavityfree_lc gains    
+  if arg_present(clcgaindata) then begin
+    if n_elements(clcgainname) ne 0 then begin
+      if ~file_test(clcgainname) then begin ; we need this for unpolarized gains
+        clcgainstatus = -1
+        status = -1
+      endif else begin
+        clcgaindata = red_readdata_multiframe(clcgainname, status = clcgainstatus, /silent)
+        status = min([status, clcgainstatus])
+      endelse
+    endif else status = -1     
+  endif                         ; Cavityfree gains         
+
   
   ;; Scan gains    
   if arg_present(sgaindata) then begin    

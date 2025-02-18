@@ -39,14 +39,15 @@
 ;   2013-06-10 : MGL. Rename the argument and add some documentation. 
 ;
 ;-
-function red_cleanmask, dirtymask
+function red_cleanmask, dirtymask, circular_aperture=circ
 
+  nkern = 5
   dims = size(dirtymask, /dim)
 
   mask = dirtymask ne 0
 
   oc = bytarr(dims[0]+2, dims[1]+2)
-  oc[1, 1] = morph_open(morph_close(mask,replicate(1,5,5)),replicate(1,5,5))
+  oc[1, 1] = morph_open(morph_close(mask,replicate(1,nkern,nkern)),replicate(1,nkern,nkern))
   labels = (label_region(oc, /all_neighbors))[1:dims[0], 1:dims[1]]
 
   for i = 0, 100 do begin 
@@ -59,6 +60,23 @@ function red_cleanmask, dirtymask
 
   mmm = min(mg, minlabel)
 
-  return, mask or (labels eq minlabel)
+  if keyword_set(circ) then begin
+    labels[0:nkern/2-1,*] = labels[nkern/2, nkern/2]
+    labels[*,0:nkern/2-1] = labels[nkern/2, nkern/2]
+    labels[dims[0]-nkern/2-1:dims[0]-1,*] = labels[nkern/2, nkern/2]
+    labels[*,dims[1]-nkern/2-1:dims[1]-1] = labels[nkern/2, nkern/2]
+    
+    circ= (labels ne labels[nkern/2, nkern/2])
 
+    idx = where(labels eq labels[0,0], count)
+    labels += 1
+    labels[idx]= 0
+    
+    return, mask eq 0 or labels eq 0
+  endif
+  
+
+  
+  
+  return, mask or (labels eq minlabel)
 end

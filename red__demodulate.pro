@@ -127,6 +127,9 @@
 ; 
 ;   2022-07-29 : MGL. Change from a CRISP:: method to a RED:: method. 
 ; 
+;   2025-01-22 : MGL. Set step PRMODE for new demodulation /
+;                flat-fielding scheme.
+;
 ;   2025-02-04 : MGL. Added the telescope calibration model parameters
 ;                and the telescope Mueller matrix as PRREF to the
 ;                demodulation step information.
@@ -569,7 +572,44 @@ pro red::demodulate, outname, immr, immt $
   check_fits, res, hdr, /update, /silent
   red_fitsaddkeyword, anchor = anchor, hdr, 'FILENAME', file_basename(outname)
   red_fitsaddkeyword, anchor = anchor, hdr, 'OBS_HDU', 1
-  
+
+
+  ;; Set prmode to indicate whether polcal was done with the new LC
+  ;; flat fielding or not. When no such mode is set, it should be
+  ;; understood to mean that the old method was used. If cavity free
+  ;; flats for each LC state exist, then the new method was used If
+  ;; cavity free flats without LC state exist, then the old method was
+  ;; used. If both exist, then we stop and ask or tell the user to
+  ;; start over.
+  self -> get_calib, nbtstates[0], cgainname = cgainname, clcgainname = clcgainname
+  c_exists   = file_test(cgainname[0])
+  clc_exists = file_test(clcgainname[0])
+  case 1 of
+
+    ~c_exists && ~clc_exists : begin
+      print, inam + ' : Cannot happen! Investigate!'
+      stop
+    end
+    
+    c_exists && clc_exists : begin
+      red_strflow, inam + ' : We have both LC cavity free gains and non-LC cavity free gains,' $
+                   + 'the latter probabluy left from earlier processing.' $
+                   + 'Please delete momfbd output, the gaintables/, flats/spectral_flats/,' $
+                   + 'cmap_intdif/, polcal_subs/, polcal/, and prefilter_fits/ subdirectories,' $
+                   + 'and then start over.'
+      retall
+    endcase
+
+    c_exists : begin
+      prmode = 'Non-LC gain polcal'
+    endcase
+
+    clc_exists : begin
+      prmode = 'LC gain polcal'
+    endcase
+
+  endcase
+
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
      , prstep = 'DEMODULATION' $

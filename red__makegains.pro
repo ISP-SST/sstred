@@ -70,7 +70,10 @@
 ;   2018-08-21 : MGL. New keyword files.
 ; 
 ;   2022-08-29 : MGL. CHROMIS --> RED.
-; 
+;
+;   2024-11-02 : JdlCR. Modifications for new
+;                demodulation/flat-fielding scheme.
+;
 ;-
 pro red::makegains, bad=bad $
                     , cam = cam $
@@ -100,26 +103,53 @@ pro red::makegains, bad=bad $
   endif
 
   ;; We want to run separately for regular and cavity-free flats 
-  cindx = where(strmatch(files, '*cavity*'), complement = findx, Ncav, ncomplement = Nnocav)
-  for iscav = 0, 1 do begin
+  cindx = where(strmatch(files, '*cavityfree*'), complement = findx, Ncav, ncomplement = Nnocav)
+  lccindx = where(strmatch(files[cindx], '*lc?_cavityfree*'), complement = oindx, Ncav, ncomplement = Noldcav)
 
-    if iscav then begin
-      if Ncav eq 0 then continue
-      flatname = files[cindx]
-    endif else begin
-      if Nnocav eq 0 then continue
-      flatname = files[findx]
-    endelse
+  ;; split cavityfree types in two separate lists
+  lccindx = cindx[lccindx]  
+  cindx = cindx[oindx]
+  
+
+  for iscav = 0, 2 do begin
+
+    if(iscav eq 0) then begin
+      if(Nnocav gt 0) then begin
+        flatname = files[findx]
+      endif else begin
+        continue
+      endelse
+    endif else if(iscav eq 1) then begin
+      if(Noldcav gt 0) then begin
+        flatname = files[cindx]
+      endif else begin
+        continue
+      endelse
+    endif else if(iscav eq 2) then begin
+      if(Ncav gt 0) then begin
+        flatname = files[lccindx]
+      endif else begin
+        continue
+      endelse
+    endif
+   
+    
     Nfiles = n_elements(flatname)
     if Nfiles eq 0 then continue
     
     self -> extractstates, flatname, states
 
-    if iscav then begin
-      gainname = self -> filenames('cavityfree_gain', states)
-    endif else begin
-      gainname = self -> filenames('gain', states)
-    endelse
+    case iscav of 
+      2: begin
+        gainname = self -> filenames('cavityfree_lc_gain', states)
+      end
+      1: begin
+        gainname = self -> filenames('cavityfree_gain', states)
+      end
+      0: begin
+        gainname = self -> filenames('gain', states)
+      end
+    endcase
     
     for ifile = 0L, Nfiles -1 do begin
       
@@ -130,7 +160,7 @@ pro red::makegains, bad=bad $
           continue
         endif
       endif
-      
+
       flat = red_readdata(flatname[ifile], head = hdr)
       
       ;; Only one camera?

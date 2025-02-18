@@ -101,6 +101,9 @@
 ; 
 ;    2024-07-04 : MGL. If old_dir is given, copy also polcal_sums.
 ; 
+;    2025-01-14 : MGL. No periodic filter needed when we have polcal
+;                 flats.
+; 
 ;-
 pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
                              , calibrations_only = calibrations_only $
@@ -505,7 +508,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + ", nthreads=nthreads"
         printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
-        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+        if isodate ge red_dates(tag = 'polcal flats', explanation = explanation) then begin
+          print, explanation
+          printf, Slun, "; The periodic filter should not be necessary when we have polcal flats"
+          printf, Slun, "; a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+        endif else begin
+          printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+        endelse
       endfor                    ; ipref
     endif
     
@@ -524,7 +533,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
               + ", nthreads=nthreads"
       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
               + ", nthreads=nthreads"
-      printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+      if isodate ge red_dates(tag = 'polcal flats', explanation = explanation) then begin
+        print, explanation
+        printf, Slun, "; The periodic filter should not be necessary when we have polcal flats"
+        printf, Slun, "; a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+      endif else begin
+        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+      endelse
     endfor                      ; ipref
   endif
   

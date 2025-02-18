@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <omp.h>
 #include <algorithm>
+#include <cstring>
 //#include <complex.h>
 #include <iostream>
 #include "types.h"
@@ -287,57 +288,113 @@ double get_polcomp2(int nwav, int npar, float wav, double *pars){
  
   return res;
 }
-double get_polcomp(int &nwav, int &npar, float wav, double *pars){
-  //
-  double res = 1.0;
-  double twav = 1.0;
-  //
-  if(npar <= 2) return res;
-  //
-  int ii = 2;
-  while(ii<npar){
+
+template<typename T>
+inline T get_polcomp(int const npol, T const wav, const T* const __restrict__ pars){
+  
+  T res = 1.0;
+  T twav = 1.0;  
+  
+  for(int ii=0; ii<npol; ++ii){
     twav *= wav;
     res += pars[ii] * twav;
-    ii += 1;
   }
-  //
+
   return res;
 }
-int fitgain_model(int nwav, int npar, double *pars, double *dev, double **derivs, void *tmp1){
+int fitgain_model(int nwavlc, int const npar, double* const pars, double* const dev, double** const derivs, void* const tmp1){
   //
-  fgd_t *tmp = (fgd_t*) tmp1;
+
+  fgd_t* const tmp = (fgd_t* const)tmp1;
+  int const nlc = tmp->nlc;
+  int const nwav = nwavlc / nlc;
+  
+  int const npar_one = (npar - 1) / nlc;
+  int const npol = npar_one-1;
+  
+  double const cmap = pars[0];
+  double* const polcom = new double[nwav]();
+  
+  
   //
   // interpolate to shifted grid (cavity error)
-  // 
-  double *twav = new double [nwav];
-  for(int ii = 0;ii<nwav;++ii) twav[ii] = tmp->wav[ii] - pars[1];
   //
-  double *spec = intep<double>(tmp->nmean, tmp->xl, tmp->yl, nwav, twav);
-  //
-  // Compute difference between model and observations
-  //
-  for(int ii=0;ii<nwav;++ii) dev[ii] = (pars[0] * spec[ii] * get_polcomp(nwav, npar, tmp->wav[ii], pars)) - tmp->idat[ii]; 
+  double* const __restrict__  twav = new double [nwav]();
+  for(int ii = 0;ii<nwav;++ii)
+    twav[ii] = tmp->wav[ii] - cmap;
+  
+  const double* const __restrict__  spec = intep<double>(tmp->nmean, tmp->xl, tmp->yl, nwav, twav);
+  delete [] twav;
+
+
+  // --- Now generate the model and compute the residue --- //
+  
+  for(int ss=0; ss<nlc; ++ss){
+    int const off = 1+ss*npar_one;
+    
+    const double* const __restrict__ ipars = &pars[off];
+    double*       const __restrict__ idif  = &dev[ss*nwav];
+    const float*  const __restrict__ idat  = &tmp->idat[ss*nwav];
+
+    for(int ii=0;ii<nwav;++ii){
+      polcom[ii] = get_polcomp(npol, double(tmp->wav[ii]), &ipars[1]) * spec[ii];
+    } // ii
+    double const ip0 = ipars[0];
+
+    //
+    // Compute difference between model and observations
+    //
+    for(int ii=0;ii<nwav;++ii){
+      idif[ii] = ((ip0 * polcom[ii]) - double(idat[ii])) / tmp->sig[ii];
+    } // ii
+    
+  } // ss
+  
   //
   // Clean-up
   //
   delete [] spec;
-  delete [] twav;
+  delete [] polcom;
   //
   return 0;
 }
-void get_ratio(int &nwav, int &npar, int &nmean, float *wav, float *dat, double *pars, float *xl, float *yl, float *ratio){
-  double *twav = new double [nwav];
-  for(int ii = 0;ii<nwav;++ii) twav[ii] = wav[ii] - pars[1];
-  //
-  double *spec = intep<double>(nmean, xl, yl, nwav, twav);
+
+
+void get_ratio(int const nwav, int const nlc, int const npar, int const nmean, float* const wav,\
+	       float *dat, double *pars, float *xl, float *yl, float *ratio)
+{
+  double const cmap = pars[0];
+
+  int const npar_one = (npar - 1) / nlc;
+  int const npol = std::max(npar_one - 1, 0);
+
+  // -- shifted wavelength array and shifted mean spectrum --- //
+  double *twav = new double [nwav]();
+  for(int ii = 0;ii<nwav;++ii) twav[ii] = wav[ii] - cmap;
+  const double* const __restrict__ spec = intep<double>(nmean, xl, yl, nwav, twav);
+  delete [] twav;
+
+  
   //
   // Compute difference between model and observations
   //
-  for(int ii=0;ii<nwav;++ii) ratio[ii] = dat[ii] / (pars[0] * spec[ii] * get_polcomp(nwav, npar, wav[ii], pars));
-  //
-  delete [] twav;
+  for(int ss=0; ss<nlc; ++ss){
+    
+    int const off = 1+ss*npar_one;
+    
+    double* const ipars = &pars[off];
+    double const gain = ipars[0];
+    
+    for(int ii=0;ii<nwav;++ii){
+      double const polc =  get_polcomp(npol, double(wav[ii]), &ipars[1]);
+      ratio[ii+ss*nwav] = dat[ii+ss*nwav] / (gain * spec[ii] * polc);
+    }
+  }
+  
   delete [] spec;
 }
+
+
 void get_ratio2(int &nwav, int &npar, int &nmean, float *wav, float *dat, double *pars, float *xl, float *yl, float *ratio){
   double *twav = new double [nwav];
   for(int ii = 0;ii<nwav;++ii) twav[ii] = wav[ii] - pars[1];
@@ -352,21 +409,22 @@ void get_ratio2(int &nwav, int &npar, int &nmean, float *wav, float *dat, double
   delete [] spec;
 }
 //
-void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, int nt){
-  fprintf(stderr, "cfitgain : nwav=%d, npar=%d, nmean=%d, npix=%d \n", nwav, npar, nmean, npix);
+void fitgain(int nwav, int nmean,  int nlc, int npar, int npix, float *xl, float *yl, float *wav, float *dat1, double *pars1, float *ratio1, double* sig, int nt){
+  fprintf(stderr, "cfitgain : nwav=%d, nlc=%d, npar=%d, nmean=%d, npix=%d \n", nwav, nlc, npar, nmean, npix);
   // return;
   //
   // Reshape vars
   //
-  float **dat = var2dim<float>(dat1, npix, nwav);
-  double **pars = var2dim<double>(pars1, npix, npar);
-  float **ratio = var2dim<float>(ratio1, npix, nwav);
-
+  int const nwavlc = nwav*nlc;
 
   
+  float **dat = var2dim<float>(dat1, npix, nwavlc);
+  double **pars = var2dim<double>(pars1, npix, npar);
+  float **ratio = var2dim<float>(ratio1, npix, nwavlc);
+
 
   float ma = 0.0;
-  size_t ndat = (size_t)npix * (size_t)nwav;
+  size_t const ndat = size_t(npix)*size_t(nlc)*size_t(nwav);
   for(size_t ii = 0; ii<ndat; ii++) ma = std::max(ma, dat1[ii]);
   
   //
@@ -375,24 +433,37 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
   int status;
   mp_result result;
   memset(&result,0,sizeof(result));
-  //
+  
+  
   mp_par fitpars[npar];
   memset(&fitpars[0], 0, sizeof(fitpars));
+  int const npar_one = (npar-1)/nlc;
+
+  // Note that inside the C module, par[0] is the cavity map and par[1] is the gain of lc0.
+  // We do this trick in order to have a regular stride between the parameters of each of the
+  // Lc states, but only one cavity error for all LC states.
+  for(int ii=0; ii<nlc; ++ii){
+    fitpars[1+ii*npar_one].limited[0] = 1;
+    fitpars[1+ii*npar_one].limited[1] = 1;
+    fitpars[1+ii*npar_one].limits[0] = 0;
+    fitpars[1+ii*npar_one].limits[1] = 4.0*ma;
+  }
   fitpars[0].limited[0] = 1;
   fitpars[0].limited[1] = 1;
-  fitpars[0].limits[0] = 0;
-  fitpars[0].limits[1] = 3.0*ma;
-  fitpars[1].limited[0] = 1;
-  fitpars[1].limited[1] = 1;
-  fitpars[1].limits[0] = -0.4;
-  fitpars[1].limits[1] = 0.4;
-  for(int ii=0;ii<=npar-1;++ii) fitpars[ii].side = 0;
+  fitpars[0].limits[0] = -0.4;
+  fitpars[0].limits[1] = 0.4;
+  
+  for(int ii=0;ii<npar;++ii) fitpars[ii].side = 0;
   //
   fgd_t tmp;
   tmp.xl = xl;
   tmp.yl = yl;
   tmp.wav = wav;
   tmp.nmean = nmean;
+  tmp.nlc = nlc;
+  tmp.sig = sig;
+
+  
   //
   double ntot = 100. / (npix - 1.0);
   //
@@ -410,24 +481,39 @@ void fitgain(int nwav, int nmean, int npar, int npix, float *xl, float *yl, floa
       int ntp = omp_get_num_threads();
       fprintf(stderr,"cfitgain : nthreads -> %d\n", ntp);
     }
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(dynamic, 2)
     for(ix = 0;ix<npix;++ix){
       //
       // Avoid masked pixels (pixel = 0.0)
       //
       tmp.idat = dat[ix];
       double sum = 0.0;
-      for(ww=0;ww<nwav;++ww) sum += tmp.idat[ww];
+      
+      for(ww=0;ww<nwavlc;++ww) sum += tmp.idat[ww];
+      sum /= nwavlc;
       //
       if(sum >= 1.E-1){
+
+	// --- make the cavity error the first parameter in the array in order to have a regular
+	//     stride for the parameters of all LCs
+	std::swap(pars[ix][0], pars[ix][1]);
+
+	
 	//
 	// Fit pixel
 	//
-	status = mpfit(fitgain_model, nwav, npar, pars[ix], fitpars, 0, (void*) &tmp, &result);
+	status = mpfit(fitgain_model, nwavlc, npar, pars[ix], fitpars, 0, (void*) &tmp, &result);
+
+	
 	//
 	// Get ratio dat / model
 	//
-	get_ratio(nwav, npar, nmean, wav, dat[ix], pars[ix], xl, yl, ratio[ix]);
+	get_ratio(nwav, nlc, npar, nmean, wav, dat[ix], pars[ix], xl, yl, ratio[ix]);
+
+	// --- Switch back to the default ordering --- //
+	
+	std::swap(pars[ix][0], pars[ix][1]);
+
       } else{nskip += 1;}
       //
       // Progress counter
@@ -805,24 +891,34 @@ void polcal_2d(pol_t pol, int nthreads, float *dat2d, double *res,float *cs, flo
     pol.qwp = qwp;
     pol.lp = lp;
     //
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(dynamic, 2)
       for(i=0;i<npix;i++){
 	//
 	//
-	  pol.dat = &dat2d[(uint64_t)i*ndata];
-	//
-	status = mpfit(compute_chisq_lm, ndata, npar, 
-		       &res[i*18], pars, &config, (void*) &pol, &result);
-	//
-	cs[i] = pol.Chisq;     
-	//
+	pol.dat = &dat2d[(uint64_t)i*ndata];
+	float sum = 0.0;
+	for(int kk=0; kk<ndata; ++kk) sum+= pol.dat[kk];
+
+	if(sum < 1.e-5){
+	  std::memset(&res[i*18],0,sizeof(double)*18);
+	}else{
+
+	
+	  //
+	  status = mpfit(compute_chisq_lm, ndata, npar, 
+			 &res[i*18], pars, &config, (void*) &pol, &result);
+	  //
+	  cs[i] = pol.Chisq;     
+	  //
+	  
+	}
 	if(pol.tid==0){
 	  per = (int)(ntot*i);
 	  if(per != oper){
 	    oper = per;
 	    fprintf(stderr, "\r%s fitting data -> %d%s",inam, per, "%");
 	  }
-
+	  
 	}
       }
     

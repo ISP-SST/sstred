@@ -6,7 +6,7 @@
 //
 // Overview
 //
-template <class T> T *intep(int &np, float *x, float *y, int &nxp, T *xp);
+//template <class T> T *intep(int &np, float *x, float *y, int &nxp, T *xp);
 template <class T> T *invert4x4(T *a);
 template <class T> void Shipley_Inversion(T **M,int m);
 template <class T> T *intep(int &np, double *x, double *y, int &nxp, T *xp);
@@ -14,7 +14,7 @@ template <class T> void intep(int &np, float *x, float *y, int &nxp, T *xp, T *y
 //
 // Definitions
 //
-template <class T> T *intep(int &np, float *x, float *y, int &nxp, T *xp){
+template <class T> T *intep(int const np, float* const x, float* const y, int const nxp, T* const xp){
   //
   int np1 = np - 1;
   T *yp  = new T [nxp];

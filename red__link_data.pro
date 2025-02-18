@@ -84,7 +84,7 @@ pro red::link_data, all_data = all_data $
   inam = red_subprogram(/low, calling = inam1)
 
   if ((typename(self)).tolower()) eq 'chromis' $
-     && self.isodate lt '2022-11-03' then begin
+     && self.isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
     ;; Use the old CHROMIS method for CHROMIS data with undecoded
     ;; wheel and hrz file names.
     self -> link_data_wheelhrz, all_data = all_data $
@@ -98,7 +98,9 @@ pro red::link_data, all_data = all_data $
   if n_elements(link_dir) eq 0 then link_dir = 'data'
   if n_elements(uscan) eq 0 then uscan = ''
 
-  instrument = ((typename(self)).tolower())
+  cams = *self.cameras
+  Ncams = n_elements(cams)
+  instrument = strupcase((strsplit(cams[0],'-',/extract))[0])
   
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then begin
@@ -110,7 +112,7 @@ pro red::link_data, all_data = all_data $
       if ~file_test(dirs[idir], /dir) then begin
         ;; This dir is not an existing directory.
         ;; Try to interpret as a selection from the default dirs.
-        tmp = file_search(self.root_dir + instrument.toupper() + '-*/' + dirs[idir], count = cnt)
+        tmp = file_search(self.root_dir + instrument + '-*/' + dirs[idir], count = cnt)
         if cnt eq 1 then dirs[idir] = tmp
         ;;    dirs[idir] = file_dirname((*self.data_dirs)[0])+'/'+dirs[idir]
       endif
@@ -124,9 +126,6 @@ pro red::link_data, all_data = all_data $
 
   linkerdir = self.out_dir + '/' + 'link_scripts' + '/'
   file_mkdir, linkerdir
-
-  cams = *self.cameras
-  Ncams = n_elements(cams)
   
   ;; Create file list
   for idir = 0L, Ndirs - 1 do begin

@@ -70,6 +70,9 @@
 ;
 ;   2023-11-01 : MGL. New keyword scanno.
 ;
+;   2024-11-02 : JdlCR. Modifications for new
+;                demodulation/flat-fielding scheme.
+;
 ;-
 pro red::sum_data_intdif, all = all $
                           , link_dir = link_dir $
@@ -371,6 +374,40 @@ pro red::sum_data_intdif, all = all $
       ;; Load fitgains results
       cmf = self.out_dir + '/flats/spectral_flats/' + detectors[icam] + '.' + $
             pref + '.' + 'fit_results.sav'
+
+      
+      
+      
+      ;; load gains
+      gains = fltarr(Nx,Ny,Ntunings,Nlc)
+      iscan = 0
+      
+      for ilc = 0L, Nlc - 1 do begin
+        for ituning = 0L, Ntunings - 1 do begin
+          
+          idx = where((mwav EQ uwav[ituning]) AND (mlc EQ ulc[ilc]) AND $
+                      (mscan EQ uscan[iscan]) AND mstar eq 0, count)
+          
+          
+          self -> get_calib, mstates[idx[0]], clcgaindata = gg, cgaindata=gg1, clcgainstatus=clcstat, $
+                             cgainstatus=cstat, cgainname=cgainname, clcgainname=clcgainname
+
+          if(clcstat gt -1) then begin
+            print, inam + ': loading gain '+ clcgainname
+            gains[*,*,ituning,ilc] = gg
+          endif else if(cstat gt -1) then begin
+            print, inam + ': loading gain '+ cgainname
+            gains[*,*,ituning,ilc] = gg1
+          endif else begin
+            print, inam+": ERROR: no valid gainfiles found for state -> "+mstates[idx[0]]
+            stop
+          endelse
+          
+        endfor
+      endfor
+      
+
+
       
       ;; Loop wavelengths within the scan
       for iscan = tt0[0], tt1[0] do begin
@@ -399,7 +436,7 @@ pro red::sum_data_intdif, all = all $
 
 
             ;; Read cavity free gains
-            self -> get_calib, mstates[idx[0]], cgaindata = gg
+            ;;self -> get_calib, mstates[idx[0]], clcgaindata = gg
             
             if keyword_set(verbose) then print, file_basename(mstates[idx].filename),format='(a0)'
             imsum = rdx_sumfiles(mstates[idx].filename, /check, nthreads = 2) - dd
@@ -410,7 +447,8 @@ pro red::sum_data_intdif, all = all $
               imsum = rdx_descatter(temporary(imsum), bff, pff, /verbose, nthreads = nthreads)
             endif
             
-            imsum = red_fillpix(temporary(imsum)*gg, nthreads=nthreads)
+            imsum = red_fillpix(temporary(imsum)*gains[*,*,ituning,ilc], nthreads=nthreads)
+            ;;imsum = red_fillpix(temporary(imsum), nthreads=nthreads)
 
             ele = iscan*Nlc*Ntunings + ilc*Ntunings + ituning
             dat[ele] = fix(round(7.0 * imsum))

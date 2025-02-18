@@ -46,12 +46,29 @@
 ;   2018-02-02 : MGL. Adapt to new codebase.
 ; 
 ;   2018-04-16 : MGL. Write single FITS files with extensions.
-; 
+;
+;   2024-11-21 : JdlCR. Implemented flatfielding of the modulation
+;                matrix for alternative demodulation done through. To
+;                revert to old behaviour use /no_polcal_flatfielding.
+;
 ;-
-pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads
-
+pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthreads = nthreads $
+                     , no_polcal_flatfielding = no_polcal_flatfielding $
+                     , force_polcal_flatfielding = force_polcal_flatfielding
+  
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)  
+
+  ;; We started taking proper flats at the polcal wavelength in late
+  ;; 2023. Flat-field the polcal data by default if the date is later
+  ;; than that.
+  if (self.isodate LT red_dates(tag = 'polcal flats')) $
+     && ~keyword_set(force_polcal_flatfielding) then no_polcal_flatfielding = 1B
+
+  ;; Alternatively, check wavelength of polcal data and see if we have
+  ;; flats at that wavelength. Then base the default processing on
+  ;; that! (This check is done later so we might be able to move that
+  ;; up to here. Or to the beginning of the prefilter loop.)
   
   ;; Check polcal_sums
   if(~file_test(self.out_dir + '/polcal_sums', /directory)) then begin
@@ -61,6 +78,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
 
   search_str = 'polcal_sums/'
   if keyword_set(cam) then search_str += cam + '/' else search_str += '*/'
+  if ~keyword_set(nthreads) then nthreads = 4L
   if keyword_set(pref) then $
      search_str += '*' + pref + '*.fits' $
   else $
@@ -68,6 +86,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
   files = file_search(self.out_dir + search_str, count = count)
   self -> extractstates, files, states, /polcal
 
+  
   upref = (states[uniq(states.prefilter, sort(states.prefilter))]).prefilter
   cams = (states[uniq(states.camera, sort(states.camera))]).camera
 
@@ -84,7 +103,8 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
   endif 
 
   Npref = n_elements(upref)
-
+  
+  
   ;; Loop prefilters
   for ipref = 0, Npref-1 do begin
     
@@ -92,7 +112,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
 
     undefine, use_gain
     
-    dodescatter = ~keyword_set(no_descatter)  AND self.dodescatter $
+    dodescatter = ~keyword_set(no_descatter) AND self.dodescatter $
                   and (upref[ipref] eq '8542' OR upref[ipref] eq '7772')    
     
     
@@ -138,11 +158,96 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       gstate = selstates[0]
       self -> get_calib, gstate $
                          , darkdata = dd, darkstatus  = darkstatus $
-                         , gainname = gn 
+                         , gainname = gn, flatname = fn
       if darkstatus ne 0 then stop
 
       gains = replicate(1., Nx, Ny, Nlc) ; Just unity until gain correction is sufficiently tested
-      mask = red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
+      mask = fltarr(Nx,Ny,Nlc) + 1.0 ;;red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
+      
+      flat_failed = 1
+      
+      if(~keyword_set(no_polcal_flatfielding) && (Nlc gt 1)) then begin
+        flat_failed = 0
+        if(file_test(fn)) then begin
+          for ilc=0,Nlc-1 do begin
+            self -> get_calib, selstates[ilc] $
+                               , darkdata = dd, darkstatus  = darkstatus $
+                               , gainname = gn, flatname = fn
+            if(file_test(fn)) then begin
+              print, inam + " : reading polcal flat-field file and making gain -> "+fn
+              ff = red_readdata(fn)
+              gains[*,*,ilc] = red_flat2gain(ff, bad=1.0, smooth=3.0, min=0.085, max=5.0)
+              if((gains[0,0,ilc] eq 0) && $
+                 (gains[0,-1,ilc] eq 0) && $
+                 (gains[-1,0,ilc] eq 0) && $
+                 (gains[-1,-1,ilc] eq 0)) then begin
+                mask[*,*,ilc] = red_cleanmask(gains[*,*,ilc] eq 0, /circ)
+              endif else mask[*,*,ilc] = 1.0
+            endif else begin
+              print, inam + "something is wrong, did we take flats in all LC states at polcal wavelength?"
+              flat_failed = 1
+              break 
+            endelse
+          endfor
+        endif else flat_failed = 1
+        
+        if(flat_failed) then begin
+        
+          ;; No flat at polcal wavelength, check if there is another
+;          ffiles = file_search('flats/' $
+;                               + selstates[0].detector + '_' $
+;                               + selstates[0].cam_settings + '_' $
+;                               + selstates[0].prefilter + '_' $
+;                               + '*' $
+;                               + 'lc'+strtrim(long(selstates[0].lc), 2) $
+;                                        + '.flat.fits' $
+;                                        , count = Ng )
+          search_str = self -> filenames('flat', selstates[0], /wild_tuning)
+          ffiles = file_search(search_str, count = Ng)
+
+          self -> extractstates, ffiles, fstates
+          mn = min(abs(fstates.tun_wavelength - selstates[0].tun_wavelength),minloc)
+;          red_extractstates, ffiles, dwav = gtun_wavelength, wav = gtuning
+;          mn = min(abs(gtun_wavelength - selstates[0].tun_wavelength * 1e10),minloc)
+          print
+          print, inam + ' : There are no flat field data for the polcal wavelength.'
+          print, '   Tuning for the polcal data: '+selstates[0].fpi_state
+          print, '   Nearest flats tuning: '+fstates[minloc].fpi_state
+          s = ''
+          read, '    Do you want to use it to flat-field the polcal data [Y/n]? ', s
+          
+          if strlen(s) eq 0 || ~(strlowcase(strmid(s, 0, 1)) eq 'n') then begin
+            gstate.tun_wavelength =fstates[minloc].tun_wavelength
+            gstate.tuning = fstates[minloc].tuning
+            gstate.fpi_state = fstates[minloc].fpi_state
+;            gstate.tun_wavelength = gtun_wavelength[minloc] * 1e-10
+;            gstate.tuning = gtuning[minloc]
+;            gstate.fpi_state = gtuning[minloc]
+            ;;gains = fltarr(Nx, Ny, Nlc)
+            for ilc = 0, Nlc-1 do begin
+              gstate.lc = ulc[ilc]
+              self -> get_calib, gstate, gainname = gainname $
+                                 , flatstatus  = flatstatus $
+                                 , flatname = fn, flatdata = ff
+              
+              
+              
+              if flatstatus ne 0 then stop
+              print, inam+" : loading flat data and making gain -> "+fn 
+              gains[*, *, ilc] = red_flat2gain(ff, bad=1.5, smooth=3.0, min=0.085, max=5.0)
+              if((gains[0,0,ilc] eq 0) && $
+                 (gains[0,-1,ilc] eq 0) && $
+                 (gains[-1,0,ilc] eq 0) && $
+                 (gains[-1,-1,ilc] eq 0)) then begin
+                mask[*,*,ilc] = red_cleanmask(gains[*,*,ilc] eq 0, /circ)
+              endif else mask[*,*,ilc] = 1.0
+
+            endfor              ; ilc              
+          endif
+        endif
+      endif
+      
+      mask = total(mask,3) ne 0
       
 ;      if file_test(gn) then begin
 ;        print, inam + ' : Gains exist for the polcal wavelength, using them.'
@@ -226,16 +331,21 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
               stop
             endif 
             red_progressbar, iloop, Nloop, /predict, cams[icam]+' : '+file_basename(selfiles[indx])
-            d[ilc,iqw,ilp,*,*] = red_readdata(selfiles[indx], /silent) - dd
+            tmp = red_readdata(selfiles[indx], /silent) - dd
             if dodescatter then $
-               d[ilc,iqw,ilp,*,*] = rdx_descatter(reform(d[ilc,iqw,ilp,*,*]) $
-                                                  , bg, psf, nthreads = nthreads) 
+               tmp = rdx_descatter(reform(tmp) , bg, psf, nthreads = nthreads) 
             
-            ;;red_show, reform(d[ilc,iqw,ilp,*, *]) * gains[*, *, ilc], /re
+            tmp = red_fillpix(tmp * gains[*, *, ilc], nthreads=max([nthreads,4]), mask=mask)
 
-            d[ilc,iqw,ilp,*,*] = reform(d[ilc,iqw,ilp,*, *]) * gains[*, *, ilc]
+            idx=where(tmp lt 0.00001, count, complement=idx1)
+            if(count gt 0) then tmp[idx] = 0.0
+
+            
+            
+            d[ilc,iqw,ilp,*,*] = tmp
             ;;d1d[ilc,iqw,ilp] = mean(d[ilc,iqw,ilp,100:Nx-101,100:Ny-101], /nan)
             d1d[ilc,iqw,ilp] = total(mask*reform(d[ilc,iqw,ilp,*, *]), /nan) / total_mask
+            
             ;; To be completely correct, total_mask would need to take
             ;; the number of NaNs into account. Otherwise we would
             ;; either have to make new mask each time and this is deep
@@ -271,6 +381,11 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'LP', 'Linear polarrizer angles'
       writefits, pname, ulp, ehdr, /append
 
+      mkhdr, ehdr, [flat_failed], /image
+      red_fitsaddkeyword, anchor = anchor, ehdr, 'EXTNAME', 'PF', 'Polcal flatfielding'
+      writefits, pname, [~flat_failed], ehdr, /append
+      
+      
     endfor                      ; icam
   endfor                        ; ipref
 

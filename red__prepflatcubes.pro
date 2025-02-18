@@ -62,6 +62,9 @@
 ;   2022-08-01 : MGL. New version for CRISP2 (and old CRISP with new
 ;                cameras) based on the old CRISP version.
 ;
+;   2024-11-02 : JdlCR. Modifications for new
+;                demodulation/flat-fielding scheme
+;
 ;-
 pro red::prepflatcubes, flatdir = flatdir $
                         , pref = pref $
@@ -157,9 +160,16 @@ pro red::prepflatcubes, flatdir = flatdir $
             print, pname
             continue
           endif
-          print, inam +' : loading polcal data -> '+pname
-          immt = red_readdata(pname)
-          immt = red_invert_mmatrix(temporary(immt))
+
+          polcal_flatfielding = mrdfits(pname,'PF')
+          
+          if(~polcal_flatfielding) then begin
+            print, inam +' : loading polcal data -> '+pname
+                      
+            immt = red_readdata(pname)
+            immt = red_invert_mmatrix(temporary(immt))
+          endif
+          
         endif
 
         ;; Load backscatter data?
@@ -172,7 +182,7 @@ pro red::prepflatcubes, flatdir = flatdir $
           if istate eq 0  then begin
             head = red_readhead(sstates[istate].filename)
             dim = fxpar(head, 'NAXIS*')
-            cub = fltarr([Nstates, dim])
+            cub = fltarr([Nstates, min([Nlc, 4]), dim])
             wav = dblarr(Nstates)
             tomask = bytarr(dim)
           endif
@@ -196,13 +206,14 @@ pro red::prepflatcubes, flatdir = flatdir $
               print, inam+' : lc3 -> '+strtrim(nlc3,2)
               stop
             endif
-            
+                        
             ;; Print info
-            print, inam+' : demodulating images: '
+            print, inam+' : processing images: '
             print, '   -> '+lc0
             print, '   -> '+lc1
             print, '   -> '+lc2
             print, '   -> '+lc3
+
             
             ;; Load data
             lc0 = red_readdata(lc0, /silent)
@@ -217,9 +228,21 @@ pro red::prepflatcubes, flatdir = flatdir $
               lc2 = rdx_descatter(temporary(lc2), bg, psf, /verbose, nthreads = nthreads)
               lc3 = rdx_descatter(temporary(lc3), bg, psf, /verbose, nthreads = nthreads)
             endif
-            
-            ;; Demodulate flats
-            tmp = reform((red_demodulate_simple(immt, lc0, lc1, lc2, lc3))[*,*,0]) 
+
+
+            if(~polcal_flatfielding) then begin
+              ;; Demodulate flats
+              tmp = reform((red_demodulate_simple(immt, lc0, lc1, lc2, lc3))[*,*,0]) 
+            endif else begin
+
+              dim = size(lc0, /dim)
+              tmp = fltarr(4,dim[0], dim[1])
+              
+              tmp[0,*,*] = lc0
+              tmp[1,*,*] = lc1
+              tmp[2,*,*] = lc2
+              tmp[3,*,*] = lc3
+            endelse
             
           endif else begin
                           
@@ -230,29 +253,30 @@ pro red::prepflatcubes, flatdir = flatdir $
             endif
             
           endelse
-          
-          idx = where(~finite(tmp) OR (tmp LT -0.001), nnan)
+
+          tmp1 = total(tmp,1)*0.25
+          idx = where(~finite(tmp1) OR (tmp1 LT -0.001), nnan)
           if nnan gt 0 then begin
-            tmp[idx] = 0.0
             tomask[idx] = 1B
           endif
           
           ;; Result
-          cub[istate, *, *] = tmp
+          cub[istate, *, *, *] = tmp
           ;;wav[istate] = sstates[istate].tun_wavelength
           wav[istate] = double((strsplit(sstates[istate].tuning,'_',/extract))[1])*1d-13
 
         endfor                  ; istate
 
-          
-        for jj = 0L, dim[1]-1 do for ii = 0L, dim[0]-1 do begin
-          if(tomask[ii,jj] eq 1B) then cub[*,ii,jj] = 0.0
-        endfor                  ; jj, ii
 
+       
+        for jj = 0L, dim[1]-1 do for ii = 0L, dim[0]-1 do begin
+          if(tomask[ii,jj] eq 1B) then cub[*,*,ii,jj] = 0.0
+        endfor                  ; jj, ii
+        
         ;; Sort states (so far they are sorted as strings -> incorrect order)
         print, inam + ' : sorting wavelengths ... ', FORMAT = '(A,$)'
         ord = sort(wav)
-        cub = (temporary(cub))[ord, *,*]
+        cub = (temporary(cub))[ord,*,*,*]
         wav = wav[ord]
         sstates = sstates[ord]
         print, 'done'
@@ -292,7 +316,7 @@ pro red::prepflatcubes, flatdir = flatdir $
         
         ;; Save as structure for new routines (red::fitgain_ng)
         print, inam + ' : saving -> ' + soutname
-        
+      
         save, file = outdir+soutname, cub, wav, namelist
         
       endif                     ; Nstates?      

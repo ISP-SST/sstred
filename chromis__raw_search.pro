@@ -118,7 +118,7 @@ function chromis::raw_search, dir $
   istring = 0
   for iscan = 0, Nscans-1 do begin
     for istate = 0, Nstates-1 do begin
-      if self.isodate ge '2022-11-03' then begin
+      if self.isodate ge red_dates(tag = 'CHROMIS tuning metadata') then begin
         if iswb and isflats then begin
           ;; Typical name: sst_camXXXI_00000_0001250_5896.fits
           searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
@@ -152,7 +152,8 @@ function chromis::raw_search, dir $
 
   files = red_file_search(searchstrings, dir, count = count)
   
-  if count gt 0 || isflats || self.isodate lt '2022-11-03' then return, files
+  if count gt 0 || isflats $
+     || self.isodate lt red_dates(tag = 'CHROMIS tuning metadata') then return, files
 
   ;; If we didn't find any files, this might be a mosaic science data
   ;; directory (not flats). Then the file names have an extra "mosNN"

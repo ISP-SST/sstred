@@ -40,7 +40,7 @@
 ;
 ;       Do not add cavity maps to the WCS metadata.
 ;
-;    noremove_periodic : in, optional, type=boolean
+;     noremove_periodic : in, optional, type=boolean
 ;
 ;       Do not attempt to use Fourier filtering to remove polcal
 ;       periodic artifacts. (See crisp::demodulate method.)
