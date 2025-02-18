@@ -124,8 +124,8 @@ pro red::get_calib, states $
                     , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata  $
                     , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata  $
                     , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata  $
-                    , polcname    = polcname,    polcdata  = polcdata                         $
-                    , polsname    = polsname,    polsdata  = polsdata                         $
+                    ,                            polcname  = polcname,  polcdata  = polcdata  $
+                    ,                            polsname  = polsname,  polsdata  = polsdata  $
                     , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
                     , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
                     , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
