@@ -212,7 +212,11 @@
 ;
 ;   2023-11-24 : MGL. New keyword no_narrowband.
 ;
-;   2024-06-04 : Pit. New keyword newalign, to use new polywarp pinhole align
+;   2024-06-04 : Pit. New keyword newalign, to use new polywarp
+;                pinhole align.
+;
+;   2025-02-19 : MGL. Remove keyword newalign, set it automatically
+;                based on what pinhole alignment method was used.
 ;
 ;-
 pro red::prepmomfbd, cams = cams $
@@ -227,7 +231,6 @@ pro red::prepmomfbd, cams = cams $
                      , maxshift = maxshift $
                      , modes = modes $
                      , momfbddir = momfbddir $
-                     , newalign = nal $
                      , nfac = nfac $
                      , nmodes = nmodes $
                      , no_descatter = no_descatter $
@@ -265,6 +268,10 @@ pro red::prepmomfbd, cams = cams $
   
   offset_dir = self.out_dir + '/calib/'
 
+  ;; Set the newalign keyword based on what pinhole alignment method
+  ;; was used.
+  if file_test(offset_dir+'/alignments_polywarp.sav') then newalign = 1
+  
   if(n_elements(maxshift) eq 0) then maxshift='30'
   maxshift = strcompress(string(maxshift), /remove_all)
   
@@ -389,25 +396,23 @@ pro red::prepmomfbd, cams = cams $
   endif
   refcam_name = cams[refcam]
   
-  IF keyword_set(nal) THEN BEGIN
-      ref_clip = self -> commonfov(align = align, cams = cams $
-                                   , extraclip = extraclip $
-                                   , output_dir = output_dir $
-                                   , prefilters = pref)
-  ENDIF ELSE BEGIN
-      
-        ;; NB: this will overwrite existing offset files !!
-      self -> getalignment, align = align, cams = cams, refcam = refcam $
-                            , prefilters = pref, output_dir = offset_dir $
-                            , extraclip = extraclip, /overwrite $
-                            , makeoffsets = 0
-
-      ref_idx = where( align.state1.camera eq refcam_name, Nref)
-      if Nref eq 0 then begin
-          print, inam, ' : Failed to get alignment for refererence camera: ', refcam_name
-          return
-      endif
-  ENDELSE
+  if keyword_set(newalign) then begin
+    ref_clip = self -> commonfov(align = align, cams = cams $
+                                 , extraclip = extraclip $
+                                 , output_dir = output_dir $
+                                 , prefilters = pref)
+  endif else begin
+    ;; NB: this will overwrite existing offset files !!
+    self -> getalignment, align = align, cams = cams, refcam = refcam $
+                                  , prefilters = pref, output_dir = offset_dir $
+                                  , extraclip = extraclip, /overwrite $
+                                  , makeoffsets = 0
+    ref_idx = where(align.state1.camera eq refcam_name, Nref)
+    if Nref eq 0 then begin
+      print, inam, ' : Failed to get alignment for refererence camera: ', refcam_name
+      return
+    endif
+  endelse
   
   detectors = strarr(Ncams)
   for icam = 0, Ncams-1 do detectors[icam] = self -> getdetector(cams[icam])
@@ -445,37 +450,37 @@ pro red::prepmomfbd, cams = cams $
     ;; Read gains for all cameras, remap them to the WB orientation
     ;; and position, AND them gt 0, to make a mask.
 
-    IF keyword_set(nal) THEN BEGIN
+    if keyword_set(newalign) then begin
           ;;; do I need the maps?  use from align when needed?
-        mask = 1b
-        mapidx = intarr(Ncams)
-        FOR icam = 0, Ncams-1 DO BEGIN
+      mask = 1b
+      mapidx = intarr(Ncams)
+      for icam = 0, Ncams-1 do begin
               ;;; should that not include prefilter?
-            gfiles = file_search('gaintables/'+detectors[icam]+'_*.fits')
-            g = red_readdata(gfiles[0])
-            indx = (where(align.state.camera EQ cams[icam]))[0]
-            mapidx[icam] = indx
-            g = poly_2d(g, align[indx].map_x, align[indx].map_y, miss = 0)
-            mask = mask AND (g GT 0)
-        ENDFOR
-        dims = size(mask, /dim)
-    ENDIF ELSE BEGIN
-        maps = fltarr(3, 3, Ncams)
-        for icam = 0, Ncams-1 do begin
-            gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
-            g = red_readdata(gfiles[0])
-            indx = where(align.state2.camera eq cams[icam])
-            maps[*, *, icam] = align[indx[0]].map
-            if icam eq 0 then begin
-                dims = size(g, /dim)
-                masks = fltarr([dims, Ncams])
-                mask = rdx_img_transform(invert(maps[*, *, 0]), g, /preserve) gt 0
-            endif else begin
-                mask AND= rdx_img_transform(invert(maps[*, *, icam]), g, /preserve) gt 0
-            endelse
-            masks[*, *, icam] = g gt 0 ; Masks for individual cameras
-        endfor                         ; icam
-    ENDELSE
+        gfiles = file_search('gaintables/'+detectors[icam]+'_*.fits')
+        g = red_readdata(gfiles[0])
+        indx = (where(align.state.camera EQ cams[icam]))[0]
+        mapidx[icam] = indx
+        g = poly_2d(g, align[indx].map_x, align[indx].map_y, miss = 0)
+        mask = mask and (g gt 0)
+      endfor                    ;  icam
+      dims = size(mask, /dim)
+    endif else begin
+      maps = fltarr(3, 3, Ncams)
+      for icam = 0, Ncams-1 do begin
+        gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
+        g = red_readdata(gfiles[0])
+        indx = where(align.state2.camera eq cams[icam])
+        maps[*, *, icam] = align[indx[0]].map
+        if icam eq 0 then begin
+          dims = size(g, /dim)
+          masks = fltarr([dims, Ncams])
+          mask = rdx_img_transform(invert(maps[*, *, 0]), g, /preserve) gt 0
+        endif else begin
+          mask and= rdx_img_transform(invert(maps[*, *, icam]), g, /preserve) gt 0
+        endelse
+        masks[*, *, icam] = g gt 0 ; Masks for individual cameras
+      endfor                       ; icam
+    endelse
     
     ;; Close small holes in the mask
     ste=[[0,1,0],[1,1,1],[0,1,0]]
@@ -506,12 +511,12 @@ pro red::prepmomfbd, cams = cams $
     ;; Zero MAXSHIFT outermost rows and columns in mask, in all cameras.
     tmp = bytarr(dims[0]-2*maxshift, dims[1]-2*maxshift) + 1
     tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
-    IF keyword_set(nal) THEN BEGIN
-        FOR icam = 0, Ncams-1 DO mask AND= $
-          poly_2d(tmp, align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, miss = 0)
-    ENDIF ELSE BEGIN
-        for icam = 0, Ncams-1 do mask AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
-    ENDELSE
+    if keyword_set(newalign) then begin
+      for icam = 0, ncams-1 do mask and= $
+         poly_2d(tmp, align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, miss = 0)
+    endif else begin
+      for icam = 0, Ncams-1 do mask AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
+    endelse
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
     
@@ -546,21 +551,21 @@ pro red::prepmomfbd, cams = cams $
 
           for icam = 0, Ncams-1 do begin
               ;; Are the coordinates within the NB frame?
-            IF keyword_set(nal) THEN BEGIN
-                coords = rdx_point_warp(align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, [sim_x[ix], sim_y[iy]])
-            ENDIF ELSE BEGIN
-                coords = rdx_point_transform( maps[*, *, icam], [sim_x[ix], sim_y[iy]])
-            ENDELSE
+            if keyword_set(newalign) then begin
+              coords = rdx_point_warp(align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, [sim_x[ix], sim_y[iy]])
+            endif else begin
+              coords = rdx_point_transform( maps[*, *, icam], [sim_x[ix], sim_y[iy]])
+            endelse
             coords_limited = coords
             coords_limited[0] = coords[0] >(numpoints/2+margin) <(dims[0]-1-numpoints/2-margin)            
             coords_limited[1] = coords[1] >(numpoints/2+margin) <(dims[1]-1-numpoints/2-margin)            
             if coords_limited[0] ne coords[0] or coords_limited[1] ne coords[1] then begin
               ;; If not, nudge them inside and transform back.
-              IF keyword_set(nal) THEN BEGIN
-                  coords = rdx_point_warp(align[mapidx[icam]].revmap_x, align[mapidx[icam]].revmap_y, coords_limited)
-              ENDIF ELSE BEGIN
-                  coords = rdx_point_transform( invert(maps[*, *, icam]), coords_limited)
-              ENDELSE
+              if keyword_set(newalign) then begin
+                coords = rdx_point_warp(align[mapidx[icam]].revmap_x, align[mapidx[icam]].revmap_y, coords_limited)
+              endif else begin
+                coords = rdx_point_transform( invert(maps[*, *, icam]), coords_limited)
+              endelse
               print, 'Changed!', ix, iy, icam
               sim_x[ix] = coords[0]
               sim_y[iy] = coords[1]              
@@ -578,7 +583,7 @@ pro red::prepmomfbd, cams = cams $
     sim_xy_string = strjoin(strtrim(sim_xy,2), ',')
     
   endif else begin   ;;; no FILL_FOV
-    IF ~keyword_set(nal) THEN ref_clip = align[0].clip
+    if ~keyword_set(newalign) then ref_clip = align[0].clip
     sim_roi = ref_clip
     sim_roi[[0,2]] += margin    ; shrink the common FOV by margin along all edges.
     sim_roi[[1,3]] -= margin
@@ -764,28 +769,28 @@ pro red::prepmomfbd, cams = cams $
         cfg.objects += '        GAIN_FILE=' + ref_gainname + LF
         cfg.objects += '        DARK_TEMPLATE=' + ref_darkname + LF
         cfg.objects += '        DARK_NUM=0000001' + LF
-        IF keyword_set(nal) THEN BEGIN
+        if keyword_set(newalign) then begin
              ;;; reference is no longer an identity map - we need to average matching maps
-            align_idx = where( align.state.camera eq cams[refcam], count)
-            IF count EQ 0 THEN stop
-            IF count GT 1 THEN BEGIN
-                ref_mapx = total(align[align_idx].map_x, 3)/count
-                ref_mapy = total(align[align_idx].map_y, 3)/count
-            ENDIF ELSE BEGIN
-                ref_mapx = align[align_idx].map_x
-                ref_mapy = align[align_idx].map_y
-            ENDELSE
-            cfg.objects += '        ALIGN_MAP_X='+strjoin(strtrim(ref_mapx[*], 2), ',') + LF
-            cfg.objects += '        ALIGN_MAP_Y='+strjoin(strtrim(ref_mapy[*], 2), ',') + LF
-        ENDIF ELSE BEGIN
-            cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
-        ENDELSE
+          align_idx = where( align.state.camera eq cams[refcam], count)
+          if count eq 0 then stop
+          if count gt 1 then begin
+            ref_mapx = total(align[align_idx].map_x, 3)/count
+            ref_mapy = total(align[align_idx].map_y, 3)/count
+          endif else begin
+            ref_mapx = align[align_idx].map_x
+            ref_mapy = align[align_idx].map_y
+          endelse
+          cfg.objects += '        ALIGN_MAP_X='+strjoin(strtrim(ref_mapx[*], 2), ',') + LF
+          cfg.objects += '        ALIGN_MAP_Y='+strjoin(strtrim(ref_mapy[*], 2), ',') + LF
+        endif else begin
+          cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align[0].map, 9), 2), ',') + LF
+        endelse
 
-        if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
+        if( upref[ipref] eq '8542' or upref[ipref] eq '7772' ) and $
            ~keyword_set(no_descatter) AND self.dodescatter then begin
           self -> loadbackscatter, detectors[refcam], upref[ipref] $
                                    , bgfile = bgf, bpfile = psff
-          if(file_test(psff) AND file_test(bgf)) then begin
+          if(file_test(psff) and file_test(bgf)) then begin
             cfg.objects += '        PSF=' + psff + LF
             cfg.objects += '        BACK_GAIN=' + bgf + LF
           endif else begin
@@ -798,31 +803,31 @@ pro red::prepmomfbd, cams = cams $
         cfg.objects += '    }' + LF
 
         if ~keyword_set(no_pd) then begin ; PD channel
-          IF keyword_set(nal) THEN BEGIN
-              align_idx = where( align.state.camera eq cams[pdcam], count)
-              IF count EQ 0 THEN CONTINUE
-              IF count GT 1 THEN BEGIN
-                  pd_mapx = total(align[align_idx].map_x, 3)/count
-                  pd_mapy = total(align[align_idx].map_y, 3)/count
-              ENDIF ELSE BEGIN
-                  pd_mapx = align[align_idx].map_x
-                  pd_mapy = align[align_idx].map_y
-              ENDELSE
-          ENDIF ELSE BEGIN
-              align_idx = where( align.state2.camera eq cams[pdcam], count)
-
-              if count eq 0 then begin
-                ;;print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
-                ;;stop
-                  continue
-              endif
-          
-              if count gt 1 then begin
-                  pd_map = median(align[align_idx].map, dim = 3)
-              endif else begin
-                  pd_map = align[align_idx].map
-              endelse
-          ENDELSE
+          if keyword_set(newalign) then begin
+            align_idx = where( align.state.camera eq cams[pdcam], count)
+            if count eq 0 then continue
+            if count gt 1 then begin
+              pd_mapx = total(align[align_idx].map_x, 3)/count
+              pd_mapy = total(align[align_idx].map_y, 3)/count
+            endif else begin
+              pd_mapx = align[align_idx].map_x
+              pd_mapy = align[align_idx].map_y
+            endelse
+          endif else begin
+            align_idx = where( align.state2.camera eq cams[pdcam], count)
+            
+            if count eq 0 then begin
+              ;;print, inam, ' : Failed to get ANY alignment for camera/state ', cams[icam] + ':' + thisstate
+              ;;stop
+              continue
+            endif
+            
+            if count gt 1 then begin
+              pd_map = median(align[align_idx].map, dim = 3)
+            endif else begin
+              pd_map = align[align_idx].map
+            endelse
+          endelse
           
           if n_elements(align_idx) gt 1 then align_idx = align_idx[0] ; just pick the first one for now
           state_align = align[align_idx]
@@ -833,16 +838,16 @@ pro red::prepmomfbd, cams = cams $
           cfg.objects += '        GAIN_FILE=' + pd_gainname + LF
           cfg.objects += '        DARK_TEMPLATE=' + pd_darkname + LF
           cfg.objects += '        DARK_NUM=0000001' + LF
-          IF keyword_set(nal) THEN BEGIN
-              cfg.objects += '        ALIGN_MAP_X='+strjoin(strtrim(pd_mapx[*], 2), ',') + LF
-              cfg.objects += '        ALIGN_MAP_Y='+strjoin(strtrim(pd_mapy[*], 2), ',') + LF
-          ENDIF ELSE BEGIN
-              cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(pd_map, 9), 2), ',') + LF
-          ENDELSE
+          if keyword_set(newalign) then begin
+            cfg.objects += '        ALIGN_MAP_X='+strjoin(strtrim(pd_mapx[*], 2), ',') + LF
+            cfg.objects += '        ALIGN_MAP_Y='+strjoin(strtrim(pd_mapy[*], 2), ',') + LF
+          endif else begin
+            cfg.objects += '        ALIGN_MAP='+strjoin(strtrim(reform(pd_map, 9), 2), ',') + LF
+          endelse
           if( upref[ipref] EQ '8542' OR upref[ipref] EQ '7772' ) AND $
              ~keyword_set(no_descatter) AND self.dodescatter then begin
             self -> loadbackscatter, detectors[refcam], upref[ipref] $
-                                     , bgfile = bgf, bpfile = psff
+               , bgfile = bgf, bpfile = psff
             if(file_test(psff) AND file_test(bgf)) then begin
               cfg.objects += '        PSF=' + psff + LF
               cfg.objects += '        BACK_GAIN=' + bgf + LF
@@ -965,40 +970,40 @@ pro red::prepmomfbd, cams = cams $
               ;; (There does not seem to be any consistency in
               ;; parameters that motivate wavelength interpolation.)
               ;; But don't use median for the polynomial maps!!
-              IF keyword_set(nal) THEN BEGIN
-                  align_idx = where( align.state.camera EQ cams[icam] AND $
-                                     align.state.prefilter eq ustates[istate].prefilter, Nalign)
-                  CASE Nalign OF
-                      0: BEGIN
-                          print, inam, ' : Failed to get ANY alignment for camera/state ' $
-                                 , cams[icam] + ':' + thisstate
-                          stop
-                      END
-                      1: BEGIN
-                          align_mapx = align[align_idx].map_x
-                          align_mapy = align[align_idx].map_y
-                      END
+              if keyword_set(newalign) then begin
+                align_idx = where( align.state.camera eq cams[icam] and $
+                                   align.state.prefilter eq ustates[istate].prefilter, Nalign)
+                case Nalign of
+                  0: begin
+                    print, inam, ' : Failed to get ANY alignment for camera/state ' $
+                           , cams[icam] + ':' + thisstate
+                    stop
+                  end
+                  1: begin
+                    align_mapx = align[align_idx].map_x
+                    align_mapy = align[align_idx].map_y
+                  end
                       
-                      ELSE: BEGIN
+                  else: begin
                             ;;; average, or find the closest?
-                          align_mapx = total(align[align_idx].map_x, 3)/Nalign
-                          align_mapy = total(align[align_idx].map_y, 3)/Nalign
-                      END
-                  ENDCASE
-                  
-              ENDIF ELSE BEGIN
-                  align_idx = where( align.state2.camera eq cams[icam] and $
-                                     align.state2.prefilter eq ustates[istate].prefilter, Nalign)
-                  case Nalign of
-                      0 : begin
-                          print, inam, ' : Failed to get ANY alignment for camera/state ' $
-                                 , cams[icam] + ':' + thisstate
-                          stop
-                      END
-                      1    : align_map =        align[align_idx].map
-                      else : align_map = median(align[align_idx].map, dim = 3)
-                  endcase
-              ENDELSE
+                    align_mapx = total(align[align_idx].map_x, 3)/Nalign
+                    align_mapy = total(align[align_idx].map_y, 3)/Nalign
+                  end
+                endcase
+                
+              endif else begin
+                align_idx = where( align.state2.camera eq cams[icam] and $
+                                   align.state2.prefilter eq ustates[istate].prefilter, Nalign)
+                case Nalign of
+                  0 : begin
+                    print, inam, ' : Failed to get ANY alignment for camera/state ' $
+                           , cams[icam] + ':' + thisstate
+                    stop
+                  END
+                  1    : align_map =        align[align_idx].map
+                  else : align_map = median(align[align_idx].map, dim = 3)
+                endcase
+              endelse
               ;; Create cfg object
               cfg_list[cfg_idx].objects += 'object{' + LF
               cfg_list[cfg_idx].objects += '    WAVELENGTH=' + strtrim(ustates[istate].pf_wavelength,2) + LF
@@ -1013,16 +1018,16 @@ pro red::prepmomfbd, cams = cams $
               cfg_list[cfg_idx].objects += '        GAIN_FILE=' + gainname + LF            ; ******
               cfg_list[cfg_idx].objects += '        DARK_TEMPLATE=' + darkname + LF
               cfg_list[cfg_idx].objects += '        DARK_NUM=0000001' + LF
-              IF keyword_set(nal) THEN BEGIN
-                  cfg_list[cfg_idx].objects += '        ALIGN_MAP_X='+strjoin(strtrim(align_mapx[*], 2), ',') + LF
-                  cfg_list[cfg_idx].objects += '        ALIGN_MAP_Y='+strjoin(strtrim(align_mapy[*], 2), ',') + LF
-              ENDIF ELSE BEGIN
-                  cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align_map, 9), 2), ',') + LF
-              ENDELSE
-              if( ustates[istate].prefilter EQ '8542' OR ustates[istate].prefilter EQ '7772' ) AND $
-                 ~keyword_set(no_descatter) AND self.dodescatter then begin
+              if keyword_set(newalign) then begin
+                cfg_list[cfg_idx].objects += '        ALIGN_MAP_X='+strjoin(strtrim(align_mapx[*], 2), ',') + LF
+                cfg_list[cfg_idx].objects += '        ALIGN_MAP_Y='+strjoin(strtrim(align_mapy[*], 2), ',') + LF
+              endif else begin
+                cfg_list[cfg_idx].objects += '        ALIGN_MAP='+strjoin(strtrim(reform(align_map, 9), 2), ',') + LF
+              endelse
+              if( ustates[istate].prefilter eq '8542' or ustates[istate].prefilter eq '7772' ) and $
+                 ~keyword_set(no_descatter) and self.dodescatter then begin
                 self -> loadbackscatter, detectors[icam], ustates[istate].prefilter, bgfile = bgf, bpfile = psff
-                if(file_test(psff) AND file_test(bgf)) then begin
+                if(file_test(psff) and file_test(bgf)) then begin
                   cfg_list[cfg_idx].objects += '        PSF=' + psff + LF
                   cfg_list[cfg_idx].objects += '        BACK_GAIN=' + bgf + LF
                 endif else begin
@@ -1153,12 +1158,14 @@ pro red::prepmomfbd, cams = cams $
   for idir = 0, Ndirs-1 do begin
     if ismos[idir] then begin
       ;; Replicate config files for each mosaic tile
-      self -> prepmomfbd_mosaic, dirs=dirs[idir], momfbddir=momfbddir, pref = pref, no_fitsheaders = no_fitsheaders
+      self -> prepmomfbd_mosaic, dirs=dirs[idir], momfbddir=momfbddir $
+                                      , pref = pref, no_fitsheaders = no_fitsheaders
     endif else begin
       ;; Make header-only fits files to be read post-momfbd.
       if ~keyword_set(no_fitsheaders) then $
          self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir = momfbddir, pref = pref $
-                                         , scanno = escan, no_narrowband = no_narrowband
+                                              , scanno = escan, no_narrowband = no_narrowband 
+
     endelse
   endfor                        ; idir
 
