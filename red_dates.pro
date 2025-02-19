@@ -74,11 +74,15 @@ function red_dates $
   red_append, dates, '2022-11-03'
   red_append, explanations, 'CHROMIS tuning metadata avaialble from '+dates[-1]
   
+  red_append, tags, 'pinhole array with L'
+  red_append, dates, '2023-01-01'
+  red_append, explanations, 'Pinhole array with larger pinhole in L configuration installed after '+dates[-1]
+
   red_append, tags, 'polcal flats'
   red_append, dates, '2023-10-12'
   red_append, explanations, 'Collection of flats for the polcal wavelengths routinely started on '+dates[-1]
 
-  
+
   
   if n_elements(tag) gt 0 && n_elements(date) gt 0 then begin
 
