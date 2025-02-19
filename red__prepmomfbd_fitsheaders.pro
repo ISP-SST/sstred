@@ -16,6 +16,10 @@
 ; 
 ; :Keywords:
 ;
+;    cfg_tag : in, optional, type=string
+;
+;       A short string to be added to the "cfg" part of the path.
+;
 ;    no_pd : in, optional, type=boolean
 ;   
 ;       Set this to exclude phase diversity data and processing. 
@@ -50,8 +54,11 @@
 ;    2024-06-10 : MGL. Rewritten to cope better with both TRACE
 ;                 objects and mosaic observations.
 ; 
+;    2025-01-29 : MGL. New keyword cfg_tag.
+; 
 ;-
 pro red::prepmomfbd_fitsheaders, dirs = dirs $
+                                 , cfg_tag = cfg_tag $
                                  , momfbddir = momfbddir $
                                  , mosaic = mosaic $
                                  , no_narrowband = no_narrowband $
@@ -102,7 +109,11 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
     
     for ipref = 0, Nprefs-1 do begin
       
-      cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
+      if n_elements(cfg_tag) gt 0 then begin
+        cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg_' + cfg_tag + '/'
+      endif else begin
+        cfg_dir = cfg_base_dir + PATH_SEP() + prefs[ipref] + PATH_SEP() + 'cfg/'
+      endelse
       if keyword_set(mosaic) then begin
         ;; For automatic mosaic observations
         cfg_files = file_search(cfg_dir + 'momfbd_reduc_mos??_' + prefs[ipref] $
