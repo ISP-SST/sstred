@@ -50,6 +50,10 @@
 ;      Restrict to specified cameras. Default is to use all
 ;      cameras listed in *(self.cameras).
 ;
+;    no_polywarp ; in, optional, type=boolean
+;
+;      Do not use the polywarp model for camera alignments.   
+;
 ;    refcam : in, optional, type=integer, default=0
 ;
 ;      Select reference-channel.
@@ -110,23 +114,47 @@
 ;   2020-10-29 : JdlCR propagate more keywords to phverify, allow the
 ;                user to provide an external initialization
 ;
+;   2025-02-18 : MGL. Call pinholecalib2 for polywarp method for data
+;                with new pinhole array. Also new keyword no_polywarp.
+;
 ;-
 pro red::pinholecalib, cams = cams $
                        , dir = dir $
+                       , init = init $
                        , margin = margin $
                        , max_shift = max_shift $
                        , nref = nref $
+                       , no_polywarp = no_polywarp $
                        , overwrite = overwrite $
                        , pref = pref $
                        , refcam = refcam $
                        , smooth = smooth $
                        , threshold = threshold $
                        , verbose = verbose $
-                       , verify = verify $
-                       , init = init
+                       , verify = verify 
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)  
+
+  if self.isodate gt red_dates(tag = 'pinhole array with L') && $
+     ~keyword_set(no_polywarp) then begin
+    ;; When the new pinhole array is installed, switch to using the
+    ;; new polywarp model by default.
+    self -> pinholecalib2 $
+       , avg_fpistates = avg_fpistates $ ; Keyword not used
+       , cams=cams $
+       , dir=dir $
+       , manual=manual $
+       , margin=margin $
+       , overwrite=overwrite $
+       , pref=pref $
+       , refcam=refcam $
+       , threshold=threshold $
+       , verbose=verbose $      ; Keyword not used
+       , verify=verify $        ; Keyword not used
+       , warp_dim=warp_dim
+    return
+  endif
   
   ;; Logging
   help, /obj, self, output = selfinfo 
@@ -201,7 +229,9 @@ pro red::pinholecalib, cams = cams $
   for icam = 0, Ncams-1 do begin
     if icam EQ refcam then continue
     self->selectfiles, files=all_files, states=states, cam = cams[icam] $
-                       , /strip_settings, selected=selection, prefilter=pref
+                       , /strip_settings, selected=selection, prefilter=pref, count = Nselect
+    if Nselect eq 0 then continue
+
     cam_states = states[selection]
 
     cam_states_unique = cam_states.fpi_state
@@ -285,7 +315,8 @@ pro red::pinholecalib, cams = cams $
       
       if (last_prefilter ne this_prefilter) or (this_map[2,2] ne 1) then begin
         if keyword_set(verify) then begin
-          this_map = red_phverify( ref_img, cam_img, this_map, nref=nref, threshold=threshold, max_shift=max_shift, margin=margin)
+          this_map = red_phverify( ref_img, cam_img, this_map, nref=nref, threshold=threshold $
+                                   , max_shift=max_shift, margin=margin)
           this_init = this_map
         endif
       endif else begin
