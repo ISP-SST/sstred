@@ -111,6 +111,17 @@
 ;    padmargin : in, optional, type=integer, default=40
 ;
 ;       Amount of rotation padding in pixels.
+;
+;    patch_coord : in, out, optional, type="array(2)"
+;
+;       Make a cube with only the patch with these coordinates, as
+;       specified with the SIM_X/Y/XY momfbd configuration keywords.
+;       Do not use both patch_coord and patch_indx at the same time.
+;
+;    patch_indx : in, out, optional, type=integer
+;
+;       Make a cube with only this single patch. Do not use both
+;       patch_coord and patch_indx at the same time.
 ; 
 ;    point_id : in, optional, type=string, default="From first file"
 ;
@@ -240,7 +251,9 @@
 ;                 Moved time-dependent intensity correction after cube
 ;                 alignment.
 ;
-;    2023-06-20 :  MGL. New keyword use_turret_coordinates.
+;    2023-06-20 : MGL. New keyword use_turret_coordinates.
+;
+;    2025-02-19 : MGL. New keywords patch_indx and patch_coord.
 ;
 ;-
 pro red::make_wb_cube, dirs $
@@ -263,6 +276,8 @@ pro red::make_wb_cube, dirs $
                        , ofile = ofile  $
                        , oldname = oldname $
                        , padmargin = padmargin $
+                       , patch_indx = patch_indx $
+                       , patch_coord = patch_coord $
                        , point_id = point_id $
                        , rotation = rotation $
                        , scannos = scannos $
@@ -320,7 +335,9 @@ pro red::make_wb_cube, dirs $
   red_make_prpara, prpara, nomissing_nans
   red_make_prpara, prpara, nostretch
   red_make_prpara, prpara, np
-  red_make_prpara, prpara, padmargin 
+  red_make_prpara, prpara, padmargin
+  red_make_prpara, prpara, patch_indx
+  red_make_prpara, prpara, patch_coord
   red_make_prpara, prpara, point_id 
   red_make_prpara, prpara, rotation
   red_make_prpara, prpara, scannos
@@ -453,36 +470,49 @@ pro red::make_wb_cube, dirs $
   date = strarr(Nscans)
   tmean = fltarr(Nscans)
 
-  x01y01 = red_bad_subfield_crop(wfiles, crop $
-                                 , autocrop = autocrop  $
-                                 , direction = direction $
-                                 , interactive = interactive)
-  
-  x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
+  if n_elements(patch_coord) ne 0 or n_elements(patch_indx) ne 0 then begin
+    mr = momfbd_read(wfiles[0], /img)
+    x0 = 0
+    y0 = 0
+    x1 = mr.patch[0].xh - mr.patch[0].xl
+    y1 = mr.patch[0].yh - mr.patch[0].yl
+    x01y01 = [x0, x1, y0, y1]
+    crop = [0, 0, 0, 0]
+  endif else begin
+    x01y01 = red_bad_subfield_crop(wfiles, crop $
+                                   , autocrop = autocrop  $
+                                   , direction = direction $
+                                   , interactive = interactive)
+    
+    x0 = x01y01[0] & x1 = x01y01[1] & y0 = x01y01[2] & y1 = x01y01[3]
+  endelse
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
 
   ;; Observations metadata varaibles
-  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
-  tavg_array     = dblarr(1, Nscans) ; Time average for state
-  tend_array     = dblarr(1, Nscans) ; Time end for state
-  date_beg_array = strarr(1, Nscans) ; DATE-BEG for state
-  date_avg_array = strarr(1, Nscans) ; DATE-AVG for state
-  date_end_array = strarr(1, Nscans) ; DATE-END for state
-  exp_array      = fltarr(1, Nscans) ; Total exposure time
-  sexp_array     = fltarr(1, Nscans) ; Single exposure time
-  nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
-  date_obs_array = strarr(Nscans)    ; Datasets for each scan
-
+  tbeg_array     = dblarr(1, Nscans)   ; Time beginning for state
+  tavg_array     = dblarr(1, Nscans)   ; Time average for state
+  tend_array     = dblarr(1, Nscans)   ; Time end for state
+  date_beg_array = strarr(1, Nscans)   ; DATE-BEG for state
+  date_avg_array = strarr(1, Nscans)   ; DATE-AVG for state
+  date_end_array = strarr(1, Nscans)   ; DATE-END for state
+  exp_array      = fltarr(1, Nscans)   ; Total exposure time
+  sexp_array     = fltarr(1, Nscans)   ; Single exposure time
+  nsum_array     = lonarr(1, Nscans)   ; Number of summed exposures
+  date_obs_array = strarr(Nscans)      ; Datasets for each scan
+  
+  
   ;; Read headers to get obs_time and load the images into a cube
   cub = fltarr(origNx, origNy, Nscans)
   for iscan = 0L, Nscans -1 do begin
     
     red_progressbar, iscan, Nscans, 'Read headers and load the images into a cube'
 
-    im = red_readdata(wfiles[iscan], head = hdr)
+    im = red_readdata(wfiles[iscan], head = hdr $
+                      , patch_indx = patch_indx $
+                      , patch_coord = patch_coord)
     red_missing, im, /inplace, missing_type_wanted = 'median' ; Set bg to corners of ragged crisp outline
-    red_missing, im, /inplace, missing_type_wanted = 'nan'    ; Set bg to NaN
+    red_missing, im, /inplace, missing_type_wanted = 'nan'                   ; Set bg to NaN
 ;    red_missing, im, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data        
 ;    bg = !Values.F_NaN
 ;    if Nmissing gt 0 then im[indx_missing] = bg
@@ -532,7 +562,7 @@ pro red::make_wb_cube, dirs $
       date[iscan] = ddate
       time[iscan] = ttime
     endelse
-
+    
     cub[*, *, iscan] = (temporary(im))[x0:x1, y0:y1]       
   endfor                        ; iscan
 
@@ -565,7 +595,7 @@ pro red::make_wb_cube, dirs $
   ny = nd[1]
   cub = fltarr([nd, Nscans])
   cub[*,*,0] = dum
-
+  
   for iscan = 1L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
@@ -653,50 +683,52 @@ pro red::make_wb_cube, dirs $
   spl = strsplit(wfiles[0],'/',/extract)
   cw = where(strmatch(spl,'*cfg*'))
   cfg_dir=strjoin(spl[0:cw],'/')
-  if file_test(cfg_dir+'/fov_mask.fits') then begin    
-    fov_mask = readfits(cfg_dir+'/fov_mask.fits')
-    if self.filetype eq 'MOMFBD' then begin
-      mr = momfbd_read(wfiles[0], /nam)
-      fov_mask = red_crop_as_momfbd(fov_mask, mr)
-    endif else begin ; get cropping from cfg file      
-      cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wstates[0].prefilter+'_'+$
-                 string(wstates[0].scannumber,format='(I05)')+'.cfg'
-      cfg = redux_readcfg(cfg_file)
-      num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
-      margin = num_points/8
-      sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
-      if cnt gt 0 then begin
-        sim_xy = rdx_str2ints(sim_xy)
-        indx = indgen(n_elements(sim_xy)/2)*2
-        indy = indx+1
-        sim_x = sim_xy[indx]
-        sim_y = sim_xy[indy]   
-      endif else begin
-        sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
-        sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+  if n_elements(patch_coord) eq 0 and n_elements(patch_indx) eq 0 then begin
+    if file_test(cfg_dir+'/fov_mask.fits') then begin    
+      fov_mask = readfits(cfg_dir+'/fov_mask.fits')
+      if self.filetype eq 'MOMFBD' then begin
+        mr = momfbd_read(wfiles[0], /nam)
+        fov_mask = red_crop_as_momfbd(fov_mask, mr)
+      endif else begin          ; get cropping from cfg file      
+        cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wstates[0].prefilter+'_'+$
+                   string(wstates[0].scannumber,format='(I05)')+'.cfg'
+        cfg = redux_readcfg(cfg_file)
+        num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+        margin = num_points/8
+        sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+        if cnt gt 0 then begin
+          sim_xy = rdx_str2ints(sim_xy)
+          indx = indgen(n_elements(sim_xy)/2)*2
+          indy = indx+1
+          sim_x = sim_xy[indx]
+          sim_y = sim_xy[indy]   
+        endif else begin
+          sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+          sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+        endelse
+        xx0 = min(sim_x) + margin - num_points/2 
+        xx1 = max(sim_x) - margin + num_points/2 - 1
+        yy0 = min(sim_y) + margin - num_points/2 
+        yy1 = max(sim_y) - margin + num_points/2 - 1
+        fov_mask = fov_mask[xx0:xx1,yy0:yy1]
       endelse
-      xx0 = min(sim_x) + margin - num_points/2 
-      xx1 = max(sim_x) - margin + num_points/2 - 1
-      yy0 = min(sim_y) + margin - num_points/2 
-      yy1 = max(sim_y) - margin + num_points/2 - 1
-      fov_mask = fov_mask[xx0:xx1,yy0:yy1]
-    endelse
-    fov_mask = float(red_rotate(fov_mask, direction))
-    red_missing,/inplace,fov_mask,missing_type_wanted='nan'
+      fov_mask = float(red_rotate(fov_mask, direction))
+      red_missing,/inplace,fov_mask,missing_type_wanted='nan'
+    endif
   endif
   
   ;; De-rotate and shift cube
 ;  bg = median(cub1[*,*,0])
-  bg = !Values.F_NaN
-  dum = red_rotation(cub1[*,*,0], full=ff $
-                     , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
-  nd = size(dum,/dim)
-  nx = nd[0]
-  ny = nd[1]
-  cub = fltarr([nd, Nscans])
-  cub[*,*,0] = dum
-
-  case 1 of
+    bg = !Values.F_NaN
+    dum = red_rotation(cub1[*,*,0], full=ff $
+                       , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
+    nd = size(dum,/dim)
+    nx = nd[0]
+    ny = nd[1]
+    cub = fltarr([nd, Nscans])
+    cub[*,*,0] = dum
+    
+    case 1 of
     keyword_set(select_intensity_region) : begin
       dumm = red_rotation(cub1[*,*,-1], full=ff $
                      , ang[-1], shift[0,-1], shift[1,-1], background = bg, nthreads=nthreads)
@@ -807,6 +839,10 @@ pro red::make_wb_cube, dirs $
   endif else begin
     datatype = 'corrected'
   endelse
+  if n_elements(patch_coord) ne 0 or n_elements(patch_indx) ne 0 then begin
+    ;; Add _x,y,num_points to datatag. For now only a simple tag.
+    datatype += '_singlepatch'
+  endif
   if n_elements(nametag) eq 0 then begin
     ;;  ofil = 'wb_'+midpart+'_'+datatype+'_im.fits'
     if self.filetype eq 'MIXED' then $
@@ -959,6 +995,8 @@ pro red::make_wb_cube, dirs $
   hpln += double(image_scale) * shift[0,*]
   hplt += double(image_scale) * shift[1,*]
 
+  ;; Also needed to change if patch_coord/patch_indx are used.
+  
   ;; Let's smooth coordinates.
   dt = (t_array[0,-1] - t_array[0,0]) / 60. ; minutes
   if dt le 15. or Nscans le 3 then fit_expr = 'P[0] + X*P[1]'
@@ -1196,6 +1234,18 @@ pro red::make_wb_cube, dirs $
   
 
 end
+
+cd, '/scratch/mats/2024-06-05/CRISP/'
+a = crisp2red("config.txt", /dev, /no_db)
+root_dir = "/data/2024/2024.06/2024.06.05/"
+nthreads=20
+a -> make_wb_cube, 'momfbd_nopd/10:46:34/6173/cfg/results/', /align_interactive $
+   , clip = [4, 2], tile = [2, 4], patch_indx = 100
+
+
+;a -> make_nb_cube, 'cubes_wb/wb_6173_2024-06-05T10:46:34_10:46:34=0-9_corrected_singlepatch_im.fits'
+
+stop
 
 a = crispred(/dev)
 dirs = 'momfbd_nopd/09:28:36/6302/cfg/results/'
