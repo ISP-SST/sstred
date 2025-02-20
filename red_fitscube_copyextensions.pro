@@ -42,7 +42,7 @@
 ;        Names or indices of extensions to be copied (default) or
 ;        ignored (if /ignore keyword is set). 
 ; 
-;     ext_reqex : in, optional, type=strarr
+;     ext_regex : in, optional, type=strarr
 ; 
 ;        Add to ext_list all existing extensions that match any of
 ;        these regular expressions.
@@ -203,13 +203,21 @@ pro red_fitscube_copyextensions, infile, outfile $
         if status ne 0 then stop
         writefits, outfile, ext_data, ext_hdr, /append
       end
+
+      fcb_in.xtension[ext_numbers[iext]] eq 'TABLE' : begin
+        ext_data = mrdfits(infile, ext_numbers[iext], ext_hdr $
+                           , status = status, /silent)
+        if status ne 0 then stop
+        stop             ; When I did this (without ext_hdr!) with raw data files, redux threw an error when trying to read the extension.
+        mwrfits, ext_data, ext_hdr, outfile, /ascii, status=outstatus, /silent
+      end
       
       else : begin
         ;; Other extensions. Add more CASEs if we get into trouble
         ;; with any particular type.
 
         ;; Stop because we should be aware if we are using anything
-        ;; but BINTABLE and IMAGE extensions.
+        ;; but BINTABLE, TABLE, or IMAGE extensions.
         stop
         
         ;; Read the extension
