@@ -17,13 +17,13 @@
 ; 
 ;    x : in, type=array
 ; 
-;      The horizontal coordinates of poits, between which the lines
+;      The horizontal coordinates of points, between which the lines
 ;      are to be drawn. (But see keywords for how this can be
 ;      modified.)
 ; 
 ;    y : in, type=array
 ; 
-;      The horizontal coordinates of poits, between which the lines
+;      The vertical coordinates of points, between which the lines
 ;      are to be drawn. (But see keywords for how this can be
 ;      modified.)
 ; 
