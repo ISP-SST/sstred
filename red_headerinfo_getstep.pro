@@ -151,7 +151,6 @@ function red_headerinfo_getstep, header $
   endfor                        ; ikey
 
   return, output
-  stop
   
 end
 
