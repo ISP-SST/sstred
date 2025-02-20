@@ -40,20 +40,32 @@
 ;
 ;      Return only steps matching this step name.
 ; 
+;   silent : in, optional, type=boolean
+; 
+;      Don't print messages to the terminal window.
+; 
+;   stepnumber : in, optional, type=integer
+; 
+;      Return PRSTEPn, where n=stepnumber.
+; 
+; 
 ; :History:
 ; 
 ;   2021-05-27 : MGL. First version.
+;
+;   2025-02-20 : MGL. New keyword silent.
 ; 
 ;-
 function red_headerinfo_getstep, header $
                                  , count = count $
                                  , prkey = prkey $
                                  , prstep = prstep $
+                                 , silent = silent $
                                  , stepnumber = stepnumber
   
   if n_elements(header) eq 0 then begin
     count = 0
-    print, 'No header provided.'
+    if ~keyword_set(silent) then red_message, 'No header provided.'
     return, ''
   endif
 
@@ -66,8 +78,7 @@ function red_headerinfo_getstep, header $
       hdr = headfits(hdr[0])
     endif else begin
       ;; Nope
-      print, 'Not a file name.'
-      print, hdr[0]
+      if ~keyword_set(silent) then red_message, 'Not a file name: '+ hdr[0]
       count = 0
       return, ''
     endelse
@@ -81,8 +92,10 @@ function red_headerinfo_getstep, header $
   if n_elements(prstep) eq 1 then begin
     sindx = where(prsteps eq prstep, count)
     if count eq 0 then begin
-      print, 'No such step name.'
-      print, prstep
+      if ~keyword_set(silent) then begin
+        red_message, 'No such step name.'
+        print, prstep
+      endif 
       return, ''                ; No matching step names    
     endif
   endif
@@ -100,7 +113,7 @@ function red_headerinfo_getstep, header $
   
   ;; Find the keywords
   for i = 0, count-1 do begin   ; Loop over selected steps
-    print, i
+    if ~keyword_set(silent) then print, i
     undefine, keys
     for ikey = 0, Nkeys-1 do begin ; Loop over possible keys
       indx = where(strmatch(h8, prkeys[ikey]+strtrim(sindx[i]+1, 2)+'*'), Nmatch)
