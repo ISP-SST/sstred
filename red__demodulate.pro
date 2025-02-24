@@ -133,6 +133,8 @@
 ;   2025-02-04 : MGL. Added the telescope calibration model parameters
 ;                and the telescope Mueller matrix as PRREF to the
 ;                demodulation step information.
+;
+;   2025-02-20 : MGL. Adapt to new camera alignment model.
 ; 
 ;-
 pro red::demodulate, outname, immr, immt $
@@ -143,7 +145,7 @@ pro red::demodulate, outname, immr, immt $
                      , nbtfac = nbtfac $
                      , nbtstates = nbtstates $
                      , nearest = nearest $
-                     , newalign = nal $
+;                     , newalign = nal $
                      , noremove_periodic = noremove_periodic $
                      , nthreads = nthreads $
                      , overwrite = overwrite $
@@ -159,7 +161,7 @@ pro red::demodulate, outname, immr, immt $
   inam = red_subprogram(/low, calling = inam1)                                  
 
   if file_test(outname) and ~keyword_set(overwrite) then begin
-    print, inam + ' : Already exists: '+outname
+    red_message, 'Already exists: '+outname
     return
   endif
   
@@ -189,6 +191,10 @@ pro red::demodulate, outname, immr, immt $
   tfiles = nbtstates.filename
   wfiles = wbstates.filename
 
+  ;; Get the alignment mode, projective or polywarp.
+  alignment_model = red_align_model(wfiles[0])
+  red_make_prpara, prpara, alignment_model
+  
   if rdx_filetype(rfiles[0]) eq 'MOMFBD' then begin
     ;; MOMFBD output
     for ilc = 0, Nlc-1 do begin
@@ -231,40 +237,6 @@ pro red::demodulate, outname, immr, immt $
   camt = nbtstates[0].camera
   camr = nbrstates[0].camera
 
-  ;; Geometrical distortion maps for the two NB cameras
-  IF keyword_set(nal) THEN BEGIN
-    fov = self -> commonfov(align=align, prefilters=prefilter)
-    indx = where(align.state.camera eq camt, Nalign)
-    case Nalign of
-        0    : stop             ; Should not happen!
-        1    : amapt = {X: align[indx].map_x, Y: align[indx].map_y}
-        else : amapt = {X: mean(align[indx].map_x, dim=3), $
-                        Y: mean(align[indx].map_y, dim=3) }
-    endcase
-    indx = where(align.state.camera eq camr, Nalign)
-    case Nalign of
-        0    : stop             ; Should not happen!
-        1    : amapr = {X: align[indx].map_x, Y: align[indx].map_y}
-        else : amapr = {X: mean(align[indx].map_x, dim=3), $
-                        Y: mean(align[indx].map_y, dim=3) }
-    endcase
-  ENDIF ELSE BEGIN
-    self -> getalignment, align=align, prefilters=prefilter
-    indx = where(align.state2.camera eq camt, Nalign)
-    case Nalign of
-        0    : stop             ; Should not happen!
-        1    : amapt =      align[indx].map
-        else : amapt = mean(align[indx].map, dim=3)
-    endcase
-    amapt /= amapt[2, 2]        ; Normalize
-    indx = where(align.state2.camera eq camr, Nalign)
-    case Nalign of
-        0    : stop             ; Should not happen!
-        1    : amapr =      align[indx].map
-        else : amapr = mean(align[indx].map, dim=3)
-    endcase
-    amapr /= amapr[2, 2]        ; Normalize
-  ENDELSE
   
   ;; Get some header info
   
@@ -326,7 +298,7 @@ pro red::demodulate, outname, immr, immt $
 
     endfor                      ; ilc
     
-    print, inam + ' : Applying flat ratios to the inverse modulation matrix.'
+    red_message, 'Applying flat ratios to the inverse modulation matrix.'
     immt_dm = red_demat(tgain, utflat, immt)
     immr_dm = red_demat(rgain, urflat, immr)
     print, 'done'
@@ -358,6 +330,10 @@ pro red::demodulate, outname, immr, immt $
   
   if keyword_set(smooth_by_subfield) then begin
 
+    red_message, ['The smooth_by_subfield code does not support the new polywarp' $
+                  , 'camera alignment model and is anyway not regularly used.']
+    stop
+    
     ;; Divide modulation matrices into momfbd-subfields, correct for
     ;; image projection, smooth with PSF from each subfield, make
     ;; mosaics of the result.
@@ -398,25 +374,18 @@ pro red::demodulate, outname, immr, immt $
       immr_dm = reform(immr_dm, [Nlc, Nstokes, Nxx, Nyy])
       immt_dm = reform(immt_dm, [Nlc, Nstokes, Nxx, Nyy])
       
-      IF ~keyword_set(nal) THEN BEGIN
-          amapr_inv = invert(amapr)
-          amapt_inv = invert(amapt)
-      ENDIF
-      
       for ilc = 0L, Nlc-1 do begin
         for istokes = 0L, Nstokes-1 do begin
           ;; Apply the geometrical mapping and clip to the FOV of the
           ;; momfbd output.
-          IF keyword_set(nal) THEN $
-            tmp = poly_2d(reform(immr_dm[ilc, istokes, *, *]), amapr.x, amapr.y, 1, miss=0) $
-          ELSE $
-            tmp = rdx_img_project(amapr_inv, reform(immr_dm[ilc, istokes, *, *]), /preserve_size)
+          tmp = red_apply_camera_alignment(reform(immr_dm[ilc, istokes, *, *]) $
+                                           , alignment_model, 'Crisp-R', amap = amapr $
+                                           , /preserve_size)
           mymr[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                       , roi[2]+margin:roi[3]-margin]
-          IF keyword_set(nal) THEN $
-            tmp = poly_2d(reform(immt_dm[ilc, istokes, *, *]), amapt.x, amapt.y, 1, miss=0) $
-          ELSE $
-            tmp = rdx_img_project(amapt_inv, reform(immt_dm[ilc,istokes,*,*]), /preserve_size)
+          tmp = red_apply_camera_alignment(reform(immt_dm[ilc,istokes,*,*]) $
+                                           , alignment_model, 'Crisp-T', amap = amapt $
+                                           , /preserve_size)
           mymt[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                       , roi[2]+margin:roi[3]-margin]
         endfor                  ; istokes
@@ -457,6 +426,8 @@ pro red::demodulate, outname, immr, immt $
   img_wb = fltarr(Nx, Ny, Nlc)
   for ilc = 0L, Nlc-1 do img_wb[*,*,ilc] = red_readdata(wfiles[ilc]) 
 
+  
+  
   rest = fltarr(Nx, Ny, 4)
   resr = fltarr(Nx, Ny, 4)  
 
@@ -473,7 +444,6 @@ pro red::demodulate, outname, immr, immt $
                                                 , grid, nthreads=nthreads)
         resr[*,*,istokes] += rdx_cstretch(reform(mymr[ilc,istokes,*,*]) * img_r[*,*,ilc] $
                                                 , grid, nthreads=nthreads)
-        ;;stop
       endfor                    ; istokes
       if n_elements(cmap) ne 0 then cmapp += rdx_cstretch(cmap, grid, nthreads=nthreads)
     endfor                      ; ilc
@@ -512,7 +482,7 @@ pro red::demodulate, outname, immr, immt $
   
   res = (sct * (img_t) + scr * (img_r)) / 2.
   
-  print, inam + ' : Combining data from transmitted and reflected camera'
+  red_message, 'Combining data from transmitted and reflected camera'
   print, '   -> Average Intensity = '  + red_stri(aver)
   print, '   -> Tcam scale factor -> ' + red_stri(sct) + ' (after '+red_stri(nbtfac)+')'
   print, '   -> Rcam scale factor -> ' + red_stri(scr) + ' (after '+red_stri(nbrfac)+')'
@@ -520,12 +490,12 @@ pro red::demodulate, outname, immr, immt $
   
   ;; Telescope model 
   line = (strsplit(wbstates[0].fpi_state,'_',/extract))[0]
-  print, inam+' : Detected spectral line -> '+line
+  red_message, 'Detected spectral line -> '+line
   
   red_logdata, self.isodate, tavg, azel = azel,  tilt = tilt
 
   if min(finite([azel, tilt])) eq 0 then begin
-    print, inam + ' : red_logdata returned non-finite azimuth, elevation, or tilt for t = ' + strtrim(tavg, 2)
+    red_message, 'red_logdata returned non-finite azimuth, elevation, or tilt for t = ' + strtrim(tavg, 2)
     print, '  azel : ', azel
     print, '  tilt : ', tilt
     lfile = 'downloads/sstlogs/positionLog_'+red_strreplace(self.isodate,'-','.',n=2)+'_final'
@@ -534,7 +504,7 @@ pro red::demodulate, outname, immr, immt $
     file_delete, lfile, /allow_nonexistent
     red_logdata, self.isodate, tavg, azel = azel,  tilt = tilt
     if min(finite([azel, tilt])) eq 0 then begin
-      print, inam + ' : Re-downloading the turret log did not help. Giving up.'
+      red_message, 'Re-downloading the turret log did not help. Giving up.'
       retall
     endif
   endif
@@ -587,13 +557,13 @@ pro red::demodulate, outname, immr, immt $
   case 1 of
 
     ~c_exists && ~clc_exists : begin
-      print, inam + ' : Cannot happen! Investigate!'
+      red_message, 'Cannot happen! Investigate!'
       stop
     end
     
     c_exists && clc_exists : begin
-      red_strflow, inam + ' : We have both LC cavity free gains and non-LC cavity free gains,' $
-                   + 'the latter probabluy left from earlier processing.' $
+      red_message, 'We have both LC cavity free gains and non-LC cavity free gains,' $
+                   + 'the latter probably left from earlier processing.' $
                    + 'Please delete momfbd output, the gaintables/, flats/spectral_flats/,' $
                    + 'cmap_intdif/, polcal_subs/, polcal/, and prefilter_fits/ subdirectories,' $
                    + 'and then start over.'
@@ -637,7 +607,8 @@ pro red::demodulate, outname, immr, immt $
       ;; this point.
     endelse
     for istokes = 0L, Nstokes-1 do begin
-      red_missing, res[*,*,0, istokes, 0], nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+      red_missing, res[*,*,0, istokes, 0], nmissing = Nmissing $
+                   , indx_missing = indx_missing, indx_data = indx_data
       if Nmissing gt 0 then begin
         bg = (res[*,*,0, istokes, 0])[indx_missing[0]]
         ;;  if istokes eq 0 then bg = (res[*,*,0, istokes, 0])[indx_missing[0]] else bg = 0
@@ -726,14 +697,5 @@ pro red::demodulate, outname, immr, immt $
   self -> fitscube_finish, lun, wcs = wcs
   
   if n_elements(cmap) ne 0 then red_fitscube_addcmap, outname, reform(cmapp, Nx, Ny, 1, 1, 1)
-  
-;    if keyword_set(cmap) then begin
-;      odir = file_dirname(self.tfiles[0]) + '/cavity_map/'
-;      file_mkdir, odir
-;      ofile = 'cmap.' + self.state + '.f0'
-;      print, inam + 'saving cavity map -> '+odir+ofile
-;      fzwrite, float(cmap), odir+ofile, head + ''
-;    endif
-  
   
 end
