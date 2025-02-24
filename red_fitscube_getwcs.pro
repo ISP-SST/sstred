@@ -240,8 +240,16 @@ pro red_fitscube_getwcs, filename $
       ;;wcsdvarr = mrdfits( filename, dindx[idist], chdr, status =
       ;;status, /silent)
       ;; If iscan is given, read data for just for that scan.
-      wcsdvarr = readfits( filename, exten_no = dindx[idist], nslice = iscan)
-      
+      wcsdvhdr = headfits( filename, ext = 'WCSDVARR')
+      wcsdims = fxpar(wcsdvhdr, 'NAXIS*')
+      if round(product(wcsdims[2:4]) eq 1) then begin
+        if n_elements(iscan) eq 0 || iscan eq 0 then begin
+          wcsdvarr = readfits( filename, exten_no = dindx[idist] )
+        endif else stop
+      endif else begin
+        wcsdvarr = readfits( filename, exten_no = dindx[idist], nslice = iscan)
+      endelse
+              
       ;;if status ne 0 then  begin
       ;;  print, inam + ' : There was an error reading WCSDVARR extension #'+strtrim(idist, 2)
       ;;  print, inam + ' : No distortions returned.'
