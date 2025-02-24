@@ -152,6 +152,8 @@
 ;
 ;    2022-09-04 : MGL. CRISP --> RED. New keyword circular_fov.
 ;
+;    2025-02-20 : MGL. Adapt to new camera alignment model.
+;
 ;-
 pro red::make_scan_cube, dir $
                          , autocrop = autocrop $
@@ -165,7 +167,6 @@ pro red::make_scan_cube, dir $
                          , limb_data = limb_data $
                          , nocavitymap = nocavitymap $
                          , circular_fov = circular_fov $
-                         , newalign = nal $
                          , nocrosstalk = nocrosstalk $
                          , nopolarimetry = nopolarimetry $
                          , norotation = norotation $
@@ -267,6 +268,9 @@ pro red::make_scan_cube, dir $
   wbghdr = red_readhead(wbgfiles[0])
   datestamp = fxpar(wbghdr, 'STARTOBS')
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
+
+  ;; Get the alignment mode, projective or polywarp.
+  alignment_model = red_align_model(wbgfiles[0])
   
   ;; Get the image scale from the header
   image_scale = float(fxpar(wbghdr, 'CDELT1'))
@@ -439,55 +443,10 @@ pro red::make_scan_cube, dir $
       cmap1r = red_convolve(cmapr, psf)
       cmap1t = red_convolve(cmapt, psf)
     endelse
-    
-    IF keyword_set(nal) THEN BEGIN
-        restore, 'calib/alignments_new.sav'
-        indx = where(alignments.state.camera eq 'Crisp-T', Nalign)
-        CASE Nalign OF
-            0    : stop         ; Should not happen!
-            1    : amapt = {X: alignments[indx].map_x, Y: alignments[indx].map_y}
-            ELSE : amapt = {X: mean(alignments[indx].map_x, dim=3), $
-                            Y: mean(alignments[indx].map_y, dim=3) }
-        ENDCASE
-        indx = where(alignments.state.camera eq 'Crisp-R', Nalign)
-        CASE Nalign OF
-            0    : stop         ; Should not happen!
-            1    : amapr = {X: alignments[indx].map_x, Y: alignments[indx].map_y}
-            ELSE : amapr = {X: mean(alignments[indx].map_x, dim=3), $
-                            Y: mean(alignments[indx].map_y, dim=3) }
-        ENDCASE
-        cmap1r = poly_2d(cmap1r, amapr.x, amapr.y, 1, miss=0)
-        cmap1t = poly_2d(cmap1t, amapt.x, amapt.y, 1, miss=0)
-          ;; Clip to the selected FOV
-;        cmap1r = cmap1r[x0:x1,y0:y1]
-;        cmap1t = cmap1t[x0:x1,y0:y1]
-    ENDIF ELSE BEGIN 
-      ;; Read the output of the pinhole calibrations so we can do the same
-      ;; to the cavity maps as was done to the raw data in the momfbd
-      ;; step. This output is in a struct "alignments" in the save file
-      ;; 'calib/alignments.sav'
-      restore, 'calib/alignments.sav'
-      ;; Should be based on state1 or state2 in the struct? make_cmaps
-      ;; says "just pick one close to continuum (last state?)".
-      ;    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-      indxt = where(alignments.state2.camera eq 'Crisp-T', Nalignt)
-      case Nalignt of
-        0    : stop               ; Should not happen!
-        1    : amapt = invert(      alignments[indxt].map           )
-        else : amapt = invert( mean(alignments[indxt].map, dim = 3) )
-      endcase
-      indxr = where(alignments.state2.camera eq 'Crisp-R', Nalignr)
-      case Nalignr of
-        0    : stop               ; Should not happen!
-        1    : amapr = invert(      alignments[indxr].map           )
-        else : amapr = invert( mean(alignments[indxr].map, dim = 3) )
-      endcase
 
-      cmap1r = rdx_img_project(amapr, cmap1r) ; Apply the geometrical mapping
-;      cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
-      cmap1t = rdx_img_project(amapt, cmap1t) ; Apply the geometrical mapping
-;      cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
-    ENDELSE
+    ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
+    cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, 'Crisp-T', amap = amapt)
+    cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, 'Crisp-R', amap = amapr)
     
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with
@@ -495,7 +454,6 @@ pro red::make_scan_cube, dir $
     ;; them.
     cmap1 = (cmap1r + cmap1t) / 2.
 
-    
     if self.filetype eq 'MOMFBD' then begin
       ;; Crop the cavity map to the FOV of the momfbd-restored images.
       mr = momfbd_read(wbgfiles[0],/nam)
@@ -510,11 +468,6 @@ pro red::make_scan_cube, dir $
     ;; Clip to the selected FOV
     cmap1 = cmap1[x0:x1,y0:y1]
     
-;    cmap_dim = size(cmap1,/dim)
-;    xclip = (cmap_dim[0] - Nx)/2.
-;    yclip = (cmap_dim[1] - Ny)/2.
-;    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1]  ; Clip to the selected FOV
-
   endif
 
   
@@ -578,14 +531,13 @@ pro red::make_scan_cube, dir $
       
       ;; Make Stokes cubes for this scan if needed
       self -> make_stokes_cubes, dir, uscans[iscan] $
-                                 , clips = clips $
-                                 , cmap_fwhm = cmap_fwhm $
-                                 , newalign = nal $
-                                 , nocavitymap = nocavitymap $
-                                 , redemodulate = redemodulate $
-                                 , snames = snames $
-                                 , stokesdir = stokesdir $
-                                 , tiles = tiles 
+         , clips = clips $
+         , cmap_fwhm = cmap_fwhm $
+         , nocavitymap = nocavitymap $
+         , redemodulate = redemodulate $
+         , snames = snames $
+         , stokesdir = stokesdir $
+         , tiles = tiles 
 
       ;; The names of the Stokes cubes for this scan are returned in
       ;; snames. 
@@ -1073,47 +1025,39 @@ pro red::make_scan_cube, dir $
                                     , comment = 'Average time of observation' $
                                     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
                                     , axis_numbers = [3] 
-;    self -> fitscube_addvarkeyword, filename, 'RESPAPPL', prefilter_curve $
-;                                    , anchor = anchor $
-;                                    , comment = 'Applied (combined) response function' $
-;                                    , keyword_method = 'mean' $
-;                                    , axis_numbers = [3] 
     red_fitscube_addrespappl, filename, prefilter_curve, /tun
 
     tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
     if Nt gt 0 then begin
-                                ;     stop
       self -> fitscube_addvarkeyword, filename, 'ATMOS_R0' $
-                                      , metadata_r0[*, tindx_r0] $
-                                      , comment = 'Atmospheric coherence length' $
-                                      , tunit = 'm' $
-                                      , extra_coordinate1 = [24, 8] $ ; WFS subfield sizes 
-                                      , extra_labels      = ['WFSZ'] $ ; Axis labels for metadata_r0
-                                      , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
-                                      , extra_units       = ['pix'] $               ; Axis units for metadata_r0
-                                      , keyword_value = mean(metadata_r0[1, tindx_r0]) $
-                                      , time_coordinate = time_r0[tindx_r0] $
-                                      , time_unit       = 's'
+         , metadata_r0[*, tindx_r0] $
+         , comment = 'Atmospheric coherence length' $
+         , tunit = 'm' $
+         , extra_coordinate1 = [24, 8] $                                            ; WFS subfield sizes 
+         , extra_labels      = ['WFSZ'] $                                           ; Axis labels for metadata_r0
+         , extra_names       = ['WFS subfield size'] $                              ; Axis names for metadata_r0
+         , extra_units       = ['pix'] $                                            ; Axis units for metadata_r0
+         , keyword_value = mean(metadata_r0[1, tindx_r0]) $
+         , time_coordinate = time_r0[tindx_r0] $
+         , time_unit       = 's'
     endif
 
     self -> fitscube_addvarkeyword, filename $
-                                    , 'XPOSURE', comment = 'Summed exposure times' $
-                                    , tunit = 's' $
-                                    , exp_array, keyword_value = mean(exp_array) $
-                                    , axis_numbers = [3] 
+       , 'XPOSURE', comment = 'Summed exposure times' $
+       , tunit = 's' $
+       , exp_array, keyword_value = mean(exp_array) $
+       , axis_numbers = [3] 
 
     self -> fitscube_addvarkeyword, filename $
-                                    , 'TEXPOSUR', comment = '[s] Single-exposure time' $
-                                    , tunit = 's' $
-                                    , sexp_array, keyword_value = mean(sexp_array) $
-                                    , axis_numbers = [3] 
+       , 'TEXPOSUR', comment = '[s] Single-exposure time' $
+       , tunit = 's' $
+       , sexp_array, keyword_value = mean(sexp_array) $
+       , axis_numbers = [3] 
 
     self -> fitscube_addvarkeyword, filename $
-                                    , 'NSUMEXP', comment = 'Number of summed exposures' $
-                                    , nsum_array, keyword_value = mean(nsum_array) $
-                                    , axis_numbers = [3]
-
-
+       , 'NSUMEXP', comment = 'Number of summed exposures' $
+       , nsum_array, keyword_value = mean(nsum_array) $
+       , axis_numbers = [3]
 
     if makestokes && ~keyword_set(nocrosstalk) then begin
 
@@ -1124,8 +1068,8 @@ pro red::make_scan_cube, dir $
       ;; cubes. Also, including mag_mask will reuse the same
       ;; magnetic-features mask.
       self -> fitscube_crosstalk, filename $
-                                  , mag_mask = mag_mask $
-                                  , tuning_selection = tuning_selection
+         , mag_mask = mag_mask $
+         , tuning_selection = tuning_selection
 
     endif
 
@@ -1156,9 +1100,9 @@ pro red::make_scan_cube, dir $
     if keyword_set(integer) then begin
       ;; Convert to integers
       self -> fitscube_integer, filename $
-                                , /delete $
-                                , outname = outname $
-                                , overwrite = overwrite
+         , /delete $
+         , outname = outname $
+         , overwrite = overwrite
       filename = outname
     endif else begin
       if ~keyword_set(nomissing_nans) then begin

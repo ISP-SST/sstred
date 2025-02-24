@@ -168,7 +168,10 @@
 ;    2022-09-10 : MGL. CRISP --> RED.
 ;
 ;    2023-04-04 : OA. Added clipping of cavity maps with information
-;                 from configuration files (needed to make 'mixed' cubes).
+;                 from configuration files (needed to make 'mixed'
+;                 cubes).
+;
+;    2025-02-20 : MGL. Adapt to new camera alignment model.
 ;
 ;-
 pro red::make_nb_cube, wcfile $
@@ -268,6 +271,10 @@ pro red::make_nb_cube, wcfile $
   fxbread, bunit, wbgfiles, 'WFILES', 1
   fxbclose, bunit
   if self.filetype eq 'MIXED' then wbgfiles = strtrim(wbgfiles, 2)
+
+  
+  ;; Get the alignment mode, projective or polywarp.
+  alignment_model = red_align_model(wbgfiles[0])
   
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0
@@ -584,32 +591,9 @@ pro red::make_nb_cube, wcfile $
       cmap1t = red_convolve(cmapt, psf)
     endelse
     
-    ;; Read the output of the pinhole calibrations so we can do the same
-    ;; to the cavity maps as was done to the raw data in the momfbd
-    ;; step. This output is in a struct "alignments" in the save file
-    ;; 'calib/alignments.sav'
-    restore, 'calib/alignments.sav'
-    ;; Should be based on state1 or state2 in the struct? make_cmaps
-    ;; says "just pick one close to continuum (last state?)".
-;    indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-    pref=strmid(file_basename(wcfile),3,4)
-    indxt = where(alignments.state2.camera eq 'Crisp-T' and alignments.state2.prefilter eq pref, Nalignt)
-    case Nalignt of
-      0    : stop               ; Should not happen!
-      1    : amapt = invert(      alignments[indxt].map           )
-      else : amapt = invert( median(alignments[indxt].map, dim = 3) )
-    endcase
-    indxr = where(alignments.state2.camera eq 'Crisp-R' and alignments.state2.prefilter eq pref, Nalignr)
-    case Nalignr of
-      0    : stop               ; Should not happen!
-      1    : amapr = invert(      alignments[indxr].map           )
-      else : amapr = invert( median(alignments[indxr].map, dim = 3) )
-    endcase
-
-    cmap1r = rdx_img_project(amapr, cmap1r, /preserve) ; Apply the geometrical mapping
-;    cmap1r = cmap1r[x0:x1,y0:y1]            ; Clip to the selected FOV
-    cmap1t = rdx_img_project(amapt, cmap1t, /preserve) ; Apply the geometrical mapping
-;    cmap1t = cmap1t[x0:x1,y0:y1]            ; Clip to the selected FOV
+    ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
+    cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, 'Crisp-T', amap = amapt)
+    cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, 'Crisp-R', amap = amapr)
 
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with
@@ -629,12 +613,7 @@ pro red::make_nb_cube, wcfile $
 
     ;; Clip to the selected FOV
     cmap1 = cmap1[x0:x1,y0:y1]
-    
-;    cmap_dim = size(cmap1,/dim)
-;    xclip = (cmap_dim[0] - origNx)/2.
-;    yclip = (cmap_dim[1] - origNy)/2.
-;    cmap1 = cmap1[xclip+x0:xclip+x1,yclip+y0:yclip+y1] ; Clip to the selected FOV
-    
+
   endif
   
   ;; Make FITS header for the NB cube
@@ -679,9 +658,6 @@ pro red::make_nb_cube, wcfile $
       snames[iscan, *] = these_snames
       
     endfor                      ; iscan
-
-    
-
     
   endif
 
@@ -934,7 +910,7 @@ pro red::make_nb_cube, wcfile $
             this_im = rdx_cstretch(temporary(this_im), grid1, nthreads=nthreads)
           endif
           nbim += this_im
-
+          
           ;; Transmitted
           this_im = (red_readdata(scan_nbtfiles[iim], direction = direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
 ;          this_im = (rotate(temporary(this_im), direction))[x0:x1, y0:y1] * nbt_rpref[ituning]
@@ -1052,35 +1028,35 @@ pro red::make_nb_cube, wcfile $
       ;; which are averages of the original cmap, stretched as the
       ;; individual LC state images before combining to form the
       ;; Stokes components.
-      if 0 then begin
-        wb = red_readdata(wbf[ss])
-        wb = (rotate(temporary(wb), direction))[x0:x1,y0:y1]
-        for ww = 0L, nw - 1 do begin
-          
-          iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
-          iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
-          
-          ;; Load images
-          iwb = red_readdata(iwbf)
-          iwb = (rotate(temporary(iwb), direction))[x0:x1,y0:y1]
-          im = momfbd_read(st.ofiles[ww,ss])
-          
-          ;; get dewarp from WB
-          igrid = red_dsgridnest(wb, iwb, itiles, iclip, nthreads=nthreads)
-          
-          ;; Convolve CMAP and apply wavelength dep. de-warp
-          cmap2 = rdx_cstretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, nthreads=nthreads)
-          
-          ;; Derotate and shift
-          cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
-                               total(shift[1,ss]), full=wcFF, stretch_grid=reform(wcGRID[iscan,*,*,*]) $
-                               , nthreads=nthreads, nearest=nearest)
-          
-          ;; Time de-warp
-          ;;cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
-          
-        endfor                  ; ww
-      endif
+;      if 0 then begin
+;        wb = red_readdata(wbf[ss])
+;        wb = (rotate(temporary(wb), direction))[x0:x1,y0:y1]
+;        for ww = 0L, nw - 1 do begin
+;          
+;          iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]),'.',/extract))[1:*]],'.')
+;          iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
+;          
+;          ;; Load images
+;          iwb = red_readdata(iwbf)
+;          iwb = (rotate(temporary(iwb), direction))[x0:x1,y0:y1]
+;          im = momfbd_read(st.ofiles[ww,ss])
+;          
+;          ;; get dewarp from WB
+;          igrid = red_dsgridnest(wb, iwb, itiles, iclip, nthreads=nthreads)
+;          
+;          ;; Convolve CMAP and apply wavelength dep. de-warp
+;          cmap2 = rdx_cstretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, nthreads=nthreads)
+;          
+;          ;; Derotate and shift
+;          cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+;                               total(shift[1,ss]), full=wcFF, stretch_grid=reform(wcGRID[iscan,*,*,*]) $
+;                               , nthreads=nthreads, nearest=nearest)
+;          
+;          ;; Time de-warp
+;          ;;cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+;          
+;        endfor                  ; ww
+;      endif
     endif 
     
   endfor                        ; iscan
