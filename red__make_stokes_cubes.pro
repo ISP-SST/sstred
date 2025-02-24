@@ -124,14 +124,14 @@ pro red::make_stokes_cubes, dir, scanno $
   inam = red_subprogram(/low, calling = inam1)                                      
 
   if n_elements(dir) eq 0 then begin
-    print, inam + ' : Please specify the directory with momfbd output.'
+    red_message, 'Please specify the directory with momfbd output.'
     retall
   endif
 
   if n_elements(scanno) ne 1 then begin
     ;; Make it accept only a single scan number so we can return the
     ;; Stokes file names for that scan.
-    print, inam + ' : Please specify a single scan number and try again.'
+    red_message, 'Please specify a single scan number and try again.'
     return
   endif
   
@@ -279,7 +279,7 @@ pro red::make_stokes_cubes, dir, scanno $
 
   pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_time+'prefilter.idlsave'
   if ~file_test(pfile) then begin
-    print, inam + ' : prefilter file not found: '+pfile
+    red_message, 'Prefilter file not found: '+pfile
     return
   endif
   restore, pfile                ; Restores variable prf which is a struct
@@ -294,7 +294,7 @@ pro red::make_stokes_cubes, dir, scanno $
 
   pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_time+'prefilter.idlsave'
   if ~file_test(pfile) then begin
-    print, inam + ' : prefilter file not found: '+pfile
+    red_message, 'Prefilter file not found: '+pfile
     return
   endif
   restore, pfile                ; Restores variable prf which is a struct
@@ -310,8 +310,8 @@ pro red::make_stokes_cubes, dir, scanno $
 
   
   if nbr_units ne nbt_units then begin
-    print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
-    print, inam + ' : Please rerun the prefilterfit step for these data.'
+    red_message, 'Units for Crisp-T and Crisp-R do not match. ' $
+                 + 'Please rerun the prefilterfit step for these data.'
     retall
   endif
   units = nbr_units
@@ -327,7 +327,7 @@ pro red::make_stokes_cubes, dir, scanno $
                       , '_')
 
     if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
+      red_message, 'Error, calibration file not found -> '+cfile
       stop
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
@@ -343,7 +343,7 @@ pro red::make_stokes_cubes, dir, scanno $
                       , '_')
 
     if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
+      red_message, 'Error, calibration file not found -> '+cfile
       stop
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
@@ -409,7 +409,7 @@ pro red::make_stokes_cubes, dir, scanno $
                                , no_ccdtabs = no_ccdtabs
 
   if Nfiles eq 0 then begin
-    print, inam + ' : No files for scan ' + strtrim(scanno, 2)
+    red_message, 'No files for scan ' + strtrim(scanno, 2)
     return
   endif
   
@@ -522,7 +522,7 @@ pro red::make_stokes_cubes, dir, scanno $
   
   if keyword_set(redemodulate) then begin
     ;; Delete any stokesIQUV*.fits files that are to be remade.
-    print, inam + ' : Will delete the following Stokes cubes if they exist:'
+    red_message, 'Will delete the following Stokes cubes if they exist:'
     print, snames, format = '(a0)'
     file_delete, snames, /ALLOW_NONEXISTENT
   endif
@@ -531,7 +531,7 @@ pro red::make_stokes_cubes, dir, scanno $
   ;; Make Stokes cubes for each state (if not done already) 
   todoindx = where(~file_test(snames), Ntodo)
   if Ntodo gt 0 then begin
-    print, inam + ' : Will have to make '+strtrim(Ntodo, 2) + ' Stokes cubes for scan '+strtrim(scanno, 2)+'.'
+    red_message, 'Will have to make '+strtrim(Ntodo, 2) + ' Stokes cubes for scan '+strtrim(scanno, 2)+'.'
 
     ;; Get the FOV in the momfbd files.
 ;    mr = momfbd_read(wbgfile, /names) ; Use /names to avoid reading the data parts
@@ -606,7 +606,7 @@ pro red::make_stokes_cubes, dir, scanno $
   endif else begin
 
     print
-    print, inam + ' : No Stokes cubes need to be made for scan '+strtrim(scanno, 2)
+    red_message, 'No Stokes cubes need to be made for scan '+strtrim(scanno, 2)
     print
     
   endelse

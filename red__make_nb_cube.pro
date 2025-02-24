@@ -203,7 +203,7 @@ pro red::make_nb_cube, wcfile $
 
   ;; Deprecated keyword:
   if n_elements(notimecor) gt 0 then begin
-    print, inam + ' : Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
+    red_message, 'Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
     return
   endif
 
@@ -392,11 +392,9 @@ pro red::make_nb_cube, wcfile $
   ;; Already done?
   if file_test(filename) then begin
     if keyword_set(overwrite) then begin
-      print, inam + ' : Overwriting existing data cube:'
-      print, filename
+      red_message, 'Overwriting existing data cube: ' + filename
     endif else begin
-      print, inam + ' : This data cube exists already:'
-      print, filename
+      red_message, 'This data cube exists already: ' + filename
       return
     endelse
   endif
@@ -431,7 +429,7 @@ pro red::make_nb_cube, wcfile $
 
   pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_t+'prefilter.idlsave'
   if ~file_test(pfile) then begin
-    print, inam + ' : prefilter file not found: '+pfile
+    red_message, 'Prefilter file not found: '+pfile
     return
   endif
   restore, pfile                ; Restores variable prf which is a struct
@@ -449,7 +447,7 @@ pro red::make_nb_cube, wcfile $
 
   pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_t+'prefilter.idlsave'
   if ~file_test(pfile) then begin
-    print, inam + ' : prefilter file not found: '+pfile
+    red_message, 'Prefilter file not found: '+pfile
     return
   endif
   restore, pfile                ; Restores variable prf which is a struct
@@ -466,8 +464,8 @@ pro red::make_nb_cube, wcfile $
 ;  stop
   
   if nbr_units ne nbt_units then begin
-    print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
-    print, inam + ' : Please rerun the prefilterfit step for these data.'
+    red_message, 'Units for Crisp-T and Crisp-R do not match. ' $
+                 + 'Please rerun the prefilterfit step for these data.'
     retall
   endif
   units = nbr_units
@@ -540,7 +538,7 @@ pro red::make_nb_cube, wcfile $
                       , '_')
 
     if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
+      red_message, 'Error, calibration file not found -> '+cfile
       stop
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
@@ -557,7 +555,7 @@ pro red::make_nb_cube, wcfile $
                       , '_')
 
     if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
+      red_message, 'Error, calibration file not found -> '+cfile
       stop
     endif
     restore, cfile                  ; The cavity map is in a struct called "fit". 
@@ -1117,7 +1115,7 @@ pro red::make_nb_cube, wcfile $
   ;; Add cavity maps as WAVE distortions 
   if ~keyword_set(nocavitymap) then red_fitscube_addcmap, filename, cavitymaps
 
-  print, inam + ' : Add some variable keywords.'
+  red_message, 'Add some variable keywords.'
 
   ;; Add some variable keywords
   self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
@@ -1214,15 +1212,13 @@ pro red::make_nb_cube, wcfile $
      red_fitscube_flip, filename, flipfile = flipfile $
                         , overwrite = overwrite
   
-  print, inam + ' : Narrowband cube stored in:'
-  print, filename
+  red_message, 'Narrowband cube stored in: ' + filename
   if ~keyword_set(noflipping) then print, flipfile
   
   if keyword_set(wbsave) then begin
     if ~keyword_set(noflipping) then red_fitscube_flip, wbfilename, flipfile = wbflipfile $
        , overwrite = overwrite
-    print, inam + ' : Wideband align cube stored in:'
-    print, wbfilename
+    red_message, 'Wideband align cube stored in: ' + wbfilename
     if ~keyword_set(noflipping) then print, wbflipfile
   endif
   
