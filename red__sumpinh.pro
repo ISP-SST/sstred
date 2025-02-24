@@ -230,9 +230,14 @@ pro red::sumpinh, nthreads = nthreads $
         self -> loadbackscatter, detector, pref, bgt, Psft
         DoBackscatter = 1
       endif
+      ff1 = ff
       if DoBackscatter gt 0 then begin
         ff = rdx_descatter(ff, bgt, Psft, /verbose, nthreads = nthread)
       endif
+
+      ;; Sometimes the descattering does not work.
+      if total(finite(ff)) eq 0.0 then continue 
+      
       gain = self->flat2gain(ff)
 
       ;; Sum files
