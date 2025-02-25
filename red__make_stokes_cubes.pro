@@ -205,7 +205,8 @@ pro red::make_stokes_cubes, dir, scanno $
     'MIXED' : extension = '.{fits,momfbd}'
   endcase
 
-  wbgfile = file_search(dir + '/*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension, count = Nfiles)
+  wbgfile = file_search(dir + '/*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension $
+                        , count = Nfiles)
   if Nfiles ne 1 then stop
   self -> extractstates, wbgfile, wbgstate
 
@@ -254,20 +255,20 @@ pro red::make_stokes_cubes, dir, scanno $
 
   ;; Per-tuning files, wb and nb, only for selected scans
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , cam = wbcamera $
-                       , sel = wbindx, count = Nwb
+                               , cam = wbcamera $
+                               , sel = wbindx, count = Nwb
   wbstates = pertuningstates[wbindx]
   wbfiles = pertuningfiles[wbindx]
 
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , cam = nbtcamera $
-                       , sel = nbtindx, count = Nnbt
+                               , cam = nbtcamera $
+                               , sel = nbtindx, count = Nnbt
   nbtstates = pertuningstates[nbtindx]
   nbtfiles = pertuningfiles[nbtindx]
   
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , cam = nbrcamera $
-                       , sel = nbrindx, count = Nnbr
+                               , cam = nbrcamera $
+                               , sel = nbrindx, count = Nnbr
   nbrstates = pertuningstates[nbrindx]
   nbrfiles = pertuningfiles[nbrindx]
 
@@ -404,9 +405,9 @@ pro red::make_stokes_cubes, dir, scanno $
   ;; needed. They are returned in the (size and) orientation of
   ;; the momfbd output.
   self -> inverse_modmatrices, prefilter, stokesdir $
-                               , camr = nbrcamera, immr = immr $
-                               , camt = nbtcamera, immt = immt $
-                               , no_ccdtabs = no_ccdtabs
+     , camr = nbrcamera, immr = immr $
+     , camt = nbtcamera, immt = immt $
+     , no_ccdtabs = no_ccdtabs
 
   if Nfiles eq 0 then begin
     red_message, 'No files for scan ' + strtrim(scanno, 2)
@@ -512,11 +513,11 @@ pro red::make_stokes_cubes, dir, scanno $
   snames = strarr(Ntuning)    
   for ituning = 0, Ntuning-1 do begin
     snames[ituning] = stokesdir $
-                   + strjoin(['stokesIQUV' $
-                              , string(scanno, format = '(i05)') $
-                              , prefilter $
-                              , utuning[ituning] $
-                             ], '_') + '.fits' 
+                      + strjoin(['stokesIQUV' $
+                                 , string(scanno, format = '(i05)') $
+                                 , prefilter $
+                                 , utuning[ituning] $
+                                ], '_') + '.fits' 
   endfor                        ; ituning
 
   
@@ -548,19 +549,19 @@ pro red::make_stokes_cubes, dir, scanno $
                        , 'Making '+file_basename(snames[ituning])
 
       self -> selectfiles, files = wbfiles, states = wbstates $
-                           , sel = these_wbindx, count = Nthesewb $
-                           , scan = scanno $
-                           , fpi_states = utuning[ituning]
+                                   , sel = these_wbindx, count = Nthesewb $
+                                   , scan = scanno $
+                                   , fpi_states = utuning[ituning]
       
       self -> selectfiles, files = nbtfiles, states = nbtstates $
-                           , sel = these_nbtindx, count = Nthesenbt $
-                           , scan = scanno $
-                           , fpi_states = utuning[ituning]
+                                   , sel = these_nbtindx, count = Nthesenbt $
+                                   , scan = scanno $
+                                   , fpi_states = utuning[ituning]
       
       self -> selectfiles, files = nbrfiles, states = nbrstates $
-                           , sel = these_nbrindx, count = Nthesenbr $
-                           , scan = scanno $
-                           , fpi_states = utuning[ituning]
+                                   , sel = these_nbrindx, count = Nthesenbr $
+                                   , scan = scanno $
+                                   , fpi_states = utuning[ituning]
       
 
       wcs = {wave:dblarr(2,2)   $ ; WCS for this Stokes cube.
