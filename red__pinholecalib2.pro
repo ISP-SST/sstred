@@ -108,8 +108,8 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
   
   all_files = file_search(ph_dir + '*.pinh.fits', count = nf)
   
-   ;;; states for the reference camera
-   ;;; NB: This internally takes care of the CHROMIS WB/NB combinations
+  ;; states for the reference camera
+  ;; NB: This internally takes care of the CHROMIS WB/NB combinations
   self->selectfiles, files = all_files, states = states, cam = cams[refcam] $
                              , /strip_settings, selected = selection, prefilter = pref
   ref_states = states[selection]
@@ -117,7 +117,7 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
   ;; We discard multiple pinhole files for the same state
   ref_states_unique = ref_states[uniq(ref_states_unique, sort(ref_states_unique))]
   n_ref = n_elements(ref_states_unique)
-  ;;; Loop through ref states, find matches based on fpi_state, and process those
+  ;; Loop through ref states, find matches based on fpi_state, and process those
   
   undefine, alignments
   openw, unit, 'calib/refgrid.txt', /get, /append
@@ -128,20 +128,20 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     idx = where((states.fpi_state eq ref_states_unique[i_ref].fpi_state) and $
                 (states.camera NE ref_states_unique[i_ref].camera), n_idx)
     if n_idx eq 0 then continue
-      ;;; process the ref image, i.e., fit the grid
+    ;; process the ref image, i.e., fit the grid
     this_ref_state = ref_states_unique[i_ref]
     ref_img = red_readdata(this_ref_state.filename, /silent)
     ref_siz = size(ref_img, /dim)
     ;;; For CRISP wideband mask the stronger distorted corners
     if this_ref_state.camera eq 'Crisp-W' then ref_img *= (shift(dist(ref_siz), ref_siz/2) le 0.49*ref_siz[0])
-      ;;; find all pinholes, locate the 'L', and fit a regular grid
+    ;; find all pinholes, locate the 'L', and fit a regular grid
     ref_m = red_separate_mask(ref_img GE max(ref_img)/10.)
     np_ref = max(ref_m)
-      ;;; compute area and positions
+    ;; compute area and positions
     ref_area = lonarr(np_ref)
     ref_pos = fltarr(2, np_ref)
     for i = 0, np_ref-1 do begin
-        ;;;ix = where_n(ref_m EQ (i+1))
+      ;;ix = where_n(ref_m EQ (i+1))
       ix = where(ref_m eq (i+1))
       ix = [[ix mod ref_siz[0]], [ix / ref_siz[0]]]
       lu = (min(ix, dim = 1, max = ro)-3) > [0, 0]
@@ -172,10 +172,12 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
         print, inam, ' : This is not the 3 bigger pinholes!'
       endrep until 0
     endelse
+
 found_l1:
-    print, inam, ' : Found the reference L'
-      ;;; lcheck also re-orders positions to [corner, edge_l, edge_s]
-      ;;; corner position == center
+
+    print, inam, ' : Found the reference L for camera ', this_ref_state.camera
+    ;; lcheck also re-orders positions to [corner, edge_l, edge_s]
+    ;; corner position == center
     X0 = ref_pos[*, ref_lind[0]]
       ;;; build the true reference grid by fitting, relative to X0
     tmp = ref_pos - X0 # replicate(1, np_ref)
@@ -185,8 +187,9 @@ found_l1:
                                 ;print, gridstep, ang
     par = mpfit('red_grid_func', [gridstep, ang], $
                 functargs = {X:tmp_i, Y:tmp}, /quiet)
+    ref_gridstep = par[0]
     print, inam, ' : regular grid width ', strtrim(par[0], 2), 'px, tilt ', strtrim(par[1]*!radeg, 2), 'deg'
-       ;;; check that there are no double index positions
+    ;; check that there are no double index positions
     iix = replicate(1b, np_ref)
     for i=0, np_ref-2 do for j=i+1, np_ref-1 do $
        if total(tmp_i[*, i] eq tmp_i[*, j]) eq 2 then begin
@@ -202,7 +205,7 @@ found_l1:
     printf, unit, string(this_ref_state.fpi_state, X0, par, $
                          form="(a-12,f7.2,'  ',f7.2,'   ',f7.3,f+7.3)")
     
-      ;;; compute warp matrices, forward (kxy) and backward(lxy)
+    ;; compute warp matrices, forward (kxy) and backward(lxy)
     map = transpose([ref_pos, reg_pos])
     red_clean_warp, map, kx, ky, warp_dim
     red_clean_warp, map[*, [2, 3, 0, 1]], lx, ly, warp_dim
@@ -210,7 +213,7 @@ found_l1:
     red_append, alignments, { state:this_ref_state, map_x: kx, map_y: ky, $
                               revmap_x: lx, revmap_y: ly }
     
-      ;;; Now loop through dependent files and align to grid
+    ;; Now loop through dependent files and align to grid
     
     for i_dep = 0, n_idx-1 do begin
       state = states[idx[i_dep]]
@@ -222,7 +225,8 @@ found_l1:
       img_area = lonarr(img_np)
       img_pos = fltarr(2, img_np)
       for i = 0, img_np-1 do begin
-            ;;;ix = where_n(img_m EQ i+1)
+        ;;ix = where_n(img_m EQ i+1)
+
         ix = where(img_m eq (i+1))
         ix = [[ix mod ref_siz[0]], [ix / ref_siz[0]]]
         lu = (min(ix, dim = 1, max = ro)-3) > [0, 0]
@@ -261,11 +265,13 @@ found_l1:
       endelse
 
 found_l2:
+      print, inam, ' : Found L for camera ', state.camera, ': ', gridstep
       XX0 = img_lpos[*, 0]
-          ;;; find the matching pinholes
+
+      ;; find the matching pinholes
       tmp = img_pos-xx0#replicate(1, img_np)
       tmp_i = round(tmp/gridstep)
-          ;;; this assumes large L side is horizontal.  Check/improve
+      ;; this assumes large L side is horizontal.  Check/improve
       hflip = reg_i[0, ref_lind[1]] / tmp_i[0, img_lind[1]]
       vflip = reg_i[1, ref_lind[2]] / tmp_i[1, img_lind[2]]
       n_pairs = 0
@@ -284,9 +290,9 @@ found_l2:
       
       red_append, alignments, { state:state, map_x: kx, map_y: ky, $
                                 revmap_x: lx, revmap_y: ly }
-    endfor    ;;; loop dependent files
+    endfor    ;; loop dependent files
     if keyword_set(manual) then wdelete
-  endfor        ;;; loop reference files
+  endfor      ;; loop reference files
 
   free_lun, unit
 
