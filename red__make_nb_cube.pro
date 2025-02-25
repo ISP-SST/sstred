@@ -326,9 +326,9 @@ pro red::make_nb_cube, wcfile $
   
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
-                       , cam = wbcamera, ustat = '' $
-                       , sel = wbgindx, count = Nscans $
-                       , complement = complement, Ncomplement = Ncomplement
+                               , cam = wbcamera, ustat = '' $
+                               , sel = wbgindx, count = Nscans $
+                               , complement = complement, Ncomplement = Ncomplement
   ;; We have no special state (or absence of state) to identify
   ;; the global WB images but we do know that their exposure times
   ;; are much larger than the ones corresponding to the individual
@@ -347,23 +347,23 @@ pro red::make_nb_cube, wcfile $
 
   ;; Per-tuning files, wb and nb, only for selected scans
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , scan = uscans $
-                       , cam = wbcamera $
-                       , sel = wbindx, count = Nwb
+                               , scan = uscans $
+                               , cam = wbcamera $
+                               , sel = wbindx, count = Nwb
   wbstates = pertuningstates[wbindx]
   wbfiles = pertuningfiles[wbindx]
 
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , scan = uscans $
-                       , cam = nbtcamera $
-                       , sel = nbtindx, count = Nnbt
+                               , scan = uscans $
+                               , cam = nbtcamera $
+                               , sel = nbtindx, count = Nnbt
   nbtstates = pertuningstates[nbtindx]
   nbtfiles = pertuningfiles[nbtindx]
   
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , scan = uscans $
-                       , cam = nbrcamera $
-                       , sel = nbrindx, count = Nnbr
+                               , scan = uscans $
+                               , cam = nbrcamera $
+                               , sel = nbrindx, count = Nnbr
   nbrstates = pertuningstates[nbrindx]
   nbrfiles = pertuningfiles[nbrindx]
 
@@ -412,7 +412,7 @@ pro red::make_nb_cube, wcfile $
     avg_ts = (strsplit(dt, 'T', /extract))[1]
     avg_time = red_time2double(avg_ts)
     pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+ $
-                         '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+                       '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
       tt = dblarr(Npfls)
       ts = strarr(Npfls)
@@ -493,7 +493,7 @@ pro red::make_nb_cube, wcfile $
   cfg_dir=strjoin(spl[0:cw],'/')
   if self.filetype eq 'MOMFBD' then begin
     mr = momfbd_read(wbgfiles[0],/nam)
-  endif else begin               ; get cropping from cfg file    
+  endif else begin              ; get cropping from cfg file    
     cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
                string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
     cfg = redux_readcfg(cfg_file)
@@ -515,13 +515,13 @@ pro red::make_nb_cube, wcfile $
     yy0 = min(sim_y) + margin - num_points/2 
     yy1 = max(sim_y) - margin + num_points/2 - 1      
   endelse
-   
+  
   if file_test(cfg_dir+'/fov_mask.fits') then begin
     fov_mask = readfits(cfg_dir+'/fov_mask.fits')
-      if self.filetype eq 'MOMFBD' then $
-        fov_mask = red_crop_as_momfbd(fov_mask, mr) $
-      else $
-        fov_mask = fov_mask[xx0:xx1,yy0:yy1]
+    if self.filetype eq 'MOMFBD' then $
+       fov_mask = red_crop_as_momfbd(fov_mask, mr) $
+    else $
+       fov_mask = fov_mask[xx0:xx1,yy0:yy1]
     fov_mask = red_rotate(fov_mask, direction)
   endif
   
@@ -639,19 +639,19 @@ pro red::make_nb_cube, wcfile $
     for iscan = 0, Nscans-1 do begin
       
       self -> make_stokes_cubes, file_dirname(wbgfiles[iscan]), uscans[iscan] $
-                                 , clips = clips $
-                                 , cmap_fwhm = cmap_fwhm $
-                                 , /nocavitymap $ ; Cavity maps in Stokes cubes aren't used for anything
+         , clips = clips $
+         , cmap_fwhm = cmap_fwhm $
+         , /nocavitymap $       ; Cavity maps in Stokes cubes aren't used for anything
 ;                                 , nocavitymap = nocavitymap $                                 
-                                 , noremove_periodic = noremove_periodic $
-                                 , redemodulate = redemodulate $
+         , noremove_periodic = noremove_periodic $
+         , redemodulate = redemodulate $
 ;                                 , smooth = smooth $
-                                 , snames = these_snames $
-                                 , stokesdir = stokesdir $
-                                 , tiles = tiles $
-                                 , nearest = nearest $
-                                 , nthreads = nthreads $
-                                 , fitpref_time = fitpref_t
+         , snames = these_snames $
+         , stokesdir = stokesdir $
+         , tiles = tiles $
+         , nearest = nearest $
+         , nthreads = nthreads $
+         , fitpref_time = fitpref_t
 
       snames[iscan, *] = these_snames
       
@@ -798,18 +798,18 @@ pro red::make_nb_cube, wcfile $
         
         ;; The NB files in this scan, sorted in tuning wavelength order.
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[ituning], timestamps = ts $
-                             , cam = nbtcamera, scan = uscans[iscan] $
-                             , sel = scan_nbtindx, count = count
+                                     , fpi_states = utuning[ituning], timestamps = ts $
+                                     , cam = nbtcamera, scan = uscans[iscan] $
+                                     , sel = scan_nbtindx, count = count
         scan_nbtfiles = pertuningfiles[scan_nbtindx]
         scan_nbtstates = pertuningstates[scan_nbtindx]
         sortindx = sort(scan_nbtstates.tun_wavelength)
         scan_nbtfiles = scan_nbtfiles[sortindx]
         scan_nbtstates = scan_nbtstates[sortindx]
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[ituning], timestamps = ts $
-                             , cam = nbrcamera, scan = uscans[iscan] $
-                             , sel = scan_nbrindx, count = count
+                                     , fpi_states = utuning[ituning], timestamps = ts $
+                                     , cam = nbrcamera, scan = uscans[iscan] $
+                                     , sel = scan_nbrindx, count = count
         scan_nbrfiles = pertuningfiles[scan_nbrindx]
         scan_nbrstates = pertuningstates[scan_nbrindx]
         sortindx = sort(scan_nbrstates.tun_wavelength)
@@ -823,9 +823,9 @@ pro red::make_nb_cube, wcfile $
 
         ;; The WB files in this scan, sorted as the NB files
         self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                             , fpi_states = utuning[ituning], timestamps = ts $
-                             , cam = wbcamera, scan = uscans[iscan] $
-                             , sel = scan_wbindx, count = count
+                                     , fpi_states = utuning[ituning], timestamps = ts $
+                                     , cam = wbcamera, scan = uscans[iscan] $
+                                     , sel = scan_wbindx, count = count
         scan_wbfiles = pertuningfiles[scan_wbindx]
         scan_wbstates = pertuningstates[scan_wbindx]
         ;;match2, scan_nbrstates.fpi_state, scan_wbstates.fpi_state, sortindx
@@ -1067,12 +1067,12 @@ pro red::make_nb_cube, wcfile $
   whdr = headfits(wcfile)
   csyer_spatial_value = fxpar(whdr, 'CSYER1', comment = csyer_spatial_comment)
   red_fitscube_addwcs, filename, wcs $
-                         , csyer_spatial_value = csyer_spatial_value $
-                         , csyer_spatial_comment = csyer_spatial_comment $
-                         , dimensions = dims
+                       , csyer_spatial_value = csyer_spatial_value $
+                       , csyer_spatial_comment = csyer_spatial_comment $
+                       , dimensions = dims
   if keyword_set(wbsave) then begin 
-     free_lun, wblun
-     red_fitscube_addwcs, wbfilename, wcs $
+    free_lun, wblun
+    red_fitscube_addwcs, wbfilename, wcs $
                          , csyer_spatial_value = csyer_spatial_value $
                          , csyer_spatial_comment = csyer_spatial_comment $
                          , dimensions = dims
@@ -1096,18 +1096,18 @@ pro red::make_nb_cube, wcfile $
   ;; Add info about this step
   hdr = headfits(filename)
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'CONCATENATION' $
-                              , prpara = prpara $
-                              , prproc = inam $
-                              , prref = 'Align reference: '+wcfile $
-                              , comment_prref = 'WB cube file name'
+     , prstep = 'CONCATENATION' $
+     , prpara = prpara $
+     , prproc = inam $
+     , prref = 'Align reference: '+wcfile $
+     , comment_prref = 'WB cube file name'
 
   self -> headerinfo_addstep, hdr $
-                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
-                              , prpara = prpara $
-                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
-                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
-                              , prproc = inam
+     , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+     , prpara = prpara $
+     , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+     , prproc = inam
   red_fitscube_newheader, filename, hdr
   if keyword_set(wbsave) then red_fitscube_newheader, wbfilename, hdr
   
@@ -1119,62 +1119,62 @@ pro red::make_nb_cube, wcfile $
 
   ;; Add some variable keywords
   self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
-                                  , anchor = anchor $
-                                  , comment = 'Beginning time of observation' $
-                                  , keyword_method = 'first' $
+     , anchor = anchor $
+     , comment = 'Beginning time of observation' $
+     , keyword_method = 'first' $
 ;                                  , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
-                                  , axis_numbers = [3, 5] 
+     , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, filename, 'DATE-END', date_end_array $
-                                  , anchor = anchor $
-                                  , comment = 'End time of observation' $
-                                  , keyword_method = 'last' $
+     , anchor = anchor $
+     , comment = 'End time of observation' $
+     , keyword_method = 'last' $
 ;                                  , keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
-                                  , axis_numbers = [3, 5] 
+     , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, filename, 'DATE-AVG', date_avg_array $
-                                  , anchor = anchor $
-                                  , comment = 'Average time of observation' $
-                                  , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
-                                  , axis_numbers = [3, 5] 
+     , anchor = anchor $
+     , comment = 'Average time of observation' $
+     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
+     , axis_numbers = [3, 5] 
 
   red_fitscube_addrespappl, filename, prefilter_curve, /tun
   
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $
-                                  , anchor = anchor 
+     , anchor = anchor 
   self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile $
-                                  , anchor = anchor 
+     , anchor = anchor 
   self -> fitscube_addvarkeyword, filename, 'AO_LOCK', old_filename = wcfile $
-                                  , anchor = anchor 
+     , anchor = anchor 
   self -> fitscube_addvarkeyword, filename, 'ELEV_ANG', old_filename = wcfile $
-                                  , anchor = anchor 
+     , anchor = anchor 
 
   self -> fitscube_addvarkeyword, filename, 'XPOSURE', exp_array $
-                                  , comment = 'Summed exposure times' $
-                                  , anchor = anchor $
-                                  , tunit = 's' $
-                                  , keyword_method = 'median' $
+     , comment = 'Summed exposure times' $
+     , anchor = anchor $
+     , tunit = 's' $
+     , keyword_method = 'median' $
 ;                                  , keyword_value = mean(exp_array) $
-                                  , axis_numbers = [3, 5] 
+     , axis_numbers = [3, 5] 
 
   self -> fitscube_addvarkeyword, filename, 'TEXPOSUR', sexp_array $
-                                  , comment = '[s] Single-exposure time' $
-                                  , anchor = anchor $
-                                  , tunit = 's' $
-                                  , keyword_method = 'median' $
+     , comment = '[s] Single-exposure time' $
+     , anchor = anchor $
+     , tunit = 's' $
+     , keyword_method = 'median' $
 ;                                  , keyword_value = mean(sexp_array) $
-                                  , axis_numbers = [3, 5] 
+     , axis_numbers = [3, 5] 
 
   self -> fitscube_addvarkeyword, filename, 'NSUMEXP', nsum_array $
-                                  , comment = 'Number of summed exposures' $
-                                  , anchor = anchor $
-                                  , keyword_method = 'median' $
+     , comment = 'Number of summed exposures' $
+     , anchor = anchor $
+     , keyword_method = 'median' $
 ;                                  , keyword_value = mean(nsum_array) $
-                                  , axis_numbers = [3, 5]
+     , axis_numbers = [3, 5]
   
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
   self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod $
-                                  ,fitpref_time = fitpref_time 
+     ,fitpref_time = fitpref_time 
   
   if makestokes && ~keyword_set(nocrosstalk) then begin
 
@@ -1188,22 +1188,22 @@ pro red::make_nb_cube, wcfile $
   if ~keyword_set(nomissing_nans) then begin
     ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, filename $
-                              , /noflip $
-                              , missing_type = 'nan'
+       , /noflip $
+       , missing_type = 'nan'
     if keyword_set(wbsave) then begin
       self -> fitscube_missing, wbfilename $
-                              , /noflip $
-                               , missing_type = 'nan'
+         , /noflip $
+         , missing_type = 'nan'
     endif
   endif
 
   
   if keyword_set(integer) then begin
     self -> fitscube_integer, filename $
-                              , /delete $
+       , /delete $
 ;                              , flip = ~keyword_set(noflipping) $
-                              , outname = outname $
-                              , overwrite = overwrite
+       , outname = outname $
+       , overwrite = overwrite
     filename = outname
   endif
   
