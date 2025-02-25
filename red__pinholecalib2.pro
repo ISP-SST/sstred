@@ -151,7 +151,7 @@ FOR i_ref = 0, n_ref-1 DO BEGIN
         ENDREP UNTIL 0
     ENDELSE
 found_l1:
-    print, inam, ' : Found the reference L'
+    print, inam, ' : Found the reference L for camera ', this_ref_state.camera
       ;;; lcheck also re-orders positions to [corner, edge_l, edge_s]
       ;;; corner position == center
     X0 = ref_pos[*, ref_lind[0]]
@@ -163,6 +163,7 @@ found_l1:
     ;print, gridstep, ang
     par = mpfit('red_grid_func', [gridstep, ang], $
                 functargs = {X:tmp_i, Y:tmp}, /quiet)
+    ref_gridstep = par[0]
     print, inam, ' : regular grid width ', strtrim(par[0], 2), 'px, tilt ', strtrim(par[1]*!radeg, 2), 'deg'
        ;;; check that there are no double index positions
     iix = replicate(1b, np_ref)
@@ -227,7 +228,8 @@ found_l1:
             FOR i=0, 3 DO FOR j=i+1, 4 DO FOR k=j+1, 5 DO BEGIN
                 img_lind = ix[[i, j, k]]
                 img_lpos = img_pos[*, img_lind] 
-                IF red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) EQ 1 THEN GOTO, found_l2
+                IF red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) EQ 1 THEN $
+                  IF abs(gridstep-ref_gridstep) LE 1 THEN GOTO, found_l2
             ENDFOR
             print, inam, ' : Unable to locate the reference pinholes. Try marking them manually'
             REPEAT BEGIN
@@ -239,6 +241,7 @@ found_l1:
         ENDELSE
 
 found_l2:
+        print, inam, 'Found L for camera ', state.camera, ': ', gridstep
         XX0 = img_lpos[*, 0]
           ;;; find the matching pinholes
         tmp = img_pos-xx0#replicate(1, img_np)
