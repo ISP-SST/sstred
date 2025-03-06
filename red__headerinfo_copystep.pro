@@ -98,7 +98,6 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
     
   endcase
   
- 
   case n_elements(old_filename_or_header) of
     
     0 : begin
@@ -122,13 +121,13 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
     else : oldhdr = old_filename_or_header
     
   endcase
-
+  
   ;; Available steps
   prsteps_available = strtrim(fxpar(oldhdr,'PRSTEP*', count = Navailable), 2)
   
   ;; Any steps to copy?
   if Navailable eq 0 then return
-
+  
   ;; Make step name changes backward compatible
   for istep = 0, Navailable-1 do begin
     if prsteps_available[istep] eq 'Demodulate' then $
@@ -136,7 +135,7 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
     if prsteps_available[istep] eq 'MOMFBD image restoration' then $
        prsteps_available[istep] = 'MOMFBD'
   endfor
-
+  
   ;; Existing steps
   prsteps_existing = strtrim(fxpar(hdr,'PRSTEP*', count = Nexisting), 2)
   
@@ -151,14 +150,14 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
     ii = where(prsteps_available eq prstep[istep], Nmatch)
     if Nmatch gt 0 then red_append, stepnums, ii+1
   endfor                        ; istep
-
+  
   ;; Some step could be indicated by multiple keywords, make a
   ;; uniqueified list
   stepnums = stepnums(uniq(stepnums, sort(stepnums))) 
    
   ;; Find the next output stepnumber and the anchor.
   red_headerinfo_anchor, hdr, anchor, next_stepnumber = outstep
-
+  
 ;  outstep = Nexisting
 ;  if Nexisting gt 0 then begin
 ;
@@ -186,7 +185,7 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
 ;    ;; Given anchor overridden if there are steps already
 ;    if n_elements(anchor) eq 0 then anchor = 'OBS_HDU' 
 ;  endelse
-
+  
   ;; Now do the copying
   for istep = 0, n_elements(stepnums)-1 do begin
     for ikey = 0, n_elements(prkeys)-1 do begin
@@ -244,7 +243,10 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
   if n_elements(filename) gt 0 then begin
     ;; Write the new header to the file
     red_fitscube_newheader, filename, hdr
-  endif
+  endif else begin
+    ;; Return the modified header in the parameter
+    filename_or_header = hdr 
+  endelse 
   
 end
 
