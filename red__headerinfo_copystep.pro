@@ -50,8 +50,13 @@
 ;    last  : in, optional, type=boolean
 ;   
 ;       Copy info for the last available step.
-; 
-;    prstep  : in, optional, type=string
+;   
+;    prpara_add : in, optional, type=dictionary
+;   
+;       A prpara dictionary (see red_make_prpara) with additional
+;       parmeters to add to the PRPARAn keyword.
+;   
+;    prstep : in, optional, type=string
 ;   
 ;       Copy info for steps matching this string.
 ; 
@@ -62,11 +67,14 @@
 ; 
 ;    2020-07-01 : MGL. Reimplement.
 ; 
+;    2025-03-10 : MGL. New keyword prpara_add.
+; 
 ;-
 pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
                               , all = all $
                               , anchor = anchor $
                               , last = last $
+                              , prpara_add = prpara_add $
                               , prstep = prstep $
                               , stepnum = stepnum 
 
@@ -208,9 +216,18 @@ pro red::headerinfo_copystep, filename_or_header, old_filename_or_header $
 
         if count eq 0 then break
 
+        if prkeys[ikey] eq 'PRPARA' && n_elements(prpara_add) gt 0 then begin
+          value_hash = json_parse(value)
+          keys_add = prpara_add.keys() 
+          for iii = 0, n_elements(prpara_add)-1 do begin
+            value_hash[keys_add[iii]] = prpara_add[keys_add[iii]]
+          endfor
+          value = json_serialize(value_hash)
+        endif
+        
         ;; Write keyword
         outname = prkeys[ikey]+strtrim(outstep, 2)+letter
-        print, outname
+;        print, outname
         if n_elements(variable_values) gt 0 then begin
 
           if n_elements(filename) eq 0 then stop
