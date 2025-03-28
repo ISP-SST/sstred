@@ -63,7 +63,9 @@
 ;    timestamp : in, optional, type=string
 ; 
 ;       The dataset timestamp formatted as hh:mm:ss. If needed but not
-;       given, will try to get it from the states.
+;       given, will try to get it from the states. Also used to look
+;       for e.g. darks in subdirectory darks/hh:mm:ss/ rather than in
+;       darks/. Similar for flats.
 ; 
 ;    wild_detector  : in, optional, type="boolean or string"
 ;   
@@ -250,6 +252,7 @@ function crisp::filenames, datatype, states $
         
         'dark' : begin
           dirs = *self.dark_dir
+          if n_elements(timestamp) then dirs += timestamp + '/'
           red_append, tag_list, 'sst'
           red_append, tag_list, detector
           red_append, tag_list, scannumber
@@ -258,6 +261,7 @@ function crisp::filenames, datatype, states $
 
         'flat' : begin
           dirs = *self.flat_dir
+          if n_elements(timestamp) then dirs += timestamp + '/'
           red_append, tag_list, 'sst'
           red_append, tag_list, detector
           red_append, tag_list, scannumber
@@ -349,6 +353,7 @@ function crisp::filenames, datatype, states $
         
         'dark' : begin
           dir = self.out_dir+'/darks/'
+          if n_elements(timestamp) then dir += timestamp + '/'
           red_append, tag_list, detector
           ext = '.dark'
           if ~keyword_set(no_fits) then ext += '.fits'
@@ -364,6 +369,7 @@ function crisp::filenames, datatype, states $
 
         'flat' : begin
           dir = self.out_dir + '/flats/'
+          if n_elements(timestamp) then dir += timestamp + '/'
           if states[istate].is_wb then begin
             red_append, tag_list, detector
             red_append, tag_list, states[istate].fullstate

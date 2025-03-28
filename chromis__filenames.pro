@@ -56,6 +56,11 @@
 ;       string (only frame number implemented - used in momfbd config
 ;       files).
 ; 
+;    timestamp : in, optional, type=string
+; 
+;       A string "hh:mm:ss" to look for e.g. darks in subdirectory
+;       darks/hh:mm:ss/ rather than in darks/. Similar for flats.
+; 
 ;    wild_detector  : in, optional, type="boolean or string"
 ;   
 ;       If a string, use this as part of the search string. (It does
@@ -110,7 +115,7 @@
 ; 
 ;    2016-10-14 : MGL. Added scangain datatype.
 ; 
-; 
+;    
 ;-
 function chromis::filenames, datatype, states $
                              , wild_detector = wild_detector $         ; camXXVII
@@ -260,9 +265,10 @@ function chromis::filenames, datatype, states $
       if strlowcase(size(wild_tuning, /tname)) ne 'string' then tuning = 'hrz*'
 
       case strlowcase(datatype) of
-        
+
         'dark' : begin
           dirs = *self.dark_dir
+          if n_elements(timestamp) then dirs += timestamp + '/'
           red_append, tag_list, 'sst'
           red_append, tag_list, detector
           red_append, tag_list, scannumber
@@ -271,6 +277,7 @@ function chromis::filenames, datatype, states $
 
         'flat' : begin
           dirs = *self.flat_dir
+          if n_elements(timestamp) then dirs += timestamp + '/'
           red_append, tag_list, 'sst'
           red_append, tag_list, detector
           red_append, tag_list, scannumber
@@ -362,6 +369,7 @@ function chromis::filenames, datatype, states $
         
         'dark' : begin
           dir = self.out_dir+'/darks/'
+          if n_elements(timestamp) then dir += timestamp + '/'
           red_append, tag_list, detector
           red_append, tag_list, exposure
           red_append, tag_list, gain
@@ -381,6 +389,7 @@ function chromis::filenames, datatype, states $
 
         'flat' : begin
           dir = self.out_dir + '/flats/' 
+          if n_elements(timestamp) then dir += timestamp + '/'
           red_append, tag_list, detector
           red_append, tag_list, exposure
           red_append, tag_list, gain
