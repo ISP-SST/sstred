@@ -123,8 +123,11 @@
 ; 
 ;   2018-04-18 : MGL. Write only in FITS format.
 ;
+;   2025-03-27 : MGL. New keyword dark_timestamp.
+;
 ;-
 pro red::sumflat, overwrite = overwrite, $
+                  dark_timestamp = dark_timestamp, $
                   ustat = ustat, $
                   nthreads = nthreads, $
                   remove = remove, $
@@ -243,12 +246,12 @@ pro red::sumflat, overwrite = overwrite, $
           continue
         endif
       endif
-
+      
       ;; Read the dark frame 
-      self -> get_calib, states[sel[0]], darkdata = dd, status = status
+      self -> get_calib, states[sel[0]], darkdata = dd, status = status, timestamp = dark_timestamp
       if status ne 0 then begin
         print, inam+' : no dark found for camera ', cam
-        continue
+        retall
       endif
 
       if( min(sel) lt 0 ) then begin
