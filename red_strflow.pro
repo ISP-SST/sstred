@@ -27,6 +27,11 @@
 ; 
 ; :Keywords:
 ; 
+;   indent :  in, optional, type=string
+; 
+;     This string, typically a few blanks, is added at the beginning
+;     of the first line of text.
+; 
 ;   width : in, optional, type=integer, default="min(60,Terminal width-1)"
 ;   
 ;     Make the lines no longer than this.
@@ -36,11 +41,14 @@
 ; 
 ;   2021-04-15 : MGL. First version.
 ; 
+;   2025-03-27 : MGL. New keyword indent.
+; 
 ;-
-function red_strflow, txt, width = width
+function red_strflow, txt, width = width, indent = indent
 
   if n_elements(txt) eq 0 then return, ''
   if n_elements(width) eq 0 then width = ((TERMINAL_SIZE( ))[0]-1) <60
+  if n_elements(indent) eq 0 then indent = '' 
   
   istr = strjoin(strtrim(strcompress(txt), 2), ' ')
 
@@ -63,7 +71,7 @@ function red_strflow, txt, width = width
         
       n_elements(line) eq 0 : begin
         ;; Start the first line
-        line = wrd
+        line = indent + wrd
       end
       
       strlen(line) + strlen(wrd) + 1 gt width : begin
@@ -116,7 +124,7 @@ instrings = ["(CNN) If you've been out driving on the eastern coast of Australia
 ;stop
 
 outstring1 = red_strflow(instring)
-outstring2 = red_strflow(instrings, w = 40)
+outstring2 = red_strflow(instrings, w = 40, indent = '  ')
 outstring3 = red_strflow(instrings, w = 30)
 
 print
