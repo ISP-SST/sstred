@@ -231,6 +231,7 @@ pro red::prepmomfbd, cams = cams $
                      , maxshift = maxshift $
                      , modes = modes $
                      , momfbddir = momfbddir $
+                     , newalign = newalign $
                      , nfac = nfac $
                      , nmodes = nmodes $
                      , no_descatter = no_descatter $
@@ -268,9 +269,13 @@ pro red::prepmomfbd, cams = cams $
   
   offset_dir = self.out_dir + '/calib/'
 
-  ;; Set the newalign keyword based on what pinhole alignment method
-  ;; was used.
-  if file_test(offset_dir+'/alignments_polywarp.sav') then newalign = 1
+  ;; Set newalign explicitly to 0 if you want to use the old
+  ;; projective method and there is also a new polywarp calibration.
+  if n_elements(newalign) eq 0 then begin
+    ;; Set the newalign keyword based on what pinhole alignment method
+    ;; was used.
+    if file_test(offset_dir+'/alignments_polywarp.sav') then newalign = 1
+  endif
   
   if(n_elements(maxshift) eq 0) then maxshift='30'
   maxshift = strcompress(string(maxshift), /remove_all)
