@@ -100,8 +100,7 @@ pro red::archive_workdir, sudo=sudo
   if file_test('doit.pro') then $
     printf, lun, 'tar -rf ' + tar_fn + ' doit.pro ' $
   else $
-    printf,"#  WARNING: 'doit.pro' file doesn't exist!"
-  printf, lun
+     printf, lun, "#  WARNING: 'doit.pro' file doesn't exist!"
   if file_test('detectors.idlsave') then $
     printf, lun, 'tar -rf ' + tar_fn + ' detectors.idlsave' $
   else $
