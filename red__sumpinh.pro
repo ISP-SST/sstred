@@ -89,6 +89,8 @@
 ;
 ;-
 pro red::sumpinh, nthreads = nthreads $
+                  , dark_timestamp = dark_timestamp $
+                  , flat_timestamp = flat_timestamp $
                   , no_descatter = no_descatter $
                   , ustat = ustat $
                   , prefilter = prefilter $
@@ -195,19 +197,39 @@ pro red::sumpinh, nthreads = nthreads $
       this_state = state_list[istate]
       sel = where(states.fpi_state eq this_state.fpi_state)
       
-      ;; Get the pinholes file name for the selected state, as well as
-      ;; dark and flat data.
-      self -> get_calib, states[sel[0]], darkdata = dd, flatdata = ff, $
-                         darkname = darkname, flatname = flatname, $
-                         pinhname = pinhname, status = status
-      if( status ne 0 ) then begin
-        print, inam+' : failed to load calibration data for:', states[sel[0]].filename
-        print, 'One of these seems to be missing:'
+      ;; Get dark and flat data.
+      self -> get_calib, states[sel[0]] $
+         , darkdata = dd $
+         , darkname = darkname, status = status $
+         , timestamp = dark_timestamp
+      if status ne 0 then begin
+        print, inam+' : failed to load darks for:', states[sel[0]].filename
         print, 'darkname=', darkname
-        print, 'flatname=', flatname
-        print, 'pinhname=', pinhname
-        continue
+        retall
       endif
+      
+      for istamp = 0, n_elements(flat_timestamp)-1 do begin
+        flatname = self -> filenames('flat', states[sel[0]], timestamp = flat_timestamp[istamp])
+        if file_test(flatname) then begin
+          self -> get_calib, states[sel[0]] $
+             , flatdata = ff $
+             , flatname = flatname $
+             , status = status $
+             , timestamp = flat_timestamp[istamp]
+          if status eq 0 then break ; Found a flat!
+        endif else status = 1
+      endfor                    ; istamp
+      if status ne 0 then begin
+        print, inam+' : failed to load flats for:', states[sel[0]].filename
+        print, flat_timestamp
+        print, 'flatname=', flatname
+        retall
+      endif
+
+      ;; Get the pinholes file name for the selected state
+      self -> get_calib, states[sel[0]] $
+         , pinhname = pinhname
+   
 
       if n_elements(outdir) ne 0 then pinhname = outdir + '/' + file_basename(pinhname)
 

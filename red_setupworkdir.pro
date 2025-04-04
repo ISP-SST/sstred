@@ -18,6 +18,11 @@
 ;
 ; :Keywords:
 ;
+;    ampm_cutoff : in, optional, type=string, default='13:00:00'
+;
+;      Data collected before this time belongs to AM observations,
+;      everything else to PM.
+;
 ;    calibrations_only : in, optional, type=boolean
 ;
 ;      Set up to process calibration data only.
@@ -33,6 +38,13 @@
 ;    no_observer_metadata : in, optional, type=boolean
 ;
 ;      Don't do anything to get OBSERVER metadata. 
+;
+;    no_lapalma : in, optional, type=boolean
+;
+;      By default, if you are in La Palma, the workdirs will be set up
+;      to sum all calibration data into timestamped directories, like
+;      flats/hh:mm:ss plus make quicklooks. Set this keyword to
+;      generate regular workdirs.
 ;
 ;    old_dir : in, optional, type = string
 ;
@@ -263,16 +275,28 @@
 ;   2024-07-04 : MGL. Automatically copy summed calibration data from
 ;                a reduc/ subdirectory in the raw data root directory.
 ;
+;   2025-03-27 : MGL. New keyword no_lapalma. 
+;
+;   2025-04-03 : MGL. New keyword ampm_cutoff 
+;   
 ;-
-pro red_setupworkdir, cfgfile = cfgfile $
+pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
+                      , cfgfile = cfgfile $
                       , calibrations_only = calibrations_only $
                       , date = date $
                       , instruments = instruments $
                       , no_observer_metadata = no_observer_metadata $
+                      , no_lapalma = no_lapalma $
+                      , lapalma_setup = lapalma_setup $
                       , old_dir = old_dir $
                       , out_dir = out_dir $
                       , scriptfile = scriptfile $
                       , search_dirs = search_dirs
+
+  ;; Name of this program
+  inam = red_subprogram(/low, calling = inam1)
+
+  if n_elements(ampm_cutoff) eq 0 then ampm_cutoff = '13:00:00'
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
 
@@ -327,10 +351,15 @@ pro red_setupworkdir, cfgfile = cfgfile $
 
     red_currentsite, site = site, search_dirs = search_dirs, date = date
 
-  endif                         ; no search_dirs are given
+  endif else red_currentsite, site = site
 
-  ;; search_dirs might be a single path or an array of paths that, in turn,
-  ;; could be either a regular directory name or a regular expression.
+  ;; Should we generate workdirs for standard La Palma use, i.e., with
+  ;; calibrations data summing and quicklook only?
+  if ~keyword_set(lapalma_setup) then lapalma_setup = ~no_lapalma && n_elements(site) gt 0 && site eq 'La Palma'
+  
+  ;; search_dirs might be a single path or an array of paths that, in
+  ;; turn, could be either a regular directory name or a regular
+  ;; expression.
   for i = 0, n_elements( search_dirs ) - 1 do begin
 
     ;; Each search directory must end with a slash.
@@ -463,40 +492,120 @@ pro red_setupworkdir, cfgfile = cfgfile $
     class = existing_classes[iexisting]
     instrument_dirs = reform(existing_instrument_dirs[iexisting])
 
-    if keyword_set( calibrations_only ) then begin
+    case 1 of
+
+      keyword_set(lapalma_setup) : begin
+        ;; Setup for processing on La Palma
+        print, 'La Palma setup up for ' + instrument + ' with class ' + class + '.'
+        ;; We asked for this instrument and there seems to be data
+        odirs = file_search( out_dir + instrument + '*', count = Nodirs )
+        if Nodirs eq 0 then begin
+          workdir = out_dir + instrument + '/'
+        endif else begin
+          print
+          print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
+          print, file_basename( odirs ), format = '(a0)'
+          workdir = ''
+          print, 'Use an existing directory or create a new one.'
+          read, 'Specify ' + instrument + ' workdir name: ', workdir
+          workdir = out_dir + workdir + '/'
+        endelse        
+      end
       
-      if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
-        
-        print, 'Setting up for ' + instrument + $
-               ', calibration data processing only!'
-        
-        workdir = out_dir + instrument + '-calibrations/'
-        
-      endif else begin
-        workdir = ''
-      endelse
+      keyword_set(calibrations_only) : begin
+        ;; Probably not used anymore, keeping for backwards
+        ;; compatibility.
+        if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
+          print, 'Setting up for ' + instrument + $
+                 ', calibration data processing only!'
+          workdir = out_dir + instrument + '-calibrations/'
+        endif else begin
+          workdir = ''
+        endelse
+      end
+
+      else : begin
+        ;; Regular setup
+        print, 'Setting up for ' + instrument + ' with class ' + class + '.'
+        ;; We asked for this instrument and there seems to be data
+        odirs = file_search( out_dir + instrument + '*', count = Nodirs )
+        if Nodirs eq 0 then begin
+          workdir = out_dir + instrument + '/'
+        endif else begin
+          print
+          print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
+          print, file_basename( odirs ), format = '(a0)'
+          workdir = ''
+          print, 'Use an existing directory or create a new one.'
+          read, 'Specify ' + instrument + ' workdir name: ', workdir
+          workdir = out_dir + workdir + '/'
+        endelse
+      end
       
-    endif else begin ;; full processing mode (not calibration only).
-      
-      print, 'Setting up for ' + instrument + ' with class ' + class + '.'
-      
-      ;; We asked for this instrument and there seems to be data
-      odirs = file_search( out_dir + instrument + '*', count = Nodirs )
-      if Nodirs eq 0 then begin
-        workdir = out_dir + instrument + '/'
-      endif else begin
-        print
-        print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
-        print, file_basename( odirs ), format = '(a0)'
-        workdir = ''
-        print, 'Use an existing directory or create a new one.'
-        read, 'Specify ' + instrument + ' workdir name: ', workdir
-        workdir = out_dir + workdir + '/'
-      endelse
-      
-    endelse
+    endcase
+    
+    
+;    if keyword_set( calibrations_only ) then begin
+;      
+;      if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
+;        
+;        print, 'Setting up for ' + instrument + $
+;               ', calibration data processing only!'
+;        
+;        workdir = out_dir + instrument + '-calibrations/'
+;        
+;      endif else begin
+;        workdir = ''
+;      endelse
+;      
+;    endif else begin ;; full processing mode (not calibration only).
+;      
+;      print, 'Setting up for ' + instrument + ' with class ' + class + '.'
+;      
+;      ;; We asked for this instrument and there seems to be data
+;      odirs = file_search( out_dir + instrument + '*', count = Nodirs )
+;      if Nodirs eq 0 then begin
+;        workdir = out_dir + instrument + '/'
+;      endif else begin
+;        print
+;        print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
+;        print, file_basename( odirs ), format = '(a0)'
+;        workdir = ''
+;        print, 'Use an existing directory or create a new one.'
+;        read, 'Specify ' + instrument + ' workdir name: ', workdir
+;        workdir = out_dir + workdir + '/'
+;      endelse
+;      
+;    endelse
     
     file_mkdir, workdir
+
+    if keyword_set(lapalma_setup) then begin
+      ;; Write a warning message in 0README
+      openw, rlun, /get_lun, workdir+'/0README'
+      red_strflow, lun = rlun, width = 50 $
+                   , ['This work directory was created for default La Palma processing,' $
+                      , 'including summation of calibration data for transport to the' $
+                      , 'home institute, and for making quicklooks. The summed calibrations' $
+                      , 'data is stored in time-stamped subdirectories to the usual' $
+                      , 'directories, i.e., flats/hh:mm:ss/ rather than just flats/.']
+
+      red_strflow, lun = rlun, width = 50, indent = '   ' $
+                   , ['If you are in La Palma and this is not what you wanted,' $
+                      , 'please run red_setupworkdir with /no_lapalma.']
+
+      red_strflow, lun = rlun, width = 50, indent = '   ' $
+                   , ['The last summed darks will be linked to the darks/ directory' $ 
+                      , 'and used when summing the other kinds of calibrations.' $
+                      , 'Similarly, the last flats will be linked and used for polcal and pinholes.']
+
+      red_strflow, lun = rlun, width = 50, indent = '   ' $
+                   , ['If you have several sets of darks or several sets of flats of the same kind,' $
+                      , 'you may be better off using regular workdirs and making sure' $
+                      , 'to match the calibrations properly. Note that pinholes should be' $
+                      , 'rather insensitive to what flats are used.']
+      free_lun, rlun
+    endif
     
     if keyword_set(calibrations_only) then begin
       ;; Write a warning message in 0README about the limitations of
@@ -603,13 +712,48 @@ pro red_setupworkdir, cfgfile = cfgfile $
       ;; Look for already summed data in a reduc/ subdirectory.
       sum_dir = root_dir + 'reduc/' + instrument
       if ~file_test(sum_dir, /directory) then undefine, sum_dir
+      case 1 of
+
+        file_test(root_dir + 'reduc/AM' + instrument, /directory) $
+           && file_test(root_dir + 'reduc/PM' + instrument, /directory) : begin
+          ;; Both reduc/AM/ and reduc/PM/ subdirectories. Ask user
+          ;; which one they want to set up for.
+          red_message, 'Found both reduc/AM/ and reduc/PM/ subdirectories with summed data.' $
+                       + ' Which one do you want to set up for?'
+          sel = red_select_subset(['AM', 'PM'], count = count, maxcount = 1, default = '')
+          if count eq 0 then undefine, sum_dir else begin
+            sum_dir = root_dir + 'reduc/'+sel+'/' + instrument
+          endelse
+        end
+
+        file_test(root_dir + 'reduc/AM' + instrument, /directory) : begin
+          ;; Just the reduc/AM/ subdirectory. Use it!
+          sum_dir = root_dir + 'reduc/AM/' + instrument
+        end
+
+        file_test(root_dir + 'reduc/PM' + instrument, /directory) : begin
+          ;; Just the reduc/PM/ subdirectory. Use it!
+          sum_dir = root_dir + 'reduc/PM/' + instrument
+        end
+
+        file_test(root_dir + 'reduc' + instrument, /directory) : begin
+          ;; Just the reduc/ subdirectory. Use it!
+          sum_dir = root_dir + 'reduc/' + instrument
+        end
+
+        else : undefine, sum_dir
+        
+      endcase
+      
     endelse
     
     ;; Setup the different instruments.
     call_procedure, 'red_setupworkdir_' + class       $
                     , workdir, root_dir, config_file, script_file, isodate $                    
-                    ;;, workdir, root_dir, config_file, script_file, isodate $                    
+                    ;;, workdir, root_dir, config_file, script_file, isodate $     
+                    , ampm_cutoff = ampm_cutoff $               
                     , calibrations_only = calibrations_only $
+                    , lapalma_setup = lapalma_setup $
                     , no_observer_metadata = no_observer_metadata $
                     , old_dir = sum_dir
     

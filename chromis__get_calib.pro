@@ -66,6 +66,11 @@
 ; 
 ;        The status of the operation, 0 for success.
 ; 
+;    timestamp : in, optional, type=string
+; 
+;        Look for darks and flats in timestamped directories below the
+;        regular darks/, flats/ subdirectories.
+; 
 ; :History:
 ; 
 ;    2016-05-26 : MGL. Initial version including darks, flats, and
@@ -90,6 +95,8 @@
 ; 
 ;    2018-07-25 : Sum darks and flats, and make gains as needed.
 ; 
+;    2025-03-28 : MGL. New keyword timestamp.
+; 
 ;-
 pro chromis::get_calib, states $
                         , no_fits = no_fits $
@@ -98,7 +105,8 @@ pro chromis::get_calib, states $
                         , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata   $
                         , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata   $
                         , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata   $
-                        , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata
+                        , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata  $
+                        , timestamp = timestamp 
   
 
   Nstates = n_elements(states)
@@ -109,10 +117,10 @@ pro chromis::get_calib, states $
   endif
 
   if arg_present(darkname)  or arg_present(darkdata) then $
-     darkname = self -> filenames('dark'   , states, no_fits = no_fits)
+     darkname = self -> filenames('dark'   , states, no_fits = no_fits, timestamp = timestamp)
   if arg_present(flatname)  or arg_present(flatdata) or $
      arg_present(gainname)  or arg_present(gaindata) then $
-        flatname = self -> filenames('flat'   , states, no_fits = no_fits)
+        flatname = self -> filenames('flat'   , states, no_fits = no_fits, timestamp = timestamp)
   if arg_present(gainname)  or arg_present(gaindata) then $
      gainname = self -> filenames('gain'   , states, no_fits = no_fits)
   if arg_present(pinhname)  or arg_present(pinhdata) then $
@@ -145,7 +153,7 @@ pro chromis::get_calib, states $
         if ~file_test(darkname[istate]) then begin
           ;; Try summing darks for this camera
           self -> sumdark, /check, /sum_in_rdx $
-                           , cams = states[istate].camera          
+             , cams = states[istate].camera          
         end
         darkdata[0, 0, istate] = red_readdata(darkname[istate] $
                                               , status = darkstatus, /silent)

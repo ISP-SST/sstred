@@ -98,6 +98,11 @@
 ; 
 ;        The status of the operation, 0 for success.
 ; 
+;    timestamp : in, optional, type=string
+; 
+;        Look for darks and flats in timestamped directories below the
+;        regular darks/, flats/ subdirectories.
+; 
 ; :History:
 ; 
 ;    2018-04-20 : MGL. New version based on chromis::get_calib. 
@@ -119,6 +124,8 @@
 ;    2024-11-02 : JdlCR. Modifications for new
 ;                 demodulation/flat-fielding scheme. Now it also
 ;                 handles a case with lccgain.
+; 
+;    2025-04-03 : MGL. New keyword timestamp.
 ;
 ;-
 pro red::get_calib, states $
@@ -134,7 +141,8 @@ pro red::get_calib, states $
                     , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
                     , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
                     , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata $
-                    , clcgainstatus = clcgainstatus, clcgainname = clcgainname, clcgaindata = clcgaindata
+                    , clcgainstatus = clcgainstatus, clcgainname = clcgainname, clcgaindata = clcgaindata $
+                    , timestamp = timestamp 
 
   Nstates = n_elements(states)
 
@@ -144,10 +152,10 @@ pro red::get_calib, states $
   endif
   
   if arg_present(darkname)  or arg_present(darkdata) then $
-     darkname = self -> filenames('dark'   , states, no_fits = no_fits)
+     darkname = self -> filenames('dark'   , states, no_fits = no_fits, timestamp = timestamp)
   if arg_present(flatname)  or arg_present(flatdata) or $
      arg_present(gainname)  or arg_present(gaindata) then $
-        flatname = self -> filenames('flat'   , states, no_fits = no_fits)
+        flatname = self -> filenames('flat'   , states, no_fits = no_fits, timestamp = timestamp)
   if arg_present(gainname)  or arg_present(gaindata) then $
      gainname = self -> filenames('gain'   , states, no_fits = no_fits)
   if arg_present(pinhname)  or arg_present(pinhdata) then $

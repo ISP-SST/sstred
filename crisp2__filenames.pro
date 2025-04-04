@@ -61,6 +61,11 @@
 ;       string (only frame number implemented - used in momfbd config
 ;       files).
 ; 
+;    timestamp : in, optional, type=string
+; 
+;       A string "hh:mm:ss" to look for e.g. darks in subdirectory
+;       darks/hh:mm:ss/ rather than in darks/. Similar for flats.
+; 
 ;    wild_detector  : in, optional, type="boolean or string"
 ;   
 ;       If a string, use this as part of the search string. (It does
@@ -280,6 +285,7 @@ function crisp2::filenames, datatype, states $
         
         'dark' : begin
           dirs = *self.dark_dir
+          if n_elements(timestamp) then dirs += timestamp + '/'
           red_append, tag_list, 'sst'
           red_append, tag_list, detector
           red_append, tag_list, scannumber
@@ -288,6 +294,7 @@ function crisp2::filenames, datatype, states $
 
         'flat' : begin
           dirs = *self.flat_dir
+          if n_elements(timestamp) then dirs += timestamp + '/'
           red_append, tag_list, 'sst'
           red_append, tag_list, detector
           red_append, tag_list, scannumber
@@ -379,6 +386,7 @@ function crisp2::filenames, datatype, states $
         
         'dark' : begin
           dir = self.out_dir+'/darks/'
+          if n_elements(timestamp) then dir += timestamp + '/'
           red_append, tag_list, detector
           red_append, tag_list, exposure
           red_append, tag_list, gain
@@ -398,6 +406,7 @@ function crisp2::filenames, datatype, states $
 
         'flat' : begin
           dir = self.out_dir + '/flats/'
+          if n_elements(timestamp) then dir += timestamp + '/'
           red_append, tag_list, detector
           if states[istate].is_wb then begin
             red_append, tag_list, exposure

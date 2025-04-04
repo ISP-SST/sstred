@@ -83,9 +83,13 @@
 ; 
 ;    2024-07-03 : MGL. Measure image scale for all prefilters by use
 ;                 of pinhole images.
+;
+;    2025-04-03: MGL. New keyword ampm_cutoff (for compatibility
+;                only).
 ; 
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
+                            , ampm_cutoff = ampm_cutoff $
                             , calibrations_only = calibrations_only $
                             , no_observer_metadata = no_observer_metadata $
                             , old_dir = old_dir 
