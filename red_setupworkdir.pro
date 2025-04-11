@@ -355,7 +355,7 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
 
   ;; Should we generate workdirs for standard La Palma use, i.e., with
   ;; calibrations data summing and quicklook only?
-  if ~keyword_set(lapalma_setup) then lapalma_setup = ~no_lapalma && n_elements(site) gt 0 && site eq 'La Palma'
+  if ~keyword_set(lapalma_setup) then lapalma_setup = ~keyword_set(no_lapalma) && n_elements(site) gt 0 && site eq 'La Palma'
   
   ;; search_dirs might be a single path or an array of paths that, in
   ;; turn, could be either a regular directory name or a regular
