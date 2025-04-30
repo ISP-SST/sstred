@@ -996,53 +996,11 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       print, inam+' : Did not find any CHROMIS data to get OBSERVER from.'
     endelse
   endif
-
   
-  if size(old_dir, /tname) ne 'STRING' then return
-    
   ;; We will now attempt to copy existing sums of calibration data.
-  
-  ;; Darks
-  if file_test(old_dir+'/darks', /directory) then begin
-    dfiles = file_search(old_dir+'/darks/cam*.dark*', count = Nfiles)
-    if Nfiles gt 0 then begin
-      file_mkdir, work_dir+'/darks'
-      file_copy, dfiles, work_dir+'/darks/', /overwrite
-      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/darks/'
-    endif
-  endif
-
-  ;; Flats
-  if file_test(old_dir+'/flats', /directory) then begin
-    ffiles = file_search(old_dir+'/flats/cam*[0-9].flat*', count = Nfiles)
-    if Nfiles gt 0 then begin
-      file_mkdir, work_dir+'/flats'
-      file_copy, ffiles, work_dir+'/flats/', /overwrite
-      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/flats/'
-    endif
-  endif
-
-  ;; Pinholes
-  if file_test(old_dir+'/pinhs', /directory) then begin
-    pfiles = file_search(old_dir+'/pinhs/cam*.pinh*', count = Nfiles)
-    if Nfiles gt 0 then begin
-      file_mkdir, work_dir+'/pinhs'
-      file_copy, pfiles, work_dir+'/pinhs/', /overwrite
-      print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+old_dir+'/pinhs/'
-    endif
-  endif
-
-  ;; Polcal
-  if file_test(old_dir+'/polcal_sums', /directory) then begin
-    camdirs = file_search(old_dir+'/polcal_sums/*', count = Ncamdirs)
-    for icamdir = 0, Ncamdirs-1 do begin
-      psfiles = file_search(camdirs[icamdir]+'/cam*.pols*', count = Nfiles)
-      if Nfiles gt 0 then begin
-        file_mkdir, work_dir+'/polcal_sums/'+file_basename(camdirs[icamdir])
-        file_copy, psfiles, work_dir+'/polcal_sums/'+file_basename(camdirs[icamdir])+'/', /overwrite
-        print, inam+' : Copied '+strtrim(Nfiles, 2)+' files from '+camdirs[icamdir]
-      endif
-    endfor                      ; icamdir
-  endif
-  
+  red_setupworkdir_copy, old_dir, 'darks',       work_dir
+  red_setupworkdir_copy, old_dir, 'flats',       work_dir
+  red_setupworkdir_copy, old_dir, 'pinhs',       work_dir
+  red_setupworkdir_copy, old_dir, 'polcal_sums', work_dir
+ 
 end

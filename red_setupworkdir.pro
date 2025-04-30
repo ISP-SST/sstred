@@ -674,7 +674,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                             comment : '' } ] ;
     
     year = long((strsplit(isodate, '-', /extract))[0])
-    if year lt 2013 then begin
+    if isodate lt red_dates(tag = 'AO KL') then begin
+      ;;  if year lt 2013 then begin
       ao_nmode = 37L
       modename = 'Karhunen-Loeve'
     endif else begin
@@ -714,7 +715,7 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       if ~file_test(sum_dir, /directory) then undefine, sum_dir
       case 1 of
 
-        file_test(root_dir + 'reduc/AM' + instrument, /directory) $
+        file_test(root_dir + 'reduc/AM/' + instrument, /directory) $
            && file_test(root_dir + 'reduc/PM' + instrument, /directory) : begin
           ;; Both reduc/AM/ and reduc/PM/ subdirectories. Ask user
           ;; which one they want to set up for.
@@ -726,17 +727,17 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
           endelse
         end
 
-        file_test(root_dir + 'reduc/AM' + instrument, /directory) : begin
+        file_test(root_dir + 'reduc/AM/' + instrument, /directory) : begin
           ;; Just the reduc/AM/ subdirectory. Use it!
           sum_dir = root_dir + 'reduc/AM/' + instrument
         end
 
-        file_test(root_dir + 'reduc/PM' + instrument, /directory) : begin
+        file_test(root_dir + 'reduc/PM/' + instrument, /directory) : begin
           ;; Just the reduc/PM/ subdirectory. Use it!
           sum_dir = root_dir + 'reduc/PM/' + instrument
         end
 
-        file_test(root_dir + 'reduc' + instrument, /directory) : begin
+        file_test(root_dir + 'reduc/' + instrument, /directory) : begin
           ;; Just the reduc/ subdirectory. Use it!
           sum_dir = root_dir + 'reduc/' + instrument
         end
