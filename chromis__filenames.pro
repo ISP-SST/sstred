@@ -114,7 +114,6 @@
 ;                 summed darks, and the links to raw science data.
 ; 
 ;    2016-10-14 : MGL. Added scangain datatype.
-; 
 ;    
 ;-
 function chromis::filenames, datatype, states $
