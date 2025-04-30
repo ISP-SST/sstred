@@ -33,7 +33,6 @@
 ;   2016-05-04 : MGL. Added PointGrey cameras. Allow arrays of camera
 ;                numbers as input.
 ; 
-; 
 ;-
 function red_camerainfo, x
 
@@ -269,8 +268,8 @@ function red_camerainfo, x
       31: return, {romnum:'XXXI', $
                    defined:1B, $
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
-                   xsize:5120, $
-                   ysize:5120, $
+                   xsize:5120L, $
+                   ysize:5120L, $
                    pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2226000', $
                    use:'CRISP', $
@@ -278,8 +277,8 @@ function red_camerainfo, x
       32: return, {romnum:'XXXII', $
                    defined:1B, $
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
-                   xsize:5120, $
-                   ysize:5120, $
+                   xsize:5120L, $
+                   ysize:5120L, $
                    pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2226001', $
                    use:'CRISP', $
@@ -287,8 +286,8 @@ function red_camerainfo, x
       33: return, {romnum:'XXXIII', $
                    defined:1B, $
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
-                   xsize:5120, $
-                   ysize:5120, $
+                   xsize:5120L, $
+                   ysize:5120L, $
                    pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2226002', $
                    use:'CRISP', $
@@ -296,8 +295,8 @@ function red_camerainfo, x
       34: return, {romnum:'XXXIV', $
                    defined:1B, $
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
-                   xsize:5120, $
-                   ysize:5120, $
+                   xsize:5120L, $
+                   ysize:5120L, $
                    pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2326000', $
                    use:'CRISP', $
@@ -305,12 +304,57 @@ function red_camerainfo, x
       35: return, {romnum:'XXXV', $
                    defined:1B, $
                    model:'XIMEA MX262RG-GP-X8G3-MTP-LA', $
-                   xsize:5120, $
-                   ysize:5120, $
+                   xsize:5120L, $
+                   ysize:5120L, $
                    pixelsize:2.5e-6, $
                    serialnumber:'XWSMW2326001', $
                    use:'CRISP', $
                    note:''}
+      36: return, {romnum:'XXXVI', $
+                   defined:1B, $
+                   model:'XIMEA MX203MG-SY-X4G3-FF', $
+                   xsize:4512L, $
+                   ysize:4512L, $
+                   pixelsize:2.74e-6, $
+                   serialnumber:'XINGF2448000', $
+                   use:'CHROMIS', $
+                   note:''}
+      37: return, {romnum:'XXXVII', $
+                   defined:1B, $
+                   model:'XIMEA MX203MG-SY-X4G3-FF', $
+                   xsize:4512L, $
+                   ysize:4512L, $
+                   pixelsize:2.74e-6, $
+                   serialnumber:'XINGF2448002', $
+                   use:'CHROMIS', $
+                   note:''}
+      38:  return, {romnum:'XXXVIII', $
+                    defined:1B, $
+                    model:'XIMEA MX203MG-SY-X4G3-FF', $
+                    xsize:4512L, $
+                    ysize:4512L, $
+                    pixelsize:2.74e-6, $
+                    serialnumber:'XINGF2448003', $
+                    use:'CHROMIS', $
+                    note:''}
+      39:  return, {romnum:'XXXVIX', $
+                    defined:1B, $
+                    model:'XIMEA MX203MG-SY-X4G3-FF', $
+                    xsize:4512L, $
+                    ysize:4512L, $
+                    pixelsize:2.74e-6, $
+                    serialnumber:'XINGF2448004', $
+                    use:'CHROMIS', $
+                    note:''}
+      40:  return, {romnum:'XL', $
+                    defined:1B, $
+                    model:'XIMEA MX203MG-SY-X4G3-FF', $
+                    xsize:4512L, $
+                    ysize:4512L, $
+                    pixelsize:2.74e-6, $
+                    serialnumber:'XINGF2448006', $
+                    use:'CHROMIS', $
+                    note:''}
       else: return, {romnum:'', $
                      defined:0B, $
                      model:'', $
