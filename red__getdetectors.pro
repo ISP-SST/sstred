@@ -80,7 +80,7 @@ pro red::getdetectors, dir = dir
     endcase
   endif
 
-  if dir eq 'darks/' then begin
+  if n_elements(dir) eq 1 && dir eq 'darks/' then begin
 
     ;; Summed darks
     files = file_search('darks/*fits', count=nf)
