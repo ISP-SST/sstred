@@ -207,18 +207,25 @@ pro red::sumpinh, nthreads = nthreads $
         print, 'darkname=', darkname
         retall
       endif
-      
-      for istamp = 0, n_elements(flat_timestamp)-1 do begin
-        flatname = self -> filenames('flat', states[sel[0]], timestamp = flat_timestamp[istamp])
-        if file_test(flatname) then begin
-          self -> get_calib, states[sel[0]] $
-             , flatdata = ff $
-             , flatname = flatname $
-             , status = status $
-             , timestamp = flat_timestamp[istamp]
-          if status eq 0 then break ; Found a flat!
-        endif else status = 1
-      endfor                    ; istamp
+
+      if n_elements(flat_timestamp) gt 0 then begin      
+        for istamp = 0, n_elements(flat_timestamp)-1 do begin
+          flatname = self -> filenames('flat', states[sel[0]], timestamp = flat_timestamp[istamp])
+          if file_test(flatname) then begin
+            self -> get_calib, states[sel[0]] $
+               , flatdata = ff $
+               , flatname = flatname $
+               , status = status $
+               , timestamp = flat_timestamp[istamp]
+            if status eq 0 then break ; Found a flat!
+          endif else status = 1
+        endfor                  ; istamp
+      endif else begin
+        self -> get_calib, states[sel[0]] $
+           , flatdata = ff $
+           , flatname = flatname $
+           , status = status
+      endelse
       if status ne 0 then begin
         print, inam+' : failed to load flats for:', states[sel[0]].filename
         print, flat_timestamp
