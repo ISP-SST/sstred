@@ -102,7 +102,7 @@
 ;
 ;    no_normalize : in, optional, type=boolean
 ;
-;      Do not normalize intensty levels to median.
+;      Do not normalize intensity levels to median.
 ;
 ;    no_plot_r0 : in, optional, type=boolean
 ;
