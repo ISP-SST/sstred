@@ -131,99 +131,99 @@ pro chromis::get_calib, states $
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
   ;; single array.
-  detector = states[0].detector
-  caminfo = red_camerainfo(detector)
+;  detector = states[0].detector
+;  caminfo = red_camerainfo(detector)
   
-  if arg_present(darkdata)  then darkdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  if arg_present(flatdata)  then flatdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  if arg_present(gaindata)  then gaindata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  if arg_present(pinhdata)  then pinhdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
-  if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(darkdata)  then darkdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(flatdata)  then flatdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(gaindata)  then gaindata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(pinhdata)  then pinhdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
   
 
   status = 0
 
-  for istate = 0, Nstates-1 do begin
+  ;; Darks
+  if arg_present(darkdata) then begin
+    if n_elements(darkname) ne 0  then begin
 
-    
-    ;; Darks
-    if arg_present(darkdata) then begin
-
-      if n_elements(darkname) ne 0  then begin
+      for istate = 0, Nstates-1 do begin        
         if ~file_test(darkname[istate]) then begin
           ;; Try summing darks for this camera
           self -> sumdark, /check, /sum_in_rdx $
-             , cams = states[istate].camera          
-        end
-        darkdata[0, 0, istate] = red_readdata(darkname[istate] $
-                                              , status = darkstatus, /silent)
-        if status eq 0 then status = darkstatus
-      endif else status = -1
-      
-    endif                       ; Darks
+             , cams = states[istate].camera
+        endif
+      endfor                    ; istate
 
-    ;; Flats
-    if arg_present(flatdata) then begin
-      
-      if n_elements(flatname) ne 0 then begin
+      darkdata = red_readdata_multiframe(darkname, status = darkstatus, /silent)
+      status = min([status, darkstatus])
+
+    endif else status = -1
+  endif                         ; Darks
+  
+
+  ;; Flats
+  if arg_present(flatdata) then begin
+    if n_elements(flatname) ne 0 then begin
+
+      for istate = 0, Nstates-1 do begin
         if ~file_test(flatname[istate]) then begin
           ;; Try summing flats for this state
           self -> sumflat, /check, /sum_in_rdx $
-                           , cams = states[istate].camera $
-                           , ustat = states[istate].fullstate
+             , cams = states[istate].camera $
+             , ustat = states[istate].fullstate
         endif 
-        flatdata[0, 0, istate] = red_readdata(flatname[istate] $
-                                              , status = flatstatus, /silent)
-        if status eq 0 then status = flatstatus
-      endif else status = -1
+      endfor                    ; istate
+
+      flatdata = red_readdata_multiframe(flatname, status = flatstatus, /silent)
+      status = min([status, flatstatus])
+
+    endif else status = -1
+  endif                         ; Flats
+
+  ;; Summed flats
+  if arg_present(sflatdata) then begin
+    if n_elements(sflatname) ne 0 then begin
+
+      sflatdata = red_readdata_multiframe(sflatname, status = sflatstatus, /silent)
+      status = min([status, sflatstatus])
       
-    endif                       ; Flats
+    endif else status = -1        
+  endif                         ; Summed flats
 
-    ;; Summed flats
-    if arg_present(sflatdata) then begin
+  ;; Gains
+  if arg_present(gaindata) then begin
+    if  n_elements(gainname) ne 0 then begin
 
-      if  n_elements(sflatname) ne 0 && file_test(sflatname[istate]) then begin
-        sflatdata[0, 0, istate] = red_readdata(sflatname[istate] $
-                                               , status = sflatstatus, /silent)
-        if status eq 0 then status = sflatstatus
-      endif else  status = -1
-      
-    endif                       ; Summed flats
-
-    ;; Gains
-    if arg_present(gaindata) then begin
-
-      if  n_elements(gainname) ne 0 then begin
+      for istate = 0, Nstates-1 do begin
         if ~file_test(gainname[istate]) then begin
           ;; Try summing flats for this state and then making gains
           if ~file_test(flatname[istate]) then begin
-            ;; Try summing flats for this state
             self -> sumflat, /check, /sum_in_rdx $
-                             , cams = states[istate].camera $
-                             , ustat = states[istate].fullstate
+               , cams = states[istate].camera $
+               , ustat = states[istate].fullstate
           endif 
           self -> makegains, smooth=3.0, files = flatname[istate]
         endif 
-        gaindata[0, 0, istate] = red_readdata(gainname[istate] $
-                                              , status = gainstatus, /silent)
-        if status eq 0 then status = gainstatus
-      endif else status = -1
+      endfor                    ; istate
+
+      gaindata = red_readdata_multiframe(gainname, status = gainstatus, /silent)
+      status = min([status, gainstatus])
+
+    endif else status = -1
+  endif                         ; Gains
+
+  
+  ;; Pinholes
+  if arg_present(pinhdata) then begin
+
+    if n_elements(pinhname) ne 0 then begin
       
-    endif                       ; Gains
+      pinhdata = red_readdata_multiframe(pinhname, status = pinhstatus, /silent)
+      status = min([status, pinhstatus])
 
-    
-    ;; Pinholes
-    if arg_present(pinhdata) then begin
-
-      if  n_elements(pinhname) ne 0 && file_test(pinhname[istate]) then begin
-        pinhdata[0, 0, istate] = red_readdata(pinhname[istate] $
-                                              , status = pinhstatus, /silent)
-        if status eq 0 then status = pinhstatus
-      endif else status = -1
-      
-    endif                       ; Pinholes
-
-  endfor                        ; istate
+    endif else status = -1
+  endif                         ; Pinholes
 
   ;; Reduce dimensions if possible
   if Nstates eq 1 then begin
