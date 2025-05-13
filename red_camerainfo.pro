@@ -337,7 +337,7 @@ function red_camerainfo, x
                     serialnumber:'XINGF2448003', $
                     use:'CHROMIS', $
                     note:''}
-      39:  return, {romnum:'XXXVIX', $
+      39:  return, {romnum:'XXXIX', $
                     defined:1B, $
                     model:'XIMEA MX203MG-SY-X4G3-FF', $
                     xsize:4512L, $
