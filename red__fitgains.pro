@@ -90,13 +90,17 @@
 ;   
 ;   
 ;   
-;    w0  : 
+;    w0 : in, type=integer, default=0
 ;   
+;      The index of the lowest wavelength point to include in the fit.
+;      Use this if necessary to deselect blue points that are too far
+;      from each other.
 ;   
+;    w1 : in, type=integer, default="Npoints-1"
 ;   
-;    w1  : 
-;   
-;   
+;      The index of the highest wavelength point to include in the
+;      fit. Use this if necessary to deselect red points that are too
+;      far from each other.
 ;   
 ; 
 ; 
@@ -365,12 +369,15 @@ pro red::fitgains, all = all $
       else:
     endcase
     Nwav = n_elements(namelist) ; Nwav has to be adjusted if w0 or w1 were used.
-      
+
+    red_message, 'Wavelength points wav : ['+strjoin(strtrim(wav,2),', ')+']'
+
     if n_elements(extra_nodes) gt 0 then begin
       if n_elements(myg) eq 0 then myg = wav
       myg = [extra_nodes, myg]
       myg = myg[sort(myg)]
-    endif 
+      red_message, 'Wavelength points myg : ['+strjoin(strtrim(myg,2),',')+']'
+    endif
 
     dat = cub                   ; Why do we make a copy of cub?
     totdat = total(dat,1) / nwav
