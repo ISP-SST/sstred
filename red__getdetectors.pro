@@ -89,7 +89,7 @@ pro red::getdetectors, dir = dir
     file_cams = red_fitsgetkeyword_multifile(files, 'CAMERA', count = cnt)
     file_dets = red_fitsgetkeyword_multifile(files, 'DETECTOR', count = cnt)
 
-    ;; Remoce duplicates if any, could be darks with different exposure times.
+    ;; Remove duplicates if any, could be darks with different exposure times.
     file_cams = red_uniquify(file_cams, indx = indx)
     file_dets = file_dets[indx]
 
