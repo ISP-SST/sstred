@@ -57,6 +57,11 @@
 ;
 ;      Include the spectrum stretch parameter in the fit.
 ;
+;    gain_correction : in, optional, type=boolean
+;
+;      Correct the data with the gaintable. Useful when there are
+;      gradients in the flats/gains.
+;
 ;    hints : in, optional, type=boolean
 ;
 ;      If set, various hints will aid in the selection of time-stamp
@@ -165,6 +170,9 @@
 ;                value_shift, value_prshift, value_ncav,
 ;                value_stretch. Default cwl and fwhm values
 ;                individually for each filter.
+; 
+;   2025-05-15 : MGL. New keyword gain_correction. New initial value
+;                for the intensity scale factor.
 ;
 ;-
 pro chromis::fitprefilter, cwl = cwl_keyword $
@@ -175,14 +183,15 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
                            , fit_prshift = fit_prshift $
                            , fit_shift = fit_shift $
                            , fit_stretch = fit_stretch $
+                           , gain_correction = gain_correction $
                            , hints = hints $
                            , mask = mask $
                            , nasym = nasym $
                            , noabsunits = noabsunits $
                            , pref = pref_keyword $
                            , scan = scan $
-                           , useflats = useflats $
                            , time = time $
+                           , useflats = useflats $
                            , value_fwhm = value_fwhm $
                            , value_ncav = value_ncav $
                            , value_parameters = value_parameters $
@@ -307,8 +316,10 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
           xs = red_fitsgetkeyword(hdr, 'NAXIS1')
           ys = red_fitsgetkeyword(hdr, 'NAXIS2')
           ims = fltarr(xs, ys, Ndirs)
-          xds = xs/5
-          yds = ys/5
+;          xds = xs/5
+;          yds = ys/5
+          xds = 200
+          yds = round(float(xds) * ys/float(xs))
           mos = fltarr(xds*Ndirs, yds)
         endif
 
@@ -324,12 +335,14 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 ;        endif else begin
 ;          ims[0, 0, idir] = total(red_readdata(fnamesN[0], /silent), 3)
 ;        endelse
+;        mos[idir*xds:(idir+1)*xds-1, *] $
+;           = rebin(ims[*, *, idir], xds, yds)/median(ims[*, *, idir])
         mos[idir*xds:(idir+1)*xds-1, *] $
-           = rebin(ims[*, *, idir], xds, yds)/median(ims[*, *, idir])
+           = congrid(ims[*, *, idir], xds, yds)/median(ims[*, *, idir])
         
         ;; Get more hints only for potentially interesting dirs
         if NfilesN gt 0 && NfilesN lt 1000 && mu[idir] gt 0.9 then begin
-
+          
           self -> extractstates, fnamesN, sts, /nondb
           prefs[idir] = ', prefs='+strjoin(sts[uniq(sts.prefilter,sort(sts.prefilter))].prefilter, ',')
 
@@ -530,6 +543,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         if n_elements(dim) gt 2 then nsli = double(dim[2]) else nsli = 1d
         imsN = total(imsN, 3, /double) / nsli
         imsN -= darkN
+        if keyword_set(gain_correction) then imsN *= gainN 
 
         if keyword_set(unitscalib) then begin
           imsW = float(rdx_readdata(statesWB[pos[kk]].filename))
@@ -661,16 +675,27 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
                , spectrum:measured_spectrum, lambda:measured_lambda, pref:float(upref[ipref]), w:w}
                                 ;, spectrum:measured_spectrum, lambda:measured_lambda, pref:cwl, w:w}
 
+        if keyword_set(write_data) then begin
+          writefits, 'fitprefilter_data_atlas_lambda.fits', atlas_lambda
+          writefits, 'fitprefilter_data_atlas_spectrum_convolved.fits', atlas_spectrum_convolved
+          writefits, 'fitprefilter_data_measured_spectrum.fits', measured_spectrum
+          writefits, 'fitprefilter_data_measured_lambda.fits', measured_lambda
+        endif
+
+        
         ;; Init guess model
-        par = dblarr(8)
-        if n_elements(value_parameters) gt 0 then par[0] = value_parameters 
+        parinit = dblarr(8)
+        if n_elements(value_parameters) gt 0 then painitr[0] = value_parameters 
         
         ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
         fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
         fitpars.fixed = ~fit_parameters
-        
+
         ;; Scale factor
-        par[0] = max(measured_spectrum) * 2d0 / cont[0]
+;        parinit[0] = max(measured_spectrum) * 2d0 / cont[0]
+        measured_indx=where(abs(measured_lambda - float(upref[ipref])) lt 1)
+        atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
+        parinit[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
@@ -678,7 +703,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         
         ;; Line shift (satlas-obs)
         if n_elements(value_shift) gt 0 then begin
-          par[1] = value_shift
+          parinit[1] = value_shift
         endif
         if ~fitpars[1].fixed then begin
           fitpars[1].limited[*] = [1,1]
@@ -687,7 +712,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         
         ;; Pref. shift
         if n_elements(value_prshift) gt 0 then begin
-          par[2] = value_prshift
+          parinit[2] = value_prshift
         endif                   ;else begin
 ;          par[2] = float(upref[ipref]) - cwl
 ;        end
@@ -698,16 +723,16 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         
         ;; Pref. FWHM
         if n_elements(value_fwhm) ne 0 then begin
-          par[3] = value_fwhm
+          parinit[3] = value_fwhm
         endif
         if ~fitpars[3].fixed then begin
           fitpars[3].limited[*] = [1,1]
-          fitpars[3].limits[*]  = par[3] + [-0.5, 0.5] 
+          fitpars[3].limits[*]  = parinit[3] + 2.0*[-1, 1] 
         endif
         
         ;; Prefilter number of cavities)
         if n_elements(value_ncav) ne 0 then begin
-          par[4] = value_ncav
+          parinit[4] = value_ncav
         endif
         if ~fitpars[4].fixed then begin
           fitpars[4].limited[*] = [1,1]
@@ -718,44 +743,56 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         if ~fitpars[5].fixed then begin
           fitpars[5].limited[*] = [1,1]
           fitpars[5].limits[*]  = [-1.d0, 1.d0]
-          par[5] = 0.01d0
+          parinit[5] = 0.01d0
         endif else begin
-          par[5] = 0.0d0
+          parinit[5] = 0.0d0
         endelse
         
         ;; Asymmetry term 2
         if ~fitpars[6].fixed then begin
           fitpars[6].limited[*] = [1,1]
           fitpars[6].limits[*] = [-1.d0, 1.d0]
-          par[6] = 0.01d0
+          parinit[6] = 0.01d0
         endif else begin
-          par[6] = 0.0d0
+          parinit[6] = 0.0d0
         endelse
         
         ;; Wavelength stretch
         if n_elements(value_stretch) ne 0 then begin
-          par[7] = value_stretch
+          parinit[7] = value_stretch
         endif
         if ~fitpars[7].fixed then begin
           fitpars[7].limited[*] = [1,1]
-          fitpars[7].limits[*]  = [0.9d0, 1.1d0]
+          fitpars[7].limits[*]  = [0.8d0, 1.2d0]
         endif
         
         ;; Now call mpfit
-        par = mpfit('red_prefilterfit', par, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
+        par = mpfit('red_prefilterfit', parinit, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
         prefilter = red_prefilter(par, dat.lambda, dat.pref)
 
         fit_fix = replicate('Fit', 8)
         for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
-        
-        print, inam + ' : p[0] -> ', par[0], ' '+fit_fix[0]+' (scale factor)'
-        print, inam + ' : p[1] -> ', par[1], ' '+fit_fix[1]+' (solar atlas shift)'
-        print, inam + ' : p[2] -> ', par[2], ' '+fit_fix[2]+' (prefilter shift)'
-        print, inam + ' : p[3] -> ', par[3], ' '+fit_fix[3]+' (prefilter FWHM)'
-        print, inam + ' : p[4] -> ', par[4], ' '+fit_fix[4]+' (prefilter number of cavities)'
-        print, inam + ' : p[5] -> ', par[5], ' '+fit_fix[5]+' (asymmetry term 1)'            
-        print, inam + ' : p[6] -> ', par[6], ' '+fit_fix[6]+' (asymmetry term 2)'            
-        print, inam + ' : p[7] -> ', par[7], ' '+fit_fix[7]+' (wavelength stretch)'          
+
+        print
+        print, inam + 'Initial parameters'
+        print, '    p[0] -> ', parinit[0], ' (scale factor)'
+        print, '    p[1] -> ', parinit[1], ' (solar atlas shift)'
+        print, '    p[2] -> ', parinit[2], ' (prefilter shift)'
+        print, '    p[3] -> ', parinit[3], ' (prefilter FWHM)'
+        print, '    p[4] -> ', parinit[4], ' (prefilter number of cavities)'
+        print, '    p[5] -> ', parinit[5], ' (asymmetry term 1)'            
+        print, '    p[6] -> ', parinit[6], ' (asymmetry term 2)'            
+        print, '    p[7] -> ', parinit[7], ' (wavelength stretch)'          
+        print
+        print, inam + 'Fitted parameters'
+        print, '    p[0] -> ', par[0], ' '+fit_fix[0]+' (scale factor)'
+        print, '    p[1] -> ', par[1], ' '+fit_fix[1]+' (solar atlas shift)'
+        print, '    p[2] -> ', par[2], ' '+fit_fix[2]+' (prefilter shift)'
+        print, '    p[3] -> ', par[3], ' '+fit_fix[3]+' (prefilter FWHM)'
+        print, '    p[4] -> ', par[4], ' '+fit_fix[4]+' (prefilter number of cavities)'
+        print, '    p[5] -> ', par[5], ' '+fit_fix[5]+' (asymmetry term 1)'            
+        print, '    p[6] -> ', par[6], ' '+fit_fix[6]+' (asymmetry term 2)'            
+        print, '    p[7] -> ', par[7], ' '+fit_fix[7]+' (wavelength stretch)'          
 
         print
         print, 'cwl - pref = ', (cwl - upref[ipref]) 
