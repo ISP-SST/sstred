@@ -688,7 +688,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     if is_wb[ipref] then begin
       printf, Slun, "a -> prepmomfbd" $
 ;              + ", date_obs='" + isodate + "'" $
-              + ", Nremove=2" $
+;              + ", Nremove=2" $
               + ", Nmodes=60" $
               + ", numpoints=128" $
 ;            + ", margin=5 " $
