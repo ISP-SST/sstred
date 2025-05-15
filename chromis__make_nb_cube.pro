@@ -135,6 +135,8 @@
 ;
 ;    2021-04-03 : OA. Added clipping of cavity maps with information
 ;                 from configuration files (needed to make 'mixed' cubes).
+;
+;    2025-05-14 : MGL. Adapt to new camera alignment model.
 ; 
 ;-
 pro chromis::make_nb_cube, wcfile $
@@ -224,6 +226,8 @@ pro chromis::make_nb_cube, wcfile $
   fxbclose, bunit
   if self.filetype eq 'MIXED' then wbgfiles = strtrim(wbgfiles, 2)
 
+  alignment_model = red_align_model(wbgfiles[0])
+  
   ;; Don't do any stretching if wcgrid is all zeros.
   nostretch_temporal = total(abs(wcgrid)) eq 0 
   sclstr = 0
@@ -283,26 +287,25 @@ pro chromis::make_nb_cube, wcfile $
   pertuningfiles = files[complement]
   pertuningstates = states[complement]
 
-  ;; Unique tuning states, sorted by wavelength
-  utunindx = uniq(pertuningstates.fpi_state, sort(pertuningstates.fpi_state))
-  Nwav = n_elements(utunindx)
-  sortindx = sort(pertuningstates[utunindx].tun_wavelength)
-  ufpi_states = pertuningstates[utunindx[sortindx]].fpi_state
-  utunwavelength = pertuningstates[utunindx[sortindx]].tun_wavelength
 
+  ;; Unique tuning states, sorted by wavelength
+  ufpi_states = red_uniquify(pertuningstates[where(~pertuningstates.is_wb)].fpi_state, indx = xindx)
+  Nwav = n_elements(xindx)
+  utunwavelength = pertuningstates[xindx].tun_wavelength
+  sortindx = sort(utunwavelength)
+  utunwavelength = utunwavelength[sortindx]
+  ufpi_states = ufpi_states[sortindx]
+  my_prefilters = pertuningstates[xindx].prefilter
   wav = utunwavelength
-  my_prefilters = pertuningstates[utunindx[sortindx]].prefilter
 
   ;; Unique nb prefilters
-  unbprefindx = uniq(pertuningstates[utunindx].prefilter, sort(pertuningstates[utunindx].prefilter))
-  Nnbprefs = n_elements(unbprefindx)
-  unbprefs = pertuningstates[utunindx[unbprefindx]].prefilter
+  unbprefs = red_uniquify(pertuningstates[where(~pertuningstates.is_wb)].prefilter, indx = unbprefindx)
+  Nnbprefs = n_elements(unbprefs)
   unbprefsref = dblarr(Nnbprefs)
-
+  
   for inbpref = 0L, Nnbprefs-1 do begin
     ;; This is the reference point of the fine tuning for this prefilter:
-    unbprefsref[inbpref] = double((strsplit(pertuningstates[utunindx[unbprefindx[inbpref]]].tuning $
-                                            , '_', /extract))[0])
+    unbprefsref[inbpref] = double((strsplit(ufpi_states[0], '_', /extract))[0])
   endfor                        ; inbpref
   
   unbprefsref *= 1e-10          ; [m]
@@ -367,6 +370,7 @@ pro chromis::make_nb_cube, wcfile $
         fitpref_t = '_'+ts[jj]+'_'
       endif
     endif else fitpref_t = '_'+fitpref_time+'_'
+    
     
     pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+fitpref_t+'prefilter.idlsave'
     if ~file_test(pfile) then begin
@@ -696,7 +700,7 @@ pro chromis::make_nb_cube, wcfile $
                        , /predict $
                        , 'Processing scan=' $
                        + strtrim(uscans[iscan], 2) + ' state=' + state 
-
+      
       ;; Get destretch to anchor camera (residual seeing)
       if wbcor then begin
         wwi = (red_readdata(scan_wbfiles[iwav], direction = direction))[x0:x1, y0:y1]
@@ -878,16 +882,18 @@ pro chromis::make_nb_cube, wcfile $
       ;; to the cavity maps as was done to the raw data in the momfbd
       ;; step. This output is in a struct "alignments" in the save file
       ;; 'calib/alignments.sav'
-      restore,'calib/alignments.sav'
-      ;; Should be based on state1 or state2 in the struct? make_cmaps
-      ;; says "just pick one close to continuum (last state?)".
-      indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-      case Nalign of
-        0    : stop             ; Should not happen!
-        1    : amap = invert(      alignments[indx].map           )
-        else : amap = invert( mean(alignments[indx].map, dim = 3) )
-      endcase
-      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping      
+;      restore,'calib/alignments.sav'
+;      ;; Should be based on state1 or state2 in the struct? make_cmaps
+;      ;; says "just pick one close to continuum (last state?)".
+;      indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
+;      case Nalign of
+;        0    : stop             ; Should not happen!
+;        1    : amap = invert(      alignments[indx].map           )
+;        else : amap = invert( mean(alignments[indx].map, dim = 3) )
+;      endcase
+
+      cmap1 = red_apply_camera_alignment(cmap1, alignment_model, 'Chromis-N', amap = amap)
+;      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping      
 
       if self.filetype eq 'MOMFBD' then begin
         ;; Crop the cavity map to the FOV of the momfbd-restored images.
