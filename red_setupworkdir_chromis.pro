@@ -109,6 +109,8 @@
 ;   2025-03-27 : MGL. New keyword lapalma_setup. 
 ;
 ;   2025-04-03: MGL. New keyword ampm_cutoff. 
+;
+;   2025-05-16: MGL. Find any cameras, Chromis-[WDNTR].
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
@@ -151,9 +153,9 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun, '# --- Settings'
   printf, Clun, '#'
-  printf, Clun,'isodate = '+isodate
-  printf, Clun,'image_scale = 0.0379'   ; Measured in May 2016.
-  printf, Clun, 'diversity = 3.35e-3'   ; Nominal value for 2016.
+  printf, Clun, 'isodate = '+isodate
+  printf, Clun, 'image_scale = 0.0379' ; Measured in May 2016.
+  printf, Clun, 'diversity = 3.35e-3'  ; Nominal value for 2016.
 
   if keyword_set(calibrations_only) then begin
     printf, Slun, 'a = chromisred("'+cfgfile+'",/dev)' 
@@ -188,18 +190,19 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, '; a -> plot_pointing ; Plot pointing throughout the day.'
   endif
 
+  
   print, 'Cameras'
   printf, Clun, '#'
   printf, Clun, '# --- Cameras'
   printf, Clun, '#'
-  printf, Clun, 'camera = Chromis-W'
-  printf, Clun, 'camera = Chromis-D'
-  printf, Clun, 'camera = Chromis-N'
+  cams = red_uniquify(file_basename(file_search(root_dir+'/CHROMIS-data/*/Chromis-?')), count = Ncams)
+  cams = [cams[-1],cams[0],cams[1:-2]] ; First W, then D, then the others
+  for icam = 0, Ncams-1 do printf, Clun, 'camera = '+cams[icam]
   printf, Clun, '#'
-
+  
   ;; Orientation and rotation of WB camera, see IDL's rotate() and
   ;; offset_angle of red_lp_angles().
-  
+
   case strmid(isodate,0,4) of
     '2016' :  begin
       direction = 2    
