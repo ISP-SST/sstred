@@ -157,7 +157,7 @@ function chromis::filenames, datatype, states $
   endif
 
   ;; Search strings, the wild parts.
-  detector_searchstring    = 'cam[XVI]*'
+  detector_searchstring    = 'cam[LXVI]*'
   camera_searchstring      = 'Chromis-?' 
   scannumber_searchstring  = strjoin(replicate('[0-9]', 5))
   framenumber_searchstring = strjoin(replicate('[0-9]', 7))
@@ -166,6 +166,7 @@ function chromis::filenames, datatype, states $
   gain_searchstring        = 'G[0-9]*\.[0-9]*'
   tuning_searchstring      = strjoin(replicate('[0-9]', 4)) + '_[+-][0-9]*'
   timestamp_searchstring   = '[0-2][0-9]:[0-5][0-9]:[0-5][0-9]'
+  lc_searchstring          = 'lc[0-9]'
 
   framenumber_template = '%07d'
 

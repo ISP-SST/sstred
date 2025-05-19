@@ -172,7 +172,7 @@ function crisp2::filenames, datatype, states $
   endif
 
   ;; Search strings, the wild parts.
-  detector_searchstring    = 'cam[XVI]*'
+  detector_searchstring    = 'cam[LXVI]*'
   camera_searchstring      = 'Crisp-?' 
   scannumber_searchstring  = strjoin(replicate('[0-9]', 5))
   framenumber_searchstring = strjoin(replicate('[0-9]', 7))
