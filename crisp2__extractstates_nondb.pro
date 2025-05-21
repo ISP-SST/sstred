@@ -160,7 +160,7 @@ pro crisp2::extractstates_nondb, strings, states $
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
-  ;; Create array of structs to holed the state information
+  ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
     states = replicate( {CRISP2_POLCAL_STATE}, Nstrings )
   endif else begin
@@ -188,6 +188,8 @@ pro crisp2::extractstates_nondb, strings, states $
     endif else begin
       
       red_progressbar, ifile, Nstrings, 'Extract state info from file headers', /predict
+ 
+      ;; Get the header
       status = -1
       if file_test(strings[ifile]) then begin
         head = red_readhead(strings[ifile], /silent, status=status)
@@ -245,15 +247,6 @@ pro crisp2::extractstates_nondb, strings, states $
           end
         endcase
 
-;        if n_elements(state_split) gt 1 then begin
-;          ;; NB data
-;          states[ifile].fpi_state = strjoin(state_split[1:2], '_')
-;          states[ifile].tuning = strjoin(state_split[1:2], '_')
-;        endif else begin
-;          ;; WB data
-;          states[ifile].fpi_state = '0'
-;          states[ifile].tuning = state_split[0]+'_+0'
-;        endelse
       endif
       
       
