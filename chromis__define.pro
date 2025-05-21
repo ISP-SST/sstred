@@ -21,29 +21,30 @@
 ;
 ;-
 pro chromis__define
-                                
-    struct = { CHROMIS, inherits RED, $
-               chromis_dummy:0B $     ; temporary dummy, move CHROMIS specific content here
-             }
+                 
+  struct = { CHROMIS, inherits RED, $
+             chromis_dummy:0B $ ; temporary dummy, move CHROMIS specific content here
+           }
 
-    nb = { CHROMIS_STATE, $
-           inherits RED_STATE, $
-           scannumber:0, $
-           framenumber:-1L, $
-           tuning:'', $
-           prefilter:'', $
-           pf_wavelength:0.0, $
-           tun_wavelength:0.0D, $
-           exposure:0.0D, $
-           gain:0.0, $
-           cam_settings:'', $
-           is_wb:0B $
-    }
-                                
-    pc = { CHROMIS_POLCAL_STATE, $
-           inherits CHROMIS_STATE, $
-           lp:'', $
-           qw:'' $
-    }
-                                
+  nb = { CHROMIS_STATE, $
+         inherits RED_STATE, $
+         scannumber:0, $
+         framenumber:-1L, $
+         tuning:'', $
+         prefilter:'', $
+         pf_wavelength:0.0, $
+         tun_wavelength:0.0D, $
+         exposure:0.0D, $
+         gain:0.0, $
+         cam_settings:'', $
+         is_wb:0B, $
+         lc:0B $
+       }
+  
+  pc = { CHROMIS_POLCAL_STATE, $
+         inherits CHROMIS_STATE, $
+         lp:0.0, $
+         qw:0.0 $
+       }
+  
 end
