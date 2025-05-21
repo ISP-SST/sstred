@@ -55,6 +55,11 @@
 ;
 ;        Skip this many frames after each state-change
 ; 
+;     polcal : in, optional, type=boolean
+; 
+;        Set this to add polcal-specific items in the states, qw and
+;        lp. 
+; 
 ;     force : in, optional, type=boolean
 ;
 ;        Re-populate files/states.
@@ -113,8 +118,10 @@
 ; 
 ;   2018-05-30 : MGL. Add selection by fpi_states.
 ; 
-;   2024-06-19 : Pit. Make camera search a substring match, as it can be
-;                     something like 'Crisp-D, Crisp-W' for PD data
+;   2024-06-19 : Pit. Make camera search a substring match, as it can
+;                be something like 'Crisp-D, Crisp-W' for PD data
+; 
+;   2025-05-21 : MGL. New keyword polcal.
 ;
 ;-
 pro chromis::selectfiles, cam = cam $ 
@@ -129,6 +136,7 @@ pro chromis::selectfiles, cam = cam $
                           , framenumbers = framenumbers $
                           , ncomplement = ncomplement $
                           , nremove = nremove $
+                          , polcal = polcal $
                           , prefilter = prefilter $
                           , scan = scan $
                           , selected = selected $
@@ -188,7 +196,7 @@ pro chromis::selectfiles, cam = cam $
   if keyword_set(force) $                             ; If we choose to
      || n_elements(files) ne n_elements(states) $     ; If numbers don't agree
      || ~min(file_same(files,states.filename)) then $ ; If the actual files are not the same
-        self->extractstates, files, states, strip_settings = strip_settings, cam = cam
+        self->extractstates, files, states, strip_settings = strip_settings, polcal = polcal, cam = cam
 
   if( n_elements(states) eq 1 ) then states = [states]
   
