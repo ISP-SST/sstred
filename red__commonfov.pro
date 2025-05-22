@@ -64,8 +64,9 @@ FUNCTION red::commonfov, align = align, $
   if (Npref = n_elements(prefilters)) gt 0 then begin
     undefine, selected
     for i = 0, Npref-1 do $
-       red_append, selected, where(alignments.state.prefilter EQ prefilters[i])
-    if min(selected) lt 0 then begin
+       red_append, selected, where(self -> match_prefilters(alignments.state.prefilter, prefilters[i]), Nwhere)
+    ;; red_append, selected, where(alignments.state.prefilter EQ prefilters[i])
+    if Nwhere eq 0 then begin
       print, inam, ' : Not all requested prefilters could be found!'
       return, 0
     endif else $
@@ -80,12 +81,12 @@ FUNCTION red::commonfov, align = align, $
     print, inam, ' : self.cameras: ', *self.cameras
     return, 0
   endif
-  
+
   undefine, selected
   for i = 0, Ncams-1 do $
      red_append, selected, where(alignments.state.camera EQ cams[i])
   if min(selected) lt 0 then begin
-    print, inam, ' : Not all requested prefilters could be found!'
+    print, inam, ' : Not all requested cameras could be found!'
     return, 0
   endif else $
      alignments = alignments[selected]
