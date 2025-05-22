@@ -35,6 +35,10 @@
 ;
 ;      The date (in iso format) the data was collected.
 ;
+;    incoming : in, optional, type=boolean
+;
+;      Look for data in the Incoming directory.
+;
 ;    no_observer_metadata : in, optional, type=boolean
 ;
 ;      Don't do anything to get OBSERVER metadata. 
@@ -277,17 +281,20 @@
 ;
 ;   2025-03-27 : MGL. New keyword no_lapalma. 
 ;
-;   2025-04-03 : MGL. New keyword ampm_cutoff 
+;   2025-04-03 : MGL. New keyword ampm_cutoff  
+;
+;   2025-05-22 : MGL. New keyword incoming.
 ;   
 ;-
 pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                       , cfgfile = cfgfile $
                       , calibrations_only = calibrations_only $
                       , date = date $
+                      , incoming = incoming $
                       , instruments = instruments $
+                      , lapalma_setup = lapalma_setup $
                       , no_observer_metadata = no_observer_metadata $
                       , no_lapalma = no_lapalma $
-                      , lapalma_setup = lapalma_setup $
                       , old_dir = old_dir $
                       , out_dir = out_dir $
                       , scriptfile = scriptfile $
@@ -306,6 +313,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
 
+  if keyword_set(incoming) then search_dirs = ['/storage', '/storage_ceph'] + '/Incoming'
+  
   if n_elements(date) eq 0 then begin
     ;; Date not specified.  Do search_dirs include the date?
     if n_elements( search_dirs ) gt 0 then begin
