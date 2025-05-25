@@ -152,8 +152,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Settings'
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
-  printf, Clun,'image_scale = 0.0379'   ; Measured in May 2016.
-  printf, Clun, 'diversity = 3.35e-3'   ; Nominal value for 2016.
+  if isodate gt red_dates('CHROMIS Ximea') then begin
+    printf, Clun,'image_scale = 0.044' ; Measured in May 2025.
+  endif else begin
+    printf, Clun,'image_scale = 0.0379' ; Measured in May 2016.
+  endelse
+  printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
 
   if keyword_set(calibrations_only) then begin
     printf, Slun, 'a = chromisred("'+cfgfile+'",/dev)' 

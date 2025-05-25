@@ -566,7 +566,7 @@ pro red::fitscube_convertlp, inname $
   ;; But what we want to tabulate is the pointing in the corners of
   ;; the FOV. Assume hpln and hplt are the coordinates of the center
   ;; of the FOV.
-  image_scale = self -> imagescale(pref, /use_config)
+  image_scale = self -> imagescale(pref)
   wcs.hpln[0, 0, *, *] = hpln - double(image_scale) * (Nx-1)/2.d
   wcs.hpln[1, 0, *, *] = hpln + double(image_scale) * (Nx-1)/2.d
   wcs.hpln[0, 1, *, *] = hpln - double(image_scale) * (Nx-1)/2.d

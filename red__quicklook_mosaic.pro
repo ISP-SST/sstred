@@ -313,7 +313,7 @@ pro red::quicklook_mosaic, align=align $
         annstring += ' ' + fpisplit[0] + ' $\Angstrom$' + ' ' + fpisplit[1] + ' m$\Angstrom$'
       endelse
       
-      image_scale = float(self -> imagescale(pref, /use_config))
+      image_scale = float(self -> imagescale(pref))
 
       if ~file_test('calib/alignments.sav') then begin
         ;; Try to make sure we have alignments.
