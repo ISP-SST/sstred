@@ -117,7 +117,7 @@ pro red_currentsite, date = date $
     end
     else : begin
       red_message, 'no matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )
-      retall
+      return
     end
   endcase
 
