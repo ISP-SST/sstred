@@ -116,11 +116,11 @@ pro red_currentsite, date = date $
       endelse
     end
     else : begin
-      message, 'no matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )
+      red_message, 'no matching IPv4-address in ' + strjoin( ipv4addresses, ', ' )
       retall
     end
   endcase
 
-  message, 'we are in ' + site + '.', /informational
+  red_message, 'we are in ' + site + '.'
 
 end
