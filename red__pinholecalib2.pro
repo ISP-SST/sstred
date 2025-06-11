@@ -219,6 +219,9 @@ found_l1:
       state = states[idx[i_dep]]
       img = red_readdata(state.filename, /silent)
       is_pd = strmatch(state.camera, '*-D')
+      ;; mask out bad corners also for Crisp PD image
+      if state.camera eq 'Crisp-D' then $
+         img *= (shift(dist(ref_siz), ref_siz/2) le 0.48*ref_siz[0])
       mask = img ge max(img)/(is_pd ? 8. : 10.)
       img_m = red_separate_mask(mask)
       img_np = max(img_m)
