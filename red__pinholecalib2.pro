@@ -198,6 +198,9 @@ found_l1:
     endif
     iix = where(iix EQ 1)
     ref_pos = ref_pos[*, iix]
+    ;; ref_lind is wrong if doublets were deleted! We need correct values for flip detection
+    for i=0, 2 do ref_lind[i] = $
+      where((ref_pos[0, *] eq ref_lpos[0, i]) and (ref_pos[1, *] eq ref_lpos[1, i]))
     reg_i = tmp_i[*, iix]
     np_ref = (size(reg_i, /dim))[1]
     reg_pos = x0#replicate(1, np_ref)-red_grid_func(par, x = reg_i, y = 0)
@@ -262,7 +265,7 @@ found_l1:
         repeat begin
           img_lind = red_markpinholes(img, img_pos, title='Dependent Pinholes')
           img_lpos = img_pos[*, img_lind]
-          if red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
+          if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
           print, inam, ' : This is not the 3 bigger pinholes!'
         endrep until 0
       endelse
