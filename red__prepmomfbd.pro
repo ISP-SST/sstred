@@ -404,8 +404,8 @@ pro red::prepmomfbd, cams = cams $
   if keyword_set(newalign) then begin
     ref_clip = self -> commonfov(align = align, cams = cams $
                                  , extraclip = extraclip $
-                                 , output_dir = output_dir) ; $
-                                ;               , prefilters = pref)
+                                 , output_dir = output_dir $
+                                 , prefilters = pref)
   endif else begin
     ;; NB: this will overwrite existing offset files !!
     self -> getalignment, align = align, cams = cams, refcam = refcam $
