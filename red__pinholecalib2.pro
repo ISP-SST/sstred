@@ -231,8 +231,6 @@ found_l1:
       img_area = lonarr(img_np)
       img_pos = fltarr(2, img_np)
       for i = 0, img_np-1 do begin
-        ;;ix = where_n(img_m EQ i+1)
-
         ix = where(img_m eq (i+1))
         ix = [[ix mod ref_siz[0]], [ix / ref_siz[0]]]
         lu = (min(ix, dim = 1, max = ro)-3) > [0, 0]
@@ -240,9 +238,7 @@ found_l1:
         bx = img[lu[0]:ro[0], lu[1]:ro[1]]
         bx_m = img_m[lu[0]:ro[0], lu[1]:ro[1]]
         if is_pd eq 1 then begin
-          bxd = (size(bx, /dim))[0]
-          bxp = max(bx, wo)
-          img_pos[*, i] = lu + [wo MOD bxd, wo/bxd]
+          img_pos[*, i] = lu + red_centroid(bx_m)
           img_area[i] = total(bx_m GT 0)
         endif else begin
           img_pos[*, i] = lu + red_centroid(bx)
