@@ -481,7 +481,7 @@ pro red::fitscube_crosstalk, filename  $
   
   ;; Get name of WB cube from the NB cube-making parameters, used to
   ;; make a mask that removes rotational padding.
-  pos = where(strmatch(prprocs, '*make_nb_cube'), Nmatch)
+  pos = where(strmatch(prprocs, '*make_nb_cube*'), Nmatch)
   makemask = Nmatch ne 0
   
   if makemask then begin
