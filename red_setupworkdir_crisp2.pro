@@ -330,7 +330,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
 
   if Nflatdirs gt 0 then begin
-    ;; There are CHROMIS flats!
+    ;; There are CRISP flats!
 
     ;; Directories with camera dirs below:
     flatdirs = file_dirname(flatsubdirs)
@@ -373,7 +373,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             outdir_key = ', outdir="'+outdir+'"'
             ;; If there are multiple dark directories, we want to use
             ;; the one that are nearest in time.
-            tmp = min(abs(red_time2double(file_basename(flatdirs[idir])) - red_time2double(file_basename(darkdirs))), dindx)
+            tmp = min(abs(red_time2double(file_basename(flatdirs[idir])) $
+                          - red_time2double(file_basename(darkdirs))), dindx)
             dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
             if keyword_set(calibrations_only) then calib_key = ', /softlink, /store_rawsum' else calib_key = ''
           endif else begin
@@ -429,6 +430,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
 
+  
   printf, Slun, ''
   print, 'Pinholes'
   printf, Clun, '#'
@@ -624,7 +626,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif else if n_elements(old_dir) gt 0 then begin
 
     ;; Need to find polprefs and Npolcaldirs from the summed data
-    pdir = old_dir + '/polcal_sums/Crisp-T/'
+    pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
     pfiles = file_search(pdir+'cam*fits', count = Npfiles)
     if Npfiles eq 0 then Npolcaldirs = 0 else begin
       red_extractstates, pfiles, /basename, pref = polprefs
@@ -752,6 +754,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;  endfor                        ; i
 ;  ;; If we implement dealing with prefilter scans in the pipeline,
 ;  ;; here is where the command should be written to the script file.
+
+
 
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
     for ipref = 0, Nprefilters-1 do begin
