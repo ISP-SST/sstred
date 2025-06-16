@@ -296,7 +296,7 @@ pro red::get_calib, states $
         status = min([status, clcgainstatus])
       endelse
     endif else status = -1     
-  endif                         ; Cavityfree gains         
+  endif                         ; Cavityfree LC gains         
 
   
   ;; Scan gains    
