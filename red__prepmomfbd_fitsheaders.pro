@@ -124,7 +124,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                                 + '_?????.cfg', count = Ncfg)                                      
       endelse 
 
-      image_scale = self -> imagescale(prefs[ipref], /use_config)
+      image_scale = self -> imagescale(prefs[ipref])
      
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin

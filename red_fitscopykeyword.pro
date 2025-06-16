@@ -26,9 +26,13 @@
 ;        The name of the parameter/keyword to be copied. See
 ;        documentation for fxaddpar.
 ;
-;     oldhdr : in, type=strarr
+;     oldhdr1 : in, type=strarr
 ; 
 ;        The source FITS header. 
+; 
+;     oldhdr2 : in, optional,type=strarr
+; 
+;        A second source FITS header. 
 ; 
 ; 
 ; :Keywords:
@@ -42,11 +46,20 @@
 ;    2017-12-06 : MGL. First version.
 ; 
 ;-
-pro red_fitscopykeyword, hdr, name, oldhdr, _ref_extra = extra
+pro red_fitscopykeyword, hdr, name, oldhdr1, oldhdr2, _ref_extra = extra
 
-  value = red_fitsgetkeyword(oldhdr, name, comment = comment, count = count)
+  value1 = red_fitsgetkeyword(oldhdr1, name, comment = comment1, count = count1)
+  if n_elements(oldhdr2) ne 0 then begin
+    value2 = red_fitsgetkeyword(oldhdr2, name, comment = comment2, count = count2)
+    if count2 eq 1 then $
+       red_fitsaddkeyword, hdr, name,  strtrim(value1, 2) $
+                           + ',' + strtrim(value2, 2), comment1 $
+                           , _strict_extra = extra
+  endif else begin
+    if count1 eq 1 then red_fitsaddkeyword, hdr, name, value1, comment1 $
+                                            , _strict_extra = extra
+  endelse
   
-  if count eq 1 then red_fitsaddkeyword, hdr, name, value, comment, _strict_extra = extra
 
 end
 
