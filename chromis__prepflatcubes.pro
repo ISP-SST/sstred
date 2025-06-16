@@ -58,13 +58,24 @@
 ;
 ;   2017-04-13 : MGL. Do not read cavityfree flats! Make FITS header
 ;                for the cube.
+; 
+;   2025-06-09 : MGL. Adapt to polarimetric data.
 ;
 ;-
 pro chromis::prepflatcubes, flatdir = flatdir $
                             , pref = pref $
                             , verbose = verbose
 
-
+  if self -> polarimetric_data() then begin
+    ;; This CHROMIS-specific method is for data with the older
+    ;; Chromis-[WDN] camera setup. Use the generic method for
+    ;; Chromis-[WDTR] data.
+    self -> red::prepflatcubes, flatdir = flatdir $
+                                          , pref = pref $
+                                          , verbose = verbose
+    return
+  endif
+  
   ;; Prepare for logging (after setting of defaults).
   ;; Set up a dictionary with all parameters that are in use
   red_make_prpara, prpara, flatdir
