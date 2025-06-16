@@ -144,6 +144,8 @@
 ; 
 ;    2022-07-29 : MGL. Based on chromis version.
 ;
+;    2026-06-03 : MGL. Allow 2d input array.
+;
 ;-
 pro crisp2::extractstates_nondb, strings, states $
                                  , force = force $
@@ -154,17 +156,18 @@ pro crisp2::extractstates_nondb, strings, states $
   inam = red_subprogram(/low, calling = inam1)  
 
   strings = strtrim(strings,2)
-  idx = where( strings ne '' )
-  if min(idx) ge 0 then strings = strings[ idx ] $
-  else return
+  idx = where( strings ne '', Nwhere)
+  if Nwhere eq 0 then return
+  if Nwhere ne n_elements(strings) then strings = strings[ idx ]
+  ;;if min(idx) ge 0 then strings = strings[ idx ] else return
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
   ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
-    states = replicate( {CRISP2_POLCAL_STATE}, Nstrings )
+    states = replicate( {CRISP2_POLCAL_STATE}, dims )
   endif else begin
-    states = replicate( {CRISP2_STATE}, Nstrings )
+    states = replicate( {CRISP2_STATE}, dims )
   endelse
   states.nframes = 1            ; single frame by default
 
@@ -202,7 +205,7 @@ pro crisp2::extractstates_nondb, strings, states $
         mkhdr, head, ''         ; create a dummy header
         head = red_meta2head(head, metadata = {filename:strings[ifile]})
       endif
-
+      
       ;; Add polarization state info.
       lcstate = fxpar(head, 'LCSTATE', count = count)
       if count then states[ifile].lc = lcstate
