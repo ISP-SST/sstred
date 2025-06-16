@@ -134,8 +134,8 @@ pro red::fitscube_intensitycorr, filename $
   endif
   
   ;; Get info from the cube making step
-  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
-  pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
+  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube*'  ), Nmakenb  )
+  pos_makescan = where(strmatch(prprocs, '*make_scan_cube*'), Nmakescan)
   case 1 of
     Nmakenb gt 0 : begin        ; This is a NB cube
       cube_paras = prparas[pos_makenb[0]]
@@ -170,9 +170,16 @@ pro red::fitscube_intensitycorr, filename $
     '4846' : nbpref = '4862'  
     else   : nbpref =  wbpref
   endcase
-
-  instrument = strtrim(fxpar(hdr,'INSTRUME'), 2)
-  if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
+  
+  polarimetric_data = self -> polarimetric_data()
+  instrument = ((typename(self)).tolower())
+  
+  if polarimetric_data then begin
+    prefix = instrument.capwords()+'-T'
+  endif else begin
+    prefix = instrument
+  endelse
+;  if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
   datestamp = strtrim(fxpar(hdr, 'DATE-AVG'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   avg_time = red_time2double(timestamp)
