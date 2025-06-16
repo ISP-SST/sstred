@@ -166,6 +166,7 @@ pro red::makegains, bad=bad $
       ;; Only one camera?
       if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
       
+      if stddev(flat) eq 0 then stop
       gain = self -> flat2gain(flat, ma=max, mi=min, bad=bad $
                                , /preserve, smoothsize=smoothsize)
       
