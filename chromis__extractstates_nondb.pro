@@ -147,6 +147,9 @@
 ;                 tuning info. Older files handled by
 ;                 chromis::extractstates_wheelhrz_nondb.
 ;
+;    2026-06-09 : MGL. Adapt to polarimetric data. Allow 2d input
+;                 array.
+;
 ;-
 pro chromis::extractstates_nondb, strings, states $
                                   , force = force $
@@ -156,22 +159,38 @@ pro chromis::extractstates_nondb, strings, states $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)            
 
+  polarimetric_data = self -> polarimetric_data()
+
   if self.isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
     ;; Old data with wheel and hrz instead of prefilter and tuning. 
     self -> extractstates_wheelhrz_nondb, strings, states $
        , force = force $
        , strip_settings = strip_settings
   endif
-
+  
   strings = strtrim(strings,2)
-  idx = where( strings ne '' )
-  if min(idx) ge 0 then strings = strings[ idx ] $
-  else return
+  idx = where( strings ne '', Nwhere)
+  if Nwhere eq 0 then return
+  if Nwhere ne n_elements(strings) then strings = strings[ idx ]
+  ;;if min(idx) ge 0 then strings = strings[ idx ] else return
+
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
-  ;; Create array of structs to holed the state information
-  states = replicate( {CHROMIS_STATE}, Nstrings )
+  dims = size(strings, /dim)
+  
+  ;; Create array of structs to hold the state information
+  if keyword_set(polcal) then begin
+    states = replicate( {CHROMIS_POLCAL_STATE}, dims )
+  endif else begin
+    states = replicate( {CHROMIS_STATE}, dims )
+  endelse
+  states.nframes = 1            ; single frame by default
+
+  ;; LC state not reliably present in some file headers. Get it from
+  ;; the file name instead, if possible.
+  red_extractstates, reform(strings, Nstrings), lc=lc
+  states.lc = reform(lc, dims)
   
   ;; Read headers and extract information. This should perhaps return
   ;; an array the length of the number of frames rather than the
@@ -207,6 +226,18 @@ pro chromis::extractstates_nondb, strings, states $
         mkhdr, head, ''         ; create a dummy header
         head = red_meta2head(head, metadata = {filename:strings[ifile]})
       endif
+
+      if polarimetric_data then begin
+        ;; Add polarization state info.
+;        lcstate = fxpar(head, 'LCSTATE', count = count)
+;        if count then states[ifile].lc = lcstate
+        if keyword_set(polcal) then begin
+          lpstate = fxpar(head, 'LPSTATE', count = count) 
+          if count then states[ifile].lp = lpstate       
+          qwstate = fxpar(head, 'QWSTATE', count = count)  
+          if count then states[ifile].qw = qwstate      
+        endif
+      endif
       
       ;; Detector
       detector = fxpar(head, red_keytab('detector'), count=count)
@@ -230,15 +261,17 @@ pro chromis::extractstates_nondb, strings, states $
       
       ;; State
       state = fxpar(head, 'STATE', count=hasstate)
-      if hasstate gt 0 then state_split = strsplit( state, '_',  /extr )
+      ;; if ~hasstate then stop
       
-      if states[ifile].is_wb then begin
-        ;; WB
-        red_fitspar_getwavelnth, head, wavelnth = wavelnth, haswav = haswav
-        if haswav ne 0 then begin
-          states[ifile].pf_wavelength = float(wavelnth)
-        endif
-        if hasstate then begin
+      if hasstate then begin
+        state_split = strsplit( state, '_',  /extr )
+        
+        if states[ifile].is_wb then begin
+          ;; WB
+;        red_fitspar_getwavelnth, head, wavelnth = wavelnth, haswav = haswav
+;        if haswav ne 0 then begin
+;          states[ifile].pf_wavelength = float(wavelnth)
+;        endif
           if n_elements(state_split) eq 1 then begin
             ;; WB flats are not collected together with NB flats,
             ;; hence no real fpi_state.
@@ -248,20 +281,52 @@ pro chromis::extractstates_nondb, strings, states $
           endelse 
           states[ifile].prefilter = state_split[0]
           states[ifile].tuning = state_split[0]+'+0'    
-        endif
-      endif else begin
-        ;; NB
-        if hasstate then begin
-          states[ifile].fpi_state = strjoin(state_split[1:2], '_')
-          states[ifile].prefilter = state_split[1]
-          states[ifile].pf_wavelength = double(states[ifile].prefilter)*1e-10
-          states[ifile].tuning = strjoin(state_split[1:2], '_')
-        endif
-      endelse
-      
-      states[ifile].tun_wavelength = double(strmid(states[ifile].tuning, 0, 4))*1d-10 $
-                                     + double(strmid(states[ifile].tuning, 5))*1d-13
+        endif else begin
+          ;; NB
+;          states[ifile].fpi_state = strjoin(state_split[1:2], '_')
+;          states[ifile].pf_wavelength = double(states[ifile].prefilter)*1e-10
+;          states[ifile].tuning = strjoin(state_split[1:2], '_')
+;          if keyword_set(polcal) then begin
+;            ;; Polcal sum
+;            ;;states[ifile].prefilter = state_split[4]
+;            stop
+;            states[ifile].prefilter = state_split[5]
+;            states[ifile].fpi_state = strjoin(state_split[5:6], '_')
+;            states[ifile].tuning = strjoin(state_split[5:6], '_')
+;          endif else begin
+          ;; NB science data, flats, etc
+;          states[ifile].prefilter = state_split[1]
+;          states[ifile].fpi_state = strjoin(state_split[1:2], '_')
+;          states[ifile].tuning = strjoin(state_split[1:2], '_')
+;          endelse
+          case n_elements(state_split) of
+            1 : begin
+              ;; WB data
+              states[ifile].prefilter = state_split[0]
+              states[ifile].fpi_state = '0'
+              states[ifile].tuning = state_split[0]+'_+0'
+            end
+            8 : begin
+              ;; Polcal sum
+              states[ifile].prefilter = state_split[5]
+              states[ifile].fpi_state = strjoin(state_split[5:6], '_')
+              states[ifile].tuning = strjoin(state_split[5:6], '_')
+            end
+            else : begin
+              ;; NB data
+              states[ifile].prefilter = state_split[1]
+              states[ifile].fpi_state = strjoin(state_split[1:2], '_')
+              states[ifile].tuning = strjoin(state_split[1:2], '_')
+            end
+          endcase
+        endelse
 
+        states[ifile].pf_wavelength = double((states[ifile].prefilter))*1e-10      
+
+        states[ifile].tun_wavelength = double(strmid(states[ifile].tuning, 0, 4))*1d-10 $
+                                       + double(strmid(states[ifile].tuning, 5))*1d-13
+      endif
+      
       ;; Camera settings
       if hastexp then begin
         ;; This is a summed file, use the single-exposure exposure
@@ -295,9 +360,14 @@ pro chromis::extractstates_nondb, strings, states $
       ;; The fullstate string
       undefine, fullstate_list
       if ~keyword_set(strip_settings) then red_append, fullstate_list, states[ifile].cam_settings
+      if keyword_set(polcal) then begin
+        red_append, fullstate_list, 'lp'+string(round(states[ifile].lp), format = '(i03)')
+        red_append, fullstate_list, 'qw'+string(round(states[ifile].qw), format = '(i03)')
+      endif
       if states[ifile].prefilter ne '' then red_append, fullstate_list, states[ifile].prefilter
       if states[ifile].tuning ne '' then $             
           red_append, fullstate_list, states[ifile].tuning
+      if polarimetric_data then red_append, fullstate_list, 'lc'+string(round(states[ifile].lc), format = '(i1)')
       states[ifile].fullstate = strjoin(fullstate_list, '_')
 
       ;; Store in cache
@@ -306,7 +376,7 @@ pro chromis::extractstates_nondb, strings, states $
     endelse
     
   endfor                        ; ifile
-  
+
 end
 
 cd, '/scratch/mats/test_chromisnames/CHROMIS/'
