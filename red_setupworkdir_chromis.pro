@@ -123,18 +123,20 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; Name of this program
   inam = red_subprogram(/low, calling = inam1)
 
+  instrument = 'CHROMIS'
+  
   if n_elements(ampm_cutoff) eq 0 then ampm_cutoff = '13:00:00'
   
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
-                      , [{keyword:'INSTRUME', value:'CHROMIS' $
+                      , [{keyword:'INSTRUME', value:instrument $
                           , comment:'Name of instrument'} $
                          , {keyword:'TELCONFG', value:'Schupmann, imaging table', $
                             comment:'Telescope configuration'}]
   
   ;; Are there darks and flats?
-  darksubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*dark*' $
+  darksubdirs = red_find_instrumentdirs(root_dir, instrument, '*dark*' $
                                         , count = Ndarkdirs)
-  flatsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*flat*' $
+  flatsubdirs = red_find_instrumentdirs(root_dir, instrument, '*flat*' $
                                         , count = Nflatdirs)
 
   if Ndarkdirs eq 0 and ~keyword_set(old_dir) then begin
@@ -199,24 +201,33 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   cams = [cams[-1],cams[0],cams[1:-2]] ; First W, then D, then the others
   for icam = 0, Ncams-1 do printf, Clun, 'camera = '+cams[icam]
   printf, Clun, '#'
+
+  ;; Based on the cameras, we can decide whether these data use the
+  ;; polarimetric setup or not. (See also chromis::polarmetry_mode.)
+  polarimetric_data = total(strmatch(cams,'*-[TR]')) gt 0
   
   ;; Orientation and rotation of WB camera, see IDL's rotate() and
   ;; offset_angle of red_lp_angles().
 
-  case strmid(isodate,0,4) of
-    '2016' :  begin
+  year = strmid(isodate,0,4)
+  case 1 of
+    1 eq total(strmatch(['2016','2017'] $
+                        , year)) : begin
       direction = 2    
       rotation = -42.0 
     end
-    '2017' : begin
-      direction = 2    
-      rotation = -42.0 
-    end 
-    else :  begin
+    1 eq total(strmatch(['2018', '2019', '2020', '2021', '2022', '2023', '2024'] $
+                        , year)) : begin
       direction = 1    
       rotation = -42.0 
     end
+    year ge '2025' : begin
+      direction = 3 
+      rotation = -42.0
+    end
+    else : stop
   endcase
+  
   if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
   if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
 ;  printf, Clun, 'direction = 2'  ; Orientation of WB camera, see IDL's rotate().
@@ -398,8 +409,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     red_extractstates, fnames, /basename, wav = wav, fullstate = fullstate, pref = prefilters
     Nprefilters = n_elements(prefilters)
     cameras = red_fitsgetkeyword_multifile(fnames, 'CAMERA', counts = cnt)
-    is_wb = strmatch(cameras, 'Chromis-[WD]')          
-    is_pd = strmatch(cameras, 'Chromis-D')
+    is_wb = strmatch(cameras, '*-[WD]')          
+    is_pd = strmatch(cameras, '*-D')
   endif 
 
   if Nprefilters eq 0 then stop
@@ -409,41 +420,6 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   is_pd = is_pd[indx]
   prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
-
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
-    ;;if ~is_wb[ipref] then
-    printf, Slun, "a -> prepflatcubes"
-  endif
-  
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
-    printf, Slun, ''
-    printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
-    printf, Slun, '; whether you need to use different keyword settings.'
-    printf, Slun, '; Then, if you have already run makegains, rerun it.'
-    printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res"
-;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-;    printf, Slun, '; keyword:'
-;    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-;    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-;    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-;    printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
-;    printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
-;    printf, Slun, '; also in blends if they are not propely sampled.'
-;    printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
-;    printf, Slun, '; the following:'
-;    printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
-;    printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
-;    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
-;    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
-;    printf, Slun, '; Then, if you have already run makegains, rerun it.'
-    
-    printf, Slun, ''
-
-    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
-
-  endif
-    
 
   printf, Slun, ''
   print, 'Pinholes'
@@ -573,6 +549,126 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, 'a -> pinholecalib, /verify, nref=20'
 ;    printf, Slun, 'a -> diversitycalib'
   endif
+
+  if polarimetric_data then begin
+    
+    print, 'Polcal'
+    printf, Clun, '#'
+    printf, Clun, '# --- Polcal'
+    printf, Clun, '#'
+    polcalsubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-polc*' $
+                                            , count = Npolcalsubdirs)
+    
+    if Npolcalsubdirs gt 0 then begin
+      
+      polcaldirs = file_dirname(polcalsubdirs)  
+      polcaldirs = polcaldirs[uniq(polcaldirs,sort(polcaldirs))]
+      Npolcaldirs = n_elements(polcaldirs)
+      polprefs = strarr(Npolcaldirs)
+
+      printf, Slun
+      
+      for idir = 0, Npolcaldirs-1 do begin
+        polcalsubdirs = file_search(polcaldirs[idir]+'/'+instrument+'*' $
+                                    , count = Nsubdirs, /fold)
+        if Nsubdirs gt 0 then begin
+          printf, Clun, 'polcal_dir = ' $
+                  + red_strreplace(polcaldirs[idir], root_dir, '')
+
+          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+
+            ;; We want to output the summed data in timestamp
+            ;; directories so we can handle multiple sets.
+            outdir = 'polcal_sums/' + file_basename(polcaldirs[idir])
+            outdir_key = ', outdir="'+outdir+'"'
+            
+          endif else begin
+            outdir_key = ''
+          endelse
+
+          printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
+                  + red_strreplace(polcaldirs[idir], root_dir, '')+'"' $
+                  + ', nthreads=nthreads' $
+                  + outdir_key
+          ;; The prefilter is not part of the path. Try to get it from
+          ;; the first data file in the directory.
+          files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
+          if Npolfiles gt 0 then begin
+            hh = red_readhead(files[0])
+            ;; Unlike for CRISP, the WB filter in FILTER1 is not the same as the NB filter.
+            ;;  polprefs[idir] = strtrim(fxpar(hh, 'FILTER1'), 2)
+            state = fxpar(hh, 'STATE', count = cnt)
+            if cnt eq 0 then stop
+            polprefs[idir] = (strsplit(state, '_', /extract))[1]
+          endif
+        endif
+      endfor                    ; idir
+
+      if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+        for ipref = 0, Npolcaldirs-1 do begin
+          printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+                  + ", nthreads=nthreads"
+          printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+                  + ", nthreads=nthreads"
+        endfor                  ; ipref
+      endif
+      
+    endif else if n_elements(old_dir) gt 0 then begin
+
+      ;; Need to find polprefs and Npolcaldirs from the summed data
+      pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
+      pfiles = file_search(pdir+'cam*fits', count = Npfiles)
+      if Npfiles eq 0 then Npolcaldirs = 0 else begin
+        red_extractstates, pfiles, /basename, pref = polprefs
+        polprefs = polprefs[uniq(polprefs,sort(polprefs))]
+      endelse
+      
+      for ipref = 0, n_elements(polprefs)-1 do begin
+        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+      endfor                    ; ipref
+    endif
+
+  endif
+
+
+  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+    ;;if ~is_wb[ipref] then
+    printf, Slun, "a -> prepflatcubes"
+  endif
+  
+  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+    printf, Slun, ''
+    printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
+    printf, Slun, '; whether you need to use different keyword settings.'
+    printf, Slun, '; Then, if you have already run makegains, rerun it.'
+    printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res"
+;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
+;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
+;    printf, Slun, '; keyword:'
+;    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
+;    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
+;    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
+;    printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
+;    printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
+;    printf, Slun, '; also in blends if they are not propely sampled.'
+;    printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
+;    printf, Slun, '; the following:'
+;    printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
+;    printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
+;    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
+;    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
+;    printf, Slun, '; Then, if you have already run makegains, rerun it.'
+    
+    printf, Slun, ''
+
+    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
+
+  endif
+  
+
   
   print, 'Prefilter scan'
   printf, Clun, '#'
@@ -624,7 +720,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   red_append, nonsciencedirs, flatdirs
   ;; Sometimes the morning calibrations data were not deleted, so they
   ;; have to be excluded too.
-  calibsubdirs = red_find_instrumentdirs(root_dir, 'chromis', '*calib' $
+  calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
                                          , count = Ncalibdirs)
   if Ncalibdirs gt 0 then begin
     calibdirs = file_dirname(calibsubdirs)
@@ -689,20 +785,37 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
   for ipref = 0, Nprefilters-1 do begin
     if is_wb[ipref] then begin
-      printf, Slun, "a -> prepmomfbd" $
+      if polarimetric_data then begin
+        printf, Slun, "a -> prepmomfbd" $
 ;              + ", date_obs='" + isodate + "'" $
-;              + ", Nremove=2" $
-              + ", Nmodes=60" $
-              + ", numpoints=128" $
+                + ", Nremove=1" $
+                + ", Nmodes=60" $
+                + ", numpoints=128" $
 ;            + ", margin=5 " $
-              + ", global_keywords=['FIT_PLANE']" $
-              + ", maxshift=45" $
-              + ", /wb_states" $
+                + ", global_keywords=['FIT_PLANE']" $
+                + ", maxshift=45" $
+                + ", /wb_states" $
 ;              + ", /redux" $
-              + ", /unpol" $
-              + ", extraclip = [75,125,15,15]" $
-              + ", pref='" + prefilters[ipref] + "'" $
-              + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
+                + ", /unpol" $
+                + ", extraclip = [75,125,15,15]" $
+                + ", pref='" + prefilters[ipref] + "'" $
+                + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
+      endif else begin
+        printf, Slun, "a -> prepmomfbd" $
+;              + ", date_obs='" + isodate + "'" $
+                + ", Nremove=1" $
+                + ", Nmodes=60" $
+                + ", numpoints=128" $
+;            + ", margin=5 " $
+                + ", global_keywords=['FIT_PLANE']" $
+                + ", maxshift=45" $
+                + ", /wb_states" $
+;              + ", /redux" $
+                + ", /unpol" $
+                + ", extraclip = [75,125,15,15]" $
+                + ", pref='" + prefilters[ipref] + "'" $
+                + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
+      endelse
     endif
   endfor                        ; ipref ;
 
@@ -727,12 +840,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; Do something about OBSERVER metadata keyword
   if ~keyword_set(no_observer_metadata) then begin
     ;; See if we can find some metadata by looking in the raw data dirs.
-    chromis_data_dirs = root_dir + '/' + dirarr + '/Chromis-W/'
-    ;; Pick the first file in each.
-    chromis_data_files = file_search(chromis_data_dirs+'/*00000_0000000*fits', count = Nfiles) 
-    ;; Now look for OBSERVER keywords
-    observers = strarr(Nfiles)
-    for ifile = 0, Nfiles-1 do begin
+        chromis_data_dirs = root_dir + '/' + dirarr + '/Chromis-W/'
+        ;; Pick the first file in each.
+        chromis_data_files = file_search(chromis_data_dirs+'/*00000_0000000*fits', count = Nfiles) 
+        ;; Now look for OBSERVER keywords
+        observers = strarr(Nfiles)
+        for ifile = 0, Nfiles-1 do begin
       red_progressbar, ifile, Nfiles, 'Looking in CHROMIS data for OBSERVER keyword'
       observers[ifile] = red_fitsgetkeyword(chromis_data_files[ifile], 'OBSERVER')
     endfor
