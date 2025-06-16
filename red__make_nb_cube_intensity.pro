@@ -137,31 +137,57 @@
 ;                 from configuration files (needed to make 'mixed' cubes).
 ;
 ;    2025-05-14 : MGL. Adapt to new camera alignment model.
+;
+;    2025-05-23 : MGL. New keyword redemodulate. Hand over to
+;                 red::make_nb_cube for CHROMIS in polarimetric mode.
+;
+;    2025-06-04 : MGL. Renamed chromis::make_nb_cube -->
+;                 make_nb_cube_intensity, to be used only to make
+;                 non-Stokes cubes.
 ; 
 ;-
-pro chromis::make_nb_cube, wcfile $
-                           , clips = clips $
-                           , cmap_fwhm = cmap_fwhm $
-                           , integer = integer $
-                           , intensitycorrmethod = intensitycorrmethod $
-                           , nearest = nearest $
-                           , noaligncont = noaligncont $
-                           , nocavitymap = nocavitymap $
-                           , noflipping = noflipping $
-                           , nomissing_nans = nomissing_nans $
-                           , nostretch = nostretch $
-                           , nthreads = nthreads $
-                           , notimecor = notimecor $
-                           , odir = odir $
-                           , overwrite = overwrite $
-                           , tiles = tiles $
-                           , wbsave = wbsave $
-                           , fitpref_time = fitpref_time 
+pro red::make_nb_cube_intensity, wcfile $
+                                 , clips = clips $
+                                 , cmap_fwhm = cmap_fwhm $
+                                 , fitpref_time = fitpref_time $
+                                 , integer = integer $
+                                 , intensitycorrmethod = intensitycorrmethod $
+                                 , nearest = nearest $
+                                 , noaligncont = noaligncont $  
+                                 , nocavitymap = nocavitymap $
+                                 , noflipping = noflipping $
+                                 , nomissing_nans = nomissing_nans $
+                                 , nostretch = nostretch $
+                                 , notimecor = notimecor $
+                                 , nthreads = nthreads $
+                                 , odir = odir $
+                                 , overwrite = overwrite $
+                                 , redemodulate = redemodulate $
+                                 , tiles = tiles $
+                                 , wbsave = wbsave
 
+  ;; We need to support a few different cases: 1) CHROMIS data without
+  ;; polarimetry; 2) CRISP and CHROMIS polarimetric data but just
+  ;; summing LC states instead of demodulating.
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
+  instrument = ((typename(self)).tolower())
+  polarimetric_data = self -> polarimetric_data() ; Polarimetric data --> non-Stokes cube
+  
+  case instrument of
+    'crisp' : begin
+      ;; We currently do correct for the small scale cavity map in CRISP
+      ;; data. (We should get this from earlier meta data!)
+      remove_smallscale = 1
+    end
+    'chromis' : begin
+      remove_smallscale = 0
+    end
+  endcase
+
+  
   ;; Deprecated keyword:
   if n_elements(notimecor) gt 0 then begin
     print, inam + ' : Keyword notimecor is deprecated. Use intensitycorrmethod="none" instead.'
@@ -193,20 +219,14 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; Camera/detector identification
   self -> getdetectors
-  wbindx     = where(strmatch(*self.cameras,'Chromis-W'))
+  wbindx     = where(strmatch(*self.cameras,'*-W'))
   wbcamera   = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
-  nbindx     = where(strmatch(*self.cameras,'Chromis-N')) 
-  nbcamera   = (*self.cameras)[nbindx[0]]
-  nbdetector = (*self.detectors)[nbindx[0]]
-  ;; Should be generalized to multiple NB cameras if CHROMIS gets
-  ;; polarimetry. We don't need to identify any PD cameras for
-  ;; restored data.
-
-  ;; We do currently not correct for the small scale cavity map in
-  ;; CHROMIS data. (We should get this from earlier meta data!)
-  remove_smallscale = 0       
-  
+  nbindx     = where(strmatch(*self.cameras,'*-[NTR]')) 
+  nbcameras   = (*self.cameras)[nbindx]
+  nbdetectors = (*self.detectors)[nbindx]
+  Nnbcams = n_elements(nbcameras)
+ 
   ;; Read the header from the corrected WB cube. Variables begin with
   ;; WC for Wideband Cube. 
   if ~file_test(wcfile) then begin
@@ -284,31 +304,35 @@ pro chromis::make_nb_cube, wcfile $
                   , Nscans, complement = complement, Ncomplement = Ncomplement)
   
   ;; All the per-tuning files and states
-  pertuningfiles = files[complement]
+  pertuningfiles  = files[complement]
   pertuningstates = states[complement]
 
-
   ;; Unique tuning states, sorted by wavelength
-  ufpi_states = red_uniquify(pertuningstates[where(~pertuningstates.is_wb)].fpi_state, indx = xindx)
-  Nwav = n_elements(xindx)
-  utunwavelength = pertuningstates[xindx].tun_wavelength
+  nbpertuningstates = pertuningstates[where(~pertuningstates.is_wb)]
+  ufpi_states = red_uniquify(nbpertuningstates.fpi_state, indx = xindx)
+  Ntunings = n_elements(xindx)
+
+  unbpertuningstates = nbpertuningstates[xindx]
+  utunwavelength = unbpertuningstates.tun_wavelength
   sortindx = sort(utunwavelength)
   utunwavelength = utunwavelength[sortindx]
   ufpi_states = ufpi_states[sortindx]
+  unbpertuningstates = unbpertuningstates[sortindx]
+  
   my_prefilters = pertuningstates[xindx].prefilter
   wav = utunwavelength
 
   ;; Unique nb prefilters
-  unbprefs = red_uniquify(pertuningstates[where(~pertuningstates.is_wb)].prefilter, indx = unbprefindx)
+  unbprefs = red_uniquify(unbpertuningstates.prefilter, indx = unbprefindx)
   Nnbprefs = n_elements(unbprefs)
-  unbprefsref = dblarr(Nnbprefs)
+;  unbprefsref = dblarr(Nnbprefs)
+;  
+;  for inbpref = 0L, Nnbprefs-1 do begin
+;    ;; This is the reference point of the fine tuning for this prefilter:
+;    unbprefsref[inbpref] = double((strsplit(ufpi_states[0], '_', /extract))[0])
+;  endfor                        ; inbpref
   
-  for inbpref = 0L, Nnbprefs-1 do begin
-    ;; This is the reference point of the fine tuning for this prefilter:
-    unbprefsref[inbpref] = double((strsplit(ufpi_states[0], '_', /extract))[0])
-  endfor                        ; inbpref
-  
-  unbprefsref *= 1e-10          ; [m]
+;  unbprefsref *= 1e-10          ; [m]
 
   ;; Get the scan selection from wfiles (from the sav file)
   self -> extractstates, wbgfiles, wbgstates
@@ -317,15 +341,15 @@ pro chromis::make_nb_cube, wcfile $
 
   ;; Per-tuning files, wb and nb, only for selected scans
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , scan = uscans $
-                       , cam = wbcamera $
-                       , sel = wbindx, count = Nwb
+                               , scan = uscans $
+                               , cam = wbcamera $
+                               , sel = wbindx, count = Nwb
   wbstates = pertuningstates[wbindx]
   wbfiles = pertuningfiles[wbindx]
   self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                       , scan = uscans $
-                       , cam = nbcamera $
-                       , sel = nbindx, count = Nnb
+                               , scan = uscans $
+                               , cam = nbcameras $
+                               , sel = nbindx, count = Nnb
   nbstates = pertuningstates[nbindx]
   nbfiles = pertuningfiles[nbindx]
   
@@ -348,73 +372,84 @@ pro chromis::make_nb_cube, wcfile $
 
   file_mkdir, odir
   
-  ;; Load prefilters  
-  wave_shifts = fltarr(Nwav)
-  for inbpref = 0L, Nnbprefs-1 do begin
-    
-    if ~keyword_set(fitpref_time) then begin
-      fitpref_t='_'
-      dt = strtrim(fxpar(wchdr0, 'DATE-AVG'), 2)
-      avg_ts = (strsplit(dt, 'T', /extract))[1]
-      avg_time = red_time2double(avg_ts)
-      pfls = file_search(self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+ $
-                         '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
-      if Npfls gt 0 then begin
-        tt = dblarr(Npfls)
-        ts = strarr(Npfls)
-        for ii=0,Npfls-1 do begin
-          ts[ii] = (strsplit(file_basename(pfls[ii]),'_',/extract))[2]
-          tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
-        endfor
-        mn = min(tt,jj)
-        fitpref_t = '_'+ts[jj]+'_'
-      endif
-    endif else fitpref_t = '_'+fitpref_time+'_'
-    
-    
-    pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+fitpref_t+'prefilter.idlsave'
-    if ~file_test(pfile) then begin
-      print, inam + ' : prefilter file not found: '+pfile
-      return
-    endif
-      
-    restore, pfile              ; Restores variable prf which is a struct
-    if n_elements(prf.fitpars) gt 1 then begin
-      wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
-    endif else begin
-      wave_shift = 0.0
-    endelse
-    idxpref = where(my_prefilters eq unbprefs[inbpref], count)
+  ;; Load prefilters
+  self -> get_prefilterfit, unbpertuningstates $
+     , units = units $
+     , prefilter_curve = prefilter_curve $
+     , prf = prf $
+     , wave_shifts = wave_shifts
 
-    print, 'Wave shifts: ', inbpref, ' ', unbprefs[inbpref], wave_shifts[inbpref]
-    wave_shifts[idxpref] = wave_shift
-    
-    if inbpref eq 0 then begin
-      units = prf.units
-    endif else begin
-      if units ne prf.units then begin
-        print, inam + ' : Units in ' + pfile + ' do not match those in earlier read files.'
-        print, inam + ' : Please rerun the prefilterfit step for these data.'
-        retall
-      endif
-    endelse
-    
-    if count eq 1 then begin
-      red_append, prefilter_curve, prf.pref
-;      red_append, prefilter_wav, prf.wav
-;      red_append, prefilter_wb, prf.wbint
-    endif else begin
-      red_append, prefilter_curve, red_intepf(prf.wav, prf.pref, wav[idxpref]*1.d10)
-;      red_append, prefilter_wav, wav[idxpref]*1.d10
-;      red_append, prefilter_wb, replicate(prf.wbint, count)
-    endelse
-    
-  endfor                        ; inbpref
-
+;  stop
+;  
+;  wave_shifts = fltarr(Ntunings)
+;  for inbpref = 0L, Nnbprefs-1 do begin
+;    
+;    if ~keyword_set(fitpref_time) then begin
+;      fitpref_t='_'
+;      dt = strtrim(fxpar(wchdr0, 'DATE-AVG'), 2)
+;      avg_ts = (strsplit(dt, 'T', /extract))[1]
+;      avg_time = red_time2double(avg_ts)
+;      pfls = file_search(self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+ $
+;                         '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+;      if Npfls gt 0 then begin
+;        tt = dblarr(Npfls)
+;        ts = strarr(Npfls)
+;        for ii=0,Npfls-1 do begin
+;          ts[ii] = (strsplit(file_basename(pfls[ii]),'_',/extract))[2]
+;          tt[ii] = abs(red_time2double(ts[ii]) - avg_time)
+;        endfor
+;        mn = min(tt,jj)
+;        fitpref_t = '_'+ts[jj]+'_'
+;      endif
+;    endif else fitpref_t = '_'+fitpref_time+'_'
+;    
+;    
+;    pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+fitpref_t+'prefilter.idlsave'
+;    if ~file_test(pfile) then begin
+;      print, inam + ' : prefilter file not found: '+pfile
+;      return
+;    endif
+;      
+;    restore, pfile              ; Restores variable prf which is a struct
+;    if n_elements(prf.fitpars) gt 1 then begin
+;      wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+;    endif else begin
+;      wave_shift = 0.0
+;    endelse
+;    idxpref = where(my_prefilters eq unbprefs[inbpref], count)
+;
+;    print, 'Wave shifts: ', inbpref, ' ', unbprefs[inbpref], wave_shifts[inbpref]
+;    wave_shifts[idxpref] = wave_shift
+;    
+;    if inbpref eq 0 then begin
+;      units = prf.units
+;    endif else begin
+;      if units ne prf.units then begin
+;        red_message, ['Units in ' + pfile + ' do not match those in earlier read files.' $
+;                      , 'Please rerun the prefilterfit step for these data.']
+;        retall
+;      endif
+;    endelse
+;    
+;    if count eq 1 then begin
+;      red_append, prefilter_curve, prf.pref
+;;      red_append, prefilter_wav, prf.wav
+;;      red_append, prefilter_wb, prf.wbint
+;    endif else begin
+;      red_append, prefilter_curve, red_intepf(prf.wav, prf.pref, wav[idxpref]*1.d10)
+;;      red_append, prefilter_wav, wav[idxpref]*1.d10
+;;      red_append, prefilter_wb, replicate(prf.wbint, count)
+;    endelse
+;    
+;  endfor                        ; inbpref
+;
+;  help, prefilter_curve,prefilter_curve_x
+;  stop
+  
   rpref = 1.d0/prefilter_curve
 
   ;; Do WB correction?
-  wbcor = Nwb eq Nnb and ~keyword_set(nostretch)
+  wbcor = Nwb eq Nnb/Nnbcams and ~keyword_set(nostretch)
 
   ;; Load WB image and define the image border
 ;  tmp = red_readdata(wbgfiles[0])
@@ -460,7 +495,7 @@ pro chromis::make_nb_cube, wcfile $
   red_fitscopykeyword, hdr, 'DETFIRM',  mhd
 
   ;; Initialize fits file, set up for writing the data part.
-  dims = [Nx, Ny, Nwav, 1, Nscans] 
+  dims = [Nx, Ny, Ntunings, 1, Nscans] 
   self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
 
   if keyword_set(wbsave) then begin
@@ -470,36 +505,43 @@ pro chromis::make_nb_cube, wcfile $
   
 
   ;; Observations metadata varaibles
-  tbeg_array     = dblarr(Nwav, Nscans) ; Time beginning for state
-  tend_array     = dblarr(Nwav, Nscans) ; Time end for state
-  tavg_array     = dblarr(Nwav, Nscans) ; Time average for state
-  date_beg_array = strarr(Nwav, Nscans) ; DATE-BEG for state
-  date_end_array = strarr(Nwav, Nscans) ; DATE-END for state
-  date_avg_array = strarr(Nwav, Nscans) ; DATE-AVG for state
-  exp_array      = fltarr(Nwav, Nscans) ; Total exposure time
-  sexp_array     = fltarr(Nwav, Nscans) ; Single exposure time
-  nsum_array     = lonarr(Nwav, Nscans) ; Number of summed exposures
+  tbeg_array     = dblarr(Ntunings, Nscans) ; Time beginning for state
+  tend_array     = dblarr(Ntunings, Nscans) ; Time end for state
+  tavg_array     = dblarr(Ntunings, Nscans) ; Time average for state
+  date_beg_array = strarr(Ntunings, Nscans) ; DATE-BEG for state
+  date_end_array = strarr(Ntunings, Nscans) ; DATE-END for state
+  date_avg_array = strarr(Ntunings, Nscans) ; DATE-AVG for state
+  exp_array      = fltarr(Ntunings, Nscans) ; Total exposure time
+  sexp_array     = fltarr(Ntunings, Nscans) ; Single exposure time
+  nsum_array     = lonarr(Ntunings, Nscans) ; Number of summed exposures
+  fnumsum_array  = strarr(Ntunings, Nscans) ; Raw frame numbers 
  
   wcs = replicate({  wave:dblarr(2,2) $
                    , hplt:dblarr(2,2) $
                    , hpln:dblarr(2,2) $
                    , time:dblarr(2,2) $
-                  }, Nwav, Nscans)
+                  }, Ntunings, Nscans)
 
   ;; The narrowband cube is aligned to the wideband cube and all
   ;; narrowband scan positions are aligned to each other. So get hpln
   ;; and hplt from the wideband cube wcs coordinates, this should
   ;; apply to all frames in a scan.
   for iscan = 0L, Nscans-1 do begin
-    for iwav = 0, Nwav-1 do begin
+    for ituning = 0, Ntunings-1 do begin
       ;; We rely here on hpln and hplt being the first two tabulated
       ;; coordinates. To make this more general, we should get the
       ;; actual indices from the headers. Maybe later...
-      wcs[iwav, iscan].hpln = reform(wwcs[0,*,*,iscan])
-      wcs[iwav, iscan].hplt = reform(wwcs[1,*,*,iscan])
-    endfor                      ; iwav
+      wcs[ituning, iscan].hpln = reform(wwcs[0,*,*,iscan])
+      wcs[ituning, iscan].hplt = reform(wwcs[1,*,*,iscan])
+    endfor                      ; ituning
   endfor                        ; iscan
-  
+
+;  if prefilter eq '3950' && ~keyword_set(noaligncont) then $
+
+  help, wbgfiles, utunwavelength, direction
+
+  ashifts = self -> get_align_continuum(wbgfiles, utunwavelength, direction)
+
   ;; Continuum alignment only done for Ca II scans (so far). H beta is
   ;; not as wide so should be OK.
   if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
@@ -610,37 +652,39 @@ pro chromis::make_nb_cube, wcfile $
 
   
   iprogress = 0
-  Nprogress = Nscans*Nwav
+  Nprogress = Nscans*Ntunings*Nnbcams
 
   cshift_mean = fltarr(2,Nnbprefs, Nscans)
   nSummed = fltarr(Nnbprefs, Nscans)
-  idxpref = intarr(Nwav)
+  idxpref = intarr(Ntunings)
+
   
   for iscan = 0L, Nscans-1 do begin
 
 
     ts = (strsplit(wbgfiles[iscan],'/',/extract))[1]
+
     
     ;; The NB files in this scan, sorted in tuning wavelength order.
     self -> selectfiles,  files = pertuningfiles, states = pertuningstates $ 
-                         , cam = nbcamera, scan = uscans[iscan], timestamps = ts $
-                         , sel = scan_nbindx, count = count
+                                  , cam = nbcameras, scan = uscans[iscan], timestamps = ts $
+                                  , sel = scan_nbindx, count = count
     scan_nbfiles = pertuningfiles[scan_nbindx]
     scan_nbstates = pertuningstates[scan_nbindx]
     sortindx = sort(scan_nbstates.tun_wavelength)
     scan_nbfiles = scan_nbfiles[sortindx]
     scan_nbstates = scan_nbstates[sortindx]
 
-    ;; The WB files in this scan, sorted as the NB files
-    self -> selectfiles, files = pertuningfiles, states = pertuningstates $ 
-                         , cam = wbcamera, scan = uscans[iscan], timestamps = ts $
-                         , sel = scan_wbindx, count = count
-    scan_wbfiles = pertuningfiles[scan_wbindx]
-    scan_wbstates = pertuningstates[scan_wbindx]
-    match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
-    scan_wbfiles = scan_wbfiles[sortindx]
-    scan_wbstates = scan_wbstates[sortindx]
-    
+;    ;; The WB files in this scan, sorted as the NB files
+;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $ 
+;                         , cam = wbcamera, scan = uscans[iscan], timestamps = ts $
+;                         , sel = scan_wbindx, count = count
+;    scan_wbfiles = pertuningfiles[scan_wbindx]
+;    scan_wbstates = pertuningstates[scan_wbindx]
+;    match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
+;    scan_wbfiles = scan_wbfiles[sortindx]
+;    scan_wbstates = scan_wbstates[sortindx]
+
     ;; Read global WB file to use as reference when destretching
     ;; per-tuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
@@ -648,13 +692,24 @@ pro chromis::make_nb_cube, wcfile $
     if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
       ;; Interpolate to get the shifts for all wavelengths for
       ;; this scan.
-      icont = where(scan_nbstates.prefilter eq '3999')
+;      icont = where(scan_nbstates.prefilter eq '3999')
       xshifts = interpol([0., nb_shifts[0, iscan]] $
                          , align_wavelengths*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
       yshifts = interpol([0., nb_shifts[1, iscan]] $
                          , align_wavelengths*1e7 $
                          , scan_nbstates.tun_wavelength*1e7)
+
+      print, xshifts
+      print, reform(ashifts[0, *, iscan])
+      print, yshifts
+      print, reform(ashifts[1, *, iscan])
+
+      
+      
+      ;; ashifts has the right values but xshifts and yshifts have
+      ;; them duplicated!
+      
     endif
 
     ;;stop
@@ -662,135 +717,256 @@ pro chromis::make_nb_cube, wcfile $
     ;;tscl *= mean(prefilter_wb)
 ;    tscl = 1.
     
-    for iwav = 0L, Nwav - 1 do begin 
-      idxprefilter = where(scan_nbstates[iwav].prefilter eq unbprefs)
-      idxpref[iwav] = idxprefilter
-      
-      state = ufpi_states[iwav]
+    for ituning = 0L, Ntunings - 1 do begin 
 
-      ;; Collect info about this frame here.
+      ;; Loop over tunings, potentially sum multiple images after
+      ;; destretching. Also combine things like exposure times, etc.
+
+      state = ufpi_states[ituning]
+
+       
+      idxprefilter = where(scan_nbstates[ituning].prefilter eq unbprefs)
+      idxpref[ituning] = idxprefilter
+
+      nbim = 0.
+      wbim = 0.
+
+      undefine, these_texposur, these_xposure
+      undefine, these_date_beg, these_date_avg, these_date_end
       
-      nbhead = red_readhead(scan_nbfiles[iwav])
+      for icam = 0, Nnbcams-1 do begin
+
+        red_progressbar, iprogress, Nprogress $
+                         , /predict $
+                         , 'Processing scan=' + strtrim(uscans[iscan], 2) $
+                         + ' state=' + state $
+                         + ' ' + nbcameras[icam]
+
+        
+        these_nbindx = where(scan_nbstates.fpi_state eq ufpi_states[ituning] $
+                             and scan_nbstates.camera eq nbcameras[icam]  $
+                             , count)
+
+        
+        if polarimetric_data then begin
+          ulc = scan_nbstates[these_nbindx].lc
+          Nlc = n_elements(ulc)
+          if Nlc gt 1 then begin
+            ;; Make sure the LC states are ordered.
+            sindx = sort(ulc)
+            ulc = ulc[sindx]
+            these_nbindx = these_nbindx[sindx]
+          endif
+        endif else begin
+          ulc = ''
+          Nlc = 1
+        endelse
+
+        
+        for ilc = 0, Nlc-1 do begin
+
+          ;; This should be a single NB file
+          this_nbindx  = these_nbindx[ilc]
+          this_nbfile  = scan_nbfiles[this_nbindx]
+          this_nbstate = scan_nbstates[this_nbindx]
+
+          ;; Now find the matching WB file. The selecfiles method
+          ;; checks for cameras being equal but with PD data, the
+          ;; restored WB camera is actually both the W and D cameras.
+          ;; So we need to use strmatch instead. (Perhaps change
+          ;; selectfiles to use strmatch?)
+          if polarimetric_data then begin
+            this_wbindx  = where(pertuningstates.fpi_state eq ufpi_states[ituning] $
+                                 and strmatch(pertuningstates.camera, '*'+wbcamera+'*') $
+                                 and pertuningstates.lc eq ulc[ilc] $
+                                 and pertuningstates.scannumber eq uscans[iscan] $
+                                 , count)
+          endif else begin
+            this_wbindx  = where(pertuningstates.fpi_state eq ufpi_states[ituning] $
+                                 and strmatch(pertuningstates.camera, '*'+wbcamera+'*') $
+                                 and pertuningstates.scannumber eq uscans[iscan] $
+                                 , count)
+          endelse
+          this_wbfile  = pertuningfiles[this_wbindx]
+          this_wbstate = pertuningfiles[this_wbindx]
+
+          if 0 then begin
+            print
+            print, 'Matching nb and wb files:'
+            print, this_nbfile
+            print, this_wbfile
+            print
+          endif
+          
+          ;; Get destretch to anchor camera (residual seeing)
+          if wbcor then begin
+            this_wbim = (red_readdata(this_wbfile, direction = direction))[x0:x1, y0:y1]
+            wb_grid = rdx_cdsgridnest(wb, this_wbim, tiles, clips)
+          endif
+
+          ;; Read NB image(s), apply prefilter curve (rpref) and
+          ;; temporal scaling
+          this_nbim = (red_readdata(this_nbfile, direction = direction, head = nbhdr))[x0:x1, y0:y1] * rpref[ituning] ;* tscl
+;          bg = median(this_nbim)
+
+          ;; Accumulate header keywords here
+          red_append, these_xposure,  fxpar(nbhdr, 'XPOSURE')
+          red_append, these_texposur, fxpar(nbhdr, 'TEXPOSUR')
+
+          ;; DATE-??? keywords
+          red_fitspar_getdates, nbhdr $
+                                , date_beg = date_beg $
+                                , date_avg = date_avg $
+                                , date_end = date_end 
+          red_append, these_date_beg, date_beg
+          red_append, these_date_avg, date_avg
+          red_append, these_date_end, date_end
+          
+          if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
+            ;; Apply alignment to compensate for time-variable chromatic
+            ;; aberrations.
+                                ;nbim = red_shift_sub(nbim, -xshifts[ituning], -yshifts[ituning], )
+            ;; add shift to total shift
+            idx_shift = wcSHIFT[0,iscan]
+            idy_shift = wcSHIFT[1,iscan]
+            cshift = ashifts[*, ituning, iscan]
+;            cshift = [xshifts[ituning], yshifts[ituning]]
+          endif else begin
+            ;; With ashifts, this is actually the same as above, since
+            ;; ashift[*,*] = 0 for non-3950 data:
+            idx_shift = wcSHIFT[0,iscan] 
+            idy_shift = wcSHIFT[1,iscan]
+            cshift = [0,0]
+          endelse
+          
+          cshift_mean[*, idxprefilter, iscan] += cshift
+          nSummed[idxprefilter, iscan] += 1
+          
+          ;; If needed, accumulate destretch to anchor camera and
+          ;; prefilter correction
+          if wbcor then begin
+            grid1 = wb_grid
+            grid1[0,*,*] += cshift[0]
+            grid1[1,*,*] += cshift[1]
+            this_nbim = rdx_cstretch(temporary(this_nbim), grid1, nthreads=nthreads)
+            unrotated_shifts = [0,0]
+          endif else begin
+            unrotated_shifts = cshift
+          endelse
+
+          
+          ;; Apply field derotation, alignments, dewarping based on
+          ;; the output from make_wb_cube and the per-tuning WB files.
+
+          red_missing, this_nbim $
+                       , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+          if Nmissing gt 0 then begin
+            bg = this_nbim[indx_missing[0]]
+          endif else begin
+            bg = median(this_nbim)
+          endelse
+          
+          this_nbim = red_rotation(temporary(this_nbim), ang[iscan] $
+                                   , idx_shift, idy_shift, full=wcFF $
+                                   , background = bg, nearest = nearest, nthreads = nthreads $
+                                   , stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr $
+                                   , unrotated_shifts = unrotated_shifts)
+          
+          ;;mindx = where(nbim eq bg, Nwhere)
+          ;;nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
+          ;;if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+
+          ;; Accumulate while normalizing with number of summed images.
+          nbim += this_nbim / (Nlc*Nnbcams)
+          
+          if keyword_set(wbsave) then begin
+            ;; Same operations as on narrowband image, except for
+            ;; "aligncont".
+            this_wbim = rdx_cstretch(temporary(this_wbim), wb_grid, nthreads=nthreads)
+            bg = median(this_wbim)
+            this_wbim = red_rotation(temporary(this_wbim), ang[iscan] $
+                                     , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
+                                     , background = bg,  stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr $
+                                     , nthreads=nthreads, nearest = nearest)
+            ;; No need to use unrotated_shifts as it only concerns the NB
+            ;; channel.
+            
+            ;;       mindx = where(wbim eq bg, Nwhere)
+            ;;       if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
+            
+            wbim += this_wbim / (Nlc*Nnbcams)
+          endif
+          
+        endfor                  ; ilc
+
+        iprogress++             ; update progress counter
+        
+      endfor                    ; icam
+      
+      ;; The metadata below should take into account when multiple NB
+      ;; images are summed. This is not done yet!   <------------------------- !!!!!!!!!!!!
+      
+      ;; Collect info about this frame here.
+      these_nbindx = where(scan_nbstates.fpi_state eq ufpi_states[ituning]  $
+                           , count)
+      nbhead = red_sumheaders(scan_nbfiles[these_nbindx], nbim)
+      fns = red_fitsgetkeyword_multifile(scan_nbfiles[these_nbindx],'FNUMSUM')
+      undefine, fnumsum
+      for i = 0, n_elements(fns)-1 do red_append, fnumsum, rdx_str2ints(fns[i])
+      red_append, fnumsum_total, fnumsum
+      Nsumexp = n_elements(fnumsum)
+      fnumsum = rdx_ints2str(red_uniquify(fnumsum))
+;      fxaddpar, nbhead, 'FNUMSUM', fnumsum, 'Raw frame numbers'
+      ;; fxaddpar, nbhead, 'NSUMEXP', Nsumexp, 'Number of summed exposures'
+      
+      ;;nbhead = red_readhead(scan_nbfiles[ituning])
 
       ;; DATE-??? keywords
-      red_fitspar_getdates, nbhead $
-                            , date_beg = date_beg $
-                            , date_end = date_end $
-                            , date_avg = date_avg
-      date_beg_array[iwav, iscan] = date_beg
-      date_end_array[iwav, iscan] = date_end
-      date_avg_array[iwav, iscan] = date_avg
-      tbeg_array[iwav, iscan] = red_time2double((strsplit(date_beg,'T',/extract))[1])
-      tend_array[iwav, iscan] = red_time2double((strsplit(date_end,'T',/extract))[1])
-      tavg_array[iwav, iscan] = red_time2double((strsplit(date_avg,'T',/extract))[1])
+;      red_fitspar_getdates, nbhead $
+;                            , date_beg = date_beg $
+;                            , date_end = date_end $
+;                            , date_avg = date_avg
+      date_beg_array[ituning, iscan] = min(these_date_beg)
+      date_end_array[ituning, iscan] = max(these_date_end)
+      tbeg_array[ituning, iscan] = red_time2double((strsplit(date_beg_array[ituning, iscan],'T',/extract))[1])
+      tend_array[ituning, iscan] = red_time2double((strsplit(date_end_array[ituning, iscan],'T',/extract))[1])
+      tavg_array[ituning, iscan] = (tbeg_array[ituning, iscan] + tend_array[ituning, iscan]) / 2.
+      date_avg_array[ituning, iscan] = self.isodate + 'T' + red_timestring(tavg_array[ituning, iscan])
 
       ;; Wavelength and time
-      wcs[iwav, iscan].wave = scan_nbstates[iwav].tun_wavelength*1d9
-      wcs[iwav, iscan].time = tavg_array[iwav, iscan]
+      wcs[ituning, iscan].wave = scan_nbstates[ituning].tun_wavelength*1d9
+      wcs[ituning, iscan].time = tavg_array[ituning, iscan]
 
       ;; Apply wavelength shift from prefilter fit.
-      wcs[iwav, iscan].wave -= wave_shifts[iwav]
+      wcs[ituning, iscan].wave -= wave_shifts[ituning]
 
       ;; Exposure time
-      exp_array[iwav, iscan]  = fxpar(nbhead, 'XPOSURE')
-      sexp_array[iwav, iscan] = fxpar(nbhead, 'TEXPOSUR')
-      nsum_array[iwav, iscan] = fxpar(nbhead, 'NSUMEXP')
+      exp_array[ituning, iscan]  = total(these_xposure)   ; fxpar(nbhead, 'XPOSURE')
+      sexp_array[ituning, iscan] = median(these_texposur) ; fxpar(nbhead, 'TEXPOSUR')
+      nsum_array[ituning, iscan] = Nsumexp                ; fxpar(nbhead, 'NSUMEXP')
+      fnumsum_array[ituning, iscan] = fnumsum
       
-      red_progressbar, iprogress, Nprogress $
-                       , /predict $
-                       , 'Processing scan=' $
-                       + strtrim(uscans[iscan], 2) + ' state=' + state 
-      
-      ;; Get destretch to anchor camera (residual seeing)
-      if wbcor then begin
-        wwi = (red_readdata(scan_wbfiles[iwav], direction = direction))[x0:x1, y0:y1]
-        wb_grid = rdx_cdsgridnest(wb, wwi, tiles, clips)
-      endif
-
-      ;; Read image, apply prefilter curve and temporal scaling
-      nbim = (red_readdata(scan_nbfiles[iwav], direction = direction))[x0:x1, y0:y1] * rpref[iwav] ;* tscl
-      bg = median(nbim)
-      
-      if prefilter eq '3950' and ~keyword_set(noaligncont) then begin
-        ;; Apply alignment to compensate for time-variable chromatic
-        ;; aberrations.
-                                ;nbim = red_shift_sub(nbim, -xshifts[iwav], -yshifts[iwav], )
-        ;; add shift to total shift
-        idx_shift =  wcSHIFT[0,iscan]
-        idy_shift =  wcSHIFT[1,iscan] 
-        cshift = [xshifts[iwav], yshifts[iwav]]
-      endif else begin
-        idx_shift =  wcSHIFT[0,iscan] 
-        idy_shift =  wcSHIFT[1,iscan]
-        cshift = [0,0]
-      endelse
-      
-      cshift_mean[*,idxprefilter, iscan] += cshift
-      nSummed[idxprefilter, iscan] += 1
-      
-      
-      ;; If needed, accumulate destretch to anchor camera and prefilter correction
-      ;;
-      if wbcor then begin
-        grid1 = wb_grid
-        grid1[0,*,*] += cshift[0]
-        grid1[1,*,*] += cshift[1]
-        nbim = rdx_cstretch(temporary(nbim), grid1, nthreads=nthreads)
-        unrotated_shifts = [0,0]
-      endif else begin
-        unrotated_shifts = cshift
-      endelse
-
-             
-      ;; Apply derot, align, dewarp based on the output from
-      ;; make_wb_cube
-
-      nbim = red_rotation(temporary(nbim), ang[iscan] $
-                          , idx_shift, idy_shift, full=wcFF $
-                          , background = bg, nearest = nearest, nthreads = nthreads $
-                          , stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr $
-                          , unrotated_shifts = unrotated_shifts)
-      
-      ;;mindx = where(nbim eq bg, Nwhere)
-      ;;nbim = red_stretch(temporary(nbim), reform(wcGRID[iscan,*,*,*]))
-      ;;if Nwhere gt 0 then nbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
-
-;      if keyword_set(integer) then begin
-;        red_fitscube_addframe, fileassoc, fix(round((temporary(nbim)-bzero)/bscale)) $
-;                                   , iscan = iscan, ituning = iwav
-;      endif else begin
       red_fitscube_addframe, fileassoc, temporary(nbim) $
-                             , iscan = iscan, ituning = iwav
-;      endelse
-
+                             , iscan = iscan, ituning = ituning
+      
       if keyword_set(wbsave) then begin
-        ;; Same operations as on narrowband image, except for
-        ;; "aligncont".
-        wbim = wwi              ;* tscl
-        wbim = rdx_cstretch(temporary(wbim), wb_grid, nthreads=nthreads)
-        bg = median(wbim)
-        wbim = red_rotation(temporary(wbim), ang[iscan] $
-                            , wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF $
-                            , background = bg,  stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr $
-                            , nthreads=nthreads, nearest = nearest) ;; No need to use unrotated_shifts as it only concerns the NB channel
-        
- ;;       mindx = where(wbim eq bg, Nwhere)
- ;;       if Nwhere gt 0 then wbim[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
         red_fitscube_addframe, wbfileassoc, temporary(wbim) $
-                               , iscan = iscan, ituning = iwav
+                               , iscan = iscan, ituning = ituning
       endif
       
-      iprogress++               ; update progress counter
-
-    endfor                      ; iwav
+    endfor                      ; ituning
 
     cshift_mean[0,*,iscan] /= nSummed[*,iscan]
     cshift_mean[1,*,iscan] /= nSummed[*,iscan]
+    
   endfor                        ; iscan
-
-
+  
+  ;; String version of all frame numbers in the cube, sorted.
+  fnumsum_total = rdx_ints2str(red_uniquify(fnumsum_total))
+  
   ;; Close fits file.
   free_lun, lun
+
   whdr = headfits(wcfile)
   csyer_spatial_value = fxpar(whdr, 'CSYER1', comment = csyer_spatial_comment)
   red_fitscube_addwcs, filename, wcs $
@@ -804,8 +980,8 @@ pro chromis::make_nb_cube, wcfile $
                          , csyer_spatial_comment = csyer_spatial_comment $
                          , dimensions = dims
   endif
-
-    ;; Copy the MOMFBD or bypass_momfbd step (or a mix):
+  
+  ;; Copy the MOMFBD or bypass_momfbd step (or a mix):
   self -> headerinfo_copystep, filename, wcfile, stepnum = 1
   
   ;; Add info about this step
@@ -826,7 +1002,7 @@ pro chromis::make_nb_cube, wcfile $
   red_fitscube_newheader, filename, hdr
   if keyword_set(wbsave) then red_fitscube_newheader, wbfilename, hdr
   
-;; Create cubes for science data and scan-adapted cavity maps.
+  ;; Create cubes for science data and scan-adapted cavity maps.
   cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
 
   if ~keyword_set(nocavitymap) then begin
@@ -929,6 +1105,16 @@ pro chromis::make_nb_cube, wcfile $
       cmap1 = red_rotate(cmap1, direction)
       ;; Clip to the selected FOV
       cmap1 = cmap1[x0:x1,y0:y1]
+
+      if file_test(cfg_dir+'/fov_mask.fits') then begin
+        fov_mask = readfits(cfg_dir+'/fov_mask.fits')
+        if self.filetype eq 'MOMFBD' then $
+           fov_mask = red_crop_as_momfbd(fov_mask, mr) $
+        else $
+           fov_mask = fov_mask[xx0:xx1,yy0:yy1]
+        fov_mask = red_rotate(fov_mask, direction)
+      endif
+      
       
       ;; Now make rotated copies of the cavity map
       for iscan = 0L, Nscans-1 do begin
@@ -999,7 +1185,7 @@ pro chromis::make_nb_cube, wcfile $
       
     endfor                      ; icprefs
     
-  endif 
+  endif
   
   
   ;; Add some variable keywords
@@ -1056,11 +1242,18 @@ pro chromis::make_nb_cube, wcfile $
 ;                                  , keyword_value = mean(nsum_array) $
                                   , axis_numbers = [3, 5]
 
+;  self -> fitscube_addvarkeyword, filename, 'FNUMSUM', fnumsum_array $
+;     , comment = 'Raw frame numbers' $
+;     , anchor = anchor $
+;     , keyword_value = fnumsum_total $
+;     , axis_numbers = [3, 5]
+
+  
   
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
   self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod $
-                                  ,fitpref_time = fitpref_time 
+     , fitpref_time = fitpref_time 
 
   if keyword_set(integer) then begin
     ;; Convert to integers
