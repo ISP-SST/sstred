@@ -254,6 +254,7 @@ pro red::prepmomfbd, cams = cams $
   inam = red_subprogram(/low, calling = inam1)
   
   instrument = ((typename(self)).tolower())
+  polarimetric_data = self -> polarimetric_data()
 
   if n_elements(escan) && ~isa(escan, /integer, /scalar) then begin
     print, inam + " : 'escan' keyword should be an integer number."
@@ -400,7 +401,6 @@ pro red::prepmomfbd, cams = cams $
     return
   endif
   refcam_name = cams[refcam]
-  
   if keyword_set(newalign) then begin
     ref_clip = self -> commonfov(align = align, cams = cams $
                                  , extraclip = extraclip $
@@ -440,7 +440,9 @@ pro red::prepmomfbd, cams = cams $
 
   if n_elements(numpoints) eq 0 then begin
     ;; About the same subfield size in arcsec as CRISP:
-    numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+    ;;  numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+    image_scale = self -> imagescale(upref[ipref])
+    numpoints = strtrim(round(88*0.0590/image_scale/2)*2, 2)
   endif else begin
     ;; Convert strings, just to avoid breaking existing codes.
     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
@@ -692,7 +694,8 @@ pro red::prepmomfbd, cams = cams $
                            , gainname = ref_gainname, darkname = ref_darkname, status = status
         if( status lt 0 ) then continue
 
-        image_scale = self -> imagescale(upref[ipref], /use_config)
+        ;;image_scale = self -> imagescale(upref[ipref], /use_config)
+        image_scale = self -> imagescale(upref[ipref])
 
         if ~keyword_set(no_pd) then begin
 
@@ -913,7 +916,8 @@ pro red::prepmomfbd, cams = cams $
             ;; Loop over states and add object to cfg_list
             for istate=0L, Nstates-1 do begin
 
-              if instrument eq 'chromis' then begin
+;              if instrument eq 'chromis' then begin
+              if ~polarimetric_data then begin
                 thisstate = ustates[istate].fpi_state
                 state_idx = where(state_list.fpi_state eq thisstate)
               endif else begin
@@ -949,8 +953,16 @@ pro red::prepmomfbd, cams = cams $
                 endelse
               endif else begin
 ;                  gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]], /no_fits)
+                
+;                gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
+
+                if state_list[state_idx[0]].lc eq 4 then begin
+                  ;; E.g. 3999 without polarimetry
                   gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
-;
+                end else begin
+                  ;; For flatfielded polcal --> lc gains
+                  gainname = self -> filenames('cavityfree_lc_gain', state_list[state_idx[0]])
+                endelse
 ;                 search = self.out_dir+'/gaintables/'+self.camttag + $
 ;                          '.' + strmid(ustat1[ii], idx[0], $
 ;                                       idx[nidx-1])+ '*unpol.gain'
