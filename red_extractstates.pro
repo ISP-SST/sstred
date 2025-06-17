@@ -69,6 +69,10 @@
 ;     cam : out, optional, type=strarr
 ;
 ;        The camera name.
+;
+;     settings : out, optional, type=strarr
+;
+;        Camera settings, like 12.00ms_G00.00.
 ; 
 ;     rscan : out, optional, type=strarr
 ;
@@ -109,6 +113,8 @@
 ;   2018-06-11 : MGL. Add conversion from CHROMIS wheel status to
 ;                prefilter. New keywords is_wb and is_pd.
 ;
+;   2025-06-17 : MGL. New keyword settings.
+;
 ; 
 ;-
 pro red_extractstates, strings $
@@ -124,6 +130,7 @@ pro red_extractstates, strings $
                        , lc = lc $
                        , lp = lp $
                        , cam = cam $
+                       , settings = settings $
                        , pref = pref $
                        , scan = scan $
                        , dwav = dwav $
@@ -182,7 +189,12 @@ pro red_extractstates, strings $
   ;; The camera name consists of the string 'cam' followed by a roman
   ;; number.
   if arg_present(cam) or arg_present(pstates_out) then $
-     cam = reform((stregex(file_basename(strlist),'(_|\.|^)(cam[IVX]+)(_|\.|$)', /extr, /subexp))[2,*])
+     cam = reform((stregex(file_basename(strlist),'(_|\.|^)(cam[IVXL]+)(_|\.|$)', /extr, /subexp))[2,*])
+
+  ;; Camera settings, e.g., 10.00ms_G00.00.
+  if arg_present(settings) then begin
+    settings = reform((stregex(strlist,'(_|\.)([0-9]+[.][0-9]+ms_G[0-9]+[.][0-9]+)(_|\.|$)', /extr, /subexp))[2,*])
+  endif
   
   ;; The prefilter is the only field that is exactly four digits
   if arg_present(pref) or arg_present(fullstate) or arg_present(lambda) or $
