@@ -711,41 +711,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
 
     if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
       ;; Look for already summed data in a reduc/ subdirectory.
-      sum_dir = root_dir + 'reduc/' + instrument
+      sum_dir = root_dir + 'reduc/' + instrument + '/'
       if ~file_test(sum_dir, /directory) then undefine, sum_dir
-      case 1 of
-
-        file_test(root_dir + 'reduc/AM/' + instrument, /directory) $
-           && file_test(root_dir + 'reduc/PM' + instrument, /directory) : begin
-          ;; Both reduc/AM/ and reduc/PM/ subdirectories. Ask user
-          ;; which one they want to set up for.
-          red_message, 'Found both reduc/AM/ and reduc/PM/ subdirectories with summed data.' $
-                       + ' Which one do you want to set up for?'
-          sel = red_select_subset(['AM', 'PM'], count = count, maxcount = 1, default = '')
-          if count eq 0 then undefine, sum_dir else begin
-            sum_dir = root_dir + 'reduc/'+sel+'/' + instrument
-          endelse
-        end
-
-        file_test(root_dir + 'reduc/AM/' + instrument, /directory) : begin
-          ;; Just the reduc/AM/ subdirectory. Use it!
-          sum_dir = root_dir + 'reduc/AM/' + instrument
-        end
-
-        file_test(root_dir + 'reduc/PM/' + instrument, /directory) : begin
-          ;; Just the reduc/PM/ subdirectory. Use it!
-          sum_dir = root_dir + 'reduc/PM/' + instrument
-        end
-
-        file_test(root_dir + 'reduc/' + instrument, /directory) : begin
-          ;; Just the reduc/ subdirectory. Use it!
-          sum_dir = root_dir + 'reduc/' + instrument
-        end
-
-        else : undefine, sum_dir
-        
-      endcase
-      
     endelse
     
     ;; Setup the different instruments.
