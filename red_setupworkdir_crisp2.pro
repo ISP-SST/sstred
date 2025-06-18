@@ -208,45 +208,29 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Cameras'
   printf, Clun, '#'
 
-  cams = file_basename(darksubdirs)
-  cams = cams[uniq(cams,sort(cams))]
- 
-  if n_elements(cams) le 1 and n_elements(old_dir) gt 0 then begin
-    dnames = file_search(old_dir+'/darks/cam*fits', count = Ndarks)
+  if Ndarkdirs gt 0 then begin
+    cams = file_basename(darksubdirs)
+  endif else begin
+
+    if n_elements(old_dir) eq 0 then stop
+
+    dnames = file_search(old_dir+'/darks/*/cam*fits', count = Ndarks)
     if Ndarks eq 0 then stop
+    
     cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
     if total(cnt) eq 0 then stop
-    cams = red_uniquify(cams)
-  endif
+
+  endelse
+  cams = red_uniquify(cams)
 
   ;; We want the WB camera first!
   indx = sort(abs(reform(byte(strmid(cams,0,1,/reverse)))  - (byte('W'))[0]))
   cams = cams[indx]
- 
+
+  is_wb = strmatch(cams, (instrument.tolower()).capwords()+'-[WD]')          
+  is_pd = strmatch(cams, (instrument.tolower()).capwords()+'-D')
+  
   printf, Clun, 'camera = '+cams, format='(a0)'
-;  for icam = 0, n_elements(cams)-1 do printf, Clun, 'camera = '+cams[icam]
-;  case instrument of
-;
-;    'CRISP' : begin    
-;      printf, Clun, 'camera = Crisp-W' ; Wideband
-;      printf, Clun, 'camera = Crisp-T' ; Transmitted NB
-;      printf, Clun, 'camera = Crisp-R' ; Reflected NB
-;    end
-;    
-;    'CRISP2' : begin    
-;      printf, Clun, 'camera = Crisp2-W' ; Wideband
-;      printf, Clun, 'camera = Crisp2-T' ; Transmitted NB
-;      printf, Clun, 'camera = Crisp2-R' ; Reflected NB
-;      printf, Clun, 'camera = Crisp2-D' ; Diversity WB      
-;    end
-;
-;    'CHROMIS' : begin                    ; In case we decide to use this version for CHROMIS as well...
-;      printf, Clun, 'camera = Chromis-W' ; Wideband
-;      printf, Clun, 'camera = Chromis-N' ; Narrowband
-;      printf, Clun, 'camera = Chromis-D' ; Diversity WB
-;    end
-;    
-;  endcase
   printf, Clun, '#'
 
   ;; Orientation and rotation of WB camera, see IDL's rotate()
@@ -330,7 +314,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
 
   if Nflatdirs gt 0 then begin
-    ;; There are CRISP flats!
+    ;; There are flats!
 
     ;; Directories with camera dirs below:
     flatdirs = file_dirname(flatsubdirs)
@@ -391,15 +375,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
                   + ' ; ' + camdirs+' ('+wavelengths+')'
 
           red_append, prefilters, wls
-          red_append, is_wb, this_is_wb
-          red_append, is_pd, this_is_pd
         endif
       endif                     ; Nfiles
     endfor                      ; idir
   endif                         ; Nsubdirs
   
   Nprefilters = n_elements(prefilters)
-
+  
   if Nprefilters eq 0 then begin
     ;; This can happen if flats were already summed in La Palma and
     ;; then deleted. Look for prefilters in the summed flats directory
@@ -408,20 +390,18 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       fdir = work_dir + '/flats/'
       ;;  spawn, 'ls '+work_dir+'/flats/cam*.flat | cut -d. -f2|sort|uniq', prefilters
     endif else if file_test(old_dir + '/flats') then begin
-      fdir = old_dir + '/flats/'
-      ;;   spawn, 'ls '+old_dir+'/flats/cam*.fits | cut -d. -f2|sort|uniq', prefilters
+      ;; Recursively search for flats fits files.
+      sss=file_search(old_dir+'/flats/','*.fits', count = Nsearch)
+      if Nsearch gt 0 then begin
+        fdirs = red_uniquify(file_dirname(sss))
+        fnames = file_search(fdirs+'/cam*fits', count = Nfiles)
+        red_extractstates, fnames, /basename, pref = prefilters, cam = cam
+        prefilters = red_uniquify(prefilters)
+        Nprefilters = n_elements(prefilters)
+      endif
     endif
-    fnames = file_search(fdir+'cam*fits', count = Nfiles)
-    if Nfiles eq 0 then stop
-    ;; New filenames with proper tuning but NB files having WB
-    ;; prefilter in the names and states.
-    red_extractstates, fnames, /basename, wav = wav, fullstate = fullstate, pref = prefilters
-    Nprefilters = n_elements(prefilters)
-    cameras = red_fitsgetkeyword_multifile(fnames, 'CAMERA', counts = cnt)
-    is_wb = strmatch(cameras, (instrument.tolower()).capwords()+'-[WD]')          
-    is_pd = strmatch(cameras, (instrument.tolower()).capwords()+'-D')
   endif
-
+  
   if Nprefilters eq 0 then stop
 
   indx = uniq(prefilters, sort(prefilters))
@@ -648,112 +628,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     endfor                      ; ipref
   endif
   
-  
-;  polcaldirs = file_search(root_dir+'/*polc*/*', count = Npol, /fold)
-;  stop
-;
-;  if Npol gt 0 then begin
-;    polprefs = strarr(Npol)
-;;    polprefs = file_basename(polcaldirs)
-;    for i = 0, Npol-1 do begin
-;      polcalsubdirs = file_search(polcaldirs[i]+'/crisp*' $
-;                                  , count = Nsubdirs, /fold)
-;      if Nsubdirs gt 0 then begin
-;        printf, Clun, 'polcal_dir = ' $
-;                + red_strreplace(polcaldirs[i], root_dir, '')
-;;        Npol += 1
-;;          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-;;                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
-;        
-;        if keyword_set(calibrations_only) then begin
-;          ;; For /calibrations_only we want to output the summed data in
-;          ;; timestamp directories so we can handle multiple sets.
-;          outdir = 'polcal_sums/' + file_basename(polcaldirs[i])
-;          outdirkey = ', outdir="'+outdir+'"'
-;        endif else outdirkey = ''
-;
-;        printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
-;                + red_strreplace(polcaldirs[i], root_dir, '')+'"' $
-;                + ', nthreads=nthreads' $
-;                + outdirkey 
-;        ;; The prefilter is not part of the path. Try to get it from
-;        ;; the first data file in the directory.
-;        files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
-;        if Npolfiles gt 0 then begin
-;          hh = red_readhead(files[0])
-;          polprefs[i] = fxpar(hh, 'FILTER1')
-;        endif
-;      endif else begin
-;        polcalsubdirs = file_search(polcaldirs[i]+'/*', count = Nsubdirs)
-;        for j = 0, Nsubdirs-1 do begin
-;          polcalsubsubdirs = file_search(polcalsubdirs[j]+'/crisp*' $
-;                                         , count = Nsubsubdirs, /fold)
-;          if Nsubsubdirs gt 0 then begin
-;            printf, Clun, 'polcal_dir = ' $
-;                    + red_strreplace(polcalsubdirs[j], root_dir, '')
-;;              Npol += 1
-;;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
-;;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
-;            
-;            if keyword_set(calibrations_only) then begin
-;              ;; For /calibrations_only we want to output the summed data in
-;              ;; timestamp directories so we can handle multiple sets.
-;              outdir = 'polcal_sums/' + file_basename(polcalsubdirs[j])
-;              outdirkey = ', outdir="'+outdir+'"'
-;            endif else outdirkey = ''
-;            
-;            printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
-;                    + red_strreplace(polcalsubdirs[j], root_dir, '')+'"' $
-;                    + ', nthreads=nthreads' $
-;                    + outdirkey
-;            ;; Set the prefilter of this directory
-;            polprefs[i] = file_basename(polcaldirs[i])
-;          endif
-;        endfor                  ; j
-;      endelse
-;    endfor                      ; i
-;
-;    if ~keyword_set(calibrations_only) then begin  
-;      for ipref = 0, Npol-1 do begin
-;        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-;                + ", nthreads=nthreads"
-;        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-;                + ", nthreads=nthreads"
-;        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
-;      endfor                    ; ipref
-;    endif
-;    
-;  endif else begin
-;    polprefs = ''
-;  endelse                       ; Npol
-
-  
-;  print, 'Prefilter scan'
-;  printf, Clun, '#'
-;  printf, Clun, '# --- Prefilter scan'
-;  printf, Clun, '#'
-;  Npfs = 0
-;  pfscandirs = file_search(root_dir+'/*pfscan*/*', count = Ndirs, /fold)
-;  for i = 0, Ndirs-1 do begin
-;    pfscansubdirs = file_search(pfscandirs[i]+'/'+instrument+'*', count = Nsubdirs, /fold)
-;    if Nsubdirs gt 0 then begin
-;      printf, Clun, '# pfscan_dir = '+red_strreplace(pfscandirs[i], root_dir, '')
-;      Npfs += 1
-;    endif else begin
-;      pfscansubdirs = file_search(pfscandirs[i]+'/*', count = Nsubdirs)
-;      for j = 0, Nsubdirs-1 do begin
-;        pfscansubsubdirs = file_search(pfscansubdirs[j]+'/'+instrument+'*' $
-;                                       , count = Nsubsubdirs, /fold)
-;        if Nsubsubdirs gt 0 then begin
-;          printf, Clun, '# pfscan_dir = ' $
-;                  + red_strreplace(pfscansubdirs[j], root_dir, '')
-;          Npfs += 1
-;        endif                   ; Nsubsubdirs
-;      endfor                    ; j
-;    endelse                     ; Nsubdirs
-;  endfor                        ; i
-;  ;; If we implement dealing with prefilter scans in the pipeline,
-;  ;; here is where the command should be written to the script file.
 
 
 
@@ -772,22 +646,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
               + prefilters[ipref] + "'"
     endfor  ; ipref
-;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
-;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
-;    printf, Slun, '; keyword:'
-;    printf, Slun, '; a -> fitgains, npar = 3, res=res, /fit_reflectivity  '
-;    printf, Slun, '; However, running without /fit_reflectivity is safer. In should not'
-;    printf, Slun, '; be used for chromospheric lines like 6563 and 8542.'
-;    printf, Slun, '; Sometimes you need to add a few spline nodes in order to make the fits work,'
-;    printf, Slun, '; particularly just to the red and to the blue of the densely sampled region and'
-;    printf, Slun, '; also in blends if they are not propely sampled.'
-;    printf, Slun, '; As an example, to do this for 3969 Å, 12.00ms_G10.00 data, do something like'
-;    printf, Slun, '; the following:'
-;    printf, Slun, "; restore,'flats/spectral_flats/camXXX_12.00ms_G10.00_3969_flats.sav'; Read flats cube"
-;    printf, Slun, '; myg = [wav*1.d10, -0.765d0, 0.740d0] ; Add wavelength points'
-;    printf, Slun, '; myg=myg[sort(myg)]  ; Sort the wavelength points'
-;    printf, Slun, '; a->fitgains, rebin=800L, niter=3L, nthreads=12L, res=res, npar=5L, myg=myg ; Run the fitgain step with the added wavelength points'
-;    printf, Slun, '; Then, if you have already run makegains, rerun it.'
 
     printf, Slun, ''
 
@@ -812,23 +670,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Science data'
   printf, Clun, '# '
 
-;  ;; Exclude directories known not to have science data
-;  red_append, nonsciencedirs, pinhdirs
-;  red_append, nonsciencedirs, polcaldirs
-;  red_append, nonsciencedirs, darkdirs
-;  red_append, nonsciencedirs, flatdirs
-;  ;; Sometimes the morning calibrations data were not deleted, so they
-;  ;; have to be excluded too.
-;  calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
-;                                         , count = Ncalibdirs)
-;  if Ncalibdirs gt 0 then begin
-;    calibdirs = file_dirname(calibsubdirs)
-;    calibdirs = calibdirs[uniq(calibdirs, sort(calibdirs))]
-;    red_append, nonsciencedirs, calibdirs
-;  end
-;  sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
-;
-;  stop
   sciencesubdirs = red_find_instrumentdirs(root_dir, instrument $
                                            , instrument+['-data*', '-mosaic*'] $
                                            , count = Nsubdirs)
@@ -838,30 +679,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
     printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
   endif
-
-
-  
-;  for i = 0, Ndirs-1 do begin
-;
-;    if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-;      sciencesubdirs = file_search(sciencedirs[i]+'/'+instrument+'*' $
-;                                   , count = Nsubdirs, /fold)
-;      if Nsubdirs gt 0 then begin
-;        red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
-;      endif else begin
-;        sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
-;        for j = 0, Nsubdirs-1 do begin
-;          sciencesubsubdirs = file_search(sciencesubdirs[j]+'/'+instrument+'*' $
-;                                          , count = Nsubsubdirs, /fold)
-;          if Nsubsubdirs gt 0 then begin
-;            red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
-;          endif
-;        endfor                  ; j
-;      endelse 
-;    endif
-;  endfor
-;  if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
-
 
   if keyword_set(lapalma_setup) then begin
 
@@ -891,28 +708,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
-;  printf, Slun, ''
-;  for ipref = 0, Nprefilters-1 do begin
-;    if is_wb[ipref] then begin
-;      printf, Slun, "a -> prepmomfbd" $
-;;              + ", date_obs='" + isodate + "'" $
-;              + ", Nremove=2" $
-;              + ", Nmodes=60" $
-;              + ", numpoints=128" $
-;;            + ", margin=5 " $
-;              + ", global_keywords=['FIT_PLANE']" $
-;              + ", maxshift=45" $
-;              + ", /wb_states" $
-;;              + ", /redux" $
-;              + ", /unpol" $
-;              + ", extraclip = [75,125,15,15]" $
-;              + ", pref='" + prefilters[ipref] + "'" $
-;              + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
-;    endif
-;  endfor                        ; ipref ;
-
-
-  
   printf, Slun, '; If MOMFBD has problems near the edges, try increasing the margin when calling prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
     ;; The number of frames to be discarded by momfbd from every state
@@ -1002,6 +797,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
   
   ;; We will now attempt to copy existing sums of calibration data.
+  print, old_dir
+  
   red_setupworkdir_copy, old_dir, 'darks',       work_dir
   red_setupworkdir_copy, old_dir, 'flats',       work_dir
   red_setupworkdir_copy, old_dir, 'pinhs',       work_dir

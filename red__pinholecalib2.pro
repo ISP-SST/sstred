@@ -198,6 +198,9 @@ found_l1:
     endif
     iix = where(iix EQ 1)
     ref_pos = ref_pos[*, iix]
+    ;; ref_lind is wrong if doublets were deleted! We need correct values for flip detection
+    for i=0, 2 do ref_lind[i] = $
+      where((ref_pos[0, *] eq ref_lpos[0, i]) and (ref_pos[1, *] eq ref_lpos[1, i]))
     reg_i = tmp_i[*, iix]
     np_ref = (size(reg_i, /dim))[1]
     reg_pos = x0#replicate(1, np_ref)-red_grid_func(par, x = reg_i, y = 0)
@@ -219,14 +222,15 @@ found_l1:
       state = states[idx[i_dep]]
       img = red_readdata(state.filename, /silent)
       is_pd = strmatch(state.camera, '*-D')
+      ;; mask out bad corners also for Crisp PD image
+      if state.camera eq 'Crisp-D' then $
+         img *= (shift(dist(ref_siz), ref_siz/2) le 0.48*ref_siz[0])
       mask = img ge max(img)/(is_pd ? 8. : 10.)
       img_m = red_separate_mask(mask)
       img_np = max(img_m)
       img_area = lonarr(img_np)
       img_pos = fltarr(2, img_np)
       for i = 0, img_np-1 do begin
-        ;;ix = where_n(img_m EQ i+1)
-
         ix = where(img_m eq (i+1))
         ix = [[ix mod ref_siz[0]], [ix / ref_siz[0]]]
         lu = (min(ix, dim = 1, max = ro)-3) > [0, 0]
@@ -234,9 +238,7 @@ found_l1:
         bx = img[lu[0]:ro[0], lu[1]:ro[1]]
         bx_m = img_m[lu[0]:ro[0], lu[1]:ro[1]]
         if is_pd eq 1 then begin
-          bxd = (size(bx, /dim))[0]
-          bxp = max(bx, wo)
-          img_pos[*, i] = lu + [wo MOD bxd, wo/bxd]
+          img_pos[*, i] = lu + red_centroid(bx_m)
           img_area[i] = total(bx_m GT 0)
         endif else begin
           img_pos[*, i] = lu + red_centroid(bx)
@@ -259,7 +261,7 @@ found_l1:
         repeat begin
           img_lind = red_markpinholes(img, img_pos, title='Dependent Pinholes')
           img_lpos = img_pos[*, img_lind]
-          if red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
+          if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
           print, inam, ' : This is not the 3 bigger pinholes!'
         endrep until 0
       endelse

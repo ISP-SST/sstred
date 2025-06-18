@@ -694,7 +694,6 @@ pro red::prepmomfbd, cams = cams $
                            , gainname = ref_gainname, darkname = ref_darkname, status = status
         if( status lt 0 ) then continue
 
-        ;;image_scale = self -> imagescale(upref[ipref], /use_config)
         image_scale = self -> imagescale(upref[ipref])
 
         if ~keyword_set(no_pd) then begin
