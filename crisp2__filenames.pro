@@ -148,7 +148,7 @@ function crisp2::filenames, datatype, states $
                             , linked = linked 
 
   Nstates = n_elements(states)
-  
+
   if keyword_set(raw) then begin
     if ~keyword_set(wild_prefilter) and ~keyword_set(wild_tuning) then begin
       print, 'crisp2::filenames : Can only generate raw data searchstrings with'
@@ -408,19 +408,13 @@ function crisp2::filenames, datatype, states $
           dir = self.out_dir + '/flats/'
           if n_elements(timestamp) then dir += timestamp + '/'
           red_append, tag_list, detector
-          if states[istate].is_wb then begin
-            red_append, tag_list, exposure
-            red_append, tag_list, gain
-            red_append, tag_list, prefilter
-            ;;red_append, tag_list, prefilter+'_+0' ; Dummy tuning for WB
-          endif else begin
-;            red_append, tag_list, states[istate].fullstate
-            red_append, tag_list, exposure
-            red_append, tag_list, gain
-            red_append, tag_list, prefilter
+          red_append, tag_list, exposure
+          red_append, tag_list, gain
+          red_append, tag_list, prefilter
+          if states[istate].is_wb eq 0 and tuning ne '' then begin
             red_append, tag_list, tuning
             red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
-          endelse
+          endif
 ;          red_append, tag_list, detector
 ;          if states[istate].is_wb eq 0 and tuning ne '' then $
 ;             red_append, tag_list, tuning
@@ -564,9 +558,8 @@ function crisp2::filenames, datatype, states $
           ext = '_cavityfree.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
-
         
-        'pinh' :  begin
+        'pinh' : begin
           dir = self.out_dir+'/pinhs/'
           red_append, tag_list, detector
           red_append, tag_list, prefilter
@@ -575,7 +568,7 @@ function crisp2::filenames, datatype, states $
           if ~keyword_set(no_fits) then ext += '.fits'
         end
 
-        'pols' :  begin
+        'pols' : begin
           dir = self.out_dir+'/polcal_sums/'+camera+'/'
           red_append, tag_list, detector
           red_append, tag_list, 'lp'+string(states[istate].lp,format='(I03)')
@@ -589,7 +582,7 @@ function crisp2::filenames, datatype, states $
           if ~keyword_set(no_fits) then ext += '.fits'
         end
 
-        'polc' :  begin
+        'polc' : begin
           dir = self.out_dir+'/polcal/'
           red_append, tag_list, detector
           red_append, tag_list, prefilter
