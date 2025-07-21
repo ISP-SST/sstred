@@ -1168,7 +1168,7 @@ pro red::prepmomfbd, cams = cams $
     endif else begin
       ;; Make header-only fits files to be read post-momfbd.
       if ~keyword_set(no_fitsheaders) then $
-         self -> prepmomfbd_fitsheaders, dirs=dirs, momfbddir = momfbddir, pref = pref $
+         self -> prepmomfbd_fitsheaders, dirs=dirs[idir], momfbddir = momfbddir, pref = pref $
                                               , scanno = escan, no_narrowband = no_narrowband 
 
     endelse
