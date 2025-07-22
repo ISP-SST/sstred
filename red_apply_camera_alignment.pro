@@ -112,7 +112,7 @@ function red_apply_camera_alignment, im, model, cam $
           
           restore, 'calib/alignments.sav'
           
-          indx = where(alignments.state2.camera eq 'Crisp-T', Nalign)
+          indx = where(alignments.state2.camera eq cam, Nalign)
           case Nalign of
             0    : stop         ; Should not happen!
             1    : amap = invert(      alignments[indx].map           )
@@ -121,7 +121,7 @@ function red_apply_camera_alignment, im, model, cam $
           amap /= amap[2, 2]    
         endif else begin
 
-          red_message, 'Cannot find  calib/alignments.sav. Did you run pinholecalib?'
+          red_message, 'Cannot find calib/alignments.sav. Did you run pinholecalib?'
           retall
 
         endelse
