@@ -289,17 +289,18 @@ pro chromis::make_nb_cube, wcfile $
 
 
   ;; Unique tuning states, sorted by wavelength
-  ufpi_states = red_uniquify(pertuningstates[where(~pertuningstates.is_wb)].fpi_state, indx = xindx)
+  nbpertuningstates = pertuningstates[where(~pertuningstates.is_wb)]
+  ufpi_states = red_uniquify(nbpertuningstates.fpi_state, indx = xindx)
   Nwav = n_elements(xindx)
-  utunwavelength = pertuningstates[xindx].tun_wavelength
+  utunwavelength = nbpertuningstates[xindx].tun_wavelength
   sortindx = sort(utunwavelength)
   utunwavelength = utunwavelength[sortindx]
   ufpi_states = ufpi_states[sortindx]
-  my_prefilters = pertuningstates[xindx].prefilter
+  my_prefilters = nbpertuningstates[xindx].prefilter
   wav = utunwavelength
 
   ;; Unique nb prefilters
-  unbprefs = red_uniquify(pertuningstates[where(~pertuningstates.is_wb)].prefilter, indx = unbprefindx)
+  unbprefs = red_uniquify(nbpertuningstates.prefilter, indx = unbprefindx)
   Nnbprefs = n_elements(unbprefs)
   unbprefsref = dblarr(Nnbprefs)
   
@@ -371,7 +372,6 @@ pro chromis::make_nb_cube, wcfile $
       endif
     endif else fitpref_t = '_'+fitpref_time+'_'
     
-    
     pfile = self.out_dir + '/prefilter_fits/chromis_'+unbprefs[inbpref]+fitpref_t+'prefilter.idlsave'
     if ~file_test(pfile) then begin
       print, inam + ' : prefilter file not found: '+pfile
@@ -384,10 +384,12 @@ pro chromis::make_nb_cube, wcfile $
     endif else begin
       wave_shift = 0.0
     endelse
-    idxpref = where(my_prefilters eq unbprefs[inbpref], count)
-
-    print, 'Wave shifts: ', inbpref, ' ', unbprefs[inbpref], wave_shifts[inbpref]
-    wave_shifts[idxpref] = wave_shift
+    idxpref = where(self -> match_prefilters(my_prefilters, unbprefs[inbpref]), count)
+    
+    if count ge 0 then begin
+      print, 'Wave shifts: ', inbpref, ' ', unbprefs[inbpref], wave_shifts[inbpref]
+      wave_shifts[idxpref] = wave_shift
+    endif
     
     if inbpref eq 0 then begin
       units = prf.units
@@ -398,7 +400,7 @@ pro chromis::make_nb_cube, wcfile $
         retall
       endif
     endelse
-    
+
     if count eq 1 then begin
       red_append, prefilter_curve, prf.pref
 ;      red_append, prefilter_wav, prf.wav
