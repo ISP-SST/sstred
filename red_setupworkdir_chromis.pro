@@ -203,21 +203,38 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;; Orientation and rotation of WB camera, see IDL's rotate() and
   ;; offset_angle of red_lp_angles().
-  
-  case strmid(isodate,0,4) of
-    '2016' :  begin
+  year = strmid(isodate,0,4)
+  case 1 of
+    1 eq total(strmatch(['2016','2017'] $
+                        , year)) : begin
       direction = 2    
       rotation = -42.0 
     end
-    '2017' : begin
-      direction = 2    
-      rotation = -42.0 
-    end 
-    else :  begin
+    1 eq total(strmatch(['2018', '2019', '2020', '2021', '2022', '2023', '2024'] $
+                        , year)) : begin
       direction = 1    
       rotation = -42.0 
     end
+    year ge '2025' : begin
+      direction = 3 
+      rotation = -42.0
+    end
+    else : stop
   endcase
+;  case strmid(isodate,0,4) of
+;    '2016' :  begin
+;      direction = 2    
+;      rotation = -42.0 
+;    end
+;    '2017' : begin
+;      direction = 2    
+;      rotation = -42.0 
+;    end 
+;    else :  begin
+;      direction = 1    
+;      rotation = -42.0 
+;    end
+;  endcase
   if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
   if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
 ;  printf, Clun, 'direction = 2'  ; Orientation of WB camera, see IDL's rotate().
