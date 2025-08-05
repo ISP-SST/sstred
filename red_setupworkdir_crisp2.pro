@@ -787,8 +787,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
   
   ;; We will now attempt to copy existing sums of calibration data.
-  print, old_dir
-  
   red_setupworkdir_copy, old_dir, 'darks',       work_dir
   red_setupworkdir_copy, old_dir, 'flats',       work_dir
   red_setupworkdir_copy, old_dir, 'pinhs',       work_dir
