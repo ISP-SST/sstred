@@ -163,6 +163,8 @@ pro crisp2::extractstates_nondb, strings, states $
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
+  dims = size(strings, /dim)
+
   ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
     states = replicate( {CRISP2_POLCAL_STATE}, dims )
