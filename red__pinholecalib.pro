@@ -121,6 +121,7 @@
 pro red::pinholecalib, cams = cams $
                        , dir = dir $
                        , init = init $
+                       , manual=manual $
                        , margin = margin $
                        , max_shift = max_shift $
                        , nref = nref $
