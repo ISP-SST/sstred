@@ -171,11 +171,24 @@ pro red::fitscube_intensitycorr, filename $
     else   : nbpref =  wbpref
   endcase
   
+  
+  ;; Camera/detector identification
+  self -> getdetectors
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
+  nbtcamera   = (*self.cameras)[nbtindx[0]]
+  nbtdetector = (*self.detectors)[nbtindx[0]]
+  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
+  nbrcamera   = (*self.cameras)[nbrindx[0]]
+  nbrdetector = (*self.detectors)[nbrindx[0]]
+
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
   polarimetric_data = self -> polarimetric_data()
-  instrument = ((typename(self)).tolower())
   
   if polarimetric_data then begin
-    prefix = instrument.capwords()+'-T'
+    prefix = instrument+'-T'
   endif else begin
     prefix = instrument
   endelse

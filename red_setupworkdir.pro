@@ -305,7 +305,7 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
 
   if n_elements(ampm_cutoff) eq 0 then ampm_cutoff = '13:00:00'
 
-  if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
+  if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP', 'CRISP2']
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')
   if ~strmatch(out_dir,'*/') then out_dir += '/'

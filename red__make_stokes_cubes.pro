@@ -159,27 +159,28 @@ pro red::make_stokes_cubes, dir, scanno $
     clips = [12, 8,  4,  2 , 1]
   endif
 
-  instrument = ((typename(self)).tolower())
-  
   ;; Camera/detector identification
   self->getdetectors
-  wbindx      = where(strmatch(*self.cameras,instrument.capwords()+'-W'))
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
   wbcamera    = (*self.cameras)[wbindx[0]]
   wbdetector  = (*self.detectors)[wbindx[0]]
-  nbtindx     = where(strmatch(*self.cameras,instrument.capwords()+'-T')) 
+  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
   nbtcamera   = (*self.cameras)[nbtindx[0]]
   nbtdetector = (*self.detectors)[nbtindx[0]]
-  nbrindx     = where(strmatch(*self.cameras,instrument.capwords()+'-R')) 
+  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
   nbrcamera   = (*self.cameras)[nbrindx[0]]
   nbrdetector = (*self.detectors)[nbrindx[0]]
 
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+
+  
   case instrument of
-    'crisp' : begin
-      ;; We currently do correct for the small scale cavity map in CRISP
+    'Crisp' : begin
+;; We currently do correct for the small scale cavity map in CRISP
       ;; data. (We should get this from earlier meta data!)
       remove_smallscale = 1
     end
-    'chromis' : begin
+    'Chromis' : begin
       remove_smallscale = 0
     end
   endcase
@@ -192,10 +193,10 @@ pro red::make_stokes_cubes, dir, scanno $
   
   
   case self.filetype of
-        'ANA': extension = '.f0'
-        'MOMFBD': extension = '.momfbd'
-        'FITS': extension = '.fits'
-        'MIXED' : extension = '.{fits,momfbd}'
+    'ANA': extension = '.f0'
+    'MOMFBD': extension = '.momfbd'
+    'FITS': extension = '.fits'
+    'MIXED' : extension = '.{fits,momfbd}'
   endcase
 
   wbgfile = file_search(dir + '/*_'+string(scanno, format = '(i05)')+'_[0-9][0-9][0-9][0-9]' + extension $
@@ -298,23 +299,34 @@ pro red::make_stokes_cubes, dir, scanno $
     nbrstates = pertuningstates[nbrindx]
     nbrfiles = pertuningfiles[nbrindx]
 
-    ;; For WB, we also filter for the fpi_states from the NBT file
-    ;; selection. This is because filtering for the prefilter does not
-    ;; work for CHROMIS, as selectfiles does not check that NB filters
-    ;; are identical to the one given in the prefilter keyword, only
-    ;; that it "matches" the WB filter. So in this sense, 3634, 3969,
-    ;; and 3999 are all the same.
-    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-                                 , cam = wbcamera $
-                                 , sel = wbindx, count = Nwb $
-                                 , fpi_state = red_uniquify(nbtstates.fpi_state)
+    if instrument eq 'Chromis' then begin
+      ;; For CHROMIS WB, we also filter for the fpi_states from the
+      ;; NBT file selection. This is because filtering for the
+      ;; prefilter does not work for CHROMIS, as selectfiles does not
+      ;; check that NB filters are identical to the one given in the
+      ;; prefilter keyword, only that it "matches" the WB filter. So
+      ;; in this sense, 3634, 3969, and 3999 are all the same.
+      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                                   , cam = wbcamera $
+                                   , sel = wbindx, count = Nwb $
+                                   , fpi_state = red_uniquify(nbtstates.fpi_state)
+    endif else begin
+      ;; For CRISP and CRISP2 filtering for the prefilter should be
+      ;; ok. And doing it the CHROMIS way didn't work for some reason.
+      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+                                   , cam = wbcamera $
+                                   , sel = wbindx, count = Nwb $
+                                   , prefilter = unbprefs[ipref]
+    endelse
     wbstates = pertuningstates[wbindx]
     wbfiles = pertuningfiles[wbindx]
 
-    
+    help, wbstates, nbrstates, nbtstates
+    if n_elements(wbstates) ne n_elements(nbrstates) then stop
+
     ;; T camera
 
-    pfile = self.out_dir + '/prefilter_fits/'+instrument.capwords()+'-T_'+unbprefs[ipref]+fitpref_time+'prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/'+instrument+'-T_'+unbprefs[ipref]+fitpref_time+'prefilter.idlsave'
     if ~file_test(pfile) then begin
       red_message, 'Prefilter file not found: '+pfile
       return
@@ -329,7 +341,7 @@ pro red::make_stokes_cubes, dir, scanno $
     
     ;; R camera
     
-    pfile = self.out_dir + '/prefilter_fits/'+instrument.capwords()+'-R_'+unbprefs[ipref]+fitpref_time+'prefilter.idlsave'
+    pfile = self.out_dir + '/prefilter_fits/'+instrument+'-R_'+unbprefs[ipref]+fitpref_time+'prefilter.idlsave'
     if ~file_test(pfile) then begin
       red_message, 'Prefilter file not found: '+pfile
       return
@@ -363,7 +375,7 @@ pro red::make_stokes_cubes, dir, scanno $
         red_message, 'Error, calibration file not found -> '+cfile
         stop
       endif
-      restore, cfile                  ; The cavity map is in a struct called "fit". 
+      restore, cfile            ; The cavity map is in a struct called "fit". 
       dims = size(fit.pars, /dim)
 
       if dims[0] gt 1 then begin
@@ -413,8 +425,8 @@ pro red::make_stokes_cubes, dir, scanno $
         endelse
         
         ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
-        cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument.capwords()+'-T', amap = amapt)
-        cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument.capwords()+'-R', amap = amapr)
+        cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument+'-T', amap = amapt)
+        cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument+'-R', amap = amapr)
 
         ;; Clip to the selected FOV
         cmap1r = cmap1r[x0:x1,y0:y1]
@@ -459,7 +471,7 @@ pro red::make_stokes_cubes, dir, scanno $
     endif else undefine, ddate, ttime
     ;; Get pointing at center of FOV
     red_wcs_hpl_coords, red_time2double(ttime), metadata_pointing, time_pointing $
-                      , hpln, hplt
+                        , hpln, hplt
     
     ;; Get the image scale from the header
     image_scale = float(fxpar(hdr, 'CDELT1'))
@@ -629,6 +641,10 @@ pro red::make_stokes_cubes, dir, scanno $
 ;        print, ipref, ituning
 ;        print, snames[ituning]
 ;        stop
+
+        help, these_nbrindx,  nbrstates, nbtstates, wbstates, nbrstates[these_nbrindx],  nbtstates[these_nbtindx], wbstates[these_wbindx]
+
+        if n_elements(wbstates[these_wbindx]) lt 4 then stop
         
         self -> demodulate, these_snames[ituning], immr, immt $
            , smooth_by_subfield = smooth_by_subfield $ 

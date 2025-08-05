@@ -169,8 +169,20 @@ pro red::demodulate, outname, immr, immt $
     return
   endif
 
-  instrument = ((typename(self)).tolower())
-  
+  ;; Camera/detector identification
+  self -> getdetectors
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
+  nbtcamera   = (*self.cameras)[nbtindx[0]]
+  nbtdetector = (*self.detectors)[nbtindx[0]]
+  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
+  nbrcamera   = (*self.cameras)[nbrindx[0]]
+  nbrdetector = (*self.detectors)[nbrindx[0]]
+
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, nbrfac 
   red_make_prpara, prpara, nbtfac
@@ -246,9 +258,9 @@ pro red::demodulate, outname, immr, immt $
   Ny = y1 - y0 + 1
   
   prefilter = wbstates[0].prefilter
-  camw = wbstates[0].camera
-  camt = nbtstates[0].camera
-  camr = nbrstates[0].camera
+;  camw = wbstates[0].camera
+;  camt = nbtstates[0].camera
+;  camr = nbrstates[0].camera
   
   ;; Get some header info
   
@@ -745,9 +757,9 @@ pro red::demodulate, outname, immr, immt $
                       , 'FNUMSUM', red_collapserange(fnumsum,ld='',rd='') $
                       , 'List of frame numbers used'
   red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'CAMERA', nbrstates[0].camera+','+nbtstates[0].camera
+                      , 'CAMERA', nbrcamera+','+nbtcamera
   red_fitsaddkeyword, anchor = anchor, hdr $
-                      , 'DETECTOR', nbrstates[0].detector+','+nbtstates[0].detector
+                      , 'DETECTOR', nbrdetector+','+nbtdetector
 
   nbrhead = red_readhead(rfiles[0])
   nbthead = red_readhead(tfiles[0])

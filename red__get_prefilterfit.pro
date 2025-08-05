@@ -78,7 +78,20 @@ pro red::get_prefilterfit, states $
                            , units = units $
                            , wave_shifts = wave_shifts
 
-  instrument = ((typename(self)).tolower())
+
+  ;; Camera/detector identification
+  self -> getdetectors
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
+  nbtcamera   = (*self.cameras)[nbtindx[0]]
+  nbtdetector = (*self.detectors)[nbtindx[0]]
+  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
+  nbrcamera   = (*self.cameras)[nbrindx[0]]
+  nbrdetector = (*self.detectors)[nbrindx[0]]
+
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
 
   dims = size(states, /dim)
   
@@ -136,7 +149,7 @@ pro red::get_prefilterfit, states $
       
       ;; T camera
 
-      pfile = self.out_dir + '/prefilter_fits/' + instrument.capwords() + '-T_' $
+      pfile = self.out_dir + '/prefilter_fits/' + instrument + '-T_' $
               + uprefs[ipref] + fitpref_t + 'prefilter.idlsave'
       if ~file_test(pfile) then begin
         red_message, 'Prefilter file not found: '+pfile
@@ -167,7 +180,7 @@ pro red::get_prefilterfit, states $
       
       ;; R camera
 
-      pfile = self.out_dir + '/prefilter_fits/'+instrument.capwords() + '-R_' $
+      pfile = self.out_dir + '/prefilter_fits/'+instrument + '-R_' $
               + uprefs[ipref] + fitpref_t + 'prefilter.idlsave'
       if ~file_test(pfile) then begin
         red_message, 'Prefilter file not found: '+pfile

@@ -253,7 +253,6 @@ pro red::prepmomfbd, cams = cams $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
   
-  instrument = ((typename(self)).tolower())
   polarimetric_data = self -> polarimetric_data()
 
   if n_elements(escan) && ~isa(escan, /integer, /scalar) then begin
