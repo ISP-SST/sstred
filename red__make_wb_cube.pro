@@ -315,11 +315,6 @@ pro red::make_wb_cube, dirs $
   
   if(~keyword_set(nearest)) then lin = 1 else lin = 0
   
-  
-  ;; Name of the instrument
-  instrument = ((typename(self)).tolower())
-
-  
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   if n_elements(padmargin) eq 0 then padmargin  = 40
@@ -355,11 +350,14 @@ pro red::make_wb_cube, dirs $
 
   ;; Camera/detector identification
   self -> getdetectors
-  wbindx = where(strmatch(*self.cameras, instrument+'-W', /fold_case))
+  wbindx = where(strmatch(*self.cameras, '*-W'))
   wbcamera = (*self.cameras)[wbindx[0]]
   wbdetector = (*self.detectors)[wbindx[0]]
 
-  ;; Get metadata from logfiles
+  ;; Name of the instrument
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+
+;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
   if keyword_set(use_turret_coordinates) then begin
     red_logdata, self.isodate, time_pointing, turret = metadata_pointing, rsun = rsun
@@ -397,7 +395,7 @@ pro red::make_wb_cube, dirs $
   if keyword_set(make_raw) then begin
     stop
     ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
-    files = self -> raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
+    files = self -> raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument+'-W/' $
                                , scannos = scannos, count = Nraw)
     if Nraw eq 0 then stop
     self -> extractstates, files, states
