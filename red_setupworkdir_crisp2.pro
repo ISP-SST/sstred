@@ -215,6 +215,9 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     if n_elements(old_dir) eq 0 then stop
 
     dnames = file_search(old_dir+'/darks/*/cam*fits', count = Ndarks)
+    if Ndarks eq 0 then begin
+      dnames = file_search(old_dir+'/darks/cam*fits', count = Ndarks)
+    endif
     if Ndarks eq 0 then stop
     
     cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
