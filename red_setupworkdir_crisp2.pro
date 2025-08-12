@@ -134,6 +134,9 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   dirs = file_search(root_dir + '/CRISP2-*', count = Ndirs)
   if Ndirs gt 0 then instrument = 'CRISP2' else instrument = 'CRISP'
 
+  ;; Note: "instrument" is in all caps here. In most of the rest of
+  ;; the pipeline, only the initial letter is capitalized.
+
   red_metadata_store, fname = work_dir + '/info/metadata.fits' $
                       , [{keyword:'INSTRUME', value:instrument $
                           , comment:'Name of instrument'} $
@@ -167,9 +170,18 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Settings'
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
-  printf, Clun,'image_scale = 0.044' ; Get from pinhole calibration
-  printf, Clun, 'diversity = 4.0e-3' ; Nominal value for Sep 2023
-
+  case instrument of
+    'CRISP' : begin
+      printf, Clun, 'image_scale = 0.044' ; Get from pinhole calibration
+      printf, Clun, 'diversity = 4.0e-3'  ; Nominal value for Sep 2023
+    end
+    'CRISP2' : begin
+      printf, Clun, 'image_scale = 0.050' ; Get from pinhole calibration
+      printf, Clun, 'diversity = 3.1e-3'  ; Nominal value for Aug 2025
+    end
+    else : stop
+  endcase
+  
   if keyword_set(calibrations_only) then begin
     printf, Slun, 'a = crisp2red("'+cfgfile+'",/dev)' 
   endif else begin
@@ -215,6 +227,10 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     if n_elements(old_dir) eq 0 then stop
 
     dnames = file_search(old_dir+'/darks/*/cam*fits', count = Ndarks)
+    if Ndarks eq 0 then begin
+      ;; Some data have a different directory structure?
+      dnames = file_search(old_dir+'/darks/cam*fits', count = Ndarks)
+    endif
     if Ndarks eq 0 then stop
     
     cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
@@ -241,7 +257,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       rotation = -42.0 
     end
     'CRISP2' : begin
-      direction = 0
+      direction = 6
       rotation = -42.0 
     end
     else : stop
@@ -649,8 +665,12 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
     printf, Slun, ''
 
-    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
-
+    case instrument of
+      'CRISP'  : printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
+      'CRISP2' : printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=50.0, bad=1.0, minflat=0.01, nthreads = nthreads"
+      else : stop
+    endcase
+    
   endif
 
 
@@ -716,27 +736,43 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     ;; frame from every state means 4 frames are actually discarded
     ;; from each tuning because the LC is changing faster than the
     ;; tuning.
-    printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-            + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
-            + ', nthreads=nthreads' $
-            + " ; /all"
-    printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
-            + "', cam = 'Crisp-R', /verbose, /show, /overwrite " $
-            + ', nthreads=nthreads' $
-            + " ; /all"
-    printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
-            + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
+    if instrument eq 'CRISP' then begin
+      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
+              + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
+              + ', nthreads=nthreads' $
+              + " ; /all"
+      printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
+              + "', cam = 'Crisp-R', /verbose, /show, /overwrite " $
+              + ', nthreads=nthreads' $
+              + " ; /all"
+      printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
+              + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
+    endif
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
             + ", /mask ;, /hints, dir='10:02:45'"
-    printf, Slun, "a -> prepmomfbd" $
-            + ", /fill_fov" $
-            + ", /wb_states" $
-            + ", date_obs = '" + isodate + "'" $
-            + ", numpoints = 116" $
-            + ", global_keywords=['FIT_PLANE']" $
-            + ", pref = '"+prefilters[ipref]+"'" $
-            + ", margin = 5" $
-            + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+    case instrument of
+      'CRISP'  : printf, Slun, "a -> prepmomfbd" $
+                         + ", /fill_fov" $
+                         + ", /wb_states" $
+                         + ", date_obs = '" + isodate + "'" $
+                         + ", numpoints = 116" $
+                         + ", global_keywords=['FIT_PLANE']" $
+                         + ", pref = '"+prefilters[ipref]+"'" $
+                         + ", margin = 5" $
+                         + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+      'CRISP2' : printf, Slun, "a -> prepmomfbd" $
+                         + ", /unpol" $
+                         + ", /fill_fov" $
+                         + ", /wb_states" $
+                         + ", date_obs = '" + isodate + "'" $
+                         + ", numpoints = 116" $
+                         + ", global_keywords=['FIT_PLANE']" $
+                         + ", pref = '"+prefilters[ipref]+"'" $
+                         + ", margin = 5" $
+                         + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+      else : stop
+    endcase
+  
     printf, Slun
   endfor                        ; ipref
 
