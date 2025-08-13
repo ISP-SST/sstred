@@ -153,7 +153,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
   if isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
-    printf, Clun,'image_scale = 0.044' ; Measured in May 2025.
+    printf, Clun,'image_scale = 0.0355' ; Measured in August 2025.
   endif else begin
     printf, Clun,'image_scale = 0.0379' ; Measured in May 2016.
   endelse
