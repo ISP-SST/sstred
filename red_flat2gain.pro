@@ -65,24 +65,24 @@
 ; 
 ;   2019-05-14 : MGL. Protect against small values in flat.
 ; 
-;   2025-08-10 : MGL. New keyword minflat.
+;   2025-08-10 : MGL. New keyword flatmin.
 ; 
 ;-
 function red_flat2gain, flat, $
                         badthreshold = bad, $
-                        minflat = minflat, $
+                        flatmin = flatmin, $
                         mingain = min, $
                         maxgain = max, $
                         smoothsize = smoothparameter, $
                         gain_nozero = gain_nozero
 
   if(n_elements(bad) eq 0) then bad = 1.0
-  if(n_elements(minflat) eq 0) then minflat = 0.05
+  if(n_elements(flatmin) eq 0) then flatmin = 0.05
   if(n_elements(min) eq 0) then min = 0.1
   if(n_elements(max) eq 0) then max = 4.0
   if(n_elements(smoothparameter) eq 0) then smoothparameter = 7.0d0
 
-  indx = where(flat gt median(flat)*minflat, complement = cindx, ncompl = Nc) ; CRISP w/ new cameras
+  indx = where(flat gt median(flat)*flatmin, complement = cindx, ncompl = Nc) ; CRISP w/ new cameras
   
   ;;med = median(flat)  
   med = median(flat[indx]) 
@@ -121,7 +121,7 @@ fname = '/scratch_local/mats/2025-08-03/CRISP2-test/flats/camXXXI_12.00ms_G00.00
 
 f = readfits(fname)
 
-g = red_flat2gain(f, max = 50., minflat = 0.01)
+g = red_flat2gain(f, max = 50., flatmin = 0.01)
 
 
 end
