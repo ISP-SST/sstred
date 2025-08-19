@@ -829,6 +829,11 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         
         ;; Scale factor
         par[0] = max(measured_spectrum) * 2d0 / cont[0]
+        measured_indx = where(abs(measured_lambda - float(upref[ipref])) lt 1)
+        atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
+;        par[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
+        par[0] = min(measured_spectrum[measured_indx]) / min(atlas_spectrum_convolved[atlas_indx])
+
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
@@ -903,8 +908,13 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; the iterations to never get started. Default is 1d-10, so
         ;; we could try maybe 1e-8. But the iterations are fast so why
         ;; bother?
-        par = mpfit('red_prefilterfit', par, functar=dat, parinfo=fitpars, ERRMSG=errmsg, status = status)
+        par = mpfit('red_prefilterfit', par $
+                    , functar=dat, parinfo=fitpars $
+                    , ERRMSG=errmsg, status = status)
         prefilter = red_prefilter(par, dat.lambda, dat.pref)
+        
+        print, 'mpfit status : ', status
+        if errmsg ne '' then print, errmsg
         
         fit_fix = replicate('Fit', 8)
         for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'

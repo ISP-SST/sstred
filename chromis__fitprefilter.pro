@@ -693,7 +693,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         
         ;; Init guess model
         parinit = dblarr(8)
-        if n_elements(value_parameters) gt 0 then painitr[0] = value_parameters 
+        if n_elements(value_parameters) gt 0 then parinit[0] = value_parameters 
         
         ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
         fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
@@ -703,7 +703,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 ;        parinit[0] = max(measured_spectrum) * 2d0 / cont[0]
         measured_indx=where(abs(measured_lambda - float(upref[ipref])) lt 1)
         atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
-        parinit[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
+;        parinit[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
+        parinit[0] = min(measured_spectrum[measured_indx]) / min(atlas_spectrum_convolved[atlas_indx])
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
@@ -775,10 +776,13 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         endif
         
         ;; Now call mpfit
-        par = mpfit('red_prefilterfit', parinit, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
+        par = mpfit('red_prefilterfit', parinit $
+                    , xtol=1.e-4, functar=dat, parinfo=fitpars $
+                    , ERRMSG=errmsg, status = status)
         prefilter = red_prefilter(par, dat.lambda, dat.pref)
 
-        print, errmsg
+        print, 'mpfit status : ', status
+        if errmsg ne '' then print, errmsg
         
         fit_fix = replicate('Fit', 8)
         for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
