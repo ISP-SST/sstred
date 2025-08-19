@@ -129,10 +129,21 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
     search_dir = self.out_dir +'/'+momfbddir+'/'+timestamp+'/'
     prefilters = file_basename(file_search(search_dir + '*' $
                                            , count = Nprefs, /test_dir))
+
     if Nprefs eq 0 then begin
       print, inam + ' : No prefilter sub-directories found in: ' + search_dir
       continue                  ; Next timestamp
     endif
+
+    ;; Accept only Ca II prefilters. We have experimented with other
+    ;; WB filters than 3950 so we should support that without trying
+    ;; to do align_continuum for Hbeta.
+    indx = where(long(prefilters) lt 4000, Nwhere)
+    if Nwhere eq 0 then begin
+      red_message, 'No Ca II sub-directories found in: ' + search_dir
+      continue                  ; Next timestamp
+    endif
+    prefilters = prefilters[indx]
     
     ;; Select prefilter folders
     tmp = red_select_subset(prefilters $
