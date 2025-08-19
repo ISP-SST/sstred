@@ -256,7 +256,7 @@ pro red::demodulate, outname, immr, immt $
   endelse
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
-  
+
   prefilter = wbstates[0].prefilter
 ;  camw = wbstates[0].camera
 ;  camt = nbtstates[0].camera
@@ -359,8 +359,7 @@ pro red::demodulate, outname, immr, immt $
       
       red_message, ['The smooth_by_subfield code does not support the new polywarp' $
                     , 'camera alignment model and is anyway not regularly used.']
-      stop
-      
+
       ;; Divide modulation matrices into momfbd-subfields, correct for
       ;; image projection, smooth with PSF from each subfield, make
       ;; mosaics of the result.
@@ -381,10 +380,10 @@ pro red::demodulate, outname, immr, immt $
       ;; if keyword_set(cmap) then cmap = (red_mozaic(red_conv_cmap(cmap,*self.timg[1])))[x0:x1,y0:y1]
 
     endif else begin
-
+      
       mymrname = outdir + '/mymr.fits'      
       mymtname = outdir + '/mymt.fits'      
-
+      
       if file_test(mymrname) and file_test(mymtname) then begin
         mymr = readfits(mymrname)    
         mymt = readfits(mymtname)    
@@ -407,18 +406,22 @@ pro red::demodulate, outname, immr, immt $
             ;; Apply the geometrical mapping and clip to the FOV of the
             ;; momfbd output.
             tmp = red_apply_camera_alignment(reform(immr_dm[ilc, istokes, *, *]) $
-                                             , alignment_model, instrument.capwords()+'-R', amap = amapr $
+                                             , alignment_model, instrument+'-R' $
+                                             , pref = prefilter $
+                                             , amap = amapr $
                                              , /preserve_size)
             mymr[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                         , roi[2]+margin:roi[3]-margin]
             tmp = red_apply_camera_alignment(reform(immt_dm[ilc,istokes,*,*]) $
-                                             , alignment_model, instrument.capwords()+'-T', amap = amapt $
+                                             , alignment_model, instrument+'-T' $
+                                             , pref = prefilter $
+                                             , amap = amapt $
                                              , /preserve_size)
             mymt[ilc,istokes,*,*] = tmp[roi[0]+margin:roi[1]-margin $
                                         , roi[2]+margin:roi[3]-margin]
           endfor                ; istokes
         endfor                  ; ilc
-        
+
         if keyword_set(smooth_by_kernel) then begin
 
           ;; Smooth the inverse modulation matrices by a Gaussian kernel
@@ -436,8 +439,10 @@ pro red::demodulate, outname, immr, immt $
             for istokes = 0L, Nstokes-1 do begin
               ;;mymr[ilc,istokes,*,*] = red_convolve(reform(immr_dm[ilc, istokes, *, *]), psf)
               ;;mymt[ilc,istokes,*,*] = red_convolve(reform(immt_dm[ilc, istokes, *, *]), psf)
-              mymr[ilc,istokes,*,*] = red_convolve(reform(mymr[ilc, istokes, *, *]), psf)
-              mymt[ilc,istokes,*,*] = red_convolve(reform(mymt[ilc, istokes, *, *]), psf)
+              tmp = red_fillnan(reform(mymr[ilc, istokes, *, *]))
+              mymr[ilc,istokes,*,*] = red_convolve(tmp, psf)
+              tmp = red_fillnan(reform(mymt[ilc, istokes, *, *]))
+              mymt[ilc,istokes,*,*] = red_convolve(tmp, psf)
             endfor              ; istokes
           endfor                ; ilc
           
