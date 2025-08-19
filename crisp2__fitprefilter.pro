@@ -202,7 +202,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
   
- 
+  
   ;; Camera/detector identification
   self -> getdetectors
   wbindx      = where(strmatch(*self.cameras,'*-W'))
@@ -311,12 +311,18 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       endfor                    ; idir
       red_logdata, self.isodate, times, mu = mu, zenithangle = za
 
+      xs = 1000
+      ys = 1000
+      ims = fltarr(xs, ys, Ndirs)
+      xds = xs/4
+      yds = ys/4
+      mos = fltarr(xds*Ndirs, yds)
       
       for idir = 0, Ndirs-1 do begin
 
         print, dirs[idir]
 
-        fnamesN = self -> raw_search(dirs[idir]+'/'+nbcameras[icam]+'/', count = NfilesN, scannos = 0, prefilters = pref_keyword)
+        fnamesN = self -> raw_search(dirs[idir]+'/'+nbcameras[0]+'/', count = NfilesN, scannos = 0, prefilters = pref_keyword)
         Nfiles[idir] = NfilesN
         if keyword_set(unitscalib) then begin
           fnamesW = self -> raw_search(dirs[idir]+'/'+wbcamera+'/', count = NfilesW, scannos = 0, prefilters = pref_keyword)
@@ -324,38 +330,30 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
           NfilesW = 0
         endelse
 
-        if n_elements(ims) eq 0 then begin
-          hdr = red_readhead(fnamesN[0])
-          xs = red_fitsgetkeyword(hdr, 'NAXIS1')
-          ys = red_fitsgetkeyword(hdr, 'NAXIS2')
-          ims = fltarr(xs, ys, Ndirs)
-          xds = xs/4
-          yds = ys/4
-          mos = fltarr(xds*Ndirs, yds)
-        endif
-
         if keyword_set(unitscalib) && NfilesW gt 0 then begin
           im = red_readdata(fnamesW[0], /silent)
         endif else begin
           im = red_readdata(fnamesN[0], /silent)
         endelse
+        if size(im, /n_dim) lt 2 then continue
         if size(im, /n_dim) eq 3 then im = total(im, 3)
-        ims[0, 0, idir] = im
+        ims[0, 0, idir] = congrid(im, xs, ys)
         mos[idir*xds:(idir+1)*xds-1, *] $
-           = rebin(ims[*, *, idir], xds, yds)/median(ims[*, *, idir])
+           = rebin(ims[*, *, idir], xds, yds, /samp)/median(ims[*, *, idir])
         
         ;; Get more hints only for potentially interesting dirs
         if NfilesN gt 0 && NfilesN lt 1000 && mu[idir] gt 0.9 then begin
-
+          
           self -> extractstates, fnamesN, sts, /nondb
           prefs[idir] = ', prefs='+strjoin(sts[uniq(sts.prefilter,sort(sts.prefilter))].prefilter, ',')
-
+          
           contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
-
+          
 ;          red_fitspar_getdates, hdr, date_beg = date_beg 
 ;          times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
-
+          
         endif
+        
       endfor                    ; idir
 
       ;; Select data folder containing a quiet-Sun-disk-center dataset
@@ -545,8 +543,8 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       endif
       
       self -> selectfiles, files = filesNBall, states = statesNBall $
-                           , prefilter = upref[ipref] $
-                           , selected = sel, count = Nsel
+                                   , prefilter = upref[ipref] $
+                                   , selected = sel, count = Nsel
       
       statesNB = statesNBall[sel]
       
@@ -575,10 +573,10 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       if self.dodescatter and (statesNB[0].prefilter eq '8542' $
                                or statesNB[0].prefilter eq '7772') then begin
         self -> loadbackscatter, statesNB[0].detector $
-                                 , statesNB[0].prefilter, bgainn, bpsfn
+           , statesNB[0].prefilter, bgainn, bpsfn
         if keyword_set(unitscalib) then begin
           self -> loadbackscatter, statesWB[0].detector $
-                                 , statesWB[0].prefilter, bgainw, bpsfw
+             , statesWB[0].prefilter, bgainw, bpsfw
         endif
       endif 
       
@@ -739,7 +737,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
           imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4, time_avg = time_avg) - darkN
           if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
                                    or statesNB[pos[0]].prefilter eq '7772') then begin
-                imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
+            imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
           endif
           imN *= rdx_fillpix(gainN)
 
