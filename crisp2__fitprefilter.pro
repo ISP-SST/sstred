@@ -234,7 +234,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
 
   if n_elements(value_ncav) eq 0 then value_ncav = 3.d
   if n_elements(value_stretch) eq 0 then value_stretch = 1.d
-;  if n_elements(value_shift) eq 0 then value_shift = -0.01d
+  if n_elements(value_shift) eq 0 then value_shift = -0.01d
   if n_elements(value_prshift) eq 0 then value_prshift = -0.01d
 
   fit_parameters = [1,1,1,1,1,1,1,0] ; default
