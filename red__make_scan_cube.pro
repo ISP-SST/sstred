@@ -445,8 +445,14 @@ pro red::make_scan_cube, dir $
     endelse
 
     ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
-    cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, 'Crisp-T', amap = amapt)
-    cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, 'Crisp-R', amap = amapr)
+    cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument+'-T' $
+                                        , pref = prefilter $
+                                        , amap = amapt $
+                                        , /preserve_size)
+    cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument+'-R' $
+                                        , pref = prefilter $
+                                        , amap = amapr $
+                                        , /preserve_size)
     
     ;; At this point, the individual cavity maps should be corrected
     ;; for camera misalignments, so they should be aligned with

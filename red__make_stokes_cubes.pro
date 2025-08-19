@@ -176,11 +176,14 @@ pro red::make_stokes_cubes, dir, scanno $
   
   case instrument of
     'Crisp' : begin
-;; We currently do correct for the small scale cavity map in CRISP
+      ;; We currently do correct for the small scale cavity map in CRISP
       ;; data. (We should get this from earlier meta data!)
       remove_smallscale = 1
     end
     'Chromis' : begin
+      remove_smallscale = 0
+    end
+    'Crisp2' : begin
       remove_smallscale = 0
     end
   endcase
@@ -425,8 +428,14 @@ pro red::make_stokes_cubes, dir, scanno $
         endelse
         
         ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
-        cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument+'-T', amap = amapt)
-        cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument+'-R', amap = amapr)
+        cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument+'-T' $
+                                            , pref = unbprefs[ipref] $
+                                            , amap = amapt $
+                                            , /preserve_size)
+        cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument+'-R' $
+                                            , pref = unbprefs[ipref] $
+                                            , amap = amapr $
+                                            , /preserve_size)
 
         ;; Clip to the selected FOV
         cmap1r = cmap1r[x0:x1,y0:y1]

@@ -543,194 +543,198 @@ pro red::make_nb_cube_intensity, wcfile $
   ;; String version of all frame numbers in the cube, sorted.
   fnumsum_total = rdx_ints2str(red_uniquify(fnumsum_total))
 
-  ;; Create cubes for science data and scan-adapted cavity maps.
-  cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
+;;  ;; Create cubes for science data and scan-adapted cavity maps.
+;;  cavitymaps = fltarr(Nx, Ny, 1, 1, Nscans)
 
   ;; Close fits file.
   lun = (size(fileassoc,/struc)).file_lun
   free_lun, lun
 
-  if ~keyword_set(nocavitymap) then begin
-
-    ;; Read the original cavity map
-    pindx = where(nbstates.prefilter ne '3999') ; No cavity map for the Ca II H continuum
-    pindx = pindx[uniq(nbstates[pindx].prefilter, sort(nbstates[pindx].prefilter))]
-    cprefs = nbstates[pindx].prefilter
-    Ncprefs = n_elements(cprefs)
-    
-    for icprefs = 0, Ncprefs-1 do begin
-      cfile = self.out_dir + 'flats/spectral_flats/' $
-              + strjoin([nbstates[pindx[icprefs]].detector $
-                         , nbstates[pindx[icprefs]].cam_settings $
-                         , cprefs[icprefs] $
-                         , 'fit_results.sav'] $
-                        , '_')
-
-      if ~file_test(cfile) then begin
-        print, inam + ' : Error, calibration file not found -> '+cfile
-        print, 'Please run the fitprefilter for '+cprefs[icprefs]+' or continue without'
-        print, 'cavity map for '+cprefs[icprefs]
-        stop
-      endif
-      restore, cfile                 ; The cavity map is in a struct called "fit". 
-      cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-      cmap /= 10.                    ; Make it [nm]
-      cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
-      fit = 0B                       ; Don't need the fit struct anymore.
-      
-      if keyword_set(remove_smallscale) then begin
-        ;; If the small scale is already corrected, then include only the
-        ;; low-resolution component in the metadata. The blurring kernel
-        ;; should match how the low resolution component was removed when
-        ;; making flats.
-        npix = 30               ; Can we get this parameter from earlier headers?
-        cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
-        cpsf /= total(cpsf, /double)
-        cmap = red_convolve(temporary(cmap), cpsf)
-        cmap1 = cmap
-      endif else begin
-        ;; If the small scale is not already corrected, then we still want
-        ;; to blur the cavity map slightly.
-        npsf = round(cmap_fwhm * 7.)
-        if((npsf/2)*2 eq npsf) then npsf += 1L
-        psf = red_get_psf(npsf, npsf, cmap_fwhm, cmap_fwhm)
-        psf /= total(psf, /double)
-        ;; Leave the orignal cmap alone, we might need it later.
-        cmap1 = red_convolve(cmap, psf)
-      endelse
-
-      ;; Read the output of the pinhole calibrations so we can do the same
-      ;; to the cavity maps as was done to the raw data in the momfbd
-      ;; step. This output is in a struct "alignments" in the save file
-      ;; 'calib/alignments.sav'
-;      restore,'calib/alignments.sav'
-;      ;; Should be based on state1 or state2 in the struct? make_cmaps
-;      ;; says "just pick one close to continuum (last state?)".
-;      indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
-;      case Nalign of
-;        0    : stop             ; Should not happen!
-;        1    : amap = invert(      alignments[indx].map           )
-;        else : amap = invert( mean(alignments[indx].map, dim = 3) )
-;      endcase
-
-      cmap1 = red_apply_camera_alignment(cmap1, alignment_model, 'Chromis-N', amap = amap)
-;      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping      
-
-      if self.filetype eq 'MOMFBD' then begin
-        ;; Crop the cavity map to the FOV of the momfbd-restored images.
-        mr = momfbd_read(wbgfiles[0],/nam)
-        cmap1 = red_crop_as_momfbd(cmap1, mr)
-      endif else begin ;; Crop with information from the cfg file
-        spl = strsplit(wbgfiles[0],'/',/extract)
-        cw = where(strmatch(spl,'*cfg*'))
-        cfg_dir=strjoin(spl[0:cw],'/')
-        cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
-                   string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
-        cfg = redux_readcfg(cfg_file)
-        num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
-        margin = num_points/8
-        sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
-        if cnt gt 0 then begin
-          sim_xy = rdx_str2ints(sim_xy)
-          indx = indgen(n_elements(sim_xy)/2)*2
-          indy = indx+1
-          sim_x = sim_xy[indx]
-          sim_y = sim_xy[indy]   
-        endif else begin
-          sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
-          sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
-        endelse
-        xx0 = min(sim_x) + margin - num_points/2 
-        xx1 = max(sim_x) - margin + num_points/2 - 1
-        yy0 = min(sim_y) + margin - num_points/2 
-        yy1 = max(sim_y) - margin + num_points/2 - 1
-        cmap1 = cmap1[xx0:xx1,yy0:yy1]
-      endelse
-      ;; Get the orientation right
-      cmap1 = red_rotate(cmap1, direction)
-      ;; Clip to the selected FOV
-      cmap1 = cmap1[x0:x1,y0:y1]
-
-      if file_test(cfg_dir+'/fov_mask.fits') then begin
-        fov_mask = readfits(cfg_dir+'/fov_mask.fits')
-        if self.filetype eq 'MOMFBD' then $
-           fov_mask = red_crop_as_momfbd(fov_mask, mr) $
-        else $
-           fov_mask = fov_mask[xx0:xx1,yy0:yy1]
-        fov_mask = red_rotate(fov_mask, direction)
-      endif
-      
-      
-      ;; Now make rotated copies of the cavity map
-      for iscan = 0L, Nscans-1 do begin
-
-        if ~keyword_set(nocavitymap) then begin
-
-          if ~keyword_set(nomissing_nans) then bg=!Values.F_NaN
-          ;; Apply the same derot, align, dewarp as for the science data
-          cmap11 = red_rotation(cmap1, ang[iscan], $
-                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
-                                stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr, $
-                                nthreads=nthreads, nearest=nearest, $
-                                unrotated_shifts = cshift_mean[*,icprefs,iscan], $
-                                background=bg)          
-
-          cavitymaps[0, 0, 0, 0, iscan] = cmap11
-
-          ;; The following block of code is inactive but we want to keep
-          ;; it around in case it is needed later. It does further
-          ;; operations on the cavity maps based on what is done to the
-          ;; science data, such as stretching based on the extra
-          ;; per-tuning wideband objects, as well as blurring based on the
-          ;; momfbd psfs. It should probably have a boolean keyword that
-          ;; activates it. (This code will have to be updated to the
-          ;; current pipeline style before it can be used.)
-          if 0 then begin
-            wb = (red_readdata(wbf[ss]))[x0:x1,y0:y1]
-            for ww = 0L, nw - 1 do begin
-              
-              iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]) $
-                                                       , '.', /extract))[1:*]],'.')
-              iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
-              
-              ;; Load images
-              iwb = (red_readdata(iwbf))[x0:x1,y0:y1]
-              im = momfbd_read(st.ofiles[ww,ss])
-              
-              ;; get dewarp from WB
-              igrid = rdx_cdsgridnest(wb, iwb, itiles, iclip)
-              
-              ;; Convolve CMAP and apply wavelength dep. de-warp
-              cmap2 = rdx_cstretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, $
-                                   nthreads=nthreads)
-              
-              ;; Derotate and shift
-              cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
-                                   total(shift[1,ss]), full=wcFF, stretch_grid=reform(grid[ss,*,*,*]), $
-                                   nearest=nearest, nthreads=nthreads,unrotated_shifts = cshift_mean[*,icprefs,iscan])
-              
-              ;; Time de-warp
-              ;;cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
-              
-            endfor              ; ww
-          endif
-        endif
-
-      endfor                    ; iscan
-
-      tindx = where(scan_nbstates.prefilter eq cprefs[icprefs], Nt)
-      
-      ;; Add cavity maps as WAVE distortions
-      if Nt gt 0 then begin
-        red_fitscube_addcmap, filename, cavitymaps $
-                              , cmap_number = icprefs+1 $
-                              , prefilter = cprefs[icprefs] $
-                              , indx = tindx
-      endif
-      
-    endfor                      ; icprefs
-    
-  endif
+;;  if ~keyword_set(nocavitymap) then begin
+;;
+;;    ;; Read the original cavity map
+;;    pindx = where(nbstates.prefilter ne '3999') ; No cavity map for the Ca II H continuum
+;;    pindx = pindx[uniq(nbstates[pindx].prefilter, sort(nbstates[pindx].prefilter))]
+;;    cprefs = nbstates[pindx].prefilter
+;;    Ncprefs = n_elements(cprefs)
+;;    
+;;    for icprefs = 0, Ncprefs-1 do begin
+;;      cfile = self.out_dir + 'flats/spectral_flats/' $
+;;              + strjoin([nbstates[pindx[icprefs]].detector $
+;;                         , nbstates[pindx[icprefs]].cam_settings $
+;;                         , cprefs[icprefs] $
+;;                         , 'fit_results.sav'] $
+;;                        , '_')
+;;
+;;      if ~file_test(cfile) then begin
+;;        print, inam + ' : Error, calibration file not found -> '+cfile
+;;        print, 'Please run the fitprefilter for '+cprefs[icprefs]+' or continue without'
+;;        print, 'cavity map for '+cprefs[icprefs]
+;;        stop
+;;      endif
+;;      restore, cfile                 ; The cavity map is in a struct called "fit". 
+;;      cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
+;;      cmap /= 10.                    ; Make it [nm]
+;;      cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
+;;      fit = 0B                       ; Don't need the fit struct anymore.
+;;      
+;;      if keyword_set(remove_smallscale) then begin
+;;        ;; If the small scale is already corrected, then include only the
+;;        ;; low-resolution component in the metadata. The blurring kernel
+;;        ;; should match how the low resolution component was removed when
+;;        ;; making flats.
+;;        npix = 30               ; Can we get this parameter from earlier headers?
+;;        cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+;;        cpsf /= total(cpsf, /double)
+;;        cmap = red_convolve(temporary(cmap), cpsf)
+;;        cmap1 = cmap
+;;      endif else begin
+;;        ;; If the small scale is not already corrected, then we still want
+;;        ;; to blur the cavity map slightly.
+;;        npsf = round(cmap_fwhm * 7.)
+;;        if((npsf/2)*2 eq npsf) then npsf += 1L
+;;        psf = red_get_psf(npsf, npsf, cmap_fwhm, cmap_fwhm)
+;;        psf /= total(psf, /double)
+;;        ;; Leave the orignal cmap alone, we might need it later.
+;;        cmap1 = red_convolve(cmap, psf)
+;;      endelse
+;;
+;;      ;; Read the output of the pinhole calibrations so we can do the same
+;;      ;; to the cavity maps as was done to the raw data in the momfbd
+;;      ;; step. This output is in a struct "alignments" in the save file
+;;      ;; 'calib/alignments.sav'
+;;;      restore,'calib/alignments.sav'
+;;;      ;; Should be based on state1 or state2 in the struct? make_cmaps
+;;;      ;; says "just pick one close to continuum (last state?)".
+;;;      indx = where(nbstates[0].prefilter eq alignments.state2.prefilter, Nalign)
+;;;      case Nalign of
+;;;        0    : stop             ; Should not happen!
+;;;        1    : amap = invert(      alignments[indx].map           )
+;;;        else : amap = invert( mean(alignments[indx].map, dim = 3) )
+;;;      endcase
+;;
+;;      cmap1 = red_apply_camera_alignment(cmap1 $
+;;                                         , alignment_model, instrument+'-N' $
+;;                                         , prefilter = nbstates[0].prefilter $
+;;                                         , amap = amap $
+;;                                         , /preserve_size)
+;;;      cmap1 = rdx_img_project(amap, cmap1, /preserve) ; Apply the geometrical mapping      
+;;
+;;      if self.filetype eq 'MOMFBD' then begin
+;;        ;; Crop the cavity map to the FOV of the momfbd-restored images.
+;;        mr = momfbd_read(wbgfiles[0],/nam)
+;;        cmap1 = red_crop_as_momfbd(cmap1, mr)
+;;      endif else begin ;; Crop with information from the cfg file
+;;        spl = strsplit(wbgfiles[0],'/',/extract)
+;;        cw = where(strmatch(spl,'*cfg*'))
+;;        cfg_dir=strjoin(spl[0:cw],'/')
+;;        cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+;;                   string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+;;        cfg = redux_readcfg(cfg_file)
+;;        num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+;;        margin = num_points/8
+;;        sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+;;        if cnt gt 0 then begin
+;;          sim_xy = rdx_str2ints(sim_xy)
+;;          indx = indgen(n_elements(sim_xy)/2)*2
+;;          indy = indx+1
+;;          sim_x = sim_xy[indx]
+;;          sim_y = sim_xy[indy]   
+;;        endif else begin
+;;          sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+;;          sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+;;        endelse
+;;        xx0 = min(sim_x) + margin - num_points/2 
+;;        xx1 = max(sim_x) - margin + num_points/2 - 1
+;;        yy0 = min(sim_y) + margin - num_points/2 
+;;        yy1 = max(sim_y) - margin + num_points/2 - 1
+;;        cmap1 = cmap1[xx0:xx1,yy0:yy1]
+;;      endelse
+;;      ;; Get the orientation right
+;;      cmap1 = red_rotate(cmap1, direction)
+;;      ;; Clip to the selected FOV
+;;      cmap1 = cmap1[x0:x1,y0:y1]
+;;
+;;      if file_test(cfg_dir+'/fov_mask.fits') then begin
+;;        fov_mask = readfits(cfg_dir+'/fov_mask.fits')
+;;        if self.filetype eq 'MOMFBD' then $
+;;           fov_mask = red_crop_as_momfbd(fov_mask, mr) $
+;;        else $
+;;           fov_mask = fov_mask[xx0:xx1,yy0:yy1]
+;;        fov_mask = red_rotate(fov_mask, direction)
+;;      endif
+;;      
+;;      
+;;      ;; Now make rotated copies of the cavity map
+;;      for iscan = 0L, Nscans-1 do begin
+;;
+;;        if ~keyword_set(nocavitymap) then begin
+;;
+;;          if ~keyword_set(nomissing_nans) then bg=!Values.F_NaN
+;;          ;; Apply the same derot, align, dewarp as for the science data
+;;          cmap11 = red_rotation(cmap1, ang[iscan], $
+;;                                wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF, $
+;;                                stretch_grid=reform(wcGRID[iscan,*,*,*])*sclstr, $
+;;                                nthreads=nthreads, nearest=nearest, $
+;;                                unrotated_shifts = cshift_mean[*,icprefs,iscan], $
+;;                                background=bg)          
+;;
+;;          cavitymaps[0, 0, 0, 0, iscan] = cmap11
+;;
+;;          ;; The following block of code is inactive but we want to keep
+;;          ;; it around in case it is needed later. It does further
+;;          ;; operations on the cavity maps based on what is done to the
+;;          ;; science data, such as stretching based on the extra
+;;          ;; per-tuning wideband objects, as well as blurring based on the
+;;          ;; momfbd psfs. It should probably have a boolean keyword that
+;;          ;; activates it. (This code will have to be updated to the
+;;          ;; current pipeline style before it can be used.)
+;;          if 0 then begin
+;;            wb = (red_readdata(wbf[ss]))[x0:x1,y0:y1]
+;;            for ww = 0L, nw - 1 do begin
+;;              
+;;              iwbf = strjoin([self.camwbtag, (strsplit(file_basename(st.ofiles[ww,ss]) $
+;;                                                       , '.', /extract))[1:*]],'.')
+;;              iwbf = file_dirname(st.ofiles[ww,ss]) + '/'+iwbf
+;;              
+;;              ;; Load images
+;;              iwb = (red_readdata(iwbf))[x0:x1,y0:y1]
+;;              im = momfbd_read(st.ofiles[ww,ss])
+;;              
+;;              ;; get dewarp from WB
+;;              igrid = rdx_cdsgridnest(wb, iwb, itiles, iclip)
+;;              
+;;              ;; Convolve CMAP and apply wavelength dep. de-warp
+;;              cmap2 = rdx_cstretch((red_mozaic(red_conv_cmap(cmap, im), /crop))[x0:x1, y0:y1], igrid, $
+;;                                   nthreads=nthreads)
+;;              
+;;              ;; Derotate and shift
+;;              cmap2 = red_rotation(temporary(cmap2), ang[ss], total(shift[0,ss]), $
+;;                                   total(shift[1,ss]), full=wcFF, stretch_grid=reform(grid[ss,*,*,*]), $
+;;                                   nearest=nearest, nthreads=nthreads,unrotated_shifts = cshift_mean[*,icprefs,iscan])
+;;              
+;;              ;; Time de-warp
+;;              ;;cmap2 = red_stretch(temporary(cmap2), reform(grid[ss,*,*,*]))
+;;              
+;;            endfor              ; ww
+;;          endif
+;;        endif
+;;
+;;      endfor                    ; iscan
+;;
+;;      tindx = where(scan_nbstates.prefilter eq cprefs[icprefs], Nt)
+;;      
+;;      ;; Add cavity maps as WAVE distortions
+;;      if Nt gt 0 then begin
+;;        red_fitscube_addcmap, filename, cavitymaps $
+;;                              , cmap_number = icprefs+1 $
+;;                              , prefilter = cprefs[icprefs] $
+;;                              , indx = tindx
+;;      endif
+;;      
+;;    endfor                      ; icprefs
+;;    
+;;  endif
   
   
 end
