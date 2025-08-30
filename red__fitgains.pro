@@ -371,7 +371,39 @@ pro red::fitgains, all = all $
     Nwav = n_elements(namelist) ; Nwav has to be adjusted if w0 or w1 were used.
 
     red_message, 'Wavelength points wav : ['+strjoin(strtrim(wav,2),', ')+']'
+    diff=red_differential(wav)
+    diff=diff[1:*]
+    diff = diff/median(diff)
+    
+    if max(diff, maxloc) gt 5 then begin
+      case maxloc of
+        0 : begin
+          tmp = 'first'
+          default = '1-'+red_stri(n_elements(wav)-1)
+        end
+        n_elements(wav)-2 : begin
+          tmp = 'last'
+          default = '0-'+red_stri(n_elements(wav)-2)
+        end
+        else : tmp = ''
+      endcase
 
+      if tmp ne '' then begin
+        print
+        red_message, ['The '+tmp+' wavelength point might be the polcal wavelengh' $
+                      , ' and could then be skipped.']
+        selectionlist = string(1000*wav, format = '(I5)')
+        tmp = red_select_subset(selectionlist, default = default, indx = sel $
+                                , qstring = 'Which points do you want to keep?')
+
+        wav = wav[sel]
+        Nwav = n_elements(wav)
+        cub = cub[sel, *, *, *]
+      endif
+    endif
+
+
+     
     if n_elements(extra_nodes) gt 0 then begin
       if n_elements(myg) eq 0 then myg = wav
       myg = [extra_nodes, myg]
