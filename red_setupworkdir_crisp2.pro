@@ -667,7 +667,11 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
     case instrument of
       'CRISP'  : printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
-      'CRISP2' : printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=50.0, bad=1.0, minflat=0.01, nthreads = nthreads"
+      'CRISP2' : begin
+        printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
+        printf, Slun, "wbflats = file_search('flats/'"+cams[0]+"'_*fits')   ; WB flats special" 
+        printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=50.0, bad=1.0, flatmin=0.01, nthreads = nthreads"
+      end
       else : stop
     endcase
     
