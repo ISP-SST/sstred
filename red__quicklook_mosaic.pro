@@ -71,6 +71,20 @@ pro red::quicklook_mosaic, align=align $
   if n_elements(maxshift) eq 0 then maxshift = 10
   if n_elements(nthreads) eq 0 then nthreads = 6
 
+  case !true of
+
+    file_test('calib/alignments_polywarp.sav') : alignment_model = 'polywarp'
+
+    file_test('calib/alignments.sav') : alignment_model = 'projective'
+
+    else : begin
+      red_message, "We haven't run pinholecalib yet. Do it now!"
+      self -> pinholecalib
+      alignment_model = 'polywarp'
+    end
+    
+  endcase
+  
 
   ;; Limit possible datasets to mosaic directories
   mos_dirs = (*self.data_dirs)[where(strmatch(*self.data_dirs, '*mosaic*'), Nwhere)]
@@ -315,63 +329,63 @@ pro red::quicklook_mosaic, align=align $
       
       image_scale = float(self -> imagescale(pref))
 
-      if ~file_test('calib/alignments.sav') then begin
-        ;; Try to make sure we have alignments.
-
-        ;; At this point, we can call sumpinh for one state per
-        ;; camera, and then call pinholecalib. Hopefully this provides
-        ;; the needed info in alignments.sav, so we restore it and try
-        ;; again. Failure is caught in the next case statement.
-        
-        for icam = 0, n_elements(*self.cameras)-1 do begin
-          case 1 of
-
-            strmatch((*self.cameras)[icam], '*-D') : begin
-              ;; Don't care about diversity camera D
-            end
-            
-            strmatch((*self.cameras)[icam], '*-W') : begin
-              ;; Wideband camera W
-              self -> sumpinh, cams = (*self.cameras)[icam] $
-                               , pref = selstates[0].prefilter
-            end
-            
-            else : begin
-              ;; Narrowband cameras NRT
-              self -> sumpinh, cams = (*self.cameras)[icam] $
-                               , ustat = selstates[0].fullstate $
-                               , pref = selstates[0].prefilter
-            end
-
-          endcase 
-        endfor                  ; icam
-        self -> pinholecalib, /verify, nref=20, max_shift = 30 
-      endif
-      
-      ;;self -> getalignment, align=align, prefilters=pref
-      self -> getalignment, align=alignment
-      indx = where(alignment.state2.camera eq cam and $
-                   alignment.state2.prefilter eq pref $
-                   , Nalign)
-
-      help, Nalign
-
-      if Nalign eq 0 then begin
-        print, inam + ' : Pinhole calibration not done for prefilter ' + pref
-        continue                ; Can't do this from within the "case" statement below
-      end
-      
-      case Nalign of
-        1    : amap =      alignment[indx].map
-        else : amap = mean(alignment[indx].map, dim=3)
-       endcase
-      amap_inv = invert(amap)
-      amap_inv /= amap_inv[2, 2] ; Normalize
-
-      if keyword_set(debug) then begin
-        print, 'Inverse amap:'
-        print, amap_inv
-      endif
+;      if ~file_test('calib/alignments.sav') then begin
+;        ;; Try to make sure we have alignments.
+;
+;        ;; At this point, we can call sumpinh for one state per
+;        ;; camera, and then call pinholecalib. Hopefully this provides
+;        ;; the needed info in alignments.sav, so we restore it and try
+;        ;; again. Failure is caught in the next case statement.
+;        
+;        for icam = 0, n_elements(*self.cameras)-1 do begin
+;          case 1 of
+;
+;            strmatch((*self.cameras)[icam], '*-D') : begin
+;              ;; Don't care about diversity camera D
+;            end
+;            
+;            strmatch((*self.cameras)[icam], '*-W') : begin
+;              ;; Wideband camera W
+;              self -> sumpinh, cams = (*self.cameras)[icam] $
+;                               , pref = selstates[0].prefilter
+;            end
+;            
+;            else : begin
+;              ;; Narrowband cameras NRT
+;              self -> sumpinh, cams = (*self.cameras)[icam] $
+;                               , ustat = selstates[0].fullstate $
+;                               , pref = selstates[0].prefilter
+;            end
+;
+;          endcase 
+;        endfor                  ; icam
+;        self -> pinholecalib, /verify, nref=20, max_shift = 30 
+;      endif
+;      
+;      ;;self -> getalignment, align=align, prefilters=pref
+;      self -> getalignment, align=alignment
+;      indx = where(alignment.state2.camera eq cam and $
+;                   alignment.state2.prefilter eq pref $
+;                   , Nalign)
+;
+;      help, Nalign
+;
+;      if Nalign eq 0 then begin
+;        print, inam + ' : Pinhole calibration not done for prefilter ' + pref
+;        continue                ; Can't do this from within the "case" statement below
+;      end
+;      
+;      case Nalign of
+;        1    : amap =      alignment[indx].map
+;        else : amap = mean(alignment[indx].map, dim=3)
+;       endcase
+;      amap_inv = invert(amap)
+;      amap_inv /= amap_inv[2, 2] ; Normalize
+;
+;      if keyword_set(debug) then begin
+;        print, 'Inverse amap:'
+;        print, amap_inv
+;      endif
       
       ;; Get date_avg from file headers
       date_avg = red_fitsgetkeyword_multifile(selfiles, 'DATE-AVG', count = Ndates)
@@ -412,9 +426,20 @@ pro red::quicklook_mosaic, align=align $
       weight = sin(ww*!pi/2.)^2
 
       if total(self.direction eq [1, 3, 4, 6]) eq 1 then naxis[[0, 1]] = naxis[[1, 0]]
-
-      weight = rdx_img_project(amap_inv, weight, /preserve_size) >0
-      mask   = rdx_img_project(amap_inv, mask,   /preserve_size)
+     
+      weight = red_apply_camera_alignment(weight $
+                                          , alignment_model, selstates[0].camera $
+                                          , pref = pref $
+                                          , amap = amap $
+                                          , /preserve_size)
+      mask = red_apply_camera_alignment(mask $
+                                        , alignment_model, selstates[0].camera $
+                                        , pref = pref $
+                                        , amap = amap $
+                                        , /preserve_size)
+      
+;      weight = rdx_img_project(amap_inv, weight, /preserve_size) >0
+;      mask   = rdx_img_project(amap_inv, mask,   /preserve_size)
       
       weight = red_rotate(weight, self.direction)
       mask   = red_rotate(mask,   self.direction)
@@ -458,27 +483,32 @@ pro red::quicklook_mosaic, align=align $
         endfor
         mx = max(sd, loc)
         im = ims[*, *, loc[0]]
-        im = rdx_img_project(amap_inv, im, /preserve_size)
-        im = red_rotate(im, self.direction)
-        
-        t[imos] = time_mos[loc[0]]
-        pos = diskpos_mos[*, loc[0]]
+        im = red_apply_camera_alignment(im $
+                                        , alignment_model, selstates[0].camera $
+                                        , pref = pref $
+                                        , amap = amap $
+                                        , /preserve_size)
+;        im = rdx_img_project(amap_inv, im, /preserve_size)
+         im = red_rotate(im, self.direction)
+         
+         t[imos] = time_mos[loc[0]]
+         pos = diskpos_mos[*, loc[0]]
 ;        red_logdata, self.isodate, t[imos], pig = pos
-        
-        if ~finite(pos[0]) then pos[0] = median(diskpos_mos[0,*])
-        if ~finite(pos[1]) then pos[1] = median(diskpos_mos[1,*])
-        
-        ang = red_lp_angles(t[imos], self.isodate, /from_log, offset_angle = self.rotation)
+         
+         if ~finite(pos[0]) then pos[0] = median(diskpos_mos[0,*])
+         if ~finite(pos[1]) then pos[1] = median(diskpos_mos[1,*])
+         
+         ang = red_lp_angles(t[imos], self.isodate, /from_log, offset_angle = self.rotation)
 
-        xpos[imos] = pos[0]/image_scale
-        ypos[imos] = pos[1]/image_scale
+         xpos[imos] = pos[0]/image_scale
+         ypos[imos] = pos[1]/image_scale
 
 ;        cgplot, /add, /over, xpos[imos]*image_scale, ypos[imos]*image_scale, psym = 16, color = 'red'
-        if keyword_set(debug) then print, 'pos:', imos, xpos[imos]*image_scale, ypos[imos]*image_scale
+         if keyword_set(debug) then print, 'pos:', imos, xpos[imos]*image_scale, ypos[imos]*image_scale
 
-        images[*, *, imos]  = red_rotation(im,     ang[0], background=0.0, full=ff, nthreads=nthreads)
-        weights[*, *, imos] = red_rotation(weight, ang[0], background=0.0, full=ff, nthreads=nthreads) >0
-        masks[*, *, imos]   = red_rotation(mask,   ang[0], background=0.0, full=ff, nthreads=nthreads) $
+         images[*, *, imos]  = red_rotation(im,     ang[0], background=0.0, full=ff, nthreads=nthreads)
+         weights[*, *, imos] = red_rotation(weight, ang[0], background=0.0, full=ff, nthreads=nthreads) >0
+         masks[*, *, imos]   = red_rotation(mask,   ang[0], background=0.0, full=ff, nthreads=nthreads) $
                               * (weights[*, *, imos] gt 0)
         
       endfor                    ; imos
@@ -738,7 +768,7 @@ pro red::quicklook_mosaic, align=align $
         mosaic[indx] = totim[indx]/totw[indx]
         
       endelse
-
+      
       bb = red_boundingbox(mosaic gt 0)
       mosaic = mosaic[bb[0]:bb[2],bb[1]:bb[3]] >0
 
