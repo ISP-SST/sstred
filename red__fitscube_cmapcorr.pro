@@ -115,7 +115,7 @@ pro red::fitscube_cmapcorr, fname $
   Nscans  = dims[4]
 
   bitpix = fxpar(hdr, 'BITPIX')
-  if bitpix gt 0 then stop    ; We have to change the header if we want to handle integer input.
+  if bitpix gt 0 then stop      ; We have to change the header if we want to handle integer input.
   
   ;; Add info about this step
   self -> headerinfo_addstep, outhdr $
@@ -249,7 +249,7 @@ pro red::fitscube_cmapcorr, fname $
   red_fits_copybinext, fname, outname, 'WCS-TAB'
 
   ;; Copy WB image extension (of a scan cube)
-  red_fitscube_copyextensions, fname, outname, ext_list = 'WBIMAGE'
+  if Nscans eq 1 then red_fitscube_copyextensions, fname, outname, ext_list = 'WBIMAGE'
   
   if keyword_set(flip) then begin
     ;; Make a flipped version
