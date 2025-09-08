@@ -234,7 +234,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
 
   if n_elements(value_ncav) eq 0 then value_ncav = 3.d
   if n_elements(value_stretch) eq 0 then value_stretch = 1.d
-  if n_elements(value_shift) eq 0 then value_shift = -0.01d
+  if n_elements(value_shift) eq 0 then value_shift = 0.0
   if n_elements(value_prshift) eq 0 then value_prshift = -0.01d
 
   fit_parameters = [1,1,1,1,1,1,1,0] ; default
@@ -832,15 +832,21 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         measured_indx = where(abs(measured_lambda - float(upref[ipref])) lt 1)
         atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
 ;        par[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
-        par[0] = min(measured_spectrum[measured_indx]) / min(atlas_spectrum_convolved[atlas_indx])
+        par[0] = min(measured_spectrum[measured_indx], measured_minloc) $
+                 / min(atlas_spectrum_convolved[atlas_indx], atlas_minloc)
 
+;        stop
+;        shft = measured_lambda[measured_minloc] - atlas_lambda[atlas_indx[atlas_minloc]]
+;        print, 'shft:', shft
+;        Could be used to initialize par[1] instead of pref - cwl        
+        
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
         endif
         
-        ;; Line shift (satlas-obs)
-        if n_elements(value_shift) gt 0 then begin
+        ;; Line shift (satlas-obs) 
+        if value_shift ne 0.0 then begin
           par[1] = value_shift
         endif else begin
           par[1] = float(upref[ipref]) - cwl
