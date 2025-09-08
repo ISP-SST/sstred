@@ -309,10 +309,15 @@ pro red::make_nb_cube, wcfile $
   
   ;; Prepare for making output file names
   if(n_elements(odir) eq 0) then odir = self.out_dir + '/cubes_nb/' 
-
+  
   ;; Do we want/can we make a fitscube with Stokes component images?
-  this_cube_is_stokes = polarimetric_data and ~keyword_set(nopolarimetry)
-
+  case !true of
+    keyword_set(nopolarimetry)                 : this_cube_is_stokes = 0
+    n_elements(red_uniquify(nbstates.lc)) eq 1 : this_cube_is_stokes = 0
+    polarimetric_data                          : this_cube_is_stokes = 1
+    else                                       : this_cube_is_stokes = 0 
+  endcase
+  
   ofile = red_strreplace(file_basename(wcfile), 'wb', 'nb')
   if this_cube_is_stokes then begin
     ofile = red_strreplace(ofile, 'corrected', 'stokes_corrected')
@@ -625,7 +630,7 @@ pro red::make_nb_cube, wcfile $
         
         if ~file_test(cfile) then begin
           print, inam + ' : Error, calibration file not found -> '+cfile
-          print, 'Please run the fitprefilter for '+cprefs[icprefs]+' or continue without'
+          print, 'Please run fitgains for '+cprefs[icprefs]+' or continue without'
           print, 'cavity map for '+cprefs[icprefs]
           stop
         endif
