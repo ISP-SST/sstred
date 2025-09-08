@@ -143,7 +143,7 @@
 ;    2020-10-28 : MGL. Remove statistics calculations.
 ;
 ;    2020-12-15 : JdlCR. There is one element missing in dummy ff
-;                 vector. /norotation keywork was not implemented
+;                 vector. /norotation keyword was not implemented
 ;                 properly. The cropping info was not applied to the
 ;                 output image.
 ;
@@ -157,31 +157,32 @@
 ;-
 pro red::make_scan_cube, dir $
                          , autocrop = autocrop $
+                         , circular_fov = circular_fov $ 
                          , clips = clips $
                          , cmap_fwhm = cmap_fwhm $
                          , crop = crop $
                          , direction = direction $
+                         , filename = filename $
+                         , fitpref_time = fitpref_time $
                          , integer = integer $
                          , intensitycorrmethod = intensitycorrmethod $
                          , interactive = interactive $
                          , limb_data = limb_data $
+                         , mosaic = mosaic $
                          , nocavitymap = nocavitymap $
-                         , circular_fov = circular_fov $
                          , nocrosstalk = nocrosstalk $
+                         , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , norotation = norotation $
+                         , nthreads = nthreads $
                          , odir = odir $
                          , overwrite = overwrite $
+                         , padmargin = padmargin $
                          , redemodulate = redemodulate $
                          , rotation = rotation $
-                         , padmargin = padmargin $
                          , scannos = scannos $
-                         , tiles = tiles  $
-                         , tuning_selection = tuning_selection $
-                         , nthreads = nthreads $
-                         , fitpref_time = fitpref_time $
-                         , nomissing_nans = nomissing_nans $
-                         , mosaic = mosaic
+                         , tiles = tiles $
+                         , tuning_selection = tuning_selection
   
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -192,10 +193,11 @@ pro red::make_scan_cube, dir $
   if n_elements(padmargin) eq 0 then padmargin  = 40
 
   ;; Make prpara
-  red_make_prpara, prpara, dir
   red_make_prpara, prpara, autocrop
   red_make_prpara, prpara, clips
-  red_make_prpara, prpara, crop    
+  red_make_prpara, prpara, cmap_fwhm
+  red_make_prpara, prpara, crop
+  red_make_prpara, prpara, dir
   red_make_prpara, prpara, direction 
   red_make_prpara, prpara, integer  
   red_make_prpara, prpara, intensitycorrmethod
@@ -217,7 +219,7 @@ pro red::make_scan_cube, dir $
 
 
   ;; Default keywords
-  if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
+  if n_elements(cmap_fwhm) eq 0 then cmap_fwhm = 7.0
   if n_elements(clips) eq 0 then clips = [8, 4,  2,  1,  1  ]
   if n_elements(tiles) eq 0 then tiles = [8, 16, 32, 64, 128]
 
@@ -228,20 +230,43 @@ pro red::make_scan_cube, dir $
 
   ;; Camera/detector identification
   self->getdetectors
-  wbindx     = where(strmatch(*self.cameras,'Crisp-W'))
-  wbcamera   = (*self.cameras)[wbindx[0]]
-  wbdetector = (*self.detectors)[wbindx[0]]
-  nbtindx     = where(strmatch(*self.cameras,'Crisp-T')) 
-  nbtcamera   = (*self.cameras)[nbtindx[0]]
-  nbtdetector = (*self.detectors)[nbtindx[0]]
-  nbrindx     = where(strmatch(*self.cameras,'Crisp-R')) 
-  nbrcamera   = (*self.cameras)[nbrindx[0]]
-  nbrdetector = (*self.detectors)[nbrindx[0]]
-  
-  ;; We do currently correct for the small scale cavity map in CRISP
-  ;; data. (We should get this from earlier meta data!)
-  remove_smallscale = 1
-  
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbindx      = where(strmatch(*self.cameras,'*-[NTR]')) 
+  nbcameras   = (*self.cameras)[nbindx]
+  nbdetectors = (*self.detectors)[nbindx]
+  Nnbcams     = n_elements(nbcameras)
+
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+
+  polarimetric_data = self -> polarimetric_data()
+
+;  wbindx     = where(strmatch(*self.cameras,'Crisp-W'))
+;  wbcamera   = (*self.cameras)[wbindx[0]]
+;  wbdetector = (*self.detectors)[wbindx[0]]
+;  nbtindx     = where(strmatch(*self.cameras,'Crisp-T')) 
+;  nbtcamera   = (*self.cameras)[nbtindx[0]]
+;  nbtdetector = (*self.detectors)[nbtindx[0]]
+;  nbrindx     = where(strmatch(*self.cameras,'Crisp-R')) 
+;  nbrcamera   = (*self.cameras)[nbrindx[0]]
+;  nbrdetector = (*self.detectors)[nbrindx[0]]
+
+  ;; How to handle small scale variations in cavity maps.
+  case instrument of
+    'Crisp' : begin
+      ;; We do correct for the small scale cavity map in CRISP data.
+      ;; (We should get this from earlier meta data?)
+      remove_smallscale = 1
+    end
+    'Chromis' : begin
+      remove_smallscale = 0
+    end
+    'Crisp2' : begin
+      remove_smallscale = 0
+    end
+  endcase
+
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0
   red_logdata, self.isodate, time_pointing, diskpos = metadata_pointing, rsun = rsun
@@ -254,7 +279,7 @@ pro red::make_scan_cube, dir $
   endcase
 
   ;; Get the available scan numbers as cheaply as possible.
-  wfiles = file_search(dir + wbdetector+'*' + extension, count = Nwfiles) 
+  wfiles = file_search(dir + '/' + wbdetector+'*' + extension, count = Nwfiles) 
   ;; The global WB file name should have no tuning info.
   indx = where(~strmatch(wfiles,'*_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[+-]*'), Nmatch $
                , complement = complement, Ncomplement = Ncomplement)
@@ -262,6 +287,8 @@ pro red::make_scan_cube, dir $
   wbgfiles = wfiles[indx]
   self -> extractstates, wbgfiles, wbgstates
   wfiles = wfiles[complement]
+
+
   
   ;; Some info common to all scans
   prefilter = wbgstates[0].prefilter
@@ -385,96 +412,96 @@ pro red::make_scan_cube, dir $
 ;; pertuningfiles & pertuningstates -> existing files of selected
 ;; scans in directory, excluding the global WB images.
 
-  if ~keyword_set(nocavitymap) then begin
-
-    ;; Read the original cavity map
-    cfile = self.out_dir + 'flats/spectral_flats/' $
-            + strjoin([nbtdetector $
-                       , prefilter $
-                       , 'fit_results.sav'] $
-                      , '_')
-
-    if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
-      stop
-    endif
-    restore, cfile                  ; The cavity map is in a struct called "fit". 
-    cmapt = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmapt /= 10.                    ; Make it [nm]
-    cmapt = -cmapt                  ; Change sign so lambda_correct = lambda + cmap
-    fit = 0B                        ; Don't need the fit struct anymore.
-    
-    cfile = self.out_dir + 'flats/spectral_flats/' $
-            + strjoin([nbrdetector $
-                       , prefilter $
-                       , 'fit_results.sav'] $
-                      , '_')
-
-    if ~file_test(cfile) then begin
-      print, inam + ' : Error, calibration file not found -> '+cfile
-      stop
-    endif
-    restore, cfile                  ; The cavity map is in a struct called "fit". 
-    cmapr = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-    cmapr /= 10.                    ; Make it [nm]
-    cmapr = -cmapr                  ; Change sign so lambda_correct = lambda + cmap
-    fit = 0B                        ; Don't need the fit struct anymore.
-    
-    if keyword_set(remove_smallscale) then begin
-      ;; If the small scale is already corrected, then include only the
-      ;; low-resolution component in the metadata. The blurring kernel
-      ;; should match how the low resolution component was removed when
-      ;; making flats.
-      npix = 30                 ; Can we get this parameter from earlier headers?
-      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
-      cpsf /= total(cpsf, /double)
-      cmapr = red_convolve(temporary(cmapr), cpsf)
-      cmap1r = cmapr
-      cmapt = red_convolve(temporary(cmapt), cpsf)
-      cmap1t = cmapt
-    endif else begin
-      ;; If the small scale is not already corrected, then we still want
-      ;; to blur the cavity map slightly.
-      npsf = round(fwhm * 7.)
-      if((npsf/2)*2 eq npsf) then npsf += 1L
-      psf = red_get_psf(npsf, npsf, fwhm, fwhm)
-      psf /= total(psf, /double)
-      ;; Leave the orignal cmaps alone, we might need them later.
-      cmap1r = red_convolve(cmapr, psf)
-      cmap1t = red_convolve(cmapt, psf)
-    endelse
-
-    ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
-    cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument+'-T' $
-                                        , pref = prefilter $
-                                        , amap = amapt $
-                                        , /preserve_size)
-    cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument+'-R' $
-                                        , pref = prefilter $
-                                        , amap = amapr $
-                                        , /preserve_size)
-    
-    ;; At this point, the individual cavity maps should be corrected
-    ;; for camera misalignments, so they should be aligned with
-    ;; respect to the cavity errors on the etalons. So we can sum
-    ;; them.
-    cmap1 = (cmap1r + cmap1t) / 2.
-
-    if self.filetype eq 'MOMFBD' then begin
-      ;; Crop the cavity map to the FOV of the momfbd-restored images.
-      mr = momfbd_read(wbgfiles[0],/nam)
-      cmap1 = red_crop_as_momfbd(cmap1, mr)
-    endif else begin
-      cmap1 = cmap1[xx0:xx1,yy0:yy1]
-    endelse
-    
-    ;; Get the orientation right.
-    cmap1 = red_rotate(cmap1, direction)
-    
-    ;; Clip to the selected FOV
-    cmap1 = cmap1[x0:x1,y0:y1]
-    
-  endif
+;  if ~keyword_set(nocavitymap) then begin
+;
+;    ;; Read the original cavity map
+;    cfile = self.out_dir + 'flats/spectral_flats/' $
+;            + strjoin([nbtdetector $
+;                       , prefilter $
+;                       , 'fit_results.sav'] $
+;                      , '_')
+;
+;    if ~file_test(cfile) then begin
+;      print, inam + ' : Error, calibration file not found -> '+cfile
+;      stop
+;    endif
+;    restore, cfile                  ; The cavity map is in a struct called "fit". 
+;    cmapt = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
+;    cmapt /= 10.                    ; Make it [nm]
+;    cmapt = -cmapt                  ; Change sign so lambda_correct = lambda + cmap
+;    fit = 0B                        ; Don't need the fit struct anymore.
+;    
+;    cfile = self.out_dir + 'flats/spectral_flats/' $
+;            + strjoin([nbrdetector $
+;                       , prefilter $
+;                       , 'fit_results.sav'] $
+;                      , '_')
+;
+;    if ~file_test(cfile) then begin
+;      print, inam + ' : Error, calibration file not found -> '+cfile
+;      stop
+;    endif
+;    restore, cfile                  ; The cavity map is in a struct called "fit". 
+;    cmapr = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
+;    cmapr /= 10.                    ; Make it [nm]
+;    cmapr = -cmapr                  ; Change sign so lambda_correct = lambda + cmap
+;    fit = 0B                        ; Don't need the fit struct anymore.
+;    
+;    if keyword_set(remove_smallscale) then begin
+;      ;; If the small scale is already corrected, then include only the
+;      ;; low-resolution component in the metadata. The blurring kernel
+;      ;; should match how the low resolution component was removed when
+;      ;; making flats.
+;      npix = 30                 ; Can we get this parameter from earlier headers?
+;      cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+;      cpsf /= total(cpsf, /double)
+;      cmapr = red_convolve(temporary(cmapr), cpsf)
+;      cmap1r = cmapr
+;      cmapt = red_convolve(temporary(cmapt), cpsf)
+;      cmap1t = cmapt
+;    endif else begin
+;      ;; If the small scale is not already corrected, then we still want
+;      ;; to blur the cavity map slightly.
+;      npsf = round(fwhm * 7.)
+;      if((npsf/2)*2 eq npsf) then npsf += 1L
+;      psf = red_get_psf(npsf, npsf, fwhm, fwhm)
+;      psf /= total(psf, /double)
+;      ;; Leave the orignal cmaps alone, we might need them later.
+;      cmap1r = red_convolve(cmapr, psf)
+;      cmap1t = red_convolve(cmapt, psf)
+;    endelse
+;
+;    ;; Apply geometrical transformation from the pinhole calibration to the cavity maps.
+;    cmap1t = red_apply_camera_alignment(cmap1t, alignment_model, instrument+'-T' $
+;                                        , pref = prefilter $
+;                                        , amap = amapt $
+;                                        , /preserve_size)
+;    cmap1r = red_apply_camera_alignment(cmap1r, alignment_model, instrument+'-R' $
+;                                        , pref = prefilter $
+;                                        , amap = amapr $
+;                                        , /preserve_size)
+;    
+;    ;; At this point, the individual cavity maps should be corrected
+;    ;; for camera misalignments, so they should be aligned with
+;    ;; respect to the cavity errors on the etalons. So we can sum
+;    ;; them.
+;    cmap1 = (cmap1r + cmap1t) / 2.
+;
+;    if self.filetype eq 'MOMFBD' then begin
+;      ;; Crop the cavity map to the FOV of the momfbd-restored images.
+;      mr = momfbd_read(wbgfiles[0],/nam)
+;      cmap1 = red_crop_as_momfbd(cmap1, mr)
+;    endif else begin
+;      cmap1 = cmap1[xx0:xx1,yy0:yy1]
+;    endelse
+;    
+;    ;; Get the orientation right.
+;    cmap1 = red_rotate(cmap1, direction)
+;    
+;    ;; Clip to the selected FOV
+;    cmap1 = cmap1[x0:x1,y0:y1]
+;    
+;  endif
 
   
   for iscan = 0L, Nscans-1 do begin
@@ -482,7 +509,7 @@ pro red::make_scan_cube, dir $
     ;; This is the loop in which the cubes are made.
     
     ;; All momfbd output for this scan
-    files = file_search(dir + '*_'+string(uscans[iscan], format = '(i05)')+'_*' + extension, count = Nfiles) 
+    files = file_search(dir + '/*_'+string(uscans[iscan], format = '(i05)')+'_*' + extension, count = Nfiles) 
 
     ;; Make a Stokes cube?
     red_extractstates, files, lc = lc
@@ -532,126 +559,6 @@ pro red::make_scan_cube, dir $
     wfiles  = wfiles[complement]
     wstates = wstates[complement]
     Nwb = Ncomplement
-    
-    if makestokes then begin
-      
-      ;; Make Stokes cubes for this scan if needed
-      self -> make_stokes_cubes, dir, uscans[iscan] $
-         , clips = clips $
-         , cmap_fwhm = cmap_fwhm $
-         , nocavitymap = nocavitymap $
-         , redemodulate = redemodulate $
-         , snames = snames $
-         , stokesdir = stokesdir $
-         , tiles = tiles 
-
-      ;; The names of the Stokes cubes for this scan are returned in
-      ;; snames. 
-      self -> extractstates, snames, sstates
-      Ntuning = n_elements(snames)
-      indx = sort(sstates.tun_wavelength)
-      snames = snames[indx]
-      sstates = sstates[indx]
-
-      ;; No wbstretchcorr is needed for Stokes data, done already when
-      ;; demodulating.
-
-      ;; Read a header to use as a starting point.
-      nbhdr = red_readhead(snames[0])
-
-      utunindx = uniq(sstates.fpi_state, sort(sstates.fpi_state))
-      Ntuning = n_elements(utunindx)
-      sortindx = sort(sstates[utunindx].tun_wavelength)
-      ufpi_states = sstates[utunindx[sortindx]].fpi_state
-      utunwavelength = sstates[utunindx[sortindx]].tun_wavelength
-
-    endif else begin
-
-      ;; Select files from the two NB cameras
-
-      self -> selectfiles, files = files, states = states $
-                           , cam = nbtcamera $
-                           , sel = nbtindx, count = Nnbt
-      nbtstates = states[nbtindx]
-      nbtfiles = files[nbtindx]
-      
-      self -> selectfiles, files = files, states = states $
-                           , cam = nbrcamera $
-                           , sel = nbrindx, count = Nnbr
-      nbrstates = states[nbrindx]
-      nbrfiles = files[nbrindx]
-      
-      if Nnbt eq Nnbr then Nnb = Nnbt else stop 
-      
-      ;; Do WB correction?
-      if Nwb eq Nnb then wbstretchcorr = 1B else wbstretchcorr = 0B
-
-      ;; Unique tuning states, sorted by wavelength
-      utunindx = uniq(nbtstates.fpi_state, sort(nbtstates.fpi_state))
-      Ntuning = n_elements(utunindx)
-      sortindx = sort(nbtstates[utunindx].tun_wavelength)
-      ufpi_states = nbtstates[utunindx[sortindx]].fpi_state
-      utunwavelength = nbtstates[utunindx[sortindx]].tun_wavelength
-
-      
-;      ;; Per-tuning files, wb and nb, only for selected scans
-;      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-;                           , scan = uscans $
-;                           , cam = wbcamera $
-;                           , sel = wbindx, count = Nwb
-;      wbstates = pertuningstates[wbindx]
-;      wbfiles = pertuningfiles[wbindx]
-
-
-
-
-;    ;; The NB files in this scan, sorted in tuning wavelength order.
-;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-;                         , cam = nbcamera, scan = uscans[iscan] $
-;                         , sel = scan_nbindx, count = Nnb
-;    scan_nbfiles = pertuningfiles[scan_nbindx]
-;    scan_nbstates = pertuningstates[scan_nbindx]
-;    sortindx = sort(scan_nbstates.tun_wavelength)
-;    scan_nbfiles = scan_nbfiles[sortindx]
-;    scan_nbstates = scan_nbstates[sortindx]
-;
-;    ;; The WB files in this scan, sorted as the NB files
-;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
-;                         , cam = wbcamera, scan = uscans[iscan] $
-;                         , sel = scan_wbindx, count = Nwb
-;    scan_wbfiles = pertuningfiles[scan_wbindx]
-;    scan_wbstates = pertuningstates[scan_wbindx]
-;    match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
-;    scan_wbfiles = scan_wbfiles[sortindx]
-;    scan_wbstates = scan_wbstates[sortindx]
-
-
-      nbhdr = red_readhead(nbrfiles[0]) ; Use for main header
-      
-    
-      ;; Read global WB file to use as reference when destretching
-      ;; per-tuning wb files and then the corresponding nb files. Plus
-      ;; add it as an extension to the cube.
-;      wbim = (red_readdata(wfiles[iscan], head = wbhdr))[x0:x1, y0:y1]
-
-    endelse
-    
-    if ~keyword_set(norotation) then begin
-      if keyword_set(circular_fov) then begin
-        ;; Red_rotation.pro only uses keyword full (which is set to ff
-        ;; when calling from make_*_cube) if it is an array with at least
-        ;; 5 elements. So setting it to -1 is the same as letting it stay
-        ;; undefined, but it can still be passed on to make_nb_cube.
-        ff = -1    
-        ff = [0, -padmargin, padmargin, -padmargin, padmargin, 0]
-        ;; Possibly change this to take the shifts into account but not
-        ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
-      endif else begin
-        ff = [abs(ang),0,0,0,0,ang]
-      endelse
-      wbim_rot = red_rotation(wbim, ang, full = ff, nthreads=nthreads)
-      dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
-    endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
 
     spl = strsplit(wfiles[0],'/',/extract)
     cw = where(strmatch(spl,'*cfg*'))
@@ -686,54 +593,193 @@ pro red::make_scan_cube, dir $
       endelse
       fov_mask = red_rotate(fov_mask, direction)
     endif
+
+    if n_elements(fov_mask) gt 0 then wbim *= fov_mask    
     
-    ;; Load prefilters
+    if makestokes then begin
+      
+      ;; Make Stokes cubes for this scan if needed
+      self -> make_stokes_cubes, dir, uscans[iscan] $
+         , clips = clips $
+         , cmap_fwhm = cmap_fwhm $
+         , /nocavitymap $       ; Cavity maps in Stokes cubes aren't used for anything
+         , /notelmat $          ; Until Pit has had time to measure them
+         , redemodulate = redemodulate $
+         , snames = snames $
+         , stokesdir = stokesdir $
+         , tiles = tiles 
+
+      ;; The names of the Stokes cubes for this scan are returned in
+      ;; snames. 
+      self -> extractstates, snames, sstates
+      Ntuning = n_elements(snames)
+      indx = sort(sstates.tun_wavelength)
+      snames = snames[indx]
+      sstates = sstates[indx]
+
+      ;; No wbstretchcorr is needed for Stokes data, done already when
+      ;; demodulating.
+
+      ;; Read a header to use as a starting point.
+      nbhdr = red_readhead(snames[0])
+
+      utunindx = uniq(sstates.fpi_state, sort(sstates.fpi_state))
+      Ntuning = n_elements(utunindx)
+      sortindx = sort(sstates[utunindx].tun_wavelength)
+      ufpi_states = sstates[utunindx[sortindx]].fpi_state
+      utunwavelength = sstates[utunindx[sortindx]].tun_wavelength
+
+      ;; Load prefilters
+      self -> get_prefilterfit, sstates $ ;unbpertuningstates $
+         , units = units $
+         , prefilter_curve = prefilter_curve $
+         , prf = prf $
+         , wave_shifts = wave_shift
+
+    endif else begin
+
+      ;; Select files from the two NB cameras
+
+      self -> selectfiles, files = files, states = states $
+                                   , cam = nbcameras $
+                                   , sel = nbindx, count = Nnb
+      nbstates = states[nbindx]
+      nbfiles = files[nbindx]
+      
+      ;; Do WB correction?
+;      if Nwb eq Nnb then wbstretchcorr = 1B else wbstretchcorr = 0B
+      wbstretchcorr = 1B
+      
+      ;; Unique tuning states, sorted by wavelength
+      utunindx = uniq(nbstates.fpi_state, sort(nbstates.fpi_state))
+      Ntuning = n_elements(utunindx)
+      sortindx = sort(nbstates[utunindx].tun_wavelength)
+      ufpi_states = nbstates[utunindx[sortindx]].fpi_state
+      utunwavelength = nbstates[utunindx[sortindx]].tun_wavelength
+
+      ;; Load prefilters
+      self -> get_prefilterfit, nbstates[utunindx[sortindx]] $
+         , units = units $
+         , prefilter_curve = prefilter_curve $
+         , prf = prf $
+         , wave_shifts = wave_shift
+
+      rpref = 1.d0/prefilter_curve
+      
+;      ;; Per-tuning files, wb and nb, only for selected scans
+;      self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+;                           , scan = uscans $
+;                           , cam = wbcamera $
+;                           , sel = wbindx, count = Nwb
+;      wbstates = pertuningstates[wbindx]
+;      wbfiles = pertuningfiles[wbindx]
+
+
+
+
+;    ;; The NB files in this scan, sorted in tuning wavelength order.
+;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+;                         , cam = nbcamera, scan = uscans[iscan] $
+;                         , sel = scan_nbindx, count = Nnb
+;    scan_nbfiles = pertuningfiles[scan_nbindx]
+;    scan_nbstates = pertuningstates[scan_nbindx]
+;    sortindx = sort(scan_nbstates.tun_wavelength)
+;    scan_nbfiles = scan_nbfiles[sortindx]
+;    scan_nbstates = scan_nbstates[sortindx]
+;
+;    ;; The WB files in this scan, sorted as the NB files
+;    self -> selectfiles, files = pertuningfiles, states = pertuningstates $
+;                         , cam = wbcamera, scan = uscans[iscan] $
+;                         , sel = scan_wbindx, count = Nwb
+;    scan_wbfiles = pertuningfiles[scan_wbindx]
+;    scan_wbstates = pertuningstates[scan_wbindx]
+;    match2, scan_nbstates.fpi_state, scan_wbstates.fpi_state, sortindx
+;    scan_wbfiles = scan_wbfiles[sortindx]
+;    scan_wbstates = scan_wbstates[sortindx]
+
+
+      nbhdr = red_readhead(nbfiles[0]) ; Use for main header
+      
     
-    ;; Crisp-T
+      ;; Read global WB file to use as reference when destretching
+      ;; per-tuning wb files and then the corresponding nb files. Plus
+      ;; add it as an extension to the cube.
+;      wbim = (red_readdata(wfiles[iscan], head = wbhdr))[x0:x1, y0:y1]
 
-    pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_t+'prefilter.idlsave'
-    if ~file_test(pfile) then begin
-      print, inam + ' : prefilter file not found: '+pfile
-      return
-    endif
-    restore, pfile              ; Restores variable prf which is a struct
-
-    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+    endelse
     
-    nbt_units = prf.units
-;    nbt_prefilter_curve = prf.pref
-    nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
-;    nbt_prefilter_wav = prf.wav
-;    nbt_prefilter_wb = prf.wbint
+    if ~keyword_set(norotation) then begin
+      if keyword_set(circular_fov) then begin
+        ;; Red_rotation.pro only uses keyword full (which is set to ff
+        ;; when calling from make_*_cube) if it is an array with at least
+        ;; 5 elements. So setting it to -1 is the same as letting it stay
+        ;; undefined, but it can still be passed on to make_nb_cube.
+        ff = -1    
+        ff = [0, -padmargin, padmargin, -padmargin, padmargin, 0]
+        ;; Possibly change this to take the shifts into account but not
+        ;; the angles. Something like ff = [0, mdx0, mdx1, mdy0, mdy1].
+      endif else begin
+        ff = [abs(ang),0,0,0,0,ang]
+      endelse
+      red_missing, wbim $
+                   , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+      if Nmissing gt 0 then begin
+        bg = wbim[indx_missing[0]]
+      endif else begin
+        bg = median(wbim)
+      endelse
+      wbim_rot = red_rotation(wbim, ang, full = ff $
+                              , background = bg $
+                              , nthreads=nthreads)
+      dims = [size(wbim_rot, /dim), Ntuning, Nstokes, 1] 
+    endif else dims = [size(wbim, /dim), Ntuning, Nstokes, 1] 
 
-    nbt_rpref = 1.d0/nbt_prefilter_curve
 
-    ;; Crisp-R
-
-    pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_t+'prefilter.idlsave'
-    if ~file_test(pfile) then begin
-      print, inam + ' : prefilter file not found: '+pfile
-      return
-    endif
-    restore, pfile              ; Restores variable prf which is a struct
-
-    nbr_units = prf.units  
-;    nbr_prefilter_curve = prf.pref
-    nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
-    
-;    nbr_prefilter_wav = prf.wav
-;    nbr_prefilter_wb = prf.wbint
-       
-    nbr_rpref = 1.d0/nbr_prefilter_curve
-
-    prefilter_curve = (nbt_prefilter_curve + nbr_prefilter_curve)/2.
-    
-    if nbr_units ne nbt_units then begin
-      print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
-      print, inam + ' : Please rerun the prefilterfit step for these data.'
-      retall
-    endif
-    units = nbr_units
+;    ;; Crisp-T
+;
+;    pfile = self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+fitpref_t+'prefilter.idlsave'
+;    if ~file_test(pfile) then begin
+;      print, inam + ' : prefilter file not found: '+pfile
+;      return
+;    endif
+;    restore, pfile              ; Restores variable prf which is a struct
+;
+;    wave_shift = prf.fitpars[1]/10. ; [nm] Shift the wavelengths by this amount
+;    
+;    nbt_units = prf.units
+;;    nbt_prefilter_curve = prf.pref
+;    nbt_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
+;;    nbt_prefilter_wav = prf.wav
+;;    nbt_prefilter_wb = prf.wbint
+;
+;    nbt_rpref = 1.d0/nbt_prefilter_curve
+;
+;    ;; Crisp-R
+;
+;    pfile = self.out_dir + '/prefilter_fits/Crisp-R_'+prefilter+fitpref_t+'prefilter.idlsave'
+;    if ~file_test(pfile) then begin
+;      print, inam + ' : prefilter file not found: '+pfile
+;      return
+;    endif
+;    restore, pfile              ; Restores variable prf which is a struct
+;
+;    nbr_units = prf.units  
+;;    nbr_prefilter_curve = prf.pref
+;    nbr_prefilter_curve = red_intepf(prf.wav, prf.pref, utunwavelength*1.d10)
+;    
+;;    nbr_prefilter_wav = prf.wav
+;;    nbr_prefilter_wb = prf.wbint
+;       
+;    nbr_rpref = 1.d0/nbr_prefilter_curve
+;
+;    prefilter_curve = (nbt_prefilter_curve + nbr_prefilter_curve)/2.
+;    
+;    if nbr_units ne nbt_units then begin
+;      print, inam + ' : Units for Crisp-T and Crisp-R do not match.'
+;      print, inam + ' : Please rerun the prefilterfit step for these data.'
+;      retall
+;    endif
+;    units = nbr_units
 
     ;; Make FITS header for the output cube
     hdr = nbhdr
@@ -754,9 +800,152 @@ pro red::make_scan_cube, dir $
                                            , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
                                 , prproc = inam
 
+    ;; Now do the cavity maps
+    
+;    cavitymaps = fltarr(Nx, Ny, 1, 1, 1)
+    cavitymaps = fltarr([dims[0:1], 1, 1, 1])
+
+    if ~keyword_set(nocavitymap) then begin
+
+      ;; Read the original cavity map
+
+      if keyword_set(makestokes) then begin
+        pindx = where(sstates.prefilter ne '3999') ; No cavity map for the Ca II H continuum
+        pindx = pindx[uniq(sstates[pindx].prefilter, sort(sstates[pindx].prefilter))]
+        cprefs = sstates[pindx].prefilter
+      endif else begin
+        pindx = where(nbstates.prefilter ne '3999') ; No cavity map for the Ca II H continuum
+        pindx = pindx[uniq(nbstates[pindx].prefilter, sort(nbstates[pindx].prefilter))]
+        cprefs = nbstates[pindx].prefilter
+      endelse
+      Ncprefs = n_elements(cprefs)
+
+      ;; If multiple prefilters during the scan (as for CHROMIS Ca II),
+      ;; calculate cmaps independently for them.
+      for icprefs = 0, Ncprefs-1 do begin
+
+        ;; Calculate average cmap if multiple cameras
+        cmap1 = 0.0
+        for icam = 0, Nnbcams-1 do begin
+
+          cfile = self.out_dir + 'flats/spectral_flats/' $
+                  + strjoin([nbdetectors[icam] $
+                             , cprefs[icprefs] $
+                             , 'fit_results.sav'] $
+                            , '_')
+          
+          if ~file_test(cfile) then begin
+            print, inam + ' : Error, calibration file not found -> '+cfile
+            print, 'Please run the fitprefilter for '+cprefs[icprefs]+' or continue without'
+            print, 'cavity map for '+cprefs[icprefs]
+            stop
+          endif
+          restore, cfile                 ; The cavity map is in a struct called "fit". 
+          cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
+          cmap /= 10.                    ; Make it [nm]
+          cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
+          fit = 0B                       ; Don't need the fit struct anymore.
+          
+          if keyword_set(remove_smallscale) then begin
+            ;; If the small scale is already corrected, then include only the
+            ;; low-resolution component in the metadata. The blurring kernel
+            ;; should match how the low resolution component was removed when
+            ;; making flats.
+            npix = 30           ; Can we get this parameter from earlier headers?
+            cpsf = red_get_psf(npix*2-1,npix*2-1,double(npix),double(npix))
+            cpsf /= total(cpsf, /double)
+            cmap = red_convolve(temporary(cmap), cpsf)
+            this_cmap = cmap
+          endif else begin
+            ;; If the small scale is not already corrected, then we still want
+            ;; to blur the cavity map slightly.
+            npsf = round(cmap_fwhm * 7.)
+            if((npsf/2)*2 eq npsf) then npsf += 1L
+            psf = red_get_psf(npsf, npsf, cmap_fwhm, cmap_fwhm)
+            psf /= total(psf, /double)
+            ;; Leave the orignal cmap alone, we might need it later.
+            this_cmap = red_convolve(cmap, psf)
+          endelse
+
+          ;; Apply the geometrical mapping      
+          this_cmap = red_apply_camera_alignment(this_cmap $
+                                                 , alignment_model, nbcameras[icam] $
+                                                 , pref = cprefs[icprefs] $
+                                                 , amap = amapt $
+                                                 , /preserve_size)
+
+          ;; The orientation should now be the same for multiple cameras
+          cmap1 += this_cmap / Nnbcams
+          
+        endfor                  ; icam
+        
+        if self.filetype eq 'MOMFBD' then begin
+          ;; Crop the cavity map to the FOV of the momfbd-restored images.
+          cmap1 = red_crop_as_momfbd(cmap1, mr)
+        endif else begin ;; Crop with information from the cfg file
+          spl = strsplit(wbgfiles[0],'/',/extract)
+          cw = where(strmatch(spl,'*cfg*'))
+          cfg_dir=strjoin(spl[0:cw],'/')
+          cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+                     string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+          cfg = redux_readcfg(cfg_file)
+          num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+          margin = num_points/8
+          sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+          if cnt gt 0 then begin
+            sim_xy = rdx_str2ints(sim_xy)
+            indx = indgen(n_elements(sim_xy)/2)*2
+            indy = indx+1
+            sim_x = sim_xy[indx]
+            sim_y = sim_xy[indy]   
+          endif else begin
+            sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+            sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+          endelse
+          xx0 = min(sim_x) + margin - num_points/2 
+          xx1 = max(sim_x) - margin + num_points/2 - 1
+          yy0 = min(sim_y) + margin - num_points/2 
+          yy1 = max(sim_y) - margin + num_points/2 - 1
+          cmap1 = cmap1[xx0:xx1,yy0:yy1]
+        endelse
+
+        ;; Rotate to orientation of the WB camera
+        cmap1 = red_rotate(cmap1, direction)
+
+        ;; Clip to the selected FOV
+        cmap1 = cmap1[x0:x1,y0:y1]
+;        cmap11 = red_rotation(cmap1, ang, full = ff $
+;                              , background = bg $
+;                              , nthreads=nthreads)
+;        
+;        cavitymaps[0, 0, 0, 0, 0] = cmap11
+;        cavitymaps = reform(cavitymaps,[dims[0:1],1,1,1])
+;
+        ;; For which tunings were this prefilter used?
+;      tindx = where(scan_nbstates.prefilter eq cprefs[icprefs], Nt)
+;        tindx = where(unbpertuningstates.prefilter eq cprefs[icprefs], Nt)
+
+;        tindx = indgen(Ntuning)
+;        Nt = n_elements(tindx)
+;
+;        
+;        ;; Add cavity maps as WAVE distortions
+;        if Nt gt 0 then begin
+;          red_fitscube_addcmap, filename, cavitymaps $
+;                                , cmap_number = icprefs+1 $
+;                                , prefilter = cprefs[icprefs] $
+;                                , indx = tindx
+;        endif
+        
+      endfor                    ; icprefs
+      
+    endif
+
+
+    
     ;; WB and NB data come from different cameras.
-    red_fitsaddkeyword, hdr, 'CAMERA', nbtcamera + ',' + nbrcamera
-    red_fitsaddkeyword, hdr, 'DETECTOR',  nbtdetector + ',' + nbrdetector
+    red_fitsaddkeyword, hdr, 'CAMERA', strjoin(nbcameras,',')
+    red_fitsaddkeyword, hdr, 'DETECTOR', strjoin(nbdetectors,',')
 
     anchor = 'DATE'
 
@@ -771,26 +960,27 @@ pro red::make_scan_cube, dir $
     red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', units, 'Units in array'
     red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
     
-    ;; Initialize fits file, set up for writing the data part.
-    self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims 
-
-
-    ;; Set up for collecting time and wavelength data
-    tbeg_array     = dblarr(Ntuning)   ; Time beginning for state
-    tend_array     = dblarr(Ntuning)   ; Time end for state
-    tavg_array     = dblarr(Ntuning)   ; Time average for state
-    date_beg_array = strarr(Ntuning)   ; DATE-BEG for state
-    date_end_array = strarr(Ntuning)   ; DATE-END for state
-    date_avg_array = strarr(Ntuning)   ; DATE-AVG for state
-    exp_array      = fltarr(Ntuning)   ; Total exposure time
-    sexp_array     = fltarr(Ntuning)   ; Single exposure time
-    nsum_array     = lonarr(Ntuning)   ; Number of summed exposures
-
     wcs = replicate({  wave:dblarr(2,2) $
                        , hplt:dblarr(2,2) $
                        , hpln:dblarr(2,2) $
                        , time:dblarr(2,2) $
                     }, Ntuning)
+
+    ;; Initialize fits file, set up for writing the data part.
+    self -> fitscube_initialize, filename, hdr, lun, fileassoc, dims, wcs = wcs
+
+
+    ;; Set up for collecting time and wavelength data
+    tbeg_array     = dblarr(Ntuning) ; Time beginning for state
+    tend_array     = dblarr(Ntuning) ; Time end for state
+    tavg_array     = dblarr(Ntuning) ; Time average for state
+    date_beg_array = strarr(Ntuning) ; DATE-BEG for state
+    date_end_array = strarr(Ntuning) ; DATE-END for state
+    date_avg_array = strarr(Ntuning) ; DATE-AVG for state
+    exp_array      = fltarr(Ntuning) ; Total exposure time
+    sexp_array     = fltarr(Ntuning) ; Single exposure time
+    nsum_array     = lonarr(Ntuning) ; Number of summed exposures
+
 
 ;    nbt_tscl = mean(nbt_prefilter_wb)
 ;    nbr_tscl = mean(nbr_prefilter_wb)
@@ -864,23 +1054,23 @@ pro red::make_scan_cube, dir $
         ;; cube.  
 
         ;; Select files for this tuning, sort them in LC order
-        self -> selectfiles, files = nbtfiles, states = nbtstates $
-                             , fpi_state = ufpi_states[ituning] $
-                             , sel = nbtindx
-        tun_nbtfiles  = nbtfiles[nbtindx]
-        tun_nbtstates = nbtstates[nbtindx]
-        indx = sort(tun_nbtstates.lc)
-        tun_nbtfiles  = tun_nbtfiles[indx]
-        tun_nbtstates = tun_nbtstates[indx]
+        self -> selectfiles, files = nbfiles, states = nbstates $
+                                     , fpi_state = ufpi_states[ituning] $
+                                     , sel = nbindx
+        tun_nbfiles  = nbfiles[nbindx]
+        tun_nbstates = nbstates[nbindx]
+        indx = sort(tun_nbstates.lc)
+        tun_nbfiles  = tun_nbfiles[indx]
+        tun_nbstates = tun_nbstates[indx]
         
-        self -> selectfiles, files = nbrfiles, states = nbrstates $
-                             , fpi_state = ufpi_states[ituning] $
-                             , sel = nbrindx
-        tun_nbrfiles  = nbrfiles[nbrindx]
-        tun_nbrstates = nbrstates[nbrindx]
-        indx = sort(tun_nbrstates.lc)
-        tun_nbrfiles  = tun_nbrfiles[indx]
-        tun_nbrstates = tun_nbrstates[indx]
+;        self -> selectfiles, files = nbrfiles, states = nbrstates $
+;                             , fpi_state = ufpi_states[ituning] $
+;                             , sel = nbrindx
+;        tun_nbrfiles  = nbrfiles[nbrindx]
+;        tun_nbrstates = nbrstates[nbrindx]
+;        indx = sort(tun_nbrstates.lc)
+;        tun_nbrfiles  = tun_nbrfiles[indx]
+;        tun_nbrstates = tun_nbrstates[indx]
 
         self -> selectfiles, files = wfiles, states = wstates $
                              , fpi_state = ufpi_states[ituning] $
@@ -892,6 +1082,9 @@ pro red::make_scan_cube, dir $
         tun_wstates = tun_wstates[indx]
 
         Nexposures = n_elements(wbindx)
+
+        ;; Why are we looping over exposures here? Would make more
+        ;; sense to loop over LC states. 
         
         ;; Loop over the exposures
         nbim = 0.0
@@ -899,25 +1092,30 @@ pro red::make_scan_cube, dir $
         for iexposure = 0, Nexposures-1 do begin
 
           ;; Read images
-          nbtim = (red_readdata(tun_nbtfiles[iexposure], head = nbthdr, direction = direction))[x0:x1, y0:y1]
-          nbrim = (red_readdata(tun_nbrfiles[iexposure], head = nbrhdr, direction = direction))[x0:x1, y0:y1]
+          nbim = 0.0
+          for i = 0, n_elements(tun_nbfiles)-1 do $
+             nbim += (red_readdata(tun_nbfiles[i], head = nbhdr, direction = direction))[x0:x1, y0:y1] / n_elements(tun_nbfiles)
+          
+;          nbtim = (red_readdata(tun_nbtfiles[iexposure], head = nbthdr, direction = direction))[x0:x1, y0:y1]
+;          nbrim = (red_readdata(tun_nbrfiles[iexposure], head = nbrhdr, direction = direction))[x0:x1, y0:y1]
 
           ;; Apply prefilter curve
-          nbtim *= nbt_rpref[ituning] ;* nbt_tscl
-          nbrim *= nbr_rpref[ituning] ;* nbr_tscl
+          nbim *= rpref[ituning]
+;          nbtim *= nbt_rpref[ituning] ;* nbt_tscl
+;          nbrim *= nbr_rpref[ituning] ;* nbr_tscl
 
 ;          stop
           if wbstretchcorr then begin
             wim = (red_readdata(tun_wfiles[iexposure], head = whdr, direction = direction))[x0:x1, y0:y1]
             grid1 = red_dsgridnest(wbim, wim, tiles, clips)
 ;            wims = red_stretch(wim, grid1)
-            nbtim = red_stretch(temporary(nbtim), grid1)
-            nbrim = red_stretch(temporary(nbrim), grid1)
+            nbim = red_stretch(temporary(nbim), grid1)
+;            nbrim = red_stretch(temporary(nbrim), grid1)
           endif
-          nbim += (nbtim + nbrim) / 2.
+;          nbim += (nbtim + nbrim) / 2.
           if n_elements(fov_mask) gt 0 then nbim *= fov_mask
 
-          red_fitspar_getdates, nbthdr $
+          red_fitspar_getdates, nbhdr $
                                 , date_beg = date_beg $
                                 , date_avg = date_avg $
                                 , date_end = date_end 
@@ -926,12 +1124,12 @@ pro red::make_scan_cube, dir $
           red_append, tends, red_time2double((strsplit(date_end,'T',/extract))[1])
 
           ;; These done twice because of the two NB cameras
-          red_append, xps,   fxpar(nbthdr, 'XPOSURE')
-          red_append, texps, fxpar(nbthdr, 'TEXPOSUR')
-          red_append, nsums, fxpar(nbthdr, 'NSUMEXP')
-          red_append, xps,   fxpar(nbthdr, 'XPOSURE')
-          red_append, texps, fxpar(nbthdr, 'TEXPOSUR')
-          red_append, nsums, fxpar(nbthdr, 'NSUMEXP')
+          red_append, xps,   fxpar(nbhdr, 'XPOSURE')
+          red_append, texps, fxpar(nbhdr, 'TEXPOSUR')
+          red_append, nsums, fxpar(nbhdr, 'NSUMEXP')
+          red_append, xps,   fxpar(nbhdr, 'XPOSURE')
+          red_append, texps, fxpar(nbhdr, 'TEXPOSUR')
+          red_append, nsums, fxpar(nbhdr, 'NSUMEXP')
           
         endfor                  ; ifile
         nbim /= Nexposures
@@ -950,7 +1148,7 @@ pro red::make_scan_cube, dir $
         nsum_array[ituning] = round(total(nsums))
 
         ;; Wavelength 
-        wcs[ituning].wave = tun_nbtstates[0].tun_wavelength*1d9
+        wcs[ituning].wave = tun_nbstates[0].tun_wavelength*1d9
 
         ;; Exposure time
         exp_array[ituning]  = total(xps)
@@ -1002,10 +1200,13 @@ pro red::make_scan_cube, dir $
     wcs.hplt[1, 0, *, *] = hplt - double(image_scale) * (Ny-1)/2.d
     wcs.hplt[0, 1, *, *] = hplt + double(image_scale) * (Ny-1)/2.d
     wcs.hplt[1, 1, *, *] = hplt + double(image_scale) * (Ny-1)/2.d
-
-    ;; Apply wavelength shift from prefilter fit.
-    wcs.wave -= wave_shift
-
+ 
+    ;; The wavelength is the tuning wavelength, corrected by the
+    ;; prefilterfit.
+    for ituning = 0, Ntuning-1 do $
+       wcs[ituning].wave = utunwavelength[ituning]*1d9 - wave_shift[ituning]
+    
+    
     ;; Close fits file 
     self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
