@@ -634,20 +634,27 @@ pro red::make_nb_cube_stokes, wcfile $
       ;; make_wb_cube
 
       for istokes = 0, Nstokes-1 do begin
-        if n_elements(fov_mask) gt 0 then nbim[*, *, istokes] = nbim[*, *, istokes] * fov_mask                    
+
+        if n_elements(fov_mask) gt 0 then nbim[*, *, istokes] = nbim[*, *, istokes] * fov_mask
+
+        ;; Missing pixels, if any, are set to zero at this point
+        frame = nbim[*, *, istokes]
         
-        red_missing, nbim[*, *, istokes] $
+        red_missing, frame, /inplace $
                      , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
+        ;; Now the missing pixels should be NaN
+        
         if Nmissing gt 0 then begin
           bg = (nbim[*, *, istokes])[indx_missing[0]]
         endif else begin
           bg = median(nbim[*, *, istokes])
         endelse
         
-        frame = red_rotation(nbim[*, *, istokes], ang[iscan], $
+        frame = red_rotation(frame, ang[iscan], $
                              wcSHIFT[0,iscan], wcSHIFT[1,iscan], full=wcFF , $
                              background = bg, nearest = nearest, $
                              stretch_grid = reform(wcGRID[iscan,*,*,*])*sclstr, nthreads=nthreads)
+        ;; Missing pixels should still be NaN
         
         ;;if Nwhere gt 0 then frame[mindx] = bg ; Ugly fix, red_stretch destroys the missing data?
         
@@ -666,7 +673,7 @@ pro red::make_nb_cube_stokes, wcfile $
                             , nthreads=nthreads, nearest = nearest)
 
         red_fitscube_addframe, wbfileassoc, temporary(wbim) $
-                               , iscan = iscan, ituning = ituning
+                               , iscan = iscan, ituning = ituning, istokes = istokes
       endif
       
       iprogress++               ; update progress counter
