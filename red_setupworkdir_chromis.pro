@@ -385,7 +385,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                   + outdir_key + dark_timestamp_key + calib_key $
                   + ' ; ' + camdirs+' ('+wavelengths+')'
 
-          red_append, prefilters, wls
+          if  this_is_wb then red_append, prefilters, wls
           red_append, is_wb, this_is_wb
           red_append, is_pd, this_is_pd
         endif
@@ -550,8 +550,9 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
-    printf, Slun, 'a -> pinholecalib, /verify, nref=20'
+    printf, Slun, 'a -> pinholecalib'
 ;    printf, Slun, 'a -> diversitycalib'
+    printf, Slun, ''
   endif
 
   if polarimetric_data then begin

@@ -549,7 +549,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endfor                        ; idir
 
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
-    printf, Slun, 'a -> pinholecalib, /verify, nref=20'
+    printf, Slun, ''
+    printf, Slun, 'a -> pinholecalib'
     printf, Slun, ''
 ;    printf, Slun, 'a -> diversitycalib'
   endif
