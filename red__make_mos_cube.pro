@@ -187,7 +187,7 @@ pro red::make_mos_cube, dir $
 
   if file_test(filename) && ~keyword_set(overwrite) then begin
 
-    red_message, 'Output mosaic file exists already:', filename
+    red_message, 'Output mosaic file exists already: ' + filename
     red_message, 'Call with /overwrite to remaking it.'
     
   endif
@@ -670,6 +670,7 @@ pro red::make_mos_cube, dir $
                                                                                    , Nx/fac, Ny/fac, cubic = -0.5 )
         endelse
 
+        
 ;        dr = sqrt(total(shifts[*, itile]^2)) * fac * image_scale
 ;        if dr lt 10 then begin
 ;          ;; Shift image map
@@ -711,7 +712,7 @@ pro red::make_mos_cube, dir $
       nbmosaic = fltarr(Sx/fac, Sy/fac)
       nbmosaic[indx] = totim[indx]
       red_missing, nbmosaic, /inplace, missing_type_wanted = 'nan'
-      nbmosaic = nbmosaic[bb[0]:bb[2],bb[1]:bb[3]] >0
+      nbmosaic = nbmosaic[bb[0]:bb[2],bb[1]:bb[3]] 
 ;;      nbmosaic = red_fillpix(nbmosaic, nthreads=nthreads) $
 ;;                 * totm[bb[0]:bb[2],bb[1]:bb[3]]
       
