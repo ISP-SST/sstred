@@ -579,13 +579,17 @@ pro red::quicklook_mosaic, align=align $
       endfor                    ; imos
 
       cgwindow
-      qq = Nmos
+      qq = Nmos <9
       colors = red_distinct_colors(qq, /num)
-      if Nmos gt 9 then colors=[colors,colors[0:Nmos-10]]
+      while Nmos gt n_elements(colors) do colors=[colors,red_distinct_colors(qq, /num)]
+      colors = colors[0:Nmos-1]
+
+      
+      ;;   if Nmos gt 9 then colors=[colors,colors[0:Nmos-10]]
 
       xcp = median(diskpos[0, *]) - Sx*image_scale/2.
       ycp = median(diskpos[1, *]) - Sy*image_scale/2.
-      
+
       cgplot, /add, /nodata, [0], [0] $
               , xrange = xcp+[0, Sx*image_scale] $
               , yrange = ycp+[0, Sy*image_scale] $
