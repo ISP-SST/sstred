@@ -92,7 +92,7 @@ function chromis::raw_search, dir $
   Nscans = n_elements(scannos)
   
   ;; Prefilter
-  case n_elements(prefilters) of
+  case n_elements(pref) of
     0 : prefilters = '[0-9][0-9][0-9][0-9]'
     else : prefilters = strtrim(pref, 2)
   endcase
