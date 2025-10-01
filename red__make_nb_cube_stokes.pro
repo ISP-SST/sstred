@@ -234,6 +234,12 @@ pro red::make_nb_cube_stokes, wcfile $
   nbrdetector = (*self.detectors)[nbrindx[0]]
 
   instrument = (strsplit(wbcamera, '-', /extract))[0]
+  
+  if instrument eq 'Chromis' && isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
+    ;; This can be remove when Pit has had time to do telescope
+    ;; polarimetry calibration for Chromis
+    notelmat = 1
+  endif 
 
   ;; Read parameters from the WB cube
   fxbopen, bunit, wcfile, 'MWCINFO', bbhdr
@@ -309,7 +315,7 @@ pro red::make_nb_cube_stokes, wcfile $
        , clips = clips $
        , cmap_fwhm = cmap_fwhm $
        , /nocavitymap $         ; Cavity maps in Stokes cubes aren't used for anything
-       , /notelmat $            ; Until Pit has had time to measure them
+       , notelmat = notelmat $ 
        , noremove_periodic = noremove_periodic $
        , redemodulate = redemodulate $
        , snames = these_snames $
