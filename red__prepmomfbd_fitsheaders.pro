@@ -82,6 +82,23 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
   Ndirs = n_elements(dirs)
   if Ndirs eq 0 then return
 
+;  cams = *self.cameras
+;  iswb = strmatch(cams,'*-W') or strmatch(cams,'*-D')
+;  ispd = strmatch(cams,'*-D')
+;  Ncams = n_elements(cams)      ; Number of cameras
+;  detectors = strarr(Ncams)
+;  for icam = 0, Ncams-1 do detectors[icam] = self -> getdetector(cams[icam])
+;  wb_detector = detectors[where(iswb and ~ispd)]
+;  if total(ispd) gt 0 then pd_detector = detectors[where(ispd)]
+
+  self -> cameras $
+     , nb_detectors = nb_detectors $
+     , pd_detector = pd_detector $
+     , wb_detector = wb_detector $
+     , nb_cameras = nb_cameras $
+     , pd_camera = pd_camera $
+     , wb_camera = wb_camera
+  
   if n_elements(momfbddir) eq 0 then begin
     if keyword_set(no_pd) then begin
       momfbddir = 'momfbd_nopd' 
@@ -163,7 +180,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         if redux_cfggetkeyword(cfginfo,'TRACE') then begin
           Ntrace = 2
           wb_filename_template = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.FILENAME_TEMPLATE')
-          wb_detector          = (strsplit(file_basename(wb_filename_template),'_',/extr))[0]
+;          wb_detector          = (strsplit(file_basename(wb_filename_template),'_',/extr))[0]
           wb_image_data_dir    = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.IMAGE_DATA_DIR')
           wb_discard           = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.DISCARD')
           wb_dark_template     = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.DARK_TEMPLATE')
@@ -173,7 +190,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
           wb_align_map_y       = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL0.ALIGN_MAP_Y')
           if has_diversity then begin
             pd_filename_template = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL1.FILENAME_TEMPLATE')
-            pd_detector          = (strsplit(file_basename(pd_filename_template),'_',/extr))[0]
+;            pd_detector          = (strsplit(file_basename(pd_filename_template),'_',/extr))[0]
             pd_image_data_dir    = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL1.IMAGE_DATA_DIR')
             pd_discard           = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL1.DISCARD')
             pd_dark_template     = redux_cfggetkeyword(cfginfo,'OBJECT0.CHANNEL1.DARK_TEMPLATE')
@@ -326,30 +343,59 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
               filename_template = redux_cfggetkeyword(chaninfo,'FILENAME_TEMPLATE')
               image_data_dir    = redux_cfggetkeyword(chaninfo,'IMAGE_DATA_DIR')
               discard           = redux_cfggetkeyword(chaninfo,'DISCARD')
-              for ifile = 0, n_elements(file_nums)-1 do begin
-                fname = image_data_dir + '/' $
-                        + string(file_nums[ifile], format='(%"'+filename_template+'")')
-                if file_test(fname) then begin
-                  if itrace eq 0 then begin
-                    ;; NB - just add this file name
-                    red_append, fnames, fname
-                  endif else begin
-                    ;; TRACE WB, possibly with PD - look for matching WB data
-                    fname = wb_image_data_dir + '/' $
-                            + string(file_nums[ifile], format='(%"'+wb_filename_template+'")')
-                    if file_test(fname) then red_append, fnames, fname
-                    if has_diversity then begin
-                      ;; PD image
-                      fname = pd_image_data_dir + '/' $
-                              + string(file_nums[ifile], format='(%"'+pd_filename_template+'")')
-                      if file_test(fname) then red_append, fnames, fname
-                    endif
-                  endelse
-                endif
-              endfor            ; ifile 
+              fnames_maybe = image_data_dir + '/' + string(file_nums, format='(%"'+filename_template+'")')
+              indx = where(file_test(fnames_maybe), Nwhere)
+              if Nwhere gt 0 then begin
+                if itrace eq 0 then begin
+                  ;; NB - just add this file name
+                  red_append, fnames, fnames_maybe[indx]
+                endif else begin
+                  ;; TRACE WB, possibly with PD - look for matching WB data
+                  this_template = red_strreplace(filename_template, thisdetector, wb_detector)
+                  this_data_dir = red_strreplace(image_data_dir, file_basename(image_data_dir), wb_camera)
+                  fnames_maybe = this_data_dir + '/' $
+                                 + string(file_nums[indx], format='(%"'+this_template+'")')
+                  for iname = 0, n_elements(indx)-1 do begin
+                    if file_test(fnames_maybe[iname]) then red_append, fnames, fnames_maybe[iname]
+                  endfor        ; iname
+                  if has_diversity then begin
+                    ;; PD image
+                    this_template = red_strreplace(filename_template, thisdetector, pd_detector)
+                    this_data_dir = red_strreplace(image_data_dir, file_basename(image_data_dir), pd_camera)
+                    fnames_maybe = this_data_dir + '/' $
+                                   + string(file_nums[indx], format='(%"'+this_template+'")')
+                    for iname = 0, n_elements(indx)-1 do begin
+                      if file_test(fnames_maybe[iname]) then red_append, fnames, fnames_maybe[iname]
+                    endfor      ; iname
+                  endif
+                endelse
+              endif
+              
+;              for ifile = 0, n_elements(file_nums)-1 do begin
+;                    fname = image_data_dir + '/' $
+;                        + string(file_nums[ifile], format='(%"'+filename_template+'")')
+;                if file_test(fname) then begin
+;                  if itrace eq 0 then begin
+;                    ;; NB - just add this file name
+;                    red_append, fnames, fname
+;                  endif else begin
+;                    ;; TRACE WB, possibly with PD - look for matching WB data
+;                    fname = wb_image_data_dir + '/' $
+;                            + string(file_nums[ifile], format='(%"'+wb_filename_template+'")')
+;                    if file_test(fname) then red_append, fnames, fname
+;                    if has_diversity then begin
+;                      ;; PD image
+;                      fname = pd_image_data_dir + '/' $
+;                              + string(file_nums[ifile], format='(%"'+pd_filename_template+'")')
+;                      if file_test(fname) then red_append, fnames, fname
+;                    endif
+;                  endelse
+;                endif
+;              endfor            ; ifile 
             endelse
-
+            
             ;; Make header corresponding to the sum.
+            if n_elements(fnames) eq 0 then stop
             head = red_sumheaders(fnames, discard = discard)
             if has_diversity then prmode = 'Phase Diversity' else undefine, prmode 
             self -> headerinfo_addstep, head $
