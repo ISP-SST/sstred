@@ -45,7 +45,7 @@ pro red_show16, ims, fac = fac, mos = mos, title = title, fname = fname $
   red_show, mos, title = title $
             , scroll = scroll
 
-  if n_elements(pngfile) ne 0 then write_png, pngfile, mos
+  if n_elements(pngfile) ne 0 then write_png, pngfile, bytscl(mos)
   
 end
 
