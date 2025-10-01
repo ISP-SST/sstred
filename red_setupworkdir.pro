@@ -38,6 +38,10 @@
 ;    incoming : in, optional, type=boolean
 ;
 ;      Look for data in the Incoming directory.
+; 
+;    copy : in, optional, type=boolean
+; 
+;      Copy summed calibration data instead of making soft links.
 ;
 ;    no_observer_metadata : in, optional, type=boolean
 ;
@@ -284,11 +288,14 @@
 ;   2025-04-03 : MGL. New keyword ampm_cutoff  
 ;
 ;   2025-05-22 : MGL. New keyword incoming.
+; 
+;   2025-09-22 : MGL. New keyword link.
 ;   
 ;-
 pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
-                      , cfgfile = cfgfile $
                       , calibrations_only = calibrations_only $
+                      , cfgfile = cfgfile $
+                      , copy = copy $
                       , date = date $
                       , incoming = incoming $
                       , instruments = instruments $
@@ -724,6 +731,15 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       if ~file_test(sum_dir, /directory) then undefine, sum_dir
     endelse
     
+    if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+      ;; We will now attempt to copy existing sums of calibration data.
+      red_setupworkdir_copy, sum_dir, 'darks',       workdir, link = link
+      red_setupworkdir_copy, sum_dir, 'flats',       workdir, link = link
+      red_setupworkdir_copy, sum_dir, 'pinhs',       workdir, link = link
+      red_setupworkdir_copy, sum_dir, 'polcal_sums', workdir, link = link
+    endif
+    
+    
     ;; Setup the different instruments.
     call_procedure, 'red_setupworkdir_' + class       $
                     , workdir, root_dir, config_file, script_file, isodate $                    
@@ -731,8 +747,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                     , ampm_cutoff = ampm_cutoff $               
                     , calibrations_only = calibrations_only $
                     , lapalma_setup = lapalma_setup $
-                    , no_observer_metadata = no_observer_metadata $
-                    , old_dir = sum_dir
+                    , no_observer_metadata = no_observer_metadata ; $
+    ;;         , old_dir = sum_dir
     
   endfor                        ; iinstrument    
 
