@@ -291,6 +291,8 @@
 ; 
 ;   2025-09-22 : MGL. New keyword link.
 ;   
+;   2025-10-01 : MGL. New keyword copy, remove keyword link.
+;   
 ;-
 pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                       , calibrations_only = calibrations_only $
@@ -733,10 +735,10 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
     
     if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
       ;; We will now attempt to copy existing sums of calibration data.
-      red_setupworkdir_copy, sum_dir, 'darks',       workdir, link = link
-      red_setupworkdir_copy, sum_dir, 'flats',       workdir, link = link
-      red_setupworkdir_copy, sum_dir, 'pinhs',       workdir, link = link
-      red_setupworkdir_copy, sum_dir, 'polcal_sums', workdir, link = link
+      red_setupworkdir_copy, sum_dir, 'darks',       workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'flats',       workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'pinhs',       workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'polcal_sums', workdir, copy = copy
     endif
     
     
