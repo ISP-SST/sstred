@@ -162,9 +162,11 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     return
   endif
   
-  ;; We want the W camera first!
-  indx = sort(abs(reform(byte(strmid(file_basename(darksubdirs),0,1,/reverse))) - (byte('W'))[0]))
-  darksubdirs = darksubdirs[indx]
+  if Ndarkdirs gt 0 then begin
+    ;; We want the W camera first!
+    indx = sort(abs(reform(byte(strmid(file_basename(darksubdirs),0,1,/reverse))) - (byte('W'))[0]))
+    darksubdirs = darksubdirs[indx]
+  endif
   
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
@@ -429,11 +431,17 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   if Nprefilters eq 0 then stop
 
+  indx = uniq(prefilters, sort(prefilters))
+  is_wb = is_wb[indx]
+  is_pd = is_pd[indx]
+  prefilters = prefilters[indx]
+  Nprefilters = n_elements(prefilters)
+
 ;  indx = uniq(prefilters, sort(prefilters))
 ;  prefilters = prefilters[indx]
 ;  Nprefilters = n_elements(prefilters)
 
-  prefilters = red_uniquify(prefilters, count = Nprefilters)
+;  prefilters = red_uniquify(prefilters, count = Nprefilters)
   
   if ~e_pinhsums then begin
     printf, Slun, ''
@@ -445,7 +453,6 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     for idir = 0, Ndirs-1 do begin
       pinhsubdirs = file_search(pinhdirs[idir]+'/'+instrument+'*', count = Nsubdirs, /fold)
       if Nsubdirs gt 0 then begin
-        printf, Slun
         printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[idir], root_dir, '')
         
         if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
@@ -509,16 +516,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
           flat_timestamp_key = ''
         endelse
 
-;;        for ipref = 0, Nprefilters-1 do begin
         printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
-                  + ', nthreads=nthreads' $
-                  + outdir_key + dark_timestamp_key + flat_timestamp_key $
-                  + ", dirs=root_dir+'" + red_strreplace(pinhdirs[idir], root_dir, '') ;;$
-;;                  + "', pref='"+prefilters[ipref]+"'"
-;;        endfor                  ; ipref
-        endif else begin
+                + ', nthreads=nthreads' $
+                + outdir_key + dark_timestamp_key + flat_timestamp_key $
+                + ", dirs=root_dir+'" + red_strreplace(pinhdirs[idir], root_dir, '')
+        
+      endif else begin
         pinhsubdirs = file_search(pinhdirs[idir]+'/*', count = Nsubdirs)
-        printf, Slun
         for jdir = 0, Nsubdirs-1 do begin
           pinhsubsubdirs = file_search(pinhsubdirs[jdir]+'/'+instrument+'*' $
                                        , count = Nsubsubdirs, /fold)
@@ -545,13 +549,11 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
               flat_timestamp_key = ''
             endelse 
 
-            ;;for ipref = 0, Nprefilters-1 do begin
             printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                     + ', nthreads=nthreads' $
                     + outdir_key + dark_timestamp_key + flat_timestamp_key $
-                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '') ;;$
-            ;;        + "';, pref='" + prefilters[ipref]+"'" 
-            ;;endfor              ; ipref
+                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '')
+            
           endif
         endfor                  ; jdir
       endelse
@@ -675,6 +677,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endelse
 
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+    printf, Slun
     for ipref = 0, Nprefilters-1 do begin
       printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
     endfor                      ; ipref
@@ -762,6 +765,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
+  printf, Slun
   printf, Slun, '; If MOMFBD has problems near the edges, try increasing the margin when calling prepmomfbd.'
   for ipref = 0, Nprefilters-1 do begin
     ;; The number of frames to be discarded by momfbd from every state
@@ -821,7 +825,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /align_interactive, /circular_fov"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits', nthreads=nthreads"
-
+  printf, Slun, "; or "
+  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/results/', /circular_fov"
   
   free_lun, Clun
   free_lun, Slun
@@ -865,11 +870,5 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       print, inam+' : Did not find any CHROMIS data to get OBSERVER from.'
     endelse
   endif
-  
-;  ;; We will now attempt to copy existing sums of calibration data.
-;  red_setupworkdir_copy, old_dir, 'darks',       work_dir
-;  red_setupworkdir_copy, old_dir, 'flats',       work_dir
-;  red_setupworkdir_copy, old_dir, 'pinhs',       work_dir
-;  red_setupworkdir_copy, old_dir, 'polcal_sums', work_dir
- 
+
 end

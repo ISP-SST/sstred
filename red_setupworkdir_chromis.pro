@@ -133,15 +133,27 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                          , {keyword:'TELCONFG', value:'Schupmann, imaging table', $
                             comment:'Telescope configuration'}]
   
-  ;; Are there darks and flats?
+  ;; Are there copies of/links to already summed calibration data?
+  e_darksums   = file_test(work_dir + '/darks')
+  e_flatsums   = file_test(work_dir + '/darks')
+  e_pinhsums   = file_test(work_dir + '/pinhs')
+  e_polcalsums = file_test(work_dir + '/polcal_sums')
+
+  ;; Are there raw darks and flats?
   darksubdirs = red_find_instrumentdirs(root_dir, instrument, '*dark*' $
                                         , count = Ndarkdirs)
   flatsubdirs = red_find_instrumentdirs(root_dir, instrument, '*flat*' $
                                         , count = Nflatdirs)
 
-  if Ndarkdirs eq 0 and ~keyword_set(old_dir) then begin
-    print, 'No CHROMIS darks were found. No setup generated.'
+  if Ndarkdirs eq 0 and ~e_darksums then begin
+    print, 'No '+instrument+' darks were found. No setup generated.'
     return
+  endif
+
+  if Ndarkdirs gt 0 then begin
+    ;; We want the W camera first!
+    indx = sort(abs(reform(byte(strmid(file_basename(darksubdirs),0,1,/reverse))) - (byte('W'))[0]))
+    darksubdirs = darksubdirs[indx]
   endif
   
   ;; Open two files for writing. Use logical unit Clun for a Config
@@ -196,15 +208,39 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, '; a -> plot_pointing ; Plot pointing throughout the day.'
   endif
 
-  
   print, 'Cameras'
   printf, Clun, '#'
   printf, Clun, '# --- Cameras'
   printf, Clun, '#'
-  cams = red_uniquify(file_basename(file_search(root_dir+'/CHROMIS-data/*/Chromis-?')), count = Ncams)
-  cams = [cams[-1],cams[0],cams[1:-2]] ; First W, then D, then the others
-  for icam = 0, Ncams-1 do printf, Clun, 'camera = '+cams[icam]
+
+  if Ndarkdirs gt 0 then begin
+    cams = file_basename(darksubdirs)
+  endif else begin
+
+    if ~e_darksums then stop
+
+    dnames = file_search(work_dir+'/darks/cam*fits', count = Ndarks)
+    if Ndarks eq 0 then stop
+    
+    cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
+    if total(cnt) eq 0 then stop
+
+  endelse
+  cams = red_uniquify(cams)
+
+  ;; We want the WB camera first!
+  indx = sort(abs(reform(byte(strmid(cams,0,1,/reverse)))  - (byte('W'))[0]))
+  cams = cams[indx]
+  
+  is_wb = strmatch(cams, (instrument.tolower()).capwords()+'-[WD]')          
+  is_pd = strmatch(cams, (instrument.tolower()).capwords()+'-D')
+  
+  printf, Clun, 'camera = '+cams, format='(a0)'
   printf, Clun, '#'
+;  cams = red_uniquify(file_basename(file_search(root_dir+'/CHROMIS-data/*/Chromis-?')), count = Ncams)
+;  cams = [cams[-1],cams[0],cams[1:-2]] ; First W, then D, then the others
+;  for icam = 0, Ncams-1 do printf, Clun, 'camera = '+cams[icam]
+;  printf, Clun, '#'
 
   ;; Based on the cameras, we can decide whether these data use the
   ;; polarimetric setup or not. (See also chromis::polarmetry_mode.)
@@ -291,21 +327,21 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif                         ; Ndarkdirs
 
 
-  if Nflatdirs eq 0 && ~keyword_set(old_dir) then begin
+  if Nflatdirs eq 0 && ~e_flatsums then begin
     print, 'No CHROMIS flats were found. Stop after summing darks.'
     free_lun, Clun
     free_lun, Slun
     return
   endif
  
-  
   print, 'Flats'
-  printf, Clun, '#'
-  printf, Clun, '# --- Flats'
-  printf, Clun, '#'
+  if Nflatdirs gt 0 && ~e_flatsums then begin
+    ;; There are flats but no already summed flats!
 
-  if Nflatdirs gt 0 then begin
-    ;; There are CHROMIS flats!
+    print, 'Flats'
+    printf, Clun, '#'
+    printf, Clun, '# --- Flats'
+    printf, Clun, '#'
 
     ;; Directories with camera dirs below:
     flatdirs = file_dirname(flatsubdirs)
@@ -338,7 +374,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       if Nfiles gt 0 then begin
         
         camdirs = strjoin(file_basename(flatsubdirs[indx]), ' ')
-        red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd, wav = wav
+;        red_extractstates, fnames, /basename, pref = wls, is_wb = this_is_wb, is_pd = this_is_pd, wav = wav
         
         if isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
           ;; Old filenames with wheel and hrz
@@ -385,7 +421,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                   + outdir_key + dark_timestamp_key + calib_key $
                   + ' ; ' + camdirs+' ('+wavelengths+')'
 
-          if  this_is_wb then red_append, prefilters, wls
+          if this_is_wb[0] then red_append, prefilters, wls
           red_append, is_wb, this_is_wb
           red_append, is_pd, this_is_pd
         endif
@@ -425,129 +461,124 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
 
-  printf, Slun, ''
-  print, 'Pinholes'
-  printf, Clun, '#'
-  printf, Clun, '# --- Pinholes'
-  printf, Clun, '#'
-  pinhdirs = file_search(root_dir+'/*pinh*/*', count = Ndirs, /fold)
-  for idir = 0, Ndirs-1 do begin
-    pinhsubdirs = file_search(pinhdirs[idir]+'/chromis*', count = Nsubdirs, /fold)
-    if Nsubdirs gt 0 then begin
-      printf, Slun
-      printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[idir], root_dir, '')
-      
-      if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
-        ;; We want to output the summed data in timestamp directories
-        ;; so we can handle multiple sets.
-        outdir = 'pinhs/' + file_basename(pinhdirs[idir])
-        outdir_key = ', outdir="'+outdir+'"'
-        ;; If there are multiple dark directories, we want to use
-        ;; the one that are nearest in time.
-        tmp = min(abs(red_time2double(file_basename(pinhdirs[idir])) - red_time2double(file_basename(darkdirs))), dindx)
-        dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
-        ;; If there are AM/PM flats directories, we want to take that
-        ;; into account.
-        flat_am = file_basename(flatdirs) lt ampm_cutoff
-        pinh_am = file_basename(pinhdirs[idir]) lt ampm_cutoff
-        case pinh_am of
-
-          1 : begin
-            ;; AM pinholes
-            case total(flat_am) of
-
-              0 : begin
-                ;; There are no AM flats, use PM flats
-                flat_timestamp_key = ", flat_timestamp = ['" $
-                                     + strjoin(file_basename(flatdirs), "','") + "']"
-              end
-
-              else : begin
-                ;; There are AM flats
-                flat_timestamp_key = ", flat_timestamp = ['" $
-                                     + strjoin(file_basename(flatdirs[where(flat_am)]), "','") + "']"
-              end
-              
-            endcase           
-          end
-
-          else :  begin
-            ;; PM pinholes
-            case total(~flat_am) of
-
-              0 : begin
-                ;; There are no PM flats, use AM flats
-                flat_timestamp_key = ", flat_timestamp = ['" $
-                                     + strjoin(file_basename(flatdirs), "','") + "']"
-              end
-
-              else : begin
-                ;; There are PM flats
-                flat_timestamp_key = ", flat_timestamp = ['" $
-                                     + strjoin(file_basename(flatdirs[where(~flat_am)]), "','") + "']"
-              end
-              
-            endcase           
-          end
-          
-        endcase
+  if ~e_pinhsums then begin
+    printf, Slun, ''
+    print, 'Pinholes'
+    printf, Clun, '#'
+    printf, Clun, '# --- Pinholes'
+    printf, Clun, '#'
+    pinhdirs = file_search(root_dir+'/*pinh*/*', count = Ndirs, /fold)
+    for idir = 0, Ndirs-1 do begin
+      pinhsubdirs = file_search(pinhdirs[idir]+'/chromis*', count = Nsubdirs, /fold)
+      if Nsubdirs gt 0 then begin
+        printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[idir], root_dir, '')
         
-      endif else begin
-        outdir_key = ''
-        dark_timestamp_key = ''
-        flat_timestamp_key = ''
-      endelse
+        if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+          ;; We want to output the summed data in timestamp directories
+          ;; so we can handle multiple sets.
+          outdir = 'pinhs/' + file_basename(pinhdirs[idir])
+          outdir_key = ', outdir="'+outdir+'"'
+          ;; If there are multiple dark directories, we want to use
+          ;; the one that are nearest in time.
+          tmp = min(abs(red_time2double(file_basename(pinhdirs[idir])) - red_time2double(file_basename(darkdirs))), dindx)
+          dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
+          ;; If there are AM/PM flats directories, we want to take that
+          ;; into account.
+          flat_am = file_basename(flatdirs) lt ampm_cutoff
+          pinh_am = file_basename(pinhdirs[idir]) lt ampm_cutoff
+          case pinh_am of
 
-      for ipref = 0, Nprefilters-1 do begin
+            1 : begin
+              ;; AM pinholes
+              case total(flat_am) of
+
+                0 : begin
+                  ;; There are no AM flats, use PM flats
+                  flat_timestamp_key = ", flat_timestamp = ['" $
+                                       + strjoin(file_basename(flatdirs), "','") + "']"
+                end
+
+                else : begin
+                  ;; There are AM flats
+                  flat_timestamp_key = ", flat_timestamp = ['" $
+                                       + strjoin(file_basename(flatdirs[where(flat_am)]), "','") + "']"
+                end
+                
+              endcase           
+            end
+
+            else :  begin
+              ;; PM pinholes
+              case total(~flat_am) of
+
+                0 : begin
+                  ;; There are no PM flats, use AM flats
+                  flat_timestamp_key = ", flat_timestamp = ['" $
+                                       + strjoin(file_basename(flatdirs), "','") + "']"
+                end
+
+                else : begin
+                  ;; There are PM flats
+                  flat_timestamp_key = ", flat_timestamp = ['" $
+                                       + strjoin(file_basename(flatdirs[where(~flat_am)]), "','") + "']"
+                end
+                
+              endcase           
+            end
+            
+          endcase
+          
+        endif else begin
+          outdir_key = ''
+          dark_timestamp_key = ''
+          flat_timestamp_key = ''
+        endelse
+
         printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                 + ', nthreads=nthreads' $
                 + outdir_key + dark_timestamp_key + flat_timestamp_key $
-                + ", dirs=root_dir+'" + red_strreplace(pinhdirs[idir], root_dir, '') + "'" $
-                + ", pref='"+prefilters[ipref]+"'"
-      endfor                    ; ipref
+                + ", dirs=root_dir+'" + red_strreplace(pinhdirs[idir], root_dir, '') + "'" 
 
-    endif else begin
+      endif else begin
 
-      pinhsubdirs = file_search(pinhdirs[idir]+'/*', count = Nsubdirs)
-      printf, Slun
-      for jdir = 0, Nsubdirs-1 do begin
-        pinhsubsubdirs = file_search(pinhsubdirs[jdir]+'/chromis*' $
-                                     , count = Nsubsubdirs, /fold)
-        if Nsubsubdirs gt 0 then begin
-          printf, Clun, 'pinh_dir = ' $
-                  + red_strreplace(pinhsubdirs[jdir], root_dir, '')
-          
-          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
-            ;; For /calibrations_only we want to output the summed data in
-            ;; timestamp directories so we can handle multiple sets.
-            outdir = 'pinhs/' + file_basename(pinhsubdirs[jdir])
-            outdir_key = ', outdir="'+outdir+'"'
-            ;; If there are multiple dark directories, we want to use
-            ;; the one that are nearest in time.
-            tmp = min(abs(red_time2double(file_basename(pinhdirs[jdir])) - red_time2double(file_basename(darkdirs))), dindx)
-            dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
-            ;; If there are AM/PM flats directories, we want to take that
-            ;; into account.
-            flat_am = file_basename(flatdirs) lt ampm_cutoff
-            stop                ; Does this case still happen?
-          endif else begin
-            outdir_key = ''
-            dark_timestamp_key = ''
-            flat_timestamp_key = ''
-          endelse 
+        pinhsubdirs = file_search(pinhdirs[idir]+'/*', count = Nsubdirs)
+        for jdir = 0, Nsubdirs-1 do begin
+          pinhsubsubdirs = file_search(pinhsubdirs[jdir]+'/chromis*' $
+                                       , count = Nsubsubdirs, /fold)
+          if Nsubsubdirs gt 0 then begin
+            printf, Clun, 'pinh_dir = ' $
+                    + red_strreplace(pinhsubdirs[jdir], root_dir, '')
+            
+            if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+              ;; For /calibrations_only we want to output the summed data in
+              ;; timestamp directories so we can handle multiple sets.
+              outdir = 'pinhs/' + file_basename(pinhsubdirs[jdir])
+              outdir_key = ', outdir="'+outdir+'"'
+              ;; If there are multiple dark directories, we want to use
+              ;; the one that are nearest in time.
+              tmp = min(abs(red_time2double(file_basename(pinhdirs[jdir])) - red_time2double(file_basename(darkdirs))), dindx)
+              dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
+              ;; If there are AM/PM flats directories, we want to take that
+              ;; into account.
+              flat_am = file_basename(flatdirs) lt ampm_cutoff
+              stop              ; Does this case still happen?
+            endif else begin
+              outdir_key = ''
+              dark_timestamp_key = ''
+              flat_timestamp_key = ''
+            endelse 
 
-          for ipref = 0, Nprefilters-1 do begin
             printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                     + ', nthreads=nthreads' $
                     + outdir_key + dark_timestamp_key + flat_timestamp_key $
-                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '') $
-                    + "';, pref='" + prefilters[ipref]+"'" 
-          endfor                ; ipref
-        endif
-      endfor                    ; jdir
-    endelse
-  endfor                        ; idir
-
+                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '')
+            
+          endif
+        endfor                  ; jdir
+      endelse
+    endfor                      ; idir
+  endif
+  
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
     printf, Slun, 'a -> pinholecalib'
@@ -555,7 +586,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, ''
   endif
 
-  if polarimetric_data then begin
+  if polarimetric_data && ~e_polcalsums then begin
     
     print, 'Polcal'
     printf, Clun, '#'
@@ -641,6 +672,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
     ;;if ~is_wb[ipref] then
+    printf, Slun
     printf, Slun, "a -> prepflatcubes"
   endif
   
@@ -763,7 +795,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun
     printf, Slun, '; Quicklook will sum its own flats, independent of the ones in the flats/hh:mm:ss/ subdirectories.'
     printf, Slun, 'a -> quicklook, /core_and_wings ; NB quicklook'
-    printf, Slun, "a -> quicklook, cam='Chromis-W' ; "
+    printf, Slun, 'a -> quicklook_mosaic, /core_and_wings ; NB mosaic quicklook'
+    printf, Slun, "a -> quicklook, cam='"+cams[0]+"'      ; WB quicklook"
 
     printf, Slun, 'a -> summarize_datadir'
     
@@ -783,7 +816,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, ''
 
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
-  printf, Slun, "a -> fitprefilter, /mask"
+  printf, Slun, "a -> fitprefilter, /mask; , /hints, dir='10:02:45'"
   printf, Slun, ''
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
@@ -802,7 +835,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + ", /wb_states" $
 ;              + ", /redux" $
                 + ", /unpol" $
-                + ", extraclip = [75,125,15,15]" $
+                + ", extraclip = [50,50,40,20]" $ ; [75,125,15,15]" $
                 + ", pref='" + prefilters[ipref] + "'" $
                 + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
       endif else begin
@@ -817,7 +850,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + ", /wb_states" $
 ;              + ", /redux" $
                 + ", /unpol" $
-                + ", extraclip = [75,125,15,15]" $
+                + ", extraclip = [50,50,40,20]" $ ; = [75,125,15,15]" $
                 + ", pref='" + prefilters[ipref] + "'" $
                 + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
       endelse
@@ -837,6 +870,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /interactive, /autocrop, /align_interactive"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits', nthreads=nthreads"
+  printf, Slun, "; or "
+  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/results/'"
 
   
   free_lun, Clun
@@ -878,10 +913,4 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     print
   endif
   
-  ;; We will now attempt to copy existing sums of calibration data.
-  red_setupworkdir_copy, old_dir, 'darks', work_dir
-  red_setupworkdir_copy, old_dir, 'flats', work_dir
-  red_setupworkdir_copy, old_dir, 'pinhs', work_dir
-;  red_setupworkdir_copy, old_dir, 'polcal_sums', work_dir
-
 end
