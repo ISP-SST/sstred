@@ -953,8 +953,8 @@ pro red::prepmomfbd, cams = cams $
 ;                  gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]], /no_fits)
                 
 ;                gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
-
-                if state_list[state_idx[0]].lc eq 4 then begin
+                
+                if state_list[state_idx[0]].lc eq 4 || n_elements(red_uniquify(state_list.lc)) eq 1 then begin
                   ;; E.g. 3999 without polarimetry
                   gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
                 end else begin
