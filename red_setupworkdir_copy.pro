@@ -47,13 +47,17 @@
 pro red_setupworkdir_copy, sourcedir, subdir, workdir, copy = copy
 
   if n_elements(sourcedir) eq 0 then return
-  if file_test(sourcedir) eq 0 then return
+  if file_test(sourcedir + '/' + subdir) eq 0 then return
   
   targetdir = workdir+'/'+subdir+'/'
 
   ;; Check subdirectories
   sss = file_search(sourcedir+'/'+subdir+'/','*.fits', count = Nsearch)
   tmpdirs = red_uniquify(file_dirname(sss))
+  if subdir eq 'flats' then begin
+    ;; Avoid copying output from fitgains
+    tmpdirs = tmpdirs[where(~strmatch(tmpdirs,'*spectral_*'))]
+  endif
   if subdir eq 'polcal_sums' then tmpdirs = red_uniquify(file_dirname(tmpdirs))
   ;; Make a selection list
   sel_list = strarr(n_elements(tmpdirs))
@@ -78,8 +82,8 @@ pro red_setupworkdir_copy, sourcedir, subdir, workdir, copy = copy
     ;; then default to selecting the ones with timestamps. (The ones
     ;; without are probably automatically generated when making
     ;; quicklooks.)
-    default = rdx_ints2str(where(strmatch(sel_list,'*??:??:??*'),Nwhere))
-    if Nwhere eq n_elements(sel_list) or Nwhere eq 0 then default='*'
+    default = where(strmatch(sel_list,'*??:??:??*'),Nwhere)
+    if Nwhere eq n_elements(sel_list) or Nwhere eq 0 then default='*' else default = rdx_ints2str(default)
     tmp = red_select_subset(sel_list $
                             , qstring = 'What '+subdir+' directories to import from '+sourcedir+'?' $
                             , indx = indx $
@@ -116,6 +120,10 @@ pro red_setupworkdir_copy, sourcedir, subdir, workdir, copy = copy
       else : begin
         ;; Copy/link files for other types of summed calibration data
         files = file_search(searchdir[idir]+'/cam*', count = Nfiles)
+        if subdir eq 'flats' then begin
+          ;; Avoid copying output from fitgains
+          files = files[where(~strmatch(files, '*cavityfree*'), Nfiles)]
+        endif
         if Nfiles gt 0 then begin
           if ~keyword_set(copy) then begin
             print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
