@@ -427,7 +427,8 @@ pro red::make_nb_cube, wcfile $
 
   ;; For CHROMIS Ca II data, get misalignment between wavelengths.
   ;; (Get all zeroes for other types of data.)
-  ashifts = self -> get_align_continuum(wbgfiles, utunwavelength, direction)
+  ashifts = self -> get_align_continuum(wbgfiles, utunwavelength, direction $
+                                        , noaligncont = noaligncont)
 
 
   ;; Initialize fits file, set up for writing the data part.
@@ -622,11 +623,17 @@ pro red::make_nb_cube, wcfile $
       cmap1 = 0.0
       for icam = 0, Nnbcams-1 do begin
 
-        cfile = self.out_dir + 'flats/spectral_flats/' $
-                + strjoin([nbdetectors[icam] $
-                           , cprefs[icprefs] $
-                           , 'fit_results.sav'] $
-                          , '_')
+;        cfile = self.out_dir + 'flats/spectral_flats/' $
+;                + strjoin([nbdetectors[icam] $
+;                           , cprefs[icprefs] $
+;                           , 'fit_results.sav'] $
+;                          , '_')
+
+        cfile = file_search(self.out_dir + 'flats/spectral_flats/' $
+                            + nbdetectors[icam] + '*' $
+                            + cprefs[icprefs] + '_fit_results.sav', count = Nsearch)
+
+        if Nsearch ne 1 then stop else cfile = cfile[0]
         
         if ~file_test(cfile) then begin
           print, inam + ' : Error, calibration file not found -> '+cfile
