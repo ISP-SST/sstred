@@ -25,17 +25,20 @@
 ; 
 ; :Keywords:
 ; 
+;   noaligncont : in, optional, type=boolean
 ;   
-;   
-;   
+;     Do not use CHROMIS Ca II continuum alignment calibration data.
 ; 
 ; 
 ; :History:
 ; 
 ;   2025-06-06 : MGL. First version.
 ; 
+;   2025-10-09 : MGL. New keyword noaligncont.
+; 
 ;-
-function red::get_align_continuum, wbgfiles, tun_wavelengths, direction
+function red::get_align_continuum, wbgfiles, tun_wavelengths, direction $
+                                   , noaligncont = noaligncont
 
 ;;if n_elements(prefilter) eq 0 then prefilter = '3950'
 
@@ -50,7 +53,7 @@ function red::get_align_continuum, wbgfiles, tun_wavelengths, direction
 
   ;; Continuum alignment only done for Ca II scans (so far). H beta is
   ;; not as wide so should be OK.
-  if wbfilter ne '3950' then return, ashifts
+  if wbfilter ne '3950' || keyword_set(noaligncont) then return, ashifts
   ;; Return zero shifts for other wavelength bands.
 
   ;; Get wavelength-variable shifts based on continuum vs wideband
