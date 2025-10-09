@@ -153,6 +153,8 @@
 ;    2022-09-04 : MGL. CRISP --> RED. New keyword circular_fov.
 ;
 ;    2025-02-20 : MGL. Adapt to new camera alignment model.
+; 
+;    2025-10-09 : MGL. New keyword no_intensitycorr_timecheck.
 ;
 ;-
 pro red::make_scan_cube, dir $
@@ -171,6 +173,7 @@ pro red::make_scan_cube, dir $
                          , mosaic = mosaic $
                          , nocavitymap = nocavitymap $
                          , nocrosstalk = nocrosstalk $
+                         , no_intensitycorr_timecheck = no_intensitycorr_timecheck $
                          , nomissing_nans = nomissing_nans $
                          , nopolarimetry = nopolarimetry $
                          , norotation = norotation $
@@ -307,8 +310,8 @@ pro red::make_scan_cube, dir $
     dt = strtrim(fxpar(wbghdr, 'DATE-AVG'), 2)
     avg_ts = (strsplit(dt, 'T', /extract))[1]
     avg_time = red_time2double(avg_ts)
-    pfls = file_search(self.out_dir + '/prefilter_fits/Crisp-T_'+prefilter+ $
-                         '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
+    pfls = file_search(self.out_dir + '/prefilter_fits/*-[NT]_'+prefilter+ $
+                       '_[0-9][0-9]:[0-9][0-9]:[0-9][0-9]*save', count=Npfls)
     if Npfls gt 0 then begin
       tt = dblarr(Npfls)
       ts = strarr(Npfls)
@@ -828,11 +831,11 @@ pro red::make_scan_cube, dir $
         cmap1 = 0.0
         for icam = 0, Nnbcams-1 do begin
 
-          cfile = self.out_dir + 'flats/spectral_flats/' $
-                  + strjoin([nbdetectors[icam] $
-                             , cprefs[icprefs] $
-                             , 'fit_results.sav'] $
-                            , '_')
+          cfile = file_search(self.out_dir + 'flats/spectral_flats/' $
+                              + nbdetectors[icam] + '*'  $
+                              + cprefs[icprefs] $
+                              + '_fit_results.sav', count = Nsearch)
+          if Nsearch ne 1 then stop else cfile = cfile[0] 
           
           if ~file_test(cfile) then begin
             print, inam + ' : Error, calibration file not found -> '+cfile
@@ -881,6 +884,7 @@ pro red::make_scan_cube, dir $
         
         if self.filetype eq 'MOMFBD' then begin
           ;; Crop the cavity map to the FOV of the momfbd-restored images.
+          if n_elements(mr) eq 0 then mr = momfbd_read(wfiles[0], /nam)
           cmap1 = red_crop_as_momfbd(cmap1, mr)
         endif else begin ;; Crop with information from the cfg file
           spl = strsplit(wbgfiles[0],'/',/extract)
@@ -1302,7 +1306,9 @@ pro red::make_scan_cube, dir $
 
     ;; Correct intensity with respect to solar elevation and
     ;; exposure time.
-    self -> fitscube_intensitycorr, filename, intensitycorrmethod = intensitycorrmethod
+    self -> fitscube_intensitycorr, filename $
+       , intensitycorrmethod = intensitycorrmethod $
+       , notimecheck = no_intensitycorr_timecheck
 
     if keyword_set(integer) then begin
       ;; Convert to integers
