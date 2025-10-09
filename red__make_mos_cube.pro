@@ -42,6 +42,10 @@
 ; 
 ;    2025-08-20 : MGL. First version. Based in part on
 ;                 red__quicklook_mosaic.pro.
+;
+;    2025-10-09 : MGL. Call make_scan_cube with
+;                 /no_intensitycorr_timecheck. Use r0 for tile
+;                 weighting.
 ; 
 ;-
 pro red::make_mos_cube, dir $
@@ -128,9 +132,10 @@ pro red::make_mos_cube, dir $
 
         tilenum = long(strmid(rdirs[idir],1, /rev))
         
-        self -> make_scan_cube, rdirs[idir] $
+        self -> red::make_scan_cube, rdirs[idir] $
            , filename = sname $
            , mosaic = tilenum $
+           , /no_intensitycorr_timecheck $
            , overwrite = new_scan_cubes $
            , odir = sdir $
            , scanno = '0' $
@@ -205,6 +210,8 @@ pro red::make_mos_cube, dir $
   ;; the max.
   Nx = max(red_fitsgetkeyword_multifile(sfiles, 'NAXIS1'))
   Ny = max(red_fitsgetkeyword_multifile(sfiles, 'NAXIS2'))
+
+  r0 = red_fitsgetkeyword_multifile(sfiles, 'ATMOS_R0') 
 
   ;; Get date_avg from file headers
   date_avg = red_fitsgetkeyword_multifile(sfiles, 'DATE-AVG', count = Ndates)
@@ -336,8 +343,6 @@ pro red::make_mos_cube, dir $
   gridtiles = [8, 16, 32, 64, 84]
   gridclips = [12, 8,  4,  2 , 1]
 
-  grids = fltarr(2, gridtiles[-1], gridtiles[-1], Ntiles)
-  
   for itile = 0, Ntiles-1 do begin
 
     red_progressbar, itile, Ntiles, 'Mosaic WB tile '+red_stri(itile)
@@ -355,20 +360,19 @@ pro red::make_mos_cube, dir $
 ;    ury2 = lly2 + Ny/fac - 1
 
 
+    ;; Scale the weights with average r0 squared for each tile cube,
+    ;; in order to give more weight to better tiles.
     if fac eq 1 then begin
-;          tiles[llx2 : urx2, lly2 : ury2] = images[*, *, itile]
       imap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = mask * wbims[*, *, itile]
-      wmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = mask * weight
+      wmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = mask * weight * r0[itile]^2
       mmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = mask
     endif else begin
-;          tiles[llx2 : urx2, lly2 : ury2] = congrid( images[*, *, itile] $
-;          , Nx/fac, Ny/fac, cubic = -0.5 )
-      imap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = congrid( masks[*, *, itile] * wbims[*, *, itile] $
-                                                                               , Nx/fac, Ny/fac, cubic = -0.5 )
-      wmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = congrid( masks[*, *, itile] * weights[*, *, itile] $
-                                                                               , Nx/fac, Ny/fac, cubic = -0.5 ) >0
-      mmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] = congrid( masks[*, *, itile] $
-                                                                               , Nx/fac, Ny/fac, cubic = -0.5 ) $
+      imap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] $
+         = congrid( mask * wbims[*, *, itile], Nx/fac, Ny/fac, cubic = -0.5 )
+      wmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] $
+         = congrid( mask * weight * r0[itile]^2, Nx/fac, Ny/fac, cubic = -0.5 ) >0
+      mmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] $
+         = congrid( mask, Nx/fac, Ny/fac, cubic = -0.5 ) $
          * (wmap[llx[itile] : urx[itile], lly[itile] : ury[itile], itile] gt 0)
     endelse
     
@@ -379,7 +383,10 @@ pro red::make_mos_cube, dir $
   
   qq = Ntiles <9
   colors = red_distinct_colors(qq, /num)
-  if Ntiles gt 9 then colors=[colors,colors[0:Ntiles-10]]
+  while n_elements(colors) lt Ntiles do colors = [colors, colors]
+  colors = colors[0:Ntiles-1]
+  
+;  if Ntiles gt 9 then colors=[colors,colors[0:Ntiles-10]]
 
   xcp = median(diskpos[0, *]) - Sx*image_scale/2.
   ycp = median(diskpos[1, *]) - Sy*image_scale/2.
@@ -554,10 +561,16 @@ pro red::make_mos_cube, dir $
 
       red_missing, ref, /inplace, missing_type_wanted = 'median'
       red_missing, im,  /inplace, missing_type_wanted = 'median'
-      
-      grids[*, *, *, ord[itile]] = rdx_cdsgridnest(ref/median(ref), im/median(im), gridtiles, gridclips)
-      
-      
+
+      if n_elements(grids) eq 0 then begin
+        thisgrid = rdx_cdsgridnest(ref/median(ref), im/median(im), gridtiles, gridclips)
+        dims = size(thisgrid, /dim)
+        grids = fltarr([dims, Ntiles])
+        grids[*, *, *, ord[itile]] = thisgrid
+      endif else begin
+        grids[*, *, *, ord[itile]] = rdx_cdsgridnest(ref/median(ref), im/median(im), gridtiles, gridclips)
+      endelse
+        
       red_progressbar, itile, Ntiles, 'Add tile '+red_stri(ord[itile])+' to the mosaic : apply stretch'
       im = rdx_cstretch(imap[llx[ord[itile]] : urx[ord[itile]], lly[ord[itile]] : ury[ord[itile]], ord[itile]] $
                         , grids[*, *, *, ord[itile]], nthreads=nthreads)
@@ -593,7 +606,7 @@ pro red::make_mos_cube, dir $
 ;  tmp = red_histo_opt(wbmosaic[indx], cmin = cmin, cmax = cmax)
 
 ;  red_show, bytscl(wbmosaic >cmin <cmax) ;, /scroll
-  red_show, wbmosaic, /opt 
+  red_show, wbmosaic, /opt, /scroll
 
   dims = [size(wbmosaic, /dim), Ntuning, Nstokes, 1]
 
@@ -635,7 +648,7 @@ pro red::make_mos_cube, dir $
   ;; tiles.  
 
   for ituning = 0, Ntuning-1 do begin
-       for istokes = 0, Nstokes-1 do begin
+    for istokes = 0, Nstokes-1 do begin
 
       print
       print, '(ituning,istokes) = ('+red_stri(ituning)+','+red_stri(istokes)+')'
