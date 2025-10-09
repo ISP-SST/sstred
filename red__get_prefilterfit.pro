@@ -214,7 +214,8 @@ pro red::get_prefilterfit, states $
 
       ;; N camera (CHROMIS)
       
-      pfile = self.out_dir + '/prefilter_fits/chromis_' + unbprefs[inbpref] + fitpref_t + 'prefilter.idlsave'
+      ;;pfile = self.out_dir + '/prefilter_fits/chromis_' + unbprefs[inbpref] + fitpref_t + 'prefilter.idlsave'
+      pfile = self.out_dir + '/prefilter_fits/chromis_' + uprefs[ipref] + fitpref_t + 'prefilter.idlsave'
       if ~file_test(pfile) then begin
         print, inam + ' : prefilter file not found: '+pfile
         return
@@ -241,11 +242,24 @@ pro red::get_prefilterfit, states $
 ;      print, 'Wave shifts: ', inbpref, ' ', prefilters[ipref], wave_shift
 ;      wave_shifts[idxpref] = wave_shift
       
-      if n_elements(prefilter_curve) eq 1 then begin
-        prefilter_curve[idxpref] = prf.pref
-      endif else begin
-        prefilter_curve[idxpref] = red_intepf(prf.wav, prf.pref, wav[idxpref]*1.d10)
-      endelse
+      case !true of
+
+        n_elements(prefilter_curve) eq 1 : prefilter_curve[idxpref] = prf.pref
+
+        array_equal(prf.wav , states[idxpref].tun_wavelength*1.d10) : prefilter_curve[idxpref] = prf.pref
+
+        else :  begin
+          prefilter_curve[idxpref] = red_intepf(prf.wav, prf.pref, states[idxpref].tun_wavelength*1.d10)
+        endelse
+
+      endcase
+      
+;      if n_elements(prefilter_curve) eq 1 then begin
+;        prefilter_curve[idxpref] = prf.pref
+;      endif else begin
+;        ;;prefilter_curve[idxpref] = red_intepf(prf.wav, prf.pref, wav[idxpref]*1.d10)
+;        prefilter_curve[idxpref] = red_intepf(prf.wav, prf.pref, states[idxpref].tun_wavelength*1.d10)
+;      endelse
       
     endelse 
 
