@@ -177,25 +177,25 @@ pro red_missing, image $
   
       mask1 = image eq image[ 0, 0]                                   ; Same intensity as corner 1
       label = red_centerpic(mask1, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
-      label = label_region(label)                                     ; Label regions
+      label = label_region(label, /ulong)                             ; Label regions
       label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
       mask1 = label eq label[0, 0]                                    ; Connected to corner 1
 
       mask2 = image eq image[ 0,-1]                                   ; Same intensity as corner 2
       label = red_centerpic(mask2, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
-      label = label_region(label)                                     ; Label regions
+      label = label_region(label, /ulong)                             ; Label regions
       label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
       mask2 = label eq label[ 0,-1]                                   ; Connected to corner 2
 
       mask3 = image eq image[-1, 0]                                   ; Same intensity as corner 3
       label = red_centerpic(mask3, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
-      label = label_region(label)                                     ; Label regions
+      label = label_region(label, /ulong)                             ; Label regions
       label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
       mask3 = label eq label[-1, 0]                                   ; Connected to corner 3
 
       mask4 = image eq image[-1,-1]                                   ; Same intensity as corner 4
       label = red_centerpic(mask4, xSize = Nx+8, ySize = Ny+8, z = 1) ; Add some rows and columns
-      label = label_region(label)                                     ; Label regions
+      label = label_region(label, /ulong)                             ; Label regions
       label = label[4:-5, 4:-5]                                       ; Remove extra rows and columns
       mask4 = label eq label[-1,-1]                                   ; Connected to corner 4
 
