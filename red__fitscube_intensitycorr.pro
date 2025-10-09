@@ -218,7 +218,11 @@ pro red::fitscube_intensitycorr, filename $
     endif
   endif else fitpref_t = '_'+fitpref_time+'_'
 
-  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave'
+;  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave'
+  pfile = file_search(self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave' $
+                      , /fold, count = Nsearch)
+  if Nsearch ne 1 then stop else pfile = pfile[0]
+  
   restore, pfile
   t_calib = double(prf.time_avg)
   xposure = double(prf.xposure)
