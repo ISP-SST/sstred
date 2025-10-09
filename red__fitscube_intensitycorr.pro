@@ -48,11 +48,14 @@
 ; 
 ;   2021-10-19 : MGL. Use NB intensity fit for correction if
 ;                available. 
+; 
+;   2025-10-09 : MGL. New keyword notimecheck.
 ;
 ;-
 pro red::fitscube_intensitycorr, filename $
+                                 , fitpref_time = fitpref_time $
                                  , intensitycorrmethod = corrmethod_in $
-                                 , fitpref_time = fitpref_time 
+                                 , notimecheck = notimecheck
   
 
   inam = red_subprogram(/low, calling = inam1)
@@ -309,7 +312,7 @@ pro red::fitscube_intensitycorr, filename $
 
     
     ;; Check that we are not extrapolating (too far).
-    if t_cube_beg lt time_beg or t_cube_end gt time_end then begin
+    if ~keyword_set(notimecheck) && ( t_cube_beg lt time_beg or t_cube_end gt time_end ) then begin
       s = ''
       print, inam + "It looks like your a->fit_[n/w]b_diskcenter step didn't find data"
       print, "for a long enough time range. Either your prefilter fit calibration data"
@@ -348,7 +351,7 @@ pro red::fitscube_intensitycorr, filename $
       return
     endif
 
-    if t_calib+3600 lt t_cube_beg or t_calib-3600 gt t_cube_end then begin
+    if ~keyword_set(notimecheck) && ( t_calib+3600 lt t_cube_beg || t_calib-3600 gt t_cube_end ) then begin
       print
       print, inam+' : '
       print, 'Time of prefilter fit is too far from your observations.'
