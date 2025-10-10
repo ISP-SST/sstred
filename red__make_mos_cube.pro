@@ -60,7 +60,8 @@ pro red::make_mos_cube, dir $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-
+  if keyword_set(new_scan_cubes) || keyword_set(redemodulate) then overwrite = !true
+  
   ;; Make prpara
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, no_cmap
