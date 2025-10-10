@@ -826,7 +826,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_wb/wb....fits' ; If suitable target"
   printf, Slun, "a -> make_nb_cube, 'cubes_wb/wb....fits', nthreads=nthreads"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/results/', /circular_fov"
+  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/results/', /circular_fov, nthreads=nthreads"
   
   free_lun, Clun
   free_lun, Slun
