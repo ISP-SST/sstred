@@ -86,11 +86,15 @@
 ;
 ;    2025-04-03: MGL. New keyword ampm_cutoff (for compatibility
 ;                only).
-; 
+;
+;    2025-10-16: MGL. New keyword lapalma_setup (for compatibility
+;                only).
+;
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             , ampm_cutoff = ampm_cutoff $
                             , calibrations_only = calibrations_only $
+                            , lapalma_setup = lapalma_setup $
                             , no_observer_metadata = no_observer_metadata $
                             , old_dir = old_dir 
   
