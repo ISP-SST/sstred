@@ -581,7 +581,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
-    printf, Slun, 'a -> pinholecalib'
+    if isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
+      printf, Slun, 'a -> pinholecalib'
+    endif else begin
+      ;; The new polywarp mechanism does not work with the aspect
+      ;; ratio of the old CHROMIS cameras. Yet. Edit this when fixed!
+      printf, Slun, 'a -> pinholecalib, /no_polywarp'
+    endelse
 ;    printf, Slun, 'a -> diversitycalib'
     printf, Slun, ''
   endif
