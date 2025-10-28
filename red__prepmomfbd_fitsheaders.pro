@@ -142,7 +142,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
       endelse 
 
       image_scale = self -> imagescale(prefs[ipref])
-     
+      
       ;; Parse all config files, make fitsheaders for all output files
       for icfg = 0, Ncfg-1 do begin
 
@@ -227,7 +227,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
         ;; Parse objects
         tmp = where(strmatch(cfgkeys.toarray(),'OBJECT*'),Nobj)
-
+         
         for iobj = 0, Nobj-1 do begin
 
           ;; Loop over objects, iobj = 0 is the WB anchor object
@@ -254,12 +254,12 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             if itrace gt 0 then output_file = red_strreplace(output_file, thisdetector, wb_detector)
             header_file = cfg_dir + output_file + '.fitsheader'
             case file_type of
-               'MOMFBD' : output_file += '.momfbd'
-               'ANA'    : output_file += '.f0'
-               'FITS'   : output_file += '.fits'
-               else: stop
+              'MOMFBD' : output_file += '.momfbd'
+              'ANA'    : output_file += '.f0'
+              'FITS'   : output_file += '.fits'
+              else: stop
             endcase
-         
+            
             prpara = Gprpara[*] ; Start from the global parameters
 
             ;; Loop keywords
@@ -337,6 +337,7 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                 endif
               endfor            ; ifile
             endif else begin
+
               ;; NB objects
               undefine, fnames
               chaninfo = redux_cfggetkeyword(objinfo,'CHANNEL'+strtrim(0, 2))
@@ -352,18 +353,22 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
                 endif else begin
                   ;; TRACE WB, possibly with PD - look for matching WB data
                   this_template = red_strreplace(filename_template, thisdetector, wb_detector)
-                  this_data_dir = red_strreplace(image_data_dir, file_basename(image_data_dir), wb_camera)
-                  fnames_maybe = this_data_dir + '/' $
-                                 + string(file_nums[indx], format='(%"'+this_template+'")')
+;                  this_data_dir = red_strreplace(image_data_dir, file_basename(image_data_dir), wb_camera)
+;                  fnames_maybe = this_data_dir + '/' $
+;                  + string(file_nums[indx], format='(%"'+this_template+'")')
+                  fnames_maybe = wb_image_data_dir + '/' $
+                                 + string(file_nums[indx], format='(%"'+wb_filename_template+'")')
                   for iname = 0, n_elements(indx)-1 do begin
                     if file_test(fnames_maybe[iname]) then red_append, fnames, fnames_maybe[iname]
                   endfor        ; iname
                   if has_diversity then begin
                     ;; PD image
-                    this_template = red_strreplace(filename_template, thisdetector, pd_detector)
-                    this_data_dir = red_strreplace(image_data_dir, file_basename(image_data_dir), pd_camera)
-                    fnames_maybe = this_data_dir + '/' $
-                                   + string(file_nums[indx], format='(%"'+this_template+'")')
+;                    this_template = red_strreplace(filename_template, thisdetector, pd_detector)
+;                    this_data_dir = red_strreplace(image_data_dir, file_basename(image_data_dir), pd_camera)
+;                    fnames_maybe = this_data_dir + '/' $
+;                                   + string(file_nums[indx], format='(%"'+this_template+'")')
+                    fnames_maybe = pd_image_data_dir + '/' $
+                                   + string(file_nums[indx], format='(%"'+pd_filename_template+'")')
                     for iname = 0, n_elements(indx)-1 do begin
                       if file_test(fnames_maybe[iname]) then red_append, fnames, fnames_maybe[iname]
                     endfor      ; iname
@@ -399,10 +404,10 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
             head = red_sumheaders(fnames, discard = discard)
             if has_diversity then prmode = 'Phase Diversity' else undefine, prmode 
             self -> headerinfo_addstep, head $
-                                        , prstep = 'MOMFBD' $
-                                        , prpara = prpara $
-                                        , prmode = prmode $
-                                        , addlib = 'momfbd/redux' 
+               , prstep = 'MOMFBD' $
+               , prpara = prpara $
+               , prmode = prmode $
+               , addlib = 'momfbd/redux' 
             ;; At this point we don't know which program will be used,
             ;; momfbd or redux. Select one (if possible) and add version
             ;; number when reading the output.
@@ -416,9 +421,9 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
 
             if keyword_set(mosaic) then begin            
 
-               red_fitsaddkeyword, anchor = anchor, head, 'MOS_TILE', mos_tile
+              red_fitsaddkeyword, anchor = anchor, head, 'MOS_TILE', mos_tile
               
-             endif
+            endif
 
             red_fitsaddkeyword, anchor = anchor, head, 'FILLED', 1, 'Missing pixels have been filled.'
             red_fitsaddkeyword, anchor = anchor, head, 'BTYPE', 'Intensity'
