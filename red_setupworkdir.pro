@@ -727,11 +727,25 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
     config_file = red_add_suffix( cfgfile,    suffix = suffix )
     script_file = red_add_suffix( scriptfile, suffix = suffix )
 
-    if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
-      ;; Look for already summed data in a reduc/ subdirectory.
-      sum_dir = root_dir + 'reduc/' + instrument + '/'
-      if ~file_test(sum_dir, /directory) then undefine, sum_dir
-    endelse
+    case n_elements(old_dir) of
+
+      0 : begin
+        ;; Look for already summed data in a reduc/ subdirectory.
+        sum_dir = root_dir + 'reduc/' + instrument + '/'
+        if ~file_test(sum_dir, /directory) then undefine, sum_dir
+      end
+
+      1 : if old_dir[0] ne '' then sum_dir = old_dir
+
+      else : sum_dir = old_dir
+      
+    endcase
+    
+;    if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
+;      ;; Look for already summed data in a reduc/ subdirectory.
+;      sum_dir = root_dir + 'reduc/' + instrument + '/'
+;      if ~file_test(sum_dir, /directory) then undefine, sum_dir
+;    endelse
     
     if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
       ;; We will now attempt to copy existing sums of calibration data.
