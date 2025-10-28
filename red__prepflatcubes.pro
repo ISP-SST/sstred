@@ -64,6 +64,8 @@
 ;
 ;   2024-11-02 : JdlCR. Modifications for new
 ;                demodulation/flat-fielding scheme
+; 
+;   2025-10-27 : MGL. Exclude polcal flats.
 ;
 ;-
 pro red::prepflatcubes, flatdir = flatdir $
@@ -135,7 +137,7 @@ pro red::prepflatcubes, flatdir = flatdir $
       print, inam + ' : working on scans with WB prefilter -> '+upref
       
       sindx = where(states.prefilter eq upref, Nstates)
-
+      
       if Nstates gt 0 then begin
 
         sstates = states[sindx]
@@ -169,8 +171,55 @@ pro red::prepflatcubes, flatdir = flatdir $
             immt = red_readdata(pname)
             immt = red_invert_mmatrix(temporary(immt))
           endif
+
+
+          if polcal_flatfielding then begin
+            ;; We probably want to exclude polcal flats from the
+            ;; flatcube, as it is usually far outside the line. This
+            ;; requires checking the polcal tuning against the tunings
+            ;; of the flats, and - if there are matches - against all
+            ;; science data.
+
+            ;; The polcal cube (polc) has no tuning info so check the
+            ;; polcal sums.
+            pfiles = file_search('polcal_sums/*-R/cam*_'+upref+'_*pols.fits', count = Npolcal)
+            if Npolcal gt 0 then begin
+              phdr = headfits(pfiles[0])
+              pstate = fxpar(phdr, 'STATE')
+              red_extractstates, pstate, wav = ptuning 
+              tmp = where(sstates.tuning eq ptuning[0], Nmatch, complement = kindx)
+              if Nmatch gt 0 then begin
+                ;; There are flats for the polcal tuning. We want to
+                ;; exclude them from the flatcube if there are no
+                ;; science data with that tuning.
+                e_such_data = 0 ; Assume there are no such science data until we find them
+                red_message, 'Checking for science data with polcal tuning ('+ptuning+').'
+                for idir = 0L, n_elements(*self.data_dirs)-1 do begin
+                  ;; The raw_search method does not seem to support
+                  ;; filtering on tuning at the moment so just search
+                  ;; for scan 0 and check the tunings.
+                  dfiles = self -> raw_search((*self.data_dirs)[idir] + '/' $
+                                              + ((typename(self)).tolower()).capwords() + '-R/' $
+                                              , scannos = 0)
+                  self -> extractstates, dfiles, dstates
+                  Nmatch = round(total(dstates.tuning eq ptuning[0] $
+                                       and self -> match_prefilters(upref, dstates.prefilter)))
+                  ;; If Nmatch is non-zero we do have science data
+                  ;; with the polcal tuning. So we do not want to
+                  ;; exclude the tuning from the flatcube.
+                  e_such_data OR= (Nmatch gt 0)
+                  if e_such_data then break ; No need to check more data
+                endfor          ; idir
+                if ~e_such_data then begin
+                  red_message, 'Found no science data with polcal tuning, removing polcal flats from the cubes.'
+                  sstates = sstates[kindx]
+                  Nstates = n_elements(kindx)
+                endif
+              endif             ; Nmatch
+            endif               ; Npolcal
+          endif                 ; polcal_flatfielding
           
-        endif
+        endif                   ; polarized
 
         ;; Load backscatter data?
         if ~keyword_set(no_descatter) AND self.dodescatter AND (upref eq '8542' or upref eq '7772') then begin
