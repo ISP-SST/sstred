@@ -103,35 +103,39 @@ pro red_setupworkdir_copy, sourcedir, subdir, workdir, copy = copy
         subdirs = file_search(searchdir[idir]+'/*', count = Nsubdirs)
         for isubdir = 0, Nsubdirs-1 do begin
           files = file_search(subdirs[isubdir]+'/cam*', count = Nfiles)
-          targetsubdir = targetdir + file_basename(red_uniquify(file_dirname(files)))+'/'
-          file_mkdir, targetsubdir
-          if ~keyword_set(copy) then begin
-            ;; print, 'Link subdirectories '+strjoin(file_basename(subdirs), ',')+' from '+searchdir[idir]
-            print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
-            file_link, files, targetsubdir, /allow_same
-          endif else begin
-            ;; print, 'Copy subdirectories '+strjoin(file_basename(subdirs), ',')+' from '+searchdir[idir]
-            print, 'Copy '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
-            file_copy, files, targetsubdir, /overwrite
-          endelse
+          if size(files,/n_dim) gt 0 then begin
+            targetsubdir = targetdir + file_basename(red_uniquify(file_dirname(files)))+'/'
+            file_mkdir, targetsubdir
+            if ~keyword_set(copy) then begin
+              ;; print, 'Link subdirectories '+strjoin(file_basename(subdirs), ',')+' from '+searchdir[idir]
+              print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
+              file_link, files, targetsubdir, /allow_same
+            endif else begin
+              ;; print, 'Copy subdirectories '+strjoin(file_basename(subdirs), ',')+' from '+searchdir[idir]
+              print, 'Copy '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
+              file_copy, files, targetsubdir, /overwrite
+            endelse
+          endif
         endfor                  ; isubdir
       end
 
       else : begin
         ;; Copy/link files for other types of summed calibration data
         files = file_search(searchdir[idir]+'/cam*', count = Nfiles)
-        if subdir eq 'flats' then begin
-          ;; Avoid copying output from fitgains
-          files = files[where(~strmatch(files, '*cavityfree*'), Nfiles)]
-        endif
-        if Nfiles gt 0 then begin
-          if ~keyword_set(copy) then begin
-            print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
-            file_link, files, targetdir, /allow_same
-          endif else begin
-            print, 'Copy '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
-            file_copy, files, targetdir, /overwrite
-          endelse
+        if size(files,/n_dim) gt 0 then begin
+          if subdir eq 'flats' then begin
+            ;; Avoid copying output from fitgains
+            files = files[where(~strmatch(files, '*cavityfree*'), Nfiles)]
+          endif
+          if Nfiles gt 0 then begin
+            if ~keyword_set(copy) then begin
+              print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
+              file_link, files, targetdir, /allow_same
+            endif else begin
+              print, 'Copy '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
+              file_copy, files, targetdir, /overwrite
+            endelse
+          endif
         endif
       end
       
