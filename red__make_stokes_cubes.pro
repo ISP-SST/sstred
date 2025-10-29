@@ -651,9 +651,9 @@ pro red::make_stokes_cubes, dir, scanno $
 ;        print, snames[ituning]
 ;        stop
 
-        help, these_nbrindx,  nbrstates, nbtstates, wbstates, nbrstates[these_nbrindx],  nbtstates[these_nbtindx], wbstates[these_wbindx]
+;        help, these_nbrindx,  nbrstates, nbtstates, wbstates, nbrstates[these_nbrindx],  nbtstates[these_nbtindx], wbstates[these_wbindx]
 
-        if n_elements(wbstates[these_wbindx]) lt 4 then stop
+;        if n_elements(wbstates[these_wbindx]) lt 4 then stop
         
         self -> demodulate, these_snames[ituning], immr, immt $
            , smooth_by_subfield = smooth_by_subfield $ 
