@@ -630,7 +630,7 @@ pro red::make_nb_cube, wcfile $
 ;                          , '_')
 
         cfile = file_search(self.out_dir + 'flats/spectral_flats/' $
-                            + nbdetectors[icam] + '*' $
+                            + nbdetectors[icam] + '_' $
                             + cprefs[icprefs] + '_fit_results.sav', count = Nsearch)
 
         if Nsearch ne 1 then stop else cfile = cfile[0]
