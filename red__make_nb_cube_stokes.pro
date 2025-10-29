@@ -235,7 +235,7 @@ pro red::make_nb_cube_stokes, wcfile $
 
   instrument = (strsplit(wbcamera, '-', /extract))[0]
   
-  if instrument eq 'Chromis' && isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
+  if instrument eq 'Chromis' && self.isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
     ;; This can be remove when Pit has had time to do telescope
     ;; polarimetry calibration for Chromis
     notelmat = 1
