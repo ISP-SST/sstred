@@ -179,7 +179,7 @@ pro red::link_data, all_data = all_data $
             continue
             ;; Only one prefilter?
             if keyword_set(pref) then begin
-              idx = where(states.prefilter eq pref, Np)
+              idx = where(strmatch(states.prefilter,pref), Np)
               if Np eq 0 then begin
                 print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
                 continue
@@ -191,7 +191,7 @@ pro red::link_data, all_data = all_data $
           self->extractstates_nondb, files, states
           ;; Only one prefilter?
           if keyword_set(pref) then begin
-            idx = where(states.prefilter eq pref, Np)
+            idx = where(strmatch(states.prefilter,pref), Np)
             if Np eq 0 then begin
               print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
               continue
