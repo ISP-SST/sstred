@@ -232,6 +232,11 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   if Ndarkdirs gt 0 then begin
     cams = file_basename(darksubdirs)
+    detectors = strarr(n_elements(cams))
+    for icam = 0, n_elements(cams)-1 do begin
+      f = file_search(darksubdirs[icam]+'/*fits')
+      detectors[icam] = red_fitsgetkeyword(f[0], 'DETECTOR')
+    endfor                      ; icam
   endif else begin
 
     if ~e_darksums then stop
@@ -239,15 +244,19 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     dnames = file_search(work_dir+'/darks/cam*fits', count = Ndarks)
     if Ndarks eq 0 then stop
     
-    cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
+    cams      = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
+    detectors = red_fitsgetkeyword_multifile(dnames, 'DETECTOR', count = cnt)
     if total(cnt) eq 0 then stop
 
   endelse
-  cams = red_uniquify(cams)
+  indx = uniq(cams, sort(cams))
+  cams = cams[indx]
+  detectors = detectors[indx]
 
   ;; We want the WB camera first!
   indx = sort(abs(reform(byte(strmid(cams,0,1,/reverse)))  - (byte('W'))[0]))
   cams = cams[indx]
+  detectors = detectors[indx]
 
   is_wb = strmatch(cams, (instrument.tolower()).capwords()+'-[WD]')          
   is_pd = strmatch(cams, (instrument.tolower()).capwords()+'-D')
@@ -701,7 +710,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
         ;; CRISP2 WB flats have a patch that makes a "hole" in the
         ;; gains if not taken special care of.
-        printf, Slun, "wbflats = file_search('flats/'"+cams[0]+"'_*fits')   ; WB flats special" 
+        printf, Slun, "wbflats = file_search('flats/"+detectors[0]+"_*fits') ; WB flats special" 
         printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=50.0, bad=1.0, flatmin=0.01, nthreads = nthreads,files=wbflats"
       end
       else : stop
