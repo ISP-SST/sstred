@@ -130,6 +130,8 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     if n_idx eq 0 then continue
     ;; process the ref image, i.e., fit the grid
     this_ref_state = ref_states_unique[i_ref]
+    print, '-----'
+    red_message, this_ref_state.fpi_state
     ref_img = red_readdata(this_ref_state.filename, /silent)
     ref_siz = size(ref_img, /dim)
     ;;; For CRISP wideband mask the stronger distorted corners
@@ -170,7 +172,7 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
         ref_lpos = ref_pos[*, ref_lind] 
         if red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l1
       endfor
-      print, inam, ' : Unable to locate the reference pinholes! Mark them manually'
+      print, inam, ' : Unable to locate the reference pinholes for '+this_ref_state.camera+'! Mark them manually'
       repeat begin
         ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes')
         ref_lpos = ref_pos[*, ref_lind]
@@ -268,7 +270,7 @@ found_l1:
           img_lpos = img_pos[*, img_lind] 
           if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
         endfor                  ; i,j
-        print, inam, ' : Unable to locate the reference pinholes. Try marking them manually'
+        print, inam, ' : Unable to locate the reference pinholes for '+state.camera+'. Try marking them manually'
         repeat begin
           img_lind = red_markpinholes(img, img_pos, title='Dependent Pinholes')
           img_lpos = img_pos[*, img_lind]
