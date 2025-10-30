@@ -31,11 +31,17 @@ pro red::summarize_datadir, dirs
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  if ptr_valid(self.flat_dir)  then red_append, available_dirs, *self.flat_dir
-  if ptr_valid(self.data_dirs) then red_append, available_dirs, *self.data_dirs
+  if ptr_valid(self.flat_dir)  then begin
+    red_append, available_dirs, *self.flat_dir
+    top_flatdir = file_dirname((*self.flat_dir)[0])
+  endif
+  
+  if ptr_valid(self.data_dirs) then begin
+    red_append, available_dirs, *self.data_dirs
+    top_datadir = file_dirname((*self.data_dirs)[0])
+  endif
 
-  top_flatdir = file_dirname((*self.flat_dir)[0])
-  top_datadir = file_dirname((*self.data_dirs)[0])
+  if n_elements(available_dirs) eq 0 then return
   
   if n_elements(dirs) eq 0 then begin
     
@@ -50,16 +56,20 @@ pro red::summarize_datadir, dirs
     indx = where(suba ne -1, Ndirs)
     if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
 
-    ;; Any flats timestamps ?
-    match2, top_flatdir+'/'+dirs, available_dirs, suba, subb
-    indx = where(suba ne -1, Ndirs)
-    if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
-
-    ;; Any science-data timestamps?
-    match2, top_datadir+'/'+dirs, available_dirs, suba, subb
-    indx = where(suba ne -1, Ndirs)
-    if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
-
+    if n_elements(top_flatdir) gt 0 then begin
+      ;; Any flats timestamps ?
+      match2, top_flatdir+'/'+dirs, available_dirs, suba, subb
+      indx = where(suba ne -1, Ndirs)
+      if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
+    endif
+    
+    if n_elements(top_datadir) gt 0 then begin
+      ;; Any science-data timestamps?
+      match2, top_datadir+'/'+dirs, available_dirs, suba, subb
+      indx = where(suba ne -1, Ndirs)
+      if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
+    endif
+    
     Ndirs = n_elements(use_dirs)
     if Ndirs eq 0 then return
 
@@ -211,6 +221,9 @@ pro red::summarize_datadir, dirs
             ;;stat = strmid(ufullstat[istate]+'   ', 0, 19)
             stat = strmid(ustat[istate]+'   ', 0, 19)
           end
+          'CRISP2' : begin
+            stat = strmid(ustat[istate]+'   ', 0, 19)
+          end
         endcase
 
         Nframes += Nexp
@@ -270,6 +283,9 @@ pro red::summarize_datadir, dirs
             stat = strmid(ustat[istate]+'   ', 0, 15)
           end
           'CRISP' : begin
+            stat = strmid(ufullstat[istate]+'   ', 0, 19)
+          end
+          'CRISP2' : begin
             stat = strmid(ufullstat[istate]+'   ', 0, 19)
           end
         endcase
