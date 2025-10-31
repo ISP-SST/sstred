@@ -257,7 +257,7 @@ pro red::demodulate, outname, immr, immt $
   Nx = x1 - x0 + 1
   Ny = y1 - y0 + 1
 
-  prefilter = nbstates[0].prefilter
+  prefilter = nbtstates[0].prefilter
 ;  camw = wbstates[0].camera
 ;  camt = nbtstates[0].camera
 ;  camr = nbrstates[0].camera
