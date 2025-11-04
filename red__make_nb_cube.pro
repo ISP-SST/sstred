@@ -44,6 +44,9 @@
 ;   2025-07-24 : MGL. First version as a common method for CRISP,
 ;                CRISP2, and CHROMIS, both Stokes cubes and cubes
 ;                without polarimetry. 
+;
+;   2025-11-02 : MGL. If wcfile undefined, let user select an existing
+;                file.
 ; 
 ;-
 pro red::make_nb_cube, wcfile $
@@ -86,6 +89,27 @@ pro red::make_nb_cube, wcfile $
   endif
   if n_elements(nthreads) eq 0 then nthreads = 1 ; Default single thread
 
+  if n_elements(wcfile) eq 0 then begin
+    wcfiles = file_search('cubes_wb/*fits', count = Nfiles)
+    if Nfiles eq 0 then return
+    finfo = file_info(wcfiles)
+    modtimes = finfo.mtime
+    wcindx = sort(modtimes)
+    wcfiles = wcfiles[wcindx]
+    modtimes = modtimes[wcindx]
+    timestamps = strarr(Nfiles)
+    for i = 0, Nfiles-1 do begin
+      get_date,dte,systime(elaps=modtimes[i]),/time
+      timestamps[i] = dte
+    endfor
+    tmp = red_select_subset(timestamps + ' '+wcfiles, default = Nfiles-1 $
+                            , indx = sindx $
+                            , maxcount = 1 $
+                            , qstring = 'Select a WB cube')
+    wcfile = wcfiles[sindx[0]]
+    print, wcfile
+  endif
+  
   ;; Make prpara
   red_make_prpara, prpara, clips         
   red_make_prpara, prpara, integer
