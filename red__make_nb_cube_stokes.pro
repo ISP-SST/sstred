@@ -176,32 +176,32 @@ pro red::make_nb_cube_stokes, wcfile $
                               , ashifts = ashifts $
                               , clips = clips $
                               , cshift_mean = cshift_mean $
+                              , date_avg_array = date_avg_array  $
+                              , date_beg_array = date_beg_array  $ 
+                              , date_end_array = date_end_array  $
+                              , exp_array = exp_array $
                               , fileassoc = fileassoc $
                               , filename = filename $
+                              , fitpref_time = fitpref_time $
+                              , fnumsum_array  = fnumsum_array $
                               , fov_mask = fov_mask $
                               , nocavitymap = nocavitymap $
+                              , nsum_array = nsum_array    $  
                               , nthreads = nthreads $
                               , odir = odir $
                               , pertuningfiles = pertuningfiles $
                               , pertuningstates = pertuningstates $
                               , redemodulate = redemodulate $
                               , remove_smallscale = remove_smallscale $
+                              , sexp_array = sexp_array     $ 
                               , tiles = tiles $
-                              , wbfilename = wbfilename $
+                              , wbcor = wbcor $
                               , wbfileassoc = wbfileassoc $
-                              , wbcor =  wbcor $
-                              , wcs = wcs $
-;
-                              , date_beg_array = date_beg_array  $ 
-                              , date_end_array = date_end_array  $
-                              , date_avg_array = date_avg_array  $
-                              , exp_array      = exp_array       $
-                              , sexp_array     = sexp_array     $ 
-                              , nsum_array     = nsum_array    $  
-                              , fnumsum_array  = fnumsum_array 
+                              , wbfilename = wbfilename $
+                              , wcs = wcs
+                              
 ;;                              , clips = clips  $
 ;;                              , cmap_fwhm = cmap_fwhm $
-;;                              , fitpref_time = fitpref_time $
 ;;                              , integer = integer $
 ;;                              , intensitycorrmethod = intensitycorrmethod $ 
 ;;                              , nearest = nearest $
@@ -218,7 +218,7 @@ pro red::make_nb_cube_stokes, wcfile $
 ;;                              , tiles = tiles $
 ;;                              , wbsave = wbsave
 
-  ;; Name of this method
+                              ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
   ;; Camera/detector identification
@@ -323,7 +323,7 @@ pro red::make_nb_cube_stokes, wcfile $
        , tiles = tiles $
        , nearest = nearest $
        , nthreads = nthreads $
-       , fitpref_time = fitpref_t
+       , fitpref_time = fitpref_time
 
 ;    if n_elements(snames) eq 0 then begin
 ;      Ntuning = n_elements(these_snames)
@@ -634,7 +634,7 @@ pro red::make_nb_cube_stokes, wcfile $
       sexp_array[ituning, iscan] = red_fitsgetkeyword(stokhdr, 'TEXPOSUR')
       nsum_array[ituning, iscan] = red_fitsgetkeyword(stokhdr, 'NSUMEXP')
  ;     stop
-      fnumsum_array[ituning, iscan] = 0 ;fnumsum                             <-------------------------
+      fnumsum_array[ituning, iscan] = red_fitsgetkeyword(stokhdr, 'FNUMSUM') ;fnumsum                             <-------------------------
       
       ;; Apply derot, align, dewarp based on the output from
       ;; make_wb_cube
