@@ -84,11 +84,12 @@ pro red::prepflatcubes, flatdir = flatdir $
   outdir = self.out_dir + '/flats/spectral_flats/'
   file_mkdir, outdir
 
-  ;; Find the narrowband cameras.
-  self -> getdetectors
-  cams = *self.cameras
-  detectors = *self.detectors
-  Ncams = n_elements(cams)
+  ;; Camera/detector identification
+  self -> cameras $
+     , instrument = instrument $
+     , Nnbcams = Nnbcams $
+     , nb_detectors = nbdetectors $
+     , nb_cameras = nbcameras 
 
   ;; Descatter only needed for CRISP with old Sarnoff cameras,
   ;; processed with the CRISP class.
@@ -100,19 +101,17 @@ pro red::prepflatcubes, flatdir = flatdir $
   red_make_prpara, prpara, pref
   red_make_prpara, prpara, no_descatter
   
-  for icam = 0, Ncams-1 do begin
+  for icam = 0, Nnbcams-1 do begin
 
-    if strmatch(cams[icam],'*-[DW]') then continue ; Don't do this for WB cameras
-    
     ;; Find the files (make sure not to get the cavity free flats!)
-    files = file_search(flatdir+'/'+detectors[icam]+'_*[0-9].flat.fits', count = Nfiles)
-
+    files = file_search(flatdir+'/'+nbdetectors[icam]+'_*[0-9].flat.fits', count = Nfiles)
+    
     ;; Check files
     if Nfiles eq 0 then begin
       print, inam+' : No NB files found, returning'
       return
     endif else begin
-      print, inam + ' : '+red_stri(Nfiles)+' NB flats found for '+cams[icam]
+      print, inam + ' : '+red_stri(Nfiles)+' NB flats found for '+nbcameras[icam]
     endelse
     
     self -> extractstates, files, states
@@ -199,16 +198,18 @@ pro red::prepflatcubes, flatdir = flatdir $
                   ;; filtering on tuning at the moment so just search
                   ;; for scan 0 and check the tunings.
                   dfiles = self -> raw_search((*self.data_dirs)[idir] + '/' $
-                                              + ((typename(self)).tolower()).capwords() + '-R/' $
-                                              , scannos = 0)
-                  self -> extractstates, dfiles, dstates
-                  Nmatch = round(total(dstates.tuning eq ptuning[0] $
-                                       and self -> match_prefilters(upref, dstates.prefilter)))
-                  ;; If Nmatch is non-zero we do have science data
-                  ;; with the polcal tuning. So we do not want to
-                  ;; exclude the tuning from the flatcube.
-                  e_such_data OR= (Nmatch gt 0)
-                  if e_such_data then break ; No need to check more data
+                                              + instrument + '-R/' $
+                                              , scannos = 0, count = Nfiles)
+                  if Nfiles gt 0 then begin
+                    self -> extractstates, dfiles, dstates
+                    Nmatch = round(total(dstates.tuning eq ptuning[0] $
+                                         and self -> match_prefilters(upref, dstates.prefilter)))
+                    ;; If Nmatch is non-zero we do have science data
+                    ;; with the polcal tuning. So we do not want to
+                    ;; exclude the tuning from the flatcube.
+                    e_such_data OR= (Nmatch gt 0)
+                    if e_such_data then break ; No need to check more data
+                  endif
                 endfor          ; idir
                 if ~e_such_data then begin
                   red_message, 'Found no science data with polcal tuning, removing polcal flats from the cubes.'
@@ -223,7 +224,7 @@ pro red::prepflatcubes, flatdir = flatdir $
 
         ;; Load backscatter data?
         if ~keyword_set(no_descatter) AND self.dodescatter AND (upref eq '8542' or upref eq '7772') then begin
-          self -> loadbackscatter, detectors[icam], upref, bg, psf
+          self -> loadbackscatter, nbdetectors[icam], upref, bg, psf
         endif
         
         for istate = 0L, Nstates - 1 do begin
@@ -331,7 +332,7 @@ pro red::prepflatcubes, flatdir = flatdir $
         print, 'done'
         
         ;; Save results (separate fits files for old fortran fitgains_ng)
-        firstpart = detectors[icam] + '_' + upref + '_'
+        firstpart = nbdetectors[icam] + '_' + upref + '_'
         doutname = firstpart + 'flats_data.fits'
         woutname = firstpart + 'flats_wav.fits'
         noutname = firstpart + 'filenames.txt'
