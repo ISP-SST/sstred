@@ -153,27 +153,19 @@ pro red::make_stokes_cubes, dir, scanno $
   file_mkdir, stokesdir
 
   ;; Default keywords
-  if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0
+  if n_elements(cmap_fwhm) eq 0 then fwhm = 7.0 else fwhm = cmap_fwhm
   if n_elements(tiles) eq 0 or n_elements(clips) eq 0 then begin
     tiles = [12, 16, 32, 64, 72]
     clips = [12, 8,  4,  2 , 1]
   endif
 
   ;; Camera/detector identification
-  self->getdetectors
-  wbindx      = where(strmatch(*self.cameras,'*-W'))
-  wbcamera    = (*self.cameras)[wbindx[0]]
-  wbdetector  = (*self.detectors)[wbindx[0]]
-  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
-  nbtcamera   = (*self.cameras)[nbtindx[0]]
-  nbtdetector = (*self.detectors)[nbtindx[0]]
-  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
-  nbrcamera   = (*self.cameras)[nbrindx[0]]
-  nbrdetector = (*self.detectors)[nbrindx[0]]
+  self -> cameras $
+     , instrument = instrument $
+     , nbt_camera = nbtcamera $
+     , nbr_camera = nbrcamera $
+     , wb_camera = wbcamera
 
-  instrument = (strsplit(wbcamera, '-', /extract))[0]
-
-  
   case instrument of
     'Crisp' : begin
       ;; We currently do correct for the small scale cavity map in CRISP

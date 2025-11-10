@@ -356,15 +356,12 @@ pro red::make_wb_cube, dirs $
   if keyword_set(limb_data) then autocrop = 0
 
   ;; Camera/detector identification
-  self -> getdetectors
-  wbindx = where(strmatch(*self.cameras, '*-W'))
-  wbcamera = (*self.cameras)[wbindx[0]]
-  wbdetector = (*self.detectors)[wbindx[0]]
+  self -> cameras $
+     , instrument = instrument $
+     , wb_detector = wbdetector $
+     , wb_camera = wbcamera
 
-  ;; Name of the instrument
-  instrument = (strsplit(wbcamera, '-', /extract))[0]
-
-;; Get metadata from logfiles
+  ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
   if keyword_set(use_turret_coordinates) then begin
     red_logdata, self.isodate, time_pointing, turret = metadata_pointing, rsun = rsun

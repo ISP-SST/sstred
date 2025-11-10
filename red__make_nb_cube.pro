@@ -26,6 +26,11 @@
 ; 
 ; :Keywords:
 ; 
+;    nomissing_nans : in, optional, type=boolean 
+;
+;      Do not set missing-data padding to NaN. (Set it to the median of
+;      each frame instead.)
+;
 ;    nopolarimetry : in, optional, type=boolean
 ;
 ;       For a polarimetric dataset, don't make a Stokes cube.
@@ -34,7 +39,10 @@
 ;       data set without polarimetry. (For a nonpolarlimetric dataset,
 ;       no effect.)
 ;
-  
+;    nostretch : in, optional, type=boolean
+;   
+;      Compute no intrascan stretch vectors if this is set.
+;
 ;   
 ;   
 ; 
@@ -127,23 +135,12 @@ pro red::make_nb_cube, wcfile $
 
   
   ;; Camera/detector identification
-  self -> getdetectors
-  wbindx      = where(strmatch(*self.cameras,'*-W'))
-  wbcamera    = (*self.cameras)[wbindx[0]]
-  wbdetector  = (*self.detectors)[wbindx[0]]
-  nbindx      = where(strmatch(*self.cameras,'*-[NTR]')) 
-  nbcameras   = (*self.cameras)[nbindx]
-  nbdetectors = (*self.detectors)[nbindx]
-  Nnbcams     = n_elements(nbcameras)
-
-;  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
-;  nbtcamera   = (*self.cameras)[nbtindx[0]]
-;  nbtdetector = (*self.detectors)[nbtindx[0]]
-;  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
-;  nbrcamera   = (*self.cameras)[nbrindx[0]]
-;  nbrdetector = (*self.detectors)[nbrindx[0]]
-
-  instrument = (strsplit(wbcamera, '-', /extract))[0]
+  self -> cameras $
+     , instrument = instrument $
+     , Nnbcams = Nnbcams $
+     , nb_detectors = nbdetectors $
+     , nb_cameras = nbcameras $
+     , wb_camera = wbcamera
 
   polarimetric_data = self -> polarimetric_data()
 
@@ -469,64 +466,58 @@ pro red::make_nb_cube, wcfile $
   ;; or just intensity.
   case this_cube_is_stokes of
     
-    !true : self -> make_nb_cube_stokes, wcfile $
+    !true : self -> make_nb_cube_stokes, wcfile $ 
        , ashifts = ashifts $
        , clips = clips $
        , cshift_mean = cshift_mean $
+       , date_avg_array = date_avg_array  $
+       , date_beg_array = date_beg_array  $ 
+       , date_end_array = date_end_array  $
+       , exp_array = exp_array $
        , fileassoc = fileassoc $
        , filename = filename $
+       , fnumsum_array  = fnumsum_array $
        , fov_mask = fov_mask $
+       , noremove_periodic = noremove_periodic $
+       , nsum_array = nsum_array $  
        , nthreads = nthreads $
-       , odir = odir $
        , pertuningfiles = pertuningfiles $
        , pertuningstates = pertuningstates $
        , redemodulate = redemodulate $
        , remove_smallscale = remove_smallscale $
+       , sexp_array = sexp_array $ 
        , tiles = tiles $
+       , wbcor = wbcor $
        , wbfileassoc = wbfileassoc $
        , wbfilename = wbfilename $
-       , wbcor = wbcor $
-       , wcs = wcs $
-
-       , /nocav $
-
-       , date_beg_array = date_beg_array  $ 
-       , date_end_array = date_end_array  $
-       , date_avg_array = date_avg_array  $
-       , exp_array      = exp_array       $
-       , sexp_array     = sexp_array     $ 
-       , nsum_array     = nsum_array    $  
-       , fnumsum_array  = fnumsum_array  
+       , wbsave = wbsave $
+       , wcs = wcs
     
     !false : self -> make_nb_cube_intensity, wcfile $ 
        , ashifts = ashifts $
        , clips = clips $
        , cshift_mean = cshift_mean $
+       , date_avg_array = date_avg_array  $
+       , date_beg_array = date_beg_array  $ 
+       , date_end_array = date_end_array  $
+       , exp_array = exp_array $
        , fileassoc = fileassoc $
        , filename = filename $
+       , fnumsum_array = fnumsum_array  $
        , fov_mask = fov_mask $
+       , nsum_array = nsum_array    $  
        , nthreads = nthreads $
-       , odir = odir $
        , pertuningfiles = pertuningfiles $
        , pertuningstates = pertuningstates $
        , prefilter_curve = prefilter_curve $
-       , redemodulate = redemodulate $
        , remove_smallscale = remove_smallscale $
+       , sexp_array = sexp_array     $ 
        , tiles = tiles $
+       , wbcor = wbcor $
        , wbfileassoc = wbfileassoc $
        , wbfilename = wbfilename $
-       , wbcor = wbcor $
-       , wcs = wcs $
-
-       , /nocav $
-
-       , date_beg_array = date_beg_array  $ 
-       , date_end_array = date_end_array  $
-       , date_avg_array = date_avg_array  $
-       , exp_array      = exp_array       $
-       , sexp_array     = sexp_array     $ 
-       , nsum_array     = nsum_array    $  
-       , fnumsum_array  = fnumsum_array  
+       , wbsave = wbsave $
+       , wcs = wcs
 
     else : stop                 ; Cannot happen!
     
@@ -535,8 +526,6 @@ pro red::make_nb_cube, wcfile $
   ;; Close fits file(s).
   free_lun, lun
   if keyword_set(wbsave) then free_lun, wblun 
-
-  
 
   ;; Process some info from the cube making
   for iscan = 0L, Nscans-1 do begin
@@ -867,14 +856,16 @@ pro red::make_nb_cube, wcfile $
 ;                                  , keyword_value = mean(nsum_array) $
      , axis_numbers = [3, 5]
 
+  undefine, fnumsum_total
+  for iscan = 0L, Nscans-1 do for ituning = 0L, Ntunings-1 do $
+     red_append, fnumsum_total, n_elements(rdx_str2ints(fnumsum_array[ituning,iscan]))
+  fnumsum_total = rdx_ints2str([red_uniquify(fnumsum_total)])
+
   self -> fitscube_addvarkeyword, filename, 'FNUMSUM', fnumsum_array $
      , comment = 'Raw frame numbers' $
      , anchor = anchor $
      , keyword_value = fnumsum_total $
      , axis_numbers = [3, 5]
-
-
-
 
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
