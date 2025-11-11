@@ -25,7 +25,7 @@
 ;
 ;       If set, bypass selection and process all data.
 ;
-;    densegrid  : 
+;    densegrid : in 
 ;   
 ;   
 ;   
@@ -33,63 +33,69 @@
 ;
 ;       Make extra spline nodes at the specified wavelengths, given in
 ;       Ångström from the core point.
-;
-;    initcmap  : 
 ;   
+;    fit_reflectivity : in, optional, type=boolean
 ;   
+;       Fit reflectivity in addition to cavity map.
 ;   
-;    myg  : 
+;    initcmap : in, optional, type=boolean
 ;   
+;       Initialize the cavity map.
 ;   
+;    myg :  : in, optional, type=array
 ;   
-;    niter  : 
+;       Specify the wavelength nodes, alternative to using the data
+;       tuning points.
 ;   
+;    niter : in, optional, type=integer, default=3
 ;   
+;       Number of iterations.
 ;   
-;    npar  : 
+;    npar : in, optional, type=integer, default=1
 ;   
+;       Number of additional terms (default: 1 = linear)
 ;   
+;    nosave : in, optional, type=boolean 
 ;   
-;    nosave  : 
+;       Do not save the output.
 ;   
+;    nthreads : in, optional, type=integer
 ;   
+;       Number of threads used by red_cfitgain and red_cfitgain2.
 ;   
 ;    pref : in, optional, type=string
 ;
-;       Select prefilter to process.
+;       Process data for this prefilter.
 ;
-;    rebin  : 
+;    rebin : in, optional, type=integer
 ;   
 ;   
 ;   
-;    res  : 
+;    res : out, optional, type=array
 ;   
+;       The results of the fit, including the cavity map.
 ;   
 ;    sig : 
 ;   
 ;   
 ;   
-;    state  : 
+;    thres : in
 ;   
 ;   
 ;   
-;    thres  : 
+;    x0 : in 
 ;   
 ;   
 ;   
-;    x0  : 
+;    x1 : in 
 ;   
 ;   
 ;   
-;    x1  : 
+;    xl : in
 ;   
 ;   
 ;   
-;    xl  : 
-;   
-;   
-;   
-;    yl  : 
+;    yl : in
 ;   
 ;   
 ;   
@@ -146,26 +152,26 @@
 ;                and flat-fielding scheme.
 ;
 ;-
-pro red::fitgains, all = all $
-                   , densegrid = densegrid $                   
-                   , extra_nodes = extra_nodes $
-                   , fit_reflectivity = fit_reflectivity $
-                   , ifit = ifit $
-                   , initcmap = initcmap $
-                   , myg = myg $
-                   , niter = niter $
-                   , nosave = nosave $
-                   , npar = npar $
-                   , nthreads = nthreads $
-                   , pref = pref $
-                   , rebin = rebin $
-                   , res = res $
-                   , state = state $
-                   , thres = thres $
-                   , w0 = w0, w1 = w1 $
-                   , x0 = x0, x1 = x1 $
-                   , xl = xl, yl = yl $
-                   , sig = sig
+pro red::fitgains, all = all $                             ;
+                   , densegrid = densegrid $               ; Used in red_get_imean
+                   , extra_nodes = extra_nodes $           ; 
+                   , fit_reflectivity = fit_reflectivity $ ; Boolean
+;                   , ifit = ifit $                         ; Not used
+                   , initcmap = initcmap $                 ; Boolean, initialize cavity map
+                   , myg = myg $                           ; Specify the wavelength nodes instead of using the data tuning points
+                   , niter = niter $                       ; 
+                   , nosave = nosave $                     ; 
+                   , npar = npar $                         ; 
+                   , nthreads = nthreads $                 ; 
+                   , pref = pref $                         ; 
+                   , rebin = rebin $                       ; Used in red_get_imean
+                   , res = res $                           ; Result, output
+;                   , state = state $                       ; Not used
+                   , thres = thres $                       ; Used in red_get_imean
+                   , w0 = w0, w1 = w1 $                    ; 
+                   , x0 = x0, x1 = x1 $                    ; Used in red_initcmap
+                   , xl = xl, yl = yl $                    ; 
+                   , sig = sig                             ; Used like pref (by red_cfitgain) but is an array?
 
 
   ;; Defaults
@@ -178,7 +184,7 @@ pro red::fitgains, all = all $
   red_make_prpara, prpara, densegrid
   red_make_prpara, prpara, extra_nodes
   red_make_prpara, prpara, fit_reflectivity
-  red_make_prpara, prpara, ifit
+;  red_make_prpara, prpara, ifit
   red_make_prpara, prpara, initcmap
   red_make_prpara, prpara, myg
   red_make_prpara, prpara, niter
@@ -187,7 +193,7 @@ pro red::fitgains, all = all $
   red_make_prpara, prpara, nthreads
   red_make_prpara, prpara, pref
   red_make_prpara, prpara, rebin
-  red_make_prpara, prpara, state
+;  red_make_prpara, prpara, state
   red_make_prpara, prpara, thres
   red_make_prpara, prpara, w0
   red_make_prpara, prpara, w1
@@ -298,8 +304,8 @@ pro red::fitgains, all = all $
         ;; Need to set xl, yl (from red_get_imean):
 ;        imean = fltarr(dims[0])
 ;        yl = imean
-        yl = [1.];median(dat)
-        iwav = wav ;- median(res[1,*,*])
+        yl = [1.]               ;median(dat)
+        iwav = wav              ;- median(res[1,*,*])  ; iwav is used as a loop variable later....
         xl = iwav
         
         ;res /= yl
