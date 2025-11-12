@@ -223,14 +223,44 @@ pro red::make_nb_cube, wcfile $
   endfor
   Nfiles = n_elements(files)
 
-  if self.filetype eq 'MOMFBD' then mr = momfbd_read(wbgfiles[0],/nam)
-
+  
   ;; FOV mask
   ;;  ;; If multiple directories, the fov_mask should be the same. Or we
 ;;  ;; have to think of something.
   spl = strsplit(wbgfiles[0],'/',/extract)
   cw = where(strmatch(spl,'*cfg*'))
   cfg_dir=strjoin(spl[0:cw],'/')
+
+  if self.filetype eq 'MOMFBD' then begin
+    ;; Will use crop info from momfbd file later
+    mr = momfbd_read(wbgfiles[0],/nam)
+  endif else begin
+    ;; Find crop information in the cfg file
+    spl = strsplit(wbgfiles[0],'/',/extract)
+    cw = where(strmatch(spl,'*cfg*'))
+    cfg_dir=strjoin(spl[0:cw],'/')
+    cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
+               string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
+    cfg = redux_readcfg(cfg_file)
+    num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
+    margin = num_points/8
+    sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
+    if cnt gt 0 then begin
+      sim_xy = rdx_str2ints(sim_xy)
+      indx = indgen(n_elements(sim_xy)/2)*2
+      indy = indx+1
+      sim_x = sim_xy[indx]
+      sim_y = sim_xy[indy]   
+    endif else begin
+      sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
+      sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
+    endelse
+    xx0 = min(sim_x) + margin - num_points/2 
+    xx1 = max(sim_x) - margin + num_points/2 - 1
+    yy0 = min(sim_y) + margin - num_points/2 
+    yy1 = max(sim_y) - margin + num_points/2 - 1
+  endelse
+  
 ;;  if self.filetype eq 'MOMFBD' then begin
 ;;    mr = momfbd_read(wbgfiles[0],/nam)
 ;;  endif else begin              ; get cropping from cfg file    
@@ -697,29 +727,6 @@ pro red::make_nb_cube, wcfile $
         ;; Crop the cavity map to the FOV of the momfbd-restored images.
         cmap1 = red_crop_as_momfbd(cmap1, mr)
       endif else begin ;; Crop with information from the cfg file
-        spl = strsplit(wbgfiles[0],'/',/extract)
-        cw = where(strmatch(spl,'*cfg*'))
-        cfg_dir=strjoin(spl[0:cw],'/')
-        cfg_file = cfg_dir+'/'+'momfbd_reduc_'+wbgstates[0].prefilter+'_'+$
-                   string(wbgstates[0].scannumber,format='(I05)')+'.cfg'
-        cfg = redux_readcfg(cfg_file)
-        num_points = long(redux_cfggetkeyword(cfg, 'NUM_POINTS'))
-        margin = num_points/8
-        sim_xy = redux_cfggetkeyword(cfg, 'SIM_XY', count = cnt)
-        if cnt gt 0 then begin
-          sim_xy = rdx_str2ints(sim_xy)
-          indx = indgen(n_elements(sim_xy)/2)*2
-          indy = indx+1
-          sim_x = sim_xy[indx]
-          sim_y = sim_xy[indy]   
-        endif else begin
-          sim_x = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_X'))
-          sim_y = rdx_str2ints(redux_cfggetkeyword(cfg, 'SIM_Y'))
-        endelse
-        xx0 = min(sim_x) + margin - num_points/2 
-        xx1 = max(sim_x) - margin + num_points/2 - 1
-        yy0 = min(sim_y) + margin - num_points/2 
-        yy1 = max(sim_y) - margin + num_points/2 - 1
         cmap1 = cmap1[xx0:xx1,yy0:yy1]
       endelse
 
