@@ -35,6 +35,11 @@
 ;   
 ;      Overwrite an existing file.
 ; 
+;    no_qhull : in, type=boolean
+; 
+;      Instead of computing the mask from the convex hull of several
+;      ROIs, just use the union of the ROIs.
+; 
 ;    tag : in, type=string, default='masked'
 ; 
 ;      If not overwriting the original file, add this tag to the
@@ -49,6 +54,7 @@
 pro red::fitscube_mask, infile $
                         , ituning = ituning $
                         , noflip = noflip $
+                        , no_qhull = no_qhull $
                         , overwrite = overwrite $
                         , tag = tag
 
@@ -103,14 +109,59 @@ pro red::fitscube_mask, infile $
   dispim = bytscl(red_histo_opt(dispim))
   
   red_message, 'Define the mask'
-  XROI, dispim, Regions_Out=ROIs, /Block, title = 'Select area.'
-  mask = 0*origmask
-  for iroi = 0, n_elements(ROIs)-1 do $
-     mask or= ROIs[iroi] -> ComputeMask(Dimensions=[Nx, Ny], Mask_Rule=2) 
-  mask and= origmask
 
+  if keyword_set(no_qhull) then begin
+    XROI, dispim, Regions_Out=ROIs, /Block, title = 'Select areas.'
+    mask = 0*origmask
+    for iroi = 0, n_elements(ROIs)-1 do $
+       mask or= ROIs[iroi] -> ComputeMask(Dimensions=[Nx, Ny], Mask_Rule=2) 
+    mask and= origmask
+    Obj_Destroy, ROIs
+  endif else begin
+    red_message, ['The XROI ellipse tool sometimes "remembers" points from when you expand' $
+                  , 'and then contract a region. You will therefore have the opportunity' $
+                  , 'to check the region and rerun XROI if you are not satisfied.' $
+                 ]
+    repeat begin
+      XROI, dispim, Regions_Out=ROIs, /Block, title = 'Select areas.'
+      undefine, roix, roiy
+      for iroi = 0, n_elements(ROIs)-1 do begin
+        indx = where((*rois[iroi].data)[0,*] ne 0 and (*rois[iroi].data)[1,*] ne 0)
+        help, roix, roiy, indx, reform((*rois[iroi].data)[0,indx]), reform((*rois[iroi].data)[1,indx])
+        red_append, roix, reform((*rois[iroi].data)[0,indx])
+        red_append, roiy, reform((*rois[iroi].data)[1,indx])
+      endfor                    ; iroi
+      cgimage, dispim, /keep, /save
+      cgplot, roix, roiy, psym = 16, color = 'blue', /over
+      qhull, roix, roiy, Tr, bounds = bounds
+      ;; Determine the vertices order from the t output variable from
+      ;; QHULL, and print the vertices order
+      verts=INTARR(N_ELEMENTS(tr[0,*])+1)
+      verts[0]=tr[0,0]
+      verts[1]=tr[1,0]
+      FOR i=1,N_ELEMENTS(tr[0,*])-1 DO BEGIN
+        id=WHERE(tr[0,*] EQ verts[i])
+        verts[i+1]=tr[1,id]
+      ENDFOR
+      ;;print," Polygon vertices order: ", verts
+      ;; Order the points in x1 and y1 vectors based on vertices order
+      roix2=roix[verts]
+      roiy2=roiy[verts]
+      cgplot,roix2, roiy2,color='red',/over
+      ROI=IDLanROI()
+      ROI.SetProperty,Data=TRANSPOSE([[roix2],[roiy2]])
+      mask = ROI.ComputeMask(Dimensions=[Nx, Ny], Mask_Rule=2)
+      Obj_Destroy, ROI
+      Obj_Destroy, ROIs
+
+      s = ''
+      read, 'Mask ok [Y/n]?', s
+      done = s eq '' || strupcase(strmid(s, 0, 1)) ne 'N'
+      
+    endrep until done
+  endelse
+  
   bb = red_boundingbox(mask)
-  Obj_Destroy, ROIs
 
   ;; Copy the original cube to a temporary file name and then
   ;; overwrite the frames with the masked frames. This way we maintain
@@ -166,6 +217,6 @@ a = crisp2red(/dev, /no)
 
 infile = 'cubes_nb/nb_6173_2025-08-18T08:52:59_08:52:59=1-4_stokes_corrected_im.fits'
 
-a -> fitscube_mask, infile, ituning = 6, /overwrite
+a -> fitscube_mask, infile, ituning = 6, /overwrite ;, /no_qhull
 
 end
