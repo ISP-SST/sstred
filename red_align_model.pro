@@ -71,10 +71,12 @@ function red_align_model, filename
  
     'momfbd' : hdr = red_readhead(filename)
 
+    'fits' : hdr = red_readhead(filename)
+
     else : return, ''
 
   endcase
-
+  
   ;; Now look in the step info
 
   ;; Check the MOMFBD step
@@ -82,7 +84,23 @@ function red_align_model, filename
   if cnt eq 0 then begin
     ;; Some old files may have this instead
     prpara = red_headerinfo_getstep(hdr, prstep = 'MOMFBD image restoration', prkey = 'PRPARA', count = cnt, /silent)
-    if cnt eq 0 then return, '' ; No MOMFBD processing step
+    if cnt eq 0 then begin      
+      ;; No MOMFBD processing step. This could be output from the
+      ;; bypass_momfbd method. In this case the cfg file is in the
+      ;; prstep for that.
+      prpara = red_headerinfo_getstep(hdr, prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
+                                      , prkey = 'PRPARA', count = cnt, /silent)
+      if cnt gt 0 then begin
+        keys = prpara.keys()  
+        tmp = prpara[keys[0]]         
+        params = json_parse(tmp.value)
+        keys = params.keys()
+        if max(keys eq 'CFGFILE') gt 0 then begin
+          return, red_align_model(params['CFGFILE'])
+        endif
+      endif
+      return, ''
+    endif
   endif
   
   keys = prpara.keys()          ; Just a single key
