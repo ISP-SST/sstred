@@ -182,7 +182,7 @@ pro red::bypass_momfbd, cfgfile $
     
   anchor_dark = red_readdata(anchor_dark_file)
   anchor_gain = red_readdata(anchor_gain_file)
-  mask = anchor_gain eq 0
+  mask = anchor_gain eq 0       ; Mask for fillpix, 1 for the bad pixels
   if n_elements(fov_mask) ne 0 then mask *= fov_mask
 
   for iexposure = 0, Nexposures-1 do begin
@@ -263,10 +263,10 @@ pro red::bypass_momfbd, cfgfile $
   if ~keyword_set(nostretch) then begin
     for iexposure = 1, Nexposures-1 do begin
       red_progressbar, iexposure, Nexposures, 'Calculating stretch vectors for anchor images.'
-;      grid = rdx_cdsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
-;                             , tiles, clips, nthreads=nthreads)
-      grid = red_dsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
-                             , tiles, clips, nthreads=nthreads, mask=fov_mask)
+      grid = rdx_cdsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
+                             , tiles, clips, nthreads=nthreads)
+;      grid = red_dsgridnest(wcube1[*, *, iexposure-1], wcube1[*, *, iexposure] $
+;                             , tiles, clips, nthreads=nthreads, mask=fov_mask)
       if iexposure eq 1 then begin
         gdims = size(grid, /dim)
         grids = dblarr(Nexposures, 2, gdims[1], gdims[2])
@@ -371,8 +371,21 @@ pro red::bypass_momfbd, cfgfile $
     dark_file = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.DARK_TEMPLATE')  
     image_data_dir = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.IMAGE_DATA_DIR')
     filename_template = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.FILENAME_TEMPLATE')
-    align_map = float(reform(strsplit(redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.ALIGN_MAP') $
-                                      , ',', /extract), 3, 3))
+    align_map = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.ALIGN_MAP', count = Nmap)
+    align_map_x = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.ALIGN_MAP_X', count = Nmapx)
+    align_map_y = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.ALIGN_MAP_Y', count = Nmapy)
+    if Nmapx gt 0 && Nmapy gt 0 then begin
+      alignment_model = 'polywarp'
+      amap = { X:float(strsplit(align_map_x, ',', /extract)), $
+               Y:float(strsplit(align_map_y, ',', /extract)) }
+    endif else begin
+      alignment_model = 'projective'
+      amap = float(reform(strsplit(align_map, ',', /extract), 3, 3))
+      amap = invert(amap)
+      amap /= amap[2, 2]  
+    endelse
+;    align_map = float(reform(strsplit(redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.ALIGN_MAP') $
+;                                      , ',', /extract), 3, 3))
     back_gain = redux_cfggetkeyword(cfg, object_string+'.CHANNEL0.BACK_GAIN', count = DoBackscatter)
     if DoBackscatter then begin
       ;; Use the presence of the back_gain keyword only as a boolean.
@@ -414,9 +427,12 @@ pro red::bypass_momfbd, cfgfile $
       gain = red_readdata(gain_file)
     endelse
 
-    gain = rdx_img_transform(invert(align_map), gain, /preserve) >0
-    mask = gain eq 0
-    if n_elements(fov_mask) ne 0 then mask *= fov_mask
+;    gain = rdx_img_transform(invert(align_map), gain, /preserve) >0
+;    mask = gain eq 0
+
+    mask = (red_apply_camera_alignment(gain, alignment_model $ ; Mask for fillpix, 1 for the bad pixels
+                                       , /preserve, amap = amap) >0) eq 0
+    if n_elements(fov_mask) ne 0 then mask *= fov_mask 
     
     cube = red_readdata_multiframe(files)
     dims = size(cube, /dim)
@@ -434,8 +450,9 @@ pro red::bypass_momfbd, cfgfile $
 ;        im = rdx_descatter(im, bgt, Psft, nthreads = nthreads)
         im = red_cdescatter(im, bgt, Psft, nthreads = nthreads)
       endif
-      im = rdx_img_transform(invert(align_map), im, /preserve) >0
       im *= gain
+;      im = rdx_img_transform(invert(align_map), im, /preserve) >0
+      im = red_apply_camera_alignment(im, alignment_model, /preserve, amap = amap) >0
       im = rdx_fillpix(im, nthreads=nthreads, mask = mask)
       if max(im) eq min(im) then stop
 
