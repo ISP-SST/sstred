@@ -164,6 +164,8 @@ pro red::make_stokes_cubes, dir, scanno $
      , instrument = instrument $
      , nbt_camera = nbtcamera $
      , nbr_camera = nbrcamera $
+     , nbt_detector = nbtdetector $
+     , nbr_detector = nbrdetector $
      , wb_camera = wbcamera
 
   case instrument of
