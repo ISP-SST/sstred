@@ -132,7 +132,7 @@ pro red::fitscube_mask, infile $
         red_append, roiy, reform((*rois[iroi].data)[1,indx])
       endfor                    ; iroi
       cgimage, dispim, /keep, /save
-      cgplot, roix, roiy, psym = 16, color = 'blue', /over
+      cgplot, roix, roiy, color = 'blue', /over, thick = 3
       qhull, roix, roiy, Tr, bounds = bounds
       ;; Determine the vertices order from the t output variable from
       ;; QHULL, and print the vertices order
@@ -147,7 +147,7 @@ pro red::fitscube_mask, infile $
       ;; Order the points in x1 and y1 vectors based on vertices order
       roix2=roix[verts]
       roiy2=roiy[verts]
-      cgplot,roix2, roiy2,color='red',/over
+      cgplot,roix2, roiy2,color='red',/over, thick = 3
       ROI=IDLanROI()
       ROI.SetProperty,Data=TRANSPOSE([[roix2],[roiy2]])
       mask = ROI.ComputeMask(Dimensions=[Nx, Ny], Mask_Rule=2)
