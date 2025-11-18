@@ -647,7 +647,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endfor                    ; idir
 
       if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
-        for ipref = 0, Npolcaldirs-1 do begin
+        for ipref = 0, n_elements(polprefs)-1 do begin
           printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
                   + ", nthreads=nthreads"
           printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $

@@ -645,7 +645,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; If there are polcal data, we need to run polcalcube and polcal
   ;; (and possibly make the periodic filter).
   if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) && ~e_polcalsums then begin  
-    for ipref = 0, Npolprefs-1 do begin
+    if n_elements(Npolprefs) eq 0 then Npolprefs = 0
+    for ipref = 0, n_elements(polprefs)-1 do begin
       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
               + ", nthreads=nthreads"
       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
@@ -668,8 +669,9 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       polprefs = red_uniquify(polprefs)
       Npolprefs = n_elements(polprefs)
     endelse
-    
-    for ipref = 0, Npolprefs-1 do begin
+
+    if n_elements(Npolprefs) eq 0 then Npolprefs = 0
+    for ipref = 0, n_elements(polprefs)-1 do begin
       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
               + ", nthreads=nthreads"
       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
