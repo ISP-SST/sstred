@@ -713,7 +713,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         ;; CRISP2 WB flats have a patch that makes a "hole" in the
         ;; gains if not taken special care of.
         printf, Slun, "wbflats = file_search('flats/"+detectors[0]+"_*fits') ; WB flats special" 
-        printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=50.0, bad=1.0, flatmin=0.01, nthreads = nthreads,files=wbflats"
+        printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=50.0, bad=1.0, flatmin=0.01, nthreads=nthreads, files=wbflats"
       end
       else : stop
     endcase
