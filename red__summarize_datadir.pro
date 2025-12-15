@@ -52,7 +52,7 @@ pro red::summarize_datadir, dirs
   endif else begin
 
     ;; Did we give absolute paths?
-    match2, dirs, available_dirs, suba, subb
+    match2, file_basename(dirs) , file_basename(available_dirs), suba, subb
     indx = where(suba ne -1, Ndirs)
     if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
 
@@ -69,8 +69,10 @@ pro red::summarize_datadir, dirs
       indx = where(suba ne -1, Ndirs)
       if Ndirs gt 0 then red_append, use_dirs,  available_dirs[suba[indx]]
     endif
-    
-    Ndirs = n_elements(use_dirs)
+
+    use_dirs = red_uniquify(use_dirs, count = Ndirs)
+
+    print, Ndirs
     if Ndirs eq 0 then return
 
   endelse
@@ -78,18 +80,23 @@ pro red::summarize_datadir, dirs
   file_mkdir, 'summaries'
 
   for idir = 0, Ndirs-1 do begin
-    
-    print, use_dirs[idir]
 
+    sumfile = 'summaries/'+file_basename(use_dirs[idir])+'.sav'
+    if file_test(sumfile) then continue
+
+    print, use_dirs[idir]
+    
     undefine, output
     
+    sum_struct = create_struct('datadir', use_dirs[idir])
     red_append, output, use_dirs[idir]
     red_append, output, ' '
-
+    
     ;; Camera directories
     cams = file_basename(file_search(use_dirs[idir]+'/*'))
     Ncams = n_elements(cams)
     Nfiles_cam = lonarr(Ncams)
+    sum_struct = create_struct(sum_struct, 'Cameras', cams)
 
     camWB = (cams[where(strmatch(cams,'*-W'),     Nwbcam)])[0]
     camNB = (cams[where(strmatch(cams,'*-[NTR]'), Nnbcam)])[0]
@@ -110,6 +117,8 @@ pro red::summarize_datadir, dirs
     
     time_beg = (strsplit(fxpar(hdr0, 'DATE-BEG'), 'T', /extract))[1]
     time_end = (strsplit(fxpar(hdrN, 'DATE-END'), 'T', /extract))[1] ; Note: from last file!
+    sum_struct = create_struct(sum_struct, 'Started', time_beg)
+    sum_struct = create_struct(sum_struct, 'Ended', time_end)
     red_append, output, 'Started : ' + time_beg
     red_append, output, 'Ended   : ' + time_end
     red_append, output, ' '
@@ -123,8 +132,11 @@ pro red::summarize_datadir, dirs
     red_append, output, ' '
 
     xposure = fxpar(hdr0, 'XPOSURE', count = cnt)
-    if cnt gt 0 then red_append, output, 'Exposure time: '+strtrim(string(xposure*1000, format = '(f8.1)'), 2) + ' ms'
-
+    if cnt gt 0 then begin
+      red_append, output, 'Exposure time: '+strtrim(string(xposure*1000, format = '(f8.1)'), 2) + ' ms'
+      sum_struct = create_struct(sum_struct, 'XPOSURE', strtrim(string(xposure*1000, format = '(f8.1)'), 2) + ' ms')
+    endif
+    
     cadence = fxpar(hdr0, 'CADENCE', count = cnt)
     if cnt eq 0 then begin
       ;; No CADENCE keyword in header. Calculate it from DATE-BEG for
@@ -137,13 +149,18 @@ pro red::summarize_datadir, dirs
       cadence = median(red_differential(times[sort(times)]))
     endif
     red_append, output, 'Cadence: '+strtrim(string(cadence*1000, format = '(f8.1)'), 2)+ ' ms'
-
+    sum_struct = create_struct(sum_struct, 'Cadence', strtrim(string(cadence*1000, format = '(f8.1)'), 2)+ ' ms')
+    
     detgain = fxpar(hdr0, 'DETGAIN', count = cnt)
-    if cnt gt 0 then red_append, output, 'Detector gain: '+string(detgain, format = '(f4.1)')
+    if cnt gt 0 then begin
+      red_append, output, 'Detector gain: '+string(detgain, format = '(f4.1)')
+      sum_struct = create_struct(sum_struct, 'DETGAIN',string(detgain, format = '(f4.1)') )
+    endif
     red_append, output, ' '
 
     Nscans = fxpar(hdrN, 'SCANNUM')+1 ; Note: from last file!
-    red_append, output, 'Nscans: ' + strtrim(Nscans, 2) 
+    red_append, output, 'Nscans: ' + strtrim(Nscans, 2)
+    sum_struct = create_struct(sum_struct, 'Nscans', strtrim(Nscans, 2))
 
     if Nnbcam ne 0 then begin
       
@@ -158,13 +175,87 @@ pro red::summarize_datadir, dirs
       ;; Sort in tuning order
       indx = indx[sort(states0[indx].tun_wavelength)]
       Nstates = n_elements(indx)
+
+      if 1 then begin
+
+        ;; For the struct. In the main struct, we want a "NB" member
+        ;; that is a struct with one member per prefilter. This
+        ;; substruct should have info like exposure tuning states and
+        ;; for each tuning the LC states, exposure times, etc.
+        
+        upref = red_uniquify(states0.prefilter, count = Npref)
+        sum_struct = create_struct(sum_struct, 'prefilters', upref)
+        
+;        nb_hash = hash()
+        nb_list = list(length = Npref)
+
+        ;; nb_list contains one struct per prefilter. This struct
+        ;; contains arrays and lists, each with one element per tuning
+        ;; point.
+        
+        for ipref = 0, Npref-1 do begin
+
+          ;; pindx for states with the current prefilter
+          pindx = where(states0.prefilter eq upref[ipref])
+          pstates0 = states0[pindx]
+
+          ;; Tuning strings
+          utun = red_uniquify(pstates0.tuning, indx = tindx, count = Ntun)
+
+          ;; Tuning wavelengths [m]
+          uwav = float(pstates0[tindx].tun_wavelength)
+
+          ;; sindx for sorting in wavelength order
+          sindx = sort(uwav)
+          uwav = uwav[sindx]
+          utun = utun[sindx]
+
+          ;; These quantities are expected to be the same for all
+          ;; frames at a particular tuning point. If this is not true,
+          ;; they need to be lists rather than arrays as now.
+          ulc = strarr(Ntun)      ; LC states
+          exposure = fltarr(Ntun) ; Exposure times per frame
+          nexp = lonarr(Ntun)     ; Number of exposures
+          gain = fltarr(Ntun)     ; Camera gain setting
+
+          ;; The LC states for a tuning can be a single one (4) or
+          ;; four ([0,1,2,3]). So we need a list.
+          lc_list = list(length = Ntun)
+                    
+          for itun = 0, Ntun-1 do begin
+            ;; iindx for states with the current prefilter and tuning
+            iindx = where(utun[itun] eq pstates0.tuning)
+            lc_list[itun] = fix(red_uniquify(pstates0[iindx].lc))
+            exposure[itun] = red_uniquify(pstates0[iindx].exposure)
+            nexp[itun] = red_uniquify(pstates0[iindx].nframes)
+            gain[itun] = red_uniquify(pstates0[iindx].gain)
+          endfor                ; itun
+
+          
+          nb_struct = create_struct('tunings', utun $
+                                    , 'wavelengths', uwav $
+                                    , 'LC', lc_list $
+                                    , 'exposure', exposure $
+                                    , 'nexp', nexp $
+                                    , 'gain', gain $
+                                   )
+
+          nb_list[ipref] = nb_struct
+      
+        endfor
+
+        sum_struct = create_struct(sum_struct, 'NB', nb_list)
+
+      endif
+
       
       if max(strmatch(TAG_NAMES(states0[0]), 'LC')) eq 1 then begin
         ulc = states0[uniq(states0.lc, sort(states0.lc))].lc
         Nlc = n_elements(ulc)
       endif else Nlc = 0
       red_append, output, 'Nstates: ' + strtrim(Nstates, 2)
-
+;      sum_struct = create_struct(sum_struct, 'Nstates', strtrim(Nstates, 2))
+      
       ;; Mosaic data?
       pos = strpos(file_basename(files[-1]), '_mos')
       if pos ne -1 then begin
@@ -173,6 +264,8 @@ pro red::summarize_datadir, dirs
       endif else begin
         Nmos = 1
       endelse
+      sum_struct = create_struct(sum_struct, 'Ntiles', strtrim(Nmos, 2))
+
       
       if Nlc gt 0 then begin
         red_append, output, 'Nlc : '+strtrim(Nlc, 2)
@@ -192,6 +285,7 @@ pro red::summarize_datadir, dirs
       endelse
 
       upref = states0(uniq(states0.prefilter, sort(states0.prefilter))).prefilter
+;      sum_struct = create_struct(sum_struct, 'Prefs', strjoin(strtrim(upref, 2), ', ' ))
 
       Npref = n_elements(upref)
       red_append, output, strtrim(Npref, 2)+' NB prefilters: '+strjoin(strtrim(upref, 2), ', ' )
@@ -237,6 +331,8 @@ pro red::summarize_datadir, dirs
 
       red_append, output, 'Nframes/scan: '+strtrim(Nframes, 2)
 
+      sum_struct = create_struct(sum_struct, 'Nframes per scan', strtrim(Nframes, 2))
+      
     endif else begin
 
       ;; If there are no NB files, this is probably a WB or PD flats
@@ -300,13 +396,15 @@ pro red::summarize_datadir, dirs
       red_append, output, ' '
 
       red_append, output, 'Nframes/scan: '+strtrim(Nframes, 2)
-
+      sum_struct = create_struct(sum_struct, 'Nframes per scan', strtrim(Nframes, 2))
     endelse
     
     ;; Write the file
     openw, lun, /get_lun, 'summaries/'+file_basename(use_dirs[idir])+'.txt'
     printf, lun, output, format = '(a0)'
     free_lun, lun
+
+    save, sum_struct, filename = sumfile
     
   endfor                        ; idir
   
@@ -315,13 +413,13 @@ end
 ;; Testing:
 
 pwd = getenv('PWD')
-case 0 of
+case 1 of
   strmatch(pwd,'*CRISP*') : begin
-    a=crispred(/dev)
-    a -> summarize_datadir, ['09:30:20', '11:18:58', '11:21:22']
+    a=crisp2red(/dev, /no)
+    a -> summarize_datadir, '08:52:59'  ;, ['09:30:20', '11:18:58', '11:21:22']
   end
   strmatch(pwd,'*CHROMIS*') : begin
-    a=chromisred(/dev)
+    a=chromisred(/dev, /no)
     ;; One data dir and one flats dir:
     a -> summarize_datadir, ['09:28:36', '11:18:58']
   end
