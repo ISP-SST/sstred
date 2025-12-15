@@ -143,6 +143,27 @@ pro red::quicklook_mosaic, align=align $
     file_mkdir, outdir
 
     instrument = strupcase((strsplit(states[0].camera, '-', /extract))[0])
+
+    if ~keyword_set(no_plot_r0) then begin
+
+      ;; Plot r0
+
+      cgcontrol, /delete, /all
+
+      pname = states[0].camera
+      pname += '_' + 'r0'
+      pname += '_' + self.isodate
+      pname += '_' + timestamp
+      pname += '_' + states[0].prefilter + '_' + states[0].tuning
+      pname += '.pdf'
+      
+      if keyword_set(overwrite) || ~file_test(outdir+pname) then begin
+        red_plot_r0_stats, states, pname = outdir+pname, /ismos 
+      endif
+      
+      
+    endif
+
     
     if is_wb then begin
 
@@ -578,7 +599,7 @@ pro red::quicklook_mosaic, align=align $
         
       endfor                    ; imos
 
-      cgwindow
+;      cgwindow
       qq = Nmos <9
       colors = red_distinct_colors(qq, /num)
       while Nmos gt n_elements(colors) do colors=[colors,red_distinct_colors(qq, /num)]
@@ -590,15 +611,15 @@ pro red::quicklook_mosaic, align=align $
       xcp = median(diskpos[0, *]) - Sx*image_scale/2.
       ycp = median(diskpos[1, *]) - Sy*image_scale/2.
 
-      cgplot, /add, /nodata, [0], [0] $
-              , xrange = xcp+[0, Sx*image_scale] $
-              , yrange = ycp+[0, Sy*image_scale] $
-              ;;, xrange = [0, Sx*image_scale], yrange = [0, Sy*image_scale] $
-              , aspect = Sy/float(Sx) $
-              , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
-              , title = 'Mosaic FOVs '+self.isodate+' '+timestamp+' '+pref
-
-      if keyword_set(debug) then cgplot, /add, /over, diskpos[0,*], diskpos[1,*], psym=16, color='red'
+;      cgplot, /add, /nodata, [0], [0] $
+;              , xrange = xcp+[0, Sx*image_scale] $
+;              , yrange = ycp+[0, Sy*image_scale] $
+;              ;;, xrange = [0, Sx*image_scale], yrange = [0, Sy*image_scale] $
+;              , aspect = Sy/float(Sx) $
+;              , xtitle = 'HPLN / 1"', ytitle = 'HPLT / 1"' $
+;              , title = 'Mosaic FOVs '+self.isodate+' '+timestamp+' '+pref
+;
+;      if keyword_set(debug) then cgplot, /add, /over, diskpos[0,*], diskpos[1,*], psym=16, color='red'
       
       if keyword_set(align) || keyword_set(destretch) then begin
 
@@ -673,14 +694,14 @@ pro red::quicklook_mosaic, align=align $
           
           edge = sobel(mmap[*, *, ord[0]])
           indx = array_indices(edge, where(edge gt 0.5*max(edge)))
-          cgplot, /add, /over $
-                  , xcp+indx[0,*]*fac*image_scale $
-                  , ycp+indx[1,*]*fac*image_scale $
-                  , psym=3, color=colors[ord[0]]
-          cgtext, /add, align = 0.5, color = colors[ord[0]], charsize = 3 $
-                  , xcp+median(indx[0,*]*fac*image_scale) $
-                  , ycp+median(indx[1,*]*fac*image_scale) $
-                  , red_stri(ord[0]) + '('+red_stri(0)+')' 
+;          cgplot, /add, /over $
+;                  , xcp+indx[0,*]*fac*image_scale $
+;                  , ycp+indx[1,*]*fac*image_scale $
+;                  , psym=3, color=colors[ord[0]]
+;          cgtext, /add, align = 0.5, color = colors[ord[0]], charsize = 3 $
+;                  , xcp+median(indx[0,*]*fac*image_scale) $
+;                  , ycp+median(indx[1,*]*fac*image_scale) $
+;                  , red_stri(ord[0]) + '('+red_stri(0)+')' 
                   
           
           ;; Add center tile
@@ -719,14 +740,14 @@ pro red::quicklook_mosaic, align=align $
             ;; We should now add tile ord[imos] to the mosaic
             edge = sobel(mmap[*, *, ord[imos]])
             indx = array_indices(edge, where(edge gt 0.5*max(edge)))
-            cgplot, /add, /over $
-                    , xcp+indx[0,*]*fac*image_scale $
-                    , ycp+indx[1,*]*fac*image_scale $
-                    , psym=3, color = colors[ord[imos]]
-            cgtext, /add , align = 0.5, color = colors[ord[imos]], charsize = 3 $
-                    , xcp+median(indx[0,*]*fac*image_scale) $
-                    , ycp+median(indx[1,*]*fac*image_scale) $
-                    , red_stri(ord[imos])  + '('+red_stri(imos)+')' 
+;            cgplot, /add, /over $
+;                    , xcp+indx[0,*]*fac*image_scale $
+;                    , ycp+indx[1,*]*fac*image_scale $
+;                    , psym=3, color = colors[ord[imos]]
+;            cgtext, /add , align = 0.5, color = colors[ord[imos]], charsize = 3 $
+;                    , xcp+median(indx[0,*]*fac*image_scale) $
+;                    , ycp+median(indx[1,*]*fac*image_scale) $
+;                    , red_stri(ord[imos])  + '('+red_stri(imos)+')' 
                    
 
             commonmask = mmap[*, *, ord[imos]] * totm
@@ -816,9 +837,17 @@ pro red::quicklook_mosaic, align=align $
       print, inam + ' : Wrote mosaic to ' + outdir + namout + '.png'
 
     endfor                      ; istate
+
+
   endfor                        ; iset
 
   
+end
+
+cd, '/scratch_beegfs/mats/NEW/2025-08-18/CRISP2'
+a = crisp2red(/dev, /no)
+a -> quicklook_mosaic, /core
+
 end
 
 debug = 0
