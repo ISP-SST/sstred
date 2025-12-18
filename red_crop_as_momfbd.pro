@@ -70,8 +70,6 @@ function red_crop_as_momfbd, im, momfbd_struct, inverse = inverse
     return, im_out
     
   endif else begin
-
-    stop
     
     return, im[x0:x1,y0:y1]
 
