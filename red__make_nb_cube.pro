@@ -287,15 +287,14 @@ pro red::make_nb_cube, wcfile $
 ;;  endelse
   if file_test(cfg_dir+'/fov_mask.fits') then begin
     fov_mask = readfits(cfg_dir+'/fov_mask.fits')
+  
     if self.filetype eq 'MOMFBD' then $
        fov_mask = red_crop_as_momfbd(fov_mask, mr) $
     else $
        fov_mask = fov_mask[xx0:xx1,yy0:yy1]
     fov_mask = red_rotate(fov_mask, direction)
   endif
-  
 
-  
   ;; Find all nb and wb per tuning files by excluding the global WB images 
   self -> selectfiles, files = files, states = states $
                                , cam = wbcamera, ustat = '' $
@@ -666,29 +665,9 @@ pro red::make_nb_cube, wcfile $
       cmap1 = 0.0
       for icam = 0, Nnbcams-1 do begin
 
-;        cfile = self.out_dir + 'flats/spectral_flats/' $
-;                + strjoin([nbdetectors[icam] $
-;                           , cprefs[icprefs] $
-;                           , 'fit_results.sav'] $
-;                          , '_')
-
-        cfile = file_search(self.out_dir + 'flats/spectral_flats/' $
-                            + nbdetectors[icam] + '_' $
-                            + cprefs[icprefs] + '_fit_results.sav', count = Nsearch)
-
-        if Nsearch ne 1 then stop else cfile = cfile[0]
-        
-        if ~file_test(cfile) then begin
-          print, inam + ' : Error, calibration file not found -> '+cfile
-          print, 'Please run fitgains for '+cprefs[icprefs]+' or continue without'
-          print, 'cavity map for '+cprefs[icprefs]
-          stop
-        endif
-        restore, cfile                 ; The cavity map is in a struct called "fit". 
-        cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-        cmap /= 10.                    ; Make it [nm]
-        cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
-        fit = 0B                       ; Don't need the fit struct anymore.
+        self -> get_spectral_flats_info, cmap = cmap $
+                                                , detector = nbdetectors[icam] $
+                                                , pref = cprefs[icprefs]
         
         if keyword_set(remove_smallscale) then begin
           ;; If the small scale is already corrected, then include only the

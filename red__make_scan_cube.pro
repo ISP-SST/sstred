@@ -831,23 +831,9 @@ pro red::make_scan_cube, dir $
         cmap1 = 0.0
         for icam = 0, Nnbcams-1 do begin
 
-          cfile = file_search(self.out_dir + 'flats/spectral_flats/' $
-                              + nbdetectors[icam] + '*'  $
-                              + cprefs[icprefs] $
-                              + '_fit_results.sav', count = Nsearch)
-          if Nsearch ne 1 then stop else cfile = cfile[0] 
-          
-          if ~file_test(cfile) then begin
-            print, inam + ' : Error, calibration file not found -> '+cfile
-            print, 'Please run the fitprefilter for '+cprefs[icprefs]+' or continue without'
-            print, 'cavity map for '+cprefs[icprefs]
-            stop
-          endif
-          restore, cfile                 ; The cavity map is in a struct called "fit". 
-          cmap = reform(fit.pars[1,*,*]) ; Unit is [Angstrom]
-          cmap /= 10.                    ; Make it [nm]
-          cmap = -cmap                   ; Change sign so lambda_correct = lambda + cmap
-          fit = 0B                       ; Don't need the fit struct anymore.
+          self -> get_spectral_flats_info, cmap = cmap $
+                                                  , detector = nbdetectors[icam] $
+                                                  , pref = cprefs[icprefs]
           
           if keyword_set(remove_smallscale) then begin
             ;; If the small scale is already corrected, then include only the
