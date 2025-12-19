@@ -130,6 +130,8 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     if n_idx eq 0 then continue
     ;; process the ref image, i.e., fit the grid
     this_ref_state = ref_states_unique[i_ref]
+    print, '-----'
+    red_message, this_ref_state.fpi_state
     ref_img = red_readdata(this_ref_state.filename, /silent)
     ref_siz = size(ref_img, /dim)
     ;;; For CRISP wideband mask the stronger distorted corners
@@ -140,6 +142,7 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     ;; compute area and positions
     ref_area = lonarr(np_ref)
     ref_pos = fltarr(2, np_ref)
+    ref_dr = fltarr(np_ref)
     for i = 0, np_ref-1 do begin
       ;;ix = where_n(ref_m EQ (i+1))
       ix = where(ref_m eq (i+1))
@@ -148,6 +151,7 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
       ro = (ro+3) < (ref_siz-1)
       bx = ref_img[lu[0]:ro[0], lu[1]:ro[1]]
       ref_pos[*, i] = lu + red_centroid(bx)
+      ref_dr[i] = sqrt(total((ref_pos[*, i]-ref_siz/2)^2))
       ref_area[i] = total(bx gt max(bx)/5.)
     endfor
     if keyword_set(manual) then begin
@@ -159,12 +163,16 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     endif else begin
       ;; try to locate the 7/3 in the 6 largest clusters
       ix = reverse(sort(ref_area))
+      ;; but only close(r) to the center
+      undefine, iix
+      for i=0,np_ref-1 do if ref_dr[ix[i]] le 0.9*max(ref_siz)/2 then red_append,iix,ix[i]
+      ix = iix
       for i=0, 3 do for j=i+1, 4 do for k=j+1, 5 do begin
         ref_lind = ix[[i, j, k]]
         ref_lpos = ref_pos[*, ref_lind] 
         if red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l1
       endfor
-      print, inam, ' : Unable to locate the reference pinholes! Mark them manually'
+      print, inam, ' : Unable to locate the reference pinholes for '+this_ref_state.camera+'! Mark them manually'
       repeat begin
         ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes')
         ref_lpos = ref_pos[*, ref_lind]
@@ -230,6 +238,7 @@ found_l1:
       img_np = max(img_m)
       img_area = lonarr(img_np)
       img_pos = fltarr(2, img_np)
+      img_dr = fltarr(img_np)
       for i = 0, img_np-1 do begin
         ix = where(img_m eq (i+1))
         ix = [[ix mod ref_siz[0]], [ix / ref_siz[0]]]
@@ -244,6 +253,7 @@ found_l1:
           img_pos[*, i] = lu + red_centroid(bx)
           img_area[i] = total(bx GT max(bx)/5.)
         endelse
+        img_dr[i] = sqrt(total((img_pos[*, i]-ref_siz/2)^2))
       endfor
       if keyword_set(manual) then begin
         print, 'Mark the same three pinholes as for the reference'
@@ -252,12 +262,15 @@ found_l1:
         if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) ne 1 then stop
       endif else begin
         ix = reverse(sort(img_area))
+        undefine, iix
+        for i=0, img_np-1 do if img_dr[ix[i]] le 0.9*max(ref_siz)/2 then red_append, iix,ix[i]
+        ix = iix
         for i=0, 3 do for j=i+1, 4 do for k=j+1, 5 do begin
           img_lind = ix[[i, j, k]]
           img_lpos = img_pos[*, img_lind] 
           if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
         endfor                  ; i,j
-        print, inam, ' : Unable to locate the reference pinholes. Try marking them manually'
+        print, inam, ' : Unable to locate the reference pinholes for '+state.camera+'. Try marking them manually'
         repeat begin
           img_lind = red_markpinholes(img, img_pos, title='Dependent Pinholes')
           img_lpos = img_pos[*, img_lind]

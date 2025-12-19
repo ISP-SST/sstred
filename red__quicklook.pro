@@ -200,6 +200,7 @@ pro red::quicklook, align = align $
                     , datasets = datasets $
                     , derotate = derotate $
                     , destretch = destretch $
+                    , dirs = dirs $
                     , filter_change = filter_change $
                     , format = format $
                     , gain =  gain $
@@ -282,31 +283,43 @@ pro red::quicklook, align = align $
   if n_elements(bit_rate) eq 0 then bit_rate = 40000
   if n_elements(video_fps) eq 0 then video_fps = 8
 
-  if n_elements(datasets) eq 0 then begin
-    ;; Select data sets in a menu.
-    tmp = red_select_subset(file_basename(*self.data_dirs) $
-                            , qstring = inam + ' : Select data sets' $
-                            , count = Nsets, indx = ichoice)
-    dirs = (*self.data_dirs)[ichoice] 
-  endif else begin
-    if max(datasets eq '*') eq 1 then begin
-      ;; If called with datasets='*' (or, if an array, any element is
-      ;; '*') then process all datasets.
-      dirs = *self.data_dirs
+  if n_elements(dirs) eq 0 then begin
+
+    self_data_dirs = *self.data_dirs
+    
+    ;; Remove e.g. mosaic directories
+    indx = where(strmatch(file_basename(file_dirname(self_data_dirs)),'*-data'), Nwhere)
+    if Nwhere eq 0 then stop
+    self_data_dirs = self_data_dirs[indx]
+    
+    if n_elements(datasets) eq 0 then begin
+      ;; Select data sets in a menu.
+      tmp = red_select_subset(file_basename(self_data_dirs) $
+                              , qstring = inam + ' : Select data sets' $
+                              , count = Nsets, indx = ichoice)
+      dirs = (*self.data_dirs)[ichoice] 
     endif else begin
-      ;; Select datasets that match the ones listed in the datasets
-      ;; keyword.
-      match2, datasets, file_basename(*self.data_dirs), suba, subb 
-      mindx = where(subb ne -1, Nwhere)
-      if Nwhere eq 0 then begin
-        print, inam + ' : No data directories match the datasets keyword.'
-        return
-      endif
-      dirs = (*self.data_dirs)[mindx]
+      if max(datasets eq '*') eq 1 then begin
+        ;; If called with datasets='*' (or, if an array, any element is
+        ;; '*') then process all datasets.
+        dirs = self_data_dirs
+      endif else begin
+        ;; Select datasets that match the ones listed in the datasets
+        ;; keyword.
+        match2, datasets, file_basename(self_data_dirs), suba, subb 
+        mindx = where(subb ne -1, Nwhere)
+        if Nwhere eq 0 then begin
+          print, inam + ' : No data directories match the datasets keyword.'
+          return
+        endif
+        dirs = (self_data_dirs)[mindx]
+      endelse
+      Nsets = n_elements(dirs)
     endelse
+  endif else begin
     Nsets = n_elements(dirs)
   endelse
-  
+
   ;; Now loop over datasets (timestamps)
   for iset = 0, Nsets-1 do begin
 

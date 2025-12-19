@@ -44,7 +44,7 @@
 ; 
 ;   pref : in, optional, type=string
 ;
-;     The relevant prefilter. (Keyword not used right now.)
+;     The relevant prefilter.
 ;
 ;   preserve_size : in, optional, type=boolean
 ;
@@ -72,7 +72,12 @@ function red_apply_camera_alignment, im, model, cam $
           ;; alignment procedure.
           
           restore, 'calib/alignments_polywarp.sav'
-          indx = where(alignments.state.camera eq cam, Nalign)
+          if n_elements(pref) gt 0 then begin
+            indx = where(alignments.state.camera eq cam $
+                         and alignments.state.prefilter eq pref, Nalign)
+          endif else begin
+            indx = where(alignments.state.camera eq cam, Nalign)
+          endelse
           
           case Nalign of
             0    : stop         ; Should not happen!

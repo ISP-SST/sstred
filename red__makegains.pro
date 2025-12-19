@@ -74,10 +74,13 @@
 ;   2024-11-02 : JdlCR. Modifications for new
 ;                demodulation/flat-fielding scheme.
 ;
+;   2025-08-10 : MGL. New keyword flatmin.
+;
 ;-
 pro red::makegains, bad=bad $
                     , cam = cam $
                     , files = files $
+                    , flatmin = flatmin $
                     , max = max $
                     , min = min $
                     , nthreads = nthreads $
@@ -166,7 +169,9 @@ pro red::makegains, bad=bad $
       ;; Only one camera?
       if n_elements(cam) ne 0 then if tmp[0] NE cam then continue
       
-      gain = self -> flat2gain(flat, ma=max, mi=min, bad=bad $
+      if stddev(flat) eq 0 then stop
+      gain = self -> flat2gain(flat, max=max, $
+                               flatmin = flatmin, min=min, bad=bad $
                                , /preserve, smoothsize=smoothsize)
       
 ;    namout = file_basename(flatname[ifile], '.flat.fits')+'.gain'

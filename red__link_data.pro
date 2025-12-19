@@ -96,7 +96,7 @@ pro red::link_data, all_data = all_data $
   end
   
   if n_elements(link_dir) eq 0 then link_dir = 'data'
-  if n_elements(uscan) eq 0 then uscan = ''
+;  if n_elements(uscan) eq 0 then uscan = ''
 
   cams = *self.cameras
   Ncams = n_elements(cams)
@@ -167,15 +167,19 @@ pro red::link_data, all_data = all_data $
           states = sts(inn)
           files = states.filename 
         endif else begin
-          files = file_search(data_dir + '/' + cam + '/*cam*', count = Nfiles)
-          files = files(where(strpos(files, '.lcd.') LT 0, nf))
+          files = self -> raw_search(data_dir + '/' + cam $
+                                     , pref = pref $
+                                     , scannos = uscan $
+                                     , count = Nfiles)
+;          files = file_search(data_dir + '/' + cam + '/*cam*', count = Nfiles)
+;          files = files(where(strpos(files, '.lcd.') LT 0, nf))
           if(files[0] eq '') then begin
             print, inam+' : ERROR : '+cam+': no files found in: '+$
                    data_dir +' : skipping camera!'
             continue
             ;; Only one prefilter?
             if keyword_set(pref) then begin
-              idx = where(states.prefilter eq pref, Np)
+              idx = where(strmatch(states.prefilter,pref), Np)
               if Np eq 0 then begin
                 print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
                 continue
@@ -187,7 +191,7 @@ pro red::link_data, all_data = all_data $
           self->extractstates_nondb, files, states
           ;; Only one prefilter?
           if keyword_set(pref) then begin
-            idx = where(states.prefilter eq pref, Np)
+            idx = where(strmatch(states.prefilter,pref), Np)
             if Np eq 0 then begin
               print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
               continue
@@ -232,7 +236,8 @@ pro red::link_data, all_data = all_data $
         file_mkdir, outdir1
         
         for ifile = 0L, Nfiles - 1 do begin
-          if uscan ne '' then if states.scannumber[ifile] NE uscan then continue
+;          if uscan ne '' then if states[ifile].scannumber NE uscan then continue
+          if n_elements(uscan) ne 0 then if states[ifile].scannumber NE uscan then continue
           
           namout = outdir1 + detector $
                    + '_' + string(states[ifile].scannumber, format = '(i05)') $

@@ -107,7 +107,7 @@ function red_meta2head, head, metadata=metaStruct
     dummy = fxpar(newhead, 'LCSTATE', count = count)
     if count eq 0 then begin
 
-      lcstate = ((stregex(barefile, '(\.)lc(.?)(\.)', /extr, /subexp))[2,*])[0]
+      lcstate = ((stregex(barefile, '([_.])lc(.?)([_.])', /extr, /subexp))[2,*])[0]
       if lcstate ne '' then red_fitsaddkeyword, anchor = anchor, newhead $
                                                 , 'LCSTATE', long(lcstate) $
                                                 , 'Inferred from filename.'

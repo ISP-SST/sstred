@@ -233,6 +233,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
               
               
               if flatstatus ne 0 then stop
+              flat_failed = 0
               print, inam+" : loading flat data and making gain -> "+fn 
               gains[*, *, ilc] = red_flat2gain(ff, bad=1.5, smooth=3.0, min=0.085, max=5.0)
               if((gains[0,0,ilc] eq 0) && $

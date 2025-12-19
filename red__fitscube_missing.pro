@@ -122,7 +122,7 @@ pro red::fitscube_missing, filename $
         if iprogress ne 0 then old_set_missing_to = set_missing_to
 
         red_progressbar, iprogress, Nprogress, /predict $
-                         , 'Missing data in frame '+strjoin(strtrim([iscan, istokes, ituning],2),',')
+                         , 'Identifying pixels with no signal in frame '+strjoin(strtrim([iscan, istokes, ituning],2),',')
 
 
         ;; Read a frame

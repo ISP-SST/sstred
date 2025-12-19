@@ -108,6 +108,10 @@
 ;      For data from a single datestamp directory, construct the
 ;      filename as before multiple directories were implemented.
 ;
+;    outpath : out, optional, type=string
+;
+;      The path of the output cube.
+;
 ;    padmargin : in, optional, type=integer, default=40
 ;
 ;       Amount of rotation padding in pixels.
@@ -255,6 +259,8 @@
 ;
 ;    2025-02-19 : MGL. New keywords patch_indx and patch_coord.
 ;
+;    2025-10-30 : MGL. New keyword outpath.
+;
 ;-
 pro red::make_wb_cube, dirs $
                        , align_interactive = align_interactive $     $
@@ -275,6 +281,7 @@ pro red::make_wb_cube, dirs $
                        , nthreads = nthreads $
                        , ofile = ofile  $
                        , oldname = oldname $
+                       , outpath = outpath $
                        , padmargin = padmargin $
                        , patch_indx = patch_indx $
                        , patch_coord = patch_coord $
@@ -315,11 +322,6 @@ pro red::make_wb_cube, dirs $
   
   if(~keyword_set(nearest)) then lin = 1 else lin = 0
   
-  
-  ;; Name of the instrument
-  instrument = ((typename(self)).tolower())
-
-  
   if n_elements(direction) eq 0 then direction = self.direction
   if n_elements(rotation)  eq 0 then rotation  = self.rotation
   if n_elements(padmargin) eq 0 then padmargin  = 40
@@ -354,10 +356,10 @@ pro red::make_wb_cube, dirs $
   if keyword_set(limb_data) then autocrop = 0
 
   ;; Camera/detector identification
-  self -> getdetectors
-  wbindx = where(strmatch(*self.cameras, instrument+'-W', /fold_case))
-  wbcamera = (*self.cameras)[wbindx[0]]
-  wbdetector = (*self.detectors)[wbindx[0]]
+  self -> cameras $
+     , instrument = instrument $
+     , wb_detector = wbdetector $
+     , wb_camera = wbcamera
 
   ;; Get metadata from logfiles
   red_logdata, self.isodate, time_r0, r0 = metadata_r0, ao_lock = ao_lock
@@ -397,7 +399,7 @@ pro red::make_wb_cube, dirs $
   if keyword_set(make_raw) then begin
     stop
     ;;files = red_raw_search('data/'+ dir + '/*-W/', instrument = instrument, scannos = scannos, count = Nraw)
-    files = self -> raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument.capwords()+'-W/' $
+    files = self -> raw_search(file_dirname((*self.data_dirs)[0]) + '/' + dir + '/'+instrument+'-W/' $
                                , scannos = scannos, count = Nraw)
     if Nraw eq 0 then stop
     self -> extractstates, files, states
@@ -490,16 +492,16 @@ pro red::make_wb_cube, dirs $
   origNy = y1 - y0 + 1
 
   ;; Observations metadata varaibles
-  tbeg_array     = dblarr(1, Nscans)   ; Time beginning for state
-  tavg_array     = dblarr(1, Nscans)   ; Time average for state
-  tend_array     = dblarr(1, Nscans)   ; Time end for state
-  date_beg_array = strarr(1, Nscans)   ; DATE-BEG for state
-  date_avg_array = strarr(1, Nscans)   ; DATE-AVG for state
-  date_end_array = strarr(1, Nscans)   ; DATE-END for state
-  exp_array      = fltarr(1, Nscans)   ; Total exposure time
-  sexp_array     = fltarr(1, Nscans)   ; Single exposure time
-  nsum_array     = lonarr(1, Nscans)   ; Number of summed exposures
-  date_obs_array = strarr(Nscans)      ; Datasets for each scan
+  tbeg_array     = dblarr(1, Nscans) ; Time beginning for state
+  tavg_array     = dblarr(1, Nscans) ; Time average for state
+  tend_array     = dblarr(1, Nscans) ; Time end for state
+  date_beg_array = strarr(1, Nscans) ; DATE-BEG for state
+  date_avg_array = strarr(1, Nscans) ; DATE-AVG for state
+  date_end_array = strarr(1, Nscans) ; DATE-END for state
+  exp_array      = fltarr(1, Nscans) ; Total exposure time
+  sexp_array     = fltarr(1, Nscans) ; Single exposure time
+  nsum_array     = lonarr(1, Nscans) ; Number of summed exposures
+  date_obs_array = strarr(Nscans)    ; Datasets for each scan
   
   
   ;; Read headers to get obs_time and load the images into a cube
@@ -512,11 +514,11 @@ pro red::make_wb_cube, dirs $
                       , patch_indx = patch_indx $
                       , patch_coord = patch_coord)
     red_missing, im, /inplace, missing_type_wanted = 'median' ; Set bg to corners of ragged crisp outline
-    red_missing, im, /inplace, missing_type_wanted = 'nan'                   ; Set bg to NaN
+    red_missing, im, /inplace, missing_type_wanted = 'nan'    ; Set bg to NaN
 ;    red_missing, im, nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data        
 ;    bg = !Values.F_NaN
 ;    if Nmissing gt 0 then im[indx_missing] = bg
-    
+
     if keyword_set(make_raw) then begin
       if size(im,/n_dim) gt 2 then im = im[*, *, 0]
       im -= dark
@@ -599,7 +601,7 @@ pro red::make_wb_cube, dirs $
   for iscan = 1L, Nscans -1 do begin
     red_progressbar, iscan, Nscans, inam+' : De-rotating images.'
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
-                     , ang[iscan], 0, 0, background = bg, nthreads=nthreads)
+                                  , ang[iscan], 0, 0, background = bg, nthreads=nthreads)
   endfor                        ; iscan
 
   ;; Align cube
@@ -719,19 +721,19 @@ pro red::make_wb_cube, dirs $
   
   ;; De-rotate and shift cube
 ;  bg = median(cub1[*,*,0])
-    bg = !Values.F_NaN
-    dum = red_rotation(cub1[*,*,0], full=ff $
-                       , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
-    nd = size(dum,/dim)
-    nx = nd[0]
-    ny = nd[1]
-    cub = fltarr([nd, Nscans])
-    cub[*,*,0] = dum
-    
-    case 1 of
+  bg = !Values.F_NaN
+  dum = red_rotation(cub1[*,*,0], full=ff $
+                     , ang[0], shift[0,0], shift[1,0], background = bg, nthreads=nthreads)
+  nd = size(dum,/dim)
+  nx = nd[0]
+  ny = nd[1]
+  cub = fltarr([nd, Nscans])
+  cub[*,*,0] = dum
+  
+  case 1 of
     keyword_set(select_intensity_region) : begin
       dumm = red_rotation(cub1[*,*,-1], full=ff $
-                     , ang[-1], shift[0,-1], shift[1,-1], background = bg, nthreads=nthreads)
+                          , ang[-1], shift[0,-1], shift[1,-1], background = bg, nthreads=nthreads)
       dispim = bytscl(red_histo_opt(dum+dumm))
       xroi,dispim, Regions_Out=ROI, /Block, title = 'Select region to be used for intensity correction with time.'
       int_indx = where( (ROI[0] -> ComputeMask(Dimensions=nd, Mask_Rule=2)) )
@@ -739,9 +741,9 @@ pro red::make_wb_cube, dirs $
     keyword_set(limb_data) : begin
       ;; For limb data, calculate the median in a strip of pixels with
       ;; a certain width, from the limb inward.
-      strip_width = 5.                                              ; Approximate width, 5 arsec
-      strip_width = round(strip_width/float(image_scale))      ; Converted to pixels
-      bimodal_threshold = cgOtsu_Threshold(dum, /PlotIt) ; Threshold at the limb
+      strip_width = 5.                                    ; Approximate width, 5 arsec
+      strip_width = round(strip_width/float(image_scale)) ; Converted to pixels
+      bimodal_threshold = cgOtsu_Threshold(dum, /PlotIt)  ; Threshold at the limb
       disk_mask = dum gt bimodal_threshold               
       strip_mask = dilate(sobel(disk_mask),replicate(1, strip_width, strip_width))  * disk_mask 
       int_indx = where(strip_mask, Nmask) ; Indices within the strip
@@ -761,17 +763,17 @@ pro red::make_wb_cube, dirs $
     ;; Measure time-dependent intensity variation
     dum = reform(cub[*,*,iscan])
     if n_elements(int_indx) ne 0 then $
-      tmean[iscan] = median(dum[int_indx]) $
+       tmean[iscan] = median(dum[int_indx]) $
     else $
-      tmean[iscan] = median(dum[nx/2-xbd/2:nx/2+xbd/2,ny/2-ybd/2:ny/2+ybd/2])
-  
+       tmean[iscan] = median(dum[nx/2-xbd/2:nx/2+xbd/2,ny/2-ybd/2:ny/2+ybd/2])
+    
     cub[*,*,iscan] /= tmean[iscan]
-  endfor                         ; iscan
+  endfor                        ; iscan
 
   red_timeplot, red_time2double(time), tmean/mean(tmean) $
-                 , xtitle = 'Time', ytitle = 'Intensity correction' $
-                 , psym=-16, /ynozero $
-                 , xrange = [red_time2double(time[0]), red_time2double(time[-1])] + 20*[-1, 1]
+                , xtitle = 'Time', ytitle = 'Intensity correction' $
+                , psym=-16, /ynozero $
+                , xrange = [red_time2double(time[0]), red_time2double(time[-1])] + 20*[-1, 1]
   
   dts = red_time2double(time)
   if n_elements(tstep) eq 0 then begin
@@ -788,7 +790,6 @@ pro red::make_wb_cube, dirs $
   ;; Calculate stretch vectors
   grid = red_destretch_tseries(cub, 1.0/float(image_scale), tile, clip, tstep $
                                , nthreads = nthreads, nostretch = nostretch)
-
   if ~keyword_set(nostretch) then begin
     for iscan = 0L, Nscans - 1 do begin
       red_progressbar, iscan, Nscans, inam+' : Applying the stretches.'
@@ -820,17 +821,17 @@ pro red::make_wb_cube, dirs $
 ;              + red_collapserange(uscans, ld = '', rd = '')
 ;  endif else begin
 ;    ;; Start constructing the output file name
-    for idir = 0, nDirs-1 do begin
-      indx = where(strmatch(wstates.filename, dirs[idir]+'*'))
-      scn = red_collapserange(wstates[indx].scannumber,r='',l='')
-      tst = (stregex(wstates[indx[0]].filename,'/([0-2][0-9]:[0-5][0-9]:[0-6][0-9])/',/extra,/sub))[1]
+  for idir = 0, nDirs-1 do begin
+    indx = where(strmatch(wstates.filename, dirs[idir]+'*'))
+    scn = red_collapserange(wstates[indx].scannumber,r='',l='')
+    tst = (stregex(wstates[indx[0]].filename,'/([0-2][0-9]:[0-5][0-9]:[0-6][0-9])/',/extra,/sub))[1]
 ;      red_append, midparts, tst+'='+scn
-      red_append, timestamps, tst      
-      red_append, scannos_actual, scn
-    endfor                      ; idir
+    red_append, timestamps, tst      
+    red_append, scannos_actual, scn
+  endfor                        ; idir
 ;    midpart = prefilter + '_' + datestamp + '_' + strjoin(midparts, '_')
 ;  endelse
-    
+  
   ;; midpart something like : 6302_2016-09-19T09:28:36_09:28:36=0,1_09:30:20=0-4
   
   ;; Save WB results as a fits file
@@ -846,9 +847,9 @@ pro red::make_wb_cube, dirs $
   if n_elements(nametag) eq 0 then begin
     ;;  ofil = 'wb_'+midpart+'_'+datatype+'_im.fits'
     if self.filetype eq 'MIXED' then $
-      datatags=['mixed',datatype, 'im'] $
+       datatags=['mixed',datatype, 'im'] $
     else $
-      datatags = [datatype, 'im']
+       datatags = [datatype, 'im']
   endif else begin
     ;;   ofil = 'wb_'+midpart+'_'+nametag+'_'+datatype+'_im.fits'
     datatags = [nametag, datatype, 'im']
@@ -862,17 +863,19 @@ pro red::make_wb_cube, dirs $
   endif
 
   if keyword_set(ofile) then $
-    ofil = ofile $
+     ofil = ofile $
   else $
-    ofil = red_fitscube_filename('wb' $
-                               , prefilter $                               
-                               , timestamps $                               
-                               , scannos_actual $                               
-                               , point_id $                   
-                               , datatags = datatags $                               
-                               , oldname = oldname $                               
-                              )
-  print, inam + ' : saving WB corrected cube -> ' + odir + ofil
+     ofil = red_fitscube_filename('wb' $
+                                  , prefilter $                               
+                                  , timestamps $                               
+                                  , scannos_actual $                               
+                                  , point_id $                   
+                                  , datatags = datatags $                               
+                                  , oldname = oldname $                               
+                                 )
+  outpath = odir + ofil
+  print, inam + ' : saving WB corrected cube -> ' + outpath
+  
   
   ;; Add the wavelength and Stokes dimensions
   dims = [nx, ny, 1, 1, Nscans]
@@ -911,9 +914,9 @@ pro red::make_wb_cube, dirs $
 ;                      , 'Creation UTC date of FITS header' ;
 
   ;; Delete some keywords that do not make sense for WB cubes.
-  red_fitsdelkeyword, hdr, 'FNUMSUM'    ; May add this later
-  red_fitsdelkeyword, hdr, 'FRAMENUM'   ; Not applicable here
-  red_fitsdelkeyword, hdr, 'STATE'      ; State info is in WCS and FILTER1 keywords
+  red_fitsdelkeyword, hdr, 'FNUMSUM'  ; May add this later
+  red_fitsdelkeyword, hdr, 'FRAMENUM' ; Not applicable here
+  red_fitsdelkeyword, hdr, 'STATE'    ; State info is in WCS and FILTER1 keywords
 ;  red_fitsdelkeyword, hdr, '' 
 
 ;  ;; Some old momfbd output could have an old version of the PRSTEP1
@@ -955,9 +958,9 @@ pro red::make_wb_cube, dirs $
   t_array[0] = red_time2double(time) ; In [s] since midnight
   
   wcs = replicate({ wave:dblarr(2,2) $
-                  , hplt:dblarr(2,2) $
-                  , hpln:dblarr(2,2) $
-                  , time:dblarr(2,2) $
+                    , hplt:dblarr(2,2) $
+                    , hpln:dblarr(2,2) $
+                    , time:dblarr(2,2) $
                   }, 1, Nscans)
   
   ;; TIME reference value, all times are seconds since midnight.
@@ -973,7 +976,7 @@ pro red::make_wb_cube, dirs $
 ;  help, round(cub)
   print, 'n_elements:', n_elements(cub)
   ;; Write the file
-  self -> fitscube_initialize, odir + ofil, hdr, lun, fileassoc, dims 
+  self -> fitscube_initialize, outpath, hdr, lun, fileassoc, dims 
 
   ;; The prefilter is the same for the whole cube.
   wcs[*, *].wave = float(prefilter)/10.
@@ -1019,34 +1022,34 @@ pro red::make_wb_cube, dirs $
   wcs.hplt[0, 1] = hplt + double(image_scale) * (Ny-1)/2.d
   wcs.hplt[1, 1] = hplt + double(image_scale) * (Ny-1)/2.d
   
-  
+
   for iscan = 0, Nscans-1 do begin
     red_fitscube_addframe, fileassoc, cub[*, *, 0, 0, iscan] $
                            , iscan = iscan
     wcs[0, iscan].time = t_array[iscan]    
   endfor                        ; iscan
 ;  free_lun, lun
-;  print, inam + ' : Wrote file '+odir + ofil
+;  print, inam + ' : Wrote file '+outpath
   ;; Close fits file 
   self -> fitscube_finish, lun, wcs = wcs, direction = direction
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $
-                              , anchor = 'SOLARNET' $
-                              , files = wfiles, cubefile = odir + ofil $
-                              , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
-                              , prpara = prpara $
-                              , prproc = inam
+     , anchor = 'SOLARNET' $
+     , files = wfiles, cubefile = outpath $
+     , prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
+     , prpara = prpara $
+     , prproc = inam
 
   
   if ~keyword_set(nomissing_nans) and ~keyword_set(integer) then begin
     ;; Set padding pixels to missing-data, i.e., NaN.
-    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'nan'
+    self -> fitscube_missing, outpath, /noflip, missing_type = 'nan'
   endif else begin
-    self -> fitscube_missing, odir + ofil, /noflip, missing_type = 'median'
+    self -> fitscube_missing, outpath, /noflip, missing_type = 'median'
   endelse
 
-  print, inam + ' : Add calibration data to file '+odir + ofil
+  print, inam + ' : Add calibration data to file '+outpath
   fxbhmake, bhdr, 1, 'MWCINFO', 'Info from make_wb_cube'
 ;  x01y01 = [X0, X1, Y0, Y1]
   fxbaddcol, col, bhdr, ANG,       'ANG'
@@ -1061,7 +1064,7 @@ pro red::make_wb_cube, dirs $
 
   fxbaddcol, wfiles_col, bhdr, WFILES, 'WFILES'
 
-  fxbcreate, bunit, odir + ofil, bhdr
+  fxbcreate, bunit, outpath, bhdr
 
   fxbwritm, bunit $
             , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
@@ -1070,7 +1073,7 @@ pro red::make_wb_cube, dirs $
   
   fxbfinish, bunit
   
-  print, inam + ' : Added calibration data to file '+odir + ofil
+  print, inam + ' : Added calibration data to file '+outpath
 
   if 0 then begin
     ;; To read the extension:
@@ -1114,7 +1117,7 @@ pro red::make_wb_cube, dirs $
   ;; Add the WCS coordinates
   if self.direction gt 7 || self.direction ne direction then begin
     ;; Direction not set in the config file, assume unknown
-    red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+    red_fitscube_addwcs, outpath, wcs, dimensions = dims $
                          , /update $
                          , csyer_spatial_value = 120. $ ; 2 arc minutes
                          , csyer_spatial_comment = '[arcsec] Orientation unknown'
@@ -1122,105 +1125,105 @@ pro red::make_wb_cube, dirs $
     ;; Direction set in the config file, so orientation should be
     ;; good. But there may still be small rotation arrors and
     ;; substantial translations.
-    red_fitscube_addwcs, odir + ofil, wcs, dimensions = dims $
+    red_fitscube_addwcs, outpath, wcs, dimensions = dims $
                          , /update $
                          , csyer_spatial_value = 60. $ ; 1 arc minute
                          , csyer_spatial_comment = '[arcsec] Orientation known'
   endelse 
 
   ;; Add variable keywords.
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-BEG', date_beg_array $
-                                  , anchor = anchor $
-                                  , comment = 'Beginning time of observation' $
-                                  , keyword_method = 'first' $
-                                  , axis_numbers = [3, 5]
+  self -> fitscube_addvarkeyword, outpath, 'DATE-BEG', date_beg_array $
+     , anchor = anchor $
+     , comment = 'Beginning time of observation' $
+     , keyword_method = 'first' $
+     , axis_numbers = [3, 5]
   
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-END', date_end_array $
-                                  , anchor = anchor $
-                                  , comment = 'End time of observation' $
-                                  , keyword_method = 'last' $
-                                  , axis_numbers = [3, 5]
+  self -> fitscube_addvarkeyword, outpath, 'DATE-END', date_end_array $
+     , anchor = anchor $
+     , comment = 'End time of observation' $
+     , keyword_method = 'last' $
+     , axis_numbers = [3, 5]
   
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-AVG', date_avg_array $
-                                  , anchor = anchor $
-                                  , comment = 'Average time of observation' $
-                                  , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
-                                  , axis_numbers = [3, 5]
+  self -> fitscube_addvarkeyword, outpath, 'DATE-AVG', date_avg_array $
+     , anchor = anchor $
+     , comment = 'Average time of observation' $
+     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
+     , axis_numbers = [3, 5]
   
-  self -> fitscube_addvarkeyword, odir + ofil, 'SCANNUM', s_array $
-                                  , comment = 'Scan number' $
-                                  , anchor = anchor $
-                                  , keyword_method = 'first' $
-                                  , axis_numbers = 5
+  self -> fitscube_addvarkeyword, outpath, 'SCANNUM', s_array $
+     , comment = 'Scan number' $
+     , anchor = anchor $
+     , keyword_method = 'first' $
+     , axis_numbers = 5
 
-  self -> fitscube_addvarkeyword, odir + ofil, 'DATE-OBS', date_obs_array $
-                                  , comment = 'Dataset' $
-                                  , anchor = anchor $
-                                  , keyword_method = 'first' $
-                                  , axis_numbers = 5
+  self -> fitscube_addvarkeyword, outpath, 'DATE-OBS', date_obs_array $
+     , comment = 'Dataset' $
+     , anchor = anchor $
+     , keyword_method = 'first' $
+     , axis_numbers = 5
   
-  self -> fitscube_addvarkeyword, odir + ofil, 'XPOSURE', exp_array $
-                                  , comment = 'Summed exposure times' $
-                                  , anchor = anchor $
-                                  , tunit = 's' $
-                                  , keyword_method = 'median' $
-                                  , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, outpath, 'XPOSURE', exp_array $
+     , comment = 'Summed exposure times' $
+     , anchor = anchor $
+     , tunit = 's' $
+     , keyword_method = 'median' $
+     , axis_numbers = [3, 5] 
 
-  self -> fitscube_addvarkeyword, odir + ofil, 'TEXPOSUR', sexp_array $
-                                  , comment = '[s] Single-exposure time' $
-                                  , anchor = anchor $
-                                  , tunit = 's' $
-                                  , keyword_method = 'median' $
-                                  , axis_numbers = [3, 5] 
+  self -> fitscube_addvarkeyword, outpath, 'TEXPOSUR', sexp_array $
+     , comment = '[s] Single-exposure time' $
+     , anchor = anchor $
+     , tunit = 's' $
+     , keyword_method = 'median' $
+     , axis_numbers = [3, 5] 
 
-  self -> fitscube_addvarkeyword, odir + ofil, 'NSUMEXP', nsum_array $
-                                  , comment = 'Number of summed exposures' $
-                                  , anchor = anchor $
-                                  , keyword_method = 'median' $
-                                  , axis_numbers = [3, 5]
+  self -> fitscube_addvarkeyword, outpath, 'NSUMEXP', nsum_array $
+     , comment = 'Number of summed exposures' $
+     , anchor = anchor $
+     , keyword_method = 'median' $
+     , axis_numbers = [3, 5]
   
   tindx_r0 = where(time_r0 ge min(t_array) and time_r0 le max(t_array), Nt)
   if Nt gt 0 then begin
     r0dims = size(metadata_r0, /dim) ; We have not always had two r0 values.
     if r0dims[0] eq 1 then extra_coordinate1 = [24] else extra_coordinate1 = [24, 8]
-    self -> fitscube_addvarkeyword, odir + ofil, 'ATMOS_R0' $
-                                    , metadata_r0[*, tindx_r0] $
-                                    , anchor = anchor $
-                                    , comment = 'Atmospheric coherence length' $
-                                    , tunit = 'm' $
-                                    , extra_coordinate1 = extra_coordinate1 $     ; WFS subfield sizes 
-                                    , extra_labels      = ['WFSZ'] $              ; Axis labels for metadata_r0
-                                    , extra_names       = ['WFS subfield size'] $ ; Axis names for metadata_r0
-                                    , extra_units       = ['pix'] $               ; Axis units for metadata_r0
-                                    , keyword_method = 'mean' $
-                                    , time_coordinate = time_r0[tindx_r0] $
-                                    , time_unit       = 's'
+    self -> fitscube_addvarkeyword, outpath, 'ATMOS_R0' $
+       , metadata_r0[*, tindx_r0] $
+       , anchor = anchor $
+       , comment = 'Atmospheric coherence length' $
+       , tunit = 'm' $
+       , extra_coordinate1 = extra_coordinate1 $                                  ; WFS subfield sizes 
+       , extra_labels      = ['WFSZ'] $                                           ; Axis labels for metadata_r0
+       , extra_names       = ['WFS subfield size'] $                              ; Axis names for metadata_r0
+       , extra_units       = ['pix'] $                                            ; Axis units for metadata_r0
+       , keyword_method = 'mean' $
+       , time_coordinate = time_r0[tindx_r0] $
+       , time_unit       = 's'
 
-    self -> fitscube_addvarkeyword, odir + ofil, 'AO_LOCK' $
-                                    , ao_lock[tindx_r0] $
-                                    , anchor = anchor $
-                                    , comment = 'Fraction of time the AO was locking, 2s average' $
-                                    , keyword_method = 'mean' $
-                                    , time_coordinate = time_r0[tindx_r0] $
-                                    , time_unit       = 's'
+    self -> fitscube_addvarkeyword, outpath, 'AO_LOCK' $
+       , ao_lock[tindx_r0] $
+       , anchor = anchor $
+       , comment = 'Fraction of time the AO was locking, 2s average' $
+       , keyword_method = 'mean' $
+       , time_coordinate = time_r0[tindx_r0] $
+       , time_unit       = 's'
 
   endif
 
   tindx_turret = where(time_turret ge min(t_array) and time_turret le max(t_array), Nt)
   if Nt gt 0 then begin
 
-    self -> fitscube_addvarkeyword, odir + ofil, 'ELEV_ANG' $
-                                    , reform(azel[1, tindx_turret]) $
-                                    , anchor = anchor $
-                                    , comment = 'Elevation angle' $
-                                    , keyword_method = 'mean' $
-                                    , time_coordinate = time_turret[tindx_turret] $
-                                    , time_unit       = 'deg'
+    self -> fitscube_addvarkeyword, outpath, 'ELEV_ANG' $
+       , reform(azel[1, tindx_turret]) $
+       , anchor = anchor $
+       , comment = 'Elevation angle' $
+       , keyword_method = 'mean' $
+       , time_coordinate = time_turret[tindx_turret] $
+       , time_unit       = 'deg'
     
   end
-    
+  
   if 0 then begin
-    fname = odir + ofil
+    fname = outpath
     hhh = headfits(fname)
     scn = red_fitsgetkeyword(fname, 'SCANNUM', comment = comment, variable_values = scn_values)
     xps = red_fitsgetkeyword(fname, 'XPOSURE', comment = comment, variable_values = xps_values)

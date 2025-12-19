@@ -114,6 +114,8 @@
 ;                 summed darks, and the links to raw science data.
 ; 
 ;    2016-10-14 : MGL. Added scangain datatype.
+; 
+;    2025-06-09 : MGL. Adapt to polarimetric data.
 ;    
 ;-
 function chromis::filenames, datatype, states $
@@ -135,6 +137,8 @@ function chromis::filenames, datatype, states $
                              , linked = linked 
 
   Nstates = n_elements(states)
+
+  polarimetric_data = self -> polarimetric_data()
   
   if keyword_set(raw) then begin
     if ~keyword_set(wild_prefilter) and ~keyword_set(wild_tuning) then begin
@@ -150,14 +154,16 @@ function chromis::filenames, datatype, states $
     wild_gain = 1
     wild_prefilter = 1
     wild_tuning = 1
+    wild_lc = 1
   endif
   if keyword_set(wild_cam_settings) then begin
     wild_exposure = 1
     wild_gain = 1
+    wild_lc = 1
   endif
 
   ;; Search strings, the wild parts.
-  detector_searchstring    = 'cam[XVI]*'
+  detector_searchstring    = 'cam[LXVI]*'
   camera_searchstring      = 'Chromis-?' 
   scannumber_searchstring  = strjoin(replicate('[0-9]', 5))
   framenumber_searchstring = strjoin(replicate('[0-9]', 7))
@@ -166,6 +172,7 @@ function chromis::filenames, datatype, states $
   gain_searchstring        = 'G[0-9]*\.[0-9]*'
   tuning_searchstring      = strjoin(replicate('[0-9]', 4)) + '_[+-][0-9]*'
   timestamp_searchstring   = '[0-2][0-9]:[0-5][0-9]:[0-5][0-9]'
+  lc_searchstring          = 'lc[0-9]'
 
   framenumber_template = '%07d'
 
@@ -393,8 +400,10 @@ function chromis::filenames, datatype, states $
           red_append, tag_list, exposure
           red_append, tag_list, gain
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          if ~states[istate].is_wb && tuning ne '' then begin
+            red_append, tag_list, tuning
+            if polarimetric_data then red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+          endif
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
@@ -405,8 +414,25 @@ function chromis::filenames, datatype, states $
           red_append, tag_list, exposure
           red_append, tag_list, gain
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          if ~states[istate].is_wb && tuning ne '' then begin
+            red_append, tag_list, tuning
+          endif
+          red_append, tag_list, 'cavityfree'
+          ext = '.flat'
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+
+ 
+        'cavityflat_lc' : begin
+          dir = self.out_dir + '/flats/' 
+          red_append, tag_list, detector
+          red_append, tag_list, exposure
+          red_append, tag_list, gain
+          red_append, tag_list, prefilter
+          if ~states[istate].is_wb && tuning ne '' then begin
+            red_append, tag_list, tuning
+          endif
+          red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
           red_append, tag_list, 'cavityfree'
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
@@ -418,8 +444,9 @@ function chromis::filenames, datatype, states $
           red_append, tag_list, exposure
           red_append, tag_list, gain
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          if ~states[istate].is_wb && tuning ne '' then begin
+            red_append, tag_list, tuning
+          endif
           red_append, tag_list, 'summed'
           ext = '.flat'
           if ~keyword_set(no_fits) then ext += '.fits'
@@ -433,7 +460,7 @@ function chromis::filenames, datatype, states $
           red_append, tag_list, exposure
           red_append, tag_list, gain
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then begin
+          if ~states[istate].is_wb && tuning ne '' then begin
             red_append, tag_list, tuning
           endif
           ext = '.gain'
@@ -447,29 +474,67 @@ function chromis::filenames, datatype, states $
           red_append, tag_list, exposure
           red_append, tag_list, gain
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
-             red_append, tag_list, tuning
+          if ~states[istate].is_wb && tuning ne '' then begin
+            red_append, tag_list, tuning
+            if polarimetric_data then red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+          end
           ext = '.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
+        
         'cavityfree_gain' : begin
           dir = self.out_dir + '/gaintables/' 
           red_append, tag_list, detector
           red_append, tag_list, exposure
           red_append, tag_list, gain
           red_append, tag_list, prefilter
-          if states[istate].is_wb eq 0 and tuning ne '' then $
+          if ~states[istate].is_wb && tuning ne '' then $
              red_append, tag_list, tuning
           ext = '_cavityfree.gain'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
         
-        'pinh' :  begin
+        'cavityfree_lc_gain' : begin
+          dir = self.out_dir + '/gaintables/' 
+          red_append, tag_list, detector
+          red_append, tag_list, exposure
+          red_append, tag_list, gain
+          red_append, tag_list, prefilter
+          if ~states[istate].is_wb && tuning ne '' then $
+             red_append, tag_list, tuning
+          red_append, tag_list, 'lc'+strtrim(long(states[istate].lc), 2)
+          ext = '_cavityfree.gain'
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+        
+        'pinh' : begin
           dir = self.out_dir+'/pinhs/'
           red_append, tag_list, detector
           red_append, tag_list, prefilter
           red_append, tag_list, states[istate].fpi_state ; The NB state also in WB
           ext = '.pinh'
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+
+        'pols' : begin
+          dir = self.out_dir+'/polcal_sums/'+camera+'/'
+          red_append, tag_list, detector
+          red_append, tag_list, 'lp'+string(states[istate].lp,format='(I03)')
+          red_append, tag_list, 'qw'+string(states[istate].qw,format='(I03)')
+          red_append, tag_list, prefilter
+          red_append, tag_list, 'lc'+string(states[istate].lc,format='(I1)')
+          ;; state_split = strsplit(states[istate].fullstate,'_',/extract)
+          ;; red_append, tag_list, state_split[2:4] ; lp000_qw000_8542
+          ;; red_append, tag_list, state_split[-1]  ; lc state
+          ext = '.pols'
+          if ~keyword_set(no_fits) then ext += '.fits'
+        end
+
+        'polc' : begin
+          dir = self.out_dir+'/polcal/'
+          red_append, tag_list, detector
+          red_append, tag_list, prefilter
+          red_append, tag_list, 'polcal'
           if ~keyword_set(no_fits) then ext += '.fits'
         end
 

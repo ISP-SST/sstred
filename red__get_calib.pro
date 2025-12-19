@@ -296,7 +296,7 @@ pro red::get_calib, states $
         status = min([status, clcgainstatus])
       endelse
     endif else status = -1     
-  endif                         ; Cavityfree gains         
+  endif                         ; Cavityfree LC gains         
 
   
   ;; Scan gains    
@@ -323,9 +323,20 @@ pro red::get_calib, states $
     endif else status = -1
   endif                         ; Pinholes
 
+  ;; Polcal
+  if arg_present(polcdata) then begin  
+
+    if n_elements(polcname) ne 0 then begin
+      
+      polcdata = red_readdata(polcname, status = polcstatus, /silent)
+      status = min([status, polcstatus])
+
+    endif else status = -1
+  endif                         ; Polcal
+
   
   ;; Reduce dimensions if possible
-    if Nstates eq 1 then begin
+  if Nstates eq 1 then begin
 
     if arg_present(darkname)  then darkname = darkname[0]
     if arg_present(flatname)  then flatname = flatname[0]

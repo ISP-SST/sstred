@@ -53,9 +53,9 @@
 ;   2020-10-01 : JdlCR. Changed the routine to use internal bilinear
 ;                or nearest neighbor interpolation.
 ;
-;
 ;   2021-12-10 : JdlCR. Make use of the new libgrid routines, now
 ;                ported to rdx and maintainable by us.
+;
 ;-
 function red_shift_im, var, dx, dy, cubic = cubic, missing = missing, nearest = nearest, nthreads = nthreads
 

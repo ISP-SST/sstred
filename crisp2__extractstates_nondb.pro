@@ -144,6 +144,8 @@
 ; 
 ;    2022-07-29 : MGL. Based on chromis version.
 ;
+;    2026-06-03 : MGL. Allow 2d input array.
+;
 ;-
 pro crisp2::extractstates_nondb, strings, states $
                                  , force = force $
@@ -154,17 +156,20 @@ pro crisp2::extractstates_nondb, strings, states $
   inam = red_subprogram(/low, calling = inam1)  
 
   strings = strtrim(strings,2)
-  idx = where( strings ne '' )
-  if min(idx) ge 0 then strings = strings[ idx ] $
-  else return
+  idx = where( strings ne '', Nwhere)
+  if Nwhere eq 0 then return
+  if Nwhere ne n_elements(strings) then strings = strings[ idx ]
+  ;;if min(idx) ge 0 then strings = strings[ idx ] else return
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
-  ;; Create array of structs to holed the state information
+  dims = size(strings, /dim)
+
+  ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
-    states = replicate( {CRISP2_POLCAL_STATE}, Nstrings )
+    states = replicate( {CRISP2_POLCAL_STATE}, dims )
   endif else begin
-    states = replicate( {CRISP2_STATE}, Nstrings )
+    states = replicate( {CRISP2_STATE}, dims )
   endelse
   states.nframes = 1            ; single frame by default
 
@@ -188,6 +193,8 @@ pro crisp2::extractstates_nondb, strings, states $
     endif else begin
       
       red_progressbar, ifile, Nstrings, 'Extract state info from file headers', /predict
+ 
+      ;; Get the header
       status = -1
       if file_test(strings[ifile]) then begin
         head = red_readhead(strings[ifile], /silent, status=status)
@@ -200,7 +207,7 @@ pro crisp2::extractstates_nondb, strings, states $
         mkhdr, head, ''         ; create a dummy header
         head = red_meta2head(head, metadata = {filename:strings[ifile]})
       endif
-
+      
       ;; Add polarization state info.
       lcstate = fxpar(head, 'LCSTATE', count = count)
       if count then states[ifile].lc = lcstate
@@ -245,15 +252,6 @@ pro crisp2::extractstates_nondb, strings, states $
           end
         endcase
 
-;        if n_elements(state_split) gt 1 then begin
-;          ;; NB data
-;          states[ifile].fpi_state = strjoin(state_split[1:2], '_')
-;          states[ifile].tuning = strjoin(state_split[1:2], '_')
-;        endif else begin
-;          ;; WB data
-;          states[ifile].fpi_state = '0'
-;          states[ifile].tuning = state_split[0]+'_+0'
-;        endelse
       endif
       
       

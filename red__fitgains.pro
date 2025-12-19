@@ -25,7 +25,7 @@
 ;
 ;       If set, bypass selection and process all data.
 ;
-;    densegrid  : 
+;    densegrid : in 
 ;   
 ;   
 ;   
@@ -33,60 +33,69 @@
 ;
 ;       Make extra spline nodes at the specified wavelengths, given in
 ;       Ångström from the core point.
-;
-;    initcmap  : 
 ;   
+;    fit_reflectivity : in, optional, type=boolean
 ;   
+;       Fit reflectivity in addition to cavity map.
 ;   
-;    myg  : 
+;    initcmap : in, optional, type=boolean
 ;   
+;       Initialize the cavity map.
 ;   
+;    myg :  : in, optional, type=array
 ;   
-;    niter  : 
+;       Specify the wavelength nodes, alternative to using the data
+;       tuning points.
 ;   
+;    niter : in, optional, type=integer, default=3
 ;   
+;       Number of iterations.
 ;   
-;    npar  : 
+;    npar : in, optional, type=integer, default=1
 ;   
+;       Number of additional terms (default: 1 = linear)
 ;   
+;    nosave : in, optional, type=boolean 
 ;   
-;    nosave  : 
+;       Do not save the output.
 ;   
+;    nthreads : in, optional, type=integer
 ;   
+;       Number of threads used by red_cfitgain and red_cfitgain2.
 ;   
 ;    pref : in, optional, type=string
 ;
-;       Select prefilter to process.
+;       Process data for this prefilter.
 ;
-;    rebin  : 
+;    rebin : in, optional, type=integer
 ;   
 ;   
 ;   
-;    res  : 
+;    res : out, optional, type=array
+;   
+;       The results of the fit, including the cavity map.
+;   
+;    sig : 
 ;   
 ;   
 ;   
-;    state  : 
+;    thres : in
 ;   
 ;   
 ;   
-;    thres  : 
+;    x0 : in 
 ;   
 ;   
 ;   
-;    x0  : 
+;    x1 : in 
 ;   
 ;   
 ;   
-;    x1  : 
+;    xl : in
 ;   
 ;   
 ;   
-;    xl  : 
-;   
-;   
-;   
-;    yl  : 
+;    yl : in
 ;   
 ;   
 ;   
@@ -143,26 +152,26 @@
 ;                and flat-fielding scheme.
 ;
 ;-
-pro red::fitgains, all = all $
-                   , densegrid = densegrid $                   
-                   , extra_nodes = extra_nodes $
-                   , fit_reflectivity = fit_reflectivity $
-                   , ifit = ifit $
-                   , initcmap = initcmap $
-                   , myg = myg $
-                   , niter = niter $
-                   , nosave = nosave $
-                   , npar = npar $
-                   , nthreads = nthreads $
-                   , pref = pref $
-                   , rebin = rebin $
-                   , res = res $
-                   , state = state $
-                   , thres = thres $
-                   , w0 = w0, w1 = w1 $
-                   , x0 = x0, x1 = x1 $
-                   , xl = xl, yl = yl $
-                   , sig = sig
+pro red::fitgains, all = all $                             ;
+                   , densegrid = densegrid $               ; Used in red_get_imean
+                   , extra_nodes = extra_nodes $           ; 
+                   , fit_reflectivity = fit_reflectivity $ ; Boolean
+;                   , ifit = ifit $                         ; Not used
+                   , initcmap = initcmap $                 ; Boolean, initialize cavity map
+                   , myg = myg $                           ; Specify the wavelength nodes instead of using the data tuning points
+                   , niter = niter $                       ; 
+                   , nosave = nosave $                     ; 
+                   , npar = npar $                         ; 
+                   , nthreads = nthreads $                 ; 
+                   , pref = pref $                         ; 
+                   , rebin = rebin $                       ; Used in red_get_imean
+                   , res = res $                           ; Result, output
+;                   , state = state $                       ; Not used
+                   , thres = thres $                       ; Used in red_get_imean
+                   , w0 = w0, w1 = w1 $                    ; 
+                   , x0 = x0, x1 = x1 $                    ; Used in red_initcmap
+                   , xl = xl, yl = yl $                    ; 
+                   , sig = sig                             ; Used like pref (by red_cfitgain) but is an array?
 
 
   ;; Defaults
@@ -175,7 +184,7 @@ pro red::fitgains, all = all $
   red_make_prpara, prpara, densegrid
   red_make_prpara, prpara, extra_nodes
   red_make_prpara, prpara, fit_reflectivity
-  red_make_prpara, prpara, ifit
+;  red_make_prpara, prpara, ifit
   red_make_prpara, prpara, initcmap
   red_make_prpara, prpara, myg
   red_make_prpara, prpara, niter
@@ -184,7 +193,7 @@ pro red::fitgains, all = all $
   red_make_prpara, prpara, nthreads
   red_make_prpara, prpara, pref
   red_make_prpara, prpara, rebin
-  red_make_prpara, prpara, state
+;  red_make_prpara, prpara, state
   red_make_prpara, prpara, thres
   red_make_prpara, prpara, w0
   red_make_prpara, prpara, w1
@@ -246,7 +255,8 @@ pro red::fitgains, all = all $
 ;                            , count = Nselect, indx = sindx)
 ;  endelse
 
-  for iselect = 0L, Nselect-1 do begin
+  ;; Loop over selected prefilters
+  for iselect = 0L, Nselect-1 do begin 
 
     ifile = sindx[iselect]
 
@@ -255,20 +265,24 @@ pro red::fitgains, all = all $
     print, file_basename(files[ifile], '_filenames.txt')
     spawn, 'cat ' + files[ifile], namelist
     Nwav = n_elements(namelist)
+
+    if Nwav eq 0 then continue  ; No data
     
-    ffile = red_strreplace(files[ifile], '_filenames.txt', '_flats_data.fits') ; Input flat intensities
-    wfile = red_strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')  ; Input flat wavelengths
-    sfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.sav') ; Output save file
-    pfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.pdf') ; Plot file
+    ffile = red_strreplace(files[ifile], '_filenames.txt', '_flats_data.fits')   ; Input flat intensities
+    wfile = red_strreplace(files[ifile], '_filenames.txt', '_flats_wav.fits')    ; Input flat wavelengths
+    sfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.sav')   ; Output save file
+    pfile = red_strreplace(files[ifile], '_filenames.txt', '_fit_results.pdf')   ; Plot file
     pfile0 = red_strreplace(files[ifile], '_filenames.txt', '_fit_results0.pdf') ; Plot file
 
     self -> extractstates, namelist, states
     outnames = self -> filenames('cavityflat', states)
 
-    if Nwav eq 0 then continue
-    if Nwav eq 1 then begin
-      print, inam+' : Only one wavelength point.'
-      print, inam+' : Will assume it is a continuum point and copy the ordinary flat.'
+    pref = states[0].prefilter
+
+    if Nwav eq 1 then begin     ; Most likely CHROMIS Ca II continuum
+      
+      red_message, 'Only one wavelength point: '+states[0].tuning
+      red_message, 'Will assume it is a continuum point so the  ordinary flat is free from cavity errors.'
 
       if ~keyword_set(nosave) then begin
 
@@ -290,8 +304,8 @@ pro red::fitgains, all = all $
         ;; Need to set xl, yl (from red_get_imean):
 ;        imean = fltarr(dims[0])
 ;        yl = imean
-        yl = [1.];median(dat)
-        iwav = wav ;- median(res[1,*,*])
+        yl = [1.]               ;median(dat)
+        iwav = wav              ;- median(res[1,*,*])  ; iwav is used as a loop variable later....
         xl = iwav
         
         ;res /= yl
@@ -304,10 +318,14 @@ pro red::fitgains, all = all $
       continue
     endif
 
-    ;; At this point, Nwav gt 1.
+    ;; At this point, Nwav gt 1, so we have a scan.
 
-    pref = states[0].prefilter
-
+    ;; Continued processing in three steps: 1. Fit cavity error and
+    ;; reflectivity model; 2. Use the fit to make flats without cavity
+    ;; errors. 3. Save the cavity error free flats 4. Save the fit;
+    ;; Some wavelength points could be excluded from 1. but should
+    ;; still be included in 2 and 3.
+    
     if n_elements(npar) eq 0 then begin
       ;; Add prefilters and nparr values here as we gain experience.
       case pref of
@@ -317,12 +335,12 @@ pro red::fitgains, all = all $
         '6302' : nparr = 2
         '6563' : nparr = 5
         '8542' : nparr = 5
-        else: nparr = 2         ; default
+        else : nparr = 2        ; default
       endcase
     endif else nparr = npar
     ;; npar_t = npar + (keyword_set(fit_reflectivity) ? 3 : 2)
     
-
+    ;; Read the flats cube and the wavelength tunings
     cub = readfits(ffile)
     wav = float(readfits(wfile)) * 1e10 ; Must be in Å.
     
@@ -344,55 +362,124 @@ pro red::fitgains, all = all $
     endif
     Nlc = dim[1]
 
+    orig_cub = cub              ; Preserve original flats cube for steps 2 and 3.
+    orig_wav = wav
+    orig_namelist = namelist
+    orig_outnames = outnames
+
+    ;; Step 1: fitting
+
+    findx = indgen(Nwav)        ; Wavelength index
+
+    ;; Take w0 and w1 keywords into account
+    if n_elements(w0) eq 0 then w0 = 0
+    if n_elements(w1) eq 0 then w1 = Nwav-1
+    findx = where(findx ge w0 and findx le (w1 lt 0 ? Nwav+w1 : w1), Nfit $
+                  , complement = lindx, Ncomplement = Nlinks)
+    ;; findx for tunings to include in the fit and make cavityfree
+    ;; flats for, lindx for tunings for which to make links to the
+    ;; ordinary flats.
+    if Nfit eq 0 then stop
+    
+;    findx = findx[w0:w1]
+
+    ;; Info to keep for the linking
+    lcub = cub[lindx,*,*,*]
+    lwav = wav[lindx]
+    lnamelist = namelist[lindx]
+    loutnames = outnames[lindx]
+
+    ;; Info restricted to the tunings used in the fit
+    cub = (temporary(cub))[findx,*,*,*]
+    wav = wav[findx]
+    namelist = namelist[findx]
+    outnames = outnames[findx]
+;    cub = (temporary(cub))[w0:w1,*,*,*]
+;    wav = wav[w0:w1]
+;    namelist = namelist[w0:w1]
+;    outnames = outnames[w0:w1]
+
+    Nwav = n_elements(namelist) ; Nwav has to be adjusted if w0 or w1 were used.
+
+
+
+    
     if keyword_set(fit_reflectivity) then npar_t = max([nparr,3]) else npar_t = max([nparr,2])
     npar_t_save = npar_t
     npar_one = npar_t-1 ;; parameters per lc without the cavity error
     
     npar_t = Nlc*(npar_t-1)+1 ;; all LCs see the same cavity map and are fitted at once.
-    
-    case 1 of 
-      n_elements(w0) gt 0 and n_elements(w1) gt 0 : begin
-        cub = (temporary(cub))[w0:w1,*,*,*]
-        wav = wav[w0:w1]
-        namelist = namelist[w0:w1]
-      end
-      n_elements(w0) gt 0 : begin
-        cub = (temporary(cub))[w0:*,*,*,*]
-        wav = wav[w0:*]
-        namelist = namelist[w0:*]
-      end
-      n_elements(w1) gt 0 : begin
-        cub = (temporary(cub))[0:w1,*,*,*]
-        wav = wav[0:w1]
-        namelist = namelist[0:w1]
-      end
-      else:
-    endcase
-    Nwav = n_elements(namelist) ; Nwav has to be adjusted if w0 or w1 were used.
 
-    red_message, 'Wavelength points wav : ['+strjoin(strtrim(wav,2),', ')+']'
 
+;    ;; Do we have polcal data for this prefilter? If we do, we
+;    ;; probably want to exclude polcal flats at that wavelength from
+;    ;; the fit, as it is usually far outside the line.
+;    psum_files = file_search('polcal_sums/*-R/cam*_'+pref+'_*pols.fits', count = Npolcal)
+;    if Npolcal gt 0 then begin
+;
+;      self -> extractstates, psum_files[0], psum_state
+;
+;      stop
+;      ;; Check if the polcal tuning is in the tunings. If it is, offer
+;      ;; to remove it. Adjust findx (and the arrays modified for w0,w1
+;      ;; above).
+;      
+;      red_message, 'Wavelength points for fitting (wav) : ['+strjoin(strtrim(wav,2),', ')+']'
+;      diff = red_differential(wav)
+;      diff = diff[1:*]
+;      diff = diff/median(diff)
+;      
+;      if max(diff, maxloc) gt 5 then begin
+;        case maxloc of
+;          0 : begin
+;            tmp = 'first'
+;            default = '1-'+red_stri(n_elements(wav)-1)
+;          end
+;          n_elements(wav)-2 : begin
+;            tmp = 'last'
+;            default = '0-'+red_stri(n_elements(wav)-2)
+;          end
+;          else : tmp = ''
+;        endcase
+;        
+;        if tmp ne '' then begin
+;          print
+;          red_message, ['The '+tmp+' wavelength point might be the polcal wavelengh' $
+;                        , ' and could then be skipped.']
+;          selectionlist = string(1000*wav, format = '(I5)')
+;          tmp = red_select_subset(selectionlist, default = default, indx = sel $
+;                                  , qstring = 'Which points do you want to keep?')
+;
+;          wav = wav[sel]
+;          Nwav = n_elements(wav)
+;          cub = cub[sel, *, *, *]
+;        endif
+;      endif
+;
+;    endif                       ; Npolcal
+
+        
     if n_elements(extra_nodes) gt 0 then begin
-      if n_elements(myg) eq 0 then myg = wav
-      myg = [extra_nodes, myg]
-      myg = myg[sort(myg)]
-      red_message, 'Wavelength points myg : ['+strjoin(strtrim(myg,2),',')+']'
+          if n_elements(myg) eq 0 then myg = wav
+          myg = [extra_nodes, myg]
+          myg = myg[sort(myg)]
+          red_message, 'Wavelength points myg : ['+strjoin(strtrim(myg,2),',')+']'
     endif
 
-    dat = cub                   ; Why do we make a copy of cub?
+    dat = cub
     totdat = total(dat,1) / nwav
     
     ;; Make a gaintable from the sum of the dat frames and use it to
     ;; define the pixels we will use to do the fitting.
     
-    mask = red_flat2gain(total(totdat,1)/nlc) ne 0
+    mask = red_flat2gain(total(totdat,1)/Nlc) ne 0
     mindx = where(mask, Nmask)
     if Nmask eq 0 then stop
 
     dims = size(dat, /dim)    
 
     mdat = fltarr(dims[0], Nlc, 1, Nmask) ; Make a pseudo-2d array that will work with the fitting routines
-    for i = 0, dims[0]-1 do for ss=0,Nlc-1 do mdat[i,ss, 0, *] = (reform(dat[i,ss, *, *]))[mindx]
+    for i = 0, dims[0]-1 do for ilc=0,Nlc-1 do mdat[i,ilc, 0, *] = (reform(dat[i,ilc, *, *]))[mindx]
     
     ;; Init output vars
     res = dblarr([npar_t, dims[2:3]])
@@ -403,12 +490,12 @@ pro red::fitgains, all = all $
     mratio = fltarr(mdims)
     
     off = indgen(Nlc)*npar_t_save
-    for ss = 0, Nlc-1 do begin
-      if(ss ge 2) then off[ss] -= (ss-1)
+    for ilc = 0, Nlc-1 do begin
+      if(ilc ge 2) then off[ilc] -= (ilc-1)
     endfor
 
     ;; Init the gains to the mean of each lc state
-    for ss=0,Nlc-1 do mres[off[ss],*,*] = (reform(totdat[ss,*,*]))[mindx]
+    for ilc=0,Nlc-1 do mres[off[ilc],*,*] = (reform(totdat[ilc,*,*]))[mindx]
                                 ;res[0,*,*] = totdat / nwav
     ;; Is this still needed?
 ;    IF keyword_set(fit_reflectivity) THEN IF npar_t GT 3 THEN res[3:*,*,*] = 1.e-3    
@@ -418,12 +505,13 @@ pro red::fitgains, all = all $
     ;; Init cavity map?   
     if(keyword_set(initcmap)) then begin
       print, inam + ' : Initializing cavity-errors with parabola-fit'
-      mres[1,*,*] = red_initcmap(wav, total(mdat, 2)/nlc, x0 = x0, x1 = x1)      
+      mres[1,*,*] = red_initcmap(wav, total(mdat, 2)/Nlc, x0 = x0, x1 = x1)      
       ;;res[1,*,*] = red_initcmap(wav, dat, x0 = x0, x1 = x1)      
     endif
 
     cgwindow
-    title = selectionlist[ifile] + ' npar='+strtrim(nparr, 2)
+    ;;  title = selectionlist[ifile] + ' npar='+strtrim(nparr, 2)
+    title = pref + ' npar='+strtrim(nparr, 2)
 
     ;; Loop niter
     for iiter = 0L, niter - 1 do begin
@@ -461,7 +549,7 @@ pro red::fitgains, all = all $
         red_cfitgain, mres1, wav, mdat, xl, yl, mratio, sig, nthreads=nthreads          
         ;;res[0:1,*,*] = temporary(res1)        
         mres[0:1,*,*] = mres1[0:1,*,*]
-        for ss=1,nlc-1 do mres[off[ss],*,*] = mres1[1+ss,*,*]
+        for ilc=1,Nlc-1 do mres[off[ilc],*,*] = mres1[1+ilc,*,*]
         
       endif else begin
         if keyword_set(fit_reflectivity) then $
@@ -484,43 +572,46 @@ pro red::fitgains, all = all $
                        , thres = thres, myg = myg, reflec = fit_reflectivity $
                        , title = title)
 
-    ;; Create cavity-error-free flat (save in "ratio" variable)
-    print, inam + ' : Recreating cavity-error-free flats ... ', FORMAT='(A,$)'
+    ;; Step 2: Create cavity-error-free flat (save in "ratio" variable)
 
-    
+;    ;; For the following steps we need the original data
+;    dat = orig_cub
+;    wav = orig_wav
+;    namelist = orig_namelist  
+;    nwav = n_elements(wav)
+
+    Nprogress = Nlc*Nwav
+    iprogress = 0L
     tmp_par = dblarr(npar_one+1, ddim[1], ddim[2])
-    for ss=0,Nlc-1 do begin
+    for ilc=0,Nlc-1 do begin
       
-      if(ss eq 0) then begin
+      if ilc eq 0 then begin
         tmp_par[*,*,*] = mres[0:npar_one,*,*]
       endif else begin
-        tmp_par[0,*,*] = mres[off[ss],*,*]
+        tmp_par[0,*,*] = mres[off[ilc],*,*]
         tmp_par[1,*,*] = mres[1,*,*]
-
-        if(npar_one+1 gt 2) then begin
-          tmp_par[2:*,*,*] = mres[off[ss]+1:off[ss]+npar_one-1,*,*]
-        endif
+        if(npar_one+1 gt 2) then tmp_par[2:*,*,*] = mres[off[ilc]+1:off[ilc]+npar_one-1,*,*]
       endelse
       
-      for ii = 0L, nwav - 1 do begin
-        
-        mratio[ii,ss,*,*] *= reform(tmp_par[0,*,*]) * $    
-                             reform(red_get_linearcomp(wav[ii], tmp_par, npar_one+1, reflec = fit_reflectivity))
-      endfor
-    endfor
-      ;;for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $    
+      for iwav = 0L,Nwav-1 do begin
+        red_progressbar, iprogress,  Nprogress, 'Recreating cavity-error-free flats'
+        iprogress++
+        mratio[iwav,ilc,*,*] *= reform(tmp_par[0,*,*]) * $    
+                                reform(red_get_linearcomp(wav[iwav], tmp_par, npar_one+1 $
+                                                          , reflec = fit_reflectivity))
+      endfor                    ; iwav
+      
+    endfor                      ; ilc
+    ;;for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $    
     ;; reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))    
 
-    print, 'done'
-    
     ;; We want to save ratio and res so we need to fill them with data
     ;; from mratio and mres.
     tmp = fltarr(dims[2:3])    
-    for ss=0,Nlc-1 do for iwav = 0L, nwav - 1 do begin
-      tmp[mindx] = reform(mratio[iwav, ss, 0, *])
-      ratio[iwav, ss, *, *] = tmp
-    endfor
-    
+    for ilc=0,Nlc-1 do for iwav = 0L,Nwav-1 do begin
+      tmp[mindx] = reform(mratio[iwav, ilc, 0, *])
+      ratio[iwav, ilc, *, *] = tmp
+    endfor                      ; ilc
     
     tmp = dblarr(dims[2:3])        
     for ii = 0, npar_t-1 do begin
@@ -528,12 +619,13 @@ pro red::fitgains, all = all $
       res[ii, *, *] = tmp
     endfor
     
-    ;; Save results
+    ;; 3. Save cavity error free flats
+    
     if ~keyword_set(nosave) then begin
 
       for iwav = 0L, Nwav - 1 do begin
-        for ss=0, Nlc-1 do begin
-          output = reform(ratio[iwav,ss,*,*,*])
+        for ilc=0, Nlc-1 do begin
+          output = reform(ratio[iwav,ilc,*,*,*])
           
           if(Nlc eq 1) then begin
          
@@ -547,9 +639,10 @@ pro red::fitgains, all = all $
             
             print, inam + ' : Saving file -> '+outnames[iwav]
             red_writedata, outnames[iwav], output, header = head, /overwrite
+            
           endif else begin
 
-            lc = 'lc'+string(ss,format='(I1)')
+            lc = 'lc'+string(ilc,format='(I1)')
             
             iname = red_strreplace(namelist[iwav], 'lc0', lc)
             oname = red_strreplace(iname, '.flat', '_cavityfree.flat')
@@ -565,11 +658,12 @@ pro red::fitgains, all = all $
             print, inam + ' : Saving file -> '+oname
             red_writedata, oname, output, header = head, /overwrite
             
-            
           endelse
-        endfor                  ; iwav
-      endfor
-      
+
+        endfor                  ; ilc
+      endfor                    ; iwav
+
+      ;; 4. Save the fit
       fit = {pars:res, yl:yl, xl:xl, oname:outnames}
       save, file = sfile, fit
       fit = 0B
@@ -577,7 +671,31 @@ pro red::fitgains, all = all $
       ;; Save the plot made by red_get_imean
       cgcontrol, output = pfile
 
-    endif
+      ;; 5. Links to regular flats (for tunings not included in the
+      ;; fit)
+      if Nlinks gt 0 then begin
+        red_message, 'Creating soft links to regular flats for tunings not included in the fit.'
+        foreach iwav, lindx do begin ; Loop link indices
+          for ilc=0, Nlc-1 do begin
+            if Nlc eq 1 then begin
+              oname = orig_outnames[iwav]
+              fname = orig_namelist[iwav]
+            endif else begin
+              lc = 'lc'+string(ilc,format='(I1)')
+              iname = red_strreplace(orig_namelist[iwav], 'lc0', lc)
+              oname = red_strreplace(iname, '.flat', '_cavityfree.flat')
+              fname = iname
+            endelse
+            ;; Make the link
+            print, inam + ' : Linking file -> '+oname
+            file_delete, oname, /allow_nonexistent ; file_link will not overwrite
+            file_link, fname, oname
+          endfor                ; ilc
+        endforeach              ; iwav
+      endif                     ; Nlinks
+      
+      
+    endif                       ; nosave
     
     scrollwindow, /free, xs = dims[2], ys = dims[3] $
                   , title = 'Cavity map for '+selectionlist[ifile] + ' npar='+strtrim(nparr, 2)

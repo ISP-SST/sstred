@@ -35,9 +35,22 @@ pro red::archive_workdir, sudo=sudo
   inam = red_subprogram(/low, calling = inam1)
   
   isodate = self.isodate
-  instrument = typename(self)
-  if instrument eq 'CRISP2' then instrument='CRISP'
-  outdir='/storage/science_workdirs/' + isodate + '/' + instrument + '/'
+
+  ;; Camera/detector identification
+  self -> getdetectors
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
+  nbtcamera   = (*self.cameras)[nbtindx[0]]
+  nbtdetector = (*self.detectors)[nbtindx[0]]
+  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
+  nbrcamera   = (*self.cameras)[nbrindx[0]]
+  nbrdetector = (*self.detectors)[nbrindx[0]]
+
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+
+  outdir='/storage/science_workdirs/' + isodate + '/' + strupcase(instrument) + '/'
 
   openw, /get_lun, lun, 'archive_workdir.sh'
   printf, lun, '#!/bin/bash'
@@ -54,7 +67,7 @@ pro red::archive_workdir, sudo=sudo
   ;;
   ;; We copy summed files and remove raw data files from /scratch
   ;;
-  if instrument eq 'CHROMIS' then begin
+  if instrument eq 'Chromis' then begin
     summed_dirs = ['darks','flats','pinhs']
     dirs_ptr = [self.dark_dir, self.flat_dir, self.pinh_dirs]
   endif else begin              ; CRISP
@@ -107,10 +120,10 @@ pro red::archive_workdir, sudo=sudo
     printf,"#  WARNING: 'detectors.idlsave' file doesn't exist!"
                 
   dirs = ['link_scripts','downloads','info','prefilter_fits','*intensities','calib','pipeline-log','notes']
-  if instrument eq 'CRISP' then $
-    dirs = [dirs,'polcal'] $
+  if instrument eq 'Crisp' then $
+     dirs = [dirs,'polcal'] $
   else $ ; CHROMIS
-    dirs = [dirs,'align']
+     dirs = [dirs,'align']
   for ii = 0, n_elements(dirs)-1 do begin
     if file_test(dirs[ii]) then begin
       printf, lun, 'tar -rf ' + tar_fn + ' ' + dirs[ii]
@@ -156,7 +169,7 @@ pro red::archive_workdir, sudo=sudo
   
   ;; Intermidiate data we want to archive as it takes quite some time to make them
   ;;
-  if instrument eq 'CRISP' then begin
+  if instrument eq 'Crisp' then begin
     cmap_intdif_dirs = file_search('cmap_intdif/*', count = Ndirs)
     if Ndirs gt 0 then begin     
       printf, lun, 'mkdir ' + outdir + 'cmap_intdif'

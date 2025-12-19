@@ -35,6 +35,14 @@
 ;
 ;      The date (in iso format) the data was collected.
 ;
+;    incoming : in, optional, type=boolean
+;
+;      Look for data in the Incoming directory.
+; 
+;    copy : in, optional, type=boolean
+; 
+;      Copy summed calibration data instead of making soft links.
+;
 ;    no_observer_metadata : in, optional, type=boolean
 ;
 ;      Don't do anything to get OBSERVER metadata. 
@@ -277,17 +285,25 @@
 ;
 ;   2025-03-27 : MGL. New keyword no_lapalma. 
 ;
-;   2025-04-03 : MGL. New keyword ampm_cutoff 
+;   2025-04-03 : MGL. New keyword ampm_cutoff  
+;
+;   2025-05-22 : MGL. New keyword incoming.
+; 
+;   2025-09-22 : MGL. New keyword link.
+;   
+;   2025-10-01 : MGL. New keyword copy, remove keyword link.
 ;   
 ;-
 pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
-                      , cfgfile = cfgfile $
                       , calibrations_only = calibrations_only $
+                      , cfgfile = cfgfile $
+                      , copy = copy $
                       , date = date $
+                      , incoming = incoming $
                       , instruments = instruments $
+                      , lapalma_setup = lapalma_setup $
                       , no_observer_metadata = no_observer_metadata $
                       , no_lapalma = no_lapalma $
-                      , lapalma_setup = lapalma_setup $
                       , old_dir = old_dir $
                       , out_dir = out_dir $
                       , scriptfile = scriptfile $
@@ -298,7 +314,7 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
 
   if n_elements(ampm_cutoff) eq 0 then ampm_cutoff = '13:00:00'
 
-  if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP']
+  if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP', 'CRISP2']
 
   if n_elements(out_dir) eq 0 then out_dir = getenv('PWD')
   if ~strmatch(out_dir,'*/') then out_dir += '/'
@@ -306,6 +322,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
   if n_elements(cfgfile) eq 0 then cfgfile = 'config.txt'
   if n_elements(scriptfile) eq 0 then scriptfile = 'doit.pro'
 
+  if keyword_set(incoming) then search_dirs = ['/storage', '/storage_ceph'] + '/Incoming'
+  
   if n_elements(date) eq 0 then begin
     ;; Date not specified.  Do search_dirs include the date?
     if n_elements( search_dirs ) gt 0 then begin
@@ -709,11 +727,34 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
     config_file = red_add_suffix( cfgfile,    suffix = suffix )
     script_file = red_add_suffix( scriptfile, suffix = suffix )
 
-    if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
-      ;; Look for already summed data in a reduc/ subdirectory.
-      sum_dir = root_dir + 'reduc/' + instrument + '/'
-      if ~file_test(sum_dir, /directory) then undefine, sum_dir
-    endelse
+    case n_elements(old_dir) of
+
+      0 : begin
+        ;; Look for already summed data in a reduc/ subdirectory.
+        sum_dir = root_dir + 'reduc/' + instrument + '/'
+        if ~file_test(sum_dir, /directory) then undefine, sum_dir
+      end
+
+      1 : if old_dir[0] ne '' then sum_dir = old_dir
+
+      else : sum_dir = old_dir
+      
+    endcase
+    
+;    if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
+;      ;; Look for already summed data in a reduc/ subdirectory.
+;      sum_dir = root_dir + 'reduc/' + instrument + '/'
+;      if ~file_test(sum_dir, /directory) then undefine, sum_dir
+;    endelse
+    
+    if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+      ;; We will now attempt to copy existing sums of calibration data.
+      red_setupworkdir_copy, sum_dir, 'darks',       workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'flats',       workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'pinhs',       workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'polcal_sums', workdir, copy = copy
+    endif
+    
     
     ;; Setup the different instruments.
     call_procedure, 'red_setupworkdir_' + class       $
@@ -722,8 +763,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                     , ampm_cutoff = ampm_cutoff $               
                     , calibrations_only = calibrations_only $
                     , lapalma_setup = lapalma_setup $
-                    , no_observer_metadata = no_observer_metadata $
-                    , old_dir = sum_dir
+                    , no_observer_metadata = no_observer_metadata ; $
+    ;;         , old_dir = sum_dir
     
   endfor                        ; iinstrument    
 

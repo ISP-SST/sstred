@@ -127,7 +127,7 @@ function red::imagescale, pref $
       print
     endif
     
-    return, image_scale
+    return, image_scale[0]
 
   endif else begin
     if keyword_set(verbose) then begin

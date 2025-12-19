@@ -48,11 +48,14 @@
 ; 
 ;   2021-10-19 : MGL. Use NB intensity fit for correction if
 ;                available. 
+; 
+;   2025-10-09 : MGL. New keyword notimecheck.
 ;
 ;-
 pro red::fitscube_intensitycorr, filename $
+                                 , fitpref_time = fitpref_time $
                                  , intensitycorrmethod = corrmethod_in $
-                                 , fitpref_time = fitpref_time 
+                                 , notimecheck = notimecheck
   
 
   inam = red_subprogram(/low, calling = inam1)
@@ -134,8 +137,8 @@ pro red::fitscube_intensitycorr, filename $
   endif
   
   ;; Get info from the cube making step
-  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube'  ), Nmakenb  )
-  pos_makescan = where(strmatch(prprocs, '*make_scan_cube'), Nmakescan)
+  pos_makenb   = where(strmatch(prprocs, '*make_nb_cube*'  ), Nmakenb  )
+  pos_makescan = where(strmatch(prprocs, '*make_scan_cube*'), Nmakescan)
   case 1 of
     Nmakenb gt 0 : begin        ; This is a NB cube
       cube_paras = prparas[pos_makenb[0]]
@@ -170,9 +173,29 @@ pro red::fitscube_intensitycorr, filename $
     '4846' : nbpref = '4862'  
     else   : nbpref =  wbpref
   endcase
+  
+  
+  ;; Camera/detector identification
+  self -> getdetectors
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbtindx     = where(strmatch(*self.cameras,'*-T')) 
+  nbtcamera   = (*self.cameras)[nbtindx[0]]
+  nbtdetector = (*self.detectors)[nbtindx[0]]
+  nbrindx     = where(strmatch(*self.cameras,'*-R')) 
+  nbrcamera   = (*self.cameras)[nbrindx[0]]
+  nbrdetector = (*self.detectors)[nbrindx[0]]
 
-  instrument = strtrim(fxpar(hdr,'INSTRUME'), 2)
-  if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+  polarimetric_data = self -> polarimetric_data()
+  
+  if polarimetric_data then begin
+    prefix = instrument+'-T'
+  endif else begin
+    prefix = instrument
+  endelse
+;  if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
   datestamp = strtrim(fxpar(hdr, 'DATE-AVG'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   avg_time = red_time2double(timestamp)
@@ -198,7 +221,11 @@ pro red::fitscube_intensitycorr, filename $
     endif
   endif else fitpref_t = '_'+fitpref_time+'_'
 
-  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave'
+;  pfile = self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave'
+  pfile = file_search(self.out_dir + '/prefilter_fits/'+prefix+'_'+nbpref+fitpref_t+'prefilter.idlsave' $
+                      , /fold, count = Nsearch)
+  if Nsearch ne 1 then stop else pfile = pfile[0]
+  
   restore, pfile
   t_calib = double(prf.time_avg)
   xposure = double(prf.xposure)
@@ -285,7 +312,7 @@ pro red::fitscube_intensitycorr, filename $
 
     
     ;; Check that we are not extrapolating (too far).
-    if t_cube_beg lt time_beg or t_cube_end gt time_end then begin
+    if ~keyword_set(notimecheck) && ( t_cube_beg lt time_beg or t_cube_end gt time_end ) then begin
       s = ''
       print, inam + "It looks like your a->fit_[n/w]b_diskcenter step didn't find data"
       print, "for a long enough time range. Either your prefilter fit calibration data"
@@ -324,7 +351,7 @@ pro red::fitscube_intensitycorr, filename $
       return
     endif
 
-    if t_calib+3600 lt t_cube_beg or t_calib-3600 gt t_cube_end then begin
+    if ~keyword_set(notimecheck) && ( t_calib+3600 lt t_cube_beg || t_calib-3600 gt t_cube_end ) then begin
       print
       print, inam+' : '
       print, 'Time of prefilter fit is too far from your observations.'

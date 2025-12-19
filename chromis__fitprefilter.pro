@@ -173,6 +173,8 @@
 ; 
 ;   2025-05-15 : MGL. New keyword gain_correction. New initial value
 ;                for the intensity scale factor.
+; 
+;   2025-06-09 : MGL. Adapt to polarimetric data.
 ;
 ;-
 pro chromis::fitprefilter, cwl = cwl_keyword $
@@ -202,9 +204,15 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
 
-  camWB = 'Chromis-W'
-  camsNB = ['Chromis-N']
+  cameras = *self.cameras
+  is_wb = strmatch(cameras, '*-[WD]')
+  is_pd = strmatch(cameras, '*-[D]')
+  
+  camWB  = cameras[where(is_wb and ~is_pd)]
+  camsNB = cameras[where(~is_wb)]
   camNB = camsNB[0]
+
+  polarimetric_data = self -> polarimetric_data()
 
   ;; For now! We may be able to work around this later! If there are
   ;; WB DC data throughout the observations! Can we check from here?
@@ -685,7 +693,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         
         ;; Init guess model
         parinit = dblarr(8)
-        if n_elements(value_parameters) gt 0 then painitr[0] = value_parameters 
+        if n_elements(value_parameters) gt 0 then parinit[0] = value_parameters 
         
         ;; Pars = {fts_scal, fts_shift, pref_w0, pref_dw}
         fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
@@ -695,7 +703,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 ;        parinit[0] = max(measured_spectrum) * 2d0 / cont[0]
         measured_indx=where(abs(measured_lambda - float(upref[ipref])) lt 1)
         atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
-        parinit[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
+;        parinit[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
+        parinit[0] = min(measured_spectrum[measured_indx]) / min(atlas_spectrum_convolved[atlas_indx])
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
@@ -767,14 +776,19 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         endif
         
         ;; Now call mpfit
-        par = mpfit('red_prefilterfit', parinit, xtol=1.e-4, functar=dat, parinfo=fitpars, ERRMSG=errmsg)
+        par = mpfit('red_prefilterfit', parinit $
+                    , xtol=1.e-4, functar=dat, parinfo=fitpars $
+                    , ERRMSG=errmsg, status = status)
         prefilter = red_prefilter(par, dat.lambda, dat.pref)
 
+        print, 'mpfit status : ', status
+        if errmsg ne '' then print, errmsg
+        
         fit_fix = replicate('Fit', 8)
         for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
 
         print
-        print, inam + 'Initial parameters'
+        print, inam + ' : Initial parameters'
         print, '    p[0] -> ', parinit[0], ' (scale factor)'
         print, '    p[1] -> ', parinit[1], ' (solar atlas shift)'
         print, '    p[2] -> ', parinit[2], ' (prefilter shift)'
@@ -784,7 +798,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         print, '    p[6] -> ', parinit[6], ' (asymmetry term 2)'            
         print, '    p[7] -> ', parinit[7], ' (wavelength stretch)'          
         print
-        print, inam + 'Fitted parameters'
+        print, inam + ' : Fitted parameters'
         print, '    p[0] -> ', par[0], ' '+fit_fix[0]+' (scale factor)'
         print, '    p[1] -> ', par[1], ' '+fit_fix[1]+' (solar atlas shift)'
         print, '    p[2] -> ', par[2], ' '+fit_fix[2]+' (prefilter shift)'
@@ -816,10 +830,15 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         colors = ['blue', 'red', 'black']
         lines = [0, 2, 0]
         psyms = [16, -3, -3]
-        prefilter_plot = red_prefilter(par, atlas_lambda+par[1], dat.pref) 
+        prefilter_plot = red_prefilter(par, atlas_lambda+par[1], dat.pref)
+
+        ;; Calculate yrange only based on what's within the xrange
+        aindx = where((atlas_lambda+par[1])/10 ge min(measured_lambda/10.) $
+                      and (atlas_lambda+par[1])/10 le max(measured_lambda/10.))
+        
         mx = max([measured_spectrum $
-                  , atlas_spectrum_convolved*prefilter_plot $
-                  , prefilter_plot/par[0] * max(measured_spectrum) $
+                  , atlas_spectrum_convolved[aindx]*prefilter_plot[aindx] $
+                  , prefilter_plot[aindx]/par[0] * max(measured_spectrum) $
                  ]) * 1.05
         
         ;; Plot measured spectrum
@@ -833,6 +852,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         cgplot, /add, /over,(atlas_lambda+par[1])/10, prefilter_plot/par[0] * max(measured_spectrum) $
                 , color = colors[2], line = lines[2], psym = psyms[2]
 
+        
       endif else begin
 
         ;; Ca II continuum is only a single point.
@@ -897,20 +917,36 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       cglegend, /add, align = 2, /data $
                 , location = [!x.crange[1] - (!x.crange[1]-!x.crange[0])*0.01, mean(!y.crange)*.02] $
                 , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
-
-      plotfile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
+ 
+      if polarimetric_data then begin
+        plotfile = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
+      endif else begin
+        plotfile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
+      endelse
       cgcontrol, output = plotfile
-      
-      savefile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave'
+
+      if polarimetric_data then begin
+        savefile = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.idlsave'
+      endif else begin
+        savefile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.idlsave'
+      endelse
       save, file=savefile, prf
 
-      file_copy, /overwrite, plotfile $
-                 , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
-                 + '_' + file_basename(dirs) + '_prefilter.pdf'
-
-      file_copy, /overwrite, savefile $
-                 , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
-                 + '_' + file_basename(dirs) + '_prefilter.idlsave'
+      if polarimetric_data then begin
+        file_copy, /overwrite, plotfile $
+                   , self.out_dir + '/prefilter_fits/'+camNB+'_' + upref[ipref] $
+                   + '_' + file_basename(dirs) + '_prefilter.pdf'
+        file_copy, /overwrite, savefile $
+                   , self.out_dir + '/prefilter_fits/'+camNB+'_' + upref[ipref] $
+                   + '_' + file_basename(dirs) + '_prefilter.idlsave'
+      endif else begin
+        file_copy, /overwrite, plotfile $
+                   , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
+                   + '_' + file_basename(dirs) + '_prefilter.pdf'
+        file_copy, /overwrite, savefile $
+                   , self.out_dir + '/prefilter_fits/chromis_' + upref[ipref] $
+                   + '_' + file_basename(dirs) + '_prefilter.idlsave'
+      endelse
       
     endfor                      ; ipref
 

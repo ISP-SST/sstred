@@ -253,7 +253,7 @@ pro red::prepmomfbd, cams = cams $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
   
-  instrument = ((typename(self)).tolower())
+  polarimetric_data = self -> polarimetric_data()
 
   if n_elements(escan) && ~isa(escan, /integer, /scalar) then begin
     print, inam + " : 'escan' keyword should be an integer number."
@@ -276,6 +276,7 @@ pro red::prepmomfbd, cams = cams $
     ;; was used.
     if file_test(offset_dir+'/alignments_polywarp.sav') then newalign = 1
   endif
+  if keyword_set(newalign) then alignment_model = 'polywarp' else alignment_model = 'projective'
   
   if(n_elements(maxshift) eq 0) then maxshift='30'
   maxshift = strcompress(string(maxshift), /remove_all)
@@ -400,7 +401,6 @@ pro red::prepmomfbd, cams = cams $
     return
   endif
   refcam_name = cams[refcam]
-  
   if keyword_set(newalign) then begin
     ref_clip = self -> commonfov(align = align, cams = cams $
                                  , extraclip = extraclip $
@@ -440,7 +440,9 @@ pro red::prepmomfbd, cams = cams $
 
   if n_elements(numpoints) eq 0 then begin
     ;; About the same subfield size in arcsec as CRISP:
-    numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+    ;;  numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
+    image_scale = self -> imagescale(upref[ipref])
+    numpoints = strtrim(round(88*0.0590/image_scale/2)*2, 2)
   endif else begin
     ;; Convert strings, just to avoid breaking existing codes.
     if( size(numpoints, /type) eq 7 ) then numpoints = fix(numpoints) 
@@ -455,37 +457,20 @@ pro red::prepmomfbd, cams = cams $
     ;; Read gains for all cameras, remap them to the WB orientation
     ;; and position, AND them gt 0, to make a mask.
 
-    if keyword_set(newalign) then begin
-          ;;; do I need the maps?  use from align when needed?
-      mask = 1b
-      mapidx = intarr(Ncams)
-      for icam = 0, Ncams-1 do begin
-              ;;; should that not include prefilter?
-        gfiles = file_search('gaintables/'+detectors[icam]+'_*.fits')
-        g = red_readdata(gfiles[0])
-        indx = (where(align.state.camera EQ cams[icam]))[0]
-        mapidx[icam] = indx
-        g = poly_2d(g, align[indx].map_x, align[indx].map_y, miss = 0)
-        mask = mask and (g gt 0)
-      endfor                    ;  icam
-      dims = size(mask, /dim)
-    endif else begin
-      maps = fltarr(3, 3, Ncams)
-      for icam = 0, Ncams-1 do begin
-        gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
-        g = red_readdata(gfiles[0])
-        indx = where(align.state2.camera eq cams[icam])
-        maps[*, *, icam] = align[indx[0]].map
-        if icam eq 0 then begin
-          dims = size(g, /dim)
-          masks = fltarr([dims, Ncams])
-          mask = rdx_img_transform(invert(maps[*, *, 0]), g, /preserve) gt 0
-        endif else begin
-          mask and= rdx_img_transform(invert(maps[*, *, icam]), g, /preserve) gt 0
-        endelse
-        masks[*, *, icam] = g gt 0 ; Masks for individual cameras
-      endfor                       ; icam
-    endelse
+    mask = 1b
+    mapidx = intarr(Ncams)
+    for icam = 0, Ncams-1 do begin
+      gfiles = file_search('gaintables/'+detectors[icam]+'_*.fits')
+      g = red_readdata(gfiles[0])
+      indx = (where(align.state.camera EQ cams[icam]))[0]
+      mapidx[icam] = indx
+      ;; We'd need to move this into the ipref loop to make the mask
+      ;; prefilter specific.
+      g = red_apply_camera_alignment(g, alignment_model, cams[icam], /preserve) 
+;            , pref = upref[ipref]
+      mask = mask and (g gt 0)
+    endfor                      ;  icam
+    dims = size(mask, /dim)
     
     ;; Close small holes in the mask
     ste=[[0,1,0],[1,1,1],[0,1,0]]
@@ -516,12 +501,11 @@ pro red::prepmomfbd, cams = cams $
     ;; Zero MAXSHIFT outermost rows and columns in mask, in all cameras.
     tmp = bytarr(dims[0]-2*maxshift, dims[1]-2*maxshift) + 1
     tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
-    if keyword_set(newalign) then begin
-      for icam = 0, ncams-1 do mask and= $
-         poly_2d(tmp, align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, miss = 0)
-    endif else begin
-      for icam = 0, Ncams-1 do mask AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
-    endelse
+    ;; We'd need to move this into the ipref loop to make the mask
+    ;; prefilter specific.
+    for icam = 0, Ncams-1 do mask AND= red_apply_camera_alignment(tmp, alignment_model, cams[icam], /preserve)
+;      , pref = uprefs[ipref])
+
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
     
@@ -913,7 +897,8 @@ pro red::prepmomfbd, cams = cams $
             ;; Loop over states and add object to cfg_list
             for istate=0L, Nstates-1 do begin
 
-              if instrument eq 'chromis' then begin
+;              if instrument eq 'chromis' then begin
+              if ~polarimetric_data then begin
                 thisstate = ustates[istate].fpi_state
                 state_idx = where(state_list.fpi_state eq thisstate)
               endif else begin
@@ -949,8 +934,16 @@ pro red::prepmomfbd, cams = cams $
                 endelse
               endif else begin
 ;                  gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]], /no_fits)
+                
+;                gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
+                
+                if state_list[state_idx[0]].lc eq 4 || n_elements(red_uniquify(state_list.lc)) eq 1 then begin
+                  ;; E.g. 3999 without polarimetry
                   gainname = self -> filenames('cavityfree_gain', state_list[state_idx[0]])
-;
+                end else begin
+                  ;; For flatfielded polcal --> lc gains
+                  gainname = self -> filenames('cavityfree_lc_gain', state_list[state_idx[0]])
+                endelse
 ;                 search = self.out_dir+'/gaintables/'+self.camttag + $
 ;                          '.' + strmid(ustat1[ii], idx[0], $
 ;                                       idx[nidx-1])+ '*unpol.gain'

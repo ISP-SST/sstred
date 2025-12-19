@@ -29,15 +29,19 @@
 ;   
 ;      Unsharp masking threshold for bad pixels .
 ;   
-;    mingain : in, type=float
+;    minflat : in, type=float, default=0.05
+;
+;      Lower cutoff for flat.
+;
+;    mingain : in, type=float, default=0.1
 ;   
 ;      Thresholds on the gain itself
 ;   
-;    maxgain : in, type=float
+;    maxgain : in, type=float, default=4.0
 ;   
 ;      Threshold on the gain itself
 ;   
-;    smoothsize : in, type=float
+;    smoothsize : in, type=float, default=7.0
 ;   
 ;      Unsharp masking smoothing kernel width.
 ;   
@@ -61,20 +65,24 @@
 ; 
 ;   2019-05-14 : MGL. Protect against small values in flat.
 ; 
+;   2025-08-10 : MGL. New keyword flatmin.
+; 
 ;-
 function red_flat2gain, flat, $
                         badthreshold = bad, $
+                        flatmin = flatmin, $
                         mingain = min, $
                         maxgain = max, $
                         smoothsize = smoothparameter, $
                         gain_nozero = gain_nozero
 
   if(n_elements(bad) eq 0) then bad = 1.0
+  if(n_elements(flatmin) eq 0) then flatmin = 0.05
   if(n_elements(min) eq 0) then min = 0.1
   if(n_elements(max) eq 0) then max = 4.0
   if(n_elements(smoothparameter) eq 0) then smoothparameter = 7.0d0
 
-  indx = where(flat gt max(flat)*.1, complement = cindx, ncompl = Nc) ; CRISP w/ new cameras
+  indx = where(flat gt median(flat)*flatmin, complement = cindx, ncompl = Nc) ; CRISP w/ new cameras
   
   ;;med = median(flat)  
   med = median(flat[indx]) 
@@ -89,6 +97,7 @@ function red_flat2gain, flat, $
   psf = red_get_psf(round(3*smoothparameter), round(3*smoothparameter) $
                     , double(smoothparameter), double(smoothparameter))
   dgain = g - red_convolve(g, psf / total(psf))
+  
   mask = g GE min and g LE max and dgain LT bad AND finite(g)
 
   ker = replicate(1B, [5, 5])
@@ -105,3 +114,15 @@ function red_flat2gain, flat, $
   return, g
 
 end
+
+;; Data with a bump
+fname = '/scratch_local/mats/2025-08-03/CRISP2-test/flats/camXXXI_10.00ms_G00.00_6563.flat.fits'
+fname = '/scratch_local/mats/2025-08-03/CRISP2-test/flats/camXXXI_12.00ms_G00.00_8542.flat.fits'
+
+f = readfits(fname)
+
+g = red_flat2gain(f, max = 50., flatmin = 0.01)
+
+
+end
+

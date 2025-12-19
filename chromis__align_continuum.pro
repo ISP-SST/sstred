@@ -129,10 +129,21 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
     search_dir = self.out_dir +'/'+momfbddir+'/'+timestamp+'/'
     prefilters = file_basename(file_search(search_dir + '*' $
                                            , count = Nprefs, /test_dir))
+
     if Nprefs eq 0 then begin
       print, inam + ' : No prefilter sub-directories found in: ' + search_dir
       continue                  ; Next timestamp
     endif
+
+    ;; Accept only Ca II prefilters. We have experimented with other
+    ;; WB filters than 3950 so we should support that without trying
+    ;; to do align_continuum for Hbeta.
+    indx = where(long(prefilters) lt 4000, Nwhere)
+    if Nwhere eq 0 then begin
+      red_message, 'No Ca II sub-directories found in: ' + search_dir
+      continue                  ; Next timestamp
+    endif
+    prefilters = prefilters[indx]
     
     ;; Select prefilter folders
     tmp = red_select_subset(prefilters $
@@ -156,9 +167,9 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
       mname = odir + 'continuum_shifts_smoothed.fz'
       cname = odir + 'continuum_contrasts.fz'
 
-      xpname = odir + 'plot_Xshifts.ps' ; Will be converted to pdf 
-      ypname = odir + 'plot_Yshifts.ps'
-      cpname = odir + 'plot_contrasts.ps'
+      xpname = odir + 'plot_Xshifts.pdf' ; Will be converted to pdf 
+      ypname = odir + 'plot_Yshifts.pdf'
+      cpname = odir + 'plot_contrasts.pdf'
 
       if keyword_set(overwrite) $
          or min(file_test([nname, sname, mname, cname, xpname, ypname, cpname])) eq 0 then begin
@@ -406,42 +417,48 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
 
         ;; Plot contrasts
 
-        cgPS_Open, cpname, /decomposed
-        cgplot, [0], /nodata $
+;        cgPS_Open, cpname, /decomposed
+        cgwindow
+        cgplot, /add, [0], /nodata $
                 , xrange = xrange $
                 , yrange = [min(contrasts), max(contrasts)] + 0.01*[-1, 1] $
                 , title  = title $
                 , xtitle = 'scan number' $
                 , ytitle = 'RMS contrast' 
-        for iscan = 0, Nscans-1 do cgplot, /over $
+        for iscan = 0, Nscans-1 do cgplot, /add, /over $
                                            , nbcstates[iscan].scannumber, contrasts[iscan] $
                                            , color = colors[iscan], psym = 16
-        cgplot, /over, nbcstates[include_indx].scannumber, contrasts[include_indx], psym = 9, symsize = 2
-        cgPS_Close, /PDF, /Delete_PS
-
+        cgplot, /add, /over, nbcstates[include_indx].scannumber, contrasts[include_indx], psym = 9, symsize = 2
+;        cgPS_Close, /PDF, /Delete_PS
+        cgcontrol, out = cpname
+        
         ;; Plot shifts
         axistag = ['X', 'Y']
         for iaxis = 0, 1 do begin
           ;; X and Y axis loop
 
-          case iaxis of
-            0: cgPS_Open, xpname, /decomposed
-            1: cgPS_Open, ypname, /decomposed
-          endcase
-           
+;          case iaxis of
+;            0: cgPS_Open, xpname, /decomposed
+;            1: cgPS_Open, ypname, /decomposed
+;          endcase
+          cgwindow
           yrange = [min(shifts[iaxis, include_indx]), max(shifts[iaxis, include_indx])] + 0.2*[-1, 1]
-          cgplot, [0], /nodata, color = 'blue' $
+          cgplot, /add, [0], /nodata, color = 'blue' $
                   , title = title $
                   , xrange = xrange, yrange = yrange $
                   , xtitle = 'scan number', ytitle = axistag[iaxis]+' shift / 1 pixel'
           
-          for iscan = 0, Nscans-1 do cgplot, /over $
+          for iscan = 0, Nscans-1 do cgplot, /add, /over $
                                              , nbcstates[iscan].scannumber, shifts[iaxis, iscan] $
                                              , color = colors[iscan], psym = 16
 
-          cgplot, /over, nbcstates.scannumber, shifts_smooth[iaxis, *], color = 'red'
-
-          cgPS_Close, /PDF, /Delete_PS
+          cgplot, /add, /over, nbcstates.scannumber, shifts_smooth[iaxis, *], color = 'red'
+          case iaxis of
+            0: cgcontrol, out = xpname
+            1: cgcontrol, out = ypname
+          endcase
+          
+;          cgPS_Close, /PDF, /Delete_PS
         endfor                  ; iaxis
 
       endif                     ; overwrite
@@ -449,8 +466,9 @@ pro chromis::align_continuum, continuum_filter = continuum_filter $
   endfor                        ; itimestamp
 
   print
-  print, inam + ' : Please inspect the smooting results shown in align/??:??:??/????/*.pdf.'
-  print, inam + ' : Edit continuum_shifts_smoothed.fz if you do not like the results of the smoothing.'
-  print, inam + ' : The lines should be smoothed versions of the points, but with low-contrast data having less (or no) weight.'
+  red_message, ['Please inspect the smoothing results shown in align/??:??:??/????/*.pdf.' $
+                , 'Edit continuum_shifts_smoothed.fz if you do not like the results of the smoothing.' $
+                , 'The lines should be smoothed versions of the points, but with low-contrast data' $
+                , 'having less (or no) weight.']
 
 end

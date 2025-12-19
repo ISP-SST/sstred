@@ -20,9 +20,14 @@
 ; 
 ; :Keywords:
 ; 
+;     log : in, out, optional, type=float
+; 
+;        Display in log scale with specified added number. More
+;        specifically, display log(abs(vari + log*max(var))).
+; 
 ;     wnum : in, out, optional, type=integer
 ;
-;        integer window index
+;        Integer window index
 ;
 ;     nowin : in, optional, type=boolean
 ;
@@ -65,8 +70,11 @@
 ;
 ;    2024-07-06 : MGL. Allow file name as input parameter.
 ;
+;    2025-11-18 : MGL. New keyword log.
+;
 ;-
 pro red_show, vari $
+              , log = log $
               , noscale = noscale $
               , nowin = nowin $
               , offs = offs $
@@ -84,11 +92,15 @@ pro red_show, vari $
   if isa(vari, /string) then begin
     var = reform(red_readdata(vari))
     ;; This should be ok for FITS, ANA, MOMFBD format files, as long
-    ;; as the contents is 2D.
+    ;; as the contents are 2D.
   endif else begin
     ;; Image
     var=reform(vari)
   endelse
+
+  if n_elements(log) gt 0 then begin
+    var = alog(abs(var) + log*max(var))
+  endif
   
   dim=size(var)
   ;;Checks for the right image dimensions

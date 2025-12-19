@@ -139,8 +139,8 @@ function red_sumheaders, files, sum $
         red_append, framenumbers, frame_numbers_thisfile[indx]
 
 ;        print, framenumbers
-        
-      endif else stop
+        ;; Already summed file? Read FNUMSUM!
+      endif                     ;else stop
 
       ;; Only get timestamps if necessary
       if get_times then begin
@@ -172,7 +172,7 @@ function red_sumheaders, files, sum $
 
   ;; Remove duplicate framenumbers. Note, AFTER counting them so e.g.
   ;; WB and PD frames are both counted.
-  framenumbers = framenumbers[uniq(framenumbers, sort(framenumbers))]
+  if n_elements(framenumbers) gt 0 then framenumbers = red_uniquify(framenumbers)
   ;; This assumes that the same frames are available for all cameras.
   ;; If we want to allow for cases where this is not true, we need to
   ;; write separate FNUMSUM for the cameras. But as long as the

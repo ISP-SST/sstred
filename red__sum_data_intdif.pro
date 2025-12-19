@@ -371,12 +371,9 @@ pro red::sum_data_intdif, all = all $
 ;      self -> get_calib, selstates[0], darkdata = dd
       self -> get_calib, mstates[0], darkdata = dd
 
-      ;; Load fitgains results
-      cmf = self.out_dir + '/flats/spectral_flats/' + detectors[icam] + '.' + $
-            pref + '.' + 'fit_results.sav'
-
-      
-      
+;      ;; Load fitgains results
+;      cmf = self.out_dir + '/flats/spectral_flats/' + detectors[icam] + '.' + $
+;            pref + '.' + 'fit_results.sav'
       
       ;; load gains
       gains = fltarr(Nx,Ny,Ntunings,Nlc)

@@ -25,6 +25,10 @@
 ; 
 ; :Params:
 ; 
+;    count : out, optional, type=integer
+; 
+;      The number of selected elements.
+; 
 ;    indx : out, optional, type=array 
 ; 
 ;      The indices of the selected elements.
@@ -33,10 +37,14 @@
 ; 
 ;   2024-12-18 : MGL. First version.
 ; 
+;   2025-05-16 : MGL. New keyword count.
+; 
 ;-
-function red_uniquify, arr, indx = indx
+function red_uniquify, arr, count = count, indx = indx
 
   indx = uniq(arr, sort(arr))
+
+  count = n_elements(indx)
   
   return, arr[indx]
 

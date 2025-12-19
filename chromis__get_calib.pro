@@ -97,15 +97,23 @@
 ; 
 ;    2025-03-28 : MGL. New keyword timestamp.
 ; 
+;    2025-05-28 : MGL. Adapt to polarimetric data.
+; 
 ;-
 pro chromis::get_calib, states $
                         , no_fits = no_fits $
                         , status = status $
-                        , darkstatus  = darkstatus,  darkname  = darkname,  darkdata  = darkdata   $
-                        , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata   $
-                        , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata   $
-                        , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata   $
-                        , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata  $
+                        , darkstatus  = darkstatus,  darkname  = darkname,  darkdata  = darkdata  $
+                        , flatstatus  = flatstatus,  flatname  = flatname,  flatdata  = flatdata  $
+                        , gainstatus  = gainstatus,  gainname  = gainname,  gaindata  = gaindata  $
+                        , pinhstatus  = pinhstatus,  pinhname  = pinhname,  pinhdata  = pinhdata  $
+                        ,                            polcname  = polcname,  polcdata  = polcdata  $
+                        ,                            polsname  = polsname,  polsdata  = polsdata  $
+                        , sflatstatus = sflatstatus, sflatname = sflatname, sflatdata = sflatdata $
+                        , cflatstatus = cflatstatus, cflatname = cflatname, cflatdata = cflatdata $
+                        , cgainstatus = cgainstatus, cgainname = cgainname, cgaindata = cgaindata $
+                        , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata $
+                        , clcgainstatus = clcgainstatus, clcgainname = clcgainname, clcgaindata = clcgaindata $
                         , timestamp = timestamp 
   
 
@@ -125,8 +133,20 @@ pro chromis::get_calib, states $
      gainname = self -> filenames('gain'   , states, no_fits = no_fits)
   if arg_present(pinhname)  or arg_present(pinhdata) then $
      pinhname = self -> filenames('pinh'   , states, no_fits = no_fits)
+  if arg_present(polsname)  or arg_present(polsdata) then $
+     polsname = self -> filenames('pols'   , states, no_fits = no_fits)
+  if arg_present(polcname)  or arg_present(polcdata) then $
+     polcname = self -> filenames('polc'   , states, no_fits = no_fits)
   if arg_present(sflatname) or arg_present(sflatdata) then $
      sflatname = self -> filenames('sumflat', states, no_fits = no_fits)
+  if arg_present(cflatname) or arg_present(cflatdata) then $
+     cflatname = self -> filenames('cavityflat', states, no_fits = no_fits)
+  if arg_present(clcgainname) or arg_present(clcgaindata) then $
+     clcgainname = self -> filenames('cavityfree_lc_gain', states, no_fits = no_fits)
+  if arg_present(cgainname) or arg_present(cgaindata) then $
+     cgainname = self -> filenames('cavityfree_gain', states, no_fits = no_fits)
+  if arg_present(sgainname) or arg_present(sgaindata) then $
+     sgainname = self -> filenames('scangain', states, no_fits = no_fits)
 
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
@@ -190,6 +210,16 @@ pro chromis::get_calib, states $
       
     endif else status = -1        
   endif                         ; Summed flats
+  
+  ;; Cavityfree flats    
+  if arg_present(cflatdata) then begin    
+    if n_elements(cflatname) ne 0 then begin
+      
+      cflatdata = red_readdata_multiframe(cflatname, status = cflatstatus, /silent)
+      status = min([status, cflatstatus])
+      
+    endif else status = -1        
+  endif                         ; Cavityfree flats
 
   ;; Gains
   if arg_present(gaindata) then begin
@@ -212,6 +242,29 @@ pro chromis::get_calib, states $
 
     endif else status = -1
   endif                         ; Gains
+
+  ;; Cavityfree gains    
+  if arg_present(cgaindata) then begin
+    if n_elements(cgainname) ne 0 and file_test(cgainname) then begin
+      
+      cgaindata = red_readdata_multiframe(cgainname, status = cgainstatus, /silent)
+      status = min([status, cgainstatus])
+
+    endif else status = -1
+  endif                         ; Cavityfree gains             
+
+  ;; Cavityfree_lc gains    
+  if arg_present(clcgaindata) then begin
+    if n_elements(clcgainname) ne 0 then begin
+      if ~file_test(clcgainname) then begin ; we need this for unpolarized gains
+        clcgainstatus = -1
+        status = -1
+      endif else begin
+        clcgaindata = red_readdata_multiframe(clcgainname, status = clcgainstatus, /silent)
+        status = min([status, clcgainstatus])
+      endelse
+    endif else status = -1     
+  endif                         ; Cavityfree LC gains         
 
   
   ;; Pinholes

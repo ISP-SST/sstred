@@ -202,9 +202,22 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
   
-  camWB = 'Crisp-W'
-  camsNB = ['Crisp-T', 'Crisp-R']
-  camNB = camsNB[0]
+  
+  ;; Camera/detector identification
+  self -> getdetectors
+  wbindx      = where(strmatch(*self.cameras,'*-W'))
+  wbcamera    = (*self.cameras)[wbindx[0]]
+  wbdetector  = (*self.detectors)[wbindx[0]]
+  nbindx      = where(strmatch(*self.cameras,'*-[NTR]')) 
+  nbcameras   = (*self.cameras)[nbindx]
+  nbdetectors = (*self.detectors)[nbindx]
+  Nnbcams     = n_elements(nbcameras)
+
+  instrument = (strsplit(wbcamera, '-', /extract))[0]
+
+;  camWB = 'Crisp-W'
+;  camsNB = ['Crisp-T', 'Crisp-R']
+;  camNB = camsNB[0]
 
   ;; For now! We may be able to work around this later! If there are
   ;; WB DC data throughout the observations! Can we check from here?
@@ -221,7 +234,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
 
   if n_elements(value_ncav) eq 0 then value_ncav = 3.d
   if n_elements(value_stretch) eq 0 then value_stretch = 1.d
-;  if n_elements(value_shift) eq 0 then value_shift = -0.01d
+  if n_elements(value_shift) eq 0 then value_shift = 0.0
   if n_elements(value_prshift) eq 0 then value_prshift = -0.01d
 
   fit_parameters = [1,1,1,1,1,1,1,0] ; default
@@ -254,7 +267,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
 
       ;; In flats directories WB and NB data are often separated. So
       ;; use only directories where there actually are NB data.
-      indx = where(file_test(dirs+'/'+camsNB[0]), cnt)
+      indx = where(file_test(dirs+'/'+nbcameras[0]), cnt)
       if cnt eq 0 then begin
         print, inam + ' : No flats directories with NB data.'
         print, dirs
@@ -298,51 +311,49 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       endfor                    ; idir
       red_logdata, self.isodate, times, mu = mu, zenithangle = za
 
+      xs = 1000
+      ys = 1000
+      ims = fltarr(xs, ys, Ndirs)
+      xds = xs/4
+      yds = ys/4
+      mos = fltarr(xds*Ndirs, yds)
       
       for idir = 0, Ndirs-1 do begin
 
         print, dirs[idir]
 
-        fnamesN = self -> raw_search(dirs[idir]+'/'+camNB+'/', count = NfilesN, scannos = 0, prefilters = pref_keyword)
+        fnamesN = self -> raw_search(dirs[idir]+'/'+nbcameras[0]+'/', count = NfilesN, scannos = 0, prefilters = pref_keyword)
         Nfiles[idir] = NfilesN
         if keyword_set(unitscalib) then begin
-          fnamesW = self -> raw_search(dirs[idir]+'/'+camWB+'/', count = NfilesW, scannos = 0, prefilters = pref_keyword)
+          fnamesW = self -> raw_search(dirs[idir]+'/'+wbcamera+'/', count = NfilesW, scannos = 0, prefilters = pref_keyword)
         endif else begin
           NfilesW = 0
         endelse
-
-        if n_elements(ims) eq 0 then begin
-          hdr = red_readhead(fnamesN[0])
-          xs = red_fitsgetkeyword(hdr, 'NAXIS1')
-          ys = red_fitsgetkeyword(hdr, 'NAXIS2')
-          ims = fltarr(xs, ys, Ndirs)
-          xds = xs/4
-          yds = ys/4
-          mos = fltarr(xds*Ndirs, yds)
-        endif
 
         if keyword_set(unitscalib) && NfilesW gt 0 then begin
           im = red_readdata(fnamesW[0], /silent)
         endif else begin
           im = red_readdata(fnamesN[0], /silent)
         endelse
+        if size(im, /n_dim) lt 2 then continue
         if size(im, /n_dim) eq 3 then im = total(im, 3)
-        ims[0, 0, idir] = im
+        ims[0, 0, idir] = congrid(im, xs, ys)
         mos[idir*xds:(idir+1)*xds-1, *] $
-           = rebin(ims[*, *, idir], xds, yds)/median(ims[*, *, idir])
+           = rebin(ims[*, *, idir], xds, yds, /samp)/median(ims[*, *, idir])
         
         ;; Get more hints only for potentially interesting dirs
         if NfilesN gt 0 && NfilesN lt 1000 && mu[idir] gt 0.9 then begin
-
+          
           self -> extractstates, fnamesN, sts, /nondb
           prefs[idir] = ', prefs='+strjoin(sts[uniq(sts.prefilter,sort(sts.prefilter))].prefilter, ',')
-
+          
           contr[idir] = stddev(ims[20:-20, 20:-20, idir])/mean(ims[20:-20, 20:-20, idir])
-
+          
 ;          red_fitspar_getdates, hdr, date_beg = date_beg 
 ;          times[idir] = red_time2double((strsplit(date_beg, 'T', /extract))[1])
-
+          
         endif
+        
       endfor                    ; idir
 
       ;; Select data folder containing a quiet-Sun-disk-center dataset
@@ -421,10 +432,10 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
   ;; Get one scan (scan 0 by default)
   if n_elements(scan) eq 0 then scan = 0
 
-  for icam = 0, n_elements(camsNB)-1 do begin
+  for icam = 0, n_elements(nbcameras)-1 do begin
 
-    camNB = camsNB[icam]
-    
+    camNB = nbcameras[icam]
+
     filesNBall = self -> raw_search(dirs+'/'+camNB+'/', count = nfilesNB, scannos = scan, prefilters = pref_keyword)
     if nfilesNB eq 0 then begin
       print, inam+' : ERROR, invalid scan number'
@@ -433,7 +444,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
     self->extractstates, red_sortfiles(filesNBall), statesNBall, /nondb
 
     if keyword_set(unitscalib) then begin
-      filesWBall = self -> raw_search(dirs+'/'+camWB+'/', count=nfilesWB, scannos = scan, prefilters = pref_keyword)
+      filesWBall = self -> raw_search(dirs+'/'+wbcamera+'/', count=nfilesWB, scannos = scan, prefilters = pref_keyword)
       if nfilesNB ne nfilesWB then begin
         print, inam+' : ERROR, scan numbers mismatch WB and NB'
         stop
@@ -456,7 +467,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
 ;    filesNBall = filesNBall[idx]
 ;    
 ;    if keyword_set(unitscalib) then begin ; Get the corresponding WB files
-;      filesWBall = file_search(dirs+'/'+camWB+'/*', count=nfilesWB)
+;      filesWBall = file_search(dirs+'/'+wbcamera+'/*', count=nfilesWB)
 ;      self -> extractstates, filesWBall, statesWBall
 ;
 ;      idx=where(statesWBall.scannumber eq scan, ct)
@@ -532,8 +543,8 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       endif
       
       self -> selectfiles, files = filesNBall, states = statesNBall $
-                           , prefilter = upref[ipref] $
-                           , selected = sel, count = Nsel
+                                   , prefilter = upref[ipref] $
+                                   , selected = sel, count = Nsel
       
       statesNB = statesNBall[sel]
       
@@ -562,10 +573,10 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       if self.dodescatter and (statesNB[0].prefilter eq '8542' $
                                or statesNB[0].prefilter eq '7772') then begin
         self -> loadbackscatter, statesNB[0].detector $
-                                 , statesNB[0].prefilter, bgainn, bpsfn
+           , statesNB[0].prefilter, bgainn, bpsfn
         if keyword_set(unitscalib) then begin
           self -> loadbackscatter, statesWB[0].detector $
-                                 , statesWB[0].prefilter, bgainw, bpsfw
+             , statesWB[0].prefilter, bgainw, bpsfw
         endif
       endif 
       
@@ -603,13 +614,13 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
           
           file_mkdir, self.out_dir + '/prefilter_fits/'+upref[ipref]+'/'
           self -> inverse_modmatrices, upref[ipref] $
-                                       , self.out_dir + '/prefilter_fits/'+upref[ipref]+'/' $
-                                       , camr = 'Crisp-R', immr = immr $
-                                       , camt = 'Crisp-T', immt = immt
+             , self.out_dir + '/prefilter_fits/'+upref[ipref]+'/' $
+             , camr = instrument+'-R', immr = immr $
+             , camt = instrument+'-T', immt = immt
 
           case camNB of
-            'Crisp-T' : immtr = reform(immt, [4, 4, dim[0], dim[1]])            
-            'Crisp-R' : immtr = reform(immr, [4, 4, dim[0], dim[1]])            
+            instrument+'-T' : immtr = reform(immt, [4, 4, dim[0], dim[1]])            
+            instrument+'-R' : immtr = reform(immr, [4, 4, dim[0], dim[1]])            
             else : stop
           endcase
           
@@ -726,7 +737,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
           imN = rdx_sumfiles(statesNB[pos].filename, /check, nthreads = 4, time_avg = time_avg) - darkN
           if self.dodescatter and (statesNB[pos[0]].prefilter eq '8542' $
                                    or statesNB[pos[0]].prefilter eq '7772') then begin
-                imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
+            imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
           endif
           imN *= rdx_fillpix(gainN)
 
@@ -818,13 +829,24 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         
         ;; Scale factor
         par[0] = max(measured_spectrum) * 2d0 / cont[0]
+        measured_indx = where(abs(measured_lambda - float(upref[ipref])) lt 1)
+        atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
+;        par[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
+        par[0] = min(measured_spectrum[measured_indx], measured_minloc) $
+                 / min(atlas_spectrum_convolved[atlas_indx], atlas_minloc)
+
+;        stop
+;        shft = measured_lambda[measured_minloc] - atlas_lambda[atlas_indx[atlas_minloc]]
+;        print, 'shft:', shft
+;        Could be used to initialize par[1] instead of pref - cwl        
+        
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
         endif
         
-        ;; Line shift (satlas-obs)
-        if n_elements(value_shift) gt 0 then begin
+        ;; Line shift (satlas-obs) 
+        if value_shift ne 0.0 then begin
           par[1] = value_shift
         endif else begin
           par[1] = float(upref[ipref]) - cwl
@@ -892,8 +914,13 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
         ;; the iterations to never get started. Default is 1d-10, so
         ;; we could try maybe 1e-8. But the iterations are fast so why
         ;; bother?
-        par = mpfit('red_prefilterfit', par, functar=dat, parinfo=fitpars, ERRMSG=errmsg, status = status)
+        par = mpfit('red_prefilterfit', par $
+                    , functar=dat, parinfo=fitpars $
+                    , ERRMSG=errmsg, status = status)
         prefilter = red_prefilter(par, dat.lambda, dat.pref)
+        
+        print, 'mpfit status : ', status
+        if errmsg ne '' then print, errmsg
         
         fit_fix = replicate('Fit', 8)
         for i = 0, 7 do if fitpars[i].fixed then fit_fix[i] = 'Fix'
