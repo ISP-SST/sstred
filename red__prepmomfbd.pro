@@ -276,6 +276,7 @@ pro red::prepmomfbd, cams = cams $
     ;; was used.
     if file_test(offset_dir+'/alignments_polywarp.sav') then newalign = 1
   endif
+  if keyword_set(newalign) then alignment_model = 'polywarp' else alignment_model = 'projective'
   
   if(n_elements(maxshift) eq 0) then maxshift='30'
   maxshift = strcompress(string(maxshift), /remove_all)
@@ -456,37 +457,20 @@ pro red::prepmomfbd, cams = cams $
     ;; Read gains for all cameras, remap them to the WB orientation
     ;; and position, AND them gt 0, to make a mask.
 
-    if keyword_set(newalign) then begin
-          ;;; do I need the maps?  use from align when needed?
-      mask = 1b
-      mapidx = intarr(Ncams)
-      for icam = 0, Ncams-1 do begin
-              ;;; should that not include prefilter?
-        gfiles = file_search('gaintables/'+detectors[icam]+'_*.fits')
-        g = red_readdata(gfiles[0])
-        indx = (where(align.state.camera EQ cams[icam]))[0]
-        mapidx[icam] = indx
-        g = poly_2d(g, align[indx].map_x, align[indx].map_y, miss = 0)
-        mask = mask and (g gt 0)
-      endfor                    ;  icam
-      dims = size(mask, /dim)
-    endif else begin
-      maps = fltarr(3, 3, Ncams)
-      for icam = 0, Ncams-1 do begin
-        gfiles = file_search('gaintables/'+(*self.detectors)[icam]+'_*.fits')
-        g = red_readdata(gfiles[0])
-        indx = where(align.state2.camera eq cams[icam])
-        maps[*, *, icam] = align[indx[0]].map
-        if icam eq 0 then begin
-          dims = size(g, /dim)
-          masks = fltarr([dims, Ncams])
-          mask = rdx_img_transform(invert(maps[*, *, 0]), g, /preserve) gt 0
-        endif else begin
-          mask and= rdx_img_transform(invert(maps[*, *, icam]), g, /preserve) gt 0
-        endelse
-        masks[*, *, icam] = g gt 0 ; Masks for individual cameras
-      endfor                       ; icam
-    endelse
+    mask = 1b
+    mapidx = intarr(Ncams)
+    for icam = 0, Ncams-1 do begin
+      gfiles = file_search('gaintables/'+detectors[icam]+'_*.fits')
+      g = red_readdata(gfiles[0])
+      indx = (where(align.state.camera EQ cams[icam]))[0]
+      mapidx[icam] = indx
+      ;; We'd need to move this into the ipref loop to make the mask
+      ;; prefilter specific.
+      g = red_apply_camera_alignment(g, alignment_model, cams[icam], /preserve) 
+;            , pref = upref[ipref]
+      mask = mask and (g gt 0)
+    endfor                      ;  icam
+    dims = size(mask, /dim)
     
     ;; Close small holes in the mask
     ste=[[0,1,0],[1,1,1],[0,1,0]]
@@ -517,12 +501,11 @@ pro red::prepmomfbd, cams = cams $
     ;; Zero MAXSHIFT outermost rows and columns in mask, in all cameras.
     tmp = bytarr(dims[0]-2*maxshift, dims[1]-2*maxshift) + 1
     tmp = red_centerpic(tmp, xs = dims[0], ys = dims[1], z = 0)
-    if keyword_set(newalign) then begin
-      for icam = 0, ncams-1 do mask and= $
-         poly_2d(tmp, align[mapidx[icam]].map_x, align[mapidx[icam]].map_y, miss = 0)
-    endif else begin
-      for icam = 0, Ncams-1 do mask AND= rdx_img_transform(invert(maps[*, *, icam]), tmp, /preserve)
-    endelse
+    ;; We'd need to move this into the ipref loop to make the mask
+    ;; prefilter specific.
+    for icam = 0, Ncams-1 do mask AND= red_apply_camera_alignment(tmp, alignment_model, cams[icam], /preserve)
+;      , pref = uprefs[ipref])
+
     
     ;; Fill the masked FOV with subfield coordinates using sim_xy
     
