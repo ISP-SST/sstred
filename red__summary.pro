@@ -205,6 +205,7 @@ pro red::summary, _extra = extra $
         endif else begin
           self -> quicklook, datasets = timestamps[idir], min_nscan = 1, /core_and_wing
         endelse
+        self -> quicklook, cam='Chromis-W', datasets = timestamps[idir], use_states = '*', min_nscan = 1 ; WB quicklook
         imfiles = file_search(qdir + '*jpg', count = Nims)
         if Nims eq 0 then stop
       endif
