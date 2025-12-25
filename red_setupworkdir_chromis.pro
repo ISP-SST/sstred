@@ -756,11 +756,12 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Science data'
   printf, Clun, '# '
 
-  ;; Exclude directories know not to have science data
+  ;; Exclude directories known not to have science data
   red_append, nonsciencedirs, pinhdirs
   red_append, nonsciencedirs, pfscandirs
   red_append, nonsciencedirs, darkdirs
   red_append, nonsciencedirs, flatdirs
+  red_append, nonsciencedirs, polcaldirs
   ;; Sometimes the morning calibrations data were not deleted, so they
   ;; have to be excluded too.
   calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
@@ -793,17 +794,14 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endfor
   if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
-  
+  printf, Slun
+  printf, Slun, "a -> quicklook, /core_and_wings, datasets = '*'        ; NB quicklook"
+  printf, Slun, "a -> quicklook_mosaic, /core_and_wings, datasets = '*' ; NB mosaic quicklook"
+  printf, Slun, ";a -> quicklook, cam='"+cams[0]+"', datasets = '*', use_states = '*' ; WB quicklook"
 
   if keyword_set(lapalma_setup) then begin
 
-    ;; For a La Palma setup, add quicklook lines and return.
-    printf, Slun
     printf, Slun, '; Quicklook will sum its own flats, independent of the ones in the flats/hh:mm:ss/ subdirectories.'
-    printf, Slun, 'a -> quicklook, /core_and_wings ; NB quicklook'
-    printf, Slun, 'a -> quicklook_mosaic, /core_and_wings ; NB mosaic quicklook'
-    printf, Slun, "a -> quicklook, cam='"+cams[0]+"'      ; WB quicklook"
-
     printf, Slun, 'a -> summarize_datadir'
     
     free_lun, Slun, Clun
@@ -879,7 +877,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, "; If called without the wbpath, make_nb_cube lets you select one of the existing wb cubes"
   printf, Slun, "a -> make_nb_cube, wbpath, nthreads=nthreads"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/results/', nthreads=nthreads"
+  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/', nthreads=nthreads"
 
   
   free_lun, Clun

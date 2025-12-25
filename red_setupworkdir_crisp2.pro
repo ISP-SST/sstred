@@ -747,13 +747,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
 
   printf, Slun
-  printf, Slun, '; Quicklook will sum its own flats if needed, independent of the ones in the flats/hh:mm:ss/ subdirectories.'
-  printf, Slun, 'a -> quicklook, /core_and_wings        ; NB quicklook'
-  printf, Slun, 'a -> quicklook_mosaic, /core_and_wings ; NB mosaic quicklook'
-  printf, Slun, "a -> quicklook, cam='"+cams[0]+"'      ; WB quicklook"
+  printf, Slun, "a -> quicklook, /core_and_wings, datasets = '*'        ; NB quicklook"
+  printf, Slun, "a -> quicklook_mosaic, /core_and_wings, datasets = '*' ; NB mosaic quicklook"
+  printf, Slun, ";a -> quicklook, cam='"+cams[0]+"', datasets = '*', use_states = '*'  ; WB quicklook"
 
   if keyword_set(lapalma_setup) then begin
 
+    printf, Slun, '; Quicklook will sum its own flats, independent of the ones in the flats/hh:mm:ss/ subdirectories.'
     ;; For a La Palma setup, return after quicklook.
     printf, Slun, 'a -> summarize_datadir'
     
@@ -837,7 +837,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, "a -> fitscube_wcs_improve_spatial, wbpath ; If suitable target"
   printf, Slun, "a -> make_nb_cube, wbpath, nthreads=nthreads"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/results/', /circular_fov, nthreads=nthreads"
+  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/', /circular_fov, nthreads=nthreads"
   
   free_lun, Clun
   free_lun, Slun
