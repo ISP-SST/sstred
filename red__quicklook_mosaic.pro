@@ -88,7 +88,10 @@ pro red::quicklook_mosaic, align=align $
 
   ;; Limit possible datasets to mosaic directories
   mos_dirs = (*self.data_dirs)[where(strmatch(*self.data_dirs, '*mosaic*'), Nwhere)]
-  IF Nwhere EQ 0 THEN stop
+  if Nwhere eq 0 then begin
+    red_message, 'No mosaic data directories found.'
+    return
+  endif
   
   if n_elements(datasets) eq 0 then begin
     ;; Select data sets in a menu.
