@@ -1224,7 +1224,7 @@ pro red::make_scan_cube, dir $
                                     , axis_numbers = [3] 
     red_fitscube_addrespappl, filename, prefilter_curve, /tun
 
-    tindx_r0 = where(time_r0 ge min(tavg_array) and time_r0 le max(tavg_array), Nt)
+    tindx_r0 = where(time_r0 ge (min(tavg_array)-1.1) and time_r0 le (max(tavg_array)+1.1), Nt)
     if Nt gt 0 then begin
       self -> fitscube_addvarkeyword, filename, 'ATMOS_R0' $
          , metadata_r0[*, tindx_r0] $
