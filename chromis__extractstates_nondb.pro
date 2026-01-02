@@ -147,7 +147,7 @@
 ;                 tuning info. Older files handled by
 ;                 chromis::extractstates_wheelhrz_nondb.
 ;
-;    2026-06-09 : MGL. Adapt to polarimetric data. Allow 2d input
+;    2025-06-09 : MGL. Adapt to polarimetric data. Allow 2d input
 ;                 array.
 ;
 ;-

@@ -144,7 +144,7 @@
 ; 
 ;    2022-07-29 : MGL. Based on chromis version.
 ;
-;    2026-06-03 : MGL. Allow 2d input array.
+;    2025-06-03 : MGL. Allow 2d input array.
 ;
 ;-
 pro crisp2::extractstates_nondb, strings, states $
