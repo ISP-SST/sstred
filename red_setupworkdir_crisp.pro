@@ -674,7 +674,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
-            + "; /hints, dir='10:02:45'"
+            + "; /hints, /mask, dir='10:02:45'"
     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
             + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5" $
             + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] " $

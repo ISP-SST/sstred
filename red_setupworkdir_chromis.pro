@@ -586,7 +586,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     endif else begin
       ;; The new polywarp mechanism does not work with the aspect
       ;; ratio of the old CHROMIS cameras. Yet. Edit this when fixed!
-      printf, Slun, 'a -> pinholecalib, /no_polywarp'
+      printf, Slun, 'a -> pinholecalib, /no_polywarp, /verify'
     endelse
 ;    printf, Slun, 'a -> diversitycalib'
     printf, Slun, ''
