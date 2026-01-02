@@ -184,7 +184,7 @@ pro red_extractstates, strings $
   ;; if the third subexpression were allowed to match a dot we would
   ;; get false matches with the scan and pref fields.
   if arg_present(nums) or arg_present(states) or arg_present(pstates) then $
-     nums = reform((stregex(strlist,'(_|\.)([0-9]+)($)', /extr, /subexp))[2,*])
+     nums = reform((stregex(file_basename(strlist),'(_|\.|^)([0-9]{7})(_|\.|$)', /extr, /subexp))[2,*])
 
   ;; The camera name consists of the string 'cam' followed by a roman
   ;; number.
