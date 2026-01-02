@@ -177,48 +177,60 @@ pro red::link_data, all_data = all_data $
             print, inam+' : ERROR : '+cam+': no files found in: '+$
                    data_dir +' : skipping camera!'
             continue
-            ;; Only one prefilter?
-            if keyword_set(pref) then begin
-              idx = where(strmatch(states.prefilter,pref), Np)
-              if Np eq 0 then begin
-                print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
-                continue
-              endif
-              files = files[idx]
-              states = states[idx]
-            endif 
+;            ;; Only one prefilter?
+;            if keyword_set(pref) then begin
+;              idx = where(strmatch(states.prefilter,pref), Np)
+;              if Np eq 0 then begin
+;                print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
+;                continue
+;              endif
+;              files = files[idx]
+;              states = states[idx]
+;            endif 
           endif
-          self->extractstates_nondb, files, states
+          red_extractstates, files, pref = all_prefs, nums = all_framenums, scan = all_scannumbers
+;          self->extractstates_nondb, files, states
+
           ;; Only one prefilter?
           if keyword_set(pref) then begin
-            idx = where(strmatch(states.prefilter,pref), Np)
+;            idx = where(strmatch(states.prefilter,pref), Np)
+            idx = where(strmatch(all_prefs,pref), Np)
             if Np eq 0 then begin
               print, inam+' : ERROR : '+cam+': no files matching prefilter '+pref
               continue
             endif
             files = files[idx]
-            states = states[idx]
+;            states = states[idx]
+            all_prefs = all_prefs[idx]
+            all_framenums = all_framenums[idx]
+            all_scannumbers = all_scannumbers[idx]
           endif 
           ;; Check for complete scans only
           if ~keyword_set(all_data) then begin
-            scans = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
-            Nscans = n_elements(scans)
+            ;; scans = states[uniq(states.scannumber, sort(states.scannumber))].scannumber
+            ;; Nscans = n_elements(scans)
+            scans = red_uniquify(all_scannumbers, count = Nscans)
             f_scan = lonarr(Nscans)
             for iscan = 0L, Nscans-1 do $
-               f_scan[iscan] = n_elements(where(states.scannumber eq scans[iscan]))
+               f_scan[iscan] = n_elements(where(all_scannumbers eq scans[iscan]))
+            ;;f_scan[iscan] = n_elements(where(states.scannumber eq scans[iscan]))
             mask = replicate(1B, Nfiles)
             for iscan = 1L, Nscans-1 do begin
               if f_scan[iscan]-f_scan[0] lt 0 then begin
                 print, inam + ' : WARNING : ' + cam + ': Incomplete scan nr ' + strtrim(scans[iscan], 2)
                 print, inam + '             only ' + strtrim(f_scan[iscan], 2) + ' of ' $
                        + strtrim(f_scan(0), 2) + ' files.  Skipping it'
-                mask[where(states.scannumber EQ scans[iscan])] = 0
+                mask[where(all_scannumbers EQ scans[iscan])] = 0
+                ;;  mask[where(states.scannumber EQ scans[iscan])] = 0
               endif
             endfor
-            idx = where(mask)
+            idx = where(mask, Nfiles)
             files = (temporary(files))[idx]
-            Nfiles = n_elements(files)
-            states = states[idx]
+;            Nfiles = n_elements(files)
+;            states = states[idx]
+            all_prefs = all_prefs[idx]
+            all_framenums = all_framenums[idx]
+            all_scannumbers = all_scannumbers[idx]
           endif
         endelse                
 
@@ -237,13 +249,19 @@ pro red::link_data, all_data = all_data $
         
         for ifile = 0L, Nfiles - 1 do begin
 ;          if uscan ne '' then if states[ifile].scannumber NE uscan then continue
-          if n_elements(uscan) ne 0 then if states[ifile].scannumber NE uscan then continue
+          if n_elements(uscan) ne 0 then if all_scannumbers[ifile] NE uscan then continue
+;;          if n_elements(uscan) ne 0 then if states[ifile].scannumber NE uscan then continue
           
           namout = outdir1 + detector $
-                   + '_' + string(states[ifile].scannumber, format = '(i05)') $
-                   + '_' + strtrim(states[ifile].prefilter, 2) $
-                   + '_' + string(states[ifile].framenumber, format = '(i07)') $
+                   + '_' + string(all_scannumbers[ifile], format = '(i05)') $
+                   + '_' + strtrim(all_prefs[ifile], 2) $
+                   + '_' + string(all_framenums[ifile], format = '(i07)') $
                    + '.fits'
+;          namout = outdir1 + detector $
+;                   + '_' + string(states[ifile].scannumber, format = '(i05)') $
+;                   + '_' + strtrim(states[ifile].prefilter, 2) $
+;                   + '_' + string(states[ifile].framenumber, format = '(i07)') $
+;                   + '.fits'
           
           printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
           
