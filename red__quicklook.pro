@@ -452,24 +452,30 @@ pro red::quicklook, align = align $
       n_elements(use_states) gt 0 : begin
         
         for istate = 0,n_elements(use_states)-1 do begin
-          imatch = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
-          if Nmatch ge 1 then begin
+          imatches = where(strmatch(ustat, '*'+use_states[istate]+'*'), Nmatch)
+          for imatch = 0, Nmatch-1 do begin
+;            if Nmatch ge 1 then begin
             states_count++
             red_append, ustat2, ustat[imatch] 
-            fn = states0[indx[imatch]].filename
+            fn = states0[indx[imatches[imatch]]].filename
             prts = strsplit(fn,'[_.]',/extract)
             if strmatch(cam,'*W*') then begin
-              if instrument eq 'CHROMIS' then $
-                 red_append, pat, '*' + prts[-3] + '*' $
-              else $
-                 red_append, pat, '*' +prts[-5] + '*'
+              if instrument eq 'CHROMIS' then begin
+                if self.isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
+                  red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*'
+                endif else begin
+                  red_append, pat, '*' + prts[-3] + '*' 
+                endelse
+              endif else begin
+                red_append, pat, '*' +prts[-5] + '*'
+              endelse
             endif else begin
               if instrument eq 'CHROMIS' then $
                  red_append, pat, '*' + prts[-3] + '*' + prts[-2] + '*' $
               else $
                  red_append, pat, '*' +prts[-5] + '*' + prts[-4] + '*' + prts[-3] + '*'
             endelse
-          endif else print, 'There is no match for ', use_states[istate], ' state.'
+          endfor                ; else print, 'There is no match for ', use_states[istate], ' state.'
         endfor                  ; istate
         if states_count eq 0 then print,'There are no matches for provided states. You have to choose states manually.'
         
