@@ -169,10 +169,7 @@ pro red::prepflatcubes, flatdir = flatdir $
                       
             immt = red_readdata(pname)
             immt = red_invert_mmatrix(temporary(immt))
-          endif
-
-
-          if polcal_flatfielding then begin
+          endif else begin
             ;; We probably want to exclude polcal flats from the
             ;; flatcube, as it is usually far outside the line. This
             ;; requires checking the polcal tuning against the tunings
@@ -218,7 +215,7 @@ pro red::prepflatcubes, flatdir = flatdir $
                 endif
               endif             ; Nmatch
             endif               ; Npolcal
-          endif                 ; polcal_flatfielding
+          endelse               ; polcal_flatfielding
           
         endif                   ; polarized
 
@@ -232,7 +229,11 @@ pro red::prepflatcubes, flatdir = flatdir $
           if istate eq 0  then begin
             head = red_readhead(sstates[istate].filename)
             dim = fxpar(head, 'NAXIS*')
-            cub = fltarr([Nstates, min([Nlc, 4]), dim])
+            if(~polcal_flatfielding) then begin
+              cub = fltarr([Nstates, dim])
+            endif else begin
+              cub = fltarr([Nstates, min([Nlc, 4]), dim])
+            endelse
             wav = dblarr(Nstates)
             tomask = bytarr(dim)
           endif
@@ -311,22 +312,35 @@ pro red::prepflatcubes, flatdir = flatdir $
           endif
           
           ;; Result
-          cub[istate, *, *, *] = tmp
+          if(~polcal_flatfielding) then begin
+            cub[istate, *, *] = tmp
+          endif else begin
+            cub[istate, *, *, *] = tmp
+          endelse
           ;;wav[istate] = sstates[istate].tun_wavelength
           wav[istate] = double((strsplit(sstates[istate].tuning,'_',/extract))[1])*1d-13
 
         endfor                  ; istate
 
 
-       
-        for jj = 0L, dim[1]-1 do for ii = 0L, dim[0]-1 do begin
-          if(tomask[ii,jj] eq 1B) then cub[*,*,ii,jj] = 0.0
-        endfor                  ; jj, ii
+        if(~polcal_flatfielding) then begin
+          for jj = 0L, dim[1]-1 do for ii = 0L, dim[0]-1 do begin
+            if(tomask[ii,jj] eq 1B) then cub[*,ii,jj] = 0.0
+          endfor                ; jj, ii
+        endif else begin
+          for jj = 0L, dim[1]-1 do for ii = 0L, dim[0]-1 do begin
+            if(tomask[ii,jj] eq 1B) then cub[*,*,ii,jj] = 0.0
+          endfor                ; jj, ii
+        endelse
         
         ;; Sort states (so far they are sorted as strings -> incorrect order)
         print, inam + ' : sorting wavelengths ... ', FORMAT = '(A,$)'
         ord = sort(wav)
-        cub = (temporary(cub))[ord,*,*,*]
+        if(~polcal_flatfielding) then begin
+          cub = (temporary(cub))[ord, *,*]
+        endif else begin
+          cub = (temporary(cub))[ord,*,*,*]
+        endelse
         wav = wav[ord]
         sstates = sstates[ord]
         print, 'done'
