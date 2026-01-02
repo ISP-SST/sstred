@@ -62,6 +62,8 @@
 ;                on crisp::extractstates is a wrapper around db and
 ;                nondb versions.
 ;
+;    2026-06-03 : MGL. Allow 2d input array.
+;
 ;-
 pro crisp::extractstates_nondb, strings, states $
                                 , force = force  $
@@ -70,10 +72,12 @@ pro crisp::extractstates_nondb, strings, states $
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)                                          
-  
+
   Nstrings = n_elements(strings)
   if( Nstrings eq 0 ) then return
 
+  dims = size(strings, /dim)
+  
   ;; If the first string ends with a number, assume all the strings
   ;; are old-style CRISP file names.
 ;  if (strsplit(strings[0], '.', /extract, count = Nsplit))[Nsplit-1]
@@ -81,9 +85,9 @@ pro crisp::extractstates_nondb, strings, states $
 
   ;; Create array of structs to hold the state information
   if keyword_set(polcal) then begin
-    states = replicate( {CRISP_POLCAL_STATE}, Nstrings )
+    states = replicate( {CRISP_POLCAL_STATE}, dims )
   endif else begin
-    states = replicate( {CRISP_STATE}, Nstrings )
+    states = replicate( {CRISP_STATE}, dims )
   endelse
   states.nframes = 1            ; single frame by default
 
@@ -231,18 +235,18 @@ pro crisp::extractstates_nondb, strings, states $
   
   ;; Some info from file names
   if keyword_set(polcal) then begin
-    red_extractstates,strings, lc=lc $
-                      , wav = wav, pref = pref $
-                      , qw=qw, lp=lp
-    states.qw = qw
-    states.lp = lp
+    red_extractstates, reform(strings, Nstrings), lc=lc $
+                       , wav = wav, pref = pref $
+                       , qw=qw, lp=lp
+    states.qw = reform(qw, dims)
+    states.lp = reform(lp, dims)
   endif else begin
-    red_extractstates,strings, lc=lc $
-                      , wav = wav, pref = pref
+    red_extractstates, reform(strings, Nstrings), lc=lc $
+                       , wav = wav ;, pref = pref
   endelse
-  states.lc = lc
+  states.lc = reform(lc, dims)
 ;  states.fpi_state = pref+'_'+wav
-  states.fpi_state = wav
+  states.fpi_state = reform(wav, dims)
 
   ;; Are the strings actually names of existing files? Then look in
   ;; the headers (for some info).
