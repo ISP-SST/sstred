@@ -121,6 +121,10 @@
 ;
 ;      Initial value for the  spectrum stretch parameter.
 ;
+;    wide_plot : in, optional, type=boolean
+;
+;      Plot the fit results with a wider wavelength range.
+;
 ;
 ; :History:
 ; 
@@ -175,6 +179,8 @@
 ;                for the intensity scale factor.
 ; 
 ;   2025-06-09 : MGL. Adapt to polarimetric data.
+; 
+;   2025-12-28 : MGL. New keyword wide_plot.
 ;
 ;-
 pro chromis::fitprefilter, cwl = cwl_keyword $
@@ -199,7 +205,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
                            , value_parameters = value_parameters $
                            , value_prshift = value_prshift $
                            , value_shift = value_shift $
-                           , value_stretch = value_stretch
+                           , value_stretch = value_stretch $
+                           , wide_plot = wide_plot
 
   ;; Name of this method
   inam = red_subprogram(/low, calling = inam1)
@@ -841,9 +848,18 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
                   , prefilter_plot[aindx]/par[0] * max(measured_spectrum) $
                  ]) * 1.05
         
+        if keyword_set(wide_plot) then begin
+          xrange = [min(measured_lambda), max(measured_lambda)]/10. + [-1, 1]*.2
+          yrange = [0, mx*2]
+        endif else begin
+          undefine, xrange
+          yrange = [0, mx]
+        endelse
+
         ;; Plot measured spectrum
         cgplot, /add, measured_lambda/10., measured_spectrum, line = lines[0], color = colors[0] $
-                , xtitle = '$\lambda$ / 1 nm', psym = psyms[0], yrange = [0, mx] $
+                , xtitle = '$\lambda$ / 1 nm', psym = psyms[0] $
+                , xrange = xrange, yrange = yrange $
                 , title = file_basename(dirs) + ' : ' + camNB + ' ' + upref[ipref]
         ;; Plot atlas spectrum times prefilter profile
         cgplot,/add,/over,(atlas_lambda+par[1])/10,atlas_spectrum_convolved*prefilter_plot   $
@@ -851,7 +867,11 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         ;; Plot prefilter profile
         cgplot, /add, /over,(atlas_lambda+par[1])/10, prefilter_plot/par[0] * max(measured_spectrum) $
                 , color = colors[2], line = lines[2], psym = psyms[2]
-
+        if keyword_set(wide_plot) then begin
+          ;; Plot atlas spectrum 
+          cgplot,/add,/over,(atlas_lambda+par[1])/10,atlas_spectrum_convolved*median(prefilter_plot)   $
+                 , color = 'teal', line = lines[1], psym = psyms[1]     
+        endif
         
       endif else begin
 
