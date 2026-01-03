@@ -198,9 +198,12 @@ pro red::prepflatcubes, flatdir = flatdir $
                                               + instrument + '-R/' $
                                               , scannos = 0, count = Nfiles)
                   if Nfiles gt 0 then begin
-                    self -> extractstates, dfiles, dstates
-                    Nmatch = round(total(dstates.tuning eq ptuning[0] $
-                                         and self -> match_prefilters(upref, dstates.prefilter)))
+                    red_extractstates, dfiles, pref = dpref, wav = dtuning 
+                    Nmatch = round(total(dtuning eq ptuning[0] $
+                                         and self -> match_prefilters(upref, dpref)))
+;                    self -> extractstates, dfiles, dstates
+;                    Nmatch = round(total(dstates.tuning eq ptuning[0] $
+;                                         and self -> match_prefilters(upref, dstates.prefilter)))
                     ;; If Nmatch is non-zero we do have science data
                     ;; with the polcal tuning. So we do not want to
                     ;; exclude the tuning from the flatcube.
