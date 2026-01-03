@@ -832,7 +832,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Slun, "a -> make_scan_cube, 'momfbd/.../cfg/results/', scannos = '69', nthreads=nthreads, /circular_fov"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', /align_interactive, /circular_fov, outpath = wbpath"
+  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', nthreads=nthreads, /align_interactive, /circular_fov, outpath = wbpath"
   printf, Slun, "; If not continuing immediately, set something like wbpath='cubes_wb/wb....fits' "
   printf, Slun, "a -> fitscube_wcs_improve_spatial, wbpath ; If suitable target"
   printf, Slun, "a -> make_nb_cube, wbpath, nthreads=nthreads"
