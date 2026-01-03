@@ -124,7 +124,7 @@ pro red::summary, _extra = extra $
             tscan lt 10 : format = '(f8.1)'
             else : format = '(i5)'
           endcase
-          printf, lun, 'Approximate time per scan: ' + strtrim(string(tscan, format = format), 2)+ ' s.\\[10mm]'
+          printf, lun, 'Average time per scan: ' + strtrim(string(tscan, format = format), 2)+ ' s.\\[5mm]'
         endelse
 
         Npref = n_elements(sum_struct.prefilters)
@@ -133,20 +133,26 @@ pro red::summary, _extra = extra $
 
         for ipref = 0, Npref-1 do begin
           Ntun = n_elements((sum_struct.nb[ipref]).tunings)
-          printf, lun, '\begin{minipage}[t]{0.25\textwidth}'
+          printf, lun, '\begin{minipage}[t]{0.3\textwidth}'
           printf, lun, '\vspace{0pt}\noindent'
           printf, lun, '\textbf{'+sum_struct.prefilters[ipref]+'\hfill}\\[3mm]'
           printf, lun, '\begin{tabular}{rrr}'
           printf, lun, '\hline'
           printf, lun, 'Tuning & LC & $N_{\text{exp}}$ \\'
-          printf, lun, '\hline'
+          printf, lun, '\hline\small'
           for itun = 0, Ntun-1 do begin
-            printf, lun, '$'+red_strreplace((sum_struct.nb[ipref]).tunings[itun],sum_struct.prefilters[ipref]+'_','') + '$'  $
-                    + ' & ' $
-                    + red_strreplace(rdx_ints2str([(sum_struct.nb[ipref]).lc[itun]]), '-', '--') $
-                    + ' & ' $
-                    + strtrim((sum_struct.nb[ipref]).nexp[itun], 2) $
-                    + ' \\'
+            cap = red_strreplace((sum_struct.nb[ipref]).tunings[itun],'_','')
+            cap = red_strreplace(cap, '+', '$+$')
+            cap = red_strreplace(cap, '-', '$-$')
+            line = cap $
+                   + ' & ' $
+                   + red_strreplace(rdx_ints2str([(sum_struct.nb[ipref]).lc[itun]]), '-', '--') $
+                   + ' & ' $
+                   + strtrim((sum_struct.nb[ipref]).nexp[itun], 2) $
+                   + ' \\'
+            printf, lun, line
+;            print, line
+;            stop
           endfor                ; itun
           printf, lun, '\hline'
           
@@ -227,6 +233,7 @@ pro red::summary, _extra = extra $
           cap = red_strreplace(wav[indx[iindx[[iim]]]], '_', '')
           cap = red_strreplace(cap, '+', '$+$')
           cap = red_strreplace(cap, '-', '$-$')
+          cap = upref[ipref] + '\_' + cap
           printf, lun, '\caption{'+cap+'}'
           printf, lun, '\end{subfigure}'
         endfor
