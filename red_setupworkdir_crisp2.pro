@@ -215,15 +215,15 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, 'a -> download ; add ", /all" to get also HMI images and AR maps.'
   endif
   
-  ;; Analyze directories and produce r0 plots (optional)
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin
-    printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
-    printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
-    printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
-    printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
-    printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
-    printf, Slun, '; a -> plot_pointing ; Plot pointing throughout the day.'
-  endif
+;  ;; Analyze directories and produce r0 plots (optional)
+;  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin
+;    printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
+;    printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
+;    printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
+;    printf, Slun, '; red_plot_r0, /scan8 ; Plot r0 data for scans. '
+;    printf, Slun, '; red_plot_r0, /plotstats ; Plot r0 statistics vs scan number.'
+;    printf, Slun, '; a -> plot_pointing ; Plot pointing throughout the day.'
+;  endif
 
   print, 'Cameras'
   printf, Clun, '#'
@@ -747,14 +747,18 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
 
   printf, Slun
-  printf, Slun, "a -> quicklook, /core_and_wings, datasets = '*'        ; NB quicklook"
-  printf, Slun, "a -> quicklook_mosaic, /core_and_wings, datasets = '*' ; NB mosaic quicklook"
-  printf, Slun, ";a -> quicklook, cam='"+cams[0]+"', datasets = '*', use_states = '*'  ; WB quicklook"
+  printf, Slun, "Assess your science data:"
+  printf, Slun, ";a -> summary"
+  printf, Slun, "; or perhaps your selection of the following:" 
+  printf, Slun, ";a -> summarize_datadir"
+  printf, Slun, ";a -> quicklook, /core_and_wings, datasets = '*'        ; NB quicklook"
+  printf, Slun, ";a -> quicklook_mosaic, /core_and_wings, datasets = '*' ; NB mosaic quicklook"
+  printf, Slun, ";a -> quicklook, cam='"+cams[0]+"', datasets = '*', use_states = '*' ; WB quicklook"
+
 
   if keyword_set(lapalma_setup) then begin
 
     printf, Slun, '; Quicklook will sum its own flats, independent of the ones in the flats/hh:mm:ss/ subdirectories.'
-    ;; For a La Palma setup, return after quicklook.
     printf, Slun, 'a -> summarize_datadir'
     
     free_lun, Slun, Clun
