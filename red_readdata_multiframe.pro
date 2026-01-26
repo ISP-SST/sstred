@@ -27,9 +27,13 @@
 ; 
 ; :Keywords:
 ;
-;    date_beg : out, optional, type=strarr
+;   count  : out, optional, type=integer
 ;
-;       DATE-BEG keywords for all frames.
+;      The number of frames in the returned cube.
+;
+;   date_beg : out, optional, type=strarr
+;
+;      DATE-BEG keywords for all frames.
 ; 
 ;   framenums : in, out, optional, array
 ; 
@@ -50,8 +54,11 @@
 ; 
 ;   2024-09-06 : MGL. New keyword framenums.
 ; 
+;   2026-01-08 : MGL. New keyword count.
+; 
 ;-
 function red_readdata_multiframe, files $
+                                  , count = Nframes $
                                   , date_beg = date_beg $
                                   , framenums = framenums $
                                   , status = status $
