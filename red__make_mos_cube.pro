@@ -33,9 +33,10 @@
 ; 
 ; :Keywords:
 ; 
+;   tile_positions : in, optional, type=array
 ;   
-;   
-;   
+;      A [2,Ntiles] array with tile positions. Use only if logged
+;      pointing info is unreliable.
 ; 
 ; 
 ; :History:
@@ -46,6 +47,8 @@
 ;    2025-10-09 : MGL. Call make_scan_cube with
 ;                 /no_intensitycorr_timecheck. Use r0 for tile
 ;                 weighting.
+;
+;    2026-01-22 : MGL. New keyword tile_positions.
 ; 
 ;-
 pro red::make_mos_cube, dir $
@@ -55,6 +58,7 @@ pro red::make_mos_cube, dir $
                         , nthreads = nthreads $
                         , no_cmap = no_cmap $
                         , no_destretch = no_destretch $
+                        , tile_positions = tile_positions $
                         , _ref_extra = extra
   
   ;; Name of this method
@@ -66,6 +70,7 @@ pro red::make_mos_cube, dir $
   red_make_prpara, prpara, dir
   red_make_prpara, prpara, no_cmap
   red_make_prpara, prpara, no_destretch
+  red_make_prpara, prpara, tile_positions
 
   
   ;; Expand dir, in case it is a regular expression.
@@ -276,16 +281,28 @@ pro red::make_mos_cube, dir $
     red_fitscube_getwcs, sfiles[itile], coordinates=coordinates
 
     wcs_alltiles[*,itile] = coordinates
-    
+
     t[itile] = mean(coordinates.time)
+
     hpln[*, *, itile] = coordinates[0].hpln
     hplt[*, *, itile] = coordinates[0].hplt
-
+    
     diskpos[0, itile] = mean(coordinates[0].hpln)
     diskpos[1, itile] = mean(coordinates[0].hplt)
+
+    if n_elements(tile_positions) gt 0 then begin
+      ;; Use pointing info provided by the user instead of the logged
+      ;; pointing from the files.
+      hpln[*, *, itile] += tile_positions[0, itile] - diskpos[0, itile]
+      hpln[*, *, itile] += tile_positions[1, itile] - diskpos[1, itile]
+      diskpos[0, itile] = tile_positions[0, itile]
+      diskpos[1, itile] = tile_positions[1, itile]
+    endif 
     
-    xpos[itile] = mean(coordinates[0].hpln) / image_scale
-    ypos[itile] = mean(coordinates[0].hplt) / image_scale
+;    xpos[itile] = mean(coordinates[0].hpln) / image_scale
+;    ypos[itile] = mean(coordinates[0].hplt) / image_scale
+    xpos[itile] = diskpos[0, itile] / image_scale
+    ypos[itile] = diskpos[1, itile] / image_scale
 
     if itile eq 0 then begin
       ;; Same for all tiles
