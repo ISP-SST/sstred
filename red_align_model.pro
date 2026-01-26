@@ -90,6 +90,11 @@ function red_align_model, filename
       ;; prstep for that.
       prpara = red_headerinfo_getstep(hdr, prstep = 'CONCATENATION,SPATIAL-ALIGNMENT,DESTRETCHING' $
                                       , prkey = 'PRPARA', count = cnt, /silent)
+      if cnt eq 0 then begin
+        ;; In case bypass_momfbd was run with /nostretch
+        prpara = red_headerinfo_getstep(hdr, prstep = 'CONCATENATION,SPATIAL-ALIGNMENT' $
+                                        , prkey = 'PRPARA', count = cnt, /silent)
+      endif
       if cnt gt 0 then begin
         keys = prpara.keys()  
         tmp = prpara[keys[0]]         
