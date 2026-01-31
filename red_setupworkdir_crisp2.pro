@@ -747,7 +747,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
 
   printf, Slun
-  printf, Slun, "Assess your science data:"
+  printf, Slun, ";Assess your science data:"
   printf, Slun, ";a -> summary"
   printf, Slun, "; or perhaps your selection of the following:" 
   printf, Slun, ";a -> summarize_datadir"

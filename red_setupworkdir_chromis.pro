@@ -795,7 +795,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
   printf, Slun
-  printf, Slun, "Assess your science data:"
+  printf, Slun, ";Assess your science data:"
   printf, Slun, ";a -> summary"
   printf, Slun, "; or perhaps your selection of the following:" 
   printf, Slun, ";a -> summarize_datadir"
