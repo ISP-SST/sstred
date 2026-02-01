@@ -107,7 +107,8 @@ pro red_pinholecalib_verify, diff = diff, method = method, pref = pref
     
     dims = size(ims, /dim)
     aspect = dims[0]/float(dims[1])
-    xs = 1000
+    device, get_scr = sz
+    if dims[0]*Nother gt sz[0] then xs = 10*(sz[0]/(10*Nother)) else xs = dims[0]
     ys = xs / aspect
     window, xs = Nother*xs, ys = ys, title = fullstates[istate]
 
