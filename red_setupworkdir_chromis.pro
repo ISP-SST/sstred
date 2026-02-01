@@ -571,7 +571,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
             printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                     + ', nthreads=nthreads' $
                     + outdir_key + dark_timestamp_key + flat_timestamp_key $
-                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '')
+                    + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '') + "'" 
             
           endif
         endfor                  ; jdir
