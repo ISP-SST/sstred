@@ -211,9 +211,9 @@ pro red::summary, _extra = extra $
         endif else begin
           self -> quicklook, datasets = timestamps[idir], min_nscan = 1, /core_and_wing
         endelse
-        self -> quicklook, cam='Chromis-W', datasets = timestamps[idir], use_states = '*', min_nscan = 1 ; WB quicklook
         imfiles = file_search(qdir + '*jpg', count = Nims)
         if Nims eq 0 then stop
+        continue
       endif
 
       red_extractstates, imfiles, /base, wav = wav, dwav = dwav, pref = pref
@@ -270,12 +270,13 @@ pro red::summary, _extra = extra $
   endfor                        ; idir
 
   cd, 'summaries/'
-  red_message, 'The summary will be combined into a single file, summaries/summary.pdf'
+  summary_file = 'summary_'+self.isodate+'_'+instrument+'.pdf'
+  red_message, 'The summary will be combined into a single file, summaries/' + summary_file
   case 0 of
 
-    status_pdfunite : spawn, 'pdfunite ??:??:??.pdf summary.pdf'
+    status_pdfunite : spawn, 'pdfunite ??:??:??.pdf ' + summary_file
 
-    status_pdftk    : spawn, 'pdftk ??:??:??.pdf cat output summary.pdf'
+    status_pdftk    : spawn, 'pdftk ??:??:??.pdf cat output ' + summary_file
 
     else : begin
       red_message, ['We would need pdfunite or pdftk to combine all the summaries/??:??:??.pdf' $
