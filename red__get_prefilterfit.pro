@@ -67,13 +67,13 @@ pro red::get_prefilterfit, states $
                            , data_time = data_time $
                            , fitpref_time = fitpref_time $
                            , prefilter_curve = prefilter_curve $
-                           , prefilter_wav = prefilter_wav $
-                           , prefilter_wb = prefilter_wb $
+;                           , prefilter_wav = prefilter_wav $
+;                           , prefilter_wb = prefilter_wb $
                            , prf = prf $
                            , r_prefilter_curve = r_prefilter_curve $
-                           , r_prefilter_wb = r_prefilter_wb $
+;                           , r_prefilter_wb = r_prefilter_wb $
                            , t_prefilter_curve = t_prefilter_curve $
-                           , t_prefilter_wb = t_prefilter_wb $
+;                           , t_prefilter_wb = t_prefilter_wb $
                            , tun_wavelengths = tun_wavelengths $
                            , units = units $
                            , wave_shifts = wave_shifts
@@ -101,13 +101,13 @@ pro red::get_prefilterfit, states $
 
   wave_shifts       = fltarr(dims)
   prefilter_curve   = fltarr(dims)
-  prefilter_wb      = fltarr(dims)
+;  prefilter_wb      = fltarr(dims)
   r_prefilter_curve = fltarr(dims)
-  r_prefilter_wb    = fltarr(dims)
-  r_prefilter_wav   = fltarr(dims)
+;  r_prefilter_wb    = fltarr(dims)
+;  r_prefilter_wav   = fltarr(dims)
   t_prefilter_curve = fltarr(dims)
-  t_prefilter_wb    = fltarr(dims)
-  t_prefilter_wav   = fltarr(dims)
+;  t_prefilter_wb    = fltarr(dims)
+;  t_prefilter_wav   = fltarr(dims)
   
   uprefs = red_uniquify(states.prefilter, count = Nprefilters)
 
@@ -175,8 +175,8 @@ pro red::get_prefilterfit, states $
         t_prefilter_curve[idxpref] = red_intepf(prf.wav, prf.pref, states[idxpref].tun_wavelength*1.d10)
       endelse
                                 ;  nbt_prefilter_curve = prf.pref
-      t_prefilter_wav[idxpref] = prf.wav
-      t_prefilter_wb[idxpref] = prf.wbint
+;      t_prefilter_wav[idxpref] = prf.wav
+;      t_prefilter_wb[idxpref] = prf.wbint
       
       ;; R camera
 
@@ -201,8 +201,8 @@ pro red::get_prefilterfit, states $
         r_prefilter_curve[idxpref] = red_intepf(prf.wav, prf.pref, states[idxpref].tun_wavelength*1.d10)
       endelse
                                 ;  nbr_prefilter_curve = prf.pref
-      r_prefilter_wav[idxpref] = prf.wav
-      r_prefilter_wb[idxpref] = prf.wbint
+;      r_prefilter_wav[idxpref] = prf.wav
+;      r_prefilter_wb[idxpref] = prf.wbint
 
       ;;  if total(this_r_prefilter_wav ne this_t_prefilter_wav) gt 0 then stop
       ;; this_prefilter_wav = this_r_prefilter_wav
@@ -279,7 +279,7 @@ pro red::get_prefilterfit, states $
 
   if self -> polarimetric_data() then begin
     prefilter_curve = (t_prefilter_curve + r_prefilter_curve) / 2.
-    prefilter_wb    = (t_prefilter_wb    + r_prefilter_wb   ) / 2.
+;    prefilter_wb    = (t_prefilter_wb    + r_prefilter_wb   ) / 2.
   endif
   
 end
