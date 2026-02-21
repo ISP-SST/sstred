@@ -220,7 +220,7 @@ pro red::prepflatcubes, flatdir = flatdir $
             endif               ; Npolcal
           endelse               ; polcal_flatfielding
           
-        endif                   ; polarized
+        endif else polcal_flatfielding = 1B                  ; polarized
 
         ;; Load backscatter data?
         if ~keyword_set(no_descatter) AND self.dodescatter AND (upref eq '8542' or upref eq '7772') then begin
