@@ -66,6 +66,24 @@ function red::imagescale, pref $
 
   inam = red_subprogram(/low, calling = inam1)
 
+  if n_elements(pref) eq 0 then begin
+    ;; If we call without the pref parameter, we are obviously not
+    ;; interested in anything accurate. So we'll use what we have in
+    ;; the class object, which could be either image_scale or
+    ;; image_scales. 
+    print, inam + ' : No prefilter given.'
+    if self.image_scales eq !null then begin
+      image_scale = self.image_scale
+      print, inam + ' : Image scale from config.txt: ' $
+             + strtrim(image_scale, 2) + '"/pix'
+    endif else begin
+      image_scale = mean(((self.image_scales).values()).toarray())
+      print, inam + ' : Average of image scales from config.txt: ' $
+             + strtrim(image_scale, 2) + '"/pix'
+    endelse
+    return, image_scale
+  endif
+  
   if ~keyword_set(use_measurement) && n_elements(self.image_scales) ne 0 then begin
     if ~(n_elements(self.image_scales) eq 1 && self.image_scales eq !null) then begin
       if keyword_set(verbose) then print, inam + ' : Image scales from config.txt : ' $
