@@ -441,7 +441,11 @@ pro red::prepmomfbd, cams = cams $
   if n_elements(numpoints) eq 0 then begin
     ;; About the same subfield size in arcsec as CRISP:
     ;;  numpoints = strtrim(round(88*0.0590/self.image_scale/2)*2, 2)
-    image_scale = self -> imagescale(upref[ipref])
+    if n_elements(upref) eq 0 then begin
+      image_scale = self -> imagescale()
+    endif else begin
+      image_scale = self -> imagescale(upref[ipref])
+    endelse
     numpoints = strtrim(round(88*0.0590/image_scale/2)*2, 2)
   endif else begin
     ;; Convert strings, just to avoid breaking existing codes.
