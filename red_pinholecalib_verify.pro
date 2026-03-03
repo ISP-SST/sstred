@@ -71,7 +71,7 @@ pro red_pinholecalib_verify, diff = diff, method = method, pref = pref
         if Nwhere eq 0 then return
         alignments = alignments[indx]
       endif
-      fullstates = red_uniquify(alignments.state.fullstate, count = Nstates)
+      fpi_states = red_uniquify(alignments.state.fpi_state, count = Nstates)
     end 
     'projective' : begin
       if n_elements(pref) gt 0 then begin
@@ -80,22 +80,22 @@ pro red_pinholecalib_verify, diff = diff, method = method, pref = pref
         if Nwhere eq 0 then return
         alignments = alignments[indx]
       endif
-      fullstates = red_uniquify(alignments.state2.fullstate, count = Nstates)
+      fpi_states = red_uniquify(alignments.state2.fpi_state, count = Nstates)
     end
   endcase
  
-  print, fullstates
+  print, fpi_states
   
   for istate = 0, Nstates-1 do begin
 
     case method of
       'polywarp'   : begin
-        indx = where(alignments.state.fullstate eq fullstates[istate])
+        indx = where(alignments.state.fpi_state eq fpi_states[istate])
         cams = alignments[indx].state.camera
         files = alignments[indx].state.filename
       end
       'projective' : begin
-        indx = where(alignments.state2.fullstate eq fullstates[istate])
+        indx = where(alignments.state2.fpi_state eq fpi_states[istate])
         cams = [alignments[indx[0]].state1.camera, alignments[indx].state2.camera]
         files = [alignments[indx[0]].state1.filename, alignments[indx].state2.filename]
       end
@@ -111,7 +111,7 @@ pro red_pinholecalib_verify, diff = diff, method = method, pref = pref
     if dims[0]*Nother gt sz[0] then xs = 10*(sz[0]/(10*Nother)) else xs = dims[0]
     xs <= 1000
     ys = xs / aspect
-    window, xs = Nother*xs, ys = ys, title = fullstates[istate]
+    window, xs = Nother*xs, ys = ys, title = fpi_states[istate]
 
     for icam = 0, Ncams-1 do begin
       case method of
@@ -125,7 +125,7 @@ pro red_pinholecalib_verify, diff = diff, method = method, pref = pref
       ims[*, *, icam] /= max(ims[*, *, icam])
     endfor
 
-    print, fullstates[istate]
+    print, fpi_states[istate]
     if ~keyword_set(diff) then begin
       blink_i = !true
       print, 'Hit RETURN to continue'
