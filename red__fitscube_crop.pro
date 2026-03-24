@@ -283,17 +283,19 @@ pro red::fitscube_crop, infile $
 ;  endif else begin
 ;    self -> fitscube_finish, lun, flipfile = flipfile, wcs = wcs_coord
 ;  endelse
-  
+
+  ext_list = ['WCS-TAB']
   if size(wcs_dist,/n_dim) gt 0 then begin
     cmap = reform(red_crop(wcs_dist.wave, roi = roi))
     red_fitscube_addcmap, outfile, reform(cmap, roi[1]-roi[0]+1, roi[3]-roi[2]+1, 1, 1, Nscans)
-  endif
+    ext_list = ['WCS-TAB', 'WCSDVARR']
+ endif
   
   ;; Copy all extensions to the new file, except the already copied
   ;; WCS coordinates and cavity maps.
-  red_fitscube_copyextensions, infile, outfile, ext_list = ['WCS-TAB', 'WCSDVARR'], /ignore
+  red_fitscube_copyextensions, infile, outfile, ext_list = ext_list, /ignore
 
-  if ~keyword_set(noflip) then begin
+  if ~keyword_set(nospectral) then begin
     ;; Make a flipped version
     print, 'Flip it!'
     red_fitscube_flip, outfile $
