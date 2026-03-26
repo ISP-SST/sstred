@@ -540,7 +540,7 @@ pro red::quicklook, align = align $
     ismos = strmatch(files[0], '*_mos[0-9]*')
     
     nsc = max(states.scannumber)
-    if ~keyword_set(filter_change) && nsc lt min_nscan && ~ismos then begin
+    if ~keyword_set(filter_change) && nsc+1 lt min_nscan && ~ismos then begin
       ;; Ignore short datasets (likely disk center intensity
       ;; calibrations) unless the filter_change keyword is set.
       ;; But allow short data sets in the "filter_change" mode and for

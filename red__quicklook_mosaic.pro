@@ -486,7 +486,7 @@ pro red::quicklook_mosaic, align=align $
       for imos=0, Nmos-1 do begin
 
         indx = where(strpos(selfiles, 'mos'+umos[imos]) ne -1, Nwhere)
-        if Nwhere eq 0 then stop
+        if Nwhere eq 0 then continue
 
         ims = red_readdata_multiframe(selfiles[indx])
         undefine, date_mos
