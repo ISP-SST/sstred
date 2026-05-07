@@ -149,6 +149,7 @@ pro red::fitscube_intensitycorr, filename $
       fxbreadm, bunit, row = 1 $
                 , ['ANG', 'CROP', 'FF', 'GRID', 'ND', 'SHIFT', 'TMEAN', 'X01Y01', 'DIRECTION'] $
                 ,   ANG, wcCROP, wcFF, wcGRID, wcND, wcSHIFT, wcTMEAN, wcX01Y01,   direction
+      fxbread, bunit, wbgfiles, 'WFILES', 1
       fxbclose, bunit
     end
     Nmakescan gt 0 : begin      ; This is a SCAN cube
@@ -169,11 +170,46 @@ pro red::fitscube_intensitycorr, filename $
 ;  stop
 
   case wbpref of
-    '3950' : nbpref = '3999'
-    '4846' : nbpref = '4862'  
+    '3950' : begin
+      pfls = file_search(self.out_dir + '/prefilter_fits/*3999*save', count=Npfls)
+      if Npfls ne 0 then nbpref = '3999'
+    end
+    '4846' : begin
+      pfls = file_search(self.out_dir + '/prefilter_fits/*3999*save', count=Npfls)
+      if Npfls ne 0 then nbpref = '4862'
+    end
     else   : nbpref =  wbpref
   endcase
-  
+
+  if Npfls eq 0 then begin
+    dd = strsplit(file_dirname(wbgfiles[0]),'/',/extr)
+    search_dir = strjoin(dd[0:-2],'/') + '/'
+    cfgs = file_search(search_dir + '*cfg', count=Ncfg)
+    if Ncfg ne 0 then begin
+      cfg = cfgs[0]
+    endif else begin
+      print, 'There are no cfg files in ', search_dir
+      return
+    endelse
+    
+    Nobj = n_elements(redux_cfggetkeyword(cfg, 'OBJECT*'))
+    prf = intarr(Nobj)
+    for iobj = 0,Nobj-1 do begin
+      obj_str = 'OBJECT' + strtrim(iobj,2)
+      wv = redux_cfggetkeyword(cfg, obj_str+'.WAVELENGTH')
+      prf[iobj] = fix(wv*1e10)
+    endfor
+    prf = prf[sort(prf)]
+    uprf = prf[uniq(prf)]
+    for jj = 0,n_elements(uprf)-1 do begin
+      pfls = file_search(self.out_dir + '/prefilter_fits/*' + $
+                          strtrim(uprf[jj],2) + '*save', count=Npfls)
+      if Npfls ne 0 then begin
+        nbpref = strtrim(uprf[jj],2)
+        break
+      endif
+    endfor    
+  endif
   
   ;; Camera/detector identification
   self -> getdetectors
@@ -187,15 +223,15 @@ pro red::fitscube_intensitycorr, filename $
   nbrcamera   = (*self.cameras)[nbrindx[0]]
   nbrdetector = (*self.detectors)[nbrindx[0]]
 
-  instrument = (strsplit(wbcamera, '-', /extract))[0]
+  instrument = strtrim(fxpar(hdr, 'INSTRUME'),2)
   polarimetric_data = self -> polarimetric_data()
+
+  case instrument of
+    'CHROMIS' : if polarimetric_data then prefix = 'Chromis-T' else prefix = 'chromis'
+    'CRISP'   : prefix = 'Crisp-T'
+    'CRISP2'  : prefix = 'Crisp2-T'
+  endcase
   
-  if polarimetric_data then begin
-    prefix = instrument+'-T'
-  endif else begin
-    prefix = instrument
-  endelse
-;  if instrument eq 'CRISP' then prefix = 'Crisp-T' else prefix = 'chromis'
   datestamp = strtrim(fxpar(hdr, 'DATE-AVG'), 2)
   timestamp = (strsplit(datestamp, 'T', /extract))[1]
   avg_time = red_time2double(timestamp)
