@@ -178,7 +178,10 @@ pro red::fitscube_intensitycorr, filename $
       pfls = file_search(self.out_dir + '/prefilter_fits/*3999*save', count=Npfls)
       if Npfls ne 0 then nbpref = '4862'
     end
-    else   : nbpref =  wbpref
+    else   : begin
+       nbpref =  wbpref
+       Npfls = 1
+    end
   endcase
 
   if Npfls eq 0 then begin
