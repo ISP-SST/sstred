@@ -135,7 +135,8 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     ref_img = red_readdata(this_ref_state.filename, /silent)
     ref_siz = size(ref_img, /dim)
     ;;; For CRISP wideband mask the stronger distorted corners
-    if this_ref_state.camera eq 'Crisp-W' then ref_img *= (shift(dist(ref_siz), ref_siz/2) le 0.49*ref_siz[0])
+    if strmatch(this_ref_state.camera, 'Crisp*-W') then $
+      ref_img *= (shift(dist(ref_siz), ref_siz/2) le 0.49*ref_siz[0])
     ;; find all pinholes, locate the 'L', and fit a regular grid
     ref_m = red_separate_mask(ref_img GE max(ref_img)/10.)
     np_ref = max(ref_m)
