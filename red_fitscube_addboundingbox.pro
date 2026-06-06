@@ -25,29 +25,60 @@
 ; 
 ; :Keywords:
 ; 
-;   
-;   
-;   
+;    anchor : in, out, optional, type=string
 ; 
+;      See red_fitsaddkeyword.pro
+; 
+;    checksum : in, optional, type=boolean
+;   
+;      Check the CHECKSUM keyword before adding new keywords and
+;      update it afterwards.
+; 
+;    hdr : in, out, optional, type=strarr
+; 
+;      A header to be updated. If present, don't read the header from
+;      the file and don't write it either. Also implies checksum=0.
 ; 
 ; :History:
 ; 
-; 
+;    2026-05-12 : MGL. First version.
 ; 
 ;-
-pro red_fitscube_addboundingbox, filename
+pro red_fitscube_addboundingbox, filename, anchor = anchor, checksum = checksum, hdr = hdr
 
+  hdr_present = arg_present(hdr) 
+
+  if ~hdr_present then begin
+    ;; We didn't provide a header, so read it from the file
+    hdr = headfits(filename)
+  endif else begin
+    ;; We provided a header so we will not write it to the file. Leave
+    ;; doing a checksum test to the calling program.
+    checksum = 0
+  endelse
+  
+  if keyword_set(checksum) then begin
+    checksum_status = fits_test_checksum(hdr, /trust_datasum)
+    if checksum_status eq -1 then begin
+      red_message, ['CHECKSUM keyword does not have the' $
+                    , 'correct value, indicating possible data' $
+                    , 'corruption.']
+      hgrep,hdr,'CHECK'
+      red_message, 'Will not add BoundingBox keywords.'
+      return
+    endif
+  endif
+  
   ;; Read WCS cordinates from the file
   red_fitscube_getwcs, filename, coordinates = coordinates
   tags = tag_names(coordinates)
 
   ;; Get the WCS coordinates in order
-  hdr = headfits(filename)
   ctype = fxpar(hdr, 'CTYPE*')
 
   ;; CBBMINnn/CBBMAXnn - Coordinate Bounding Box Min/Max for koordinat nn
 
-  anchor = 'FILENAME'
+  if n_elements(anchor) eq 0 then anchor = 'FILENAME'
   
   for icoord = 0, n_elements(ctype)-1 do begin
 
@@ -79,19 +110,39 @@ pro red_fitscube_addboundingbox, filename
     mncomment = 'Coordinate BB min for '+coord_name+' coordinate'
     mxcomment = 'Coordinate BB max for '+coord_name+' coordinate'
 
-    if 1 then begin
-      red_fitsaddkeyword, hdr, 'CBBMIN'+strtrim(icoord+1, 2), mn, mncomment, anchor = anchor
-      red_fitsaddkeyword, hdr, 'CBBMAX'+strtrim(icoord+1, 2), mx, mxcomment, anchor = anchor
-    endif else begin
-      print
-      print, 'CBBMIN'+strtrim(icoord+1, 2), mn, '  '+mncomment
-      print, 'CBBMAX'+strtrim(icoord+1, 2), mx, '  '+mncomment
-    endelse
-  endfor                        ; icoord
+    red_fitsaddkeyword, hdr, 'CBBMIN'+strtrim(icoord+1, 2), mn, mncomment, anchor = anchor
+    red_fitsaddkeyword, hdr, 'CBBMAX'+strtrim(icoord+1, 2), mx, mxcomment, anchor = anchor
 
-  stop
-  red_fitscube_newheader, filename, hdr
+    if icoord eq 0 then begin
+      print
+      print, 'Adding BoundingBox keywords:'
+      print
+    endif
+    print, 'CBBMIN'+strtrim(icoord+1, 2), mn, '  ' + mncomment
+    print, 'CBBMAX'+strtrim(icoord+1, 2), mx, '  ' + mncomment
+    
+  endfor                        ; icoord
+  print
   
+  if ~hdr_present then begin  ;; Write the new header to the file
+    red_fitscube_newheader, filename, hdr
+  endif
+  
+  if keyword_set(checksum) then begin
+    ;; If there is a main header checksum, then re-calculate it
+    ;; The BB keywords are meant to be added before checksums are added
+    ;; to the file.
+    if checksum_status eq 1 then begin
+      ;; CHECKSUM keyword is present with correct values. Update the
+      ;; main HDU checksum since we added keywords.
+      hgrep,hdr,'CHECK'
+      red_fitscube_checksums, filename $
+                              , hdus = 0 $
+                              , /trust_datasum 
+      hdr = headfits(filename)
+      hgrep,hdr,'CHECK'
+    endif
+  endif
   
 end
 
