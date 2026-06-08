@@ -157,7 +157,7 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
     endfor
     if keyword_set(manual) then begin
       print, 'Mark 3 pinholes in shape of an L'
-      ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes', /keep)
+      ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes', /keep, cam=this_ref_state.camera)
       read, 'Enter length of long and short arm in gridsteps: ', l_shape
       ref_lpos = ref_pos[*, ref_lind]
       IF red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) NE 1 THEN stop
@@ -175,7 +175,7 @@ pro red::pinholecalib2, avg_fpistates = avg_fpistates $ ; Keyword not used
       endfor
       print, inam, ' : Unable to locate the reference pinholes for '+this_ref_state.camera+'! Mark them manually'
       repeat begin
-        ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes')
+        ref_lind = red_markpinholes(ref_img, ref_pos, title='Reference Pinholes', cam=this_ref_state.camera)
         ref_lpos = ref_pos[*, ref_lind]
         if red_lcheck(ref_lpos, ref_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l1
         print, inam, ' : This is not the 3 bigger pinholes!'
@@ -232,8 +232,8 @@ found_l1:
       img = red_readdata(state.filename, /silent)
       is_pd = strmatch(state.camera, '*-D')
       ;; mask out bad corners also for Crisp PD image
-      if state.camera eq 'Crisp-D' then $
-         img *= (shift(dist(ref_siz), ref_siz/2) le 0.48*ref_siz[0])
+      if strmatch(state.camera, 'Crisp*-D') then $
+        img *= (shift(dist(ref_siz), ref_siz/2) le 0.48*ref_siz[0])
       mask = img ge max(img)/(is_pd ? 8. : 10.)
       img_m = red_separate_mask(mask)
       img_np = max(img_m)
@@ -258,7 +258,7 @@ found_l1:
       endfor
       if keyword_set(manual) then begin
         print, 'Mark the same three pinholes as for the reference'
-        img_lind = red_markpinholes(img, img_pos)
+        img_lind = red_markpinholes(img, img_pos, cam=state.camera)
         img_lpos = img_pos[*, img_lind]
         if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) ne 1 then stop
       endif else begin
@@ -273,7 +273,7 @@ found_l1:
         endfor                  ; i,j
         print, inam, ' : Unable to locate the reference pinholes for '+state.camera+'. Try marking them manually'
         repeat begin
-          img_lind = red_markpinholes(img, img_pos, title='Dependent Pinholes')
+          img_lind = red_markpinholes(img, img_pos, cam=state.camera, title='Dependent Pinholes')
           img_lpos = img_pos[*, img_lind]
           if red_lcheck(img_lpos, img_lind, gridstep, ratio=l_shape) eq 1 then goto, found_l2
           print, inam, ' : This is not the 3 bigger pinholes!'
