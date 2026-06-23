@@ -29,7 +29,7 @@ s_scr -= [20, 50]
 FOR scale=1., 8. DO $
   IF min(scale*s_scr/siz) GT 1 THEN BREAK
 window, /free, xsi=siz[0]/scale, ysi=siz[1]/scale, title=tit
-s_img = rebin(ref_m, siz[0]/scale, siz[1]/scale)
+s_img = congrid(ref_m, siz[0]/scale, siz[1]/scale)
 tvscl, s_img
 s_win = !d.window
 IF l_ori GE 0 THEN BEGIN
