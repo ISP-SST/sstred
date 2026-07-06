@@ -109,7 +109,7 @@ pro red_setupworkdir_copy, sourcedir, subdir, workdir, copy = copy
             if ~keyword_set(copy) then begin
               ;; print, 'Link subdirectories '+strjoin(file_basename(subdirs), ',')+' from '+searchdir[idir]
               print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
-              file_link, files, targetsubdir, /allow_same
+              red_file_link, files, targetsubdir, /allow_same, /overwrite
             endif else begin
               ;; print, 'Copy subdirectories '+strjoin(file_basename(subdirs), ',')+' from '+searchdir[idir]
               print, 'Copy '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
@@ -130,7 +130,7 @@ pro red_setupworkdir_copy, sourcedir, subdir, workdir, copy = copy
           if Nfiles gt 0 then begin
             if ~keyword_set(copy) then begin
               print, 'Link '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
-              file_link, files, targetdir, /allow_same
+              red_file_link, files, targetdir, /allow_same, /overwrite
             endif else begin
               print, 'Copy '+strtrim(Nfiles, 2)+' files from '+red_uniquify(file_dirname(files)) + '...' 
               file_copy, files, targetdir, /overwrite
