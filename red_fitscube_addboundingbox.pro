@@ -99,6 +99,19 @@ pro red_fitscube_addboundingbox, filename, anchor = anchor, checksum = checksum,
         mn = min(coordinates.(indx[0]), max = mx)
       end
 
+      'WAVE' : begin
+        if strmatch(file_basename(filename), 'wb_*') then begin
+          ;; USE WAVEMIN/MAX för WB data
+          mn = fxpar(hdr, 'WAVEMIN')
+          mx = fxpar(hdr, 'WAVEMAX')
+        endif else begin
+          ;; Use min and max of WCS coordinate
+          indx = where(tags eq 'WAVE', Nwhere)
+          if Nwhere eq 0 then stop
+          mn = min(coordinates.(indx[0]), max = mx)
+        endelse
+      end
+      
       else : begin
         indx = where(tags eq coord_name, Nwhere)
         if Nwhere eq 0 then stop
@@ -107,6 +120,7 @@ pro red_fitscube_addboundingbox, filename, anchor = anchor, checksum = checksum,
       
     endcase
 
+      
     mncomment = 'Coordinate BB min for '+coord_name+' coordinate'
     mxcomment = 'Coordinate BB max for '+coord_name+' coordinate'
 
