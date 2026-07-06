@@ -90,10 +90,11 @@
 ;    2025-10-16: MGL. New keyword lapalma_setup (for compatibility
 ;                only).
 ;
+;    2026-06-09 : MGL. Removing keyword calibrations_only.
+;
 ;-
 pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                             , ampm_cutoff = ampm_cutoff $
-                            , calibrations_only = calibrations_only $
                             , lapalma_setup = lapalma_setup $
                             , no_observer_metadata = no_observer_metadata $
                             , old_dir = old_dir 
@@ -187,12 +188,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
 
-  ;; printf, Slun, '.r crispred'
-  if keyword_set(calibrations_only) then begin
-    printf, Slun, 'a = crispred("'+cfgfile+'",/dev)' 
-  endif else begin
-    printf, Slun, 'a = crispred("'+cfgfile+'")' 
-  endelse
+  printf, Slun, 'a = crispred("'+cfgfile+'")' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Specify default number of threads in script
@@ -204,7 +200,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   ;; Download SST log files and optionally some other data from the
   ;; web. 
-  if ~keyword_set(calibrations_only) then begin
+  if ~keyword_set(lapalma_setup) then begin
     print, 'Log files'
     printf, Clun, '#'
     printf, Clun, '# --- Download SST log files'
@@ -275,18 +271,10 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
       ;; Script file
       
-      if keyword_set(calibrations_only) then begin
-        ;; For /calibrations_only we want to output the summed data in
-        ;; timestamp directories so we can handle multiple sets.
-        outdir = 'darks/' + file_basename(darkdirs[idir])
-        outdirkey = ', outdir="'+outdir+'", /softlink'
-      endif else outdirkey = ''
-
       ;; Print to script file
       printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
               + red_strreplace(darkdirs[idir], root_dir, '') + '"' $
-              + ', nthreads=nthreads' $
-              + outdirkey 
+              + ', nthreads=nthreads' 
       
     endfor                      ; idir
   endif                         ; Nsubdirs
@@ -349,18 +337,10 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
           wavelengths = strjoin(wls, ' ')
 
           
-          if keyword_set(calibrations_only) then begin
-            ;; For /calibrations_only we want to output the summed data
-            ;; in timestamp directories so we can handle multiple sets.
-            outdir = 'flats/' + file_basename(flatdirs[idir])
-            outdirkey = ', outdir="'+outdir+'", /softlink, /store_rawsum'
-          endif else outdirkey = ''
-
           ;; Print to script file
           printf, Slun, 'a -> sumflat, /sum_in_rdx, /check, dirs=root_dir+"' $
                   + red_strreplace(flatdirs[idir], root_dir, '')+ '"' $
                   + ', nthreads=nthreads' $
-                  + outdirkey $
                   + '  ; ' + camdirs+' ('+wavelengths+')'
 
           red_append, prefilters, wls
@@ -374,24 +354,7 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     Nprefilters = n_elements(prefilters)
 
   endelse
-
   
-  ;; For the 7772 Å prefilter a /no_descatter keyword may be needed in
-  ;; some of the method calls, so add it commented out. (This if
-  ;; because for some years we don't have properly prepared
-  ;; backgains and psfs for the relevant cameras.)
-  if ~keyword_set(calibrations_only) then begin  
-    maybe_nodescatter = strarr(Nprefilters)
-    indx7772 = where(prefilters eq '7772', N7772)
-    if N7772 gt 0 then maybe_nodescatter[indx7772] = '; , /no_descatter'
-  endif
-  
-;  if ~keyword_set(calibrations_only) then begin  
-;    for ipref = 0, Nprefilters-1 do begin
-;      printf, Slun, "a -> makegains, pref='" + prefilters[ipref] $
-;              + "' " + maybe_nodescatter[ipref]
-;    endfor
-;  endif
 
   print, 'Pinholes'
   printf, Clun, '#'
@@ -404,17 +367,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[i], root_dir, '')
       red_append, pinh_dirs, red_strreplace(pinhdirs[i], root_dir, '')
 
-      if keyword_set(calibrations_only) then begin
-        ;; For /calibrations_only we want to output the summed data in
-        ;; timestamp directories so we can handle multiple sets.
-        outdir = 'pinhs/' + file_basename(pinhdirs[i])
-        outdirkey = ', outdir="'+outdir+'"'
-      endif else outdirkey = ''
-
       printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
               + red_strreplace(pinhdirs[i], root_dir, '') + '"' $
-              + ', nthreads=nthreads' $
-              + outdirkey 
+              + ', nthreads=nthreads' 
     endif else begin
       pinhsubdirs = file_search(pinhdirs[i]+'/*', count = Nsubdirs)
       for j = 0, Nsubdirs-1 do begin
@@ -425,17 +380,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
                   + red_strreplace(pinhsubdirs[j], root_dir, '')
           red_append, pinh_dirs, red_strreplace(pinhsubdirs[j], root_dir, '')
           
-          if keyword_set(calibrations_only) then begin
-            ;; For /calibrations_only we want to output the summed data in
-            ;; timestamp directories so we can handle multiple sets.
-            outdir = 'pinhs/' + file_basename(pinhsubdirs[j])
-            outdirkey = ', outdir="'+outdir+'"'
-          endif else outdirkey = ''
-
           printf, Slun, 'a -> sumpinh, /sum_in_rdx, /pinhole_align, dirs=root_dir+"' $
                   + red_strreplace(pinhsubsubdirs[j], root_dir, '')  + '"' $
-                  + ', nthreads=nthreads' $
-                  + outdirkey 
+                  + ', nthreads=nthreads' 
         endif                   ; Nsubsubdirs
       endfor                    ; j
     endelse                     ; Nsubdirs
@@ -479,17 +426,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;          printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                  + red_strreplace(polcaldirs[i], root_dir, '')+'"'
         
-        if keyword_set(calibrations_only) then begin
-          ;; For /calibrations_only we want to output the summed data in
-          ;; timestamp directories so we can handle multiple sets.
-          outdir = 'polcal_sums/' + file_basename(polcaldirs[i])
-          outdirkey = ', outdir="'+outdir+'"'
-        endif else outdirkey = ''
-
         printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                 + red_strreplace(polcaldirs[i], root_dir, '')+'"' $
-                + ', nthreads=nthreads' $
-                + outdirkey 
+                + ', nthreads=nthreads' 
         ;; The prefilter is not part of the path. Try to get it from
         ;; the first data file in the directory.
         files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
@@ -509,17 +448,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 ;              printf, Slun, 'a -> setpolcaldir, root_dir+"' $
 ;                      + red_strreplace(polcalsubdirs[j], root_dir, '')+'"'
             
-            if keyword_set(calibrations_only) then begin
-              ;; For /calibrations_only we want to output the summed data in
-              ;; timestamp directories so we can handle multiple sets.
-              outdir = 'polcal_sums/' + file_basename(polcalsubdirs[j])
-              outdirkey = ', outdir="'+outdir+'"'
-            endif else outdirkey = ''
-            
             printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
                     + red_strreplace(polcalsubdirs[j], root_dir, '')+'"' $
-                    + ', nthreads=nthreads' $
-                    + outdirkey
+                    + ', nthreads=nthreads' 
             ;; Set the prefilter of this directory
             polprefs[i] = file_basename(polcaldirs[i])
           endif
@@ -527,16 +458,15 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endelse
     endfor                      ; i
 
-    if ~keyword_set(calibrations_only) then begin  
-      for ipref = 0, Npol-1 do begin
-        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-                + ", nthreads=nthreads" $
-                + maybe_nodescatter[ipref] 
-        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-                + ", nthreads=nthreads"
-        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
-      endfor                    ; ipref
-    endif
+;    if ~keyword_set(calibrations_only) then begin  
+    for ipref = 0, Npol-1 do begin
+      printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+              + ", nthreads=nthreads" 
+      printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+              + ", nthreads=nthreads"
+      printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+    endfor                      ; ipref
+;    endif
       
   endif else begin
     polprefs = ''
@@ -572,15 +502,15 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   
   
-  if keyword_set(calibrations_only) then begin
-    ;; We don't need science data for the calibrations_only setup. 
-    free_lun, Clun
-    ;; We'll end the script file with an end statement so it
-    ;; can be run with .run or .rnew.
-    printf, Slun, 'end'
-    free_lun, Slun
-    return
-  endif
+;  if keyword_set(calibrations_only) then begin
+;    ;; We don't need science data for the calibrations_only setup. 
+;    free_lun, Clun
+;    ;; We'll end the script file with an end statement so it
+;    ;; can be run with .run or .rnew.
+;    printf, Slun, 'end'
+;    free_lun, Slun
+;    return
+;  endif
 
   print, 'Science'
   printf, Clun, '#'
@@ -624,10 +554,9 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
   for ipref = 0, Nprefilters-1 do begin
 ;    if total(prefilters[ipref] eq polprefs) gt 0 then begin
       printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'" $
-              + ', nthreads = nthreads' + maybe_nodescatter[ipref] 
+              + ', nthreads = nthreads' 
 ;    endif else begin
-;      printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" $
-;              + maybe_nodescatter[ipref]
+;      printf, Slun, "a -> prepflatcubes_lc4, pref='"+prefilters[ipref]+"'" 
 ;    endelse
   endfor                        ; ipref
 
@@ -666,19 +595,18 @@ pro red_setupworkdir_crisp, work_dir, root_dir, cfgfile, scriptfile, isodate $
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
             + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
             + ', nthreads=nthreads' $
-            + maybe_nodescatter[ipref] + " ; /all"
+            + " ; /all"
     printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
             + "', cam = 'Crisp-R', /verbose, /show, /overwrite " $
             + ', nthreads=nthreads' $
-            + maybe_nodescatter[ipref] + " ; /all"
+            + " ; /all"
     printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
             + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
     printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
             + "; /hints, /mask, dir='10:02:45'"
     printf, Slun, "a -> prepmomfbd, /wb_states, date_obs = '" + isodate $
             + "', numpoints = 88, pref = '"+prefilters[ipref]+"', margin = 5" $
-            + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] " $
-            + maybe_nodescatter[ipref] 
+            + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
   endfor                        ; ipref
 
 

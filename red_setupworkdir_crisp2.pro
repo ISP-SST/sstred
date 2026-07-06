@@ -116,11 +116,12 @@
 ;                 flats.
 ;
 ;    2025-04-03: MGL. New keywords lapalma_setup, ampm_cutoff. 
+;
+;    2026-06-09 : MGL. Removing keyword calibrations_only.
 ; 
 ;-
 pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
                              , ampm_cutoff = ampm_cutoff $
-                             , calibrations_only = calibrations_only $
                              , lapalma_setup = lapalma_setup $
                              , no_observer_metadata = no_observer_metadata $
                              , old_dir = old_dir 
@@ -146,7 +147,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   ;; Are there copies of/links to already summed calibration data?
   e_darksums   = file_test(work_dir + '/darks')
-  e_flatsums   = file_test(work_dir + '/darks')
+  e_flatsums   = file_test(work_dir + '/flats')
   e_pinhsums   = file_test(work_dir + '/pinhs')
   e_polcalsums = file_test(work_dir + '/polcal_sums')
 
@@ -192,11 +193,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     else : stop
   endcase
   
-  if keyword_set(calibrations_only) then begin
-    printf, Slun, 'a = crisp2red("'+cfgfile+'",/dev)' 
-  endif else begin
-    printf, Slun, 'a = crisp2red("'+cfgfile+'")' 
-  endelse
+  printf, Slun, 'a = crisp2red("'+cfgfile+'",/no_pd)' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Specify default number of threads in script
@@ -206,7 +203,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   ;; Download SST log files and optionally some other data from the
   ;; web.
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin
+  if ~keyword_set(lapalma_setup) then begin
     print, 'Log files'
     printf, Clun, '#'
     printf, Clun, '# --- Download SST log files'
@@ -216,7 +213,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
   
 ;  ;; Analyze directories and produce r0 plots (optional)
-;  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin
+;  if ~keyword_set(lapalma_setup) then begin
 ;    printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
 ;    printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
 ;    printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
@@ -310,15 +307,13 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
       ;; Script file
       
-      if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+      if keyword_set(lapalma_setup) then begin
         ;; For /calibrations_only we want to output the summed data in
         ;; timestamp directories so we can handle multiple sets.
         outdir = 'darks/' + file_basename(darkdirs[idir])
         outdir_key = ', outdir="'+outdir+'"'
-;        if keyword_set(calibrations_only) then calib_key = ', /softlink' else calib_key = ''
       endif else begin
         outdir_key = ''
-;        calib_key = ''
       endelse
       calib_key = ', /softlink'
       
@@ -380,7 +375,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         if n_elements(wls) gt 0 then begin
           wavelengths = strjoin(wls, ' ')
           
-          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+          if keyword_set(lapalma_setup) then begin
             ;; We want to output the summed data in timestamp
             ;; directories so we can handle multiple sets.
             outdir = 'flats/' + file_basename(flatdirs[idir])
@@ -390,18 +385,16 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             tmp = min(abs(red_time2double(file_basename(flatdirs[idir])) $
                           - red_time2double(file_basename(darkdirs))), dindx)
             dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
-            if keyword_set(calibrations_only) then calib_key = ', /softlink, /store_rawsum' else calib_key = ''
           endif else begin
             outdir_key = ''
             dark_timestamp_key = ''
-            calib_key = ''
           endelse 
         
           ;; Print to script file
           printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
                   + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') + '"' $
                   + ', nthreads=nthreads' $
-                  + outdir_key + dark_timestamp_key + calib_key $
+                  + outdir_key + dark_timestamp_key $
                   + ' ; ' + camdirs+' ('+wavelengths+')'
 
           red_append, prefilters, wls
@@ -463,7 +456,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       if Nsubdirs gt 0 then begin
         printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[idir], root_dir, '')
         
-        if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+        if keyword_set(lapalma_setup) then begin
           ;; We want to output the summed data in timestamp directories
           ;; so we can handle multiple sets.
           outdir = 'pinhs/' + file_basename(pinhdirs[idir])
@@ -538,28 +531,28 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
             printf, Clun, 'pinh_dir = ' $
                     + red_strreplace(pinhsubdirs[jdir], root_dir, '')
             
-            if keyword_set(calibrations_only) then begin
-              ;; For /calibrations_only we want to output the summed data in
-              ;; timestamp directories so we can handle multiple sets.
-              outdir = 'pinhs/' + file_basename(pinhsubdirs[jdir])
-              outdir_key = ', outdir="'+outdir+'"'
-              ;; If there are multiple dark directories, we want to use
-              ;; the one that are nearest in time.
-              tmp = min(abs(red_time2double(file_basename(pinhdirs[jdir])) - red_time2double(file_basename(darkdirs))), dindx)
-              dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
-              ;; If there are AM/PM flats directories, we want to take that
-              ;; into account.
-              flat_am = file_basename(flatdirs) lt ampm_cutoff
-              stop              ; Does this case still happen?
-            endif else begin
-              outdir_key = ''
-              dark_timestamp_key = ''
-              flat_timestamp_key = ''
-            endelse 
+;            if keyword_set(calibrations_only) then begin
+;              ;; For /calibrations_only we want to output the summed data in
+;              ;; timestamp directories so we can handle multiple sets.
+;              outdir = 'pinhs/' + file_basename(pinhsubdirs[jdir])
+;              outdir_key = ', outdir="'+outdir+'"'
+;              ;; If there are multiple dark directories, we want to use
+;              ;; the one that are nearest in time.
+;              tmp = min(abs(red_time2double(file_basename(pinhdirs[jdir])) - red_time2double(file_basename(darkdirs))), dindx)
+;              dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
+;              ;; If there are AM/PM flats directories, we want to take that
+;              ;; into account.
+;              flat_am = file_basename(flatdirs) lt ampm_cutoff
+;              stop              ; Does this case still happen?
+;            endif else begin
+;              outdir_key = ''
+;              dark_timestamp_key = ''
+;              flat_timestamp_key = ''
+;            endelse 
 
             printf, Slun, "a -> sumpinh, /sum_in_rdx, /pinhole_align" $
                     + ', nthreads=nthreads' $
-                    + outdir_key + dark_timestamp_key + flat_timestamp_key $
+;                    + outdir_key + dark_timestamp_key + flat_timestamp_key $
                     + ", dirs=root_dir+'" +  red_strreplace(pinhsubdirs[jdir], root_dir, '') + "'" 
             
           endif
@@ -568,7 +561,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     endfor                      ; idir
   endif
   
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+  if ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
     printf, Slun, 'a -> pinholecalib'
     printf, Slun, ''
@@ -614,7 +607,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
           printf, Clun, 'polcal_dir = ' $
                   + red_strreplace(polcaldirs[idir], root_dir, '')
 
-          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+          if keyword_set(lapalma_setup) then begin
 
             ;; We want to output the summed data in timestamp
             ;; directories so we can handle multiple sets.
@@ -643,7 +636,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   ;; If there are polcal data, we need to run polcalcube and polcal
   ;; (and possibly make the periodic filter).
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) && ~e_polcalsums then begin  
+  if ~keyword_set(lapalma_setup) && ~e_polcalsums then begin  
     if n_elements(Npolprefs) eq 0 then Npolprefs = 0
     for ipref = 0, n_elements(polprefs)-1 do begin
       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
@@ -686,14 +679,14 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
   endelse
 
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+  if ~keyword_set(lapalma_setup) then begin  
     printf, Slun
     for ipref = 0, Nprefilters-1 do begin
       printf, Slun, "a -> prepflatcubes, pref='"+prefilters[ipref]+"'"
     endfor                      ; ipref
   endif
 
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+  if ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
     printf, Slun, '; whether you need to use different keyword settings.'
@@ -721,15 +714,15 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
 
   
-  if keyword_set(calibrations_only) then begin
-    ;; We don't need science data for the calibrations_only setup. 
-    free_lun, Clun
-    ;; We'll end the script file with an end statement so it
-    ;; can be run with .run or .rnew.
-    printf, Slun, 'end'
-    free_lun, Slun
-    return
-  endif
+;  if keyword_set(calibrations_only) then begin
+;    ;; We don't need science data for the calibrations_only setup. 
+;    free_lun, Clun
+;    ;; We'll end the script file with an end statement so it
+;    ;; can be run with .run or .rnew.
+;    printf, Slun, 'end'
+;    free_lun, Slun
+;    return
+;  endif
 
   print, 'Science'
   printf, Clun, '#'

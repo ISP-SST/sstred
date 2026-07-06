@@ -293,6 +293,8 @@
 ;   
 ;   2025-10-01 : MGL. New keyword copy, remove keyword link.
 ;   
+;   2026-06-09 : MGL. Removing effect of keyword calibrations_only. 
+;   
 ;-
 pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                       , calibrations_only = calibrations_only $
@@ -307,11 +309,17 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                       , old_dir = old_dir $
                       , out_dir = out_dir $
                       , scriptfile = scriptfile $
-                      , search_dirs = search_dirs
+                      , search_dirs = search_dirs $
+                      , alternative = alternative
 
   ;; Name of this program
   inam = red_subprogram(/low, calling = inam1)
 
+  if keyword_set(calibrations_only) then begin
+    red_message, 'The calibrations_only keyword no longer has any effect.'
+    wait, 5
+  endif
+  
   if n_elements(ampm_cutoff) eq 0 then ampm_cutoff = '13:00:00'
 
   if n_elements(instruments) eq 0 then instruments = ['CHROMIS', 'CRISP', 'CRISP2']
@@ -530,17 +538,6 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
         endelse        
       end
       
-      keyword_set(calibrations_only) : begin
-        ;; Probably not used anymore, keeping for backwards
-        ;; compatibility.
-        if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
-          print, 'Setting up for ' + instrument + $
-                 ', calibration data processing only!'
-          workdir = out_dir + instrument + '-calibrations/'
-        endif else begin
-          workdir = ''
-        endelse
-      end
 
       else : begin
         ;; Regular setup
@@ -561,40 +558,10 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       end
       
     endcase
-    
-    
-;    if keyword_set( calibrations_only ) then begin
-;      
-;      if ( instrument eq 'CRISP' || instrument eq 'CHROMIS' ) then begin
-;        
-;        print, 'Setting up for ' + instrument + $
-;               ', calibration data processing only!'
-;        
-;        workdir = out_dir + instrument + '-calibrations/'
-;        
-;      endif else begin
-;        workdir = ''
-;      endelse
-;      
-;    endif else begin ;; full processing mode (not calibration only).
-;      
-;      print, 'Setting up for ' + instrument + ' with class ' + class + '.'
-;      
-;      ;; We asked for this instrument and there seems to be data
-;      odirs = file_search( out_dir + instrument + '*', count = Nodirs )
-;      if Nodirs eq 0 then begin
-;        workdir = out_dir + instrument + '/'
-;      endif else begin
-;        print
-;        print, 'Existing ' + instrument + ' work dirs in ' + out_dir + ' :'
-;        print, file_basename( odirs ), format = '(a0)'
-;        workdir = ''
-;        print, 'Use an existing directory or create a new one.'
-;        read, 'Specify ' + instrument + ' workdir name: ', workdir
-;        workdir = out_dir + workdir + '/'
-;      endelse
-;      
-;    endelse
+
+    if keyword_set(alternative) then begin
+      workdir = out_dir + instrument + '_alt/'
+    endif
     
     file_mkdir, workdir
 
@@ -622,60 +589,6 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
                       , 'you may be better off using regular workdirs and making sure' $
                       , 'to match the calibrations properly. Note that pinholes should be' $
                       , 'rather insensitive to what flats are used.']
-      free_lun, rlun
-    endif
-    
-    if keyword_set(calibrations_only) then begin
-      ;; Write a warning message in 0README about the limitations of
-      ;; these data.
-      openw, rlun, /get_lun, workdir+'/0README'
-      printf, rlun, 'This work directory was created to be used for the automatic collection and'
-      printf, rlun, 'co-adding of calibration data, like darks, flats, etc., using the initial'
-      printf, rlun, 'few commands in the data ordinary processing pipeline.'
-      printf, rlun, ''
-      printf, rlun, 'The summed data could be used, with certain limitations, when processing'
-      printf, rlun, 'science data with the same pipeline. In fact, we hope that after some'
-      printf, rlun, 'testing and evaluation, we can stop transferring and storing some of the'
-      printf, rlun, 'raw calibration data, particularly the flats. But, because it is automatic,'
-      printf, rlun, 'the summed data are not necessarily exactly the same as they would be after'
-      printf, rlun, 'running the pipeline manually.'
-      printf, rlun, ''
-      printf, rlun, 'The main limitation comes from the fact that observers often collect'
-      printf, rlun, 'several sets of the same kind of calibration data. Sometimes because'
-      printf, rlun, 'science data are collected both in the morning and in the late afternoon,'
-      printf, rlun, 'each set requiring their own calibrations. But also because of a failed'
-      printf, rlun, 'attempt to collect calibration data, leaving a faulty and/or incomplete'
-      printf, rlun, 'calibration data set on disk.'
-      printf, rlun, ''
-      printf, rlun, 'When running manually, operators can consult the observer logs and the'
-      printf, rlun, 'correct calibration data can be selected for summing. In the automatic'
-      printf, rlun, 'mode we instead sum data from all sets separately, storing the results'
-      printf, rlun, 'in timestamp subdirectories below the ordinary directory for the'
-      printf, rlun, 'particular kind of calibration data. This means a selection often has'
-      printf, rlun, 'to be made, between different versions of the summed data, just like'
-      printf, rlun, 'you would otherwise have to do for the raw calibration data before'
-      printf, rlun, 'summing.'
-      printf, rlun, ''
-      printf, rlun, 'Because the summed and averaged flats are stored after dark subtraction,'
-      printf, rlun, 'and there could be several versions of the darks, the summed and NOT'
-      printf, rlun, 'averaged versions of the flats should be copied over to the ordinary work'
-      printf, rlun, 'directory, and dark corrected with the selected dark version.'
-      printf, rlun, ''
-      printf, rlun, 'The summed pinholes are corrected for both dark and flat and no'
-      printf, rlun, 'un-corrected version is stored here. This means you may end up with'
-      printf, rlun, 'pinhole data that are dark and flat corrected with non-optimal or even'
-      printf, rlun, 'faulty darks and/or flats. The raw pinhole data should therefore always be'
-      printf, rlun, 'copied to the home institute, so the summing could be done again using'
-      printf, rlun, 'the correct darks and flats. However, it is likely that merely using'
-      printf, rlun, 'afternoon darks and flats for morning pinholes will work just fine.'
-      printf, rlun, ''
-      printf, rlun, 'The darks used here for the flats, as well as the darks and flats used'
-      printf, rlun, 'for the pinholes, are always the version that is collected last. This way'
-      printf, rlun, 'we at least avoid the common case with faulty data followed by correct data.'
-      printf, rlun, ''
-      printf, rlun, ''
-      printf, rlun, ''
-      printf, rlun, ''
       free_lun, rlun
     endif
     
@@ -741,13 +654,8 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       
     endcase
     
-;    if n_elements(old_dir) gt 0 then sum_dir = old_dir else begin
-;      ;; Look for already summed data in a reduc/ subdirectory.
-;      sum_dir = root_dir + 'reduc/' + instrument + '/'
-;      if ~file_test(sum_dir, /directory) then undefine, sum_dir
-;    endelse
-    
-    if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+;    if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+    if ~keyword_set(lapalma_setup) then begin  
       ;; We will now attempt to copy existing sums of calibration data.
       red_setupworkdir_copy, sum_dir, 'darks',       workdir, copy = copy
       red_setupworkdir_copy, sum_dir, 'flats',       workdir, copy = copy
@@ -755,16 +663,24 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       red_setupworkdir_copy, sum_dir, 'polcal_sums', workdir, copy = copy
     endif
     
-    
-    ;; Setup the different instruments.
-    call_procedure, 'red_setupworkdir_' + class       $
-                    , workdir, root_dir, config_file, script_file, isodate $                    
-                    ;;, workdir, root_dir, config_file, script_file, isodate $     
-                    , ampm_cutoff = ampm_cutoff $               
-                    , calibrations_only = calibrations_only $
-                    , lapalma_setup = lapalma_setup $
-                    , no_observer_metadata = no_observer_metadata ; $
-    ;;         , old_dir = sum_dir
+    if keyword_set(alternative) then begin
+      
+      ;; Alt setup script for CHROMIS and CRISP2
+      if class eq 'CHROMIS' || class eq 'CRISP2' then begin
+        red_setupworkdir_fpi,  workdir, root_dir, config_file, script_file, isodate, instrument $                    
+                               , ampm_cutoff = ampm_cutoff $               
+                               , lapalma_setup = lapalma_setup $
+                               , no_observer_metadata = no_observer_metadata 
+      endif
+    endif else begin
+      ;; Setup the different instruments.
+      call_procedure, 'red_setupworkdir_' + class       $
+                      , workdir, root_dir, config_file, script_file, isodate $                    
+                      , ampm_cutoff = ampm_cutoff $               
+;                    , calibrations_only = calibrations_only $
+                      , lapalma_setup = lapalma_setup $
+                      , no_observer_metadata = no_observer_metadata 
+    endelse
     
   endfor                        ; iinstrument    
 

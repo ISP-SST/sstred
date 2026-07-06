@@ -111,11 +111,12 @@
 ;   2025-04-03: MGL. New keyword ampm_cutoff. 
 ;
 ;   2025-05-16: MGL. Find any cameras, Chromis-[WDNTR].
+;
+;   2026-06-09 : MGL. Removing keyword calibrations_only.
 ; 
 ;-
 pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                               , ampm_cutoff = ampm_cutoff $
-                              , calibrations_only = calibrations_only $
                               , lapalma_setup = lapalma_setup $
                               , no_observer_metadata = no_observer_metadata $
                               , old_dir = old_dir 
@@ -135,7 +136,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   ;; Are there copies of/links to already summed calibration data?
   e_darksums   = file_test(work_dir + '/darks')
-  e_flatsums   = file_test(work_dir + '/darks')
+  e_flatsums   = file_test(work_dir + '/flats')
   e_pinhsums   = file_test(work_dir + '/pinhs')
   e_polcalsums = file_test(work_dir + '/polcal_sums')
 
@@ -175,11 +176,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endelse
   printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
 
-  if keyword_set(calibrations_only) then begin
-    printf, Slun, 'a = chromisred("'+cfgfile+'",/dev)' 
-  endif else begin
-    printf, Slun, 'a = chromisred("'+cfgfile+'")' 
-  endelse
+  printf, Slun, 'a = chromisred("'+cfgfile+'",/no_pd)' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Specify default number of threads in script
@@ -189,7 +186,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   ;; Download SST log files and optionally some other data from the
   ;; web.
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin
+  if ~keyword_set(lapalma_setup) then begin
     print, 'Log files'
     printf, Clun, '#'
     printf, Clun, '# --- Download SST log files'
@@ -199,7 +196,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endif
   
 ;  ;; Analyze directories and produce r0 plots (optional)
-;  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin
+;  if ~keyword_set(lapalma_setup) then begin
 ;    printf, Slun, '; a -> analyze_directories ; Time consuming, do it in a separate IDL session.'
 ;    printf, Slun, '; red_plot_r0 requires analyze_directories to have been run:'
 ;    printf, Slun, '; red_plot_r0, /plot8, /mark ; Plot r0 for the whole day.'
@@ -308,15 +305,13 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
       ;; Script file
       
-      if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+      if keyword_set(lapalma_setup) then begin
         ;; We want to output the summed data in timestamp directories
         ;; so we can handle multiple sets.
         outdir = 'darks/' + file_basename(darkdirs[idir])
         outdir_key = ', outdir="'+outdir+'"'
-;        if keyword_set(calibrations_only) then calib_key = ', /softlink' else calib_key = ''
       endif else begin
         outdir_key = ''
-;        calib_key = ''
       endelse
       calib_key = ', /softlink'
       printf, Slun, 'a -> sumdark, /sum_in_rdx, /check, dirs=root_dir+"' $
@@ -398,7 +393,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
         if n_elements(wls) gt 0 then begin
           wavelengths = strjoin(wls, ' ')
           
-          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+          if keyword_set(lapalma_setup) then begin
             ;; We want to output the summed data in timestamp
             ;; directories so we can handle multiple sets.
             outdir = 'flats/' + file_basename(flatdirs[idir])
@@ -407,18 +402,18 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
             ;; the one that are nearest in time.
             tmp = min(abs(red_time2double(file_basename(flatdirs[idir])) - red_time2double(file_basename(darkdirs))), dindx)
             dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
-            if keyword_set(calibrations_only) then calib_key = ', /softlink, /store_rawsum' else calib_key = ''
+;            if keyword_set(calibrations_only) then calib_key = ', /softlink, /store_rawsum' else calib_key = ''
           endif else begin
             outdir_key = ''
             dark_timestamp_key = ''
-            calib_key = ''
+;            calib_key = ''
           endelse
           
           ;; Print to script file
           printf, Slun, 'a -> sumflat, /sum_in_rdx, /check' $
                   + ', dirs=root_dir+"' + red_strreplace(flatdirs[idir], root_dir, '') + '"' $
                   + ', nthreads=nthreads' $
-                  + outdir_key + dark_timestamp_key + calib_key $
+                  + outdir_key + dark_timestamp_key $ ;+ calib_key $
                   + ' ; ' + camdirs+' ('+wavelengths+')'
 
           if this_is_wb[0] then red_append, prefilters, wls
@@ -579,7 +574,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     endfor                      ; idir
   endif
   
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+  if ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
     if isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
       printf, Slun, 'a -> pinholecalib'
@@ -756,44 +751,67 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   printf, Clun, '# --- Science data'
   printf, Clun, '# '
 
-  ;; Exclude directories known not to have science data
-  red_append, nonsciencedirs, pinhdirs
-  red_append, nonsciencedirs, pfscandirs
-  red_append, nonsciencedirs, darkdirs
-  red_append, nonsciencedirs, flatdirs
-  red_append, nonsciencedirs, polcaldirs
-  ;; Sometimes the morning calibrations data were not deleted, so they
-  ;; have to be excluded too.
-  calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
-                                         , count = Ncalibdirs)
-  if Ncalibdirs gt 0 then begin
-    calibdirs = file_dirname(calibsubdirs)
-    calibdirs = calibdirs[uniq(calibdirs, sort(calibdirs))]
-    red_append, nonsciencedirs, calibdirs
-  end
-  sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+  sciencesubdirs = red_find_instrumentdirs(root_dir, instrument $
+                                           , instrument+['-data*', '-mosaic*'] $
+                                           , count = Nsubdirs)
 
-  for i = 0, Ndirs-1 do begin
+  if Nsubdirs gt 0 then begin
+    sciencedirs = file_dirname(sciencesubdirs)
+    dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
+    printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+  endif
 
-    if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
-      sciencesubdirs = file_search(sciencedirs[i]+'/chromis*' $
-                                   , count = Nsubdirs, /fold)
-      if Nsubdirs gt 0 then begin
-        red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
-      endif else begin
-        sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
-        for j = 0, Nsubdirs-1 do begin
-          sciencesubsubdirs = file_search(sciencesubdirs[j]+'/chromis*' $
-                                          , count = Nsubsubdirs, /fold)
-          if Nsubsubdirs gt 0 then begin
-            red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
-          endif
-        endfor                  ; j
-      endelse 
-    endif
-  endfor
-  if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
 
+
+;  ;; Exclude directories known not to have science data
+;  red_append, nonsciencedirs, pinhdirs
+;  red_append, nonsciencedirs, pfscandirs
+;  red_append, nonsciencedirs, darkdirs
+;  red_append, nonsciencedirs, flatdirs
+;  red_append, nonsciencedirs, polcaldirs
+;  ;; Sometimes the morning calibrations data were not deleted, so they
+;  ;; have to be excluded too.
+;  calibsubdirs = red_find_instrumentdirs(root_dir, instrument, '*calib' $
+;                                         , count = Ncalibdirs)
+;  if Ncalibdirs gt 0 then begin
+;    calibdirs = file_dirname(calibsubdirs)
+;    calibdirs = calibdirs[uniq(calibdirs, sort(calibdirs))]
+;    red_append, nonsciencedirs, calibdirs
+;  end
+;  sciencedirs = file_search(root_dir+'/*/*', count = Ndirs)
+
+;  stop
+;  
+;  for i = 0, Ndirs-1 do begin
+;
+;    if total(sciencedirs[i] eq nonsciencedirs) eq 0 then begin
+;      sciencesubdirs = file_search(sciencedirs[i]+'/chromis*' $
+;                                   , count = Nsubdirs, /fold)
+;      if Nsubdirs gt 0 then begin
+;        red_append, dirarr, red_strreplace(sciencedirs[i], root_dir, '')
+;      endif else begin
+;        sciencesubdirs = file_search(sciencedirs[i]+'/*', count = Nsubdirs)
+;        for j = 0, Nsubdirs-1 do begin
+;          sciencesubsubdirs = file_search(sciencesubdirs[j]+'/chromis*' $
+;                                          , count = Nsubsubdirs, /fold)
+;          if Nsubsubdirs gt 0 then begin
+;            red_append, dirarr, red_strreplace(sciencesubdirs[j], root_dir, '')
+;          endif
+;        endfor                  ; j
+;      endelse 
+;    endif
+;  endfor
+;;  if n_elements(dirarr) gt 0 then printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+;
+;  stop
+;  
+; if Nsubdirs gt 0 then begin
+;    sciencedirs = file_dirname(sciencesubdirs)
+;    dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
+;    printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+;  endif
+
+  
   printf, Slun
   printf, Slun, ";Assess your science data:"
   printf, Slun, ";a -> summary"
