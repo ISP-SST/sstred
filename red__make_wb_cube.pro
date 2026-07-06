@@ -579,7 +579,10 @@ pro red::make_wb_cube, dirs $
 
   ang = red_lp_angles(time, date[0], /from_log, offset_angle = rotation)
   mang = median(ang)
-  if keyword_set(subtract_meanang) then ang -= mang
+  if keyword_set(subtract_meanang) then begin
+    ang -= mang
+    crota = mang * 180./!pi     ; [deg]
+  endif else crota = 0.0
   if keyword_set(negang) then ang = -ang
 ;  if n_elements(offset_angle) then ang += offset_angle
   
@@ -937,6 +940,9 @@ pro red::make_wb_cube, dirs $
   ;; Add info to headers
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
+
+;  ;; Need to check that the sign of this is correct!
+;  red_fitsaddkeyword, anchor = anchor, hdr, 'CROTA', crota, '[deg] Counterclockwise rotation of the FOV'
 
   ;; Cadence info.
   if Nscans gt 1 then begin
