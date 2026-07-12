@@ -45,10 +45,6 @@
 ;      Data collected before this time belongs to AM observations,
 ;      everything else to PM.
 ;
-;    calibrations_only : in, optional, type=boolean
-;
-;      Set up to process calibration data only.
-; 
 ;    lapalma_setup : in, optional, type=boolean
 ; 
 ;      Set up the workdirs to sum all calibration data into
@@ -631,14 +627,16 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
           endif
         endif
       endfor                    ; idir
-    endif
+    endif                       ; Npolcalsubdirs gt 0
   endif                         ; ~e_polcalsums
 
   ;; If there are polcal data, we need to run polcalcube and polcal
   ;; (and possibly make the periodic filter).
-  if ~keyword_set(lapalma_setup) && ~e_polcalsums then begin  
+  if ~keyword_set(lapalma_setup) && ~e_polcalsums then begin
+    
     if n_elements(Npolprefs) eq 0 then Npolprefs = 0
-    for ipref = 0, n_elements(polprefs)-1 do begin
+    
+    for ipref = 0, Npolprefs-1 do begin
       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
               + ", nthreads=nthreads"
       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
@@ -651,7 +649,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
         printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
       endelse
     endfor                      ; ipref
-  endif else begin
+
+  endif else begin              ; ~e_polcalsums 
 
     ;; Need to find polprefs and Npolcaldirs from the summed data
     pdir = file_search(work_dir + '/polcal_sums/'+instrument+'-T', /fold)
@@ -663,7 +662,8 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     endelse
 
     if n_elements(Npolprefs) eq 0 then Npolprefs = 0
-    for ipref = 0, n_elements(polprefs)-1 do begin
+    
+    for ipref = 0, Npolprefs-1 do begin
       printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
               + ", nthreads=nthreads"
       printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
@@ -677,7 +677,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endelse
     endfor                      ; ipref
 
-  endelse
+  endelse                       ; ~e_polcalsums 
 
   if ~keyword_set(lapalma_setup) then begin  
     printf, Slun
@@ -842,21 +842,18 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
   ;; Do something about OBSERVER metadata keyword
   if ~keyword_set(no_observer_metadata) then begin
     ;; See if we can find some metadata by looking in the raw data dirs.
-    data_dirs = root_dir + '/' + dirarr + '/'+instrument.capwords()+'-W/'
+    data_dirs = root_dir + '/' + dirarr + '/'+(instrument.ToLower()).CapWords()+'-W/'
     ;; Pick the first file in each.
     data_files = file_search(data_dirs+'/*00000_0000000*fits', count = Nfiles)
     if Nfiles gt 0 then begin
       ;; Now look for OBSERVER keywords
-      observers = strarr(Nfiles)
-      for ifile = 0, Nfiles-1 do begin
-        red_progressbar, ifile, Nfiles, 'Looking in '+instrument+' data for OBSERVER keyword'
-        observers[ifile] = red_fitsgetkeyword(data_files[ifile], 'OBSERVER')
-      endfor
+      observers = red_fitsgetkeyword_multifile(data_files, 'OBSERVER')
       observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
       indx = uniq(observers, sort(observers))
       print
       if n_elements(indx) gt 1 then begin
         print, inam + ' : Found OBSERVER keyword(s) in the '+instrument+' raw data. All is well.'
+        print, red_uniquify(observers)
       endif else begin      
         print, inam + ' : Found no OBSERVER metadata in the '+instrument+' raw data.'
         observer = ''
@@ -875,7 +872,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endelse
       print
     endif else begin
-      print, inam+' : Did not find any CHROMIS data to get OBSERVER from.'
+      print, inam+' : Did not find any '+instrument+' data to get OBSERVER from.'
     endelse
   endif
 

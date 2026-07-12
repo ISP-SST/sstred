@@ -44,10 +44,6 @@
 ;      Data collected before this time belongs to AM observations,
 ;      everything else to PM.
 ;
-;    calibrations_only : in, optional, type=boolean
-;
-;      Set up to process calibration data only.
-; 
 ;    lapalma_setup : in, optional, type=boolean
 ; 
 ;      Set up the workdirs to sum all calibration data into
@@ -468,7 +464,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       if Nsubdirs gt 0 then begin
         printf, Clun, 'pinh_dir = '+red_strreplace(pinhdirs[idir], root_dir, '')
         
-        if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+        if keyword_set(lapalma_setup) then begin
           ;; We want to output the summed data in timestamp directories
           ;; so we can handle multiple sets.
           outdir = 'pinhs/' + file_basename(pinhdirs[idir])
@@ -544,7 +540,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
             printf, Clun, 'pinh_dir = ' $
                     + red_strreplace(pinhsubdirs[jdir], root_dir, '')
             
-            if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+            if keyword_set(lapalma_setup) then begin
               ;; For /calibrations_only we want to output the summed data in
               ;; timestamp directories so we can handle multiple sets.
               outdir = 'pinhs/' + file_basename(pinhsubdirs[jdir])
@@ -576,113 +572,131 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   
   if ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
-    if isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
+;    if isodate gt red_dates(tag = 'CHROMIS Ximea') then begin
       printf, Slun, 'a -> pinholecalib'
-    endif else begin
-      ;; The new polywarp mechanism does not work with the aspect
-      ;; ratio of the old CHROMIS cameras. Yet. Edit this when fixed!
-      printf, Slun, 'a -> pinholecalib, /no_polywarp, /verify'
-    endelse
+;    endif else begin
+;      ;; The new polywarp mechanism does not work with the aspect
+;      ;; ratio of the old CHROMIS cameras. Yet. Edit this when fixed!
+;      printf, Slun, 'a -> pinholecalib, /no_polywarp, /verify'
+;    endelse
 ;    printf, Slun, 'a -> diversitycalib'
     printf, Slun, ''
   endif
 
-  if polarimetric_data && ~e_polcalsums then begin
+  
+  if polarimetric_data then begin
+
     
-    print, 'Polcal'
-    printf, Clun, '#'
-    printf, Clun, '# --- Polcal'
-    printf, Clun, '#'
-    polcalsubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-polc*' $
-                                            , count = Npolcalsubdirs)
-    
-    if Npolcalsubdirs gt 0 then begin
+    if ~e_polcalsums then begin
       
-      polcaldirs = file_dirname(polcalsubdirs)  
-      polcaldirs = polcaldirs[uniq(polcaldirs,sort(polcaldirs))]
-      Npolcaldirs = n_elements(polcaldirs)
-      polprefs = strarr(Npolcaldirs)
-
-      printf, Slun
+      print, 'Polcal'
+      printf, Clun, '#'
+      printf, Clun, '# --- Polcal'
+      printf, Clun, '#'
+      polcalsubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-polc*' $
+                                              , count = Npolcalsubdirs)
       
-      for idir = 0, Npolcaldirs-1 do begin
-        polcalsubdirs = file_search(polcaldirs[idir]+'/'+instrument+'*' $
-                                    , count = Nsubdirs, /fold)
-        if Nsubdirs gt 0 then begin
-          printf, Clun, 'polcal_dir = ' $
-                  + red_strreplace(polcaldirs[idir], root_dir, '')
+      if Npolcalsubdirs gt 0 then begin
+        
+        polcaldirs = file_dirname(polcalsubdirs)  
+        polcaldirs = polcaldirs[uniq(polcaldirs,sort(polcaldirs))]
+        Npolcaldirs = n_elements(polcaldirs)
+        polprefs = strarr(Npolcaldirs)
 
-          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+        printf, Slun
+        
+        for idir = 0, Npolcaldirs-1 do begin
+          polcalsubdirs = file_search(polcaldirs[idir]+'/'+instrument+'*' $
+                                      , count = Nsubdirs, /fold)
+          if Nsubdirs gt 0 then begin
+            printf, Clun, 'polcal_dir = ' $
+                    + red_strreplace(polcaldirs[idir], root_dir, '')
 
-            ;; We want to output the summed data in timestamp
-            ;; directories so we can handle multiple sets.
-            outdir = 'polcal_sums/' + file_basename(polcaldirs[idir])
-            outdir_key = ', outdir="'+outdir+'"'
-            
-          endif else begin
-            outdir_key = ''
-          endelse
+            if keyword_set(lapalma_setup) then begin
 
-          printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
-                  + red_strreplace(polcaldirs[idir], root_dir, '')+'"' $
-                  + ', nthreads=nthreads' $
-                  + outdir_key
-          ;; The prefilter is not part of the path. Try to get it from
-          ;; the first data file in the directory.
-          files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
-          if Npolfiles gt 0 then begin
-            hh = red_readhead(files[0])
-            ;; Unlike for CRISP, the WB filter in FILTER1 is not the same as the NB filter.
-            ;;  polprefs[idir] = strtrim(fxpar(hh, 'FILTER1'), 2)
-            state = fxpar(hh, 'STATE', count = cnt)
-            if cnt eq 0 then stop
-            polprefs[idir] = (strsplit(state, '_', /extract))[1]
+              ;; We want to output the summed data in timestamp
+              ;; directories so we can handle multiple sets.
+              outdir = 'polcal_sums/' + file_basename(polcaldirs[idir])
+              outdir_key = ', outdir="'+outdir+'"'
+              
+            endif else begin
+              outdir_key = ''
+            endelse
+
+            printf, Slun, 'a -> sumpolcal, /sum_in_rdx, /check, dirs=root_dir+"' $
+                    + red_strreplace(polcaldirs[idir], root_dir, '')+'"' $
+                    + ', nthreads=nthreads' $
+                    + outdir_key
+            ;; The prefilter is not part of the path. Try to get it from
+            ;; the first data file in the directory.
+            files = file_search(polcalsubdirs[0]+'/*', count = Npolfiles)
+            if Npolfiles gt 0 then begin
+              hh = red_readhead(files[0])
+              ;; Unlike for CRISP, the WB filter in FILTER1 is not the same as the NB filter.
+              ;;  polprefs[idir] = strtrim(fxpar(hh, 'FILTER1'), 2)
+              state = fxpar(hh, 'STATE', count = cnt)
+              if cnt eq 0 then stop
+              polprefs[idir] = (strsplit(state, '_', /extract))[1]
+            endif
           endif
-        endif
-      endfor                    ; idir
+        endfor                  ; idir
+      endif                     ; Npolcalsubdirs gt 0
+    endif                       ; ~e_polcalsums
 
-      if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
-        for ipref = 0, n_elements(polprefs)-1 do begin
-          printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-                  + ", nthreads=nthreads"
-          printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-                  + ", nthreads=nthreads"
-        endfor                  ; ipref
-      endif
+ 
+    ;; If there are polcal data, we need to run polcalcube and polcal
+    if ~keyword_set(lapalma_setup) && ~e_polcalsums then begin
       
-    endif else if n_elements(old_dir) gt 0 then begin
+      if n_elements(Npolprefs) eq 0 then Npolprefs = 0
 
-      ;; Need to find polprefs and Npolcaldirs from the summed data
-      pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
-      pfiles = file_search(pdir+'cam*fits', count = Npfiles)
-      if Npfiles eq 0 then Npolcaldirs = 0 else begin
-        red_extractstates, pfiles, /basename, pref = polprefs
-        polprefs = polprefs[uniq(polprefs,sort(polprefs))]
-      endelse
-      
-      for ipref = 0, n_elements(polprefs)-1 do begin
+      for ipref = 0, Npolprefs-1 do begin
         printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
         printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
                 + ", nthreads=nthreads"
       endfor                    ; ipref
-    endif
 
-  endif
+    endif else begin            ; ~e_polcalsums 
+      
+      ;; Need to find polprefs and Npolcaldirs from the summed data
+      pdir = file_search(work_dir + '/polcal_sums/'+instrument+'-T', /fold)   
+;        pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
+      pfiles = file_search(pdir+'/cam*fits', count = Npfiles)
+      if Npfiles eq 0 then Npolcaldirs = 0 else begin
+        red_extractstates, pfiles, /basename, pref = polprefs
+        ;;    polprefs = polprefs[uniq(polprefs,sort(polprefs))]
+        polprefs = red_uniquify(polprefs, count = Npolprefs)
+      endelse
+      
+      if n_elements(Npolprefs) eq 0 then Npolprefs = 0
 
+      for ipref = 0, Npolprefs-1 do begin
+        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+                + ", nthreads=nthreads"
+      endfor                    ; ipref
+    endelse                     ; ~e_polcalsums 
 
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+  endif                         ; polarimetric_data
+
+  if ~keyword_set(lapalma_setup) then begin  
     ;;if ~is_wb[ipref] then
     printf, Slun
     printf, Slun, "a -> prepflatcubes"
   endif
   
-  if ~keyword_set(calibrations_only) && ~keyword_set(lapalma_setup) then begin  
+  if ~keyword_set(lapalma_setup) then begin  
     printf, Slun, ''
     printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
     printf, Slun, '; whether you need to use different keyword settings.'
     printf, Slun, '; Then, if you have already run makegains, rerun it.'
-    printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res"
+    ;;   printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res"
+    for ipref = 0, Nprefilters-1 do begin
+      if is_wb[ipref] then continue
+      printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res, pref='" $
+              + prefilters[ipref] + "'"
+    endfor                      ; ipref
 ;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
 ;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
 ;    printf, Slun, '; keyword:'
@@ -734,18 +748,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endfor                        ; i
   ;; If we implement dealing with prefilter scans in the pipeline,
   ;; here is where the command should be written to the script file.
-
   
-  if keyword_set(calibrations_only) then begin
-    ;; We don't need science data for the calibrations_only setup. 
-    free_lun, Clun
-    ;; We'll end the script file with an end statement so it
-    ;; can be run with .run or .rnew.
-    printf, Slun, 'end'
-    free_lun, Slun
-    return
-  endif
-
   print, 'Science'
   printf, Clun, '#'
   printf, Clun, '# --- Science data'
@@ -905,40 +908,42 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   free_lun, Clun
   free_lun, Slun
 
-  ;; Do something about OBSERVER metadata keyword
+   ;; Do something about OBSERVER metadata keyword
   if ~keyword_set(no_observer_metadata) then begin
     ;; See if we can find some metadata by looking in the raw data dirs.
-        chromis_data_dirs = root_dir + '/' + dirarr + '/Chromis-W/'
-        ;; Pick the first file in each.
-        chromis_data_files = file_search(chromis_data_dirs+'/*00000_0000000*fits', count = Nfiles) 
-        ;; Now look for OBSERVER keywords
-        observers = strarr(Nfiles)
-        for ifile = 0, Nfiles-1 do begin
-      red_progressbar, ifile, Nfiles, 'Looking in CHROMIS data for OBSERVER keyword'
-      observers[ifile] = red_fitsgetkeyword(chromis_data_files[ifile], 'OBSERVER')
-    endfor
-    observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
-    indx = uniq(observers, sort(observers))
-    print
-    if n_elements(indx) gt 1 then begin
-      print, inam + ' : Found OBSERVER keyword(s) in the CHROMIS raw data. All is well.'
-    endif else begin      
-      print, inam + ' : Found no OBSERVER metadata in the CHROMIS raw data.'
-      observer = ''
-      read, 'Add names for that keyword for the CHROMIS workdir or hit return: ', observer
-      ;; Write it to the metadata file
+    data_dirs = root_dir + '/' + dirarr + '/'+(instrument.ToLower()).CapWords()+'-W/'
+    ;; Pick the first file in each.
+    data_files = file_search(data_dirs+'/*00000_0000000*fits', count = Nfiles)
+    if Nfiles gt 0 then begin
+      ;; Now look for OBSERVER keywords
+      observers = red_fitsgetkeyword_multifile(data_files, 'OBSERVER')
+      observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
+      indx = uniq(observers, sort(observers))
       print
-      if observer ne '' then begin
-        print, inam+' : Adding to CHROMIS metadata, OBSERVER = '+observer
-        red_metadata_store, fname = work_dir + '/info/metadata.fits' $
-                            , [{keyword:'OBSERVER', value:observer $
-                                , comment:'Observer name(s)'}]
-      endif else begin
-        print, inam+' : No OBSERVER keyword in CHROMIS metadata.'
+      if n_elements(indx) gt 1 then begin
+        print, inam + ' : Found OBSERVER keyword(s) in the '+instrument+' raw data. All is well.'
+        print, red_uniquify(observers)
+      endif else begin      
+        print, inam + ' : Found no OBSERVER metadata in the '+instrument+' raw data.'
+        observer = ''
+        read, 'Add names for that keyword for the '+instrument+' workdir or hit return: ', observer
+        ;; Write it to the metadata file
+        print
+        if observer ne '' then begin
+          print, inam+' : Adding to '+instrument+' metadata, OBSERVER = '+observer
+          red_metadata_store, fname = work_dir + '/info/metadata.fits' $
+                              , [{keyword:'OBSERVER', value:observer $
+                                  , comment:'Observer name(s)'}]
+        endif else begin
+          print, inam+' : No OBSERVER keyword in '+instrument+' metadata.'
+        endelse
+        print, inam+' : Edit '+work_dir + '/info/metadata.fits if you need to change this.'
       endelse
-      print, inam+' : Edit '+work_dir + '/info/metadata.fits if you need to change this.'
+      print
+    endif else begin
+      print, inam+' : Did not find any '+instrument+' data to get OBSERVER from.'
     endelse
-    print
   endif
+ 
   
 end
