@@ -941,8 +941,10 @@ pro red::make_wb_cube, dirs $
   red_fitsaddkeyword, anchor = anchor, hdr, 'BUNIT', 'dn', 'Units in array: digital number'
   red_fitsaddkeyword, anchor = anchor, hdr, 'BTYPE', 'Intensity', 'Type of data in array'
 
-;  ;; Need to check that the sign of this is correct!
-;  red_fitsaddkeyword, anchor = anchor, hdr, 'CROTA', crota, '[deg] Counterclockwise rotation of the FOV'
+;  ;; Need to check that the sign is correct (if non-zero)!
+  if crota eq 0.0 then $
+     red_fitsaddkeyword, anchor = anchor, hdr, 'CROTA', crota $
+                         , '[deg] Counterclockwise rotation of the FOV'
 
   ;; Cadence info.
   if Nscans gt 1 then begin
