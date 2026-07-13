@@ -172,7 +172,7 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
   endelse
   printf, Clun, 'diversity = 3.35e-3' ; Nominal value for 2016.
 
-  printf, Slun, 'a = chromisred("'+cfgfile+'",/no_pd)' 
+  printf, Slun, 'a = chromisred("'+cfgfile+'",/no_db)' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Specify default number of threads in script

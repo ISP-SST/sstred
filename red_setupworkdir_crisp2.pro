@@ -189,7 +189,7 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
     else : stop
   endcase
   
-  printf, Slun, 'a = crisp2red("'+cfgfile+'",/no_pd)' 
+  printf, Slun, 'a = crisp2red("'+cfgfile+'",/no_db)' 
   printf, Slun, 'root_dir = "' + root_dir + '"'
 
   ;; Specify default number of threads in script
