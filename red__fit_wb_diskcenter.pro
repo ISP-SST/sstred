@@ -131,7 +131,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   if n_elements(dirs) eq 0 then begin
 
     ;; Directories not provided, consider all.
-
+    trust_dirs_mu = 0b
     if ptr_valid(self.flat_dir)  then red_append, dirs, *self.flat_dir
     if ptr_valid(self.data_dirs) then red_append, dirs, *self.data_dirs
 
@@ -143,6 +143,7 @@ pro red::fit_wb_diskcenter, dirs = dirs $
        return
     endif
     dirs = (*self.data_dirs)[mindx]
+    trust_dirs_mu = 1b
   endelse
 
   if n_elements(exclude_dirs) gt 0 then begin
@@ -173,18 +174,20 @@ pro red::fit_wb_diskcenter, dirs = dirs $
   
   ;; Idea: for flats directories, mu might vary during the data
   ;; collection. So find the data where mu peaks!
-  
-  ;; Is mu large enough? 
-  indx = where(mu gt mu_limit, Ndirs)
-  if Ndirs eq 0 then begin
-    print, inam + ' : No WB data with mu > ' + strtrim(mu_limit, 2)
-    return
-  endif else begin
-    dirs = dirs[indx]
-    times = times[indx]
-    mu = mu[indx]
-    za = za[indx]
-  endelse
+
+  if ~trust_dirs_mu then begin
+    ;; Is mu large enough? 
+    indx = where(mu gt mu_limit, Ndirs)
+    if Ndirs eq 0 then begin
+      print, inam + ' : No WB data with mu > ' + strtrim(mu_limit, 2)
+      return
+    endif else begin    
+      dirs = dirs[indx]
+      times = times[indx]
+      mu = mu[indx]
+      za = za[indx]
+    endelse
+  endif
   
   ;; In specified time range?
   indx = where(times gt red_time2double(tmin) and times lt red_time2double(tmax), Ntime)
