@@ -76,7 +76,7 @@ pro red_fitscube_addboundingbox, filename, anchor = anchor, checksum = checksum,
   ;; Get the WCS coordinates in order
   ctype = fxpar(hdr, 'CTYPE*')
 
-  ;; CBBMINnn/CBBMAXnn - Coordinate Bounding Box Min/Max for koordinat nn
+  ;; CBBMINn/CBBMAXn - Coordinate Bounding Box Min/Max for coordinate n.
 
   if n_elements(anchor) eq 0 then anchor = 'FILENAME'
   
