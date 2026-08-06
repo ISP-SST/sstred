@@ -409,61 +409,12 @@ pro red::fitgains, all = all $                             ;
     npar_one = npar_t-1 ;; parameters per lc without the cavity error
     
     npar_t = Nlc*(npar_t-1)+1 ;; all LCs see the same cavity map and are fitted at once.
-
-
-;    ;; Do we have polcal data for this prefilter? If we do, we
-;    ;; probably want to exclude polcal flats at that wavelength from
-;    ;; the fit, as it is usually far outside the line.
-;    psum_files = file_search('polcal_sums/*-R/cam*_'+pref+'_*pols.fits', count = Npolcal)
-;    if Npolcal gt 0 then begin
-;
-;      self -> extractstates, psum_files[0], psum_state
-;
-;      stop
-;      ;; Check if the polcal tuning is in the tunings. If it is, offer
-;      ;; to remove it. Adjust findx (and the arrays modified for w0,w1
-;      ;; above).
-;      
-;      red_message, 'Wavelength points for fitting (wav) : ['+strjoin(strtrim(wav,2),', ')+']'
-;      diff = red_differential(wav)
-;      diff = diff[1:*]
-;      diff = diff/median(diff)
-;      
-;      if max(diff, maxloc) gt 5 then begin
-;        case maxloc of
-;          0 : begin
-;            tmp = 'first'
-;            default = '1-'+red_stri(n_elements(wav)-1)
-;          end
-;          n_elements(wav)-2 : begin
-;            tmp = 'last'
-;            default = '0-'+red_stri(n_elements(wav)-2)
-;          end
-;          else : tmp = ''
-;        endcase
-;        
-;        if tmp ne '' then begin
-;          print
-;          red_message, ['The '+tmp+' wavelength point might be the polcal wavelengh' $
-;                        , ' and could then be skipped.']
-;          selectionlist = string(1000*wav, format = '(I5)')
-;          tmp = red_select_subset(selectionlist, default = default, indx = sel $
-;                                  , qstring = 'Which points do you want to keep?')
-;
-;          wav = wav[sel]
-;          Nwav = n_elements(wav)
-;          cub = cub[sel, *, *, *]
-;        endif
-;      endif
-;
-;    endif                       ; Npolcal
-
-        
+    
     if n_elements(extra_nodes) gt 0 then begin
-          if n_elements(myg) eq 0 then myg = wav
-          myg = [extra_nodes, myg]
-          myg = myg[sort(myg)]
-          red_message, 'Wavelength points myg : ['+strjoin(strtrim(myg,2),',')+']'
+      if n_elements(myg) eq 0 then myg = wav
+      myg = [extra_nodes, myg]
+      myg = myg[sort(myg)]
+      red_message, 'Wavelength points myg : ['+strjoin(strtrim(myg,2),',')+']'
     endif
 
     dat = cub
