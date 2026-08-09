@@ -456,7 +456,7 @@ pro red::quicklook, align = align $
           for imatch = 0, Nmatch-1 do begin
 ;            if Nmatch ge 1 then begin
             states_count++
-            red_append, ustat2, ustat[imatch] 
+            red_append, ustat2, ustat[imatches[imatch]]
             fn = states0[indx[imatches[imatch]]].filename
             prts = strsplit(fn,'[_.]',/extract)
             if strmatch(cam,'*W*') then begin
