@@ -717,7 +717,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endif                     ; Npolcalsubdirs gt 0
     endif                       ; ~e_polcalsums
 
- 
+    Npolprefs = n_elements(polprefs)
+    
     ;; If there are polcal data, we need to run polcalcube and polcal
     if ~keyword_set(lapalma_setup) && ~e_polcalsums then begin
       
@@ -730,27 +731,28 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
                 + ", nthreads=nthreads"
       endfor                    ; ipref
 
-    endif else begin            ; ~e_polcalsums 
-      
-      ;; Need to find polprefs and Npolcaldirs from the summed data
-      pdir = file_search(work_dir + '/polcal_sums/'+instrument+'-T', /fold)   
-;        pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
-      pfiles = file_search(pdir+'/cam*fits', count = Npfiles)
-      if Npfiles eq 0 then Npolcaldirs = 0 else begin
-        red_extractstates, pfiles, /basename, pref = polprefs
-        ;;    polprefs = polprefs[uniq(polprefs,sort(polprefs))]
-        polprefs = red_uniquify(polprefs, count = Npolprefs)
-      endelse
-      
-      if n_elements(Npolprefs) eq 0 then Npolprefs = 0
-
-      for ipref = 0, Npolprefs-1 do begin
-        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-                + ", nthreads=nthreads"
-        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-                + ", nthreads=nthreads"
-      endfor                    ; ipref
-    endelse                     ; ~e_polcalsums 
+    endif
+;;;    else begin                  ; ~e_polcalsums 
+;;;      
+;;;      ;; Need to find polprefs and Npolcaldirs from the summed data
+;;;      pdir = file_search(work_dir + '/polcal_sums/'+instrument+'-T', /fold)   
+;;;;        pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
+;;;      pfiles = file_search(pdir+'/cam*fits', count = Npfiles)
+;;;      if Npfiles eq 0 then Npolcaldirs = 0 else begin
+;;;        red_extractstates, pfiles, /basename, pref = polprefs
+;;;        ;;    polprefs = polprefs[uniq(polprefs,sort(polprefs))]
+;;;        polprefs = red_uniquify(polprefs, count = Npolprefs)
+;;;      endelse
+;;;      
+;;;      if n_elements(Npolprefs) eq 0 then Npolprefs = 0
+;;;
+;;;      for ipref = 0, Npolprefs-1 do begin
+;;;        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+;;;                + ", nthreads=nthreads"
+;;;        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+;;;                + ", nthreads=nthreads"
+;;;      endfor                    ; ipref
+;;;    endelse                     ; ~e_polcalsums 
 
   endif                         ; polarimetric_data
 

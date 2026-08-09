@@ -726,34 +726,34 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
       endelse
     endfor                      ; ipref
 
-  endif else begin              ; ~e_polcalsums 
-
-    ;; Need to find polprefs and Npolcaldirs from the summed data
-    pdir = file_search(work_dir + '/polcal_sums/'+instrument+'-T', /fold)
-    pfiles = file_search(pdir+'/cam*fits', count = Npfiles)
-    if Npfiles eq 0 then Npolcaldirs = 0 else begin
-      red_extractstates, pfiles, /basename, pref = polprefs
-      polprefs = red_uniquify(polprefs)
-      Npolprefs = n_elements(polprefs)
-    endelse
-
-    if n_elements(Npolprefs) eq 0 then Npolprefs = 0
-    
-    for ipref = 0, Npolprefs-1 do begin
-      printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-              + ", nthreads=nthreads"
-      printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-              + ", nthreads=nthreads"
-      if isodate ge red_dates(tag = 'polcal flats', explanation = explanation) then begin
-        print, explanation
-        printf, Slun, "; The periodic filter should not be necessary when we have polcal flats"
-        printf, Slun, "; a -> make_periodic_filter,'" + polprefs[ipref] + "'"
-      endif else begin
-        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
-      endelse
-    endfor                      ; ipref
-
-  endelse                       ; ~e_polcalsums 
+  endif
+;;;  else begin                    ; ~e_polcalsums 
+;;;
+;;;    ;; Need to find polprefs and Npolcaldirs from the summed data
+;;;    pdir = file_search(work_dir + '/polcal_sums/'+instrument+'-T', /fold)
+;;;    pfiles = file_search(pdir+'/cam*fits', count = Npfiles)
+;;;    if Npfiles eq 0 then Npolcaldirs = 0 else begin
+;;;      red_extractstates, pfiles, /basename, pref = polprefs
+;;;      polprefs = red_uniquify(polprefs, count = Npolprefs)
+;;;    endelse
+;;;
+;;;    if n_elements(Npolprefs) eq 0 then Npolprefs = 0
+;;;    
+;;;    for ipref = 0, Npolprefs-1 do begin
+;;;      printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+;;;              + ", nthreads=nthreads"
+;;;      printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+;;;              + ", nthreads=nthreads"
+;;;      if isodate ge red_dates(tag = 'polcal flats', explanation = explanation) then begin
+;;;        print, explanation
+;;;        printf, Slun, "; The periodic filter should not be necessary when we have polcal flats"
+;;;        printf, Slun, "; a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+;;;      endif else begin
+;;;        printf, Slun, "a -> make_periodic_filter,'" + polprefs[ipref] + "'"
+;;;      endelse
+;;;    endfor                      ; ipref
+;;;
+;;;  endelse                       ; ~e_polcalsums 
 
   if ~keyword_set(lapalma_setup) then begin  
     printf, Slun
