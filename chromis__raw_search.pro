@@ -124,7 +124,7 @@ function chromis::raw_search, dir $
           searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
                                    + '_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' $
                                    + prefilters $
-                                   + '.fits'
+                                   + '*.fits'
         endif else begin
           ;; Typical name: sst_camXXXI_00002_0002076_5896_5896_+0092_lc4.fits
           searchstrings[istring] = 'sst_cam*_' + scannos[iscan] $
@@ -148,7 +148,8 @@ function chromis::raw_search, dir $
       endelse
       istring++
     endfor
-  endfor 
+  endfor
+
 
   files = red_file_search(searchstrings, dir, count = count)
   
