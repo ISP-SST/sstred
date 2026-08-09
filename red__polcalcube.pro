@@ -159,10 +159,15 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
       self -> get_calib, gstate $
                          , darkdata = dd, darkstatus  = darkstatus $
                          , gainname = gn, flatname = fn
+      
       if darkstatus ne 0 then stop
 
+      ;; Do we have polcal flats in their own directory? (Maybe implement this in get_calib?)
+      pfn = red_strreplace(fn, '/flats/', '/polcal_flats/')
+      if file_test(pfn) then fn = pfn
+
       gains = replicate(1., Nx, Ny, Nlc) ; Just unity until gain correction is sufficiently tested
-      mask = fltarr(Nx,Ny,Nlc) + 1.0 ;;red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
+      mask = fltarr(Nx,Ny,Nlc) + 1.0     ;;red_taper([Nx,round(Nx*(1-1/sqrt(2))/2.),0])
       
       flat_failed = 1
       
@@ -173,6 +178,12 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             self -> get_calib, selstates[ilc] $
                                , darkdata = dd, darkstatus  = darkstatus $
                                , gainname = gn, flatname = fn
+       
+            ;; Do we have polcal flats in their own directory?
+            pfn = red_strreplace(fn, '/flats/', '/polcal_flats/')
+            if file_test(pfn) then fn = pfn
+            
+
             if(file_test(fn)) then begin
               print, inam + " : reading polcal flat-field file and making gain -> "+fn
               ff = red_readdata(fn)
