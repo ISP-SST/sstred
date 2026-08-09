@@ -661,6 +661,7 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       red_setupworkdir_copy, sum_dir, 'flats',       workdir, copy = copy
       red_setupworkdir_copy, sum_dir, 'pinhs',       workdir, copy = copy
       red_setupworkdir_copy, sum_dir, 'polcal_sums', workdir, copy = copy
+      red_setupworkdir_copy, sum_dir, 'polcal_flats', workdir, copy = copy
     endif
     
     if keyword_set(alternative) then begin
