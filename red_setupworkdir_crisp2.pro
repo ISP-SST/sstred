@@ -486,20 +486,20 @@ pro red_setupworkdir_crisp2, work_dir, root_dir, cfgfile, scriptfile, isodate $
 
         if n_elements(wls) gt 0 then begin
           wavelengths = strjoin(wls, ' ')
-          
-          ;; If there are multiple dark directories, we want to use
-          ;; the one that are nearest in time.
-          tmp = min(abs(red_time2double(file_basename(polcalflatdirs[idir])) $
-                        - red_time2double(file_basename(darkdirs))), dindx)
-          dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
-          
+                    
           if keyword_set(lapalma_setup) then begin
             ;; We want to output the summed data in timestamp
             ;; directories so we can handle multiple sets.
             outdir = 'polcal_flats/' + file_basename(polcalflatdirs[idir])
             outdir_key = ', outdir="'+outdir+'"'
+            ;; If there are multiple dark directories, we want to use
+            ;; the one that are nearest in time.
+            tmp = min(abs(red_time2double(file_basename(polcalflatdirs[idir])) $
+                          - red_time2double(file_basename(darkdirs))), dindx)
+            dark_timestamp_key = ", dark_timestamp = '" + file_basename(darkdirs[dindx]) + "'"
           endif else begin
             outdir_key = ', outdir="polcal_flats/"'
+            dark_timestamp_key = ''
           endelse 
         
           ;; Print to script file
