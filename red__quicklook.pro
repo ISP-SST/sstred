@@ -126,6 +126,12 @@
 ;      scan numbers or a comma-and-dash delimited string, like
 ;      '2-5,7-20,22-30'.
 ;
+;    size_fac : in, optional, type=number
+;
+;      Shrink spatial dimensions by this factor. Default value is 1,
+;      unless the largest dimension of the image data is larger than
+;      1024. In that case, the default value is 1024/max(dim).
+;
 ;    textcolor : in, optional, type=string, default='yellow'
 ;   
 ;      The color to use for text annotations in the movie.
@@ -188,6 +194,8 @@
 ;   2023-05-30 : MGL. New keyword filter_change.
 ;
 ;   2023-08-28 : MGL. Adaptations for mosaic data.
+;
+;   2026-08-10 : MGL. New keyword size_fac.
 ; 
 ;-
 pro red::quicklook, align = align $
@@ -218,6 +226,7 @@ pro red::quicklook, align = align $
                     , remote_dir = remote_dir $
                     , remote_login = remote_login $
                     , scannos = scannos $
+                    , size_fac = size_fac $
                     , ssh_find = ssh_find $
                     , textcolor = textcolor $
                     , use_states = use_states $
@@ -762,34 +771,41 @@ pro red::quicklook, align = align $
         print, inam + ' : saving to folder -> '+outdir 
         
         dim = (fxpar(red_readhead(files[sel[0]]),'NAXIS*'))[0:1]
+
+        if n_elements(size_fac) eq 0 then begin
+          if max(dim) gt 1024 then size_fac = 1024./max(dim) else size_fac = 1
+        endif
+        cdim = dim * size_fac   ; Cube spatial dimensions
+
         x0 = 0
-        x1 = dim[0] - 1
+        x1 = cdim[0] - 1
         y0 = 0
-        y1 = dim[1] - 1
+        y1 = cdim[1] - 1
         case n_elements(clip) of
           0 : begin
-            x0 += 50
-            x1 -= 50
-            y0 += 10
-            y1 -= 10
+            x0 += round(50 * size_fac)
+            x1 -= round(50 * size_fac)
+            y0 += round(10 * size_fac)
+            y1 -= round(10 * size_fac)
           end
           1 : begin
-            x0 += clip
-            x1 -= clip
-            y0 += clip
-            y1 -= clip
+            x0 += round(clip * size_fac)
+            x1 -= round(clip * size_fac)
+            y0 += round(clip * size_fac)
+            y1 -= round(clip * size_fac)
           end
           4 : begin
-            x0 += clip[0]
-            x1 -= clip[1]
-            y0 += clip[2]
-            y1 -= clip[3]
+            x0 += round(clip[0] * size_fac)
+            x1 -= round(clip[1] * size_fac)
+            y0 += round(clip[2] * size_fac)
+            y1 -= round(clip[3] * size_fac)
           end
           else : stop
         endcase
 
         ;; RGB cube
-        cube = fltarr(dim[0], dim[1], Nexp <Nexp_available, Nscans)
+        undefine, cube; In case a very large cube array was defined earlier
+        cube = fltarr(cdim[0], cdim[1], Nexp <Nexp_available, Nscans)
         best_contrasts = fltarr(Nscans)
         time_avg = strarr(Nscans)
         
@@ -900,9 +916,13 @@ pro red::quicklook, align = align $
             endelse
             
           endelse
-          
-          cube[*, *, 0, iscan] = im
 
+          if size_fac ne 1 then begin
+            cube[*, *, 0, iscan] = congrid(im, cdim[0], cdim[1], /center)
+          endif else begin
+            cube[*, *, 0, iscan] = im
+          endelse
+          
         endfor                  ; iscan
 
         if keyword_set(neuralnet) then begin
@@ -955,7 +975,7 @@ pro red::quicklook, align = align $
         endif else begin
 
           ;; Remove the extra dimension
-          cube = reform(cube, dim[0], dim[1], Nscans)
+          cube = reform(cube, cdim[0], cdim[1], Nscans)
           
         endelse
         
@@ -968,9 +988,9 @@ pro red::quicklook, align = align $
           
           lambda = states[sel2[0]].tun_wavelength ; Wavelength [m]
           telescope_d = 0.97d
-          arcsecperpix = self.image_scale
+          arcsecperpix = self.image_scale * size_fac
           ;; pixelsize = caminfo.pixelsize
-          sz = max(dim)
+          sz = max(cdim)
           
           ;;   F_number = pixelsize/telescope_d/(arcsecperpix*2d*!dpi/(360.*3600.))
           ;;   Q_number = F_number * lambda/pixelsize
@@ -998,8 +1018,8 @@ pro red::quicklook, align = align $
           ;; Make a window in an array the size of a padded (in case of
           ;; aspect ratio != 1) image.
           w = fltarr(sz, sz)
-          w[0:dim[0]-1, 0:dim[1]-1] = hanning(dim[0], dim[1])
-          dimdiff = dim[0] - dim[1] 
+          w[0:cdim[0]-1, 0:cdim[1]-1] = hanning(cdim[0], cdim[1])
+          dimdiff = cdim[0] - cdim[1] 
 
           ;; Deconvolve and caclulate the contrasts of the deconvolved images
           for iscan = 0, Nscans-1 do begin
@@ -1011,7 +1031,7 @@ pro red::quicklook, align = align $
 
             if dimdiff ne 0 then begin
               im2 = fltarr(sz, sz)
-              im2[0:dim[0]-1, 0:dim[1]-1] = im
+              im2[0:cdim[0]-1, 0:cdim[1]-1] = im
               im = im2
             endif
             
@@ -1034,7 +1054,7 @@ pro red::quicklook, align = align $
             im = float(fft(filt*(fim/(mtf >1e-3)), /inv)) ; Deconvolved image
             im /= (w >3e-4)                               ; Undo the windowing
             
-            cube[0, 0, iscan] = im[0:dim[0]-1, 0:dim[1]-1] + md ; Add the median back
+            cube[0, 0, iscan] = im[0:cdim[0]-1, 0:cdim[1]-1] + md ; Add the median back
             best_contrasts[iscan] = stddev(cube[x0:x1, y0:y1, iscan])/mean(cube[x0:x1, y0:y1, iscan])
             
           endfor
@@ -1072,8 +1092,8 @@ pro red::quicklook, align = align $
           
           ;; Measure image shifts
           shifts = red_aligncube(cube, 5, /center $ ;, cubic = -0.5 $
-                                 , xbd = round(dim[0]*.9) $
-                                 , ybd = round(dim[1]*.9) $
+                                 , xbd = round(cdim[0]*.9) $
+                                 , ybd = round(cdim[1]*.9) $
                                  , no_display = no_display $
                                  , nthreads = nthreads)
 
@@ -1113,7 +1133,8 @@ pro red::quicklook, align = align $
           tstep = tstep < (Nscans-1)
 
           ;; Calculate stretch vectors
-          grid = red_destretch_tseries(cube, 1.0/float(self.image_scale), tiles, clips, tstep, nthreads = nthreads)
+          grid = red_destretch_tseries(cube, 1.0/float(self.image_scale * size_fac) $
+                                       , tiles, clips, tstep, nthreads = nthreads)
 
           for iscan = 0L, Nscans - 1 do begin
             red_progressbar, iscan, Nscans, 'Applying the stretches.'
@@ -1258,3 +1279,18 @@ end
 ;; the list of scan numbers (if given). This should make it much
 ;; quicker to make movies with selected scans, and also to return the
 ;; cube for such movies as needed by make_raw_cube.
+
+
+
+cd, '/scratch/mats/process/2026-08-01/CHROMIS'
+
+a = chromisred("config.txt",/no_db)
+root_dir = "/data/disk1/ITA/2026.08.01/"
+nthreads=6
+
+;a -> quicklook, /over, datasets = '08:59:43' ;, size_fac = 0.3, /over
+a -> quicklook, /over, datasets = '08:53:55',  /core
+
+end
+
+
