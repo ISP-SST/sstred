@@ -82,10 +82,15 @@ pro red::summary, _extra = extra $
     openw, lun, /get_lun, 'summaries/'+texfile
 
     printf, lun, '\pdfminorversion=7'
+    printf, lun, '\makeatletter'
+    printf, lun, '\ifx\IfDocumentMetadataTF\@undefined'
+    printf, lun, '  \let\IfDocumentMetadataTF\@secondoftwo'
+    printf, lun, '\fi'
+    printf, lun, '\makeatletter'
     printf, lun, '\documentclass['+latex_options+']{article}'
     printf, lun, '\usepackage{graphicx} '
-    printf, lun, '\usepackage{time}'
-    printf, lun, '\usepackage{fancyvrb}'
+;    printf, lun, '\usepackage{time}'
+;    printf, lun, '\usepackage{fancyvrb}'
     printf, lun, '\usepackage{amsmath}'
     printf, lun, '\usepackage[labelformat=simple]{subcaption}'
     printf, lun, '\renewcommand\thesubfigure{(\alph{subfigure})}'
