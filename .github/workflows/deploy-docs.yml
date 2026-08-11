@@ -21,14 +21,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+    
       - name: Download IDLdoc
-        # Downloads a clean ZIP archive of IDLdoc to avoid Git URL issues
+        # Downloads a clean ZIP archive 
         run: |
           rm -rf idldoc
           curl -L https://github.com -o idldoc.zip
           unzip idldoc.zip
-          mv idldoc-master idldoc
+          mv idldoc-main idldoc
           rm idldoc.zip
 
       - name: Setup IDL (Using GNU Data Language as a free alternative)
