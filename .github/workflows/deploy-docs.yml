@@ -1,4 +1,4 @@
-name: Generate and Deploy IDLdoc
+name: Generate and Deploy IDLdoc via Sphinx
 
 on:
   push:
@@ -22,44 +22,41 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download IDLdoc
-        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          repository: 'mgalloy/idldoc'
-          path: 'idldoc'
-          submodules: 'false'
+          python-version: '3.x'
 
-      - name: Setup IDL (Using GNU Data Language as a free alternative)
+      - name: Install Sphinx and IDL extension
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gnudatalanguage
+          pip install sphinx sphinx-contrib-idldoc
 
-      - name: Run IDLdoc
-        # We add the current directory to GDL's path via environment variables
-        # and feed the batch commands via standard input (stdin)
-        env:
-          GDL_PATH: "+.:+./idldoc/src/"
+      - name: Initialize Sphinx Config
         run: |
-          gdl << 'EOF'
-          .compile red_generate_docs
-          red_generate_docs
-          EXIT
-          EOF
+          mkdir -p docs
+          echo "import os" > docs/conf.py
+          echo "import sys" >> docs/conf.py
+          echo "extensions = ['sphinx_contrib.idldoc']" >> docs/conf.py
+          echo "project = 'RED Project Documentation'" >> docs/conf.py
+          echo "master_doc = 'index'" >> docs/conf.py
+          echo "html_theme = 'alabaster'" >> docs/conf.py
+          
+          # Create main index page
+          echo "RED Project Documentation" > docs/index.rst
+          echo "=========================" >> docs/index.rst
+          echo ".. idldoc:: .." >> docs/index.rst
+
+      - name: Build HTML Documentation
+        run: |
+          sphinx-build -b html docs/ out-docs/
 
       - name: Debug - List generated files
-        # Det här steget visar exakt hur strukturen ser ut på servern
         run: |
-          echo "--- Looking for out-docs folder ---"
-          if [ -d "out-docs" ]; then
-            ls -R out-docs/
-          else
-            echo "Error: Folder out-docs does not exist!"
-          fi
+          ls -R out-docs/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Vi laddar upp hela rotmappen 'out-docs/'
           path: 'out-docs/'
 
       - name: Deploy to GitHub Pages
