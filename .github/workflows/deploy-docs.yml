@@ -38,8 +38,8 @@ jobs:
         # We explicitly compile the file first so GDL guarantees to find it,
         # and we add the current directory to GDL's path search.
         run: |
-          gdl -e ".compile red_generate_docs" -e "red_generate_docs"
-	  
+          gdl -e ".compile red_generate_docs; red_generate_docs"
+
       - name: Debug - List generated files
         # Det här steget visar exakt hur strukturen ser ut på servern
         run: |
