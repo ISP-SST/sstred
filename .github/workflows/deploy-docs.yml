@@ -35,10 +35,16 @@ jobs:
           sudo apt-get install -y gnudatalanguage
 
       - name: Run IDLdoc
-        # We explicitly compile the file first so GDL guarantees to find it,
-        # and we add the current directory to GDL's path search.
+        # We add the current directory to GDL's path via environment variables
+        # and feed the batch commands via standard input (stdin)
+        env:
+          GDL_PATH: "+.:+./idldoc/src/"
         run: |
-          gdl -e ".compile red_generate_docs; red_generate_docs"
+          gdl << 'EOF'
+          .compile red_generate_docs
+          red_generate_docs
+          EXIT
+          EOF
 
       - name: Debug - List generated files
         # Det här steget visar exakt hur strukturen ser ut på servern
