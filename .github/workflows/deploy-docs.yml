@@ -21,15 +21,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-    
+
       - name: Download IDLdoc
-        # Downloads a clean ZIP archive 
-        run: |
-          rm -rf idldoc
-          curl -L https://github.com -o idldoc.zip
-          unzip idldoc.zip
-          mv idldoc-main idldoc
-          rm idldoc.zip
+        # Uses the native GitHub tool to safely fetch the code without curl/git clone bugs
+        uses: actions/checkout@v4
+        with:
+          repository: 'mgalloy/idldoc'
+          path: 'idldoc'
+          submodules: 'false'  # Disabling submodules prevents the old exit code 128 error
 
       - name: Setup IDL (Using GNU Data Language as a free alternative)
         run: |
