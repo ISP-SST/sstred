@@ -1,0 +1,85 @@
+; docformat = 'rst'
+
+;+
+;   Parse a string containing 'key = value' pairs, optionally with a
+;   comment.
+;
+;   Given a string from a parameter/header ('key = value'), returns key and 
+;   value of a parameter as two element array by basically splitting on an 
+;   equal sign. If commentChar is set to the delimiter for start of a 
+;   comment, then it returns a 3 element array [key, value, comment].
+;   Keyword "pos" returns position of beginning of key.
+;   If there is no equal sign, then it returns [strtrim(line,2),''] and 
+;   pos = -1.
+;
+; 
+; :Categories:
+;
+;    Datafile handling
+; 
+; 
+; :Author:
+; 
+;   Ed Shaya / U. of Maryland [April 27, 2012] (as parse_parameter)
+; 
+; 
+; :Returns:
+; 
+;    Two-element array with [key,value] as strings. Or, if commentChar
+;    keyword is set, three-element array with [key,value,comment]
+;
+; 
+; :Params:
+; 
+;   line : in, type=string
+;
+;      A string consisting of 'key = value'.  Value can have spaces.
+; 
+; :Keywords:
+; 
+;   pos : in, optional
+;
+;      Position of first character of key in paramArr 
+;
+;   commentChar : in, optional, type=string
+;
+;      Character that begins a comment or description
+; 
+; 
+; :History:
+;
+;     2016-05-18 : MGL. Change documentation header format.
+;
+; 
+; 
+;-
+FUNCTION red_parseparameter, line, pos=pos, commentChar=commentChar
+
+  IF (N_PARAMS() Lt 1) THEN BEGIN
+     PRINT, 'usage: keyval = PARSE_PARAMETER(line, pos=pos)'
+     RETURN, 0
+  ENDIF
+
+  ;; Split on equal sign
+  keyval = STRSPLIT(line,'=',/extract,count=count,/preserve_null)
+
+  IF (count EQ 1) THEN BEGIN
+     keyval = [STRTRIM(line,2),'']
+     pos = -1
+  ENDIF ELSE BEGIN
+     ;; Fix if there equal signs in the comments section
+     IF (count GT 2) THEN keyval = [keyval[0],STRJOIN(keyval[1:*],'=')]
+     ;; Split on commentChar if it was set. keyval becomes 3 elements
+     ;; long.
+     IF (KEYWORD_SET(commentChar)) THEN BEGIN
+        valcomment = STRSPLIT(keyval[1],commentChar,/extract,/preserve_null,count=count)
+        IF (count GT 1) THEN $
+           keyval = [keyval[0],valcomment[0],valcomment[1]]
+     ENDIF
+     ;; Trim off spaces
+     keyval = STRTRIM(keyval,2)
+     ;; Locate start of key, if pos is set.
+     IF (ARG_PRESENT(POS)) THEN pos = STRPOS(line,keyval[0])
+  ENDELSE
+  RETURN, keyval
+END                             ; FUNCTION PARSE_PARAMETER
