@@ -22,28 +22,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download IDLdoc
-        # Temporarily clones IDLdoc into the workspace during the build process
-        run: |
-          git clone --recursive https://github.com idldoc
+        uses: actions/checkout@v4
+        with:
+          repository: 'mgalloy/idldoc'
+          path: 'idldoc'
+          submodules: 'recursive'
 
       - name: Setup IDL (Using GNU Data Language as a free alternative)
-        # Installs GDL since standard IDL requires a commercial license
         run: |
           sudo apt-get update
           sudo apt-get install -y gdl
 
       - name: Run IDLdoc
-        # Executes the custom script to generate the HTML documentation
         run: |
           gdl -e "red_generate_docs"
 
       - name: Upload artifact
-        # Packages and uploads the generated HTML files for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'out-docs/'
 
       - name: Deploy to GitHub Pages
-        # Publishes the uploaded artifact directly to your GitHub Pages site
         id: deployment
         uses: actions/deploy-pages@v4
