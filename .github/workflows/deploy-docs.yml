@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,11 +23,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download IDLdoc
-        uses: actions/checkout@v4
-        with:
-          repository: 'mgalloy/idldoc'
-          path: 'idldoc'
-          submodules: 'recursive'
+        # Downloads a clean ZIP archive of IDLdoc to avoid Git URL issues
+        run: |
+          rm -rf idldoc
+          curl -L https://github.com -o idldoc.zip
+          unzip idldoc.zip
+          mv idldoc-master idldoc
+          rm idldoc.zip
 
       - name: Setup IDL (Using GNU Data Language as a free alternative)
         run: |
