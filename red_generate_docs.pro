@@ -25,20 +25,18 @@ PRO red_generate_docs
   ; 2. Explicitly create the output directory
   FILE_MKDIR, 'out-docs'
   
-  ; 3. Run IDLdoc (Removed the invalid RECURSIVE keyword)
-  ;    We set ROOT to the current directory '.'
-  idldoc, ROOT='.', $
+  ; 3. Get the absolute path to the current directory
+  CD, CURRENT=current_dir
+  PRINT, '--- IDLdoc Root Directory: ', current_dir
+  
+  ; 4. Run IDLdoc using the absolute path for ROOT
+  idldoc, ROOT=current_dir, $
           OUTPUT='out-docs/', $
           TITLE='RED Project Documentation'
           
-  ; 4. Fallback: If IDLdoc created an html/ underfolder, move everything up
+  ; 5. Fallback: If IDLdoc placed files in an html/ subfolder, move them up
   IF FILE_TEST('out-docs/html/index.html') THEN BEGIN
     FILE_COPY, 'out-docs/html/*', 'out-docs/', /OVERWRITE
-  ENDIF
-  
-  ; 5. Fallback: Ensure a standard index.html exists in out-docs/
-  IF FILE_TEST('out-docs/index.pro.html') AND (NOT FILE_TEST('out-docs/index.html')) THEN BEGIN
-    FILE_COPY, 'out-docs/index.pro.html', 'out-docs/index.html'
   ENDIF
           
   EXIT
