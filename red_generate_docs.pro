@@ -19,20 +19,18 @@
 ; 
 ;-
 PRO red_generate_docs
-  ; 1. Add IDLdoc to the GDL path so the command can be found
+  ; 1. Add IDLdoc to the GDL path
   !PATH = './idldoc/src/:' + !PATH
   
-  ; 2. Run IDLdoc over the entire project
-  ;    ROOT='.' starts the search from the repository root.
-  ;    RECURSIVE=1 ensures all subdirectories are scanned.
-  ;    OUTPUT='out-docs/' defines where the HTML pages will be saved.
-  ;    EXCLUDE prevents IDLdoc from documenting itself or the output folder.
+  ; 2. Explicitly create the output directory so GDL doesn't crash
+  FILE_MKDIR, 'out-docs'
+  
+  ; 3. Run IDLdoc over the entire project
   idldoc, ROOT='.', $
           OUTPUT='out-docs/', $
           TITLE='RED Project Documentation', $
-          RECURSIVE=1, $
-          EXCLUDE=['idldoc', 'out-docs']
+          RECURSIVE=1
           
-  ; 3. Exit GDL when the documentation generation is complete
+  ; 4. Explicitly exit GDL
   EXIT
 END
