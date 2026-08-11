@@ -3,7 +3,7 @@ name: Generate and Deploy IDLdoc
 on:
   push:
     branches:
-      - main  # Change to 'master' if your default branch uses the older naming
+      - master
 
 permissions:
   contents: read
