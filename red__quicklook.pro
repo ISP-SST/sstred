@@ -136,6 +136,10 @@
 ;   
 ;      The color to use for text annotations in the movie.
 ;   
+;    textsize : in, optional, type=float
+;   
+;      The font size to use for text annotations in the movie.
+;   
 ;    use_states : in, optional, type=strarr
 ;
 ;      Skip state selection menu, instead make quicklook for states
@@ -229,6 +233,7 @@ pro red::quicklook, align = align $
                     , size_fac = size_fac $
                     , ssh_find = ssh_find $
                     , textcolor = textcolor $
+                    , textsize = textsize $
                     , use_states = use_states $
                     , verbose = verbose $
                     , video_codec = video_codec $
@@ -287,6 +292,7 @@ pro red::quicklook, align = align $
   endif
 
   if n_elements(textcolor) eq 0 then textcolor = 'yellow'
+  if n_elements(textsize) eq 0 then textsize = 2.5
   if n_elements(maxshift) eq 0 then maxshift = 6
   if n_elements(nthreads) eq 0 then nthreads = 6
   if n_elements(bit_rate) eq 0 then bit_rate = 40000
@@ -737,7 +743,7 @@ pro red::quicklook, align = align $
                       + '   ' + ustat[istate] $
                       + '   tile : ' + umos[imos] 
           cgtext, [0.01], [0.95], annstring $
-                  , /normal, charsize=3., color=textcolor, font=1
+                  , /normal, charsize=textsize, color=textcolor, font=1
           
           rgbcube = tvrd(/true)
           set_plot,'X'
@@ -1170,7 +1176,7 @@ pro red::quicklook, align = align $
                       + '   ' + ustat[istate] $
                       + '   scan :' + string(uscan[iscan],format='(I5)') 
           cgtext, [0.01], [0.95], annstring $
-                  , /normal, charsize=3., color=textcolor, font=1
+                  , /normal, charsize=textsize, color=textcolor, font=1
 
 ;        print, date_avg
 ;        print, time_avg[iscan]
@@ -1238,15 +1244,18 @@ pro red::quicklook, align = align $
                        , video_codec = video_codec 
           
           if format eq 'mov' then begin
-            ;; Convert to Mac-friendly (and smaller) .mov file using recipe from Tiago
+            ;; Convert to Mac-friendly (and smaller) .mov file using
+            ;; recipe from Tiago. Now with an update tested by Luc.
             mname = outdir + red_strreplace(namout, '.'+extension,'.'+format)
             file_delete, mname, /allow_nonexist
             spawn, 'ffmpeg -n -i "' + outdir + namout $
-                   + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
+                   + '" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2"' $
+                   + ' -c:v libx265 -crf 28 -tag:v hvc1  -pix_fmt yuv420p "' $
                    + mname + '"'
+;            spawn, 'ffmpeg -n -i "' + outdir + namout $
+;                   + '" -c:v libx264 -preset slow -crf 26 -tune grain "' $
+;                   + mname + '"'
             file_delete, outdir + namout
-;        spawn, 'rm "' + outdir + namout + '"'
-;        find . -name '*mp4' -exec sh -c 'ffmpeg -n -i "$1" -c:v libx264 -preset slow -crf 26 -vf scale=-1:800  -tune grain "${1%.mp4}.mov"' sh {} \ ;
           endif
 
         endif
