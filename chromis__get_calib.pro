@@ -220,39 +220,39 @@ pro chromis::get_calib, states $
       
     endif else status = -1        
   endif                         ; Cavityfree flats
-
+  
   ;; Gains
   if arg_present(gaindata) then begin
     if  n_elements(gainname) ne 0 then begin
-
+      
       for istate = 0, Nstates-1 do begin
         if ~file_test(gainname[istate]) then begin
           ;; Try summing flats for this state and then making gains
           if ~file_test(flatname[istate]) then begin
             self -> sumflat, /check, /sum_in_rdx $
-               , cams = states[istate].camera $
-               , ustat = states[istate].fullstate
+                             , cams = states[istate].camera $
+                             , ustat = states[istate].fullstate
           endif 
-          self -> makegains, smooth=3.0, files = flatname[istate]
+          self -> makegains, smooth=3.0, max = 10.0, files = flatname[istate]
         endif 
       endfor                    ; istate
-
+      
       gaindata = red_readdata_multiframe(gainname, status = gainstatus, /silent)
       status = min([status, gainstatus])
-
+      
     endif else status = -1
   endif                         ; Gains
-
+  
   ;; Cavityfree gains    
   if arg_present(cgaindata) then begin
     if n_elements(cgainname) ne 0 and file_test(cgainname) then begin
       
       cgaindata = red_readdata_multiframe(cgainname, status = cgainstatus, /silent)
       status = min([status, cgainstatus])
-
+      
     endif else status = -1
   endif                         ; Cavityfree gains             
-
+  
   ;; Cavityfree_lc gains    
   if arg_present(clcgaindata) then begin
     if n_elements(clcgainname) ne 0 then begin

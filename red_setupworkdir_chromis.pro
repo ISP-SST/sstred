@@ -793,7 +793,8 @@ pro red_setupworkdir_chromis, work_dir, root_dir, cfgfile, scriptfile, isodate $
     
     printf, Slun, ''
 
-    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
+    ;;printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=4.0, bad=1.0, nthreads = nthreads"
+    printf, Slun, "a -> makegains, smooth=3.0, min=0.1, max=10.0, bad=1.0, nthreads = nthreads"
 
   endif
   
