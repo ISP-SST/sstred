@@ -666,8 +666,9 @@ pro red::make_nb_cube, wcfile $
       for icam = 0, Nnbcams-1 do begin
 
         self -> get_spectral_flats_info, cmap = cmap $
-                                                , detector = nbdetectors[icam] $
-                                                , pref = cprefs[icprefs]
+                                         , cam_settings = states[0].cam_settings $
+                                         , detector = nbdetectors[icam] $
+                                         , pref = cprefs[icprefs]
         
         if keyword_set(remove_smallscale) then begin
           ;; If the small scale is already corrected, then include only the

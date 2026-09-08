@@ -67,6 +67,7 @@
 ;-
 pro red::get_spectral_flats_info, cmap = cmap $
                                   , detector = detector $
+                                  , cam_settings = cam_settings $
                                   , fit_results_struct = fit_results_struct $
                                   , fit_results_files = fit_results_files $
                                   , flats_cube = flats_cube $
@@ -80,7 +81,8 @@ pro red::get_spectral_flats_info, cmap = cmap $
 
   search_prefix = self.out_dir + '/flats/spectral_flats/' $
                   + detector $
-                  + ['_', '_*'] $ ; Could be exposure time and detector gain or just an underscore
+                  + ['_', '_'+cam_settings+'_'] $ 
+;                  + ['_', '_*'] $ ; Could be exposure time and detector gain or just an underscore
                   + prefilter 
   
 
