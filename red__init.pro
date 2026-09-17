@@ -40,7 +40,11 @@
 function red::init, filename, develop = develop, no_db = no_db
 
   ;; This function is called implicitly when an instance is created. 
-  
+
+  ;; Force True Color, specifically for coyote graphics.
+  DEVICE, DECOMPOSED=1 
+  cgWindow_SetDefs, PS_Decomposed=1
+
   if n_elements(filename) eq 0 then filename = 'config.txt'
   
   if file_test(filename) then self->initialize, filename, develop = develop, no_db = no_db
