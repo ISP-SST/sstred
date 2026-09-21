@@ -19,9 +19,10 @@
 ; 
 ; :Params:
 ; 
+;   wcfile : in, type=string
 ; 
-; 
-; 
+;     The path to a WB cube made with make_wb_cube. If not given, the
+;     user is asked for it.
 ; 
 ; 
 ; :Keywords:
@@ -496,57 +497,57 @@ pro red::make_nb_cube, wcfile $
   case this_cube_is_stokes of
     
     !true : self -> make_nb_cube_stokes, wcfile $ 
-       , ashifts = ashifts $
-       , clips = clips $
-       , cshift_mean = cshift_mean $
-       , date_avg_array = date_avg_array  $
-       , date_beg_array = date_beg_array  $ 
-       , date_end_array = date_end_array  $
-       , exp_array = exp_array $
-       , fileassoc = fileassoc $
-       , filename = filename $
-       , fnumsum_array  = fnumsum_array $
-       , fov_mask = fov_mask $
-       , noremove_periodic = noremove_periodic $
-       , nsum_array = nsum_array $  
-       , nthreads = nthreads $
-       , pertuningfiles = pertuningfiles $
-       , pertuningstates = pertuningstates $
-       , redemodulate = redemodulate $
-       , remove_smallscale = remove_smallscale $
-       , sexp_array = sexp_array $ 
-       , tiles = tiles $
-       , wbcor = wbcor $
-       , wbfileassoc = wbfileassoc $
-       , wbfilename = wbfilename $
-       , wbsave = wbsave $
-       , wcs = wcs
+                                         , ashifts = ashifts $
+                                         , clips = clips $
+                                         , cshift_mean = cshift_mean $
+                                         , date_avg_array = date_avg_array  $
+                                         , date_beg_array = date_beg_array  $ 
+                                         , date_end_array = date_end_array  $
+                                         , exp_array = exp_array $
+                                         , fileassoc = fileassoc $
+                                         , filename = filename $
+                                         , fnumsum_array  = fnumsum_array $
+                                         , fov_mask = fov_mask $
+                                         , noremove_periodic = noremove_periodic $
+                                         , nsum_array = nsum_array $  
+                                         , nthreads = nthreads $
+                                         , pertuningfiles = pertuningfiles $
+                                         , pertuningstates = pertuningstates $
+                                         , redemodulate = redemodulate $
+                                         , remove_smallscale = remove_smallscale $
+                                         , sexp_array = sexp_array $ 
+                                         , tiles = tiles $
+                                         , wbcor = wbcor $
+                                         , wbfileassoc = wbfileassoc $
+                                         , wbfilename = wbfilename $
+                                         , wbsave = wbsave $
+                                         , wcs = wcs
     
     !false : self -> make_nb_cube_intensity, wcfile $ 
-       , ashifts = ashifts $
-       , clips = clips $
-       , cshift_mean = cshift_mean $
-       , date_avg_array = date_avg_array  $
-       , date_beg_array = date_beg_array  $ 
-       , date_end_array = date_end_array  $
-       , exp_array = exp_array $
-       , fileassoc = fileassoc $
-       , filename = filename $
-       , fnumsum_array = fnumsum_array  $
-       , fov_mask = fov_mask $
-       , nsum_array = nsum_array    $  
-       , nthreads = nthreads $
-       , pertuningfiles = pertuningfiles $
-       , pertuningstates = pertuningstates $
-       , prefilter_curve = prefilter_curve $
-       , remove_smallscale = remove_smallscale $
-       , sexp_array = sexp_array     $ 
-       , tiles = tiles $
-       , wbcor = wbcor $
-       , wbfileassoc = wbfileassoc $
-       , wbfilename = wbfilename $
-       , wbsave = wbsave $
-       , wcs = wcs
+                                             , ashifts = ashifts $
+                                             , clips = clips $
+                                             , cshift_mean = cshift_mean $
+                                             , date_avg_array = date_avg_array  $
+                                             , date_beg_array = date_beg_array  $ 
+                                             , date_end_array = date_end_array  $
+                                             , exp_array = exp_array $
+                                             , fileassoc = fileassoc $
+                                             , filename = filename $
+                                             , fnumsum_array = fnumsum_array  $
+                                             , fov_mask = fov_mask $
+                                             , nsum_array = nsum_array    $  
+                                             , nthreads = nthreads $
+                                             , pertuningfiles = pertuningfiles $
+                                             , pertuningstates = pertuningstates $
+                                             , prefilter_curve = prefilter_curve $
+                                             , remove_smallscale = remove_smallscale $
+                                             , sexp_array = sexp_array     $ 
+                                             , tiles = tiles $
+                                             , wbcor = wbcor $
+                                             , wbfileassoc = wbfileassoc $
+                                             , wbfilename = wbfilename $
+                                             , wbsave = wbsave $
+                                             , wcs = wcs
 
     else : stop                 ; Cannot happen!
     
@@ -629,18 +630,18 @@ pro red::make_nb_cube, wcfile $
   ;; Add info about this step
   hdr = headfits(filename)
   self -> headerinfo_addstep, hdr $
-     , prstep = 'CONCATENATION' $
-     , prpara = prpara $
-     , prproc = inam $
-     , prref = 'Align reference: '+wcfile $
-     , comment_prref = 'WB cube file name'
+                              , prstep = 'CONCATENATION' $
+                              , prpara = prpara $
+                              , prproc = inam $
+                              , prref = 'Align reference: '+wcfile $
+                              , comment_prref = 'WB cube file name'
   
   self -> headerinfo_addstep, hdr $
-     , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
-     , prpara = prpara $
-     , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
-                , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
-     , prproc = inam
+                              , prstep = 'CALIBRATION-INTENSITY-SPECTRAL' $
+                              , prpara = prpara $
+                              , prref = ['Hamburg FTS spectral atlas (Neckel 1999)' $
+                                         , 'Calibration data from '+red_timestring(prf.time_avg, n = 0)] $
+                              , prproc = inam
   red_fitscube_newheader, filename, hdr
   if keyword_set(wbsave) then red_fitscube_newheader, wbfilename, hdr
 
@@ -791,57 +792,57 @@ pro red::make_nb_cube, wcfile $
 
   ;; Add some variable keywords
   self -> fitscube_addvarkeyword, filename, 'DATE-BEG', date_beg_array $
-     , anchor = anchor $
-     , comment = 'Beginning time of observation' $
-     , keyword_method = 'first' $
+                                  , anchor = anchor $
+                                  , comment = 'Beginning time of observation' $
+                                  , keyword_method = 'first' $
 ;                                  , keyword_value = self.isodate + 'T' + red_timestring(min(tbeg_array)) $
-     , axis_numbers = [3, 5] 
+                                  , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, filename, 'DATE-END', date_end_array $
-     , anchor = anchor $
-     , comment = 'End time of observation' $
-     , keyword_method = 'last' $
+                                  , anchor = anchor $
+                                  , comment = 'End time of observation' $
+                                  , keyword_method = 'last' $
 ;                                  , keyword_value = self.isodate + 'T' + red_timestring(max(tend_array)) $
-     , axis_numbers = [3, 5] 
+                                  , axis_numbers = [3, 5] 
   self -> fitscube_addvarkeyword, filename, 'DATE-AVG', date_avg_array $
-     , anchor = anchor $
-     , comment = 'Average time of observation' $
-     , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
-     , axis_numbers = [3, 5] 
+                                  , anchor = anchor $
+                                  , comment = 'Average time of observation' $
+                                  , keyword_value = self.isodate + 'T' + red_timestring(mean(tavg_array)) $
+                                  , axis_numbers = [3, 5] 
 
   red_fitscube_addrespappl, filename, prefilter_curve, /tun
 
   ;; Copy variable-keywords from wb cube file.
   self -> fitscube_addvarkeyword, filename, 'SCANNUM',  old_filename = wcfile $
-     , anchor = anchor 
+                                  , anchor = anchor 
   self -> fitscube_addvarkeyword, filename, 'ATMOS_R0', old_filename = wcfile $
-     , anchor = anchor 
+                                  , anchor = anchor 
   self -> fitscube_addvarkeyword, filename, 'AO_LOCK', old_filename = wcfile $
-     , anchor = anchor 
+                                  , anchor = anchor 
   self -> fitscube_addvarkeyword, filename, 'ELEV_ANG', old_filename = wcfile $
-     , anchor = anchor 
+                                  , anchor = anchor 
 
   self -> fitscube_addvarkeyword, filename, 'XPOSURE', exp_array $
-     , comment = 'Summed exposure times' $
-     , anchor = anchor $
-     , tunit = 's' $
-     , keyword_method = 'median' $
+                                  , comment = 'Summed exposure times' $
+                                  , anchor = anchor $
+                                  , tunit = 's' $
+                                  , keyword_method = 'median' $
 ;                                  , keyword_value = mean(exp_array) $
-     , axis_numbers = [3, 5] 
+                                  , axis_numbers = [3, 5] 
 
   self -> fitscube_addvarkeyword, filename, 'TEXPOSUR', sexp_array $
-     , comment = '[s] Single-exposure time' $
-     , anchor = anchor $
-     , tunit = 's' $
-     , keyword_method = 'median' $
+                                  , comment = '[s] Single-exposure time' $
+                                  , anchor = anchor $
+                                  , tunit = 's' $
+                                  , keyword_method = 'median' $
 ;                                  , keyword_value = mean(sexp_array) $
-     , axis_numbers = [3, 5] 
+                                  , axis_numbers = [3, 5] 
 
   self -> fitscube_addvarkeyword, filename, 'NSUMEXP', nsum_array $
-     , comment = 'Number of summed exposures' $
-     , anchor = anchor $
-     , keyword_method = 'median' $
+                                  , comment = 'Number of summed exposures' $
+                                  , anchor = anchor $
+                                  , keyword_method = 'median' $
 ;                                  , keyword_value = mean(nsum_array) $
-     , axis_numbers = [3, 5]
+                                  , axis_numbers = [3, 5]
 
   undefine, fnumsum_total
   for iscan = 0L, Nscans-1 do for ituning = 0L, Ntunings-1 do $
@@ -849,16 +850,16 @@ pro red::make_nb_cube, wcfile $
   fnumsum_total = rdx_ints2str([red_uniquify(fnumsum_total)])
 
   self -> fitscube_addvarkeyword, filename, 'FNUMSUM', fnumsum_array $
-     , comment = 'Raw frame numbers' $
-     , anchor = anchor $
-     , keyword_value = fnumsum_total $
-     , axis_numbers = [3, 5]
+                                  , comment = 'Raw frame numbers' $
+                                  , anchor = anchor $
+                                  , keyword_value = fnumsum_total $
+                                  , axis_numbers = [3, 5]
 
   ;; Correct intensity with respect to solar elevation and exposure
   ;; time.
   self -> fitscube_intensitycorr, filename $
-     , intensitycorrmethod = intensitycorrmethod $
-     , fitpref_time = fitpref_time 
+                                  , intensitycorrmethod = intensitycorrmethod $
+                                  , fitpref_time = fitpref_time 
 
 
   if this_cube_is_stokes and ~keyword_set(nocrosstalk) then begin
@@ -875,21 +876,21 @@ pro red::make_nb_cube, wcfile $
   if keyword_set(integer) then begin
     ;; Convert to integers
     self -> fitscube_integer, filename $
-       , /delete $
-       , outname = outname $
-       , overwrite = overwrite
+                              , /delete $
+                              , outname = outname $
+                              , overwrite = overwrite
     filename = outname
   endif
 
   if ~keyword_set(nomissing_nans) then begin
     ;; Set padding pixels to missing-data, i.e., NaN.
     self -> fitscube_missing, filename $
-       , /noflip $
-       , missing_type = 'nan' 
+                              , /noflip $
+                              , missing_type = 'nan' 
     if keyword_set(wbsave) then begin
       self -> fitscube_missing, wbfilename $
-         , /noflip $
-         , missing_type = 'nan'
+                                , /noflip $
+                                , missing_type = 'nan'
     endif
   endif
 
