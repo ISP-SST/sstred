@@ -78,6 +78,9 @@
 ;     2017-08-18 : THI. Workaround so that paths/filenames with ":"
 ;                  does not fail. Get rid of warning when download fails.
 ; 
+;     2026-09-21 : MGL. Use SPAWN + curl to bypass IDLnetURL SSL
+;                  issues (Error 60) on pre-IDL 9.
+;
 ;-
 function red_geturl, url $
                      , file = file $
@@ -96,7 +99,6 @@ function red_geturl, url $
            )
   
   urlComponents = parse_url(url)
-;  tmp = (strsplit(url,'/',/extract, count = n))
   
   ; parse_url is broken, it can not handle file/dirnames with ':' as it will be interpreted as a
   ; port-separator. The hack below tries to fix the mess.
@@ -111,6 +113,9 @@ function red_geturl, url $
       urlComponents.Port = '80'     ; re-set the default, as it was most likely set to '', or garbage, by parse_url
     endelse
   endif
+
+  ;; Check OS family to set correct SPAWN flags later
+  isWindows = (!VERSION.OS_FAMILY eq 'Windows')
 
   if DiskIO then begin
 
@@ -150,8 +155,12 @@ function red_geturl, url $
         endif
 
         if arg_present(contents) then begin
-           ;; Read the existing file
-           spawn, 'cat '+path, contents
+           ;; Read the existing file (cross-platform compatible method)
+           openr, lun, path, /get_lun
+           file_info = file_info(path)
+           contents = strarr(file_info.size) ; fallback if text, though image binaries shouldn't use contents
+           readf, lun, contents
+           free_lun, lun
         endif
         
         ;; Return true (for OK) since the file is there to be used.
@@ -164,109 +173,68 @@ function red_geturl, url $
      
      print, 'red_geturl : Try to download '+url
      
-     oUrl = OBJ_NEW('IDLnetUrl' $
-                    , URL_SCHEME = urlComponents.scheme $
-                    , URL_HOSTNAME = urlComponents.host $
-                    , URL_PATH = urlComponents.path $
-                    , URL_PORT = urlComponents.port $
-                   ) 
-
      ;; Download to a temporary file name so we do not unnecessarily
      ;; overwrite an existing version.
      tmpfile = String('tmp_', Bin_Date(SysTime()), format='(A, I4, 5I2.2)')
      
-     CATCH, Error_status
-     if Error_status ne 0 then begin
-        
-        print, 'Caught an error'
-        CATCH, /CANCEL
+     ;; Build the curl command: 
+     ;; -s (silent), -L (follow redirects), -f (fail silently on server errors like 404)
+     ;;cmd = 'curl -s -L -f -o "' + tmpfile + '" "' + url + '"'
+     cmd = (isWindows ? '' : 'env LD_LIBRARY_PATH="" ') + 'curl -s -L -f -o "' + tmpfile + '" "' + url + '"'
 
+     curl_status = 0
+     if (isWindows) then begin
+         SPAWN, cmd, /NOSHELL, EXIT_STATUS=curl_status
      endif else begin
-        
-        retrievedFilePath = oUrl -> Get(FILENAME=tmpfile) 
-
+         SPAWN, cmd, EXIT_STATUS=curl_status
      endelse
 
-
-     oUrl -> GetProperty, RESPONSE_CODE=RespCode ; 200 = OK
-
-     ;; Beware that some web servers return 200 in spite of failure! The
-     ;; sst server seems to behave, though.
-     DownloadOK = RespCode eq 200 ; True if OK
+     ;; curl returns 0 upon successful download [1]
+     DownloadOK = (curl_status eq 0) and file_test(tmpfile)
 
      if DownloadOK then begin
         
        file_move, tmpfile, path, /overwrite
        print, 'red_geturl : Downloaded OK to ' + path
+
        if n_elements(link) ne 0 then begin
          file_link, path, link
          print, 'red_geturl : Linked to ' + link
        endif
-
-       if n_elements(link) ne 0 then begin
-         ;; Link anyway
-           file_link, path, link
-           print, 'red_geturl : Linked to ' + link
-        endif
         
-        if arg_present(contents) then begin
-           ;; Read the existing file
-           spawn, 'cat '+path, contents
-        endif
+       if arg_present(contents) then begin
+          spawn, (isWindows ? 'type "' : 'cat "') + path + '"', contents
+       endif
 
      endif else begin
 
         path = ''
         file_delete, tmpfile, /ALLOW_NONEXISTENT
-        if n_elements(respcode) eq 0 then begin
-           print, 'red_geturl : Download failed.'
-        endif else begin
-           print, 'red_geturl : Download failed with code '+strtrim(respcode, 2)
-        endelse
-        ;; Should we make a link if there is an already existing file?
+        print, 'red_geturl : Download failed with curl exit status '+strtrim(curl_status, 2)
         
      endelse
      
-     oUrl->CloseConnections 
-
-     OBJ_DESTROY, oUrl 
-
      return, DownloadOK         ; True if OK
 
   endif else begin
 
-     ;; Do not involve the disk in any way.
-     
+     ;; Do not involve the disk in any way. Strarr output directly.
      print, 'red_geturl : Try to download '+url
      
-     oUrl = OBJ_NEW('IDLnetUrl' $
-                    , URL_SCHEME = urlComponents.scheme $
-                    , URL_HOSTNAME = urlComponents.host $
-                    , URL_PATH = urlComponents.path $
-                    , URL_PORT = urlComponents.port $
-                   ) 
+     ;;cmd = 'curl -s -L -f "' + url + '"'
+     cmd = (isWindows ? '' : 'env LD_LIBRARY_PATH="" ') + 'curl -s -L -f "' + url + '"'
+     curl_status = 0
 
-     CATCH, Error_status
-     if Error_status ne 0 then begin
-        
-        print, 'Caught an error'
-        CATCH, /CANCEL
-
+     if (isWindows) then begin
+         SPAWN, cmd, contents, /NOSHELL, EXIT_STATUS=curl_status
      endif else begin
-        
-        contents = oUrl -> Get(/STRING_ARRAY) 
-
+         SPAWN, cmd, contents, EXIT_STATUS=curl_status
      endelse
 
-     oUrl -> GetProperty, RESPONSE_CODE=RespCode ; 200 = OK
-
-     ;; Beware that some web servers return 200 in spite of failure! The
-     ;; sst server seems to behave, though.
-     DownloadOK = RespCode eq 200 ; True if OK
-
-     oUrl -> CloseConnections 
-
-     OBJ_DESTROY, oUrl 
+     DownloadOK = (curl_status eq 0)
+     if ~DownloadOK then begin
+         print, 'red_geturl : Download failed with curl exit status '+strtrim(curl_status, 2)
+     endif
 
      return, DownloadOK         ; True if OK
 
