@@ -896,7 +896,7 @@ pro red::make_nb_cube, wcfile $
 
   if ~keyword_set(noflipping) then $
      red_fitscube_flip, filename, flipfile = flipfile $
-                        , overwrite = overwrite
+                        , overwrite = overwrite, /no_metadata
 
   print, inam + ' : Narrowband cube stored in:'
   print, filename

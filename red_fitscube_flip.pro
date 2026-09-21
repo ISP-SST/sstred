@@ -45,6 +45,10 @@
 ;      available memory, the "slow" method of transposing each
 ;      [Nx,Ny,Ntuning] subcube separately is used.
 ; 
+;    no_metadata : in, optional, type=boolean
+; 
+;      Don't copy lots of unnecessary metadata to the flipped cube.
+; 
 ;    openclose : in, optional, type=boolean
 ;
 ;      Open and close the files repeatedly to avoid having two open
@@ -73,12 +77,15 @@
 ;
 ;   2019-10-17 : MGL. Make it a regular subroutine rather than a
 ;                method. 
+;
+;   2026-09-21 : MGL. New keyword no_metadata.
 ; 
 ;-
 pro red_fitscube_flip, filename $
                        , flipfile = flipfile $
                        , maxmemory = maxmemory $
                        , method = method $
+                       , no_metadata = no_metadata $
                        , openclose = openclose $
                        , overwrite = overwrite
 
@@ -513,35 +520,38 @@ pro red_fitscube_flip, filename $
 
   endelse
 
-
-  ;; Copy the variable-keywords from the regular nb cube to the
-  ;; flipped version.
-  var_keys = red_fits_var_keys(him, count = Nkeys)
-  for ikey = 0, Nkeys-1 do begin
-    red_progressbar, ikey, Nkeys, /predict $
-                     , 'Add variable keywords'
-    red_fitscube_addvarkeyword, flipfile, var_keys[ikey] $
-                                ,  old_filename = filename, /flipped
-  endfor                        ; ikey ;
+  if ~keyword_set(no_metadata) then begin
   
-  ;; Copy WCS extension
-  print, inam+' : Copy the WCS extension...'
-  tic
-  red_fits_copybinext, filename, flipfile, 'WCS-TAB'
-  toc
-  print, inam+' : Copy the WCS extension... Done!'
+    ;; Copy the variable-keywords from the regular nb cube to the
+    ;; flipped version.
+    var_keys = red_fits_var_keys(him, count = Nkeys)
+    for ikey = 0, Nkeys-1 do begin
+      red_progressbar, ikey, Nkeys, /predict $
+                       , 'Add variable keywords'
+      red_fitscube_addvarkeyword, flipfile, var_keys[ikey] $
+                                  ,  old_filename = filename, /flipped
+    endfor                      ; ikey ;
+    
+    ;; Copy WCS extension
+    print, inam+' : Copy the WCS extension...'
+    tic
+    red_fits_copybinext, filename, flipfile, 'WCS-TAB'
+    toc
+    print, inam+' : Copy the WCS extension... Done!'
 
-  ;; Copy cavity maps
-  fits_open, filename, fcb
-  free_lun, fcb.unit
-  if total(fcb.extname eq 'WCSDVARR') eq 1 then begin
-    cmaps = mrdfits(filename, 'WCSDVARR', chdr, status = status, /silent)
-    if status ne 0 then stop
-    writefits, flipfile, cmaps, chdr, /append
-    ;; The CWERRj, CWDISj, and DWj keywords should already be in the
-    ;; header. We just need to copy the WCSDVARR (image) extension.
-  endif else begin
-    print, inam + ' : No cavity maps to copy.'
-  endelse
+    ;; Copy cavity maps
+    fits_open, filename, fcb
+    free_lun, fcb.unit
+    if total(fcb.extname eq 'WCSDVARR') eq 1 then begin
+      cmaps = mrdfits(filename, 'WCSDVARR', chdr, status = status, /silent)
+      if status ne 0 then stop
+      writefits, flipfile, cmaps, chdr, /append
+      ;; The CWERRj, CWDISj, and DWj keywords should already be in the
+      ;; header. We just need to copy the WCSDVARR (image) extension.
+    endif else begin
+      print, inam + ' : No cavity maps to copy.'
+    endelse
 
+  endif
+  
 end
