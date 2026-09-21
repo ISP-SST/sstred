@@ -185,6 +185,8 @@ pro red::make_nb_cube_intensity, wcfile $
   origNx = x1 - x0 + 1
   origNy = y1 - y0 + 1
 
+  self -> extractstates, wbgfiles, wbgstates
+  
   ;; Unique tuning states, sorted by wavelength
   nbpertuningstates = pertuningstates[where(~pertuningstates.is_wb)]
   ufpi_states = red_uniquify(nbpertuningstates.fpi_state, indx = xindx)
@@ -202,7 +204,7 @@ pro red::make_nb_cube_intensity, wcfile $
   Nnbprefs = n_elements(unbprefs)
 
   ;; Get the scan selection 
-  uscans = red_uniquify(pertuningstates.scannumber)
+  uscans = wbgstates.scannumber
   Nscans = n_elements(uscans)
   
 ;; Per-tuning files, wb and nb, only for selected scans
@@ -250,7 +252,6 @@ pro red::make_nb_cube_intensity, wcfile $
     ;; per-tuning wb files and then the corresponding nb files.
     wb = (red_readdata(wbgfiles[iscan], direction = direction))[x0:x1, y0:y1]
     
-
     ;;stop
     ;;if keyword_set(notimecor) then tscl = 1. else tscl = mean(wcTMEAN) / wcTMEAN[iscan]
     ;;tscl *= mean(prefilter_wb)
@@ -305,7 +306,7 @@ pro red::make_nb_cube_intensity, wcfile $
           this_nbindx  = these_nbindx[ilc]
           this_nbfile  = scan_nbfiles[this_nbindx]
           this_nbstate = scan_nbstates[this_nbindx]
-
+          
           ;; Now find the matching WB file. The selecfiles method
           ;; checks for cameras being equal but with PD data, the
           ;; restored WB camera is actually both the W and D cameras.
@@ -316,15 +317,17 @@ pro red::make_nb_cube_intensity, wcfile $
                                 and strmatch(pertuningstates.camera, '*'+wbcamera+'*') $
                                 and pertuningstates.lc eq ulc[ilc] $
                                 and pertuningstates.scannumber eq uscans[iscan] $
+                                and ((strsplit(pertuningfiles,'/',/extract)).toarray())[*,1] eq ts $
                                 , count)
           endif else begin
             this_wbindx = where(pertuningstates.fpi_state eq ufpi_states[ituning] $
                                 and strmatch(pertuningstates.camera, '*'+wbcamera+'*') $
                                 and pertuningstates.scannumber eq uscans[iscan] $
+                                and ((strsplit(pertuningfiles,'/',/extract)).toarray())[*,1] eq ts $
                                 , count)
           endelse
           this_wbfile  = pertuningfiles[this_wbindx]
-          this_wbstate = pertuningfiles[this_wbindx]
+          this_wbstate = pertuningstates[this_wbindx]
 
           if 0 then begin
             print
