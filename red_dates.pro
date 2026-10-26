@@ -70,6 +70,10 @@ function red_dates $
   red_append, dates, '2013-10-28'
   red_append, explanations, 'AO log has 8x8 measurements from '+dates[-1]
 
+  red_append, tags, 'CRISP Alluxa' ; 
+  red_append, dates, '2018-01-01'
+  red_append, explanations, 'Installed new CRISP Alluxa prefilters '+dates[-1]
+  
   red_append, tags, 'CRISP Ximea'
   red_append, dates, '2022-08-19'
   red_append, explanations, 'Installed new CRISP Ximea cameras from '+dates[-1]
@@ -89,7 +93,10 @@ function red_dates $
   red_append, tags, 'CHROMIS Ximea'
   red_append, dates, '2025-04-01'
   red_append, explanations, 'Installed new CHROMIS Ximea cameras from '+dates[-1]
-
+  
+  red_append, tags, 'CRISP2 install'
+  red_append, dates, '2025-08-01'
+  red_append, explanations, 'Installed CRISP2 on '+dates[-1]
   
   if n_elements(tag) gt 0 && n_elements(date) gt 0 then begin
 
