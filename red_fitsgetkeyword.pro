@@ -99,13 +99,15 @@
 ;    2021-05-03 : MGL. If called with field_specifiers, don't
 ;                 look for HIERARCH versions of the keyword.
 ; 
+;    2026-09-24 : MGL. New keyword count.
+; 
 ;-
 function red_fitsgetkeyword, filename_or_header, name $
-                             , count = count $
-                             , dir = dir $
                              , comment = comment $
                              , coordinate_values = coordinate_values $
                              , coordinate_names = coordinate_names $
+                             , count = count $
+                             , dir = dir $
                              , ignore_variable = ignore_variable $
                              , field_specifiers = field_specifiers $
                              , variable_values = variable_values $
@@ -159,7 +161,7 @@ function red_fitsgetkeyword, filename_or_header, name $
   endif
   
   ;; Check for multiple occurences. 
-  value = fxpar(hdr, name, comment = comment, _strict_extra = extra, count = count)
+  value = fxpar(hdr, name, comment = comment, count = count, _strict_extra = extra)
 
   ;; Missing keyword
   if count eq 0 then return, 0
