@@ -47,6 +47,10 @@ function red_round, x, n_digits = n_digits, n_decimals = n_decimals
   case !true of
 
     n_elements(n_decimals) gt 0 : begin
+      if ~isa(n_decimals, /integer) then begin
+        red_message, 'n_decimals should be an integer'
+        stop
+      endif
       if n_decimals gt 0 then begin
         return, round(x*10.^n_decimals)/10.^n_decimals
       endif else begin
@@ -56,6 +60,10 @@ function red_round, x, n_digits = n_digits, n_decimals = n_decimals
     end
     
     n_elements(n_digits) gt 0 : begin
+      if ~isa(n_digits, /integer) then begin
+        red_message, 'n_digits should be an integer'
+        stop
+      endif
       return, red_round(x, n_decimals = n_digits - floor(alog10(x)) - 1)
     end
     
