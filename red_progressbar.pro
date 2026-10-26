@@ -1,11 +1,12 @@
 ; docformat = 'rst'
 
 ;+
-; Display progress in terminal window.
+; Display progress in terminal window. Call near the beginning of a
+; loop.
 ; 
 ; :Categories:
 ;
-;    CRISP pipeline
+;    SSTRED
 ; 
 ; 
 ; :Author:
@@ -15,14 +16,22 @@
 ; 
 ; :Params:
 ; 
+;    done : in, optional, type=boolean
+; 
+;       Call with /done and (optionally) message_done after the loop
+;       is finished to print the final 100% completion status.
+; 
 ;    i_inner : in, optional, type="scalar number"
 ;
 ;       The current inner loop index (0 to N_inner-1).
 ;
 ;    i_outer : in, type="scalar number"
 ; 
-;       The current loop index (0 to N-1). 
-;       Call with i = N after the loop to print the final 100% completion status.
+;       The current (outer) loop index (0 to N_outer-1).
+;
+;    message_done : in, optional, type=string
+;
+;       Message to show when using the /done option.
 ;
 ;    message_inner : in, optional, type=string, default="''"
 ;
@@ -82,19 +91,38 @@
 ;     2018-01-22 : MGL. Allow not calling red_progressbar for every
 ;                  iteration.  
 ; 
-;     2026-09-22 : MGL. Improve handling of short loops. Handle 2
-;                  nested loops.
+;     2026-09-22 : MGL. Improve handling of short loops. New keywords
+;                  i_inner, N_inner, message_inner
+; 
+;     2026-09-23 : MGL. New keywords done and message_done.
 ; 
 ;-
 pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
                      , i_inner, N_inner, message_inner $ ; optional parameters
                      , add_loopindex = add_loopindex $
                      , barlength = barlength $
+                     , done = done $
+                     , message_done = message_done $
                      , nobar = nobar $
                      , predict = predict
 
-  common red_progressbar_common, clock, times, iterations, icnt, last_i, last_inner
+  common red_progressbar_common, clock, times, iterations, icnt $
+     , last_i_outer, last_i_inner, last_N_outer, last_N_inner, last_message_outer
 
+  if keyword_set(done) then begin
+    i_outer = last_N_outer
+    N_outer = last_N_outer
+    if n_elements(last_N_inner) then begin
+      i_inner = last_N_inner
+      N_inner = last_N_inner
+    endif
+    if n_elements(message_done) gt 0 then begin
+      message_outer = message_done
+    endif else begin
+      message_outer = last_message_outer
+    endelse
+  endif
+  
   if N_outer eq 0 then return
 
   ;; 1. Initialization (Run ONLY once at the absolute start of the loop)
@@ -102,8 +130,8 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
     clock = tic()
     current_toc = 0.0
     icnt = 0L
-    last_i = -1L
-    last_inner = -1L
+    last_i_outer = -1L
+    last_i_inner = -1L
     times = dblarr(100)
     iterations = lonarr(100)
   endif else begin
@@ -111,16 +139,16 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
     current_toc = double(toc(clock))
   endelse
 
-  ; Reset if C-c earlier
-  is_restart = (i_outer eq 0 && last_i gt 0) || $
-               (i_outer eq 0 && n_elements(i_inner) ne 0 && last_inner gt 0 && i_inner lt last_inner)
+  ;; Reset if C-c earlier
+  is_restart = (i_outer eq 0 && last_i_outer gt 0) || $
+               (i_outer eq 0 && n_elements(i_inner) ne 0 && last_i_inner gt 0 && i_inner lt last_i_inner)
                
   if is_restart then begin
     clock = tic()
     current_toc = 0.0
     icnt = 0L
-    last_i = -1L
-    last_inner = -1L
+    last_i_outer = -1L
+    last_i_inner = -1L
     times = dblarr(100)
     iterations = lonarr(100)
   endif
@@ -131,12 +159,13 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
 
   norm = 100. / double(N_outer)  
   
-  ; Outer loop percentage
+  ;; Outer loop percentage
   percentdone = (double(i_outer) * norm) < 100.0
   prediction = '' 
 
-  ; Only record time history when the OUTER loop actually progresses to a new index
-  if i_outer ne last_i and i_outer lt N_outer then begin
+  ;; Only record time history when the OUTER loop actually progresses
+  ;; to a new index
+  if i_outer ne last_i_outer and i_outer lt N_outer then begin
     if icnt eq n_elements(times) then begin
       times = [times, dblarr(100)]
       iterations = [iterations, lonarr(100)]
@@ -144,11 +173,16 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
     times[icnt] = current_toc
     iterations[icnt] = i_outer
     icnt++
-    last_i = i_outer
+    last_i_outer = i_outer
+    last_N_outer = N_outer
+    last_message_outer = message_outer 
   endif
 
   ;; Track the inner loop index to detect mid-way restarts
-  if n_elements(i_inner) ne 0 then last_inner = i_inner
+  if n_elements(i_inner) ne 0 then begin
+    last_i_inner = i_inner
+    last_N_inner = N_inner
+  endif
 
   ;; Determine how long the progress line can be
   tsize = (TERMINAL_SIZE())[0]
@@ -221,7 +255,7 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
   if strtrim(message_inner, 2) ne '' then msg_str += ' -> ' + strtrim(message_inner, 2)
   if keyword_set(add_loopindex) then msg_str += ' '+strtrim(i_inner, 2)
 
-  ; Combine and truncate safely
+  ;; Combine and truncate safely
   full_line = time_str + outer_str + nested_str + msg_str
   if strlen(full_line) gt outlength then full_line = strmid(full_line, 0, outlength)
   
@@ -229,14 +263,14 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
 
   print, bb, outline, FORMAT = '(A,A,$)'
   
-  ; Final cleanup when outer loop hits completion target
+  ;; Final cleanup when outer loop hits completion target
   if i_outer ge N_outer then begin
     undefine, clock
     undefine, times
     undefine, iterations
     undefine, icnt
-    undefine, last_i
-    undefine, last_inner
+    undefine, last_i_outer
+    undefine, last_i_inner
     print
   endif
 
@@ -248,17 +282,19 @@ messages = ['short.fits', 'very_long_filename_record_2026.fits', 'med.fits']
 
 for i = 0, N-1 do begin
   red_progressbar, i, N, messages[i mod N]
-  wait, 4
+  wait, 1
 endfor
-red_progressbar, N, N, 'Done'
+red_progressbar, /done, message_done = 'files'
+;red_progressbar, N, N, 'Done'
 
 for i = 0, N-1 do begin 
   for j = 0, M-1 do begin 
     red_progressbar, i, N, messages[i], j, M, 'SubStep', /predict, /add
-     wait, 2.4 
+     wait, 1
   endfor 
 endfor
-red_progressbar, N, N, 'Done', M, M, 'SubSteps'
+;red_progressbar, N, N, 'Done', M, M, 'SubSteps'
+red_progressbar, /done, message_done = 'files'
 
 stop
 
