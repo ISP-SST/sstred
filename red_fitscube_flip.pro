@@ -78,7 +78,9 @@
 ;   2019-10-17 : MGL. Make it a regular subroutine rather than a
 ;                method. 
 ;
-;   2026-09-21 : MGL. New keyword no_metadata.
+;   2026-09-21 : MGL. New keyword no_metadata. 
+;
+;   2026-09-22 : MGL. Rewrote the chunk processing.
 ; 
 ;-
 pro red_fitscube_flip, filename $
@@ -192,333 +194,126 @@ pro red_fitscube_flip, filename $
 
   endfor                        ; iax
 
-  ;; Transfer data to flipped file
+  ;; =========================================================================
+  ;; Transfer data to flipped file 
+  ;; =========================================================================
   
-  ;; Create flipped file and write header.
-  openw, flun, flipfile, /get_lun, /swap_if_little_endian ; Output file
-
-  ;; Write the header of the flipped cube
+  ;; 1. Initialize output file and pre-allocate full size on disk to
+  ;; prevent fragmentation
+  openw, flun, flipfile, /get_lun, /swap_if_little_endian 
   hsp = hsp[0:where(strmid(hsp,0,3) eq 'END')] ; Strip trailing empty lines
   Nlines = n_elements(hsp)     
-  bhdr = reform(byte(hsp),80L*Nlines) ; Byte version of header
+  bhdr = reform(byte(hsp), 80L*Nlines) ; Byte version of header
   writeu, flun, bhdr
-  free_lun, flun
   
-  ;; Make assoc variables
-  Nlines = n_elements(him)     
-  Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-  offset_in = Nblock*2880       ; Offset to start of data
-  print, 'offset_in=', offset_in
+  ; Calculate exact data size and offsets using 64-bit integers for large files
+  typesize = abs(bitpix) / 8L
+  total_data_bytes = Long64(Nx) * Ny * Ntuning * Nstokes * Nscans * typesize
+  Nlines_hsp = n_elements(hsp)
+  Nblock_out = (Nlines_hsp - 1) * 80 / 2880 + 1
+  offset_out = Nblock_out * 2880
+  
+  ; Force the OS to allocate the full file space continuously
+  point_lun, flun, offset_out + total_data_bytes - 1
+  writeu, flun, 0b 
+  free_lun, flun
 
-  Nlines = n_elements(hsp)     
-  Nblock = (Nlines-1)*80/2880+1 ; Number of 2880-byte blocks
-  offset_out = Nblock*2880      ; Offset to start of data
-  print, 'offset_out=', offset_out
+  ;; Calculate input file data offset
+  Nlines_him = n_elements(him)     
+  Nblock_in = (Nlines_him - 1) * 80 / 2880 + 1
+  offset_in = Nblock_in * 2880
 
-
-  ;; Do some checking of the amount of free memory here
+  ;; 2. Determine optimal chunk size based on available memory (Safe
+  ;; for prime numbers)
   meminfo = red_meminfo()
   memsize = meminfo.memfree
-  cubsize = product(dimensions) * abs(bitpix)/8.d
-  if n_elements(maxmemory) eq 0 then maxmemory = memsize/4 
+  if n_elements(maxmemory) eq 0 then maxmemory = memsize / 4 
   
-  ;; Can we do it in chunks? Compare chunk sizes to maxmemory
-  factor, Ny, p, Np, /quiet     ; Need integer subsize of Ny
-  Nfactors = n_elements(p)      ; Repeated factors are indicated by elements(Np) gt 1.
-  for ifactor = 0, Nfactors-1 do red_append, factors, replicate(p[ifactor], Np[ifactor])
-  Nfactors = n_elements(factors) ; Total number of factors, including those repeated.
-  Nsubsets = 2^Nfactors          ; Calculate the possible subsizes
-  for isubset = 1, Nsubsets-1 do $
-     red_append, pp, round(product(factors[where(long((binary(isubset))[-Nfactors:-1]))]))
-  chunksizes = pp * abs(bitpix)/8.d * Nx*Nstokes*Nscans*Ntuning ; And the corresponding chunk sizes
-  Ny1 = max(pp[where(chunksizes le maxmemory)]) ; Select the largest subsize allowed
-  chunksize = Ny1*Nx*Nstokes*Nscans*Ntuning     ; And the corresponding chunk size
-  Ntimes = Ny / Ny1
-
-;  Nchunks = ceil(cubsize/maxmemory)
-;  Ny1values = replicate(Ny/Nchunks, Nchunks)
-;  remainder = round(Ny-total(Ny1values))
-;  if remainder gt 0 then begin
-;    Ny1extra = replicate(0, Nchunks)
-;    Ny1extra[0] = replicate(1, remainder)
-;    Ny1values += Ny1extra
-;  endif
-;
-;  Ny1values += [1, -2, 1]
-;
-;  print, inam+' : Could do the '+strtrim(Ny, 2)+' rows in chunks '+strjoin(strtrim(Ny1values,2),' + ')+'.'
-
-  altchunk = 0
+  ;; Calculate memory footprint of a single Y-row across all other dimensions
+  bytes_per_Y_row = Double(Nx) * Ntuning * Nstokes * Nscans * typesize
   
-  ;; Select method
-  if method eq 'chunks' and chunksize le maxmemory then begin
-    usemethod = 'chunks'
-  endif else if method eq 'slow' then begin
-    usemethod = 'slow'
-  endif else begin
-    ;; OK, we hadn't specified the method keyword, so just try
-    ;; them in order.
-    if chunksize le maxmemory then begin
-      usemethod = 'chunks'
-    endif else begin
-      usemethod = 'slow'
-    endelse
-  endelse
+  ;; Determine how many Y-rows (Ny1) can fit into maxmemory
+  Ny1 = Long(floor(maxmemory / bytes_per_Y_row))
+  if Ny1 lt 1 then Ny1 = 1
+  if Ny1 gt Ny then Ny1 = Ny
   
-  ;; Should we do it in chunks or the slow and secure way?
-  if usemethod eq 'chunks' then begin
+  ;; Fallback to 1 row if 'slow' method is explicitly requested
+  if method eq 'slow' then Ny1 = 1
+  
+  ;; Calculate the total number of chunks needed
+  Nchunks = Long(ceil(Float(Ny) / Ny1))
+  
+  print, inam + ' : Transposing the cube in ' + strtrim(Nchunks, 2) + ' chunks.'
+
+  ;; 3. Main I/O Loop over Y-chunks
+  for ichunk = 0L, Nchunks - 1 do begin
     
-    if altchunk then begin
-
-      print, inam + ' : Transpose the cube in '+strtrim(Nchunks, 2) + ' chunks, ' $
-             + strjoin(strtrim(Ny1values,2),' + ')+'.'
-
-      ;; Adapted from Jaime's flipthecube program.
-      
-      ;; A chunk is a subcube with all the dimensions, except that the Y
-      ;; dimension is split into integer subsizes. Each chunk is
-      ;; transposed and written in a single operation. This is a fairly
-      ;; fast method.
-
-      
-      k = 0LL
-
-      for ichunk = 0L, Nchunks - 1 do begin
-
-        red_progressbar, ichunk, Nchunks, /predict $
-                         , 'Transpose the cube in chunks'
-
-        Ny1 = Ny1values[ichunk]
-        if ichunk eq 0 then begin
-          i0 = 0
-        endif else begin
-          i0 = Ny1values[ichunk-1]
-        endelse
-        i1 = i0 + Ny1-1
-        
-        case bitpix of
-          16  : subcube = intarr(Nx,Ny1,Ntuning,Nstokes,Nscans)
-          -32 : subcube = fltarr(Nx,Ny1,Ntuning,Nstokes,Nscans)
-          else : stop
-        endcase
-        
-        ;; Open for input
-        if keyword_set(openclose) || (ichunk eq 0) then begin
-          openr, ilun, filename, /get_lun, /swap_if_little_endian 
-          case bitpix of
-            16  : cube_in = assoc(ilun, intarr(Nx, Ny, /nozero), offset_in) 
-            -32 : cube_in = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)
-            else : stop
-          endcase
-        endif
-
-        ;; Read
-        for iscan = 0L, Nscans-1 do begin
-          for istokes = 0L, Nstokes-1 do begin
-            for ituning = 0L, Ntuning-1 do begin
-              ele = iscan * Nstokes * Ntuning * Ntimes $
-                    + istokes * Ntuning * Ntimes $
-                    + ituning * Ntimes $
-                    + ichunk
-              tmp = cube_in[ele]             
-              subcube[*,*,ituning,istokes,iscan] = tmp[*, i0:i1]
-            endfor              ; ituning
-          endfor                ; istokes
-        endfor                  ; iscan
-
-        ;; Close input
-        if keyword_set(openclose) then free_lun, ilun
-
-        ;; Transpose
-        subcube = transpose(subcube, permutation)
-
-        ;; Open for output
-        if keyword_set(openclose) || (ichunk eq 0) then begin
-          openu, flun, flipfile, /get_lun, /swap_if_little_endian 
-          case bitpix of
-            16  : cube_out = assoc(flun, intarr(Ntuning, Nscans, Nstokes, /nozero), offset_out)
-            -32 : cube_out = assoc(flun, fltarr(Ntuning, Nscans, Nstokes, /nozero), offset_out)
-            else : stop
-          endcase
-        endif
-        
-        ;; Write
-        for iy = 0L, Ny1 - 1 do for ix=0L, Nx-1 do begin
-          cube_out[k] = subcube[*,*,*,ix,iy]
-          k++
-        endfor
-
-        ;; Close output
-        if keyword_set(openclose) then free_lun, flun
-        
-      endfor                    ; ichunk
-      
-    endif else begin    
-      print, inam + ' : Transpose the cube in '+strtrim(Ntimes, 2)+' chunks.'
-
-      ;; Adapted from Jaime's flipthecube program.
-      
-      ;; A chunk is a subcube with all the dimensions, except that the Y
-      ;; dimension is split into integer subsizes. Each chunk is
-      ;; transposed and written in a single operation. This is a fairly
-      ;; fast method.
-
-      ;; Possible problem: If Ny is a prime number, no integer subsizes
-      ;; are possible as long as we require them to be same size. But we
-      ;; could go for as large chunks as possible and then a smaller
-      ;; final chunk. ToDo!
-      
-      k = 0LL
-
-;      openw, llun, /get_lun, 'flip.log'
-      
-      for itime = 0L, Ntimes - 1 do begin
-
-        red_progressbar, itime, Ntimes, /predict $
-                         , 'Transpose the cube in chunks'
-
-        case bitpix of
-          16  : subcube = intarr(Nx,Ny1,Ntuning,Nstokes,Nscans)
-          -32 : subcube = fltarr(Nx,Ny1,Ntuning,Nstokes,Nscans)
-          else : stop
-        endcase
-        
-        ;; Open for input
-        if keyword_set(openclose) || (itime eq 0) then begin
-          openr, ilun, filename, /get_lun, /swap_if_little_endian 
-          case bitpix of
-            16  : cube_in = assoc(ilun, intarr(Nx, Ny1, /nozero), offset_in) 
-            -32 : cube_in = assoc(ilun, fltarr(Nx, Ny1, /nozero), offset_in)
-            else : stop
-          endcase
-        endif
-
-        ;; Read
-        for iscan = 0L, Nscans-1 do begin
-          for istokes = 0L, Nstokes-1 do begin
-            for ituning = 0L, Ntuning-1 do begin
-              ele = iscan * Nstokes * Ntuning * Ntimes $
-                    + istokes * Ntuning * Ntimes $
-                    + ituning * Ntimes $
-                    + itime
-;              printf, llun, ele
-              subcube[*,*,ituning,istokes,iscan] = cube_in[ele]             
-            endfor              ; ituning
-          endfor                ; istokes
-        endfor                  ; iscan
-
-        ;; Close input
-        if keyword_set(openclose) then free_lun, ilun
-
-        ;; Transpose
-        subcube = transpose(subcube, permutation)
-
-        ;; Open for output
-        if keyword_set(openclose) || (itime eq 0) then begin
-          openu, flun, flipfile, /get_lun, /swap_if_little_endian 
-          case bitpix of
-            16  : cube_out = assoc(flun, intarr(Ntuning, Nscans, Nstokes, /nozero), offset_out)
-            -32 : cube_out = assoc(flun, fltarr(Ntuning, Nscans, Nstokes, /nozero), offset_out)
-            else : stop
-          endcase
-        endif
-        
-        ;; Write
-        for iy = 0L, Ny1 - 1 do for ix=0L, Nx-1 do begin
-          cube_out[k] = subcube[*,*,*,ix,iy]
-          k++
-        endfor
-
-        ;; Close output
-        if keyword_set(openclose) then free_lun, flun
-        
-      endfor                    ; itime 
-    endelse
+;    red_progressbar, ichunk, Nchunks, /predict, 'Transpose the cube in chunks'
     
-    ;; Close the files
-    if ~keyword_set(openclose) then free_lun, ilun, flun      
-
-;    free_lun, llun
+    ; Define the Y-index boundaries for the current chunk (handles the final remainder chunk)
+    i0 = ichunk * Ny1
+    i1 = (i0 + Ny1 - 1) < (Ny - 1)
+    current_Ny1 = i1 - i0 + 1
     
-  endif else begin
-
-    print, inam+' : Use the slow but memory-conservative "X/Y/tuning" method.'
-
-    ;; If we get to this point, we either want to or have to do it the
-    ;; slow way.
-    
+    ; Allocate subcube for this specific chunk
     case bitpix of
-      16  : subcube = intarr(Nx, Ny, Ntuning)
-      -32 : subcube = fltarr(Nx, Ny, Ntuning)
+      16  : subcube = intarr(Nx, current_Ny1, Ntuning, Nstokes, Nscans, /nozero)
+      -32 : subcube = fltarr(Nx, current_Ny1, Ntuning, Nstokes, Nscans, /nozero)
       else : stop
     endcase
     
-    ;; Loop over subcubes
-    iprogress = 0
-    for iscan = 0L, Nscans-1 do begin
-      for istokes = 0L, Nstokes-1 do begin
+    ; Open input file and map it using ASSOC for fast 2D frame access
+    openr, ilun, filename, /get_lun, /swap_if_little_endian 
+    case bitpix of
+      16  : cube_in = assoc(ilun, intarr(Nx, Ny, /nozero), offset_in) 
+      -32 : cube_in = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)
+      else : stop
+    endcase
+    
+    ;; Read data slice by slice. Original structure is [Nx, Ny,
+    ;; Ntuning, Nstokes, Nscans]. Extract the [Nx, i0:i1] region for
+    ;; each combination of the outer dimensions
+    for iscan = 0L, Nscans - 1 do begin
 
-        ;; Input
-        
-        if keyword_set(openclose) || (iprogress eq 0) then begin
-          openr, ilun, filename, /get_lun, /swap_if_little_endian 
-          case bitpix of
-            16  : cube_in = assoc(ilun, intarr(Nx, Ny, /nozero), offset_in) 
-            -32 : cube_in = assoc(ilun, fltarr(Nx, Ny, /nozero), offset_in)
-            else : stop
-          endcase
-        endif
-        
-;      red_progressbar, iprogress, Nstokes*Nscans, /predict $
-;      , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) + $
-;      ',' + strtrim(iscan, 2) + ' - read'
-        for ituning = 0, Ntuning-1 do begin
-          ;; Read a subcube frame by frame
-          iframe = ituning + Ntuning*(istokes + Nstokes*iscan)
-          subcube[0, 0, ituning] = cube_in[iframe]
+      red_progressbar, /add_loopindex, /predict $
+                       , ichunk, Nchunks, 'Chunk' $
+                       , iscan, Nscans, 'Scan' 
+                       
+      for istokes = 0L, Nstokes - 1 do begin
+        for ituning = 0L, Ntuning - 1 do begin
+          ;; Retrieve the full 2D frame from disk
+          tmp_frame = cube_in[ituning + Ntuning * (istokes + Nstokes * iscan)]
+          ;; Extract only the Y-rows belonging to the current chunk
+          subcube[*, *, ituning, istokes, iscan] = tmp_frame[*, i0:i1]
         endfor                  ; ituning
-
-        if keyword_set(openclose) then free_lun, ilun
-
-        ;; Output
-        
-        if keyword_set(openclose) || (iprogress eq 0) then begin
-          openu, flun, flipfile, /get_lun, /swap_if_little_endian 
-          case bitpix of
-            16  : cube_out = assoc(flun, intarr(Ntuning, /nozero), offset_out)
-            -32 : cube_out = assoc(flun, fltarr(Ntuning, /nozero), offset_out)
-            else : stop
-          endcase
-        endif
-
-;      red_progressbar, iprogress, Nstokes*Nscans, /predict $
-;      , 'Flip the cube, istokes,iscan=' + strtrim(istokes, 2) $
-;      + ',' + strtrim(iscan, 2) + ' - write'
-        for ix = 0L, Nx-1 do begin
-
-          red_progressbar, iprogress, Nstokes*Nscans*Nx, /predict $
-                           , 'Write the flipped cube, istokes,iscan,ix=' + strtrim(istokes, 2) $
-                           + ',' + strtrim(iscan, 2) + ',' + strtrim(ix, 2) 
-
-          for iy = 0L, Ny-1 do begin
-            ;; Write the subcube spectrum by spectrum
-            ispectrum = iscan + Nscans*(istokes + Nstokes*(ix + Nx*iy))
-            cube_out[ispectrum] = reform(subcube[ix, iy, *])
-          endfor                ; iy
-
-          iprogress++
-          
-        endfor                  ; ix
-
-        if keyword_set(openclose) then free_lun, flun
-        
       endfor                    ; istokes
     endfor                      ; iscan
+    free_lun, ilun              ; Close input file immediately to free system resources
+    
+    ;; Transpose the entire chunk in memory to order: [Ntuning,
+    ;; Nscans, Nstokes, Nx, Ny1]
+    subcube = transpose(subcube, permutation)
+    
+    ;; Open output file and write the entire chunk sequentially 
+    openu, flun, flipfile, /get_lun, /swap_if_little_endian
+    
+    ;; Compute the exact byte offset for this chunk in the output
+    ;; file. In the flipped file, each step in the Y-dimension (i0)
+    ;; shifts the position by Ntuning * Nscans * Nstokes * Nx
+    ;; elements.
+    chunk_byte_offset = offset_out + (Long64(i0) * Nx * Ntuning * Nstokes * Nscans * typesize)
+    
+    point_lun, flun, chunk_byte_offset
+    writeu, flun, subcube
+    free_lun, flun
 
-    ;; Close the files
-    if ~keyword_set(openclose) then free_lun, ilun, flun      
+  endfor ; ichunk
+;  red_progressbar, Nchunks, Nchunks, 'Chunks';, Nscans, Nscans, 'Scans'
+  red_progressbar, /done, message_done = 'Chunks'
 
-  endelse
+
+  print, inam + ' : Data transposition completed successfully.'
+  ;; =========================================================================
 
   if ~keyword_set(no_metadata) then begin
   
@@ -526,12 +321,13 @@ pro red_fitscube_flip, filename $
     ;; flipped version.
     var_keys = red_fits_var_keys(him, count = Nkeys)
     for ikey = 0, Nkeys-1 do begin
-      red_progressbar, ikey, Nkeys, /predict $
-                       , 'Add variable keywords'
+      red_progressbar, ikey, Nkeys, 'Add variable keywords'
       red_fitscube_addvarkeyword, flipfile, var_keys[ikey] $
                                   ,  old_filename = filename, /flipped
-    endfor                      ; ikey ;
-    
+    endfor                      ; ikey
+;    red_progressbar, Nkeys, Nkeys, 'Add variable keywords'
+    red_progressbar, /done
+ 
     ;; Copy WCS extension
     print, inam+' : Copy the WCS extension...'
     tic
@@ -552,6 +348,19 @@ pro red_fitscube_flip, filename $
       print, inam + ' : No cavity maps to copy.'
     endelse
 
-  endif
+  endif else begin
+
+    red_message, 'We should really delete some more keywords from the header before initializing the file.'
+    
+  endelse
   
+end
+
+;a = chromisred(/no, /dev)
+
+filename = 'cubes_nb/nb_3950_2026-08-25T09:23:49_09:23:49=1-4_corrected_im.fits'
+filename = 'cubes_nb_mats/mats_nb_cube.fits'
+filename = 'cubes_nb_mats/nb_3950_2026-08-25T08:45:10_08:45:10=0-46_08:59:22=0-12_09:06:15=0-15_09:16:38=0-16_09:23:49=0-160_09:57:59=0-105_corrected_im.fits'
+red_fitscube_flip, filename, /no_meta, /over
+
 end
