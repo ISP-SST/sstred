@@ -16,11 +16,6 @@
 ; 
 ; :Params:
 ; 
-;    done : in, optional, type=boolean
-; 
-;       Call with /done and (optionally) message_done after the loop
-;       is finished to print the final 100% completion status.
-; 
 ;    i_inner : in, optional, type="scalar number"
 ;
 ;       The current inner loop index (0 to N_inner-1).
@@ -28,10 +23,6 @@
 ;    i_outer : in, type="scalar number"
 ; 
 ;       The current (outer) loop index (0 to N_outer-1).
-;
-;    message_done : in, optional, type=string
-;
-;       Message to show when using the /done option.
 ;
 ;    message_inner : in, optional, type=string, default="''"
 ;
@@ -52,13 +43,26 @@
 ;
 ; :Keywords:
 ; 
+;    add_loopindex : in, optional, type=boolean
+; 
+;       Add the loop index value to the progress bar printout.
+; 
+;    barlength : in, optional, type=integer, default=20
+;
+;       The length of the status bar in number of characters.
+;
+;    done : in, optional, type=boolean
+; 
+;       Call with /done and (optionally) message_done after the loop
+;       is finished to print the final 100% completion status.
+; 
+;    message_done : in, optional, type=string
+; 
+;       A string to go with the /done option.
+; 
 ;    nobar : in, optional, type=boolean
 ;
 ;       If set, do not show a status bar.
-;
-;    barlength : in, optional, type=integer, default=20.
-;
-;       The length of the status bar in number of characters.
 ;
 ;    predict : in, optional, type=boolean
 ;
