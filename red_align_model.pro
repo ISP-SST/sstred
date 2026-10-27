@@ -115,7 +115,12 @@ function red_align_model, filename
 
   if max(keys eq 'ALIGN_MAP') gt 0 then return, 'projective'   ; Projective transform
   if max(keys eq 'ALIGN_MAP_X') gt 0 then return, 'polywarp'   ; Polywarp tranform
-  return, ''                                                   ; No alignment
+
+  ;; If there is no 'ALIGN_MAP' or 'ALIGN_MAP_X' in the MOMFBD PRPARA,
+  ;; then it's most likely an old file, from before the polywarp
+  ;; method was implemented.
+  
+  return, 'projective'          ; Default for old files
   
 end
 
