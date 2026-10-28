@@ -275,6 +275,9 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
     undefine, icnt
     undefine, last_i_outer
     undefine, last_i_inner
+    undefine, last_N_outer
+    undefine, last_N_inner
+    undefine, last_message_outer
     print
   endif
 
