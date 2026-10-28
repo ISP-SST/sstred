@@ -862,6 +862,8 @@ pro red::prepmomfbd, cams = cams $
 
     endfor                      ; iscan 
 
+    red_progressbar, /done
+    
     if keyword_set(no_narrowband) then continue ; Don't add NB objects
     
     for icam=0L, Ncams-1 do begin
@@ -1114,6 +1116,8 @@ pro red::prepmomfbd, cams = cams $
           endfor                ; ipref
           
         endfor                  ; iscan
+
+        red_progressbar, /done
         
       endif                     ; NB camera?
       
@@ -1151,6 +1155,7 @@ pro red::prepmomfbd, cams = cams $
 
   endfor                        ; icfg
 
+  red_progressbar, /done, message_done = 'Write config files'
 
 ;  ;; Make header-only fits files to be read post-momfbd.
 ;  if ~keyword_set(no_fitsheaders) && ~ismos[idir] then $
