@@ -46,6 +46,14 @@
 ; 
 ;        The data in the summed flat file(s) appropriate to the state(s).
 ; 
+;    cflatname : out, optional, type=strarr 
+; 
+;       The name(c) of the cavityfree flat file(s) appropriate to the state(s).
+; 
+;    cflatdata : out, optional, type=array 
+; 
+;        The data in the cavityfree flat file(s) appropriate to the state(s).
+; 
 ;    gainname : out, optional, type=strarr 
 ; 
 ;       The name(s) of the gain file(s) appropriate to the state(s).
@@ -54,6 +62,14 @@
 ; 
 ;        The data in the gain file(s) appropriate to the state(s).
 ; 
+;    sgainname : out, optional, type=strarr 
+; 
+;       The name(s) of the scan gain file(s) appropriate to the state(s).
+; 
+;    sgaindata : out, optional, type=array 
+; 
+;        The data in the scan gain file(s) appropriate to the state(s).
+; 
 ;    pinhname : out, optional, type=strarr 
 ; 
 ;        The name(s) of the pinhole file(s) appropriate to the state(s).
@@ -61,6 +77,22 @@
 ;    pinhdata : out, optional, type=array
 ;   
 ;        The data in the pinhole file(s) appropriate to the state(s).  
+;   
+;    polcname : out, optional, type=strarr 
+; 
+;        The name(s) of the polcal file(s) appropriate to the prefilter(s).
+; 
+;    polcdata : out, optional, type=array
+;   
+;        The data in the polcal file(s) appropriate to the prefilter(s).  
+; 
+;    polsname : out, optional, type=strarr 
+; 
+;        The name(s) of the polcal sum file(s) appropriate to the state(s).
+; 
+;    polsdata : out, optional, type=array
+;   
+;        The data in the polcal sum file(s) appropriate to the state(s).  
 ; 
 ;    status : out, optional, type=integer
 ; 
@@ -116,14 +148,14 @@ pro chromis::get_calib, states $
                         , clcgainstatus = clcgainstatus, clcgainname = clcgainname, clcgaindata = clcgaindata $
                         , timestamp = timestamp 
   
-
+  
   Nstates = n_elements(states)
-
+  
   if Nstates eq 0 then begin
     status = -1
     return
   endif
-
+  
   if arg_present(darkname)  or arg_present(darkdata) then $
      darkname = self -> filenames('dark'   , states, no_fits = no_fits, timestamp = timestamp)
   if arg_present(flatname)  or arg_present(flatdata) or $
@@ -147,7 +179,7 @@ pro chromis::get_calib, states $
      cgainname = self -> filenames('cavityfree_gain', states, no_fits = no_fits)
   if arg_present(sgainname) or arg_present(sgaindata) then $
      sgainname = self -> filenames('scangain', states, no_fits = no_fits)
-
+  
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
   ;; single array.
@@ -158,53 +190,58 @@ pro chromis::get_calib, states $
 ;  if arg_present(flatdata)  then flatdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
 ;  if arg_present(gaindata)  then gaindata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
 ;  if arg_present(pinhdata)  then pinhdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(polcdata)  then polcdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(polsdata)  then polsdata  = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
 ;  if arg_present(sflatdata) then sflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(cflatdata) then cflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
+;  if arg_present(cgaindata) then cgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates)   
+;  if arg_present(sgaindata) then sgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates)   
   
-
+  
   status = 0
-
+  
   ;; Darks
   if arg_present(darkdata) then begin
-    if n_elements(darkname) ne 0  then begin
-
+    if n_elements(darkname) ne 0 then begin
+      
       for istate = 0, Nstates-1 do begin        
         if ~file_test(darkname[istate]) then begin
           ;; Try summing darks for this camera
           self -> sumdark, /check, /sum_in_rdx $
-             , cams = states[istate].camera
+                           , cams = states[istate].camera
         endif
       endfor                    ; istate
-
+      
       darkdata = red_readdata_multiframe(darkname, status = darkstatus, /silent)
       status = min([status, darkstatus])
-
+      
     endif else status = -1
   endif                         ; Darks
   
-
+  
   ;; Flats
   if arg_present(flatdata) then begin
     if n_elements(flatname) ne 0 then begin
-
+      
       for istate = 0, Nstates-1 do begin
         if ~file_test(flatname[istate]) then begin
           ;; Try summing flats for this state
           self -> sumflat, /check, /sum_in_rdx $
-             , cams = states[istate].camera $
-             , ustat = states[istate].fullstate
+                           , cams = states[istate].camera $
+                           , ustat = states[istate].fullstate
         endif 
       endfor                    ; istate
-
+      
       flatdata = red_readdata_multiframe(flatname, status = flatstatus, /silent)
       status = min([status, flatstatus])
-
+      
     endif else status = -1
   endif                         ; Flats
-
+  
   ;; Summed flats
   if arg_present(sflatdata) then begin
     if n_elements(sflatname) ne 0 then begin
-
+      
       sflatdata = red_readdata_multiframe(sflatname, status = sflatstatus, /silent)
       status = min([status, sflatstatus])
       
@@ -265,28 +302,53 @@ pro chromis::get_calib, states $
       endelse
     endif else status = -1     
   endif                         ; Cavityfree LC gains         
-
+  
+  
+  ;; Scan gains    
+  if arg_present(sgaindata) then begin    
+    
+    if n_elements(sgainname) ne 0 then begin
+      
+      sgaindata = red_readdata_multiframe(sgainname, status = sgainstatus, /silent)
+      status = min([status, sgainstatus])
+      
+    endif else status = -1
+  endif                    
+  
+  
   
   ;; Pinholes
   if arg_present(pinhdata) then begin
-
+    
     if n_elements(pinhname) ne 0 then begin
       
       pinhdata = red_readdata_multiframe(pinhname, status = pinhstatus, /silent)
       status = min([status, pinhstatus])
-
+      
     endif else status = -1
   endif                         ; Pinholes
-
+  
+  ;; Polcal
+  if arg_present(polcdata) then begin  
+    
+    if n_elements(polcname) ne 0 then begin
+      
+      polcdata = red_readdata(polcname, status = polcstatus, /silent)
+      status = min([status, polcstatus])
+      
+    endif else status = -1
+  endif                         ; Polcal
+  
+  
   ;; Reduce dimensions if possible
   if Nstates eq 1 then begin
-
+    
     if arg_present(darkname)  then darkname = darkname[0]
     if arg_present(flatname)  then flatname = flatname[0]
     if arg_present(gainname)  then gainname = gainname[0]
     if arg_present(pinhname)  then pinhname = pinhname[0]
     if arg_present(sflatname) then sflatname = sflatname[0]
-
+    
     if arg_present(darkdata)  then darkdata = darkdata[*, *, 0]
     if arg_present(flatdata)  then flatdata = flatdata[*, *, 0]
     if arg_present(gaindata)  then gaindata = gaindata[*, *, 0]
@@ -294,5 +356,5 @@ pro chromis::get_calib, states $
     if arg_present(sflatdata) then sflatdata = sflatdata[*, *, 0]
     
   endif
-
+  
 end
