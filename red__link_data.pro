@@ -265,9 +265,10 @@ pro red::link_data, all_data = all_data $
           
           printf, lun, 'ln -sf '+ files[ifile] + ' ' + namout
           
-          red_progressbar, ifile, Nfiles, inam+' : creating linker for '+cam
+          red_progressbar, ifile, Nfiles, 'Creating linker for '+cam
           
         endfor                  ; ifile
+        red_progressbar, /done
         
         free_lun, lun
         

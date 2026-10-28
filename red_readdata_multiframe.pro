@@ -109,6 +109,8 @@ function red_readdata_multiframe, files $
       if thisstatus eq 0 then date_beg[iframe] = these_date_beg
       
     endfor                      ; ifile
+
+    red_progressbar, / done
     
     return, datacube
 
@@ -165,7 +167,9 @@ function red_readdata_multiframe, files $
       endfor                    ; iframe
       
     endfor                      ; ifile
-    
+
+    red_progressbar, / done
+
     return, datacube
 
   endelse

@@ -612,6 +612,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
     endfor                      ; istate
 
+    red_progressbar, /done, message_done = 'Loop over states'
+    
     upref = pref[uniq(pref, sort(pref))] 
 
 ;    ;; Did we specify prefilter(s)?
@@ -969,6 +971,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       endelse
       
     endfor                      ; ipref
+
+    red_progressbar, /done, message_done = 'Process prefilters'
 
   endfor                        ; icam  
   
