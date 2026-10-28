@@ -377,6 +377,8 @@ pro chromis::extractstates_nondb, strings, states $
     
   endfor                        ; ifile
 
+  red_progressbar, /done, message_done = 'Extract state info'
+  
 end
 
 cd, '/scratch/mats/test_chromisnames/CHROMIS/'

@@ -362,6 +362,8 @@ pro crisp2::extractstates_nondb, strings, states $
     rdx_cache, strings[ifile], { state:states[ifile] }
 
   endfor                        ; ifile
-  
+
+  red_progressbar, /done, message_done = 'Extract state info'
+
 end                             
 

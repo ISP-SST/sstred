@@ -185,7 +185,7 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
             
 
             if(file_test(fn)) then begin
-              print, inam + " : reading polcal flat-field file and making gain -> "+fn
+;              print, inam + " : reading polcal flat-field file and making gain -> "+fn
               ff = red_readdata(fn)
               gains[*,*,ilc] = red_flat2gain(ff, bad=1.0, smooth=3.0, min=0.085, max=5.0)
               if((gains[0,0,ilc] eq 0) && $
@@ -372,7 +372,8 @@ pro red::polcalcube, cam = cam, pref = pref, no_descatter = no_descatter, nthrea
           endfor                ; ilc
         endfor                  ; iqw
       endfor                    ; ilp
-
+      red_progressbar, /done, message_done = cams[icam]
+      
       ;; Save data
       outdir = self.out_dir + '/polcal_cubes/'
       file_mkdir, outdir

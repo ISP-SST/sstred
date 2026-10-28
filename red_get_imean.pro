@@ -141,7 +141,8 @@ function red_get_imean, wav, dat, pp, npar, iter $
       wl[ii,ss,*,*] = wav[ii] - pp[1,*,*]
     endfor
   endfor
-
+  red_progressbar, /done
+  
   wl = reform(temporary(wl), dim[0]*dim[1]*dim[2]*dim[3])
 
   ;; Same with the intensity
@@ -176,6 +177,7 @@ function red_get_imean, wav, dat, pp, npar, iter $
       imean[ii,ss] = median(reform(fl[ii,ss,*,*])) 
     endfor
   endfor
+  red_progressbar, /done
   
   imean = total(imean, 2)/Nlc
   
