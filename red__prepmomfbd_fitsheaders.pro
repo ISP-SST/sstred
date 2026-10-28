@@ -458,6 +458,8 @@ pro red::prepmomfbd_fitsheaders, dirs = dirs $
         endfor                  ; iobj
         
       endfor                    ; icfg
+
+      red_progressbar, /done
       
     endfor                      ; ipref
 
