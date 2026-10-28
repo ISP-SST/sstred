@@ -545,7 +545,8 @@ pro red::fitgains, all = all $                             ;
       endelse
       
       for iwav = 0L,Nwav-1 do begin
-        red_progressbar, iprogress,  Nprogress, 'Recreating cavity-error-free flats'
+        red_progressbar, ilc,  Nlc, 'Recreating cavity-error-free flats, LC'+strtrim(ilc, 2) $
+                         , iwav, Nwav, 'Tuning'
         iprogress++
         mratio[iwav,ilc,*,*] *= reform(tmp_par[0,*,*]) * $    
                                 reform(red_get_linearcomp(wav[iwav], tmp_par, npar_one+1 $
@@ -553,6 +554,7 @@ pro red::fitgains, all = all $                             ;
       endfor                    ; iwav
       
     endfor                      ; ilc
+    red_progressbar, /done, message_done = 'Recreating cavity-error-free flats'
     ;;for ii = 0L, nwav - 1 do ratio[ii,*,*] *= reform(res[0,*,*]) * $    
     ;; reform(red_get_linearcomp(wav[ii], res, npar_t, reflec = fit_reflectivity))    
 
