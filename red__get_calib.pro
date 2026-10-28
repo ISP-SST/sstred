@@ -143,9 +143,9 @@ pro red::get_calib, states $
                     , sgainstatus = sgainstatus, sgainname = sgainname, sgaindata = sgaindata $
                     , clcgainstatus = clcgainstatus, clcgainname = clcgainname, clcgaindata = clcgaindata $
                     , timestamp = timestamp 
-
+  
   Nstates = n_elements(states)
-
+  
   if Nstates eq 0 then begin
     status = -1
     return
@@ -174,7 +174,7 @@ pro red::get_calib, states $
      cgainname = self -> filenames('cavityfree_gain', states, no_fits = no_fits)
   if arg_present(sgainname) or arg_present(sgaindata) then $
      sgainname = self -> filenames('scangain', states, no_fits = no_fits)
-
+  
   ;; Assume this is all for the same camera type, at least for the
   ;; actual data. Otherwise we cannot return the actual data in a
   ;; single array.
@@ -191,14 +191,14 @@ pro red::get_calib, states $
 ;  if arg_present(cflatdata) then cflatdata = fltarr(caminfo.xsize, caminfo.ysize, Nstates) 
 ;  if arg_present(cgaindata) then cgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates)   
 ;  if arg_present(sgaindata) then sgaindata = fltarr(caminfo.xsize, caminfo.ysize, Nstates)   
-
-
+  
+  
   status = 0
-
-  ;; Darks    
-  if arg_present(darkdata) then begin    
-    if n_elements(darkname) ne 0 then begin      
-
+  
+  ;; Darks
+  if arg_present(darkdata) then begin
+    if n_elements(darkname) ne 0 then begin
+      
       for istate = 0, Nstates-1 do begin        
         if ~file_test(darkname[istate]) then begin
           ;; Try summing darks for this camera
@@ -206,18 +206,17 @@ pro red::get_calib, states $
                            , cams = states[istate].camera
         endif
       endfor                    ; istate
-
+      
       darkdata = red_readdata_multiframe(darkname, status = darkstatus, /silent)
       status = min([status, darkstatus])
-
+      
     endif else status = -1
   endif                         ; Darks
-
   
-  ;; Flats    
-  if arg_present(flatdata) then begin    
+  ;; Flats
+  if arg_present(flatdata) then begin
     if n_elements(flatname) ne 0 then begin
-
+      
       for istate = 0, Nstates-1 do begin
         if ~file_test(flatname[istate]) then begin
           ;; Try summing flats for this state
@@ -226,17 +225,17 @@ pro red::get_calib, states $
                            , ustat = states[istate].fullstate
         endif 
       endfor                    ; istate
-
+      
       flatdata = red_readdata_multiframe(flatname, status = flatstatus, /silent)
       status = min([status, flatstatus])
-
-    endif else status = -1        
+      
+    endif else status = -1
   endif                         ; Flats
   
-  ;; Summed flats    
+  ;; Summed flats
   if arg_present(sflatdata) then begin
     if n_elements(sflatname) ne 0 then begin
-
+      
       sflatdata = red_readdata_multiframe(sflatname, status = sflatstatus, /silent)
       status = min([status, sflatstatus])
       
@@ -253,10 +252,10 @@ pro red::get_calib, states $
     endif else status = -1        
   endif                         ; Cavityfree flats
   
-  ;; Gains    
-  if arg_present(gaindata) then begin    
-    if n_elements(gainname) ne 0 then begin      
-
+  ;; Gains
+  if arg_present(gaindata) then begin
+    if  n_elements(gainname) ne 0 then begin
+      
       for istate = 0, Nstates-1 do begin
         if ~file_test(gainname[istate]) then begin
           ;; Try summing flats for this state and then making gains
@@ -268,23 +267,23 @@ pro red::get_calib, states $
           self -> makegains, smooth=3.0, files = flatname[istate]
         endif 
       endfor                    ; istate
-
+      
       gaindata = red_readdata_multiframe(gainname, status = gainstatus, /silent)
       status = min([status, gainstatus])
       
     endif else status = -1
   endif                         ; Gains
-
+  
   ;; Cavityfree gains    
   if arg_present(cgaindata) then begin
     if n_elements(cgainname) ne 0 and file_test(cgainname) then begin
       
       cgaindata = red_readdata_multiframe(cgainname, status = cgainstatus, /silent)
       status = min([status, cgainstatus])
-
+      
     endif else status = -1
   endif                         ; Cavityfree gains             
-
+  
   ;; Cavityfree_lc gains    
   if arg_present(clcgaindata) then begin
     if n_elements(clcgainname) ne 0 then begin
@@ -297,53 +296,49 @@ pro red::get_calib, states $
       endelse
     endif else status = -1     
   endif                         ; Cavityfree LC gains         
-
   
   ;; Scan gains    
   if arg_present(sgaindata) then begin    
-
+    
     if n_elements(sgainname) ne 0 then begin
       
       sgaindata = red_readdata_multiframe(sgainname, status = sgainstatus, /silent)
       status = min([status, sgainstatus])
-
+      
     endif else status = -1
   endif                    
-
-    
   
   ;; Pinholes
-  if arg_present(pinhdata) then begin  
-
+  if arg_present(pinhdata) then begin
+    
     if n_elements(pinhname) ne 0 then begin
       
       pinhdata = red_readdata_multiframe(pinhname, status = pinhstatus, /silent)
       status = min([status, pinhstatus])
-
+      
     endif else status = -1
   endif                         ; Pinholes
-
+  
   ;; Polcal
   if arg_present(polcdata) then begin  
-
+    
     if n_elements(polcname) ne 0 then begin
       
       polcdata = red_readdata(polcname, status = polcstatus, /silent)
       status = min([status, polcstatus])
-
+      
     endif else status = -1
   endif                         ; Polcal
-
   
   ;; Reduce dimensions if possible
   if Nstates eq 1 then begin
-
+    
     if arg_present(darkname)  then darkname = darkname[0]
     if arg_present(flatname)  then flatname = flatname[0]
     if arg_present(gainname)  then gainname = gainname[0]
     if arg_present(pinhname)  then pinhname = pinhname[0]
     if arg_present(sflatname) then sflatname = sflatname[0]
-
+    
     if arg_present(darkdata)  then darkdata = darkdata[*, *, 0]
     if arg_present(flatdata)  then flatdata = flatdata[*, *, 0]
     if arg_present(gaindata)  then gaindata = gaindata[*, *, 0]
@@ -351,7 +346,7 @@ pro red::get_calib, states $
     if arg_present(sflatdata) then sflatdata = sflatdata[*, *, 0]
     
   endif
-
+  
 end
 
 a = crispred(/dev, /no)
