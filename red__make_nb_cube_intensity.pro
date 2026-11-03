@@ -275,11 +275,15 @@ pro red::make_nb_cube_intensity, wcfile $
       
       for icam = 0, Nnbcams-1 do begin
 
-        red_progressbar, iprogress, Nprogress $
-                         , /predict $
-                         , 'Processing scan=' + strtrim(uscans[iscan], 2) $
-                         + ' state=' + state $
-                         + ' ' + nbcameras[icam]
+;        red_progressbar, iprogress, Nprogress $
+;                         , /predict $
+;                         , 'Processing scan=' + strtrim(uscans[iscan], 2) $
+;                         + ' state=' + state $
+;                         + ' ' + nbcameras[icam]
+
+        red_progressbar, /predict $
+                         , iscan, Nscans, 'Scan ' + strtrim(uscans[iscan], 2) $
+                         , ituning, Ntunings, nbcameras[icam] + ' ' + state
 
         these_nbindx = where(scan_nbstates.fpi_state eq ufpi_states[ituning] $
                              and scan_nbstates.camera eq nbcameras[icam]  $
@@ -469,10 +473,12 @@ pro red::make_nb_cube_intensity, wcfile $
     cshift_mean[1,*,iscan] /= nSummed[*,iscan]
     
   endfor                        ; iscan
+
+  red_progressbar, /done, message_done = 'Processing scans'
   
-  ;; Close fits file.
-  lun = (size(fileassoc,/struc)).file_lun
-  free_lun, lun
+;  ;; Close fits file.
+;  lun = (size(fileassoc,/struc)).file_lun
+;  free_lun, lun
   
 end
 

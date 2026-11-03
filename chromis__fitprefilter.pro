@@ -945,6 +945,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       endif else begin
         plotfile = self.out_dir + '/prefilter_fits/chromis_'+upref[ipref]+'_prefilter.pdf'
       endelse
+      print
       cgcontrol, output = plotfile
 
       if polarimetric_data then begin

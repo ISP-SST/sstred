@@ -988,6 +988,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
                   , title = ['fitted prefilter'], line = lines[2], color = colors[2], length = 0.05
 
         plotfile = self.out_dir + '/prefilter_fits/'+camNB+'_'+upref[ipref]+'_prefilter.pdf'
+        print
         cgcontrol, output = plotfile
 
         file_copy, /overwrite, plotfile $
@@ -1002,6 +1003,8 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       
     endfor                      ; ipref
     
+    red_progressbar, /done, message_done = 'Process prefilters'
+
   endfor                        ; icam
 
 end

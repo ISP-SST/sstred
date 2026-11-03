@@ -156,6 +156,8 @@ pro red::fitscube_missing, filename $
       endfor                    ; ituning
     endfor                      ; istokes
   endfor                        ; iscan
+
+  red_progressbar, /done, message_done = 'Identifying pixels with no signal'
   
   ;; Add info about this step
   case strlowcase(set_missing_to) of
