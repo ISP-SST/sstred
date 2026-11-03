@@ -62,6 +62,7 @@ function red_readdata_multiframe, files $
                                   , date_beg = date_beg $
                                   , framenums = framenums $
                                   , status = status $
+                                  , silent = silent $
                                   , _ref_extra = extra
 
   Nfiles = n_elements(files)
@@ -91,12 +92,13 @@ function red_readdata_multiframe, files $
     
     for ifile =  0, Nfiles-1 do begin
       
-      red_progressbar, ifile, Nfiles, 'Reading data frames from multiple files'
+      if ~keyword_set(silent) then red_progressbar, ifile, Nfiles, 'Reading data frames from multiple files'
       
       if ifile eq 0 then iframe = 0 else iframe = total(framecnt[0:ifile-1])
 
       datacube[0, 0, iframe] = red_readdata(files[ifile] $
                                             , date_beg = these_date_beg $
+                                            , silent = silent  $
                                             , _strict_extra = extra $  
                                             , status = thisstatus)        
 
@@ -110,7 +112,7 @@ function red_readdata_multiframe, files $
       
     endfor                      ; ifile
 
-    red_progressbar, / done
+    if ~keyword_set(silent) then red_progressbar, / done
     
     return, datacube
 
@@ -127,7 +129,7 @@ function red_readdata_multiframe, files $
 
     for ifile =  0, Nfiles-1 do begin
       
-      red_progressbar, ifile, Nfiles, 'Reading data frames from multiple files'
+      if ~keyword_set(silent) then red_progressbar, ifile, Nfiles, 'Reading data frames from multiple files'
 
       these_framenums = framenum[ifile] + indgen(framecnt[ifile])*frameinc[ifile]
 
@@ -144,6 +146,7 @@ function red_readdata_multiframe, files $
       ;; There is at least one match, so we need to read this file
       data = red_readdata(files[ifile] $
                           , date_beg = these_date_beg $
+                          , silent = silent $
                           , _strict_extra = extra $  
                           , status = thisstatus)     
 
@@ -168,7 +171,7 @@ function red_readdata_multiframe, files $
       
     endfor                      ; ifile
 
-    red_progressbar, / done
+    if ~keyword_set(silent) then red_progressbar, / done
 
     return, datacube
 
