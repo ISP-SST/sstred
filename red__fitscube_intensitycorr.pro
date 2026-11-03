@@ -510,6 +510,7 @@ pro red::fitscube_intensitycorr, filename $
       endfor                    ; ituning
     endfor                      ; istokes
   endfor                        ; iscan
+  red_progressbar, /done
 
   ;; Add info about this step
   self -> headerinfo_addstep, hdr $

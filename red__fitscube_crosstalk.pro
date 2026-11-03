@@ -256,6 +256,8 @@ pro red::fitscube_crosstalk, filename  $
         
       endfor                    ; ippc
     endfor                      ; iscan
+    red_progressbar, /done
+
     Vcube = reform(vcube,Nx,Ny,Nscans*n_elements(ppc))
     
 ;    lows  = min(Vcube,dim=3, /nan)

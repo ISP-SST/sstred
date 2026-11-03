@@ -421,6 +421,7 @@ pro red::demodulate, outname, immr, immt $
                                         , roi[2]+margin:roi[3]-margin]
           endfor                ; istokes
         endfor                  ; ilc
+        red_progressbar, /done
 
         if keyword_set(smooth_by_kernel) then begin
 
@@ -445,7 +446,7 @@ pro red::demodulate, outname, immr, immt $
               mymt[ilc,istokes,*,*] = red_convolve(tmp, psf)
             endfor              ; istokes
           endfor                ; ilc
-          
+          red_progressbar, /done
         endif
 
         writefits, mymrname, mymr    

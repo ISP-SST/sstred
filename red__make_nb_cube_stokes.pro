@@ -293,9 +293,6 @@ pro red::make_nb_cube_stokes, wcfile $
 
   Nstokes = 4
 
-  iprogress = 0
-  Nprogress = Nscans*Ntuning
-
   cshift_mean = fltarr(2, Nnbprefs, Nscans)
   nSummed = fltarr(Nnbprefs, Nscans)
   idxpref = intarr(Ntuning)
@@ -322,16 +319,8 @@ pro red::make_nb_cube_stokes, wcfile $
     
     for ituning = 0L, Ntuning - 1 do begin 
 
-;      red_progressbar, iprogress, Nprogress $
-;                       , /predict $
-;                       , 'Processing scan=' $
-;                       + strtrim(uscans[iscan], 2) + ' tuning=' + utuning[ituning] 
-      
-      red_progressbar, /predict $
-                       , iscan, Nscans, 'Scan ' + strtrim(uscans[iscan], 2) $
-                       , ituning, Ntunings, utuning[ituning] 
-
-  
+      red_progressbar, iscan, Nscans, 'Scan ' + strtrim(uscans[iscan], 2) $
+                       , ituning, Ntuning, utuning[ituning] 
       
       ;; Read the pre-made Stokes cube
       
@@ -422,9 +411,7 @@ pro red::make_nb_cube_stokes, wcfile $
         red_fitscube_addframe, wbfileassoc, temporary(wbim) $
                                , iscan = iscan, ituning = ituning, istokes = istokes
       endif
-      
-      iprogress++               ; update progress counter
-      
+
     endfor                      ; ituning
 
     cshift_mean[0,*,iscan] /= nSummed[*,iscan]

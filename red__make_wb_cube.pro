@@ -567,6 +567,7 @@ pro red::make_wb_cube, dirs $
     
     cub[*, *, iscan] = (temporary(im))[x0:x1, y0:y1]       
   endfor                        ; iscan
+  red_progressbar, /done
 
   hdr = red_readhead(wfiles[0])         ; Base cube header on first WB file header
   red_headerinfo_deletestep, hdr, /last ; This processing step will be added later, could vary with scan number  
@@ -606,7 +607,8 @@ pro red::make_wb_cube, dirs $
     cub[*,*,iscan] = red_rotation(cub1[*,*,iscan], full=ff $
                                   , ang[iscan], 0, 0, background = bg, nthreads=nthreads)
   endfor                        ; iscan
-
+  red_progressbar, /done
+  
   ;; Align cube
   if n_elements(np) eq 0 then np = 3
 ;  if(~keyword_set(np)) then begin
@@ -772,7 +774,8 @@ pro red::make_wb_cube, dirs $
     
     cub[*,*,iscan] /= tmean[iscan]
   endfor                        ; iscan
-
+  red_progressbar, /done
+  
   red_timeplot, red_time2double(time), tmean/mean(tmean) $
                 , xtitle = 'Time', ytitle = 'Intensity correction' $
                 , psym=-16, /ynozero $
@@ -809,6 +812,7 @@ pro red::make_wb_cube, dirs $
       ;;if Nwhere gt 0 then imm[mindx] = bg ; Ugly fix, red_stretch destroys the missing data for raws?
       cub[*,*,iscan] = imm/tmean[iscan]
     endfor                      ; iscan
+    red_progressbar, /done
   endif
 
   ;; Prepare for making output file names
