@@ -168,8 +168,9 @@ pro red_progressbar, i_outer, N_outer, message_outer $   ; necessary parameters
   prediction = '' 
 
   ;; Only record time history when the OUTER loop actually progresses
-  ;; to a new index
-  if i_outer ne last_i_outer and i_outer lt N_outer then begin
+  ;; to a new index (or when we don't have an inner loop)
+  if (i_outer ne last_i_outer && i_outer lt N_outer) then begin
+;     || (n_elements(N_inner) eq 0) then begin
     if icnt eq n_elements(times) then begin
       times = [times, dblarr(100)]
       iterations = [iterations, lonarr(100)]
@@ -294,6 +295,9 @@ endfor
 red_progressbar, /done, message_done = 'files'
 ;red_progressbar, N, N, 'Done'
 
+stop
+
+
 for i = 0, N-1 do begin 
   for j = 0, M-1 do begin 
     red_progressbar, i, N, messages[i], j, M, 'SubStep', /predict, /add
@@ -301,7 +305,7 @@ for i = 0, N-1 do begin
   endfor 
 endfor
 ;red_progressbar, N, N, 'Done', M, M, 'SubSteps'
-red_progressbar, /done, message_done = 'files'
+red_progressbar, /done;, message_done = 'files'
 
 stop
 
