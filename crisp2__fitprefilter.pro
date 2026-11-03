@@ -801,8 +801,9 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
       np = long((max(atlas_lambda) - min(atlas_lambda)) / dw) - 2
       if np/2*2 eq np then np -=1
       tw = (dindgen(np)-np/2)*dw                                             
-;      tr = self -> fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
-      tr = crisp_fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
+      p_fpi = red_get_FPI_params('CRISP2', cwl)
+      tr = red_fpi_profile(tw, cwl, p_fpi[0], p_fpi[1], p_fpi[2] , p_fpi[3], p_fpi[4])
+;      tr = crisp_fpi_profile(tw, upref[ipref], erh=-0.01d, /offset_correction)
       tr /= total(tr)
       
       ;; Convolve the spectrum with the FPI profile

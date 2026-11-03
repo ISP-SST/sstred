@@ -674,8 +674,11 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       dw = atlas_lambda[1] - atlas_lambda[0]
       np = round((0.080 * 8) / dw)
       if np/2*2 eq np then np -=1
-      tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
-      tr = chromis_profile(tw, erh=-0.09d0)
+      tw = (dindgen(np)-np/2)*dw 
+      p_fpi = red_get_FPI_params('CHROMIS', cwl)
+      tr = red_fpi_profile(tw, cwl, p_fpi[0], p_fpi[1], p_fpi[2] , p_fpi[3], p_fpi[4])
+;     tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
+;     tr = chromis_profile(tw, erh=-0.09d0)
       tr /= total(tr)
       
       ;; Convolve the spectrum with the FPI profile
