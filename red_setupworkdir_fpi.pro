@@ -131,29 +131,33 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
                          , {keyword:'TELCONFG', value:'Schupmann, imaging table', $
                             comment:'Telescope configuration'}]
   
+  ;; Look for raw darks and flats
+  darksubdirs   = red_find_instrumentdirs(root_dir, instrument, '*dark*' $
+                                          , count = Ndarkdirs)
+  flatsubdirs   = red_find_instrumentdirs(root_dir, instrument, '*flat*' $
+                                          , count = Nflatdirs)
+  pinhsubdirs   = red_find_instrumentdirs(root_dir, instrument, '*pinh*' $
+                                          , count = Npinhdirs)
+  polcalsubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-polc*' $
+                                          , count = Npolcalsubdirs)
+  
+  ;; Are there raw darks and flats?
+  e_rawdarks   = Ndarkdirs gt 0
+  e_rawflats   = Nflatdirs gt 0
+  e_rawpinhs   = Npinhdirs gt 0
+  e_rawpolcals = Npolcalsubdirs gt 0
+
   ;; Are there copies of/links to already summed calibration data?
   e_darksums   = file_test(work_dir + '/darks')
   e_flatsums   = file_test(work_dir + '/flats')
   e_pinhsums   = file_test(work_dir + '/pinhs')
   e_polcalsums = file_test(work_dir + '/polcal_sums')
-
-  ;; Are there raw darks and flats?
-  darksubdirs = red_find_instrumentdirs(root_dir, instrument, '*dark*' $
-                                        , count = Ndarkdirs)
-  flatsubdirs = red_find_instrumentdirs(root_dir, instrument, '*flat*' $
-                                        , count = Nflatdirs)
-
-  if Ndarkdirs eq 0 and ~e_darksums then begin
+  
+  if ~e_rawdarks && ~e_darksums then begin
     print, 'No '+instrument+' darks were found. No setup generated.'
     return
   endif
 
-  if Ndarkdirs gt 0 then begin
-    ;; We want the W camera first!
-    indx = sort(abs(reform(byte(strmid(file_basename(darksubdirs),0,1,/reverse))) - (byte('W'))[0]))
-    darksubdirs = darksubdirs[indx]
-  endif
-  
   ;; Open two files for writing. Use logical unit Clun for a Config
   ;; file and Slun for a Script file.
   
@@ -166,6 +170,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   printf, Clun, '# --- Settings'
   printf, Clun, '#'
   printf, Clun,'isodate = '+isodate
+  printf, Clun, '# image_scale below will be refined later'
   case instrument of
 
     'CRISP' : begin
@@ -228,25 +233,32 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   printf, Clun, '# --- Cameras'
   printf, Clun, '#'
 
-  if Ndarkdirs gt 0 then begin
-    cams = file_basename(darksubdirs)
-    detectors = strarr(n_elements(cams))
-    for icam = 0, n_elements(cams)-1 do begin
-      f = file_search(darksubdirs[icam]+'/*fits')
-      detectors[icam] = red_fitsgetkeyword(f[0], 'DETECTOR')
-    endfor                      ; icam
-  endif else begin
+  case !true of
 
-    if ~e_darksums then stop
+    e_rawdarks : begin
+;      ;; We want the W camera first!
+;      indx = sort(abs(reform(byte(strmid(file_basename(darksubdirs),0,1,/reverse))) - (byte('W'))[0]))
+;      darksubdirs = darksubdirs[indx]
+      cams = file_basename(darksubdirs)
+      detectors = strarr(n_elements(cams))
+      for icam = 0, n_elements(cams)-1 do begin
+        f = file_search(darksubdirs[icam]+'/*fits')
+        detectors[icam] = red_fitsgetkeyword(f[0], 'DETECTOR')
+      endfor                    ; icam
+    end
 
-    dnames = file_search(work_dir+'/darks/cam*fits', count = Ndarks)
-    if Ndarks eq 0 then stop
+    e_darksums : begin
+      dnames = file_search(work_dir+'/darks/cam*fits', count = Ndarks)
+      if Ndarks eq 0 then stop
+      cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
+      if total(cnt) eq 0 then stop
+      detectors = red_fitsgetkeyword_multifile(dnames, 'DETECTOR', count = cnt)
+    end
+
+    else : stop
     
-    cams = red_fitsgetkeyword_multifile(dnames, 'CAMERA', count = cnt)
-    if total(cnt) eq 0 then stop
-    detectors = red_fitsgetkeyword_multifile(dnames, 'DETECTOR', count = cnt)
+  endcase
 
-  endelse
   cams = red_uniquify(cams, indx = indx)
   detectors = detectors[indx]
 
@@ -256,8 +268,8 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   cams = cams[indx]
   detectors = detectors[indx]
   
-  is_wb = strmatch(cams, (instrument.tolower()).capwords()+'-[WD]')          
-  is_pd = strmatch(cams, (instrument.tolower()).capwords()+'-D')
+;  is_wb = strmatch(cams, (instrument.tolower()).capwords()+'-[WD]')
+;  is_pd = strmatch(cams, (instrument.tolower()).capwords()+'-D')
   
   printf, Clun, 'camera = '+cams, format='(a0)'
   printf, Clun, '#'
@@ -308,8 +320,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
 
   if n_elements(direction) gt 0 then printf, Clun, 'direction = '+strtrim(direction, 2)
   if n_elements(rotation)  gt 0 then printf, Clun, 'rotation = '+strtrim(rotation, 2)
-;  printf, Clun, 'direction = 2'  ; Orientation of WB camera, see IDL's rotate().
-;  printf, Clun, 'rotation = -42.0' ; Rotation of reference camera, se offset_angle of red_lp_angles().
+
   printf, Clun, '#'
   
   printf, Clun, 'root_dir = ' + root_dir
@@ -326,7 +337,10 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   printf, Clun, '# --- Darks'
   printf, Clun, '#'
 
-  if Ndarkdirs gt 0 then begin
+  if e_rawdarks && ~e_darksums then begin
+
+    ;; User has to sum darks
+    
     darkdirs = red_uniquify(file_dirname(darksubdirs), count = Ndarkdirs)
 
 ;    ;; Which darkdirs are collected in the AM?
@@ -360,19 +374,22 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     endfor                      ; idir
   endif                         ; Ndarkdirs
 
+  print, 'Flats'
 
-  if Nflatdirs eq 0 && ~e_flatsums then begin
-    print, 'No '+instrument+' flats were found. Stop after summing darks.'
+  if ~e_rawflats && ~e_flatsums then begin
+    print, 'No '+instrument+' flats were found.'
+    printf, Slun, ''
+    printf, Slun, '; No '+instrument+' flats were found.'
+    printf, Slun, ''
     free_lun, Clun
     free_lun, Slun
     return
   endif
  
-  print, 'Flats'
-  if Nflatdirs gt 0 && ~e_flatsums then begin
-    ;; There are flats but no already summed flats!
+  if e_rawflats && ~e_flatsums then begin
 
-    print, 'Flats'
+    ;; There are flats but they need to be summed by the user!
+
     printf, Clun, '#'
     printf, Clun, '# --- Flats'
     printf, Clun, '#'
@@ -382,7 +399,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     flatdirs = flatdirs[uniq(flatdirs, sort(flatdirs))]
     Nflatdirs = n_elements(flatdirs)
 
-    ;; CHROMIS file names aren't wheel-and-hrz coded from 2022-11-03 
+    ;; CHROMIS file names weren't wheel-and-hrz decoded before 2022-11-03 
     if instrument eq 'CHROMIS' && isodate lt red_dates(tag = 'CHROMIS tuning metadata') then begin
       ;; Do the linedefs and hrz_calib thing for earlier observations
       red_download_linedefs, isodate, flatdirs, work_dir
@@ -425,8 +442,8 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
 
         indx = uniq(wls, sort(wls))
         wls = wls[indx]
-        this_is_wb = this_is_wb[indx]
-        this_is_pd = this_is_pd[indx]
+;        this_is_wb = this_is_wb[indx]
+;        this_is_pd = this_is_pd[indx]
         wls = wls[where(wls ne '')]
         
         
@@ -457,9 +474,9 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
                   + outdir_key + dark_timestamp_key $ ;+ calib_key $
                   + ' ; ' + camdirs+' ('+wavelengths+')'
 
-          if this_is_wb[0] then red_append, prefilters, wls
-          red_append, is_wb, this_is_wb
-          red_append, is_pd, this_is_pd
+;          if this_is_wb[0] then red_append, prefilters, wls
+;          red_append, is_wb, this_is_wb
+;          red_append, is_pd, this_is_pd
         endif
       endif                     ; Nfiles
     endfor                      ; idir
@@ -485,17 +502,21 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     red_extractstates, fnames, /basename, wav = wav, fullstate = fullstate, pref = prefilters
     Nprefilters = n_elements(prefilters)
     cameras = red_fitsgetkeyword_multifile(fnames, 'CAMERA', counts = cnt)
-    is_wb = strmatch(cameras, '*-[WD]')          
-    is_pd = strmatch(cameras, '*-D')
+;    is_wb = strmatch(cameras, '*-[WD]')          
+;    is_pd = strmatch(cameras, '*-D')
   endif 
 
   if Nprefilters eq 0 then stop
 
   indx = uniq(prefilters, sort(prefilters))
-  is_wb = is_wb[indx]
-  is_pd = is_pd[indx]
+;  is_wb = is_wb[indx]
+;  is_pd = is_pd[indx]
   prefilters = prefilters[indx]
   Nprefilters = n_elements(prefilters)
+  
+  red_info_prefilters, prefilters, nb=is_nb, wb=is_wb
+  nb_filters = prefilters[where(is_nb)]
+  wb_filters = prefilters[where(is_wb)]
 
   if ~e_pinhsums then begin
     printf, Slun, ''
@@ -630,7 +651,6 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     printf, Slun, ''
   endif
 
-  stop
   
   if polarimetric_data && ~e_polcalsums then begin
     
@@ -638,8 +658,6 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     printf, Clun, '#'
     printf, Clun, '# --- Polcal'
     printf, Clun, '#'
-    polcalsubdirs = red_find_instrumentdirs(root_dir, instrument, instrument+'-polc*' $
-                                            , count = Npolcalsubdirs)
     
     if Npolcalsubdirs gt 0 then begin
       
@@ -657,7 +675,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
           printf, Clun, 'polcal_dir = ' $
                   + red_strreplace(polcaldirs[idir], root_dir, '')
 
-          if keyword_set(calibrations_only) || keyword_set(lapalma_setup) then begin
+          if keyword_set(lapalma_setup) then begin
 
             ;; We want to output the summed data in timestamp
             ;; directories so we can handle multiple sets.
@@ -686,36 +704,36 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
         endif
       endfor                    ; idir
 
-      if ~keyword_set(lapalma_setup) then begin  
-        for ipref = 0, n_elements(polprefs)-1 do begin
-          printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-                  + ", nthreads=nthreads"
-          printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-                  + ", nthreads=nthreads"
-        endfor                  ; ipref
-      endif
+;      if ~keyword_set(lapalma_setup) then begin  
+;        for ipref = 0, n_elements(polprefs)-1 do begin
+;          printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+;                  + ", nthreads=nthreads"
+;          printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+;                  + ", nthreads=nthreads"
+;        endfor                  ; ipref
+;      endif
       
-    endif else if n_elements(old_dir) gt 0 then begin
+    endif ;else if n_elements(old_dir) gt 0 then begin
 
-      ;; Need to find polprefs and Npolcaldirs from the summed data
-      pdir = old_dir + '/polcal_sums/'+instrument+'-T/'
-      pfiles = file_search(pdir+'cam*fits', count = Npfiles)
-      if Npfiles eq 0 then Npolcaldirs = 0 else begin
-        red_extractstates, pfiles, /basename, pref = polprefs
-        polprefs = polprefs[uniq(polprefs,sort(polprefs))]
-      endelse
-      
-      for ipref = 0, n_elements(polprefs)-1 do begin
-        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
-                + ", nthreads=nthreads"
-        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
-                + ", nthreads=nthreads"
-      endfor                    ; ipref
-    endif
+;      ;; Need to find polprefs and Npolcaldirs from the summed data
+;      pdir = work_dir + '/polcal_sums/'+(instrument.tolower()).capwords()+'-T/'
+;      pfiles = file_search(pdir+'cam*fits', count = Npfiles)
+;      if Npfiles eq 0 then Npolcaldirs = 0 else begin
+;        red_extractstates, pfiles, /basename, pref = polprefs
+;        polprefs = red_uniquify(polprefs)
+;      endelse
+;      
+;      for ipref = 0, n_elements(polprefs)-1 do begin
+;        printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+;                + ", nthreads=nthreads"
+;        printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+;                + ", nthreads=nthreads"
+;      endfor                    ; ipref
+;    endif
 
   endif
 
-
+ 
   if keyword_set(lapalma_setup) then begin
     ;; We don't need science data for the La Palma setup. 
     free_lun, Clun
@@ -726,8 +744,26 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     return
   endif
 
+  if polarimetric_data then begin
 
-  ;; Move polcalcube and polcal out from after lapalma_setup is done.
+    if e_polcalsums then begin
+      pdir = work_dir + '/polcal_sums/'+(instrument.tolower()).capwords()+'-T/'
+      pfiles = file_search(pdir+'cam*fits', count = Npfiles)
+      if Npfiles eq 0 then Npolcaldirs = 0 else begin
+        red_extractstates, pfiles, /basename, pref = polprefs
+        polprefs = red_uniquify(polprefs)
+      endelse
+    endif
+    
+    for ipref = 0, n_elements(polprefs)-1 do begin
+      printf, Slun, "a -> polcalcube, pref='" + polprefs[ipref] + "'" $
+              + ", nthreads=nthreads"
+      printf, Slun, "a -> polcal, pref='" + polprefs[ipref] + "'" $
+              + ", nthreads=nthreads"
+    endfor                      ; ipref
+    
+  endif
+
   
   ;; Make periodic filter for CRISP/CRISP2(?) data when there are not
   ;; polcal flats.
@@ -736,12 +772,20 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   printf, Slun
   printf, Slun, "a -> prepflatcubes"
   
+
+;  help, is_wb, is_nb, prefilters
   
   printf, Slun, ''
   printf, Slun, '; The fitgains step requires the user to look at the fit and determine'
   printf, Slun, '; whether you need to use different keyword settings.'
   printf, Slun, '; Then, if you have already run makegains, rerun it.'
-  printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L, res=res"
+  for ipref = 0, n_elements(nb_filters)-1 do begin
+;    if ~is_wb[ipref] then begin
+      printf, Slun, "a -> fitgains, rebin=800L, Niter=3L, Nthreads=nthreads, Npar=5L" $
+              + ", res=res, pref='"+nb_filters[ipref]+"'"
+;    endif
+  endfor                        ; ipref
+  
 ;    printf, Slun, '; If you need per-pixel reflectivities for your analysis'
 ;    printf, Slun, '; (e.g. for atmospheric inversions) you can set the /fit_reflectivity'
 ;    printf, Slun, '; keyword:'
@@ -784,7 +828,8 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
 
   endcase
   
-
+  printf, Slun, ''
+  
   ;; Maybe this should be further up, to be included also for the La
   ;; Palma processing?
   
@@ -825,12 +870,52 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   sciencesubdirs = red_find_instrumentdirs(root_dir, instrument $
                                            , instrument+['-data*', '-mosaic*'] $
                                            , count = Nsubdirs)
-
   if Nsubdirs gt 0 then begin
     sciencedirs = file_dirname(sciencesubdirs)
     dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
     printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
   endif
+  
+  
+  scan_dirs = red_find_instrumentdirs(root_dir, instrument $
+                                      , instrument+['-data*'] $
+                                      , count = Nscandirs)
+  mos_dirs = red_find_instrumentdirs(root_dir, instrument $
+                                     , instrument+['-mosaic*'] $
+                                     , count = Nmosdirs)
+
+  if Nscandirs gt 0 then begin
+    scan_timestamps = red_uniquify(file_basename(file_dirname(scan_dirs)), coun = Nscandirs)
+    printf, Slun, 'scan_timestamps = ["' + strjoin(scan_timestamps, '", "') + '"]'
+    printf, Slun, ''
+  endif
+  if Nmosdirs gt 0 then begin
+    mos_timestamps = red_uniquify(file_basename(file_dirname(mos_dirs)), coun = Nscandirs)
+    printf, Slun, 'mos_timestamps = ["' + strjoin(mos_timestamps, '", "') + '"]'
+    printf, Slun, ''
+  endif
+  
+  stop
+  
+;  if Nsubdirs gt 0 then begin
+;    sciencedirs = file_dirname(sciencesubdirs)
+;    dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
+;    printf, Clun, "data_dir = ['"+strjoin(dirarr, "','")+"']"
+;
+;    indx_mos = where(strmatch(dirarr, '*-mosaic*'), Nmos, complement = indx_scans, ncomplement = Ndata)
+;
+;    timestamps_science = file_basename(sciencedirs)
+;    timestamps_scans   = timestamps_science[indx_scans]
+;    timestamps_mos     = timestamps_science[indx_mos]
+;    
+;    printf, Slun, 'timestamps_science = ["' +strjoin(timestamps_science, '", "') + '"]'
+;    
+;    
+;;    if Ndata gt 0 then printf, Slun, 'timestamps_data = ["' + strjoin(file_basename(dirarr[indx_data] ), '", "') + '"]'
+;;    if Nmos gt 0  then printf, Slun, 'timestamps_mos  = ["' + strjoin(file_basename(dirarr[indx_mos] ), '", "') + '"]'
+;    if Ndata gt 0 then printf, Slun, 'timestamps_scans = ["' + strjoin(timestamps_scans, '", "') + '"]'
+;    if Nmos  gt 0 then printf, Slun, 'timestamps_mos   = ["' + strjoin(timestamps_mos,   '", "') + '"]'
+;  endif
 
 
 
@@ -915,19 +1000,16 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   printf, Slun, ''
 
   ;;  for ipref = 0, Nprefilters-1 do printf, Slun, "a -> fitprefilter, /mask ;, pref = '"+prefilters[ipref]+"'"
-  printf, Slun, "a -> fitprefilter, /mask; , /hints, dir='10:02:45'"
-  printf, Slun, ''
+;  printf, Slun, "a -> fitprefilter, /mask; , /hints, dir='10:02:45'"
+;  printf, Slun, ''
   printf, Slun, "a -> fit_wb_diskcenter, tmax='13:00'; for PM data instead tmin='13:00'"
 
   printf, Slun, ''
-  for ipref = 0, Nprefilters-1 do begin
-
-    if instrument eq 'CRISP' then begin
-
+  if instrument eq 'CRISP' then begin
+    for ipref = 0, Nprefilters-1 do begin
       ;; CRISP's etalon's aren't as smooth as those of CHROMIS and
       ;; CRISP2, so we have to make gaintables that take the
       ;; structures within the FOV into account.
-
       printf, Slun, "a -> sum_data_intdif, pref = '" + prefilters[ipref] $
               + "', cam = 'Crisp-T', /verbose, /show, /overwrite " $
               + ', nthreads=nthreads' $
@@ -938,14 +1020,22 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
               + " ; /all"
       printf, Slun, "a -> make_intdif_gains, pref = '" + prefilters[ipref] $
               + "', min=0.1, max=4.0, bad=1.0, smooth=3.0, timeaver=1L, /smallscale ; /all"
+    endfor                      ; ipref
+  endif
+  
 
-    endif
-
-    ;; Run fitprefilter for one filter at a time
-    printf, Slun, "a -> fitprefilter, pref = '"+prefilters[ipref]+"'" $
-            + ", /mask ;, /hints, dir='10:02:45'"
-
-    ;; Set up prepmomfbd for this prefilter
+  for ipref = 0, n_elements(nb_filters)-1 do begin
+;    if ~is_wb[ipref] then begin
+      ;; Run fitprefilter for one NB filter at a time
+      printf, Slun, "a -> fitprefilter, pref = '"+nb_filters[ipref]+"'" $
+              + ", /mask ;, /hints, dir='10:02:45'"
+;    endif
+  endfor                        ; ipref
+  printf, Slun
+  
+  for ipref = 0, n_elements(wb_filters)-1 do begin
+    ;; Set up prepmomfbd for this filter
+    ;; Change Numpoints to a calculated value based on image scale and about 4" FOV --------------
     case instrument of
       
       'CRISP'  : printf, Slun, "a -> prepmomfbd" $
@@ -954,9 +1044,10 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
                          + ", date_obs = '" + isodate + "'" $
                          + ", numpoints = 116" $
                          + ", global_keywords=['FIT_PLANE']" $
-                         + ", pref = '"+prefilters[ipref]+"'" $
+                         + ", pref = '"+wb_filters[ipref]+"'" $
                          + ", margin = 5" $
-                         + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+                         + ", dirs=scan_timestamps"
+;                         + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
       
       'CRISP2' : printf, Slun, "a -> prepmomfbd" $
                          + ", /unpol" $
@@ -965,39 +1056,44 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
                          + ", date_obs = '" + isodate + "'" $
                          + ", numpoints = 116" $
                          + ", global_keywords=['FIT_PLANE']" $
-                         + ", pref = '"+prefilters[ipref]+"'" $
+                         + ", pref = '"+wb_filters[ipref]+"'" $
                          + ", margin = 5" $
-                         + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
+                         + ", dirs=scan_timestamps"
+;                         + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"'] "
 
-      'CHROMIS' : if is_wb[ipref] then begin
-        printf, Slun, "a -> prepmomfbd" $
+      'CHROMIS' :   printf, Slun, "a -> prepmomfbd" $
 ;              + ", date_obs='" + isodate + "'" $
-                + ", Nremove=1" $
-                + ", Nmodes=60" $
-                + ", numpoints=128" $
+                            + ", Nremove=1" $
+                            + ", Nmodes=60" $
+                            + ", numpoints=128" $
 ;            + ", margin=5 " $
-                + ", global_keywords=['FIT_PLANE']" $
-                + ", maxshift=45" $
-                + ", /wb_states" $
+                            + ", global_keywords=['FIT_PLANE']" $
+                            + ", maxshift=45" $
+                            + ", /wb_states" $
 ;              + ", /redux" $
-                + ", /unpol" $
-                + ", extraclip = [50,50,40,20]" $ ; [75,125,15,15]" $
-                + ", pref='" + prefilters[ipref] + "'" $
-                + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
-      endif
+                            + ", /unpol" $
+                            + ", extraclip = [50,50,40,20]" $ ; [75,125,15,15]" $
+                            + ", pref='" + wb_filters[ipref] + "'" $
+                            + ", dirs=scan_timestamps"
+;                + ", dirs=['"+strjoin(file_basename(dirarr), "','")+"']"
+      
       
       else : stop
       
     endcase
-    
-    printf, Slun
-    
+
   endfor                        ; ipref ;
 
   printf, Slun, ''
-  printf, Slun, ';; Run MOMFBD outside IDL.'
+  printf, Slun, '; --------------------------------------------'
+  printf, Slun, ';          Run MOMFBD outside IDL.'
+  printf, Slun, '; --------------------------------------------'
   printf, Slun, ''
 
+  printf, Slun, 'wb_filters = ['+strjoin(strtrim(wb_filters, 2), ', ')+']'
+  printf, Slun
+
+  
   printf, Slun, ';; Post-MOMFBD stuff:'
   if instrument eq 'CHROMIS' then begin
     ;; Actually only needed if there are Ca II data
@@ -1006,26 +1102,20 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
 
   ;; Loop over science dirs and prefilters and write one set of cube making commands per dir?
 
-  stop
-  wb_filters = prefilters[where(is_wb)]
-  printf, Slun
-  printf, Slun, 'wb_filters = ['+strjoin(strtrim(wb_filters, 2), ', ')+']'
 
-  indx_mos = where(strmatch(dirarr, '*-mosaic*'), Nmos, complement = indx_data, ncomplement = Ndata)
-  if Ndata gt 0 then printf, Slun, 'timestamps_data = ["' + strjoin(file_basename(dirarr[indx_data] ), '", "') + '"]'
-  if Nmos gt 0  then printf, Slun, 'timestamps_mos  = ["' + strjoin(file_basename(dirarr[indx_mos] ), '", "') + '"]'
   
+  printf, Slun, "Below, adapt the indices of scan_timestamps, mos_timestamps, and wb_filters as needed."
   printf, Slun
-  printf, Slun, "a -> make_scan_cube, 'momfbd/'+timestamps_data[0]+'/'+wb_filters[0]+'/cfg/results/', /autocrop, scannos = '69', nthreads=nthreads"
+  printf, Slun, "a -> make_scan_cube, 'momfbd/'+scan_timestamps[0]+'/'+wb_filters[0]+'/cfg/results/', /autocrop, scannos = '69', nthreads=nthreads"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_wb_cube, 'momfbd/.../cfg/results/', nthreads=nthreads, /interactive, /autocrop, /align_interactive, outpath = wbpath"
+  printf, Slun, "a -> make_wb_cube, 'momfbd/'+scan_timestamps[0]+'/'+wb_filters[0]+'/cfg/results/', nthreads=nthreads, /interactive, /autocrop, /align_interactive, outpath = wbpath"
   printf, Slun, "; If not continuing immediately, set something like wbpath='cubes_wb/wb....fits' "
-  printf, Slun, "a -> fitscube_wcs_improve_spatial, wbpath ; If suitable target"
+  printf, Slun, "a -> fitscube_wcs_improve_spatial, wbpath ; Do only if suitable target"
   printf, Slun, "; If called without the wbpath, make_nb_cube lets you select one of the existing wb cubes"
   printf, Slun, "a -> make_nb_cube, wbpath, nthreads=nthreads"
   printf, Slun, "; or "
-  printf, Slun, "a -> make_mos_cube, 'momfbd/.../cfg/', nthreads=nthreads"
+  printf, Slun, "a -> make_mos_cube, 'momfbd/'+mos_timestamps[0]+'/'+wb_filters[0]+'/cfg/results/', nthreads=nthreads"
 
   
   free_lun, Clun
@@ -1043,6 +1133,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
       red_progressbar, ifile, Nfiles, 'Looking in data for OBSERVER keyword'
       observers[ifile] = red_fitsgetkeyword(data_files[ifile], 'OBSERVER')
     endfor
+    red_progressbar, /done
     observers = ['', observers] ; empty default means no OBSERVER keyword in metadata
     indx = uniq(observers, sort(observers))
     print

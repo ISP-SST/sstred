@@ -518,7 +518,9 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
     class = existing_classes[iexisting]
     instrument_dirs = reform(existing_instrument_dirs[iexisting])
 
-    case 1 of
+    if keyword_set(alternative) then begin
+      workdir = out_dir + instrument + '_alt/'
+    endif else case 1 of
 
       keyword_set(lapalma_setup) : begin
         ;; Setup for processing on La Palma
@@ -559,9 +561,6 @@ pro red_setupworkdir, ampm_cutoff = ampm_cutoff $
       
     endcase
 
-    if keyword_set(alternative) then begin
-      workdir = out_dir + instrument + '_alt/'
-    endif
     
     file_mkdir, workdir
 
