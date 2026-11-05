@@ -31,7 +31,10 @@
 ;
 ;    fit_ncav : in, optional, type=boolean
 ;
-;      Include the number of cavities parameter in the fit.
+;      Include the number of cavities parameter in the fit. If the
+;      wavelength range of the data is less than half the filter FWHM,
+;      Ncav will not be fit (regardless of the setting of this
+;      keyword).
 ;
 ;    fit_parameters  : in, optional, type="boolean array[8]", default=[1,1,1,1,1,1,1,0]
 ;
@@ -77,6 +80,8 @@
 ;    nasym : in, optional, type=integer, default=0
 ;
 ;      Number of asymmetry terms to include in the fit (0, 1, or 2).
+;      If the wavelength range of the data is less than half the
+;      filter FWHM, Nasym is limited to 1 or less.
 ;
 ;    noabsunits : in, optional, type=boolean
 ;
@@ -113,7 +118,7 @@
 ;      Initial value in Ångström for the filter profile shift
 ;      parameter.
 ;
-;    value_shift : in, optional, type=double, default=0
+;    value_shift : in, optional, type=double, default="difference between wavelengths of line core and min(measurements)"
 ;
 ;      Initial value in Ångström for the spectrum shift parameter.
 ;
@@ -236,7 +241,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
   if n_elements(value_ncav) eq 0 then value_ncav = 3.d
   if n_elements(value_stretch) eq 0 then value_stretch = 1.d
-  if n_elements(value_shift) eq 0 then value_shift = -0.01d
+;  if n_elements(value_shift) eq 0 then value_shift = -0.01d
   if n_elements(value_prshift) eq 0 then value_prshift = -0.01d
 
   fit_parameters = [1,1,1,1,1,1,1,0] ; default
@@ -634,6 +639,8 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
     for ipref = 0L, Npref-1 do begin
 
       red_progressbar, ipref, Npref, 'Process prefilters: ' + upref[ipref], /predict
+
+      red_info_prefilters, upref[ipref], date = self.isodate, fwhm = filter_fwhm
       
       if n_elements(cwl_keyword) eq 0 then begin
         ;; Default line wavelengths (in Ångström) for different
@@ -649,15 +656,17 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       endif else cwl = cwl_keyword
       
       if n_elements(value_fwhm) eq 0 then begin
-        ;; Default prefilter FWHM (in Ångström).
-        case upref[ipref] of
-          '3934' : value_fwhm = 4.1d ; Ca II K core
-          '3969' : value_fwhm = 4.1d ; Ca II H core 
-          '4862' : value_fwhm = 4.8d ; H-beta core
-          else   : value_fwhm = 4.1d
-        endcase
+        value_fwhm = filter_fwhm / 1d-10
+;        ;; Default prefilter FWHM (in Ångström).
+;        case upref[ipref] of
+;          '3934' : value_fwhm = 4.1d ; Ca II K core
+;          '3969' : value_fwhm = 4.1d ; Ca II H core 
+;          '4862' : value_fwhm = 4.8d ; H-beta core
+;          else   : value_fwhm = 4.1d
+;        endcase
       endif
 
+      
       ;; copy spectra for each prefilter
       
       idx = where(pref eq upref[ipref], nwav)
@@ -669,6 +678,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       red_satlas, measured_lambda[0]-5.1, measured_lambda[-1]+5.1 $
                   , atlas_lambda, atlas_spectrum $
                   , /si, cont = cont 
+
       
       ;; Make FPI transmission profile
       dw = atlas_lambda[1] - atlas_lambda[0]
@@ -711,25 +721,47 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         fitpars = replicate({mpside:2, limited:[0,0], limits:[0.0d, 0.0d], fixed:0, step:1.d-5}, 8)
         fitpars.fixed = ~fit_parameters
 
-        ;; Scale factor
+        ;; Line shift (satlas-obs)
+        if n_elements(value_shift) gt 0 then begin
+          parinit[1] = value_shift
+        endif else begin
+          measured_min = min(measured_spectrum, measured_loc)
+          parinit[1] = cwl - measured_lambda[measured_loc] 
+          parinit[1] = measured_lambda[measured_loc] - cwl
+        endelse
+        if ~fitpars[1].fixed then begin
+          fitpars[1].limited[*] = [1,1]
+          fitpars[1].limits[*]  = [-1.0,1.0]
+        endif
+
+        ;; Atlas spectrum at measured spectrum wavelength points
+        spct = interpol( atlas_spectrum_convolved, atlas_lambda, measured_lambda - parinit[1] )
+        if 1 then begin
+          print, parinit[1] 
+          window
+          cgplot, atlas_lambda, atlas_spectrum_convolved/min(atlas_spectrum_convolved) $
+                  , color='blue', xrange = cwl+[-1, 1]
+          cgplot, measured_lambda - parinit[1], measured_spectrum/min(measured_spectrum) $
+                  , psym=16, color='red',/over
+          cgplot, measured_lambda - parinit[1], spct/min(atlas_spectrum_convolved) $
+                  , psym=16, color='orange',/over
+        endif
+
+          
 ;        parinit[0] = max(measured_spectrum) * 2d0 / cont[0]
-        measured_indx=where(abs(measured_lambda - float(upref[ipref])) lt 1)
-        atlas_indx = where(abs(atlas_lambda + value_shift - float(upref[ipref])) lt 1)
+;        measured_indx=where(abs(measured_lambda - float(upref[ipref])) lt 1)
+;        atlas_indx = where(abs(atlas_lambda +  parinit[1]  - float(upref[ipref])) lt 1)
 ;        parinit[0] = mean(measured_spectrum[measured_indx]) / mean(atlas_spectrum_convolved[atlas_indx])
-        parinit[0] = min(measured_spectrum[measured_indx]) / min(atlas_spectrum_convolved[atlas_indx])
+;        parinit[0] = min(measured_spectrum[measured_indx]) / min(atlas_spectrum_convolved[atlas_indx])
+
+        ;; Scale factor - after Line shift because we need parinit[1] to get spct
+        parinit[0] = median(measured_spectrum / spct)
         if ~fitpars[0].fixed then begin
           fitpars[0].limited[*] = [1,0]
           fitpars[0].limits[*]  = [0.0d0, 0.0d0]
         endif
         
-        ;; Line shift (satlas-obs)
-        if n_elements(value_shift) gt 0 then begin
-          parinit[1] = value_shift
-        endif
-        if ~fitpars[1].fixed then begin
-          fitpars[1].limited[*] = [1,1]
-          fitpars[1].limits[*]  = [-1.0,1.0]
-        endif
+
         
         ;; Pref. shift
         if n_elements(value_prshift) gt 0 then begin
@@ -740,6 +772,23 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         if ~fitpars[2].fixed then begin
           fitpars[2].limited[*] = [1,1]
           fitpars[2].limits[*]  = [-3.0d0,+3.0d0]
+        endif
+
+
+        print, value_fwhm
+        print, max(measured_lambda) - min(measured_lambda)
+        stats, measured_lambda
+        
+        ;; If the wavelength range is less than the (nominal) FWHM of
+        ;; the filter, there is no use trying to fit some of the
+        ;; filter parameters, such as the FWHM, the number of cavities
+        ;; and the second asymmetrical term.
+        if value_fwhm/2. gt max(measured_lambda) - min(measured_lambda) then begin
+          red_message, 'Wavelength range smaller than filter FWHM.' $
+                       + ' Skip fitting Asymmetry term 2, as well as one of FWHM and Ncav.'
+;          fitpars[3].fixed = 1  ; FWHM
+          fitpars[4].fixed = 1  ; Ncav
+          fitpars[6].fixed = 1  ; Asymmetry term 2
         endif
         
         ;; Pref. FWHM
