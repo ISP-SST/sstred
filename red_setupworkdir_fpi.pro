@@ -176,7 +176,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
     'CRISP' : begin
       printf, Clun, 'image_scale = 0.044' ; Get from pinhole calibration
       printf, Clun, 'diversity = 4.0e-3'  ; Nominal value for Sep 2023
-      printf, Slun, 'a = crisp2red("'+cfgfile+'",/no_pd)' 
+      printf, Slun, 'a = crisp2red("'+cfgfile+'")' 
       printf, Slun, 'root_dir = "' + root_dir + '"'
     end
 
@@ -886,17 +886,15 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
 
   if Nscandirs gt 0 then begin
     scan_timestamps = red_uniquify(file_basename(file_dirname(scan_dirs)), coun = Nscandirs)
-    printf, Slun, 'scan_timestamps = ["' + strjoin(scan_timestamps, '", "') + '"]'
+    printf, Slun, "scan_timestamps = ['" + strjoin(scan_timestamps, "', '") + "']"
     printf, Slun, ''
   endif
   if Nmosdirs gt 0 then begin
     mos_timestamps = red_uniquify(file_basename(file_dirname(mos_dirs)), coun = Nscandirs)
-    printf, Slun, 'mos_timestamps = ["' + strjoin(mos_timestamps, '", "') + '"]'
+    printf, Slun, "mos_timestamps = ['" + strjoin(mos_timestamps, "', '") + "']"
     printf, Slun, ''
   endif
-  
-  stop
-  
+
 ;  if Nsubdirs gt 0 then begin
 ;    sciencedirs = file_dirname(sciencesubdirs)
 ;    dirarr = red_strreplace(sciencedirs[uniq(sciencedirs, sort(sciencedirs))], root_dir, '')
@@ -1090,7 +1088,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
   printf, Slun, '; --------------------------------------------'
   printf, Slun, ''
 
-  printf, Slun, 'wb_filters = ['+strjoin(strtrim(wb_filters, 2), ', ')+']'
+  printf, Slun, "wb_filters = ['"+strjoin(strtrim(wb_filters, 2), "', '")+"']"
   printf, Slun
 
   
@@ -1104,7 +1102,7 @@ pro red_setupworkdir_fpi, work_dir, root_dir, cfgfile, scriptfile, isodate, inst
 
 
   
-  printf, Slun, "Below, adapt the indices of scan_timestamps, mos_timestamps, and wb_filters as needed."
+  printf, Slun, ";Below, adapt the indices of scan_timestamps, mos_timestamps, and wb_filters as needed."
   printf, Slun
   printf, Slun, "a -> make_scan_cube, 'momfbd/'+scan_timestamps[0]+'/'+wb_filters[0]+'/cfg/results/', /autocrop, scannos = '69', nthreads=nthreads"
   printf, Slun, "a -> fitscube_wcs_improve_spatial, 'cubes_scan/nb....fits' ; If suitable target"
