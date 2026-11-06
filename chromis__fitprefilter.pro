@@ -686,7 +686,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
       if np/2*2 eq np then np -=1
       tw = (dindgen(np)-np/2)*dw 
       p_fpi = red_get_FPI_params('CHROMIS', cwl)
-      tr = red_fpi_profile(tw, cwl, p_fpi[0], p_fpi[1], p_fpi[2] , p_fpi[3], p_fpi[4])
+      tr = red_fpi_profile(tw, cwl, p_fpi[0], p_fpi[1], p_fpi[2], p_fpi[3], p_fpi[4])
 ;     tw = (dindgen(np)-np/2)*dw + double(upref[ipref])
 ;     tr = chromis_profile(tw, erh=-0.09d0)
       tr /= total(tr)
@@ -736,7 +736,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
 
         ;; Atlas spectrum at measured spectrum wavelength points
         spct = interpol( atlas_spectrum_convolved, atlas_lambda, measured_lambda - parinit[1] )
-        if 1 then begin
+        if 0 then begin
           print, parinit[1] 
           window
           cgplot, atlas_lambda, atlas_spectrum_convolved/min(atlas_spectrum_convolved) $
@@ -767,7 +767,7 @@ pro chromis::fitprefilter, cwl = cwl_keyword $
         if n_elements(value_prshift) gt 0 then begin
           parinit[2] = value_prshift
         endif                   ;else begin
-;          par[2] = float(upref[ipref]) - cwl
+;          parinit[2] = float(upref[ipref]) - cwl
 ;        end
         if ~fitpars[2].fixed then begin
           fitpars[2].limited[*] = [1,1]
