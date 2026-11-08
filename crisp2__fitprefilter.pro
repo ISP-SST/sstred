@@ -908,7 +908,7 @@ pro crisp2::fitprefilter, cwl = cwl_keyword $
 
         print, value_fwhm
         print, max(measured_lambda) - min(measured_lambda)
-        stats, measured_lambda
+        red_stats, measured_lambda
         
         ;; If the wavelength range is less than the (nominal) FWHM of
         ;; the filter, there is no use trying to fit some of the
