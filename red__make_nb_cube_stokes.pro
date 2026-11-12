@@ -375,14 +375,14 @@ pro red::make_nb_cube_stokes, wcfile $
         ;; Missing pixels, if any, are set to zero at this point
         frame = nbim[*, *, istokes]
         
-        red_missing, frame, /inplace $
+        red_missing, frame, /inplace, missing_type_wanted = 'median' $
                      , nmissing = Nmissing, indx_missing = indx_missing, indx_data = indx_data
         ;; Now the missing pixels should be NaN
         
         if Nmissing gt 0 then begin
-          bg = (nbim[*, *, istokes])[indx_missing[0]]
+          bg = frame[indx_missing[0]]
         endif else begin
-          bg = median(nbim[*, *, istokes])
+          bg = median(frame)
         endelse
         
         frame = red_rotation(frame, ang[iscan], $
