@@ -57,6 +57,11 @@
 ;
 ;      Include the spectrum stretch parameter in the fit.
 ;
+;    gain_correction : in, optional, type=boolean
+;
+;      Correct the data with the gaintable. Useful when there are
+;      gradients in the flats/gains.
+;
 ;    fixcav : in, optional, type=float, default='Not fixed'
 ;
 ;      Fix the number of cavities to this number. (Deprecated.)
@@ -181,6 +186,8 @@
 ;                without using keyword pref.. 
 ; 
 ;   2021-09-19 : MGL. New keyword /demodulate.
+;
+;   2026-11-19 : OA. New keyword gain_correction.
 ; 
 ;-
 pro crisp::fitprefilter, cwl = cwl_keyword $
@@ -192,6 +199,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
                          , fit_prshift = fit_prshift $
                          , fit_shift = fit_shift $
                          , fit_stretch = fit_stretch $
+                         , gain_correction = gain_correction $
                          , fixcav = fixcav $
                          , hints = hints $
                          , init = init $
@@ -602,9 +610,10 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         pos = where(statesNB.fpi_state eq ustates[istate].fpi_state, Nframes)
         
         ;; Get darks for this camera
-        self -> get_calib, statesNB[pos[0]], darkdata=darkN, gaindata=gainN, status = status
-        mindx = where(gainn eq 0, Nmissing)                                
-        gindx = where(gainn ne 0, Nmissing)                    
+        if keyword_set(gain_correction) then $
+          self -> get_calib, statesNB[istate], darkdata=darkN, status = status, gaindata=gainN $
+        else $
+          self -> get_calib, statesNB[istate], darkdata=darkN, status = status
         if status ne 0 then begin
           print, inam+' : ERROR, cannot find dark file for NB'
           stop
@@ -674,7 +683,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
 ;                + reform(immtr[1,0,*,*]) * im1 $
 ;                + reform(immtr[2,0,*,*]) * im2 $
 ;                + reform(immtr[3,0,*,*]) * im3
-          nmask = gainn eq 0
+;          nmask = gainn eq 0
 ;          imN = rdx_fillpix(imN, mask = nmask)          
 
           red_fitspar_getdates, h0, date_avg = date_avg0          
@@ -711,7 +720,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
 
           for iframe = 0, Nframes-1 do begin
             imm = rdx_readdata(statesNB[pos[iframe]].filename) - darkN
-            imm *= gainN
+            if keyword_set(gain_correction) then imm *= gainN
             means[iframe] = mean(imm[gindx])
           endfor                ; iframe
           mx = max(means, mloc)
@@ -722,7 +731,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
                                    or statesNB[pos[0]].prefilter eq '7772') then begin
             imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
           endif
-          imN *= rdx_fillpix(gainN)
+          if keyword_set(gain_correction) then imN *= rdx_fillpix(gainN)
           time_avg = (strsplit(date_avg, 'T', /extract))[1]          
 
           if keyword_set(unitscalib) then begin
@@ -751,7 +760,7 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
                                    or statesNB[pos[0]].prefilter eq '7772') then begin
                 imN = rdx_descatter(temporary(imN), bgainn, bpsfn, nthreads = nthread)
           endif
-          imN *= rdx_fillpix(gainN)
+          if keyword_set(gain_correction) then imN *= rdx_fillpix(gainN)
 
           if keyword_set(unitscalib) then begin
             imW = rdx_sumfiles(statesWB[pos].filename, /check, nthreads = 4) - darkW
@@ -767,7 +776,6 @@ pro crisp::fitprefilter, cwl = cwl_keyword $
         ;; Get the spectrum point in counts
         if keyword_set(mask) then begin
           if istate eq 0 then begin
-            if Nmissing gt 0 then imN[mindx] =  !values.f_nan ; Missing pixels
             mmask = red_select_area(imN, /noedge, /xroi)
             ind = where(mmask gt 0)
           endif 
